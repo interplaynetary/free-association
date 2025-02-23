@@ -13,6 +13,7 @@ Simple math will reveal how in free association: false recognition/relations nat
 You can interact with an interface implementing this logic [here](https://interplaynetary.github.io/free-association/) (still in active development).
 
 ---
+
 ## Example based Introduction:
 
 Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, freeing their time to fix their oven — the same oven that later bakes bread for your community garden party. That’s mutual-fulfillment: Your surplus doesn’t vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals etc. (and vice-versa), creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network. You're participating in a network where every contribution amplifies the collective capacity for everyone's growth.
@@ -20,6 +21,24 @@ Imagine a potluck where pies you bake that you don't need (surplus) helps a neig
 This approach represents a fundamental shift from traditional charity or market-based systems. Instead of asking "What can I get in return?" or "Who deserves my help?", the question becomes "How can my surplus best contribute to a network that supports everyone's self-actualization?" As this network grows, it creates a new kind of economy - one based on recognition, reciprocity, and the understanding that our individual fulfillment is inextricably linked to the fulfillment of others.
 
 ---
+
+## Table of Contents
+- [Introduction](#proof-and-strategy-for-a-truly-free-association-of-free-individuals)
+  - [Example-Based Introduction](#example-based-introduction)
+- [Proof & Strategy](#proof--strategy)
+  - [Basic Concepts](#let)
+    - [Recognition & Total Recognition](#let)
+    - [Recognition Between Participants](#for-any-participants-a-and-b)
+    - [Recognition as Bandwidth](#being-questioned-recognition-as-bandwidth) 
+    - [Mutual Recognition](#let-1)
+  - [Social Material Truth](#social-material-truth-is-realized-through-free-association-because-also)
+  - [Transitive Self-Actualization](#on-transitive-self-actualization-and-transitive-self-actualization)
+- [Additional Topics](#additional-topics)
+  - [Comparison with Equity](#how-this-differs-from-equity)
+  - [Competition in Free Association](#does-free-association-have-competition)
+  - [Capital Relations](#on-capital-relations-and-coercive-relations-in-general-within-free-association)
+- [Current Work](#what-is-being-done)
+
 ## Proof & Strategy:
 
 **Let:**
@@ -29,35 +48,6 @@ This approach represents a fundamental shift from traditional charity or market-
 **For any participants A and B:**
 1. A can (re)-attribute to B a share of A's total-recognition
 2. B can (re)-attribute to A a share of B's total-recognition
-
-
-<details>
-  <summary><b><i>Being Questioned: Recognition as Bandwidth</i></b></summary>
-
-**Recognition as Bandwidth:**
-- **Let:** 
-- **Total-Receptivity = Total-Recognition = 100%**
-- **Default: OtherShareOfTotalReceptivity = shareOfGeneralFulfillment**
-    - (each side can have un-reciprocal receptivity)
-    - Receptivity-Overrides for special cases should be possible.
-
-For example I would set my **Receptivity-Limit = 1k Charecters/day** and your share of my 1k charecters/day is equal to your share of my total-recognition (shareOfGeneralFulfillment).
-
-Each recognizer can set their their **Receptivity-Limit** on the fly!
-
-So if you are 50% of my total-recognition, you would be allowed to send me 500 characters/day.
-
-If I am 10% of your total-recognition, I would be allowed to send you 100 characters/day.
-
-We could override this default for special cases.
-
-This allows us to take control of our own attention. And in a sense allows people to sets limits on the working-day (or at least to set limits on the amount of attention that they are willing to give to others via free-association interfaces).
-
-**Question:** should default bandwidth-for-other be shareOfGeneralFulfillment or share-of-mutual-fulfillment-distribution?
-
-**Relations as Communication Channels:**
-- Relations are Communication Channels between Role-Players: Similar to chats or topics between two role-players.
-</details>
 
 **Let:**
 - **Mutual-Recognition(A, B)** = min(B-share-of-A's-total-recognition,  A-share-of-B's-total-recognition) = Mutual-Contributions towards eachother's self-actualization
@@ -127,7 +117,13 @@ This allows us to take control of our own attention. And in a sense allows peopl
 - ∴ ↓Surplus-Associations from Real Contributors
 - ∴ ↓Access to Real Social-Material Coordination via Surplus-Associations from Real Contributors
 - ∴ ↓Real Social-Material Basis for Self-Actualization
-- ∴ social-material-truth is realized through Free Association
+
+∴ social-material-truth is realized through Free Association because also:
+- ∴ ↑True Recognition = ↓False Recognition
+- ∴ ↑Mutual-Recognition with Real Contributors
+- ∴ ↑Surplus-Associations from Real Contributors
+- ∴ ↑Access to Real Social-Material Coordination via Surplus-Associations from Real Contributors
+- ∴ ↑Real Social-Material Basis for Self-Actualization
 
 <details>
   <summary><b><i>Click for Example</i></b></summary>
@@ -216,7 +212,7 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
 
   You may deploy any duplicitous means to gain my recognition of your contribution towards my self-fulfillment, you could lie to me with no end! And so long as you have secured your shares: you *own* me.
 
-  In other words, in Mutual-Stakeholding the Past dominates the Present. I can not remove my recognition of the past that is no longer true, because you own it.
+  In other words, in Mutual-Stakeholding the Past dominates the Present. I can not remove my recognition of the past that is no longer true, because you own it. (The transferability of recognition in the form of objects/tokens/money - is the condition of possiblity of the accumulation of recognition in general and is the condition of possiblity of false-recognition that persists even in the light of new information in the Present.)
 
   On the contrary in Free-Association: **The Present dominates the Past**. I am able to, at a whim, modify my recognition of the Past in the light of new information in the Present.
   
@@ -227,6 +223,11 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
   Recall that Mutual-Recognition is Hegel's resolution of the master-slave dialectic.
 
   For more on this see [resources/love.md](resources/love.md)
+</details>
+
+<details>
+  <summary><b><i>Does free-association have competition?</i></b></summary>
+
 </details>
 
 <details>
@@ -324,6 +325,33 @@ The state fetish cannot persist when contributors organize via Free Association,
 
 </details>
 
+<details>
+  <summary><b><i>Being Questioned: Recognition as Bandwidth?</i></b></summary>
+
+**Recognition as Bandwidth:**
+- **Let:** 
+- **Total-Receptivity = Total-Recognition = 100%**
+- **Default: OtherShareOfTotalReceptivity = shareOfGeneralFulfillment**
+    - (each side can have un-reciprocal receptivity)
+    - Receptivity-Overrides for special cases should be possible.
+
+For example I would set my **Receptivity-Limit = 1k Charecters/day** and your share of my 1k charecters/day is equal to your share of my total-recognition (shareOfGeneralFulfillment).
+
+Each recognizer can set their their **Receptivity-Limit** on the fly!
+
+So if you are 50% of my total-recognition, you would be allowed to send me 500 characters/day.
+
+If I am 10% of your total-recognition, I would be allowed to send you 100 characters/day.
+
+We could override this default for special cases.
+
+This allows us to take control of our own attention. And in a sense allows people to sets limits on the working-day (or at least to set limits on the amount of attention that they are willing to give to others via free-association interfaces).
+
+**Question:** should default bandwidth-for-other be shareOfGeneralFulfillment or share-of-mutual-fulfillment-distribution?
+
+**Relations as Communication Channels:**
+- Relations are Communication Channels between Role-Players: Similar to chats or topics between two role-players.
+</details>
 
 <details>
   <summary><b><i>Being Explored: What if States Freely-Associated?</i></b></summary>
