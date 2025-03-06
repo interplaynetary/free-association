@@ -111,6 +111,11 @@ export class App {
         // Store the current data path to restore zoom if possible
         const currentData = this.currentViewData;
         
+        // Clean up previous visualization if it has a cleanup method
+        if (this.visualization && typeof this.visualization.cleanup === 'function') {
+            this.visualization.cleanup();
+        }
+        
         // Clear container
         container.innerHTML = '';
         

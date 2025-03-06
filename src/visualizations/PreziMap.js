@@ -13,8 +13,12 @@ export function createPreziMap(data, width, height) {
     const margin = { top: 20, right: 120, bottom: 20, left: 120 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const nodeWidth = 160;
-    const nodeHeight = 40;
+    const nodeWidth = 160; // Base width
+    const nodeHeight = 40; // Base height
+    const minNodeWidth = 80; // Minimum width for smallest nodes
+    const maxNodeWidth = 240; // Maximum width for largest nodes
+    const minNodeHeight = 30; // Minimum height for smallest nodes
+    const maxNodeHeight = 60; // Maximum height for largest nodes
     const nodeRadius = 5;
     const duration = 750; // Animation duration
 
@@ -27,6 +31,24 @@ export function createPreziMap(data, width, height) {
     // Create main group with margin
     g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
+    
+    // Create a tooltip div that is hidden by default
+    const tooltip = d3.create("div")
+        .attr("class", "prezi-map-tooltip")
+        .style("position", "absolute")
+        .style("visibility", "hidden")
+        .style("background-color", "white")
+        .style("color", "#333")
+        .style("padding", "5px 8px")
+        .style("border-radius", "3px")
+        .style("border", "1px solid #ddd")
+        .style("font-size", "12px")
+        .style("pointer-events", "none")
+        .style("z-index", "10")
+        .style("box-shadow", "0 1px 3px rgba(0,0,0,0.2)");
+    
+    // Append tooltip to body
+    document.body.appendChild(tooltip.node());
     
     // Create tree layout
     const tree = d3.tree()
@@ -50,16 +72,55 @@ export function createPreziMap(data, width, height) {
     update(root);
     currentNode = root;
     
-    // Function to process a node - collapse nodes beyond a certain depth initially
+    // Add initial centering transform to ensure root node is centered
+    const initialCenterX = width / 2 - root.y;
+    const initialCenterY = height / 2 - root.x;
+    g.attr("transform", `translate(${initialCenterX},${initialCenterY})`);
+    
+    // Function to process a node - collapse all nodes except the root
     function processNode(d, depth = 0) {
-        if (d.children) {
-            if (depth > 1) {
+        if (depth === 0) {
+            // This is the root node
+            if (d.children) {
+                // Store its children temporarily
+                const children = d.children;
+                // Set all children as collapsed
+                d._children = children;
+                d.children = null;
+                
+                // Process all children (just to be thorough)
+                children.forEach(child => processNode(child, depth + 1));
+            }
+        } else {
+            // For non-root nodes, ensure they're collapsed
+            if (d.children) {
                 d._children = d.children;
                 d.children = null;
-            } else {
-                d.children.forEach(child => processNode(child, depth + 1));
+                d._children.forEach(child => processNode(child, depth + 1));
             }
         }
+    }
+    
+    // Helper function to calculate node size based on percentage
+    function calculateNodeSize(d, dimension, minSize, maxSize) {
+        // Default size for root or nodes without points
+        if (!d.parent || !d.data.points || d.data.points <= 0) {
+            return dimension;
+        }
+        
+        // Calculate total points of siblings
+        let totalSiblingPoints = 0;
+        const siblings = d.parent.children || d.parent._children || [];
+        
+        siblings.forEach(sibling => {
+            totalSiblingPoints += sibling.data.points || 0;
+        });
+        
+        if (totalSiblingPoints <= 0) return dimension;
+        
+        // Calculate size based on percentage
+        const percentage = d.data.points / totalSiblingPoints;
+        return minSize + percentage * (maxSize - minSize);
     }
     
     // Update the tree visualization
@@ -108,10 +169,10 @@ export function createPreziMap(data, width, height) {
         
         // Add node rectangle
         nodeEnter.append("rect")
-            .attr("width", nodeWidth - 20)
-            .attr("height", nodeHeight)
-            .attr("x", -nodeWidth / 2 + 10)
-            .attr("y", -nodeHeight / 2)
+            .attr("width", d => calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) - 20)
+            .attr("height", d => calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight))
+            .attr("x", d => -(calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) / 2) + 10)
+            .attr("y", d => -(calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight) / 2))
             .attr("rx", nodeRadius)
             .attr("ry", nodeRadius)
             .attr("fill", d => getColorForName(d.data.name))
@@ -140,7 +201,7 @@ export function createPreziMap(data, width, height) {
                 const node = d3.select(this);
                 const text = d.data.name;
                 let textLength = this.getComputedTextLength();
-                const maxWidth = nodeWidth - 30;
+                const maxWidth = calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) - 30;
                 
                 if (textLength > maxWidth) {
                     let truncatedText = text;
@@ -149,13 +210,40 @@ export function createPreziMap(data, width, height) {
                         node.text(truncatedText + "...");
                         textLength = this.getComputedTextLength();
                     }
+                    
+                    // Mark this node as truncated for tooltip
+                    d.isTruncated = true;
+                    d.fullName = text;
+                } else {
+                    d.isTruncated = false;
                 }
+            });
+            
+        // Add tooltip behavior to the node rectangle
+        nodeEnter.select("rect")
+            .on("mouseover", function(event, d) {
+                if (d.isTruncated) {
+                    tooltip.style("visibility", "visible")
+                           .text(d.fullName);
+                           
+                    // Position tooltip near mouse pointer
+                    tooltip.style("top", (event.pageY - 10) + "px")
+                           .style("left", (event.pageX + 10) + "px");
+                }
+            })
+            .on("mousemove", function(event) {
+                // Move tooltip with mouse
+                tooltip.style("top", (event.pageY - 10) + "px")
+                       .style("left", (event.pageX + 10) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.style("visibility", "hidden");
             });
         
         // Add expand/collapse indicator
         nodeEnter.append("text")
             .attr("class", "indicator")
-            .attr("x", nodeWidth / 2 - 25)
+            .attr("x", d => calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) / 2 - 25)
             .attr("y", 0)
             .attr("dy", "0.35em")
             .attr("text-anchor", "middle")
@@ -168,7 +256,7 @@ export function createPreziMap(data, width, height) {
         nodeEnter.append("text")
             .attr("class", "points")
             .attr("x", 0)
-            .attr("y", nodeHeight / 2 + 12)
+            .attr("y", d => calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight) / 2 + 12)
             .attr("text-anchor", "middle")
             .text(d => {
                 if (d.data.points <= 0) return "";
@@ -215,13 +303,21 @@ export function createPreziMap(data, width, height) {
         
         // Update node attributes and style
         nodeUpdate.select("rect")
+            .attr("width", d => calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) - 20)
+            .attr("height", d => calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight))
+            .attr("x", d => -(calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) / 2) + 10)
+            .attr("y", d => -(calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight) / 2))
             .attr("fill", d => getColorForName(d.data.name))
             .attr("stroke", d => {
                 return (d.data.hasNonContributorChild) ? "#2196f3" : "#fff";
             });
         
         nodeUpdate.select(".indicator")
+            .attr("x", d => calculateNodeSize(d, nodeWidth, minNodeWidth, maxNodeWidth) / 2 - 25)
             .text(d => d._children ? "+" : d.children ? "-" : "");
+        
+        nodeUpdate.select(".points")
+            .attr("y", d => calculateNodeSize(d, nodeHeight, minNodeHeight, maxNodeHeight) / 2 + 12);
         
         // Remove any exiting nodes
         const nodeExit = node.exit().transition()
@@ -371,6 +467,13 @@ export function createPreziMap(data, width, height) {
             
             // Update tree layout if needed
             update(currentNode);
+        },
+        cleanup: () => {
+            // Remove tooltip from DOM when visualization is removed
+            const tooltipNode = document.querySelector('.prezi-map-tooltip');
+            if (tooltipNode && tooltipNode.parentNode) {
+                tooltipNode.parentNode.removeChild(tooltipNode);
+            }
         }
     };
 }
