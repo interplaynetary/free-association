@@ -520,12 +520,10 @@ export function createPreziMap(data, width, height) {
         },
         // Highlight nodes that match search results
         highlightNodes: (matchedNodes) => {
-            // First clear any existing search highlights but preserve last clicked
+            // Clear all highlights (both search and last-clicked)
             g.selectAll('.node rect')
-                .filter(function() {
-                    return !d3.select(this).classed('last-clicked-highlight');
-                })
-                .classed('search-highlight', false);
+                .classed('search-highlight', false)
+                .classed('last-clicked-highlight', false);
             
             // Find all matched nodes in the visualization
             g.selectAll('.node')
@@ -563,6 +561,18 @@ export function createPreziMap(data, width, height) {
                 const matchedNode = findNode(root);
                 
                 if (matchedNode) {
+                    // Update lastClickedNode to the first search match
+                    lastClickedNode = matchedNode;
+                    
+                    // Also update currentNode to treat this as the fully selected node
+                    currentNode = matchedNode;
+                    
+                    // Mark the first match as the last clicked node
+                    g.selectAll('.node')
+                        .filter(d => d === matchedNode)
+                        .select('rect')
+                        .classed('last-clicked-highlight', true);
+                    
                     // Expand parent nodes to make the match visible
                     let parent = matchedNode.parent;
                     while (parent) {

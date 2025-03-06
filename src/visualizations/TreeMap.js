@@ -139,6 +139,7 @@ export function createTreemap(data, width, height) {
 
         node.append("rect")
             .attr("id", d => (d.leafUid = uid("leaf")).id)
+            .attr("class", "node-rect")  // Add a class for selection
             .attr("fill", d => {
                 if (d === root) return "#fff";
                 return getColorForName(d.data.name);
@@ -572,7 +573,7 @@ export function createTreemap(data, width, height) {
                 .classed('search-highlight', false);
             
             // Find all matched nodes in the visualization
-            svg.selectAll('rect.node')
+            svg.selectAll('rect.node-rect')  // Use the correct class
                 .filter(d => {
                     return matchedNodes.some(node => node.name === d.data.name);
                 })
@@ -599,15 +600,9 @@ export function createTreemap(data, width, height) {
                 const matchedNode = findNode(root);
                 
                 if (matchedNode) {
-                    // Find the proper ancestor to zoom to
-                    let target = matchedNode;
-                    while (target.parent && target.parent !== currentView && target.parent !== root) {
-                        target = target.parent;
-                    }
-                    
-                    // If we're not already viewing the right section, zoom in
-                    if (target !== currentView) {
-                        zoomin(target);
+                    // Zoom directly to the matched node, not its ancestor
+                    if (matchedNode !== currentView) {
+                        zoomin(matchedNode);
                     }
                 }
             }

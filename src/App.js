@@ -142,7 +142,7 @@ export class App {
         
         // Update button text
         document.getElementById('toggle-viz').textContent = 
-            this.visualizationType === 'treemap' ? 'Switch to PreziMap' : 'Switch to TreeMap';
+            this.visualizationType === 'treemap' ? 'Switch to Personal Map' : 'Switch to TreeMap';
     }
 
     updatePieChart() {
