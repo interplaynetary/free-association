@@ -7,3 +7,6 @@ I want to keep this codebase as uncluttered as possible so we are focused on rem
 We will go back and forth meaning that you will change only ONE SPECIFIC THING, then give me time to test functionality and we will continue.
 
 ## For Developing
+For now we will only to making changes to [NAME OF FILE] and not touching anything else
+
+Make these changes with the minimum amount of code possible, code is a liability, not an asset

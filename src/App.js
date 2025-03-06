@@ -156,18 +156,10 @@ export class App {
     // Setup search functionality
     setupSearch() {
         const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
         
-        // Search when button is clicked
-        searchButton.addEventListener('click', () => {
+        // Dynamic search: perform search as user types
+        searchInput.addEventListener('input', () => {
             this.performSearch(searchInput.value);
-        });
-        
-        // Also search when Enter key is pressed in the input
-        searchInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                this.performSearch(searchInput.value);
-            }
         });
     }
     
@@ -198,7 +190,6 @@ export class App {
             }
         } else {
             console.log(`No matches found for "${query}"`);
-            alert(`No matches found for "${query}"`);
         }
     }
     
