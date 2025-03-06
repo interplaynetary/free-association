@@ -151,7 +151,6 @@ export function createTreemap(data, width, height) {
                 // Only make stroke wider for nodes with non-contributor children
                 return (d.data.hasDirectContributorChild) ? "5" : "2";
             })
-            .style("paint-order", "stroke")
 
         node.append("clipPath")
             .attr("id", d => (d.clipUid = uid("clip")).id)
