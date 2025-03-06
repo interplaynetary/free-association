@@ -21,7 +21,11 @@
                 <span>Peer</span>
             </div>
         </div>
-        <button id="toggle-viz" class="toggle-button">Switch to Personal Map</button>
+        <div class="controls-container">
+            <input type="text" id="search-input" placeholder="Search..." class="search-input">
+            <button id="search-button" class="search-button">Search</button>
+            <button id="toggle-viz" class="toggle-button">Switch to Personal Map</button>
+        </div>
     </div>
 
     <!-- Popup forms container at document level -->
@@ -277,6 +281,15 @@
                 if (currentView && currentView.parent) {
                     treemap.zoomout(currentView);  // Use treemap's zoomout method directly
                 }
+            }
+        });
+        
+        // Initialize search field with clear button functionality
+        const searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('input', function() {
+            // Clear search if input is emptied
+            if (this.value.trim() === '') {
+                app.clearSearch();
             }
         });
     </script>

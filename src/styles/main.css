@@ -383,9 +383,6 @@ svg {
 
 /* Toggle Button */
 .toggle-button {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
     padding: 8px 16px;
     background-color: #2196f3;
     color: white;
@@ -403,8 +400,7 @@ svg {
 }
 
 .toggle-button:active {
-    background-color: #0b7ad1;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    background-color: #1976D2;
 }
 
 /* Collapsible Tree Styles */
@@ -428,4 +424,64 @@ svg {
 .points {
     pointer-events: none;
     user-select: none;
+}
+
+/* Controls container for search and toggle */
+.controls-container {
+    position: absolute;
+    bottom: 1%;
+    left: 2.5%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 100;
+}
+
+/* Search container */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Search input */
+.search-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 120px;
+    background-color: white;
+    transition: border-color 0.3s;
+}
+
+.search-input:focus {
+    border-color: #2196F3;
+    outline: none;
+}
+
+/* Search button */
+.search-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #2196F3;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.search-button:hover {
+    background-color: #1E88E5;
+}
+
+.search-button:active {
+    background-color: #1976D2;
+}
+
+/* Highlighted search results */
+.search-highlight {
+    stroke: #FF5722 !important;
+    stroke-width: 3px !important;
 }

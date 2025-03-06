@@ -7,6 +7,7 @@ export class App {
         console.log('Constructor - Initial data:', data.name);
         this.data = data;
         this.visualizationType = 'treemap'; // Default visualization type
+        this.searchResults = []; // Track search results
         this.init();
     }
 
@@ -65,6 +66,9 @@ export class App {
         
         // Add toggle button handler
         document.getElementById('toggle-viz').addEventListener('click', this.toggleVisualization.bind(this));
+        
+        // Add search functionality
+        this.setupSearch();
     }
 
     toggleVisualization() {
@@ -131,6 +135,11 @@ export class App {
         // Update last data state after visualization update
         this.lastDataState = this.getDataSnapshot();
         
+        // Reapply search highlights if there are active search results
+        if (this.searchResults.length > 0 && this.visualization.highlightNodes) {
+            this.visualization.highlightNodes(this.searchResults);
+        }
+        
         // Update button text
         document.getElementById('toggle-viz').textContent = 
             this.visualizationType === 'treemap' ? 'Switch to PreziMap' : 'Switch to TreeMap';
@@ -142,5 +151,77 @@ export class App {
         pieContainer.innerHTML = '';
         const newPieChart = createPieChart(currentData);
         pieContainer.appendChild(newPieChart);
+    }
+
+    // Setup search functionality
+    setupSearch() {
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        
+        // Search when button is clicked
+        searchButton.addEventListener('click', () => {
+            this.performSearch(searchInput.value);
+        });
+        
+        // Also search when Enter key is pressed in the input
+        searchInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                this.performSearch(searchInput.value);
+            }
+        });
+    }
+    
+    // Perform search across the data
+    performSearch(query) {
+        if (!query || query.trim() === '') {
+            // Clear highlights if query is empty
+            this.clearSearch();
+            return;
+        }
+        
+        // Normalize query for case-insensitive search
+        const normalizedQuery = query.trim().toLowerCase();
+        
+        // Reset previous results
+        this.searchResults = [];
+        
+        // Search through data recursively
+        this.searchNode(this.data, normalizedQuery);
+        
+        // If we found results, highlight them in the visualization
+        if (this.searchResults.length > 0) {
+            console.log(`Found ${this.searchResults.length} matches for "${query}"`);
+            
+            // Highlight matches in current visualization
+            if (this.visualization.highlightNodes) {
+                this.visualization.highlightNodes(this.searchResults);
+            }
+        } else {
+            console.log(`No matches found for "${query}"`);
+            alert(`No matches found for "${query}"`);
+        }
+    }
+    
+    // Search within a node and its children recursively
+    searchNode(node, query) {
+        // Check if this node matches
+        if (node.name.toLowerCase().includes(query)) {
+            this.searchResults.push(node);
+        }
+        
+        // Check children if they exist
+        if (node.childrenArray) {
+            node.childrenArray.forEach(child => {
+                this.searchNode(child, query);
+            });
+        }
+    }
+    
+    // Clear search highlights
+    clearSearch() {
+        this.searchResults = [];
+        if (this.visualization.clearHighlights) {
+            this.visualization.clearHighlights();
+        }
     }
 }

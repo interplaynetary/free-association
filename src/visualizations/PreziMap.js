@@ -161,11 +161,23 @@ export function createPreziMap(data, width, height) {
                     expandedNodes.add(d.data.name);
                 }
                 
+                // Remove highlight from previous node
+                g.selectAll('.last-clicked-highlight')
+                    .classed('search-highlight', false)
+                    .classed('last-clicked-highlight', false);
+                
                 // Update current node reference
                 currentNode = d;
                 
                 // Store as last clicked node
                 lastClickedNode = d;
+                
+                // Add highlight to the current node
+                g.selectAll('.node')
+                    .filter(node => node === d)
+                    .select('rect')
+                    .classed('search-highlight', true)
+                    .classed('last-clicked-highlight', true);
                 
                 // Update the tree
                 update(d);
@@ -372,6 +384,15 @@ export function createPreziMap(data, width, height) {
             d.x0 = d.x;
             d.y0 = d.y;
         });
+        
+        // Reapply highlight to the last clicked node if it exists
+        if (lastClickedNode) {
+            g.selectAll('.node')
+                .filter(d => d.data.name === lastClickedNode.data.name)
+                .select('rect')
+                .classed('search-highlight', true)
+                .classed('last-clicked-highlight', true);
+        }
     }
     
     // Helper function to generate link path - creates a smooth curved path
@@ -425,6 +446,18 @@ export function createPreziMap(data, width, height) {
             
             // Also update last clicked node to root
             lastClickedNode = root;
+            
+            // Clear existing highlights
+            g.selectAll('.node rect')
+                .classed('search-highlight', false)
+                .classed('last-clicked-highlight', false);
+                
+            // Highlight the root node as the last clicked
+            g.selectAll('.node')
+                .filter(d => d === root)
+                .select('rect')
+                .classed('search-highlight', true)
+                .classed('last-clicked-highlight', true);
             
             // Center the view dynamically on the root node
             // Calculate the centering transform based on root node's position
@@ -484,6 +517,92 @@ export function createPreziMap(data, width, height) {
             if (tooltipNode && tooltipNode.parentNode) {
                 tooltipNode.parentNode.removeChild(tooltipNode);
             }
+        },
+        // Highlight nodes that match search results
+        highlightNodes: (matchedNodes) => {
+            // First clear any existing search highlights but preserve last clicked
+            g.selectAll('.node rect')
+                .filter(function() {
+                    return !d3.select(this).classed('last-clicked-highlight');
+                })
+                .classed('search-highlight', false);
+            
+            // Find all matched nodes in the visualization
+            g.selectAll('.node')
+                .filter(d => {
+                    return matchedNodes.some(node => node.name === d.data.name);
+                })
+                .select('rect')
+                .classed('search-highlight', true);
+            
+            // If there are matches and the first match isn't visible, expand nodes to reveal it
+            if (matchedNodes.length > 0) {
+                // Find the d3 node for the first match
+                const firstMatch = matchedNodes[0];
+                
+                // Find the node in the d3 hierarchy
+                const findNode = (node) => {
+                    if (node.data.name === firstMatch.name) {
+                        return node;
+                    }
+                    if (node.children) {
+                        for (const child of node.children) {
+                            const found = findNode(child);
+                            if (found) return found;
+                        }
+                    }
+                    if (node._children) {
+                        for (const child of node._children) {
+                            const found = findNode(child);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+                
+                const matchedNode = findNode(root);
+                
+                if (matchedNode) {
+                    // Expand parent nodes to make the match visible
+                    let parent = matchedNode.parent;
+                    while (parent) {
+                        if (parent._children) {
+                            parent.children = parent._children;
+                            parent._children = null;
+                            expandedNodes.add(parent.data.name);
+                        }
+                        parent = parent.parent;
+                    }
+                    
+                    // Update visualization to show expanded nodes
+                    update(root);
+                    
+                    // Re-apply highlights which might have been lost during update
+                    g.selectAll('.node')
+                        .filter(d => {
+                            return matchedNodes.some(node => node.name === d.data.name);
+                        })
+                        .select('rect')
+                        .classed('search-highlight', true);
+                    
+                    // Center view on the first match
+                    const centerX = width / 2 - matchedNode.y;
+                    const centerY = height / 2 - matchedNode.x;
+                    
+                    g.transition()
+                        .duration(duration)
+                        .attr("transform", `translate(${centerX},${centerY})`);
+                }
+            }
+        },
+        // Clear search highlights
+        clearHighlights: () => {
+            // Clear only search highlights, not last clicked highlights
+            g.selectAll('.node rect')
+                .filter(function() {
+                    return !d3.select(this).classed('last-clicked-highlight');
+                })
+                .classed('search-highlight', false);
         }
     };
 }

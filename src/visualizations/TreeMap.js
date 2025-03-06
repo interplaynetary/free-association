@@ -564,6 +564,58 @@ export function createTreemap(data, width, height) {
             
             // Update visualization with current view
             group.call(render, currentView);  // Render current view instead of root
+        },
+        // Highlight nodes that match search results
+        highlightNodes: (matchedNodes) => {
+            // Clear any existing highlights
+            svg.selectAll('rect')
+                .classed('search-highlight', false);
+            
+            // Find all matched nodes in the visualization
+            svg.selectAll('rect.node')
+                .filter(d => {
+                    return matchedNodes.some(node => node.name === d.data.name);
+                })
+                .classed('search-highlight', true);
+            
+            // If there are matches, zoom to the first match
+            if (matchedNodes.length > 0) {
+                const firstMatch = matchedNodes[0];
+                
+                // Find the node in the hierarchy
+                const findNode = (node) => {
+                    if (node.data.name === firstMatch.name) {
+                        return node;
+                    }
+                    if (node.children) {
+                        for (const child of node.children) {
+                            const found = findNode(child);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+                
+                const matchedNode = findNode(root);
+                
+                if (matchedNode) {
+                    // Find the proper ancestor to zoom to
+                    let target = matchedNode;
+                    while (target.parent && target.parent !== currentView && target.parent !== root) {
+                        target = target.parent;
+                    }
+                    
+                    // If we're not already viewing the right section, zoom in
+                    if (target !== currentView) {
+                        zoomin(target);
+                    }
+                }
+            }
+        },
+        // Clear search highlights
+        clearHighlights: () => {
+            svg.selectAll('rect')
+                .classed('search-highlight', false);
         }
     };
 }
