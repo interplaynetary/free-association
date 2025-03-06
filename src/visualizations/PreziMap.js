@@ -8,6 +8,7 @@ export function createPreziMap(data, width, height) {
     let svg;
     let g;
     let currentNode;
+    let lastClickedNode; // Track the last clicked node
     
     // Constants for layout
     const margin = { top: 20, right: 120, bottom: 20, left: 120 };
@@ -162,6 +163,9 @@ export function createPreziMap(data, width, height) {
                 
                 // Update current node reference
                 currentNode = d;
+                
+                // Store as last clicked node
+                lastClickedNode = d;
                 
                 // Update the tree
                 update(d);
@@ -419,6 +423,9 @@ export function createPreziMap(data, width, height) {
             update(root);
             currentNode = root;
             
+            // Also update last clicked node to root
+            lastClickedNode = root;
+            
             // Center the view dynamically on the root node
             // Calculate the centering transform based on root node's position
             const centerX = width / 2 - root.y;
@@ -456,9 +463,12 @@ export function createPreziMap(data, width, height) {
         reset: () => {
             update(root);
             currentNode = root;
+            lastClickedNode = root;
         },
         getCurrentView: () => currentNode,
         getCurrentData: () => currentNode.data,
+        getLastClickedNode: () => lastClickedNode || root, // Return last clicked node or root if none clicked
+        getLastClickedData: () => lastClickedNode ? lastClickedNode.data : root.data, // Return data of last clicked node
         getRoot: () => root,
         update: (newWidth, newHeight) => {
             // Update dimensions
