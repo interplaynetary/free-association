@@ -144,13 +144,14 @@ export function createTreemap(data, width, height) {
                 return getColorForName(d.data.name);
             })
             .attr("stroke", d => {
-                // Only add special outline for nodes with non-contributor children
-                return (d.data.hasDirectContributorChild) ? "#ff9800" : "#fff";
+                // Only add special outline for nodes with non-contributor children - now in blue
+                return (d.data.hasDirectContributorChild) ? "#2196f3" : "#fff";
             })
             .attr("stroke-width", d => {
                 // Only make stroke wider for nodes with non-contributor children
                 return (d.data.hasDirectContributorChild) ? "5" : "2";
-            });
+            })
+            .style("paint-order", "stroke")
 
         node.append("clipPath")
             .attr("id", d => (d.clipUid = uid("clip")).id)
