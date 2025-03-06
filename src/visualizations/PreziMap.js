@@ -525,15 +525,7 @@ export function createPreziMap(data, width, height) {
                 .classed('search-highlight', false)
                 .classed('last-clicked-highlight', false);
             
-            // Find all matched nodes in the visualization
-            g.selectAll('.node')
-                .filter(d => {
-                    return matchedNodes.some(node => node.name === d.data.name);
-                })
-                .select('rect')
-                .classed('search-highlight', true);
-            
-            // If there are matches and the first match isn't visible, expand nodes to reveal it
+            // If there are matches
             if (matchedNodes.length > 0) {
                 // Find the d3 node for the first match
                 const firstMatch = matchedNodes[0];
@@ -567,12 +559,6 @@ export function createPreziMap(data, width, height) {
                     // Also update currentNode to treat this as the fully selected node
                     currentNode = matchedNode;
                     
-                    // Mark the first match as the last clicked node
-                    g.selectAll('.node')
-                        .filter(d => d === matchedNode)
-                        .select('rect')
-                        .classed('last-clicked-highlight', true);
-                    
                     // Expand parent nodes to make the match visible
                     let parent = matchedNode.parent;
                     while (parent) {
@@ -587,15 +573,13 @@ export function createPreziMap(data, width, height) {
                     // Update visualization to show expanded nodes
                     update(root);
                     
-                    // Re-apply highlights which might have been lost during update
+                    // Re-apply last-clicked highlight for first match
                     g.selectAll('.node')
-                        .filter(d => {
-                            return matchedNodes.some(node => node.name === d.data.name);
-                        })
+                        .filter(d => d === matchedNode)
                         .select('rect')
-                        .classed('search-highlight', true);
+                        .classed('last-clicked-highlight', true);
                     
-                    // Center view on the first match
+                    // Center view on the match
                     const centerX = width / 2 - matchedNode.y;
                     const centerY = height / 2 - matchedNode.x;
                     

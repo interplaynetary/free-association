@@ -482,6 +482,6 @@ svg {
 
 /* Highlighted search results */
 .search-highlight {
-    stroke: #FF5722 !important;
+    stroke: #00cd11 !important;
     stroke-width: 3px !important;
 }
