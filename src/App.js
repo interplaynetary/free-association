@@ -1,10 +1,12 @@
 import { createTreemap } from './visualizations/TreeMap.js';
 import { createPieChart } from './visualizations/PieChart.js';
+import { createPreziMap } from './visualizations/PreziMap.js';
 
 export class App {
     constructor(data) {
         console.log('Constructor - Initial data:', data.name);
         this.data = data;
+        this.visualizationType = 'treemap'; // Default visualization type
         this.init();
     }
 
@@ -35,27 +37,39 @@ export class App {
         const width = container.clientWidth;
         const height = container.clientHeight;
 
-        console.log('Init - Creating treemap with data:', this.data.name);
+        console.log('Init - Creating visualization with data:', this.data.name);
         
-        // Create treemap
-        this.treemap = createTreemap(this.data, width, height);
+        // Create visualization based on current type
+        if (this.visualizationType === 'treemap') {
+            this.visualization = createTreemap(this.data, width, height);
+        } else {
+            this.visualization = createPreziMap(this.data, width, height);
+        }
         
-        console.log('Init - Treemap created');
+        console.log('Init - Visualization created');
         
-        // Store initial data state after treemap is created
+        // Store initial data state after visualization is created
         this.lastDataState = this.getDataSnapshot();
         
         // Create initial pie chart
         this.updatePieChart();
 
         // Append visualizations
-        container.appendChild(this.treemap.element);
+        container.appendChild(this.visualization.element);
 
         // Setup window resize handler
         window.addEventListener('resize', this.handleResize.bind(this));
 
         // Setup periodic checks for data changes
         setInterval(() => this.checkForDataChanges(), 100);
+        
+        // Add toggle button handler
+        document.getElementById('toggle-viz').addEventListener('click', this.toggleVisualization.bind(this));
+    }
+
+    toggleVisualization() {
+        this.visualizationType = this.visualizationType === 'treemap' ? 'prezimap' : 'treemap';
+        this.updateVisualizations();
     }
 
     checkForDataChanges() {
@@ -68,7 +82,7 @@ export class App {
     }
 
     get currentView() {
-        return this.treemap.getCurrentView();
+        return this.visualization.getCurrentView();
     }
 
     get currentViewData() {
@@ -76,7 +90,7 @@ export class App {
     }
 
     get currentData() {
-        return this.treemap.getCurrentData();
+        return this.visualization.getCurrentData();
     }
 
     handleResize() {
@@ -85,7 +99,7 @@ export class App {
         const width = container.clientWidth;
         const height = container.clientHeight;
 
-        this.treemap.update(width, height);
+        this.visualization.update(width, height);
     }
 
     updateVisualizations() {
@@ -94,31 +108,27 @@ export class App {
         const width = container.clientWidth;
         const height = container.clientHeight;
         
-        // Store the current data path to restore zoom
-        const path = [];
-        let temp = this.currentViewData;
-        console.log('Current view before update:', temp.name);
-        while (temp !== this.data) {
-            path.push(temp);
-            temp = temp.parent;
+        // Store the current data path to restore zoom if possible
+        const currentData = this.currentViewData;
+        
+        // Clear container
+        container.innerHTML = '';
+        
+        // Create new visualization based on current type
+        if (this.visualizationType === 'treemap') {
+            this.visualization = createTreemap(this.data, width, height);
+        } else {
+            this.visualization = createPreziMap(this.data, width, height);
         }
         
-        // Clear and recreate treemap
-        container.innerHTML = '';
-        this.treemap = createTreemap(this.data, width, height);
-        container.appendChild(this.treemap.element);
-        
-        // Restore zoom path using data references
-        path.reverse().forEach(nodeData => {
-            const correspondingNode = this.treemap.getRoot().descendants()
-                .find(n => n.data === nodeData);
-            if (correspondingNode) {
-                this.treemap.zoomin(correspondingNode);
-            }
-        });
+        container.appendChild(this.visualization.element);
 
         // Update last data state after visualization update
         this.lastDataState = this.getDataSnapshot();
+        
+        // Update button text
+        document.getElementById('toggle-viz').textContent = 
+            this.visualizationType === 'treemap' ? 'Switch to PreziMap' : 'Switch to TreeMap';
     }
 
     updatePieChart() {
