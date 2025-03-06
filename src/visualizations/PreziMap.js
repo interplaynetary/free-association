@@ -471,7 +471,7 @@ export function createPreziMap(data, width, height) {
     
     resetButton.append("circle")
         .attr("r", 20)
-        .attr("fill", "#f5f5f5")
+        .attr("fill", "#ff0000")
         .attr("stroke", "#333")
         .attr("stroke-width", 2);
     
@@ -480,6 +480,7 @@ export function createPreziMap(data, width, height) {
         .attr("dominant-baseline", "middle")
         .style("font-size", "12px")
         .text("Reset");
+        
     
     // Add pan and zoom behavior
     const zoom = d3.zoom()
