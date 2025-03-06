@@ -170,7 +170,38 @@ export function createPreziMap(data, width, height) {
             .attr("x", 0)
             .attr("y", nodeHeight / 2 + 12)
             .attr("text-anchor", "middle")
-            .text(d => d.data.points > 0 ? `${d.data.points} pts` : "")
+            .text(d => {
+                if (d.data.points <= 0) return "";
+                
+                // Calculate percentage relative to siblings and parent
+                let totalSiblingPoints = 0;
+                let parentPoints = 0;
+                
+                if (d.parent) {
+                    // Get parent points
+                    parentPoints = d.parent.data.points || 0;
+                    
+                    // Calculate total points from all siblings (including self)
+                    if (d.parent.children) {
+                        d.parent.children.forEach(sibling => {
+                            totalSiblingPoints += sibling.data.points || 0;
+                        });
+                    } else if (d.parent._children) {
+                        d.parent._children.forEach(sibling => {
+                            totalSiblingPoints += sibling.data.points || 0;
+                        });
+                    }
+                    
+                    // Calculate percentage (avoid division by zero)
+                    if (totalSiblingPoints > 0) {
+                        const siblingPercentage = Math.round((d.data.points / totalSiblingPoints) * 100);
+                        return `${siblingPercentage}%`;
+                    }
+                }
+                
+                // Fallback to raw points if can't calculate percentage
+                return `${d.data.points} pts`;
+            })
             .style("font-size", "10px")
             .style("fill", "#666");
         
@@ -260,24 +291,33 @@ export function createPreziMap(data, width, height) {
         .attr("cursor", "pointer")
         .style("opacity", 1)
         .on("click", () => {
-            // Expanded nodes should remain expanded
-            processNode(root);
-            expandedNodes.forEach(nodeName => {
-                // Find node by name and expand it
-                const findAndExpandNode = (node) => {
-                    if (node.data.name === nodeName && node._children) {
-                        node.children = node._children;
-                        node._children = null;
-                        return true;
-                    }
-                    if (node.children) {
-                        return node.children.some(findAndExpandNode);
-                    }
-                    return false;
-                };
-                
-                findAndExpandNode(root);
-            });
+            // First, collapse all nodes
+            const collapseAllNodes = (node) => {
+                if (node.children) {
+                    node._children = node.children;
+                    node.children = null;
+                    node._children.forEach(collapseAllNodes);
+                } else if (node._children) {
+                    node._children.forEach(collapseAllNodes);
+                }
+            };
+            
+            // Collapse everything
+            collapseAllNodes(root);
+            
+            // Then expand only the first level (direct children of root)
+            if (root._children) {
+                root.children = root._children;
+                root._children = null;
+            }
+            
+            // Clear the set of expanded nodes and only add first-level nodes
+            expandedNodes.clear();
+            if (root.children) {
+                root.children.forEach(child => {
+                    expandedNodes.add(child.data.name);
+                });
+            }
             
             // Reset the view
             update(root);
