@@ -4,7 +4,7 @@ We present a formulation of a legitimate alternative to capitalism that allows f
 
 This requires more than mere abstract agreement or forced cooperation - it demands real contribution to each other's self-actualization (contributions towards needs, values, goals, social and/or material dependencies etc.).
 
-**In this free association, the share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-recognition of contribution towards their own self-actualization (self-actualization of the other)!**
+**In this free association, the share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-fulfillment!** (mutual-recognition of contribution towards each other's self-actualization)
 
 **Surplus flows according to mutual-recognition of real contributions, relations activate only through genuine desire and participation, and these properties persist even as relations compose into complex social structures.**
 
@@ -16,7 +16,7 @@ You can interact with an interface implementing this logic [here](https://interp
 
 ## Example based Introduction:
 
-Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, freeing their time to fix their oven — the same oven that later bakes bread for your community garden party. That’s mutual-fulfillment: Your surplus doesn’t vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals etc. (and vice-versa), creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network. You're participating in a network where every contribution amplifies the collective capacity for everyone's growth.
+Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That’s mutual-fulfillment: Your surplus doesn’t vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals etc. (and vice-versa), *creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network*. You're participating in a network where every contribution amplifies the collective capacity for everyone's growth.
 
 This approach represents a fundamental shift from traditional charity or market-based systems. Instead of asking "What can I get in return?" or "Who deserves my help?", the question becomes "How can my surplus best contribute to a network that supports everyone's self-actualization?" As this network grows, it creates a new kind of economy - one based on recognition, reciprocity, and the understanding that our individual fulfillment is inextricably linked to the fulfillment of others.
 
@@ -26,17 +26,17 @@ This approach represents a fundamental shift from traditional charity or market-
 - [Introduction](#proof-and-strategy-for-a-truly-free-association-of-free-individuals)
   - [Example-Based Introduction](#example-based-introduction)
 - [Proof & Strategy](#proof--strategy)
-  - [Basic Concepts](#let)
-    - [Recognition & Total Recognition](#let)
-    - [Recognition Between Participants](#for-any-participants-a-and-b)
-    - [Recognition as Bandwidth](#being-questioned-recognition-as-bandwidth) 
-    - [Mutual Recognition](#let-1)
-  - [Social Material Truth](#social-material-truth-is-realized-through-free-association-because-also)
-  - [Transitive Self-Actualization](#on-transitive-self-actualization-and-transitive-self-actualization)
+  - Basic Concepts
+    - Recognition & Total Recognition
+    - Mutual Recognition
+  - Social Material Truth
+  - Transitive Self-Actualization
 - [Additional Topics](#additional-topics)
-  - [Comparison with Equity](#how-this-differs-from-equity)
-  - [Competition in Free Association](#does-free-association-have-competition)
-  - [Capital Relations](#on-capital-relations-and-coercive-relations-in-general-within-free-association)
+  - Comparison with Equity
+  - On Capital Relations
+  - On Free Association and State Power
+  - Being Explored: Recognition as Bandwidth?
+  - Being Explored: What if States Freely-Associated?
 - [Current Work](#what-is-being-done)
 
 ## Proof & Strategy:
@@ -54,9 +54,9 @@ This approach represents a fundamental shift from traditional charity or market-
 
 **For example:** If you are 50% of my total-recognition, and I am 10% of your total-recognition, our mutual-recognition is 10%, the minimum of the both.
 
-*Taking the minimum of both shares ensures reciprocity in proportion* 
+*Taking the minimum of both shares ensures reciprocity in proportion.* 
 
-*Mutual-recognition is the peer-2-peer social-validation of eachother's efforts as well as the social-validation of use-values/utility."*
+*Mutual-recognition is the peer-2-peer social-validation of eachother's efforts as well as the social-validation of use-values/utility.*
 
 *Interestingly  we don't have to keep a ledger of objects whose definitions are centrally defined, there is no universal definition of object-hood (of what constitutes objects), but a distributed recognition of the social-utility of contributions!*
 
@@ -98,11 +98,16 @@ This approach represents a fundamental shift from traditional charity or market-
 
 **Let:**
 - **Surplus** = Roles one holds but does not desire
-   - Surplus can be distributed directly/transitively via Mutual-Recognition Distributions: **The share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-recognition of contributions towards their own self-actualization (self-actualization of the other)!**
+
+**Definitions:**
+- Direct Relation: A ↔ B (A and B directly connected to eachother)
+- Transitive Relation: A ↔ B ↔ C (A and B transitively connected to each other via B)
+
+Surplus can be distributed directly/transitively via *Mutual-Recognition Distributions*: **The share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-fulfillment!**
 
 *"From each according to his ability, to each according to his needs!"*
 
-*The distribution of surplus-roles through networks of mutual-contribution is a form of distributed-peer-discovery/offering/matching! Finding collaborators who directly/transitively contribute to your self-actualization!*
+*The distribution of surplus-roles through networks of mutual-contribution is a form of distributed-peer-discovery/offering/matching! Finding collaborators who directly/transitively contribute to your eachother's self-actualization!*
 
 *What one is actually distributing surplus to is one's **direct/transitive mutual-self-actualization***
 
@@ -114,16 +119,18 @@ This approach represents a fundamental shift from traditional charity or market-
 **For any participant:**
 - ∴ ↑False Recognition = ↓True Recognition
 - ∴ ↓Mutual-Recognition with Real Contributors
-- ∴ ↓Surplus-Associations from Real Contributors
-- ∴ ↓Access to Real Social-Material Coordination via Surplus-Associations from Real Contributors
+- ∴ ↓Surplus-Roles from Real Contributors
+- ∴ ↓Access to Real Social-Material Coordination via Surplus-Roles from Real Contributors
 - ∴ ↓Real Social-Material Basis for Self-Actualization
 
 ∴ social-material-truth is realized through Free Association because also:
 - ∴ ↑True Recognition = ↓False Recognition
 - ∴ ↑Mutual-Recognition with Real Contributors
-- ∴ ↑Surplus-Associations from Real Contributors
-- ∴ ↑Access to Real Social-Material Coordination via Surplus-Associations from Real Contributors
+- ∴ ↑Surplus-Roles from Real Contributors
+- ∴ ↑Access to Real Social-Material Coordination via Surplus-Roles from Real Contributors
 - ∴ ↑Real Social-Material Basis for Self-Actualization
+
+*Note: True/False recognition is not binary, nor is it necessrily an expressed proposition. The question is what % of your recognition feels true/false to you? How true is this? To what degree?*
 
 <details>
   <summary><b><i>Click for Example</i></b></summary>
@@ -168,15 +175,15 @@ The mathematics naturally punishes false recognition by reducing your access to 
 
 ---
 
-**For any Association between A and B:**
+**For any Relation - a pair of roles played by A and B respectively:**
 - Mutual-Desire(A↔B) = Desire(A→B) ∧ Desire(B→A) 
 - Mutual-Playing(A↔B) = Mutual-Desire(A↔B) ∧ Playing(A→B) ∧ Playing(B→A)
 
 **Free Association requires:**
-1. Mutual-Recognition > 0
-2. Mutual-Desire (both parties genuinely desire the relation)
-3. Mutual-Playing (both parties actively participate)
-4. Access to Social-Material Coordination Necessary for Mutual-Playing
+1. *Mutual-Recognition* > 0
+2. *Mutual-Desire* (both parties genuinely desire the relation)
+3. *Mutual-Playing* (both parties actively participate)
+4. Access to *Social-Material Coordination* Necessary for *Mutual-Playing*
 
 **For any participant:**
 - ↓Real Contributions → ↓Real Mutual-Recognition
@@ -185,13 +192,15 @@ The mathematics naturally punishes false recognition by reducing your access to 
 - ↓Real Mutual-Playing → ↓Free Association
 - ↓Free Association → ↓Real Social-Material Coordination via Associations with Real Contributors
 
-**On Transitive Self-Actualization and Transitive Self-Actualization:**
+**On Transitive Self-Actualization:**
 
-Transitive self-actualization refers to the ripple effect of contributions as they spread beyond a single hub of interaction. Rather than an isolated A → B relationship, we see A helping B in a way that not only meets B’s needs but empowers B to help C, D, and so on. This means that *one’s actions to help a neighbor* do not stop once that neighbor’s need is fulfilled; instead, **the neighbor’s newly enhanced capacity** to help others becomes part of the original contributor’s indirect contribution as well. In a free-association framework, these “transitive” contributors seed a chain reaction of material and social support that expands the web of mutual-fulfillment.
+Transitive self-actualization refers to the ripple effect of contributions as they spread beyond a single hub of interaction. Rather than an isolated A → B relationship, we see A helping B in a way that not only meets B’s needs but empowers B to help C, D, and so on. This means that *one’s actions to help a neighbor* do not stop once that neighbor’s need is fulfilled; instead, **the neighbor’s newly enhanced capacity** to help others becomes part of the original contributor’s indirect contribution as well. In a free-association framework, these “transitive” contributors seed a chain reaction of material and social support that expands the web of mutual-fulfillment. Again, your surplus doesn’t vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals etc. (and vice-versa), *creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network*.
 
 When Node A helps Node B, and Node B in turn supports Node C, Node A ends up benefiting from an environment where Node C is stronger or better able to meet Node A’s needs in the future—even though A and C may never interact directly. In terms of self-actualization, fulfilling a single node often unlocks opportunities for fulfilling an entire network, because **every node’s fulfillment contributes to the overall capacity for support.** Thus, transitive contributors demonstrate that *individual well-being is always embedded in collective well-being*.
 
 ---
+
+## Additional Topics
 
 <details>
   <summary><b><i>How this differs from equity</i></b></summary>
@@ -200,7 +209,7 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
 
    Imagine we are each involved in organizations that issue their own shares and distribute dividends (surplus) to their shareholders.
 
-   Mutual-Stakeholding: Imagine several such organization swapping shares with each other, now dividends are flowing bidirectionally through the network.
+   Mutual-Stakeholding [(ECSA)](ecsa.io): Imagine several such organization swapping shares with each other, now dividends are flowing bidirectionally through the network.
 
    We are risking-together and benefiting-together.
 
@@ -210,15 +219,17 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
 
   In equity you *own* a share of me.
 
-  You may deploy any duplicitous means to gain my recognition of your contribution towards my self-fulfillment, you could lie to me with no end! And so long as you have secured your shares: you *own* me.
+  You may deploy any duplicitous means to gain my recognition of your contribution towards my self-fulfillment, you could lie to me with no end! And so long as you have secured your shares: you *own* my recognition.
 
-  In other words, in Mutual-Stakeholding the Past dominates the Present. I can not remove my recognition of the past that is no longer true, because you own it. (The transferability of recognition in the form of objects/tokens/money - is the condition of possiblity of the accumulation of recognition in general and is the condition of possiblity of false-recognition that persists even in the light of new information in the Present.)
-
-  On the contrary in Free-Association: **The Present dominates the Past**. I am able to, at a whim, modify my recognition of the Past in the light of new information in the Present.
+  In other words, in Mutual-Stakeholding: the **Past dominates the Present**. I can not remove my recognition of the past that is no longer true, because you own it. 
   
-  In Free-Assocation I can *re-attribute* shares of my total-recognition - also proportions of 100% - and this is only possible because in Free-Association we each own 100% of ourselves!
+  **The transferability of recognition in the form of objects/tokens/money - is the condition of possibility of the accumulation of recognition in general and is the condition of possibility of false-recognition that persists even in the light of new information in the Present.**
 
-  We are free! You don't own me, and I don't own you! We owe each other nothing!
+  On the contrary, in Free-Association: **The Present reigns over the Past**. I am able to, at a whim, modify my recognition of the Past in the light of new information in the Present.
+  
+  In Free-Association I can *re-attribute* shares of my total-recognition - also proportions of 100% - and **this is only possible because in Free-Association we each own 100% of ourselves!**
+
+  *We are free! You don't own me, and I don't own you! We owe each other nothing!*
 
   Recall that Mutual-Recognition is Hegel's resolution of the master-slave dialectic.
 
@@ -235,14 +246,14 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
    
 **Let:**
 - Capitalist-Simulated-Production = Production appearing to come from capitalist but actually produced by contributors!
-- Commodity Fetish = The masking of social-material relations of contribution behind the veil of the product as commodity (market-relations) - the objective social-forgetting of the social-origin of things
+- Commodity Fetish = The masking of social-material relations of contribution behind the veil of the product as commodity (market-relations) - the objective social-forgetting of the social-origin of things [(Lotz)](https://christianlotz.info/wp-content/uploads/2009/11/lotz-fiction-without-fantasy.pdf)
 - Second-Order-False-Recognition = False recognition given to obtain capital for buying labor-power
 
 **For any participant C attempting capital accumulation via Second-Order-False-Recognition:**
 1. ↑Second-Order-False-Recognition of Capital → ↑ Possibility of Mutual-Recognition with Capital Provider
 2. ↑Capital → ↑Ability to Buy Labor-Power
-3. ↑Bought Labor-Power → ↑Capitalist-Simulated-Production
-4. ↑Capitalist-Simulated-Production → ↑Real Products
+3. ↑Bought Labor-Power + Capitalist expropriation of Product from Producer → ↑Capitalist-Simulated-Production
+4. ↑Capitalist-Simulated-Production = ↑Real Products
 5. ↑Real Products → ↑Potential for Real Recognition from Others
 
 **However, for Real Contributors (A, B) whose labor-power has been bought by C:**
@@ -255,7 +266,7 @@ When Node A helps Node B, and Node B in turn supports Node C, Node A ends up ben
      - C's need to have contributions recognized by freely associating contributors
 
 2. This contradiction intensifies as:
-   - ↑Labor-Power Purchased → ↑Potential for that Labor-Power to organize on the basis of Free Association
+   - ↑Labor-Power Purchased ↝ ↑Potential for that Labor-Power to organize on the basis of Free Association
    - ↑Formation of Direct Contributor Associations
    - ↑Visibility of real contribution dependencies
    - ↓Effectiveness of commodity fetish in masking relations
@@ -326,7 +337,7 @@ The state fetish cannot persist when contributors organize via Free Association,
 </details>
 
 <details>
-  <summary><b><i>Being Questioned: Recognition as Bandwidth?</i></b></summary>
+  <summary><b><i>Being Explored: Recognition as Bandwidth?</i></b></summary>
 
 **Recognition as Bandwidth:**
 - **Let:** 
@@ -348,9 +359,6 @@ We could override this default for special cases.
 This allows us to take control of our own attention. And in a sense allows people to sets limits on the working-day (or at least to set limits on the amount of attention that they are willing to give to others via free-association interfaces).
 
 **Question:** should default bandwidth-for-other be shareOfGeneralFulfillment or share-of-mutual-fulfillment-distribution?
-
-**Relations as Communication Channels:**
-- Relations are Communication Channels between Role-Players: Similar to chats or topics between two role-players.
 </details>
 
 <details>
@@ -358,15 +366,13 @@ This allows us to take control of our own attention. And in a sense allows peopl
 
 Thus far we have principally spoken of free-association between individuals, but what about between organizations, communities, states etc.?
 
-In the case of states, if they mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade. 
+In the case of states, if they mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors. 
 
-Internally each state would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community. For example: Each citizen has an equal share of proportion-setting-power.
+Internally each state/organization would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community. For example: Each citizen has an equal share of proportion-setting-power.
 
-We can also imagine a mechanism by which, citizens could delegate a portion of their proportion-setting-power to another agent, within a particular category. So for example delegating 10% of your proportion-setting-power in the category of "environmental protection" to the an ecologist.
+We can also imagine a mechanism by which citizens could delegate a portion of their proportion-setting-power to another agent, within a particular category. So for example delegating 10% of your proportion-setting-power in the category of "environmental protection" to an ecologist.
 
-Such a scenario would have a number of benefits and would make the question of the socialization of land and means of production, easier to answer, but raises other questions.
-
-"The first act by virtue of which the state really constitutes itself the representative of the whole of society — the taking possession of the means of production in the name of society — this is, at the same time, its last independent act as a state. State interference in social relations becomes, in one domain after another, superfluous, and then dies out of itself; the government of persons is replaced by the administration of things, and by the conduct of processes of production. The state is not "abolished". It dies out." (Engels)
+Such a scenario would have a number of benefits and would make the question of the socialization of land and means of production easier to answer, but raises other questions.
 
 Some of this is being explored in the [resources/leafs.md](resources/leafs.md) file.
 
@@ -393,6 +399,14 @@ Rather than reforming existing states, dual-power should be established in each 
 
 ---
 
+</details>
+
+<details>
+  <summary><b><i>Being Explored: New Babylon</i></b></summary>
+
+"The building of New Babylon can only begin once the economy is exclusively aimed at the satisfaction of our needs, in the widest sense of the term. Only such an economy permits the complete automation of non-creative activities, and consequently the free development of creativity."
+
+[New Babylon](resources/new-babylon.md)
 </details>
 
 ---
