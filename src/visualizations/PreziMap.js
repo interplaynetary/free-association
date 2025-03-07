@@ -9,6 +9,8 @@ export function createPreziMap(data, width, height) {
     let g;
     let currentNode;
     let lastClickedNode; // Track the last clicked node
+    let draggedNode = null; // Track currently dragged node
+    let dragTarget = null; // Track the potential drop target
     
     // Constants for layout
     const margin = { top: 20, right: 120, bottom: 20, left: 120 };
@@ -181,7 +183,11 @@ export function createPreziMap(data, width, height) {
                 
                 // Update the tree
                 update(d);
-            });
+            })
+            .call(d3.drag()
+                .on("start", dragStarted)
+                .on("drag", dragging)
+                .on("end", dragEnded));
         
         // Add node rectangle
         nodeEnter.append("rect")
@@ -393,6 +399,171 @@ export function createPreziMap(data, width, height) {
                 .classed('search-highlight', true)
                 .classed('last-clicked-highlight', true);
         }
+    }
+    
+    // Drag event handlers
+    function dragStarted(event, d) {
+        console.log("Drag started on node:", d.data.name);
+        // Save the dragged node
+        draggedNode = d;
+        
+        // If this is the root node, we can't reparent it, so don't allow dragging
+        if (d === root) {
+            console.log("Cannot drag root node");
+            draggedNode = null;
+            return;
+        }
+        
+        // Highlight the node being dragged
+        d3.select(this).select("rect")
+            .attr("stroke", "#f39c12")
+            .attr("stroke-width", "3");
+        
+        // Raise the element being dragged to the front
+        d3.select(this).raise();
+    }
+
+    function dragging(event, d) {
+        if (!draggedNode) return;
+        
+        // Move the node with the mouse
+        const dx = event.x - d.x0;
+        const dy = event.y - d.y0;
+        
+        d3.select(this)
+            .attr("transform", `translate(${d.y0 + dx},${d.x0 + dy})`);
+        
+        // Find potential target node under cursor
+        // Reset previous target highlight
+        if (dragTarget) {
+            d3.selectAll('.node')
+                .filter(n => n === dragTarget)
+                .select('rect')
+                .attr("stroke", n => {
+                    return (n.data.hasNonContributorChild) ? "#2196f3" : "#fff";
+                })
+                .attr("stroke-width", n => {
+                    return (n.data.hasNonContributorChild) ? "3" : "1";
+                });
+        }
+        
+        // Get all nodes and find one under the cursor (except the dragged node and its children)
+        const allNodes = d3.selectAll('.node').nodes();
+        dragTarget = null;
+        
+        for (const nodeElem of allNodes) {
+            const targetNode = d3.select(nodeElem).datum();
+            if (targetNode === draggedNode) continue;
+            
+            // Skip if this node is a child of the dragged node (can't parent to own child)
+            let isChild = false;
+            let temp = targetNode;
+            while (temp) {
+                if (temp === draggedNode) {
+                    isChild = true;
+                    break;
+                }
+                temp = temp.parent;
+            }
+            if (isChild) continue;
+            
+            // Get node rectangle dimensions
+            const rectElem = d3.select(nodeElem).select('rect').node();
+            if (!rectElem) continue;
+            
+            const rectBounds = rectElem.getBoundingClientRect();
+            const mouseX = event.sourceEvent.clientX;
+            const mouseY = event.sourceEvent.clientY;
+            
+            // Check if mouse is inside the target node's bounds
+            if (mouseX >= rectBounds.left && mouseX <= rectBounds.right &&
+                mouseY >= rectBounds.top && mouseY <= rectBounds.bottom) {
+                dragTarget = targetNode;
+                
+                // Highlight potential target
+                d3.select(nodeElem).select('rect')
+                    .attr("stroke", "#27ae60")
+                    .attr("stroke-width", "3");
+                
+                break;
+            }
+        }
+    }
+
+    function dragEnded(event, d) {
+        if (!draggedNode) return;
+        
+        console.log("Drag ended", draggedNode.data.name);
+        
+        // Remove highlighting
+        d3.select(this).select("rect")
+            .attr("stroke", d => {
+                return (d.data.hasNonContributorChild) ? "#2196f3" : "#fff";
+            })
+            .attr("stroke-width", d => {
+                return (d.data.hasNonContributorChild) ? "3" : "1";
+            });
+        
+        // Remove target highlighting if any
+        if (dragTarget) {
+            d3.selectAll('.node')
+                .filter(n => n === dragTarget)
+                .select('rect')
+                .attr("stroke", n => {
+                    return (n.data.hasNonContributorChild) ? "#2196f3" : "#fff";
+                })
+                .attr("stroke-width", n => {
+                    return (n.data.hasNonContributorChild) ? "3" : "1";
+                });
+        }
+        
+        // If we have a valid target and it's different than the current parent
+        if (dragTarget && draggedNode.parent !== dragTarget) {
+            // Get the current parent node
+            const oldParent = draggedNode.parent;
+            
+            console.log(`Reparenting node "${draggedNode.data.name}" from "${oldParent.data.name}" to "${dragTarget.data.name}"`);
+            
+            // 1. Remove the node from its current parent in the data structure
+            const nodeName = draggedNode.data.name;
+            oldParent.data.children.delete(nodeName);
+            
+            // 2. Add it to the new parent
+            // Use the Node.addChild if it doesn't exist, otherwise just add to the children Map
+            if (dragTarget.data.children.has(nodeName)) {
+                console.log(`Warning: Node with name "${nodeName}" already exists as a child of "${dragTarget.data.name}"`);
+            } else {
+                // Add to the new parent's children
+                const childNode = draggedNode.data;
+                childNode.parent = dragTarget.data;
+                dragTarget.data.children.set(nodeName, childNode);
+                
+                console.log("Data structure updated:");
+                console.log("- Old parent's children:", Array.from(oldParent.data.children.keys()));
+                console.log("- New parent's children:", Array.from(dragTarget.data.children.keys()));
+            }
+            
+            // Update the internal D3 hierarchy
+            // We need to regenerate the D3 hierarchy from our data structure
+            root = d3.hierarchy(data, d => d.childrenArray);
+            
+            // Set the previously saved positions for all nodes
+            root.x0 = innerHeight / 2;
+            root.y0 = 0;
+            
+            // Reprocess the node to update expanded states
+            processNode(root);
+            
+            // Update the tree visualization from the root
+            update(root);
+        } else {
+            // If no valid target or same parent, just revert to original position
+            update(draggedNode.parent);
+        }
+        
+        // Reset drag state
+        draggedNode = null;
+        dragTarget = null;
     }
     
     // Helper function to generate link path - creates a smooth curved path

@@ -11,6 +11,8 @@ export function createTreemap(data, width, height) {
     const GROWTH_DELAY = 500;
     let isGrowing = false;
     const SHRINK_RATE = (d) => d.data.points * -0.05; // Negative growth rate for shrinking
+    let draggedNode = null; // Track currently dragged node
+    let dragTarget = null; // Track the potential drop target
 
     // Helper functions
     const uid = (function() {
@@ -126,11 +128,21 @@ export function createTreemap(data, width, height) {
       // First, create groups only for nodes with value or root
       const nodeData = (root.children || []).concat(root);
 
-        const node = group
-            .selectAll("g")
-            .data(nodeData)
-            .join("g")
-            .filter(d => d === root || d.value > 0);
+      const node = group
+          .selectAll("g")
+          .data(nodeData)
+          .join("g")
+          .filter(d => d === root || d.value > 0)
+          .attr("cursor", "pointer")
+          .on("click", (event, d) => {
+              if (d === root) return;
+              event.stopPropagation();
+              zoomin(d);
+          })
+          .call(d3.drag()
+              .on("start", dragStarted)
+              .on("drag", dragging)
+              .on("end", dragEnded));
 
         node.append("title")
             .text(d => `${name(d)}\n`);
@@ -433,7 +445,15 @@ export function createTreemap(data, width, height) {
                 activeNode = null;
                 isGrowing = false;
             }
-        });
+        })
+        .call(d3.drag()
+            .on("start", dragStarted)
+            .on("drag", dragging)
+            .on("end", dragEnded)
+            .filter(event => {
+                // Only enable drag on left mouse button (not right click which we use for shrinking)
+                return event.button === 0;
+            }));
 
         if (root.data.children.size === 0 && root !== data) {  // Check if view is empty and not root
             group.append("text")
@@ -539,6 +559,174 @@ export function createTreemap(data, width, height) {
                 .call(position, d))
             .call(t => group1.transition(t)
                 .call(position, d.parent));
+    }
+
+    // Add drag handlers
+    function dragStarted(event, d) {
+        console.log("Drag started on node:", d.data.name);
+        
+        // Cancel any timeout/growth behavior if dragging starts
+        if (growthTimeout) {
+            clearTimeout(growthTimeout);
+            growthTimeout = null;
+        }
+        if (growthInterval) {
+            clearInterval(growthInterval);
+            growthInterval = null;
+        }
+        isGrowing = false;
+        
+        // Save the dragged node, but don't allow dragging the root
+        if (d === root) {
+            console.log("Cannot drag root node");
+            return;
+        }
+        
+        // Don't allow dragging in contributor trees
+        if (isInContributorTree()) {
+            console.log("Cannot drag nodes in contributor trees");
+            return;
+        }
+        
+        draggedNode = d;
+        
+        // Highlight the node being dragged
+        d3.select(this).select("rect")
+            .attr("stroke", "#f39c12")
+            .attr("stroke-width", "3");
+        
+        // Raise the element being dragged to the front
+        d3.select(this).raise();
+    }
+    
+    function dragging(event, d) {
+        if (!draggedNode) return;
+        
+        // For treemap, handle differently - just change opacity and highlight
+        d3.select(this).attr("opacity", 0.7);
+        
+        // Find potential target node under cursor
+        // Reset previous target highlight if exists
+        if (dragTarget) {
+            d3.selectAll("g")
+                .filter(n => n === dragTarget)
+                .select("rect")
+                .attr("stroke", "#fff");
+        }
+        
+        // Get all nodes and find one under the cursor (except the dragged node and its children)
+        const allNodes = group.selectAll("g").nodes();
+        dragTarget = null;
+        
+        for (const nodeElem of allNodes) {
+            const targetNode = d3.select(nodeElem).datum();
+            if (targetNode === draggedNode || targetNode === root) continue;
+            
+            // Skip if this node is a descendant of the dragged node (can't parent to own child)
+            let isDescendant = false;
+            let temp = targetNode;
+            while (temp) {
+                if (temp === draggedNode) {
+                    isDescendant = true;
+                    break;
+                }
+                if (temp === root) break;
+                temp = temp.parent;
+            }
+            if (isDescendant) continue;
+            
+            // Get node rectangle dimensions
+            const rectElem = d3.select(nodeElem).select("rect").node();
+            if (!rectElem) continue;
+            
+            const rectBounds = rectElem.getBoundingClientRect();
+            const mouseX = event.sourceEvent.clientX;
+            const mouseY = event.sourceEvent.clientY;
+            
+            // Check if mouse is inside the target node's bounds
+            if (mouseX >= rectBounds.left && mouseX <= rectBounds.right &&
+                mouseY >= rectBounds.top && mouseY <= rectBounds.bottom) {
+                dragTarget = targetNode;
+                
+                // Highlight potential target
+                d3.select(nodeElem).select("rect")
+                    .attr("stroke", "#27ae60")
+                    .attr("stroke-width", "3");
+                
+                break;
+            }
+        }
+    }
+    
+    function dragEnded(event, d) {
+        if (!draggedNode) return;
+        
+        console.log("Drag ended", draggedNode.data.name);
+        
+        // Reset opacity
+        d3.select(this).attr("opacity", 1);
+        
+        // Remove highlighting
+        d3.select(this).select("rect")
+            .attr("stroke", "#fff")
+            .attr("stroke-width", "1");
+        
+        // Remove target highlighting if any
+        if (dragTarget) {
+            d3.selectAll("g")
+                .filter(n => n === dragTarget)
+                .select("rect")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", "1");
+        }
+        
+        // If we have a valid target and it's different than the current parent
+        if (dragTarget && draggedNode.parent !== dragTarget) {
+            // Get the current parent node
+            const oldParent = draggedNode.parent;
+            
+            console.log(`Reparenting node "${draggedNode.data.name}" from "${oldParent.data.name}" to "${dragTarget.data.name}"`);
+            
+            // 1. Remove the node from its current parent in the data structure
+            const nodeName = draggedNode.data.name;
+            oldParent.data.children.delete(nodeName);
+            
+            // 2. Add it to the new parent
+            if (dragTarget.data.children.has(nodeName)) {
+                console.log(`Warning: Node with name "${nodeName}" already exists as a child of "${dragTarget.data.name}"`);
+            } else {
+                // Add to the new parent's children
+                const childNode = draggedNode.data;
+                childNode.parent = dragTarget.data;
+                dragTarget.data.children.set(nodeName, childNode);
+                
+                console.log("Data structure updated:");
+                console.log("- Old parent's children:", Array.from(oldParent.data.children.keys()));
+                console.log("- New parent's children:", Array.from(dragTarget.data.children.keys()));
+            }
+            
+            // Update the D3 hierarchy from the modified data
+            hierarchy = d3.hierarchy(data, d => d.childrenArray)
+                .sum(d => d.data.points)
+                .each(d => { d.value = d.data.points || 0; });
+                
+            // Apply the treemap layout
+            const treemap = d3.treemap().tile(tile);
+            root = treemap(hierarchy);
+            currentView = root;
+            
+            // Reset the domains
+            x.domain([root.x0, root.x1]);
+            y.domain([root.y0, root.y1]);
+            
+            // Clear and redraw
+            svg.selectAll("g").remove();
+            group = svg.append("g").call(render, root);
+        }
+        
+        // Reset drag state
+        draggedNode = null;
+        dragTarget = null;
     }
 
     // Return public interface with functions to get current state
