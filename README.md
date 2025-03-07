@@ -401,6 +401,67 @@ Rather than reforming existing states, dual-power should be established in each 
 
 </details>
 
+
+<details>
+  <summary><b><i>On Free-Time and Free-Association</i></b></summary>
+
+**Let:**
+- **One's Available-Time** = one's total temporal existence that can be dedicated to any activities
+- **One's Labor-Time** = time spent on producing for one's own and others' needs/values/goals
+- **One's Free-Time** = time available for self-actualization after labor-time is subtracted
+- **Surplus-Time** = time liberated through contributions of others toward one's labor-time
+
+**For any participants A and B in Free Association:**
+1. A can contribute labor-time that liberates B's time
+2. B can contribute labor-time that liberates A's time
+3. The **Mutual-Time-Liberation** = min(A's contribution to B's time-liberation, B's contribution to A's time-liberation)
+
+**Free-Time-Distribution within Free Association:**
+- **The share of each individual in the surplus-time-liberation of others is equal to their share of the other's total mutual-recognition!**
+- **Time-liberation flows according to mutual-recognition of real contributions, activates only through genuine desire and participation, and these properties persist even as relations compose into complex social structures.**
+
+**For example:** Imagine you bake surplus pies (spending 2 hours) that save your neighbor 3 hours of cooking time, *freeing their time* to fix an oven (spending 4 hours) — the same oven that later saves 10 collective hours during your community garden party. That's mutual time-liberation: Your labor-time doesn't vanish upon expenditure—it flows through a network, *creating a ripple effect of temporal abundance that returns to you through strengthened communal capacity*.
+
+**For any time liberation network:**
+- ↑Time-Liberation Contributions → ↑Mutual-Recognition
+- ↑Mutual-Recognition → ↑Access to Surplus-Time of Others
+- ↑Access to Surplus-Time → ↑Individual Free-Time
+- ↑Individual Free-Time → ↑Capacity for Further Contributions
+- ∴ ↑Positive Feedback Loop of Expanding Temporal Commons
+
+**Time-Liberation Differs Fundamentally from Market Time-Saving:**
+1. In capitalism, time saved primarily benefits the time-saver or their employer
+2. In Free Association, time saved creates cascading waves of liberation through social networks
+3. ↑Time saved in capitalism → ↑Commodified leisure or ↑Work hours benefiting capital
+4. ↑Time saved in Free Association → ↑Socially circulating temporal resource based on contribution recognition
+
+**On Transitive Time-Liberation:**
+- Direct Time-Liberation: A ↔ B (A directly liberates B's time and vice versa)
+- Transitive Time-Liberation: A ↔ B ↔ C (A and C transitively liberate each other's time via B)
+
+**Let:**
+- **Compounding Free-Time** = the multiplication effect of initial time-liberation flowing through networks
+- **Temporal Commons** = the collective abundance of freed time created through mutual recognition networks
+
+**For any participant:**
+- ↑Initial Time-Liberation Contribution → ↑Triggered Chain of Time-Liberation
+- ↑Chained Time-Liberation → ↑Expanding Temporal Commons
+- ↑Expanding Temporal Commons → ↑Individual Access to Freed Time
+- ∴ ↑Free-Time Available for Creative Self-Actualization
+
+**Therefore:**
+- ∴ Free Association transforms time from scarce, hoarded resource into a circulating commons that grows through sharing
+- ∴ Time-Liberation directly confronts time poverty and alienation endemic to capitalism
+- ∴ Moving from "time is money" to "time is mutual liberation" reunites individuals with their temporal existence
+- ∴ Compounding time-liberation creates an expanding universe of freed time enabling genuine human flourishing
+
+*In Free Association, my contribution that frees your time may trigger a chain reaction as you contribute to freeing someone else's time, who then continues the cycle. This multiplication effect cannot be captured in traditional economic metrics but emerges naturally through transitive mutual recognition.*
+
+**Let us imagine, for a change, a directly/transitively mutualistic truly free association of free individuals, where time liberation compounds through networks of mutual contribution, creating an ever-growing capacity for all participants to explore the full dimensions of their humanity, unbound from artificial temporal scarcity.**
+
+</details>
+
+
 <details>
   <summary><b><i>Being Explored: New Babylon</i></b></summary>
 
