@@ -6,6 +6,15 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 **In this free association, the share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-fulfillment!** (mutual-recognition of contribution towards each other's self-actualization)
 
+    Mutual-Recognition: MR(A, B) = min(B-share-of-A's-total-recognition, A-share-of-B's-total-recognition)
+
+    A's share of B's surplus = MR(A, B) / Σ MR(B, X), where X includes all others B recognizes.
+    B's share of A's surplus = MR(A, B) / Σ MR(A, X), where X includes all others A recognizes.
+
+More generally:
+
+  	Share(Receiver ← Giver) = MR(Receiver, Giver) / Sum(MR(Giver, Other) for all Others Giver Recognizes)
+
 **Surplus flows according to mutual-recognition of real contributions, relations activate only through genuine desire and participation, and these properties persist even as relations compose into complex social structures.**
 
 Simple math will reveal how in free association: false recognition/relations naturally decay while true recognition/relations strengthens - that recognition and social-relations organized on the basis of this free association necessarily tend towards social-material-truth.
@@ -50,7 +59,7 @@ This approach represents a fundamental shift from traditional charity or market-
 2. B can (re)-attribute to A a share of B's total-recognition
 
 **Let:**
-- **Mutual-Recognition(A, B)** = min(B-share-of-A's-total-recognition,  A-share-of-B's-total-recognition) = Mutual-Contributions towards eachother's self-actualization
+- **Mutual-Recognition(A, B)** = min(B-share-of-A's-total-recognition, A-share-of-B's-total-recognition) = Mutual-Contributions towards eachother's self-actualization
 
 **For example:** If you are 50% of my total-recognition, and I am 10% of your total-recognition, our mutual-recognition is 10%, the minimum of the both.
 
@@ -85,18 +94,6 @@ This approach represents a fundamental shift from traditional charity or market-
 </details>
 
 **Let:**
-- **Association** = a set of relations where:
-1. Each Relation consists of (Provider-Role, User-Role)
-2. Each Role has a Holder who can:
-   - Express Desire (Will to Play)
-   - Express Playing (Active-Participation)
-3. Relations become Active only when:
-   - Both Role-Holders express Desire
-   - Both Role-Holders express Playing
-4. Holders can stop expressing Desire and Playing at any time
-5. Relations can be composed into larger structures while maintaining these properties
-
-**Let:**
 - **Surplus** = Roles one holds but does not desire
 
 **Definitions:**
@@ -110,6 +107,52 @@ Surplus can be distributed directly/transitively via *Mutual-Recognition Distrib
 *The distribution of surplus-roles through networks of mutual-contribution is a form of distributed-peer-discovery/offering/matching! Finding collaborators who directly/transitively contribute to your eachother's self-actualization!*
 
 *What one is actually distributing surplus to is one's **direct/transitive mutual-self-actualization***
+
+**Let:**
+- **Association** = a set of relations where:
+1. Each Relation consists of (Provider-Role, User-Role)
+2. Each Role has a Holder who can:
+   - Express Desire (Will to Play)
+   - Express Playing (Active-Participation)
+3. Relations become Active only when:
+   - Both Role-Holders express Desire
+   - Both Role-Holders express Playing
+4. Holders can stop expressing Desire and Playing at any time
+5. Relations can be composed into larger structures while maintaining these properties
+
+<details>
+  <summary><b><i>Forms of surplus: Why Roles? Beyond Obligations</i></b></summary>
+
+For starters we should clarify that when we speak of distributing surplus (via free-association digital interface) we ARE NOT speaking of distributing physical objects (manually distributing real objects) according to digitially derived mutual-fulfillment distributions. We are distributing digital representations of relations of object/use provisioning.
+
+Various economic-protocols have taken the approach of transferring *rights* to underlying objects/provisionings, where some party has (the perhaps transferable) *obligation* to provision the object.
+
+A lot of civil-society is organized around such *mutually-referencing right-obligation pairs*.
+
+Some examples:
+- The right to a loan carries with it the corresponding obligation to repay, the right was obtained by granting the right to seize collateral to the lender and taking on the obligation to comply with any such seizures.
+- The right to a court hearing means some judge carries the corresponding obligation to preside over the hearing. 
+
+And these rights/obligations can often be transfered! Debtors regularly trade and transfer the right to collect on debt (seconary repo markets). Similarly the obligation to preside over a hearing may rotate from judge to judge!
+
+To give another example, a reciept for purchasing a coffee represents a right to the drink/food, and the issuer of the reciept has the corresponding obligation to provide the coffee.
+
+And of course these obligations are often enforced by the threat or use of the force of state-intervention.
+
+Instead of mutually-referencing right-obligation pairs, free-association introduces mutually-referencing role-pairs that go beyond the concept of right/obligation.
+
+In contrast with obligations which one must do, regardless of whether one desires, relations in free-association activate only through mutual desire and participation, where either player of the role can stop expressing desire to play at any time - at which point the role counts as *surplus*, that can be distributed through mutual-recognition networks until it arrives at someone who once again desires to play the role!
+
+**Why provider/user?**
+Well you could call them whatever you want, giver/reciever, producer/consumer etc. 
+
+However, I am particular drawn to **provider/user** because it is general enough to encapsulate the entirity of production, distribution, and consumption, while avoiding connatations like ownership/private-property/transfer of ownership (potentially implied in the giver/reciever).
+
+For example: One can be *provided* housing, a glass of wine, etc. while this in no way implies the transfer of ownership!
+
+So these role-relations are less about property, rights/obligations and are more about *social-material coordination-potential*
+
+</details>
 
 **Let:**
 - **Total Recognition = 100%**
@@ -400,67 +443,6 @@ Rather than reforming existing states, dual-power should be established in each 
 ---
 
 </details>
-
-
-<details>
-  <summary><b><i>On Free-Time and Free-Association</i></b></summary>
-
-**Let:**
-- **One's Available-Time** = one's total temporal existence that can be dedicated to any activities
-- **One's Labor-Time** = time spent on producing for one's own and others' needs/values/goals
-- **One's Free-Time** = time available for self-actualization after labor-time is subtracted
-- **Surplus-Time** = time liberated through contributions of others toward one's labor-time
-
-**For any participants A and B in Free Association:**
-1. A can contribute labor-time that liberates B's time
-2. B can contribute labor-time that liberates A's time
-3. The **Mutual-Time-Liberation** = min(A's contribution to B's time-liberation, B's contribution to A's time-liberation)
-
-**Free-Time-Distribution within Free Association:**
-- **The share of each individual in the surplus-time-liberation of others is equal to their share of the other's total mutual-recognition!**
-- **Time-liberation flows according to mutual-recognition of real contributions, activates only through genuine desire and participation, and these properties persist even as relations compose into complex social structures.**
-
-**For example:** Imagine you bake surplus pies (spending 2 hours) that save your neighbor 3 hours of cooking time, *freeing their time* to fix an oven (spending 4 hours) — the same oven that later saves 10 collective hours during your community garden party. That's mutual time-liberation: Your labor-time doesn't vanish upon expenditure—it flows through a network, *creating a ripple effect of temporal abundance that returns to you through strengthened communal capacity*.
-
-**For any time liberation network:**
-- ↑Time-Liberation Contributions → ↑Mutual-Recognition
-- ↑Mutual-Recognition → ↑Access to Surplus-Time of Others
-- ↑Access to Surplus-Time → ↑Individual Free-Time
-- ↑Individual Free-Time → ↑Capacity for Further Contributions
-- ∴ ↑Positive Feedback Loop of Expanding Temporal Commons
-
-**Time-Liberation Differs Fundamentally from Market Time-Saving:**
-1. In capitalism, time saved primarily benefits the time-saver or their employer
-2. In Free Association, time saved creates cascading waves of liberation through social networks
-3. ↑Time saved in capitalism → ↑Commodified leisure or ↑Work hours benefiting capital
-4. ↑Time saved in Free Association → ↑Socially circulating temporal resource based on contribution recognition
-
-**On Transitive Time-Liberation:**
-- Direct Time-Liberation: A ↔ B (A directly liberates B's time and vice versa)
-- Transitive Time-Liberation: A ↔ B ↔ C (A and C transitively liberate each other's time via B)
-
-**Let:**
-- **Compounding Free-Time** = the multiplication effect of initial time-liberation flowing through networks
-- **Temporal Commons** = the collective abundance of freed time created through mutual recognition networks
-
-**For any participant:**
-- ↑Initial Time-Liberation Contribution → ↑Triggered Chain of Time-Liberation
-- ↑Chained Time-Liberation → ↑Expanding Temporal Commons
-- ↑Expanding Temporal Commons → ↑Individual Access to Freed Time
-- ∴ ↑Free-Time Available for Creative Self-Actualization
-
-**Therefore:**
-- ∴ Free Association transforms time from scarce, hoarded resource into a circulating commons that grows through sharing
-- ∴ Time-Liberation directly confronts time poverty and alienation endemic to capitalism
-- ∴ Moving from "time is money" to "time is mutual liberation" reunites individuals with their temporal existence
-- ∴ Compounding time-liberation creates an expanding universe of freed time enabling genuine human flourishing
-
-*In Free Association, my contribution that frees your time may trigger a chain reaction as you contribute to freeing someone else's time, who then continues the cycle. This multiplication effect cannot be captured in traditional economic metrics but emerges naturally through transitive mutual recognition.*
-
-**Let us imagine, for a change, a directly/transitively mutualistic truly free association of free individuals, where time liberation compounds through networks of mutual contribution, creating an ever-growing capacity for all participants to explore the full dimensions of their humanity, unbound from artificial temporal scarcity.**
-
-</details>
-
 
 <details>
   <summary><b><i>Being Explored: New Babylon</i></b></summary>
