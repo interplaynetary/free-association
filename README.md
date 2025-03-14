@@ -6,15 +6,6 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 **In this free association, the share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-fulfillment!** (mutual-recognition of contribution towards each other's self-actualization)
 
-    Mutual-Recognition: MR(A, B) = min(B-share-of-A's-total-recognition, A-share-of-B's-total-recognition)
-
-    A's share of B's surplus = MR(A, B) / Σ MR(B, X), where X includes all others B recognizes.
-    B's share of A's surplus = MR(A, B) / Σ MR(A, X), where X includes all others A recognizes.
-
-More generally:
-
-  	Share(Receiver ← Giver) = MR(Receiver, Giver) / Sum(MR(Giver, Other) for all Others Giver Recognizes)
-
 **Surplus flows according to mutual-recognition of real contributions, relations activate only through genuine desire and participation, and these properties persist even as relations compose into complex social structures.**
 
 Simple math will reveal how in free association: false recognition/relations naturally decay while true recognition/relations strengthens - that recognition and social-relations organized on the basis of this free association necessarily tend towards social-material-truth.
@@ -103,6 +94,13 @@ This approach represents a fundamental shift from traditional charity or market-
 Surplus can be distributed directly/transitively via *Mutual-Recognition Distributions*: **The share of each individual in the surplus-distribution of others is equal to their share of the other's total mutual-fulfillment!**
 
 *"From each according to his ability, to each according to his needs!"*
+
+**Surplus Distribution**
+- A's share of B's surplus = MR(A, B) / Σ MR(B, X), where X includes all others B recognizes.
+- B's share of A's surplus = MR(A, B) / Σ MR(A, X), where X includes all others A recognizes.
+
+More generally:
+- Share(Receiver ← Giver) = MR(Receiver, Giver) / Sum(MR(Giver, Other) for all Others Giver Recognizes)
 
 *The distribution of surplus-roles through networks of mutual-contribution is a form of distributed-peer-discovery/offering/matching! Finding collaborators who directly/transitively contribute to your eachother's self-actualization!*
 
