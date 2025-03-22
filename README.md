@@ -23,7 +23,7 @@ Surplus flows through mutual-recognition of mutual-contribution.
 
 This is not a zero-sum game where one person's gain is another's loss.
 
-To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 ## How Your Contributions Flow Through the Network
 
