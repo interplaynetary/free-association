@@ -21,7 +21,9 @@ Your share of anyone's surplus = MR(You, Them) / Σ MR(Them, Each-of-Those-They-
 
 Surplus flows through mutual-recognition of mutual-contribution.
 
-This is not a zero-sum game where one person's gain is another's loss. Instead of climbing individual ladders in competition, we are collectively building something greater - like a vast treehouse where each new branch and platform strengthens the entire structure. Every contribution enriches the whole network while benefiting the contributor through strengthened relationships and increased access to mutual support.
+This is not a zero-sum game where one person's gain is another's loss.
+
+To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 ## How Your Contributions Flow Through the Network
 
@@ -31,7 +33,9 @@ When you contribute surplus to Free Association:
 
 2. **Your surplus flows to transitive contributors** - Those who support your direct contributors also benefit, creating ripple effects through the network
 
-3. **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
+3. **Effects return to you in unexpected ways** - As others you've supported gain capacity, they can contribute to your self-actualization in ways you couldn't predict.
+
+4. **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
 
 ```
 For any participant:
@@ -49,10 +53,6 @@ Total Recognition = True-Recognition + False-Recognition
 This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to real-contributors.
 
 Systems built on falsehood eventually collapse, they can't sustain themselves because they starve the very thing that makes them thrive, genuine connection and collaboration.
-
-4. **Effects return to you in unexpected ways** - As others you've supported gain capacity, they can contribute to your self-actualization in ways you couldn't predict.
-
-To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish—it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 ## The Power of Six Degrees: Accessing Humanity's Cooperative Wealth
 
