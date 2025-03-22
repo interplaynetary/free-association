@@ -140,8 +140,6 @@ A basic interface for free association is almost complete but we are seeking sup
 
 ## How to Contribute
 
-**Support Financially:**
-
 <a href="https://opencollective.com/playnet">
     <img width="300" src="https://opencollective.com/playnet/donate/button@2x.png?color=blue" />
 </a>
