@@ -8,17 +8,19 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 ### Here's how it works:
 
-1. **One's Recognition** is one's acknowledgment of *contributions towards one's own self-actualization*, and is always a *share* of one's *total-recognition*.
+1. One's Recognition is one's acknowledgment of *contributions towards one's own self-actualization*, and is always a *share* of one's *total-recognition*.
 
-2. **One's Total-Recognition** is always *100%*.
+2. One's Total-Recognition is always *100%*.
 
-3. **Mutual Recognition** between you and someone else is the *smaller* of these two values: *their share of your total-recognition, and your share of their total-recognition.*
-    - **For example:** If you are 50% of my total-recognition, and I am 10% of your total-recognition, our mutual-recognition is 10%, the minimum of the both.
+3. Mutual Recognition between you and someone else is the *smaller* of these two values: *their share of your total-recognition, and your share of their total-recognition.*
+    - For example: If you are 50% of my total-recognition, and I am 10% of your total-recognition, our mutual-recognition is 10%, the minimum of the both.
       - *Taking the minimum of both shares ensures reciprocity in proportion.*
 
-**Surplus flows through *mutual-recognition of mutual-contribution*.**
+Surplus flows through *mutual-recognition of mutual-contribution*.
 
-4. **Your Share of Anyone's Surplus** equals *your mutual recognition with them, divided by the sum of all mutual recognition values between them and everyone they recognize.*
+4. Your Share of Anyone's Surplus equals *your mutual recognition with them, divided by the sum of all mutual recognition values between them and everyone they recognize.*
+    - For example: If we have 10% of mutual-recognition, and you are my only mutual-relationship, you would have 100% of my total-mutual-recognition (100% of my surplus-distribution). If I have two mutual-relationships each with 10% mutual-recognition, each would have 50% of my total-mutual-recognition (50% of my surplus-distribution).
+
 
 <details>
   <summary><b><i>Mathematically defined:</i></b></summary>
