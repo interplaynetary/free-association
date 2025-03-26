@@ -19,7 +19,12 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 **Surplus** flows through *mutual-recognition of mutual-contribution*.
 
 4. Your Share of Anyone's **Surplus-Distribution** equals *your mutual recognition with them, divided by the sum of all mutual recognition values between them and everyone they recognize.*
-    - For example: If we have 10% of mutual-recognition, and you are my only mutual-relationship, you would have 100% of my **total-mutual-recognition** (100% of my **surplus-distribution**). If I have two mutual-relationships each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **surplus-distribution**).
+    - For example: If we have 10% of mutual-recognition, and you are my only mutual-relationship, you would have 100% of my total-mutual-recognition (100% of my surplus-distribution). If I have two mutual-relationships each with 10% mutual-recognition, each would have 50% of my total-mutual-recognition (50% of my surplus-distribution).
+
+5. Distribute Surplus:
+- INSERT HOUSING EXAMPLE?
+- USE IT TO EXPLAIN HOW RESOURCES SIMPLY FLOW TO WHERE THEY ARE NEEDED?
+
 
 <details>
   <summary><b><i>Mathematically defined:</i></b></summary>
@@ -35,44 +40,9 @@ Your share of anyone's surplus = MR(You, Them) / Σ MR(Them, Each-of-Those-They-
 ```
 </details>
 
-## Why does any of that matter?
-
-Now that we have derived your **surplus-distribution**, we can distribute surplus! 
-
-You aren't just giving away surplus randomly, you give *precisely* to your own *mutual* fulfillment.
-
-Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms surplus.
-
-Now let me ask you a question: *Who do you want to room with?*
-
-Well ideally, those that satisfy your needs (allign with your values, goals, etc.) in the ***widest*** sense of the term.
-
-And even more than that, it is even more satisfying *when the feeling is mutual!*
-
-And that is *exactly* who is recieving your surplus-room distribution!
-
-So *free-association* essentially unifies the concepts of *mutual-aid*, *mutual-recogition*, *mutual-fulfilment*, and *surplus-distribution* in a single elegant equation that creates the mathematical foundations for a scalable gifting economy of co-creative abundance. 
-
-Now lets imagine of the 3 rooms distributed as surplus two of those people (Alice, Bob) desired the room, but one of them (Charlie) did not want/need it! 
-
-For Charlie the room is surplus, and what do they do with their surplus?
-
-They give to their own mutual-fulfillment!
-
-And so on... 
-
-So what you are actually distributing surplus to is *your direct/indirect/transitive mutual-self-actualization*!
-
-This means surplus flows through networks of mutual-fulfillment until it finds exactly where it is needed! With *no centralized planning whatsoever*!
-
-It helps to understand how different this is from platforms like couchsurfing or airbnb!
-*You don't find the room, the room flows as surplus through networks of mutual-fulfillment until it finds you!*
-
 ---
 
-To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
-
-This effectively moves us from *time as money* to *time as mutual-fulfillment*!
+To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 ## How Your Contributions Flow Through the Network 🌊
 
@@ -256,3 +226,4 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 ## Learn more 📚
 - [Proof and Strategy for a Truly Free Association of Free Individuals](EXTENDED-README.md)
 - [Playnet.lol](https://playnet.lol)
+- [Glossary](GLOSSARY.md)
