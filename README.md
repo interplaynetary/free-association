@@ -21,9 +21,23 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 4. Your Share of Anyone's **Surplus-Distribution** equals *your mutual recognition with them, divided by the sum of all mutual recognition values between them and everyone they recognize.*
     - For example: If we have 10% of mutual-recognition, and you are my only mutual-relationship, you would have 100% of my **total-mutual-recognition** (100% of my **surplus-distribution**). If I have two mutual-relationships each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **surplus-distribution**).
 
+<details>
+  <summary><b><i>Mathematically defined:</i></b></summary>
+
+```
+One's Recognition = one's acknowledgment of contributions towards one's own self-actualization
+
+One's Total-Recognition = 100%
+
+Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
+
+Your share of anyone's surplus = MR(You, Them) / Σ MR(Them, Each-of-Those-They-Recognize)
+```
+</details>
+
 ## Why does any of that matter?
 
-Well now that we have derived your **surplus-distribution**, we can distribute surplus! 
+Now that we have derived your **surplus-distribution**, we can distribute surplus! 
 
 You aren't just giving away surplus randomly, you give *precisely* to your own *mutual* fulfillment.
 
@@ -39,39 +53,26 @@ And that is *exactly* who is recieving your surplus-room distribution!
 
 So *free-association* essentially unifies the concepts of *mutual-aid*, *mutual-recogition*, *mutual-fulfilment*, and *surplus-distribution* in a single elegant equation that creates the mathematical foundations for a scalable gifting economy of co-creative abundance. 
 
----
-But now lets imagine of the 3 rooms distributed as surplus two of those people (Alice, Bob) desired the room, but one of them (Charlie) did not want/need it! 
+Now lets imagine of the 3 rooms distributed as surplus two of those people (Alice, Bob) desired the room, but one of them (Charlie) did not want/need it! 
 
 For Charlie the room is surplus, and what do they do with their surplus?
 
 They give to their own mutual-fulfillment!
 
+And so on... 
 
-And so on... So what you are actually distributing surplus to is *your direct/indirect/transitive mutual-self-actualization*!
+So what you are actually distributing surplus to is *your direct/indirect/transitive mutual-self-actualization*!
 
 This means surplus flows through networks of mutual-fulfillment until it finds exactly where it is needed! With *no centralized planning whatsoever*!
 
 It helps to understand how different this is from platforms like couchsurfing or airbnb!
-
 *You don't find the room, the room flows as surplus through networks of mutual-fulfillment until it finds you!*
-
-<details>
-  <summary><b><i>Mathematically defined:</i></b></summary>
-
-```
-One's Recognition = one's acknowledgment of contributions towards one's own self-actualization
-
-One's Total-Recognition = 100%
-
-Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
-
-Your share of anyone's surplus = MR(You, Them) / Σ MR(Them, Each-of-Those-They-Recognize)
-```
-</details>
 
 ---
 
-To illustrate this by example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, *freeing their time* to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — it flows to those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+
+This effectively moves us from *time as money* to *time as mutual-fulfillment*!
 
 ## How Your Contributions Flow Through the Network 🌊
 
