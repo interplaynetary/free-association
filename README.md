@@ -95,7 +95,7 @@ Total Recognition = True-Recognition + False-Recognition
             ∴ ↓Real-Relations with Real-Contributors
                ∴ ↓Access to Real-Social-Material-Coordination
                   ∴ ↓Real-Social-Material-Basis for Self-Actualization
-
+                     ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
 ```
 
 This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to real-contributors.
@@ -244,6 +244,7 @@ Total Recognition = True-Recognition + False-Recognition
             ∴ ↓Real-Relations with Real-Contributors
                ∴ ↓Access to Real-Social-Material-Coordination
                   ∴ ↓Real-Social-Material-Basis for Self-Actualization
+                     ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
 ```
 
 This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to real-contributors. You cannot accumulate power through ownership.
