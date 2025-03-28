@@ -166,7 +166,7 @@ Total Recognition = True-Recognition + False-Recognition
             ∴ ↓Real-Relations with Real-Contributors
                ∴ ↓Access to Real-Social-Material-Coordination
                   ∴ ↓Real-Social-Material-Basis for Self-Actualization
-                    ∴ social-material-truth is realized through Free Association
+                     ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
 
 *Note: True/False recognition is not binary, nor expressed as a proposition (propositional logic). The question is what % of your recognition feels true/false to you? How true is this? To what degree?*
 
