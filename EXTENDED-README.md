@@ -435,6 +435,8 @@ Moreover, the question of how to distribute the means of production and land, if
 
 Rather than reforming existing states, dual-power should be established in each country, and should be established on the basis of the widest democracy.
 
+It should be noted that socialization in free-association will likely take place out of natural necessity on the part of individuals and not necessarily via the use of state-power.
+
 ---
 
 </details>
