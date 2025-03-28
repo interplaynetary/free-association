@@ -148,7 +148,7 @@ At each degree n:
                              Direct Share(You, Node) * ... * Direct Share(Node, Them)
       for all Nodes connecting You to Them at n degrees
 
-- Total Transitive Access = Σ Transitive Share(You, Each) for All
+- Total Potential Transitive Access = Σ Transitive Share(You, Each) for All
 ```
 
 This exponential growth means that as free association spreads:
