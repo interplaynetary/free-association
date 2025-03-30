@@ -259,8 +259,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 - [Proof and Strategy for a Truly Free Association of Free Individuals](EXTENDED-README.md) Which goes into more detail, addressing interesting questions such as the *form* of surplus (which is *not* private-property)
 - [Playnet.lol](https://playnet.lol)
 - [Glossary](GLOSSARY.md)
-- [Dialectics of Love](resources/love.md)
+- [Dialectics of Love (Hegel and Mutual Recognition)](resources/love.md)
 - [Free-Association as the Psychoanalysis of the Economic Unconscious](resources/matheme.md)
-
-Inteface Overview (Outdated)
-[![Interface Overview (Outdated)](https://img.youtube.com/vi/ro-y4MnOgNo/maxresdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
+- **Inteface Overview (Older Version)**
+[![Interface Overview (Old)](https://img.youtube.com/vi/ro-y4MnOgNo/maxresdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
