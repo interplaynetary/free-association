@@ -1,12 +1,3 @@
-
-# Discourse Structure
-
-Agent         →       Other
--------               -------
-Truth         ↓       Production
-
-This structure resembles the analyst's discourse but operates at a social rather than clinical level. Mutual recognition ($a$) occupies the agent position, addressing the barred subject ($S$) to produce a network of contributions ($S_2$) that ultimately serves self-actualization ($S_1$) rather than capital accumulation.
-
 ## The Four Discourses and Free Association
 
 First, let's situate free association in relation to Lacan's four discourses to understand how it represents a structural transformation:
