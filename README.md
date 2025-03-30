@@ -260,7 +260,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 - [Playnet.lol](https://playnet.lol)
 - [Glossary](GLOSSARY.md)
 - [Dialectics of Love](resources/love.md)
-- [Free-Association and Psychoanalysis](resources/matheme.md)
+- [Free-Association as the Psychoanalysis of the Economic Unconscious](resources/matheme.md)
 
 Inteface Overview (Outdated)
 [![Interface Overview (Outdated)](https://img.youtube.com/vi/ro-y4MnOgNo/maxresdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
