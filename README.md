@@ -143,13 +143,15 @@ This means that in free association, you're never more than six distributions aw
 ```
 At each degree n:
 - Available Surplus = Σ(Contributors' Surplus)
+
 - Your share of anyone's surplus = MR(You, Them) / Σ MR(Them, Each-of-Those-They-Recognize)
+
 - Transitive Share(You, Them) = Direct Share(You, Them) + 
                              Direct Share(You, Node) * ... * Direct Share(Node, Them)
       for all Nodes connecting You to Them at n degrees
 
 - Total Potential Transitive Access = Σ Transitive Share(You, Each) for All
-```
+   ```
 
 This exponential growth means that as free association spreads:
 * Your potential access to surplus grows exponentially
@@ -196,7 +198,7 @@ A basic interface for free association is almost complete but we are seeking sup
 
 **Provide Housing/Space:** If you have surplus housing or workspace that could support Free Association contributors
 
-**Spread Awareness:** Share the mathematical proof and potential of Free Association with others who might contribute surplus
+**Spread Awareness:** Share the mathematical proof and potential of Free Association with others
 
 ---
 
@@ -257,6 +259,8 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 - [Proof and Strategy for a Truly Free Association of Free Individuals](EXTENDED-README.md) Which goes into more detail, addressing interesting questions such as the *form* of surplus (which is *not* private-property)
 - [Playnet.lol](https://playnet.lol)
 - [Glossary](GLOSSARY.md)
+- [Dialectics of Love](resources/love.md)
+- [Free-Association and Psychoanalysis](resources/matheme.md)
 
 Inteface Overview (Outdated)
 [![Interface Overview (Outdated)](https://img.youtube.com/vi/ro-y4MnOgNo/maxresdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
