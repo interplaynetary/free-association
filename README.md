@@ -24,17 +24,17 @@ You can interact with an interface implementing this logic at [interplaynetary.g
     - For example: If you are 50% of my *total-recognition*, and I am 10% of your *total-recognition*, our mutual-recognition is 10%, the minimum of the both.
       - *Taking the minimum of both shares ensures reciprocity in proportion.*
 
-**Shares of Surplus** are distributed across networks of *mutual-recognition of mutual-contribution* at a declared **network-depth**.
-    - Shares are percentages of 100%. They are dynamically *(re)attributed* and *non-transferable*.
-    - Shares of a particular surplus are shares of a *capacity-to-provide* (they are shares of *verbs*, not shares of a *objects*).
-    - *Network-depth* can be (re)declared dynamically.
-    - For example: surplus-housing might be shared at depth = 2, whereas surplus-food might be shared at depth = 5.
-    - Absolute quantities can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
+4. **Shares of Surplus** are distributed across networks of *mutual-recognition of mutual-contribution* at a declared **network-depth**.
+   - Shares are percentages of 100%. They are dynamically *(re)attributed* and *non-transferable*.
+   - Shares of a particular surplus are shares of a *capacity-to-provide* (they are shares of *verbs*, not shares of a *objects*).
+   - *Network-depth* can be (re)declared dynamically.
+   - For example: surplus-housing might be shared at depth = 2, whereas surplus-food might be shared at depth = 5.
+   - Absolute quantities can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
 
-4. Your **direct-share** in another's **surplus-capacity** equals *your mutual recognition with them, divided by their total-mutual-recognition with all others*
+5. Your **direct-share** in another's **surplus-capacity** equals *your mutual recognition with them, divided by their total-mutual-recognition with all others*
     - For example: If we have 10% of *mutual-recognition*, and you are my only *mutual-relationship*, you would have 100% of my **total-mutual-recognition** (100% of my **direct-share**). If I have two *mutual-relationships* each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **direct-share**).
 
-5. Your **total-share** in another's *surplus-capacity* combines your *direct-share* with *transitive-share* through the network.
+6. Your **total-share** in another's *surplus-capacity* combines your *direct-share* with *transitive-share* through the network.
     - For example: You have shares not just of your friends' surplus, but also friends of friends (up to the declared network depth).
     - **Direct Share (Depth 1)**: Your immediate *share* based on mutual recognition 
     - **Transitive Shares (Depth 2-6)**: *shares* gained through network connections
@@ -52,9 +52,14 @@ Your Total-Recognition = 100%
 Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
 
 Direct-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
+```
+<details>
+<summary>Provider-Centric Distribution Calculation</summary>
 
-// Provider-Centric Distribution Calculation
-// Calculate once from provider outward, then lookup individual shares
+```
+Calculate once from provider outward, then lookup individual shares
+
+
 DistributeShares(Provider, MaxDepth):
   // Initialize share distribution map
   ShareMap = empty map of {Person → Share}
@@ -101,8 +106,10 @@ DistributeShares(Provider, MaxDepth):
 Total-Share(You, Provider, MaxDepth):
   ShareMap = DistributeShares(Provider, MaxDepth)
   return ShareMap[You] if You in ShareMap else 0
-
 ```
+
+</details>
+
 
 ## Why does any of that matter?
 
