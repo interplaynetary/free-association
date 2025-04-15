@@ -1,6 +1,6 @@
-import { gun, transientGun } from '../gun/gunSetup';
-import { GunSubscription } from '../gun/GunSubscription';
-import { GunNode } from '../gun/GunNode';
+import { gun, transientGun } from './gun/gunSetup';
+import { GunSubscription } from './gun/GunSubscription';
+import { GunNode } from './gun/GunNode';
 
 // Use a simple type rather than importing from node: modules
 type Timeout = ReturnType<typeof setTimeout>;

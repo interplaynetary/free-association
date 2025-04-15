@@ -1,31 +1,32 @@
 {
-  "name": "free-association",
+  "name": "free",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
-    "test": "bun src/tests/test-gunjs.js"
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "gun-relay:bun": "bun run start-relay.js",
+    "gun-relay:node": "node start-node-relay.js",
+    "gun-relay": "node start-node-relay.js",
+    "start": "./start-dev.sh"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tsconfig/svelte": "^5.0.4",
+    "@types/bun": "latest",
     "@types/d3": "^7.4.3",
-    "@types/jquery": "^3.5.32",
-    "@types/lodash": "^4.17.16",
-    "svelte": "^5.25.7",
+    "bun-types": "^1.2.9",
+    "svelte": "^5.20.2",
+    "svelte-check": "^4.1.4",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "@paulmillr/qr": "^0.3.0",
-    "@peculiar/webcrypto": "^1.5.0",
-    "@types/node": "^22.14.1",
-    "@use-gesture/vanilla": "^10.3.1",
+    "@gun-vue/relay": "^0.6.1",
     "d3": "^7.9.0",
-    "gun": "^0.2020.1239",
-    "jquery": "^3.7.1",
-    "lodash": "^4.17.21"
+    "gun": "^0.2020.1240"
   }
 }

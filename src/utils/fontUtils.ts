@@ -1,3 +1,5 @@
+import { type RecNode } from "../stores/rec"; 
+
 /**
  * Calculate the appropriate font size for a node's text
  * @param {Object} d - The node data
@@ -8,7 +10,7 @@
  * @param {Object} y - The y scale
  * @param {Object} currentView - The current view node
  */
-export function calculateFontSize(d, rectWidth, rectHeight, root, x, y, currentView) {
+export function calculateFontSize(d: d3.HierarchyRectangularNode<RecNode>, root: d3.HierarchyRectangularNode<RecNode>, x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>, currentView: d3.HierarchyRectangularNode<RecNode>) {
     // Always use the current view's domain for calculations
     const currentDomain = currentView || root;
     
@@ -17,8 +19,8 @@ export function calculateFontSize(d, rectWidth, rectHeight, root, x, y, currentV
     const actualHeight = Math.abs(y(d.y1) - y(d.y0));
     
     const textContent = d === root ? name(d) : d.data.name;
-    const lines = d === root ? [textContent] : textContent.split(/(?=[A-Z][^A-Z])/g);
-    const maxLineLength = Math.max(...lines.map(line => line.length));
+    const lines = d === root ? [textContent] : textContent?.split(/(?=[A-Z][^A-Z])/g) || [];
+    const maxLineLength = Math.max(...lines.map(line => line?.length || 0));
     
     // Use consistent dimensions for calculations
     const availableWidth = actualWidth * 0.9;
@@ -40,7 +42,7 @@ export function calculateFontSize(d, rectWidth, rectHeight, root, x, y, currentV
 }
 
 // Helper function to get the full name path
-export function name(d) {
+export function name(d: RecNode) {
     const names = [];
     let current = d;
     while (current) {

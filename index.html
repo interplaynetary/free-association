@@ -1,197 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="margin:0; padding:0; height:100%; overflow:hidden;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Free Association</title>
+    <title>Recognition TreeMap</title>
+    <style>
+      html, body, #app {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+    </style>
   </head>
-  <body>
-    <div id="app"></div>
-        <!-- Main visualization container -->
-        <div class="visualization-container">
-            <div id="treemap-container"></div>
-            <div class="message-input-container">
-                <button id="message-plus" class="message-plus">+</button>
-                <textarea id="message-input" placeholder="Type your message..." maxlength="1000"></textarea>
-                <div class="message-controls">
-                    <span id="char-count">0/1000</span>
-                    <button id="send-message">Send</button>
-                </div>
-            </div>
-            <div id="menu-section">
-                <div id="pie-container">
-                </div>
-            </div>
-        </div>
-    
-        <!-- Popup forms container at document level -->
-        <div class="node-popup">
-            <div class="node-popup-content">
-                <!-- Add Node Form -->
-                <form id="addNodeForm" class="popup-form">
-                    <h2>Add New Node</h2>
-                    <div class="form-group">
-                        <label for="nodeName">Name:</label>
-                        <input type="text" id="nodeName" required>
-                    </div>
-                    <div id="percentageGroup" class="form-group" style="display: none;">
-                        <label for="nodePercentage">Desired Percentage:</label>
-                        <input type="range" id="nodePercentage" min="1" max="100" value="10">
-                        <output for="nodePercentage">10%</output>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="submit" class="primary">Add Node</button>
-                        <button type="button" class="cancel">Cancel</button>
-                    </div>
-                </form>
-    
-                <!-- Reveal QR Form -->
-                <form id="revealQRForm" class="popup-form" style="display: none;">
-                    <h2>Your Public Key</h2>
-                    <div class="qr-display">
-                        <div id="qr-code"></div>
-                        <div id="public-key-text"></div>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="button" class="copy-key">Copy Key</button>
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-
-                <!-- Scan QR Code Form -->
-                <form id="scanQRForm" class="popup-form" style="display: none;">
-                    <h2>Connect with Peer</h2>
-                    <div class="form-tabs">
-                        <button type="button" class="tab-button active" data-tab="scan-tab">Scan QR</button>
-                        <button type="button" class="tab-button" data-tab="manual-tab">Enter Key</button>
-                        <button type="button" class="tab-button" data-tab="discover-tab">Discover</button>
-                    </div>
-                    <div id="discover-tab" class="tab-content" style="display: none;">
-                        <button type="button" id="discover-users-tab" class="discover-users">Search for Users</button>
-                        <ul id="user-list" class="user-list"></ul>
-                    </div>
-                    <div id="scan-tab" class="tab-content">
-                        <div class="camera-container">
-                            <video id="qr-video" autoplay playsinline></video>
-                            <canvas id="qr-canvas" style="display: none;"></canvas>
-                        </div>
-                        <div id="scan-result"></div>
-                    </div>
-                    <div id="manual-tab" class="tab-content" style="display: none;">
-                        <div class="form-group">
-                            <label for="manual-key">Public Key:</label>
-                            <input type="text" id="manual-key" placeholder="Paste public key here">
-                        </div>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="button" id="connect-peer" class="primary">Connect</button>
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-
-                <!-- Give Surplus Form -->
-                <!--
-                <form id="giveSurplusForm" class="popup-form" style="display: none;">
-                    <h2>Give Surplus to Direct/Transitive-Mutual-Self-Fulfillment</h2>
-                    <div class="form-buttons">
-                        <button type="button" class="give-surplus">Give Surplus</button>
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-                -->
-    
-                <!-- Inventory Form -->
-                <form id="inventoryForm" class="popup-form" style="display: none;">
-                    <h2>Surplus Capacity Declarations</h2>
-                    <p class="form-description">Declare what surplus capacities you have available. You can either update existing capacities or add new capacities below.</p>
-                    <div class="capacity-inputs">
-                        <!-- Will be dynamically populated with capacity inputs -->
-                    </div>
-                    <div class="inventory-list">
-                        <!-- Inventory items will be dynamically populated here -->
-                    </div>
-                    <div class="form-buttons">
-                        <button type="button" class="update-inventory">Save Changes</button>
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-    
-                <!-- Create Relation Form
-                <form id="createRelationForm" class="popup-form" style="display: none;">
-                    <h2>New Relation</h2>
-                    <div class="form-group">
-                        <h3>Provider</h3>
-                        <label for="providerRoleName">Role Name:</label>
-                        <input type="text" id="providerRoleName" required>
-                    </div>
-                    <div class="form-group">
-                        <h3>Reciever</h3>
-                        <label for="recieverRoleName">Role Name:</label>
-                        <input type="text" id="recieverRoleName" required>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="submit" class="create">Create Relation</button>
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-            -->
-    
-                <!-- Peer Options Form -->
-                <form id="peerOptionsForm" class="popup-form" style="display: none;">
-                    <h2>Peer Options</h2>
-                    <div class="menu-buttons">
-                        <button type="button" class="menu-button" data-form="revealQR">
-                            <span>Show My QR</span>
-                        </button>
-                        <button type="button" class="menu-button" data-form="scanQR">
-                            <span>Scan QR</span>
-                        </button>
-
-                        <!--  
-                        <button type="button" id="show-connections" class="menu-button">
-                            <span>Connections</span>
-                        </button>
-                        <button type="button" id="discover-users" class="menu-button">
-                            <span>Discover Users</span>
-                        </button>
-                        -->
-                        <button type="button" id="logout" class="menu-button">
-                            <span>Logout</span>
-                        </button>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="button" class="cancel">Close</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    
-        <!-- Move auth container here, outside of any scripts -->
-        <div id="auth-container">
-            <form id="auth-form" method="post" autocomplete="on">
-                <h2>Free Association</h2>
-                <input type="text" 
-                       id="username" 
-                       name="username"
-                       placeholder="Username" 
-                       autocomplete="username"
-                       spellcheck="false"
-                       autocapitalize="off"
-                       required>
-                <input type="password" 
-                       id="password" 
-                       name="password"
-                       placeholder="Password" 
-                       autocomplete="current-password"
-                       required>
-                <button type="submit">Login/Create</button>
-            </form>
-        </div>
-    
-        <div id="app-container" style="display: none;">
-            <!-- Existing app content -->
-        </div>
+  <body style="margin:0; padding:0; height:100vh; overflow:hidden;">
+    <div id="app" style="margin:0; padding:0; height:100vh; overflow:hidden;"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
