@@ -72,7 +72,7 @@ export enum CertificatePermission {
 export const gun = Gun({
   peers: [
     'http://localhost:8765/gun', // Local relay peer
-    // 'https://gun-manhattan.herokuapp.com/gun', // Public relay peer for cross-device syncing
+    'https://gun-manhattan.herokuapp.com/gun', // Public relay peer for cross-device syncing
   ],
   localStorage: true, // Enable localStorage persistence in browser
 })
