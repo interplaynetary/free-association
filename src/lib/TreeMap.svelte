@@ -21,7 +21,7 @@
     type RecNode,
   } from "../stores/rec";
   import DropDown from "./DropDown.svelte";
-  import ToastNotification from "./ToastNotification.svelte";
+  import ToastNotification from "./old/ToastNotification.svelte";
   import TagPill from "./TagPill.svelte";
   import LogIn from "./LogIn.svelte";
 

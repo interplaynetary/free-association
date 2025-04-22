@@ -73,7 +73,7 @@ ComputationCache<K,V> (Utility)
 ### Creating Reactive Values
 
 ```typescript
-import { reactive } from './models/Reactive';
+import { reactive } from "./models/Reactive";
 
 // Create a simple reactive value
 const count = reactive(0);
@@ -85,7 +85,7 @@ console.log(count.value); // 0
 count.value = 1;
 
 // Subscribe to changes
-const unsubscribe = count.subscribe(newValue => {
+const unsubscribe = count.subscribe((newValue) => {
   console.log(`Count changed to ${newValue}`);
 });
 
@@ -93,10 +93,11 @@ const unsubscribe = count.subscribe(newValue => {
 unsubscribe();
 
 // You can also update with a function
-count.update(current => current + 1); // count.value becomes 2
+count.update((current) => current + 1); // count.value becomes 2
 ```
 
 Internal implementation details:
+
 - The `value` getter calls `Computed.trackAccess(this)` to register dependencies
 - The `value` setter checks for actual changes before triggering notifications
 - Subscriptions are stored in a `Set` for efficient add/remove operations
@@ -104,7 +105,7 @@ Internal implementation details:
 ### Creating Computed Values
 
 ```typescript
-import { reactive, computed } from './models/Reactive';
+import { reactive, computed } from "./models/Reactive";
 
 const width = reactive(5);
 const height = reactive(10);
@@ -127,6 +128,7 @@ console.log(areaToPerimeterRatio.value); // 70 / (2 * (7 + 10)) = 1.296...
 ```
 
 How dependency tracking works:
+
 1. When `area.value` is accessed, the system sets `Computed.currentComputation = area`
 2. The computer function runs, accessing `width.value` and `height.value`
 3. These getters call `Computed.trackAccess(this)`, registering as dependencies
@@ -140,14 +142,14 @@ How dependency tracking works:
 `ReactiveGun` connects reactive values to GunDB nodes:
 
 ```typescript
-import { ReactiveGun } from './models/Reactive';
-import { gun } from './models/Gun';
+import { ReactiveGun } from "./models/Reactive";
+import { gun } from "./models/Gun";
 
 // Create a reactive value linked to a Gun node
-const username = new ReactiveGun(['users', 'alice', 'name'], 'Alice');
+const username = new ReactiveGun(["users", "alice", "name"], "Alice");
 
 // Changes to the value are automatically synced to Gun
-username.value = 'Alice Smith';
+username.value = "Alice Smith";
 
 // Changes from Gun are automatically reflected in the reactive value
 // If another user updates the name, the reactive value will update
@@ -162,6 +164,7 @@ const stream = username.stream();
 ```
 
 How synchronization works:
+
 1. The `ReactiveGun` constructor creates a `GunNode` for the specified path
 2. It sets up a subscription to the node that updates the reactive value
 3. The `value` setter overrides the parent method to also update the Gun node
@@ -172,8 +175,8 @@ How synchronization works:
 For more complex objects, use `ReactiveEntity`:
 
 ```typescript
-import { ReactiveEntity } from './models/Reactive';
-import { App } from '../App';
+import { ReactiveEntity } from "./models/Reactive";
+import { App } from "../App";
 
 interface UserData {
   id: string;
@@ -184,57 +187,58 @@ interface UserData {
 
 class User extends ReactiveEntity<UserData> {
   // Declare properties that will be defined reactively
-  declare public name: string;
-  declare public age: number;
-  declare public email: string | undefined;
-  
+  public declare name: string;
+  public declare age: number;
+  public declare email: string | undefined;
+
   // Declare computed properties
-  declare public isAdult: boolean;
-  declare public displayName: string;
-  
+  public declare isAdult: boolean;
+  public declare displayName: string;
+
   constructor(id: string, app: App) {
     super(id, app);
-    
+
     // Define reactive properties that sync with Gun
-    this.defineReactiveProperty('name', '', ['users', id, 'name']);
-    this.defineReactiveProperty('age', 0, ['users', id, 'age']);
-    this.defineReactiveProperty('email', undefined, ['users', id, 'email']);
-    
+    this.defineReactiveProperty("name", "", ["users", id, "name"]);
+    this.defineReactiveProperty("age", 0, ["users", id, "age"]);
+    this.defineReactiveProperty("email", undefined, ["users", id, "email"]);
+
     // Define computed properties
-    this.defineComputedProperty('isAdult', () => this.age >= 18);
-    this.defineComputedProperty('displayName', () => {
+    this.defineComputedProperty("isAdult", () => this.age >= 18);
+    this.defineComputedProperty("displayName", () => {
       return this.name || `User-${this.id.substring(0, 6)}`;
     });
   }
-  
+
   // Add custom methods
   celebrateBirthday() {
     this.age += 1;
   }
-  
+
   async loadProfile() {
     // Perform additional data loading if needed
     const data = await this.gunNode.once();
-    console.log('Loaded profile data:', data);
+    console.log("Loaded profile data:", data);
     return data;
   }
 }
 
 // Usage
-const user = new User('alice', app);
+const user = new User("alice", app);
 console.log(user.name); // Gets value from Gun
-user.name = 'Alice'; // Updates value in Gun
+user.name = "Alice"; // Updates value in Gun
 console.log(user.isAdult); // Computed based on age
 
 // Create multiple instances
-const alice = new User('alice', app);
-const bob = new User('bob', app);
+const alice = new User("alice", app);
+const bob = new User("bob", app);
 
 // Define relationships between entities
 alice.friends = [bob.id];
 ```
 
 How property definition works:
+
 1. `defineReactiveProperty` creates a `ReactiveGun` or `Reactive` instance
 2. It defines a property on the entity with getter/setter accessors
 3. The accessors delegate to the reactive instance
@@ -247,36 +251,37 @@ How property definition works:
 For performance optimization, you can batch related updates:
 
 ```typescript
-import { Batch } from './models/Reactive';
+import { Batch } from "./models/Reactive";
 
 // Multiple separate updates trigger UI updates for each change
-user.name = 'Bob'; // UI update 1
-user.age = 30;     // UI update 2
-user.email = 'bob@example.com'; // UI update 3
+user.name = "Bob"; // UI update 1
+user.age = 30; // UI update 2
+user.email = "bob@example.com"; // UI update 3
 
 // With batch processing, updates are processed together
 Batch.schedule(() => {
   // Multiple updates in one batch
-  user.name = 'Bob';
+  user.name = "Bob";
   user.age = 30;
-  user.email = 'bob@example.com';
+  user.email = "bob@example.com";
   // UI will update only once after all these changes
 });
 
 // You can nest batch operations
 Batch.schedule(() => {
-  user.name = 'Bob';
-  
+  user.name = "Bob";
+
   Batch.schedule(() => {
     user.age = 30;
-    user.email = 'bob@example.com';
+    user.email = "bob@example.com";
   });
-  
+
   // Still just one UI update after all changes
 });
 ```
 
 Implementation details:
+
 1. `Batch.schedule` adds the callback to a queue
 2. If not already scheduled, it sets a timeout to process the queue
 3. When processing, it runs all queued callbacks in sequence
@@ -287,7 +292,7 @@ Implementation details:
 Debounce functions to avoid excessive updates:
 
 ```typescript
-import { debounced } from './models/Reactive';
+import { debounced } from "./models/Reactive";
 
 // Automatically batched and debounced update function
 const updateProfile = debounced((name, age) => {
@@ -296,17 +301,21 @@ const updateProfile = debounced((name, age) => {
 }, 300); // 300ms debounce time
 
 // Call multiple times, but will only execute once after 300ms of inactivity
-updateProfile('Alice', 25);
-updateProfile('Alice', 26);
-updateProfile('Alice', 27);
+updateProfile("Alice", 25);
+updateProfile("Alice", 26);
+updateProfile("Alice", 27);
 
 // Great for handling UI input events
-searchInput.addEventListener('input', debounced((e) => {
-  searchResults.value = performSearch(e.target.value);
-}, 250));
+searchInput.addEventListener(
+  "input",
+  debounced((e) => {
+    searchResults.value = performSearch(e.target.value);
+  }, 250)
+);
 ```
 
 Implementation details:
+
 1. `debounced` returns a function that delays execution of the original function
 2. It clears any pending timeout when called again
 3. When the timeout expires, it schedules the execution via `Batch.schedule`
@@ -317,11 +326,11 @@ Implementation details:
 Cache expensive computations with dependency tracking:
 
 ```typescript
-import { ComputationCache } from './models/Reactive';
+import { ComputationCache } from "./models/Reactive";
 
 // Define a cache for expensive calculations
 const expensiveCalculation = new ComputationCache<string, number>((key) => {
-  console.log('Performing expensive calculation for:', key);
+  console.log("Performing expensive calculation for:", key);
   // Simulate expensive operation
   let result = 0;
   for (let i = 0; i < 1000000; i++) {
@@ -331,31 +340,32 @@ const expensiveCalculation = new ComputationCache<string, number>((key) => {
 });
 
 // First time calculates
-console.time('first');
-const result1 = expensiveCalculation.get('test');
-console.timeEnd('first'); // Slow
+console.time("first");
+const result1 = expensiveCalculation.get("test");
+console.timeEnd("first"); // Slow
 
 // Second time uses cache
-console.time('second');
-const result2 = expensiveCalculation.get('test');
-console.timeEnd('second'); // Fast
+console.time("second");
+const result2 = expensiveCalculation.get("test");
+console.timeEnd("second"); // Fast
 
 // Dependency tracking
 function computeWithDependencies() {
   const computed = computed(() => {
     // This computed value now depends on the cached result
-    return expensiveCalculation.get('test') * 2;
+    return expensiveCalculation.get("test") * 2;
   });
-  
+
   return computed.value;
 }
 
 // Clear when needed
-expensiveCalculation.invalidate('test'); // Clear specific key
+expensiveCalculation.invalidate("test"); // Clear specific key
 expensiveCalculation.clear(); // Clear all cache
 ```
 
 Implementation details:
+
 1. `ComputationCache` stores results in a Map for quick lookup
 2. It also tracks dependencies between computed values and cache entries
 3. When `get()` is called within a computation, it registers as a dependency
@@ -366,7 +376,7 @@ Implementation details:
 Managing collections of reactive entities:
 
 ```typescript
-import { reactive, Batch } from './models/Reactive';
+import { reactive, Batch } from "./models/Reactive";
 
 // Create a collection of users
 const users = reactive(new Map<string, User>());
@@ -376,9 +386,9 @@ function addUser(id: string, name: string, age: number) {
   const user = new User(id, app);
   user.name = name;
   user.age = age;
-  
+
   // Update the collection - create a new Map to trigger change detection
-  users.update(current => {
+  users.update((current) => {
     const updated = new Map(current);
     updated.set(id, user);
     return updated;
@@ -387,16 +397,16 @@ function addUser(id: string, name: string, age: number) {
 
 // Remove a user
 function removeUser(id: string) {
-  users.update(current => {
+  users.update((current) => {
     const updated = new Map(current);
-    
+
     // Get the user to dispose it properly
     const user = updated.get(id);
     if (user) {
       user.dispose(); // Clean up subscriptions
       updated.delete(id);
     }
-    
+
     return updated;
   });
 }
@@ -404,7 +414,7 @@ function removeUser(id: string) {
 // Batch update multiple users
 function updateAges(increment: number) {
   Batch.schedule(() => {
-    users.value.forEach(user => {
+    users.value.forEach((user) => {
       user.age += increment;
     });
   });
@@ -412,6 +422,7 @@ function updateAges(increment: number) {
 ```
 
 Best practices for collections:
+
 1. Always create a new collection when updating (immutable update pattern)
 2. Use `update()` method for derived updates
 3. Remember to clean up entity resources when removing from collections
@@ -426,19 +437,19 @@ Our reactive system works seamlessly with Svelte's stores:
   import { User } from './models/User';
   import { app } from './app';
   import { reactive, computed } from './models/Reactive';
-  
+
   // Create a user entity
   const user = new User('alice', app);
-  
+
   // Get reactive stores
   const nameStore = user.getStore('name');
   const ageStore = user.getStore('age');
   const isAdultStore = user.getComputedStore('isAdult');
-  
+
   // Create additional derived stores
   const nameLength = computed(() => user.name.length);
   const nameLengthStore = nameLength.toStore();
-  
+
   // Handle events
   function incrementAge() {
     user.age += 1;
@@ -460,12 +471,13 @@ Our reactive system works seamlessly with Svelte's stores:
     Age:
     <input type="number" bind:value={$ageStore} />
   </label>
-  <button on:click={incrementAge}>Add Year</button>
+  <button onclick={incrementAge}>Add Year</button>
   <p>Status: {$isAdultStore ? 'Adult' : 'Minor'}</p>
 </div>
 ```
 
 How Svelte integration works:
+
 1. The `toStore()` method creates a Svelte-compatible store object
 2. This object has a `subscribe` method that Svelte uses for reactivity
 3. For two-way binding, the store's values are updated, which then update the reactive values
@@ -477,23 +489,23 @@ Our `TreeNode` class demonstrates a complex reactive entity that calculates reco
 
 ```typescript
 // Create a root node
-const root = await TreeNode.create('Project', { points: 0 }, app);
+const root = await TreeNode.create("Project", { points: 0 }, app);
 
 // Add child nodes with points
-const alice = await root.addChild('Alice', 30);
-const bob = await root.addChild('Bob', 20);
-const charlie = await root.addChild('Charlie', 50);
+const alice = await root.addChild("Alice", 30);
+const bob = await root.addChild("Bob", 20);
+const charlie = await root.addChild("Charlie", 50);
 
 // Add types to nodes
-alice.addType('design');
-bob.addType('code');
-charlie.addType('code');
+alice.addType("design");
+bob.addType("code");
+charlie.addType("code");
 
 // Recognition is automatically calculated with reactive dependencies
 console.log(root.shares); // Shows distribution across types
 
 // Visualize dependency chain for shares calculation:
-// 
+//
 //  points    totalChildPoints    weight    fulfilled
 //    │             │               │           │
 //    └─────────────┼───────────────┘           │
@@ -505,10 +517,12 @@ console.log(root.shares); // Shows distribution across types
 //                              shares
 
 // Setting up observers to monitor changes
-const sharesSubscription = root.getComputedStore('shares').subscribe(shares => {
-  console.log('Shares updated:', shares);
-  // Update UI visualization here
-});
+const sharesSubscription = root
+  .getComputedStore("shares")
+  .subscribe((shares) => {
+    console.log("Shares updated:", shares);
+    // Update UI visualization here
+  });
 
 // Simulate changes
 alice.points = 40; // Triggers recalculation of shares
@@ -519,6 +533,7 @@ root.dispose(); // Cleans up all nodes
 ```
 
 Implementation details of TreeNode's reactive recognition:
+
 1. Each node has reactive properties for points, name, etc.
 2. Computed properties derive totalChildPoints, weight, and fulfillment
 3. The shares computation only happens at the root node
@@ -532,12 +547,12 @@ Implementation details of TreeNode's reactive recognition:
 
 ```typescript
 class Post extends ReactiveEntity<PostData> {
-  declare public title: string;
-  declare public content: string;
-  declare public authorId: string;
-  
+  public declare title: string;
+  public declare content: string;
+  public declare authorId: string;
+
   private _author: User | null = null;
-  
+
   // Lazy-loaded relationship
   async getAuthor(): Promise<User> {
     if (!this._author) {
@@ -546,14 +561,14 @@ class Post extends ReactiveEntity<PostData> {
     }
     return this._author;
   }
-  
+
   // Alternative with a reactive handle
   private _authorReactive = reactive<User | null>(null);
-  
+
   get author(): User | null {
     return this._authorReactive.value;
   }
-  
+
   async loadAuthor(): Promise<User> {
     if (!this._authorReactive.value) {
       const author = new User(this.authorId, this._app);
@@ -569,11 +584,11 @@ class Post extends ReactiveEntity<PostData> {
 
 ```typescript
 class Team extends ReactiveEntity<TeamData> {
-  declare public name: string;
-  declare public memberIds: string[];
-  
+  public declare name: string;
+  public declare memberIds: string[];
+
   private _members = reactive<Map<string, User>>(new Map());
-  
+
   async loadMembers() {
     const newMembers = new Map();
     for (const id of this.memberIds) {
@@ -583,14 +598,16 @@ class Team extends ReactiveEntity<TeamData> {
     }
     this._members.value = newMembers;
   }
-  
+
   // Computed across multiple entities
   get averageAge(): number {
     const members = this._members.value;
     if (members.size === 0) return 0;
-    
-    const sum = Array.from(members.values())
-      .reduce((total, user) => total + user.age, 0);
+
+    const sum = Array.from(members.values()).reduce(
+      (total, user) => total + user.age,
+      0
+    );
     return sum / members.size;
   }
 }
@@ -599,34 +616,34 @@ class Team extends ReactiveEntity<TeamData> {
 ### Finite State Machines
 
 ```typescript
-type OrderState = 'new' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+type OrderState = "new" | "processing" | "shipped" | "delivered" | "cancelled";
 
 class Order extends ReactiveEntity<OrderData> {
-  declare public state: OrderState;
-  declare public items: string[];
-  
+  public declare state: OrderState;
+  public declare items: string[];
+
   // State transition methods
   process() {
-    if (this.state !== 'new') {
+    if (this.state !== "new") {
       throw new Error(`Cannot process order in state: ${this.state}`);
     }
-    this.state = 'processing';
+    this.state = "processing";
   }
-  
+
   ship() {
-    if (this.state !== 'processing') {
+    if (this.state !== "processing") {
       throw new Error(`Cannot ship order in state: ${this.state}`);
     }
-    this.state = 'shipped';
+    this.state = "shipped";
   }
-  
+
   // Computed based on state
   get canBeCancelled(): boolean {
-    return this.state === 'new' || this.state === 'processing';
+    return this.state === "new" || this.state === "processing";
   }
-  
+
   get isComplete(): boolean {
-    return this.state === 'delivered';
+    return this.state === "delivered";
   }
 }
 ```
@@ -638,18 +655,24 @@ class Order extends ReactiveEntity<OrderData> {
 ```typescript
 // Bad
 class User {
-  get age() { return this._age; }
-  
-  isAdult() { // Method, called repeatedly
+  get age() {
+    return this._age;
+  }
+
+  isAdult() {
+    // Method, called repeatedly
     return this.age >= 18;
   }
 }
 
 // Good
 class User {
-  get age() { return this._age; }
-  
-  get isAdult() { // Computed property, cached
+  get age() {
+    return this._age;
+  }
+
+  get isAdult() {
+    // Computed property, cached
     return this.age >= 18;
   }
 }
@@ -660,9 +683,9 @@ class User {
 ```typescript
 // Component lifecycle
 onMount(() => {
-  const user = new User('alice', app);
+  const user = new User("alice", app);
   // Use user...
-  
+
   return () => {
     user.dispose(); // Clean up on unmount
   };
@@ -688,14 +711,14 @@ onMount(() => {
 
 ```typescript
 // Instead of:
-user.name = 'Alice';
-user.email = 'alice@example.com';
+user.name = "Alice";
+user.email = "alice@example.com";
 user.age = 30;
 
 // Prefer:
 Batch.schedule(() => {
-  user.name = 'Alice';
-  user.email = 'alice@example.com';
+  user.name = "Alice";
+  user.email = "alice@example.com";
   user.age = 30;
 });
 ```
@@ -711,7 +734,7 @@ function addTodo(todo) {
 
 // Good
 function addTodo(todo) {
-  user.todos.update(current => {
+  user.todos.update((current) => {
     return [...current, todo]; // New array
   });
 }
@@ -722,9 +745,9 @@ function addTodo(todo) {
 ```typescript
 class User extends ReactiveEntity<UserData> {
   // Explicitly declare properties to get type checking
-  declare public name: string;
-  declare public email: string;
-  declare public isAdmin: boolean;
+  public declare name: string;
+  public declare email: string;
+  public declare isAdmin: boolean;
 }
 ```
 
@@ -736,8 +759,8 @@ class User extends ReactiveEntity<UserData> {
 // BAD: Circular dependency
 class CircularExample {
   constructor() {
-    this.defineComputedProperty('a', () => this.b + 1);
-    this.defineComputedProperty('b', () => this.a + 1);
+    this.defineComputedProperty("a", () => this.b + 1);
+    this.defineComputedProperty("b", () => this.a + 1);
   }
 }
 ```
@@ -747,13 +770,13 @@ class CircularExample {
 ```typescript
 // Common memory leak pattern:
 function createTemporaryUser() {
-  const user = new User('temp', app);
+  const user = new User("temp", app);
   return user; // If caller doesn't dispose, memory leak!
 }
 
 // Better:
 function useTemporaryUser(callback) {
-  const user = new User('temp', app);
+  const user = new User("temp", app);
   try {
     callback(user);
   } finally {
@@ -766,24 +789,24 @@ function useTemporaryUser(callback) {
 
 ```typescript
 // BAD: Bypassing reactive system
-gun.get('users').get('alice').get('name').put('Alice');
+gun.get("users").get("alice").get("name").put("Alice");
 
 // GOOD: Using reactive system
-user.name = 'Alice';
+user.name = "Alice";
 ```
 
 4. **Excessive Subscriptions**: Too many fine-grained subscriptions can hurt performance.
 
 ```typescript
 // BAD: Too many subscriptions
-items.forEach(item => {
-  item.getStore('name').subscribe(updateUI);
-  item.getStore('price').subscribe(updateUI);
-  item.getStore('quantity').subscribe(updateUI);
+items.forEach((item) => {
+  item.getStore("name").subscribe(updateUI);
+  item.getStore("price").subscribe(updateUI);
+  item.getStore("quantity").subscribe(updateUI);
 });
 
 // BETTER: One subscription to the parent collection
-itemsCollection.subscribe(items => {
+itemsCollection.subscribe((items) => {
   // Update UI with all items at once
   renderItems(items);
 });
@@ -796,6 +819,7 @@ itemsCollection.subscribe(items => {
 **Problem**: You've changed a reactive value but the UI isn't updating.
 
 **Solutions**:
+
 1. Check if you're modifying a nested property or collection without creating a new reference
 2. Verify that the entity hasn't been disposed
 3. Ensure dependency tracking is working by checking the code path
@@ -805,6 +829,7 @@ itemsCollection.subscribe(items => {
 **Problem**: Your application is using more and more memory over time.
 
 **Solutions**:
+
 1. Check that all entities are being disposed
 2. Look for subscriptions that aren't being cleaned up
 3. Verify that you're not holding references to disposed entities
@@ -814,6 +839,7 @@ itemsCollection.subscribe(items => {
 **Problem**: Your application is slow due to too many recalculations.
 
 **Solutions**:
+
 1. Use batch processing for related updates
 2. Cache expensive computations
 3. Use more granular reactive values to avoid unnecessary dependencies

@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import * as d3 from "d3";
-  import { getColorForName } from "../utils/colorUtils";
-  import { calculateFontSize } from "../utils/fontUtils";
-  import TagPill from "./TagPill.svelte";
-  import { TreeNode } from "../models/TreeNode";
-  import type { RecognitionStore } from "../stores/rec";
+  import { getColorForName } from "../../utils/colorUtils";
+  import { calculateFontSize } from "../../utils/fontUtils";
+  import TagPill from "../TagPill.svelte";
+  import { TreeNode } from "./models/TreeNode";
+  import type { RecognitionStore } from "../../stores/rec";
 
   // Props
   export let node: TreeNode;
@@ -384,7 +384,7 @@
   class:contribution={node?.isContribution}
   class:delete-mode={deleteMode}
   bind:this={domElement}
-  on:click={handleNodeClick}
+  onclick={handleNodeClick}
 >
   <!-- Node will be rendered here by D3 -->
 </div>

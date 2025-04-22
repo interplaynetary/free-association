@@ -8,7 +8,7 @@ export class NodeStoreHandler {
   store: RecognitionStore;
 
   // Track subscriptions to store data
-  private unsubscribers = $state<(() => void)[]>([]);
+  public unsubscribers = $state<(() => void)[]>([]);
 
   // State properties
   public name = $state("");
@@ -21,7 +21,7 @@ export class NodeStoreHandler {
 
   constructor(store: RecognitionStore) {
     this.store = store;
-    this.subscribeToStoreData();
+    // Don't automatically subscribe - let caller handle this
   }
 
   // Helper to get store value synchronously without subscription side effects
@@ -60,6 +60,11 @@ export class NodeStoreHandler {
           JSON.stringify(this.childrenData) !== JSON.stringify(newChildrenData)
         ) {
           this.childrenData = newChildrenData;
+          /*console.log(
+            performance.now(),
+            "childrenData updated",
+            newChildrenData
+          );*/
           // Child subscriptions are handled automatically via derived data
         }
       }),
@@ -68,6 +73,11 @@ export class NodeStoreHandler {
       this.store.nameStore.subscribe((newName) => {
         if (this.name !== newName) {
           this.name = newName || "";
+          /*console.log(
+            performance.now(),
+            "name updated",
+            newName
+          );*/
         }
       }),
 
@@ -75,6 +85,11 @@ export class NodeStoreHandler {
       this.store.pointsStore.subscribe((newPoints) => {
         if (this.points !== newPoints) {
           this.points = typeof newPoints === "number" ? newPoints : 0;
+          /*console.log(
+            performance.now(),
+            "points updated",
+            newPoints
+          );*/
         }
       }),
 
@@ -84,6 +99,11 @@ export class NodeStoreHandler {
           JSON.stringify(this.contributors) !== JSON.stringify(newContributors)
         ) {
           this.contributors = newContributors;
+          console.log(
+            performance.now(),
+            "contributors updated",
+            newContributors
+          );
         }
       }),
     ];
@@ -93,6 +113,14 @@ export class NodeStoreHandler {
   destroy() {
     this.unsubscribers.forEach((unsub) => unsub?.());
     this.unsubscribers = [];
+  }
+
+  // Force a refresh of the hierarchy data
+  refreshHierarchyData() {
+    // This triggers reactive recalculation of derived state
+    // We can use a small state update to force the recalculation
+    const tempPoints = this.points;
+    this.points = tempPoints;
   }
 
   getHierarchyData() {
@@ -130,6 +158,8 @@ export class NodeStoreHandler {
       }),
     };
 
+    // Debug only when needed
+    // console.log("getHierarchyData", hierarchyData);
     return hierarchyData;
   }
 }

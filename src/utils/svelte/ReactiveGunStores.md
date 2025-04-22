@@ -18,15 +18,15 @@ import { writable } from "svelte/store";
 // Create a custom store that wraps Gun data
 function createGunStore(path) {
   const { set, update, subscribe } = writable({ loading: true });
-  
+
   // Set up Gun subscription
-  gun.get(path).on(data => {
+  gun.get(path).on((data) => {
     set({ loading: false, data });
   });
-  
+
   return {
     subscribe,
-    put: (value) => gun.get(path).put(value)
+    put: (value) => gun.get(path).put(value),
   };
 }
 
@@ -47,23 +47,23 @@ import { GunSubscription } from "./GunSubscription";
 function createReactiveStore(path) {
   // Create a node reference
   const node = new GunNode(Array.isArray(path) ? path : [path]);
-  
+
   // Create a base stream
   const stream = node.stream().startWith({ loading: true });
-  
+
   // Return an object with the subscription interface and additional methods
   return {
     // Standard subscription interface for Svelte compatibility
     subscribe: stream.on.bind(stream),
-    
+
     // Methods for modifying data
     put: (value) => node.put(value),
-    
+
     // Access to the underlying stream for composition
     stream: () => stream,
-    
+
     // Access to the node for direct operations
-    node: () => node
+    node: () => node,
   };
 }
 
@@ -80,11 +80,12 @@ import { preferencesStore } from "./stores";
 
 // Combine user data with preferences
 const enhancedUserStore = {
-  subscribe: userStore.stream()
+  subscribe: userStore
+    .stream()
     .combine(preferencesStore.stream(), (user, prefs) => {
       return { ...user, preferences: prefs };
     })
-    .on.bind()
+    .on.bind(),
 };
 ```
 
@@ -93,9 +94,10 @@ const enhancedUserStore = {
 ```typescript
 // Create a store that only contains the user's theme preference
 export const themeStore = {
-  subscribe: userStore.stream()
-    .map(user => user.theme || "default")
-    .on.bind()
+  subscribe: userStore
+    .stream()
+    .map((user) => user.theme || "default")
+    .on.bind(),
 };
 ```
 
@@ -104,15 +106,16 @@ export const themeStore = {
 ```typescript
 // Create a store that has different behavior for admins vs regular users
 export const permissionsStore = {
-  subscribe: userStore.stream()
-    .switchMap(user => {
+  subscribe: userStore
+    .stream()
+    .switchMap((user) => {
       if (user.role === "admin") {
         return adminPermissionsNode.stream();
       } else {
         return regularPermissionsNode.stream();
       }
     })
-    .on.bind()
+    .on.bind(),
 };
 ```
 
@@ -121,9 +124,10 @@ export const permissionsStore = {
 ```typescript
 // Only emit when notification count changes
 export const notificationCountStore = {
-  subscribe: notificationsStore.stream()
-    .map(notifications => Object.keys(notifications || {}).length)
-    .on.bind()
+  subscribe: notificationsStore
+    .stream()
+    .map((notifications) => Object.keys(notifications || {}).length)
+    .on.bind(),
 };
 ```
 
@@ -137,37 +141,39 @@ A common pattern in Gun applications is having collections of items where each i
 
 ```typescript
 function createItemsStore(collectionPath) {
-  const node = new GunNode(Array.isArray(collectionPath) ? collectionPath : [collectionPath]);
-  
+  const node = new GunNode(
+    Array.isArray(collectionPath) ? collectionPath : [collectionPath]
+  );
+
   // Create a stream that represents the collection
   const itemsStream = node.stream().switchMap(() => node.each());
-  
+
   // Track the state of all items
   let items = {};
-  
+
   // The store will emit the entire collection whenever any item changes
   return {
     subscribe: (callback) => {
-      return itemsStream.on(item => {
+      return itemsStream.on((item) => {
         if (item._removed) {
           delete items[item._key];
         } else {
           items[item._key] = item;
         }
-        
+
         // Make a copy to ensure reactivity
-        callback({...items});
+        callback({ ...items });
       });
     },
-    
+
     add: (value) => {
       const id = Date.now().toString(36) + Math.random().toString(36).substr(2);
       node.get(id).put(value);
       return id;
     },
-    
+
     remove: (id) => node.get(id).put(null),
-    update: (id, value) => node.get(id).put(value)
+    update: (id, value) => node.get(id).put(value),
   };
 }
 
@@ -182,16 +188,16 @@ Following the insights from Svelte's store patterns, we can create a "scheduler"
 function createCollectionAggregator(collectionStore, aggregateFn) {
   // Create a writable store for the aggregated value
   const { set, subscribe } = writable(aggregateFn({}));
-  
+
   // Subscribe to the collection and update the aggregate when it changes
-  const unsubscribe = collectionStore.subscribe(items => {
+  const unsubscribe = collectionStore.subscribe((items) => {
     const aggregatedValue = aggregateFn(items);
     set(aggregatedValue);
   });
-  
+
   return {
     subscribe,
-    unsubscribe
+    unsubscribe,
   };
 }
 
@@ -199,7 +205,7 @@ function createCollectionAggregator(collectionStore, aggregateFn) {
 const tasksStore = createItemsStore("tasks");
 const completedTasksCount = createCollectionAggregator(
   tasksStore,
-  (tasks) => Object.values(tasks).filter(task => task.completed).length
+  (tasks) => Object.values(tasks).filter((task) => task.completed).length
 );
 
 // Use in a Svelte component
@@ -214,18 +220,18 @@ With Gun's graph structure, you often have nested data that needs to be reactive
 function createNestedReactiveStore(path, nestedFields) {
   const mainNode = new GunNode(Array.isArray(path) ? path : [path]);
   const mainStream = mainNode.stream();
-  
+
   // Create streams for each nested field
   const nestedStreams = {};
   for (const field of nestedFields) {
-    nestedStreams[field] = mainStream.switchMap(data => {
+    nestedStreams[field] = mainStream.switchMap((data) => {
       if (!data || !data[field]) {
         return GunSubscription.of(null);
       }
       return new GunNode([...path, field]).stream();
     });
   }
-  
+
   // Combine main data with nested fields
   let combinedStream = mainStream;
   for (const [field, stream] of Object.entries(nestedStreams)) {
@@ -233,7 +239,7 @@ function createNestedReactiveStore(path, nestedFields) {
       return { ...main, [field]: nested };
     });
   }
-  
+
   return {
     subscribe: combinedStream.on.bind(combinedStream),
     put: (value) => mainNode.put(value),
@@ -242,14 +248,14 @@ function createNestedReactiveStore(path, nestedFields) {
       if (nestedFields.includes(field)) {
         mainNode.get(field).put(value);
       }
-    }
+    },
   };
 }
 
 // Usage:
 const userWithProfileStore = createNestedReactiveStore(
-  ['users', userId], 
-  ['profile', 'settings', 'friends']
+  ["users", userId],
+  ["profile", "settings", "friends"]
 );
 ```
 
@@ -263,18 +269,18 @@ Create stores with local state that syncs with Gun:
 function createStatefulStore(path, initialState = {}) {
   const node = new GunNode(Array.isArray(path) ? path : [path]);
   let localState = { ...initialState };
-  
+
   // Create a merged stream of local and remote state
   const remoteStream = node.stream();
   const localStream = GunSubscription.of(localState);
-  
+
   const stream = remoteStream.combine(localStream, (remote, local) => {
     return { ...local, ...remote };
   });
-  
+
   return {
     subscribe: stream.on.bind(stream),
-    
+
     // Update both local state and Gun
     put: (value) => {
       node.put(value);
@@ -282,19 +288,19 @@ function createStatefulStore(path, initialState = {}) {
       // Force an update of the local stream
       remoteStream.on(() => {});
     },
-    
+
     // Update only local state (doesn't sync to Gun)
     setLocal: (value) => {
       localState = { ...localState, ...value };
       // Force an update of the local stream
       remoteStream.on(() => {});
     },
-    
+
     // Access to the underlying stream for composition
     stream: () => stream,
-    
+
     // Access to the node for direct operations
-    node: () => node
+    node: () => node,
   };
 }
 ```
@@ -306,17 +312,20 @@ Create stores specifically designed for Gun collections:
 ```typescript
 function createCollectionStore(path) {
   const node = new GunNode(Array.isArray(path) ? path : [path]);
-  
+
   // Use the each method to get all items
-  const itemsStream = node.stream().map(() => {
-    return node.each();
-  }).switchMap(itemStream => itemStream);
-  
+  const itemsStream = node
+    .stream()
+    .map(() => {
+      return node.each();
+    })
+    .switchMap((itemStream) => itemStream);
+
   return {
     subscribe: (callback) => {
       const items = {};
-      
-      return itemsStream.on(item => {
+
+      return itemsStream.on((item) => {
         // Handle addition/removal of items
         if (item._removed) {
           delete items[item._key];
@@ -327,29 +336,29 @@ function createCollectionStore(path) {
         callback({ ...items });
       });
     },
-    
+
     // Add an item to the collection
     add: (value) => {
       const id = Date.now().toString(36) + Math.random().toString(36).substr(2);
       node.get(id).put(value);
       return id;
     },
-    
+
     // Remove an item from the collection
     remove: (id) => {
       node.get(id).put(null);
     },
-    
+
     // Update an item in the collection
     update: (id, value) => {
       node.get(id).put(value);
     },
-    
+
     // Get a specific item as a store
     item: (id) => createReactiveStore([...path, id]),
-    
+
     // Access to the node for direct operations
-    node: () => node
+    node: () => node,
   };
 }
 
@@ -362,25 +371,28 @@ Looking at the Todo.svelte component from our example app, we see a TypeScript e
 
 ```typescript
 // stores.js
-import { gun } from '../utils/gun/gunSetup';
-import { GunNode } from '../utils/gun/GunNode';
-import { GunSubscription } from '../utils/gun/GunSubscription';
+import { gun } from "../utils/gun/gunSetup";
+import { GunNode } from "../utils/gun/GunNode";
+import { GunSubscription } from "../utils/gun/GunSubscription";
 
 // Create a proper Svelte-compatible todos store
 export function createTodosStore() {
-  const todosNode = new GunNode(['todos']);
-  
+  const todosNode = new GunNode(["todos"]);
+
   // Create a collection stream that transforms the map into an array of [id, todo] pairs
-  const todosStream = todosNode.stream().switchMap(() => {
-    return todosNode.each();
-  }).map(item => {
-    // Each item already has _key from the GunSubscription.each() implementation
-    return [item._key, item];
-  });
-  
+  const todosStream = todosNode
+    .stream()
+    .switchMap(() => {
+      return todosNode.each();
+    })
+    .map((item) => {
+      // Each item already has _key from the GunSubscription.each() implementation
+      return [item._key, item];
+    });
+
   // Create an array to hold all todos
   let todoArray = [];
-  
+
   return {
     subscribe: (callback) => {
       return todosStream.on(([id, todo]) => {
@@ -396,12 +408,12 @@ export function createTodosStore() {
             todoArray.push([id, todo]);
           }
         }
-        
+
         // Call the callback with a fresh copy of the array
         callback([...todoArray]);
       });
     },
-    
+
     // Methods to modify todos
     add: (title) => {
       if (title.trim()) {
@@ -409,14 +421,14 @@ export function createTodosStore() {
         todosNode.get(id).put({ title, done: false, created: Date.now() });
       }
     },
-    
+
     toggle: (id, currentState) => {
-      todosNode.get(id).get('done').put(!currentState);
+      todosNode.get(id).get("done").put(!currentState);
     },
-    
+
     remove: (id) => {
       todosNode.get(id).put(null);
-    }
+    },
   };
 }
 
@@ -428,9 +440,9 @@ Then in Todo.svelte:
 ```typescript
 <script lang="ts">
   import { todos } from '../stores';
-  
+
   let newTodo = '';
-  
+
   function addTodo() {
     if (newTodo.trim()) {
       todos.add(newTodo);
@@ -441,22 +453,22 @@ Then in Todo.svelte:
 
 <div class="todo-app">
   <h1>GUN Todo App</h1>
-  
+
   <form on:submit|preventDefault={addTodo}>
     <input bind:value={newTodo} placeholder="What needs to be done?">
     <button type="submit">Add</button>
   </form>
-  
+
   <ul class="todo-list">
     {#each $todos as [id, todo] (id)}
       <li class:completed={todo.done}>
-        <input 
-          type="checkbox" 
-          checked={todo.done} 
+        <input
+          type="checkbox"
+          checked={todo.done}
           on:change={() => todos.toggle(id, todo.done)}
         >
         <span>{todo.title}</span>
-        <button on:click={() => todos.remove(id)}>Delete</button>
+        <button onclick={() => todos.remove(id)}>Delete</button>
       </li>
     {/each}
   </ul>
@@ -470,17 +482,17 @@ Our reactive stores integrate seamlessly with Svelte:
 ```svelte
 <script>
   import { userStore, tasksStore } from "./stores";
-  
+
   // Reactive declarations based on store values
   $: username = $userStore.name || "Guest";
   $: taskCount = Object.keys($tasksStore).length;
-  
+
   // Add a new task
   function addTask() {
-    tasksStore.add({ 
-      title: "New task", 
-      completed: false, 
-      createdAt: Date.now() 
+    tasksStore.add({
+      title: "New task",
+      completed: false,
+      createdAt: Date.now()
     });
   }
 </script>
@@ -488,14 +500,14 @@ Our reactive stores integrate seamlessly with Svelte:
 <h1>Welcome, {username}!</h1>
 <p>You have {taskCount} tasks.</p>
 
-<button on:click={addTask}>Add Task</button>
+<button onclick={addTask}>Add Task</button>
 
 <ul>
   {#each Object.entries($tasksStore) as [id, task]}
     <li class:completed={task.completed}>
       {task.title}
-      <button on:click={() => tasksStore.remove(id)}>Delete</button>
-      <button on:click={() => tasksStore.update(id, { ...task, completed: !task.completed })}>
+      <button onclick={() => tasksStore.remove(id)}>Delete</button>
+      <button onclick={() => tasksStore.update(id, { ...task, completed: !task.completed })}>
         {task.completed ? "Mark Incomplete" : "Mark Complete"}
       </button>
     </li>
@@ -511,9 +523,10 @@ Our reactive approach enables several performance optimizations:
 
 ```typescript
 export const typingStore = {
-  subscribe: inputStore.stream()
+  subscribe: inputStore
+    .stream()
     .debounce(300) // Only update after 300ms of inactivity
-    .on.bind()
+    .on.bind(),
 };
 ```
 
@@ -521,8 +534,9 @@ export const typingStore = {
 
 ```typescript
 export const filteredStore = {
-  subscribe: dataStore.stream()
-    .map(data => {
+  subscribe: dataStore
+    .stream()
+    .map((data) => {
       // Only include items that match the filter
       return Object.entries(data)
         .filter(([_, item]) => item.active)
@@ -531,7 +545,7 @@ export const filteredStore = {
           return acc;
         }, {});
     })
-    .on.bind()
+    .on.bind(),
 };
 ```
 
@@ -541,13 +555,13 @@ export const filteredStore = {
 function createLazyStore(pathFn) {
   let currentPath = null;
   let currentNode = null;
-  
+
   const triggerStream = GunSubscription.of(null);
-  
+
   return {
     subscribe: (callback) => {
       return triggerStream
-        .switchMap(trigger => {
+        .switchMap((trigger) => {
           if (!currentPath) return GunSubscription.of(null);
           if (!currentNode) {
             currentNode = new GunNode(currentPath);
@@ -556,7 +570,7 @@ function createLazyStore(pathFn) {
         })
         .on(callback);
     },
-    
+
     // Set the path and load data
     load: (params) => {
       const newPath = pathFn(params);
@@ -565,15 +579,19 @@ function createLazyStore(pathFn) {
         currentNode = new GunNode(currentPath);
         triggerStream.on(() => {}); // Force an update
       }
-    }
+    },
   };
 }
 
-// Usage: 
-const userProfileStore = createLazyStore(userId => ['users', userId, 'profile']);
+// Usage:
+const userProfileStore = createLazyStore((userId) => [
+  "users",
+  userId,
+  "profile",
+]);
 
 // Later, load a specific user:
-userProfileStore.load('user123');
+userProfileStore.load("user123");
 ```
 
 ## Syncing with External State
@@ -584,11 +602,11 @@ Our reactive approach makes it easy to sync Gun data with external state sources
 // Sync with localStorage
 function createPersistedStore(path, storageKey) {
   const node = new GunNode(Array.isArray(path) ? path : [path]);
-  
+
   // Load initial state from localStorage
   const savedData = localStorage.getItem(storageKey);
   let initialData = {};
-  
+
   if (savedData) {
     try {
       initialData = JSON.parse(savedData);
@@ -598,22 +616,22 @@ function createPersistedStore(path, storageKey) {
       console.error("Failed to parse saved data:", e);
     }
   }
-  
+
   // Create the stream
   const stream = node.stream().startWith(initialData);
-  
+
   // Save to localStorage when Gun data changes
-  stream.on(data => {
+  stream.on((data) => {
     localStorage.setItem(storageKey, JSON.stringify(data));
   });
-  
+
   return {
     subscribe: stream.on.bind(stream),
     put: (value) => node.put(value),
     reset: () => {
       localStorage.removeItem(storageKey);
       node.put(null);
-    }
+    },
   };
 }
 
@@ -630,4 +648,4 @@ By combining Gun's real-time database capabilities with reactive programming pat
 4. **Integrated Resource Management**: Automatically clean up subscriptions to prevent memory leaks
 5. **Svelte Integration**: Seamlessly work with Svelte's reactive programming model
 
-This approach transforms Gun from a simple real-time database into a comprehensive state management solution that can handle complex data flows in decentralized applications. 
+This approach transforms Gun from a simple real-time database into a comprehensive state management solution that can handle complex data flows in decentralized applications.

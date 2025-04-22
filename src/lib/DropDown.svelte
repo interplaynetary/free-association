@@ -1,10 +1,5 @@
 <script lang="ts">
-  import {
-    onMount,
-    createEventDispatcher,
-    afterUpdate,
-    onDestroy,
-  } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { getColorForUserId } from "../utils/colorUtils";
   import {
     loadUsers,
@@ -15,30 +10,40 @@
   import { derived, writable, readable, get } from "svelte/store";
   import { transientGun } from "../utils/gun/gunSetup";
 
-  // Props
-  export let title: string = "Select User";
-  export let searchPlaceholder: string = "Search users...";
-  export let position: { x: number; y: number } = { x: 0, y: 0 };
-  export let width: number = 280;
-  export let maxHeight: number = 320;
-  export let excludeIds: string[] = [];
-  export let filterText: string = "";
-  export let rootId: string | undefined = undefined;
-  export let show: boolean = false;
-
-  // Create event dispatcher
-  const dispatch = createEventDispatcher<{
-    select: { id: string; name: string };
-    close: void;
+  // Props using Svelte 5 runes
+  let {
+    title = "Select User",
+    searchPlaceholder = "Search users...",
+    position = { x: 0, y: 0 },
+    width = 280,
+    maxHeight = 320,
+    excludeIds = [],
+    filterText = "",
+    rootId = undefined,
+    show = false,
+    select = (detail: { id: string; name: string }) => {},
+    close = () => {},
+  } = $props<{
+    title?: string;
+    searchPlaceholder?: string;
+    position?: { x: number; y: number };
+    width?: number;
+    maxHeight?: number;
+    excludeIds?: string[];
+    filterText?: string;
+    rootId?: string | undefined;
+    show?: boolean;
+    select?: (detail: { id: string; name: string }) => void;
+    close?: () => void;
   }>();
 
   // State
-  let dropdownContainer: HTMLDivElement;
-  let searchInput: HTMLInputElement;
-  let resultsContainer: HTMLDivElement;
-  let clearSubscriptions: () => void = () => {};
-  let initialized: boolean = false;
-  let heartbeatInterval: ReturnType<typeof setInterval>;
+  let dropdownContainer = $state<HTMLDivElement | null>(null);
+  let searchInput = $state<HTMLInputElement | null>(null);
+  let resultsContainer = $state<HTMLDivElement | null>(null);
+  let clearSubscriptions = $state<() => void>(() => {});
+  let initialized = $state(false);
+  let heartbeatInterval = $state<ReturnType<typeof setInterval> | null>(null);
 
   // Create reactive stores
   const currentFilterTextStore = writable<string>(filterText);
@@ -53,10 +58,10 @@
     lastUpdateTime: new Date().toISOString(),
   });
 
-  // Subscribe to filter text changes
-  $: {
+  // Effect to update filter text when prop changes
+  $effect(() => {
     currentFilterTextStore.set(filterText);
-  }
+  });
 
   // Setup heartbeat for online status
   function setupHeartbeat() {
@@ -173,12 +178,12 @@
     // Cleanup subscriptions
     clearSubscriptions();
 
-    dispatch("close");
+    close();
     show = false;
   }
 
   function handleSelect(id: string, name: string) {
-    dispatch("select", { id, name });
+    select({ id, name });
     handleClose();
   }
 
@@ -193,7 +198,7 @@
 
       // Focus search input
       if (searchInput) {
-        setTimeout(() => searchInput.focus(), 50);
+        setTimeout(() => searchInput?.focus(), 50);
       }
 
       adjustPosition();
@@ -257,21 +262,19 @@
     }
   });
 
-  afterUpdate(() => {
+  // Effect to run initialize when show changes
+  $effect(() => {
     if (show && !initialized) {
       initialize();
     }
   });
 
-  // Watch for changes in show prop
-  $: if (show && !initialized) {
-    initialize();
-  }
-
-  // Subscribe to changes in position or show props
-  $: if (show && position && dropdownContainer) {
-    setTimeout(adjustPosition, 0);
-  }
+  // Effect to adjust position when position or show changes
+  $effect(() => {
+    if (show && position && dropdownContainer) {
+      setTimeout(adjustPosition, 0);
+    }
+  });
 
   // Clean up when component is destroyed
   onMount(() => {
@@ -298,9 +301,9 @@
         placeholder={searchPlaceholder}
         bind:this={searchInput}
         bind:value={$currentFilterTextStore}
-        on:input={(e) => updateSearchFilter(e.currentTarget.value)}
+        oninput={(e) => updateSearchFilter(e.currentTarget.value)}
       />
-      <button class="close-button" on:click={handleClose}>×</button>
+      <button class="close-button" onclick={handleClose}>×</button>
     </div>
 
     <div class="results" bind:this={resultsContainer}>
@@ -322,7 +325,7 @@
           <div
             class="item"
             data-id={item.id}
-            on:click={() => handleSelect(item.id, item.name)}
+            onclick={() => handleSelect(item.id, item.name)}
           >
             <div
               class="color-dot"

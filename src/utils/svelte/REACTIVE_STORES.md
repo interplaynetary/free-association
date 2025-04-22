@@ -17,16 +17,16 @@ This library provides a powerful reactive programming pattern for Gun databases,
 Access a single Gun node reactively:
 
 ```typescript
-import { createGunStore } from './reactiveStores';
+import { createGunStore } from "./reactiveStores";
 
 // Create a store for a user profile
-const profile = createGunStore(['users', 'alice', 'profile']);
+const profile = createGunStore(["users", "alice", "profile"]);
 
 // Use in Svelte components
-$: userName = $profile?.name || 'Guest';
+$: userName = $profile?.name || "Guest";
 
 // Update the data
-profile.node().put({ name: 'Alice Smith' });
+profile.node().put({ name: "Alice Smith" });
 ```
 
 ### Collection Store
@@ -40,9 +40,9 @@ import { createCollectionStore } from './reactiveStores';
 const tasks = createCollectionStore<Task>('tasks');
 
 // Add an item
-tasks.add({ 
-  title: 'Learn Gun', 
-  completed: false, 
+tasks.add({
+  title: 'Learn Gun',
+  completed: false,
   priority: 'high',
   created: Date.now()
 });
@@ -57,7 +57,7 @@ tasks.remove('task123');
 {#each $tasks as [id, task]}
   <div class:completed={task.completed}>
     {task.title}
-    <button on:click={() => tasks.update(id, { completed: !task.completed })}>
+    <button onclick={() => tasks.update(id, { completed: !task.completed })}>
       Toggle
     </button>
   </div>
@@ -71,23 +71,23 @@ tasks.remove('task123');
 Merge multiple data sources into a single reactive stream:
 
 ```typescript
-import { createGunStore, combineStores } from './reactiveStores';
+import { createGunStore, combineStores } from "./reactiveStores";
 
-const user = createGunStore(['users', 'current']);
-const preferences = createGunStore(['preferences']);
+const user = createGunStore(["users", "current"]);
+const preferences = createGunStore(["preferences"]);
 
 // Combine into a unified store
 const userWithPrefs = combineStores(
-  user, 
+  user,
   preferences,
   (userData, prefsData) => ({
     ...userData,
-    preferences: prefsData
+    preferences: prefsData,
   })
 );
 
 // Use the combined store
-$: theme = $userWithPrefs?.preferences?.theme || 'light';
+$: theme = $userWithPrefs?.preferences?.theme || "light";
 ```
 
 ### Derived Data
@@ -95,25 +95,22 @@ $: theme = $userWithPrefs?.preferences?.theme || 'light';
 Transform data with mapping and filtering:
 
 ```typescript
-import { createCollectionStore, filterCollectionStore } from './reactiveStores';
+import { createCollectionStore, filterCollectionStore } from "./reactiveStores";
 
-const tasks = createCollectionStore<Task>('tasks');
+const tasks = createCollectionStore<Task>("tasks");
 
 // Create a filtered view of completed tasks
 const completedTasks = filterCollectionStore(
   tasks,
-  task => task.completed === true
+  (task) => task.completed === true
 );
 
 // Create a store for the completion percentage
-const completionPercentage = mapStore(
-  tasks,
-  (tasks) => {
-    const total = tasks.length;
-    const completed = tasks.filter(([_, task]) => task.completed).length;
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  }
-);
+const completionPercentage = mapStore(tasks, (tasks) => {
+  const total = tasks.length;
+  const completed = tasks.filter(([_, task]) => task.completed).length;
+  return total > 0 ? Math.round((completed / total) * 100) : 0;
+});
 ```
 
 ### Advanced Patterns
@@ -123,21 +120,18 @@ const completionPercentage = mapStore(
 Switch data sources based on conditions:
 
 ```typescript
-import { createGunStore, switchMapStore } from './reactiveStores';
+import { createGunStore, switchMapStore } from "./reactiveStores";
 
-const user = createGunStore(['users', 'current']);
+const user = createGunStore(["users", "current"]);
 
 // Switch content based on user role
-const dynamicContent = switchMapStore(
-  user,
-  (userData) => {
-    if (userData?.role === 'admin') {
-      return createGunStore(['content', 'admin']);
-    } else {
-      return createGunStore(['content', 'user']);
-    }
+const dynamicContent = switchMapStore(user, (userData) => {
+  if (userData?.role === "admin") {
+    return createGunStore(["content", "admin"]);
+  } else {
+    return createGunStore(["content", "user"]);
   }
-);
+});
 ```
 
 #### Debounced Updates
@@ -145,10 +139,10 @@ const dynamicContent = switchMapStore(
 Limit update frequency for better performance:
 
 ```typescript
-import { createGunStore, debounceStore } from './reactiveStores';
+import { createGunStore, debounceStore } from "./reactiveStores";
 
 // User input store
-const searchQuery = createGunStore(['app', 'search']);
+const searchQuery = createGunStore(["app", "search"]);
 
 // Debounce to avoid excessive processing
 const debouncedSearch = debounceStore(searchQuery, 300);
@@ -162,10 +156,10 @@ $: performSearch($debouncedSearch);
 Automatically resolve references in Gun data:
 
 ```typescript
-import { createDeepStore } from './reactiveStores';
+import { createDeepStore } from "./reactiveStores";
 
 // Create a store that resolves references one level deep
-const userWithFriends = createDeepStore(['users', 'current'], 1);
+const userWithFriends = createDeepStore(["users", "current"], 1);
 
 // References in userWithFriends will be automatically resolved
 $: friends = $userWithFriends?.friends || [];
@@ -174,20 +168,24 @@ $: friends = $userWithFriends?.friends || [];
 ## Best Practices
 
 1. **Use the Right Store Type**
+
    - `createGunStore` for single nodes
    - `createCollectionStore` for sets of nodes
    - `createDeepStore` for data with references
 
 2. **Minimize Transformations**
+
    - Put expensive transformations in derived stores
    - Use debouncing for frequently changing data
    - Consider memoizing complex calculations
 
 3. **Proper Cleanup**
+
    - All stores automatically clean up when there are no more subscribers
    - Manually call `unsubscribe()` for programmatically created subscriptions
 
 4. **Type Safety**
+
    - Define proper interfaces for your data
    - Extend the `CollectionItem` interface for collection items
    - Use type parameters to ensure type safety in transformations
@@ -214,4 +212,4 @@ This pattern builds upon:
 4. GunSubscription's composition methods
 5. TypeScript's strong typing system
 
-By combining these powerful concepts, we create a seamless, type-safe way to work with decentralized real-time data that feels natural in a Svelte application. 
+By combining these powerful concepts, we create a seamless, type-safe way to work with decentralized real-time data that feels natural in a Svelte application.

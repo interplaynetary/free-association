@@ -7,17 +7,23 @@
     usersMap,
   } from "../utils/userUtils";
 
-  // Props
-  export let userId: string;
-  export let truncateLength: number = 10;
-  export let removable: boolean = true;
-
-  // Callback props for Svelte 5
-  export let onClick: (userId: string) => void = () => {};
-  export let onRemove: (userId: string) => void = () => {};
+  // Props using Svelte 5 runes
+  let {
+    userId,
+    truncateLength = 10,
+    removable = true,
+    onClick = (userId: string) => {},
+    onRemove = (userId: string) => {},
+  } = $props<{
+    userId: string;
+    truncateLength?: number;
+    removable?: boolean;
+    onClick?: (userId: string) => void;
+    onRemove?: (userId: string) => void;
+  }>();
 
   // State
-  let displayName: string = userId;
+  let displayName = $state(userId);
   let cleanupNameSub: () => void = () => {};
 
   // Element reference
@@ -75,7 +81,7 @@
   }
 
   // Get the current full name (for logging or debugging)
-  export function getFullName(): string {
+  function getFullName(): string {
     return usersMap.has(userId) ? usersMap.get(userId)! : userId;
   }
 </script>
@@ -85,12 +91,12 @@
   class="tag-pill"
   data-user-id={userId}
   style="background: {getColorForUserId(userId)}"
-  on:click={handlePillClick}
+  onclick={handlePillClick}
 >
   <span>{getFormattedName(displayName)}</span>
 
   {#if removable}
-    <span class="remove-tag" on:click={handleRemoveClick}>×</span>
+    <span class="remove-tag" onclick={handleRemoveClick}>×</span>
   {/if}
 </div>
 

@@ -18,10 +18,10 @@ The Gun chain has been extended with a `.subscribe()` method that makes it compa
 ```svelte
 <script>
   import { gun } from '../utils/gun/gunSetup';
-  
+
   // Get a Gun node to use as a Svelte store
   const user = gun.get('users').get('alice');
-  
+
   // Modify data
   function updateName(newName) {
     user.get('name').put(newName);
@@ -29,7 +29,7 @@ The Gun chain has been extended with a `.subscribe()` method that makes it compa
 </script>
 
 <h1>Hello, {$user?.name || 'Anonymous'}</h1>
-<button on:click={() => updateName('Alice Smith')}>
+<button onclick={() => updateName('Alice Smith')}>
   Update Name
 </button>
 ```
@@ -56,13 +56,13 @@ For more complex scenarios, we provide the `GunNode` class that adds type safety
 ```svelte
 <script>
   import { UserNode } from '../models/UserNode';
-  
+
   // Create a typed node wrapper
   const userNode = new UserNode('alice');
-  
+
   // Get the raw Gun chain for Svelte binding
   const user = userNode.toStore();
-  
+
   // Use typed methods for complex operations
   function updateProfile() {
     userNode.updateProfile('Alice Smith', 'alice@example.com')
@@ -73,7 +73,7 @@ For more complex scenarios, we provide the `GunNode` class that adds type safety
 
 <h1>Hello, {$user?.name || 'Anonymous'}</h1>
 <p>Email: {$user?.email || 'No email provided'}</p>
-<button on:click={updateProfile}>
+<button onclick={updateProfile}>
   Update Profile
 </button>
 ```
@@ -102,16 +102,16 @@ Often, the best solution is to combine both approaches:
 <script>
   import { gun } from '../utils/gun/gunSetup';
   import { UserNode } from '../models/UserNode';
-  
+
   // For simple direct access
   const allUsers = gun.get('users');
-  
+
   // For complex operations
   const currentUser = new UserNode('alice');
-  
+
   // Use the raw Gun chain for Svelte binding
   const userStore = currentUser.toStore();
-  
+
   // Use typed methods for complex operations
   function updateProfile() {
     currentUser.updateProfile('Alice Smith', 'alice@example.com');
@@ -127,38 +127,42 @@ Often, the best solution is to combine both approaches:
 
 <!-- Binding through toStore() -->
 <h1>Current user: {$userStore?.name}</h1>
-<button on:click={updateProfile}>Update Profile</button>
+<button onclick={updateProfile}>Update Profile</button>
 ```
 
 ## Best Practices
 
 1. **Prefer direct Gun chains for simple bindings**
+
    ```svelte
    const user = gun.get('users').get('alice');
    // Use in template as: {$user.name}
    ```
 
 2. **Use GunNode for complex operations**
+
    ```typescript
-   const user = new UserNode('alice');
-   await user.updateProfile('Alice', 'alice@example.com');
+   const user = new UserNode("alice");
+   await user.updateProfile("Alice", "alice@example.com");
    ```
 
 3. **Combine both with toStore() when needed**
+
    ```typescript
-   const user = new UserNode('alice');
+   const user = new UserNode("alice");
    const userStore = user.toStore();
    // Use in template as: {$userStore.name}
    ```
 
 4. **Use customStore for advanced reactivity**
+
    ```typescript
-   import { customStore } from '../utils/gun/gunSetup';
-   
-   const userStore = customStore(gun.get('users').get('alice'), {
-     updateName: (name) => gun.get('users').get('alice').get('name').put(name)
+   import { customStore } from "../utils/gun/gunSetup";
+
+   const userStore = customStore(gun.get("users").get("alice"), {
+     updateName: (name) => gun.get("users").get("alice").get("name").put(name),
    });
-   
+
    // Use methods: userStore.updateName('Alice')
    // Use in template: {$userStore.name}
    ```
@@ -169,4 +173,4 @@ Often, the best solution is to combine both approaches:
 - GunNode adds a small layer of abstraction
 - Both approaches are optimized for Svelte's reactivity system
 - For large collections, be careful with `.map()` as it can load a lot of data
-- Use optimized methods like GunNode's `each()` for iterating over collections 
+- Use optimized methods like GunNode's `each()` for iterating over collections

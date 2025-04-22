@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
-  import { createReactiveGraph } from '../utils/reactive/ReactiveGraph';
-  import { createReactiveComponent } from '../utils/reactive/ReactiveComponent';
-  import { gun, transientGun } from '../utils/gun/gunSetup';
-  import { writable, type Writable } from 'svelte/store';
+  import { onDestroy, onMount } from "svelte";
+  import { createReactiveGraph } from "../utils/reactive/ReactiveGraph";
+  import { createReactiveComponent } from "../utils/reactive/ReactiveComponent";
+  import { gun, transientGun } from "../utils/gun/gunSetup";
+  import { writable, type Writable } from "svelte/store";
 
   // Create two graphs - one persistent and one transient
   const persistentGraph = createReactiveGraph();
@@ -11,29 +11,29 @@
 
   // Create two components - one for each graph
   const persistentComponent = createReactiveComponent(persistentGraph, {
-    defaultPath: ['examples', 'counter']
+    defaultPath: ["examples", "counter"],
   });
 
   const transientComponent = createReactiveComponent(transientGraph, {
-    defaultPath: ['examples', 'counter'],
-    transient: true
+    defaultPath: ["examples", "counter"],
+    transient: true,
   });
 
   // Initialize both components
   onMount(async () => {
     await persistentComponent.initialize();
     await transientComponent.initialize();
-    
+
     // Initialize counters if they don't exist
-    const persistentData = await persistentComponent.getDataStore('value', 0);
-    const transientData = await transientComponent.getDataStore('value', 0);
-    
+    const persistentData = await persistentComponent.getDataStore("value", 0);
+    const transientData = await transientComponent.getDataStore("value", 0);
+
     if (!$persistentData) {
-      await persistentComponent.updateData('value', 0);
+      await persistentComponent.updateData("value", 0);
     }
-    
+
     if (!$transientData) {
-      await transientComponent.updateData('value', 0);
+      await transientComponent.updateData("value", 0);
     }
   });
 
@@ -44,24 +44,24 @@
   });
 
   // Create stores for both counters
-  const persistentCounter = persistentComponent.getDataStore('value', 0);
-  const transientCounter = transientComponent.getDataStore('value', 0);
+  const persistentCounter = persistentComponent.getDataStore("value", 0);
+  const transientCounter = transientComponent.getDataStore("value", 0);
 
   // Functions to increment each counter
   async function incrementPersistent() {
     const currentValue = $persistentCounter || 0;
-    await persistentComponent.updateData('value', currentValue + 1);
+    await persistentComponent.updateData("value", currentValue + 1);
   }
 
   async function incrementTransient() {
     const currentValue = $transientCounter || 0;
-    await transientComponent.updateData('value', currentValue + 1);
+    await transientComponent.updateData("value", currentValue + 1);
   }
 
   // Function to reset both counters
   async function resetCounters() {
-    await persistentComponent.updateData('value', 0);
-    await transientComponent.updateData('value', 0);
+    await persistentComponent.updateData("value", 0);
+    await transientComponent.updateData("value", 0);
   }
 </script>
 
@@ -73,40 +73,45 @@
       <h2>Persistent Counter</h2>
       <p>Value: {$persistentCounter || 0}</p>
       <p class="description">
-        This counter uses persistent storage. Its value will be saved in localStorage
-        and will persist between page refreshes and browser restarts.
+        This counter uses persistent storage. Its value will be saved in
+        localStorage and will persist between page refreshes and browser
+        restarts.
       </p>
-      <button on:click={incrementPersistent}>Increment</button>
+      <button onclick={incrementPersistent}>Increment</button>
     </div>
 
     <div class="counter transient">
       <h2>Transient Counter</h2>
       <p>Value: {$transientCounter || 0}</p>
       <p class="description">
-        This counter uses transient storage. Its value will be synchronized between
-        peers but NOT saved to localStorage. It will reset on page refresh.
+        This counter uses transient storage. Its value will be synchronized
+        between peers but NOT saved to localStorage. It will reset on page
+        refresh.
       </p>
-      <button on:click={incrementTransient}>Increment</button>
+      <button onclick={incrementTransient}>Increment</button>
     </div>
   </div>
 
   <div class="controls">
-    <button on:click={resetCounters}>Reset Both Counters</button>
+    <button onclick={resetCounters}>Reset Both Counters</button>
   </div>
 
   <div class="explanation">
     <h3>How it Works</h3>
     <p>
-      Both counters use ReactiveGraph and ReactiveComponent, but with different storage options:
+      Both counters use ReactiveGraph and ReactiveComponent, but with different
+      storage options:
     </p>
     <ul>
       <li>
-        <strong>Persistent Counter:</strong> Uses the standard Gun instance with localStorage enabled.
-        Data is persisted to localStorage and synchronized with peers.
+        <strong>Persistent Counter:</strong> Uses the standard Gun instance with
+        localStorage enabled. Data is persisted to localStorage and synchronized
+        with peers.
       </li>
       <li>
-        <strong>Transient Counter:</strong> Uses the transientGun instance with localStorage disabled.
-        Data is only synchronized with peers while the app is running, but not saved locally.
+        <strong>Transient Counter:</strong> Uses the transientGun instance with localStorage
+        disabled. Data is only synchronized with peers while the app is running,
+        but not saved locally.
       </li>
     </ul>
     <p>
@@ -121,7 +126,11 @@
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
   }
 
   h1 {
@@ -214,4 +223,4 @@
   .explanation ul {
     padding-left: 20px;
   }
-</style> 
+</style>

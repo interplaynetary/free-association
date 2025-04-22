@@ -20,7 +20,7 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
 ```svelte
 <script>
   import ProtoMap from './lib/ProtoMap.svelte';
-  
+
   let mapComponent;
 </script>
 
@@ -38,10 +38,10 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
 ```svelte
 <script>
   import ProtoMap from './lib/ProtoMap.svelte';
-  
+
   let mapComponent;
   let theme = 'light';
-  
+
   function toggleTheme() {
     theme = theme === 'light' ? 'dark' : 'light';
   }
@@ -57,7 +57,7 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
   {theme}
 />
 
-<button on:click={toggleTheme}>
+<button onclick={toggleTheme}>
   Switch to {theme === 'light' ? 'Dark' : 'Light'} Theme
 </button>
 ```
@@ -67,9 +67,9 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
 ```svelte
 <script>
   import ProtoMap from './lib/ProtoMap.svelte';
-  
+
   let mapComponent;
-  
+
   function addMarker() {
     if (mapComponent) {
       // Add a GeoJSON source
@@ -88,7 +88,7 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
           }
         ]
       });
-      
+
       // Add a layer for the source
       mapComponent.addLayer({
         id: 'marker-layer',
@@ -105,33 +105,33 @@ This is a unified ProtoMap component for integrating Protomaps with MapLibre GL 
 
 <ProtoMap bind:this={mapComponent} />
 
-<button on:click={addMarker}>Add Marker</button>
+<button onclick={addMarker}>Add Marker</button>
 ```
 
 ## Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| mapId | string | 'map' | ID for the map container |
-| initialCenter | [number, number] | [0, 0] | Initial map center coordinates [lng, lat] |
-| initialZoom | number | 1 | Initial zoom level |
-| mapStyle | object | undefined | Optional MapLibre style specification |
-| pmtilesUrl | string | undefined | URL to the PMTiles file |
-| pmtilesSourceName | string | 'protomaps' | Name for the PMTiles source |
-| pmtilesSourceType | 'vector' \| 'raster' \| 'raster-dem' | 'vector' | Type of PMTiles source |
-| theme | 'light' \| 'dark' \| 'white' \| 'black' \| 'grayscale' | 'light' | Theme for styled maps |
-| useTheme | boolean | false | Whether to use themed styling |
+| Prop              | Type                                                   | Default     | Description                               |
+| ----------------- | ------------------------------------------------------ | ----------- | ----------------------------------------- |
+| mapId             | string                                                 | 'map'       | ID for the map container                  |
+| initialCenter     | [number, number]                                       | [0, 0]      | Initial map center coordinates [lng, lat] |
+| initialZoom       | number                                                 | 1           | Initial zoom level                        |
+| mapStyle          | object                                                 | undefined   | Optional MapLibre style specification     |
+| pmtilesUrl        | string                                                 | undefined   | URL to the PMTiles file                   |
+| pmtilesSourceName | string                                                 | 'protomaps' | Name for the PMTiles source               |
+| pmtilesSourceType | 'vector' \| 'raster' \| 'raster-dem'                   | 'vector'    | Type of PMTiles source                    |
+| theme             | 'light' \| 'dark' \| 'white' \| 'black' \| 'grayscale' | 'light'     | Theme for styled maps                     |
+| useTheme          | boolean                                                | false       | Whether to use themed styling             |
 
 ## Methods
 
-| Method | Description |
-|--------|-------------|
-| flyTo(center, zoom) | Animate to a new center and zoom level |
-| fitBounds(bounds, options) | Fit the map to a bounding box |
-| getMap() | Get the MapLibre map instance |
-| setTheme(theme) | Set the map theme |
-| addLayer(layer) | Add a custom layer to the map |
-| addGeoJSON(id, data) | Add a GeoJSON source to the map |
+| Method                     | Description                            |
+| -------------------------- | -------------------------------------- |
+| flyTo(center, zoom)        | Animate to a new center and zoom level |
+| fitBounds(bounds, options) | Fit the map to a bounding box          |
+| getMap()                   | Get the MapLibre map instance          |
+| setTheme(theme)            | Set the map theme                      |
+| addLayer(layer)            | Add a custom layer to the map          |
+| addGeoJSON(id, data)       | Add a GeoJSON source to the map        |
 
 ## Example
 
@@ -155,7 +155,10 @@ bun add -d @types/maplibre-gl
 Make sure to include the MapLibre GL CSS in your main HTML file or import it in your entry file:
 
 ```html
-<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+<link
+  href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css"
+  rel="stylesheet"
+/>
 ```
 
 ## Components
@@ -185,15 +188,15 @@ This is the core component that provides direct access to MapLibre GL with PMTil
 
 #### Props
 
-| Prop              | Type                                     | Default       | Description                                        |
-|-------------------|------------------------------------------|---------------|----------------------------------------------------|
-| mapId             | string                                   | 'map'         | HTML ID for the map container                      |
-| initialCenter     | [number, number]                         | [0, 0]        | Initial center coordinates [lng, lat]              |
-| initialZoom       | number                                   | 1             | Initial zoom level                                 |
-| mapStyle          | maplibregl.StyleSpecification            | undefined     | Custom MapLibre GL style object                    |
-| pmtilesUrl        | string                                   | undefined     | URL of the PMTiles archive                         |
-| pmtilesSourceName | string                                   | 'protomaps'   | Name of the source in the map style               |
-| pmtilesSourceType | 'vector' \| 'raster' \| 'raster-dem'     | 'vector'      | Type of PMTiles source                             |
+| Prop              | Type                                 | Default     | Description                           |
+| ----------------- | ------------------------------------ | ----------- | ------------------------------------- |
+| mapId             | string                               | 'map'       | HTML ID for the map container         |
+| initialCenter     | [number, number]                     | [0, 0]      | Initial center coordinates [lng, lat] |
+| initialZoom       | number                               | 1           | Initial zoom level                    |
+| mapStyle          | maplibregl.StyleSpecification        | undefined   | Custom MapLibre GL style object       |
+| pmtilesUrl        | string                               | undefined   | URL of the PMTiles archive            |
+| pmtilesSourceName | string                               | 'protomaps' | Name of the source in the map style   |
+| pmtilesSourceType | 'vector' \| 'raster' \| 'raster-dem' | 'vector'    | Type of PMTiles source                |
 
 ### StyledProtoMap
 
@@ -214,13 +217,13 @@ This component builds on ProtoMap and adds theming capabilities from the Protoma
 
 #### Props
 
-| Prop          | Type                                                   | Default       | Description                                |
-|-----------------|--------------------------------------------------------|---------------|--------------------------------------------|
-| mapId           | string                                                 | 'styled-map'  | HTML ID for the map container              |
-| initialCenter   | [number, number]                                       | [0, 0]        | Initial center coordinates [lng, lat]      |
-| initialZoom     | number                                                 | 2             | Initial zoom level                         |
-| theme           | 'light' \| 'dark' \| 'white' \| 'black' \| 'grayscale' | 'light'       | Theme to use for styling the map           |
-| pmtilesUrl      | string                                                 | *Protomaps basemap URL*  | URL of the PMTiles archive   |
+| Prop          | Type                                                   | Default                 | Description                           |
+| ------------- | ------------------------------------------------------ | ----------------------- | ------------------------------------- |
+| mapId         | string                                                 | 'styled-map'            | HTML ID for the map container         |
+| initialCenter | [number, number]                                       | [0, 0]                  | Initial center coordinates [lng, lat] |
+| initialZoom   | number                                                 | 2                       | Initial zoom level                    |
+| theme         | 'light' \| 'dark' \| 'white' \| 'black' \| 'grayscale' | 'light'                 | Theme to use for styling the map      |
+| pmtilesUrl    | string                                                 | _Protomaps basemap URL_ | URL of the PMTiles archive            |
 
 ## Methods
 
@@ -246,7 +249,7 @@ Fit the map to a bounding box.
 // Fit to a bounding box
 mapComponent.fitBounds([
   [-122.66, 37.78], // Southwest coordinates
-  [-122.22, 37.95]  // Northeast coordinates
+  [-122.22, 37.95], // Northeast coordinates
 ]);
 ```
 
@@ -355,4 +358,4 @@ When using PMTiles data, make sure to properly attribute the data source:
 <div class="attribution">
   Map data: © OpenStreetMap contributors | Tiles: Protomaps
 </div>
-``` 
+```

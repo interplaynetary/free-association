@@ -30,7 +30,7 @@ interface GunUser {
 export const gun = Gun({
   peers: [
     "http://localhost:8765/gun", // Local relay peer
-    "https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
+    //"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
   ],
   localStorage: true, // Enable localStorage persistence in browser
 });
@@ -40,7 +40,7 @@ export const gun = Gun({
 export const transientGun = Gun({
   peers: [
     "http://localhost:8765/gun", // Local relay peer
-    "https://gun-manhattan.herokuapp.com/gun",
+    //"https://gun-manhattan.herokuapp.com/gun",
   ],
   localStorage: false, // Disable localStorage persistence for transient data
   radisk: false,
@@ -737,7 +737,7 @@ export function initGunOnMount() {
     gunInstance = Gun({
       peers: [
         "http://localhost:8765/gun",
-        "https://gun-manhattan.herokuapp.com/gun",
+        //"https://gun-manhattan.herokuapp.com/gun",
       ],
       localStorage: true,
     });

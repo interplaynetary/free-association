@@ -1506,7 +1506,7 @@ export class MyAccount extends Account {
   }
 </script>
 
-<button on:click={increment}>
+<button onclick={increment}>
   Count: {profile.current?.counter}
 </button>
 ```

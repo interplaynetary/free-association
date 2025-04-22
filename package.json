@@ -26,8 +26,10 @@
   },
   "dependencies": {
     "@gun-vue/relay": "^0.6.1",
+    "@tailwindcss/vite": "^4.1.4",
     "d3": "^7.9.0",
     "gun": "^0.2020.1240",
-    "gun-avatar": "^2.0.1"
+    "gun-avatar": "^2.0.1",
+    "tailwindcss": "^4.1.4"
   }
 }

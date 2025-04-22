@@ -108,12 +108,13 @@ import relay from "@gun-vue/relay";
 relay.init({
   host: "localhost",
   port: 8765,
-  store: true,  // Enable persistent storage
-  path: "public"
+  store: true, // Enable persistent storage
+  path: "public",
 });
 ```
 
 Run with:
+
 ```bash
 node start-relay.js
 ```
@@ -126,9 +127,9 @@ Our `gunSetup.ts` provides a configured Gun instance with optimizations:
 // Core Gun initialization
 export const gun = Gun({
   peers: [
-    'http://localhost:8765/gun', // Local relay peer
+    "http://localhost:8765/gun", // Local relay peer
   ],
-  localStorage: true // Enable browser persistence
+  localStorage: true, // Enable browser persistence
 });
 ```
 
@@ -138,7 +139,7 @@ export const gun = Gun({
 
 ```typescript
 // stores/todo.ts
-import { createCollectionStore } from '../utils/gun';
+import { createCollectionStore } from "../utils/gun";
 
 // Define item interface
 export interface Todo {
@@ -149,7 +150,7 @@ export interface Todo {
 
 // Create a collection store with sorting
 export const todos = createCollectionStore<Todo>(
-  'todos',
+  "todos",
   (a, b) => (b[1].created || 0) - (a[1].created || 0)
 );
 
@@ -180,7 +181,7 @@ Our dedicated ConnectionManager provides network status monitoring:
 
 ```typescript
 // Components can subscribe to connection status
-import { connectionStatus } from '../utils/gun';
+import { connectionStatus } from "../utils/gun";
 
 // Reactive access to connection state
 $: isConnected = $connectionStatus.connected;
@@ -188,7 +189,7 @@ $: statusText = $connectionStatus.statusText;
 $: peerCount = $connectionStatus.peerCount;
 
 // Connection can be monitored and manual reconnection triggered
-import { reconnectToPeers } from '../utils/gun';
+import { reconnectToPeers } from "../utils/gun";
 
 function attemptReconnect() {
   reconnectToPeers();
@@ -203,9 +204,9 @@ A Todo component example:
 <script lang="ts">
   import { todos, completedCount } from '../stores/todo';
   import ConnectionStatus from '../components/ConnectionStatus.svelte';
-  
+
   let newTodo = '';
-  
+
   function addTodo() {
     if (newTodo.trim()) {
       todos.add({
@@ -223,12 +224,12 @@ A Todo component example:
     <h1>GUN Todo App</h1>
     <ConnectionStatus />
   </header>
-  
+
   <form on:submit|preventDefault={addTodo}>
     <input bind:value={newTodo} placeholder="What needs to be done?">
     <button type="submit">Add</button>
   </form>
-  
+
   {#if $todos?.length === 0}
     <p>No todos yet!</p>
   {:else}
@@ -241,12 +242,12 @@ A Todo component example:
             on:change={() => todos.toggle(id, todo.done)}
           >
           <span class:completed={todo.done}>{todo.title}</span>
-          <button on:click={() => todos.remove(id)}>Delete</button>
+          <button onclick={() => todos.remove(id)}>Delete</button>
         </li>
       {/each}
     </ul>
   {/if}
-  
+
   <div>Completed: {$completedCount}</div>
 </div>
 ```
@@ -257,16 +258,15 @@ Our architecture supports complex asynchronous transformations through the GunSu
 
 ```typescript
 // Create a subscription that processes values asynchronously
-const processedSubscription = userNode.stream()
-  .map(async (userData) => {
-    // Perform async operations like API calls or heavy computation
-    const enrichedData = await fetchAdditionalData(userData.id);
-    return { ...userData, ...enrichedData };
-  });
+const processedSubscription = userNode.stream().map(async (userData) => {
+  // Perform async operations like API calls or heavy computation
+  const enrichedData = await fetchAdditionalData(userData.id);
+  return { ...userData, ...enrichedData };
+});
 
 // Subscribe to the processed data stream
-const cleanup = processedSubscription.on(data => {
-  console.log('Processed data:', data);
+const cleanup = processedSubscription.on((data) => {
+  console.log("Processed data:", data);
 });
 ```
 
@@ -282,21 +282,21 @@ Combine these with our reactive store system for powerful async workflows:
 ```typescript
 // Create a store with async transformation
 function createEnrichedUserStore(userId: string) {
-  const baseStore = createGunStore(['users', userId]);
-  
+  const baseStore = createGunStore(["users", userId]);
+
   return mapStore(baseStore, async (userData) => {
     if (!userData) return null;
-    
+
     // Async data enrichment
     const [friends, activity] = await Promise.all([
       fetchUserFriends(userId),
-      fetchUserActivity(userId)
+      fetchUserActivity(userId),
     ]);
-    
+
     return {
       ...userData,
       friends,
-      recentActivity: activity
+      recentActivity: activity,
     };
   });
 }
@@ -309,21 +309,21 @@ function createEnrichedUserStore(userId: string) {
 For advanced operations, use the `GunNode` class:
 
 ```typescript
-import { GunNode } from '../utils/gun';
+import { GunNode } from "../utils/gun";
 
 // Create a reference to a node
-const userNode = new GunNode(['users', userId]);
+const userNode = new GunNode(["users", userId]);
 
 // Read data once
 const userData = await userNode.once();
 
 // Subscribe to changes
 const unsubscribe = userNode.on((data) => {
-  console.log('User data updated:', data);
+  console.log("User data updated:", data);
 });
 
 // Update data
-userNode.put({ name: 'New Name' });
+userNode.put({ name: "New Name" });
 
 // Deep query with reference resolution
 const deepData = await userNode.deepGet(2);
@@ -332,22 +332,22 @@ const deepData = await userNode.deepGet(2);
 ### 2. Working with User Authentication
 
 ```typescript
-import { user, authenticate, logout, recallUser } from '../utils/gun';
+import { user, authenticate, logout, recallUser } from "../utils/gun";
 
 // Auto-login from session
 await recallUser();
 
 // Register/login
 try {
-  await authenticate('username', 'password');
-  console.log('Logged in as:', user.is?.alias);
+  await authenticate("username", "password");
+  console.log("Logged in as:", user.is?.alias);
 } catch (err) {
-  console.error('Authentication failed:', err);
+  console.error("Authentication failed:", err);
 }
 
 // Check authentication state
 if (user.is) {
-  console.log('User is authenticated:', user.is.pub);
+  console.log("User is authenticated:", user.is.pub);
 }
 
 // Logout
@@ -357,43 +357,40 @@ logout();
 ### 3. Certificate Management for Data Access Control
 
 ```typescript
-import { createCertificate, CertificatePermission } from '../utils/gun';
+import { createCertificate, CertificatePermission } from "../utils/gun";
 
 // Grant read-only access to a specific path
 const certificate = await createCertificate(
   targetUserPubKey,
-  ['shared/todos'],
+  ["shared/todos"],
   CertificatePermission.READ
 );
 
 // Grant temporary write access (expires in 1 hour)
 const tempCertificate = await createCertificate(
   targetUserPubKey,
-  ['collab/docs'],
+  ["collab/docs"],
   CertificatePermission.WRITE,
   3600000 // 1 hour in milliseconds
 );
 
 // Store certificate for reuse
-await storeCertificate('my-certificate', certificate, targetUserPubKey);
+await storeCertificate("my-certificate", certificate, targetUserPubKey);
 
 // Retrieve stored certificate
-const storedCert = await getCertificate('my-certificate');
+const storedCert = await getCertificate("my-certificate");
 ```
 
 ### 4. Creating Custom Reactive Stores
 
 ```typescript
-import { mapStore, combineStores } from '../utils/gun';
+import { mapStore, combineStores } from "../utils/gun";
 
 // Transform store values
-const userDisplayStore = mapStore(
-  userStore,
-  (user) => ({
-    displayName: user.name || user.username,
-    avatarUrl: user.avatar || '/default-avatar.png'
-  })
-);
+const userDisplayStore = mapStore(userStore, (user) => ({
+  displayName: user.name || user.username,
+  avatarUrl: user.avatar || "/default-avatar.png",
+}));
 
 // Combine multiple stores
 const combinedDataStore = combineStores(
@@ -401,7 +398,7 @@ const combinedDataStore = combineStores(
   settingsStore,
   (profile, settings) => ({
     ...profile,
-    preferences: settings.preferences
+    preferences: settings.preferences,
   })
 );
 ```
@@ -412,15 +409,15 @@ Gun uses references to link data nodes. Our stack provides tools to traverse and
 
 ```typescript
 // Get deep data with automatic reference resolution
-const node = new GunNode(['users', userId]);
-  
+const node = new GunNode(["users", userId]);
+
 // Resolve references up to 2 levels deep
 const userData = await node.deepGet(2);
 
 // Create a reactive subscription with deep resolution
 const deepSubscription = node.deepStream(3);
-const unsubscribe = deepSubscription.on(data => {
-  console.log('Deep data updated:', data);
+const unsubscribe = deepSubscription.on((data) => {
+  console.log("Deep data updated:", data);
 });
 ```
 
@@ -429,20 +426,20 @@ const unsubscribe = deepSubscription.on(data => {
 The GunSubscription class provides a powerful stream-like API:
 
 ```typescript
-import { GunSubscription } from '../utils/gun';
+import { GunSubscription } from "../utils/gun";
 
 // Create a subscription
-const subscription = new GunSubscription(['users', userId]);
+const subscription = new GunSubscription(["users", userId]);
 
 // Transform values with map
-const nameSubscription = subscription.map(user => user?.name || 'Anonymous');
+const nameSubscription = subscription.map((user) => user?.name || "Anonymous");
 
 // Combine with another subscription
 const combinedSub = subscription.combine(
   otherSubscription,
   (user, settings) => ({
     ...user,
-    theme: settings?.theme || 'default'
+    theme: settings?.theme || "default",
   })
 );
 
@@ -451,7 +448,7 @@ const debouncedSub = subscription.debounce(300);
 
 // Chain operations
 const processedSub = subscription
-  .map(data => processData(data))
+  .map((data) => processData(data))
   .debounce(200)
   .startWith(defaultValue);
 ```
@@ -459,26 +456,31 @@ const processedSub = subscription
 ## Best Practices
 
 1. **Separation of Concerns**
+
    - Keep Gun setup separate from application logic
    - Use data stores as intermediaries between UI and Gun
    - Create dedicated components for connection management
 
 2. **Error Handling**
+
    - Always wrap Gun operations in try/catch blocks
    - Provide fallbacks for network disconnections
    - Use timeouts for operations that might hang
 
 3. **Performance Optimization**
+
    - Use debounced stores for high-frequency updates
    - Implement cleanup for subscriptions when components unmount
    - Leverage the `GunSubscription` class for subscription management
 
 4. **Security**
+
    - Use certificate-based access control for sensitive data
    - Never trust client-side validation for data integrity
    - Properly handle user authentication and session management
 
 5. **Data Modeling Best Practices**
+
    - Keep data structures shallow and denormalized
    - Use references for relationships between data
    - Add timestamps for conflict resolution
@@ -501,29 +503,29 @@ function createFilterableCollection<T>(
   sortFn?: (a: [string, T], b: [string, T]) => number
 ) {
   const collection = createCollectionStore<T>(path, sortFn);
-  
+
   // Create a function to get filtered views of the collection
-  const getFiltered = (filterFn: (item: T) => boolean) => 
+  const getFiltered = (filterFn: (item: T) => boolean) =>
     filterCollectionStore(collection, filterFn);
-  
+
   return {
     ...collection,
-    getFiltered
+    getFiltered,
   };
 }
 
 // Usage
-const users = createFilterableCollection<User>('users');
-const activeUsers = users.getFiltered(user => user.status === 'active');
+const users = createFilterableCollection<User>("users");
+const activeUsers = users.getFiltered((user) => user.status === "active");
 ```
 
 ### User Profiles with Authentication
 
 ```typescript
 // stores/userProfile.ts
-import { user, getPath } from '../utils/gun';
-import { derived } from 'svelte/store';
-import { createGunStore } from '../utils/gun';
+import { user, getPath } from "../utils/gun";
+import { derived } from "svelte/store";
+import { createGunStore } from "../utils/gun";
 
 // Create a store that automatically points to current user's profile
 export function createUserProfileStore() {
@@ -531,29 +533,29 @@ export function createUserProfileStore() {
   const authStore = {
     subscribe: (callback) => {
       // Initial state
-      callback({ 
+      callback({
         isAuthenticated: !!user.is?.pub,
-        pub: user.is?.pub || null 
+        pub: user.is?.pub || null,
       });
-      
+
       // Listen for auth events
       const authHandler = () => {
-        callback({ 
+        callback({
           isAuthenticated: !!user.is?.pub,
-          pub: user.is?.pub || null 
+          pub: user.is?.pub || null,
         });
       };
-      
+
       // Listen for both auth and unauth events
-      gun.on('auth', authHandler);
-      
+      gun.on("auth", authHandler);
+
       // Cleanup
       return () => {
-        gun.off('auth', authHandler);
+        gun.off("auth", authHandler);
       };
-    }
+    },
   };
-  
+
   // Create a derived store for the profile
   return derived(
     authStore,
@@ -562,15 +564,15 @@ export function createUserProfileStore() {
         set(null);
         return;
       }
-      
+
       // Create a profile store for the authenticated user
-      const profileStore = createGunStore(['users', $auth.pub, 'profile']);
-      
+      const profileStore = createGunStore(["users", $auth.pub, "profile"]);
+
       // Subscribe to the profile
-      const unsubscribe = profileStore.subscribe(profile => {
+      const unsubscribe = profileStore.subscribe((profile) => {
         set(profile);
       });
-      
+
       return unsubscribe;
     },
     null // Initial value
@@ -619,10 +621,12 @@ To prevent memory leaks:
 ### Gun-Specific Issues
 
 1. **Circular Reference Detection**: Gun sometimes struggles with circular references
+
    - Solution: Avoid circular references in your data model
    - Use separate nodes with cross-references instead
 
 2. **Node Deletion**: Gun uses null values to mark deleted nodes
+
    - Solution: Use the correct `.put(null)` pattern and check for nulls in subscriptions
    - Be aware that deletes sometimes require time to propagate
 
@@ -636,7 +640,7 @@ A complete implementation of a user profile component:
 
 ```typescript
 // stores/profile.ts
-import { GunNode, createGunStore } from '../utils/gun';
+import { GunNode, createGunStore } from "../utils/gun";
 
 export interface Profile {
   name: string;
@@ -647,21 +651,23 @@ export interface Profile {
 
 // Create store for the current user's profile
 export function createProfileStore(userId: string) {
-  const profileNode = new GunNode(['users', userId, 'profile']);
-  
-  const profileStore = createGunStore<Profile>(
-    ['users', userId, 'profile'],
-    { name: '', bio: '', avatar: '', lastUpdated: 0 }
-  );
-  
+  const profileNode = new GunNode(["users", userId, "profile"]);
+
+  const profileStore = createGunStore<Profile>(["users", userId, "profile"], {
+    name: "",
+    bio: "",
+    avatar: "",
+    lastUpdated: 0,
+  });
+
   return {
     ...profileStore,
     updateProfile: (updates: Partial<Profile>) => {
       profileNode.put({
         ...updates,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       });
-    }
+    },
   };
 }
 ```
@@ -673,9 +679,9 @@ export function createProfileStore(userId: string) {
   import { createProfileStore } from '../stores/profile';
   import { connectionStatus } from '../utils/gun';
   import ConnectionStatus from './ConnectionStatus.svelte';
-  
+
   export let userId: string;
-  
+
   // Create profile store when component mounts
   let profileStore = createProfileStore(userId);
   let editMode = false;
@@ -683,7 +689,7 @@ export function createProfileStore(userId: string) {
     name: '',
     bio: ''
   };
-  
+
   // Initialize form data when profile data loads
   $: if ($profileStore) {
     formData = {
@@ -691,7 +697,7 @@ export function createProfileStore(userId: string) {
       bio: $profileStore.bio || ''
     };
   }
-  
+
   function saveProfile() {
     profileStore.updateProfile(formData);
     editMode = false;
@@ -715,7 +721,7 @@ export function createProfileStore(userId: string) {
       <img src={$profileStore.avatar || '/default-avatar.png'} alt="Profile Avatar">
       <h3>{$profileStore.name || 'Unknown User'}</h3>
       <p>{$profileStore.bio || 'No bio provided'}</p>
-      <button on:click={() => editMode = true}>Edit Profile</button>
+      <button onclick={() => editMode = true}>Edit Profile</button>
     </div>
   {:else}
     <form on:submit|preventDefault={saveProfile}>
@@ -723,19 +729,19 @@ export function createProfileStore(userId: string) {
         <label for="name">Name</label>
         <input id="name" bind:value={formData.name} required>
       </div>
-      
+
       <div class="form-group">
         <label for="bio">Bio</label>
         <textarea id="bio" bind:value={formData.bio}></textarea>
       </div>
-      
+
       <div class="form-actions">
-        <button type="button" on:click={() => editMode = false}>Cancel</button>
+        <button type="button" onclick={() => editMode = false}>Cancel</button>
         <button type="submit">Save Profile</button>
       </div>
     </form>
   {/if}
-  
+
   <footer>
     <small>Last updated: {$profileStore.lastUpdated ? new Date($profileStore.lastUpdated).toLocaleString() : 'Never'}</small>
   </footer>
@@ -752,11 +758,11 @@ For collaborative applications, you'll need to combine authentication, certifica
 // Create a shared document with access control
 export function createSharedDocument(docId: string) {
   // Create the document node
-  const docNode = new GunNode(['documents', docId]);
-  
+  const docNode = new GunNode(["documents", docId]);
+
   // Create a store for the document
-  const docStore = createGunStore(['documents', docId]);
-  
+  const docStore = createGunStore(["documents", docId]);
+
   return {
     ...docStore,
     // Update document contents
@@ -764,28 +770,31 @@ export function createSharedDocument(docId: string) {
       docNode.put({ content, updatedAt: Date.now() });
     },
     // Share with another user
-    shareWithUser: async (userPub: string, permission: CertificatePermission) => {
+    shareWithUser: async (
+      userPub: string,
+      permission: CertificatePermission
+    ) => {
       const cert = await createCertificate(
         userPub,
         [`documents/${docId}`],
         permission
       );
-      
+
       if (cert) {
         // Store the certificate
         await storeCertificate(`share_${docId}_${userPub}`, cert, userPub);
-        
+
         // Add to shared users list
-        const sharesNode = docNode.get('shares');
+        const sharesNode = docNode.get("shares");
         sharesNode.get(userPub).put({
           pub: userPub,
           permission: permission,
-          sharedAt: Date.now()
+          sharedAt: Date.now(),
         });
       }
-      
+
       return !!cert;
-    }
+    },
   };
 }
 ```

@@ -3,37 +3,35 @@
    * TreeMap.svelte - Svelte component for visualizing tree structures using D3 treemap layout
    *
    * This component visualizes hierarchical recognition data using a D3 treemap layout.
-   * It works directly with RecognitionStore data structures rather than TreeNode.
+   * It works directly with RecognitionStore data structures without requiring intermediate transformations.
    *
    * Usage:
    * <TreeMap bind:this={treeMapComponent} store={recognitionStore} width={500} height={400} />
    */
   import * as d3 from "d3";
-  import { getColorForName, getColorForUserId } from "../utils/colorUtils";
+  import { getColorForName } from "../../utils/colorUtils";
   import {
     calculateFontSize,
     name as getDisplayName,
-  } from "../utils/fontUtils";
-  import { usersMap } from "../utils/userUtils";
-  import { onMount, onDestroy, createEventDispatcher } from "svelte";
+  } from "../../utils/fontUtils";
+  import { usersMap } from "../../utils/userUtils";
+  import { onMount, onDestroy } from "svelte";
   import {
     type RecognitionStore,
     type NodeEntry,
     type RecNode,
-  } from "../stores/rec";
-  import DropDown from "./DropDown.svelte";
+    createRec,
+  } from "../../stores/rec";
+  import DropDown from "../DropDown.svelte";
   import ToastNotification from "./ToastNotification.svelte";
-  import TagPill from "./TagPill.svelte";
+  import TagPill from "../TagPill.svelte";
+  import { createRoot } from "svelte";
 
   // Initialize the global app object for tree map operations
   if (typeof window !== "undefined") {
     // console.log('Initializing TreeMap app object');
-    (window as any).app = (window as any).app || {};
-    (window as any).app.isGrowingActive = false;
+    (window as any).isGrowingActive = false;
   }
-
-  // Create event dispatcher for node clicks
-  const dispatch = createEventDispatcher();
 
   // Main props
   export let store: RecognitionStore;
@@ -61,9 +59,13 @@
   let y = d3.scaleLinear();
   let hierarchy: d3.HierarchyNode<RecNode>;
   let root: d3.HierarchyRectangularNode<RecNode>;
+  let originalRoot: d3.HierarchyRectangularNode<RecNode>;
   let currentView: d3.HierarchyRectangularNode<RecNode>;
   let svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   let group: d3.Selection<SVGGElement, unknown, null, undefined>;
+
+  // Initialize currentStore with the provided store
+  let currentStore: RecognitionStore = store;
 
   // Container reference with custom interface to allow adding methods
   interface TreeMapElement extends HTMLDivElement {
@@ -79,28 +81,43 @@
   let activeNode: d3.HierarchyRectangularNode<RecNode> | null = null;
 
   // Component state
-  let loading = true;
-  let error: string | null = null;
-  let treeMapData: d3.HierarchyRectangularNode<RecNode>;
   let deleteMode = false; // Track if delete mode is active
   let nodeTagComponents: any[] = []; // Array to track TagPill components
 
-  // Public API methods
-  export function getCurrentView(): RecNode {
-    return currentView?.data;
+  // Handle window resize
+  function handleResize() {
+    update(window.innerWidth, window.innerHeight);
   }
 
-  export function getCurrentData(): RecNode {
-    return root?.data;
+  // Helper to get store value
+  function get<T>(store: {
+    subscribe: (callback: (value: T) => void) => () => void;
+  }): T | undefined {
+    let value: T | undefined;
+    const unsubscribe = store.subscribe((v) => {
+      value = v;
+    });
+    unsubscribe();
+    return value;
   }
 
-  export function getRoot(): d3.HierarchyRectangularNode<RecNode> {
-    return root;
-  }
+  // Helper function to generate unique IDs
+  const uid = (function () {
+    let id = 0;
+    return function (prefix: string) {
+      const uniqueId = `${prefix}-${++id}`;
+      return { id: uniqueId, href: `#${uniqueId}` };
+    };
+  })();
 
   // Get the element - used to match TreemapInstance.element
   export function getElement(): HTMLElement | SVGSVGElement {
     return svg?.node() || treeMap;
+  }
+
+  // Add a helper function to check growing state more safely
+  function isGrowingActiveState(): boolean {
+    return (window as any).isGrowingActive || false;
   }
 
   export function destroy() {
@@ -115,85 +132,9 @@
     if (unsubscribeName) unsubscribeName();
     if (unsubscribePoints) unsubscribePoints();
     if (unsubscribeContributors) unsubscribeContributors();
-  }
 
-  export function zoomin(nodeId: string) {
-    if (!hierarchy) return;
-
-    // Find the hierarchy node that corresponds to this nodeId
-    const hierarchyNode = hierarchy
-      .descendants()
-      .find((d) => d.data._key === nodeId);
-    if (!hierarchyNode) return;
-
-    // Call existing zoom implementation with hierarchy node
-    const rectNode = hierarchyNode as d3.HierarchyRectangularNode<RecNode>;
-    // console.log('Zooming in to:', rectNode.data.name);
-    currentView = rectNode;
-    const group0 = group.attr("pointer-events", "none");
-
-    // Update domains first
-    x.domain([rectNode.x0, rectNode.x1]);
-    y.domain([rectNode.y0, rectNode.y1]);
-
-    const group1 = (group = svg.append("g").call(render, rectNode));
-
-    // Use type assertions to make TypeScript happy with the D3 transitions
-    svg
-      .transition()
-      .duration(750)
-      .call((t: any) => {
-        (group0.transition(t as any) as any)
-          .remove()
-          .call(position as any, rectNode.parent || root);
-      })
-      .call((t: any) => {
-        (group1.transition(t as any) as any)
-          .attrTween("opacity", () => d3.interpolate("0", "1") as any)
-          .call(position as any, rectNode);
-      });
-
-    // Dispatch node click event
-    dispatch("nodeFocus", { id: nodeId, data: rectNode.data });
-  }
-
-  export function zoomout() {
-    if (!currentView || !currentView.parent) return;
-
-    const rectNode = currentView;
-    // console.log('Zooming out from:', rectNode.data.name);
-
-    // Safely handle parent access
-    const parent = rectNode.parent;
-    if (!parent) return;
-
-    currentView = parent;
-    const group0 = group.attr("pointer-events", "none");
-
-    // Update domains first
-    x.domain([parent.x0, parent.x1]);
-    y.domain([parent.y0, parent.y1]);
-
-    const group1 = (group = svg.insert("g", "*").call(render, parent));
-
-    // Use type assertions to make TypeScript happy with the D3 transitions
-    svg
-      .transition()
-      .duration(750)
-      .call((t: any) => {
-        (group0.transition(t as any) as any)
-          .remove()
-          .attrTween("opacity", () => d3.interpolate("1", "0") as any)
-          .call(position as any, rectNode);
-      })
-      .call((t: any) => {
-        (group1.transition(t as any) as any).call(position as any, parent);
-      });
-
-    // Dispatch node focus event with parent data
-    if (parent.data && parent.data._key) {
-      dispatch("nodeFocus", { id: parent.data._key, data: parent.data });
-    }
+    // Remove resize listener
+    window.removeEventListener("resize", handleResize);
   }
 
   export function update(newWidth: number, newHeight: number) {
@@ -222,15 +163,6 @@
     }
   }
 
-  // Helper function to generate unique IDs
-  const uid = (function () {
-    let id = 0;
-    return function (prefix: string) {
-      const uniqueId = `${prefix}-${++id}`;
-      return { id: uniqueId, href: `#${uniqueId}` };
-    };
-  })();
-
   // Treemap tile function
   function tile(
     node: d3.HierarchyRectangularNode<RecNode>,
@@ -240,14 +172,6 @@
     y1: number,
   ) {
     if (!node.children || node.children.length === 0) return;
-
-    /*
-        console.log('Tiling node:', {
-            name: node.data.name,
-            x0, y0, x1, y1,
-            children: node.children.length
-        });
-        */
 
     // Calculate available space
     const availableWidth = x1 - x0;
@@ -310,31 +234,32 @@
 
   function subscribeToStoreData() {
     // Only subscribe if we have a valid store
-    if (!store) {
+    if (!currentStore) {
       console.warn("No store provided to TreeMap");
       return;
     }
 
     // Get data from store and keep updated
-    unsubscribeChildren = store.childrenStore.subscribe((newChildrenData) => {
-      childrenData = newChildrenData;
-      updateTreeData();
-    });
+    unsubscribeChildren = currentStore.childrenStore.subscribe(
+      (newChildrenData) => {
+        childrenData = newChildrenData;
+        updateTreeData();
+      },
+    );
 
-    unsubscribeName = store.nameStore.subscribe((newName) => {
+    unsubscribeName = currentStore.nameStore.subscribe((newName) => {
       name = newName || "";
       updateTreeData();
     });
 
-    unsubscribePoints = store.pointsStore.subscribe((newPoints) => {
+    unsubscribePoints = currentStore.pointsStore.subscribe((newPoints) => {
       points = typeof newPoints === "number" ? newPoints : 0;
       updateTreeData();
     });
 
     // Subscribe to contributors for each node (used for contributors)
-    unsubscribeContributors = store.contributorsStore.subscribe(
+    unsubscribeContributors = currentStore.contributorsStore.subscribe(
       (newContributors) => {
-        // console.log('Contributors updated:', newContributors);
         // Force re-render when tags change
         if (group && root) {
           setTimeout(() => {
@@ -375,7 +300,7 @@
     const hierarchyData = {
       name,
       points,
-      _key: store.path[store.path.length - 1] || "root",
+      _key: currentStore.path[currentStore.path.length - 1] || "root",
       children: childrenData.map(([id, data]) => ({
         ...data,
         _key: id,
@@ -387,62 +312,53 @@
     // console.log('Created hierarchy data:', hierarchyData);
 
     try {
-      // Create hierarchy
-      hierarchy = d3.hierarchy<RecNode>(hierarchyData as RecNode).sum((d) => {
-        const points = d.points || 0;
-        // console.log(`Node ${d.name || 'unnamed'} has ${points} points`);
-        return points;
-      });
+      // Only recreate the hierarchy if we don't have one or we're at the root store level
+      // This prevents rebuilding when we've navigated to a child
+      const isAtRootLevel =
+        currentStore.path.join("/") === store.path.join("/");
+      const shouldRebuildHierarchy = !hierarchy || isAtRootLevel;
 
-      // Add debug logging
-      /*
-            console.log('Hierarchy created:', {
-                nodeCount: hierarchy.descendants().length,
-                totalValue: hierarchy.value
-            });
-            */
+      if (shouldRebuildHierarchy) {
+        // Create hierarchy
+        hierarchy = d3.hierarchy<RecNode>(hierarchyData as RecNode).sum((d) => {
+          const points = d.points || 0;
+          // console.log(`Node ${d.name || 'unnamed'} has ${points} points`);
+          return points;
+        });
 
-      // Apply treemap layout with improved error handling
-      try {
-        const treemap = d3.treemap<RecNode>().tile(tile as any);
-        root = treemap(
-          hierarchy as any,
-        ) as d3.HierarchyRectangularNode<RecNode>;
+        // Apply treemap layout with improved error handling
+        try {
+          const treemap = d3.treemap<RecNode>().tile(tile as any);
 
-        // Always reset currentView to root when updating data
-        currentView = root;
+          originalRoot = treemap(
+            hierarchy as any,
+          ) as d3.HierarchyRectangularNode<RecNode>;
 
-        // console.log('Treemap layout applied:', {
-        //     rootX0: root.x0,
-        //     rootY0: root.y0,
-        //     rootX1: root.x1,
-        //     rootY1: root.y1,
-        //     childrenCount: root.children ? root.children.length : 0
-        // });
+          // Only set root if we're rebuilding
+          root = originalRoot;
 
-        if (root.children) {
-          // console.log('Root children:', root.children.map(c => ({
-          //     name: c.data.name,
-          //     points: c.data.points,
-          //     x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1
-          // })));
+          // Only set currentView to root if we don't have a currentView or we're rebuilding
+          if (!currentView || shouldRebuildHierarchy) {
+            currentView = root;
+          }
+
+          // Reset domains to full extent
+          x.domain([root.x0, root.x1]);
+          y.domain([root.y0, root.y1]);
+
+          // Update visualization
+          if (svg && group) {
+            // console.log('TreeMap rendering visualization');
+            group.remove();
+            group = svg.append("g");
+            // Render with currentView instead of always using root
+            group.call(render, currentView);
+          } else {
+            // console.log('TreeMap missing svg or group', { svg, group });
+          }
+        } catch (err) {
+          // console.error('Error applying treemap layout:', err);
         }
-
-        // Reset domains to full extent
-        x.domain([root.x0, root.x1]);
-        y.domain([root.y0, root.y1]);
-
-        // Update visualization
-        if (svg && group) {
-          // console.log('TreeMap rendering visualization');
-          group.remove();
-          group = svg.append("g");
-          group.call(render, root); // Always render from root
-        } else {
-          // console.log('TreeMap missing svg or group', { svg, group });
-        }
-      } catch (err) {
-        // console.error('Error applying treemap layout:', err);
       }
     } catch (err) {
       // console.error('Error creating hierarchy:', err);
@@ -451,7 +367,7 @@
 
   // Initialize on mount
   onMount(() => {
-    // console.log('TreeMap component mounting', { store, width, height });
+    console.log("TreeMap component mounting", { store, width, height });
 
     if (!width) width = window.innerWidth;
     if (!height) height = window.innerHeight;
@@ -483,9 +399,6 @@
     treeMap.getElement = getElement;
 
     // Set up window resize handler
-    const handleResize = () => {
-      update(window.innerWidth, window.innerHeight);
-    };
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -520,16 +433,54 @@
     }
   });
 
-  // Update when store reference changes
-  $: if (store) {
-    // Clean up previous subscriptions
-    if (unsubscribeChildren) unsubscribeChildren();
-    if (unsubscribeName) unsubscribeName();
-    if (unsubscribePoints) unsubscribePoints();
-    if (unsubscribeContributors) unsubscribeContributors();
+  // Add a debug log function for the store state
+  function logStoreState(location: string) {
+    console.log(`[Store State at ${location}]`, {
+      currentStorePath: currentStore?.path.join("/"),
+      originalStorePath: store?.path.join("/"),
+      currentViewName: currentView?.data?.name || "undefined",
+      sameReference: currentStore === store,
+      rootName: root?.data?.name || "undefined",
+      originalRootName: originalRoot?.data?.name || "undefined",
+    });
+  }
 
-    // Set up new subscriptions
-    subscribeToStoreData();
+  // Update the reactive store handling
+  $: if (store) {
+    // Add debug before changing anything
+    logStoreState("Before store reactive update");
+
+    // Don't immediately update currentStore if we're in the middle of navigation
+    // Only update if we're at root level or explicitly setting a new store
+    const isAtRootLevel =
+      currentStore?.path.join("/") === store?.path.join("/");
+    const isNewStore =
+      !currentStore || currentStore.path.join("/") !== store.path.join("/");
+
+    if (isNewStore) {
+      // Clean up previous subscriptions if they exist
+      if (unsubscribeChildren) unsubscribeChildren();
+      if (unsubscribeName) unsubscribeName();
+      if (unsubscribePoints) unsubscribePoints();
+      if (unsubscribeContributors) unsubscribeContributors();
+
+      // Update currentStore reference only if it's a new store
+      currentStore = store;
+
+      // Log store path change
+      console.log(
+        "TreeMap using current-store with path:",
+        currentStore.path.join("/"),
+      );
+
+      // Set up new subscriptions with the updated store
+      if (svg) {
+        subscribeToStoreData();
+      }
+    }
+
+    // Add debug after changes
+    logStoreState("After store reactive update");
   }
 
   // Update when dimensions change
@@ -612,24 +563,8 @@
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
     root: d3.HierarchyRectangularNode<RecNode>,
   ) {
-    // console.log('Rendering with root:', {
-    //     name: root.data.name,
-    //     childCount: root.children ? root.children.length : 0,
-    //     x0: root.x0,
-    //     y0: root.y0,
-    //     x1: root.x1,
-    //     y1: root.y1
-    // });
-
     // Ensure we include all children of the root
     const nodeData = root.children ? [root, ...root.children] : [root];
-
-    // console.log('NodeData for rendering:', nodeData.map(n => ({
-    //     name: n.data.name,
-    //     points: n.data.points,
-    //     x0: n.x0,
-    //     y0: n.y0
-    // })));
 
     // Create node selection
     const node = group
@@ -772,12 +707,17 @@
         // Handle input completion
         const completeEdit = async () => {
           const newName = inputElement?.value || parentNode.data.name;
-          foreignObject.remove();
+
+          // Check if the foreignObject still exists before trying to remove it
+          const foreignNode = foreignObject.node();
+          if (foreignNode && foreignNode.parentNode) {
+            foreignObject.remove();
+          }
 
           if (newName && newName !== parentNode.data.name) {
             // Update the name in the store
             if (parentNode.data._key) {
-              const childStore = store.getChild(parentNode.data._key);
+              const childStore = currentStore.getChild(parentNode.data._key);
               await childStore.updateName(newName);
             }
           }
@@ -790,7 +730,11 @@
             completeEdit();
           } else if (event.key === "Escape") {
             event.preventDefault();
-            foreignObject.remove();
+            // Check if the foreignObject still exists before trying to remove it
+            const foreignNode = foreignObject.node();
+            if (foreignNode && foreignNode.parentNode) {
+              foreignObject.remove();
+            }
           }
         });
 
@@ -809,7 +753,7 @@
           // Confirm deletion
           if (confirm(`Delete "${d.data.name || "Unnamed node"}"?`)) {
             // Remove the node using the store method
-            store
+            currentStore
               .removeChild(nodeId)
               .then(() => {
                 // Exit delete mode after successful deletion
@@ -841,37 +785,6 @@
         zoomin(d.data._key);
       }
     });
-
-    // Add delete button on the left side
-    d3.select(this as any)
-      .append("g")
-      .attr("class", "delete-button")
-      .attr("transform", `translate(20, 25)`)
-      .on("click", (event) => {
-        event.stopPropagation();
-
-        // Toggle delete mode
-        deleteMode = !deleteMode;
-
-        // Update the appearance of all delete buttons to show the active state
-        d3.selectAll(".delete-button text").attr("fill", () =>
-          deleteMode ? "#ff4136" : "#000",
-        );
-
-        // Show a visual indicator or toast message
-        showToastMessage(
-          deleteMode
-            ? "Delete mode activated. Click a node to delete it."
-            : "Delete mode deactivated.",
-          deleteMode ? "warning" : "success",
-        );
-      })
-      .append("text")
-      .attr("fill", "#000")
-      .attr("font-size", "20px")
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .text("🗑️");
 
     group.call(position, root);
 
@@ -919,9 +832,9 @@
       let tagsArray: string[] = [];
 
       // If it's our current store node, get tags directly from the store
-      if (d.data._key === store?.path[store.path.length - 1]) {
+      if (d.data._key === currentStore?.path[currentStore.path.length - 1]) {
         // Get tags from the current store
-        const contributorsData = get(store.contributorsStore) || [];
+        const contributorsData = get(currentStore.contributorsStore) || [];
         tagsArray = contributorsData.map(([contributorId, _]) => contributorId);
         // console.log('Contributors from store:', tagsArray);
       } else if (d.data.tags) {
@@ -966,8 +879,8 @@
           .append("xhtml:div")
           .attr("class", "pill-container");
 
-        // Create the TagPill component
-        const tagPillComponent = new TagPill({
+        // Create the TagPill component using Svelte 5 API
+        const root = createRoot(TagPill, {
           target: pillContainer.node() as HTMLElement,
           props: {
             userId: tagId,
@@ -975,6 +888,8 @@
             removable: true,
           },
         });
+
+        const tagPillComponent = root.getComponent();
 
         // Add event listeners
         tagPillComponent.$on("click", (event) => {
@@ -997,9 +912,11 @@
           // console.log('Removing tag:', currentName, 'from node:', d.data.name);
 
           // Remove the tag using the store API if possible
-          if (d.data._key === store?.path[store.path.length - 1]) {
+          if (
+            d.data._key === currentStore?.path[currentStore.path.length - 1]
+          ) {
             // We can use the store directly
-            store
+            currentStore
               .removeTag(tagId)
               .then(() => {
                 // console.log(`Removed tag ${tagId} via store API`);
@@ -1075,7 +992,7 @@
                 if (isTouching && activeNode === d) {
                   isGrowing = true;
                   // Set the app's growing active flag
-                  setAppProperty("isGrowingActive", true);
+                  (window as any).isGrowingActive = true;
 
                   // Hide contributor tags immediately when growing starts
                   group
@@ -1089,7 +1006,7 @@
                       isGrowing = false;
                       growthInterval = null;
                       // Clear the app's growing active flag
-                      setAppProperty("isGrowingActive", false);
+                      (window as any).isGrowingActive = false;
 
                       // Ensure contributor tags are shown when click finishes
                       group
@@ -1281,7 +1198,7 @@
       )
       .on(
         "mouseup touchend touchcancel",
-        (event) => {
+        (event, d) => {
           // Only handle if not in contributor tree
           if (!isInContributorTree()) {
             // Clear all states
@@ -1302,7 +1219,7 @@
             isGrowing = false;
 
             // Clear the app's growing active flag
-            setAppProperty("isGrowingActive", false);
+            (window as any).isGrowingActive = false;
 
             // Ensure contributor tags are shown when click finishes
             group.selectAll(".contributor-tags-container").style("opacity", 1);
@@ -1326,11 +1243,11 @@
           if (touchDuration < GROWTH_DELAY && !isGrowing) {
             if (d === root && d.parent) {
               // console.log('Attempting zoom out from:', d.data.name);
-              _zoomout(); // Use internal zoom function
+              zoomout(); // Use internal zoom function
             } else if (d !== root && !d.data.isContribution) {
               // Check isContribution directly
               // console.log('Attempting zoom in to:', d.data.name);
-              _zoomin(d.data && d.data._key ? d.data._key : ""); // Use internal zoom function
+              zoomin(d.data && d.data._key ? d.data._key : ""); // Use internal zoom function
             }
           } else {
             // console.log('Navigation blocked because:',
@@ -1344,7 +1261,7 @@
             isGrowing = false;
 
             // Ensure app's growing active flag is cleared
-            setAppProperty("isGrowingActive", false);
+            (window as any).isGrowingActive = false;
 
             // Ensure contributor tags are shown when click finishes
             group.selectAll(".contributor-tags-container").style("opacity", 1);
@@ -1491,14 +1408,22 @@
               const newNodePoints = Math.max(1, currentLevelPoints * 0.1);
 
               try {
+                // Add debug logging to show which store we're using
+                console.log(
+                  "Adding child node using store with path:",
+                  currentStore.path.join("/"),
+                );
+
                 // Create new node with temporary name and calculated points
-                const newNodeId = await store.addChild(
+                const newNodeId = await currentStore.addChild(
                   "Undefined",
                   newNodePoints,
                 );
 
+                console.log("Child node created with ID:", newNodeId);
+
                 // Set up a one-time subscription to childrenStore to detect when the new node appears
-                const unsubscribe = store.childrenStore.subscribe(
+                const unsubscribe = currentStore.childrenStore.subscribe(
                   (children) => {
                     // Check if our new node exists in children
                     const newNodeExists = children.some(
@@ -1507,6 +1432,7 @@
 
                     if (newNodeExists) {
                       unsubscribe(); // Clean up subscription
+                      console.log("New node appeared in children collection");
 
                       // Find the newly created node's group
                       const newNodeGroup = group
@@ -1564,7 +1490,7 @@
 
                           if (newName) {
                             // Update the name in the store
-                            const childStore = store.getChild(newNodeId);
+                            const childStore = currentStore.getChild(newNodeId);
                             await childStore.updateName(newName);
                           }
                         };
@@ -1576,7 +1502,11 @@
                             completeEdit();
                           } else if (event.key === "Escape") {
                             event.preventDefault();
-                            foreignObject.remove();
+                            // Check if the foreignObject still exists before trying to remove it
+                            const foreignNode = foreignObject.node();
+                            if (foreignNode && foreignNode.parentNode) {
+                              foreignObject.remove();
+                            }
                           }
                         });
 
@@ -1633,26 +1563,18 @@
       });
   }
 
-  // Add helper function to find nodes by ID
-  function findNodeById(
-    nodeId: string,
-  ): d3.HierarchyRectangularNode<RecNode> | null {
-    if (!hierarchy || !nodeId) return null;
-    return (
+  // Internal zoom functions for direct D3 hierarchy node operations
+  export function zoomin(childId: string) {
+    console.log("ALERT: Internal zoomin called with childId:", childId);
+    logStoreState("Before zoom in");
+
+    // Find the target node in the hierarchy
+    const target =
       (hierarchy
         .descendants()
         .find(
-          (d) => d.data && d.data._key === nodeId,
-        ) as d3.HierarchyRectangularNode<RecNode>) || null
-    );
-  }
-
-  // Internal zoom functions for direct D3 hierarchy node operations
-  function _zoomin(childId: string) {
-    // console.log('Internal zoom in to:', childId);
-
-    // Find the target node in the hierarchy
-    const target = findNodeById(childId);
+          (d) => d.data && d.data._key === childId,
+        ) as d3.HierarchyRectangularNode<RecNode>) || null;
     if (!target) {
       console.error(`Could not find node with ID: ${childId}`);
       return;
@@ -1662,6 +1584,16 @@
     const prevView = currentView;
     currentView = target;
 
+    // Update currentStore to reflect the new view but don't trigger reactivity
+    currentStore = currentStore.getChild(childId);
+    console.log(
+      "ALERT: Updated currentStore to child path:",
+      currentStore.path.join("/"),
+    );
+
+    // Debug after update
+    logStoreState("After updating currentStore in zoom in");
+
     // Create a new group that will replace the old one
     const group0 = group.attr("pointer-events", "none");
 
@@ -1669,7 +1601,8 @@
     x.domain([target.x0, target.x1]);
     y.domain([target.y0, target.y1]);
 
-    // Create new visualization with the target node as root
+    // Create new visualization with the target node as root for rendering purposes only
+    // This critical line keeps the hierarchy and real root intact
     const group1 = (group = svg.insert("g", "*").call(render, target));
 
     // Make transitions between views
@@ -1688,29 +1621,43 @@
           .attrTween("opacity", () => d3.interpolate("0", "1") as any)
           .call(position as any, target);
       });
-
-    // Dispatch node focus event with the new target's data
-    if (target.data && target.data._key) {
-      dispatch("nodeFocus", { id: target.data._key, data: target.data });
-    }
   }
 
-  function _zoomout() {
+  export function zoomout() {
+    console.log("ALERT: Internal zoomout called");
+    logStoreState("Before zoom out");
+
     if (!currentView) {
       console.error("No current view to zoom out from");
       return;
     }
 
-    // console.log('Internal zoom out from:', currentView.data && currentView.data.name || 'unnamed');
-
     if (!currentView.parent) {
-      // console.error('Cannot zoom out: No parent node');
+      console.error("Cannot zoom out: No parent node");
       return;
     }
 
     // Store the current view before changing it
     const prevView = currentView;
     currentView = currentView.parent;
+
+    // Update the currentStore asynchronously (getParent is async)
+    // But don't trigger any reactivity
+    currentStore
+      .getParent()
+      .then((parentStore) => {
+        if (parentStore) {
+          console.log(
+            "ALERT: Updating currentStore to parent path:",
+            parentStore.path.join("/"),
+          );
+          currentStore = parentStore;
+          logStoreState("After updating to parent store");
+        }
+      })
+      .catch((err) => {
+        console.error("ALERT: Error getting parent store:", err);
+      });
 
     // Prevent interaction during transition
     const group0 = group.attr("pointer-events", "none");
@@ -1738,35 +1685,6 @@
           .attrTween("opacity", () => d3.interpolate("0", "1") as any)
           .call(position as any, currentView);
       });
-
-    // Dispatch node focus event with the parent data
-    if (currentView.data && currentView.data._key) {
-      dispatch("nodeFocus", {
-        id: currentView.data._key,
-        data: currentView.data,
-      });
-    }
-  }
-
-  // Create a safer accessor function for app properties
-  function getAppProperty(property: string, defaultValue: any): any {
-    if (typeof window === "undefined") return defaultValue;
-    if (!(window as any).app) (window as any).app = {};
-    return (window as any).app[property] !== undefined
-      ? (window as any).app[property]
-      : defaultValue;
-  }
-
-  // Create a safer setter function for app properties
-  function setAppProperty(property: string, value: any): void {
-    if (typeof window === "undefined") return;
-    if (!(window as any).app) (window as any).app = {};
-    (window as any).app[property] = value;
-  }
-
-  // Add a helper function to check growing state more safely
-  function isGrowingActiveState(): boolean {
-    return getAppProperty("isGrowingActive", false);
   }
 
   // Add a save function to persist points to the store
@@ -1778,17 +1696,19 @@
 
     try {
       // Only save if the points actually changed
-      const currentStorePoints = store.pointsStore ? get(store.pointsStore) : 0;
+      const currentStorePoints = currentStore.pointsStore
+        ? get(currentStore.pointsStore)
+        : 0;
 
       if (node === root) {
         // Save points to the current store
         // console.log(`Saving root node points: ${points} (was ${currentStorePoints})`);
-        await store.updatePoints(points);
+        await currentStore.updatePoints(points);
       } else if (node.data._key) {
         // This is a child node, get its store and update points
         const childId = node.data._key;
         // console.log(`Saving child node ${node.data.name} (${childId}) points: ${points}`);
-        const childStore = store.getChild(childId);
+        const childStore = currentStore.getChild(childId);
         await childStore.updatePoints(points);
       } else {
         //console.warn("Could not save points - node has no _key:", node);
@@ -1796,18 +1716,6 @@
     } catch (err) {
       console.error("Error saving points to Gun:", err);
     }
-  }
-
-  // Helper to get store value
-  function get<T>(store: {
-    subscribe: (callback: (value: T) => void) => () => void;
-  }): T | undefined {
-    let value: T | undefined;
-    const unsubscribe = store.subscribe((v) => {
-      value = v;
-    });
-    unsubscribe();
-    return value;
   }
 
   // Dropdown state
@@ -1820,12 +1728,12 @@
 
     if (dropdownNodeData) {
       // Get current node ID from the store path
-      const currentNodeId = store?.path[store.path.length - 1];
+      const currentNodeId = currentStore?.path[currentStore.path.length - 1];
       // console.log(`Adding tag ${id} to node ${currentNodeId}`);
 
       // Add the selected user as a tag using the store API
-      if (store && store.addContributor) {
-        store
+      if (currentStore && currentStore.addContributor) {
+        currentStore
           .addContributor(id)
           .then(() => {
             // console.log(`Added user ${id} as tag to ${currentNodeId}`);
@@ -1877,7 +1785,7 @@
   }
 </script>
 
-<div bind:this={treeMap}></div>
+<div bind:this={treeMap} id="treemap-container"></div>
 
 <!-- Add the dropdown component -->
 {#if showUserDropdown}
@@ -1888,7 +1796,7 @@
     width={280}
     maxHeight={320}
     excludeIds={[]}
-    rootId={store?.path[store.path.length - 1]}
+    rootId={currentStore?.path[currentStore.path.length - 1]}
     show={showUserDropdown}
     on:select={handleUserSelect}
     on:close={handleDropdownClose}
