@@ -156,25 +156,34 @@
     // Sort by value (optional)
     //hierarchy.sort((a, b) => (b?.data?.points ?? 0) - (a?.data?.points ?? 0));
 
+    // Check if we have only one child or no children
+    const childCount = data.children?.length || 0;
+    const shouldUsePadding = childCount > 1;
+
     // Apply treemap with relative sizing (0-1 range)
     const treemap = d3
       .treemap<RecNode>()
       .tile(d3.treemapSquarify)
       .size([1, 1]) // Use 0-1 range for relative sizing
-      .padding(0.005) // Relative padding
+      .padding(shouldUsePadding ? 0.005 : 0) // Only use padding with multiple nodes
       .round(false); // Don't round to pixels
 
     return treemap(hierarchy);
   });
 
-  // Method to calculate new node points (10% of total)
+  // Method to calculate new node points (10% of total or 100 if no siblings)
   function calculateNewNodePoints(): number {
-    const currentLevelPoints = hierarchyData?.children
-      ? hierarchyData.children.reduce(
-          (sum, node) => sum + (node.data?.points || 0),
-          0,
-        )
-      : hierarchyData?.data.points || 0;
+    // Check if there are any existing child nodes
+    if (!hierarchyData?.children || hierarchyData.children.length === 0) {
+      // No siblings - set to 100 points (100%)
+      return 100;
+    }
+
+    // Has siblings - use 10% of total points
+    const currentLevelPoints = hierarchyData.children.reduce(
+      (sum, node) => sum + (node.data?.points || 0),
+      0,
+    );
 
     return Math.max(1, currentLevelPoints * 0.1);
   }
@@ -200,6 +209,134 @@
     };
   }
 
+  // Handle all node-related actions with event delegation
+  async function handleNodeAction(event: MouseEvent, nodeId: string) {
+    // Only handle clicks, not growth interactions
+    const touchDuration = Date.now() - touchStartTime;
+    if (touchDuration >= GROWTH_DELAY || isGrowing) {
+      return;
+    }
+
+    if (deleteMode) {
+      // Handle deletion
+      if (confirm(`Delete this node?`)) {
+        try {
+          await store.removeChild(nodeId);
+          console.log(`Node ${nodeId} deleted successfully`);
+          showToast("Node deleted successfully", "success");
+          deleteMode = false; // Turn off delete mode after deletion
+        } catch (err) {
+          console.error(`Error deleting node ${nodeId}:`, err);
+          showToast("Error deleting node", "error");
+        }
+      }
+    } else {
+      // Handle zoom in navigation
+      zoomIntoNode(nodeId);
+    }
+  }
+
+  // Handle text editing request from Child component
+  async function handleTextEdit(detail: { nodeId: string; newName: string }) {
+    const { nodeId, newName } = detail;
+
+    try {
+      // Get the appropriate store for this node
+      const childStore = store.getChild(nodeId);
+
+      // Update the name in the store
+      await childStore.updateName(newName);
+      console.log(`Updated name for node ${nodeId} to "${newName}"`);
+      showToast(`Node renamed to "${newName}"`, "success");
+    } catch (err) {
+      console.error(`Error updating name for node ${nodeId}:`, err);
+      showToast("Error updating node name", "error");
+    }
+  }
+
+  // Handle add contributor button click from Child component
+  function handleAddContributor(detail: {
+    nodeId: string;
+    clientX: number;
+    clientY: number;
+  }) {
+    const { nodeId, clientX, clientY } = detail;
+
+    // Show user dropdown for adding contributor
+    activeNodeId = nodeId;
+    dropdownPosition = { x: clientX, y: clientY };
+    showUserDropdown = true;
+  }
+
+  // Handle remove contributor request from Child component
+  async function handleRemoveContributor(detail: {
+    nodeId: string;
+    contributorId: string;
+  }) {
+    const { nodeId, contributorId } = detail;
+
+    try {
+      // Get the appropriate store for this node
+      const targetStore =
+        nodeId === store.path[store.path.length - 1]
+          ? store
+          : store.getChild(nodeId);
+
+      // Remove the contributor
+      await targetStore.removeContributor(contributorId);
+      console.log(`Removed contributor ${contributorId} from node ${nodeId}`);
+      showToast("Contributor removed successfully", "success");
+    } catch (err) {
+      console.error("Error removing contributor:", err);
+      showToast("Error removing contributor", "error");
+    }
+  }
+
+  // Handle user selection from dropdown
+  function handleUserSelect(detail: { id: string; name: string }) {
+    const { id: userId } = detail;
+
+    if (!activeNodeId) {
+      console.error("No node selected for adding contributor");
+      return;
+    }
+
+    // Add the contributor to the node
+    addContributorToNode(activeNodeId, userId);
+
+    // Reset dropdown state
+    showUserDropdown = false;
+    activeNodeId = null;
+  }
+
+  // Handle dropdown close
+  function handleDropdownClose() {
+    showUserDropdown = false;
+    activeNodeId = null;
+  }
+
+  // Add contributor to node
+  async function addContributorToNode(nodeId: string, userId: string) {
+    try {
+      // Get the appropriate store for this node
+      const targetStore =
+        nodeId === store.path[store.path.length - 1]
+          ? store
+          : store.getChild(nodeId);
+
+      // Add the contributor
+      await targetStore.addContributor(userId);
+      console.log(`Added contributor ${userId} to node ${nodeId}`);
+      showToast("Contributor added successfully", "success");
+    } catch (err) {
+      console.error("Error adding contributor:", err);
+      showToast("Error adding contributor", "error");
+    }
+  }
+
+  // State for node that should be in edit mode
+  let nodeToEdit = $state<string | null>(null);
+
   // Handler for adding a new child node
   async function handleAddNode() {
     try {
@@ -217,13 +354,26 @@
 
       // Wait for the next render cycle to ensure the DOM has updated
       setTimeout(() => {
-        // Show edit name modal after node is rendered
-        showEditNameModal(newNodeId);
+        // Set the node to edit mode directly instead of showing modal
+        setNodeToEditMode(newNodeId);
       }, 50);
     } catch (err) {
       console.error("Error creating new node:", err);
       showToast("Error creating new node", "error");
     }
+  }
+
+  // Set a node to edit mode
+  function setNodeToEditMode(nodeId: string) {
+    nodeToEdit = nodeId;
+    // This flag will be used by the Child component to know when to enter edit mode
+
+    // Auto-clear the edit flag after a short delay if it wasn't handled
+    setTimeout(() => {
+      if (nodeToEdit === nodeId) {
+        nodeToEdit = null;
+      }
+    }, 1000);
   }
 
   // Toggle delete mode
@@ -472,165 +622,6 @@
       isTransitioning = false;
     }
   }
-
-  // Handle all node-related actions with event delegation
-  async function handleNodeAction(event: MouseEvent, nodeId: string) {
-    // Only handle clicks, not growth interactions
-    const touchDuration = Date.now() - touchStartTime;
-    if (touchDuration >= GROWTH_DELAY || isGrowing) {
-      return;
-    }
-
-    if (deleteMode) {
-      // Handle deletion
-      if (confirm(`Delete this node?`)) {
-        try {
-          await store.removeChild(nodeId);
-          console.log(`Node ${nodeId} deleted successfully`);
-          showToast("Node deleted successfully", "success");
-          deleteMode = false; // Turn off delete mode after deletion
-        } catch (err) {
-          console.error(`Error deleting node ${nodeId}:`, err);
-          showToast("Error deleting node", "error");
-        }
-      }
-    } else {
-      // Handle zoom in navigation
-      zoomIntoNode(nodeId);
-    }
-  }
-
-  // Handle add contributor button click from Child component
-  function handleAddContributor(detail: {
-    nodeId: string;
-    clientX: number;
-    clientY: number;
-  }) {
-    const { nodeId, clientX, clientY } = detail;
-
-    // Show user dropdown for adding contributor
-    activeNodeId = nodeId;
-    dropdownPosition = { x: clientX, y: clientY };
-    showUserDropdown = true;
-  }
-
-  // Handle remove contributor request from Child component
-  async function handleRemoveContributor(detail: {
-    nodeId: string;
-    contributorId: string;
-  }) {
-    const { nodeId, contributorId } = detail;
-
-    try {
-      // Get the appropriate store for this node
-      const targetStore =
-        nodeId === store.path[store.path.length - 1]
-          ? store
-          : store.getChild(nodeId);
-
-      // Remove the contributor
-      await targetStore.removeContributor(contributorId);
-      console.log(`Removed contributor ${contributorId} from node ${nodeId}`);
-      showToast("Contributor removed successfully", "success");
-    } catch (err) {
-      console.error("Error removing contributor:", err);
-      showToast("Error removing contributor", "error");
-    }
-  }
-
-  // Handle user selection from dropdown
-  function handleUserSelect(detail: { id: string; name: string }) {
-    const { id: userId } = detail;
-
-    if (!activeNodeId) {
-      console.error("No node selected for adding contributor");
-      return;
-    }
-
-    // Add the contributor to the node
-    addContributorToNode(activeNodeId, userId);
-
-    // Reset dropdown state
-    showUserDropdown = false;
-    activeNodeId = null;
-  }
-
-  // Handle dropdown close
-  function handleDropdownClose() {
-    showUserDropdown = false;
-    activeNodeId = null;
-  }
-
-  // Add contributor to node
-  async function addContributorToNode(nodeId: string, userId: string) {
-    try {
-      // Get the appropriate store for this node
-      const targetStore =
-        nodeId === store.path[store.path.length - 1]
-          ? store
-          : store.getChild(nodeId);
-
-      // Add the contributor
-      await targetStore.addContributor(userId);
-      console.log(`Added contributor ${userId} to node ${nodeId}`);
-      showToast("Contributor added successfully", "success");
-    } catch (err) {
-      console.error("Error adding contributor:", err);
-      showToast("Error adding contributor", "error");
-    }
-  }
-
-  // Modal for editing node name
-  function showEditNameModal(nodeId: string) {
-    // Create a modal or input overlay for the node
-    const modal = document.createElement("div");
-    modal.className = "new-node-container";
-    modal.style.position = "fixed";
-    modal.style.top = "50%";
-    modal.style.left = "50%";
-    modal.style.transform = "translate(-50%, -50%)";
-    modal.style.zIndex = "1000";
-
-    const input = document.createElement("input");
-    input.className = "new-node-input";
-    input.placeholder = "Enter name...";
-    input.value = "";
-
-    modal.appendChild(input);
-    document.body.appendChild(modal);
-
-    // Focus the input
-    requestAnimationFrame(() => {
-      input.focus();
-    });
-
-    // Handle input completion
-    const completeEdit = async () => {
-      const newName = input.value;
-      document.body.removeChild(modal);
-
-      if (newName) {
-        // Update the name in the store
-        const childStore = store.getChild(nodeId);
-        await childStore.updateName(newName);
-        showToast(`Node renamed to "${newName}"`, "success");
-      }
-    };
-
-    // Handle enter key
-    input.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        completeEdit();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        document.body.removeChild(modal);
-      }
-    });
-
-    // Handle blur
-    input.addEventListener("blur", completeEdit);
-  }
 </script>
 
 {#if hierarchyData}
@@ -654,8 +645,15 @@
         class="treemap-container"
         oncontextmenu={(e) => e.preventDefault()}
         onclick={(e) => {
-          // Only handle clicks directly on div.child-node elements
+          // Skip handling if the click was on an edit field
           if (e.target instanceof Element) {
+            const isTextClick = !!e.target.closest(".edit-text-field");
+            if (isTextClick) {
+              // Let the Child component handle text editing
+              return;
+            }
+
+            // Only handle clicks directly on div.child-node elements
             const target = e.target.closest(".child-node");
             if (target instanceof HTMLElement) {
               const nodeId = target.dataset.nodeKey;
@@ -688,6 +686,8 @@
               {child}
               addContributor={handleAddContributor}
               removeContributor={handleRemoveContributor}
+              onTextEdit={handleTextEdit}
+              shouldEdit={nodeToEdit === child.data?._key}
             />
           </div>
         {/each}
