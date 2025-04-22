@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import { user, authenticate, recallUser, logout } from '../utils/gun/gunSetup';
-  
+  import { gunAvatar } from 'gun-avatar'
   // Create event dispatcher for notifying parent components
   const dispatch = createEventDispatcher();
   
@@ -12,23 +12,21 @@
   let userAlias = '';
   let errorMessage = '';
   let isLoading = false;
-  let showLogout = false;
   
   // Check if user is already logged in on mount
   onMount(async () => {
     isLoading = true;
     
     try {
+      // Use the existing recallUser function from gunSetup
       await recallUser();
       
       // Check if user is authenticated after recall
       if (user.is?.pub) {
         isAuthenticated = true;
         userAlias = user.is.alias || user.is.pub;
-        showLogout = true;
         // Notify parent about auth state
         dispatch('authchange', { isAuthenticated: true, user: userAlias });
-        // Current User's username
       }
     } catch (error) {
       console.error('Error recalling user session:', error);
@@ -37,7 +35,7 @@
     }
   });
   
-  // Handle login/signup
+  // Handle login/signup using the gunSetup authenticate function
   async function handleAuthenticate() {
     if (!username || !password) {
       errorMessage = 'Please enter both username and password';
@@ -48,14 +46,13 @@
     isLoading = true;
     
     try {
+      // Use the authenticate function from gunSetup
       await authenticate(username, password);
       
       // Check authentication result
       if (user.is?.pub) {
         isAuthenticated = true;
         userAlias = user.is.alias || user.is.pub;
-        showLogout = true;
-        
         // Reset form
         username = '';
         password = '';
@@ -63,24 +60,23 @@
         // Notify parent component
         dispatch('authchange', { isAuthenticated: true, user: userAlias });
       } else {
-        errorMessage = 'Authentication failed for unknown reason';
+        errorMessage = 'Authentication failed';
       }
     } catch (error) {
       console.error('Authentication error:', error);
       errorMessage = error instanceof Error 
         ? error.message 
-        : 'Unknown authentication error';
+        : 'Authentication error';
     } finally {
       isLoading = false;
     }
   }
   
-  // Handle logout
+  // Handle logout using the gunSetup logout function
   function handleLogout() {
     logout();
     isAuthenticated = false;
     userAlias = '';
-    showLogout = false;
     
     // Notify parent component
     dispatch('authchange', { isAuthenticated: false, user: null });
@@ -101,10 +97,26 @@
   {:else if isAuthenticated}
     <div class="welcome-panel">
       <div class="avatar">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
+        {#if user.is?.pub && gunAvatar}
+          <img src={gunAvatar({ pub: user.is.pub, size: 70, round: true, draw: 'circles', reflect: true })} alt="User Avatar">
+          
+          <!-- Or the custom element approach (uncomment to use) -->
+          <!-- 
+          <gun-avatar
+            pub={user.is.pub}
+            size="70"
+            round
+            draw="circles"
+            reflect
+          ></gun-avatar>
+          -->
+        {:else}
+          <!-- Fallback avatar if gunAvatar doesn't load -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        {/if}
       </div>
       <h2>Welcome, {userAlias}</h2>
       <p>You are successfully logged in</p>
@@ -210,6 +222,8 @@
     border-radius: 12px;
     overflow: hidden;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    width: 360px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   }
   
   h2 {
@@ -375,6 +389,14 @@
     justify-content: center;
     margin-bottom: 1.5rem;
     color: #4f46e5;
+    overflow: hidden;
+  }
+  
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
   }
   
   .welcome-panel p {

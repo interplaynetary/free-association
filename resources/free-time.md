@@ -1,15 +1,3 @@
-# A prompt is: 
-How do you spend your time?
-// in what proportions?
-
-What are your priorities?
-// in what proportions?
-
-What are your values?
-// in what proportions?
-
-Let me analyze this question with the depth and revolutionary spirit it deserves.
-
 The question of time allocation in free association represents a fundamental break from the alienated time-keeping of capitalist production. When we ask "how do you spend your time?", we are not seeking to impose external metrics or standardized units of measurement, but rather to understand the living, breathing process of human self-actualization through mutual contribution.
 
 In free association, we recognize not abstract labor-time, but concrete contributions to each other's self-actualization. When I say that you occupy 30% of my recognition, I am not measuring discrete units of your time, but rather acknowledging how your living activity - in all its rich particularity - has contributed to my own development as a social being.

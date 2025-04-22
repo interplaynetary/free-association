@@ -74,12 +74,10 @@
   let x = d3.scaleLinear();
   let y = d3.scaleLinear();
   let hierarchy: d3.HierarchyNode<RecNode>;
-  let root: d3.HierarchyRectangularNode<RecNode> = undefined as any;
-  let currentView: d3.HierarchyRectangularNode<RecNode> = undefined as any;
+  let root: d3.HierarchyRectangularNode<RecNode>;
+  let currentView: d3.HierarchyRectangularNode<RecNode>;
   let svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   let group: d3.Selection<SVGGElement, unknown, null, undefined>;
-
-  let node: RecNode = undefined as any;
 
   // Container reference with custom interface to allow adding methods
   interface TreeMapElement extends HTMLDivElement {
@@ -92,14 +90,11 @@
   let points: number = 0;
   let contributors: NodeEntry[] = [];
 
-  // Track subscriptions to store data
-  let unsubscribeChildren: () => void;
-  let unsubscribeName: () => void;
-  let unsubscribePoints: () => void;
-  let unsubscribeContributors: () => void;
+  // Track subscriptions to child nodes
+  let childNodeSubscriptions: (() => void)[] = [];
 
-  // Single array to track all dynamic subscriptions
-  let nodeSubscriptions: (() => void)[] = [];
+  // Map to track contributors for each child (childId -> contributor IDs array)
+  let childContributorsMap = new Map<string, string[]>();
 
   // Define the activeNode variable at the top level
   let activeNode: d3.HierarchyRectangularNode<RecNode> | null = null;
@@ -113,11 +108,6 @@
 
   // Add a flag to prevent recursive updates
   let isUpdatingTreeData = false;
-
-  // Add a flag to properly control recursive update cycles
-  let isUpdatingVisualization = false;
-  let lastUpdateTimestamp = 0;
-  const UPDATE_THROTTLE_MS = 100; // Minimum ms between updates
 
   // Handle window resize
   function handleResize() {
@@ -153,7 +143,7 @@
     });
   }
 
-  // Helper to get store value synchronously without subscription side effects
+  // Helper to get store value
   function get<T>(store: {
     subscribe: (callback: (value: T) => void) => () => void;
   }): T | undefined {
@@ -190,18 +180,12 @@
     if (growthTimeout) clearTimeout(growthTimeout);
     if (updateInterval) clearInterval(updateInterval);
     if (saveInterval) clearInterval(saveInterval);
-    if (pendingUpdateTimeout !== null) clearTimeout(pendingUpdateTimeout);
-    if (pendingVisualTimeout !== null) clearTimeout(pendingVisualTimeout);
 
     // Unsubscribe from stores
     if (unsubscribeChildren) unsubscribeChildren();
     if (unsubscribeName) unsubscribeName();
     if (unsubscribePoints) unsubscribePoints();
     if (unsubscribeContributors) unsubscribeContributors();
-
-    // Clean up node subscriptions
-    nodeSubscriptions.forEach((unsub) => unsub());
-    nodeSubscriptions = [];
 
     // Remove resize listener
     window.removeEventListener("resize", handleResize);
@@ -296,171 +280,112 @@
     }
   }
 
+  // Unsubscribe methods
+  let unsubscribeChildren: () => void;
+  let unsubscribeName: () => void;
+  let unsubscribePoints: () => void;
+  let unsubscribeContributors: () => void;
+  let unsubscribeChildrenContributors: (() => void)[];
+
+  // Add debounced update helper
+  function debounce(func: Function, wait: number): (...args: any[]) => void {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        func(...args);
+      }, wait);
+    };
+  }
+
+  // Create a debounced version of updateTreeData
+  const debouncedUpdateTreeData = debounce(updateTreeData, 100);
+
   function subscribeToStoreData() {
-    // Clean up previous subscriptions first
-    if (unsubscribeChildren) unsubscribeChildren();
-    if (unsubscribeName) unsubscribeName();
-    if (unsubscribePoints) unsubscribePoints();
-    if (unsubscribeContributors) unsubscribeContributors();
-
-    // Clean up node subscriptions
-    nodeSubscriptions.forEach((unsub) => unsub());
-    nodeSubscriptions = [];
-
     // Only subscribe if we have a valid store
     if (!store) {
       console.warn("No store provided to TreeMap");
       return;
     }
 
-    // Pre-fetch data to avoid recursive subscription triggers
-    // This gets the current state before setting up new subscriptions
-    childrenData = get(store.childrenStore) || [];
-    name = get(store.nameStore) || "";
-    points = get(store.pointsStore) || 0;
-    contributors = get(store.contributorsStore) || [];
+    // Initialize or clear child contributors map (using existing variable, not re-declaring)
+    childContributorsMap.clear();
 
-    // Now, set up data subscriptions with careful update triggers
+    // Get data from store and keep updated
     unsubscribeChildren = store.childrenStore.subscribe((newChildrenData) => {
-      // Only update if data actually changed
-      if (JSON.stringify(childrenData) !== JSON.stringify(newChildrenData)) {
-        childrenData = newChildrenData;
-        // Setup unified data subscriptions without triggering updates
-        setupNodeSubscriptions(false);
-        // Schedule a single tree data update
-        requestDataUpdate();
-      }
+      childrenData = newChildrenData;
+
+      // Update child contributors map
+      updateChildContributorsMap();
+
+      updateTreeData();
     });
 
     unsubscribeName = store.nameStore.subscribe((newName) => {
-      if (name !== newName) {
-        name = newName || "";
-        requestDataUpdate();
-      }
+      name = newName || "";
+      updateTreeData();
     });
 
     unsubscribePoints = store.pointsStore.subscribe((newPoints) => {
-      if (points !== newPoints) {
-        points = typeof newPoints === "number" ? newPoints : 0;
-        requestDataUpdate();
-      }
+      points = typeof newPoints === "number" ? newPoints : 0;
+      updateTreeData();
     });
 
     // Subscribe to contributors for the current node
     unsubscribeContributors = store.contributorsStore.subscribe(
       (newContributors) => {
-        // Only update if contributors actually changed
-        if (JSON.stringify(contributors) !== JSON.stringify(newContributors)) {
-          contributors = newContributors;
-          // Update hierarchy data if it exists without triggering a full rebuild
-          if (hierarchy && hierarchy.data) {
-            hierarchy.data.contributors = newContributors.map(([id]) => id);
-            // Only update visualization if needed and not in update cycle
-            requestVisualUpdate();
-          }
+        // Only update if we're really viewing this level
+        if (currentView && currentView === root) {
+          updateTreeData();
         }
       },
     );
 
-    // Initial update of visualization (only once after all data is available)
-    requestDataUpdate();
+    // Initial update for child contributors
+    updateChildContributorsMap();
+
+    // Initial update of visualization
+    updateTreeData();
   }
 
-  // Throttled request for data update
-  function requestDataUpdate() {
-    const now = Date.now();
-    if (now - lastUpdateTimestamp < UPDATE_THROTTLE_MS) {
-      // If we're updating too frequently, schedule a delayed update
-      if (pendingUpdateTimeout !== null) {
-        clearTimeout(pendingUpdateTimeout);
-      }
-      pendingUpdateTimeout = setTimeout(() => {
-        lastUpdateTimestamp = Date.now();
-        updateTreeData();
-      }, UPDATE_THROTTLE_MS);
-    } else {
-      // Otherwise update immediately
-      lastUpdateTimestamp = now;
-      updateTreeData();
-    }
-  }
-
-  // Throttled request for visualization update
-  function requestVisualUpdate() {
-    const now = Date.now();
-    if (now - lastUpdateTimestamp < UPDATE_THROTTLE_MS) {
-      // If we're updating too frequently, schedule a delayed update
-      if (pendingVisualTimeout !== null) {
-        clearTimeout(pendingVisualTimeout);
-      }
-      pendingVisualTimeout = setTimeout(() => {
-        lastUpdateTimestamp = Date.now();
-        updateVisualization();
-      }, UPDATE_THROTTLE_MS);
-    } else {
-      // Otherwise update immediately
-      lastUpdateTimestamp = now;
-      updateVisualization();
-    }
-  }
-
-  // Setup subscriptions for all nodes in a unified way
-  function setupNodeSubscriptions(triggerUpdates = true) {
-    // Clean up existing subscriptions
-    nodeSubscriptions.forEach((unsub) => unsub());
-    nodeSubscriptions = [];
-
-    // Subscribe to current node and all children
-    if (childrenData && childrenData.length) {
-      childrenData.forEach(([childId]) => {
-        const childStore = store.getChild(childId);
-
-        // Pre-fetch current contributors to avoid triggering updates
-        const currentContributors = get(childStore.contributorsStore) || [];
-
-        // Subscribe to child contributors
-        const contributorSub = childStore.contributorsStore.subscribe(
-          (contributors) => {
-            // Skip initial update to avoid recursion (first call after subscription)
-            if (
-              JSON.stringify(contributors) ===
-              JSON.stringify(currentContributors)
-            ) {
-              return;
-            }
-
-            // Only update hierarchy and visualization if we actually have hierarchy data
-            if (hierarchy) {
-              // Find node in hierarchy
-              const node = hierarchy
-                .descendants()
-                .find((n) => n.data._key === childId);
-              if (node) {
-                // Update contributors directly in the node data
-                node.data.contributors = contributors.map(([id]) => id);
-
-                // Only update visualization if the affected node is visible
-                if (currentView) {
-                  const isVisible =
-                    currentView === root ||
-                    (currentView.children &&
-                      currentView.children.some(
-                        (c) => c.data._key === childId,
-                      ));
-
-                  if (isVisible && triggerUpdates) {
-                    requestVisualUpdate();
-                  }
-                }
-              }
-            }
-          },
-        );
-
-        // Store subscription for cleanup
-        nodeSubscriptions.push(contributorSub);
+  // Separate function to update the child contributors map
+  function updateChildContributorsMap() {
+    // Clean up any existing subscriptions
+    if (unsubscribeChildrenContributors) {
+      unsubscribeChildrenContributors.forEach((unsub) => {
+        if (unsub) unsub();
       });
     }
+    unsubscribeChildrenContributors = [];
+
+    // Pre-fetch all child contributor data and store in our map
+    childrenData.forEach(([childId, childData]) => {
+      const childStore = store.getChild(childId);
+
+      // Get current contributors and store in map
+      const contributors = get(childStore.contributorsStore) || [];
+      const contributorIds = contributors.map(([id, _]) => id);
+      childContributorsMap.set(childId, contributorIds);
+
+      // Subscribe to changes for this child's contributors
+      const unsubscribe = childStore.contributorsStore.subscribe(
+        (newContributors) => {
+          // Update our map with the new data
+          const newContributorIds = newContributors.map(([id, _]) => id);
+          childContributorsMap.set(childId, newContributorIds);
+
+          // Only trigger a re-render if we're showing these children
+          if (currentView && currentView === root) {
+            updateTreeData();
+          }
+        },
+      );
+
+      unsubscribeChildrenContributors.push(unsubscribe);
+    });
+
+    console.log("Updated child contributors map:", childContributorsMap);
   }
 
   // Update tree data and visualization
@@ -469,117 +394,102 @@
     if (isUpdatingTreeData) return;
     isUpdatingTreeData = true;
 
-    console.log("TreeMap updateTreeData called", {
-      time: new Date().toISOString(),
-    });
+    // console.log('TreeMap updateTreeData called', { name, childrenData });
+
+    if (!name || childrenData === undefined) {
+      // console.log('TreeMap missing data', { name, childrenData });
+      isUpdatingTreeData = false;
+      return;
+    }
+
+    // Add detailed logging of the child data
+    if (childrenData.length > 0) {
+      // console.log('Child data sample:', childrenData[0]);
+      // console.log('All children:', childrenData);
+    }
+
+    // Retrieve current node contributors
+    const currentContributors = get(store.contributorsStore) || [];
+
+    // Convert RecognitionStore data to hierarchy data with integrated contributors
+    const hierarchyData = {
+      name,
+      points,
+      _key: store.path[store.path.length - 1] || "root",
+      contributors: currentContributors.map(([id, _]) => id), // Store contributor IDs directly in the node
+      children: childrenData.map(([id, data]) => {
+        // Get child contributors from our map
+        const childContributors = childContributorsMap.get(id) || [];
+
+        return {
+          ...data,
+          _key: id,
+          // Ensure points is a number
+          points: typeof data.points === "number" ? data.points : 0,
+          // Add contributors directly to the node structure
+          contributors: childContributors,
+        };
+      }),
+    };
+
+    console.log(
+      "Created unified hierarchy data with contributors:",
+      hierarchyData,
+    );
 
     try {
-      if (!name || childrenData === undefined) {
-        return;
-      }
+      // Only recreate the hierarchy if we don't have one or we're at the root store level
+      // This prevents rebuilding when we've navigated to a child
+      const isAtRootLevel = store.path.join("/") === store.path.join("/");
+      // const isAtRootLevel = store.path.length === 1; Only at root if path has one segment
+      const shouldRebuildHierarchy = !hierarchy || isAtRootLevel;
 
-      // Collect all necessary data upfront to avoid triggering reactive updates during processing
-      const nodeDataMap = new Map();
-      const hierarchyData: RecNode = {
-        name,
-        points,
-        _key: store.path[store.path.length - 1] || "root",
-        contributors: contributors.map(([id]) => id), // Use the already fetched data
-        children: childrenData.map(([id, data]) => {
-          // Get child store but don't subscribe
-          const childStore = store.getChild(id);
+      if (shouldRebuildHierarchy) {
+        // Create hierarchy
+        hierarchy = d3.hierarchy<RecNode>(hierarchyData as RecNode).sum((d) => {
+          const points = d.points || 0;
+          // console.log(`Node ${d.name || 'unnamed'} has ${points} points`);
+          return points;
+        });
 
-          // Get contributors - use the map if available to avoid redundant fetches
-          let childContributorIds;
-          if (nodeDataMap.has(id)) {
-            childContributorIds = nodeDataMap.get(id);
-          } else {
-            // Fetch synchronously without subscription
-            const childContributors = get(childStore.contributorsStore) || [];
-            childContributorIds = childContributors.map(([cid]) => cid);
-            nodeDataMap.set(id, childContributorIds);
+        // Apply treemap layout with improved error handling
+        try {
+          const treemap = d3.treemap<RecNode>().tile(tile as any);
+
+          root = treemap(
+            hierarchy as any,
+          ) as d3.HierarchyRectangularNode<RecNode>;
+
+          // Only set currentView to root if we don't have a currentView or we're rebuilding
+          if (!currentView || shouldRebuildHierarchy) {
+            currentView = root;
           }
 
-          return {
-            ...data,
-            _key: id,
-            // Ensure points is a number
-            points: typeof data.points === "number" ? data.points : 0,
-            // Add contributors directly to the node structure
-            contributors: childContributorIds,
-          } satisfies RecNode;
-        }),
-      };
+          // Reset domains to full extent
+          x.domain([root.x0, root.x1]);
+          y.domain([root.y0, root.y1]);
 
-      node = hierarchyData as RecNode;
-
-      console.log("Created unified hierarchy data:", hierarchyData);
-
-      // Create hierarchy with the complete data set
-      hierarchy = d3.hierarchy<RecNode>(hierarchyData as RecNode).sum((d) => {
-        const points = d.points || 0;
-        return points;
-      });
-
-      // Apply treemap layout with improved error handling
-      try {
-        const treemap = d3.treemap<RecNode>().tile(tile as any);
-
-        root = treemap(
-          hierarchy as any,
-        ) as d3.HierarchyRectangularNode<RecNode>;
-
-        // Only set currentView to root if we don't have a currentView
-        if (!currentView) {
-          currentView = root;
+          // Update visualization
+          if (svg && group) {
+            // console.log('TreeMap rendering visualization');
+            group.remove();
+            group = svg.append("g");
+            // Render with currentView instead of always using root
+            group.call(render, currentView);
+          } else {
+            // console.log('TreeMap missing svg or group', { svg, group });
+          }
+        } catch (err) {
+          // console.error('Error applying treemap layout:', err);
         }
-
-        // Reset domains to full extent
-        x.domain([root.x0, root.x1]);
-        y.domain([root.y0, root.y1]);
-
-        // Update visualization (but only if we have SVG)
-        if (svg && group) {
-          updateVisualization();
-        }
-      } catch (err) {
-        console.error("Error applying treemap layout:", err);
       }
     } catch (err) {
-      console.error("Error creating hierarchy:", err);
-    } finally {
-      // Always reset update flag
-      isUpdatingTreeData = false;
+      // console.error('Error creating hierarchy:', err);
     }
+
+    // Reset update flag after rendering is complete
+    isUpdatingTreeData = false;
   }
-
-  // Helper function to update visualization without full data rebuild
-  function updateVisualization() {
-    if (!svg || !group || !currentView) return;
-
-    // Prevent recursive visualization updates
-    if (isUpdatingVisualization) return;
-    isUpdatingVisualization = true;
-
-    try {
-      console.log("Updating visualization", { time: new Date().toISOString() });
-
-      // Remove old group and create a new one
-      group.remove();
-      group = svg.append("g");
-
-      // Render with currentView
-      group.call(render, currentView);
-    } catch (err) {
-      console.error("Error updating visualization:", err);
-    } finally {
-      isUpdatingVisualization = false;
-    }
-  }
-
-  // Create timeout references for cleanup
-  let pendingUpdateTimeout: ReturnType<typeof setTimeout> | null = null;
-  let pendingVisualTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Initialize on mount
   onMount(() => {
@@ -664,32 +574,35 @@
     });
   }
 
-  // Update the reactive store handling with protection against recursion
+  // Update the reactive store handling
   $: if (store) {
+    // Add debug before changing anything
     logStoreState("Before store reactive update");
 
-    // Use a store identity check to avoid resubscribing if just internal data changed
-    if (!previousStore || previousStore !== store) {
-      console.log("TreeMap store reference changed - resubscribing...");
+    // Clean up previous subscriptions if they exist
+    if (unsubscribeChildren) unsubscribeChildren();
+    if (unsubscribeName) unsubscribeName();
+    if (unsubscribePoints) unsubscribePoints();
+    if (unsubscribeContributors) unsubscribeContributors();
 
-      // Store the reference for identity comparison
-      previousStore = store;
-
-      // Set up new subscriptions with the updated store
-      if (svg) {
-        subscribeToStoreData();
-      }
-    } else {
-      console.log(
-        "TreeMap detected store update but reference unchanged - skipping resubscription",
-      );
+    // Clean up child contributor subscriptions
+    if (unsubscribeChildrenContributors) {
+      unsubscribeChildrenContributors.forEach((unsub) => {
+        if (unsub) unsub();
+      });
     }
 
+    // Log store path change
+    console.log("TreeMap using current-store with path:", store.path.join("/"));
+
+    // Set up new subscriptions with the updated store
+    if (svg) {
+      subscribeToStoreData();
+    }
+
+    // Add debug after changes
     logStoreState("After store reactive update");
   }
-
-  // Track store reference for identity check
-  let previousStore: RecognitionStore | null = null;
 
   // Update when dimensions change
   $: if (svg && (width || height)) {
@@ -1030,19 +943,20 @@
       // Skip all additions if rect is too small
       if (rectWidth < 60 || rectHeight < 60) return;
 
-      // Get contributors directly from the node data in our unified hierarchy
-      let contributorIds: string[] = [];
+      // Use contributors directly from the unified hierarchy data
+      let tagsArray: string[] = [];
 
+      // Get contributors from node data directly, now that it's part of our hierarchy
       if (d.data && d.data.contributors) {
         // Use contributors from our unified data model
-        contributorIds = Array.isArray(d.data.contributors)
+        tagsArray = Array.isArray(d.data.contributors)
           ? d.data.contributors
           : Object.keys(d.data.contributors);
 
         console.log(
           "[TreeMap] Node contributors from unified model:",
           d.data.name,
-          contributorIds,
+          tagsArray,
         );
       }
 
@@ -1075,22 +989,23 @@
         });
 
       // Log the number of TagPills being created
-      if (contributorIds.length > 0) {
+      if (tagsArray.length > 0) {
         console.log(
-          `Creating ${contributorIds.length} TagPills for node ${d.data.name || "unknown"}`,
+          `Creating ${tagsArray.length} TagPills for node ${d.data.name || "unknown"}`,
         );
       }
 
       // Add existing tags as pills
-      contributorIds.forEach((contributorId: string, index: number) => {
+      tagsArray.forEach((tagId: string, index: number) => {
         // Check if we already have a component for this tag ID to prevent duplicates
-        const nodeKey = `${d.data.name || "node"}-${contributorId}`;
+        const nodeKey = `${d.data.name || "node"}-${tagId}`;
         if (tagPillMap.has(nodeKey)) {
+          // console.log(`Skipping duplicate TagPill for ${tagId} on node ${d.data.name}`);
           return;
         }
 
         console.log(
-          `Creating TagPill ${index + 1}/${contributorIds.length} for ${contributorId} on node ${d.data.name}`,
+          `Creating TagPill ${index + 1}/${tagsArray.length} for ${tagId} on node ${d.data.name}`,
         );
 
         // Create a div to host our Svelte TagPill component
@@ -1098,12 +1013,14 @@
           .append("xhtml:div")
           .attr("class", "pill-container");
 
+        console.log("TagPill container created:", pillContainer.node());
+
         try {
           // Create the TagPill component using Svelte 5's mount API
           const tagPillComponent = mount(TagPill, {
             target: pillContainer.node() as HTMLElement,
             props: {
-              userId: contributorId,
+              userId: tagId,
               truncateLength: 10,
               removable: true,
               onClick: (clickedUserId: string) => {
@@ -1111,45 +1028,46 @@
                 const currentName = usersMap.has(clickedUserId)
                   ? usersMap.get(clickedUserId)!
                   : clickedUserId;
-                console.log("Tag clicked:", currentName);
+                // console.log('Tag clicked, navigating to user:', currentName);
+
+                // Navigation logic for tag click
+                // For now, just log the action
+                // console.log('Tag click not implemented yet');
               },
               onRemove: (clickedUserId: string) => {
-                // Remove contributor using the appropriate store API
-                const nodeKey = d.data._key;
-                if (!nodeKey) {
-                  console.error("Cannot remove contributor: node has no _key");
-                  return;
+                // Get current resolved name for logging
+                const currentName = usersMap.has(clickedUserId)
+                  ? usersMap.get(clickedUserId)!
+                  : clickedUserId;
+                // console.log('Removing tag:', currentName, 'from node:', d.data.name);
+
+                // Remove the tag using the store API if possible
+                if (d.data._key === store?.path[store.path.length - 1]) {
+                  // We can use the store directly
+                  store
+                    .removeTag(clickedUserId)
+                    .then(() => {
+                      // console.log(`Removed tag ${clickedUserId} via store API`);
+                    })
+                    .catch((err) => {
+                      // console.error('Error removing tag:', err);
+                    });
+                } else if (d.data.removeContributor) {
+                  d.data.removeContributor(clickedUserId);
                 }
 
-                // Get the appropriate store
-                const targetStore =
-                  nodeKey === store.path[store.path.length - 1]
-                    ? store
-                    : store.getChild(nodeKey);
+                // Remove tag pill with animation
+                pillContainer
+                  .style("opacity", "0")
+                  .style("transform", "scale(0.8)")
+                  .remove();
 
-                // Remove the contributor
-                targetStore
-                  .removeContributor(clickedUserId)
-                  .then(() => {
-                    console.log(
-                      `Removed contributor ${clickedUserId} from node ${nodeKey}`,
-                    );
-
-                    // Remove tag pill with animation
-                    pillContainer
-                      .style("opacity", "0")
-                      .style("transform", "scale(0.8)")
-                      .remove();
-
-                    // Remove from map
-                    tagPillMap.delete(nodeKey);
-                  })
-                  .catch((err) => {
-                    console.error("Error removing contributor:", err);
-                  });
+                // Remove from map
+                tagPillMap.delete(nodeKey);
               },
             },
           });
+          console.log("TagPill component created successfully");
 
           // Store component in map with unique key
           tagPillMap.set(nodeKey, tagPillComponent);
@@ -1954,60 +1872,56 @@
   // Login state
   let showLogin = false;
 
-  // Replace the event handler for adding contributor to a node with a more streamlined version
-  async function handleAddContributor(userId: string) {
-    console.log("Adding contributor:", userId, "to node:", dropdownNodeData);
-
-    // Hide dropdown after selection
-    showUserDropdown = false;
-
-    if (!dropdownNodeData) return;
-
-    try {
-      // Get the node's key
-      const nodeKey = dropdownNodeData._key;
-      if (!nodeKey) {
-        console.error("Cannot add contributor: node has no _key");
-        return;
-      }
-
-      // Get the appropriate store for this node
-      const targetStore =
-        nodeKey === store.path[store.path.length - 1]
-          ? store
-          : store.getChild(nodeKey);
-
-      // Add the contributor
-      await targetStore.addContributor(userId);
-      console.log(`Added contributor ${userId} to node ${nodeKey}`);
-
-      // Show success message
-      showToastMessage(`Added contributor successfully`, "success");
-    } catch (err: unknown) {
-      console.error("Error adding contributor:", err);
-      // Type guard to avoid TypeScript error
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      showToastMessage(`Error adding contributor: ${errorMessage}`, "warning");
-    }
-  }
-
-  // Replace the handleUserSelect function with a simpler function that uses our unified model
   function handleUserSelect(event: CustomEvent<{ id: string; name: string }>) {
     const { id } = event.detail;
 
-    if (!dropdownNodeData) {
-      console.error("No node selected for adding contributor");
-      return;
-    }
+    if (dropdownNodeData) {
+      // Get the clicked node's ID from dropdownNodeData
+      const clickedNodeId = dropdownNodeData._key || dropdownNodeData.id;
+      console.log(`Adding contributor ${id} to node ${clickedNodeId}`);
+      // Add the selected user as a contributor using the store API
+      if (store) {
+        const childStore = store.getChild(clickedNodeId);
+        if (childStore.addContributor) {
+          childStore
+            .addContributor(id)
+            .then(() => {
+              console.log(`Added contributor ${id} to node ${clickedNodeId}`);
 
-    // Call our streamlined handleAddContributor function
-    handleAddContributor(id)
-      .then(() => {
-        console.log(`Successfully added contributor ${id}`);
-      })
-      .catch((err) => {
-        console.error("Error in handleUserSelect:", err);
-      });
+              // Set up a subscription to monitor changes
+              let unsubHandler: any;
+              unsubHandler = childStore.contributorsStore.subscribe(
+                (contributors) => {
+                  console.log(
+                    "Contributors state (from subscription):",
+                    contributors,
+                  );
+                  if (contributors.length > 0) {
+                    console.log("Contributor added successfully!");
+                    if (unsubHandler) unsubHandler();
+                  }
+                },
+              );
+
+              // Set a timeout to unsubscribe if no update comes
+              setTimeout(() => {
+                if (unsubHandler) unsubHandler();
+                console.log(
+                  "Final contributors state:",
+                  get(childStore.contributorsStore),
+                );
+              }, 2000);
+            })
+            .catch((err) => {
+              console.error("Error adding contributor:", err);
+              showToastMessage(
+                `Error adding contributor: ${err.message}`,
+                "warning",
+              );
+            });
+        }
+      }
+    }
 
     // Hide dropdown
     showUserDropdown = false;
@@ -2053,8 +1967,132 @@
     showToast = false;
   }
 
-  // Add this in the script section, with other state variables
-  let showNodeInfo = true;
+  // Ensure child nodes and contributors data stays in sync with the store
+  $: {
+    // Only update if we have childrenData
+    if (childrenData && childrenData.length) {
+      // console.log('[TreeMap] Subscriptions updating for children:', childrenData.length);
+
+      // Clear existing subscriptions
+      childNodeSubscriptions.forEach((unsubscribe) => unsubscribe());
+      childNodeSubscriptions = [];
+
+      // Clear contributors map
+      childContributorsMap.clear();
+
+      // Create subscriptions for each child node
+      childrenData.forEach(([childId, childData]) => {
+        // Subscribe to child store for this node
+        try {
+          const childStore = store.getChild(childId);
+          if (!childStore) return;
+
+          // Subscribe to contributors for this child
+          const unsubscribe = childStore.contributorsStore.subscribe(
+            (contributorsData) => {
+              if (Array.isArray(contributorsData)) {
+                // Convert to form we need: array of IDs
+                const contributorIds = contributorsData.map(
+                  ([contributorId, _]) => contributorId,
+                );
+                // console.log(`[TreeMap] Contributors for ${childId}:`, contributorIds);
+
+                // Store in our map
+                childContributorsMap.set(childId, contributorIds);
+
+                // Update our unified data model - find this node in our hierarchy and update
+                if (hierarchy) {
+                  const node = hierarchy
+                    .descendants()
+                    .find((n) => n.data._key === childId);
+                  if (node) {
+                    node.data.contributors = contributorIds;
+                    console.log(
+                      `Updated contributors for ${childId} in hierarchy`,
+                    );
+                  }
+                }
+
+                // Trigger a redraw of the visualization to reflect contributor changes
+                updateVisualization();
+              }
+            },
+          );
+
+          childNodeSubscriptions.push(unsubscribe);
+        } catch (err) {
+          console.error(`Error subscribing to child ${childId}:`, err);
+        }
+      });
+    }
+  }
+
+  // Event handler for adding contributor to a node
+  async function handleAddContributor(userId: string) {
+    console.log("Adding contributor:", userId, "to node:", dropdownNodeData);
+
+    // Hide dropdown after selection
+    showUserDropdown = false;
+
+    if (!dropdownNodeData) return;
+
+    try {
+      // Option 1: This is the current node in the store
+      if (dropdownNodeData?._key === store?.path[store.path.length - 1]) {
+        // We can use the store directly
+        await store.addTag(userId);
+        console.log(`Added contributor ${userId} to current store node`);
+
+        // Update our unified data model directly
+        if (hierarchy) {
+          const node = hierarchy
+            .descendants()
+            .find((n) => n.data._key === dropdownNodeData?._key);
+          if (node) {
+            if (!node.data.contributors) node.data.contributors = [];
+            if (!node.data.contributors.includes(userId)) {
+              node.data.contributors.push(userId);
+              console.log(
+                `Updated hierarchy data for ${dropdownNodeData?._key} with new contributor`,
+              );
+            }
+          }
+        }
+      }
+      // Option 2: This is a child node
+      else if (dropdownNodeData?._key) {
+        // Get the child store and add the contributor
+        const childStore = store.getChild(dropdownNodeData?._key);
+        if (childStore) {
+          await childStore.addTag(userId);
+          console.log(
+            `Added contributor ${userId} to child store node ${dropdownNodeData?._key}`,
+          );
+
+          // Our reactive subscriptions should handle updating the hierarchy data
+        }
+      }
+      // Option 3: Use the internal addContributor method if available on the node
+      else if (dropdownNodeData?.addContributor) {
+        await dropdownNodeData.addContributor(userId);
+        console.log("Added contributor using node's internal method");
+      }
+
+      // Trigger visualization update to reflect changes
+      updateVisualization();
+    } catch (err) {
+      console.error("Error adding contributor:", err);
+    }
+  }
+
+  // Helper function to update visualization without full data rebuild
+  function updateVisualization() {
+    if (svg && group && currentView) {
+      group.remove();
+      group = svg.append("g");
+      group.call(render, currentView);
+    }
+  }
 </script>
 
 <div bind:this={treeMap} id="treemap-container"></div>
@@ -2096,269 +2134,7 @@
   </div>
 {/if}
 
-{#if showNodeInfo}
-  <div class="node-info">
-    <div class="node-info-header">
-      <h3>{node?.name || "Unnamed Node"}</h3>
-      <button class="close-button" on:click={() => (showNodeInfo = false)}
-        >×</button
-      >
-    </div>
-    {#if node}
-      <div class="node-info-content">
-        <div class="node-stats">
-          <div class="stat-item">
-            <span class="stat-label">Points:</span>
-            <span class="stat-value">{node.points?.toFixed(2) || 0}</span>
-          </div>
-          {#if node.fulfilled !== undefined}
-            <div class="stat-item">
-              <span class="stat-label">Fulfillment:</span>
-              <span class="stat-value"
-                >{(node.fulfilled * 100).toFixed(1)}%</span
-              >
-            </div>
-          {/if}
-          {#if node.manualFulfillment !== undefined}
-            <div class="stat-item">
-              <span class="stat-label">Manual Fulfillment:</span>
-              <span class="stat-value"
-                >{(node.manualFulfillment * 100).toFixed(1)}%</span
-              >
-            </div>
-          {/if}
-          {#if node.isContribution !== undefined}
-            <div class="stat-item">
-              <span class="stat-label">Type:</span>
-              <span class="stat-value"
-                >{node.isContribution ? "Contribution" : "Regular"}</span
-              >
-            </div>
-          {/if}
-        </div>
-
-        {#if node._key}
-          <div class="node-detail">
-            <span class="detail-label">ID:</span>
-            <span class="detail-value">{node._key}</span>
-          </div>
-        {/if}
-
-        {#if node.contributors && Object.keys(node.contributors).length > 0}
-          <div class="node-section">
-            <h4>Contributors ({Object.keys(node.contributors).length})</h4>
-            <div class="contributors-list">
-              {#each Object.keys(node.contributors) as id}
-                <div class="contributor-item" title={id}>
-                  {id.slice(0, 10)}{id.length > 10 ? "..." : ""}
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
-
-        {#if node.children && node.children.length > 0}
-          <div class="node-section">
-            <h4>Children ({node.children.length})</h4>
-            <div class="children-list">
-              {#each node.children.slice(0, 5) as child}
-                <div class="child-item">
-                  <span class="child-name">{child.name || "Unnamed"}</span>
-                  <span class="child-points">{child.points || 0} pts</span>
-                </div>
-              {/each}
-              {#if node.children.length > 5}
-                <div class="more-children">
-                  +{node.children.length - 5} more
-                </div>
-              {/if}
-            </div>
-          </div>
-        {/if}
-      </div>
-    {/if}
-  </div>
-{:else}
-  <button class="info-toggle-button" on:click={() => (showNodeInfo = true)}>
-    <span>i</span>
-  </button>
-{/if}
-
 <style>
-  /* Node info styling */
-  .node-info {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 300px;
-    max-width: 90vw;
-    max-height: 400px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-    overflow: auto;
-    z-index: 900;
-    padding: 0;
-    transition: all 0.2s ease;
-  }
-
-  .node-info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px 8px;
-    border-bottom: 1px solid #eee;
-  }
-
-  .node-info-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #999;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    transition: color 0.2s;
-  }
-
-  .close-button:hover {
-    color: #333;
-  }
-
-  .node-info-content {
-    padding: 16px;
-  }
-
-  .node-info h4 {
-    margin: 12px 0 8px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #555;
-  }
-
-  .node-stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .stat-item {
-    background: #f5f7fa;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 13px;
-  }
-
-  .stat-label,
-  .detail-label {
-    font-weight: 500;
-    color: #555;
-    margin-right: 5px;
-  }
-
-  .stat-value,
-  .detail-value {
-    font-weight: 600;
-    color: #333;
-  }
-
-  .node-detail {
-    padding: 8px 0;
-    font-size: 13px;
-    border-bottom: 1px solid #eee;
-  }
-
-  .node-section {
-    margin-top: 12px;
-    padding-top: 8px;
-    border-top: 1px solid #eee;
-  }
-
-  .contributors-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .contributor-item {
-    background: #e9f0f7;
-    color: #3a6b9e;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .children-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .child-item {
-    display: flex;
-    justify-content: space-between;
-    background: #f8f8f8;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 13px;
-  }
-
-  .child-name {
-    font-weight: 500;
-    color: #444;
-  }
-
-  .child-points {
-    font-weight: 600;
-    color: #666;
-  }
-
-  .more-children {
-    text-align: center;
-    font-size: 12px;
-    color: #888;
-    padding: 4px 0;
-  }
-
-  .info-toggle-button {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #ddd;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 900;
-    transition: all 0.2s ease;
-  }
-
-  .info-toggle-button span {
-    font-weight: bold;
-    font-style: italic;
-    color: #3a6b9e;
-    font-size: 18px;
-  }
-
-  .info-toggle-button:hover {
-    background: rgba(255, 255, 255, 1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
-  }
-
   :global(body) {
     margin: 0;
     padding: 0;
@@ -2368,13 +2144,15 @@
   div {
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow: hidden; /* Prevent scrollbars in the main container */
   }
 
+  /* Improved node styling */
   :global(.treemap-node rect) {
     transition: fill 0.2s ease;
   }
 
+  /* Improve text visibility with text shadow */
   :global(.treemap-node text) {
     text-shadow:
       0px 0px 3px rgba(255, 255, 255, 0.8),
@@ -2382,6 +2160,7 @@
     font-weight: 500;
   }
 
+  /* Cursors */
   :global(.edit-text-field) {
     cursor: text;
   }
@@ -2394,6 +2173,7 @@
     cursor: pointer;
   }
 
+  /* Style the dropdown more elegantly */
   :global(.contributor-search-dropdown) {
     box-shadow:
       0 6px 16px rgba(0, 0, 0, 0.12),
@@ -2422,6 +2202,7 @@
     background-color: #f5f7fa !important;
   }
 
+  /* Type tags styling */
   :global(.tag-wrapper) {
     display: flex;
     flex-wrap: wrap;
@@ -2464,6 +2245,7 @@
     transform: scale(1.1);
   }
 
+  /* New node input styling */
   :global(.new-node-input) {
     width: 80%;
     font-family: inherit;
@@ -2482,6 +2264,7 @@
     justify-content: center;
   }
 
+  /* Login overlay styling */
   .login-modal-overlay {
     position: fixed;
     top: 0;
@@ -2490,7 +2273,7 @@
     bottom: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 10000;
+    z-index: 10000; /* Ensure it's above everything else */
     display: flex;
     align-items: center;
     justify-content: center;

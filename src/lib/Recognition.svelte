@@ -119,6 +119,8 @@
         root.addContributor(contributorId, contributorNode);
       });
       
+      console.log('Recognition: Added contributors to root:', contributors.length, contributors);
+      
       // Add tags
       tags.forEach(([tag]) => {
         root.addTag(tag);

@@ -246,7 +246,7 @@ export class ReactiveGraph {
   private registry: StoreRegistry;
   private defaultTraversalOptions: TraversalOptions;
   private traversalCache = new Map<string, Promise<string[]>>();
-  private debugMode = false;
+  private debugMode = true;
   private isTransient: boolean;
   
   constructor(options: TraversalOptions = DEFAULT_TRAVERSAL_OPTIONS, transient: boolean = false) {

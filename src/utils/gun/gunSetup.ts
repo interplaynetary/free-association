@@ -1,13 +1,13 @@
-import Gun from 'gun/gun'
-import SEA from 'gun/sea.js'
-import 'gun/axe';
+import Gun from "gun/gun";
+import SEA from "gun/sea.js";
+import "gun/axe";
 //import 'gun/lib/radix'
 //import 'gun/lib/radisk'
 // import 'gun/lib/store'
 // import 'gun/lib/rindexed'
-import 'gun/lib/webrtc'
-import 'gun/lib/then'
-import 'gun/lib/yson.js'
+import "gun/lib/webrtc";
+import "gun/lib/then";
+import "gun/lib/yson.js";
 
 // Export subscription handler types directly from gunSetup
 export type SubscriptionHandler<T> = (value: T) => void;
@@ -26,10 +26,37 @@ interface GunUser {
   get: (path: string) => any; // Add get method to GunUser interface
 }
 
+// Initialize Gun once
+export const gun = Gun({
+  peers: [
+    "http://localhost:8765/gun", // Local relay peer
+    "https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
+  ],
+  localStorage: true, // Enable localStorage persistence in browser
+});
+
+// Create a separate Gun instance for transient data that shouldn't be persisted
+// This is used for user listings and other data we don't want to save to localStorage
+export const transientGun = Gun({
+  peers: [
+    "http://localhost:8765/gun", // Local relay peer
+    "https://gun-manhattan.herokuapp.com/gun",
+  ],
+  localStorage: false, // Disable localStorage persistence for transient data
+  radisk: false,
+});
+
+// Get authenticated user space
+export const user = gun.user() as GunUser;
+user.recall({ sessionStorage: true });
+
+export const transientUser = transientGun.user() as GunUser;
+transientUser.recall({ sessionStorage: true });
+
 // Type for Gun metadata - helps with GunNode.ts linter errors
 export interface GunMeta {
-  '#'?: string;  // Soul reference
-  '>'?: Record<string, number>; // State/timestamp for properties
+  "#"?: string; // Soul reference
+  ">"?: Record<string, number>; // State/timestamp for properties
   [key: string]: any;
 }
 
@@ -46,18 +73,18 @@ export interface Grantee {
 
 // SEA's Policy interface for writableSpaces
 export interface IPolicy {
-  '*'?: string;  // Path starts with
-  '+'?: string;  // Path ends with
-  '='?: string;  // Path equals exactly
-  '^'?: string;  // Path matches regex
+  "*"?: string; // Path starts with
+  "+"?: string; // Path ends with
+  "="?: string; // Path equals exactly
+  "^"?: string; // Path matches regex
 }
 
 export type WritableSpace = string | IPolicy;
 
 export interface SEAPair {
-  pub: string;   // Public key
-  priv: string;  // Private key
-  epub: string;  // Elliptic curve public key
+  pub: string; // Public key
+  priv: string; // Private key
+  epub: string; // Elliptic curve public key
   epriv: string; // Elliptic curve private key
 }
 
@@ -65,31 +92,9 @@ export interface SEAPair {
 export enum CertificatePermission {
   READ = "read",
   WRITE = "write",
-  BOTH = "both"
+  BOTH = "both",
 }
 
-// Initialize Gun once
-export const gun = Gun({
-  peers: [
-    'http://localhost:8765/gun', // Local relay peer
-    'https://gun-manhattan.herokuapp.com/gun', // Public relay peer for cross-device syncing
-  ],
-  localStorage: true, // Enable localStorage persistence in browser
-})
-
-// Create a separate Gun instance for transient data that shouldn't be persisted
-// This is used for user listings and other data we don't want to save to localStorage
-export const transientGun = Gun({
-  peers: [
-    'http://localhost:8765/gun', // Local relay peer
-  ],
-  localStorage: false, // Disable localStorage persistence for transient data
-  radisk: false
-})
-
-gun.on('bye', peer => {
-  console.log('[GUN] Disconnected from peer:', peer);
-})
 /*
 // Add data sync logging
 gun.on('in', function(msg) {
@@ -100,6 +105,8 @@ gun.on('in', function(msg) {
   this.to.next(msg);
 });
 */
+
+/*
 // Add a debounce mechanism for processing nulls
 // Create a set to track recently seen null values
 const recentNulls = new Set<string>();
@@ -146,139 +153,64 @@ gun.on('out', function(msg: any) {
   this.to.next(msg);
 });
 
-// Extend Gun's type definitions for Svelte integration
-declare module 'gun/gun' {
-  interface IGunChain<T, TKey = any, TAck = any, TNode = any> {
-    subscribe: (callback: (data: any) => void) => () => void;
-  }
-  
-  interface _GunRoot {
-    back?: _GunRoot;
-    each?: any;
-  }
-}
-
-// Add subscribe method to Gun for Svelte compatibility
-// This is the "magic" approach from svelte-gun.md
-// @ts-ignore - We're extending the Gun prototype
-Gun.chain.subscribe = function(publish: (data: any) => void) {
-  const gun = this
-  const at = gun._
-  // @ts-ignore - We've extended the _GunRoot type above
-  const isMap = !!at && !!at.back && !!at.back.each
-
-  if (isMap) {
-    const store = new Map()
-    publish(Array.from(store))
-    gun.on((data: any, _key: string, as: any) => {
-      const key = _key || ((data || {})._|| {})['#'] || as.via.soul
-      if (data === null) {
-        store.delete(key)
-      } else {
-        store.set(key, data)
+transientGun.on('out', function(msg: any) {
+   // Only process put messages
+   if (msg.put) {
+    // console.log('[GUN] Sending data:', Object.keys(msg.put).length, 'nodes');
+    const souls = Object.keys(msg.put);
+    
+    // For each soul (node) in the message
+    souls.forEach(soul => {
+      const node = msg.put[soul];
+      
+      // Check if this is a null/delete operation
+      if (node === null || (node && Object.keys(node).length === 0)) {
+        const key = soul;
+        
+        // Check if we've seen this null recently
+        if (recentNulls.has(key)) {
+          // console.log('[DEBUG Gun] Filtering redundant null for:', key);
+          delete msg.put[soul]; // Remove from the message
+          
+          // If message is now empty, prevent it from being sent
+          if (Object.keys(msg.put).length === 0) {
+            return; // Skip sending the message
+          }
+        } else {
+          // Add to recent nulls and schedule removal
+          recentNulls.add(key);
+          setTimeout(() => {
+            recentNulls.delete(key);
+          }, NULL_DEBOUNCE_TIME);
+        }
       }
-      publish(Array.from(store))
-    })
-  } else {
-    gun.on((data: any) => publish(data))
-  }
-
-  return gun.off
-}
-
-/**
- * STANDARD USAGE EXAMPLES
- * 
- * In Svelte components, use the subscribe method directly on Gun chains:
- * 
- * ```
- * <script>
- *   import { gun } from './gunSetup';
- *   
- *   // Simple data binding
- *   let userData;
- *   const unsubscribe = gun.get('users').get('alice').subscribe(data => {
- *     userData = data;
- *   });
- *   
- *   // Using with Svelte's $: syntax
- *   const userStore = gun.get('users').get('alice');
- *   $: console.log($userStore); // Reactive access
- *   
- *   // Cleanup on component destroy
- *   onDestroy(unsubscribe);
- * </script>
- * ```
- * 
- * For more complex data transformations, use customStore:
- * 
- * ```
- * const filteredUsers = customStore(gun.get('users'), {
- *   filter: (criteria) => { ... } // Custom methods
- * });
- * ```
- */
-
-// For SvelteKit compatibility - use this in components that need SSR
-export function initGunOnMount() {
-  let gunInstance: any = null;
-  
-  if (typeof window !== 'undefined') {
-    gunInstance = Gun({
-      peers: ['http://localhost:8765/gun'],
-      localStorage: true
     });
   }
   
-  return gunInstance;
-}
-
-// Custom store function for reusability (alternative approach)
-export function customStore(ref: any, methods = {}) {
-  let store: any = {}
-  const subscribers: Array<(data: any) => void> = []
-
-  // Add a listener to GUN data
-  ref.on(function(data: any, key: string) {
-    if (ref._.get === key) {
-      store = data
-    } else if (!data) {
-      delete store[key]
-      store = {...store} // Create a new reference to trigger Svelte reactivity
-    } else {
-      store[key] = data
-    }
-    // Tell each subscriber that data has been updated
-    for (let i = 0; i < subscribers.length; i += 1) {
-      subscribers[i](store)
-    }
-  })
-
-  function subscribe(subscriber: (data: any) => void) {
-    subscribers.push(subscriber)
-    
-    // Publish initial value
-    subscriber(store)
-
-    // Return cleanup function to be called on component dismount
-    return () => {
-      const index = subscribers.indexOf(subscriber)
-      if (index !== -1) {
-        subscribers.splice(index, 1)
-      }
-      if (!subscribers.length) {
-        ref.off()
-      }
-    }
-  }
-
-  return { ...methods, subscribe }
-} 
+  // Pass the possibly modified message to the next middleware
+  // @ts-ignore - accessing Gun's private API
+  this.to.next(msg);
+});
+*/
 
 // ===== USER AUTHENTICATION FUNCTIONS =====
 
-// Get authenticated user space
-export const user = gun.user() as GunUser;
+// Add a helper to register a user in the transient users list
+const registerUserInTransientList = (userId: string, userName: string) => {
+  if (!userId) return;
+
+  console.log("Registering user in transient users list:", {
+    userId,
+    userName,
+  });
+
+  // Add to transient users for discovery
+  transientGun.get("users").get(userId).put({
+    name: userName,
+    online: true,
+    lastSeen: Date.now(),
+  });
+};
 
 // Recall user session - returns a promise for async/await support
 export const recallUser = (): Promise<void> => {
@@ -288,17 +220,34 @@ export const recallUser = (): Promise<void> => {
       // Fetch and restore alias if needed
       if (user.is?.alias === user.is?.pub) {
         // Use non-null assertion since we've already checked user.is.pub exists
-        gun.get(`~${user.is.pub!}`).get('alias').once((alias) => {
-          if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-            // Update user.is.alias with the correct value
-            if (user.is) {
-              user.is.alias = alias;
+        gun
+          .get(`~${user.is.pub!}`)
+          .get("alias")
+          .once((alias) => {
+            if (
+              alias &&
+              typeof alias === "string" &&
+              user.is?.pub &&
+              alias !== user.is.pub
+            ) {
+              // Update user.is.alias with the correct value
+              if (user.is) {
+                user.is.alias = alias;
+              }
+              console.log("Restored correct alias:", alias);
+
+              // Register in transient users list
+              registerUserInTransientList(user.is.pub!, alias);
+            } else if (user.is?.pub && user.is?.alias) {
+              // Use alias even if it's the same as pub
+              registerUserInTransientList(user.is.pub, user.is.alias);
             }
-            console.log('Restored correct alias:', alias);
-          }
-          resolve();
-        });
+            resolve();
+          });
         return;
+      } else if (user.is?.pub && user.is?.alias) {
+        // Register in transient users list with current alias
+        registerUserInTransientList(user.is.pub, user.is.alias);
       }
       resolve();
       return;
@@ -306,47 +255,83 @@ export const recallUser = (): Promise<void> => {
 
     // Set up one-time auth handler
     const authHandler = () => {
-      (gun as any).off('auth', authHandler);
-      
+      (gun as any).off("auth", authHandler);
+
       // Check if alias equals pub key, which indicates a potential issue
       if (user.is?.alias === user.is?.pub && user.is?.pub) {
         // Use non-null assertion since we've already checked user.is.pub exists
-        gun.get(`~${user.is.pub!}`).get('alias').once((alias) => {
-          if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-            // Update user.is.alias with the correct value
-            if (user.is) {
-              user.is.alias = alias;
+        gun
+          .get(`~${user.is.pub!}`)
+          .get("alias")
+          .once((alias) => {
+            if (
+              alias &&
+              typeof alias === "string" &&
+              user.is?.pub &&
+              alias !== user.is.pub
+            ) {
+              // Update user.is.alias with the correct value
+              if (user.is) {
+                user.is.alias = alias;
+              }
+              console.log("Restored correct alias:", alias);
+
+              // Register in transient users list
+              registerUserInTransientList(user.is.pub!, alias);
+            } else if (user.is?.pub && user.is?.alias) {
+              // Use alias even if it's the same as pub
+              registerUserInTransientList(user.is.pub, user.is.alias);
             }
-            console.log('Restored correct alias:', alias);
-          }
-          resolve();
-        });
+            resolve();
+          });
+      } else if (user.is?.pub && user.is?.alias) {
+        // Register in transient users list with current alias
+        registerUserInTransientList(user.is.pub, user.is.alias);
+        resolve();
       } else {
         resolve();
       }
     };
-    
-    gun.on('auth', authHandler);
+
+    gun.on("auth", authHandler);
 
     // Attempt recall
     user.recall({ sessionStorage: true });
 
     // Safety timeout
     setTimeout(() => {
-      (gun as any).off('auth', authHandler);
-      
+      (gun as any).off("auth", authHandler);
+
       // Same alias check on timeout
       if (user.is?.pub && user.is?.alias === user.is?.pub) {
         // Use non-null assertion since we've already checked user.is.pub exists
-        gun.get(`~${user.is.pub!}`).get('alias').once((alias) => {
-          if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-            if (user.is) {
-              user.is.alias = alias;
+        gun
+          .get(`~${user.is.pub!}`)
+          .get("alias")
+          .once((alias) => {
+            if (
+              alias &&
+              typeof alias === "string" &&
+              user.is?.pub &&
+              alias !== user.is.pub
+            ) {
+              if (user.is) {
+                user.is.alias = alias;
+              }
+              console.log("Restored correct alias on timeout:", alias);
+
+              // Register in transient users list
+              registerUserInTransientList(user.is.pub!, alias);
+            } else if (user.is?.pub && user.is?.alias) {
+              // Use current alias as fallback
+              registerUserInTransientList(user.is.pub, user.is.alias);
             }
-            console.log('Restored correct alias on timeout:', alias);
-          }
-          resolve();
-        });
+            resolve();
+          });
+      } else if (user.is?.pub && user.is?.alias) {
+        // Register in transient users list with current alias
+        registerUserInTransientList(user.is.pub, user.is.alias);
+        resolve();
       } else {
         resolve();
       }
@@ -355,25 +340,46 @@ export const recallUser = (): Promise<void> => {
 };
 
 // Single authentication function that handles both login and signup
-export const authenticate = async (alias: string, pass: string): Promise<void> => {
+export const authenticate = async (
+  alias: string,
+  pass: string
+): Promise<void> => {
   return new Promise((resolve, reject) => {
     // First try to login
     user.auth(alias, pass, (ack: any) => {
       if (!ack.err) {
+        console.log("Authenticated user:", alias);
+
+        // Register authenticated user in transient users list
+        if (user.is?.pub) {
+          registerUserInTransientList(user.is.pub, alias);
+        }
+
         resolve();
         return;
       }
-      
+
       // If login fails, create and authenticate new user
       user.create(alias, pass, (createAck: any) => {
         if (createAck.err) {
           reject(new Error(createAck.err));
           return;
         }
-        
+
         // After creation, authenticate
         user.auth(alias, pass, (authAck: any) => {
-          authAck.err ? reject(new Error(authAck.err)) : resolve();
+          if (authAck.err) {
+            reject(new Error(authAck.err));
+          } else {
+            console.log("Authenticated user:", alias);
+
+            // Register newly created user in transient users list
+            if (user.is?.pub) {
+              registerUserInTransientList(user.is.pub, alias);
+            }
+
+            resolve();
+          }
         });
       });
     });
@@ -382,6 +388,15 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 
 // Clean logout that clears storage
 export const logout = () => {
+  // Mark user as offline in the transient users list before logging out
+  if (user.is?.pub) {
+    console.log("Marking user as offline:", user.is.pub);
+    transientGun.get("users").get(user.is.pub).put({
+      online: false,
+      lastSeen: Date.now(),
+    });
+  }
+
   user.leave();
   sessionStorage.clear();
   localStorage.clear();
@@ -390,17 +405,9 @@ export const logout = () => {
 // Helper to get encrypted user paths
 export const getPath = async (path: string) => {
   if (!user.is) return null;
-  const pair = (user as any)._.sea;  // Type assertion for internal Gun property
+  const pair = (user as any)._.sea; // Type assertion for internal Gun property
   const proof = await SEA.work(path, pair);
   return proof ? `~${user.is.pub}/${proof}` : null;
-};
-
-// Get user's nodes graph
-export const getNodesGraph = async () => {
-  const path = await getPath('nodes');
-  if (!path) return null;
-  // @ts-ignore - Gun's return type is not properly typed for TypeScript
-  return user.get(path);
 };
 
 // Create a node reference at a path - helper function to work with GunNode
@@ -425,7 +432,7 @@ export const getTransientNodeRef = (path: string[]) => {
 
 /**
  * Create a certificate to give permission to a user for a specific path
- * 
+ *
  * @param granteePub Public key of the user who will be granted access
  * @param paths Array of paths the user will have access to
  * @param permission Type of permission (read, write, or both)
@@ -440,41 +447,41 @@ export async function createCertificate(
 ): Promise<string | null> {
   // Need to be authenticated to create certificates
   if (!user.is?.pub) {
-    console.error('Error creating certificate: Not authenticated');
+    console.error("Error creating certificate: Not authenticated");
     return null;
   }
-  
+
   try {
     // Get the authenticated user's key pair
     const issuerPair = (user as any)._.sea;
     if (!issuerPair) {
-      console.error('Error creating certificate: No key pair found');
+      console.error("Error creating certificate: No key pair found");
       return null;
     }
-    
+
     // Create writable spaces according to permission pattern
-    const writableSpaces = paths.map(path => {
-      return { '*': path };
+    const writableSpaces = paths.map((path) => {
+      return { "*": path };
     });
-    
+
     // Create timestamp for expiration
     const certOptions: any = {};
     if (expiration) {
       certOptions.expiry = Date.now() + expiration;
     }
-    
+
     // Use type casting to bypass TypeScript's strict checking
     // SEA.certify has complex types that are hard to match exactly
     const certificate = await (SEA.certify as any)(
       [{ pub: granteePub }], // grantees
-      writableSpaces,       // writable spaces
-      issuerPair,           // issuer's key pair
-      certOptions           // options
+      writableSpaces, // writable spaces
+      issuerPair, // issuer's key pair
+      certOptions // options
     );
-    
+
     return certificate;
   } catch (error) {
-    console.error('Error creating certificate:', error);
+    console.error("Error creating certificate:", error);
     return null;
   }
 }
@@ -486,31 +493,34 @@ export async function storeCertificate(
   granteePub: string
 ): Promise<boolean> {
   if (!user.is?.pub) {
-    console.error('Error storing certificate: Not authenticated');
+    console.error("Error storing certificate: Not authenticated");
     return false;
   }
-  
+
   try {
     // Store in the user's certificates collection
     await new Promise<void>((resolve, reject) => {
       // Cast user to any to access get method without type errors
-      const certNode = (user as any).get('certificates').get(name);
-      certNode.put({
-        certificate,
-        grantee: granteePub,
-        created: Date.now()
-      }, (ack: any) => {
-        if (ack.err) {
-          reject(new Error(ack.err));
-        } else {
-          resolve();
+      const certNode = (user as any).get("certificates").get(name);
+      certNode.put(
+        {
+          certificate,
+          grantee: granteePub,
+          created: Date.now(),
+        },
+        (ack: any) => {
+          if (ack.err) {
+            reject(new Error(ack.err));
+          } else {
+            resolve();
+          }
         }
-      });
+      );
     });
-    
+
     return true;
   } catch (error) {
-    console.error('Error storing certificate:', error);
+    console.error("Error storing certificate:", error);
     return false;
   }
 }
@@ -518,26 +528,29 @@ export async function storeCertificate(
 // Retrieve a previously stored certificate
 export async function getCertificate(name: string): Promise<string | null> {
   if (!user.is?.pub) {
-    console.error('Error retrieving certificate: Not authenticated');
+    console.error("Error retrieving certificate: Not authenticated");
     return null;
   }
-  
+
   try {
     // Retrieve from the user's certificates collection
     const certData = await new Promise<any>((resolve) => {
       // Cast user to any to access get method without type errors
-      (user as any).get('certificates').get(name).once((data: any) => {
-        resolve(data);
-      });
+      (user as any)
+        .get("certificates")
+        .get(name)
+        .once((data: any) => {
+          resolve(data);
+        });
     });
-    
+
     if (!certData || !certData.certificate) {
       return null;
     }
-    
+
     return certData.certificate;
   } catch (error) {
-    console.error('Error retrieving certificate:', error);
+    console.error("Error retrieving certificate:", error);
     return null;
   }
 }
@@ -549,31 +562,67 @@ export const certificatePresets = {
   /**
    * Create a read-only certificate for a specific path
    */
-  readOnly: async (granteePub: string, path: string, expiration?: number): Promise<string | null> => {
-    return createCertificate(granteePub, [path], CertificatePermission.READ, expiration);
+  readOnly: async (
+    granteePub: string,
+    path: string,
+    expiration?: number
+  ): Promise<string | null> => {
+    return createCertificate(
+      granteePub,
+      [path],
+      CertificatePermission.READ,
+      expiration
+    );
   },
-  
+
   /**
    * Create a write-only certificate for a specific path
    */
-  writeOnly: async (granteePub: string, path: string, expiration?: number): Promise<string | null> => {
-    return createCertificate(granteePub, [path], CertificatePermission.WRITE, expiration);
+  writeOnly: async (
+    granteePub: string,
+    path: string,
+    expiration?: number
+  ): Promise<string | null> => {
+    return createCertificate(
+      granteePub,
+      [path],
+      CertificatePermission.WRITE,
+      expiration
+    );
   },
-  
+
   /**
    * Create a full access certificate for a specific path
    */
-  fullAccess: async (granteePub: string, path: string, expiration?: number): Promise<string | null> => {
-    return createCertificate(granteePub, [path], CertificatePermission.BOTH, expiration);
+  fullAccess: async (
+    granteePub: string,
+    path: string,
+    expiration?: number
+  ): Promise<string | null> => {
+    return createCertificate(
+      granteePub,
+      [path],
+      CertificatePermission.BOTH,
+      expiration
+    );
   },
-  
+
   /**
    * Create a temporary certificate that expires after the specified time
    */
-  temporary: async (granteePub: string, path: string, durationMs = 3600000): Promise<string | null> => {
-    return createCertificate(granteePub, [path], CertificatePermission.WRITE, durationMs);
-  }
-}
+  temporary: async (
+    granteePub: string,
+    path: string,
+    durationMs = 3600000
+  ): Promise<string | null> => {
+    return createCertificate(
+      granteePub,
+      [path],
+      CertificatePermission.WRITE,
+      durationMs
+    );
+  },
+};
 
 /*
 var SEA = Gun.SEA;
@@ -604,3 +653,137 @@ await gun.get('~'+bob.pub).get('AliceOnly').get('do-not-tell-anyone').put(enc, n
 await gun.get('~'+bob.pub).get('AliceOnly').get('do-not-tell-anyone').once(console.log) // return 'enc'
 })();
 */
+
+// ===== SVELTE COMPATIBILITY =====
+
+// Extend Gun's type definitions for Svelte integration
+declare module "gun/gun" {
+  interface IGunChain<T, TKey = any, TAck = any, TNode = any> {
+    subscribe: (callback: (data: any) => void) => () => void;
+  }
+
+  interface _GunRoot {
+    back?: _GunRoot;
+    each?: any;
+  }
+}
+
+// Add subscribe method to Gun for Svelte compatibility
+// This is the "magic" approach from svelte-gun.md
+// @ts-ignore - We're extending the Gun prototype
+Gun.chain.subscribe = function (publish: (data: any) => void) {
+  const gun = this;
+  const at = gun._;
+  // @ts-ignore - We've extended the _GunRoot type above
+  const isMap = !!at && !!at.back && !!at.back.each;
+
+  if (isMap) {
+    const store = new Map();
+    publish(Array.from(store));
+    gun.on((data: any, _key: string, as: any) => {
+      const key = _key || ((data || {})._ || {})["#"] || as.via.soul;
+      if (data === null) {
+        store.delete(key);
+      } else {
+        store.set(key, data);
+      }
+      publish(Array.from(store));
+    });
+  } else {
+    gun.on((data: any) => publish(data));
+  }
+
+  return gun.off;
+};
+
+/**
+ * STANDARD USAGE EXAMPLES
+ *
+ * In Svelte components, use the subscribe method directly on Gun chains:
+ *
+ * ```
+ * <script>
+ *   import { gun } from './gunSetup';
+ *
+ *   // Simple data binding
+ *   let userData;
+ *   const unsubscribe = gun.get('users').get('alice').subscribe(data => {
+ *     userData = data;
+ *   });
+ *
+ *   // Using with Svelte's $: syntax
+ *   const userStore = gun.get('users').get('alice');
+ *   $: console.log($userStore); // Reactive access
+ *
+ *   // Cleanup on component destroy
+ *   onDestroy(unsubscribe);
+ * </script>
+ * ```
+ *
+ * For more complex data transformations, use customStore:
+ *
+ * ```
+ * const filteredUsers = customStore(gun.get('users'), {
+ *   filter: (criteria) => { ... } // Custom methods
+ * });
+ * ```
+ */
+
+// For SvelteKit compatibility - use this in components that need SSR
+export function initGunOnMount() {
+  let gunInstance: any = null;
+
+  if (typeof window !== "undefined") {
+    gunInstance = Gun({
+      peers: [
+        "http://localhost:8765/gun",
+        "https://gun-manhattan.herokuapp.com/gun",
+      ],
+      localStorage: true,
+    });
+  }
+
+  return gunInstance;
+}
+
+// Custom store function for reusability (alternative approach)
+export function customStore(ref: any, methods = {}) {
+  let store: any = {};
+  const subscribers: Array<(data: any) => void> = [];
+
+  // Add a listener to GUN data
+  ref.on(function (data: any, key: string) {
+    if (ref._.get === key) {
+      store = data;
+    } else if (!data) {
+      delete store[key];
+      store = { ...store }; // Create a new reference to trigger Svelte reactivity
+    } else {
+      store[key] = data;
+    }
+    // Tell each subscriber that data has been updated
+    for (let i = 0; i < subscribers.length; i += 1) {
+      subscribers[i](store);
+    }
+  });
+
+  function subscribe(subscriber: (data: any) => void) {
+    subscribers.push(subscriber);
+
+    // Publish initial value
+    subscriber(store);
+
+    // Return cleanup function to be called on component dismount
+    return () => {
+      const index = subscribers.indexOf(subscriber);
+      if (index !== -1) {
+        subscribers.splice(index, 1);
+      }
+      if (!subscribers.length) {
+        ref.off();
+      }
+    };
+  }
+
+  return { ...methods, subscribe };
+}

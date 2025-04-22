@@ -1,9 +1,9 @@
 // Import global styles
-import './global.css';
+import "./global.css";
 
-import './app.css'
-import App from './App.svelte'
-import { mount } from 'svelte'
+import "./app.css";
+import App from "./App.svelte";
+import { mount } from "svelte";
 //import { initConnectionManager } from './utils/gun/connectionManager';
 
 // Initialize Gun connection manager at the application level
@@ -11,7 +11,7 @@ import { mount } from 'svelte'
 
 // Use mount() for Svelte 5 instead of new App()
 const app = mount(App, {
-  target: document.getElementById('app')!,
-})
+  target: document.getElementById("app")!,
+});
 
-export default app
+export default app;
