@@ -7,19 +7,17 @@ import {
 export class NodeStoreHandler {
   store: RecognitionStore;
 
-  // Single array to track all dynamic subscriptions
-  private nodeSubscriptions: (() => void)[] = [];
-
   // Track subscriptions to store data
-  private unsubscribeChildren: (() => void) | undefined;
-  private unsubscribeName: (() => void) | undefined;
-  private unsubscribePoints: (() => void) | undefined;
-  private unsubscribeContributors: (() => void) | undefined;
+  private unsubscribers = $state<(() => void)[]>([]);
 
-  public name: string = $state("");
-  public points: number = $state(0);
-  public contributors: NodeEntry[] = $state([]);
-  public childrenData: NodeEntry[] = $state([]);
+  // State properties
+  public name = $state("");
+  public points = $state(0);
+  public contributors = $state<NodeEntry[]>([]);
+  public childrenData = $state<NodeEntry[]>([]);
+
+  // Derived hierarchy data
+  public hierarchyData = $derived(this.getHierarchyData());
 
   constructor(store: RecognitionStore) {
     this.store = store;
@@ -39,131 +37,63 @@ export class NodeStoreHandler {
   }
 
   subscribeToStoreData() {
-    console.log("subscribeToStoreData");
     // Clean up previous subscriptions first
-    if (this.unsubscribeChildren) this.unsubscribeChildren();
-    if (this.unsubscribeName) this.unsubscribeName();
-    if (this.unsubscribePoints) this.unsubscribePoints();
-    if (this.unsubscribeContributors) this.unsubscribeContributors();
-
-    // Clean up node subscriptions
-    this.nodeSubscriptions.forEach((unsub) => unsub());
-    this.nodeSubscriptions = [];
+    this.destroy();
 
     // Only subscribe if we have a valid store
     if (!this.store) {
-      console.warn("No store provided to TreeMap");
+      console.warn("No store provided to NodeStoreHandler");
       return;
     }
 
     // Pre-fetch data to avoid recursive subscription triggers
-    // This gets the current state before setting up new subscriptions
     this.childrenData = this.get(this.store.childrenStore) || [];
     this.name = this.get(this.store.nameStore) || "";
     this.points = this.get(this.store.pointsStore) || 0;
     this.contributors = this.get(this.store.contributorsStore) || [];
 
-    // Now, set up data subscriptions with careful update triggers
-    this.unsubscribeChildren = this.store.childrenStore.subscribe(
-      (newChildrenData) => {
-        // Only update if data actually changed
+    // Set up data subscriptions with careful update triggers
+    this.unsubscribers = [
+      // Children subscription
+      this.store.childrenStore.subscribe((newChildrenData) => {
         if (
           JSON.stringify(this.childrenData) !== JSON.stringify(newChildrenData)
         ) {
           this.childrenData = newChildrenData;
-          // Setup unified data subscriptions without triggering updates
-          this.setupNodeSubscriptions();
-          // Schedule a single tree data update
-          this.requestDataUpdate();
+          // Child subscriptions are handled automatically via derived data
         }
-      }
-    );
+      }),
 
-    this.unsubscribeName = this.store.nameStore.subscribe((newName) => {
-      console.log("subscriptionName", newName);
-      if (this.name !== newName) {
-        this.name = newName || "";
-        this.requestDataUpdate();
-      }
-    });
+      // Name subscription
+      this.store.nameStore.subscribe((newName) => {
+        if (this.name !== newName) {
+          this.name = newName || "";
+        }
+      }),
 
-    this.unsubscribePoints = this.store.pointsStore.subscribe((newPoints) => {
-      console.log("subscriptionPoints", newPoints);
-      if (this.points !== newPoints) {
-        this.points = typeof newPoints === "number" ? newPoints : 0;
-        this.requestDataUpdate();
-      }
-    });
+      // Points subscription
+      this.store.pointsStore.subscribe((newPoints) => {
+        if (this.points !== newPoints) {
+          this.points = typeof newPoints === "number" ? newPoints : 0;
+        }
+      }),
 
-    // Subscribe to contributors for the current node
-    this.unsubscribeContributors = this.store.contributorsStore.subscribe(
-      (newContributors) => {
-        console.log("subscriptionContributors", newContributors);
-        // Only update if contributors actually changed
+      // Contributors subscription
+      this.store.contributorsStore.subscribe((newContributors) => {
         if (
           JSON.stringify(this.contributors) !== JSON.stringify(newContributors)
         ) {
           this.contributors = newContributors;
-          // Update hierarchy data if it exists without triggering a full rebuild
         }
-      }
-    );
-
-    // Initial update of visualization (only once after all data is available)
-    this.requestDataUpdate();
-  }
-
-  // Setup subscriptions for all nodes in a unified way
-  setupNodeSubscriptions() {
-    // Clean up existing subscriptions
-    this.nodeSubscriptions.forEach((unsub) => unsub());
-    this.nodeSubscriptions = [];
-
-    // Subscribe to current node and all children
-    if (this.childrenData && this.childrenData.length) {
-      this.childrenData.forEach(([childId]) => {
-        const childStore = this.store.getChild(childId);
-
-        // Pre-fetch current contributors to avoid triggering updates
-        const currentContributors =
-          this.get(childStore.contributorsStore) || [];
-
-        // Subscribe to child contributors
-        const contributorSub = childStore.contributorsStore.subscribe(
-          (contributors) => {
-            // Skip initial update to avoid recursion (first call after subscription)
-            if (
-              JSON.stringify(contributors) ===
-              JSON.stringify(currentContributors)
-            ) {
-              return;
-            }
-          }
-        );
-
-        // Store subscription for cleanup
-        this.nodeSubscriptions.push(contributorSub);
-      });
-    }
-  }
-
-  requestDataUpdate() {
-    console.log("requestDataUpdate");
-    // Schedule a single tree data update
+      }),
+    ];
   }
 
   // Clean up all subscriptions
   destroy() {
-    if (this.unsubscribeChildren) this.unsubscribeChildren();
-    if (this.unsubscribeName) this.unsubscribeName();
-    if (this.unsubscribePoints) this.unsubscribePoints();
-    if (this.unsubscribeContributors) this.unsubscribeContributors();
-
-    this.nodeSubscriptions.forEach((unsub) => unsub());
-    this.nodeSubscriptions = [];
+    this.unsubscribers.forEach((unsub) => unsub?.());
+    this.unsubscribers = [];
   }
-
-  hierarchyData: RecNode | undefined = $derived(this.getHierarchyData());
 
   getHierarchyData() {
     // Collect all necessary data upfront to avoid triggering reactive updates during processing
