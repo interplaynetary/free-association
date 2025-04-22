@@ -4,8 +4,8 @@
     usersMap,
     onUserMapChange,
     updateUserProfile,
-  } from "../utils/userUtils";
-  import { transientGun } from "../utils/gun/gunSetup";
+  } from "../../utils/userUtils";
+  import { transientGun } from "../../utils/gun/gunSetup";
   import { writable } from "svelte/store";
 
   // State

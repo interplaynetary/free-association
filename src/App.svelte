@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { createRec, type RecognitionStore } from "./stores/rec";
   import Node from "./lib/Node.svelte";
+  import Page from "./lib/page.svelte";
 
   // Path to the recognition data
   let path: string[] = ["recognition"];
@@ -50,6 +51,7 @@
 
 <main>
   <div class="container">
+    <!-- <Page /> -->
     {#if loading}
       <div class="loading">Loading recognition data...</div>
     {:else if error}

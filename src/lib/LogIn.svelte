@@ -29,7 +29,7 @@
       // Check if user is authenticated after recall
       if (user.is?.pub) {
         isAuthenticated = true;
-        userAlias = user.is.alias || user.is.pub;
+        userAlias = user.is.alias || "";
         // Notify parent about auth state
         dispatch("authchange", { isAuthenticated: true, user: userAlias });
       }
@@ -57,7 +57,7 @@
       // Check authentication result
       if (user.is?.pub) {
         isAuthenticated = true;
-        userAlias = user.is.alias || user.is.pub;
+        userAlias = user.is.alias;
         // Reset form
         username = "";
         password = "";

@@ -16,6 +16,9 @@
     onDeleteToggle = () => {},
     onZoomOut = () => {},
     store = undefined,
+    onInventoryClick = () => {},
+    onChartsClick = () => {},
+    onPeerClick = () => {},
   } = $props<{
     node?: d3.HierarchyRectangularNode<RecNode>;
     deleteMode?: boolean;
@@ -23,6 +26,9 @@
     onDeleteToggle?: () => void;
     onZoomOut?: () => void;
     store?: RecognitionStore;
+    onInventoryClick?: () => void;
+    onChartsClick?: () => void;
+    onPeerClick?: () => void;
   }>();
 
   // Path names state
@@ -33,6 +39,53 @@
   const isRoot = $derived(node && !node.parent);
   const nodeName = $derived(node?.data?.name || "Unnamed");
   const textSegments = $derived(nodeName.split(/(?=[A-Z][^A-Z])/g));
+
+  // Button config - centralized configuration for all header buttons
+  const buttons = $state([
+    {
+      id: "inventory",
+      icon: "🎒",
+      title: "View inventory",
+      onClick: onInventoryClick,
+      showWhen: () => isRoot,
+    },
+    {
+      id: "charts",
+      icon: "📊",
+      title: "View charts",
+      onClick: onChartsClick,
+      showWhen: () => isRoot,
+    },
+    {
+      id: "peer",
+      icon: "🔍",
+      title: "User login",
+      onClick: onPeerClick,
+      showWhen: () => isRoot,
+    },
+    {
+      id: "add",
+      icon: "➕",
+      title: "Add new node",
+      onClick: onAddClick,
+      showWhen: () => isRoot,
+    },
+    {
+      id: "delete",
+      icon: "🗑️",
+      title: "Toggle delete mode",
+      onClick: onDeleteToggle,
+      active: deleteMode,
+      showWhen: () => isRoot,
+    },
+    {
+      id: "home",
+      icon: "🏠",
+      title: "Go to parent",
+      onClick: onZoomOut,
+      showWhen: () => !isRoot,
+    },
+  ]);
 
   // Create effect to reload path when store changes
   $effect(() => {
@@ -67,30 +120,10 @@
     }
   }
 
-  // Handle button clicks with event stopping
-  function handleAddClick(e: MouseEvent) {
+  // Generic handler for all button clicks
+  function handleButtonClick(e: MouseEvent, handler: () => void) {
     e.stopPropagation();
-    onAddClick();
-  }
-
-  function handleDeleteToggle(e: MouseEvent) {
-    e.stopPropagation();
-    onDeleteToggle();
-  }
-
-  function handleInventoryClick(e: MouseEvent) {
-    e.stopPropagation();
-    console.log("Inventory clicked");
-  }
-
-  function handlePeerClick(e: MouseEvent) {
-    e.stopPropagation();
-    console.log("Peer search clicked");
-  }
-
-  function handleHomeClick(e: MouseEvent) {
-    e.stopPropagation();
-    onZoomOut();
+    handler();
   }
 
   // Handle breadcrumb navigation - dispatch event to parent
@@ -137,42 +170,19 @@
       {/if}
     </div>
 
-    <!-- Control buttons for root node -->
-    {#if isRoot}
-      <div class="header-controls">
-        <!-- Inventory button -->
+    <!-- Control buttons based on configuration -->
+    <div class="header-controls">
+      {#each buttons.filter((btn) => btn.showWhen()) as button (button.id)}
         <button
-          class="icon-button inventory-button"
-          onclick={handleInventoryClick}
+          class="icon-button {button.id}-button"
+          class:active={button.active}
+          onclick={(e) => handleButtonClick(e, button.onClick)}
+          title={button.title}
         >
-          <span>🎒</span>
+          <span>{button.icon}</span>
         </button>
-
-        <!-- Peer button -->
-        <button class="icon-button peer-button" onclick={handlePeerClick}>
-          <span>🔍</span>
-        </button>
-
-        <!-- Add button -->
-        <button class="icon-button add-button" onclick={handleAddClick}>
-          <span>➕</span>
-        </button>
-
-        <!-- Delete button -->
-        <button
-          class="icon-button delete-button"
-          class:active={deleteMode}
-          onclick={handleDeleteToggle}
-        >
-          <span>🗑️</span>
-        </button>
-      </div>
-    {:else}
-      <!-- Home button for non-root nodes -->
-      <button class="icon-button home-button" onclick={handleHomeClick}>
-        <span>🏠</span>
-      </button>
-    {/if}
+      {/each}
+    </div>
   </div>
 </div>
 

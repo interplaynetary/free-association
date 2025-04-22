@@ -769,13 +769,13 @@
               data-node-key={child.data?._key}
               id={`node-${child.data?._key}`}
               style="
-                position: absolute;
-                left: {child.x0 * 100}%;
-                top: {child.y0 * 100}%;
-                width: {(child.x1 - child.x0) * 100}%;
-                height: {(child.y1 - child.y0) * 100}%;
-                transition: {isGrowing ? 'none' : 'all 0.2s ease'};
-              "
+                  position: absolute;
+                  left: {child.x0 * 100}%;
+                  top: {child.y0 * 100}%;
+                  width: {(child.x1 - child.x0) * 100}%;
+                  height: {(child.y1 - child.y0) * 100}%;
+                  transition: {isGrowing ? 'none' : 'all 0.2s ease'};
+                "
               onmousedown={(e) => handleGrowthStart(e, child)}
               ontouchstart={(e) => handleGrowthStart(e, child)}
             >

@@ -1,4 +1,4 @@
-import { type Readable } from "svelte/store";
+import { derived, type Readable } from "svelte/store";
 import {
   ReactiveGraph,
   withErrorHandling,
@@ -118,6 +118,7 @@ export interface RecognitionStore extends RecognitionStoreBase {
   getChild: (childId: string) => RecognitionStore;
   getParent: () => Promise<RecognitionStore | null>;
   getRoot: () => Promise<RecognitionStore>;
+  getContributor: (contributorId: string) => RecognitionStore;
 
   // Path traversal - returns path from node to root
   getPathToRoot: () => Promise<
@@ -307,6 +308,18 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
     `${pathKey}/nonContributionChildren`
   );
 
+  const materializedStore = derived(
+    [nameStore, pointsStore, childrenStore, contributorsStore],
+    ([$name, $points, $children, $contributors]) => {
+      return {
+        name: $name,
+        points: $points,
+        children: $children,
+        contributors: $contributors,
+      };
+    }
+  );
+
   // Complex derived state for fulfillment calculation
   const fulfillmentStore = graph.createDerivedStore<number>(
     [
@@ -365,6 +378,7 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
     },
     `${pathKey}/fulfillment`
   );
+
 
   // Data store to notify callbacks
   const dataStore = graph.getNodeStore<RecognitionData>(path);
@@ -496,6 +510,10 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
   const getChild = (childId: string): RecognitionStore => {
     return createRecognitionStoreImpl([...path, "children", childId]);
   };
+  
+  const getContributor = (contributorId: string): RecognitionStore => {
+    return createRecognitionStoreImpl([...path, "contributors", contributorId]);
+  };
 
   const getParent = async (): Promise<RecognitionStore | null> => {
     return withErrorHandling(
@@ -567,6 +585,7 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
         id: string;
       }> = [];
 
+      console.log("getPathToRoot", result);
       // Add current node to the path
       const currentName = await getStoreSnapshot(nameStore);
       const currentId = path[path.length - 1] || "root";
@@ -665,6 +684,8 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
     getChild,
     getParent,
     getRoot,
+    getContributor,
+
     getPathToRoot,
 
     // State management

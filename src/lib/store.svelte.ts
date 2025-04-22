@@ -51,6 +51,7 @@ export class NodeStoreHandler {
     this.name = this.get(this.store.nameStore) || "";
     this.points = this.get(this.store.pointsStore) || 0;
     this.contributors = this.get(this.store.contributorsStore) || [];
+    // children contributors ?
 
     // Set up data subscriptions with careful update triggers
     this.unsubscribers = [
@@ -60,12 +61,19 @@ export class NodeStoreHandler {
           JSON.stringify(this.childrenData) !== JSON.stringify(newChildrenData)
         ) {
           this.childrenData = newChildrenData;
-          /*console.log(
+          console.log(
             performance.now(),
             "childrenData updated",
             newChildrenData
-          );*/
+          );
           // Child subscriptions are handled automatically via derived data
+        }
+        for (const child of newChildrenData) {
+          const childStore = this.store.getChild(child[0]);
+           // lets make sure we can unsubscribe to these properly
+          childStore.contributorsStore.subscribe((newContributors) => {
+            console.log("childStore contributors updated", newContributors);
+          });
         }
       }),
 
@@ -99,11 +107,7 @@ export class NodeStoreHandler {
           JSON.stringify(this.contributors) !== JSON.stringify(newContributors)
         ) {
           this.contributors = newContributors;
-          console.log(
-            performance.now(),
-            "contributors updated",
-            newContributors
-          );
+          console.log("contributors updated", newContributors);
         }
       }),
     ];
@@ -157,6 +161,11 @@ export class NodeStoreHandler {
         } satisfies RecNode;
       }),
     };
+    console.log("hierarchyData name", hierarchyData.name);
+    console.log(
+      "hierarchyData Contributors",
+      hierarchyData.children?.map((child) => child.contributors)
+    );
 
     // Debug only when needed
     // console.log("getHierarchyData", hierarchyData);
