@@ -66,39 +66,29 @@ Efficient Provider-Centric Distribution Calculation
 Calculate once from provider outward, then lookup individual shares
 
 DistributeShares(Provider, MaxDepth):
-  // Initialize share distribution map
   ShareMap = empty map of {Person → Share}
   VisitedNodes = empty set
 
-  // Start with direct shares at depth 1
   for each Person that Provider recognizes:
     ShareMap[Person] = Direct-Share(Person, Provider)
 
-  // Process each depth level from 2 to MaxDepth
   for depth from 2 to MaxDepth:
-    // Create temporary map for this depth's calculations
     NewShares = empty map
 
-    // For each person who received shares in previous depths
     for each Recipient in ShareMap who hasn't been fully processed:
       VisitedNodes.add(Recipient)
       RecipientShare = ShareMap[Recipient]
 
-      // Distribute Recipient's share to those they recognize
       for each Connection that Recipient recognizes:
         if Connection ∉ VisitedNodes:
-          // Connection gets a share proportional to their direct share from Recipient
-          // multiplied by Recipient's share from Provider
           ConnectionDirectShare = Direct-Share(Connection, Recipient)
           TransitiveShare = RecipientShare × ConnectionDirectShare
 
-          // Add to Connection's existing share (if any)
           if Connection in NewShares:
             NewShares[Connection] += TransitiveShare
           else:
             NewShares[Connection] = TransitiveShare
 
-    // Merge new shares into overall ShareMap
     for each Person in NewShares:
       if Person in ShareMap:
         ShareMap[Person] += NewShares[Person]
@@ -107,7 +97,6 @@ DistributeShares(Provider, MaxDepth):
 
   return ShareMap
 
-// Individual's total share is then a simple lookup
 Total-Share(You, Provider, MaxDepth):
   ShareMap = DistributeShares(Provider, MaxDepth)
   return ShareMap[You] if You in ShareMap else 0
