@@ -2,14 +2,104 @@ import { derived, type Readable } from 'svelte/store';
 import { ReactiveGraph, withErrorHandling, safeGet } from '../lib/utils/reactive/ReactiveGraph';
 import { GunNode } from '../lib/utils/gun/GunNode';
 import { type Proportion, DistributionMap, asProportion } from '../types/proportions';
-import { transientGun } from '../lib/utils/gun/gunSetup';
-import type {
-	RecNode,
-	RecognitionData,
-	NodeEntry,
-	RecognitionStore,
-	ContributorStore
-} from '../types/types';
+import type { RecNode, NodeEntry } from '../types/types';
+
+/**
+ * Root recognition data interface
+ */
+export interface RecognitionData {
+	name?: string;
+	points?: number;
+	parent?: any;
+	manualFulfillment?: number;
+	children?: Record<string, RecNode>;
+	contributors?: Record<string, any>;
+	tags?: Record<string, any>;
+	metadata?: Record<string, any>;
+}
+
+/**
+ * Base store interface with common functionality
+ */
+export interface RecognitionStoreBase {
+	// Data stores
+	nameStore: Readable<string>;
+	pointsStore: Readable<number>;
+
+	// Methods
+	updateName: (name: string) => Promise<void>;
+	updatePoints: (points: number) => Promise<void>;
+	updateProperty: <P>(property: string, value: P) => Promise<void>;
+
+	// Path information
+	path: string[];
+
+	// Get the ID of this node (last segment of the path or a specific ID)
+	readonly id: string;
+}
+
+/**
+ * Main recognition store interface
+ */
+export interface RecognitionStore extends RecognitionStoreBase {
+	// Collection stores
+	childrenStore: Readable<NodeEntry[]>;
+	contributorsStore: Readable<NodeEntry[]>;
+	tagsStore: Readable<[string, any][]>;
+
+	// Derived data
+	parentStore: Readable<any | null>;
+	isContributionStore: Readable<boolean>;
+	hasContributorsStore: Readable<boolean>;
+	totalChildPointsStore: Readable<number>;
+	shareOfParentStore: Readable<number>;
+	fulfillmentStore: Readable<number>;
+	contributionChildrenStore: Readable<NodeEntry[]>;
+	nonContributionChildrenStore: Readable<NodeEntry[]>;
+
+	// Operations
+	addChild: (name: string, points?: number, isContribution?: boolean) => Promise<string>;
+	removeChild: (childId: string) => Promise<void>;
+	addContributor: (contributorId: string, nodeId?: string) => Promise<void>;
+	removeContributor: (contributorId: string, nodeId?: string) => Promise<void>;
+	addTag: (tag: string) => Promise<void>;
+	removeTag: (tag: string) => Promise<void>;
+
+	// Traversal
+	getChild: (childId: string) => RecognitionStore;
+	getParent: () => Promise<RecognitionStore | null>;
+	getRoot: () => Promise<RecognitionStore>;
+	getContributor: (contributorId: string) => RecognitionStore;
+
+	// Path traversal - returns path from node to root
+	getPathToRoot: () => Promise<
+		Array<{
+			path: string[];
+			store: RecognitionStore;
+			name: string;
+			id: string;
+		}>
+	>;
+
+	// State management
+	refreshState: () => Promise<void>;
+	onStateChange: (callback: (state: RecognitionData) => void) => () => void;
+}
+
+/**
+ * Contributor-specific store interface
+ */
+export interface ContributorStore extends RecognitionStore {
+	// Contributor-specific stores
+	sharesOfFulfillmentStore: Readable<Record<string, number>>;
+	socialDistributionStore: Readable<DistributionMap<string>>;
+
+	// Contributor-specific methods
+	updateShareOfFulfillment: (targetId: string, value: number) => Promise<void>;
+	calculateSocialDistribution: (depth?: number) => Promise<DistributionMap<string>>;
+	getMutualRecognition: (otherContributorId: string) => Promise<Proportion>;
+}
+
 // ===== SINGLETON GRAPH MANAGEMENT =====
 
 /**
@@ -723,7 +813,6 @@ function createContributorStoreImpl(path: string[]): ContributorStore {
 		...baseStore,
 
 		// Contributor-specific stores
-		preferencesStore,
 		sharesOfFulfillmentStore,
 		socialDistributionStore,
 

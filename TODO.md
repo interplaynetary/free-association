@@ -24,3 +24,4 @@ Warning: You're syncing 1K+ records a second, faster than DOM can update - consi
 - lets create a branch that doesnt even use ReactiveGraph?
 - and uses the svelte gun approach outlined in gunSetup
 
+- we need to ensure that when we delete a parent node, we .put() all of its children recursively, otherwise we will flood our network

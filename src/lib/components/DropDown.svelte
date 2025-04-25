@@ -6,9 +6,9 @@
     updateUserProfile,
     usersMap,
     onUserMapChange,
-  } from "../utils/userUtils";
-  import { derived, writable, readable, get } from "svelte/store";
-  import { transientGun } from "../utils/gun/gunSetup";
+	} from '../utils/userUtils';
+	import { writable, get } from 'svelte/store';
+	import { transientGun } from '../utils/gun/gunSetup';
 
   // Props using Svelte 5 runes
   let {
