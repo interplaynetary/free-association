@@ -13,6 +13,7 @@ When working with Svelte 5 and SvelteKit applications:
 - Use Svelte's built-in state management and lifecycle
 - Respect SvelteKit's routing and data loading patterns
 - Write idiomatic, concise Svelte code
+- Avoid mixing legacy (Svelte 3/4) patterns with Svelte 5 runes
 
 ## Svelte 5 Reactivity
 
@@ -46,12 +47,143 @@ When working with Svelte 5 and SvelteKit applications:
 </script>
 ```
 
+## Deprecated Features to Avoid
+
+### 1. Props Declaration
+
+```svelte
+<!-- ❌ Svelte 3/4 props using export -->
+<script>
+  export let name = 'world';
+  export let count = 0;
+</script>
+
+<!-- ✅ Svelte 5 props using $props -->
+<script>
+  let { name = 'world', count = 0 } = $props();
+</script>
+```
+
+### 2. Reactive Declarations
+
+```svelte
+<!-- ❌ Legacy reactive declarations -->
+<script>
+  let a = 1;
+  let b = 2;
+  $: sum = a + b;
+  
+  $: if (sum > 10) {
+    console.log('Sum is greater than 10');
+  }
+</script>
+
+<!-- ✅ Runes-based reactivity -->
+<script>
+  let a = $state(1);
+  let b = $state(2);
+  let sum = $derived(a + b);
+  
+  $effect(() => {
+    if (sum > 10) {
+      console.log('Sum is greater than 10');
+    }
+  });
+</script>
+```
+
+### 3. Slot Element
+
+```svelte
+<!-- ❌ Deprecated slot syntax -->
+<div class="container">
+  <slot name="header"></slot>
+  <slot></slot>
+  <slot name="footer"></slot>
+</div>
+
+<!-- ✅ Using @render tags instead -->
+<div class="container">
+  {@render $$slots.header?.()}
+  {@render $$slots.default?.()}
+  {@render $$slots.footer?.()}
+</div>
+```
+
+### 4. Context Module
+
+```svelte
+<!-- ❌ Deprecated context="module" script -->
+<script context="module">
+  export function getStaticProps() {
+    return { props: { data: 'example' } };
+  }
+</script>
+
+<!-- ✅ Using module attribute -->
+<script module>
+  export function getStaticProps() {
+    return { props: { data: 'example' } };
+  }
+</script>
+```
+
+### 5. Dynamic Components
+
+```svelte
+<!-- ❌ Deprecated svelte:component -->
+<svelte:component this={componentToRender} prop1={value} />
+
+<!-- ✅ Using dynamic components directly -->
+<script>
+  import { ComponentA, ComponentB } from './components';
+  let condition = $state(true);
+  let Component = $derived(condition ? ComponentA : ComponentB);
+</script>
+
+<Component prop1={value} />
+```
+
+### 6. Self References
+
+```svelte
+<!-- ❌ Deprecated svelte:self -->
+<svelte:self prop1={value} />
+
+<!-- ✅ Self-import -->
+<script>
+  import Self from './Self.svelte';
+</script>
+
+<Self prop1={value} />
+```
+
 ## Component Patterns
 
 - Use Svelte's built-in transition and animation systems
 - Pass data through props, not DOM attributes
 - Use event dispatching instead of direct parent manipulation
 - Prefer slots for component composition
+- Use snippets for complex slot patterns 
+
+```svelte
+<!-- ✅ Using snippets -->
+<script>
+  let { header, content, footer = () => null } = $props();
+</script>
+
+<div class="panel">
+  <div class="panel-header">
+    {@render header()}
+  </div>
+  <div class="panel-content">
+    {@render content({ maxHeight: '300px' })}
+  </div>
+  <div class="panel-footer">
+    {@render footer()}
+  </div>
+</div>
+```
 
 ## SvelteKit Guidelines
 
@@ -124,3 +256,37 @@ export const actions = {
 5. Overly complex state management when unnecessary
 6. Treating Svelte as just a template library
 7. Ignoring SvelteKit's server-side rendering capabilities
+8. Using reactive `let`/`var` declarations in runes mode
+9. Using `<svelte:options>` with deprecated `accessors` or `immutable` options
+10. Unquoted complex attribute values like `prop=this{is}valid` (use quotes: `prop="this{is}valid"`)
+11. Incorrectly structured HTML that would be auto-repaired by browsers
+12. Using `<svelte:component>` syntax when components are already dynamic in runes mode
+
+## HTML Structure and Attributes
+
+```svelte
+<!-- ❌ Incorrect HTML structure -->
+<table>
+  <tr><td>Content</td></tr>
+</table>
+
+<!-- ✅ Proper HTML structure -->
+<table>
+  <tbody>
+    <tr><td>Content</td></tr>
+  </tbody>
+</table>
+
+<!-- ❌ Incorrect attribute concatenation -->
+<div class=text-{size}-{color}></div>
+
+<!-- ✅ Proper attribute concatenation -->
+<div class="text-{size}-{color}"></div>
+```
+
+## Common Compiler Warnings
+
+- **non_reactive_update**: Update to variable not declared with `$state(...)` won't trigger updates
+- **reactive_declaration_module_script_dependency**: Module-level declarations reassignments won't update reactive statements
+- **state_referenced_locally**: State referenced in its own scope will never update
+- **store_rune_conflict**: Using `$store` with a local binding called `store` creates ambiguity

@@ -18,3 +18,9 @@ A couple issues, zoomin and out shoujld not be possible during deleteMode, and t
 
 How do we determine what is causing this message:
 Warning: You're syncing 1K+ records a second, faster than DOM can update - consider limiting query.
+
+- maybe remove transientGun
+
+- lets create a branch that doesnt even use ReactiveGraph?
+- and uses the svelte gun approach outlined in gunSetup
+

@@ -1,0 +1,249 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# TypeScript Best Practices
+
+This document outlines our TypeScript coding standards and best practices to ensure type safety, code clarity, and maintainability.
+
+## Type System Fundamentals
+
+### Embrace Strong Typing
+
+- Use TypeScript's static type system to its fullest potential
+- Avoid `any` type whenever possible
+- Use `unknown` instead of `any` when the type is truly indeterminate
+- Enable strict TypeScript compiler options
+
+```typescript
+// ✅ Proper typing
+function processUser(user: User): UserProfile {
+  return {
+    displayName: `${user.firstName} ${user.lastName}`,
+    email: user.email
+  };
+}
+
+// ❌ Using any
+function processUser(user: any): any {
+  return {
+    displayName: `${user.firstName} ${user.lastName}`,
+    email: user.email
+  };
+}
+```
+
+### Type Narrowing and Assertions
+
+- Use type guards for type narrowing instead of type assertions
+- When assertions are necessary, prefer `as` syntax over angle brackets for JSX compatibility
+- Use discriminated unions for more robust type narrowing
+
+```typescript
+// ✅ Using type guards
+function processValue(value: string | number) {
+  if (typeof value === 'string') {
+    return value.toUpperCase();
+  } else {
+    return value.toFixed(2);
+  }
+}
+
+// ❌ Using type assertions
+function processValue(value: string | number) {
+  return (value as string).toUpperCase(); // Bypasses type checking
+}
+
+// ✅ Discriminated unions
+type Shape = 
+  | { kind: 'circle'; radius: number }
+  | { kind: 'rectangle'; width: number; height: number };
+
+function calculateArea(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2;
+    case 'rectangle':
+      return shape.width * shape.height;
+  }
+}
+```
+
+## Interface Design
+
+### Interface vs Type
+
+- Use `interface` for public API definitions and when you expect extension
+- Use `type` for unions, intersections, and when you don't need declaration merging
+- Prefer `interface` for better error messages and performance
+
+```typescript
+// ✅ Using interface for extensible object shapes
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// ✅ Using type for unions or complex types
+type UserID = string | number;
+type UserOrAdmin = User | Admin;
+```
+
+### Nullable Properties
+
+- Avoid optional chaining as a substitute for proper null handling
+- Use union types with `null` or `undefined` when values might not exist
+- Distinguish between "not present" (undefined) and "present but empty" (null)
+
+```typescript
+// ✅ Explicit nullable typing
+interface User {
+  id: string;
+  name: string;
+  middleName: string | null; // Explicitly nullable
+  lastLoginDate: Date | undefined; // Might not be present
+}
+
+// ❌ Overusing optional properties
+interface User {
+  id?: string;
+  name?: string;
+  middleName?: string;
+  lastLoginDate?: Date;
+}
+```
+
+## Advanced Type Features
+
+### Generics
+
+- Use generics to create reusable, type-safe components and functions
+- Apply constraints to generic parameters when appropriate
+- Provide sensible defaults when possible
+
+```typescript
+// ✅ Constrained generics with defaults
+interface Repository<T extends { id: string } = { id: string }> {
+  get(id: string): Promise<T | null>;
+  save(item: T): Promise<T>;
+  delete(id: string): Promise<boolean>;
+}
+
+// Usage
+interface User { id: string; name: string; }
+const userRepo: Repository<User> = /* implementation */;
+```
+
+### Utility Types
+
+- Leverage built-in utility types (`Partial<T>`, `Required<T>`, `Pick<T>`, etc.)
+- Create custom mapped and conditional types for complex transformations
+- Use lookup types and indexed access types for type-safe property access
+
+```typescript
+// ✅ Using utility types
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  address: Address;
+}
+
+// For update operations where fields are optional
+function updateUser(id: string, userData: Partial<Omit<User, 'id'>>) {
+  // Implementation
+}
+
+// ✅ Custom utility type
+type DeepReadonly<T> = {
+  readonly [P in keyof T]: T[P] extends object ? DeepReadonly<T[P]> : T[P];
+};
+```
+
+## Architecture and Organization
+
+### Module Design
+
+- Use explicit exports instead of default exports for better tooling support
+- Organize types in dedicated files or alongside their related functionality
+- Create barrel files (index.ts) for clean imports in large projects
+
+```typescript
+// ✅ Named exports
+// user.ts
+export interface User {
+  id: string;
+  name: string;
+}
+
+export function formatUserName(user: User): string {
+  return `${user.name} (${user.id})`;
+}
+
+// ❌ Default exports
+// user.ts
+export default interface User {
+  id: string;
+  name: string;
+}
+```
+
+### Type Reuse
+
+- Don't repeat type definitions across files, create shared interfaces
+- Create specialized types using composition rather than inheritance when possible
+- Use utility types to derive types from base types
+
+```typescript
+// ✅ Type composition and reuse
+interface BaseEntity {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface User extends BaseEntity {
+  name: string;
+  email: string;
+}
+
+// For API requests
+type CreateUserRequest = Omit<User, keyof BaseEntity>;
+```
+
+## Anti-patterns to Avoid
+
+1. **Type Assertions Overuse**: Relying on `as` or `!` operators instead of proper type guards
+2. **Type Widening**: Using `any` as an escape hatch when types get complex
+3. **Stringly Typed Code**: Using string literals where enums or string literal types would be safer
+4. **Class-Heavy Design**: Overusing classes when interfaces and functions would suffice
+5. **Type Duplication**: Defining similar types multiple times instead of composition
+6. **Unsafe Type Assertions**: Asserting non-null (`!`) without runtime checks
+7. **Inconsistent Nullability**: Mixing different approaches to optional/nullable values
+
+```typescript
+// ❌ Stringly typed code
+function setUserRole(role: string) {
+  // Any string accepted
+}
+
+// ✅ String literal types
+type UserRole = 'admin' | 'editor' | 'viewer';
+function setUserRole(role: UserRole) {
+  // Only valid roles accepted
+}
+```
+
+## Performance Considerations
+
+- Be mindful of complex conditional types' impact on compile times
+- Use interfaces for better performance with complex hierarchies
+- Avoid excessive use of string literal types and mapped types in large objects
+
+## Testing with TypeScript
+
+- Write tests that validate type constraints using the `expectType` pattern
+- Create test fixtures that conform to your interfaces
+- Use type-aware testing libraries that understand TypeScript

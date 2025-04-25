@@ -1,7 +1,7 @@
 ---
-description: 
+description: GunDB
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # GunDB Best Practices and Pitfalls
 

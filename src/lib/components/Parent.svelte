@@ -7,6 +7,7 @@
   import * as d3 from "d3";
   import { derived as derivedStore, type Readable, get } from "svelte/store";
   import { getContext, setContext } from "svelte";
+  import Header from "./Header.svelte";
 
   // Use $props() instead of export let in runes mode
   let { store = createRec() } = $props<{
@@ -577,7 +578,9 @@
 
 <div class="node-container">
   <!-- Slot with hierarchyData for the Header -->
-  <slot {hierarchyData} />
+  <div class="parent-header">
+    <Header node={hierarchyData} store={currentStore} />
+  </div>
 
   <!-- Main treemap content -->
   <div class="app-content">
@@ -633,6 +636,12 @@
     display: flex;
     flex-direction: column;
     position: relative;
+  }
+
+  .parent-header {
+    width: 100%;
+    height: 50px;
+    flex-shrink: 0;
   }
 
   .app-content {

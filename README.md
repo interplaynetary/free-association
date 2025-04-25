@@ -6,7 +6,7 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 **_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **_surplus-distribution_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
 
-You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development)
+You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
 
 ### Here's how it works:
 
@@ -119,15 +119,14 @@ For example, a filter could distribute shares only to people who you recognize a
 
 </details>
 
-
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>
 
 Thus far we have principally spoken of free-association between individuals, but what about between organizations, communities, states etc.?
 
-If States/Organizations mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors. 
+If States/Organizations mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors.
 
-Internally each state/organization would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community. 
+Internally each state/organization would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community.
 For example: **Each member has an equal share of proportion-setting-power (at which levels?)**
 
 Surplus would distribute according to mutual-fulfillment exactly the same as occurs between individuals.
@@ -135,17 +134,20 @@ Surplus would distribute according to mutual-fulfillment exactly the same as occ
 We can also imagine a mechanism by which citizens could delegate a portion of their proportion-setting-power to another agent, within a particular category. So for example delegating 10% of your proportion-setting-power in the category of "environmental protection" to an ecologist.
 
 The design space is vast, especially for all those decisions that do not concern proportions, for example:
+
 - how is membership determined
 - do all members get equal shares of proportion-setting-power (at which levels?) How is this determined?
+- How are contributors added to nodes? How is this determined?
+- Can nodes represent groups of contributors, and the tree represent a federation of groups? Could these groups have their own decision making logic for membership within them?
 - how do new nodes get created in an organization's recognition-tree? (are there limits to this?) - can one recognize one's own created-node?
 - can one add points towards a node one is a part of?
 - How are capacities collectively declared, and how are their absolute values determined? How are their filters on share-distribution determined
 
+If all people in the world are seperated through at most 6 degrees of seperation, then we can imagine all organization must at most be seperated by 3 or 4. This would be a significant computational gain for surplus share algorithms.
+
 </details>
 
 ## Why does any of that matter?
-
-Now that we have derived our **surplus-distributions**, we can distribute surplus!
 
 With your **surplus-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
 

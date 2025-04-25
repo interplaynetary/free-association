@@ -1,7 +1,7 @@
 ---
-description: 
+description: working with gun directly when modifying a gun-wrapper
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # GunDB Best Practices
 

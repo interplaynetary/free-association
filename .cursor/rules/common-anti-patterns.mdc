@@ -1,0 +1,408 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Common Programming Anti-Patterns to Avoid
+
+This guide outlines common anti-patterns across programming disciplines and provides better alternatives. Following these guidelines will help produce more maintainable, efficient, and robust code.
+
+## General Anti-Patterns
+
+### 1. Copy-Paste Programming
+
+Duplicating code instead of abstracting common functionality leads to maintenance nightmares.
+
+```javascript
+// ❌ Anti-pattern: Repeated logic
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function validateForm() {
+  // Email validation repeated here
+  const email = document.getElementById('email').value;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!re.test(email)) {
+    showError('Invalid email');
+  }
+  // More validation...
+}
+
+// ✅ Better approach: Reuse the function
+function validateForm() {
+  const email = document.getElementById('email').value;
+  if (!validateEmail(email)) {
+    showError('Invalid email');
+  }
+  // More validation...
+}
+```
+
+### 2. God Objects/Classes
+
+Creating massive objects or classes that handle too many responsibilities.
+
+```typescript
+// ❌ Anti-pattern: God class
+class UserManager {
+  constructor() {
+    // Hundreds of lines of code...
+  }
+  
+  registerUser() { /* ... */ }
+  authenticateUser() { /* ... */ }
+  updateUserProfile() { /* ... */ }
+  resetPassword() { /* ... */ }
+  sendEmail() { /* ... */ }
+  generateReport() { /* ... */ }
+  validateInput() { /* ... */ }
+  handlePayment() { /* ... */ }
+  // 20+ more methods...
+}
+
+// ✅ Better approach: Single Responsibility
+class UserAuth {
+  registerUser() { /* ... */ }
+  authenticateUser() { /* ... */ }
+  resetPassword() { /* ... */ }
+}
+
+class UserProfile {
+  updateProfile() { /* ... */ }
+}
+
+class NotificationService {
+  sendEmail() { /* ... */ }
+}
+```
+
+### 3. Magic Numbers and Strings
+
+Using unexplained literals throughout code.
+
+```javascript
+// ❌ Anti-pattern: Magic numbers
+setTimeout(function() {
+  checkStatus();
+}, 300000);
+
+// ✅ Better approach: Named constants
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
+setTimeout(function() {
+  checkStatus();
+}, FIVE_MINUTES_MS);
+```
+
+### 4. Callback Hell
+
+Deeply nested callbacks that make code difficult to follow.
+
+```javascript
+// ❌ Anti-pattern: Callback hell
+getUserData(userId, function(userData) {
+  getOrders(userData.id, function(orders) {
+    getOrderDetails(orders[0].id, function(details) {
+      processPayment(details, function(result) {
+        showConfirmation(result, function() {
+          updateInventory();
+        });
+      });
+    });
+  });
+});
+
+// ✅ Better approach: Promises or async/await
+async function processUserOrder(userId) {
+  const userData = await getUserData(userId);
+  const orders = await getOrders(userData.id);
+  const details = await getOrderDetails(orders[0].id);
+  const result = await processPayment(details);
+  await showConfirmation(result);
+  await updateInventory();
+}
+```
+
+## Object-Oriented Anti-Patterns
+
+### 1. Excessive Inheritance
+
+Creating deep inheritance hierarchies that increase coupling and reduce maintainability.
+
+```typescript
+// ❌ Anti-pattern: Deep inheritance chain
+class Vehicle { /* ... */ }
+class MotorVehicle extends Vehicle { /* ... */ }
+class Car extends MotorVehicle { /* ... */ }
+class Sedan extends Car { /* ... */ }
+class LuxurySedan extends Sedan { /* ... */ }
+
+// ✅ Better approach: Composition over inheritance
+class Vehicle {
+  engine?: Engine;
+  wheels: Wheel[];
+  
+  constructor(options: VehicleOptions) {
+    this.engine = options.engine;
+    this.wheels = options.wheels;
+  }
+}
+
+class Luxury {
+  applyLuxuryFeatures(vehicle: Vehicle) {
+    // Add luxury features to any vehicle
+  }
+}
+```
+
+### 2. Shotgun Surgery
+
+Changes that require modifying many different classes.
+
+```typescript
+// ❌ Anti-pattern: Adding a feature requires changes in multiple places
+class User { /* ... */ }
+class UserService { /* ... */ }
+class UserController { /* ... */ }
+class UserRepository { /* ... */ }
+class UserView { /* ... */ }
+// All need to be modified for a simple feature change
+
+// ✅ Better approach: Encapsulate what varies
+interface UserAuthStrategy {
+  authenticate(credentials: Credentials): boolean;
+}
+
+class PasswordAuth implements UserAuthStrategy {
+  authenticate(credentials: Credentials): boolean {
+    // Password authentication logic
+  }
+}
+
+class OAuthStrategy implements UserAuthStrategy {
+  authenticate(credentials: Credentials): boolean {
+    // OAuth authentication logic
+  }
+}
+
+// Adding a new auth strategy only requires a new class implementation
+```
+
+### 3. Feature Envy
+
+A class that uses more features of another class than its own.
+
+```typescript
+// ❌ Anti-pattern: Order manipulation logic in OrderProcessor
+class Order {
+  items: OrderItem[];
+  customerId: string;
+  total: number;
+}
+
+class OrderProcessor {
+  calculateTotal(order: Order): number {
+    return order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }
+  
+  addItem(order: Order, item: OrderItem): void {
+    order.items.push(item);
+    order.total = this.calculateTotal(order);
+  }
+}
+
+// ✅ Better approach: Logic belongs in the Order class
+class Order {
+  items: OrderItem[] = [];
+  customerId: string;
+  
+  get total(): number {
+    return this.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }
+  
+  addItem(item: OrderItem): void {
+    this.items.push(item);
+  }
+}
+```
+
+## Functional Programming Anti-Patterns
+
+### 1. Mutation Obsession
+
+Excessive mutation of state rather than using immutable transformations.
+
+```javascript
+// ❌ Anti-pattern: Mutating state
+function processData(data) {
+  data.values.forEach((value, i) => {
+    data.values[i] = value * 2;
+  });
+  return data;
+}
+
+// ✅ Better approach: Immutable transformations
+function processData(data) {
+  return {
+    ...data,
+    values: data.values.map(value => value * 2)
+  };
+}
+```
+
+### 2. Side-Effect Soup
+
+Functions that cause unpredictable side effects.
+
+```typescript
+// ❌ Anti-pattern: Hidden side effects
+function calculateTotal(cartItems) {
+  let total = 0;
+  for (const item of cartItems) {
+    total += item.price * item.quantity;
+    saveToLog(`Calculated price for ${item.id}: ${item.price * item.quantity}`);
+    updateInventory(item.id, item.quantity); // Side effect!
+  }
+  return total;
+}
+
+// ✅ Better approach: Pure function with side effects separated
+function calculateTotal(cartItems) {
+  return cartItems.reduce((total, item) => 
+    total + item.price * item.quantity, 0);
+}
+
+function processOrder(cartItems) {
+  const total = calculateTotal(cartItems);
+  logOrderDetails(cartItems);
+  updateInventory(cartItems);
+  return total;
+}
+```
+
+## Concurrency Anti-Patterns
+
+### 1. Race Conditions
+
+Code that depends on the timing or sequence of uncontrollable events.
+
+```javascript
+// ❌ Anti-pattern: Race condition
+let sharedCounter = 0;
+
+function incrementCounter() {
+  const current = sharedCounter;
+  // Some delay may occur here (e.g., network, disk I/O)
+  sharedCounter = current + 1;
+}
+
+// Multiple calls may result in lost updates
+
+// ✅ Better approach: Use atomic operations or locks
+async function incrementCounter() {
+  await mutex.acquire();
+  try {
+    sharedCounter++;
+  } finally {
+    mutex.release();
+  }
+}
+```
+
+### 2. Deadlocks
+
+Two or more operations waiting for each other to release resources.
+
+```javascript
+// ❌ Anti-pattern: Potential deadlock
+async function transferMoney(fromAccount, toAccount, amount) {
+  await lock(fromAccount);
+  await lock(toAccount); // May deadlock if another transfer locks in reverse order
+  
+  fromAccount.balance -= amount;
+  toAccount.balance += amount;
+  
+  release(toAccount);
+  release(fromAccount);
+}
+
+// ✅ Better approach: Consistent lock ordering
+async function transferMoney(fromAccount, toAccount, amount) {
+  // Always lock accounts in a consistent order
+  const [firstLock, secondLock] = [fromAccount, toAccount].sort();
+  
+  await lock(firstLock);
+  await lock(secondLock);
+  
+  try {
+    // Perform transfer logic
+    if (fromAccount.balance >= amount) {
+      fromAccount.balance -= amount;
+      toAccount.balance += amount;
+    }
+  } finally {
+    release(secondLock);
+    release(firstLock);
+  }
+}
+```
+
+## Performance Anti-Patterns
+
+### 1. Premature Optimization
+
+Optimizing code before profiling to identify bottlenecks.
+
+```javascript
+// ❌ Anti-pattern: Premature optimization
+function calculateAverage(numbers) {
+  // Using bit shifting for division thinking it's faster
+  let sum = 0;
+  for (let i = 0; i < numbers.length; i++) {
+    sum += numbers[i];
+  }
+  return sum / numbers.length; // Clear and maintainable
+}
+
+// ✅ Better approach: Simple, readable code first, then optimize if needed
+function calculateAverage(numbers) {
+  if (numbers.length === 0) return 0;
+  
+  const sum = numbers.reduce((total, num) => total + num, 0);
+  return sum / numbers.length;
+}
+```
+
+### 2. Memory Leaks
+
+Failing to release references to objects that are no longer needed.
+
+```javascript
+// ❌ Anti-pattern: Event listener memory leak
+function setupComponent() {
+  const button = document.getElementById('submit-button');
+  button.addEventListener('click', this.handleSubmit);
+}
+
+// ✅ Better approach: Clean up when component is destroyed
+function setupComponent() {
+  this.button = document.getElementById('submit-button');
+  this.boundHandleSubmit = this.handleSubmit.bind(this);
+  this.button.addEventListener('click', this.boundHandleSubmit);
+}
+
+function destroyComponent() {
+  if (this.button && this.boundHandleSubmit) {
+    this.button.removeEventListener('click', this.boundHandleSubmit);
+    this.button = null;
+    this.boundHandleSubmit = null;
+  }
+}
+```
+
+## Further Reading
+
+- [Clean Code by Robert C. Martin](mdc:https:/www.oreilly.com/library/view/clean-code-a/9780136083238)
+- [Refactoring by Martin Fowler](mdc:https:/martinfowler.com/books/refactoring.html)
+- [Design Patterns: Elements of Reusable Object-Oriented Software](mdc:https:/en.wikipedia.org/wiki/Design_Patterns)
