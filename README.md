@@ -139,11 +139,15 @@ The design space is vast, especially for all those decisions that do not concern
 - do all members get equal shares of proportion-setting-power (at which levels?) How is this determined?
 - How are contributors added to nodes? How is this determined?
 - Can nodes represent groups of contributors, and the tree represent a federation of groups? Could these groups have their own decision making logic for membership within them?
-- how do new nodes get created in an organization's recognition-tree? (are there limits to this?) - can one recognize one's own created-node?
+- how do new nodes get created in an organization's recognition-tree? (are there limits to this?) - can one add point to one's own created-node? Or to a node one is a part of?
 - can one add points towards a node one is a part of?
 - How are capacities collectively declared, and how are their absolute values determined? How are their filters on share-distribution determined
 
-If all people in the world are seperated through at most 6 degrees of seperation, then we can imagine all organization must at most be seperated by 3 or 4. This would be a significant computational gain for surplus share algorithms.
+If all people in the world are seperated through at most 6 degrees of seperation, then we can imagine all organization must at most be seperated by 3 or 4. This would be a significant computational gain for calculating transitive surplus shares.
+
+This computational advantage could make organizational-level Free-Association more immediately practical than individual-level implementations for certain types of surplus. Resources that naturally flow at organizational scales (like electricity generation, manufacturing capacity, or agricultural output) might be more efficiently distributed through these shorter organizational networks.
+
+This creates the possibility of a hybrid implementation strategy where organizational-level Free-Association emerges first for certain types of surplus, creating infrastructure and experience that later supports individual-level implementation for more personalized forms of surplus.
 
 </details>
 
