@@ -1,0 +1,156 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# GunDB Wrapper Architecture
+
+This project implements a robust wrapper architecture around GunDB to solve common pitfalls and provide a more reliable, type-safe API.
+
+## Core Wrapper Components
+
+- [GunNode.ts](mdc:src/lib/utils/gun/GunNode.ts) - Base wrapper for Gun nodes following OOP patterns
+- [GunSubscription.ts](mdc:src/lib/utils/gun/GunSubscription.ts) - Reactive streams implementation over Gun's subscriptions
+
+## Key Design Patterns
+
+### Subscription Management
+
+The implementation follows a streaming paradigm with proper subscription lifecycle management:
+
+```typescript
+// ✅ Proper subscription with cleanup
+const cleanup = gunNode.on((data) => {
+  updateUI(data);
+});
+
+// Later when component unmounts
+cleanup();
+
+// ❌ Avoid directly using Gun's on() without cleanup
+gun.get('path').get('to').get('data').on((data) => {
+  // This subscription might never be cleaned up
+});
+```
+
+### Stream-Based Architecture
+
+GunSubscription implements a ReadableStream interface for reactive data flow:
+
+```typescript
+// ✅ Stream-based processing with safe unsubscription
+const stream = gunNode.stream();
+const reader = stream.getReader();
+
+while (true) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  // Process value
+}
+
+reader.cancel(); // Properly cleans up
+```
+
+### Timeout Protection
+
+Prevents indefinite hanging when awaiting Gun data:
+
+```typescript
+// ✅ Safe once() with timeout protection
+try {
+  const data = await gunNode.once(); // Has built-in timeout
+  // Use data safely
+} catch (error) {
+  // Handle timeout or other errors
+}
+
+// ❌ Avoid raw Gun once() which can hang indefinitely
+const data = await gun.get('path').once();
+```
+
+### Certificate Management
+
+Simplifies the complex certificate handling for write permissions:
+
+```typescript
+// ✅ Simplified certificate usage
+const nodeWithCert = gunNode.withCertificate(certificate);
+nodeWithCert.put({ value: "new data" }); // Certificate applied automatically
+
+// ❌ Avoid manual certificate handling which can be error-prone
+gun.get('path').put(
+  data,
+  null,
+  { opt: { cert: certificate } }
+);
+```
+
+## Advanced Reactive Operations
+
+The implementation provides reactive programming operators similar to RxJS:
+
+- `map()` - Transform values
+- `filter()` - Filter values based on predicates
+- `combine()` - Combine multiple streams
+- `debounce()` - Debounce emissions
+- `switchMap()` - Switch to a new stream based on values
+- `deepStream()` - Automatically resolve Gun references
+
+```typescript
+// ✅ Composable reactive operations
+gunNode.stream()
+  .map(value => transform(value))
+  .filter(value => meetsCriteria(value))
+  .debounce(300)
+  .on(value => updateUI(value));
+```
+
+## Collection Handling
+
+Improved iteration over Gun collections with proper key tracking and removal detection:
+
+```typescript
+// ✅ Robust collection iteration with removal awareness
+gunNode.each((item) => {
+  if (item._removed) {
+    // Handle removal
+    removeFromUI(item._key);
+  } else {
+    // Handle new or updated item
+    renderItem(item);
+  }
+});
+```
+
+## Svelte Integration
+
+The wrappers provide Svelte store compatibility:
+
+```typescript
+// ✅ Svelte store integration
+<script>
+  import { gunNode } from './path';
+  
+  // Direct store usage in Svelte
+  const store = gunNode.toStore();
+</script>
+
+<div>{$store.name}</div>
+```
+
+## Best Practices
+
+When using these wrappers:
+
+1. **Always use the wrapped API** instead of raw Gun methods
+2. **Properly clean up subscriptions** when components unmount
+3. **Handle errors and timeouts** for all asynchronous operations
+4. **Use the appropriate stream methods** for reactive data needs
+5. **Leverage automatic reference resolution** instead of manual lookups
+
+## Implementation Notes
+
+- GunSubscription uses ReadableStream to safely handle async iterations
+- Gun's auto-reactivity limitations are addressed through explicit subscriptions
+- Reference resolution is optimized with built-in caching and depth limiting
+- Certificate handling is centralized to avoid repeated code

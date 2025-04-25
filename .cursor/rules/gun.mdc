@@ -1,0 +1,197 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# GunDB Best Practices
+
+## Core Concepts
+
+GunDB is a decentralized, offline-first, streaming database with unique patterns:
+
+- Streaming rather than request/response
+- Graph-based data model with nodes and references
+- Decentralized P2P architecture with optional relay servers
+- Local-first with automatic sync when online
+
+## Essential Patterns
+
+### Reactive Data Flow
+
+```javascript
+// ✅ Streaming mindset - subscribe to changes
+gun.get("info").get("name").on(name => nameStore.set(name));
+
+// ❌ Request/response mindset
+let info = {name: "loading..."};
+gun.get("info").get("name").once(name => info.name = name);
+info.name = "updated name"; // Disconnected from the database!
+```
+
+### Data Persistence
+
+- Always update data through Gun itself
+- Never modify local data and expect Gun to know about it
+- Put data to Gun, then let your subscription receive it
+
+```javascript
+// ✅ Update through the database
+gun.get("info").get("name").put("new name");
+
+// ❌ Update locally then sync later (error-prone)
+let name = "old name";
+name = "new name";
+gun.get("info").get("name").put(name);
+```
+
+### Data Structure
+
+- Structure data as a graph, not as nested objects
+- Use references between nodes for relationships
+- Keep nodes small and focused
+- Use proper indexing for items you need to retrieve directly
+
+```javascript
+// ✅ Graph structure with references
+const alice = gun.get("users").get("alice");
+const bob = gun.get("users").get("bob");
+alice.get("name").put("Alice");
+alice.get("friend").put(bob);
+
+// ❌ Deeply nested objects
+gun.get("users").put({
+  alice: {
+    name: "Alice",
+    friend: {name: "Bob"}
+  }
+});
+```
+
+### Iterating Data
+
+- Use `.map()` to iterate over node properties
+- Wrap map calls in streams for better control
+- Design data to be efficiently queryable via direct paths
+
+```javascript
+// ✅ Direct path to data
+const timestamp = Date.now();
+gun.get("items").get(timestamp).put(itemData);
+const item = gun.get("items").get(timestamp);
+
+// ❌ Brute-force search through data
+gun.get("items").map().once(item => {
+  if(item.timestamp === targetTimestamp) {
+    // Found it, but inefficient
+  }
+});
+```
+
+## Authentication & Security
+
+### User Authentication
+
+```javascript
+// Create/authenticate a user
+const user = gun.user();
+user.create('username', 'password', callback);
+user.auth('username', 'password', callback);
+
+// Working with authenticated user data
+user.get('profile').get('name').put('Alice');
+```
+
+### Certificates
+
+- Use certificates to allow specific users to write to protected spaces
+- Creating certificates requires:
+  1. Grantees (users who get access)
+  2. Writable spaces (paths they can modify)
+  3. Issuer (user giving access)
+
+```javascript
+// Creating a certificate
+const certificate = await SEA.certify(
+  [{pub: "recipient-public-key"}], // who gets access
+  [{"*": "some-path"}],            // what paths they can write to
+  issuer                           // your user credentials
+);
+
+// Using a certificate
+gun.get(`~${pubKey}`).get("path").put(
+  data, 
+  null, 
+  {opt: {cert: certificate}}
+);
+```
+
+## Common Patterns
+
+### Wrapping Gun Nodes
+
+Create adapter classes to standardize Gun interactions:
+
+```javascript
+class UserNode {
+  constructor(user) {
+    this.user = user;
+  }
+  
+  profile() {
+    return this.user.get("profile");
+  }
+  
+  friends() {
+    return this.user.get("friends");
+  }
+}
+
+// Usage
+const userNode = new UserNode(gun.user());
+userNode.profile().get("name").put("Alice");
+```
+
+### Async/Await with Gun
+
+```javascript
+// Gun nodes can be "awaited" but may hang indefinitely
+// Use Promise.race with a timeout
+const getNode = async (path, timeout = 5000) => {
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error("Timeout")), timeout)
+  );
+  
+  try {
+    return await Promise.race([
+      gun.get(path),
+      timeoutPromise
+    ]);
+  } catch (e) {
+    return undefined;
+  }
+};
+```
+
+## Pitfalls to Avoid
+
+1. **Direct DOM updates** instead of using Gun's reactive system
+2. **Deeply nested objects** instead of graph references
+3. **Random UUIDs** as keys when direct lookups are needed
+4. **Authenticating multiple users** simultaneously
+5. **One-time reads** without accounting for streaming updates
+6. **Using `map()` on huge datasets** without limiting scope
+7. **Memory leaks** from not properly cleaning up subscriptions
+8. **Improperly structured certificates** causing write errors
+
+## Testing Recommendations
+
+- Test Gun functions in isolation
+- Validate proper graph traversal
+- Confirm certificate permissions 
+- Verify authenticated writes
+- Check subscription cleanup
+
+## References
+
+- [resources/docs/5-things.md](mdc:resources/docs/5-things.md) - Quick tips for Gun developers
+- [resources/APIs/guide.md](mdc:resources/APIs/guide.md) - Comprehensive Gun guide

@@ -1,0 +1,212 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# GunDB Best Practices and Pitfalls
+
+This document outlines best practices for working with GunDB based on our implementation. Our codebase addresses many common GunDB challenges through wrapper classes.
+
+## Core GunDB Concepts
+
+- **Streaming Database**: Gun is a streaming, reactive database, not request/response
+- **Graph Structure**: Data is organized as a graph with references between nodes
+- **Offline-First**: Gun works offline and syncs automatically when online
+- **Decentralized**: P2P architecture with optional relay servers
+
+## Common Pitfalls and Solutions
+
+### 1. Memory Leaks from Subscriptions
+
+```typescript
+// ❌ PROBLEM: No cleanup leads to memory leaks
+gun.get('path').on(data => updateUI(data));
+
+// ✅ SOLUTION: Always store and call cleanup function
+const cleanup = gunNode.on(data => updateUI(data));
+// Later:
+cleanup();
+```
+
+### 2. Gun Promises Hanging Indefinitely
+
+```typescript
+// ❌ PROBLEM: await on Gun can hang forever if data doesn't exist
+const data = await gun.get('missing').get('path');
+
+// ✅ SOLUTION: Use timeout protection
+try {
+  const data = await gunNode.once(); // Has built-in timeout
+  // Use data safely
+} catch (error) {
+  // Handle timeout
+}
+```
+
+### 3. Certificate Management Complexity
+
+```typescript
+// ❌ PROBLEM: Complex certificate management
+gun.get(`~${pubKey}`).get('path').put(
+  data, 
+  null, 
+  { opt: { cert: certificate } }
+);
+
+// ✅ SOLUTION: Simplified certificate API
+const userNode = gunNode.withCertificate(certificate);
+userNode.put(data); // Certificate applied automatically
+```
+
+### 4. Incorrect Reference Handling
+
+```typescript
+// ❌ PROBLEM: Not handling Gun references properly
+gun.get('users').map().once(user => {
+  // Doesn't automatically resolve nested references
+  console.log(user.profile); // Might just see a reference like {#: 'soul'}
+});
+
+// ✅ SOLUTION: Automatic reference resolution
+gunNode.deepOn(user => {
+  console.log(user.profile); // Fully resolved data
+}, 2); // Resolve up to depth 2
+```
+
+### 5. Lost Updates with Disconnected State
+
+```typescript
+// ❌ PROBLEM: Local state disconnected from Gun
+let name = "initial";
+gun.get('user').get('name').once(n => name = n);
+// Later:
+name = "updated"; // Gun doesn't know about this change!
+
+// ✅ SOLUTION: Always update through Gun
+gunNode.put({ name: "updated" }); // Updates Gun and triggers listeners
+```
+
+### 6. Inefficient Collections Handling
+
+```typescript
+// ❌ PROBLEM: Inefficient collection scanning 
+gun.get('items').map().once(item => {
+  if (item.id === searchId) {
+    // Found it, but had to scan everything
+  }
+});
+
+// ✅ SOLUTION: Direct key lookups
+const item = gunNode.get(itemKey);
+```
+
+### 7. Not Handling Removal Events
+
+```typescript
+// ❌ PROBLEM: Not handling data removal
+gun.get('items').map().on((item, key) => {
+  // Never detects when items are removed
+});
+
+// ✅ SOLUTION: Proper removal detection
+gunNode.each(item => {
+  if (item._removed) {
+    // Handle removal
+    removeFromUI(item._key);
+  } else {
+    // Handle item update/creation
+  }
+});
+```
+
+### 8. Incorrect Error Handling
+
+```typescript
+// ❌ PROBLEM: No error handling
+gun.get('path').once(data => {
+  // What if this fails?
+});
+
+// ✅ SOLUTION: Proper error boundaries
+try {
+  gunNode.on(data => {
+    // Process data
+  });
+} catch (err) {
+  // Handle errors
+}
+```
+
+## Best Implementation Approaches
+
+### 1. Wrapper Classes
+
+Create wrapper classes around Gun nodes for consistent API:
+
+```typescript
+// Structured access patterns with intellisense support
+const postsNode = new PostsNode(gun);
+const userNode = new UserNode(gun.user());
+
+// Now we have type-safe, discoverable methods
+const post = await postsNode.getPost(postId);
+const user = await userNode.getProfile();
+```
+
+### 2. Reactive Streams Pattern
+
+Use reactive programming patterns for data flow:
+
+```typescript
+// Create composable data pipelines
+gunNode.stream()
+  .map(formatData)
+  .filter(isValid)
+  .debounce(300)
+  .on(updateUI);
+```
+
+### 3. Deep Reference Resolution
+
+Automatically resolve references to simplify data handling:
+
+```typescript
+// Get fully resolved data without manual reference traversal
+const userData = await userNode.deepGet(2);
+console.log(userData.friends[0].profile.name); // All references resolved
+```
+
+### 4. Proper Collection Management
+
+Handle collections with appropriate patterns:
+
+```typescript
+// Add items with unique keys for direct lookup
+const timestamp = Date.now();
+itemsNode.get(timestamp).put(newItem);
+
+// Efficiently iterate with proper cleanup
+const cleanup = itemsNode.each(item => {
+  renderItem(item);
+});
+```
+
+## Data Modeling Best Practices
+
+1. **Keep nodes small and focused** - Don't create huge nested objects
+2. **Use references for relationships** - Model graph relationships properly
+3. **Index for direct access** - Plan your access patterns
+4. **Design for efficient querying** - Think about how data will be retrieved
+
+## Developing with Gun
+
+1. **Start with a wrapper layer** - Don't use raw Gun API directly
+2. **Test extensively** - Gun's behavior can be surprising
+3. **Handle all edge cases** - Empty data, timeouts, etc.
+4. **Always clean up subscriptions** - Prevent memory leaks
+
+## See Also
+
+For implementation details:
+- [GunNode.ts](mdc:src/lib/utils/gun/GunNode.ts) - Our node wrapper implementation
+- [GunSubscription.ts](mdc:src/lib/utils/gun/GunSubscription.ts) - Our subscription wrapper

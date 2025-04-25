@@ -1,0 +1,126 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Svelte 5 & SvelteKit Best Practices
+
+## Core Principles
+
+When working with Svelte 5 and SvelteKit applications:
+
+- Embrace Svelte 5's reactivity model using `$state`, `$derived`, and `$effect`
+- Use Svelte's built-in state management and lifecycle
+- Respect SvelteKit's routing and data loading patterns
+- Write idiomatic, concise Svelte code
+
+## Svelte 5 Reactivity
+
+```svelte
+<!-- ✅ Svelte 5 reactivity -->
+<script>
+  let count = $state(0);
+  let doubled = $derived(count * 2);
+  
+  $effect(() => {
+    console.log(`Count changed to ${count}`);
+  });
+  
+  function increment() {
+    count++;
+  }
+</script>
+
+<!-- ❌ Outdated Svelte 3/4 approach -->
+<script>
+  let count = 0;
+  $: doubled = count * 2;
+  
+  $: {
+    console.log(`Count changed to ${count}`);
+  }
+  
+  function increment() {
+    count++;
+  }
+</script>
+```
+
+## Component Patterns
+
+- Use Svelte's built-in transition and animation systems
+- Pass data through props, not DOM attributes
+- Use event dispatching instead of direct parent manipulation
+- Prefer slots for component composition
+
+## SvelteKit Guidelines
+
+### Routing
+- Use file-based routing with `+page.svelte` files
+- Create layouts with `+layout.svelte` for shared UI
+- Handle errors with `+error.svelte`
+
+### Data Loading
+
+```svelte
+<!-- ✅ SvelteKit data loading -->
+<!-- +page.server.js -->
+export async function load({ params }) {
+  const post = await db.getPost(params.slug);
+  return { post };
+}
+
+<!-- +page.svelte -->
+<script>
+  export let data;
+  const { post } = data;
+</script>
+
+<h1>{post.title}</h1>
+<div>{post.content}</div>
+```
+
+### Forms and Actions
+
+- Use SvelteKit's form action system for data mutations
+- Implement server-side validation in actions
+- Use progressive enhancement with `use:enhance`
+
+```svelte
+<!-- ✅ SvelteKit forms -->
+<!-- +page.server.js -->
+export const actions = {
+  createPost: async ({ request }) => {
+    const formData = await request.formData();
+    const title = formData.get('title');
+    
+    if (!title) return { success: false, error: 'Title required' };
+    
+    await db.createPost({ title, content: formData.get('content') });
+    return { success: true };
+  }
+};
+
+<!-- +page.svelte -->
+<script>
+  import { enhance } from '$app/forms';
+  export let form;
+</script>
+
+<form method="POST" action="?/createPost" use:enhance>
+  {#if form?.error}<p class="error">{form.error}</p>{/if}
+  <input name="title" required />
+  <textarea name="content"></textarea>
+  <button>Create Post</button>
+</form>
+```
+
+## Anti-patterns to Avoid
+
+1. Direct DOM manipulation instead of Svelte features
+2. Using jQuery or other DOM libraries unnecessarily
+3. Bypassing SvelteKit's routing with custom routers
+4. Mixing older reactive declarations with new reactive primitives
+5. Overly complex state management when unnecessary
+6. Treating Svelte as just a template library
+7. Ignoring SvelteKit's server-side rendering capabilities

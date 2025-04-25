@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createRec, type RecognitionStore } from "../stores/rec.svelte";
+  import { createRec } from "../../stores/rec.svelte";
+  import type { RecognitionStore } from "../../types/types";
   import RawNode from "./DebugNode.svelte";
 
   let store = $state<RecognitionStore>(createRec());

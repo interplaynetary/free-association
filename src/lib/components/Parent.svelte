@@ -1,10 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import {
-    type NodeData,
-    type RecognitionStore,
-    createRec,
-  } from "../../stores/rec.svelte";
+  import { createRec } from "../../stores/rec.svelte";
+  import type { NodeData, RecognitionStore } from "../../types/types";
   import Child from "./Child.svelte";
   import DropDown from "./DropDown.svelte";
   import * as d3 from "d3";

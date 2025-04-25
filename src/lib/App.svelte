@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy, setContext } from "svelte";
-  import { createRec, type RecognitionStore } from "./stores/rec.svelte";
-  import Parent from "./lib/components/Parent.svelte";
-  import Header from "./lib/components/Header.svelte";
+  import { createRec} from "../stores/rec.svelte";
+  import type { RecognitionStore } from "../types/types";
+  import Parent from "./components/Parent.svelte";
+  import Header from "./components/Header.svelte";
   import { get } from "svelte/store";
 
   // Path to the recognition data
@@ -24,12 +25,12 @@
   const panelComponents = $state({
     inventory: {
       component: null as any,
-      loader: async () => import("./lib/components/Inventory.svelte"),
+      loader: async () => import("./components/Inventory.svelte"),
       props: () => ({ store: recStore }),
     },
     login: {
       component: null as any,
-      loader: async () => import("./lib/components/LogIn.svelte"),
+      loader: async () => import("./components/LogIn.svelte"),
       props: () => ({
         onclose: () => setActivePanel("node"),
         onauthchange: (e: CustomEvent) =>
@@ -38,7 +39,7 @@
     },
     charts: {
       component: null as any,
-      loader: async () => import("./lib/components/StackedBar.svelte"),
+      loader: async () => import("./components/StackedBar.svelte"),
       props: () => ({
         data: [
           { category: "Recognition", peer: "Self", value: 25 },

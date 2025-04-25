@@ -66,29 +66,39 @@ Efficient Provider-Centric Distribution Calculation
 Calculate once from provider outward, then lookup individual shares
 
 DistributeShares(Provider, MaxDepth):
+  // Initialize share distribution map
   ShareMap = empty map of {Person → Share}
   VisitedNodes = empty set
 
+  // Start with direct shares at depth 1
   for each Person that Provider recognizes:
     ShareMap[Person] = Direct-Share(Person, Provider)
 
+  // Process each depth level from 2 to MaxDepth
   for depth from 2 to MaxDepth:
+    // Create temporary map for this depth's calculations
     NewShares = empty map
 
+    // For each person who received shares in previous depths
     for each Recipient in ShareMap who hasn't been fully processed:
       VisitedNodes.add(Recipient)
       RecipientShare = ShareMap[Recipient]
 
+      // Distribute Recipient's share to those they recognize
       for each Connection that Recipient recognizes:
         if Connection ∉ VisitedNodes:
+          // Connection gets a share proportional to their direct share from Recipient
+          // multiplied by Recipient's share from Provider
           ConnectionDirectShare = Direct-Share(Connection, Recipient)
           TransitiveShare = RecipientShare × ConnectionDirectShare
 
+          // Add to Connection's existing share (if any)
           if Connection in NewShares:
             NewShares[Connection] += TransitiveShare
           else:
             NewShares[Connection] = TransitiveShare
 
+    // Merge new shares into overall ShareMap
     for each Person in NewShares:
       if Person in ShareMap:
         ShareMap[Person] += NewShares[Person]
@@ -97,10 +107,39 @@ DistributeShares(Provider, MaxDepth):
 
   return ShareMap
 
+// Individual's total share is then a simple lookup
 Total-Share(You, Provider, MaxDepth):
   ShareMap = DistributeShares(Provider, MaxDepth)
   return ShareMap[You] if You in ShareMap else 0
 ```
+
+Filters can be added on top of the sharesMap for a particular Surplus, and the filtered map can then be normalized to provide a distribution.
+This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
+For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
+
+</details>
+
+
+<details>
+  <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>
+
+Thus far we have principally spoken of free-association between individuals, but what about between organizations, communities, states etc.?
+
+If States/Organizations mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors. 
+
+Internally each state/organization would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community. 
+For example: **Each member has an equal share of proportion-setting-power (at which levels?)**
+
+Surplus would distribute according to mutual-fulfillment exactly the same as occurs between individuals.
+
+We can also imagine a mechanism by which citizens could delegate a portion of their proportion-setting-power to another agent, within a particular category. So for example delegating 10% of your proportion-setting-power in the category of "environmental protection" to an ecologist.
+
+The design space is vast, especially for all those decisions that do not concern proportions, for example:
+- how is membership determined
+- do all members get equal shares of proportion-setting-power (at which levels?) How is this determined?
+- how do new nodes get created in an organization's recognition-tree? (are there limits to this?) - can one recognize one's own created-node?
+- can one add points towards a node one is a part of?
+- How are capacities collectively declared, and how are their absolute values determined? How are their filters on share-distribution determined
 
 </details>
 
@@ -300,19 +339,9 @@ In Free Association, we are free! You don't own me, and I don't own you! We owe 
 
 This is Hegel's resolution of the master-slave dialectic realized in practice: mutual recognition without ownership or domination. Your contributions don't buy you permanent shares — they participate in an evolving network of mutual-recognition that continuously adjusts to reflect real social-material contributions.
 
-## Going Interplaynetary
-
-network ➡️ net-_work_ ➡️ _play_-net ➡️ playnet
-
-planet ➡️ playnet
-
-less work ➡️ more play
-thats the politics
-
-- [playnet.lol](https://playnet.lol)
-
 ## Learn more 📚
 
+- [Playnet.lol](https://playnet.lol)
 - [Glossary](GLOSSARY.md)
 - [Dialectics of Love (Hegel and Mutual Recognition)](resources/love.md) Free-Association can be seen as the social-material inversion of Hegel's dialectics of Desire, Recognition, and Love
 - [Free-Association as the Psychoanalysis of the Economic Unconscious](resources/matheme.md)

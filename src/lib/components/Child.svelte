@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as d3 from "d3";
-  import { type NodeData } from "../../stores/rec.svelte";
+  import type { NodeData } from "../../types/types";
   import TagPill from "./TagPill.svelte";
 
   // Use $props to get the child node and callbacks

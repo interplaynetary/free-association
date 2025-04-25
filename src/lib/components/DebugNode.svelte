@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createRec, type RecognitionStore } from "../../stores/rec.svelte";
+  import { createRec } from "../../stores/rec.svelte";
+  import type { RecognitionStore } from "../../types/types";
   // Use $props() instead of export let in runes mode
   let { store: initialStore } = $props<{
     store?: RecognitionStore;

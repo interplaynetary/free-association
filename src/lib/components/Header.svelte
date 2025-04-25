@@ -2,7 +2,7 @@
   import {
     type NodeData,
     type RecognitionStore,
-  } from "../../stores/rec.svelte";
+  } from "../../types/types";
   import * as d3 from "d3";
   import { onMount, createEventDispatcher, getContext } from "svelte";
 

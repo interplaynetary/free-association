@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { type RecognitionStore } from "../../stores/rec.svelte";
+  import type { RecognitionStore } from "../../types/types";
 
   // Props using Svelte 5 runes
   let { store } = $props<{

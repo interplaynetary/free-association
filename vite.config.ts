@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import type { Plugin } from 'vite'
+import tailwindcss from '@tailwindcss/vite';
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig, type Plugin } from 'vite';
 
 // GUN module exclusion function for text-encoding
 const moduleExclude = (match: string): Plugin => {
@@ -15,13 +15,9 @@ const moduleExclude = (match: string): Plugin => {
     },
   }
 }
-
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    svelte(),
-    moduleExclude('text-encoding'),
-  ],
+	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
   optimizeDeps: {
     include: [
       'gun',
@@ -36,4 +32,4 @@ export default defineConfig({
       'gun/lib/rindexed',
     ],
   },
-})
+});
