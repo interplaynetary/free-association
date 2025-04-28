@@ -38,7 +38,8 @@
 					{#if index > 0}
 						<div class="breadcrumb-separator">/</div>
 					{/if}
-					<button
+					<a
+						href="/"
 						class="breadcrumb-item"
 						class:current={index === path.length - 1}
 						onclick={() => globalState.navigateToPathInIndex(index)}
@@ -46,15 +47,15 @@
 						aria-label={segment}
 					>
 						{segment}
-					</button>
+					</a>
 				{/each}
 			{/await}
 		</div>
 	</div>
 	<div class="header-controls">
 		<a href="/inventory" class="icon-button inventory-button" title="View inventory"
-			><span>🎒</span></a
-		><a href="/charts" class="icon-button charts-button" title="View charts"><span>📊</span></a>
+			><span>📊</span></a
+		>
 		<a href="/login" class="icon-button peer-button" title="User login"><span>🔍</span></a>
 		<button
 			class="icon-button add-button"
