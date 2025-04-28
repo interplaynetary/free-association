@@ -1,9 +1,7 @@
 <script lang="ts">
-	import { onMount, createEventDispatcher } from 'svelte';
+	import { onMount } from 'svelte';
 	import { user, authenticate, recallUser, logout } from '../utils/gun/gunSetup';
 	import { gunAvatar } from 'gun-avatar';
-	// Create event dispatcher for notifying parent components
-	const dispatch = createEventDispatcher();
 
 	// Reactive stores for user state
 	let isAuthenticated = false;
@@ -25,8 +23,6 @@
 			if (user.is?.pub) {
 				isAuthenticated = true;
 				userAlias = user.is.alias || '';
-				// Notify parent about auth state
-				dispatch('authchange', { isAuthenticated: true, user: userAlias });
 			}
 		} catch (error) {
 			console.error('Error recalling user session:', error);
@@ -56,9 +52,6 @@
 				// Reset form
 				username = '';
 				password = '';
-
-				// Notify parent component
-				dispatch('authchange', { isAuthenticated: true, user: userAlias });
 			} else {
 				errorMessage = 'Authentication failed';
 			}
@@ -75,14 +68,11 @@
 		logout();
 		isAuthenticated = false;
 		userAlias = '';
-
-		// Notify parent component
-		dispatch('authchange', { isAuthenticated: false, user: null });
 	}
 
 	// Close the popup
 	function closePopup() {
-		dispatch('close');
+		// No dispatch, just using for future implementation if needed
 	}
 </script>
 
@@ -290,6 +280,11 @@
 			sans-serif;
 		width: 360px;
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+		/* Center positioning */
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
 	}
 
 	h2 {

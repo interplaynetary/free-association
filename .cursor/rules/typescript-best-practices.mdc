@@ -1,7 +1,7 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: .ts,.svelte.ts,.svelte
+alwaysApply: false
 ---
 # TypeScript Best Practices
 

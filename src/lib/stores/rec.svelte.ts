@@ -1,8 +1,8 @@
 import { derived, type Readable } from 'svelte/store';
-import { ReactiveGraph, withErrorHandling, safeGet } from '../lib/utils/reactive/ReactiveGraph';
-import { GunNode } from '../lib/utils/gun/GunNode';
-import { type Proportion, DistributionMap, asProportion } from '../types/proportions';
-import type { RecNode, NodeEntry } from '../types/types';
+import { ReactiveGraph, withErrorHandling, safeGet } from '../utils/reactive/ReactiveGraph';
+import { GunNode } from '../utils/gun/GunNode';
+import { type Proportion, DistributionMap, asProportion } from '../../types/proportions';
+import type { RecNode, NodeEntry } from '../../types/types';
 
 /**
  * Root recognition data interface

@@ -8,3 +8,17 @@
 *.pptx
 *.ppt
 *node_modules
+*vscode
+*svelte-kit
+*package-lock.json
+
+*cursorignore
+*gitignore
+*npmrc
+*prettierignore
+*prettierrc
+*bun.lock
+*eslint.config.js
+
+*resources
+

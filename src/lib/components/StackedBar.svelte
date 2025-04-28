@@ -1,367 +1,203 @@
 <script lang="ts">
-  import { onMount } from "svelte";
 
-  // Define types for our data structure
-  interface RecognitionDataPoint {
-    category: string;
-    peer: string;
-    value: number;
-  }
+// update this to work with gun and be contributor based.
 
-  // Component props using Svelte 5 runes
-  let {
-    data = [],
-    height = null,
-    width = 928,
-    colorScheme = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6"],
-  } = $props<{
-    data: RecognitionDataPoint[];
-    height?: number | null;
-    width?: number;
-    colorScheme?: string[];
-  }>();
+	// Define types for our data structure
+	interface RecognitionDataPoint {
+		category: string;
+		peer: string;
+		value: number;
+	}
 
-  // Reactive state
-  let chartContainer: HTMLDivElement | null = $state(null);
-  let containerWidth = $state(0);
-  let hoveredBar = $state<{
-    category: string;
-    peer: string;
-    value: number;
-  } | null>(null);
+	// Record type definitions
+	type GroupedData = Record<string, { [peer: string]: number; total: number }>;
+	type PercentageData = Record<string, { [peer: string]: number }>;
+	type ColorMap = Record<string, string>;
 
-  // Data state variables
-  let groupedData = $state<
-    Record<string, { [peer: string]: number; total: number }>
-  >({});
-  let sortedCategories = $state<string[]>([]);
-  let uniquePeers = $state<string[]>([]);
-  let percentages = $state<Record<string, { [peer: string]: number }>>({});
-  let peerColors = $state<Record<string, string>>({});
-  let dataHash = $state("");
+	// Component props using Svelte 5 runes
+	let { data = [], colorScheme = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'] } =
+		$props<{
+			data: RecognitionDataPoint[];
+			colorScheme?: string[];
+		}>();
 
-  // Create a simple hash of the data to detect changes
-  function hashData(inputData: RecognitionDataPoint[]): string {
-    return JSON.stringify(inputData);
-  }
+	// State variables
+	let hoveredBar = $state<{
+		category: string;
+		peer: string;
+		value: number;
+	} | null>(null);
 
-  // Process the data
-  function processData() {
-    // Skip processing if data hasn't changed
-    const newHash = hashData(data);
-    if (newHash === dataHash && Object.keys(groupedData).length > 0) {
-      return;
-    }
-    dataHash = newHash;
+	let uniquePeers = $state<string[]>([]);
+	let peerColors = $state<ColorMap>({});
+	let groupedData = $state<GroupedData>({});
+	let sortedCategories = $state<string[]>([]);
+	let percentages = $state<PercentageData>({});
 
-    // Get unique categories and peers
-    const categories = new Set(
-      data.map((d: RecognitionDataPoint) => d.category),
-    );
-    const peers = new Set(data.map((d: RecognitionDataPoint) => d.peer));
+	// Process data whenever it changes
+	$effect(() => {
+		processData(data);
+	});
 
-    // Convert to arrays
-    const peerArray = Array.from(peers) as string[];
-    uniquePeers = peerArray;
+	// Process the data
+	function processData(inputData: RecognitionDataPoint[]): void {
+		// Get unique categories and peers
+		const uniqueCategories = new Set<string>();
+		const uniquePeerSet = new Set<string>();
 
-    // Initialize result structure
-    const result: Record<string, { [peer: string]: number; total: number }> =
-      {};
+		inputData.forEach((item) => {
+			uniqueCategories.add(item.category);
+			uniquePeerSet.add(item.peer);
+		});
 
-    // Initialize all categories with all peers set to 0
-    Array.from(categories).forEach((category) => {
-      result[category as string] = { total: 0 };
-      uniquePeers.forEach((peer) => {
-        result[category as string][peer] = 0;
-      });
-    });
+		// Update peers array
+		uniquePeers = Array.from(uniquePeerSet);
 
-    // Fill in actual values
-    for (const item of data) {
-      result[item.category][item.peer] = item.value;
-      result[item.category].total += item.value;
-    }
+		// Assign colors to peers
+		const colors: ColorMap = {};
+		uniquePeers.forEach((peer, i) => {
+			colors[peer] = colorScheme[i % colorScheme.length];
+		});
+		peerColors = colors;
 
-    // Update grouped data
-    groupedData = result;
+		// Process data into grouped structure
+		const result: GroupedData = {};
 
-    // Sort categories by total value (descending)
-    sortedCategories = Object.entries(groupedData)
-      .sort((a, b) => b[1].total - a[1].total)
-      .map(([category]) => category);
+		// Initialize structure
+		uniqueCategories.forEach((category) => {
+			result[category] = { total: 0 };
+			uniquePeers.forEach((peer) => {
+				result[category][peer] = 0;
+			});
+		});
 
-    // Calculate percentages
-    const percentageResult: Record<string, { [peer: string]: number }> = {};
+		// Fill with actual values
+		inputData.forEach((item) => {
+			result[item.category][item.peer] = item.value;
+			result[item.category].total += item.value;
+		});
 
-    Object.keys(groupedData).forEach((category) => {
-      percentageResult[category] = {};
-      const totalForCategory = groupedData[category].total;
+		// Update grouped data
+		groupedData = result;
 
-      uniquePeers.forEach((peer) => {
-        if (totalForCategory > 0) {
-          percentageResult[category][peer] =
-            groupedData[category][peer] / totalForCategory;
-        } else {
-          percentageResult[category][peer] = 0;
-        }
-      });
-    });
+		// Sort categories by total
+		sortedCategories = Object.entries(result)
+			.sort((a, b) => b[1].total - a[1].total)
+			.map(([category]) => category);
 
-    percentages = percentageResult;
+		// Calculate percentages
+		const percentageResult: PercentageData = {};
 
-    // Assign colors to peers
-    const colors: Record<string, string> = {};
-    uniquePeers.forEach((peer, i) => {
-      colors[peer] = colorScheme[i % colorScheme.length];
-    });
-    peerColors = colors;
-  }
+		Object.keys(result).forEach((category) => {
+			percentageResult[category] = {};
+			const total = result[category].total;
 
-  // Handle window resize
-  function updateContainerWidth() {
-    if (chartContainer) {
-      containerWidth = chartContainer.getBoundingClientRect().width;
-    }
-  }
+			uniquePeers.forEach((peer) => {
+				if (total > 0) {
+					percentageResult[category][peer] = result[category][peer] / total;
+				} else {
+					percentageResult[category][peer] = 0;
+				}
+			});
+		});
 
-  // Handle mouse enter on bar segment
-  function handleMouseEnter(category: string, peer: string, value: number) {
-    hoveredBar = { category, peer, value };
-  }
+		percentages = percentageResult;
+	}
 
-  // Handle mouse leave
-  function handleMouseLeave() {
-    hoveredBar = null;
-  }
+	// Hover state management
+	function setHoveredBar(category: string, peer: string, value: number): void {
+		hoveredBar = { category, peer, value };
+	}
 
-  // Update width on mount and process data initially
-  onMount(() => {
-    processData();
-    updateContainerWidth();
-    window.addEventListener("resize", updateContainerWidth);
-
-    return () => {
-      window.removeEventListener("resize", updateContainerWidth);
-    };
-  });
-
-  // Manually track data changes rather than using $effect
-  // Only re-process when data changes, using JSON.stringify for comparison
-  let prevDataString = "";
-  $effect(() => {
-    const dataString = JSON.stringify(data);
-    if (dataString !== prevDataString) {
-      prevDataString = dataString;
-      processData();
-    }
-  });
+	function clearHoveredBar(): void {
+		hoveredBar = null;
+	}
 </script>
 
-<div class="stacked-bar-chart" bind:this={chartContainer}>
-  <h2 class="chart-title">Recognition Distribution</h2>
+<div class="chart-container">
+	{#each sortedCategories as category}
+		<div class="bar-row">
+			{#each uniquePeers as peer}
+				{#if groupedData[category]?.[peer] > 0}
+					<div
+						class="bar-segment"
+						style="
+              width: {(percentages[category][peer] * 100).toFixed(1)}%; 
+              background-color: {peerColors[peer]};
+            "
+						onclick={() => setHoveredBar(category, peer, groupedData[category][peer])}
+						title="{category}: {peer}"
+					></div>
+				{/if}
+			{/each}
+		</div>
+	{/each}
 
-  <!-- Legend -->
-  <div class="legend">
-    {#each uniquePeers as peer}
-      <div class="legend-item">
-        <div
-          class="color-box"
-          style="background-color: {peerColors[peer]}"
-        ></div>
-        <div class="peer-name">{peer}</div>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Chart content -->
-  <div class="chart-content">
-    {#each sortedCategories as category}
-      <div class="chart-row">
-        <div class="category-label">{category}</div>
-        <div class="bar-container">
-          {#each uniquePeers as peer}
-            {#if percentages[category] && percentages[category][peer] > 0}
-              <div
-                class="bar-segment"
-                style="
-                  width: {(percentages[category][peer] * 100).toFixed(1)}%; 
-                  background-color: {peerColors[peer]};
-                "
-                on:mouseenter={() =>
-                  handleMouseEnter(category, peer, groupedData[category][peer])}
-                on:mouseleave={handleMouseLeave}
-              ></div>
-            {/if}
-          {/each}
-        </div>
-        <div class="value-label">
-          {groupedData[category] ? groupedData[category].total : 0}
-        </div>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Tooltip -->
-  {#if hoveredBar}
-    <div class="tooltip">
-      <div class="tooltip-title">{hoveredBar.category} - {hoveredBar.peer}</div>
-      <div class="tooltip-content">
-        <div class="tooltip-value">Value: {hoveredBar.value}</div>
-        <div class="tooltip-percentage">
-          {percentages[hoveredBar.category] &&
-          percentages[hoveredBar.category][hoveredBar.peer]
-            ? (percentages[hoveredBar.category][hoveredBar.peer] * 100).toFixed(
-                1,
-              )
-            : "0"}%
-        </div>
-      </div>
-    </div>
-  {/if}
+	{#if hoveredBar}
+		<div class="tooltip">
+			<div class="tooltip-content">
+				<strong>{hoveredBar.category}: {hoveredBar.peer}</strong>
+				<div>
+					{hoveredBar.value} ({(percentages[hoveredBar.category][hoveredBar.peer] * 100).toFixed(
+						1
+					)}%)
+				</div>
+			</div>
+		</div>
+		<div class="tooltip-overlay" onclick={clearHoveredBar}></div>
+	{/if}
 </div>
 
 <style>
-  .stacked-bar-chart {
-    width: 100%;
-    max-width: 100%;
-    padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      Helvetica, Arial, sans-serif;
-    position: relative;
-  }
+	.chart-container {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		position: relative;
+	}
 
-  .chart-title {
-    font-size: 1.4rem;
-    margin-bottom: 20px;
-    color: #333;
-    text-align: center;
-  }
+	.bar-row {
+		flex: 1;
+		display: flex;
+		overflow: hidden;
+		margin-bottom: 1px;
+	}
 
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 25px;
-    justify-content: center;
-  }
+	.bar-segment {
+		height: 100%;
+		transition: all 0.2s ease;
+		cursor: pointer;
+	}
 
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
+	.bar-segment:hover {
+		opacity: 0.8;
+		filter: brightness(1.1);
+	}
 
-  .color-box {
-    width: 15px;
-    height: 15px;
-    border-radius: 3px;
-  }
+	.tooltip-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 1;
+	}
 
-  .peer-name {
-    font-size: 0.9rem;
-    color: #555;
-  }
-
-  .chart-content {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .chart-row {
-    display: flex;
-    align-items: center;
-    height: 35px;
-  }
-
-  .category-label {
-    width: 120px;
-    font-weight: 500;
-    font-size: 0.95rem;
-    color: #333;
-    padding-right: 10px;
-    text-align: right;
-  }
-
-  .bar-container {
-    flex: 1;
-    height: 24px;
-    display: flex;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .bar-segment {
-    height: 100%;
-    transition: opacity 0.2s ease;
-  }
-
-  .bar-segment:hover {
-    opacity: 0.8;
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
-  }
-
-  .value-label {
-    width: 50px;
-    font-size: 0.85rem;
-    color: #666;
-    padding-left: 10px;
-  }
-
-  .tooltip {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    z-index: 10;
-    pointer-events: none;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-    min-width: 150px;
-    text-align: center;
-  }
-
-  .tooltip-title {
-    font-weight: 600;
-    margin-bottom: 5px;
-    font-size: 1rem;
-  }
-
-  .tooltip-content {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .tooltip-value,
-  .tooltip-percentage {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 600px) {
-    .category-label {
-      width: 80px;
-      font-size: 0.8rem;
-    }
-
-    .value-label {
-      width: 40px;
-      font-size: 0.8rem;
-    }
-
-    .chart-row {
-      height: 30px;
-    }
-
-    .bar-container {
-      height: 20px;
-    }
-  }
+	.tooltip {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background-color: rgba(0, 0, 0, 0.85);
+		color: white;
+		padding: 8px 12px;
+		border-radius: 4px;
+		font-size: 0.9rem;
+		z-index: 2;
+		box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+		min-width: 120px;
+		text-align: center;
+		line-height: 1.4;
+	}
 </style>

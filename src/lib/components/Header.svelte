@@ -38,13 +38,15 @@
 					{#if index > 0}
 						<div class="breadcrumb-separator">/</div>
 					{/if}
-					<div
+					<button
 						class="breadcrumb-item"
 						class:current={index === path.length - 1}
 						onclick={() => globalState.navigateToPathInIndex(index)}
+						tabindex="0"
+						aria-label={segment}
 					>
 						{segment}
-					</div>
+					</button>
 				{/each}
 			{/await}
 		</div>

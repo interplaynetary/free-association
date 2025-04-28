@@ -1,5 +1,5 @@
-import { GunNode } from "../../utils/gun/GunNode";
-import { GunSubscription } from "../../utils/gun/GunSubscription";
+import { GunNode } from "../../../utils/gun/GunNode";
+import { GunSubscription } from "../../../utils/gun/GunSubscription";
 import { 
   createGunStore, 
   createCollectionStore, 
@@ -9,7 +9,7 @@ import {
   mapStore,
   combineStores,
   asyncDerivedStore
-} from "../../utils/svelte/reactiveStores";
+} from "../../../utils/svelte/reactiveStores";
 import { derived, writable, get, type Readable } from "svelte/store";
 import { type Proportion, DistributionMap, asProportion } from "../../utils/proportions";
 

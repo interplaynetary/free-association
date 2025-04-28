@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type { NodeData } from '../../types/types';
-	import type { RecognitionStore } from '../../stores/rec.svelte';
-	import Child from './Child.svelte';
-	import DropDown from './DropDown.svelte';
+	import type { RecognitionStore } from '$lib/stores/rec.svelte';
+	import Child from '$lib/components/Child.svelte';
+	import DropDown from '$lib/components/DropDown.svelte';
 	import * as d3 from 'd3';
 	import { derived as derivedStore, type Readable, get } from 'svelte/store';
 	import { globalState } from '$lib/global.svelte';
@@ -15,6 +15,7 @@
 	let deleteMode = $derived(globalState.deleteMode);
 
 	let childrenStore = $derived(store.childrenStore);
+
 
 	let childNodes: RecognitionStore[] = $derived.by(() => {
 		if (!store) return [];

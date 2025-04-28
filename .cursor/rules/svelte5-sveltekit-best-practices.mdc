@@ -1,7 +1,7 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: .svelte,.svelte.ts
+alwaysApply: false
 ---
 # Svelte 5 & SvelteKit Best Practices
 

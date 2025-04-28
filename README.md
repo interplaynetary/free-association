@@ -117,6 +117,8 @@ Filters can be added on top of the sharesMap for a particular Surplus, and the f
 This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
 For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
 
+Additionally, capacities might declare a max-divisibility (either in % or in absolute numbers), this would also help with pruning in the algorithm.
+
 </details>
 
 <details>

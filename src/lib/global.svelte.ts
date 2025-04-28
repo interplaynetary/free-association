@@ -1,4 +1,4 @@
-import { createRec } from '../stores/rec.svelte';
+import { createRec } from './stores/rec.svelte';
 import { get } from 'svelte/store';
 
 export const globalState = $state({
@@ -16,7 +16,7 @@ export const globalState = $state({
 		console.log(`Delete mode: ${globalState.deleteMode ? 'activated' : 'deactivated'}`);
 
 		// Show toast about delete mode
-		
+
 		globalState.showToast(
 			globalState.deleteMode
 				? 'Delete mode activated. Click a node to delete it.'
@@ -83,7 +83,7 @@ export const globalState = $state({
 		if (globalState.toast.timeoutId) {
 			clearTimeout(globalState.toast.timeoutId);
 		}
-	
+
 		// Show new toast
 		globalState.toast = {
 			visible: true,
@@ -96,7 +96,7 @@ export const globalState = $state({
 		if (globalState.toast.timeoutId) {
 			clearTimeout(globalState.toast.timeoutId);
 		}
-	
+
 		// Show new toast
 		globalState.toast = {
 			visible: true,
