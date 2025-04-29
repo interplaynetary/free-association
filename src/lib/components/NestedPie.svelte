@@ -12,11 +12,11 @@
 	export let height: number = 800;
 	export let margin: number = 20;
 	export let maxLayers: number = 6; // Maximum number of layers to display
-	export let centerRadius: number = 50; // Radius of the innermost pie chart
-	export let ringThickness: number = 50; // Thickness of each ring
+	export let centerRadius: number = 50; // Initial radius for calculations
+	export let ringThickness: number = 50; // Base thickness used for calculations
 	export let padAngle: number = 0.01; // Padding between pie segments
 	export let cornerRadius: number = 0; // Corner radius for pie segments
-	export let labels: boolean = true; // Whether to show labels
+	export let labels: boolean = false; // Whether to show labels (default to false)
 	export let colorSchemes: Array<(d: PieSlice, i: number) => string> = []; // Optional color schemes for each layer
 
 	// Interfaces
@@ -41,30 +41,58 @@
 	let svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
 	let tooltip: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>;
 
+	// Golden ratio for Fibonacci-inspired thickness
+	const PHI = 0.618;
+
 	// Process data on changes
 	$: if (layers && chartContainer) {
 		renderChart();
 	}
 
 	$: maxRadius = Math.min(width, height) / 2 - margin;
-	$: layerRadii = Array.from(
-		{ length: Math.min(layers.length, maxLayers) },
-		(_, i) => centerRadius + i * ringThickness
+
+	// Calculate layer radii with Fibonacci-inspired progression
+	$: layerRadii = calculateLayerRadii(
+		Math.min(layers.length, maxLayers),
+		centerRadius,
+		ringThickness
 	);
 
-	// Get default color scheme for a layer
-	function getDefaultColorScheme(layerIndex: number): (d: PieSlice, i: number) => string {
-		if (colorSchemes[layerIndex]) {
-			return colorSchemes[layerIndex];
+	// Calculate layer radii using the golden ratio
+	function calculateLayerRadii(
+		numLayers: number,
+		baseRadius: number,
+		baseThickness: number
+	): number[] {
+		// Start with the maximum available radius
+		const maxAvailableRadius = maxRadius;
+
+		// Calculate how much space we need for all layers
+		let totalThickness = 0;
+		const thicknessFactors = [];
+
+		// Generate thickness factors using golden ratio in reverse
+		// (largest at center, diminishing outward)
+		for (let i = 0; i < numLayers; i++) {
+			const factor = Math.pow(PHI, i);
+			thicknessFactors.push(factor);
+			totalThickness += factor * baseThickness;
 		}
 
-		// Create color schemes with different hue ranges for each layer
-		const baseHue = (layerIndex * 60) % 360;
-		return (d: PieSlice, i: number) => {
-			if (d.color) return d.color;
-			const hue = (baseHue + i * 30) % 360;
-			return d3.hsl(hue, 0.7, 0.5).toString();
-		};
+		// Scale all thicknesses to fit within the maximum radius
+		const scaleFactor = maxAvailableRadius / totalThickness;
+
+		// Calculate cumulative radii
+		const radii = [];
+		let currentRadius = 0;
+
+		for (let i = 0; i < numLayers; i++) {
+			const thickness = thicknessFactors[i] * baseThickness * scaleFactor;
+			currentRadius += thickness;
+			radii.push(currentRadius);
+		}
+
+		return radii.reverse(); // Reverse to have largest radius first (outermost layer)
 	}
 
 	// Function to hash a string to a color
@@ -138,9 +166,9 @@
 			.sort(null)
 			.padAngle(padAngle);
 
-		// Calculate inner and outer radius based on layer
-		const innerRadius = layerIndex === 0 ? 0 : centerRadius + (layerIndex - 1) * ringThickness;
-		const outerRadius = centerRadius + layerIndex * ringThickness;
+		// Get the inner and outer radius for this layer
+		const outerRadius = layerRadii[layerIndex];
+		const innerRadius = layerIndex === layerRadii.length - 1 ? 0 : layerRadii[layerIndex + 1];
 
 		// Create arc generator
 		const arc = d3
@@ -151,9 +179,6 @@
 
 		// Get pie layout data
 		const arcs = pie(layerData.slices);
-
-		// Get color scheme for this layer
-		const colorScale = getDefaultColorScheme(layerIndex);
 
 		// Create pie segments
 		const segments = svg
@@ -204,6 +229,39 @@
 					layer: layerIndex
 				});
 			});
+
+		// Only add text labels if enabled
+		if (labels) {
+			// Add text labels
+			const labelRadius = (innerRadius + outerRadius) / 2;
+
+			svg
+				.select('g')
+				.selectAll(`.pie-label-layer-${layerIndex}`)
+				.data(arcs)
+				.join('text')
+				.attr('class', `pie-label-layer-${layerIndex}`)
+				.attr('transform', (d) => {
+					const [x, y] = arc.centroid(d);
+					return `translate(${x}, ${y})`;
+				})
+				.attr('text-anchor', 'middle')
+				.attr('pointer-events', 'none')
+				.attr('fill', 'white')
+				.style('font-size', `${Math.max(8, (outerRadius - innerRadius) * 0.3)}px`)
+				.style('text-shadow', '0px 0px 2px rgba(0,0,0,0.8)')
+				.text((d) => {
+					// Only show label if the arc is large enough
+					const arcLength = (d.endAngle - d.startAngle) * labelRadius;
+					const textLength =
+						d.data.name.length * (Math.max(8, (outerRadius - innerRadius) * 0.3) * 0.6);
+
+					if (arcLength > textLength) {
+						return d.data.name;
+					}
+					return '';
+				});
+		}
 	}
 
 	// Helper function to create expansion effect on hover
@@ -216,4 +274,13 @@
 </script>
 
 <!-- Layered pie chart with up to 6 distinct layers -->
-<div bind:this={chartContainer}></div>
+<div bind:this={chartContainer} class="layered-pie-chart-container"></div>
+
+<style>
+	.layered-pie-chart-container {
+		position: relative;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+</style>

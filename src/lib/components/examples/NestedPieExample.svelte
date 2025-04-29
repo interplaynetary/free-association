@@ -19,63 +19,63 @@
 
 	// Create distinct pie charts for each layer
 	const layeredData: Array<PieChartData> = [
-		// Layer 0 (innermost)
+		// Layer 0 (innermost): Primary Industry Sectors
 		{
-			name: 'Alex',
+			name: 'Industry Sectors',
 			slices: [
-				{ name: 'Ethan', value: 35, color: '#3498db' },
-				{ name: 'Liam', value: 25, color: '#e74c3c' },
-				{ name: 'Noah', value: 20, color: '#2ecc71' },
-				{ name: 'Oliver', value: 15, color: '#9b59b6' },
-				{ name: 'Benjamin', value: 5, color: '#f1c40f' }
+				{ name: 'Technology', value: 35 },
+				{ name: 'Finance', value: 25 },
+				{ name: 'Healthcare', value: 20 },
+				{ name: 'Retail', value: 15 },
+				{ name: 'Energy', value: 5 }
 			]
 		},
 
-		// Layer 1
+		// Layer 1: Technology Breakdown
 		{
-			name: 'Logan',
+			name: 'Technology Sectors',
 			slices: [
-				{ name: 'William', value: 22, color: '#2980b9' },
-				{ name: 'Lucas', value: 13, color: '#21618c' }
+				{ name: 'Software', value: 22 },
+				{ name: 'Hardware', value: 13 }
 			]
 		},
 
-		// Layer 2
+		// Layer 2: Software Breakdown
 		{
-			name: 'Mason',
+			name: 'Software Segments',
 			slices: [
-				{ name: 'Elijah', value: 12, color: '#1f618d' },
-				{ name: 'James', value: 6, color: '#2471a3' },
-				{ name: 'Gabriel', value: 4, color: '#2980b9' }
+				{ name: 'Cloud Services', value: 12 },
+				{ name: 'Mobile Apps', value: 6 },
+				{ name: 'Web Development', value: 4 }
 			]
 		},
 
-		// Layer 3
+		// Layer 3: Cloud Services
 		{
-			name: 'Michael',
+			name: 'Cloud Providers',
 			slices: [
-				{ name: 'Alexander', value: 7, color: '#154360' },
-				{ name: 'Anthony', value: 3, color: '#1a5276' },
-				{ name: 'Christopher', value: 2, color: '#1e5d8c' }
+				{ name: 'AWS', value: 7 },
+				{ name: 'Azure', value: 3 },
+				{ name: 'Google Cloud', value: 2 }
 			]
 		},
 
-		// Layer 4
+		// Layer 4: AWS Services
 		{
-			name: 'Daniel',
+			name: 'AWS Services',
 			slices: [
-				{ name: 'Matthew', value: 3, color: '#0e2b3a' },
-				{ name: 'Joshua', value: 2.5, color: '#0e2b3a' },
-				{ name: 'Nicholas', value: 1.5, color: '#103649' }
+				{ name: 'EC2', value: 3 },
+				{ name: 'S3', value: 2.5 },
+				{ name: 'Lambda', value: 1.5 }
 			]
 		},
 
-		// Layer 5 (outermost)
+		// Layer 5 (outermost): EC2 Instance Types
 		{
-			name: 'Andrew',
+			name: 'EC2 Platforms',
 			slices: [
-				{ name: 'Joseph', value: 2, color: '#091b24' },
-				{ name: 'Samuel', value: 1, color: '#0c2c3b' }
+				{ name: 'Linux', value: 2 },
+				{ name: 'Windows', value: 1 }
 			]
 		}
 	];
@@ -85,27 +85,14 @@
 		console.log('Pie segment clicked:', event.detail);
 		alert(`Clicked on: ${event.detail.data.name} at layer ${event.detail.layer}`);
 	}
-
-	// Example of custom color schemes for specific layers
-	const customColorSchemes = [
-		// Layer 0 - Industry Sectors (use default colors from data)
-		(d: PieSlice, i: number) => d.color || d3.schemeCategory10[i % 10],
-
-		// Layer 1 - Technology Sectors (blues)
-		(d: PieSlice, i: number) => d.color || d3.interpolateBlues(0.3 + i * 0.3),
-
-		// Layer 2 - Software Segments (purples)
-		(d: PieSlice, i: number) => d.color || d3.interpolatePurples(0.4 + i * 0.2)
-	];
 </script>
 
 <NestedPie
 	layers={layeredData}
-	width={600}
-	height={600}
-	colorSchemes={customColorSchemes}
-	centerRadius={60}
-	ringThickness={40}
+	width={300}
+	height={300}
+	centerRadius={40}
+	ringThickness={100}
 	padAngle={0.01}
 	cornerRadius={3}
 	on:pieClick={handlePieClick}

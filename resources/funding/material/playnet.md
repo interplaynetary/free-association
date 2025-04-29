@@ -5,12 +5,13 @@ A recent development, what we call “Free Association”, offers a crucial and 
 In Berlin specifically, our community members are experiencing first-hand the devastating impacts of market-based resource allocation. Several of our core contributors face housing insecurity while simultaneously dedicating their skills to building alternatives.
 
 How Funding Will Be Used:
+
 - Contributor Stability Support: Provide basic monthly stipends for 5 core developers/facilitators facing housing and financial insecurity while they dedicate time to this critical work.
 - Distributed Berlin: Establish surplus distribution and sharing networks across several neighborhoods in Berlin and beyond, on the basis of mutual recognition and mutual support using free association economics. With the housing crisis intensifying here, our community has identified this as a key first priority.
 - Community Growth: Host 10 play-labs across Berlin and other cities, engaging underrepresented and precarious groups.
 - Interface Development: Implement free-association economics in an intuitive, open source, p2p interface (no scaling limits or centralized points of failure) free for all.
 - Global Solidarity: Work with partner networks to experiment together with play-labs in a wide range of diverse contexts, drawing on a vast wealth of lived experience.
 
-We hope this work aligns with the Guerrilla Foundation’s commitment to systemic alternatives that center justice and creativity. We collectively challenge extractive economies - replacing competition with reciprocity and mutual-support, and scarcity with shared abundance.
+We hope this work aligns with your commitment to systemic alternatives that center justice and creativity. We collectively challenge extractive economies - replacing competition with reciprocity and mutual-support, and scarcity with shared abundance.
 
 Learn more about Free-Association: https://github.com/interplaynetary/free-association

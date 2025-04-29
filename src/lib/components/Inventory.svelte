@@ -42,7 +42,78 @@
 	}
 
 	onMount(() => {
-		// Optionally initialize demo data here
+		// Initialize with 25 demo inventory entries
+		const demoEntries: CapacityEntry[] = [
+			{ id: crypto.randomUUID(), name: 'Potable Water', quantity: 50, unit: 'gallons', depth: 5 },
+			{ id: crypto.randomUUID(), name: 'Rice', quantity: 20, unit: 'lbs', depth: 5 },
+			{ id: crypto.randomUUID(), name: 'Beans', quantity: 15, unit: 'lbs', depth: 4 },
+			{ id: crypto.randomUUID(), name: 'First Aid Kit', quantity: 2, unit: 'kits', depth: 5 },
+			{ id: crypto.randomUUID(), name: 'Solar Panel', quantity: 3, unit: 'panels', depth: 4 },
+			{ id: crypto.randomUUID(), name: 'Garden Seeds', quantity: 25, unit: 'packets', depth: 4 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Cooking Capacity',
+				quantity: 4,
+				unit: 'meals/day',
+				depth: 5
+			},
+			{ id: crypto.randomUUID(), name: 'Spare Blankets', quantity: 8, unit: 'blankets', depth: 3 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Extra Shelter Space',
+				quantity: 2,
+				unit: 'people',
+				depth: 4
+			},
+			{ id: crypto.randomUUID(), name: 'Water Filtration', quantity: 1, unit: 'system', depth: 5 },
+			{ id: crypto.randomUUID(), name: 'Board Games', quantity: 6, unit: 'games', depth: 1 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Musical Instruments',
+				quantity: 3,
+				unit: 'instruments',
+				depth: 2
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Storytelling Capacity',
+				quantity: 100,
+				unit: 'stories',
+				depth: 2
+			},
+			{ id: crypto.randomUUID(), name: 'Candles', quantity: 24, unit: 'candles', depth: 3 },
+			{ id: crypto.randomUUID(), name: 'Honey', quantity: 5, unit: 'jars', depth: 3 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Childcare Capacity',
+				quantity: 10,
+				unit: 'hours/week',
+				depth: 4
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Herbal Medicine',
+				quantity: 8,
+				unit: 'varieties',
+				depth: 3
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Yoga Instruction',
+				quantity: 3,
+				unit: 'sessions/week',
+				depth: 1
+			},
+			{ id: crypto.randomUUID(), name: 'Canned Vegetables', quantity: 36, unit: 'cans', depth: 4 },
+			{ id: crypto.randomUUID(), name: 'Emergency Radio', quantity: 1, unit: 'radio', depth: 4 },
+			{ id: crypto.randomUUID(), name: 'Hand Tools', quantity: 12, unit: 'tools', depth: 3 },
+			{ id: crypto.randomUUID(), name: 'Comedy Relief', quantity: 42, unit: 'jokes', depth: 1 },
+			{ id: crypto.randomUUID(), name: 'Extra Bicycles', quantity: 2, unit: 'bikes', depth: 3 },
+			{ id: crypto.randomUUID(), name: 'Pasta', quantity: 10, unit: 'lbs', depth: 4 },
+			{ id: crypto.randomUUID(), name: 'Meditation Space', quantity: 1, unit: 'space', depth: 2 }
+		];
+
+		capacityEntries = demoEntries;
 	});
 </script>
 
