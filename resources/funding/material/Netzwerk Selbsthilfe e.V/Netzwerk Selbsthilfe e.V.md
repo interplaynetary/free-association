@@ -1,7 +1,7 @@
 Application for Funding to Netzwerk Selbsthilfe e.V.
 
 Introduction of the Group
-We are the Free-Association Collective, a grassroots group based in Berlin, organized non-hierarchically through weekly assemblies where all members participate in consensus-based decision-making. Our 15-member collective includes developers, activists, and community organizers, with roles rotated regularly to ensure equitable leadership. Decisions are made transparently via open forums, prioritizing input from marginalized voices. Rooted in Berlin’s solidarity economy movement, we collaborate with local cooperatives and political initiatives to challenge exploitative systems.
+We are the Free-Association Collective, a grassroots group based in Berlin, organized non-hierarchically through weekly assemblies where all members participate in consensus-based decision-making. Our 30+ member collective includes developers, activists, and community organizers, with roles rotated regularly to ensure equitable leadership. Decisions are made transparently via open forums, prioritizing input from marginalized voices. Rooted in Berlin’s solidarity economy movement, we collaborate with local cooperatives and political initiatives to challenge exploitative systems.
 
 Project Description
 Goal: Strengthen Berlin/Brandenburg communities by enabling self-organized resource sharing through a decentralized platform that replaces capitalist hierarchies with mutual recognition networks.

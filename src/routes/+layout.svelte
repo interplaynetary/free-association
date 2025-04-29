@@ -22,13 +22,11 @@
 <svelte:window on:resize={handleResize} />
 
 <main>
-	<div class="container">
-		<div class="app-header">
-			<Header />
-		</div>
-		<div class="app-content">
-			{@render children()}
-		</div>
+	<div class="app-header">
+		<Header />
+	</div>
+	<div class="app-content">
+		{@render children()}
 	</div>
 
 	<!-- Toast notification -->
