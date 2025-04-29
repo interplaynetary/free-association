@@ -38,5 +38,10 @@
 		"typescript": "^5.0.0",
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.2.5"
+	},
+	"dependencies": {
+		"maplibre-gl": "^5.4.0",
+		"pmtiles": "^4.3.0",
+		"protomaps-themes-base": "^4.5.0"
 	}
 }
