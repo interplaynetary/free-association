@@ -17,65 +17,134 @@
 		slices: Array<PieSlice>;
 	}
 
-	// Create distinct pie charts for each layer
+	// Create distinct pie charts for each layer with increasing number of slices
 	const layeredData: Array<PieChartData> = [
 		// Layer 0 (innermost): Primary Industry Sectors
 		{
-			name: 'Industry Sectors',
+			name: 'Alice',
 			slices: [
-				{ name: 'Technology', value: 35 },
-				{ name: 'Finance', value: 25 },
-				{ name: 'Healthcare', value: 20 },
-				{ name: 'Retail', value: 15 },
-				{ name: 'Energy', value: 5 }
+				{ name: 'Bryce', value: 2 },
+				{ name: 'Cameron', value: 1 },
+				{ name: 'Diana', value: 0.5 },
+				{ name: 'Ethan', value: 0.5 },
+				{ name: 'Victor', value: 3 },
+				{ name: 'Wendy', value: 2.5 },
+				{ name: 'Xavier', value: 1.5 },
+				{ name: 'Yvonne', value: 1 },
+				{ name: 'Zoe', value: 0.5 },
+				{ name: 'Quincy', value: 7 },
+				{ name: 'Rachel', value: 3 },
+				{ name: 'Sophia', value: 2 },
+				{ name: 'Tessa', value: 1 },
+				{ name: 'Lily', value: 12 },
+				{ name: 'Mike', value: 6 },
+				{ name: 'Nina', value: 4 },
+				{ name: 'Olivia', value: 3 },
+				{ name: 'Helen', value: 22 },
+				{ name: 'Ian', value: 13 },
+				{ name: 'Julia', value: 10 },
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		},
 
 		// Layer 1: Technology Breakdown
 		{
-			name: 'Technology Sectors',
+			name: 'George',
 			slices: [
-				{ name: 'Software', value: 22 },
-				{ name: 'Hardware', value: 13 }
+				{ name: 'Victor', value: 3 },
+				{ name: 'Wendy', value: 2.5 },
+				{ name: 'Xavier', value: 1.5 },
+				{ name: 'Yvonne', value: 1 },
+				{ name: 'Zoe', value: 0.5 },
+				{ name: 'Quincy', value: 7 },
+				{ name: 'Rachel', value: 3 },
+				{ name: 'Sophia', value: 2 },
+				{ name: 'Tessa', value: 1 },
+				{ name: 'Lily', value: 12 },
+				{ name: 'Mike', value: 6 },
+				{ name: 'Nina', value: 4 },
+				{ name: 'Olivia', value: 3 },
+				{ name: 'Helen', value: 22 },
+				{ name: 'Ian', value: 13 },
+				{ name: 'Julia', value: 10 },
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		},
 
 		// Layer 2: Software Breakdown
 		{
-			name: 'Software Segments',
+			name: 'Kevin',
 			slices: [
-				{ name: 'Cloud Services', value: 12 },
-				{ name: 'Mobile Apps', value: 6 },
-				{ name: 'Web Development', value: 4 }
+				{ name: 'Quincy', value: 7 },
+				{ name: 'Rachel', value: 3 },
+				{ name: 'Sophia', value: 2 },
+				{ name: 'Tessa', value: 1 },
+				{ name: 'Lily', value: 12 },
+				{ name: 'Mike', value: 6 },
+				{ name: 'Nina', value: 4 },
+				{ name: 'Olivia', value: 3 },
+				{ name: 'Helen', value: 22 },
+				{ name: 'Ian', value: 13 },
+				{ name: 'Julia', value: 10 },
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		},
 
 		// Layer 3: Cloud Services
 		{
-			name: 'Cloud Providers',
+			name: 'Patrick',
 			slices: [
-				{ name: 'AWS', value: 7 },
-				{ name: 'Azure', value: 3 },
-				{ name: 'Google Cloud', value: 2 }
+				{ name: 'Lily', value: 12 },
+				{ name: 'Mike', value: 6 },
+				{ name: 'Nina', value: 4 },
+				{ name: 'Olivia', value: 3 },
+				{ name: 'Helen', value: 22 },
+				{ name: 'Ian', value: 13 },
+				{ name: 'Julia', value: 10 },
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		},
 
 		// Layer 4: AWS Services
 		{
-			name: 'AWS Services',
+			name: 'Uma',
 			slices: [
-				{ name: 'EC2', value: 3 },
-				{ name: 'S3', value: 2.5 },
-				{ name: 'Lambda', value: 1.5 }
+				{ name: 'Helen', value: 22 },
+				{ name: 'Ian', value: 13 },
+				{ name: 'Julia', value: 10 },
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		},
 
 		// Layer 5 (outermost): EC2 Instance Types
 		{
-			name: 'EC2 Platforms',
+			name: 'Ava',
 			slices: [
-				{ name: 'Linux', value: 2 },
-				{ name: 'Windows', value: 1 }
+				{ name: 'Bob', value: 35 },
+				{ name: 'Charlie', value: 25 },
+				{ name: 'David', value: 20 },
+				{ name: 'Eve', value: 15 },
+				{ name: 'Frank', value: 5 }
 			]
 		}
 	];

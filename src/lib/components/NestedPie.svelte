@@ -17,7 +17,6 @@
 	export let padAngle: number = 0.01; // Padding between pie segments
 	export let cornerRadius: number = 0; // Corner radius for pie segments
 	export let labels: boolean = false; // Whether to show labels (default to false)
-	export let colorSchemes: Array<(d: PieSlice, i: number) => string> = []; // Optional color schemes for each layer
 
 	// Interfaces
 	interface PieSlice {
@@ -94,15 +93,41 @@
 
 		return radii.reverse(); // Reverse to have largest radius first (outermost layer)
 	}
-
-	// Function to hash a string to a color
+	// Function to hash a string to a color from the pastel palette
 	function hashStringToColor(str: string): string {
+		const pastelPalette = [
+			'#FFB6C1',
+			'#FFA07A',
+			'#FFD700',
+			'#ADFF2F',
+			'#20B2AA',
+			'#87CEFA',
+			'#9370DB',
+			'#FF69B4',
+			'#48D1CC',
+			'#E6E6FA',
+			'#DDA0DD',
+			'#F0E68C',
+			'#98FB98',
+			'#E0FFFF',
+			'#B0E0E6',
+			'#FFC0CB',
+			'#FFE4E1',
+			'#F5DEB3',
+			'#D8BFD8',
+			'#FFDAB9',
+			'#B0C4DE',
+			'#ADD8E6',
+			'#F08080',
+			'#90EE90'
+		];
 		let hash = 0;
 		for (let i = 0; i < str.length; i++) {
 			hash = str.charCodeAt(i) + ((hash << 5) - hash);
 		}
-		const color = (hash & 0x00ffffff).toString(16).padStart(6, '0').toUpperCase();
-		return `#${color}`;
+		hash = Math.abs(hash);
+		const color = pastelPalette[hash % pastelPalette.length];
+		return color;
 	}
 
 	onMount(() => {

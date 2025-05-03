@@ -28,12 +28,12 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 4. **Shares of Surplus** are distributed across networks of _mutual-recognition of mutual-contribution_ at a declared **network-depth**.
 
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
-   - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of a _objects_).
+   - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
    - _Network-depth_ can be (re)declared dynamically.
    - For example: surplus-housing might be shared at depth = 2, whereas surplus-food might be shared at depth = 5.
-   - Absolute quantities can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
+   - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
 
-5. Your **direct-share** in another's **surplus-capacity** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_
+5. Your **direct-share** in another's **surplus-capacity** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
 
    - For example: If we have 10% of _mutual-recognition_, and you are my only _mutual-relationship_, you would have 100% of my **total-mutual-recognition** (100% of my **direct-share**). If I have two _mutual-relationships_ each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **direct-share**).
 
@@ -117,7 +117,7 @@ Filters can be added on top of the sharesMap for a particular Surplus, and the f
 This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
 For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
 
-Additionally, capacities might declare a max-divisibility (either in % or in absolute numbers), this would also help with pruning in the algorithm.
+Additionally, capacities might declare a max-divisibility (either in % or in determinate quantities), this would also help with pruning in the algorithm.
 
 </details>
 
@@ -241,7 +241,9 @@ Now combine this with a profound sociological discovery: everyone on Earth is co
    - Integration with global networks of mutual support
    - Each step exponentially increases available surplus
 
-This means that in free association, you're never more than six relationship connections away from accessing any surplus capacity in the entire human network! Unlike markets which restrict access through price mechanisms, or states which centrally plan distribution, free association creates organic access pathways based on real contributions to each other's self-actualization.
+This means that in free association, you're never more than six relationship connections away from accessing any surplus capacity in the entire human network!
+
+Unlike markets which restrict access through price mechanisms, or states which centrally plan distribution, free association creates organic access pathways based on real contributions to each other's self-actualization.
 
 This exponential growth means that as free association spreads:
 

@@ -44,13 +44,6 @@
 	onMount(() => {
 		// Initialize with 25 demo inventory entries
 		const demoEntries: CapacityEntry[] = [
-			{
-				id: crypto.randomUUID(),
-				name: 'Reading Messages',
-				quantity: 140,
-				unit: 'Chars/Day',
-				depth: 5
-			},
 			{ id: crypto.randomUUID(), name: 'Potable Water', quantity: 50, unit: 'gallons', depth: 5 },
 			{ id: crypto.randomUUID(), name: 'Rice', quantity: 20, unit: 'lbs', depth: 5 },
 			{ id: crypto.randomUUID(), name: 'Beans', quantity: 15, unit: 'lbs', depth: 4 },

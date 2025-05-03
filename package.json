@@ -40,6 +40,7 @@
 		"vite": "^6.2.5"
 	},
 	"dependencies": {
+		"@tailwindcss/postcss": "^4.1.4",
 		"maplibre-gl": "^5.4.0",
 		"pmtiles": "^4.3.0",
 		"protomaps-themes-base": "^4.5.0",

@@ -9,7 +9,6 @@
 		QueryRenderedFeatures
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import * as Tabs from '$lib/components/ui/tabs/index.js';
 
 	let features: maplibregl.MapGeoJSONFeature[] = $state.raw([]);
 	let mode: 'source' | 'rendered' = $state('source');
@@ -52,28 +51,4 @@
 			</CircleLayer>
 		</GeoJSONSource>
 	</MapLibre>
-
-	<!-- List of earthquakes -->
-	<div class="relative basis-[10em]">
-		<Tabs.Root bind:value={mode} class="flex h-full flex-col">
-			<Tabs.List class="grid w-full grid-cols-2">
-				<Tabs.Trigger value="source">Source</Tabs.Trigger>
-				<Tabs.Trigger value="rendered">Rendered</Tabs.Trigger>
-			</Tabs.List>
-			<Tabs.Content value="source" class="min-h-0 shrink overflow-scroll">
-				<ul class="m-0 ml-2 overflow-scroll px-3 text-xs">
-					{#each features as feature}
-						<li>{feature.properties.title}</li>
-					{/each}
-				</ul>
-			</Tabs.Content>
-			<Tabs.Content value="rendered" class="min-h-0 shrink overflow-scroll">
-				<ul class="m-0 ml-4 overflow-scroll px-3 text-xs">
-					{#each features as feature}
-						<li>{feature.properties.title}</li>
-					{/each}
-				</ul>
-			</Tabs.Content>
-		</Tabs.Root>
-	</div>
 </div>
