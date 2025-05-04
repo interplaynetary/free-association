@@ -23,6 +23,21 @@
         </div>
     </div>
 
+    <!-- Instructions Popup -->
+    <div class="instructions-popup">
+        <div class="instructions-content">
+            <h2>How to Use</h2>
+            <ul>
+                <li><span class="instruction-icon">⚠️</span>This is a demo, not the full-version!</li>
+                <li><span class="instruction-icon">👆</span> Click a node to zoom in</li>
+                <li><span class="instruction-icon">↩️</span> Click the white rectangle with path name to zoom out</li>
+                <li><span class="instruction-icon">☝️</span> 1-touch hold to grow node</li>
+                <li><span class="instruction-icon">✌️</span> 2-touch hold to shrink node</li>
+            </ul>
+            <button class="instruction-button">Got it</button>
+        </div>
+    </div>
+
     <!-- Popup forms container at document level -->
     <div class="node-popup">
         <div class="node-popup-content">
@@ -141,6 +156,17 @@
 
         // Initialize app
         const app = new App(ruzgar);
+
+        // Instructions popup handler
+        if (!sessionStorage.getItem('instructionsShown')) {
+            $('.instructions-popup').addClass('active');
+            
+            // Set the flag when user clicks "Got it"
+            $('.instruction-button').on('click', function() {
+                $('.instructions-popup').removeClass('active');
+                sessionStorage.setItem('instructionsShown', 'true');
+            });
+        }
 
         // Define texts array
         const addNodeTexts = ['Add Value', 'Add Goal', 'Add Dependency', 'Add Desire'];
