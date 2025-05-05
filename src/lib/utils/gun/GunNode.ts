@@ -1,4 +1,4 @@
-import { gun, getNodeRef, getTransientNodeRef, user, transientUser } from './gunSetup';
+import { gun, getNodeRef, user } from './gunSetup';
 import type { GunData } from './gunSetup';
 import { GunSubscription } from './GunSubscription';
 import type { SubscriptionCleanup, SubscriptionHandler } from './gunSetup';
@@ -11,20 +11,17 @@ export class GunNode<T = any> {
 	protected chain: any;
 	protected path: string[];
 	private certificate?: string;
-	private isTransient: boolean;
 
 	/**
 	 * Create a new Gun node wrapper
 	 * @param path Array of path segments to the node
 	 * @param certificate Optional certificate for write access to protected nodes
-	 * @param transient If true, use transientGun which doesn't persist to localStorage
 	 */
-	constructor(path: string[], certificate?: string, transient: boolean = false) {
+	constructor(path: string[], certificate?: string) {
 		// console.log('[DEBUG GunNode] Creating GunNode', { path, hasCertificate: !!certificate });
 		this.path = [...path]; // Store a copy of the path
-		this.chain = transient ? getTransientNodeRef(path) : getNodeRef(path);
+		this.chain = getNodeRef(path);
 		this.certificate = certificate;
-		this.isTransient = transient;
 	}
 
 	/**
@@ -35,7 +32,7 @@ export class GunNode<T = any> {
 	 */
 	public get<R = any, N extends GunNode<R> = GunNode<R>>(
 		key: string,
-		NodeClass: new (path: string[], certificate?: string, transient?: boolean) => N = GunNode as any
+		NodeClass: new (path: string[], certificate?: string) => N = GunNode as any
 	): N {
 		// console.log('[DEBUG GunNode] Getting child node', {
 		//   parentPath: this.path.join('/'),
@@ -43,7 +40,7 @@ export class GunNode<T = any> {
 		// });
 		// Create a new path with the child key
 		const childPath = [...this.path, key];
-		return new NodeClass(childPath, this.certificate, this.isTransient);
+		return new NodeClass(childPath, this.certificate);
 	}
 
 	/**

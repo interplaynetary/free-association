@@ -1,4 +1,4 @@
-import { gun, transientGun, user, transientUser } from './gunSetup';
+import { gun, user } from './gunSetup';
 import type { SubscriptionHandler, SubscriptionCleanup } from './gunSetup';
 
 /**
@@ -24,11 +24,10 @@ export class GunSubscription<T = any> {
 	 * Create a subscription to a Gun node path
 	 * @param path Array of path segments to the Gun node
 	 * @param timeoutMs Optional timeout in milliseconds for operations
-	 * @param transient If true, use transientGun which doesn't persist to localStorage
 	 */
-	constructor(path: string[], timeoutMs?: number, transient: boolean = false) {
+	constructor(path: string[], timeoutMs?: number) {
 		// Navigate the Gun path
-		let ref = transient ? transientGun : (gun as any);
+		let ref = gun as any;
 		for (const segment of path) {
 			ref = ref.get(segment);
 		}
@@ -42,11 +41,10 @@ export class GunSubscription<T = any> {
 	/**
 	 * Create a subscription to a Gun path with a more natural syntax
 	 * @param path Array of path segments to the Gun node
-	 * @param transient If true, use transientGun which doesn't persist to localStorage
 	 * @returns A new GunSubscription instance
 	 */
-	public static from<T>(path: string[], transient: boolean = false): GunSubscription<T> {
-		return new GunSubscription<T>(path, undefined, transient);
+	public static from<T>(path: string[]): GunSubscription<T> {
+		return new GunSubscription<T>(path);
 	}
 
 	/**

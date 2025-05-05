@@ -120,22 +120,21 @@ export class StoreRegistry {
 		return StoreRegistry.instance;
 	}
 
-	public getStore<T>(path: string[], defaultValue?: T, transient: boolean = false): GunStore<T> {
+	public getStore<T>(path: string[], defaultValue?: T): GunStore<T> {
 		const key = path.join('/');
 		if (!this.stores.has(key)) {
-			this.stores.set(key, createGunStore<T>(path, defaultValue, transient));
+			this.stores.set(key, createGunStore<T>(path, defaultValue));
 		}
 		return this.stores.get(key) as GunStore<T>;
 	}
 
 	public getCollectionStore<T extends CollectionItem>(
 		path: string[],
-		sortFn?: (a: [string, T], b: [string, T]) => number,
-		transient: boolean = false
+		sortFn?: (a: [string, T], b: [string, T]) => number
 	): Readable<[string, T][]> {
 		const key = path.join('/');
 		if (!this.collectionStores.has(key)) {
-			const store = createCollectionStore<T>(path, sortFn as any, transient);
+			const store = createCollectionStore<T>(path, sortFn as any);
 			this.collectionStores.set(key, store);
 		}
 		return this.collectionStores.get(key) as Readable<[string, T][]>;
@@ -175,8 +174,7 @@ export class StoreRegistry {
 	public registerDerivedStore<T>(
 		key: string,
 		store: Readable<T>,
-		dependencies: string[] = [],
-		transient: boolean = false
+		dependencies: string[] = []
 	): Readable<T> {
 		// Check if this would create a cycle
 		if (this.wouldCreateDerivationCycle(key, dependencies)) {
@@ -253,12 +251,10 @@ export class ReactiveGraph {
 	private defaultTraversalOptions: TraversalOptions;
 	private traversalCache = new Map<string, Promise<string[]>>();
 	private debugMode = true;
-	private isTransient: boolean;
 
-	constructor(options: TraversalOptions = DEFAULT_TRAVERSAL_OPTIONS, transient: boolean = false) {
+	constructor(options: TraversalOptions = DEFAULT_TRAVERSAL_OPTIONS) {
 		this.registry = StoreRegistry.getInstance();
 		this.defaultTraversalOptions = { ...DEFAULT_TRAVERSAL_OPTIONS, ...options };
-		this.isTransient = transient;
 	}
 
 	/**
@@ -269,23 +265,6 @@ export class ReactiveGraph {
 	public setDebugMode(enabled: boolean): this {
 		this.debugMode = enabled;
 		return this;
-	}
-
-	/**
-	 * Set whether this graph should use transient storage
-	 * @param transient Whether to use transient storage
-	 * @returns This instance for chaining
-	 */
-	public setTransient(transient: boolean): this {
-		this.isTransient = transient;
-		return this;
-	}
-
-	/**
-	 * Check if this graph is using transient storage
-	 */
-	public isUsingTransient(): boolean {
-		return this.isTransient;
 	}
 
 	/**
@@ -304,10 +283,9 @@ export class ReactiveGraph {
 	 */
 	public getNodeStore<T>(path: string[], defaultValue?: T): GunStore<T> {
 		this.logDebug(`Getting node store for path: ${path.join('/')}`, {
-			defaultValue,
-			transient: this.isTransient
+			defaultValue
 		});
-		return this.registry.getStore<T>(path, defaultValue, this.isTransient);
+		return this.registry.getStore<T>(path, defaultValue);
 	}
 
 	/**
@@ -318,10 +296,9 @@ export class ReactiveGraph {
 		sortFn?: (a: [string, T], b: [string, T]) => number
 	): Readable<[string, T][]> {
 		this.logDebug(`Getting collection store for path: ${path.join('/')}`, {
-			hasSortFn: !!sortFn,
-			transient: this.isTransient
+			hasSortFn: !!sortFn
 		});
-		return this.registry.getCollectionStore<T>(path, sortFn, this.isTransient);
+		return this.registry.getCollectionStore<T>(path, sortFn);
 	}
 
 	/**
@@ -527,14 +504,13 @@ export class ReactiveGraph {
 	 * Add a node to a collection
 	 * @returns This instance for chaining
 	 */
-
 	public async addNode<T extends CollectionItem>(
 		path: string[],
 		collectionKey: string,
 		nodeData: T,
 		nodeId?: string
 	): Promise<string> {
-		const nodeRef = new GunNode([...path, collectionKey], undefined, this.isTransient);
+		const nodeRef = new GunNode([...path, collectionKey]);
 		const id = nodeId || Date.now().toString();
 
 		return withErrorHandling(
@@ -542,8 +518,7 @@ export class ReactiveGraph {
 				this.logDebug(`Adding node to collection`, {
 					path: [...path, collectionKey],
 					id,
-					nodeData,
-					transient: this.isTransient
+					nodeData
 				});
 				await nodeRef.get(id).put(nodeData as any);
 				return id;
@@ -558,14 +533,13 @@ export class ReactiveGraph {
 	 * @returns This instance for chaining
 	 */
 	public async removeNode(path: string[], collectionKey: string, nodeId: string): Promise<this> {
-		const nodeRef = new GunNode([...path, collectionKey], undefined, this.isTransient);
+		const nodeRef = new GunNode([...path, collectionKey]);
 
 		await withErrorHandling(
 			async () => {
 				this.logDebug(`Removing node from collection`, {
 					path: [...path, collectionKey],
-					nodeId,
-					transient: this.isTransient
+					nodeId
 				});
 				await nodeRef.get(nodeId).put(null as any);
 			},
@@ -581,15 +555,14 @@ export class ReactiveGraph {
 	 * @returns This instance for chaining
 	 */
 	public async updateNodeProperty<T>(path: string[], property: string, value: T): Promise<this> {
-		const nodeRef = new GunNode(path, undefined, this.isTransient);
+		const nodeRef = new GunNode(path);
 
 		await withErrorHandling(
 			async () => {
 				this.logDebug(`Updating node property`, {
 					path,
 					property,
-					value,
-					transient: this.isTransient
+					value
 				});
 				await nodeRef.get(property).put(value as any);
 			},
@@ -628,7 +601,7 @@ export class ReactiveGraph {
 		const derivedStore = derived(stores, (values) => deriveFn(values), undefined as unknown as T);
 
 		// Register with dependency tracking
-		return this.registry.registerDerivedStore(storeKey, derivedStore, storeKeys, this.isTransient);
+		return this.registry.registerDerivedStore(storeKey, derivedStore, storeKeys);
 	}
 
 	/**
@@ -676,18 +649,6 @@ export class ReactiveGraph {
 				? ($data[property] as T)
 				: defaultValue
 		);
-	}
-
-	/**
-	 * Register a derived store with a specific key
-	 */
-	public registerDerivedStore<T>(
-		key: string,
-		store: Readable<T>,
-		dependencies: string[] = [],
-		transient: boolean = false
-	): Readable<T> {
-		return this.registry.registerDerivedStore(key, store, dependencies, transient);
 	}
 
 	/**
@@ -814,14 +775,27 @@ export class ReactiveGraph {
 
 		return result;
 	}
+
+	/**
+	 * Register a derived store with a specific key
+	 */
+	public registerDerivedStore<T>(
+		key: string,
+		store: Readable<T>,
+		dependencies: string[] = []
+	): Readable<T> {
+		return this.registry.registerDerivedStore(key, store, dependencies);
+	}
+
+	/**
+	 * Compose multiple traversal functions into a single function
+	 * Each function will be called with the result of the previous one
+	 */
 }
 
 /**
  * Create a new reactive graph instance with default options
  */
-export function createReactiveGraph(
-	options?: TraversalOptions,
-	transient: boolean = false
-): ReactiveGraph {
-	return new ReactiveGraph(options, transient);
+export function createReactiveGraph(options?: TraversalOptions): ReactiveGraph {
+	return new ReactiveGraph(options);
 }

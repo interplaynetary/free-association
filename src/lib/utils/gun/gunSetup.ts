@@ -32,26 +32,12 @@ export const gun = Gun({
 		'http://localhost:8765/gun' // Local relay peer
 		//"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
 	],
-	localStorage: false // Enable localStorage persistence in browser
-});
-
-// Create a separate Gun instance for transient data that shouldn't be persisted
-// This is used for user listings and other data we don't want to save to localStorage
-export const transientGun = Gun({
-	peers: [
-		'http://localhost:8765/gun' // Local relay peer
-		//"https://gun-manhattan.herokuapp.com/gun",
-	],
-	localStorage: false, // Disable localStorage persistence for transient data
-	radisk: false
+	localStorage: false // Disable localStorage persistence by default
 });
 
 // Get authenticated user space
 export const user = gun.user() as GunUser;
 user.recall({ sessionStorage: true });
-
-export const transientUser = transientGun.user() as GunUser;
-transientUser.recall({ sessionStorage: true });
 
 // Type for Gun metadata - helps with GunNode.ts linter errors
 export interface GunMeta {
@@ -152,58 +138,19 @@ gun.on('out', function (msg: any) {
 	this.to.next(msg);
 });
 
-transientGun.on('out', function (msg: any) {
-	// Only process put messages
-	if (msg.put) {
-		// console.log('[GUN] Sending data:', Object.keys(msg.put).length, 'nodes');
-		const souls = Object.keys(msg.put);
-
-		// For each soul (node) in the message
-		souls.forEach((soul) => {
-			const node = msg.put[soul];
-
-			// Check if this is a null/delete operation
-			if (node === null || (node && Object.keys(node).length === 0)) {
-				const key = soul;
-
-				// Check if we've seen this null recently
-				if (recentNulls.has(key)) {
-					// console.log('[DEBUG Gun] Filtering redundant null for:', key);
-					delete msg.put[soul]; // Remove from the message
-
-					// If message is now empty, prevent it from being sent
-					if (Object.keys(msg.put).length === 0) {
-						return; // Skip sending the message
-					}
-				} else {
-					// Add to recent nulls and schedule removal
-					recentNulls.add(key);
-					setTimeout(() => {
-						recentNulls.delete(key);
-					}, NULL_DEBOUNCE_TIME);
-				}
-			}
-		});
-	}
-
-	// Pass the possibly modified message to the next middleware
-	// @ts-ignore - accessing Gun's private API
-	this.to.next(msg);
-});
-
 // ===== USER AUTHENTICATION FUNCTIONS =====
 
-// Add a helper to register a user in the transient users list
-const registerUserInTransientList = (userId: string, userName: string) => {
+// Add a helper to register a user in the users list
+const registerUserInList = (userId: string, userName: string) => {
 	if (!userId) return;
 
-	console.log('Registering user in transient users list:', {
+	console.log('Registering user in users list:', {
 		userId,
 		userName
 	});
 
-	// Add to transient users for discovery
-	transientGun.get('users').get(userId).put({
+	// Add to users for discovery
+	gun.get('users').get(userId).put({
 		name: userName,
 		online: true,
 		lastSeen: Date.now()
@@ -229,18 +176,18 @@ export const recallUser = (): Promise<void> => {
 							}
 							console.log('Restored correct alias:', alias);
 
-							// Register in transient users list
-							registerUserInTransientList(user.is.pub!, alias);
+							// Register in users list
+							registerUserInList(user.is.pub!, alias);
 						} else if (user.is?.pub && user.is?.alias) {
 							// Use alias even if it's the same as pub
-							registerUserInTransientList(user.is.pub, user.is.alias);
+							registerUserInList(user.is.pub, user.is.alias);
 						}
 						resolve();
 					});
 				return;
 			} else if (user.is?.pub && user.is?.alias) {
-				// Register in transient users list with current alias
-				registerUserInTransientList(user.is.pub, user.is.alias);
+				// Register in users list with current alias
+				registerUserInList(user.is.pub, user.is.alias);
 			}
 			resolve();
 			return;
@@ -264,17 +211,17 @@ export const recallUser = (): Promise<void> => {
 							}
 							console.log('Restored correct alias:', alias);
 
-							// Register in transient users list
-							registerUserInTransientList(user.is.pub!, alias);
+							// Register in users list
+							registerUserInList(user.is.pub!, alias);
 						} else if (user.is?.pub && user.is?.alias) {
 							// Use alias even if it's the same as pub
-							registerUserInTransientList(user.is.pub, user.is.alias);
+							registerUserInList(user.is.pub, user.is.alias);
 						}
 						resolve();
 					});
 			} else if (user.is?.pub && user.is?.alias) {
-				// Register in transient users list with current alias
-				registerUserInTransientList(user.is.pub, user.is.alias);
+				// Register in users list with current alias
+				registerUserInList(user.is.pub, user.is.alias);
 				resolve();
 			} else {
 				resolve();
@@ -303,17 +250,17 @@ export const recallUser = (): Promise<void> => {
 							}
 							console.log('Restored correct alias on timeout:', alias);
 
-							// Register in transient users list
-							registerUserInTransientList(user.is.pub!, alias);
+							// Register in users list
+							registerUserInList(user.is.pub!, alias);
 						} else if (user.is?.pub && user.is?.alias) {
 							// Use current alias as fallback
-							registerUserInTransientList(user.is.pub, user.is.alias);
+							registerUserInList(user.is.pub, user.is.alias);
 						}
 						resolve();
 					});
 			} else if (user.is?.pub && user.is?.alias) {
-				// Register in transient users list with current alias
-				registerUserInTransientList(user.is.pub, user.is.alias);
+				// Register in users list with current alias
+				registerUserInList(user.is.pub, user.is.alias);
 				resolve();
 			} else {
 				resolve();
@@ -330,9 +277,9 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 			if (!ack.err) {
 				console.log('Authenticated user:', alias);
 
-				// Register authenticated user in transient users list
+				// Register authenticated user in users list
 				if (user.is?.pub) {
-					registerUserInTransientList(user.is.pub, alias);
+					registerUserInList(user.is.pub, alias);
 				}
 
 				resolve();
@@ -353,9 +300,9 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 					} else {
 						console.log('Authenticated user:', alias);
 
-						// Register newly created user in transient users list
+						// Register newly created user in users list
 						if (user.is?.pub) {
-							registerUserInTransientList(user.is.pub, alias);
+							registerUserInList(user.is.pub, alias);
 						}
 
 						resolve();
@@ -368,10 +315,10 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 
 // Clean logout that clears storage
 export const logout = () => {
-	// Mark user as offline in the transient users list before logging out
+	// Mark user as offline in the users list before logging out
 	if (user.is?.pub) {
 		console.log('Marking user as offline:', user.is.pub);
-		transientGun.get('users').get(user.is.pub).put({
+		gun.get('users').get(user.is.pub).put({
 			online: false,
 			lastSeen: Date.now()
 		});
@@ -393,15 +340,6 @@ export const getPath = async (path: string) => {
 // Create a node reference at a path - helper function to work with GunNode
 export const getNodeRef = (path: string[]) => {
 	let ref = gun as any;
-	for (const segment of path) {
-		ref = ref.get(segment);
-	}
-	return ref;
-};
-
-// Create a node reference that uses the transient Gun instance (won't save to localStorage)
-export const getTransientNodeRef = (path: string[]) => {
-	let ref = transientGun as any;
 	for (const segment of path) {
 		ref = ref.get(segment);
 	}
@@ -689,21 +627,29 @@ Gun.chain.subscribe = function (publish: (data: any) => void) {
  * ```
  */
 
-// For SvelteKit compatibility - use this in components that need SSR
+/**
+ * Helper function to initialize Gun in Svelte components
+ * Automatically calls onDestroy to clean up
+ */
 export function initGunOnMount() {
-	let gunInstance: any = null;
+	// Using custom Gun binding
+	try {
+		// @ts-ignore - Svelte component lifecycle methods
+		const { onMount, onDestroy } = require('svelte');
+		let cleanup: any = null;
 
-	if (typeof window !== 'undefined') {
-		gunInstance = Gun({
-			peers: [
-				'http://localhost:8765/gun'
-				//"https://gun-manhattan.herokuapp.com/gun",
-			],
-			localStorage: true
+		// Use onMount to initialize
+		onMount(() => {
+			// Your Gun initialization logic here
 		});
-	}
 
-	return gunInstance;
+		// Use onDestroy to clean up
+		onDestroy(() => {
+			if (cleanup) cleanup();
+		});
+	} catch (err) {
+		console.error('Error initializing Gun:', err);
+	}
 }
 
 // Custom store function for reusability (alternative approach)
