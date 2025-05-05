@@ -4,8 +4,6 @@ import { GunNode } from '../utils/gun/GunNode';
 import { type Proportion, DistributionMap, asProportion } from '../../types/proportions';
 import type { RecNode, NodeEntry } from '../../types/types';
 
-// TODO: Lets add a removeSubTree, that recursively removes all the descendants of a node from the bottom up
-
 /**
  * Root recognition data interface
  */
@@ -62,6 +60,7 @@ export interface RecognitionStore extends RecognitionStoreBase {
 	// Operations
 	addChild: (name: string, points?: number, isContribution?: boolean) => Promise<string>;
 	removeChild: (childId: string) => Promise<void>;
+	removeSubTree: (childId: string) => Promise<void>;
 	addContributor: (contributorId: string, nodeId?: string) => Promise<void>;
 	removeContributor: (contributorId: string, nodeId?: string) => Promise<void>;
 	addTag: (tag: string) => Promise<void>;
@@ -380,6 +379,32 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
 		);
 	};
 
+	const removeSubTree = async (childId: string): Promise<void> => {
+		return withErrorHandling(
+			async () => {
+				// Get the child store to access its children
+				const childStore = getChild(childId);
+				const children = safeGet(childStore.childrenStore, [] as NodeEntry[]);
+
+				// Base case: if no children, remove this node
+				if (children.length === 0) {
+					await removeChild(childId);
+					return;
+				}
+
+				// Recursive case: first remove all child subtrees from bottom up
+				for (const [grandChildId] of children) {
+					await childStore.removeSubTree(grandChildId);
+				}
+
+				// Then remove this node after all children are removed
+				await removeChild(childId);
+			},
+			undefined,
+			`Error removing subtree for ${childId} from ${pathKey}`
+		);
+	};
+
 	const addContributor = async (contributorId: string): Promise<void> => {
 		return withErrorHandling(
 			async () => {
@@ -596,6 +621,7 @@ function createRecognitionStoreImpl(path: string[]): RecognitionStore {
 		updateProperty,
 		addChild,
 		removeChild,
+		removeSubTree,
 		addContributor,
 		removeContributor,
 		addTag,
