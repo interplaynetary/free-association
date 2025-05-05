@@ -16,7 +16,6 @@
 
 	let childrenStore = $derived(store.childrenStore);
 
-
 	let childNodes: RecognitionStore[] = $derived.by(() => {
 		if (!store) return [];
 		return $childrenStore.map((child) => {
