@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ruzgar</title>
-    <!-- Move styles to separate CSS file -->
-    <link rel="stylesheet" href=" ./src/styles/main.css">
+    <!-- Ensure CSS loads correctly by removing the space before path -->
+    <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
     <!-- Main visualization container -->
@@ -157,16 +157,22 @@
         // Initialize app
         const app = new App(ruzgar);
 
-        // Instructions popup handler
-        if (!sessionStorage.getItem('instructionsShown')) {
-            $('.instructions-popup').addClass('active');
-            
-            // Set the flag when user clicks "Got it"
-            $('.instruction-button').on('click', function() {
-                $('.instructions-popup').removeClass('active');
-                sessionStorage.setItem('instructionsShown', 'true');
-            });
-        }
+        // Document ready function to ensure all elements are loaded before attempting to show the popup
+        $(document).ready(function() {
+            // Instructions popup handler - moved inside document ready
+            if (!sessionStorage.getItem('instructionsShown')) {
+                // Small delay to ensure DOM is fully rendered
+                setTimeout(function() {
+                    $('.instructions-popup').addClass('active');
+                }, 500);
+                
+                // Set the flag when user clicks "Got it"
+                $('.instruction-button').on('click', function() {
+                    $('.instructions-popup').removeClass('active');
+                    sessionStorage.setItem('instructionsShown', 'true');
+                });
+            }
+        });
 
         // Define texts array
         const addNodeTexts = ['Add Value', 'Add Goal', 'Add Dependency', 'Add Desire'];
@@ -302,6 +308,13 @@
                 if (currentView && currentView.parent) {
                     treemap.zoomout(currentView);  // Use treemap's zoomout method directly
                 }
+            }
+            
+            // Add a keypress combo to manually reset the instructions popup (Shift+I)
+            if (event.key === 'I' && event.shiftKey) {
+                sessionStorage.removeItem('instructionsShown');
+                $('.instructions-popup').addClass('active');
+                console.log('Instructions reset. Popup should appear now.');
             }
         });
     </script>
