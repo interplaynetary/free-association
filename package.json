@@ -24,6 +24,7 @@
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"browserslist": "^4.24.5",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
@@ -41,6 +42,7 @@
 	},
 	"dependencies": {
 		"@tailwindcss/postcss": "^4.1.4",
+		"d3": "^7.9.0",
 		"maplibre-gl": "^5.4.0",
 		"pmtiles": "^4.3.0",
 		"protomaps-themes-base": "^4.5.0",

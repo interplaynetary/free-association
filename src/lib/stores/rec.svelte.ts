@@ -4,6 +4,8 @@ import { GunNode } from '../utils/gun/GunNode';
 import { type Proportion, DistributionMap, asProportion } from '../../types/proportions';
 import type { RecNode, NodeEntry } from '../../types/types';
 
+// TODO: Lets add a removeSubTree, that recursively removes all the descendants of a node from the bottom up
+
 /**
  * Root recognition data interface
  */

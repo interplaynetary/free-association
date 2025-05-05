@@ -10,8 +10,6 @@
 
 - IndexedDB (Radix)
 
-- New nodes are only being added at the root level
-
 A couple issues, zoomin and out shoujld not be possible during deleteMode, and the nodes are not actually deleting, are we properly interacting with rec.ts? Or perhaps we are somehow not properly disabling other event listeners during deleteMode and it is interfering
 
 ---
@@ -30,3 +28,4 @@ Aesthetic Fixes:
 
 - Names of contributors not showing up
 - rootName only displays after clicking/navigating to it.
+
