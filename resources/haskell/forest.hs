@@ -4,8 +4,10 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Maybe as Maybe
 import Data.List (foldl')
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, isJust, maybeToList, listToMaybe)
 import Data.List (maximumBy)
+import Data.Time (UTCTime)
+import Control.Monad (unless, forM_)
 
 ----------------------
 -- Core Data Types --
@@ -20,7 +22,9 @@ data Node = Node {
     nodePoints :: Points,
     nodeChildren :: Map.Map String Node,
     nodeContributors :: Set.Set String,
-    nodeManualFulfillment :: Maybe Float
+    nodeManualFulfillment :: Maybe Float,
+    nodeCapacities :: CapacityInventory,
+    nodeCapacityShares :: CapacityShares
 } deriving (Show, Eq)
 
 data Ctx = Ctx {
@@ -102,17 +106,16 @@ getCurrentPath z = reverse $ getPath z []
 ----------------------------
 -- Tree Modification API --
 ----------------------------
-createRootNode :: String -> String -> Points -> [String] -> Maybe Float -> TreeZipper
-createRootNode id name pts contribs manual = TreeZipper {
-    zipperCurrent = Node {
+createRootNode :: String -> String -> Points -> [String] -> Maybe Float -> Node
+createRootNode id name pts contribs manual = Node {
         nodeId = id,
         nodeName = name,
         nodePoints = pts,
         nodeChildren = Map.empty,
         nodeContributors = Set.fromList contribs,
-        nodeManualFulfillment = clampManual manual
-    },
-    zipperContext = Nothing
+    nodeManualFulfillment = clampManual manual,
+    nodeCapacities = Map.empty,
+    nodeCapacityShares = Map.empty
 }
   where clampManual = fmap (\v -> max 0 (min 1 v))
 
@@ -128,47 +131,122 @@ addChild name pts contribs manual z@(TreeZipper current ctx) = z {
             nodePoints = pts,
             nodeChildren = Map.empty,
             nodeContributors = Set.fromList contribs,
-            nodeManualFulfillment = clampManual manual
+            nodeManualFulfillment = clampManual manual,
+            nodeCapacities = Map.empty,
+            nodeCapacityShares = Map.empty
         }
         clampManual = fmap (\v -> max 0 (min 1 v))
 
 -------------------------
 -- Core Calculations --
 -------------------------
+
+-- Calculate total points from all children
+totalChildPoints :: TreeZipper -> Int
+totalChildPoints z = sum $ map (getPoints . nodePoints) $ Map.elems (nodeChildren $ zipperCurrent z)
+
 weight :: TreeZipper -> Float
 weight z = case zipperContext z of
-    Nothing -> 1.0
+    Nothing -> 1.0  -- Root node has weight 1.0
     Just ctx -> 
         let parentZipper = fromJust $ exitToParent z
-            parent = zipperCurrent parentZipper
-            total = sum (map (getPoints . nodePoints) $ Map.elems (nodeChildren parent))
+            total = totalChildPoints parentZipper
             currentPoints = getPoints (nodePoints $ zipperCurrent z)
         in if total == 0 
             then 0 
             else (fromIntegral currentPoints / fromIntegral total) * weight parentZipper
-            
+
+shareOfParent :: TreeZipper -> Float
+shareOfParent z = case exitToParent z of
+    Nothing -> 1.0  -- Root node has 100% share
+    Just parent -> 
+        let total = totalChildPoints parent
+            currentPoints = getPoints (nodePoints $ zipperCurrent z)
+        in if total == 0 
+            then 0 
+            else fromIntegral currentPoints / fromIntegral total
+
+isContribution :: ContributorIndex -> TreeZipper -> Bool
+isContribution ci z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
+
+-- Check if a node has direct contribution children
+hasDirectContributionChild :: ContributorIndex -> TreeZipper -> Bool
+hasDirectContributionChild ci z = any (isContribution ci) childZippers
+  where
+    childZippers = catMaybes $ map (flip enterChild z) (Map.keys $ nodeChildren $ zipperCurrent z)
+
+-- Check if a node has non-contribution children
+hasNonContributionChild :: ContributorIndex -> TreeZipper -> Bool
+hasNonContributionChild ci z = any (not . isContribution ci) childZippers
+  where
+    childZippers = catMaybes $ map (flip enterChild z) (Map.keys $ nodeChildren $ zipperCurrent z)
+
+-- Calculate the proportion of total child points from contribution children
+contributionChildrenWeight :: ContributorIndex -> TreeZipper -> Float
+contributionChildrenWeight ci z = ratio contributionPoints total
+  where
+    childZippers = catMaybes $ map (flip enterChild z) (Map.keys $ nodeChildren $ zipperCurrent z)
+    contributionPoints = sum $ map (getPoints . nodePoints . zipperCurrent) $ 
+                        filter (isContribution ci) childZippers
+    total = totalChildPoints z
+    ratio _ 0 = 0.0
+    ratio a b = fromIntegral a / fromIntegral b
+
+-- Sum fulfillment from children matching a predicate
+childrenFulfillment :: ContributorIndex -> (TreeZipper -> Bool) -> TreeZipper -> Float
+childrenFulfillment ci pred z =
+    sum [ fulfilled ci child * shareOfParent child 
+        | child <- catMaybes $ map (flip enterChild z) (Map.keys $ nodeChildren $ zipperCurrent z)
+        , pred child
+        ]
+
+-- Calculate the fulfillment from contribution children
+contributionChildrenFulfillment :: ContributorIndex -> TreeZipper -> Float
+contributionChildrenFulfillment ci = childrenFulfillment ci (isContribution ci)
+
+-- Calculate the fulfillment from non-contribution children
+nonContributionChildrenFulfillment :: ContributorIndex -> TreeZipper -> Float
+nonContributionChildrenFulfillment ci = childrenFulfillment ci (not . isContribution ci)
+
+-- Safely get instances of a contributor
+getContributorInstances :: ContributorIndex -> String -> Set.Set TreeZipper
+getContributorInstances contribIndex contribId = Set.singleton $ Map.findWithDefault emptyZipper contribId contribIndex
+  where
+    emptyNode = createRootNode contribId contribId (Points 0) [] Nothing
+    emptyZipper = TreeZipper emptyNode Nothing
+
+-- Safely get a contributor node
+getContributorNode :: ContributorIndex -> String -> Maybe TreeZipper
+getContributorNode contribIndex contribId =
+    let instances = getContributorInstances contribIndex contribId
+    in listToMaybe (Set.toList instances)
+
 fulfilled :: ContributorIndex -> TreeZipper -> Float
 fulfilled ci z
+    -- Leaf nodes
     | Map.null (nodeChildren $ zipperCurrent z) = 
-        if isContribution ci z then 1 else 0
-    | Just mf <- nodeManualFulfillment (zipperCurrent z) = mf
+        if isContribution ci z then 1.0 else 0.0
+    
+    -- Nodes with manual fulfillment and contributor children
+    | Just mf <- nodeManualFulfillment (zipperCurrent z)
+    , hasDirectContributionChild ci z = 
+        if not (hasNonContributionChild ci z)
+        then mf
+        else 
+            let contribWeight = contributionChildrenWeight ci z
+                nonContribFulfillment = nonContributionChildrenFulfillment ci z
+            in mf * contribWeight + nonContribFulfillment * (1.0 - contribWeight)
+    
+    -- Default case: weighted sum of all children's fulfillment
     | otherwise = 
         sum [ fulfilled ci child * shareOfParent child 
             | child <- catMaybes $ map (flip enterChild z) (Map.keys $ nodeChildren $ zipperCurrent z)
             ]
 
-shareOfParent :: TreeZipper -> Float
-shareOfParent z = case exitToParent z of
-    Just parent -> 
-        let total = sum (map (getPoints . nodePoints) $ Map.elems (nodeChildren $ zipperCurrent parent))
-            currentPoints = getPoints (nodePoints $ zipperCurrent z)
-        in if total == 0 
-            then 0 
-            else fromIntegral currentPoints / fromIntegral total
-    Nothing -> 1
 
-isContribution :: ContributorIndex -> TreeZipper -> Bool
-isContribution ci z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
+-- Calculate the desire (unfulfilled need) of a node
+desire :: ContributorIndex -> TreeZipper -> Float
+desire ci z = 1.0 - fulfilled ci z
 
 ---------------------------
 -- Mutual Fulfillment --
@@ -188,7 +266,13 @@ shareOfGeneralFulfillment ci target contributor =
                     (getAllDescendants target)
                 -- Calculate total contribution from these nodes
                 total = sum [weight node * fulfilled ci node | node <- contributingNodes]
-            in total
+                -- Get number of contributors for each node
+                contributorCounts = map (Set.size . nodeContributors . zipperCurrent) contributingNodes
+                -- Divide each node's contribution by its number of contributors
+                weightedTotal = sum [w * f / fromIntegral c | (w, f, c) <- zip3 (map weight contributingNodes) 
+                                                                                (map (fulfilled ci) contributingNodes)
+                                                                                contributorCounts]
+            in weightedTotal
 
 getAllDescendants :: TreeZipper -> [TreeZipper]
 getAllDescendants z = z : concatMap (maybe [] getAllDescendants) childZippers
@@ -249,49 +333,66 @@ calculateForestMutualFulfillment ci forest =
 type ShareMap = Map.Map String Float
 type VisitedSet = Set.Set String
 
-distributeShares :: ContributorIndex -> TreeZipper -> Int -> ShareMap
-distributeShares ci provider maxDepth = 
+providerShares :: ContributorIndex -> TreeZipper -> Int -> ShareMap
+providerShares ci provider maxDepth = 
     let initialShares = calculateDirectShares ci provider
         (finalShares, _) = foldl' (processDepth ci) (initialShares, Set.empty) [2..maxDepth]
-    in finalShares
+        -- Normalize the final shares to ensure they add up to 100%
+        totalShare = sum $ Map.elems finalShares
+    in if totalShare > 0
+       then Map.map (\share -> share / totalShare) finalShares
+       else finalShares
 
 calculateDirectShares :: ContributorIndex -> TreeZipper -> ShareMap
 calculateDirectShares ci provider =
     let contributors = nodeContributors $ zipperCurrent provider
         -- Look up TreeZippers for each contributor ID
         validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
-        totalMutualRecognition = sum [mutualFulfillment ci provider contributor 
-                                   | contributor <- validContributors]
+        -- Get mutual fulfillment values
+        mutualValues = [(nodeId $ zipperCurrent contributor, 
+                          mutualFulfillment ci provider contributor)
+                       | contributor <- validContributors]
+        -- Calculate total mutual recognition for normalization
+        totalMutualRecognition = sum $ map snd mutualValues
     in if totalMutualRecognition == 0 
         then Map.empty
         else Map.fromList 
-            [(nodeId $ zipperCurrent contributor, 
-              mutualFulfillment ci provider contributor / totalMutualRecognition)
-            | contributor <- validContributors]
+            [(contribId, mutualValue / totalMutualRecognition)
+            | (contribId, mutualValue) <- mutualValues]
 
 processDepth :: ContributorIndex -> (ShareMap, VisitedSet) -> Int -> (ShareMap, VisitedSet)
 processDepth ci (shares, visited) _ =
+    -- Create a new map for this depth's calculations
     let recipients = Map.keys shares
-        (newShares, newVisited) = foldl' (processRecipient ci shares) (shares, visited) recipients
+        unvisitedRecipients = filter (\r -> not $ Set.member r visited) recipients
+        
+        -- Process each unvisited recipient
+        processRecipient :: (ShareMap, VisitedSet) -> String -> (ShareMap, VisitedSet)
+        processRecipient (currentShares, currentVisited) recipientId =
+            case Map.lookup recipientId currentShares of
+                Nothing -> (currentShares, currentVisited)
+                Just recipientShare ->
+                    case Map.lookup recipientId ci of
+                        Nothing -> (currentShares, currentVisited)
+                        Just recipient -> 
+                            let newVisited = Set.insert recipientId currentVisited
+                                -- Process this recipient's connections
+                                connections = nodeContributors $ zipperCurrent recipient
+                                unvisitedConnections = Set.filter (\c -> not $ Set.member c currentVisited) connections
+                                validConnections = catMaybes [Map.lookup c ci | c <- Set.toList unvisitedConnections]
+                                
+                                -- Calculate direct shares from this recipient
+                                directShares = calculateDirectShares ci recipient
+                                
+                                -- Calculate transitive shares (recipient's share * connection's direct share)
+                                transitiveShares = Map.mapWithKey 
+                                    (\connId connShare -> recipientShare * connShare) 
+                                    directShares
+                            in (Map.unionWith (+) currentShares transitiveShares, newVisited)
+        
+        -- Apply processing to all unvisited recipients
+        (newShares, newVisited) = foldl' processRecipient (shares, visited) unvisitedRecipients
     in (newShares, newVisited)
-
-processRecipient :: ContributorIndex -> ShareMap -> (ShareMap, VisitedSet) -> String -> (ShareMap, VisitedSet)
-processRecipient ci shares (currentShares, visited) recipientId =
-    case Map.lookup recipientId shares of
-        Nothing -> (currentShares, visited)
-        Just recipientShare ->
-            case Map.lookup recipientId ci of
-                Nothing -> (currentShares, visited)
-                Just recipient -> 
-                    let newVisited = Set.insert recipientId visited
-                        connections = nodeContributors $ zipperCurrent recipient
-                        unvisitedConnections = Set.filter (\c -> not $ Set.member c visited) connections
-                        validConnections = catMaybes [Map.lookup c ci | c <- Set.toList unvisitedConnections]
-                        transitiveShares = Map.fromListWith (+)
-                            [(nodeId $ zipperCurrent conn, 
-                              recipientShare * directShare ci recipient (nodeId $ zipperCurrent conn))
-                            | conn <- validConnections]
-                    in (Map.unionWith (+) currentShares transitiveShares, newVisited)
 
 -- Calculate direct share between a provider and a recipient
 directShare :: ContributorIndex -> TreeZipper -> String -> Float
@@ -301,17 +402,147 @@ directShare ci provider recipientId =
         Just recipient ->
             let contributors = nodeContributors $ zipperCurrent provider
                 validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
-                totalMutualRecognition = sum [mutualFulfillment ci provider contributor 
-                                           | contributor <- validContributors]
+                mutualValues = [mutualFulfillment ci provider contributor 
+                               | contributor <- validContributors]
+                totalMutualRecognition = sum mutualValues
             in if totalMutualRecognition == 0 
                 then 0
                 else mutualFulfillment ci provider recipient / totalMutualRecognition
 
--- Get total share including all transitive paths up to maxDepth
-totalShare :: ContributorIndex -> TreeZipper -> String -> Int -> Float
-totalShare ci provider recipientId maxDepth =
-    Map.findWithDefault 0 recipientId (distributeShares ci provider maxDepth)
-    
+-- Get a receiver's share from a specific capacity provider
+receiverShareFrom :: ContributorIndex -> TreeZipper -> TreeZipper -> Capacity -> Int -> Float
+receiverShareFrom ci receiver provider capacity maxDepth =
+    let providerShareMap = providerShares ci provider maxDepth
+        receiverId = nodeId $ zipperCurrent receiver
+    in Map.findWithDefault 0 receiverId providerShareMap
+
+-- Get a person's total share in a specific capacity
+getPersonalCapacityShare :: ContributorIndex -> Forest -> TreeZipper -> Capacity -> Float
+getPersonalCapacityShare ci forest person capacity =
+    -- Find all owners of this capacity
+    let capacityOwners = [owner | (_, owner) <- Map.toList forest, 
+                          Map.member (capacityId capacity) (nodeCapacities $ zipperCurrent owner)]
+        -- Calculate direct shares from each owner using provider-centric calculation
+        directShares = [receiverShareFrom ci person owner capacity 2 | owner <- capacityOwners]
+        -- Take the maximum share (person might have shares from multiple owners)
+        totalShare = if null directShares then 0 else maximum directShares
+    in totalShare
+
+-- Update computed quantities for all capacity shares in a node
+updateComputedQuantities :: TreeZipper -> TreeZipper
+updateComputedQuantities z = z {
+    zipperCurrent = (zipperCurrent z) {
+        nodeCapacityShares = Map.map updateShare (nodeCapacityShares $ zipperCurrent z)
+    }
+}
+  where
+    updateShare share = share {
+        computedQuantity = computeQuantityShare (targetCapacity share) (sharePercentage share)
+    }
+
+-----------------------
+-- Capacity Types --
+-----------------------
+
+data RecurrenceUnit = Days | Weeks | Months | Years
+    deriving (Show, Eq)
+
+data RecurrenceEnd = 
+    Never 
+    | EndsOn UTCTime 
+    | EndsAfter Int
+    deriving (Show, Eq)
+
+data CustomRecurrence = CustomRecurrence {
+    repeatEvery :: Int,
+    repeatUnit :: RecurrenceUnit,
+    recurrenceEnd :: RecurrenceEnd
+} deriving (Show, Eq)
+
+data LocationType = 
+    Undefined 
+    | LiveLocation 
+    | Specific
+    deriving (Show, Eq)
+
+data SpaceTimeCoordinates = SpaceTimeCoordinates {
+    locationType :: LocationType,
+    allDay :: Bool,
+    recurrence :: Maybe String,
+    customRecurrence :: Maybe CustomRecurrence,
+    startDate :: UTCTime,
+    startTime :: UTCTime,
+    endDate :: UTCTime,
+    endTime :: UTCTime,
+    timeZone :: String
+} deriving (Show, Eq)
+
+data MaxDivisibility = MaxDivisibility {
+    naturalDiv :: Int,
+    percentageDiv :: Float
+} deriving (Show, Eq)
+
+data Capacity = Capacity {
+    capacityId :: String,
+    capacityName :: String,
+    quantity :: Int,
+    unit :: String,
+    shareDepth :: Int,
+    expanded :: Bool,
+    coordinates :: SpaceTimeCoordinates,
+    maxDivisibility :: MaxDivisibility,
+    hiddenUntilRequestAccepted :: Bool
+} deriving (Show, Eq)
+
+-- A share in someone else's capacity
+data CapacityShare = CapacityShare {
+    targetCapacity :: Capacity,
+    sharePercentage :: Float,
+    computedQuantity :: Int  -- Derived from percentage * capacity quantity, respecting maxDivisibility
+} deriving (Show, Eq)
+
+type CapacityInventory = Map.Map String Capacity
+type CapacityShares = Map.Map String CapacityShare
+
+
+-- Helper functions for capacity management
+computeQuantityShare :: Capacity -> Float -> Int
+computeQuantityShare cap percentage =
+    let rawQuantity = round $ (fromIntegral $ quantity cap) * percentage
+        maxNatural = naturalDiv $ maxDivisibility cap
+        maxPercent = percentageDiv $ maxDivisibility cap
+        -- Apply percentage divisibility constraint
+        percentConstrained = if percentage > maxPercent 
+            then round $ (fromIntegral $ quantity cap) * maxPercent
+            else rawQuantity
+        -- Apply natural number divisibility constraint
+        naturalConstrained = (percentConstrained `div` maxNatural) * maxNatural
+    in naturalConstrained
+
+-- Create a new capacity share
+createCapacityShare :: Capacity -> Float -> CapacityShare
+createCapacityShare cap percentage = CapacityShare {
+    targetCapacity = cap,
+    sharePercentage = percentage,
+    computedQuantity = computeQuantityShare cap percentage
+}
+
+-- Add a capacity to a node's inventory
+addCapacity :: Capacity -> TreeZipper -> TreeZipper
+addCapacity cap z = z {
+    zipperCurrent = (zipperCurrent z) {
+        nodeCapacities = Map.insert (capacityId cap) cap (nodeCapacities $ zipperCurrent z)
+    }
+}
+
+-- Add a share in another node's capacity
+addCapacityShare :: String -> CapacityShare -> TreeZipper -> TreeZipper
+addCapacityShare shareId share z = z {
+    zipperCurrent = (zipperCurrent z) {
+        nodeCapacityShares = Map.insert shareId share (nodeCapacityShares $ zipperCurrent z)
+    }
+}
+
 -----------------------
 -- Forest Management --
 -----------------------
@@ -327,26 +558,91 @@ mergeContributors = foldl' (Map.unionWith (\_ new -> new)) Map.empty
 
 -----------------------
 -- Example Usage --
---------------------
+-----------------------
 exampleForest :: (Forest, ContributorIndex)
 exampleForest = (forest, ci)
   where
+    -- Create example capacities
+    roomCapacity = Capacity {
+        capacityId = "room1",
+        capacityName = "Spare Room",
+        quantity = 10,
+        unit = "room",
+        shareDepth = 2,
+        expanded = True,
+        coordinates = SpaceTimeCoordinates {
+            locationType = Specific,
+            allDay = True,
+            recurrence = Nothing,
+            customRecurrence = Nothing,
+            startDate = undefined,  -- Would be actual UTCTime in real usage
+            startTime = undefined,
+            endDate = undefined,
+            endTime = undefined,
+            timeZone = "UTC"
+        },
+        maxDivisibility = MaxDivisibility {
+            naturalDiv = 1,
+            percentageDiv = 0.1  -- Maximum 50% share
+        },
+        hiddenUntilRequestAccepted = False
+    }
+
+    pieCapacity = Capacity {
+        capacityId = "pie1",
+        capacityName = "Apple Pie",
+        quantity = 8,
+        unit = "slices",
+        shareDepth = 3,
+        expanded = True,
+        coordinates = SpaceTimeCoordinates {
+            locationType = Specific,
+            allDay = True,
+            recurrence = Nothing,
+            customRecurrence = Nothing,
+            startDate = undefined,
+            startTime = undefined,
+            endDate = undefined,
+            endTime = undefined,
+            timeZone = "UTC"
+        },
+        maxDivisibility = MaxDivisibility {
+            naturalDiv = 1,  -- Can't split a slice
+            percentageDiv = 0.125  -- Minimum share is one slice (1/8)
+        },
+        hiddenUntilRequestAccepted = False
+    }
+
     -- Create roots with mutual contributors
-    aliceRoot = createRootNode "alice" "Alice" (Points 100) ["bob", "charlie"] Nothing
-    bobRoot = createRootNode "bob" "Bob" (Points 100) ["alice", "charlie"] Nothing
-    charlieRoot = createRootNode "charlie" "Charlie" (Points 100) ["alice", "bob"] Nothing
-    
-    -- Build trees with children contributing to both others
-    aliceWithChild = addChild "alice_child" (Points 30) ["bob", "charlie"] Nothing aliceRoot
-    bobWithChild = addChild "bob_child" (Points 40) ["alice", "charlie"] Nothing bobRoot
+    aliceNode = createRootNode "alice" "Alice" (Points 100) ["bob", "charlie"] Nothing
+    bobNode = createRootNode "bob" "Bob" (Points 100) ["alice", "charlie"] Nothing
+    charlieNode = createRootNode "charlie" "Charlie" (Points 100) ["alice", "bob"] Nothing
+
+    aliceRoot = TreeZipper aliceNode Nothing
+    bobRoot = TreeZipper bobNode Nothing
+    charlieRoot = TreeZipper charlieNode Nothing
+
+    -- Add capacities to roots
+    aliceWithCapacity = addCapacity roomCapacity aliceRoot
+    bobWithCapacity = addCapacity pieCapacity bobRoot
+
+    -- Create capacity shares
+    aliceRoomShare = createCapacityShare roomCapacity 0.5  -- 50% share of room
+    bobPieShare = createCapacityShare pieCapacity 0.25     -- 25% share of pie (2 slices)
+
+    -- Build trees with children and add capacity shares
+    aliceWithChild = addChild "alice_child" (Points 30) ["bob", "charlie"] Nothing aliceWithCapacity
+    bobWithChild = addChild "bob_child" (Points 40) ["alice", "charlie"] Nothing bobWithCapacity
+    bobWithShare = addCapacityShare "alice_room" aliceRoomShare bobWithChild
     charlieWithChild = addChild "charlie_child" (Points 50) ["alice", "bob"] Nothing charlieRoot
-    
+    charlieWithShare = addCapacityShare "bob_pie" bobPieShare charlieWithChild
+
     -- Create forest and contributor index
-    forest = foldl addToForest Map.empty [aliceWithChild, bobWithChild, charlieWithChild]
+    forest = foldl addToForest Map.empty [aliceWithChild, bobWithShare, charlieWithShare]
     ci = Map.fromList
         [ ("alice", aliceWithChild)
-        , ("bob", bobWithChild)
-        , ("charlie", charlieWithChild)
+        , ("bob", bobWithShare)
+        , ("charlie", charlieWithShare)
         ]
 
 main :: IO ()
@@ -355,23 +651,59 @@ main = do
         alice = fromJust $ Map.lookup "alice" forest
         bob = fromJust $ Map.lookup "bob" forest
         charlie = fromJust $ Map.lookup "charlie" forest
-    
+
     -- Print fulfillment values
-    putStrLn $ "Alice's Fulfillment: " ++ show (fulfilled ci alice)
-    putStrLn $ "Bob's Fulfillment: " ++ show (fulfilled ci bob)
-    putStrLn $ "Charlie's Fulfillment: " ++ show (fulfilled ci charlie)
-    
-    -- Calculate mutual fulfillment between pairs
-    putStrLn $ "\nMutual Fulfillment Scores:"
+    putStrLn "Mutual Fulfillment Values:"
     putStrLn $ "Alice <-> Bob: " ++ show (mutualFulfillment ci alice bob)
     putStrLn $ "Alice <-> Charlie: " ++ show (mutualFulfillment ci alice charlie)
     putStrLn $ "Bob <-> Charlie: " ++ show (mutualFulfillment ci bob charlie)
+
+    -- Print capacity information
+    putStrLn "\nCapacity Information:"
     
-    -- Calculate and display Alice's share distribution
-    let maxDepth = 3
-        aliceShares = distributeShares ci alice maxDepth
-    putStrLn $ "\nAlice's ShareMap (depth " ++ show maxDepth ++ "):"
-    mapM_ (\(k,v) -> putStrLn $ "  " ++ k ++ ": " ++ show v) $ Map.toList aliceShares
+    -- Print Alice's room capacity
+    putStrLn "Alice's Room Capacity:"
+    let aliceRoom = Map.lookup "room1" (nodeCapacities $ zipperCurrent alice)
+    case aliceRoom of
+        Just room -> do
+            putStrLn $ "  Quantity: " ++ show (quantity room) ++ " " ++ unit room
+            
+            -- Show provider-centric shares (Alice's perspective)
+            putStrLn "\nProvider-centric shares (Alice distributing to network):"
+            let aliceShares = providerShares ci alice 2
+                totalShares = sum $ Map.elems aliceShares
+                bobShare = Map.findWithDefault 0 "bob" aliceShares * 100
+                charlieShare = Map.findWithDefault 0 "charlie" aliceShares * 100
+                otherShares = 100 - bobShare - charlieShare
+            
+            putStrLn $ "  Total shares distributed: " ++ show (totalShares * 100) ++ "%"
+            putStrLn $ "  Bob's share from Alice: " ++ show bobShare ++ "%"
+            putStrLn $ "  Charlie's share from Alice: " ++ show charlieShare ++ "%"
+            putStrLn $ "  Remaining shares (distributed to other network members): " ++ show otherShares ++ "%"
+            
+            -- Break down where the remaining shares went (if any)
+            let remainingRecipients = filter (\(id, _) -> id /= "bob" && id /= "charlie") $ Map.toList aliceShares
+            unless (null remainingRecipients) $ do
+                putStrLn "  Other recipients:"
+                forM_ remainingRecipients $ \(id, share) ->
+                    putStrLn $ "    " ++ id ++ ": " ++ show (share * 100) ++ "%"
+            
+            -- Show receiver-centric shares
+            putStrLn "\nReceiver perspective (shares received from Alice):"
+            putStrLn $ "  Bob's share of Alice's room: " ++ 
+                      show (receiverShareFrom ci bob alice room 2 * 100) ++ "%"
+            putStrLn $ "  Charlie's share of Alice's room: " ++ 
+                      show (receiverShareFrom ci charlie alice room 2 * 100) ++ "%"
+            
+            -- Show computed quantities
+            putStrLn "\nComputed quantities for capacity shares:"
+            let bobRoomQty = round $ (fromIntegral $ quantity room) * receiverShareFrom ci bob alice room 2
+            let charlieRoomQty = round $ (fromIntegral $ quantity room) * receiverShareFrom ci charlie alice room 2
+            putStrLn $ "  Bob's portion: " ++ show bobRoomQty ++ " " ++ unit room
+            putStrLn $ "  Charlie's portion: " ++ show charlieRoomQty ++ " " ++ unit room
+            
+        Nothing -> putStrLn "  No room capacity found"
+
 
 fromJust :: Maybe a -> a
 fromJust (Just x) = x
