@@ -5,10 +5,12 @@ import qualified Data.Set as Set
 import qualified Data.Maybe as Maybe
 import Data.List (foldl')
 import Data.Maybe (catMaybes, isJust)
+import Data.List (maximumBy)
 
--------------------
+----------------------
 -- Core Data Types --
--------------------
+----------------------
+
 newtype Points = Points Int deriving (Eq, Ord, Show)
 getPoints (Points p) = p
 
@@ -38,6 +40,8 @@ type ContributorIndex = Map.Map String TreeZipper
 -------------------------
 -- Zipper Navigation --
 -------------------------
+
+-- Core navigation
 enterChild :: String -> TreeZipper -> Maybe TreeZipper
 enterChild name z@(TreeZipper current ctx) = 
     case Map.lookup name (nodeChildren current) of
@@ -57,9 +61,47 @@ exitToParent (TreeZipper current (Just (Ctx parent siblings ancestors))) =
     }
 exitToParent _ = Nothing
 
------------------------------
+-- The -: operator for more readable navigation chains
+(-:) :: a -> (a -> b) -> b
+x -: f = f x
+
+-- Enhanced navigation functions
+enterSibling :: String -> TreeZipper -> Maybe TreeZipper
+enterSibling name z = exitToParent z >>= enterChild name
+
+goToRoot :: TreeZipper -> TreeZipper
+goToRoot z = case exitToParent z of
+    Nothing -> z
+    Just parent -> goToRoot parent
+
+-- Modify the current node safely
+modifyNode :: (Node -> Node) -> TreeZipper -> TreeZipper
+modifyNode f z@(TreeZipper current ctx) = z { zipperCurrent = f current }
+
+-- Get all siblings of the current node
+getSiblings :: TreeZipper -> [String]
+getSiblings z = case exitToParent z of
+    Nothing -> []
+    Just parent -> Map.keys $ nodeChildren $ zipperCurrent parent
+
+-- Safe navigation with breadcrumbs
+type NavigationPath = [String]
+
+followPath :: NavigationPath -> TreeZipper -> Maybe TreeZipper
+followPath [] z = Just z
+followPath (x:xs) z = enterChild x z >>= followPath xs
+
+-- Get the current path from root
+getCurrentPath :: TreeZipper -> NavigationPath
+getCurrentPath z = reverse $ getPath z []
+  where
+    getPath z acc = case exitToParent z of
+        Nothing -> acc
+        Just parent -> getPath parent (nodeId (zipperCurrent z) : acc)
+
+----------------------------
 -- Tree Modification API --
------------------------------
+----------------------------
 createRootNode :: String -> String -> Points -> [String] -> Maybe Float -> TreeZipper
 createRootNode id name pts contribs manual = TreeZipper {
     zipperCurrent = Node {
@@ -156,10 +198,123 @@ getAllDescendants z = z : concatMap (maybe [] getAllDescendants) childZippers
 mutualFulfillment :: ContributorIndex -> TreeZipper -> TreeZipper -> Float
 mutualFulfillment ci a b = 
     min (shareOfGeneralFulfillment ci a b) (shareOfGeneralFulfillment ci b a)
+
+------------------------------
+-- Mutual Fulfillment Utils --
+------------------------------
+
+-- Get all contributors that mutually fulfill with the current node
+getMutualContributors :: ContributorIndex -> TreeZipper -> [(String, Float)]
+getMutualContributors ci z = 
+    [(nodeId $ zipperCurrent contributor, mutualFulfillment ci z contributor)
+    | contributor <- validContributors]
+  where
+    contributors = nodeContributors $ zipperCurrent z
+    validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
+
+-- Find the path to the highest mutual fulfillment node
+findHighestMutualPath :: ContributorIndex -> TreeZipper -> TreeZipper -> Maybe NavigationPath
+findHighestMutualPath ci root target = 
+    let allPaths = map getCurrentPath $ getAllDescendants root
+        pathScores = [(path, scorePath path) | path <- allPaths]
+        scorePath path = case followPath path root of
+            Nothing -> 0
+            Just node -> mutualFulfillment ci node target
+    in fmap fst $ maximumByMay (\a b -> compare (snd a) (snd b)) pathScores
+
+-- Helper for safe maximum with empty lists
+maximumByMay :: (a -> a -> Ordering) -> [a] -> Maybe a
+maximumByMay _ [] = Nothing
+maximumByMay cmp xs = Just $ maximumBy cmp xs
+
+-- Get all nodes with mutual fulfillment above a threshold
+getHighMutualNodes :: ContributorIndex -> TreeZipper -> Float -> [TreeZipper]
+getHighMutualNodes ci z threshold = 
+    filter (\node -> mutualFulfillment ci z node > threshold) (getAllDescendants z)
+
+-- Calculate mutual fulfillment between all pairs in a forest
+calculateForestMutualFulfillment :: ContributorIndex -> Forest -> [(String, String, Float)]
+calculateForestMutualFulfillment ci forest = 
+    [(id1, id2, mutualFulfillment ci z1 z2)
+    | (id1, z1) <- Map.toList forest
+    , (id2, z2) <- Map.toList forest
+    , id1 < id2  -- Only calculate each pair once
+    ]
+
+
+------------------------------------------
+-- Provider-centric share calculation --
+------------------------------------------
+
+type ShareMap = Map.Map String Float
+type VisitedSet = Set.Set String
+
+distributeShares :: ContributorIndex -> TreeZipper -> Int -> ShareMap
+distributeShares ci provider maxDepth = 
+    let initialShares = calculateDirectShares ci provider
+        (finalShares, _) = foldl' (processDepth ci) (initialShares, Set.empty) [2..maxDepth]
+    in finalShares
+
+calculateDirectShares :: ContributorIndex -> TreeZipper -> ShareMap
+calculateDirectShares ci provider =
+    let contributors = nodeContributors $ zipperCurrent provider
+        -- Look up TreeZippers for each contributor ID
+        validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
+        totalMutualRecognition = sum [mutualFulfillment ci provider contributor 
+                                   | contributor <- validContributors]
+    in if totalMutualRecognition == 0 
+        then Map.empty
+        else Map.fromList 
+            [(nodeId $ zipperCurrent contributor, 
+              mutualFulfillment ci provider contributor / totalMutualRecognition)
+            | contributor <- validContributors]
+
+processDepth :: ContributorIndex -> (ShareMap, VisitedSet) -> Int -> (ShareMap, VisitedSet)
+processDepth ci (shares, visited) _ =
+    let recipients = Map.keys shares
+        (newShares, newVisited) = foldl' (processRecipient ci shares) (shares, visited) recipients
+    in (newShares, newVisited)
+
+processRecipient :: ContributorIndex -> ShareMap -> (ShareMap, VisitedSet) -> String -> (ShareMap, VisitedSet)
+processRecipient ci shares (currentShares, visited) recipientId =
+    case Map.lookup recipientId shares of
+        Nothing -> (currentShares, visited)
+        Just recipientShare ->
+            case Map.lookup recipientId ci of
+                Nothing -> (currentShares, visited)
+                Just recipient -> 
+                    let newVisited = Set.insert recipientId visited
+                        connections = nodeContributors $ zipperCurrent recipient
+                        unvisitedConnections = Set.filter (\c -> not $ Set.member c visited) connections
+                        validConnections = catMaybes [Map.lookup c ci | c <- Set.toList unvisitedConnections]
+                        transitiveShares = Map.fromListWith (+)
+                            [(nodeId $ zipperCurrent conn, 
+                              recipientShare * directShare ci recipient (nodeId $ zipperCurrent conn))
+                            | conn <- validConnections]
+                    in (Map.unionWith (+) currentShares transitiveShares, newVisited)
+
+-- Calculate direct share between a provider and a recipient
+directShare :: ContributorIndex -> TreeZipper -> String -> Float
+directShare ci provider recipientId =
+    case Map.lookup recipientId ci of
+        Nothing -> 0
+        Just recipient ->
+            let contributors = nodeContributors $ zipperCurrent provider
+                validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
+                totalMutualRecognition = sum [mutualFulfillment ci provider contributor 
+                                           | contributor <- validContributors]
+            in if totalMutualRecognition == 0 
+                then 0
+                else mutualFulfillment ci provider recipient / totalMutualRecognition
+
+-- Get total share including all transitive paths up to maxDepth
+totalShare :: ContributorIndex -> TreeZipper -> String -> Int -> Float
+totalShare ci provider recipientId maxDepth =
+    Map.findWithDefault 0 recipientId (distributeShares ci provider maxDepth)
     
---------------------
+-----------------------
 -- Forest Management --
---------------------
+-----------------------
 addToForest :: Forest -> TreeZipper -> Forest
 addToForest forest z = Map.insert (nodeId $ zipperCurrent z) z forest
 
@@ -170,25 +325,28 @@ mergeContributors = foldl' (Map.unionWith (\_ new -> new)) Map.empty
 (?) :: Maybe a -> a -> a
 (?) = flip Maybe.fromMaybe
 
---------------------
+-----------------------
 -- Example Usage --
 --------------------
 exampleForest :: (Forest, ContributorIndex)
 exampleForest = (forest, ci)
   where
-    -- Create roots
-    aliceRoot = createRootNode "alice" "Alice" (Points 100) ["bob"] Nothing
-    bobRoot = createRootNode "bob" "Bob" (Points 100) ["alice"] Nothing
+    -- Create roots with mutual contributors
+    aliceRoot = createRootNode "alice" "Alice" (Points 100) ["bob", "charlie"] Nothing
+    bobRoot = createRootNode "bob" "Bob" (Points 100) ["alice", "charlie"] Nothing
+    charlieRoot = createRootNode "charlie" "Charlie" (Points 100) ["alice", "bob"] Nothing
     
-    -- Build trees
-    aliceWithChild = addChild "alice_child" (Points 30) ["bob"] Nothing aliceRoot
-    bobWithChild = addChild "bob_child" (Points 40) ["alice"] Nothing bobRoot
+    -- Build trees with children contributing to both others
+    aliceWithChild = addChild "alice_child" (Points 30) ["bob", "charlie"] Nothing aliceRoot
+    bobWithChild = addChild "bob_child" (Points 40) ["alice", "charlie"] Nothing bobRoot
+    charlieWithChild = addChild "charlie_child" (Points 50) ["alice", "bob"] Nothing charlieRoot
     
-    -- Create forest
-    forest = foldl addToForest Map.empty [aliceWithChild, bobWithChild]
+    -- Create forest and contributor index
+    forest = foldl addToForest Map.empty [aliceWithChild, bobWithChild, charlieWithChild]
     ci = Map.fromList
         [ ("alice", aliceWithChild)
         , ("bob", bobWithChild)
+        , ("charlie", charlieWithChild)
         ]
 
 main :: IO ()
@@ -196,10 +354,24 @@ main = do
     let (forest, ci) = exampleForest
         alice = fromJust $ Map.lookup "alice" forest
         bob = fromJust $ Map.lookup "bob" forest
+        charlie = fromJust $ Map.lookup "charlie" forest
     
+    -- Print fulfillment values
     putStrLn $ "Alice's Fulfillment: " ++ show (fulfilled ci alice)
     putStrLn $ "Bob's Fulfillment: " ++ show (fulfilled ci bob)
-    putStrLn $ "Mutual Fulfillment: " ++ show (mutualFulfillment ci alice bob)
+    putStrLn $ "Charlie's Fulfillment: " ++ show (fulfilled ci charlie)
+    
+    -- Calculate mutual fulfillment between pairs
+    putStrLn $ "\nMutual Fulfillment Scores:"
+    putStrLn $ "Alice <-> Bob: " ++ show (mutualFulfillment ci alice bob)
+    putStrLn $ "Alice <-> Charlie: " ++ show (mutualFulfillment ci alice charlie)
+    putStrLn $ "Bob <-> Charlie: " ++ show (mutualFulfillment ci bob charlie)
+    
+    -- Calculate and display Alice's share distribution
+    let maxDepth = 3
+        aliceShares = distributeShares ci alice maxDepth
+    putStrLn $ "\nAlice's ShareMap (depth " ++ show maxDepth ++ "):"
+    mapM_ (\(k,v) -> putStrLn $ "  " ++ k ++ ": " ++ show v) $ Map.toList aliceShares
 
 fromJust :: Maybe a -> a
 fromJust (Just x) = x

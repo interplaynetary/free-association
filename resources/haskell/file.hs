@@ -1,3 +1,13 @@
+so my thinking goes like this:
+1) folder-systems are trees, we can make the tree a hierarchy of folders/files
+2) storage/compute capacity (like any other capacity) get distributed according to mutual-contribution
+3) this means your data persists across the network at exactly those parts of the network topology that have a vested interest in your well-being (they are direct/indirect mutual-contributors) these are likely the most efficient and antifragile places your data could be replicated and processes run
+4) free-association becomes a distributed constantly repartitioning communist computer, where data/processes can scale with your transitive-mutual-contribution, rather than fixed allotments of computation that we would buy or sell, here we would just contribute surplus compute/storage capacity into our networkand end up supporting (at a computational level) those programs that contribute to our aliveness
+
+this means that unhealthy digital programs (ones that dont contribute to our aliveness) would decrease over time in their storage/compute capacity, and healthy ones would scale healthily.
+
+
+
 Your analysis of transforming this hierarchical recognition system into a file system with mutual fulfillment capabilities is fascinating. Let me expand on some of the deeper implications:
 
 ## Emergent Social Computing Infrastructure
