@@ -4,7 +4,7 @@ import {
 	createCollectionStore,
 	type GunStore,
 	type CollectionItem
-} from '../svelte/reactiveStores';
+} from './reactiveStores';
 import { derived, get, type Readable } from 'svelte/store';
 
 /**

@@ -23,16 +23,16 @@ interface GunUser {
 	create: (alias: string, pass: string, callback: (ack: any) => void) => void;
 	recall: (options: { sessionStorage: boolean }) => void;
 	leave: () => void;
-	get: (path: string) => any; // Add get method to GunUser interface
+	get: (path: string) => any;
 }
 
 // Initialize Gun once
 export const gun = Gun({
 	peers: [
-		'http://localhost:8765/gun' // Local relay peer
+		'http://localhost:8765/gun'
 		//"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
 	],
-	localStorage: false // Disable localStorage persistence by default
+	localStorage: false
 });
 
 // Get authenticated user space
@@ -90,7 +90,6 @@ gun.on('in', function(msg) {
   // @ts-ignore - accessing Gun's private API
   this.to.next(msg);
 });
-*/
 
 // Add a debounce mechanism for processing nulls
 // Create a set to track recently seen null values
@@ -137,6 +136,7 @@ gun.on('out', function (msg: any) {
 	// @ts-ignore - accessing Gun's private API
 	this.to.next(msg);
 });
+*/
 
 // ===== USER AUTHENTICATION FUNCTIONS =====
 
@@ -165,25 +165,22 @@ export const recallUser = (): Promise<void> => {
 			// Fetch and restore alias if needed
 			if (user.is?.alias === user.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				gun
-					.get(`~${user.is.pub!}`)
-					.get('alias')
-					.once((alias) => {
-						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-							// Update user.is.alias with the correct value
-							if (user.is) {
-								user.is.alias = alias;
-							}
-							console.log('Restored correct alias:', alias);
-
-							// Register in users list
-							registerUserInList(user.is.pub!, alias);
-						} else if (user.is?.pub && user.is?.alias) {
-							// Use alias even if it's the same as pub
-							registerUserInList(user.is.pub, user.is.alias);
+				user.get('alias').once((alias: string) => {
+					if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
+						// Update user.is.alias with the correct value
+						if (user.is) {
+							user.is.alias = alias;
 						}
-						resolve();
-					});
+						console.log('Restored correct alias:', alias);
+
+						// Register in users list
+						registerUserInList(user.is.pub!, alias);
+					} else if (user.is?.pub && user.is?.alias) {
+						// Use alias even if it's the same as pub
+						registerUserInList(user.is.pub, user.is.alias);
+					}
+					resolve();
+				});
 				return;
 			} else if (user.is?.pub && user.is?.alias) {
 				// Register in users list with current alias
@@ -200,10 +197,7 @@ export const recallUser = (): Promise<void> => {
 			// Check if alias equals pub key, which indicates a potential issue
 			if (user.is?.alias === user.is?.pub && user.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				gun
-					.get(`~${user.is.pub!}`)
-					.get('alias')
-					.once((alias) => {
+				user.get('alias').once((alias: string) => {
 						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
 							// Update user.is.alias with the correct value
 							if (user.is) {
@@ -240,10 +234,7 @@ export const recallUser = (): Promise<void> => {
 			// Same alias check on timeout
 			if (user.is?.pub && user.is?.alias === user.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				gun
-					.get(`~${user.is.pub!}`)
-					.get('alias')
-					.once((alias) => {
+				user.get('alias').once((alias: string) => {
 						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
 							if (user.is) {
 								user.is.alias = alias;
@@ -329,21 +320,28 @@ export const logout = () => {
 	localStorage.clear();
 };
 
+// Create a node reference at a path - helper function to work with GunNode
+export const getNodeRef = (path: string[]) => {
+	let ref: any;
+	if (user.is?.pub) {
+		// user space
+		ref = user as any;
+	} else {
+		// public space
+		ref = gun as any;
+	}
+	for (const segment of path) {
+		ref = ref.get(segment);
+	}
+	return ref;
+};
+
 // Helper to get encrypted user paths
 export const getPath = async (path: string) => {
 	if (!user.is) return null;
 	const pair = (user as any)._.sea; // Type assertion for internal Gun property
 	const proof = await SEA.work(path, pair);
 	return proof ? `~${user.is.pub}/${proof}` : null;
-};
-
-// Create a node reference at a path - helper function to work with GunNode
-export const getNodeRef = (path: string[]) => {
-	let ref = gun as any;
-	for (const segment of path) {
-		ref = ref.get(segment);
-	}
-	return ref;
 };
 
 // ===== CERTIFICATE MANAGEMENT UTILITIES =====

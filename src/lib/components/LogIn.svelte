@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { user, authenticate, recallUser, logout } from '../utils/gun/gunSetup';
+	import { user, authenticate, recallUser, logout } from '../gun/gunSetup';
 	import { gunAvatar } from 'gun-avatar';
 
 	// Reactive stores for user state

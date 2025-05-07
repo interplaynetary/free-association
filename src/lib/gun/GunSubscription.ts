@@ -1,4 +1,4 @@
-import { gun, user } from './gunSetup';
+import { getNodeRef } from './gunSetup';
 import type { SubscriptionHandler, SubscriptionCleanup } from './gunSetup';
 
 /**
@@ -27,11 +27,7 @@ export class GunSubscription<T = any> {
 	 */
 	constructor(path: string[], timeoutMs?: number) {
 		// Navigate the Gun path
-		let ref = gun as any;
-		for (const segment of path) {
-			ref = ref.get(segment);
-		}
-		this.gunRef = ref;
+		this.gunRef = getNodeRef(path);
 
 		if (timeoutMs !== undefined) {
 			this.timeoutMs = timeoutMs;

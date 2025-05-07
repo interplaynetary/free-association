@@ -3,7 +3,7 @@
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { loadUsers, updateUserProfile, usersMap, onUserMapChange } from '../utils/userUtils';
 	import { writable, get } from 'svelte/store';
-	import { gun } from '../utils/gun/gunSetup';
+	import { gun } from '../gun/gunSetup';
 
 	// Props using Svelte 5 runes
 	let {

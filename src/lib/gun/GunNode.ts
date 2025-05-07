@@ -1,4 +1,4 @@
-import { gun, getNodeRef, user } from './gunSetup';
+import { gun, getNodeRef } from './gunSetup';
 import type { GunData } from './gunSetup';
 import { GunSubscription } from './GunSubscription';
 import type { SubscriptionCleanup, SubscriptionHandler } from './gunSetup';

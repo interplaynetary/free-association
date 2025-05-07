@@ -1,4 +1,4 @@
-import { gun } from './gun/gunSetup';
+import { gun } from '../gun/gunSetup';
 
 // Simple in-memory cache for user names
 export const usersMap = new Map<string, string>();

@@ -1,6 +1,6 @@
 import { derived, type Readable } from 'svelte/store';
-import { ReactiveGraph, withErrorHandling, safeGet } from '../utils/reactive/ReactiveGraph';
-import { GunNode } from '../utils/gun/GunNode';
+import { ReactiveGraph, withErrorHandling, safeGet } from './ReactiveGraph';
+import { GunNode } from '../gun/GunNode';
 import { type Proportion, DistributionMap, asProportion } from '../../types/proportions';
 import type { RecNode, NodeEntry } from '../../types/types';
 

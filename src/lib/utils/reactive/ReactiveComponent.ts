@@ -1,5 +1,5 @@
-import { ReactiveGraph, safeGet, withErrorHandling } from './ReactiveGraph';
-import type { TraversalOptions } from './ReactiveGraph';
+import { ReactiveGraph, safeGet, withErrorHandling } from '../../stores/ReactiveGraph';
+import type { TraversalOptions } from '../../stores/ReactiveGraph';
 import { writable, derived, get, type Readable, type Writable } from 'svelte/store';
 import type { ComponentType, SvelteComponent } from 'svelte';
 

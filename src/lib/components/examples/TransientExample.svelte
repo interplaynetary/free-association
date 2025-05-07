@@ -2,7 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { createReactiveGraph } from '../../utils/reactive/ReactiveGraph';
 	import { createReactiveComponent } from '../../utils/reactive/ReactiveComponent';
-	import { gun } from '../../utils/gun/gunSetup';
+	import { gun } from '../../gun/gunSetup';
 	import { writable, type Writable, get } from 'svelte/store';
 
 	// Create two graphs - we'll configure persistence at the Gun node level

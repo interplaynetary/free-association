@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { usersMap, onUserMapChange, updateUserProfile } from '../../../utils/userUtils';
-	import { gun } from '../../../utils/gun/gunSetup';
+	import { gun } from '../../../gun/gunSetup';
 	import { writable } from 'svelte/store';
 
 	// State
