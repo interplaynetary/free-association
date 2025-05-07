@@ -95,8 +95,13 @@
 
 	// Create hierarchy for d3
 	let hierarchyData: d3.HierarchyRectangularNode<VisualizationNode> | null = $state(null);
+	// Track updates to trigger rerenders
+	let updateCounter = $state(0);
+
 	$effect(() => {
 		const data = $packData;
+		// Force rerender when updateCounter changes
+		updateCounter;
 
 		// Create hierarchy
 		const rootNode: VisualizationNode = {
@@ -141,14 +146,15 @@
 	let isTouching = $state(false);
 	let activeGrowthNodeId = $state<string | null>(null);
 	let isGrowing = $state(false);
+	let isShrinkingActive = $state(false);
 	let growthInterval = $state<number | null>(null);
 	let growthTimeout = $state<number | null>(null);
 
 	// Growth constants
-	const GROWTH_DELAY = 300;
-	const GROWTH_TICK = 50;
-	const BASE_GROWTH_RATE = 0.5;
-	const BASE_SHRINK_RATE = -0.5;
+	const GROWTH_DELAY = 100;
+	const GROWTH_TICK = 16;
+	const BASE_GROWTH_RATE = 0.8;
+	const BASE_SHRINK_RATE = -0.8;
 
 	onMount(() => {
 		// Initialize with example forest from our centralized system
@@ -516,6 +522,7 @@
 		if (growthInterval !== null) clearInterval(growthInterval);
 		if (growthTimeout !== null) clearTimeout(growthTimeout);
 		isGrowing = false;
+		isShrinkingActive = false;
 
 		// Only run timeouts in browser environment
 		if (!browser) return;
@@ -525,6 +532,7 @@
 			// Only start growing if still touching same node
 			if (isTouching && activeGrowthNodeId === node.data.id) {
 				isGrowing = true;
+				isShrinkingActive = isShrinking;
 
 				growthInterval = window.setInterval(() => {
 					// Stop if no longer touching
@@ -533,10 +541,18 @@
 						return;
 					}
 
-					// Calculate growth rate
-					const rate = isShrinking
-						? Math.min(-0.1, Math.max(-2, BASE_SHRINK_RATE * Math.sqrt(node.data.points / 10)))
-						: Math.max(0.1, Math.min(2, BASE_GROWTH_RATE * Math.sqrt(node.data.points / 10)));
+					// Calculate growth rate based on current size
+					let rate;
+					if (isShrinking) {
+						// More aggressive shrinking for larger nodes
+						rate = Math.min(
+							-0.2,
+							Math.max(-4, BASE_SHRINK_RATE * Math.sqrt(node.data.points / 10))
+						);
+					} else {
+						// More aggressive growth for smaller nodes
+						rate = Math.max(0.2, Math.min(4, BASE_GROWTH_RATE * Math.sqrt(node.data.points / 10)));
+					}
 
 					const currentPoints = node.data.points;
 					const newPoints = Math.max(1, currentPoints + rate);
@@ -550,10 +566,8 @@
 						return;
 					}
 
-					// Update if points changed
-					if (newPoints !== currentPoints) {
-						updateNodePoints(node, newPoints);
-					}
+					// Always update to ensure animation runs smoothly
+					updateNodePoints(node, newPoints);
 				}, GROWTH_TICK);
 			}
 		}, GROWTH_DELAY);
@@ -580,11 +594,15 @@
 		if (growthInterval !== null) clearInterval(growthInterval);
 		growthInterval = null;
 		isGrowing = false;
+		isShrinkingActive = false;
 	}
 
 	function updateNodePoints(node: d3.HierarchyRectangularNode<VisualizationNode>, points: number) {
 		// Update node's points in hierarchy
 		node.data.points = points;
+
+		// Trigger a reactive update
+		updateCounter++;
 	}
 
 	function saveNodePoints(nodeId: string, points: number) {
@@ -686,7 +704,8 @@
 					<div
 						class="clickable"
 						class:deleting={deleteMode}
-						class:growing={isGrowing && activeGrowthNodeId === child.data.id}
+						class:growing={isGrowing && activeGrowthNodeId === child.data.id && !isShrinkingActive}
+						class:shrinking={isGrowing && activeGrowthNodeId === child.data.id && isShrinkingActive}
 						style="
 							position: absolute;
 							left: {child.x0 * 100}%;
@@ -778,6 +797,11 @@
 		cursor: pointer;
 		user-select: none;
 		touch-action: none;
+		transition:
+			left 0.12s linear,
+			top 0.12s linear,
+			width 0.12s linear,
+			height 0.12s linear;
 	}
 
 	:global(.clickable.deleting) {
@@ -792,5 +816,13 @@
 
 	:global(.clickable.growing) {
 		z-index: 10;
+		box-shadow: 0 0 12px rgba(0, 100, 255, 0.5);
+		border: 2px solid rgba(0, 100, 255, 0.7);
+	}
+
+	:global(.clickable.shrinking) {
+		z-index: 10;
+		box-shadow: 0 0 12px rgba(255, 60, 60, 0.5);
+		border: 2px solid rgba(255, 60, 60, 0.7);
 	}
 </style>
