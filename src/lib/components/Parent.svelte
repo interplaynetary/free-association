@@ -151,10 +151,11 @@
 	let growthTimeout = $state<number | null>(null);
 
 	// Growth constants
-	const GROWTH_DELAY = 100;
+	const GROWTH_DELAY = 350;
 	const GROWTH_TICK = 16;
 	const BASE_GROWTH_RATE = 0.8;
 	const BASE_SHRINK_RATE = -0.8;
+	const TAP_THRESHOLD = 250;
 
 	onMount(() => {
 		// Initialize with example forest from our centralized system
@@ -209,55 +210,6 @@
 
 			// Update path
 			path = path.slice(0, -1);
-		}
-	}
-
-	// Node actions
-	function handleNodeAction(event: MouseEvent, nodeId: string) {
-		// Skip if this was a growth event
-		const touchDuration = Date.now() - touchStartTime;
-		if (touchDuration >= GROWTH_DELAY || isGrowing) return;
-
-		if (deleteMode) {
-			// Handle deletion
-			if (confirm(`Delete this node?`)) {
-				try {
-					if (!currentZipper) return;
-
-					// Create an updated children map without the deleted node
-					const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-					updatedChildren.delete(nodeId);
-
-					// Update the current node
-					const updatedZipper = modifyNode(
-						(node) => ({
-							...node,
-							nodeChildren: updatedChildren
-						}),
-						currentZipper
-					);
-
-					// Update our zipper immutably
-					currentZipper = { ...updatedZipper };
-
-					// Update forest with the modified zipper
-					if (path.length > 0) {
-						const rootId = path[0];
-						const rootZipper = forest.get(rootId);
-						if (rootZipper) {
-							forest = addToForest(forest, rootZipper);
-						}
-					}
-
-					globalState.showToast('Node deleted successfully', 'success');
-				} catch (err) {
-					console.error(`Error deleting node ${nodeId}:`, err);
-					globalState.showToast('Error deleting node', 'error');
-				}
-			}
-		} else {
-			// Navigate into the child node
-			zoomInto(nodeId);
 		}
 	}
 
@@ -676,14 +628,67 @@
 		const isShrinking =
 			event instanceof MouseEvent ? event.button === 2 : (event as TouchEvent).touches.length === 2;
 
-		// Start growth
+		// Start growth with delay
 		startGrowth(node, isShrinking);
 	}
 
 	function handleGrowthEnd(event: MouseEvent | TouchEvent) {
 		event.preventDefault();
-		event.stopPropagation();
+
+		// Check if this was a short tap (for navigation) or long press (for growth)
+		const touchDuration = Date.now() - touchStartTime;
+		const wasGrowthEvent = touchDuration >= TAP_THRESHOLD || isGrowing;
+
+		// Get the nodeId before stopping growth
+		const nodeId = activeGrowthNodeId;
+
+		// Always stop growth
 		stopGrowth();
+
+		// For short taps, trigger navigation or deletion
+		if (!wasGrowthEvent && nodeId) {
+			if (deleteMode) {
+				// Handle deletion
+				if (confirm(`Delete this node?`)) {
+					try {
+						if (!currentZipper) return;
+
+						// Create an updated children map without the deleted node
+						const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+						updatedChildren.delete(nodeId);
+
+						// Update the current node
+						const updatedZipper = modifyNode(
+							(node) => ({
+								...node,
+								nodeChildren: updatedChildren
+							}),
+							currentZipper
+						);
+
+						// Update our zipper immutably
+						currentZipper = { ...updatedZipper };
+
+						// Update forest with the modified zipper
+						if (path.length > 0) {
+							const rootId = path[0];
+							const rootZipper = forest.get(rootId);
+							if (rootZipper) {
+								forest = addToForest(forest, rootZipper);
+							}
+						}
+
+						globalState.showToast('Node deleted successfully', 'success');
+					} catch (err) {
+						console.error(`Error deleting node ${nodeId}:`, err);
+						globalState.showToast('Error deleting node', 'error');
+					}
+				}
+			} else {
+				// This was a tap, not a hold - navigate into the node
+				zoomInto(nodeId);
+			}
+		}
 	}
 </script>
 
@@ -714,7 +719,6 @@
 							height: {(child.y1 - child.y0) * 100}%;
 							box-sizing: border-box;
 						"
-						onclick={(e) => handleNodeAction(e, child.data.id)}
 						onmousedown={(e) => handleGrowthStart(e, child)}
 						onmouseup={(e) => handleGrowthEnd(e)}
 						ontouchstart={(e) => handleGrowthStart(e, child)}
