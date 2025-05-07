@@ -28,12 +28,14 @@
 		selfPoints: number;
 		children: NodeData[];
 	}> = $derived.by(() => {
+		console.log('selfPoints', store?.pointsStore);
+		console.log('childNodes', childNodes);
 		return derivedStore([store?.pointsStore, ...childNodes.map((c) => c.pointsStore)], (points) => {
 			const [self, ...children] = points;
 			return {
 				id: store?.id,
 				selfPoints: self,
-				children: children.map((c, i) => ({
+				children: children.map((c, i) => ({ 
 					id: childNodes[i]?.id,
 					store: childNodes[i],
 					points: c,

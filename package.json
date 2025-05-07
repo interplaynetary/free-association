@@ -43,6 +43,7 @@
 	"dependencies": {
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/d3": "^7.4.3",
+		"bits-ui": "^1.4.6",
 		"d3": "^7.9.0",
 		"maplibre-gl": "^5.4.0",
 		"pmtiles": "^4.3.0",
