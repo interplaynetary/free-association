@@ -3,6 +3,27 @@
 	import { user, authenticate, recallUser, logout } from '../gun/gunSetup';
 	import { gunAvatar } from 'gun-avatar';
 
+	/*
+	Testing the other way to do svelte-gun
+	import { gun } from '../gun/gunSetup';
+
+	// Simple data binding
+	let userData;
+	const unsubscribe = gun
+		.get('users')
+		.get('alice')
+		.subscribe((data: any) => {
+			userData = data;
+		});
+
+	// Using with Svelte's $: syntax
+	const userStore = gun.get('users').get('alice');
+	$: console.log($userStore); // Reactive access
+
+	// Cleanup on component destroy
+	onDestroy(unsubscribe);
+	*/
+
 	// Reactive stores for user state
 	let isAuthenticated = false;
 	let username = '';
