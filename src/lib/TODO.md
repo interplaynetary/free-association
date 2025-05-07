@@ -1,0 +1,2 @@
+- Translate centralized.hs into typescript, translating it carefully preserving the immutable functional nature of it.
+- we are trying to make it the backend of our svelte-5 sveltekit project. When translating, please adhere to the standard sveltekit file structure.

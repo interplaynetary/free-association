@@ -1,167 +1,267 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import type { NodeData } from '../../types/types';
-	import type { RecognitionStore } from '$lib/stores/rec.svelte';
+	import { derived, writable, type Writable } from 'svelte/store';
+	import * as d3 from 'd3';
+	import { globalState } from '$lib/global.svelte';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
-	import * as d3 from 'd3';
-	import { derived as derivedStore, type Readable, get } from 'svelte/store';
-	import { globalState } from '$lib/global.svelte';
+	import { browser } from '$app/environment';
 
-	const store = $derived(globalState.recStore);
+	// Import centralized system functions
+	import {
+		createRootNode,
+		addChild,
+		makePoints,
+		enterChild,
+		exitToParent,
+		modifyNode,
+		addToForest,
+		getPoints,
+		createExampleForest
+	} from '$lib/centralized';
 
-	const showToast = globalState.showToast;
+	// Import our types
+	import type { TreeZipper, Node, Points, Forest } from '$lib/centralized/types';
 
-	let deleteMode = $derived(globalState.deleteMode);
-
-	let childrenStore = $derived(store.childrenStore);
-
-	let childNodes: RecognitionStore[] = $derived.by(() => {
-		if (!store) return [];
-		return $childrenStore.map((child) => {
-			return store.getChild(child[0]);
-		});
-	});
-
-	let packData: Readable<{
+	// Define a type for visualization data
+	interface VisualizationNode {
 		id: string;
-		selfPoints: number;
-		children: NodeData[];
-	}> = $derived.by(() => {
-		console.log('selfPoints', store?.pointsStore);
-		console.log('childNodes', childNodes);
-		return derivedStore([store?.pointsStore, ...childNodes.map((c) => c.pointsStore)], (points) => {
-			const [self, ...children] = points;
-			return {
-				id: store?.id,
-				selfPoints: self,
-				children: children.map((c, i) => ({ 
-					id: childNodes[i]?.id,
-					store: childNodes[i],
-					points: c,
-					children: []
-				}))
-			};
-		});
+		zipper: TreeZipper | null;
+		points: number;
+		children: VisualizationNode[];
+		nodeName?: string;
+		contributors?: string[];
+	}
+
+	// Current state of our navigation in the tree
+	let currentZipper: TreeZipper | null = $state(null);
+	let forest: Forest = $state(new Map());
+	let path: string[] = $state([]);
+
+	// Store for change tracking
+	const zipperStore: Writable<TreeZipper | null> = writable(null);
+
+	// Update store when currentZipper changes
+	$effect(() => {
+		if (currentZipper) {
+			zipperStore.set(currentZipper);
+		}
 	});
 
-	const hierarchyData = $derived.by(() => {
+	// Get children of current zipper
+	let childrenIds = $state<string[]>([]);
+	$effect(() => {
+		if (!currentZipper) {
+			childrenIds = [];
+		} else {
+			childrenIds = Array.from(currentZipper.zipperCurrent.nodeChildren.keys());
+		}
+	});
+
+	// Get child zippers for all children
+	let childZippers = $state<TreeZipper[]>([]);
+	$effect(() => {
+		if (!currentZipper) {
+			childZippers = [];
+		} else {
+			childZippers = childrenIds
+				.map((id: string) => {
+					const child = enterChild(id, currentZipper!);
+					return child;
+				})
+				.filter(Boolean) as TreeZipper[];
+		}
+	});
+
+	// Format data for d3 to consume
+	const packData = derived(zipperStore, ($zipper) => {
+		if (!$zipper) return { id: '', selfPoints: 0, children: [] as VisualizationNode[] };
+
+		const children = childZippers.map((child: TreeZipper) => ({
+			id: child.zipperCurrent.nodeId,
+			zipper: child,
+			points: getPoints(child.zipperCurrent.nodePoints),
+			nodeName: child.zipperCurrent.nodeName,
+			contributors: Array.from(child.zipperCurrent.nodeContributors),
+			children: [] as VisualizationNode[]
+		}));
+
+		return {
+			id: $zipper.zipperCurrent.nodeId,
+			selfPoints: getPoints($zipper.zipperCurrent.nodePoints),
+			children
+		};
+	});
+
+	// Create hierarchy for d3
+	let hierarchyData: d3.HierarchyRectangularNode<VisualizationNode> | null = $state(null);
+	$effect(() => {
 		const data = $packData;
+
 		// Create hierarchy
-		const hierarchy = d3.hierarchy<NodeData>(
-			{
-				id: data.id,
-				store: store,
-				points: data.selfPoints,
-				children: data.children
-			},
-			(d) => d?.children ?? []
-		);
+		const rootNode: VisualizationNode = {
+			id: data.id,
+			zipper: currentZipper,
+			points: data.selfPoints,
+			children: data.children
+		};
+
+		const hierarchy = d3.hierarchy<VisualizationNode>(rootNode, (d) => d.children);
 
 		// Sum for sizing
-		hierarchy.sum((d) => d?.points ?? 0);
+		hierarchy.sum((d) => d.points);
 
-		// Check if we have only one child or no children
+		// Apply treemap with relative sizing
 		const childCount = data.children?.length || 0;
 		const shouldUsePadding = childCount > 1;
 
-		// Apply treemap with relative sizing (0-1 range)
 		const treemap = d3
-			.treemap<NodeData>()
+			.treemap<VisualizationNode>()
 			.tile(d3.treemapSquarify)
-			.size([1, 1]) // Use 0-1 range for relative sizing
-			.padding(shouldUsePadding ? 0.005 : 0) // Only use padding with multiple nodes
-			.round(false); // Don't round to pixels
+			.size([1, 1])
+			.padding(shouldUsePadding ? 0.005 : 0)
+			.round(false);
 
-		return treemap(hierarchy);
+		hierarchyData = treemap(hierarchy);
 	});
 
-	// Contributors dropdown state
+	// UI interaction state
 	let showUserDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
+	let deleteMode = $state(false);
+
+	// Derive deleteMode from globalState
+	$effect(() => {
+		deleteMode = globalState.deleteMode;
+	});
 
 	// Growth state
 	let touchStartTime = $state(0);
 	let isTouching = $state(false);
 	let activeGrowthNodeId = $state<string | null>(null);
 	let isGrowing = $state(false);
-	let growthInterval: number | null = $state(null);
-	let growthTimeout: number | null = $state(null);
+	let growthInterval = $state<number | null>(null);
+	let growthTimeout = $state<number | null>(null);
 
-	// Constants for growth
-	const GROWTH_DELAY = 300; // ms before growth starts
-	const GROWTH_TICK = 50; // ms between growth updates
-	const BASE_GROWTH_RATE = 0.5; // points per tick
-	const BASE_SHRINK_RATE = -0.5; // points per tick
-
-	// Growth rate based on node size
-	const GROWTH_RATE = (node: d3.HierarchyRectangularNode<NodeData>) => {
-		const points = node.data?.points || 0;
-		return Math.max(0.1, Math.min(2, BASE_GROWTH_RATE * Math.sqrt(points / 10)));
-	};
-
-	// Shrink rate based on node size
-	const SHRINK_RATE = (node: d3.HierarchyRectangularNode<NodeData>) => {
-		const points = node.data?.points || 0;
-		return Math.min(-0.1, Math.max(-2, BASE_SHRINK_RATE * Math.sqrt(points / 10)));
-	};
+	// Growth constants
+	const GROWTH_DELAY = 300;
+	const GROWTH_TICK = 50;
+	const BASE_GROWTH_RATE = 0.5;
+	const BASE_SHRINK_RATE = -0.5;
 
 	onMount(() => {
-		// Add global event listeners for touch end
+		// Initialize with example forest from our centralized system
+		const { forest: initialForest } = createExampleForest();
+		forest = new Map(initialForest);
+
+		// Set initial zipper to the first node in the forest
+		const entries = Array.from(forest.entries());
+		if (entries.length > 0) {
+			const [rootId, rootZipper] = entries[0];
+			currentZipper = { ...rootZipper };
+			path = [rootId];
+		}
+
+		// Set up event listeners
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
 		document.addEventListener('touchcancel', handleGlobalTouchEnd);
 	});
 
 	onDestroy(() => {
-		// Clean up growth timers
-		if (growthInterval) {
-			clearInterval(growthInterval);
-		}
-		if (growthTimeout) {
-			clearTimeout(growthTimeout);
-		}
+		// Clean up timers and event listeners
+		if (growthInterval !== null) clearInterval(growthInterval);
+		if (growthTimeout !== null) clearTimeout(growthTimeout);
 
-		// Remove global event listeners
 		document.removeEventListener('mouseup', handleGlobalTouchEnd);
 		document.removeEventListener('touchend', handleGlobalTouchEnd);
 		document.removeEventListener('touchcancel', handleGlobalTouchEnd);
 	});
 
-	// Handle all node-related actions with event delegation
-	async function handleNodeAction(event: MouseEvent, nodeId: string) {
-		// Only handle clicks, not growth interactions
-		const touchDuration = Date.now() - touchStartTime;
-		if (touchDuration >= GROWTH_DELAY || isGrowing) {
-			return;
+	// Navigation functions
+	function zoomInto(nodeId: string) {
+		if (!currentZipper) return;
+
+		const childZipper = enterChild(nodeId, currentZipper);
+		if (childZipper) {
+			// Update current zipper (immutably)
+			currentZipper = { ...childZipper };
+
+			// Update path
+			path = [...path, nodeId];
 		}
+	}
+
+	function zoomOut() {
+		if (!currentZipper) return;
+
+		const parentZipper = exitToParent(currentZipper);
+		if (parentZipper) {
+			// Update current zipper (immutably)
+			currentZipper = { ...parentZipper };
+
+			// Update path
+			path = path.slice(0, -1);
+		}
+	}
+
+	// Node actions
+	function handleNodeAction(event: MouseEvent, nodeId: string) {
+		// Skip if this was a growth event
+		const touchDuration = Date.now() - touchStartTime;
+		if (touchDuration >= GROWTH_DELAY || isGrowing) return;
 
 		if (deleteMode) {
 			// Handle deletion
 			if (confirm(`Delete this node?`)) {
 				try {
-					await store.removeChild(nodeId);
-					console.log(`Node ${nodeId} deleted successfully`);
-					showToast('Node deleted successfully', 'success');
+					if (!currentZipper) return;
+
+					// Create an updated children map without the deleted node
+					const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+					updatedChildren.delete(nodeId);
+
+					// Update the current node
+					const updatedZipper = modifyNode(
+						(node) => ({
+							...node,
+							nodeChildren: updatedChildren
+						}),
+						currentZipper
+					);
+
+					// Update our zipper immutably
+					currentZipper = { ...updatedZipper };
+
+					// Update forest with the modified zipper
+					if (path.length > 0) {
+						const rootId = path[0];
+						const rootZipper = forest.get(rootId);
+						if (rootZipper) {
+							forest = addToForest(forest, rootZipper);
+						}
+					}
+
+					globalState.showToast('Node deleted successfully', 'success');
 				} catch (err) {
 					console.error(`Error deleting node ${nodeId}:`, err);
-					showToast('Error deleting node', 'error');
+					globalState.showToast('Error deleting node', 'error');
 				}
 			}
 		} else {
-			// Handle zoom in navigation
-			globalState.zoomIntoChild(nodeId);
+			// Navigate into the child node
+			zoomInto(nodeId);
 		}
 	}
 
 	async function handleAddNode() {
-		// Calculate new node points
-		// Method to calculate new node points (10% of total or 100 if no siblings)
+		if (!currentZipper) return;
+
+		// Calculate initial points for new node
 		const calculateNewNodePoints = (): number => {
-			// Check if there are any existing child nodes
+			// No siblings - set to 100 points
 			if (!hierarchyData?.children || hierarchyData.children.length === 0) {
-				// No siblings - set to 100 points (100%)
 				return 100;
 			}
 
@@ -174,72 +274,165 @@
 			return Math.max(1, currentLevelPoints * 0.1);
 		};
 
-		const newNodePoints = calculateNewNodePoints();
-
-		console.log('Adding child node using store with path:', globalState.recStore.path.join('/'));
-
-		// Create new node
-		const newNodeId = await store.addChild('Undefined', newNodePoints);
-		console.log('Child node created with ID:', newNodeId);
-		showToast('New node created', 'success');
-
-		// Wait for the next render cycle to ensure the DOM has updated
-		setTimeout(() => {
-			// Set the node to edit mode
-			globalState.setNodeToEditMode(newNodeId);
-		}, 50);
-	}
-
-	globalState.handleAddNode = handleAddNode;
-
-	// Handle text editing request from Child component
-	async function handleTextEdit(detail: { nodeId: string; newName: string }) {
-		const { nodeId, newName } = detail;
+		const newPoints = calculateNewNodePoints();
+		const newNodeId = `node-${Date.now()}`; // Unique ID
 
 		try {
-			// Get the appropriate store for this node
-			const childStore = store.getChild(nodeId);
+			// Add child to current zipper
+			const updatedZipper = addChild(
+				newNodeId,
+				makePoints(newPoints),
+				[], // No contributors initially
+				null, // No manual fulfillment
+				currentZipper
+			);
 
-			// Update the name in the store
-			await childStore.updateName(newName);
-			console.log(`Updated name for node ${nodeId} to "${newName}"`);
-			showToast(`Node renamed to "${newName}"`, 'success');
+			// Update our zipper immutably
+			currentZipper = { ...updatedZipper };
+
+			// Update forest with the root zipper
+			if (path.length > 0) {
+				const rootId = path[0];
+				const rootZipper = forest.get(rootId);
+				if (rootZipper) {
+					forest = addToForest(forest, rootZipper);
+				}
+			}
+
+			globalState.showToast('New node created', 'success');
+
+			// Set node to edit mode
+			setTimeout(() => {
+				globalState.setNodeToEditMode(newNodeId);
+			}, 50);
 		} catch (err) {
-			console.error(`Error updating name for node ${nodeId}:`, err);
-			showToast('Error updating node name', 'error');
+			console.error('Error adding node:', err);
+			globalState.showToast('Error creating node', 'error');
 		}
 	}
 
-	// Handle add contributor button click from Child component
+	// Assign to global handle for toolbar access
+	$effect(() => {
+		globalState.handleAddNode = handleAddNode;
+	});
+
+	// Text editing handler
+	function handleTextEdit(detail: { nodeId: string; newName: string }) {
+		const { nodeId, newName } = detail;
+
+		try {
+			if (!currentZipper) return;
+
+			// Find the child zipper
+			const childZipper = enterChild(nodeId, currentZipper);
+			if (!childZipper) return;
+
+			// Update node name
+			const updatedChildZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeName: newName
+				}),
+				childZipper
+			);
+
+			// Update parent with modified child
+			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
+
+			// Update the current zipper
+			const updatedZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeChildren: updatedChildren
+				}),
+				currentZipper
+			);
+
+			// Apply updates immutably
+			currentZipper = { ...updatedZipper };
+
+			// Update forest
+			if (path.length > 0) {
+				const rootId = path[0];
+				const rootZipper = forest.get(rootId);
+				if (rootZipper) {
+					forest = addToForest(forest, rootZipper);
+				}
+			}
+
+			globalState.showToast(`Node renamed to "${newName}"`, 'success');
+		} catch (err) {
+			console.error(`Error updating name for node ${nodeId}:`, err);
+			globalState.showToast('Error updating node name', 'error');
+		}
+	}
+
+	// Contributor management
 	function handleAddContributor(detail: { nodeId: string; clientX: number; clientY: number }) {
 		const { nodeId, clientX, clientY } = detail;
 
-		// Show user dropdown for adding contributor
+		// Show user dropdown
 		activeNodeId = nodeId;
 		dropdownPosition = { x: clientX, y: clientY };
 		showUserDropdown = true;
 	}
 
-	// Handle remove contributor request from Child component
-	async function handleRemoveContributor(detail: { nodeId: string; contributorId: string }) {
+	function handleRemoveContributor(detail: { nodeId: string; contributorId: string }) {
 		const { nodeId, contributorId } = detail;
 
 		try {
-			// Get the appropriate store for this node
-			const targetStore =
-				nodeId === store.path[store.path.length - 1] ? store : store.getChild(nodeId);
+			if (!currentZipper) return;
 
-			// Remove the contributor
-			await targetStore.removeContributor(contributorId);
-			console.log(`Removed contributor ${contributorId} from node ${nodeId}`);
-			showToast('Contributor removed successfully', 'success');
+			// Find the child zipper
+			const childZipper = enterChild(nodeId, currentZipper);
+			if (!childZipper) return;
+
+			// Remove contributor
+			const updatedContributors = new Set(childZipper.zipperCurrent.nodeContributors);
+			updatedContributors.delete(contributorId);
+
+			// Update node
+			const updatedChildZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeContributors: updatedContributors
+				}),
+				childZipper
+			);
+
+			// Update parent with modified child
+			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
+
+			// Update current zipper
+			const updatedZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeChildren: updatedChildren
+				}),
+				currentZipper
+			);
+
+			// Apply updates immutably
+			currentZipper = { ...updatedZipper };
+
+			// Update forest
+			if (path.length > 0) {
+				const rootId = path[0];
+				const rootZipper = forest.get(rootId);
+				if (rootZipper) {
+					forest = addToForest(forest, rootZipper);
+				}
+			}
+
+			globalState.showToast('Contributor removed successfully', 'success');
 		} catch (err) {
 			console.error('Error removing contributor:', err);
-			showToast('Error removing contributor', 'error');
+			globalState.showToast('Error removing contributor', 'error');
 		}
 	}
 
-	// Handle user selection from dropdown
 	function handleUserSelect(detail: { id: string; name: string }) {
 		const { id: userId } = detail;
 
@@ -248,51 +441,89 @@
 			return;
 		}
 
-		// Add the contributor to the node
+		// Add the contributor
 		addContributorToNode(activeNodeId, userId);
 
-		// Reset dropdown state
+		// Reset dropdown
 		showUserDropdown = false;
 		activeNodeId = null;
 	}
 
-	// Handle dropdown close
 	function handleDropdownClose() {
 		showUserDropdown = false;
 		activeNodeId = null;
 	}
 
-	// Add contributor to node
-	async function addContributorToNode(nodeId: string, userId: string) {
+	function addContributorToNode(nodeId: string, userId: string) {
 		try {
-			// Get the appropriate store for this node
-			const targetStore =
-				nodeId === store.path[store.path.length - 1] ? store : store.getChild(nodeId);
+			if (!currentZipper) return;
 
-			// Add the contributor
-			await targetStore.addContributor(userId);
-			console.log(`Added contributor ${userId} to node ${nodeId}`);
-			showToast('Contributor added successfully', 'success');
+			// Find the child zipper
+			const childZipper = enterChild(nodeId, currentZipper);
+			if (!childZipper) return;
+
+			// Add contributor
+			const updatedContributors = new Set(childZipper.zipperCurrent.nodeContributors);
+			updatedContributors.add(userId);
+
+			// Update node
+			const updatedChildZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeContributors: updatedContributors
+				}),
+				childZipper
+			);
+
+			// Update parent with modified child
+			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
+
+			// Update current zipper
+			const updatedZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeChildren: updatedChildren
+				}),
+				currentZipper
+			);
+
+			// Apply updates immutably
+			currentZipper = { ...updatedZipper };
+
+			// Update forest
+			if (path.length > 0) {
+				const rootId = path[0];
+				const rootZipper = forest.get(rootId);
+				if (rootZipper) {
+					forest = addToForest(forest, rootZipper);
+				}
+			}
+
+			globalState.showToast('Contributor added successfully', 'success');
 		} catch (err) {
 			console.error('Error adding contributor:', err);
-			showToast('Error adding contributor', 'error');
+			globalState.showToast('Error adding contributor', 'error');
 		}
 	}
 
-	// Start the growth process
-	function startGrowth(node: d3.HierarchyRectangularNode<NodeData>, isShrinking: boolean = false) {
+	// Growth handlers
+	function startGrowth(node: d3.HierarchyRectangularNode<VisualizationNode>, isShrinking = false) {
 		// Don't allow growth in delete mode
 		if (deleteMode) return;
 
-		// Clear any existing growth state
-		if (growthInterval) clearInterval(growthInterval);
-		if (growthTimeout) clearTimeout(growthTimeout);
+		// Clear existing growth state
+		if (growthInterval !== null) clearInterval(growthInterval);
+		if (growthTimeout !== null) clearTimeout(growthTimeout);
 		isGrowing = false;
 
-		// Set the growth start delay
+		// Only run timeouts in browser environment
+		if (!browser) return;
+
+		// Set growth delay
 		growthTimeout = window.setTimeout(() => {
-			// Only start growing if still touching the same node
-			if (isTouching && activeGrowthNodeId === node.data?.id) {
+			// Only start growing if still touching same node
+			if (isTouching && activeGrowthNodeId === node.data.id) {
 				isGrowing = true;
 
 				growthInterval = window.setInterval(() => {
@@ -303,10 +534,12 @@
 					}
 
 					// Calculate growth rate
-					const rate = isShrinking ? SHRINK_RATE(node) : GROWTH_RATE(node);
-					const currentPoints =
-						node.data && typeof node.data.points === 'number' ? node.data.points : 0;
-					const newPoints = Math.max(1, currentPoints + rate); // Ensure minimum of 1 point
+					const rate = isShrinking
+						? Math.min(-0.1, Math.max(-2, BASE_SHRINK_RATE * Math.sqrt(node.data.points / 10)))
+						: Math.max(0.1, Math.min(2, BASE_GROWTH_RATE * Math.sqrt(node.data.points / 10)));
+
+					const currentPoints = node.data.points;
+					const newPoints = Math.max(1, currentPoints + rate);
 
 					if (isNaN(newPoints)) {
 						console.error('Growth calculation resulted in NaN:', {
@@ -317,8 +550,8 @@
 						return;
 					}
 
-					// Only update if points actually changed
-					if (node.data && newPoints !== currentPoints) {
+					// Update if points changed
+					if (newPoints !== currentPoints) {
 						updateNodePoints(node, newPoints);
 					}
 				}, GROWTH_TICK);
@@ -326,60 +559,92 @@
 		}, GROWTH_DELAY);
 	}
 
-	// Stop the growth process
 	function stopGrowth() {
 		isTouching = false;
 
-		// Save final points value if we were growing
+		// Save final points if growing
 		if (isGrowing && activeGrowthNodeId && hierarchyData) {
 			const nodeToUpdate = hierarchyData.children?.find(
-				(child) => child.data?.id === activeGrowthNodeId
+				(child: d3.HierarchyRectangularNode<VisualizationNode>) =>
+					child.data.id === activeGrowthNodeId
 			);
 
 			if (nodeToUpdate && nodeToUpdate.data && nodeToUpdate.data.id) {
-				saveNodePoints(nodeToUpdate.data.id, nodeToUpdate.data.points || 0);
+				saveNodePoints(nodeToUpdate.data.id, nodeToUpdate.data.points);
 			}
 		}
 
 		// Reset growth state
 		activeGrowthNodeId = null;
-		if (growthTimeout) clearTimeout(growthTimeout);
-		if (growthInterval) clearInterval(growthInterval);
+		if (growthTimeout !== null) clearTimeout(growthTimeout);
+		if (growthInterval !== null) clearInterval(growthInterval);
 		growthInterval = null;
 		isGrowing = false;
 	}
 
-	// Update node points during growth
-	function updateNodePoints(node: d3.HierarchyRectangularNode<NodeData>, points: number) {
-		if (!node.data || !node.data.id) return;
-
-		// Update the node's points in the hierarchy
+	function updateNodePoints(node: d3.HierarchyRectangularNode<VisualizationNode>, points: number) {
+		// Update node's points in hierarchy
 		node.data.points = points;
 	}
 
-	// Save final points to store
-	async function saveNodePoints(nodeId: string, points: number) {
+	function saveNodePoints(nodeId: string, points: number) {
 		try {
-			const childStore = store.getChild(nodeId);
-			await childStore.updatePoints(points);
+			if (!currentZipper) return;
+
+			// Find the child zipper
+			const childZipper = enterChild(nodeId, currentZipper);
+			if (!childZipper) return;
+
+			// Update points
+			const updatedChildZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodePoints: makePoints(points)
+				}),
+				childZipper
+			);
+
+			// Update parent with modified child
+			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
+
+			// Update current zipper
+			const updatedZipper = modifyNode(
+				(node) => ({
+					...node,
+					nodeChildren: updatedChildren
+				}),
+				currentZipper
+			);
+
+			// Apply updates immutably
+			currentZipper = { ...updatedZipper };
+
+			// Update forest
+			if (path.length > 0) {
+				const rootId = path[0];
+				const rootZipper = forest.get(rootId);
+				if (rootZipper) {
+					forest = addToForest(forest, rootZipper);
+				}
+			}
+
 			console.log(`Saved points for node ${nodeId}: ${points}`);
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
-			showToast('Error saving node points', 'error');
+			globalState.showToast('Error saving node points', 'error');
 		}
 	}
 
-	// Handle global touch end (to catch events outside the node)
 	function handleGlobalTouchEnd() {
 		if (isTouching) {
 			stopGrowth();
 		}
 	}
 
-	// Handle touch/mouse start for growth
 	function handleGrowthStart(
 		event: MouseEvent | TouchEvent,
-		node: d3.HierarchyRectangularNode<NodeData>
+		node: d3.HierarchyRectangularNode<VisualizationNode>
 	) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -387,19 +652,16 @@
 		// Set touch state
 		isTouching = true;
 		touchStartTime = Date.now();
-		activeGrowthNodeId = node.data?.id || null;
+		activeGrowthNodeId = node.data.id;
 
-		// Determine if this is a right-click or two-finger touch for shrinking
+		// Determine if shrinking (right-click or two-finger touch)
 		const isShrinking =
-			event instanceof MouseEvent
-				? event.button === 2 // right click
-				: (event as TouchEvent).touches.length === 2; // two finger touch
+			event instanceof MouseEvent ? event.button === 2 : (event as TouchEvent).touches.length === 2;
 
-		// Start the growth process
+		// Start growth
 		startGrowth(node, isShrinking);
 	}
 
-	// Handle touch/mouse end for growth
 	function handleGrowthEnd(event: MouseEvent | TouchEvent) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -408,38 +670,59 @@
 </script>
 
 <div class="node-container">
+	<!-- Path navigation -->
+	<div class="path-navigation">
+		<button onclick={() => zoomOut()} disabled={path.length <= 1}> ← Back </button>
+		<span class="path">
+			{path.join(' / ')}
+		</span>
+	</div>
+
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
-			{#each hierarchyData?.children || [] as child}
-				<div
-					class="clickable"
-					class:deleting={deleteMode}
-					class:growing={isGrowing && activeGrowthNodeId === child.data?.id}
-					style="
-              position: absolute;
-              left: {child.x0 * 100}%;
-              top: {child.y0 * 100}%;
-              width: {(child.x1 - child.x0) * 100}%;
-              height: {(child.y1 - child.y0) * 100}%;
-              box-sizing: border-box;
-            "
-					onclick={(e) => handleNodeAction(e, child.data?.id)}
-					onmousedown={(e) => handleGrowthStart(e, child)}
-					onmouseup={(e) => handleGrowthEnd(e)}
-					ontouchstart={(e) => handleGrowthStart(e, child)}
-					ontouchend={(e) => handleGrowthEnd(e)}
-					oncontextmenu={(e) => e.preventDefault()}
-				>
-					<Child
-						{child}
-						addContributor={handleAddContributor}
-						removeContributor={handleRemoveContributor}
-						onTextEdit={handleTextEdit}
-						shouldEdit={globalState.nodeToEdit === child.data?.id}
-					/>
-				</div>
-			{/each}
+			{#if hierarchyData && hierarchyData.children}
+				{#each hierarchyData.children as child}
+					<div
+						class="clickable"
+						class:deleting={deleteMode}
+						class:growing={isGrowing && activeGrowthNodeId === child.data.id}
+						style="
+							position: absolute;
+							left: {child.x0 * 100}%;
+							top: {child.y0 * 100}%;
+							width: {(child.x1 - child.x0) * 100}%;
+							height: {(child.y1 - child.y0) * 100}%;
+							box-sizing: border-box;
+						"
+						onclick={(e) => handleNodeAction(e, child.data.id)}
+						onmousedown={(e) => handleGrowthStart(e, child)}
+						onmouseup={(e) => handleGrowthEnd(e)}
+						ontouchstart={(e) => handleGrowthStart(e, child)}
+						ontouchend={(e) => handleGrowthEnd(e)}
+						oncontextmenu={(e) => e.preventDefault()}
+					>
+						<Child
+							node={{
+								id: child.data.id,
+								name: child.data.nodeName || 'Unnamed',
+								points: child.data.points,
+								contributors: child.data.contributors || []
+							}}
+							dimensions={{
+								x0: child.x0,
+								y0: child.y0,
+								x1: child.x1,
+								y1: child.y1
+							}}
+							addContributor={handleAddContributor}
+							removeContributor={handleRemoveContributor}
+							onTextEdit={handleTextEdit}
+							shouldEdit={globalState.nodeToEdit === child.data.id}
+						/>
+					</div>
+				{/each}
+			{/if}
 		</div>
 	</div>
 
@@ -464,6 +747,19 @@
 		position: relative;
 	}
 
+	.path-navigation {
+		padding: 8px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.path {
+		font-size: 14px;
+		color: #666;
+	}
+
 	.app-content {
 		flex: 1;
 		overflow: auto;
@@ -481,7 +777,7 @@
 	:global(.clickable) {
 		cursor: pointer;
 		user-select: none;
-		touch-action: none; /* Disable browser handling of gestures */
+		touch-action: none;
 	}
 
 	:global(.clickable.deleting) {

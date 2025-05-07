@@ -1,21 +1,42 @@
-import { createRec } from './stores/rec.svelte';
-import { get } from 'svelte/store';
+import { createExampleForest, addToForest, enterChild, exitToParent } from '$lib/centralized';
+import type { TreeZipper, Forest } from '$lib/centralized';
+import { browser } from '$app/environment';
+
+type ToastType = 'info' | 'success' | 'warning' | 'error';
 
 export const globalState = $state({
-	recStore: createRec(),
+	// Core navigation state (using our centralized system)
+	currentForest: new Map() as Forest,
+	currentZipper: null as TreeZipper | null,
+	currentPath: [] as string[],
+
+	// UI state
 	deleteMode: false,
 	nodeToEdit: '',
 	toast: {
 		visible: false,
 		message: '',
-		type: 'info' as 'info' | 'success' | 'warning' | 'error',
+		type: 'info' as ToastType,
 		timeoutId: null as number | null
 	},
+
+	// Initialize the system
+	initialize: () => {
+		const { forest } = createExampleForest();
+		globalState.currentForest = forest;
+
+		// Set initial zipper to the first node in the forest
+		const entries = Array.from(forest.entries());
+		if (entries.length > 0) {
+			const [rootId, rootZipper] = entries[0];
+			globalState.currentZipper = rootZipper;
+			globalState.currentPath = [rootId];
+		}
+	},
+
+	// Toggle delete mode
 	toggleDeleteMode: () => {
 		globalState.deleteMode = !globalState.deleteMode;
-		console.log(`Delete mode: ${globalState.deleteMode ? 'activated' : 'deactivated'}`);
-
-		// Show toast about delete mode
 
 		globalState.showToast(
 			globalState.deleteMode
@@ -24,61 +45,58 @@ export const globalState = $state({
 			globalState.deleteMode ? 'warning' : 'info'
 		);
 	},
+
+	// Set a node to edit mode
 	setNodeToEditMode: (nodeId: string) => {
 		globalState.nodeToEdit = nodeId;
-		// This flag will be used by the Child component to know when to enter edit mode
 
-		// Auto-clear the edit flag after a short delay if it wasn't handled
-		setTimeout(() => {
-			if (globalState.nodeToEdit === nodeId) {
-				globalState.nodeToEdit = '';
-			}
-		}, 1000);
-	},
-	handleAddNode: () => Promise.resolve<void>(undefined),
-	zoomIntoChild: async (nodeId: string) => {
-		// Get the child store
-		const childStore = globalState.recStore.getChild(nodeId);
-
-		// Update our local store
-		globalState.recStore = childStore;
-
-		console.log(`Zoomed into node ${nodeId}, new path: ${childStore.path.join('/')}`);
-		globalState.showToast(`Zoomed into ${get(childStore.nameStore) || 'node'}`, 'info');
-	},
-	zoomOutToParent: async () => {
-		// Check if we have a parent to zoom out to
-		const parentStore = await globalState.recStore.getParent();
-		if (parentStore) {
-			// Update the store to the parent
-			globalState.recStore = parentStore;
-			console.log(`Zoomed out to parent, new path: ${globalState.recStore.path.join('/')}`);
-			globalState.showToast(`Zoomed out to parent`, 'info');
-		} else {
-			console.log('Already at root level, cannot zoom out further');
-			globalState.showToast('Already at top level', 'info');
+		// Auto-clear after a delay
+		if (browser) {
+			setTimeout(() => {
+				if (globalState.nodeToEdit === nodeId) {
+					globalState.nodeToEdit = '';
+				}
+			}, 1000);
 		}
 	},
-	navigateToPathInIndex: async (index: number) => {
-		// Get the path to root
-		const pathToRoot = await globalState.recStore.getPathToRoot();
 
-		// Calculate the target node from the index
-		// pathToRoot is ordered from current to root, so we need to reverse the index
-		const targetIndex = pathToRoot.length - 1 - index;
+	// Handle adding a new node (implementation is in Parent.svelte)
+	handleAddNode: () => {},
 
-		if (targetIndex >= 0 && targetIndex < pathToRoot.length) {
-			const target = pathToRoot[targetIndex];
-			globalState.recStore = target.store;
-			console.log(
-				`Navigated to path index ${index}, new path: ${globalState.recStore.path.join('/')}`
-			);
-			globalState.showToast(`Navigated to node`, 'info');
+	// Navigate directly to a specific path index
+	navigateToPathIndex: (index: number) => {
+		if (index < 0 || index >= globalState.currentPath.length) return;
+
+		if (!globalState.currentForest) return;
+
+		// Get the root zipper
+		const rootId = globalState.currentPath[0];
+		const rootZipper = globalState.currentForest.get(rootId);
+		if (!rootZipper) return;
+
+		// Start with the root
+		let currentZipper = rootZipper;
+		const newPath = [rootId];
+
+		// Follow the path up to the target index
+		for (let i = 1; i <= index; i++) {
+			const childId = globalState.currentPath[i];
+			const childZipper = enterChild(childId, currentZipper);
+			if (!childZipper) break;
+
+			currentZipper = childZipper;
+			newPath.push(childId);
 		}
+
+		// Update state
+		globalState.currentZipper = currentZipper;
+		globalState.currentPath = newPath;
+
+		globalState.showToast(`Navigated to ${currentZipper.zipperCurrent.nodeName || 'node'}`, 'info');
 	},
-	navigateToPath: () => undefined,
-	navigateToSoul: () => undefined,
-	showToast: (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+
+	// Display a toast notification
+	showToast: (message: string, type: ToastType = 'info') => {
 		// Clear any existing toast timeout
 		if (globalState.toast.timeoutId) {
 			clearTimeout(globalState.toast.timeoutId);
@@ -89,22 +107,16 @@ export const globalState = $state({
 			visible: true,
 			message,
 			type,
-			timeoutId: window.setTimeout(() => {
-				globalState.toast.visible = false;
-			}, 3000) as unknown as number
-		}; // Clear any existing toast timeout
-		if (globalState.toast.timeoutId) {
-			clearTimeout(globalState.toast.timeoutId);
-		}
-
-		// Show new toast
-		globalState.toast = {
-			visible: true,
-			message,
-			type,
-			timeoutId: window.setTimeout(() => {
-				globalState.toast.visible = false;
-			}, 3000) as unknown as number
+			timeoutId: browser
+				? (window.setTimeout(() => {
+						globalState.toast.visible = false;
+					}, 3000) as unknown as number)
+				: null
 		};
 	}
 });
+
+// Initialize the system when imported
+if (browser) {
+	globalState.initialize();
+}

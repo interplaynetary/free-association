@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { getUserName, onUserNameResolved, usersMap } from '../utils/userUtils';
+	import { globalState } from '$lib/global.svelte';
+	import type { Forest } from '$lib/centralized/types';
+	import { getNodeName } from '../utils/forestUtils';
 
 	// Props using Svelte 5 runes
 	let {
@@ -20,28 +22,17 @@
 
 	// State
 	let displayName = $state(userId);
-	let cleanupNameSub: () => void = () => {};
 
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Initialize and cleanup
-	onMount(() => {
-		// Set initial display name
-		displayName = getUserName(userId);
+	// Get current forest
+	let forest: Forest = $derived(globalState.currentForest);
+
+	// Update display name when forest or userId changes
+	$effect(() => {
+		displayName = getNodeName(forest, userId);
 		updateTooltip(displayName);
-
-		// Set up name resolution subscription
-		cleanupNameSub = onUserNameResolved(userId, (id, resolvedName) => {
-			displayName = resolvedName;
-			updateTooltip(resolvedName);
-		});
-	});
-
-	onDestroy(() => {
-		if (cleanupNameSub) {
-			cleanupNameSub();
-		}
 	});
 
 	// Function to truncate and format display name
@@ -72,11 +63,6 @@
 	function handleRemoveClick(event: MouseEvent): void {
 		event.stopPropagation();
 		onRemove(userId);
-	}
-
-	// Get the current full name (for logging or debugging)
-	function getFullName(): string {
-		return usersMap.has(userId) ? usersMap.get(userId)! : userId;
 	}
 </script>
 

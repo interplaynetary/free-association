@@ -1,55 +1,83 @@
 <script lang="ts">
 	import { globalState } from '$lib/global.svelte';
 
-	const store = $derived(globalState.recStore);
-	let name = $derived(store.nameStore);
-	let hasDirectContributionChild = $derived(store.hasContributorsStore);
+	// Get current zipper and path from global state
+	let currentZipper = $derived(globalState.currentZipper);
+	let currentPath = $derived(globalState.currentPath);
 
-	// Load the path names from the store
-	async function loadPathNames() {
-		let pathNames: string[] = [];
-		// Get the path from the current node to the root
-		const pathToRoot = await store.getPathToRoot();
-		console.log('pathToRoot', pathToRoot);
+	// Get current node name
+	let currentNodeName = $derived(
+		!currentZipper
+			? 'Loading...'
+			: currentZipper.zipperCurrent.nodeName || currentZipper.zipperCurrent.nodeId
+	);
 
-		// Extract names in reverse order (from root to current node)
-		const names = pathToRoot
-			.map((item: { name: string; id: string }) => item.name || item.id)
-			.reverse()
-			.filter(Boolean); // Filter out empty names
+	// Extract path names from the path IDs
+	let pathNames = $derived(() => {
+		if (!currentZipper || !currentPath.length) return [] as string[];
 
-		pathNames = names;
-		return pathNames;
-	}
+		// We'll build the path names by going up the tree
+		const names: string[] = [];
+		let zipper = currentZipper;
 
-	let path = $derived.by(() => {
-		name;
-		return loadPathNames();
+		// Add the current node name
+		names.unshift(currentNodeName);
+
+		// Go up the tree for each path element (except the current one)
+		for (let i = 0; i < currentPath.length - 1; i++) {
+			const parentZipper = zipper.zipperContext;
+			if (!parentZipper) break;
+
+			// Get parent name
+			const parentName = parentZipper.ctxParent.nodeName || parentZipper.ctxParent.nodeId;
+			names.unshift(parentName);
+
+			// Continue up the tree
+			zipper = {
+				zipperCurrent: parentZipper.ctxParent,
+				zipperContext: i > 0 ? parentZipper.ctxAncestors[0] : null
+			};
+		}
+
+		return names;
 	});
+
+	// Check if current node has direct contribution children
+	let hasDirectContributionChild = $derived(() => {
+		if (!currentZipper) return false;
+
+		// Check if any child has contributors
+		for (const child of currentZipper.zipperCurrent.nodeChildren.values()) {
+			if (child.nodeContributors.size > 0) return true;
+		}
+
+		return false;
+	});
+
 </script>
 
 <div class="header-content">
 	<div class="node-name">
 		<div class="breadcrumbs">
-			{#await path}
+			{#if pathNames().length === 0}
 				<div class="loading-path">Loading...</div>
-			{:then path}
-				{#each path as segment, index}
+			{:else}
+				{#each pathNames() as segment, index}
 					{#if index > 0}
 						<div class="breadcrumb-separator">/</div>
 					{/if}
 					<a
 						href="/"
 						class="breadcrumb-item"
-						class:current={index === path.length - 1}
-						onclick={() => globalState.navigateToPathInIndex(index)}
+						class:current={index === pathNames().length - 1}
+						onclick={(e) => globalState.navigateToPathIndex(index)}
 						tabindex="0"
 						aria-label={segment}
 					>
 						{segment}
 					</a>
 				{/each}
-			{/await}
+			{/if}
 		</div>
 	</div>
 	<div class="header-controls">
@@ -57,15 +85,13 @@
 			><span>📊</span></a
 		>
 		<a href="/login" class="icon-button peer-button" title="User login"><span>🔍</span></a>
-		<button
-			class="icon-button add-button"
-			title="Add new node"
-			onclick={() => globalState.handleAddNode()}><span>➕</span></button
+		<button class="icon-button add-button" title="Add new node" onclick={globalState.handleAddNode}
+			><span>➕</span></button
 		>
 		<button
 			class="icon-button delete-button"
 			title="Toggle delete mode"
-			onclick={() => globalState.toggleDeleteMode()}><span>🗑️</span></button
+			onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
 		>
 	</div>
 </div>

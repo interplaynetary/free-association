@@ -1,49 +1,39 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { user, authenticate, recallUser, logout } from '../gun/gunSetup';
-	import { gunAvatar } from 'gun-avatar';
-
-	/*
-	Testing the other way to do svelte-gun
-	import { gun } from '../gun/gunSetup';
-
-	// Simple data binding
-	let userData;
-	const unsubscribe = gun
-		.get('users')
-		.get('alice')
-		.subscribe((data: any) => {
-			userData = data;
-		});
-
-	// Using with Svelte's $: syntax
-	const userStore = gun.get('users').get('alice');
-	$: console.log($userStore); // Reactive access
-
-	// Cleanup on component destroy
-	onDestroy(unsubscribe);
-	*/
+	import { globalState } from '$lib/global.svelte';
 
 	// Reactive stores for user state
-	let isAuthenticated = false;
-	let username = '';
-	let password = '';
-	let userAlias = '';
-	let errorMessage = '';
-	let isLoading = false;
+	let isAuthenticated = $state(false);
+	let username = $state('');
+	let password = $state('');
+	let userAlias = $state('');
+	let errorMessage = $state('');
+	let isLoading = $state(false);
+
+	// Mock user data - in a real implementation, this would come from a backend
+	const mockUsers = {
+		alice: { password: 'password123', alias: 'Alice', pub: 'ALICE123' },
+		bob: { password: 'password123', alias: 'Bob', pub: 'BOB456' },
+		charlie: { password: 'password123', alias: 'Charlie', pub: 'CHARLIE789' }
+	};
+
+	// Mock user object
+	let currentUser = $state<{
+		is: { pub: string; alias: string } | null;
+	}>({ is: null });
 
 	// Check if user is already logged in on mount
 	onMount(async () => {
 		isLoading = true;
 
 		try {
-			// Use the existing recallUser function from gunSetup
-			await recallUser();
-
-			// Check if user is authenticated after recall
-			if (user.is?.pub) {
+			// Check for stored credentials in localStorage
+			const storedUser = localStorage.getItem('centralizedUser');
+			if (storedUser) {
+				const userData = JSON.parse(storedUser);
+				currentUser.is = { pub: userData.pub, alias: userData.alias };
 				isAuthenticated = true;
-				userAlias = user.is.alias || '';
+				userAlias = userData.alias;
 			}
 		} catch (error) {
 			console.error('Error recalling user session:', error);
@@ -52,7 +42,7 @@
 		}
 	});
 
-	// Handle login/signup using the gunSetup authenticate function
+	// Handle login/signup
 	async function handleAuthenticate() {
 		if (!username || !password) {
 			errorMessage = 'Please enter both username and password';
@@ -63,18 +53,33 @@
 		isLoading = true;
 
 		try {
-			// Use the authenticate function from gunSetup
-			await authenticate(username, password);
+			// Simulate authentication delay
+			await new Promise((resolve) => setTimeout(resolve, 800));
 
-			// Check authentication result
-			if (user.is?.pub) {
+			// Check if user exists in our mock data
+			const user = mockUsers[username.toLowerCase() as keyof typeof mockUsers];
+
+			if (user && user.password === password) {
+				// Login successful
+				currentUser.is = { pub: user.pub, alias: user.alias };
 				isAuthenticated = true;
-				userAlias = user.is.alias || '';
+				userAlias = user.alias;
+
+				// Store user in localStorage
+				localStorage.setItem(
+					'centralizedUser',
+					JSON.stringify({
+						pub: user.pub,
+						alias: user.alias
+					})
+				);
+
 				// Reset form
 				username = '';
 				password = '';
 			} else {
-				errorMessage = 'Authentication failed';
+				// No user found or password incorrect
+				errorMessage = 'Invalid username or password';
 			}
 		} catch (error) {
 			console.error('Authentication error:', error);
@@ -84,16 +89,45 @@
 		}
 	}
 
-	// Handle logout using the gunSetup logout function
+	// Handle logout
 	function handleLogout() {
-		logout();
+		localStorage.removeItem('centralizedUser');
+		currentUser.is = null;
 		isAuthenticated = false;
 		userAlias = '';
 	}
 
 	// Close the popup
 	function closePopup() {
-		// No dispatch, just using for future implementation if needed
+		// Emit an event or use a callback to notify parent
+	}
+
+	// Generate avatar based on public key
+	function generateAvatar(options: {
+		pub: string;
+		size?: number;
+		round?: boolean;
+		draw?: string;
+		reflect?: boolean;
+	}) {
+		const size = options.size || 70;
+		const pub = options.pub;
+
+		// Generate a color based on public key
+		const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
+		const saturation = 70;
+		const lightness = 60;
+
+		// Generate avatar SVG
+		return `data:image/svg+xml,${encodeURIComponent(`
+			<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+				<rect width="100%" height="100%" fill="hsl(${hue}, ${saturation}%, ${lightness}%)" />
+				<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+					text-anchor="middle" dominant-baseline="middle">
+					${userAlias.charAt(0).toUpperCase()}
+				</text>
+			</svg>
+		`)}`;
 	}
 </script>
 
@@ -106,10 +140,10 @@
 	{:else if isAuthenticated}
 		<div class="welcome-panel">
 			<div class="avatar">
-				{#if user.is?.pub && gunAvatar}
+				{#if currentUser.is?.pub}
 					<img
-						src={gunAvatar({
-							pub: user.is.pub,
+						src={generateAvatar({
+							pub: currentUser.is.pub,
 							size: 70,
 							round: true,
 							draw: 'circles',
@@ -117,19 +151,8 @@
 						})}
 						alt="User Avatar"
 					/>
-
-					<!-- Or the custom element approach (uncomment to use) -->
-					<!-- 
-          <gun-avatar
-            pub={user.is.pub}
-            size="70"
-            round
-            draw="circles"
-            reflect
-          ></gun-avatar>
-          -->
 				{:else}
-					<!-- Fallback avatar if gunAvatar doesn't load -->
+					<!-- Fallback avatar -->
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="40"
@@ -145,7 +168,7 @@
 				{/if}
 			</div>
 			<h2>Welcome, {userAlias}</h2>
-			<p>You are successfully logged in</p>
+			<p>You are signed in to this tree</p>
 			<div class="button-group">
 				<button class="logout-btn" onclick={handleLogout}>
 					<svg
@@ -281,7 +304,7 @@
 					<line x1="12" y1="16" x2="12" y2="12"></line>
 					<line x1="12" y1="8" x2="12.01" y2="8"></line>
 				</svg>
-				<span>Uses Gun.js with SEA encryption</span>
+				<span>Secure login for tree access</span>
 			</div>
 		</div>
 	{/if}
