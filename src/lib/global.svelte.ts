@@ -309,12 +309,9 @@ export const globalState = $state({
 		globalState.currentUser = userData;
 
 		if (!userData) {
-			// If logging out, reset to default example forest
-			const { forest } = createExampleForest();
-			globalState.currentForest = forest;
-
-			// Set initial zipper to the first node in the forest
-			const entries = Array.from(forest.entries());
+			// If logging out, keep the current forest but reset the view to the first node
+			// instead of recreating the example forest
+			const entries = Array.from(globalState.currentForest.entries());
 			if (entries.length > 0) {
 				const [rootId, rootZipper] = entries[0];
 				globalState.currentZipper = rootZipper;
@@ -324,18 +321,16 @@ export const globalState = $state({
 			return;
 		}
 
-		// Get user's forest from the example forest
-		const { forest } = createExampleForest();
-		const userZipper = forest.get(userData.username?.toLowerCase() || '');
+		// Check if the user already exists in the current forest
+		const userZipper = globalState.currentForest.get(userData.username?.toLowerCase() || '');
 
 		if (userZipper) {
-			// User exists in the example forest
-			globalState.currentForest = forest;
+			// User exists in the current forest, navigate to their tree
 			globalState.currentZipper = userZipper;
 			globalState.currentPath = [userData.username?.toLowerCase() || ''];
 			globalState.updatePathInfo();
 		} else {
-			// User doesn't exist, create a new tree for them
+			// User doesn't exist in the current forest, create a new tree for them
 			const username = userData.username?.toLowerCase() || userData.pub.toLowerCase();
 			const userNode = createRootNode(
 				username,
@@ -346,10 +341,9 @@ export const globalState = $state({
 			);
 
 			const userZipper: TreeZipper = { zipperCurrent: userNode, zipperContext: null };
-			const newForest: Forest = new Map(forest);
-			newForest.set(username, userZipper);
 
-			globalState.currentForest = newForest;
+			// Add new user to the existing forest instead of replacing it
+			globalState.currentForest.set(username, userZipper);
 			globalState.currentZipper = userZipper;
 			globalState.currentPath = [username];
 			globalState.updatePathInfo();
