@@ -38,6 +38,10 @@
 	let path: string[] = $state([]);
 	let pathInfo = $state<{ id: string; name: string }[]>([]);
 
+	// For cycling node labels
+	let labelIndex = $state(0);
+	const nodeLabels = ['Node', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution'];
+
 	// Store for change tracking
 	const zipperStore: Writable<TreeZipper | null> = writable(null);
 
@@ -170,16 +174,21 @@
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
 		document.addEventListener('touchcancel', handleGlobalTouchEnd);
-	});
 
-	onDestroy(() => {
-		// Clean up timers and event listeners
-		if (growthInterval !== null) clearInterval(growthInterval);
-		if (growthTimeout !== null) clearTimeout(growthTimeout);
+		// Start label cycling interval
+		const interval = setInterval(() => {
+			labelIndex = (labelIndex + 1) % nodeLabels.length;
+		}, 4000);
 
-		document.removeEventListener('mouseup', handleGlobalTouchEnd);
-		document.removeEventListener('touchend', handleGlobalTouchEnd);
-		document.removeEventListener('touchcancel', handleGlobalTouchEnd);
+		return () => {
+			// Clean up timers and event listeners
+			if (growthInterval !== null) clearInterval(growthInterval);
+			if (growthTimeout !== null) clearTimeout(growthTimeout);
+			clearInterval(interval);
+			document.removeEventListener('mouseup', handleGlobalTouchEnd);
+			document.removeEventListener('touchend', handleGlobalTouchEnd);
+			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
+		};
 	});
 
 	// Sync local changes back to global state
@@ -782,7 +791,7 @@
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
-			{#if hierarchyData && hierarchyData.children}
+			{#if hierarchyData && hierarchyData.children && hierarchyData.children.length > 0}
 				{#each hierarchyData.children as child}
 					<div
 						class="clickable"
@@ -823,6 +832,15 @@
 						/>
 					</div>
 				{/each}
+			{:else}
+				<div class="empty-state">
+					<div class="add-node-prompt">
+						<button class="add-node-button" onclick={handleAddNode}>
+							<span class="add-icon">➕</span>
+							<span class="add-text">{nodeLabels[labelIndex]}</span>
+						</button>
+					</div>
+				</div>
 			{/if}
 		</div>
 	</div>
@@ -941,5 +959,56 @@
 		z-index: 10;
 		box-shadow: 0 0 12px rgba(255, 60, 60, 0.5);
 		border: 2px solid rgba(255, 60, 60, 0.7);
+	}
+
+	.empty-state {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		height: 100%;
+		background-color: #f9f9f9;
+		border-radius: 8px;
+	}
+
+	.add-node-prompt {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 24px;
+	}
+
+	.add-node-button {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 20px;
+		border: none;
+		border-radius: 8px;
+		background-color: #2196f3;
+		color: white;
+		font-size: 16px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+	}
+
+	.add-node-button:hover {
+		background-color: #1976d2;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+		animation: none;
+	}
+
+	.add-icon {
+		font-size: 20px;
+	}
+
+	.help-text {
+		margin-top: 12px;
+		color: #666;
+		font-size: 14px;
 	}
 </style>

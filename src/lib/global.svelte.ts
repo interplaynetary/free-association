@@ -201,7 +201,6 @@ export const globalState = $state({
 			globalState.updatePathInfo();
 
 			const nodeName = currentZipper.zipperCurrent.nodeName || path[path.length - 1];
-			globalState.showToast(`Navigated to ${nodeName}`, 'info');
 		} else {
 			globalState.showToast('Navigation failed', 'error');
 		}
