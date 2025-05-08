@@ -366,20 +366,16 @@ shareOfParent z
 
 -- Predicates for node types
 -- | Check if a node is a contribution node (has contributors and is not root)
-isContributionPure :: TreeZipper -> Bool
-isContributionPure z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
-
--- Legacy version for compatibility with existing code
-isContribution :: Forest -> TreeZipper -> Bool
-isContribution _ = isContributionPure
+isContribution :: TreeZipper -> Bool
+isContribution z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
 
 -- Check if a node has direct contribution children
 hasDirectContributionChild :: Forest -> TreeZipper -> Bool
-hasDirectContributionChild ci = anyChild (isContribution ci)
+hasDirectContributionChild ci = anyChild isContribution
 
 -- Check if a node has non-contribution children
 hasNonContributionChild :: Forest -> TreeZipper -> Bool
-hasNonContributionChild ci = not . allChildren (isContribution ci)
+hasNonContributionChild ci = not . allChildren isContribution
 
 -- Calculate the proportion of total child points from contribution children
 contributionChildrenWeight :: Forest -> TreeZipper -> Float
@@ -389,7 +385,7 @@ contributionChildrenWeight ci z =
   where
     accumWeight (cw, tw) child =
       let w = weight child
-       in if isContribution ci child
+       in if isContribution child
             then (cw + w, tw + w)
             else (cw, tw + w)
 
@@ -403,12 +399,12 @@ childrenFulfillment ci pred z =
 
 -- Calculate the fulfillment from contribution children
 contributionChildrenFulfillment :: Forest -> TreeZipper -> Float
-contributionChildrenFulfillment ci = childrenFulfillment ci (isContribution ci)
+contributionChildrenFulfillment ci = childrenFulfillment ci isContribution
 
 -- Calculate the fulfillment from non-contribution children
 nonContributionChildrenFulfillment :: Forest -> TreeZipper -> Float
 nonContributionChildrenFulfillment ci z =
-  let nonContribChildren = filter (not . isContribution ci) (children z)
+  let nonContribChildren = filter (not . isContribution) (children z)
       weights = map weight nonContribChildren
       fulfillments = map (fulfilled ci) nonContribChildren
       weightedFulfillments = zipWith (*) weights fulfillments
@@ -451,7 +447,7 @@ fulfilled ci z =
   where
     computeFulfillment node
       | Map.null (nodeChildren node) =
-          if isContribution ci z then 1.0 else 0.0
+          if isContribution z then 1.0 else 0.0
       | isJust (nodeManualFulfillment node) && hasDirectContributionChild ci z =
           if not (hasNonContributionChild ci z)
             then fromJust $ nodeManualFulfillment node
@@ -486,7 +482,7 @@ shareOfGeneralFulfillment ci target contributor =
             filter
               ( \node ->
                   Set.member contribId (nodeContributors (zipperCurrent node))
-                    && isContribution ci node
+                    && isContribution node
               )
               (target : descendants target)
           -- Calculate total contribution from these nodes
