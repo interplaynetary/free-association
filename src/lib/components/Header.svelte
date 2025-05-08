@@ -53,7 +53,6 @@
 
 		return false;
 	});
-
 </script>
 
 <div class="header-content">

@@ -9,7 +9,6 @@
 
 	// Import centralized system functions
 	import {
-		createRootNode,
 		addChild,
 		makePoints,
 		enterChild,

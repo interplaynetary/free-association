@@ -23,9 +23,9 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
    - For example: If you are 50% of my _total-recognition_, and I am 10% of your _total-recognition_, our mutual-recognition is 10%, the minimum of the both.
      - _Taking the minimum of both shares ensures reciprocity in proportion._
-     - This is _mutual-recognition of mutual-contribution towards each other's self-actualization_.
+     - This is _mutual-recognition of contribution towards each other's self-actualization_.
 
-4. **Shares of Surplus** are distributed across networks of _mutual-recognition of mutual-contribution_ at a declared **network-depth**.
+4. **Shares of Surplus** are distributed across networks of _mutual-recognition of contribution_ at a declared **network-depth**.
 
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
    - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
