@@ -3,7 +3,7 @@
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
 	import type { Forest } from '$lib/centralized/types';
-	import { getNodeName } from '../utils/forestUtils';
+	import { getNodeName } from '../centralized/forestUtils';
 
 	// Props using Svelte 5 runes
 	let {

@@ -10,5 +10,4 @@ export * from './centralized/calculations';
 export * from './centralized/mutual';
 export * from './centralized/capacity';
 export * from './centralized/forest';
-export * from './centralized/index';
 export * from './centralized/examples';

@@ -1,46 +1,11 @@
 <script lang="ts">
 	import { globalState } from '$lib/global.svelte';
+	import { enterChild, exitToParent } from '$lib/centralized';
 
-	// Get current zipper and path from global state
+	// Get current zipper, path and pathInfo from global state
 	let currentZipper = $derived(globalState.currentZipper);
 	let currentPath = $derived(globalState.currentPath);
-
-	// Get current node name
-	let currentNodeName = $derived(
-		!currentZipper
-			? 'Loading...'
-			: currentZipper.zipperCurrent.nodeName || currentZipper.zipperCurrent.nodeId
-	);
-
-	// Extract path names from the path IDs
-	let pathNames = $derived(() => {
-		if (!currentZipper || !currentPath.length) return [] as string[];
-
-		// We'll build the path names by going up the tree
-		const names: string[] = [];
-		let zipper = currentZipper;
-
-		// Add the current node name
-		names.unshift(currentNodeName);
-
-		// Go up the tree for each path element (except the current one)
-		for (let i = 0; i < currentPath.length - 1; i++) {
-			const parentZipper = zipper.zipperContext;
-			if (!parentZipper) break;
-
-			// Get parent name
-			const parentName = parentZipper.ctxParent.nodeName || parentZipper.ctxParent.nodeId;
-			names.unshift(parentName);
-
-			// Continue up the tree
-			zipper = {
-				zipperCurrent: parentZipper.ctxParent,
-				zipperContext: i > 0 ? parentZipper.ctxAncestors[0] : null
-			};
-		}
-
-		return names;
-	});
+	let pathInfo = $derived(globalState.pathInfo);
 
 	// Check if current node has direct contribution children
 	let hasDirectContributionChild = $derived(() => {
@@ -58,27 +23,34 @@
 <div class="header-content">
 	<div class="node-name">
 		<div class="breadcrumbs">
-			{#if pathNames().length === 0}
+			{#if pathInfo.length === 0}
 				<div class="loading-path">Loading...</div>
 			{:else}
-				{#each pathNames() as segment, index}
+				{#each pathInfo as segment, index}
 					{#if index > 0}
 						<div class="breadcrumb-separator">/</div>
 					{/if}
 					<a
-						href="/"
+						href={`/${segment.id}${segment.name ? ':' + segment.name.replace(/\s+/g, '-').toLowerCase() : ''}`}
 						class="breadcrumb-item"
-						class:current={index === pathNames().length - 1}
-						onclick={(e) => globalState.navigateToPathIndex(index)}
+						class:current={index === pathInfo.length - 1}
+						onclick={(e) => {
+							globalState.navigateToPathIndex(index);
+						}}
 						tabindex="0"
-						aria-label={segment}
+						aria-label={segment.name}
 					>
-						{segment}
+						{segment.name}
 					</a>
 				{/each}
 			{/if}
 		</div>
 	</div>
+	<!--
+	<div class="debug-info">
+		<span class="debug-path">Path: {currentPath.join(' → ')}</span>
+	</div> -->
+
 	<div class="header-controls">
 		<a href="/inventory" class="icon-button inventory-button" title="View inventory"
 			><span>📊</span></a
@@ -110,6 +82,28 @@
 		user-select: none;
 		overflow: hidden;
 		max-width: calc(100% - 180px);
+	}
+
+	.debug-info {
+		font-size: 0.7rem;
+		color: #999;
+		text-align: center;
+		position: absolute;
+		top: 48px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0, 0, 0, 0.05);
+		padding: 2px 6px;
+		border-radius: 4px;
+		max-width: 80%;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.debug-path {
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* Breadcrumb styles */

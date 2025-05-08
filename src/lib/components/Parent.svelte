@@ -36,9 +36,18 @@
 	let currentZipper: TreeZipper | null = $state(null);
 	let forest: Forest = $state(new Map());
 	let path: string[] = $state([]);
+	let pathInfo = $state<{ id: string; name: string }[]>([]);
 
 	// Store for change tracking
 	const zipperStore: Writable<TreeZipper | null> = writable(null);
+
+	// Sync with globalState
+	$effect(() => {
+		currentZipper = globalState.currentZipper;
+		forest = globalState.currentForest;
+		path = [...globalState.currentPath];
+		pathInfo = [...globalState.pathInfo];
+	});
 
 	// Update store when currentZipper changes
 	$effect(() => {
@@ -157,18 +166,6 @@
 	const TAP_THRESHOLD = 250;
 
 	onMount(() => {
-		// Initialize with example forest from our centralized system
-		const { forest: initialForest } = createExampleForest();
-		forest = new Map(initialForest);
-
-		// Set initial zipper to the first node in the forest
-		const entries = Array.from(forest.entries());
-		if (entries.length > 0) {
-			const [rootId, rootZipper] = entries[0];
-			currentZipper = { ...rootZipper };
-			path = [rootId];
-		}
-
 		// Set up event listeners
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
@@ -185,31 +182,95 @@
 		document.removeEventListener('touchcancel', handleGlobalTouchEnd);
 	});
 
-	// Navigation functions
-	function zoomInto(nodeId: string) {
-		if (!currentZipper) return;
+	// Sync local changes back to global state
+	function syncToGlobalState() {
+		// First ensure that any modified state is reflected in the root
+		if (path.length > 0 && currentZipper) {
+			// Double-check if our path is complete
+			const fullPath = globalState.fullPathFromZipper(currentZipper);
+			if (fullPath.length > 0 && JSON.stringify(fullPath) !== JSON.stringify(path)) {
+				console.log('Path correction in sync:', path, '->', fullPath);
+				path = fullPath;
+			}
 
-		const childZipper = enterChild(nodeId, currentZipper);
-		if (childZipper) {
-			// Update current zipper (immutably)
-			currentZipper = { ...childZipper };
+			// Start from the current zipper and bubble changes up to root
+			let currentNode: TreeZipper = { ...currentZipper };
+			const rootId = path[0];
 
-			// Update path
-			path = [...path, nodeId];
+			// If we're not at the root level, we need to build back up
+			if (path.length > 1) {
+				// Navigate up to root, preserving changes
+				for (let i = path.length - 1; i > 0; i--) {
+					// Need to get parent and update it with this node
+					const parentPath = path.slice(0, i);
+					const parentId = parentPath[parentPath.length - 1];
+
+					// Get the parent zipper from the forest
+					const parentZipper = forest.get(parentId);
+					if (!parentZipper) continue;
+
+					// Update parent's children with this updated node
+					const childId = path[i];
+
+					// Ensure currentNode has a valid zipperCurrent
+					if (!currentNode.zipperCurrent) {
+						console.error('Missing zipperCurrent in currentNode');
+						continue;
+					}
+
+					const updatedChildren = new Map(parentZipper.zipperCurrent.nodeChildren);
+					updatedChildren.set(childId, currentNode.zipperCurrent);
+
+					// Create updated parent
+					const updatedParent: TreeZipper = {
+						zipperCurrent: {
+							...parentZipper.zipperCurrent,
+							nodeChildren: updatedChildren
+						},
+						zipperContext: parentZipper.zipperContext
+					};
+
+					// Update forest with this parent
+					forest = addToForest(forest, updatedParent);
+
+					// Move up to the parent
+					currentNode = updatedParent;
+				}
+			} else {
+				// Already at root, just update the forest
+				forest = addToForest(forest, currentNode);
+			}
+		}
+
+		// Now update the global state
+		globalState.currentZipper = currentZipper;
+
+		// Always update with the complete path
+		globalState.currentPath = [...path];
+		globalState.currentForest = forest;
+
+		// Update path info
+		globalState.updatePathInfo();
+
+		// Get updated path info and path
+		pathInfo = [...globalState.pathInfo];
+
+		// One final cross-check to ensure paths are in sync
+		if (JSON.stringify(path) !== JSON.stringify(globalState.currentPath)) {
+			console.log('Path correction after sync:', path, '->', globalState.currentPath);
+			path = [...globalState.currentPath];
 		}
 	}
 
-	function zoomOut() {
-		if (!currentZipper) return;
+	// Navigation functions
+	function zoomInto(nodeId: string) {
+		// Use the centralized navigation function
+		globalState.zoomInto(nodeId);
 
-		const parentZipper = exitToParent(currentZipper);
-		if (parentZipper) {
-			// Update current zipper (immutably)
-			currentZipper = { ...parentZipper };
-
-			// Update path
-			path = path.slice(0, -1);
-		}
+		// Sync local state with global state
+		currentZipper = globalState.currentZipper;
+		path = [...globalState.currentPath];
+		pathInfo = [...globalState.pathInfo];
 	}
 
 	async function handleAddNode() {
@@ -233,28 +294,25 @@
 
 		const newPoints = calculateNewNodePoints();
 		const newNodeId = `node-${Date.now()}`; // Unique ID
+		const newNodeName = 'New Node'; // Default name for better UX
+
+		console.log('Adding new node:', newNodeId, 'to parent:', currentZipper.zipperCurrent.nodeId);
+		console.log('Current path:', path);
 
 		try {
-			// Add child to current zipper
-			const updatedZipper = addChild(
-				newNodeId,
-				makePoints(newPoints),
-				[], // No contributors initially
-				null, // No manual fulfillment
-				currentZipper
-			);
+			// Use the centralized addNode function with a default name
+			const success = globalState.addNode(newNodeId, newPoints, newNodeName);
 
-			// Update our zipper immutably
-			currentZipper = { ...updatedZipper };
-
-			// Update forest with the root zipper
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
-				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
-				}
+			if (!success) {
+				globalState.showToast('Error creating node', 'error');
+				return;
 			}
+
+			// Sync local state with global state
+			currentZipper = globalState.currentZipper;
+			forest = globalState.currentForest;
+			path = [...globalState.currentPath];
+			pathInfo = [...globalState.pathInfo];
 
 			globalState.showToast('New node created', 'success');
 
@@ -317,6 +375,9 @@
 					forest = addToForest(forest, rootZipper);
 				}
 			}
+
+			// Sync to global state
+			syncToGlobalState();
 
 			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
@@ -382,6 +443,9 @@
 					forest = addToForest(forest, rootZipper);
 				}
 			}
+
+			// Sync to global state
+			syncToGlobalState();
 
 			globalState.showToast('Contributor removed successfully', 'success');
 		} catch (err) {
@@ -456,6 +520,9 @@
 					forest = addToForest(forest, rootZipper);
 				}
 			}
+
+			// Sync to global state
+			syncToGlobalState();
 
 			globalState.showToast('Contributor added successfully', 'success');
 		} catch (err) {
@@ -598,6 +665,9 @@
 				}
 			}
 
+			// Sync to global state
+			syncToGlobalState();
+
 			console.log(`Saved points for node ${nodeId}: ${points}`);
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
@@ -677,6 +747,9 @@
 							}
 						}
 
+						// Sync to global state
+						syncToGlobalState();
+
 						globalState.showToast('Node deleted successfully', 'success');
 					} catch (err) {
 						console.error(`Error deleting node ${nodeId}:`, err);
@@ -692,14 +765,6 @@
 </script>
 
 <div class="node-container">
-	<!-- Path navigation -->
-	<div class="path-navigation">
-		<button onclick={() => zoomOut()} disabled={path.length <= 1}> ← Back </button>
-		<span class="path">
-			{path.join(' / ')}
-		</span>
-	</div>
-
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
@@ -778,8 +843,43 @@
 	}
 
 	.path {
-		font-size: 14px;
+		display: flex;
+		align-items: center;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none; /* Firefox */
+		-ms-overflow-style: none; /* IE and Edge */
+		max-width: 100%;
+		padding: 4px 0;
+	}
+
+	.path::-webkit-scrollbar {
+		display: none; /* Chrome, Safari, Opera */
+	}
+
+	.path-item {
+		white-space: nowrap;
+		padding: 2px 4px;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background-color 0.2s;
 		color: #666;
+		font-size: 14px;
+	}
+
+	.path-item:hover {
+		background-color: rgba(0, 0, 0, 0.05);
+		color: #333;
+	}
+
+	.path-item.current {
+		font-weight: bold;
+		color: #2196f3;
+	}
+
+	.path-separator {
+		margin: 0 4px;
+		color: #999;
 	}
 
 	.app-content {

@@ -4,7 +4,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { writable, get } from 'svelte/store';
 	import type { Forest } from '$lib/centralized/types';
-	import { filterForestNodes } from '../utils/forestUtils';
+	import { filterForestNodes } from '../centralized/forestUtils';
 	import { browser } from '$app/environment';
 
 	// Props using Svelte 5 runes

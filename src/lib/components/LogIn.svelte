@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, type UserData } from '$lib/global.svelte';
 
 	// Reactive stores for user state
 	let isAuthenticated = $state(false);
@@ -19,7 +19,7 @@
 
 	// Mock user object
 	let currentUser = $state<{
-		is: { pub: string; alias: string } | null;
+		is: { pub: string; alias: string; username?: string } | null;
 	}>({ is: null });
 
 	// Check if user is already logged in on mount
@@ -31,7 +31,11 @@
 			const storedUser = localStorage.getItem('centralizedUser');
 			if (storedUser) {
 				const userData = JSON.parse(storedUser);
-				currentUser.is = { pub: userData.pub, alias: userData.alias };
+				currentUser.is = {
+					pub: userData.pub,
+					alias: userData.alias,
+					username: userData.username
+				};
 				isAuthenticated = true;
 				userAlias = userData.alias;
 			}
@@ -61,22 +65,28 @@
 
 			if (user && user.password === password) {
 				// Login successful
-				currentUser.is = { pub: user.pub, alias: user.alias };
+				const userData: UserData = {
+					pub: user.pub,
+					alias: user.alias,
+					username: username.toLowerCase()
+				};
+
+				currentUser.is = { ...userData };
 				isAuthenticated = true;
 				userAlias = user.alias;
 
 				// Store user in localStorage
-				localStorage.setItem(
-					'centralizedUser',
-					JSON.stringify({
-						pub: user.pub,
-						alias: user.alias
-					})
-				);
+				localStorage.setItem('centralizedUser', JSON.stringify(userData));
+
+				// Update global state with the logged in user
+				globalState.setCurrentUser(userData);
 
 				// Reset form
 				username = '';
 				password = '';
+
+				// Show success message
+				globalState.showToast(`Logged in as ${userData.alias}`, 'success');
 			} else {
 				// No user found or password incorrect
 				errorMessage = 'Invalid username or password';
@@ -95,11 +105,17 @@
 		currentUser.is = null;
 		isAuthenticated = false;
 		userAlias = '';
+
+		// Update global state to reflect logged out status
+		globalState.setCurrentUser(null);
+		globalState.showToast('Logged out successfully', 'info');
 	}
 
 	// Close the popup
 	function closePopup() {
 		// Emit an event or use a callback to notify parent
+		const closeEvent = new CustomEvent('close');
+		document.dispatchEvent(closeEvent);
 	}
 
 	// Generate avatar based on public key
