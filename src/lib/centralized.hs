@@ -48,33 +48,17 @@ cacheInsert key value cache =
     }
 
 -- Helper functions to work with CacheValue
-fromFloat :: Float -> CacheValue
-fromFloat = FloatValue
-
-fromInt :: Int -> CacheValue
-fromInt = IntValue
-
-fromStringList :: [String] -> CacheValue
-fromStringList = StringListValue
-
-fromShareMap :: ShareMap -> CacheValue
-fromShareMap = ShareMapValue
-
-toFloat :: CacheValue -> Maybe Float
-toFloat (FloatValue f) = Just f
-toFloat _ = Nothing
-
-toInt :: CacheValue -> Maybe Int
-toInt (IntValue i) = Just i
-toInt _ = Nothing
+class Cacheable a where
+  toCache   :: a -> CacheValue
+  fromCache :: CacheValue -> Maybe a
 
 toStringList :: CacheValue -> Maybe [String]
-toStringList (StringListValue l) = Just l
-toStringList _ = Nothing
+toStringList = fromCache
 
-toShareMap :: CacheValue -> Maybe ShareMap
-toShareMap (ShareMapValue m) = Just m
-toShareMap _ = Nothing
+instance Cacheable Int        where { toCache = IntValue;        fromCache (IntValue i)        = Just i ; fromCache _ = Nothing }
+instance Cacheable Float      where { toCache = FloatValue;      fromCache (FloatValue f)      = Just f ; fromCache _ = Nothing }
+instance Cacheable ShareMap   where { toCache = ShareMapValue;   fromCache (ShareMapValue m)   = Just m ; fromCache _ = Nothing }
+instance Cacheable [String]   where { toCache = StringListValue; fromCache (StringListValue l) = Just l ; fromCache _ = Nothing }
 
 -- Node type with unified cache
 data Node = Node
@@ -118,28 +102,23 @@ emptyProviderSharesCache :: ProviderSharesCache
 emptyProviderSharesCache = ProviderSharesCache emptyCache
 
 -- Generic caching function
-withCache ::
-  (Ord k) =>
-  k ->
-  (b -> CacheValue) ->
-  (CacheValue -> Maybe b) ->
-  (a -> b) ->
-  Cache k ->
-  a ->
-  (b, Cache k)
-withCache key constructor extractor compute cache arg =
+withCache
+  :: (Ord k, Cacheable b)
+  => k              -- key
+  -> (a -> b)       -- compute
+  -> Cache k        -- cache
+  -> a              -- argument to compute
+  -> (b, Cache k)
+withCache key compute cache arg =
   case cacheLookup key cache of
-    Just (value, updatedCache) ->
-      case extractor value of
-        Just v -> (v, updatedCache)
-        Nothing -> computeAndCache updatedCache
-    Nothing -> computeAndCache cache
+    Just (cv, updated) ->
+      maybe (computeAndStore updated) (\v -> (v, updated)) (fromCache cv)
+    Nothing -> computeAndStore cache
   where
-    computeAndCache currentCache =
-      let computed = compute arg
-          newValue = constructor computed
-          newCache = cacheInsert key newValue currentCache
-       in (computed, newCache)
+    computeAndStore c =
+      let v  = compute arg
+          cv = toCache v
+      in (v, cacheInsert key cv c)
 
 ----------------------
 -- Core Data Types --
@@ -288,10 +267,10 @@ addChild name pts contribs manual z@(TreeZipper current ctx) =
       key = totalPointsCacheKey (nodeId current)
       currentCache = nodeCache current
       currentTotal = case cacheLookup key currentCache of
-        Just (value, _) -> Maybe.fromMaybe 0 (toInt value)
+        Just (value, _) -> Maybe.fromMaybe 0 (fromCache value)
         Nothing -> 0
       newTotal = currentTotal + getPoints pts
-      newCache = cacheInsert key (fromInt newTotal) currentCache
+      newCache = cacheInsert key (toCache newTotal) currentCache
       -- Clear all parent caches since structure has changed
       clearedCache = emptyCache
       updatedCurrent =
@@ -312,7 +291,7 @@ totalChildPoints z =
       cache = nodeCache current
       cacheKey = totalPointsCacheKey (nodeId current)
       computeTotal _ = sum $ mapChildren (getPoints . nodePoints . zipperCurrent) z
-      (total, _) = withCache cacheKey fromInt toInt computeTotal cache ()
+      (total, _) = withCache cacheKey computeTotal cache ()
    in total
 
 -- Calculate a node's weight with caching
@@ -324,7 +303,7 @@ weight z =
         Nothing -> 1.0 -- Root node has weight 1.0
         Just ctx ->
           let computeWeightVal _ = computeWeight current
-              (w, _) = withCache cacheKey fromFloat toFloat computeWeightVal (nodeCache current) ()
+              (w, _) = withCache cacheKey computeWeightVal (nodeCache current) ()
            in w
   where
     computeWeight node
@@ -416,7 +395,7 @@ fulfilled z =
       cacheKey = fulfillmentCacheKey (nodeId current)
       cache = nodeCache current
       computeFulfillmentVal _ = computeFulfillment current
-      (f, _) = withCache cacheKey fromFloat toFloat computeFulfillmentVal cache ()
+      (f, _) = withCache cacheKey computeFulfillmentVal cache ()
    in f
   where
     computeFulfillment node
@@ -492,7 +471,7 @@ getAllDescendantsCached z =
     computeAndCache cache key =
       let descendants = getAllDescendants z
           descendantIds = map (nodeId . zipperCurrent) descendants
-          newCache = cacheInsert key (fromStringList descendantIds) cache
+          newCache = cacheInsert key (toCache descendantIds) cache
        in z : descendants
 
 -- | Get all descendants (including self)
@@ -506,7 +485,7 @@ mutualFulfillment ci a b =
       bNode = zipperCurrent b
       cacheKey = mutualCacheKey (nodeId aNode) (nodeId bNode)
       computeMutual _ = compute ()
-      (v, _) = withCache cacheKey fromFloat toFloat computeMutual (nodeCache aNode) ()
+      (v, _) = withCache cacheKey computeMutual (nodeCache aNode) ()
    in v
   where
     compute _ =
@@ -618,7 +597,7 @@ providerSharesCached cache ci provider maxDepth =
       key = (providerId, maxDepth)
       currentCache = sharesCache cache
       computeShares _ = providerShares ci provider maxDepth
-      (shares, updatedCache) = withCache key fromShareMap toShareMap computeShares currentCache ()
+      (shares, updatedCache) = withCache key computeShares currentCache ()
    in (shares, cache {sharesCache = updatedCache})
 
 -- Simplified interface functions that use providerShares
