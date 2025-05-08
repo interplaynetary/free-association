@@ -554,14 +554,14 @@ mutualFulfillment ci a b =
 ------------------------------
 
 -- Get all contributors that mutually fulfill with the current node
-getMutualContributors :: ContributorIndex -> TreeZipper -> [(String, Float)]
-getMutualContributors ci z =
-  [ (nodeId $ zipperCurrent contributor, mutualFulfillment ci z contributor)
-    | contributor <- validContributors
-  ]
-  where
-    contributors = nodeContributors $ zipperCurrent z
-    validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
+-- getMutualContributors :: ContributorIndex -> TreeZipper -> [(String, Float)]
+-- getMutualContributors ci z =
+--   [ (nodeId $ zipperCurrent contributor, mutualFulfillment ci z contributor)
+--     | contributor <- validContributors
+--   ]
+--   where
+--     contributors = nodeContributors $ zipperCurrent z
+--     validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
 
 -- Find the path to the highest mutual fulfillment node
 findHighestMutualPath :: Forest -> TreeZipper -> TreeZipper -> Maybe NavigationPath
