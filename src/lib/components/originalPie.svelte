@@ -1,21 +1,3 @@
-<script context="module" lang="ts">
-	/**
-	 * NestedPie.svelte - A layered pie chart component with up to 6 distinct pie charts
-	 * Built using D3's pie generator
-	 */
-	// Interfaces
-	export interface PieSlice {
-		name: string;
-		value: number;
-		color?: string;
-	}
-
-	export interface PieChartData {
-		name: string;
-		slices: Array<PieSlice>;
-	}
-</script>
-
 <script lang="ts">
 	/**
 	 * NestedPie.svelte - A layered pie chart component with up to 6 distinct pie charts
@@ -35,6 +17,18 @@
 	export let padAngle: number = 0.01; // Padding between pie segments
 	export let cornerRadius: number = 0; // Corner radius for pie segments
 	export let labels: boolean = false; // Whether to show labels (default to false)
+
+	// Interfaces
+	interface PieSlice {
+		name: string;
+		value: number;
+		color?: string;
+	}
+
+	interface PieChartData {
+		name: string;
+		slices: Array<PieSlice>;
+	}
 
 	// Event dispatcher for interactions
 	const dispatch = createEventDispatcher<{

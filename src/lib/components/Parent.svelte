@@ -32,56 +32,52 @@
 		contributors?: string[];
 	}
 
-	// Current state of our navigation in the tree
-	let currentZipper: TreeZipper | null = $state(null);
-	let forest: Forest = $state(new Map());
-	let path: string[] = $state([]);
-	let pathInfo = $state<{ id: string; name: string }[]>([]);
-
 	// For cycling node labels
 	let labelIndex = $state(0);
 	const nodeLabels = ['Node', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution'];
 
-	// Store for change tracking
-	const zipperStore: Writable<TreeZipper | null> = writable(null);
-
-	// Sync with globalState
+	// Reactive access to globalState
 	$effect(() => {
-		currentZipper = globalState.currentZipper;
-		forest = globalState.currentForest;
-		path = [...globalState.currentPath];
-		pathInfo = [...globalState.pathInfo];
-	});
-
-	// Update store when currentZipper changes
-	$effect(() => {
-		if (currentZipper) {
-			zipperStore.set(currentZipper);
-		}
+		// This effect is just to make sure the component reactively updates when global state changes
+		globalState.currentZipper;
+		globalState.currentForest;
+		globalState.currentPath;
+		globalState.pathInfo;
+		globalState.deleteMode;
 	});
 
 	// Get children of current zipper
 	let childrenIds = $state<string[]>([]);
 	$effect(() => {
-		if (!currentZipper) {
+		if (!globalState.currentZipper) {
 			childrenIds = [];
 		} else {
-			childrenIds = Array.from(currentZipper.zipperCurrent.nodeChildren.keys());
+			childrenIds = Array.from(globalState.currentZipper.zipperCurrent.nodeChildren.keys());
 		}
 	});
 
 	// Get child zippers for all children
 	let childZippers = $state<TreeZipper[]>([]);
 	$effect(() => {
-		if (!currentZipper) {
+		if (!globalState.currentZipper) {
 			childZippers = [];
 		} else {
 			childZippers = childrenIds
 				.map((id: string) => {
-					const child = enterChild(id, currentZipper!);
+					const child = enterChild(id, globalState.currentZipper!);
 					return child;
 				})
 				.filter(Boolean) as TreeZipper[];
+		}
+	});
+
+	// Store for change tracking
+	const zipperStore: Writable<TreeZipper | null> = writable(null);
+
+	// Update store when currentZipper changes
+	$effect(() => {
+		if (globalState.currentZipper) {
+			zipperStore.set(globalState.currentZipper);
 		}
 	});
 
@@ -118,7 +114,7 @@
 		// Create hierarchy
 		const rootNode: VisualizationNode = {
 			id: data.id,
-			zipper: currentZipper,
+			zipper: globalState.currentZipper,
 			points: data.selfPoints,
 			children: data.children
 		};
@@ -146,12 +142,6 @@
 	let showUserDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
-	let deleteMode = $state(false);
-
-	// Derive deleteMode from globalState
-	$effect(() => {
-		deleteMode = globalState.deleteMode;
-	});
 
 	// Growth state
 	let touchStartTime = $state(0);
@@ -191,99 +181,14 @@
 		};
 	});
 
-	// Sync local changes back to global state
-	function syncToGlobalState() {
-		// First ensure that any modified state is reflected in the root
-		if (path.length > 0 && currentZipper) {
-			// Double-check if our path is complete
-			const fullPath = globalState.fullPathFromZipper(currentZipper);
-			if (fullPath.length > 0 && JSON.stringify(fullPath) !== JSON.stringify(path)) {
-				console.log('Path correction in sync:', path, '->', fullPath);
-				path = fullPath;
-			}
-
-			// Start from the current zipper and bubble changes up to root
-			let currentNode: TreeZipper = { ...currentZipper };
-			const rootId = path[0];
-
-			// If we're not at the root level, we need to build back up
-			if (path.length > 1) {
-				// Navigate up to root, preserving changes
-				for (let i = path.length - 1; i > 0; i--) {
-					// Need to get parent and update it with this node
-					const parentPath = path.slice(0, i);
-					const parentId = parentPath[parentPath.length - 1];
-
-					// Get the parent zipper from the forest
-					const parentZipper = forest.get(parentId);
-					if (!parentZipper) continue;
-
-					// Update parent's children with this updated node
-					const childId = path[i];
-
-					// Ensure currentNode has a valid zipperCurrent
-					if (!currentNode.zipperCurrent) {
-						console.error('Missing zipperCurrent in currentNode');
-						continue;
-					}
-
-					const updatedChildren = new Map(parentZipper.zipperCurrent.nodeChildren);
-					updatedChildren.set(childId, currentNode.zipperCurrent);
-
-					// Create updated parent
-					const updatedParent: TreeZipper = {
-						zipperCurrent: {
-							...parentZipper.zipperCurrent,
-							nodeChildren: updatedChildren
-						},
-						zipperContext: parentZipper.zipperContext
-					};
-
-					// Update forest with this parent
-					forest = addToForest(forest, updatedParent);
-
-					// Move up to the parent
-					currentNode = updatedParent;
-				}
-			} else {
-				// Already at root, just update the forest
-				forest = addToForest(forest, currentNode);
-			}
-		}
-
-		// Now update the global state
-		globalState.currentZipper = currentZipper;
-
-		// Always update with the complete path
-		globalState.currentPath = [...path];
-		globalState.currentForest = forest;
-
-		// Update path info
-		globalState.updatePathInfo();
-
-		// Get updated path info and path
-		pathInfo = [...globalState.pathInfo];
-
-		// One final cross-check to ensure paths are in sync
-		if (JSON.stringify(path) !== JSON.stringify(globalState.currentPath)) {
-			console.log('Path correction after sync:', path, '->', globalState.currentPath);
-			path = [...globalState.currentPath];
-		}
-	}
-
 	// Navigation functions
 	function zoomInto(nodeId: string) {
-		// Use the centralized navigation function
+		// Use the centralized navigation function directly
 		globalState.zoomInto(nodeId);
-
-		// Sync local state with global state
-		currentZipper = globalState.currentZipper;
-		path = [...globalState.currentPath];
-		pathInfo = [...globalState.pathInfo];
 	}
 
 	async function handleAddNode() {
-		if (!currentZipper) return;
+		if (!globalState.currentZipper) return;
 
 		// Calculate initial points for new node
 		const calculateNewNodePoints = (): number => {
@@ -305,8 +210,13 @@
 		const newNodeId = `node-${Date.now()}`; // Unique ID
 		const newNodeName = 'New Node'; // Default name for better UX
 
-		console.log('Adding new node:', newNodeId, 'to parent:', currentZipper.zipperCurrent.nodeId);
-		console.log('Current path:', path);
+		console.log(
+			'Adding new node:',
+			newNodeId,
+			'to parent:',
+			globalState.currentZipper.zipperCurrent.nodeId
+		);
+		console.log('Current path:', globalState.currentPath);
 
 		try {
 			// Use the centralized addNode function with a default name
@@ -316,12 +226,6 @@
 				globalState.showToast('Error creating node', 'error');
 				return;
 			}
-
-			// Sync local state with global state
-			currentZipper = globalState.currentZipper;
-			forest = globalState.currentForest;
-			path = [...globalState.currentPath];
-			pathInfo = [...globalState.pathInfo];
 
 			globalState.showToast('New node created', 'success');
 
@@ -345,10 +249,10 @@
 		const { nodeId, newName } = detail;
 
 		try {
-			if (!currentZipper) return;
+			if (!globalState.currentZipper) return;
 
 			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
+			const childZipper = enterChild(nodeId, globalState.currentZipper);
 			if (!childZipper) return;
 
 			// Update node name
@@ -361,32 +265,32 @@
 			);
 
 			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			const updatedChildren = new Map(globalState.currentZipper.zipperCurrent.nodeChildren);
 			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
 
-			// Update the current zipper
+			// Update the current zipper in global state
 			const updatedZipper = modifyNode(
 				(node) => ({
 					...node,
 					nodeChildren: updatedChildren
 				}),
-				currentZipper
+				globalState.currentZipper
 			);
 
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
+			// Update global state directly
+			globalState.currentZipper = { ...updatedZipper };
 
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
+			// Update forest with the modified zipper
+			if (globalState.currentPath.length > 0) {
+				const rootId = globalState.currentPath[0];
+				const rootZipper = globalState.currentForest.get(rootId);
 				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
+					globalState.currentForest = addToForest(globalState.currentForest, rootZipper);
 				}
 			}
 
-			// Sync to global state
-			syncToGlobalState();
+			// Update path info
+			globalState.updatePathInfo();
 
 			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
@@ -409,10 +313,10 @@
 		const { nodeId, contributorId } = detail;
 
 		try {
-			if (!currentZipper) return;
+			if (!globalState.currentZipper) return;
 
 			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
+			const childZipper = enterChild(nodeId, globalState.currentZipper);
 			if (!childZipper) return;
 
 			// Remove contributor
@@ -429,32 +333,32 @@
 			);
 
 			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			const updatedChildren = new Map(globalState.currentZipper.zipperCurrent.nodeChildren);
 			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
 
-			// Update current zipper
+			// Update current zipper in global state
 			const updatedZipper = modifyNode(
 				(node) => ({
 					...node,
 					nodeChildren: updatedChildren
 				}),
-				currentZipper
+				globalState.currentZipper
 			);
 
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
+			// Update global state directly
+			globalState.currentZipper = { ...updatedZipper };
 
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
+			// Update forest with the modified zipper
+			if (globalState.currentPath.length > 0) {
+				const rootId = globalState.currentPath[0];
+				const rootZipper = globalState.currentForest.get(rootId);
 				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
+					globalState.currentForest = addToForest(globalState.currentForest, rootZipper);
 				}
 			}
 
-			// Sync to global state
-			syncToGlobalState();
+			// Update path info
+			globalState.updatePathInfo();
 
 			globalState.showToast('Contributor removed successfully', 'success');
 		} catch (err) {
@@ -486,10 +390,10 @@
 
 	function addContributorToNode(nodeId: string, userId: string) {
 		try {
-			if (!currentZipper) return;
+			if (!globalState.currentZipper) return;
 
 			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
+			const childZipper = enterChild(nodeId, globalState.currentZipper);
 			if (!childZipper) return;
 
 			// Add contributor
@@ -506,32 +410,32 @@
 			);
 
 			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			const updatedChildren = new Map(globalState.currentZipper.zipperCurrent.nodeChildren);
 			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
 
-			// Update current zipper
+			// Update current zipper in global state directly
 			const updatedZipper = modifyNode(
 				(node) => ({
 					...node,
 					nodeChildren: updatedChildren
 				}),
-				currentZipper
+				globalState.currentZipper
 			);
 
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
+			// Update global state directly
+			globalState.currentZipper = { ...updatedZipper };
 
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
+			// Update forest with the modified zipper
+			if (globalState.currentPath.length > 0) {
+				const rootId = globalState.currentPath[0];
+				const rootZipper = globalState.currentForest.get(rootId);
 				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
+					globalState.currentForest = addToForest(globalState.currentForest, rootZipper);
 				}
 			}
 
-			// Sync to global state
-			syncToGlobalState();
+			// Update path info
+			globalState.updatePathInfo();
 
 			globalState.showToast('Contributor added successfully', 'success');
 		} catch (err) {
@@ -543,7 +447,7 @@
 	// Growth handlers
 	function startGrowth(node: d3.HierarchyRectangularNode<VisualizationNode>, isShrinking = false) {
 		// Don't allow growth in delete mode
-		if (deleteMode) return;
+		if (globalState.deleteMode) return;
 
 		// Clear existing growth state
 		if (growthInterval !== null) clearInterval(growthInterval);
@@ -634,10 +538,10 @@
 
 	function saveNodePoints(nodeId: string, points: number) {
 		try {
-			if (!currentZipper) return;
+			if (!globalState.currentZipper) return;
 
 			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
+			const childZipper = enterChild(nodeId, globalState.currentZipper);
 			if (!childZipper) return;
 
 			// Update points
@@ -650,32 +554,32 @@
 			);
 
 			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+			const updatedChildren = new Map(globalState.currentZipper.zipperCurrent.nodeChildren);
 			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
 
-			// Update current zipper
+			// Update current zipper in global state directly
 			const updatedZipper = modifyNode(
 				(node) => ({
 					...node,
 					nodeChildren: updatedChildren
 				}),
-				currentZipper
+				globalState.currentZipper
 			);
 
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
+			// Update global state directly
+			globalState.currentZipper = { ...updatedZipper };
 
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
+			// Update forest with the modified zipper
+			if (globalState.currentPath.length > 0) {
+				const rootId = globalState.currentPath[0];
+				const rootZipper = globalState.currentForest.get(rootId);
 				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
+					globalState.currentForest = addToForest(globalState.currentForest, rootZipper);
 				}
 			}
 
-			// Sync to global state
-			syncToGlobalState();
+			// Update path info
+			globalState.updatePathInfo();
 
 			console.log(`Saved points for node ${nodeId}: ${points}`);
 		} catch (err) {
@@ -739,39 +643,39 @@
 
 		// For short taps, trigger navigation or deletion
 		if (!wasGrowthEvent && nodeId) {
-			if (deleteMode) {
+			if (globalState.deleteMode) {
 				// Handle deletion
 				if (confirm(`Delete this node?`)) {
 					try {
-						if (!currentZipper) return;
+						if (!globalState.currentZipper) return;
 
 						// Create an updated children map without the deleted node
-						const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
+						const updatedChildren = new Map(globalState.currentZipper.zipperCurrent.nodeChildren);
 						updatedChildren.delete(nodeId);
 
-						// Update the current node
+						// Update the current node directly in global state
 						const updatedZipper = modifyNode(
 							(node) => ({
 								...node,
 								nodeChildren: updatedChildren
 							}),
-							currentZipper
+							globalState.currentZipper
 						);
 
-						// Update our zipper immutably
-						currentZipper = { ...updatedZipper };
+						// Update global state directly
+						globalState.currentZipper = { ...updatedZipper };
 
 						// Update forest with the modified zipper
-						if (path.length > 0) {
-							const rootId = path[0];
-							const rootZipper = forest.get(rootId);
+						if (globalState.currentPath.length > 0) {
+							const rootId = globalState.currentPath[0];
+							const rootZipper = globalState.currentForest.get(rootId);
 							if (rootZipper) {
-								forest = addToForest(forest, rootZipper);
+								globalState.currentForest = addToForest(globalState.currentForest, rootZipper);
 							}
 						}
 
-						// Sync to global state
-						syncToGlobalState();
+						// Update path info
+						globalState.updatePathInfo();
 
 						globalState.showToast('Node deleted successfully', 'success');
 					} catch (err) {
@@ -795,7 +699,7 @@
 				{#each hierarchyData.children as child}
 					<div
 						class="clickable"
-						class:deleting={deleteMode}
+						class:deleting={globalState.deleteMode}
 						class:growing={isGrowing && activeGrowthNodeId === child.data.id && !isShrinkingActive}
 						class:shrinking={isGrowing && activeGrowthNodeId === child.data.id && isShrinkingActive}
 						style="
