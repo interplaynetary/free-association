@@ -311,17 +311,9 @@ totalChildPoints z =
   let current = zipperCurrent z
       cache = nodeCache current
       cacheKey = totalPointsCacheKey (nodeId current)
-   in case cacheLookup cacheKey cache of
-        Just (value, updatedCache) ->
-          case toInt value of
-            Just total -> total
-            Nothing -> computeAndCache updatedCache cacheKey
-        Nothing -> computeAndCache cache cacheKey
-  where
-    computeAndCache cache key =
-      let total = sum $ mapChildren (getPoints . nodePoints . zipperCurrent) z
-          newCache = cacheInsert key (fromInt total) cache
-       in total
+      computeTotal _ = sum $ mapChildren (getPoints . nodePoints . zipperCurrent) z
+      (total, _) = withCache cacheKey fromInt toInt computeTotal cache ()
+   in total
 
 -- Calculate a node's weight with caching
 weight :: TreeZipper -> Float
@@ -331,18 +323,9 @@ weight z =
    in case zipperContext z of
         Nothing -> 1.0 -- Root node has weight 1.0
         Just ctx ->
-          case cacheLookup cacheKey (nodeCache current) of
-            Just (value, updatedCache) ->
-              case toFloat value of
-                Just w -> w
-                Nothing ->
-                  let w = computeWeight current
-                      newCache = cacheInsert cacheKey (fromFloat w) updatedCache
-                   in w
-            Nothing ->
-              let w = computeWeight current
-                  newCache = cacheInsert cacheKey (fromFloat w) (nodeCache current)
-               in w
+          let computeWeightVal _ = computeWeight current
+              (w, _) = withCache cacheKey fromFloat toFloat computeWeightVal (nodeCache current) ()
+           in w
   where
     computeWeight node
       | total == 0 = 0
@@ -432,18 +415,9 @@ fulfilled z =
   let current = zipperCurrent z
       cacheKey = fulfillmentCacheKey (nodeId current)
       cache = nodeCache current
-   in case cacheLookup cacheKey cache of
-        Just (value, updatedCache) ->
-          case toFloat value of
-            Just f -> f
-            Nothing ->
-              let f = computeFulfillment current
-                  newCache = cacheInsert cacheKey (fromFloat f) updatedCache
-               in f
-        Nothing ->
-          let f = computeFulfillment current
-              newCache = cacheInsert cacheKey (fromFloat f) cache
-           in f
+      computeFulfillmentVal _ = computeFulfillment current
+      (f, _) = withCache cacheKey fromFloat toFloat computeFulfillmentVal cache ()
+   in f
   where
     computeFulfillment node
       | Map.null (nodeChildren node) =
@@ -531,18 +505,9 @@ mutualFulfillment ci a b =
   let aNode = zipperCurrent a
       bNode = zipperCurrent b
       cacheKey = mutualCacheKey (nodeId aNode) (nodeId bNode)
-   in case cacheLookup cacheKey (nodeCache aNode) of
-        Just (value, updatedCache) ->
-          case toFloat value of
-            Just v -> v
-            Nothing ->
-              let v = compute ()
-                  newCache = cacheInsert cacheKey (fromFloat v) updatedCache
-               in v
-        Nothing ->
-          let v = compute ()
-              newCache = cacheInsert cacheKey (fromFloat v) (nodeCache aNode)
-           in v
+      computeMutual _ = compute ()
+      (v, _) = withCache cacheKey fromFloat toFloat computeMutual (nodeCache aNode) ()
+   in v
   where
     compute _ =
       let aToB = shareOfGeneralFulfillment ci a b
@@ -652,17 +617,9 @@ providerSharesCached cache ci provider maxDepth =
   let providerId = nodeId $ zipperCurrent provider
       key = (providerId, maxDepth)
       currentCache = sharesCache cache
-   in case cacheLookup key currentCache of
-        Just (value, updatedCache) ->
-          case toShareMap value of
-            Just shares -> (shares, cache {sharesCache = updatedCache})
-            Nothing -> computeAndCache key currentCache
-        Nothing -> computeAndCache key currentCache
-  where
-    computeAndCache key currentCache =
-      let shares = providerShares ci provider maxDepth
-          newCache = cacheInsert key (fromShareMap shares) currentCache
-       in (shares, cache {sharesCache = newCache})
+      computeShares _ = providerShares ci provider maxDepth
+      (shares, updatedCache) = withCache key fromShareMap toShareMap computeShares currentCache ()
+   in (shares, cache {sharesCache = updatedCache})
 
 -- Simplified interface functions that use providerShares
 directShare :: Forest -> TreeZipper -> String -> Float
