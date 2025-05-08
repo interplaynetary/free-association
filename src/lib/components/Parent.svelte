@@ -704,6 +704,20 @@
 	function handleGrowthEnd(event: MouseEvent | TouchEvent) {
 		event.preventDefault();
 
+		// Check if the click target is a text edit field, node-text element, or contributor element
+		const target = event.target as HTMLElement;
+		if (
+			target &&
+			(target.closest('.node-text') ||
+				target.closest('.node-text-edit-container') ||
+				target.closest('.add-contributor-button') ||
+				target.closest('.tag-container') ||
+				target.closest('.contributor-container'))
+		) {
+			// Click originated from text or contributor elements, don't navigate
+			return;
+		}
+
 		// Check if this was a short tap (for navigation) or long press (for growth)
 		const touchDuration = Date.now() - touchStartTime;
 		const wasGrowthEvent = touchDuration >= TAP_THRESHOLD || isGrowing;

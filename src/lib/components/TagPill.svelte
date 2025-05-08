@@ -10,13 +10,13 @@
 		userId,
 		truncateLength = 10,
 		removable = true,
-		onClick = (userId: string) => {},
+		onClick = (userId: string, event?: MouseEvent) => {},
 		onRemove = (userId: string) => {}
 	} = $props<{
 		userId: string;
 		truncateLength?: number;
 		removable?: boolean;
-		onClick?: (userId: string) => void;
+		onClick?: (userId: string, event?: MouseEvent) => void;
 		onRemove?: (userId: string) => void;
 	}>();
 
@@ -56,7 +56,8 @@
 			return;
 		}
 
-		onClick(userId);
+		event.stopPropagation();
+		onClick(userId, event);
 	}
 
 	// Handle remove button click

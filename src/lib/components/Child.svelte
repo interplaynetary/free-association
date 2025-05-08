@@ -107,7 +107,13 @@
 	}
 
 	// Handle click on tag
-	function handleTagClick(userId: string) {
+	function handleTagClick(userId: string, event?: MouseEvent) {
+		// Prevent default behavior if event is passed
+		if (event) {
+			event.stopPropagation();
+			event.preventDefault();
+		}
+
 		// For future functionality - could navigate to contributor view
 		console.log(`Clicked on contributor: ${userId}`);
 	}
@@ -259,7 +265,13 @@
 					onclick={handleTextEditStart}
 				>
 					{#each segments as segment, i}
-						<span class="text-segment">
+						<span
+							class="text-segment"
+							onclick={(e) => {
+								e.stopPropagation();
+								handleTextEditStart(e);
+							}}
+						>
 							{segment}
 						</span>
 					{/each}
@@ -304,7 +316,7 @@
 										<TagPill
 											userId={contributorId}
 											{truncateLength}
-											onClick={handleTagClick}
+											onClick={(id, e) => handleTagClick(id, e)}
 											onRemove={handleRemoveContributor}
 										/>
 									</div>
