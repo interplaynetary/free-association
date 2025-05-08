@@ -370,16 +370,16 @@ isContribution :: TreeZipper -> Bool
 isContribution z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
 
 -- Check if a node has direct contribution children
-hasDirectContributionChild :: Forest -> TreeZipper -> Bool
-hasDirectContributionChild ci = anyChild isContribution
+hasDirectContributionChild :: TreeZipper -> Bool
+hasDirectContributionChild = anyChild isContribution
 
 -- Check if a node has non-contribution children
-hasNonContributionChild :: Forest -> TreeZipper -> Bool
-hasNonContributionChild ci = not . allChildren isContribution
+hasNonContributionChild :: TreeZipper -> Bool
+hasNonContributionChild = not . allChildren isContribution
 
 -- Calculate the proportion of total child points from contribution children
-contributionChildrenWeight :: Forest -> TreeZipper -> Float
-contributionChildrenWeight ci z =
+contributionChildrenWeight :: TreeZipper -> Float
+contributionChildrenWeight z =
   let (contribWeight, totalWeight) = foldChildren accumWeight (0, 0) z
    in if totalWeight == 0 then 0 else contribWeight / totalWeight
   where
@@ -390,23 +390,23 @@ contributionChildrenWeight ci z =
             else (cw, tw + w)
 
 -- Sum fulfillment from children matching a predicate
-childrenFulfillment :: Forest -> (TreeZipper -> Bool) -> TreeZipper -> Float
-childrenFulfillment ci pred z =
+childrenFulfillment :: (TreeZipper -> Bool) -> TreeZipper -> Float
+childrenFulfillment pred z =
   sum
-    [ fulfilled ci child * shareOfParent child
+    [ fulfilled child * shareOfParent child
       | child <- children z, pred child
     ]
 
 -- Calculate the fulfillment from contribution children
-contributionChildrenFulfillment :: Forest -> TreeZipper -> Float
-contributionChildrenFulfillment ci = childrenFulfillment ci isContribution
+contributionChildrenFulfillment :: TreeZipper -> Float
+contributionChildrenFulfillment = childrenFulfillment isContribution
 
 -- Calculate the fulfillment from non-contribution children
-nonContributionChildrenFulfillment :: Forest -> TreeZipper -> Float
-nonContributionChildrenFulfillment ci z =
+nonContributionChildrenFulfillment :: TreeZipper -> Float
+nonContributionChildrenFulfillment z =
   let nonContribChildren = filter (not . isContribution) (children z)
       weights = map weight nonContribChildren
-      fulfillments = map (fulfilled ci) nonContribChildren
+      fulfillments = map fulfilled nonContribChildren
       weightedFulfillments = zipWith (*) weights fulfillments
       totalWeight = sum weights
    in if totalWeight == 0
@@ -427,8 +427,8 @@ getContributorNode contribIndex contribId =
    in listToMaybe (Set.toList instances)
 
 -- Calculate fulfillment with caching
-fulfilled :: Forest -> TreeZipper -> Float
-fulfilled ci z =
+fulfilled :: TreeZipper -> Float
+fulfilled z =
   let current = zipperCurrent z
       cacheKey = fulfillmentCacheKey (nodeId current)
       cache = nodeCache current
@@ -448,25 +448,25 @@ fulfilled ci z =
     computeFulfillment node
       | Map.null (nodeChildren node) =
           if isContribution z then 1.0 else 0.0
-      | isJust (nodeManualFulfillment node) && hasDirectContributionChild ci z =
-          if not (hasNonContributionChild ci z)
+      | isJust (nodeManualFulfillment node) && hasDirectContributionChild z =
+          if not (hasNonContributionChild z)
             then fromJust $ nodeManualFulfillment node
             else manualContribShare
       | otherwise =
           sum
-            [ fulfilled ci child * shareOfParent child
+            [ fulfilled child * shareOfParent child
               | child <- children z
             ]
       where
         manualContribShare =
-          let contribWeight = contributionChildrenWeight ci z
-              nonContribFulfillment = nonContributionChildrenFulfillment ci z
+          let contribWeight = contributionChildrenWeight z
+              nonContribFulfillment = nonContributionChildrenFulfillment z
            in fromJust (nodeManualFulfillment node) * contribWeight
                 + nonContribFulfillment * (1.0 - contribWeight)
 
 -- Calculate the desire (unfulfilled need) of a node
-desire :: Forest -> TreeZipper -> Float
-desire ci z = 1.0 - fulfilled ci z
+desire :: TreeZipper -> Float
+desire z = 1.0 - fulfilled z
 
 ---------------------------
 -- Mutual Fulfillment --
@@ -486,7 +486,7 @@ shareOfGeneralFulfillment ci target contributor =
               )
               (target : descendants target)
           -- Calculate total contribution from these nodes
-          total = sum [weight node * fulfilled ci node | node <- contributingNodes]
+          total = sum [weight node * fulfilled node | node <- contributingNodes]
           -- Get number of contributors for each node
           contributorCounts = map (Set.size . nodeContributors . zipperCurrent) contributingNodes
           -- Divide each node's contribution by its number of contributors
@@ -496,7 +496,7 @@ shareOfGeneralFulfillment ci target contributor =
                 | (w, f, c) <-
                     zip3
                       (map weight contributingNodes)
-                      (map (fulfilled ci) contributingNodes)
+                      (map fulfilled contributingNodes)
                       contributorCounts
               ]
        in weightedTotal
