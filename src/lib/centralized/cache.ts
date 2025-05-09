@@ -9,32 +9,69 @@ export function emptyCache<K>(): Cache<K> {
 	};
 }
 
-// Lookup a value in the cache
+// Monadic cache lookup - mirrors the Haskell Maybe monad pattern
 export function cacheLookup<K>(key: K, cache: Cache<K>): [CacheValue, Cache<K>] | null {
 	const value = cache.cacheMap.get(key);
 	if (value) {
-		// Create a new cache with updated hits count (immutable pattern)
-		const updatedCache: Cache<K> = {
-			...cache,
-			cacheHits: cache.cacheHits + 1
-		};
-		return [value, updatedCache];
+		return [value, { ...cache, cacheHits: cache.cacheHits + 1 }];
 	}
 	return null;
 }
 
-// Insert a value into the cache
+// Cache insert maintaining immutability
 export function cacheInsert<K>(key: K, value: CacheValue, cache: Cache<K>): Cache<K> {
-	// Create a new map with the new key-value pair (immutable pattern)
 	const newMap = new Map(cache.cacheMap);
 	newMap.set(key, value);
-
-	// Create a new cache with updated map and misses count
 	return {
 		cacheMap: newMap,
 		cacheMisses: cache.cacheMisses + 1,
 		cacheHits: cache.cacheHits
 	};
+}
+
+// Cacheable type class implementation
+// This mirrors Haskell's typeclass pattern
+export const Cacheable = {
+	fromInt: (i: number): CacheValue => ({ type: 'int', value: i }),
+	fromFloat: (f: number): CacheValue => ({ type: 'float', value: f }),
+	fromStringList: (l: string[]): CacheValue => ({ type: 'stringList', value: l }),
+	fromShareMap: (m: ShareMap): CacheValue => ({ type: 'shareMap', value: m }),
+
+	toInt: (cv: CacheValue): number | null => (cv.type === 'int' ? cv.value : null),
+	toFloat: (cv: CacheValue): number | null => (cv.type === 'float' ? cv.value : null),
+	toStringList: (cv: CacheValue): string[] | null => (cv.type === 'stringList' ? cv.value : null),
+	toShareMap: (cv: CacheValue): ShareMap | null => (cv.type === 'shareMap' ? cv.value : null)
+};
+
+// Implement withCacheM - monadic style caching function that mirrors the Haskell version
+export function withCacheM<K, V, A>(
+	key: K,
+	toCache: (v: V) => CacheValue,
+	fromCache: (cv: CacheValue) => V | null,
+	compute: (a: A) => V,
+	cache: Cache<K>,
+	arg: A
+): [V, Cache<K>] {
+	const lookupResult = cacheLookup(key, cache);
+
+	if (lookupResult) {
+		const [value, updatedCache] = lookupResult;
+		const extracted = fromCache(value);
+
+		if (extracted !== null) {
+			return [extracted, updatedCache];
+		}
+
+		return computeAndStore(updatedCache);
+	}
+
+	return computeAndStore(cache);
+
+	function computeAndStore(currentCache: Cache<K>): [V, Cache<K>] {
+		const result = compute(arg);
+		const newCache = cacheInsert(key, toCache(result), currentCache);
+		return [result, newCache];
+	}
 }
 
 // Helper functions to work with CacheValue

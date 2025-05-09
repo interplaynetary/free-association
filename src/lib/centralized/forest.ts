@@ -2,7 +2,7 @@ import type { Forest, TreeZipper } from './types';
 import { makePoints, createRootNode, addChild, enterChild } from './node';
 import { emptyCache } from './cache';
 
-// Add a TreeZipper to the forest
+// Add a TreeZipper to the forest (pure function)
 export function addToForest(forest: Forest, zipper: TreeZipper): Forest {
 	const id = zipper.zipperCurrent.nodeId;
 	const newForest = new Map(forest);
@@ -10,14 +10,13 @@ export function addToForest(forest: Forest, zipper: TreeZipper): Forest {
 	return newForest;
 }
 
-// Merge multiple forests into one (newer entries take precedence)
+// Merge multiple forests (mirrors Haskell's mergeContributors)
 export function mergeForests(forests: Forest[]): Forest {
-	if (forests.length === 0) return new Map();
-
+	// Use reduce to fold over the forests (mirrors Haskell's foldl')
 	return forests.reduce((result, forest) => {
-		// For each forest, add all its entries to the result
 		const newForest = new Map(result);
 
+		// Prefer newer entries (matches Haskell implementation)
 		for (const [id, zipper] of forest) {
 			newForest.set(id, zipper);
 		}
@@ -26,7 +25,12 @@ export function mergeForests(forests: Forest[]): Forest {
 	}, new Map<string, TreeZipper>());
 }
 
-// Create a TreeZipper from a node ID and forest
+// The ? operator (mirrors Haskell's ?)
+export function maybeOr<T>(maybeValue: T | null | undefined, defaultValue: T): T {
+	return maybeValue !== null && maybeValue !== undefined ? maybeValue : defaultValue;
+}
+
+// Helper to find a zipper in the forest
 export function getZipper(forest: Forest, nodeId: string): TreeZipper | null {
 	return forest.get(nodeId) || null;
 }
@@ -34,7 +38,6 @@ export function getZipper(forest: Forest, nodeId: string): TreeZipper | null {
 // Create an empty zipper with default values
 export function createEmptyZipper(id: string): TreeZipper {
 	const emptyNode = createRootNode(id, id, makePoints(0), [], null);
-
 	return {
 		zipperCurrent: emptyNode,
 		zipperContext: null
@@ -129,4 +132,21 @@ export function createExampleForest(): { forest: Forest; ci: Forest } {
 	const ci: Forest = new Map(forest);
 
 	return { forest, ci };
+}
+
+// Merge multiple contributors exactly as in the Haskell version
+export function mergeContributors(forests: Forest[]): Forest {
+	return forests.reduce((acc, forest) => {
+		const newForest = new Map(acc);
+		// For each entry in forest, add to newForest (new entries override old)
+		for (const [id, zipper] of forest) {
+			newForest.set(id, zipper);
+		}
+		return newForest;
+	}, new Map<string, TreeZipper>());
+}
+
+// Optional helper for safe navigation (mirrors Haskell's ? operator)
+export function optional<T>(maybeValue: T | null | undefined, defaultValue: T): T {
+	return maybeValue !== null && maybeValue !== undefined ? maybeValue : defaultValue;
 }

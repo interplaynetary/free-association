@@ -2,6 +2,8 @@ import type { Forest, Node, TreeZipper, Points, Cache } from './types';
 import {
 	cacheLookup,
 	cacheInsert,
+	withCacheM,
+	Cacheable,
 	fromFloat,
 	fromInt,
 	toFloat,
@@ -32,87 +34,83 @@ export function totalPointsCacheKey(nodeId: string): string {
 	return `${nodeId}_total_points`;
 }
 
-// Calculate total points from all children
-export function totalChildPoints(zipper: TreeZipper): number {
-	const current = zipper.zipperCurrent;
-	const cache = current.nodeCache;
-	const cacheKey = totalPointsCacheKey(current.nodeId);
-
-	const lookupResult = cacheLookup(cacheKey, cache);
-
-	if (lookupResult) {
-		const [value, updatedCache] = lookupResult;
-		const total = toInt(value);
-
-		if (total !== null) {
-			return total;
-		}
-
-		return computeAndCache(updatedCache, cacheKey);
-	}
-
-	return computeAndCache(cache, cacheKey);
-
-	function computeAndCache(cacheInstance: Cache<string>, key: string): number {
-		// Calculate sum of children's points
-		let total = 0;
-		for (const [_, child] of current.nodeChildren) {
-			total += getPoints(child.nodePoints);
-		}
-
-		// Update cache
-		const newCache = cacheInsert(key, fromInt(total), cacheInstance);
-		current.nodeCache = newCache;
-
-		return total;
-	}
+// Helper to run a cache computation on a node (mirrors runNodeCache)
+export function runNodeCache<A>(
+	computation: (n: Node) => [A, Node['nodeCache']],
+	node: Node
+): [A, Node] {
+	const [result, newCache] = computation(node);
+	return [result, { ...node, nodeCache: newCache }];
 }
 
-// Calculate a node's weight with caching
-export function weight(zipper: TreeZipper): number {
-	const current = zipper.zipperCurrent;
-	const cacheKey = weightCacheKey(current.nodeId);
+// Mirror the Haskell withNodeCache higher-order function
+export function withNodeCache<A>(
+	computation: (z: TreeZipper) => (n: Node) => [A, Node['nodeCache']],
+	z: TreeZipper
+): A {
+	const current = z.zipperCurrent;
+	const [result, _] = runNodeCache(computation(z), current);
+	return result;
+}
 
-	// Root node has weight 1.0
-	if (!zipper.zipperContext) {
-		return 1.0;
-	}
+// Calculate total points from children with caching
+export function totalChildPoints(z: TreeZipper): number {
+	return withNodeCache(
+		(zipper) => (node) => {
+			const cacheKey = totalPointsCacheKey(node.nodeId);
 
-	const lookupResult = cacheLookup(cacheKey, current.nodeCache);
+			return withCacheM(
+				cacheKey,
+				Cacheable.fromInt,
+				Cacheable.toInt,
+				() => {
+					let total = 0;
+					for (const [_, child] of node.nodeChildren) {
+						total += getPoints(child.nodePoints);
+					}
+					return total;
+				},
+				node.nodeCache,
+				undefined
+			);
+		},
+		z
+	);
+}
 
-	if (lookupResult) {
-		const [value, updatedCache] = lookupResult;
-		const cachedWeight = toFloat(value);
+// Calculate node weight with caching
+export function weight(z: TreeZipper): number {
+	return withNodeCache(
+		(zipper) => (node) => {
+			const cacheKey = weightCacheKey(node.nodeId);
 
-		if (cachedWeight !== null) {
-			return cachedWeight;
-		}
+			// Root node has weight 1.0
+			if (!zipper.zipperContext) {
+				return [1.0, node.nodeCache];
+			}
 
-		// Compute if cache miss or wrong type
-		const w = computeWeight(current);
-		const newCache = cacheInsert(cacheKey, fromFloat(w), updatedCache);
-		current.nodeCache = newCache;
-		return w;
-	}
+			return withCacheM(
+				cacheKey,
+				Cacheable.fromFloat,
+				Cacheable.toFloat,
+				() => {
+					const parent = exitToParent(zipper);
+					if (!parent) return 0;
 
-	// Compute if not in cache
-	const w = computeWeight(current);
-	const newCache = cacheInsert(cacheKey, fromFloat(w), current.nodeCache);
-	current.nodeCache = newCache;
-	return w;
+					const total = totalChildPoints(parent);
+					if (total === 0) return 0;
 
-	function computeWeight(node: Node): number {
-		const parentZipper = exitToParent(zipper);
-		if (!parentZipper) return 0;
+					const currentPoints = getPoints(node.nodePoints);
+					const parentWeight = weight(parent);
 
-		const total = totalChildPoints(parentZipper);
-		if (total === 0) return 0;
-
-		const currentPoints = getPoints(node.nodePoints);
-		const parentWeight = weight(parentZipper);
-
-		return (currentPoints / total) * parentWeight;
-	}
+					return (currentPoints / total) * parentWeight;
+				},
+				node.nodeCache,
+				undefined
+			);
+		},
+		z
+	);
 }
 
 // Calculate share of parent's total points
@@ -255,66 +253,55 @@ export function getContributorNode(forest: Forest, contribId: string): TreeZippe
 }
 
 // Calculate fulfillment with caching
-export function fulfilled(forest: Forest, zipper: TreeZipper): number {
-	const current = zipper.zipperCurrent;
-	const cacheKey = fulfillmentCacheKey(current.nodeId);
-	const cache = current.nodeCache;
+export function fulfilled(forest: Forest, z: TreeZipper): number {
+	return withNodeCache(
+		(zipper) => (node) => {
+			const cacheKey = fulfillmentCacheKey(node.nodeId);
 
-	const lookupResult = cacheLookup(cacheKey, cache);
-
-	if (lookupResult) {
-		const [value, updatedCache] = lookupResult;
-		const cachedFulfillment = toFloat(value);
-
-		if (cachedFulfillment !== null) {
-			return cachedFulfillment;
-		}
-
-		const f = computeFulfillment(current);
-		const newCache = cacheInsert(cacheKey, fromFloat(f), updatedCache);
-		current.nodeCache = newCache;
-		return f;
-	}
-
-	const f = computeFulfillment(current);
-	const newCache = cacheInsert(cacheKey, fromFloat(f), cache);
-	current.nodeCache = newCache;
-	return f;
-
-	function computeFulfillment(node: Node): number {
-		// Leaf contribution nodes have 100% fulfillment
-		if (node.nodeChildren.size === 0) {
-			return isContribution(forest, zipper) ? 1.0 : 0.0;
-		}
-
-		// If manual fulfillment is set and has direct contribution children
-		if (node.nodeManualFulfillment !== null && hasDirectContributionChild(forest, zipper)) {
-			if (!hasNonContributionChild(forest, zipper)) {
-				return node.nodeManualFulfillment;
-			}
-
-			// Calculate weighted fulfillment between contribution and non-contribution children
-			const contribWeight = contributionChildrenWeight(forest, zipper);
-			const nonContribFulfillment = nonContributionChildrenFulfillment(forest, zipper);
-
-			return (
-				node.nodeManualFulfillment * contribWeight + nonContribFulfillment * (1.0 - contribWeight)
+			return withCacheM(
+				cacheKey,
+				Cacheable.fromFloat,
+				Cacheable.toFloat,
+				() => computeFulfillment(node),
+				node.nodeCache,
+				undefined
 			);
-		}
 
-		// Otherwise, calculate weighted sum of children's fulfillment
-		let sum = 0;
-		const childIds = Array.from(node.nodeChildren.keys());
+			function computeFulfillment(n: Node): number {
+				// Leaf contribution nodes have 100% fulfillment
+				if (n.nodeChildren.size === 0) {
+					return isContribution(forest, z) ? 1.0 : 0.0;
+				}
 
-		for (const id of childIds) {
-			const childZipper = enterChild(id, zipper);
-			if (!childZipper) continue;
+				// Manual fulfillment with contribution children
+				if (n.nodeManualFulfillment !== null && hasDirectContributionChild(forest, z)) {
+					if (!hasNonContributionChild(forest, z)) {
+						return n.nodeManualFulfillment;
+					}
 
-			sum += fulfilled(forest, childZipper) * shareOfParent(childZipper);
-		}
+					// Weighted fulfillment calculation
+					const contribWeight = contributionChildrenWeight(forest, z);
+					const nonContribFulfillment = nonContributionChildrenFulfillment(forest, z);
 
-		return sum;
-	}
+					return (
+						n.nodeManualFulfillment * contribWeight + nonContribFulfillment * (1.0 - contribWeight)
+					);
+				}
+
+				// Sum children's weighted fulfillment
+				let sum = 0;
+				for (const childId of n.nodeChildren.keys()) {
+					const childZipper = enterChild(childId, z);
+					if (!childZipper) continue;
+
+					sum += fulfilled(forest, childZipper) * shareOfParent(childZipper);
+				}
+
+				return sum;
+			}
+		},
+		z
+	);
 }
 
 // Calculate the desire (unfulfilled need) of a node
@@ -322,52 +309,39 @@ export function desire(forest: Forest, zipper: TreeZipper): number {
 	return 1.0 - fulfilled(forest, zipper);
 }
 
-// Get all descendants of a node with caching
-export function getAllDescendantsCached(zipper: TreeZipper): TreeZipper[] {
-	const current = zipper.zipperCurrent;
-	const currentId = current.nodeId;
-	const cache = current.nodeCache;
-	const cacheKey = descendantsCacheKey(currentId);
-
-	const lookupResult = cacheLookup(cacheKey, cache);
-
-	if (lookupResult) {
-		const [value, updatedCache] = lookupResult;
-		const descendantIds = toStringList(value);
-
-		if (descendantIds !== null) {
-			// We only cache the IDs, so we need to actually get the descendants
-			return [zipper, ...getAllDescendants(zipper)];
-		}
-
-		return computeAndCache(cache, cacheKey);
-	}
-
-	return computeAndCache(cache, cacheKey);
-
-	function computeAndCache(cacheInstance: Cache<string>, key: string): TreeZipper[] {
-		const descendants = getAllDescendants(zipper);
-		const descendantIds = descendants.map((z) => z.zipperCurrent.nodeId);
-
-		const newCache = cacheInsert(key, fromStringList(descendantIds), cacheInstance);
-		current.nodeCache = newCache;
-
-		return [zipper, ...descendants];
-	}
+// Get all descendants with caching
+export function getAllDescendantsCached(z: TreeZipper): TreeZipper[] {
+	return [z, ...withNodeCache(getAllDescendantsCachedM, z)];
 }
 
-// Get all descendants of a node
-export function getAllDescendants(zipper: TreeZipper): TreeZipper[] {
-	const result: TreeZipper[] = [];
-	const childIds = Array.from(zipper.zipperCurrent.nodeChildren.keys());
+// Monadic version that mirrors Haskell's version
+function getAllDescendantsCachedM(z: TreeZipper): (node: Node) => [TreeZipper[], Cache<string>] {
+	return (node) => {
+		const currentId = node.nodeId;
+		const cacheKey = descendantsCacheKey(currentId);
 
-	for (const id of childIds) {
-		const childZipper = enterChild(id, zipper);
-		if (!childZipper) continue;
+		const [cachedIds, updatedCache] = withCacheM(
+			cacheKey,
+			Cacheable.fromStringList,
+			Cacheable.toStringList,
+			() => {
+				const descendants = getAllDescendants(z);
+				return descendants.map((d) => d.zipperCurrent.nodeId);
+			},
+			node.nodeCache,
+			undefined
+		);
 
-		result.push(childZipper);
-		result.push(...getAllDescendants(childZipper));
-	}
+		// Return the proper tuple structure
+		return [getAllDescendants(z), updatedCache];
+	};
+}
 
-	return result;
+// Get all descendants (mirrors Haskell's concatMap pattern)
+export function getAllDescendants(z: TreeZipper): TreeZipper[] {
+	return Array.from(z.zipperCurrent.nodeChildren.keys()).flatMap((id) => {
+		const child = enterChild(id, z);
+		if (!child) return [];
+		return [child, ...getAllDescendants(child)];
+	});
 }
