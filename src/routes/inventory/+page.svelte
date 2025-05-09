@@ -1,5 +1,5 @@
 <script lang="ts">
-	import NestedPieExample from '$lib/components/examples/NestedPieExample.svelte';
+	import NestedPieExamples from '$lib/components/examples/NestedPieExamples.svelte';
 	import Inventory from '$lib/components/Inventory.svelte';
 	import Query from '$lib/components/maps/Query.svelte';
 	import Shares from '$lib/components/Shares.svelte';
