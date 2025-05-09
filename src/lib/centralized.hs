@@ -48,33 +48,17 @@ cacheInsert key value cache =
     }
 
 -- Helper functions to work with CacheValue
-fromFloat :: Float -> CacheValue
-fromFloat = FloatValue
-
-fromInt :: Int -> CacheValue
-fromInt = IntValue
-
-fromStringList :: [String] -> CacheValue
-fromStringList = StringListValue
-
-fromShareMap :: ShareMap -> CacheValue
-fromShareMap = ShareMapValue
-
-toFloat :: CacheValue -> Maybe Float
-toFloat (FloatValue f) = Just f
-toFloat _ = Nothing
-
-toInt :: CacheValue -> Maybe Int
-toInt (IntValue i) = Just i
-toInt _ = Nothing
+class Cacheable a where
+  toCache   :: a -> CacheValue
+  fromCache :: CacheValue -> Maybe a
 
 toStringList :: CacheValue -> Maybe [String]
-toStringList (StringListValue l) = Just l
-toStringList _ = Nothing
+toStringList = fromCache
 
-toShareMap :: CacheValue -> Maybe ShareMap
-toShareMap (ShareMapValue m) = Just m
-toShareMap _ = Nothing
+instance Cacheable Int        where { toCache = IntValue;        fromCache (IntValue i)        = Just i ; fromCache _ = Nothing }
+instance Cacheable Float      where { toCache = FloatValue;      fromCache (FloatValue f)      = Just f ; fromCache _ = Nothing }
+instance Cacheable ShareMap   where { toCache = ShareMapValue;   fromCache (ShareMapValue m)   = Just m ; fromCache _ = Nothing }
+instance Cacheable [String]   where { toCache = StringListValue; fromCache (StringListValue l) = Just l ; fromCache _ = Nothing }
 
 -- Node type with unified cache
 data Node = Node
@@ -118,28 +102,23 @@ emptyProviderSharesCache :: ProviderSharesCache
 emptyProviderSharesCache = ProviderSharesCache emptyCache
 
 -- Generic caching function
-withCache ::
-  (Ord k) =>
-  k ->
-  (b -> CacheValue) ->
-  (CacheValue -> Maybe b) ->
-  (a -> b) ->
-  Cache k ->
-  a ->
-  (b, Cache k)
-withCache key constructor extractor compute cache arg =
+withCache
+  :: (Ord k, Cacheable b)
+  => k              -- key
+  -> (a -> b)       -- compute
+  -> Cache k        -- cache
+  -> a              -- argument to compute
+  -> (b, Cache k)
+withCache key compute cache arg =
   case cacheLookup key cache of
-    Just (value, updatedCache) ->
-      case extractor value of
-        Just v -> (v, updatedCache)
-        Nothing -> computeAndCache updatedCache
-    Nothing -> computeAndCache cache
+    Just (cv, updated) ->
+      maybe (computeAndStore updated) (\v -> (v, updated)) (fromCache cv)
+    Nothing -> computeAndStore cache
   where
-    computeAndCache currentCache =
-      let computed = compute arg
-          newValue = constructor computed
-          newCache = cacheInsert key newValue currentCache
-       in (computed, newCache)
+    computeAndStore c =
+      let v  = compute arg
+          cv = toCache v
+      in (v, cacheInsert key cv c)
 
 ----------------------
 -- Core Data Types --
@@ -223,6 +202,31 @@ getCurrentPath z = reverse $ getPath z []
       Nothing -> acc
       Just parent -> getPath parent (nodeId (zipperCurrent z) : acc)
 
+-- Enhanced tree traversal helpers
+-- | Get the child zippers of the current node
+children :: TreeZipper -> [TreeZipper]
+children z = catMaybes [enterChild cid z | cid <- Map.keys (nodeChildren $ zipperCurrent z)]
+
+-- | Generic fold over the children
+foldChildren :: (b -> TreeZipper -> b) -> b -> TreeZipper -> b
+foldChildren f z0 tz = foldl' f z0 (children tz)
+
+-- | Generic map over the children
+mapChildren :: (TreeZipper -> a) -> TreeZipper -> [a]
+mapChildren f = map f . children
+
+-- | Check if any child satisfies a predicate
+anyChild :: (TreeZipper -> Bool) -> TreeZipper -> Bool
+anyChild p = any p . children
+
+-- | Check if all children satisfy a predicate
+allChildren :: (TreeZipper -> Bool) -> TreeZipper -> Bool
+allChildren p = all p . children
+
+-- | Get all descendants (excluding self)
+descendants :: TreeZipper -> [TreeZipper]
+descendants = tail . getAllDescendantsCached
+
 ----------------------------
 -- Tree Modification API --
 ----------------------------
@@ -263,10 +267,10 @@ addChild name pts contribs manual z@(TreeZipper current ctx) =
       key = totalPointsCacheKey (nodeId current)
       currentCache = nodeCache current
       currentTotal = case cacheLookup key currentCache of
-        Just (value, _) -> Maybe.fromMaybe 0 (toInt value)
+        Just (value, _) -> Maybe.fromMaybe 0 (fromCache value)
         Nothing -> 0
       newTotal = currentTotal + getPoints pts
-      newCache = cacheInsert key (fromInt newTotal) currentCache
+      newCache = cacheInsert key (toCache newTotal) currentCache
       -- Clear all parent caches since structure has changed
       clearedCache = emptyCache
       updatedCurrent =
@@ -286,17 +290,9 @@ totalChildPoints z =
   let current = zipperCurrent z
       cache = nodeCache current
       cacheKey = totalPointsCacheKey (nodeId current)
-   in case cacheLookup cacheKey cache of
-        Just (value, updatedCache) ->
-          case toInt value of
-            Just total -> total
-            Nothing -> computeAndCache updatedCache cacheKey
-        Nothing -> computeAndCache cache cacheKey
-  where
-    computeAndCache cache key =
-      let total = sum $ map (getPoints . nodePoints) $ Map.elems (nodeChildren $ zipperCurrent z)
-          newCache = cacheInsert key (fromInt total) cache
-       in total
+      computeTotal _ = sum $ mapChildren (getPoints . nodePoints . zipperCurrent) z
+      (total, _) = withCache cacheKey computeTotal cache ()
+   in total
 
 -- Calculate a node's weight with caching
 weight :: TreeZipper -> Float
@@ -306,18 +302,9 @@ weight z =
    in case zipperContext z of
         Nothing -> 1.0 -- Root node has weight 1.0
         Just ctx ->
-          case cacheLookup cacheKey (nodeCache current) of
-            Just (value, updatedCache) ->
-              case toFloat value of
-                Just w -> w
-                Nothing ->
-                  let w = computeWeight current
-                      newCache = cacheInsert cacheKey (fromFloat w) updatedCache
-                   in w
-            Nothing ->
-              let w = computeWeight current
-                  newCache = cacheInsert cacheKey (fromFloat w) (nodeCache current)
-               in w
+          let computeWeightVal _ = computeWeight current
+              (w, _) = withCache cacheKey computeWeightVal (nodeCache current) ()
+           in w
   where
     computeWeight node
       | total == 0 = 0
@@ -339,60 +326,49 @@ shareOfParent z
     total = totalChildPoints parent
     currentPoints = getPoints (nodePoints $ zipperCurrent z)
 
-isContribution :: Forest -> TreeZipper -> Bool
-isContribution ci z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
+-- Predicates for node types
+-- | Check if a node is a contribution node (has contributors and is not root)
+isContribution :: TreeZipper -> Bool
+isContribution z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
 
 -- Check if a node has direct contribution children
-hasDirectContributionChild :: Forest -> TreeZipper -> Bool
-hasDirectContributionChild ci z = any isContributor childZippers
-  where
-    current = zipperCurrent z
-    childIds = Map.keys (nodeChildren current)
-    childZippers = catMaybes [enterChild id z | id <- childIds]
-    isContributor = isContribution ci
+hasDirectContributionChild :: TreeZipper -> Bool
+hasDirectContributionChild = anyChild isContribution
 
 -- Check if a node has non-contribution children
-hasNonContributionChild :: Forest -> TreeZipper -> Bool
-hasNonContributionChild ci z = not (all (isContribution ci) childZippers)
-  where
-    current = zipperCurrent z
-    childIds = Map.keys (nodeChildren current)
-    childZippers = catMaybes [enterChild id z | id <- childIds]
-    isContributor = isContribution ci
+hasNonContributionChild :: TreeZipper -> Bool
+hasNonContributionChild = not . allChildren isContribution
 
 -- Calculate the proportion of total child points from contribution children
-contributionChildrenWeight :: Forest -> TreeZipper -> Float
-contributionChildrenWeight ci z =
-  let childZippers = catMaybes [enterChild id z | id <- Map.keys (nodeChildren $ zipperCurrent z)]
-      (contribWeight, totalWeight) = foldl' accumWeight (0, 0) childZippers
+contributionChildrenWeight :: TreeZipper -> Float
+contributionChildrenWeight z =
+  let (contribWeight, totalWeight) = foldChildren accumWeight (0, 0) z
    in if totalWeight == 0 then 0 else contribWeight / totalWeight
   where
     accumWeight (cw, tw) child =
       let w = weight child
-       in if isContribution ci child
+       in if isContribution child
             then (cw + w, tw + w)
             else (cw, tw + w)
 
 -- Sum fulfillment from children matching a predicate
-childrenFulfillment :: Forest -> (TreeZipper -> Bool) -> TreeZipper -> Float
-childrenFulfillment ci pred z =
+childrenFulfillment :: (TreeZipper -> Bool) -> TreeZipper -> Float
+childrenFulfillment pred z =
   sum
-    [ fulfilled ci child * shareOfParent child
-      | child <- Maybe.mapMaybe (`enterChild` z) (Map.keys $ nodeChildren $ zipperCurrent z),
-        pred child
+    [ fulfilled child * shareOfParent child
+      | child <- children z, pred child
     ]
 
 -- Calculate the fulfillment from contribution children
-contributionChildrenFulfillment :: Forest -> TreeZipper -> Float
-contributionChildrenFulfillment ci = childrenFulfillment ci (isContribution ci)
+contributionChildrenFulfillment :: TreeZipper -> Float
+contributionChildrenFulfillment = childrenFulfillment isContribution
 
 -- Calculate the fulfillment from non-contribution children
-nonContributionChildrenFulfillment :: Forest -> TreeZipper -> Float
-nonContributionChildrenFulfillment ci z =
-  let childZippers = catMaybes [enterChild id z | id <- Map.keys (nodeChildren $ zipperCurrent z)]
-      nonContribChildren = filter (not . isContribution ci) childZippers
+nonContributionChildrenFulfillment :: TreeZipper -> Float
+nonContributionChildrenFulfillment z =
+  let nonContribChildren = filter (not . isContribution) (children z)
       weights = map weight nonContribChildren
-      fulfillments = map (fulfilled ci) nonContribChildren
+      fulfillments = map fulfilled nonContribChildren
       weightedFulfillments = zipWith (*) weights fulfillments
       totalWeight = sum weights
    in if totalWeight == 0
@@ -413,47 +389,37 @@ getContributorNode contribIndex contribId =
    in listToMaybe (Set.toList instances)
 
 -- Calculate fulfillment with caching
-fulfilled :: Forest -> TreeZipper -> Float
-fulfilled ci z =
+fulfilled :: TreeZipper -> Float
+fulfilled z =
   let current = zipperCurrent z
       cacheKey = fulfillmentCacheKey (nodeId current)
       cache = nodeCache current
-   in case cacheLookup cacheKey cache of
-        Just (value, updatedCache) ->
-          case toFloat value of
-            Just f -> f
-            Nothing ->
-              let f = computeFulfillment current
-                  newCache = cacheInsert cacheKey (fromFloat f) updatedCache
-               in f
-        Nothing ->
-          let f = computeFulfillment current
-              newCache = cacheInsert cacheKey (fromFloat f) cache
-           in f
+      computeFulfillmentVal _ = computeFulfillment current
+      (f, _) = withCache cacheKey computeFulfillmentVal cache ()
+   in f
   where
     computeFulfillment node
       | Map.null (nodeChildren node) =
-          if isContribution ci z then 1.0 else 0.0
-      | isJust (nodeManualFulfillment node) && hasDirectContributionChild ci z =
-          if not (hasNonContributionChild ci z)
+          if isContribution z then 1.0 else 0.0
+      | isJust (nodeManualFulfillment node) && hasDirectContributionChild z =
+          if not (hasNonContributionChild z)
             then fromJust $ nodeManualFulfillment node
             else manualContribShare
       | otherwise =
           sum
-            [ fulfilled ci child * shareOfParent child
-              | child <- childZippers
+            [ fulfilled child * shareOfParent child
+              | child <- children z
             ]
       where
         manualContribShare =
-          let contribWeight = contributionChildrenWeight ci z
-              nonContribFulfillment = nonContributionChildrenFulfillment ci z
+          let contribWeight = contributionChildrenWeight z
+              nonContribFulfillment = nonContributionChildrenFulfillment z
            in fromJust (nodeManualFulfillment node) * contribWeight
                 + nonContribFulfillment * (1.0 - contribWeight)
-        childZippers = Maybe.mapMaybe (`enterChild` z) (Map.keys $ nodeChildren node)
 
 -- Calculate the desire (unfulfilled need) of a node
-desire :: Forest -> TreeZipper -> Float
-desire ci z = 1.0 - fulfilled ci z
+desire :: TreeZipper -> Float
+desire z = 1.0 - fulfilled z
 
 ---------------------------
 -- Mutual Fulfillment --
@@ -469,11 +435,11 @@ shareOfGeneralFulfillment ci target contributor =
             filter
               ( \node ->
                   Set.member contribId (nodeContributors (zipperCurrent node))
-                    && isContribution ci node
+                    && isContribution node
               )
-              (getAllDescendantsCached target)
+              (target : descendants target)
           -- Calculate total contribution from these nodes
-          total = sum [weight node * fulfilled ci node | node <- contributingNodes]
+          total = sum [weight node * fulfilled node | node <- contributingNodes]
           -- Get number of contributors for each node
           contributorCounts = map (Set.size . nodeContributors . zipperCurrent) contributingNodes
           -- Divide each node's contribution by its number of contributors
@@ -483,7 +449,7 @@ shareOfGeneralFulfillment ci target contributor =
                 | (w, f, c) <-
                     zip3
                       (map weight contributingNodes)
-                      (map (fulfilled ci) contributingNodes)
+                      (map fulfilled contributingNodes)
                       contributorCounts
               ]
        in weightedTotal
@@ -505,13 +471,12 @@ getAllDescendantsCached z =
     computeAndCache cache key =
       let descendants = getAllDescendants z
           descendantIds = map (nodeId . zipperCurrent) descendants
-          newCache = cacheInsert key (fromStringList descendantIds) cache
+          newCache = cacheInsert key (toCache descendantIds) cache
        in z : descendants
 
+-- | Get all descendants (including self)
 getAllDescendants :: TreeZipper -> [TreeZipper]
-getAllDescendants z = z : concatMap (maybe [] getAllDescendants) childZippers
-  where
-    childZippers = map (`enterChild` z) (Map.keys $ nodeChildren $ zipperCurrent z)
+getAllDescendants z = z : concatMap getAllDescendants (children z)
 
 -- Calculate mutual fulfillment between two nodes with caching
 mutualFulfillment :: Forest -> TreeZipper -> TreeZipper -> Float
@@ -519,18 +484,9 @@ mutualFulfillment ci a b =
   let aNode = zipperCurrent a
       bNode = zipperCurrent b
       cacheKey = mutualCacheKey (nodeId aNode) (nodeId bNode)
-   in case cacheLookup cacheKey (nodeCache aNode) of
-        Just (value, updatedCache) ->
-          case toFloat value of
-            Just v -> v
-            Nothing ->
-              let v = compute ()
-                  newCache = cacheInsert cacheKey (fromFloat v) updatedCache
-               in v
-        Nothing ->
-          let v = compute ()
-              newCache = cacheInsert cacheKey (fromFloat v) (nodeCache aNode)
-           in v
+      computeMutual _ = compute ()
+      (v, _) = withCache cacheKey computeMutual (nodeCache aNode) ()
+   in v
   where
     compute _ =
       let aToB = shareOfGeneralFulfillment ci a b
@@ -542,19 +498,19 @@ mutualFulfillment ci a b =
 ------------------------------
 
 -- Get all contributors that mutually fulfill with the current node
-getMutualContributors :: ContributorIndex -> TreeZipper -> [(String, Float)]
-getMutualContributors ci z =
-  [ (nodeId $ zipperCurrent contributor, mutualFulfillment ci z contributor)
-    | contributor <- validContributors
-  ]
-  where
-    contributors = nodeContributors $ zipperCurrent z
-    validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
+-- getMutualContributors :: ContributorIndex -> TreeZipper -> [(String, Float)]
+-- getMutualContributors ci z =
+--   [ (nodeId $ zipperCurrent contributor, mutualFulfillment ci z contributor)
+--     | contributor <- validContributors
+--   ]
+--   where
+--     contributors = nodeContributors $ zipperCurrent z
+--     validContributors = catMaybes [Map.lookup c ci | c <- Set.toList contributors]
 
 -- Find the path to the highest mutual fulfillment node
 findHighestMutualPath :: Forest -> TreeZipper -> TreeZipper -> Maybe NavigationPath
 findHighestMutualPath ci root target =
-  let allPaths = map getCurrentPath $ getAllDescendantsCached root
+  let allPaths = map getCurrentPath $ root : descendants root
       pathScores = [(path, scorePath path) | path <- allPaths]
       scorePath path = case followPath path root of
         Nothing -> 0
@@ -569,7 +525,7 @@ maximumByMay cmp xs = Just $ maximumBy cmp xs
 -- Get all nodes with mutual fulfillment above a threshold
 getHighMutualNodes :: Forest -> TreeZipper -> Float -> [TreeZipper]
 getHighMutualNodes ci z threshold =
-  filter (\node -> mutualFulfillment ci z node > threshold) (getAllDescendantsCached z)
+  filter (\node -> mutualFulfillment ci z node > threshold) (z : descendants z)
 
 -- Calculate mutual fulfillment between all pairs in a forest
 calculateForestMutualFulfillment :: Forest -> Forest -> [(String, String, Float)]
@@ -640,17 +596,9 @@ providerSharesCached cache ci provider maxDepth =
   let providerId = nodeId $ zipperCurrent provider
       key = (providerId, maxDepth)
       currentCache = sharesCache cache
-   in case cacheLookup key currentCache of
-        Just (value, updatedCache) ->
-          case toShareMap value of
-            Just shares -> (shares, cache {sharesCache = updatedCache})
-            Nothing -> computeAndCache key currentCache
-        Nothing -> computeAndCache key currentCache
-  where
-    computeAndCache key currentCache =
-      let shares = providerShares ci provider maxDepth
-          newCache = cacheInsert key (fromShareMap shares) currentCache
-       in (shares, cache {sharesCache = newCache})
+      computeShares _ = providerShares ci provider maxDepth
+      (shares, updatedCache) = withCache key computeShares currentCache ()
+   in (shares, cache {sharesCache = updatedCache})
 
 -- Simplified interface functions that use providerShares
 directShare :: Forest -> TreeZipper -> String -> Float
@@ -663,7 +611,7 @@ receiverShareFrom ci receiver provider capacity maxDepth =
   let providerShareMap = providerShares ci provider maxDepth
       receiverId = nodeId $ zipperCurrent receiver
    in Map.findWithDefault 0 receiverId providerShareMap
-   
+
 -- Get a person's total share in a specific capacity
 getPersonalCapacityShare :: Forest -> TreeZipper -> Capacity -> Float
 getPersonalCapacityShare ci person capacity =
