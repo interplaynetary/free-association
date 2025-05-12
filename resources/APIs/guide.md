@@ -331,6 +331,7 @@ function get_car(cb) {
         });
     });
 }
+
 Approach number two
 Getting the soul and then making a direct lookup for that soul.
 
@@ -432,6 +433,7 @@ const certificate = await SEA.certify(
   writable_spaces,
   issuer
 );
+
 Using this approach we can be authenticated with one user but still write to many other users’ graphs using different certificates. There is nothing secret about the certificates (they are encrypted), so they can even be shared via the graph.
 
 What you would typically do is create a certificate and the store that certificate somewhere on the graph of the user who created it. Everyone can read the encrypted certificate. Only the specified users can use it. And no one can override the certificate (given that this is not allowed by the/a certificate).

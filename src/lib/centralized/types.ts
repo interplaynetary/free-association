@@ -104,8 +104,8 @@ export interface Node {
 	nodeId: string;
 	nodeName: string;
 	nodePoints: Points;
-	nodeChildren: Map<string, Node>;
-	nodeContributors: Set<string>;
+	nodeChildren: Map<string, Node>; // 1 - many
+	nodeContributors: Set<string>; // 1 - many
 	nodeManualFulfillment: number | null;
 	nodeCapacities: CapacityInventory;
 	nodeCapacityShares: CapacityShares;
