@@ -3,12 +3,22 @@
 	import { GunUserTree, enterChild, exitToParent } from '$lib/centralized';
 	import { onMount } from 'svelte';
 	import { user, authenticate } from '$lib/gun/gunSetup';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
 	// Get current zipper, path and pathInfo from global state
 	let currentZipper = $derived(globalState.currentZipper);
 	let currentPath = $derived(globalState.currentPath);
 	let pathInfo = $derived(globalState.pathInfo);
 	let currentUser = $derived(globalState.currentUser);
+
+	// Get current route from $page store
+	let currentRoute = $derived($page.url.pathname);
+	let isSoulRoute = $derived(
+		currentRoute.startsWith('/') &&
+			(currentRoute === '/' ||
+				(!currentRoute.startsWith('/inventory') && !currentRoute.startsWith('/contacts')))
+	);
 
 	// Login state
 	let showLoginPanel = $state(false);
@@ -37,13 +47,6 @@
 		};
 	});
 
-	// Mock user data
-	const mockUsers = {
-		alice: { password: 'password123', alias: 'Alice', pub: 'ALICE123' },
-		bob: { password: 'password123', alias: 'Bob', pub: 'BOB456' },
-		charlie: { password: 'password123', alias: 'Charlie', pub: 'CHARLIE789' }
-	};
-
 	// Toggle login panel
 	function toggleLoginPanel() {
 		showLoginPanel = !showLoginPanel;
@@ -64,12 +67,19 @@
 			// Prevent default navigation behavior
 			event.preventDefault();
 
-			// If we're already at the root path (index 0 is the current item)
-			if (index === pathInfo.length - 1) {
+			// If we're not in the soul route, navigate to the soul route
+			if (!isSoulRoute) {
+				// First navigate to the root node in the tree
+				globalState.navigateToPathIndex(0);
+				// Then go to the soul route
+				goto('/');
+			}
+			// If we're in the soul route and at the root breadcrumb
+			else if (index === pathInfo.length - 1) {
 				// Toggle login panel
 				toggleLoginPanel();
 			} else {
-				// Navigate to root if we're not already there
+				// We're in soul route but not at root level, navigate to root
 				globalState.navigateToPathIndex(0);
 			}
 		} else {
@@ -85,10 +95,7 @@
 
 	// Update auth message when username changes
 	function updateAuthMessage() {
-		const isExistingUser = username.toLowerCase() in mockUsers;
-		authMessage = username
-			? `Will attempt to sign in${isExistingUser ? '' : ' or create a new account if needed'}`
-			: '';
+		authMessage = username ? 'Will attempt to sign in or create a new account if needed' : '';
 	}
 
 	// Handle login
@@ -286,7 +293,7 @@
 								type="text"
 								id="username"
 								bind:value={username}
-								placeholder="alice, bob, or charlie"
+								placeholder="Enter username"
 								disabled={isLoading}
 								autocomplete="username"
 								oninput={updateAuthMessage}
@@ -300,7 +307,7 @@
 									type={showPassword ? 'text' : 'password'}
 									id="password"
 									bind:value={password}
-									placeholder="password123"
+									placeholder="Enter password"
 									disabled={isLoading}
 									autocomplete="current-password"
 								/>
