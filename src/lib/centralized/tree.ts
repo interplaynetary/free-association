@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { emptyCache, cacheLookup, cacheInsert } from './cache';
 import { weight, fulfilled, desire, mutualFulfillment } from './calculations';
-import { user, recallUser } from '../gun/gunSetup';
+import { user, recallUser, gun } from '../gun/gunSetup';
 
 export function emptyPersistentCache(): PersistentCache {
 	return {
@@ -64,24 +64,18 @@ export class GunUserTree {
 		const userPub = user.is.pub;
 		const nodeId = userPub; // Root node ID is the user's public key
 
-		// Use contributors or default to current user
-		const contributors = contribs || [userPub];
+		// Root nodes should not have contributors
+		// The root node represents the user's tree, not a contributor node
 
 		// Create root node in user space
 		const rootNode = new GunNode(['tree', 'root']);
 
-		// Convert contributors array to Gun-friendly object
-		const contributorsObj: Record<string, boolean> = {};
-		contributors.forEach((contrib) => {
-			contributorsObj[contrib] = true;
-		});
-
-		// Store node data
+		// Store node data with empty contributors
 		await rootNode.put({
 			nodeId,
 			nodeName: name,
 			nodePoints: pts,
-			nodeContributors: contributorsObj, // Use object instead of array
+			nodeContributors: {}, // Empty object for root node
 			nodeManualFulfillment: clampManual(manual)
 		});
 
@@ -91,7 +85,7 @@ export class GunUserTree {
 			nodeName: name,
 			nodePoints: pts,
 			nodeChildren: new Map(),
-			nodeContributors: new Set(contributors),
+			nodeContributors: new Set(), // Empty set for root node
 			nodeManualFulfillment: clampManual(manual),
 			nodeCapacities: new Map(),
 			nodeCapacityShares: new Map(),
@@ -186,8 +180,26 @@ export class GunUserTree {
 				: new GunNode(['tree', 'nodes', parentId, 'children']);
 
 		console.log('[GUN FLOW] Creating parent->child reference in Gun');
-		await parentRef.get(actualChildId).put({ '#': `~${user.is.pub}/tree/nodes/${actualChildId}` });
-		console.log('[GUN FLOW] Parent->child reference created');
+		const childSoul = `~${user.is.pub}/tree/nodes/${actualChildId}`;
+		await parentRef.get(actualChildId).put({ '#': childSoul });
+		console.log('[GUN FLOW] Parent->child reference created with soul:', childSoul);
+
+		// Verify the child reference was created
+		try {
+			const childrenCheck = await parentRef.once();
+			console.log(
+				'[GUN FLOW] Verifying child reference:',
+				childrenCheck && childrenCheck[actualChildId]
+					? 'Found'
+					: 'Not found - this may cause persistence issues'
+			);
+
+			if (!childrenCheck || !childrenCheck[actualChildId]) {
+				console.warn('[GUN FLOW] Child reference may not have been properly created');
+			}
+		} catch (err) {
+			console.error('[GUN FLOW] Error verifying child reference:', err);
+		}
 
 		// Create child node for in-memory representation
 		console.log('[GUN FLOW] Creating in-memory child node representation');
@@ -243,21 +255,32 @@ export class GunUserTree {
 
 			if (!nodeData) return null;
 
-			// Convert contributors object to a Set
-			const contributors = new Set<string>();
-			if (nodeData.nodeContributors) {
-				// If it's an array (old format), use it directly
-				if (Array.isArray(nodeData.nodeContributors)) {
-					nodeData.nodeContributors.forEach((contrib: string) => contributors.add(contrib));
+			console.log(`[GUN FLOW] Raw nodeContributors:`, JSON.stringify(nodeData.nodeContributors));
+
+			let resolvedContributors = nodeData.nodeContributors;
+			if (
+				nodeData.nodeContributors &&
+				typeof nodeData.nodeContributors === 'object' &&
+				nodeData.nodeContributors['#']
+			) {
+				// It's a soul reference, we need to resolve it
+				const soul = nodeData.nodeContributors['#'];
+				console.log(`[GUN FLOW] Resolving contributors reference:`, soul);
+
+				// Use Gun directly with the soul to get the data
+				const contributorsData = await new Promise<any>((resolve) => {
+					gun.get(soul).once((data: any) => resolve(data));
+				});
+
+				if (contributorsData) {
+					resolvedContributors = contributorsData;
+					console.log(`[GUN FLOW] Resolved contributors:`, JSON.stringify(contributorsData));
 				}
-				// If it's an object (new format), use keys where value is true
-				else if (typeof nodeData.nodeContributors === 'object') {
-					Object.entries(nodeData.nodeContributors).forEach(([key, value]) => {
-						if (value === true && key !== '_') {
-							contributors.add(key);
-						}
-					});
-				}
+			}
+
+			// For root nodes, ensure no contributors
+			if (isRoot) {
+				resolvedContributors = {};
 			}
 
 			// Convert data to Node structure
@@ -266,7 +289,17 @@ export class GunUserTree {
 				nodeName: nodeData.nodeName || '',
 				nodePoints: nodeData.nodePoints || 0,
 				nodeChildren: new Map(),
-				nodeContributors: contributors,
+				nodeContributors: isRoot
+					? new Set()
+					: new Set(
+							Array.isArray(resolvedContributors)
+								? resolvedContributors
+								: resolvedContributors && typeof resolvedContributors === 'object'
+									? Object.keys(resolvedContributors).filter(
+											(key) => key !== '_' && resolvedContributors[key] === true
+										)
+									: []
+						),
 				nodeManualFulfillment: clampManual(nodeData.nodeManualFulfillment),
 				nodeCapacities: new Map(),
 				nodeCapacityShares: new Map(),
@@ -339,6 +372,8 @@ export class GunUserTree {
 					return null; // Node doesn't exist
 				}
 
+				console.log(`[GUN FLOW] Raw nodeContributors:`, JSON.stringify(nodeData.nodeContributors));
+
 				console.log(`[GUN FLOW] Loaded node data:`, {
 					id: nodeData.nodeId,
 					name: nodeData.nodeName,
@@ -346,14 +381,47 @@ export class GunUserTree {
 					manual: nodeData.nodeManualFulfillment
 				});
 
+				let resolvedContributors = nodeData.nodeContributors;
+				if (
+					nodeData.nodeContributors &&
+					typeof nodeData.nodeContributors === 'object' &&
+					nodeData.nodeContributors['#']
+				) {
+					// It's a soul reference, we need to resolve it
+					const soul = nodeData.nodeContributors['#'];
+					console.log(`[GUN FLOW] Resolving contributors reference:`, soul);
+
+					// Use Gun directly with the soul to get the data
+					const contributorsData = await new Promise<any>((resolve) => {
+						gun.get(soul).once((data: any) => resolve(data));
+					});
+
+					if (contributorsData) {
+						resolvedContributors = contributorsData;
+						console.log(`[GUN FLOW] Resolved contributors:`, JSON.stringify(contributorsData));
+					}
+				}
+
+				// For root nodes, ensure no contributors
+				if (isRoot) {
+					resolvedContributors = {};
+				}
+
 				// Convert contributors object to Set
 				const contributors = new Set<string>();
-				if (nodeData.nodeContributors) {
-					Object.keys(nodeData.nodeContributors)
-						.filter((key) => nodeData.nodeContributors[key] === true)
-						.forEach((contrib) => {
-							contributors.add(contrib);
+				if (!isRoot && resolvedContributors) {
+					// If it's an array (old format), use it directly
+					if (Array.isArray(resolvedContributors)) {
+						resolvedContributors.forEach((contrib: string) => contributors.add(contrib));
+					}
+					// If it's an object (new format), use keys where value is true
+					else if (typeof resolvedContributors === 'object') {
+						Object.entries(resolvedContributors).forEach(([key, value]) => {
+							if (value === true && key !== '_') {
+								contributors.add(key);
+							}
 						});
+					}
 				}
 				console.log(`[GUN FLOW] Converted contributors:`, Array.from(contributors));
 
@@ -399,8 +467,14 @@ export class GunUserTree {
 								let actualChildId = childId;
 
 								if (childData && typeof childData === 'object' && childData['#']) {
-									const parts = childData['#'].split('/');
+									// Extract the actual node ID from the soul reference
+									const soul = childData['#'];
+									console.log(`[GUN FLOW] Resolving child reference soul:`, soul);
+
+									// Soul format is typically ~USER_PUB/tree/nodes/NODE_ID
+									const parts = soul.split('/');
 									actualChildId = parts.length > 0 ? parts[parts.length - 1] : childId;
+									console.log(`[GUN FLOW] Extracted child ID from soul:`, actualChildId);
 								}
 								console.log(`[GUN FLOW] Processing child ${childId}, resolved ID:`, actualChildId);
 
@@ -659,6 +733,88 @@ export class GunUserTree {
 		trees: Map<string, TreeZipper>
 	): number {
 		return mutualFulfillment(trees, a, b);
+	}
+
+	/**
+	 * Delete a node and its children from Gun database
+	 * @param nodeId ID of the node to delete
+	 * @returns Promise resolving to true if deletion was successful
+	 */
+	static async deleteNode(nodeId: string): Promise<boolean> {
+		console.log('[GUN FLOW] deleteNode started:', nodeId);
+
+		// Ensure user is authenticated
+		if (!user.is?.pub) {
+			console.error('[GUN FLOW] User not authenticated');
+			throw new Error('User must be authenticated to delete a node');
+		}
+
+		try {
+			// Don't allow deleting the root node
+			if (nodeId === user.is.pub) {
+				console.error('[GUN FLOW] Cannot delete root node');
+				return false;
+			}
+
+			// Get node reference
+			const nodePath = ['tree', 'nodes', nodeId];
+			const nodeRef = new GunNode(nodePath);
+
+			// Get node data to check for children
+			const nodeData = await nodeRef.once();
+
+			if (!nodeData) {
+				console.error('[GUN FLOW] Node not found:', nodeId);
+				return false;
+			}
+
+			// First, recursively delete all children
+			// Get children references
+			const childrenRef = new GunNode([...nodePath, 'children']);
+			const children = await childrenRef.once();
+
+			if (children && typeof children === 'object') {
+				// Process each child
+				const childPromises = Object.keys(children)
+					.filter((key) => key !== '_') // Skip Gun metadata
+					.map(async (childId) => {
+						try {
+							// Extract the actual node ID from the reference
+							const childData = children[childId];
+							let actualChildId = childId;
+
+							if (childData && typeof childData === 'object' && childData['#']) {
+								const parts = childData['#'].split('/');
+								actualChildId = parts.length > 0 ? parts[parts.length - 1] : childId;
+							}
+
+							// Recursively delete this child
+							console.log(`[GUN FLOW] Deleting child ${actualChildId} of node ${nodeId}`);
+							await GunUserTree.deleteNode(actualChildId);
+						} catch (error) {
+							console.error(`[GUN FLOW] Error deleting child ${childId}:`, error);
+						}
+					});
+
+				// Wait for all child deletions to complete
+				await Promise.all(childPromises);
+			}
+
+			// Now delete the node itself
+			console.log(`[GUN FLOW] Deleting node data for ${nodeId}`);
+
+			// 1. Delete children references
+			await childrenRef.put(null);
+
+			// 2. Delete the node data
+			await nodeRef.put(null);
+
+			console.log(`[GUN FLOW] Node ${nodeId} deleted successfully`);
+			return true;
+		} catch (error) {
+			console.error('[GUN FLOW] Error deleting node:', error);
+			return false;
+		}
 	}
 }
 
