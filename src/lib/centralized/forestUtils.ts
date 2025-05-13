@@ -1,5 +1,6 @@
 import type { Forest, TreeZipper } from './types';
 import { GunUserTree } from './tree';
+import { gun, user } from '../gun/gunSetup';
 
 /**
  * Get a node's name by ID
@@ -66,25 +67,62 @@ export function filterForestNodes(
 	filterText: string,
 	excludeIds: string[] = []
 ): Array<{ id: string; name: string }> {
-	// Mock data for demonstration - in a real implementation,
-	// this would query GunUserTree for available users
-	const mockUsers = [
-		{ id: 'ALICE123', name: 'Alice' },
-		{ id: 'BOB456', name: 'Bob' },
-		{ id: 'CHARLIE789', name: 'Charlie' }
-	];
+	// Import gun from the gunSetup module
 
-	// Filter by excludeIds
-	let filtered = mockUsers.filter((user) => !excludeIds.includes(user.id));
+	// Return an empty array if gun is not available
+	if (!gun) return [];
 
-	// Apply text filter if provided
-	if (filterText) {
-		const lowerFilter = filterText.toLowerCase();
-		filtered = filtered.filter(
-			(user) =>
-				user.name.toLowerCase().includes(lowerFilter) || user.id.toLowerCase().includes(lowerFilter)
-		);
+	// Get users from Gun database
+	const usersNode = gun.get('users');
+	if (!usersNode) return [];
+
+	// Use the current authenticated user if available
+	const currentUserId = user?.is?.pub || '';
+
+	// Create a default set of users including the current user
+	const defaultUsers: Array<{ id: string; name: string }> = [];
+	if (currentUserId && !excludeIds.includes(currentUserId)) {
+		defaultUsers.push({
+			id: currentUserId,
+			name: user?.is?.alias || 'Current User'
+		});
 	}
 
-	return filtered;
+	// This is a hybrid approach - we return some default users immediately,
+	// but also set up a listener to update the users list when data is available
+	usersNode.map().once((userData: any, userId: string) => {
+		if (!userId || userId === '_' || excludeIds.includes(userId)) return;
+
+		// Get user name from Gun data
+		const userName = userData?.name || userId;
+
+		// Check if this user matches the filter text
+		const lowerFilter = filterText.toLowerCase();
+		if (
+			filterText &&
+			!userName.toLowerCase().includes(lowerFilter) &&
+			!userId.toLowerCase().includes(lowerFilter)
+		) {
+			return;
+		}
+
+		// Add to default users if not already present
+		if (!defaultUsers.some((user) => user.id === userId)) {
+			defaultUsers.push({
+				id: userId,
+				name: userName
+			});
+		}
+	});
+
+	// Also add fallback users if the list is empty
+	if (defaultUsers.length === 0) {
+		return [
+			{ id: 'ALICE123', name: 'Alice' },
+			{ id: 'BOB456', name: 'Bob' },
+			{ id: 'CHARLIE789', name: 'Charlie' }
+		].filter((user) => !excludeIds.includes(user.id));
+	}
+
+	return defaultUsers;
 }

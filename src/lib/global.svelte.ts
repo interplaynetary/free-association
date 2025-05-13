@@ -20,6 +20,10 @@ export interface PathItem {
 	name: string;
 }
 
+// Add a debounce mechanism for path updates
+let pathUpdateTimeout: number | null = null;
+const PATH_UPDATE_DEBOUNCE_MS = 50;
+
 export const globalState = $state({
 	// Core navigation state (using our centralized system)
 	currentForest: new Map() as Forest,
@@ -79,125 +83,121 @@ export const globalState = $state({
 		return path;
 	},
 
-	// Generate path info from currentZipper and currentPath
+	// Update path information based on current path
 	updatePathInfo: () => {
-		if (!globalState.currentZipper) {
-			globalState.pathInfo = [];
-			return;
+		// Debounce path updates to avoid multiple rapid-fire updates
+		if (pathUpdateTimeout !== null) {
+			clearTimeout(pathUpdateTimeout);
 		}
 
-		// First, ensure we have the complete path
-		if (globalState.currentZipper) {
-			const fullPath = globalState.fullPathFromZipper(globalState.currentZipper);
+		pathUpdateTimeout = window.setTimeout(() => {
+			console.log('[FLOW] Updating path info for path:', globalState.currentPath);
 
-			// Only update if the path is different or empty
-			if (
-				fullPath.length > 0 &&
-				(globalState.currentPath.length === 0 ||
-					JSON.stringify(fullPath) !== JSON.stringify(globalState.currentPath))
-			) {
-				console.log('Updating path in updatePathInfo:', globalState.currentPath, '->', fullPath);
-				globalState.currentPath = fullPath;
-			}
-		}
-
-		const pathInfo: PathItem[] = [];
-
-		// Now build the path info
-		if (globalState.currentPath.length > 0) {
-			// Get the root zipper
-			const rootId = globalState.currentPath[0];
-			const rootZipper = globalState.currentForest.get(rootId);
-
-			if (!rootZipper) {
+			if (globalState.currentPath.length === 0) {
 				globalState.pathInfo = [];
 				return;
 			}
 
-			// Start with the root node
-			let currentZipper = rootZipper;
-			pathInfo.push({
+			// Reset path info and rebuild
+			const newPathInfo: { id: string; name: string }[] = [];
+
+			// Get the root tree
+			const rootId = globalState.currentPath[0];
+			const rootTree = globalState.currentForest.get(rootId);
+
+			if (!rootTree) {
+				console.error('[FLOW] Root tree not found in forest:', rootId);
+				globalState.pathInfo = newPathInfo;
+				return;
+			}
+
+			// Add root to path info
+			newPathInfo.push({
 				id: rootId,
-				name: rootZipper.zipperCurrent.nodeName || rootId
+				name: rootTree.zipperCurrent.nodeName
 			});
 
-			// Follow the path and collect names
-			for (let i = 1; i < globalState.currentPath.length; i++) {
-				const childId = globalState.currentPath[i];
-				const childZipper = enterChild(childId, currentZipper);
+			// Process each path segment
+			if (globalState.currentPath.length > 1) {
+				let currentTree = rootTree;
 
-				if (!childZipper) break;
+				// Skip the first item (root) and process each path segment
+				for (let i = 1; i < globalState.currentPath.length; i++) {
+					const nodeId = globalState.currentPath[i];
+					const childTree = enterChild(nodeId, currentTree);
 
-				pathInfo.push({
-					id: childId,
-					name: childZipper.zipperCurrent.nodeName || childId
-				});
+					if (!childTree) {
+						console.error('[FLOW] Child not found in path:', nodeId);
+						break;
+					}
 
-				currentZipper = childZipper;
+					// Add to path info
+					newPathInfo.push({
+						id: nodeId,
+						name: childTree.zipperCurrent.nodeName
+					});
+
+					// Move to next level
+					currentTree = childTree;
+				}
 			}
-		}
 
-		globalState.pathInfo = pathInfo;
+			// Update the global path info
+			globalState.pathInfo = newPathInfo;
+			console.log('[FLOW] Path info updated:', newPathInfo);
+
+			// Clear the timeout reference
+			pathUpdateTimeout = null;
+		}, PATH_UPDATE_DEBOUNCE_MS);
 	},
 
-	// Navigate to a specific zipper using path IDs
-	navigateToPath: (path: string[]) => {
-		if (!path.length || !globalState.currentForest) return;
+	// Navigate to a specific path (array of node IDs)
+	navigateToPath: (newPath: string[]) => {
+		console.log('[FLOW] navigateToPath called with:', newPath);
 
-		const rootId = path[0];
+		if (!newPath.length) {
+			console.error('[FLOW] Empty path provided to navigateToPath');
+			return;
+		}
+
+		const rootId = newPath[0];
+		console.log('[FLOW] Root ID from path:', rootId);
+
+		// Get the root TreeZipper
 		const rootZipper = globalState.currentForest.get(rootId);
-
 		if (!rootZipper) {
-			console.error('Root node not found:', rootId);
+			console.error('[FLOW] Root zipper not found in forest for ID:', rootId);
 			return;
 		}
 
-		if (path.length === 1) {
-			// Just navigating to the root
-			globalState.currentZipper = { ...rootZipper };
-			globalState.currentPath = [rootId];
-			globalState.updatePathInfo();
-			return;
-		}
+		// Start navigation from the root
+		let currentZipper = rootZipper;
+		let currentPath = [rootId];
+		console.log('[FLOW] Starting navigation from root node:', rootId);
 
-		// Navigate to the path
-		let currentZipper = { ...rootZipper };
-		let valid = true;
+		// Navigate through the path, skipping the first element (root)
+		for (let i = 1; i < newPath.length; i++) {
+			const nodeId = newPath[i];
+			console.log(`[FLOW] Navigating to path segment ${i}:`, nodeId);
 
-		// Follow the path step by step
-		for (let i = 1; i < path.length; i++) {
-			const childId = path[i];
-			const childZipper = enterChild(childId, currentZipper);
-
+			// Try to enter child node
+			const childZipper = enterChild(nodeId, currentZipper);
 			if (!childZipper) {
-				console.error(`Child node not found: ${childId} at path index ${i}`);
-				valid = false;
+				console.error(`[FLOW] Child not found in zipper during navigation:`, nodeId);
 				break;
 			}
 
-			currentZipper = { ...childZipper };
+			// Update current zipper and path
+			currentZipper = childZipper;
+			currentPath.push(nodeId);
+			console.log(`[FLOW] Successfully navigated to:`, nodeId);
 		}
 
-		if (valid) {
-			globalState.currentZipper = currentZipper;
-
-			// Re-compute the full path (this ensures we have the complete path)
-			const fullPath = globalState.fullPathFromZipper(currentZipper);
-			if (fullPath.length > 0) {
-				console.log('Using reconstructed path in navigateToPath:', fullPath);
-				globalState.currentPath = fullPath;
-			} else {
-				// Fallback to the provided path if reconstruction fails
-				console.log('Using provided path in navigateToPath:', path);
-				globalState.currentPath = [...path];
-			}
-
-			globalState.updatePathInfo();
-
-			const nodeName = currentZipper.zipperCurrent.nodeName || path[path.length - 1];
-		} else {
-			globalState.showToast('Navigation failed', 'error');
-		}
+		// Update the global state
+		console.log('[FLOW] Navigation complete, final path:', currentPath);
+		globalState.currentZipper = currentZipper;
+		globalState.currentPath = currentPath;
+		globalState.updatePathInfo();
 	},
 
 	// Navigate to a specific index in the current path
@@ -359,7 +359,8 @@ export const globalState = $state({
 			// If not in memory, fetch from database
 			if (!userTree) {
 				try {
-					userTree = await GunUserTree.fetchNode(userPub);
+					const fetchedTree = await GunUserTree.fetchNode(userPub);
+					userTree = fetchedTree || undefined;
 				} catch (fetchError) {
 					console.warn('Error fetching user tree, will try to create new:', fetchError);
 				}
@@ -432,8 +433,11 @@ export const globalState = $state({
 	addNode: async (nodeId: string, points: number, name?: string) => {
 		if (!globalState.currentZipper || !globalState.currentUser) return false;
 
+		console.log('[FLOW] addNode started:', { nodeId, points, name });
+
 		try {
 			const parentId = globalState.currentZipper.zipperCurrent.nodeId;
+			console.log('[FLOW] Adding child to parent:', parentId);
 
 			// Add child using GunUserTree
 			const childZipper = await GunUserTree.addChild(
@@ -442,35 +446,69 @@ export const globalState = $state({
 				points,
 				nodeId // Use provided nodeId
 			);
+			console.log('[FLOW] childZipper created:', childZipper?.zipperCurrent.nodeId);
 
 			if (!childZipper) {
-				console.error('Failed to add child node');
+				console.error('[FLOW] Failed to add child node - childZipper is null');
 				return false;
 			}
 
 			// Save the node
+			console.log('[FLOW] Saving node to Gun:', nodeId);
 			await GunUserTree.saveNode(childZipper);
+			console.log('[FLOW] Node saved to Gun');
 
-			// Reload the current tree to reflect changes
-			const updatedRootTree = await GunUserTree.loadFullTree();
-			if (!updatedRootTree) return false;
+			// Instead of reloading the entire tree, we'll update our current forest and zipper directly
+			// This is more efficient than a full tree reload
+			console.log('[FLOW] Updating current zipper and forest with new node');
 
-			// Update forest and current zipper
-			const rootId = updatedRootTree.zipperCurrent.nodeId;
-			globalState.currentForest.set(rootId, updatedRootTree);
+			// 1. Add the child to the current node's children map
+			const currentNode = globalState.currentZipper.zipperCurrent;
+			currentNode.nodeChildren.set(nodeId, childZipper.zipperCurrent);
 
-			// Navigate to the same location in the updated tree
-			if (globalState.currentPath.length > 0) {
-				globalState.navigateToPath(globalState.currentPath);
-			} else {
-				globalState.currentZipper = updatedRootTree;
-				globalState.currentPath = [rootId];
-				globalState.updatePathInfo();
+			// 2. Update the current zipper with the modified node
+			const updatedCurrentZipper = {
+				...globalState.currentZipper,
+				zipperCurrent: currentNode
+			};
+
+			// 3. Update the forest with the modified tree
+			const rootId = globalState.currentPath[0];
+
+			// Find the root tree in the forest
+			let rootTree = globalState.currentForest.get(rootId);
+			if (rootTree) {
+				// If we're at the root, update it directly
+				if (rootId === parentId) {
+					rootTree = updatedCurrentZipper;
+				} else {
+					// Otherwise, we need to navigate to the root and apply changes
+					// This is more complex, so in this case we'll just reload the tree for consistency
+					console.log('[FLOW] Node added deeper in the tree, updating root tree');
+					const updatedRootTree = await GunUserTree.loadFullTree();
+
+					if (!updatedRootTree) {
+						console.error('[FLOW] Failed to reload tree after adding node');
+						return false;
+					}
+
+					rootTree = updatedRootTree;
+				}
+
+				// Update the forest with the new root tree
+				globalState.currentForest.set(rootId, rootTree);
 			}
 
+			// 4. Update the current zipper
+			globalState.currentZipper = updatedCurrentZipper;
+
+			// 5. No need to update the path as we're still at the same location
+
+			console.log('[FLOW] Local state updated with new node, path:', globalState.currentPath);
+			console.log('[FLOW] addNode completed successfully');
 			return true;
 		} catch (err) {
-			console.error('Error adding node:', err);
+			console.error('[FLOW] Error adding node:', err);
 			return false;
 		}
 	},
@@ -537,76 +575,100 @@ export const globalState = $state({
 			name?: string;
 			points?: number;
 			contributors?: string[];
-			manualFulfillment?: number | null;
+			manual?: number | null;
 		}
-	) => {
+	): Promise<boolean> => {
+		console.log('[FLOW] updateNode started:', { nodeId, updates });
 		if (!globalState.currentZipper) return false;
 
 		try {
-			// Find the node in the tree
-			let nodeToUpdate = null;
-			if (globalState.currentZipper.zipperCurrent.nodeId === nodeId) {
+			// Check if updating current node
+			const isCurrentNode = globalState.currentZipper.zipperCurrent.nodeId === nodeId;
+			console.log('[FLOW] Updating current node?', isCurrentNode);
+
+			let nodeToUpdate: TreeZipper | null = null;
+
+			if (isCurrentNode) {
+				// Use current zipper directly
 				nodeToUpdate = globalState.currentZipper;
 			} else {
-				// Try to find the node by navigating from current
-				for (const [childId, _] of globalState.currentZipper.zipperCurrent.nodeChildren) {
-					if (childId === nodeId) {
-						nodeToUpdate = enterChild(childId, globalState.currentZipper);
-						break;
-					}
-				}
+				// Find the child zipper
+				const parentZipper = globalState.currentZipper;
+				nodeToUpdate = enterChild(nodeId, parentZipper);
 			}
 
 			if (!nodeToUpdate) {
-				// Load the node directly
-				nodeToUpdate = await GunUserTree.fetchNode(nodeId);
-			}
-
-			if (!nodeToUpdate) {
-				console.error(`Node not found: ${nodeId}`);
+				console.error('[FLOW] Node not found for update:', nodeId);
 				return false;
 			}
 
-			// Update node properties
-			const updatedNode = { ...nodeToUpdate.zipperCurrent };
-			if (updates.name !== undefined) updatedNode.nodeName = updates.name;
-			if (updates.points !== undefined) updatedNode.nodePoints = updates.points;
+			// Apply updates to the node
+			console.log('[FLOW] Applying updates to node');
+			const updatedNode: Node = { ...nodeToUpdate.zipperCurrent };
+
+			if (updates.name !== undefined) {
+				updatedNode.nodeName = updates.name;
+			}
+
+			if (updates.points !== undefined) {
+				updatedNode.nodePoints = updates.points;
+			}
+
 			if (updates.contributors !== undefined) {
 				updatedNode.nodeContributors = new Set(updates.contributors);
 			}
-			if (updates.manualFulfillment !== undefined) {
-				updatedNode.nodeManualFulfillment = updates.manualFulfillment;
+
+			if (updates.manual !== undefined) {
+				updatedNode.nodeManualFulfillment = updates.manual;
 			}
 
 			// Create updated zipper
-			const updatedZipper = {
+			const updatedZipper: TreeZipper = {
 				...nodeToUpdate,
 				zipperCurrent: updatedNode
 			};
 
 			// Save the updated node
+			console.log('[FLOW] Saving updated node to Gun');
 			await GunUserTree.saveNode(updatedZipper);
+			console.log('[FLOW] Node updated in Gun');
 
-			// Reload the full tree
-			const updatedRootTree = await GunUserTree.loadFullTree();
-			if (!updatedRootTree) return false;
+			// Instead of reloading the entire tree, update our in-memory structures directly
+			console.log('[FLOW] Updating in-memory structures');
 
-			// Update the forest
-			const rootId = updatedRootTree.zipperCurrent.nodeId;
-			globalState.currentForest.set(rootId, updatedRootTree);
-
-			// Navigate to the same location in the updated tree
-			if (globalState.currentPath.length > 0) {
-				globalState.navigateToPath(globalState.currentPath);
+			if (isCurrentNode) {
+				// We're updating the current node
+				globalState.currentZipper = updatedZipper;
 			} else {
-				globalState.currentZipper = updatedRootTree;
-				globalState.currentPath = [rootId];
+				// We're updating a child
+				const currentNode = globalState.currentZipper.zipperCurrent;
+
+				// Update the child in the current node's children map
+				currentNode.nodeChildren.set(nodeId, updatedNode);
+
+				// Update the current zipper with the modified children
+				globalState.currentZipper = {
+					...globalState.currentZipper,
+					zipperCurrent: currentNode
+				};
+			}
+
+			// Update path info if we changed a name
+			if (updates.name !== undefined) {
 				globalState.updatePathInfo();
 			}
 
+			// Update the forest with the changes
+			const rootId = globalState.currentPath[0];
+			if (rootId === nodeId) {
+				// If we're updating the root, update it in the forest
+				globalState.currentForest.set(rootId, updatedZipper);
+			}
+
+			console.log('[FLOW] Node update completed successfully');
 			return true;
-		} catch (error) {
-			console.error('Error updating node:', error);
+		} catch (err) {
+			console.error('[FLOW] Error updating node:', err);
 			return false;
 		}
 	},

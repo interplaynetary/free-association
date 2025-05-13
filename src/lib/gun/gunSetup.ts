@@ -1,10 +1,10 @@
 import Gun from 'gun/gun';
 import SEA from 'gun/sea.js';
 import 'gun/axe';
-import 'gun/lib/radix';
-import 'gun/lib/radisk';
-import 'gun/lib/store';
-import 'gun/lib/rindexed';
+//import 'gun/lib/radix';
+//import 'gun/lib/radisk';
+// import 'gun/lib/store';
+//import 'gun/lib/rindexed';
 import 'gun/lib/webrtc';
 import 'gun/lib/then';
 import 'gun/lib/yson.js';
@@ -32,7 +32,8 @@ export const gun = Gun({
 		'http://localhost:8765/gun'
 		//"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
 	],
-	localStorage: false
+	localStorage: false,
+	radisk: false
 });
 
 // Get authenticated user space

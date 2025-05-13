@@ -57,6 +57,27 @@
 		}
 	}
 
+	// Handles the click on a breadcrumb item
+	function handleBreadcrumbClick(index: number, event: MouseEvent) {
+		// If clicking on the root breadcrumb (index 0)
+		if (index === 0) {
+			// Prevent default navigation behavior
+			event.preventDefault();
+
+			// If we're already at the root path (index 0 is the current item)
+			if (index === pathInfo.length - 1) {
+				// Toggle login panel
+				toggleLoginPanel();
+			} else {
+				// Navigate to root if we're not already there
+				globalState.navigateToPathIndex(0);
+			}
+		} else {
+			// For non-root breadcrumbs, navigate as usual
+			globalState.navigateToPathIndex(index);
+		}
+	}
+
 	// Toggle password visibility
 	function togglePasswordVisibility() {
 		showPassword = !showPassword;
@@ -188,8 +209,9 @@
 							href={`/${segment.id}${segment.name ? ':' + segment.name.replace(/\s+/g, '-').toLowerCase() : ''}`}
 							class="breadcrumb-item"
 							class:current={index === pathInfo.length - 1}
+							class:auth-root={index === 0}
 							onclick={(e) => {
-								globalState.navigateToPathIndex(index);
+								handleBreadcrumbClick(index, e);
 							}}
 							tabindex="0"
 							aria-label={segment.name}
@@ -202,24 +224,13 @@
 		</div>
 
 		<div class="header-controls">
-			<a href="/inventory" class="icon-button inventory-button" title="View inventory"
-				><span>📊</span></a
-			>
+			<a href="/inventory" class="icon-button inventory-button" title="View inventory">
+				<span>📊</span>
+			</a>
 
-			{#if currentUser}
-				<!-- Show user avatar and name when logged in -->
-				<div class="user-info" onclick={toggleLoginPanel}>
-					<div class="avatar">
-						<img src={generateAvatar(currentUser.pub)} alt={currentUser.alias} />
-					</div>
-					<span class="user-name">{currentUser.alias}</span>
-				</div>
-			{:else}
-				<!-- Show login button when not logged in -->
-				<button class="icon-button login-button" title="Login" onclick={toggleLoginPanel}>
-					<span>🔑</span>
-				</button>
-			{/if}
+			<a href="/contacts" class="icon-button contacts-button" title="View contacts">
+				<span>👥</span>
+			</a>
 
 			<button
 				class="icon-button add-button"
@@ -356,7 +367,7 @@
 	.login-panel {
 		position: absolute;
 		top: 100%;
-		right: 16px;
+		left: 16px;
 		width: 320px;
 		background-color: white;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -383,7 +394,7 @@
 		content: '';
 		position: absolute;
 		top: -8px;
-		right: 24px;
+		left: 24px;
 		width: 16px;
 		height: 16px;
 		background-color: white;
@@ -397,7 +408,7 @@
 		font-weight: bold;
 		user-select: none;
 		overflow: hidden;
-		max-width: calc(100% - 180px);
+		max-width: calc(100% - 120px);
 	}
 
 	/* Breadcrumb styles */
@@ -423,15 +434,39 @@
 		cursor: pointer;
 		transition: background-color 0.2s;
 		font-size: 1.95em;
+		display: flex;
+		align-items: center;
 	}
 
 	.breadcrumb-item:hover {
-		background-color: rgba(255, 255, 255, 0.2);
+		background-color: rgba(0, 0, 0, 0.05);
 	}
 
 	.breadcrumb-item.current {
 		font-weight: bold;
 		color: #2196f3;
+	}
+
+	.breadcrumb-item.auth-root {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		cursor: pointer;
+		transition: background-color 0.2s;
+	}
+
+	.avatar-inline {
+		display: inline-flex;
+		width: 24px;
+		height: 24px;
+		margin-left: 6px;
+		vertical-align: middle;
+	}
+
+	.avatar-inline img {
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
 	}
 
 	.breadcrumb-separator {
@@ -602,20 +637,6 @@
 		cursor: not-allowed;
 	}
 
-	.user-info {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		cursor: pointer;
-		padding: 4px 8px;
-		border-radius: 16px;
-		transition: background-color 0.2s;
-	}
-
-	.user-info:hover {
-		background-color: rgba(0, 0, 0, 0.05);
-	}
-
 	.avatar {
 		width: 32px;
 		height: 32px;
@@ -635,11 +656,6 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-	}
-
-	.user-name {
-		font-size: 0.9em;
-		font-weight: 500;
 	}
 
 	.user-profile {

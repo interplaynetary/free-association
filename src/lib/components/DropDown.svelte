@@ -2,9 +2,9 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { writable, get } from 'svelte/store';
 	import { filterForestNodes } from '$lib/centralized/forestUtils';
 	import { browser } from '$app/environment';
+	import { gun, user } from '../gun/gunSetup';
 
 	// Props using Svelte 5 runes
 	let {
@@ -36,35 +36,86 @@
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let resultsContainer = $state<HTMLDivElement | null>(null);
 	let initialized = $state(false);
+	let usersArray = $state<Array<{ id: string; name: string }>>([]);
+	let loading = $state(true);
+	let searchFilter = $state(filterText);
 
-	// Create reactive stores
-	const currentFilterTextStore = writable<string>(filterText);
-	const usersStore = writable<Array<{ id: string; name: string }>>([]);
-	const loadingStore = writable<boolean>(false);
+	// Cleanup function for Gun listeners
+	let cleanup: (() => void) | null = null;
 
-	// Effect to update filter text when prop changes
+	// Update the filter when the prop changes
 	$effect(() => {
-		currentFilterTextStore.set(filterText);
+		searchFilter = filterText;
 	});
 
-	// Get current forest from global state (for backward compatibility)
-	let currentForest = $derived(globalState.currentForest);
-
-	// Update forest entries when filter or forest changes
-	$effect(() => {
-		updateUsersList();
-	});
-
-	// Function to update users list based on current forest and filter
+	// Function to update users list based on current filter
 	function updateUsersList() {
-		loadingStore.set(true);
+		loading = true;
 
-		const filter = get(currentFilterTextStore);
-		// Use the helper function that now mocks users data
-		const filteredUsers = filterForestNodes(currentForest, filter, excludeIds);
+		// Clear any previous listener
+		if (cleanup) {
+			cleanup();
+			cleanup = null;
+		}
 
-		usersStore.set(filteredUsers);
-		loadingStore.set(false);
+		// Get initial user list
+		const initialUsers = filterForestNodes(null, searchFilter, excludeIds);
+		usersArray = [...initialUsers];
+
+		// Set up Gun listener for users
+		const userSubscriptions: Record<string, any> = {};
+
+		// Listen to users in Gun
+		const usersRef = gun.get('users');
+
+		const listener = usersRef.map().on((userData: any, userId: string) => {
+			if (!userId || userId === '_' || excludeIds.includes(userId)) return;
+
+			// Skip if this user is already in our subscriptions
+			if (userSubscriptions[userId]) return;
+
+			// Track this subscription
+			userSubscriptions[userId] = true;
+
+			// Get user name
+			const userName = userData?.name || userId;
+
+			// Check if matches filter
+			const matchesFilter =
+				!searchFilter ||
+				userName.toLowerCase().includes(searchFilter.toLowerCase()) ||
+				userId.toLowerCase().includes(searchFilter.toLowerCase());
+
+			if (matchesFilter) {
+				// Add to users array if not already present
+				const existingIndex = usersArray.findIndex((u) => u.id === userId);
+
+				if (existingIndex === -1) {
+					// Add new user
+					usersArray = [...usersArray, { id: userId, name: userName }];
+				} else {
+					// Update existing user
+					const updatedUsers = [...usersArray];
+					updatedUsers[existingIndex] = { id: userId, name: userName };
+					usersArray = updatedUsers;
+				}
+			}
+		});
+
+		// Create cleanup function
+		cleanup = () => {
+			// Unsubscribe from Gun listener
+			if (listener && listener.off) {
+				listener.off();
+			}
+
+			// Clear subscriptions
+			Object.keys(userSubscriptions).forEach((key) => {
+				delete userSubscriptions[key];
+			});
+		};
+
+		loading = false;
 	}
 
 	// Event handlers
@@ -76,10 +127,6 @@
 	function handleSelect(id: string, name: string) {
 		select({ id, name });
 		handleClose();
-	}
-
-	function updateSearchFilter(text: string) {
-		currentFilterTextStore.set(text);
 	}
 
 	// Initialize the component when shown
@@ -144,15 +191,23 @@
 		};
 	}
 
+	// Watch for search filter changes
+	$effect(() => {
+		if (initialized && searchFilter !== undefined) {
+			updateUsersList();
+		}
+	});
+
 	// Lifecycle
 	onMount(() => {
 		if (browser) {
 			initialize();
 
 			// Setup click outside handler
-			const cleanup = show ? setupClickOutside() : undefined;
+			const clickOutsideCleanup = show ? setupClickOutside() : undefined;
 
 			return () => {
+				if (clickOutsideCleanup) clickOutsideCleanup();
 				if (cleanup) cleanup();
 			};
 		}
@@ -172,10 +227,10 @@
 		}
 	});
 
-	// Effect to update user list when filter changes
-	$effect(() => {
-		if (initialized) {
-			updateUsersList();
+	// Cleanup when component is destroyed
+	onDestroy(() => {
+		if (cleanup) {
+			cleanup();
 		}
 	});
 </script>
@@ -196,21 +251,20 @@
 				type="text"
 				placeholder={searchPlaceholder}
 				bind:this={searchInput}
-				bind:value={$currentFilterTextStore}
-				oninput={(e) => updateSearchFilter(e.currentTarget.value)}
+				bind:value={searchFilter}
 			/>
 			<button class="close-button" onclick={handleClose}>×</button>
 		</div>
 
 		<div class="results" bind:this={resultsContainer}>
-			{#if $loadingStore && $usersStore.length === 0}
+			{#if loading && usersArray.length === 0}
 				<div class="message">Loading users...</div>
-			{:else if $usersStore.length === 0}
+			{:else if usersArray.length === 0}
 				<div class="message">
-					{$currentFilterTextStore ? 'No matching users found' : 'No users available'}
+					{searchFilter ? 'No matching users found' : 'No users available'}
 				</div>
 			{:else}
-				{#each $usersStore as item (item.id)}
+				{#each usersArray as item (item.id)}
 					<div class="item" data-id={item.id} onclick={() => handleSelect(item.id, item.name)}>
 						<div class="color-dot" style="background-color: {getColorForUserId(item.id)}"></div>
 						<div class="item-name">{item.name || item.id}</div>

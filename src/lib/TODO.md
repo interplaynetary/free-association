@@ -20,3 +20,12 @@ still the delete functionality is not working! we get a toast that says it was s
 is our Tree.ts correclty using GunNode.ts for deletion? removeChild? removeSubtree?
 
 We have addChild in tree.ts but we dont have removeChild (which should actually recursively delete the whole subtree of the child and its children etc. from the bottom up to the child
+
+
+
+// Can we simplify tree.ts somehow and make it more elgant?
+
+
+// we should mantain a contact list of all the contributors we have ever added.
+// Contact management
+// The dropdown should be based on this (not the public)
