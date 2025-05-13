@@ -223,11 +223,39 @@ export class GunUserTree {
 				}
 				// If it's an object (new format), use keys where value is true
 				else if (typeof nodeData.nodeContributors === 'object') {
-					Object.entries(nodeData.nodeContributors).forEach(([key, value]) => {
-						if (value === true && key !== '_') {
-							contributors.add(key);
+					// Check if it's a reference (soul)
+					if (nodeData.nodeContributors['#']) {
+						// Direct soul reference - use Gun directly to get the data
+						const soul = nodeData.nodeContributors['#'];
+
+						// Use Gun to fetch data directly from the soul
+						const contributorsData = await new Promise<any>((resolve) => {
+							// Import gun dynamically to avoid circular dependencies
+							import('../gun/gunSetup')
+								.then(({ gun }) => {
+									gun.get(soul).once((data: any) => resolve(data));
+								})
+								.catch((err) => {
+									console.error('Error importing gun for contributor resolution:', err);
+									resolve(null);
+								});
+						});
+
+						if (contributorsData) {
+							Object.entries(contributorsData).forEach(([key, value]) => {
+								if (value === true && key !== '_') {
+									contributors.add(key);
+								}
+							});
 						}
-					});
+					} else {
+						// Regular object - process normally
+						Object.entries(nodeData.nodeContributors).forEach(([key, value]) => {
+							if (value === true && key !== '_') {
+								contributors.add(key);
+							}
+						});
+					}
 				}
 			}
 
@@ -266,6 +294,7 @@ export class GunUserTree {
 			throw new Error('User must be authenticated to load a tree');
 		}
 
+		console.log('[GUN FLOW] Starting loadFullTree with maxDepth:', maxDepth);
 		const visited = new Set<string>();
 
 		const loadNodeRecursive = async (id: string, depth = 0): Promise<Node | null> => {
@@ -273,10 +302,16 @@ export class GunUserTree {
 				if (!id || visited.has(id) || depth > maxDepth) return null;
 				visited.add(id);
 
+				console.log(`[GUN FLOW] Loading node: ${id} at depth: ${depth}`);
 				const zipper = await GunUserTree.fetchNode(id);
 				if (!zipper) return null;
 
 				const node = zipper.zipperCurrent;
+				// Log contributors to confirm they're loaded correctly
+				console.log(
+					`[GUN FLOW] Node ${id} has ${node.nodeContributors.size} contributors:`,
+					Array.from(node.nodeContributors)
+				);
 
 				// Load children - different path based on node type
 				const isRoot = id === user?.is?.pub;
@@ -320,6 +355,8 @@ export class GunUserTree {
 					// Wait for all child loads to complete (or fail)
 					await Promise.all(childPromises);
 
+					console.log(`[GUN FLOW] Node ${id} loaded with ${loadedChildren.size} children`);
+
 					// Create the node with loaded children
 					return {
 						...node,
@@ -338,8 +375,11 @@ export class GunUserTree {
 
 		try {
 			// Start loading from the root node (user's public key)
+			console.log('[GUN FLOW] Starting recursive load from root:', user.is.pub);
 			const rootNode = await loadNodeRecursive(user.is.pub);
 			if (!rootNode) return null;
+
+			console.log('[GUN FLOW] Full tree loaded successfully');
 
 			return {
 				zipperCurrent: rootNode,
@@ -431,6 +471,15 @@ export class GunUserTree {
 			contributorsObj[contrib] = true;
 		});
 
+		console.log(
+			'[GUN FLOW] Saving node',
+			node.nodeId,
+			'with',
+			node.nodeContributors.size,
+			'contributors:',
+			Array.from(node.nodeContributors)
+		);
+
 		// Save basic node data
 		await nodeRef.put({
 			nodeId: node.nodeId,
@@ -454,9 +503,10 @@ export class GunUserTree {
 				});
 			}
 		}
+
+		console.log('[GUN FLOW] Node', node.nodeId, 'saved successfully');
 	}
 
-	
 	/**
 	 * Delete a node and its children from Gun database
 	 * @param nodeId ID of the node to delete
@@ -700,4 +750,3 @@ export function updateNodePersistentCache(
 		}
 	};
 }
-

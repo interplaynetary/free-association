@@ -32,28 +32,12 @@ export const gun = Gun({
 		'http://localhost:8765/gun'
 		//"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
 	],
-	localStorage: true
+	localStorage: false
 });
 
 // Get authenticated user space
 export const user = gun.user() as GunUser;
 user.recall({ sessionStorage: true });
-
-// Add error handling for Gun by extending the "in" event handler
-// This captures error messages coming from Gun
-// @ts-ignore - accessing Gun's private API
-gun.on('in', function (msg: any) {
-	// If the message contains an error, handle it
-	if (msg.err) {
-		// Filter out the "Invalid get request" errors to reduce console noise
-		if (typeof msg.err === 'string' && !msg.err.includes('Invalid get request!')) {
-			console.error('[GUN Error]:', msg.err);
-		}
-	}
-	// Pass the message to the next handler
-	// @ts-ignore - accessing Gun's private API
-	this.to.next(msg);
-});
 
 // Type for Gun metadata - helps with GunNode.ts linter errors
 export interface GunMeta {

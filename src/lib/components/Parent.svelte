@@ -562,39 +562,18 @@
 
 				console.log('[UI FLOW] Deleting node:', nodeId);
 
-				// Get the parent node's children without the deleted node
-				const currentNode = globalState.currentZipper.zipperCurrent;
-				const updatedChildren = new Map(currentNode.nodeChildren);
-				updatedChildren.delete(nodeId);
-
-				// Create an updated parent node
-				const updatedParentNode = {
-					...currentNode,
-					nodeChildren: updatedChildren
-				};
-
-				// Create updated zipper with the modified parent
-				const updatedZipper = {
-					...globalState.currentZipper,
-					zipperCurrent: updatedParentNode
-				};
-
-				// Save the changes to Gun
-				console.log('[UI FLOW] Saving updated parent without deleted child');
-				GunUserTree.saveNode(updatedZipper)
-					.then(() => {
-						console.log('[UI FLOW] Parent updated in Gun');
-
-						// Update in-memory state
-						globalState.currentZipper = updatedZipper;
-
-						// Update the forest
-						const rootId = globalState.currentPath[0];
-						if (rootId === globalState.currentZipper.zipperCurrent.nodeId) {
-							globalState.currentForest.set(rootId, updatedZipper);
+				// Use the global state's deleteNode method which properly deletes
+				// the node and its children from Gun database
+				globalState
+					.deleteNode(nodeId)
+					.then((success) => {
+						if (success) {
+							console.log('[UI FLOW] Node deleted successfully');
+							globalState.showToast('Node deleted successfully', 'success');
+						} else {
+							console.error('[UI FLOW] Failed to delete node');
+							globalState.showToast('Error deleting node', 'error');
 						}
-
-						globalState.showToast('Node deleted successfully', 'success');
 					})
 					.catch((err) => {
 						console.error('[UI FLOW] Error deleting node:', err);

@@ -376,6 +376,7 @@ export const globalState = $state({
 
 			// Create new forest
 			const forest: Forest = new Map<string, TreeZipper>();
+			console.log('fullTree', fullTree);
 
 			if (fullTree) {
 				// Update the forest with the full tree
@@ -395,10 +396,36 @@ export const globalState = $state({
 				globalState.currentZipper = userTree;
 				globalState.currentPath = [userPub];
 			} else {
-				// This should never happen, but just in case
-				console.error('No valid tree found for user:', userData);
-				globalState.showToast('Failed to load or create user tree', 'error');
-				return;
+				// No tree exists - create a new root node for this user
+				console.log('No tree found for user, creating new tree:', userData.alias);
+
+				try {
+					// Create a new root node for this user
+					const rootName = userData.alias || 'My Tree';
+					const rootPoints = 100; // Default points for root node
+
+					// Create the root node with name and points
+					const newTree = await GunUserTree.createRootNode(rootName, rootPoints);
+
+					if (!newTree) {
+						throw new Error('Failed to create root node');
+					}
+
+					// Save the new node to ensure it persists
+					await GunUserTree.saveNode(newTree);
+
+					// Add to forest and set as current
+					forest.set(userPub, newTree);
+					globalState.currentForest = forest;
+					globalState.currentZipper = newTree;
+					globalState.currentPath = [userPub];
+
+					console.log('Created new tree for user:', userData.alias);
+				} catch (createError) {
+					console.error('Failed to create new tree for user:', createError);
+					globalState.showToast('Failed to create new tree', 'error');
+					return;
+				}
 			}
 
 			// Update path info
