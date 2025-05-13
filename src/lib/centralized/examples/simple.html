@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Association with GunDB</title>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/then.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/radix.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/radisk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/store.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/rindexed.js"></script>
+    <!-- Import our persistence module -->
+    <script type="module">
+        import {
+            initGun,
+            saveNode,
+            loadNode,
+            saveChildRelation,
+            getChildren,
+            saveSogf,
+            loadSogf,
+            saveProviderShares,
+            loadProviderShares,
+            buildTreeFromRoot,
+            createRoot,
+            addChild,
+            subscribeToTree
+        } from './persist.js';
+
+        // Make accessible in global scope
+        window.treeApi = {
+            initGun,
+            saveNode,
+            loadNode,
+            saveChildRelation,
+            getChildren,
+            saveSogf,
+            loadSogf,
+            saveProviderShares,
+            loadProviderShares,
+            buildTreeFromRoot,
+            createRoot,
+            addChild,
+            subscribeToTree
+        };
+    </script>
+</head>
+
+<body>
+    <div id="app">
+        <h2>Free Association Tree</h2>
+        <div id="login">
+            <button id="createUser">Create User</button>
+            <button id="login">Login</button>
+        </div>
+        <div id="tree-control" style="display: none;">
+            <button id="createRoot">Create Root Node</button>
+            <button id="addChild">Add Child Node</button>
+            <div id="tree-display"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Gun and wait for module to load
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Wait for the module to load
+            setTimeout(() => {
+                initializeApp();
+            }, 500);
+        });
+
+        let currentRootId = null;
+        let userInstance = null;
+        let treeCleanup = null;
+
+        function initializeApp() {
+            // Get API from the module
+            const {
+                initGun,
+                createRoot,
+                addChild,
+                buildTreeFromRoot,
+                subscribeToTree
+            } = window.treeApi;
+
+            // Initialize Gun with a relay server
+            const { gun, user } = initGun(["https://gun-manhattan.herokuapp.com/gun"]);
+            userInstance = user;
+
+            // UI elements
+            const createUserBtn = document.getElementById('createUser');
+            const loginBtn = document.getElementById('login');
+            const createRootBtn = document.getElementById('createRoot');
+            const addChildBtn = document.getElementById('addChild');
+            const treeControl = document.getElementById('tree-control');
+            const treeDisplay = document.getElementById('tree-display');
+
+            // Create a new user
+            createUserBtn.addEventListener('click', async () => {
+                const pair = await SEA.pair();
+                user.create(pair);
+                user.auth(pair);
+                treeControl.style.display = 'block';
+                console.log('User created and logged in');
+            });
+
+            // Login with existing user
+            loginBtn.addEventListener('click', async () => {
+                const pair = await SEA.pair(); // In real app, get from storage
+                user.auth(pair);
+                treeControl.style.display = 'block';
+                console.log('User logged in');
+
+                // Load existing root nodes if any
+                user.get('roots').once(roots => {
+                    if (roots) {
+                        const rootIds = Object.keys(roots).filter(k => k !== '_');
+                        if (rootIds.length > 0) {
+                            currentRootId = rootIds[0];
+                            renderTree(currentRootId);
+                        }
+                    }
+                });
+            });
+
+            // Create a root node
+            createRootBtn.addEventListener('click', async () => {
+                const rootId = 'root_' + Date.now();
+                const rootName = 'Root Node';
+                const rootPoints = 100;
+
+                // Use our API to create a root node
+                await createRoot(user, rootId, rootName, rootPoints);
+
+                // Register as a root
+                user.get('roots').get(rootId).put(true);
+
+                currentRootId = rootId;
+                console.log('Root node created:', rootId);
+
+                // Render the tree
+                renderTree(rootId);
+            });
+
+            // Add a child node
+            addChildBtn.addEventListener('click', async () => {
+                if (!currentRootId) {
+                    alert('Create a root node first');
+                    return;
+                }
+
+                const childId = 'node_' + Date.now();
+                const childName = 'Child Node';
+                const childPoints = 50;
+
+                // Use our API to add a child node
+                await addChild(user, currentRootId, childId, childName, childPoints);
+
+                console.log('Child node added:', childId);
+
+                // Re-render the tree
+                renderTree(currentRootId);
+            });
+
+            // Render the tree structure using our buildTreeFromRoot API
+            async function renderTree(rootId) {
+                treeDisplay.innerHTML = 'Loading...';
+
+                try {
+                    // Use our API to build the full tree structure
+                    const tree = await buildTreeFromRoot(user, rootId);
+
+                    if (!tree) {
+                        treeDisplay.innerHTML = 'Tree not found';
+                        return;
+                    }
+
+                    // Display the tree
+                    treeDisplay.innerHTML = `
+                        <div class="node root-node">
+                            <h3>${tree.nodeName}</h3>
+                            <p>Points: ${tree.nodePoints}</p>
+                            <p>Contributors: ${Array.from(tree.nodeContributors).join(', ') || 'None'}</p>
+                        </div>
+                    `;
+
+                    // Display children
+                    const childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'children';
+
+                    if (tree.nodeChildren && tree.nodeChildren.size > 0) {
+                        // Convert the Map to an array and render each child
+                        Array.from(tree.nodeChildren.entries()).forEach(([childId, childNode]) => {
+                            const childDiv = document.createElement('div');
+                            childDiv.className = 'node child-node';
+                            childDiv.innerHTML = `
+                                <h4>${childNode.nodeName}</h4>
+                                <p>Points: ${childNode.nodePoints}</p>
+                                <p>Contributors: ${Array.from(childNode.nodeContributors).join(', ') || 'None'}</p>
+                            `;
+                            childrenContainer.appendChild(childDiv);
+                        });
+                    } else {
+                        childrenContainer.innerHTML = '<p>No children</p>';
+                    }
+
+                    treeDisplay.appendChild(childrenContainer);
+
+                    // Set up subscription to tree changes
+                    setupSubscription(rootId);
+                } catch (error) {
+                    console.error('Error rendering tree:', error);
+                    treeDisplay.innerHTML = `Error: ${error.message}`;
+                }
+            }
+
+            // Set up subscription to tree changes using our API
+            function setupSubscription(rootId) {
+                // Clean up previous subscription if exists
+                if (treeCleanup) {
+                    treeCleanup();
+                }
+
+                // Subscribe to tree changes
+                treeCleanup = subscribeToTree(user, rootId, (update) => {
+                    console.log('Tree update:', update);
+                    // Re-render the tree on changes
+                    renderTree(rootId);
+                });
+            }
+        }
+    </script>
+
+    <style>
+        .node {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .root-node {
+            background-color: #f0f8ff;
+        }
+
+        .child-node {
+            background-color: #f5f5f5;
+            margin-left: 30px;
+        }
+
+        .children {
+            margin-left: 20px;
+        }
+    </style>
+</body>
+
+</html>

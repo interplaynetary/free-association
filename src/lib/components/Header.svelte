@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { globalState, type UserData } from '$lib/global.svelte';
-	import { enterChild, exitToParent } from '$lib/centralized';
+	import { GunUserTree, enterChild, exitToParent } from '$lib/centralized';
 	import { onMount } from 'svelte';
+	import { user, authenticate } from '$lib/gun/gunSetup';
 
 	// Get current zipper, path and pathInfo from global state
 	let currentZipper = $derived(globalState.currentZipper);
@@ -15,6 +16,7 @@
 	let username = $state('');
 	let password = $state('');
 	let errorMessage = $state('');
+	let authMessage = $state(''); // Added to show authentication mode
 	let showPassword = $state(false);
 
 	// Click outside handler
@@ -50,6 +52,7 @@
 			username = '';
 			password = '';
 			errorMessage = '';
+			authMessage = '';
 			showPassword = false;
 		}
 	}
@@ -57,6 +60,14 @@
 	// Toggle password visibility
 	function togglePasswordVisibility() {
 		showPassword = !showPassword;
+	}
+
+	// Update auth message when username changes
+	function updateAuthMessage() {
+		const isExistingUser = username.toLowerCase() in mockUsers;
+		authMessage = username
+			? `Will attempt to sign in${isExistingUser ? '' : ' or create a new account if needed'}`
+			: '';
 	}
 
 	// Handle login
@@ -70,20 +81,22 @@
 		}
 
 		errorMessage = '';
+		authMessage = '';
 		isLoading = true;
 
 		try {
-			// Simulate authentication delay
-			await new Promise((resolve) => setTimeout(resolve, 800));
+			// Use Gun's authenticate function which handles both login and signup
+			await authenticate(username, password);
 
-			// Check if user exists in our mock data
-			const user = mockUsers[username.toLowerCase() as keyof typeof mockUsers];
+			// Import user again to ensure it's defined and refreshed after authentication
+			const { user: gunUser } = await import('$lib/gun/gunSetup');
 
-			if (user && user.password === password) {
-				// Login successful
+			// If authentication is successful, get user data
+			if (gunUser?.is?.pub) {
+				// Get user data directly from gun.user instance
 				const userData: UserData = {
-					pub: user.pub,
-					alias: user.alias,
+					pub: gunUser.is.pub,
+					alias: gunUser.is.alias || username,
 					username: username.toLowerCase()
 				};
 
@@ -91,19 +104,19 @@
 				localStorage.setItem('centralizedUser', JSON.stringify(userData));
 
 				// Update global state with the logged in user
-				globalState.setCurrentUser(userData);
+				await globalState.setCurrentUser(userData);
 
 				// Reset form fields but keep panel open
 				username = '';
 				password = '';
 				errorMessage = '';
+				authMessage = '';
 				showPassword = false;
 
 				// Show success message
 				globalState.showToast(`Logged in as ${userData.alias}`, 'success');
 			} else {
-				// No user found or password incorrect
-				errorMessage = 'Invalid username or password';
+				errorMessage = 'Authentication failed. Please try again.';
 			}
 		} catch (error) {
 			console.error('Authentication error:', error);
@@ -114,14 +127,16 @@
 	}
 
 	// Handle logout
-	function handleLogout() {
+	async function handleLogout() {
 		localStorage.removeItem('centralizedUser');
-		globalState.setCurrentUser(null);
+		await globalState.setCurrentUser(null);
 		globalState.showToast('Logged out successfully', 'info');
+
 		// Keep panel open and reset form fields
 		username = '';
 		password = '';
 		errorMessage = '';
+		authMessage = '';
 		showPassword = false;
 	}
 
@@ -242,10 +257,15 @@
 			{:else}
 				<!-- Login form -->
 				<div class="login-form">
-					<h3>Sign In</h3>
+					<h3>Sign In / Sign Up</h3>
+					<p class="form-info">Enter your details to sign in, or create a new account</p>
 
 					{#if errorMessage}
 						<div class="error-message">{errorMessage}</div>
+					{/if}
+
+					{#if authMessage}
+						<div class="auth-message">{authMessage}</div>
 					{/if}
 
 					<form onsubmit={handleLogin}>
@@ -258,6 +278,7 @@
 								placeholder="alice, bob, or charlie"
 								disabled={isLoading}
 								autocomplete="username"
+								oninput={updateAuthMessage}
 							/>
 						</div>
 
@@ -293,7 +314,7 @@
 									<div class="spinner small"></div>
 									Signing in...
 								{:else}
-									Sign In
+									Continue
 								{/if}
 							</button>
 							<button
@@ -306,7 +327,7 @@
 							</button>
 						</div>
 
-						<div class="hint">Try: alice/bob/charlie with password: password123</div>
+						<div class="hint">One-click sign in or sign up</div>
 					</form>
 				</div>
 			{/if}
@@ -463,6 +484,14 @@
 		color: #333;
 	}
 
+	.form-info {
+		text-align: center;
+		color: #64748b;
+		font-size: 0.9rem;
+		margin-top: -0.5rem;
+		margin-bottom: 1rem;
+	}
+
 	.form-group {
 		margin-bottom: 12px;
 	}
@@ -500,6 +529,16 @@
 		margin-bottom: 12px;
 		font-size: 0.9em;
 		border-left: 3px solid #e57373;
+	}
+
+	.auth-message {
+		background: #f0f9ff;
+		color: #0369a1;
+		padding: 8px 10px;
+		border-radius: 4px;
+		margin-bottom: 12px;
+		font-size: 0.9em;
+		border-left: 3px solid #0ea5e9;
 	}
 
 	.actions {

@@ -1,6 +1,3 @@
-// Core Data Types for free association system
-// Translated from Haskell to TypeScript
-
 // ==== Cache Types ====
 export type CacheValue =
 	| { type: 'float'; value: number }
@@ -14,9 +11,10 @@ export interface Cache<K> {
 	cacheHits: number;
 }
 
-// ==== Core Types ====
-export interface Points {
-	value: number;
+// Separate type for persistent cache data
+export interface PersistentCache {
+	pcSogfMap: ShareMap | null;
+	pcProviderShares: Map<number, ShareMap>; // Depth -> ShareMap
 }
 
 export interface Ctx {
@@ -103,18 +101,16 @@ export type CapacityShares = Map<string, CapacityShare>;
 export interface Node {
 	nodeId: string;
 	nodeName: string;
-	nodePoints: Points;
+	nodePoints: number;
 	nodeChildren: Map<string, Node>; // 1 - many
 	nodeContributors: Set<string>; // 1 - many
 	nodeManualFulfillment: number | null;
 	nodeCapacities: CapacityInventory;
 	nodeCapacityShares: CapacityShares;
-	nodeCache: Cache<string>;
-}
-
-// ==== Provider Shares Cache ====
-export interface ProviderSharesCache {
-	sharesCache: Cache<string>;
+	// Persistent cache (stored in database)
+	nodePersistentCache: PersistentCache;
+	// Transient cache (in-memory only)
+	nodeTransientCache: Cache<string>;
 }
 
 // ==== Navigation ====

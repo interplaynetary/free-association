@@ -52,6 +52,7 @@ import Data.Time (UTCTime)
 -- Each node should persistently cache its depth-1 provider shares
 -- Time-based invalidation (recalculate every few hours or when relationships change)
 -- This makes higher-depth calculations primarily a "map lookup and combine" operation
+
 -- Bandwidth Optimization:
 -- Fetch only ShareMaps needed for the current calculation
 -- Compress data when transferring over the network
@@ -67,8 +68,11 @@ import Data.Time (UTCTime)
 -- Depth 3: Background calculation with aggressive caching (minutes)
 -- Depth 4+: Server-side computation or approximation
 
+-- What data we want to load upon loading? And to persist!
+-- tree
+-- nodeCache's shareOfGeneralFulfillment, providerShares
 
--- Upon loading, we will want to 
+-- We dont need to persist the whole nodeCache? only those two. Are they currently stored in nodeCache?
 
 ----------------------
 -- Caching System --
@@ -183,7 +187,6 @@ instance Cacheable [String] where toCache = StringListValue; fromCache (StringLi
 data Node = Node
   { nodeId :: String,
     nodeName :: String,
-    nodeOwner :: String,
     nodePoints :: Int,
     nodeChildren :: Map.Map String Node,
     nodeContributors :: Set.Set String,
@@ -315,12 +318,11 @@ descendants = tail . getAllDescendantsCached
 ----------------------------
 -- Tree Modification API --
 ----------------------------
-createRootNode :: String -> String -> String -> Int -> [String] -> Maybe Float -> Node
-createRootNode id name owner pts contribs manual =
+createRootNode :: String -> String -> Int -> [String] -> Maybe Float -> Node
+createRootNode id name pts contribs manual =
   Node
     { nodeId = id,
       nodeName = name,
-      nodeOwner = owner,
       nodePoints = pts,
       nodeChildren = Map.empty,
       nodeContributors = Set.fromList contribs,
@@ -344,7 +346,6 @@ addChild name pts contribs manual z@(TreeZipper current ctx) =
             Node
               { nodeId = name,
                 nodeName = name,
-                nodeOwner = nodeOwner current,
                 nodePoints = pts,
                 nodeChildren = Map.empty,
                 nodeContributors = Set.fromList contribs,
@@ -492,7 +493,7 @@ nonContributionChildrenFulfillment z =
 getContributorInstances :: Forest -> String -> Set.Set TreeZipper
 getContributorInstances contribIndex contribId = Set.singleton $ Map.findWithDefault emptyZipper contribId contribIndex
   where
-    emptyNode = createRootNode contribId contribId contribId 0 [] Nothing
+    emptyNode = createRootNode contribId contribId 0 [] Nothing
     emptyZipper = TreeZipper emptyNode Nothing
 
 -- Safely get a contributor node
@@ -986,9 +987,9 @@ exampleForest = (forest, ci)
         }
 
     -- Create roots with mutual contributors
-    aliceNode = createRootNode "alice" "Alice" "alice" 100 [] Nothing
-    bobNode = createRootNode "bob" "Bob" "bob" 100 [] Nothing
-    charlieNode = createRootNode "charlie" "Charlie" "charlie" 100 [] Nothing -- Removed contributors
+    aliceNode = createRootNode "alice" "Alice" 100 [] Nothing
+    bobNode = createRootNode "bob" "Bob" 100 [] Nothing
+    charlieNode = createRootNode "charlie" "Charlie" 100 [] Nothing -- Removed contributors
     aliceRoot = TreeZipper aliceNode Nothing
     bobRoot = TreeZipper bobNode Nothing
     charlieRoot = TreeZipper charlieNode Nothing

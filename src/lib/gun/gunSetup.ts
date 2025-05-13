@@ -161,30 +161,30 @@ const registerUserInList = (userId: string, userName: string) => {
 export const recallUser = (): Promise<void> => {
 	return new Promise((resolve) => {
 		// Already authenticated? Resolve immediately
-		if (user.is?.pub) {
+		if (user?.is?.pub) {
 			// Fetch and restore alias if needed
-			if (user.is?.alias === user.is?.pub) {
+			if (user?.is?.alias === user?.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
 				user.get('alias').once((alias: string) => {
 					if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
 						// Update user.is.alias with the correct value
-						if (user.is) {
+						if (user?.is) {
 							user.is.alias = alias;
 						}
 						console.log('Restored correct alias:', alias);
 
 						// Register in users list
-						registerUserInList(user.is.pub!, alias);
-					} else if (user.is?.pub && user.is?.alias) {
+						registerUserInList(user?.is?.pub!, alias);
+					} else if (user?.is?.pub && user?.is?.alias) {
 						// Use alias even if it's the same as pub
-						registerUserInList(user.is.pub, user.is.alias);
+						registerUserInList(user?.is?.pub, user?.is?.alias);
 					}
 					resolve();
 				});
 				return;
-			} else if (user.is?.pub && user.is?.alias) {
+			} else if (user?.is?.pub && user?.is?.alias) {
 				// Register in users list with current alias
-				registerUserInList(user.is.pub, user.is.alias);
+				registerUserInList(user?.is?.pub, user?.is?.alias);
 			}
 			resolve();
 			return;
@@ -195,27 +195,27 @@ export const recallUser = (): Promise<void> => {
 			(gun as any).off('auth', authHandler);
 
 			// Check if alias equals pub key, which indicates a potential issue
-			if (user.is?.alias === user.is?.pub && user.is?.pub) {
+			if (user?.is?.alias === user?.is?.pub && user?.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
 				user.get('alias').once((alias: string) => {
-						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-							// Update user.is.alias with the correct value
-							if (user.is) {
-								user.is.alias = alias;
-							}
-							console.log('Restored correct alias:', alias);
-
-							// Register in users list
-							registerUserInList(user.is.pub!, alias);
-						} else if (user.is?.pub && user.is?.alias) {
-							// Use alias even if it's the same as pub
-							registerUserInList(user.is.pub, user.is.alias);
+					if (alias && typeof alias === 'string' && user?.is?.pub && alias !== user?.is?.pub) {
+						// Update user.is.alias with the correct value
+						if (user?.is) {
+							user.is.alias = alias;
 						}
-						resolve();
-					});
-			} else if (user.is?.pub && user.is?.alias) {
+						console.log('Restored correct alias:', alias);
+
+						// Register in users list
+						registerUserInList(user?.is?.pub!, alias);
+					} else if (user?.is?.pub && user?.is?.alias) {
+						// Use alias even if it's the same as pub
+						registerUserInList(user?.is?.pub, user?.is?.alias);
+					}
+					resolve();
+				});
+			} else if (user?.is?.pub && user?.is?.alias) {
 				// Register in users list with current alias
-				registerUserInList(user.is.pub, user.is.alias);
+				registerUserInList(user?.is?.pub, user?.is?.alias);
 				resolve();
 			} else {
 				resolve();
@@ -235,20 +235,20 @@ export const recallUser = (): Promise<void> => {
 			if (user.is?.pub && user.is?.alias === user.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
 				user.get('alias').once((alias: string) => {
-						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-							if (user.is) {
-								user.is.alias = alias;
-							}
-							console.log('Restored correct alias on timeout:', alias);
-
-							// Register in users list
-							registerUserInList(user.is.pub!, alias);
-						} else if (user.is?.pub && user.is?.alias) {
-							// Use current alias as fallback
-							registerUserInList(user.is.pub, user.is.alias);
+					if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
+						if (user.is) {
+							user.is.alias = alias;
 						}
-						resolve();
-					});
+						console.log('Restored correct alias on timeout:', alias);
+
+						// Register in users list
+						registerUserInList(user.is.pub!, alias);
+					} else if (user.is?.pub && user.is?.alias) {
+						// Use current alias as fallback
+						registerUserInList(user.is.pub, user.is.alias);
+					}
+					resolve();
+				});
 			} else if (user.is?.pub && user.is?.alias) {
 				// Register in users list with current alias
 				registerUserInList(user.is.pub, user.is.alias);
@@ -269,7 +269,7 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 				console.log('Authenticated user:', alias);
 
 				// Register authenticated user in users list
-				if (user.is?.pub) {
+				if (user?.is?.pub) {
 					registerUserInList(user.is.pub, alias);
 				}
 
@@ -292,8 +292,8 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 						console.log('Authenticated user:', alias);
 
 						// Register newly created user in users list
-						if (user.is?.pub) {
-							registerUserInList(user.is.pub, alias);
+						if (user?.is?.pub) {
+							registerUserInList(user?.is?.pub, alias);
 						}
 
 						resolve();
@@ -326,12 +326,13 @@ export const getNodeRef = (path: string[]) => {
 	if (user.is?.pub) {
 		// user space
 		ref = user as any;
+		for (const segment of path) {
+			ref = ref.get(segment);
+		}
 	} else {
 		// public space
-		ref = gun as any;
-	}
-	for (const segment of path) {
-		ref = ref.get(segment);
+		//ref = gun as any;
+		console.log('You must be logged in!');
 	}
 	return ref;
 };

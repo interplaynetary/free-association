@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
-	import type { Forest } from '$lib/centralized/types';
 	import { getNodeName } from '../centralized/forestUtils';
 
 	// Props using Svelte 5 runes
@@ -26,12 +25,13 @@
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Get current forest
-	let forest: Forest = $derived(globalState.currentForest);
+	// Get current forest from global state (for backwards compatibility)
+	let currentForest = $derived(globalState.currentForest);
 
 	// Update display name when forest or userId changes
 	$effect(() => {
-		displayName = getNodeName(forest, userId);
+		// Use the helper function to get name, passing the current forest for backward compatibility
+		displayName = getNodeName(currentForest, userId);
 		updateTooltip(displayName);
 	});
 

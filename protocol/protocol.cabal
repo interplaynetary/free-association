@@ -1,0 +1,32 @@
+cabal-version:      2.4
+name:               protocol
+version:            0.1.0.0
+author:             Free Association
+maintainer:         info@freeassociation.org
+
+library
+  exposed-modules:
+    Main
+    PersistTest
+  build-depends:
+    base >= 4.7 && < 5,
+    bytestring,
+    containers,
+    directory,
+    mtl,
+    time
+  hs-source-dirs:   .
+  default-language: Haskell2010
+
+executable persist-test
+  main-is:          PersistTest.hs
+  hs-source-dirs:   test
+  build-depends:
+    base >= 4.7 && < 5,
+    bytestring,
+    containers,
+    directory,
+    mtl,
+    protocol,
+    time
+  default-language: Haskell2010 

@@ -8,19 +8,10 @@
 	import { browser } from '$app/environment';
 
 	// Import centralized system functions
-	import {
-		addChild,
-		makePoints,
-		enterChild,
-		exitToParent,
-		modifyNode,
-		addToForest,
-		getPoints,
-		createExampleForest
-	} from '$lib/centralized';
+	import { GunUserTree, enterChild, exitToParent } from '$lib/centralized';
 
 	// Import our types
-	import type { TreeZipper, Node, Points, Forest } from '$lib/centralized/types';
+	import type { TreeZipper, Node } from '$lib/centralized/types';
 
 	// Define a type for visualization data
 	interface VisualizationNode {
@@ -34,7 +25,6 @@
 
 	// Current state of our navigation in the tree
 	let currentZipper: TreeZipper | null = $state(null);
-	let forest: Forest = $state(new Map());
 	let path: string[] = $state([]);
 	let pathInfo = $state<{ id: string; name: string }[]>([]);
 
@@ -48,7 +38,6 @@
 	// Sync with globalState
 	$effect(() => {
 		currentZipper = globalState.currentZipper;
-		forest = globalState.currentForest;
 		path = [...globalState.currentPath];
 		pathInfo = [...globalState.pathInfo];
 	});
@@ -92,7 +81,7 @@
 		const children = childZippers.map((child: TreeZipper) => ({
 			id: child.zipperCurrent.nodeId,
 			zipper: child,
-			points: getPoints(child.zipperCurrent.nodePoints),
+			points: child.zipperCurrent.nodePoints,
 			nodeName: child.zipperCurrent.nodeName,
 			contributors: Array.from(child.zipperCurrent.nodeContributors),
 			children: [] as VisualizationNode[]
@@ -100,7 +89,7 @@
 
 		return {
 			id: $zipper.zipperCurrent.nodeId,
-			selfPoints: getPoints($zipper.zipperCurrent.nodePoints),
+			selfPoints: $zipper.zipperCurrent.nodePoints,
 			children
 		};
 	});
@@ -191,86 +180,6 @@
 		};
 	});
 
-	// Sync local changes back to global state
-	function syncToGlobalState() {
-		// First ensure that any modified state is reflected in the root
-		if (path.length > 0 && currentZipper) {
-			// Double-check if our path is complete
-			const fullPath = globalState.fullPathFromZipper(currentZipper);
-			if (fullPath.length > 0 && JSON.stringify(fullPath) !== JSON.stringify(path)) {
-				console.log('Path correction in sync:', path, '->', fullPath);
-				path = fullPath;
-			}
-
-			// Start from the current zipper and bubble changes up to root
-			let currentNode: TreeZipper = { ...currentZipper };
-			const rootId = path[0];
-
-			// If we're not at the root level, we need to build back up
-			if (path.length > 1) {
-				// Navigate up to root, preserving changes
-				for (let i = path.length - 1; i > 0; i--) {
-					// Need to get parent and update it with this node
-					const parentPath = path.slice(0, i);
-					const parentId = parentPath[parentPath.length - 1];
-
-					// Get the parent zipper from the forest
-					const parentZipper = forest.get(parentId);
-					if (!parentZipper) continue;
-
-					// Update parent's children with this updated node
-					const childId = path[i];
-
-					// Ensure currentNode has a valid zipperCurrent
-					if (!currentNode.zipperCurrent) {
-						console.error('Missing zipperCurrent in currentNode');
-						continue;
-					}
-
-					const updatedChildren = new Map(parentZipper.zipperCurrent.nodeChildren);
-					updatedChildren.set(childId, currentNode.zipperCurrent);
-
-					// Create updated parent
-					const updatedParent: TreeZipper = {
-						zipperCurrent: {
-							...parentZipper.zipperCurrent,
-							nodeChildren: updatedChildren
-						},
-						zipperContext: parentZipper.zipperContext
-					};
-
-					// Update forest with this parent
-					forest = addToForest(forest, updatedParent);
-
-					// Move up to the parent
-					currentNode = updatedParent;
-				}
-			} else {
-				// Already at root, just update the forest
-				forest = addToForest(forest, currentNode);
-			}
-		}
-
-		// Now update the global state
-		globalState.currentZipper = currentZipper;
-
-		// Always update with the complete path
-		globalState.currentPath = [...path];
-		globalState.currentForest = forest;
-
-		// Update path info
-		globalState.updatePathInfo();
-
-		// Get updated path info and path
-		pathInfo = [...globalState.pathInfo];
-
-		// One final cross-check to ensure paths are in sync
-		if (JSON.stringify(path) !== JSON.stringify(globalState.currentPath)) {
-			console.log('Path correction after sync:', path, '->', globalState.currentPath);
-			path = [...globalState.currentPath];
-		}
-	}
-
 	// Navigation functions
 	function zoomInto(nodeId: string) {
 		// Use the centralized navigation function
@@ -302,7 +211,7 @@
 		};
 
 		const newPoints = calculateNewNodePoints();
-		const newNodeId = `node-${Date.now()}`; // Unique ID
+		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`; // Use GunUserTree's ID format
 		const newNodeName = 'New Node'; // Default name for better UX
 
 		console.log('Adding new node:', newNodeId, 'to parent:', currentZipper.zipperCurrent.nodeId);
@@ -310,7 +219,7 @@
 
 		try {
 			// Use the centralized addNode function with a default name
-			const success = globalState.addNode(newNodeId, newPoints, newNodeName);
+			const success = await globalState.addNode(newNodeId, newPoints, newNodeName);
 
 			if (!success) {
 				globalState.showToast('Error creating node', 'error');
@@ -319,7 +228,6 @@
 
 			// Sync local state with global state
 			currentZipper = globalState.currentZipper;
-			forest = globalState.currentForest;
 			path = [...globalState.currentPath];
 			pathInfo = [...globalState.pathInfo];
 
@@ -347,48 +255,25 @@
 		try {
 			if (!currentZipper) return;
 
-			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
-			if (!childZipper) return;
+			// We'll use the global state's updateNode function
+			globalState
+				.updateNode(nodeId, { name: newName })
+				.then((success) => {
+					if (success) {
+						// Update local state from global state
+						currentZipper = globalState.currentZipper;
+						path = [...globalState.currentPath];
+						pathInfo = [...globalState.pathInfo];
 
-			// Update node name
-			const updatedChildZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeName: newName
-				}),
-				childZipper
-			);
-
-			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
-
-			// Update the current zipper
-			const updatedZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeChildren: updatedChildren
-				}),
-				currentZipper
-			);
-
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
-
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
-				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
-				}
-			}
-
-			// Sync to global state
-			syncToGlobalState();
-
-			globalState.showToast(`Node renamed to "${newName}"`, 'success');
+						globalState.showToast(`Node renamed to "${newName}"`, 'success');
+					} else {
+						globalState.showToast('Error updating node name', 'error');
+					}
+				})
+				.catch((err) => {
+					console.error(`Error updating name for node ${nodeId}:`, err);
+					globalState.showToast('Error updating node name', 'error');
+				});
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
 			globalState.showToast('Error updating node name', 'error');
@@ -411,52 +296,33 @@
 		try {
 			if (!currentZipper) return;
 
-			// Find the child zipper
+			// Find the child zipper to get current contributors
 			const childZipper = enterChild(nodeId, currentZipper);
 			if (!childZipper) return;
 
-			// Remove contributor
-			const updatedContributors = new Set(childZipper.zipperCurrent.nodeContributors);
-			updatedContributors.delete(contributorId);
+			// Get current contributors and remove the specified one
+			const contributors = Array.from(childZipper.zipperCurrent.nodeContributors);
+			const updatedContributors = contributors.filter((id) => id !== contributorId);
 
-			// Update node
-			const updatedChildZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeContributors: updatedContributors
-				}),
-				childZipper
-			);
+			// Use global state's updateNode function
+			globalState
+				.updateNode(nodeId, { contributors: updatedContributors })
+				.then((success) => {
+					if (success) {
+						// Update local state from global state
+						currentZipper = globalState.currentZipper;
+						path = [...globalState.currentPath];
+						pathInfo = [...globalState.pathInfo];
 
-			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
-
-			// Update current zipper
-			const updatedZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeChildren: updatedChildren
-				}),
-				currentZipper
-			);
-
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
-
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
-				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
-				}
-			}
-
-			// Sync to global state
-			syncToGlobalState();
-
-			globalState.showToast('Contributor removed successfully', 'success');
+						globalState.showToast('Contributor removed successfully', 'success');
+					} else {
+						globalState.showToast('Error removing contributor', 'error');
+					}
+				})
+				.catch((err) => {
+					console.error('Error removing contributor:', err);
+					globalState.showToast('Error removing contributor', 'error');
+				});
 		} catch (err) {
 			console.error('Error removing contributor:', err);
 			globalState.showToast('Error removing contributor', 'error');
@@ -488,52 +354,35 @@
 		try {
 			if (!currentZipper) return;
 
-			// Find the child zipper
+			// Find the child zipper to get current contributors
 			const childZipper = enterChild(nodeId, currentZipper);
 			if (!childZipper) return;
 
-			// Add contributor
-			const updatedContributors = new Set(childZipper.zipperCurrent.nodeContributors);
-			updatedContributors.add(userId);
-
-			// Update node
-			const updatedChildZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeContributors: updatedContributors
-				}),
-				childZipper
-			);
-
-			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
-
-			// Update current zipper
-			const updatedZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeChildren: updatedChildren
-				}),
-				currentZipper
-			);
-
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
-
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
-				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
-				}
+			// Get current contributors and add the new one
+			const contributors = Array.from(childZipper.zipperCurrent.nodeContributors);
+			if (!contributors.includes(userId)) {
+				contributors.push(userId);
 			}
 
-			// Sync to global state
-			syncToGlobalState();
+			// Use global state's updateNode function
+			globalState
+				.updateNode(nodeId, { contributors })
+				.then((success) => {
+					if (success) {
+						// Update local state from global state
+						currentZipper = globalState.currentZipper;
+						path = [...globalState.currentPath];
+						pathInfo = [...globalState.pathInfo];
 
-			globalState.showToast('Contributor added successfully', 'success');
+						globalState.showToast('Contributor added successfully', 'success');
+					} else {
+						globalState.showToast('Error adding contributor', 'error');
+					}
+				})
+				.catch((err) => {
+					console.error('Error adding contributor:', err);
+					globalState.showToast('Error adding contributor', 'error');
+				});
 		} catch (err) {
 			console.error('Error adding contributor:', err);
 			globalState.showToast('Error adding contributor', 'error');
@@ -636,48 +485,25 @@
 		try {
 			if (!currentZipper) return;
 
-			// Find the child zipper
-			const childZipper = enterChild(nodeId, currentZipper);
-			if (!childZipper) return;
+			// Use global state's updateNode function
+			globalState
+				.updateNode(nodeId, { points })
+				.then((success) => {
+					if (success) {
+						// Update local state from global state
+						currentZipper = globalState.currentZipper;
+						path = [...globalState.currentPath];
+						pathInfo = [...globalState.pathInfo];
 
-			// Update points
-			const updatedChildZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodePoints: makePoints(points)
-				}),
-				childZipper
-			);
-
-			// Update parent with modified child
-			const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-			updatedChildren.set(nodeId, updatedChildZipper.zipperCurrent);
-
-			// Update current zipper
-			const updatedZipper = modifyNode(
-				(node) => ({
-					...node,
-					nodeChildren: updatedChildren
-				}),
-				currentZipper
-			);
-
-			// Apply updates immutably
-			currentZipper = { ...updatedZipper };
-
-			// Update forest
-			if (path.length > 0) {
-				const rootId = path[0];
-				const rootZipper = forest.get(rootId);
-				if (rootZipper) {
-					forest = addToForest(forest, rootZipper);
-				}
-			}
-
-			// Sync to global state
-			syncToGlobalState();
-
-			console.log(`Saved points for node ${nodeId}: ${points}`);
+						console.log(`Saved points for node ${nodeId}: ${points}`);
+					} else {
+						globalState.showToast('Error saving node points', 'error');
+					}
+				})
+				.catch((err) => {
+					console.error(`Error saving points for node ${nodeId}:`, err);
+					globalState.showToast('Error saving node points', 'error');
+				});
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
 			globalState.showToast('Error saving node points', 'error');
@@ -710,6 +536,7 @@
 		startGrowth(node, isShrinking);
 	}
 
+	// Handle node deletion using GunUserTree
 	function handleGrowthEnd(event: MouseEvent | TouchEvent) {
 		event.preventDefault();
 
@@ -745,37 +572,76 @@
 					try {
 						if (!currentZipper) return;
 
-						// Create an updated children map without the deleted node
-						const updatedChildren = new Map(currentZipper.zipperCurrent.nodeChildren);
-						updatedChildren.delete(nodeId);
+						// Find the child zipper to verify it exists
+						const childZipper = enterChild(nodeId, currentZipper);
+						if (!childZipper) {
+							console.error(`Child node not found: ${nodeId}`);
+							return;
+						}
 
-						// Update the current node
-						const updatedZipper = modifyNode(
-							(node) => ({
-								...node,
-								nodeChildren: updatedChildren
-							}),
-							currentZipper
-						);
+						// Get the parent ID
+						const parentId = currentZipper.zipperCurrent.nodeId;
 
-						// Update our zipper immutably
-						currentZipper = { ...updatedZipper };
+						// Get current children and filter out the one to delete
+						const children = Array.from(currentZipper.zipperCurrent.nodeChildren.keys());
+						const updatedChildren = children.filter((id) => id !== nodeId);
 
-						// Update forest with the modified zipper
-						if (path.length > 0) {
-							const rootId = path[0];
-							const rootZipper = forest.get(rootId);
-							if (rootZipper) {
-								forest = addToForest(forest, rootZipper);
+						// Since GunUserTree doesn't have a direct delete method,
+						// we'll handle this by updating the parent's children list
+						// First, load the children we want to keep
+						const keptChildren = new Map<string, Node>();
+						for (const childId of updatedChildren) {
+							const child = enterChild(childId, currentZipper);
+							if (child) {
+								keptChildren.set(childId, child.zipperCurrent);
 							}
 						}
 
-						// Sync to global state
-						syncToGlobalState();
+						// Update the parent node
+						const updatedNode = {
+							...currentZipper.zipperCurrent,
+							nodeChildren: keptChildren
+						};
 
-						globalState.showToast('Node deleted successfully', 'success');
+						// Create updated zipper with the new node structure
+						const updatedZipper = {
+							...currentZipper,
+							zipperCurrent: updatedNode
+						};
+
+						// Use promise chain pattern
+						GunUserTree.saveNode(updatedZipper)
+							.then(() => GunUserTree.loadFullTree())
+							.then((updatedTree) => {
+								if (updatedTree) {
+									// Update the global state with the new tree
+									globalState.currentZipper = updatedTree;
+
+									// If we're viewing a node that was deleted, navigate up
+									if (nodeId === globalState.currentPath[globalState.currentPath.length - 1]) {
+										// Navigate to parent
+										globalState.zoomOut();
+									} else {
+										// Update the path information
+										globalState.updatePathInfo();
+									}
+
+									// Update local state
+									currentZipper = globalState.currentZipper;
+									path = [...globalState.currentPath];
+									pathInfo = [...globalState.pathInfo];
+
+									globalState.showToast('Node deleted successfully', 'success');
+								} else {
+									globalState.showToast('Error reloading tree after deletion', 'error');
+								}
+							})
+							.catch((err) => {
+								console.error('Error handling deletion:', err);
+								globalState.showToast('Error deleting node', 'error');
+							});
 					} catch (err) {
-						console.error(`Error deleting node ${nodeId}:`, err);
+						console.error(`Error in deletion process: ${err}`);
 						globalState.showToast('Error deleting node', 'error');
 					}
 				}

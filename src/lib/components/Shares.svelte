@@ -1,167 +1,273 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	interface CapacityEntry {
+	interface CapacityShare {
 		id: string;
 		name: string;
 		quantity: number;
 		unit: string;
 		depth: number;
+		provider: string;
 	}
 
-	let capacityEntries = $state<CapacityEntry[]>([createCapacityEntry()]);
+	let capacityShares = $state<CapacityShare[]>([createCapacityShare()]);
 
-	// Create a new capacity entry row
-	function createCapacityEntry(): CapacityEntry {
+	// Create a new capacity share row
+	function createCapacityShare(): CapacityShare {
 		return {
 			id: crypto.randomUUID(),
 			name: '',
 			quantity: 0,
 			unit: '',
-			depth: 3
+			depth: 2,
+			provider: 'Unknown'
 		};
 	}
 
 	// Green color scale for depth
-	const colors = ['#dcfce7', '#86efac', '#22c55e', '#15803d', '#14532d'];
+	const colors = ['#22c55e', '#86efac', '#dcfce7'];
 
-	function setEntryDepth(entries: CapacityEntry[], entryId: string, newDepth: number) {
-		const idx = entries.findIndex((e) => e.id === entryId);
-		if (idx !== -1) {
-			entries[idx] = { ...entries[idx], depth: newDepth };
-		}
+	function getDepthColor(depth: number): string {
+		if (depth <= 0) return '#f3f4f6';
+		return depth <= colors.length ? colors[depth - 1] : colors[colors.length - 1];
 	}
 
-	function addCapacityRow() {
-		capacityEntries = [...capacityEntries, createCapacityEntry()];
-	}
-
-	function removeCapacityRow(entryId: string) {
-		if (capacityEntries.length === 1) return; // Always keep at least one row
-		capacityEntries = capacityEntries.filter((e) => e.id !== entryId);
+	function handleProviderClick(provider: string) {
+		// This function will be implemented later to navigate to the provider
+		console.log(`Navigating to provider: ${provider}`);
+		// Could display a toast or navigation action here
 	}
 
 	onMount(() => {
-		// Initialize with 25 demo inventory entries
-		const demoEntries: CapacityEntry[] = [
-			{ id: crypto.randomUUID(), name: 'Potable Water', quantity: 50, unit: 'gallons', depth: 5 },
-			{ id: crypto.randomUUID(), name: 'Rice', quantity: 20, unit: 'lbs', depth: 5 },
-			{ id: crypto.randomUUID(), name: 'Beans', quantity: 15, unit: 'lbs', depth: 4 },
-			{ id: crypto.randomUUID(), name: 'First Aid Kit', quantity: 2, unit: 'kits', depth: 5 },
-			{ id: crypto.randomUUID(), name: 'Solar Panel', quantity: 3, unit: 'panels', depth: 4 },
-			{ id: crypto.randomUUID(), name: 'Garden Seeds', quantity: 25, unit: 'packets', depth: 4 },
+		// Initialize with 25 demo capacity shares
+		const demoShares: CapacityShare[] = [
+			{
+				id: crypto.randomUUID(),
+				name: 'Potable Water',
+				quantity: 50,
+				unit: 'gallons',
+				depth: 3,
+				provider: 'Jane Doe'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Rice',
+				quantity: 20,
+				unit: 'lbs',
+				depth: 3,
+				provider: 'Community Pantry'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Beans',
+				quantity: 15,
+				unit: 'lbs',
+				depth: 3,
+				provider: 'Community Pantry'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'First Aid Kit',
+				quantity: 2,
+				unit: 'kits',
+				depth: 3,
+				provider: 'Medical Group'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Solar Panel',
+				quantity: 3,
+				unit: 'panels',
+				depth: 3,
+				provider: 'Green Energy Co-op'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Garden Seeds',
+				quantity: 25,
+				unit: 'packets',
+				depth: 3,
+				provider: 'Seed Exchange'
+			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Cooking Capacity',
 				quantity: 4,
 				unit: 'meals/day',
-				depth: 5
+				depth: 3,
+				provider: 'Community Kitchen'
 			},
-			{ id: crypto.randomUUID(), name: 'Spare Blankets', quantity: 8, unit: 'blankets', depth: 3 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Spare Blankets',
+				quantity: 8,
+				unit: 'blankets',
+				depth: 3,
+				provider: 'Shelter Group'
+			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Extra Shelter Space',
 				quantity: 2,
 				unit: 'people',
-				depth: 4
+				depth: 3,
+				provider: 'Housing Collective'
 			},
-			{ id: crypto.randomUUID(), name: 'Water Filtration', quantity: 1, unit: 'system', depth: 5 },
-			{ id: crypto.randomUUID(), name: 'Board Games', quantity: 6, unit: 'games', depth: 1 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Water Filtration',
+				quantity: 1,
+				unit: 'system',
+				depth: 3,
+				provider: 'Clean Water Project'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Board Games',
+				quantity: 6,
+				unit: 'games',
+				depth: 1,
+				provider: 'Recreation Circle'
+			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Musical Instruments',
 				quantity: 3,
 				unit: 'instruments',
-				depth: 2
+				depth: 2,
+				provider: 'Arts Collective'
 			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Storytelling Capacity',
 				quantity: 100,
 				unit: 'stories',
-				depth: 2
+				depth: 2,
+				provider: 'John Smith'
 			},
-			{ id: crypto.randomUUID(), name: 'Candles', quantity: 24, unit: 'candles', depth: 3 },
-			{ id: crypto.randomUUID(), name: 'Honey', quantity: 5, unit: 'jars', depth: 3 },
+			{
+				id: crypto.randomUUID(),
+				name: 'Candles',
+				quantity: 24,
+				unit: 'candles',
+				depth: 3,
+				provider: 'Craft Co-op'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Honey',
+				quantity: 5,
+				unit: 'jars',
+				depth: 3,
+				provider: 'Local Beekeeper'
+			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Childcare Capacity',
 				quantity: 10,
 				unit: 'hours/week',
-				depth: 4
+				depth: 3,
+				provider: 'Parents Collective'
 			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Herbal Medicine',
 				quantity: 8,
 				unit: 'varieties',
-				depth: 3
+				depth: 3,
+				provider: 'Herbalist Network'
 			},
 			{
 				id: crypto.randomUUID(),
 				name: 'Yoga Instruction',
 				quantity: 3,
 				unit: 'sessions/week',
-				depth: 1
+				depth: 1,
+				provider: 'Wellness Circle'
 			},
-			{ id: crypto.randomUUID(), name: 'Canned Vegetables', quantity: 36, unit: 'cans', depth: 4 },
-			{ id: crypto.randomUUID(), name: 'Emergency Radio', quantity: 1, unit: 'radio', depth: 4 },
-			{ id: crypto.randomUUID(), name: 'Hand Tools', quantity: 12, unit: 'tools', depth: 3 },
-			{ id: crypto.randomUUID(), name: 'Comedy Relief', quantity: 42, unit: 'jokes', depth: 1 },
-			{ id: crypto.randomUUID(), name: 'Extra Bicycles', quantity: 2, unit: 'bikes', depth: 3 },
-			{ id: crypto.randomUUID(), name: 'Pasta', quantity: 10, unit: 'lbs', depth: 4 },
-			{ id: crypto.randomUUID(), name: 'Meditation Space', quantity: 1, unit: 'space', depth: 2 }
+			{
+				id: crypto.randomUUID(),
+				name: 'Canned Vegetables',
+				quantity: 36,
+				unit: 'cans',
+				depth: 3,
+				provider: 'Urban Farm'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Emergency Radio',
+				quantity: 1,
+				unit: 'radio',
+				depth: 3,
+				provider: 'Communications Team'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Hand Tools',
+				quantity: 12,
+				unit: 'tools',
+				depth: 3,
+				provider: 'Tool Library'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Comedy Relief',
+				quantity: 42,
+				unit: 'jokes',
+				depth: 1,
+				provider: 'Entertainment Group'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Extra Bicycles',
+				quantity: 2,
+				unit: 'bikes',
+				depth: 3,
+				provider: 'Bike Collective'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Pasta',
+				quantity: 10,
+				unit: 'lbs',
+				depth: 3,
+				provider: 'Food Pantry'
+			},
+			{
+				id: crypto.randomUUID(),
+				name: 'Meditation Space',
+				quantity: 1,
+				unit: 'space',
+				depth: 2,
+				provider: 'Mindfulness Center'
+			}
 		];
 
-		capacityEntries = demoEntries;
+		capacityShares = demoShares;
 	});
 </script>
 
-<!-- <SixDegrees /> -->
-
-<div class="inventory-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
-	{#each capacityEntries as entry, i (entry.id)}
-		<div class="capacity-row flex items-center gap-2 rounded bg-white p-2 shadow-sm">
-			<input
-				type="text"
-				class="capacity-input name min-w-0 flex-1"
-				bind:value={entry.name}
-				placeholder="Name"
-			/>
-			<input
-				type="number"
-				class="capacity-input qty w-16 text-right"
-				min="0"
-				step="0.01"
-				bind:value={entry.quantity}
-				placeholder="Qty"
-			/>
-			<input
-				type="text"
-				class="capacity-input unit w-20"
-				bind:value={entry.unit}
-				placeholder="Unit"
-			/>
-			<div class="depth-bar ml-2 flex gap-1">
-				{#each Array(5) as _, j}
-					<span
-						class="depth-dot {j < entry.depth ? 'active' : ''}"
-						style="background: {j < entry.depth ? colors[j] : '#e5e7eb'}"
-						onclick={() => {
-							setEntryDepth(capacityEntries, entry.id, j + 1);
-						}}
-					></span>
-				{/each}
+<div class="shares-list grid grid-cols-1 gap-3 p-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+	{#each capacityShares as share (share.id)}
+		<div
+			class="capacity-share flex items-center justify-between rounded p-2 shadow-sm"
+			style="background-color: {getDepthColor(share.depth)}; border: 1px solid #e5e7eb;"
+		>
+			<div class="flex min-w-0 flex-1 flex-col pr-2">
+				<span class="share-value name overflow-hidden font-medium text-ellipsis whitespace-nowrap"
+					>{share.name}</span
+				>
+				<span class="share-value qty text-sm">{share.quantity} {share.unit}</span>
 			</div>
 			<button
 				type="button"
-				class="remove-btn ml-2"
-				onclick={() => removeCapacityRow(entry.id)}
-				disabled={capacityEntries.length === 1}>×</button
+				class="provider-btn rounded-md px-2 py-1 text-xs whitespace-nowrap"
+				onclick={() => handleProviderClick(share.provider)}
 			>
+				{share.provider}
+			</button>
 		</div>
 	{/each}
-	<button type="button" class="add-btn mx-auto my-2 h-10 w-10" onclick={addCapacityRow}>+</button>
 </div>
 
 <style>
@@ -170,90 +276,24 @@
 		background: #f7fafc;
 	}
 
-	.capacity-input {
-		font-size: 1rem;
-		padding: 6px 8px;
-		border: none;
-		border-bottom: 1.5px solid #e5e7eb;
-		background: transparent;
-		outline: none;
-		transition: border-color 0.2s;
+	.share-value {
 		min-width: 0;
-	}
-	.capacity-input::placeholder {
-		color: #cbd5e1;
-	}
-	.capacity-input:focus {
-		border-bottom: 1px solid #3b82f6; /* Keep focus color */
+		line-height: 1.2;
 	}
 
-	.depth-dot {
-		width: 15px; /* Adjusted size */
-		height: 15px;
-		border-radius: 50%;
-		background: #e5e7eb;
-		display: inline-block;
-		margin-right: 0;
-		transition:
-			background 0.2s,
-			border 0.2s,
-			box-shadow 0.2s;
-		cursor: pointer;
-		border: 1px solid #e5e7eb; /* Thinner border */
-	}
-	.depth-dot.active {
-		border: 1px solid #16a34a; /* Green active border */
-		box-shadow: 0 0 0 2px #bbf7d0; /* Lighter green glow */
-	}
-	.depth-dot:hover {
-		border: 1px solid #15803d; /* Darker green hover */
-	}
-
-	.add-btn {
-		background: #f0fdf4; /* Light green */
-		color: #16a34a; /* Green */
+	.provider-btn {
+		background: rgba(255, 255, 255, 0.5);
+		color: #4b5563;
 		border: none;
-		border-radius: 50%;
-		font-size: 1.3em; /* Adjusted */
-		font-weight: 500;
-		cursor: pointer;
 		transition:
 			background 0.2s,
 			color 0.2s;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.add-btn:hover {
-		background: #dcfce7; /* Slightly darker green */
-		color: #15803d;
+		cursor: pointer;
+		flex-shrink: 0;
 	}
 
-	.remove-btn {
-		background: none;
-		border: none;
-		color: #cbd5e1; /* Subtle remove color */
-		font-size: 1.3em; /* Larger click target */
-		cursor: pointer;
-		padding: 0 4px;
-		line-height: 1;
-		border-radius: 50%;
-		transition:
-			background 0.2s,
-			color 0.2s;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-	}
-	.remove-btn:disabled {
-		color: #e5e7eb;
-		cursor: not-allowed;
-	}
-	.remove-btn:hover:not(:disabled) {
-		background: #fef2f2;
-		color: #ef4444; /* Red on hover */
+	.provider-btn:hover {
+		background: rgba(255, 255, 255, 0.8);
+		color: #1f2937;
 	}
 </style>

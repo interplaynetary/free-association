@@ -1,0 +1,37 @@
+// user.get("tree") should be be a graph with the rootNode
+
+{
+        "root": {
+            // node-structure
+            "nodeId": "user1",
+            "nodeName": "User One's Tree",
+            "nodePoints": 100,
+            "nodeContributors": ["user1"],
+            "nodeManualFulfillment": null,
+            "children": {
+                "task1": {
+                    "#": "user/tree/nodes/task1"
+                },
+                "task2": {
+                    "#": "user/tree/nodes/task2"
+                }
+            },
+        },
+        "nodes": {
+            "task1": { /* node-structure */ },
+            "task2": { /* node-structure */}
+        },
+    "persistentCache": {
+      "sogfMap": {
+        "map": "{\"user2\":0.3,\"user3\":0.7}"
+      }
+    },
+    "providerShares": {
+      "1": {
+        "map": "{\"user2\":0.25,\"user3\":0.75}"
+      },
+      "2": {
+        "map": "{\"user4\":0.5,\"user5\":0.5}"
+      }
+    }
+  },

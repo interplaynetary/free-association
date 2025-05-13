@@ -124,7 +124,7 @@
 	}
 
 	// Green color scale for depth
-	const colors = ['#dcfce7', '#86efac', '#22c55e', '#15803d', '#14532d'];
+	const colors = ['#22c55e', '#86efac', '#dcfce7'];
 
 	// Update capacity depth
 	function setEntryDepth(entries: Capacity[], entryId: string, newDepth: number) {
@@ -224,19 +224,19 @@
 			demoCapacity1.capacityName = 'Reading Messages';
 			demoCapacity1.quantity = 140;
 			demoCapacity1.unit = 'Chars/Day';
-			demoCapacity1.shareDepth = 5;
+			demoCapacity1.shareDepth = 3;
 
 			const demoCapacity2 = createDefaultCapacity();
 			demoCapacity2.capacityName = 'Potable Water';
 			demoCapacity2.quantity = 50;
 			demoCapacity2.unit = 'gallons';
-			demoCapacity2.shareDepth = 5;
+			demoCapacity2.shareDepth = 3;
 
 			const demoCapacity3 = createDefaultCapacity();
 			demoCapacity3.capacityName = 'Rice';
 			demoCapacity3.quantity = 20;
 			demoCapacity3.unit = 'lbs';
-			demoCapacity3.shareDepth = 5;
+			demoCapacity3.shareDepth = 3;
 
 			capacityEntries = [demoCapacity1, demoCapacity2, demoCapacity3];
 
@@ -278,7 +278,7 @@
 					onblur={() => handleCapacityUpdate(entry)}
 				/>
 				<div class="depth-bar ml-2 flex gap-1">
-					{#each Array(5) as _, j}
+					{#each Array(3) as _, j}
 						<span
 							class="depth-dot {j < entry.shareDepth ? 'active' : ''}"
 							style="background: {j < entry.shareDepth ? colors[j] : '#e5e7eb'}"
@@ -658,6 +658,18 @@
 							{/if}
 						</div>
 
+						<div class="hidden-option ml-2">
+							<label class="inline-flex items-center">
+								<input
+									type="checkbox"
+									bind:checked={entry.hiddenUntilRequestAccepted}
+									class="mr-3 h-4 w-4"
+									onchange={() => handleCapacityUpdate(entry)}
+								/>
+								<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
+							</label>
+						</div>
+
 						<div class="max-divisibility-section mb-6 ml-2">
 							<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
 
@@ -687,24 +699,12 @@
 								</div>
 							</div>
 						</div>
-
-						<div class="hidden-option ml-2">
-							<label class="inline-flex items-center">
-								<input
-									type="checkbox"
-									bind:checked={entry.hiddenUntilRequestAccepted}
-									class="mr-3 h-4 w-4"
-									onchange={() => handleCapacityUpdate(entry)}
-								/>
-								<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
-							</label>
-						</div>
 					</div>
 				</div>
 			{/if}
 		</div>
 	{/each}
-	<Button.Root onclick={addCapacityRow} class="add-btn mx-auto my-2 h-10 w-10">+</Button.Root>
+	<button type="button" class="add-btn mx-auto my-2 h-10 w-10" onclick={addCapacityRow}>+</button>
 </div>
 
 <style>

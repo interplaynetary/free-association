@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gun Persistence Demo - Free Association</title>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/then.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/radix.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/radisk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/store.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/rindexed.js"></script>
+    <script type="module">
+        import * as Centralized from '../index.js';
+        window.Centralized = Centralized;
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .node {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .root-node {
+            background-color: #f0f8ff;
+        }
+
+        .child-node {
+            background-color: #f5f5f5;
+            margin-left: 30px;
+        }
+
+        .children {
+            margin-left: 20px;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Gun Persistence Demo - Free Association</h1>
+
+    <div id="auth-panel">
+        <h2>Authentication</h2>
+        <button id="create-user">Create User</button>
+        <button id="login">Login</button>
+        <div id="auth-status">Not authenticated</div>
+    </div>
+
+    <div id="tree-panel" style="display: none;">
+        <h2>Tree Management</h2>
+        <button id="create-root">Create Root Node</button>
+        <button id="add-child">Add Child</button>
+        <button id="refresh-tree">Refresh Tree</button>
+
+        <h3>Current Tree</h3>
+        <div id="tree-visualization"></div>
+
+        <h3>Debug Info</h3>
+        <pre id="debug-output"></pre>
+    </div>
+
+    <script>
+        // Will be executed after the module loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initializeApp, 500);
+        });
+
+        function initializeApp() {
+            if (!window.Centralized) {
+                console.error('Centralized module not loaded');
+                return;
+            }
+
+            const {
+                initGun,
+                createRoot,
+                addChildNode,
+                buildTreeFromRoot,
+                subscribeToTree,
+                createZipperFromPersistedNode,
+                sharesOfGeneralFulfillmentMap
+            } = window.Centralized;
+
+            // Get DOM elements
+            const authPanel = document.getElementById('auth-panel');
+            const treePanel = document.getElementById('tree-panel');
+            const authStatus = document.getElementById('auth-status');
+            const treeVisualization = document.getElementById('tree-visualization');
+            const debugOutput = document.getElementById('debug-output');
+
+            // Buttons
+            const createUserBtn = document.getElementById('create-user');
+            const loginBtn = document.getElementById('login');
+            const createRootBtn = document.getElementById('create-root');
+            const addChildBtn = document.getElementById('add-child');
+            const refreshTreeBtn = document.getElementById('refresh-tree');
+
+            // Initialize Gun with a relay server
+            const { gun, user } = initGun(['https://gun-manhattan.herokuapp.com/gun']);
+            let currentRootId = null;
+            let cleanupSubscription = null;
+
+            // Debug output helper
+            function log(msg, obj = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                let text = `[${timestamp}] ${msg}\n`;
+                if (obj) {
+                    text += JSON.stringify(obj, replaceMapSet, 2) + '\n';
+                }
+
+                debugOutput.textContent += text + '\n';
+                // Scroll to bottom
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+
+            // Helper to replace Maps and Sets in JSON.stringify
+            function replaceMapSet(key, value) {
+                if (value instanceof Map) {
+                    return {
+                        dataType: 'Map',
+                        value: Array.from(value.entries())
+                    };
+                }
+                if (value instanceof Set) {
+                    return {
+                        dataType: 'Set',
+                        value: Array.from(value)
+                    };
+                }
+                return value;
+            }
+
+            // Create a new user
+            createUserBtn.addEventListener('click', async () => {
+                try {
+                    const pair = await SEA.pair();
+                    user.create(pair);
+                    user.auth(pair, () => {
+                        authStatus.textContent = 'Authenticated';
+                        treePanel.style.display = 'block';
+                        log('User created and authenticated', { pub: pair.pub });
+                    });
+                } catch (error) {
+                    log('Error creating user', error);
+                }
+            });
+
+            // Login with existing user
+            loginBtn.addEventListener('click', async () => {
+                try {
+                    const pair = await SEA.pair(); // In a real app, this would be stored/retrieved
+                    user.auth(pair, () => {
+                        authStatus.textContent = 'Authenticated';
+                        treePanel.style.display = 'block';
+                        log('User authenticated', { pub: pair.pub });
+
+                        // Check for existing root nodes
+                        user.get('roots').once(roots => {
+                            if (roots) {
+                                const rootIds = Object.keys(roots).filter(k => k !== '_');
+                                if (rootIds.length > 0) {
+                                    currentRootId = rootIds[0];
+                                    log('Found existing root', { rootId: currentRootId });
+                                    refreshTree();
+                                }
+                            }
+                        });
+                    });
+                } catch (error) {
+                    log('Error logging in', error);
+                }
+            });
+
+            // Create a root node
+            createRootBtn.addEventListener('click', async () => {
+                try {
+                    const rootId = 'root_' + Date.now();
+                    const rootName = 'Root Node';
+                    const rootPoints = 100;
+
+                    log('Creating root node', { rootId, rootName, rootPoints });
+
+                    // Create the root node
+                    await createRoot(user, rootId, rootName, rootPoints);
+
+                    // Register as a root
+                    user.get('roots').get(rootId).put(true);
+
+                    currentRootId = rootId;
+                    log('Root node created', { rootId });
+
+                    // Refresh the tree
+                    refreshTree();
+                } catch (error) {
+                    log('Error creating root', error);
+                }
+            });
+
+            // Add a child node
+            addChildBtn.addEventListener('click', async () => {
+                if (!currentRootId) {
+                    log('No root node selected');
+                    return;
+                }
+
+                try {
+                    const childId = 'node_' + Date.now();
+                    const childName = 'Child ' + childId.substring(5, 10);
+                    const childPoints = 50;
+
+                    log('Adding child node', { parentId: currentRootId, childId, childName, childPoints });
+
+                    // Add the child
+                    await addChildNode(user, currentRootId, childId, childName, childPoints);
+
+                    log('Child node added', { childId });
+
+                    // Refresh the tree
+                    refreshTree();
+                } catch (error) {
+                    log('Error adding child', error);
+                }
+            });
+
+            // Refresh the tree visualization
+            refreshTreeBtn.addEventListener('click', () => {
+                refreshTree();
+            });
+
+            // Refresh the tree visualization
+            async function refreshTree() {
+                if (!currentRootId) {
+                    treeVisualization.innerHTML = '<p>No root node selected</p>';
+                    return;
+                }
+
+                try {
+                    log('Loading tree', { rootId: currentRootId });
+
+                    // Load the tree
+                    const rootNode = await buildTreeFromRoot(user, currentRootId);
+
+                    if (!rootNode) {
+                        treeVisualization.innerHTML = '<p>Tree not found</p>';
+                        return;
+                    }
+
+                    // Compute SOGF for demonstration
+                    const zipper = createZipperFromPersistedNode(rootNode);
+                    const [sogf, _] = computeSharesOfGeneralFulfillment(zipper);
+
+                    log('Tree loaded', {
+                        nodeId: rootNode.nodeId,
+                        nodeName: rootNode.nodeName,
+                        childCount: rootNode.nodeChildren.size,
+                        sogf: Array.from(sogf.entries())
+                    });
+
+                    // Render the tree
+                    renderTree(rootNode);
+
+                    // Setup subscription if not already
+                    setupSubscription();
+                } catch (error) {
+                    log('Error refreshing tree', error);
+                }
+            }
+
+            // Render the tree
+            function renderTree(node) {
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = 'node root-node';
+                nodeDiv.innerHTML = `
+                    <h4>${node.nodeName}</h4>
+                    <p>ID: ${node.nodeId}</p>
+                    <p>Points: ${node.nodePoints}</p>
+                    <p>Contributors: ${Array.from(node.nodeContributors).join(', ') || 'None'}</p>
+                `;
+
+                // Render children
+                if (node.nodeChildren.size > 0) {
+                    const childrenDiv = document.createElement('div');
+                    childrenDiv.className = 'children';
+
+                    Array.from(node.nodeChildren.entries()).forEach(([childId, childNode]) => {
+                        const childDiv = document.createElement('div');
+                        childDiv.className = 'node child-node';
+                        childDiv.innerHTML = `
+                            <h4>${childNode.nodeName}</h4>
+                            <p>ID: ${childNode.nodeId}</p>
+                            <p>Points: ${childNode.nodePoints}</p>
+                            <p>Contributors: ${Array.from(childNode.nodeContributors).join(', ') || 'None'}</p>
+                        `;
+                        childrenDiv.appendChild(childDiv);
+                    });
+
+                    nodeDiv.appendChild(childrenDiv);
+                } else {
+                    nodeDiv.innerHTML += '<p>No children</p>';
+                }
+
+                treeVisualization.innerHTML = '';
+                treeVisualization.appendChild(nodeDiv);
+            }
+
+            // Setup subscription to tree changes
+            function setupSubscription() {
+                // Clean up previous subscription
+                if (cleanupSubscription) {
+                    cleanupSubscription();
+                }
+
+                // Subscribe to tree changes
+                cleanupSubscription = subscribeToTree(user, currentRootId, (update) => {
+                    log('Tree update received', update);
+                    refreshTree();
+                });
+
+                log('Subscribed to tree changes', { rootId: currentRootId });
+            }
+        }
+    </script>
+</body>
+
+</html>

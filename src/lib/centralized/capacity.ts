@@ -1,6 +1,6 @@
 import type { Capacity, CapacityShare, Forest, TreeZipper } from './types';
-import { modifyNode } from './node';
-import { receiverShareFrom } from './mutual';
+import { updateNodePersistentCache } from './user/GunUserTree';
+import { receiverShareFrom } from './calculations';
 
 // Compute the quantity of a capacity share based on percentage and capacity constraints
 export function computeQuantityShare(cap: Capacity, percentage: number): number {
@@ -29,15 +29,17 @@ export function createCapacityShare(cap: Capacity, percentage: number): Capacity
 
 // Add a capacity to a node's inventory
 export function addCapacity(cap: Capacity, zipper: TreeZipper): TreeZipper {
-	return modifyNode((node) => {
-		const updatedCapacities = new Map(node.nodeCapacities);
-		updatedCapacities.set(cap.capacityId, cap);
+	const node = zipper.zipperCurrent;
+	const updatedCapacities = new Map(node.nodeCapacities);
+	updatedCapacities.set(cap.capacityId, cap);
 
-		return {
+	return {
+		...zipper,
+		zipperCurrent: {
 			...node,
 			nodeCapacities: updatedCapacities
-		};
-	}, zipper);
+		}
+	};
 }
 
 // Add a share in another node's capacity
@@ -46,35 +48,39 @@ export function addCapacityShare(
 	share: CapacityShare,
 	zipper: TreeZipper
 ): TreeZipper {
-	return modifyNode((node) => {
-		const updatedShares = new Map(node.nodeCapacityShares);
-		updatedShares.set(shareId, share);
+	const node = zipper.zipperCurrent;
+	const updatedShares = new Map(node.nodeCapacityShares);
+	updatedShares.set(shareId, share);
 
-		return {
+	return {
+		...zipper,
+		zipperCurrent: {
 			...node,
 			nodeCapacityShares: updatedShares
-		};
-	}, zipper);
+		}
+	};
 }
 
 // Update computed quantities for all capacity shares in a node
 export function updateComputedQuantities(zipper: TreeZipper): TreeZipper {
-	return modifyNode((node) => {
-		const updatedShares = new Map();
+	const node = zipper.zipperCurrent;
+	const updatedShares = new Map();
 
-		// Update each share with recomputed quantity
-		for (const [id, share] of node.nodeCapacityShares) {
-			updatedShares.set(id, {
-				...share,
-				computedQuantity: computeQuantityShare(share.targetCapacity, share.sharePercentage)
-			});
-		}
+	// Update each share with recomputed quantity
+	for (const [id, share] of node.nodeCapacityShares) {
+		updatedShares.set(id, {
+			...share,
+			computedQuantity: computeQuantityShare(share.targetCapacity, share.sharePercentage)
+		});
+	}
 
-		return {
+	return {
+		...zipper,
+		zipperCurrent: {
 			...node,
 			nodeCapacityShares: updatedShares
-		};
-	}, zipper);
+		}
+	};
 }
 
 // Get a person's total share in a specific capacity
@@ -98,7 +104,7 @@ export function getPersonalCapacityShare(
 	const shares = capacityOwners.map((owner) => {
 		const cap = owner.zipperCurrent.nodeCapacities.get(capacityId);
 		if (!cap) return 0; // Should never happen due to our filter above
-		return receiverShareFrom(forest, person, owner, 2);
+		return receiverShareFrom(forest, person, owner, cap, 2);
 	});
 
 	// Return the maximum share (from the most direct provider)

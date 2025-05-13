@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState, type UserData } from '$lib/global.svelte';
+	import { authenticate, logout, recallUser, user } from '$lib/gun/gunSetup';
 
 	// Reactive stores for user state
 	let isAuthenticated = $state(false);
@@ -9,6 +10,7 @@
 	let userAlias = $state('');
 	let errorMessage = $state('');
 	let isLoading = $state(false);
+	let authMessage = $state(''); // New state for showing authentication status
 
 	// Mock user data - in a real implementation, this would come from a backend
 	const mockUsers = {
@@ -27,17 +29,21 @@
 		isLoading = true;
 
 		try {
-			// Check for stored credentials in localStorage
-			const storedUser = localStorage.getItem('centralizedUser');
-			if (storedUser) {
-				const userData = JSON.parse(storedUser);
-				currentUser.is = {
-					pub: userData.pub,
-					alias: userData.alias,
-					username: userData.username
-				};
+			// Use Gun's recall function to check for existing session
+			await recallUser();
+
+			// If user exists in Gun after recall, update local state
+			if (user.is?.pub) {
 				isAuthenticated = true;
-				userAlias = userData.alias;
+				userAlias = user.is.alias || user.is.pub;
+
+				// Update global state with the logged in user
+				const userData: UserData = {
+					pub: user.is.pub,
+					alias: userAlias,
+					username: userAlias
+				};
+				globalState.setCurrentUser(userData);
 			}
 		} catch (error) {
 			console.error('Error recalling user session:', error);
@@ -54,32 +60,27 @@
 		}
 
 		errorMessage = '';
+		authMessage = '';
 		isLoading = true;
 
 		try {
-			// Simulate authentication delay
-			await new Promise((resolve) => setTimeout(resolve, 800));
+			// Use Gun's authenticate function which handles both login and signup
+			await authenticate(username, password);
 
-			// Check if user exists in our mock data
-			const user = mockUsers[username.toLowerCase() as keyof typeof mockUsers];
-
-			if (user && user.password === password) {
-				// Login successful
+			// If authentication was successful, update local state
+			if (user.is?.pub) {
+				// Authentication successful
 				const userData: UserData = {
-					pub: user.pub,
-					alias: user.alias,
-					username: username.toLowerCase()
+					pub: user.is.pub,
+					alias: user.is.alias || user.is.pub,
+					username
 				};
 
-				currentUser.is = { ...userData };
 				isAuthenticated = true;
-				userAlias = user.alias;
-
-				// Store user in localStorage
-				localStorage.setItem('centralizedUser', JSON.stringify(userData));
+				userAlias = userData.alias;
 
 				// Update global state with the logged in user
-				globalState.setCurrentUser(userData);
+				await globalState.setCurrentUser(userData);
 
 				// Reset form
 				username = '';
@@ -88,8 +89,8 @@
 				// Show success message
 				globalState.showToast(`Logged in as ${userData.alias}`, 'success');
 			} else {
-				// No user found or password incorrect
-				errorMessage = 'Invalid username or password';
+				// If user.is.pub is not set, authentication failed
+				errorMessage = 'Authentication failed. Please try again.';
 			}
 		} catch (error) {
 			console.error('Authentication error:', error);
@@ -99,10 +100,20 @@
 		}
 	}
 
+	// Update auth message on username input
+	function updateAuthMessage() {
+		const isExistingUser = username.toLowerCase() in mockUsers;
+		authMessage = username
+			? `Will attempt to sign in${isExistingUser ? '' : ' or create a new account if needed'}`
+			: '';
+	}
+
 	// Handle logout
 	function handleLogout() {
-		localStorage.removeItem('centralizedUser');
-		currentUser.is = null;
+		// Use Gun's logout function
+		logout();
+
+		// Update local state
 		isAuthenticated = false;
 		userAlias = '';
 
@@ -156,10 +167,10 @@
 	{:else if isAuthenticated}
 		<div class="welcome-panel">
 			<div class="avatar">
-				{#if currentUser.is?.pub}
+				{#if user.is?.pub}
 					<img
 						src={generateAvatar({
-							pub: currentUser.is.pub,
+							pub: user.is.pub,
 							size: 70,
 							round: true,
 							draw: 'circles',
@@ -210,6 +221,7 @@
 	{:else}
 		<div class="login-form">
 			<h2>Sign In / Sign Up</h2>
+			<p class="form-info">Enter your details to sign in, or create a new account</p>
 
 			{#if errorMessage}
 				<div class="error-message">
@@ -251,6 +263,8 @@
 						bind:value={username}
 						placeholder="Enter username"
 						autocomplete="username"
+						oninput={updateAuthMessage}
+						required
 					/>
 				</div>
 			</div>
@@ -276,9 +290,29 @@
 						bind:value={password}
 						placeholder="Enter password"
 						autocomplete="current-password"
+						required
 					/>
 				</div>
 			</div>
+
+			{#if authMessage}
+				<div class="auth-message">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="12" y1="16" x2="12" y2="12"></line>
+						<line x1="12" y1="8" x2="12.01" y2="8"></line>
+					</svg>
+					<span>{authMessage}</span>
+				</div>
+			{/if}
 
 			<div class="button-group">
 				<button
@@ -320,7 +354,7 @@
 					<line x1="12" y1="16" x2="12" y2="12"></line>
 					<line x1="12" y1="8" x2="12.01" y2="8"></line>
 				</svg>
-				<span>Secure login for tree access</span>
+				<span>One-click sign in or sign up</span>
 			</div>
 		</div>
 	{/if}
@@ -345,6 +379,14 @@
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
+	}
+
+	.form-info {
+		text-align: center;
+		color: #64748b;
+		font-size: 0.9rem;
+		margin-top: -0.5rem;
+		margin-bottom: 1.25rem;
 	}
 
 	h2 {
@@ -468,6 +510,19 @@
 		border-left: 3px solid #dc2626;
 	}
 
+	.auth-message {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		background: #f0f9ff;
+		color: #0369a1;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		margin-bottom: 1.25rem;
+		font-size: 0.9rem;
+		border-left: 3px solid #0ea5e9;
+	}
+
 	.loading {
 		display: flex;
 		flex-direction: column;
@@ -578,5 +633,14 @@
 	.login-form,
 	.welcome-panel {
 		padding: 1.75rem;
+	}
+
+	.auth-message {
+		font-size: 0.85rem;
+		color: #4a5568;
+		margin-top: 0.5rem;
+		margin-bottom: 0.5rem;
+		text-align: center;
+		font-style: italic;
 	}
 </style>

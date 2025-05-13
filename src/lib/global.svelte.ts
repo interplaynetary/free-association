@@ -1,16 +1,10 @@
 import {
-	createExampleForest,
-	addToForest,
+	GunUserTree,
 	enterChild,
 	exitToParent,
-	createRootNode,
-	makePoints,
-	followPath,
-	getCurrentPath,
-	addChild,
-	modifyNode
-} from '$lib/centralized';
-import type { TreeZipper, Forest, NavigationPath, Node, Ctx } from '$lib/centralized';
+	updateNodePersistentCache
+} from '$lib/centralized/tree';
+import type { TreeZipper, Forest, NavigationPath, Node, Ctx } from '$lib/centralized/types';
 import { browser } from '$app/environment';
 
 type ToastType = 'info' | 'success' | 'warning' | 'error';
@@ -273,156 +267,207 @@ export const globalState = $state({
 		globalState.updatePathInfo();
 	},
 
-	// Initialize the system
-	initialize: () => {
-		const { forest } = createExampleForest();
-		globalState.currentForest = forest;
+	// Initialize the system with GunUserTree
+	initialize: async () => {
+		try {
+			// Initialize Gun and authenticate user
+			await GunUserTree.initialize().catch((err) => {
+				console.warn('User authentication warning (not critical):', err);
+				// Continue execution even if auth has issues
+			});
 
-		// Set initial zipper to the first node in the forest
-		const entries = Array.from(forest.entries());
-		if (entries.length > 0) {
-			const [rootId, rootZipper] = entries[0];
-			globalState.currentZipper = rootZipper;
-			globalState.currentPath = [rootId];
+			// Load full tree, with a fallback to creating a basic tree
+			let rootTree;
+			try {
+				rootTree = await GunUserTree.loadFullTree();
+			} catch (treeError) {
+				console.error('Error loading full tree:', treeError);
+				// We'll create one when user logs in
+			}
 
-			// Generate path info
-			globalState.updatePathInfo();
-		}
+			// Create the forest
+			const forest = new Map<string, TreeZipper>();
 
-		// Check for logged in user in localStorage
-		if (browser) {
-			const storedUser = localStorage.getItem('centralizedUser');
-			if (storedUser) {
+			if (rootTree) {
+				const rootId = rootTree.zipperCurrent.nodeId;
+				forest.set(rootId, rootTree);
+
+				// Set initial state
+				globalState.currentForest = forest;
+				globalState.currentZipper = rootTree;
+				globalState.currentPath = [rootId];
+
+				// Load cache data
 				try {
-					const userData = JSON.parse(storedUser);
-					globalState.setCurrentUser(userData);
-				} catch (error) {
-					console.error('Error parsing stored user:', error);
+					const treeWithCache = await GunUserTree.loadCacheData(rootTree);
+					forest.set(rootId, treeWithCache);
+					globalState.currentZipper = treeWithCache;
+				} catch (cacheError) {
+					console.warn('Error loading cache data (non-critical):', cacheError);
+					// Continue without cache data
+				}
+
+				// Generate path info
+				globalState.updatePathInfo();
+			} else {
+				// No tree exists yet, we'll create one when a user logs in
+				globalState.currentForest = forest;
+			}
+
+			// Check for logged in user in localStorage
+			if (browser) {
+				const storedUser = localStorage.getItem('centralizedUser');
+				if (storedUser) {
+					try {
+						const userData = JSON.parse(storedUser);
+						await globalState.setCurrentUser(userData).catch((err) => {
+							console.error('Error setting current user from localStorage:', err);
+						});
+					} catch (parseError) {
+						console.error('Error parsing stored user:', parseError);
+						// Remove invalid stored user data
+						localStorage.removeItem('centralizedUser');
+					}
 				}
 			}
+		} catch (error) {
+			console.error('Error initializing GunUserTree:', error);
+			globalState.showToast('Failed to initialize tree', 'error');
 		}
 	},
 
 	// Set current user and update the current forest view
-	setCurrentUser: (userData: UserData | null) => {
+	setCurrentUser: async (userData: UserData | null) => {
 		globalState.currentUser = userData;
 
 		if (!userData) {
-			// If logging out, keep the current forest but reset the view to the first node
-			// instead of recreating the example forest
-			const entries = Array.from(globalState.currentForest.entries());
-			if (entries.length > 0) {
-				const [rootId, rootZipper] = entries[0];
-				globalState.currentZipper = rootZipper;
-				globalState.currentPath = [rootId];
-				globalState.updatePathInfo();
-			}
+			// If logging out, just clear the current state
+			globalState.currentZipper = null;
+			globalState.currentPath = [];
+			globalState.currentForest = new Map();
+			globalState.updatePathInfo();
 			return;
 		}
 
-		// Check if the user already exists in the current forest
-		const userZipper = globalState.currentForest.get(userData.username?.toLowerCase() || '');
-
-		if (userZipper) {
-			// User exists in the current forest, navigate to their tree
-			globalState.currentZipper = userZipper;
-			globalState.currentPath = [userData.username?.toLowerCase() || ''];
-			globalState.updatePathInfo();
-		} else {
-			// User doesn't exist in the current forest, create a new tree for them
-			const username = userData.username?.toLowerCase() || userData.pub.toLowerCase();
-			const userNode = createRootNode(
-				username,
-				userData.alias,
-				makePoints(100),
-				[], // No contributors initially
-				null // No manual fulfillment
-			);
-
-			const userZipper: TreeZipper = { zipperCurrent: userNode, zipperContext: null };
-
-			// Add new user to the existing forest instead of replacing it
-			globalState.currentForest.set(username, userZipper);
-			globalState.currentZipper = userZipper;
-			globalState.currentPath = [username];
-			globalState.updatePathInfo();
-		}
-	},
-
-	// Add node to current zipper
-	addNode: (nodeId: string, points: number, name?: string) => {
-		if (!globalState.currentZipper) return false;
-
 		try {
-			// Add child to current zipper
-			const updatedZipper = addChild(
-				nodeId,
-				makePoints(points),
-				[], // No contributors initially
-				null, // No manual fulfillment
-				globalState.currentZipper
-			);
+			// Try to fetch the user's tree
+			const userPub = userData.pub;
 
-			// If the node has a name, set it
-			if (name) {
-				const childZipper = enterChild(nodeId, updatedZipper);
-				if (childZipper) {
-					const namedChildZipper = modifyNode(
-						(node: Node) => ({
-							...node,
-							nodeName: name
-						}),
-						childZipper
-					);
+			// First check if we already have this tree in memory
+			let userTree = globalState.currentForest.get(userPub);
 
-					// Update parent with named child
-					const updatedChildren = new Map(updatedZipper.zipperCurrent.nodeChildren);
-					updatedChildren.set(nodeId, namedChildZipper.zipperCurrent);
-
-					// Create updated parent with named child
-					const updatedParentZipper = modifyNode(
-						(node: Node) => ({
-							...node,
-							nodeChildren: updatedChildren
-						}),
-						updatedZipper
-					);
-
-					// Update current zipper
-					globalState.currentZipper = { ...updatedParentZipper };
-				} else {
-					// If we couldn't enter the child, just use the updated zipper
-					globalState.currentZipper = { ...updatedZipper };
+			// If not in memory, fetch from database
+			if (!userTree) {
+				try {
+					userTree = await GunUserTree.fetchNode(userPub);
+				} catch (fetchError) {
+					console.warn('Error fetching user tree, will try to create new:', fetchError);
 				}
-			} else {
-				// Update current zipper
-				globalState.currentZipper = { ...updatedZipper };
 			}
 
-			// Update forest with new zipper at the root level
-			const rootId = globalState.currentPath[0];
-			if (rootId) {
-				// If the current zipper is at the root, directly update the forest
-				if (globalState.currentPath.length === 1 && globalState.currentZipper) {
-					globalState.currentForest = addToForest(
-						globalState.currentForest,
-						globalState.currentZipper
+			// Create a new tree for the user if needed
+			if (!userTree) {
+				console.log('Creating new tree for user:', userData.alias);
+				try {
+					userTree = await GunUserTree.createRootNode(
+						userData.alias || 'My Tree',
+						100,
+						[userPub] // The user is the contributor to the root node
 					);
-				} else {
-					// Follow the path from the current zipper back to root and update
-					const rootZipper = globalState.currentForest.get(rootId);
-					if (rootZipper && globalState.currentZipper) {
-						// Follow the path to the current location
-						let current = globalState.currentZipper;
 
-						// We need to update the forest with the changes bubbling up
-						globalState.currentForest = addToForest(globalState.currentForest, current);
-					}
+					// Save the new tree
+					await GunUserTree.saveNode(userTree);
+				} catch (createError) {
+					console.error('Error creating root node:', createError);
+					globalState.showToast('Failed to create user tree', 'error');
+					return;
 				}
+			}
+
+			// Try to load the full tree with children, with fallback to just the root
+			let fullTree: TreeZipper | null = null;
+			try {
+				fullTree = await GunUserTree.loadFullTree();
+			} catch (loadError) {
+				console.warn('Error loading full tree, will use basic tree:', loadError);
+			}
+
+			// Create new forest
+			const forest: Forest = new Map<string, TreeZipper>();
+
+			if (fullTree) {
+				// Update the forest with the full tree
+				forest.set(userPub, fullTree);
+
+				// Set as current tree
+				globalState.currentForest = forest;
+				globalState.currentZipper = fullTree;
+				globalState.currentPath = [userPub];
+			} else if (userTree) {
+				// Fallback to just the user node
+				// We've already checked userTree is not null, but TypeScript needs an assertion
+				forest.set(userPub, userTree!);
+
+				// Set as current tree
+				globalState.currentForest = forest;
+				globalState.currentZipper = userTree;
+				globalState.currentPath = [userPub];
+			} else {
+				// This should never happen, but just in case
+				console.error('No valid tree found for user:', userData);
+				globalState.showToast('Failed to load or create user tree', 'error');
+				return;
 			}
 
 			// Update path info
 			globalState.updatePathInfo();
+			globalState.showToast(`Welcome, ${userData.alias}!`, 'success');
+		} catch (error) {
+			console.error('Error setting current user:', error);
+			globalState.showToast('Failed to load user tree', 'error');
+		}
+	},
+
+	// Add node to current zipper
+	addNode: async (nodeId: string, points: number, name?: string) => {
+		if (!globalState.currentZipper || !globalState.currentUser) return false;
+
+		try {
+			const parentId = globalState.currentZipper.zipperCurrent.nodeId;
+
+			// Add child using GunUserTree
+			const childZipper = await GunUserTree.addChild(
+				parentId,
+				name || 'New Node',
+				points,
+				nodeId // Use provided nodeId
+			);
+
+			if (!childZipper) {
+				console.error('Failed to add child node');
+				return false;
+			}
+
+			// Save the node
+			await GunUserTree.saveNode(childZipper);
+
+			// Reload the current tree to reflect changes
+			const updatedRootTree = await GunUserTree.loadFullTree();
+			if (!updatedRootTree) return false;
+
+			// Update forest and current zipper
+			const rootId = updatedRootTree.zipperCurrent.nodeId;
+			globalState.currentForest.set(rootId, updatedRootTree);
+
+			// Navigate to the same location in the updated tree
+			if (globalState.currentPath.length > 0) {
+				globalState.navigateToPath(globalState.currentPath);
+			} else {
+				globalState.currentZipper = updatedRootTree;
+				globalState.currentPath = [rootId];
+				globalState.updatePathInfo();
+			}
+
 			return true;
 		} catch (err) {
 			console.error('Error adding node:', err);
@@ -435,22 +480,28 @@ export const globalState = $state({
 		if (!globalState.currentZipper) return;
 
 		// Create a unique ID for the new node
-		const newNodeId = `node-${Date.now()}`;
+		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		const newNodeName = 'New Node';
 
 		// New nodes start with 10 points by default
-		const success = globalState.addNode(newNodeId, 10, newNodeName);
+		globalState
+			.addNode(newNodeId, 10, newNodeName)
+			.then((success) => {
+				if (success) {
+					globalState.showToast('New node created', 'success');
 
-		if (success) {
-			globalState.showToast('New node created', 'success');
-
-			// Set node to edit mode
-			setTimeout(() => {
-				globalState.setNodeToEditMode(newNodeId);
-			}, 50);
-		} else {
-			globalState.showToast('Error creating node', 'error');
-		}
+					// Set node to edit mode
+					setTimeout(() => {
+						globalState.setNodeToEditMode(newNodeId);
+					}, 50);
+				} else {
+					globalState.showToast('Error creating node', 'error');
+				}
+			})
+			.catch((err) => {
+				console.error('Error in handleAddNode:', err);
+				globalState.showToast('Error creating node', 'error');
+			});
 	},
 
 	// Toggle delete mode
@@ -479,6 +530,87 @@ export const globalState = $state({
 		}
 	},
 
+	// Update node properties
+	updateNode: async (
+		nodeId: string,
+		updates: {
+			name?: string;
+			points?: number;
+			contributors?: string[];
+			manualFulfillment?: number | null;
+		}
+	) => {
+		if (!globalState.currentZipper) return false;
+
+		try {
+			// Find the node in the tree
+			let nodeToUpdate = null;
+			if (globalState.currentZipper.zipperCurrent.nodeId === nodeId) {
+				nodeToUpdate = globalState.currentZipper;
+			} else {
+				// Try to find the node by navigating from current
+				for (const [childId, _] of globalState.currentZipper.zipperCurrent.nodeChildren) {
+					if (childId === nodeId) {
+						nodeToUpdate = enterChild(childId, globalState.currentZipper);
+						break;
+					}
+				}
+			}
+
+			if (!nodeToUpdate) {
+				// Load the node directly
+				nodeToUpdate = await GunUserTree.fetchNode(nodeId);
+			}
+
+			if (!nodeToUpdate) {
+				console.error(`Node not found: ${nodeId}`);
+				return false;
+			}
+
+			// Update node properties
+			const updatedNode = { ...nodeToUpdate.zipperCurrent };
+			if (updates.name !== undefined) updatedNode.nodeName = updates.name;
+			if (updates.points !== undefined) updatedNode.nodePoints = updates.points;
+			if (updates.contributors !== undefined) {
+				updatedNode.nodeContributors = new Set(updates.contributors);
+			}
+			if (updates.manualFulfillment !== undefined) {
+				updatedNode.nodeManualFulfillment = updates.manualFulfillment;
+			}
+
+			// Create updated zipper
+			const updatedZipper = {
+				...nodeToUpdate,
+				zipperCurrent: updatedNode
+			};
+
+			// Save the updated node
+			await GunUserTree.saveNode(updatedZipper);
+
+			// Reload the full tree
+			const updatedRootTree = await GunUserTree.loadFullTree();
+			if (!updatedRootTree) return false;
+
+			// Update the forest
+			const rootId = updatedRootTree.zipperCurrent.nodeId;
+			globalState.currentForest.set(rootId, updatedRootTree);
+
+			// Navigate to the same location in the updated tree
+			if (globalState.currentPath.length > 0) {
+				globalState.navigateToPath(globalState.currentPath);
+			} else {
+				globalState.currentZipper = updatedRootTree;
+				globalState.currentPath = [rootId];
+				globalState.updatePathInfo();
+			}
+
+			return true;
+		} catch (error) {
+			console.error('Error updating node:', error);
+			return false;
+		}
+	},
+
 	// Display a toast notification
 	showToast: (message: string, type: ToastType = 'info') => {
 		// Clear any existing toast timeout
@@ -502,5 +634,6 @@ export const globalState = $state({
 
 // Initialize the system when imported
 if (browser) {
+	// Don't await here - initialize asynchronously
 	globalState.initialize();
 }

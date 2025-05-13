@@ -6,16 +6,13 @@
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { providerSharesCached } from '$lib/centralized/mutual';
+	import { providerShares } from '$lib/centralized/calculations';
 	import { getNodeName } from '$lib/centralized/forestUtils';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
-	import type { ShareMap, ProviderSharesCache, Forest, TreeZipper } from '$lib/centralized/types';
+	import type { ShareMap, Forest, TreeZipper } from '$lib/centralized/types';
 
 	// State for pie chart data
-	let layeredData: Array<PieChartData> = [];
-	let sharesCache: ProviderSharesCache = {
-		sharesCache: { cacheMap: new Map(), cacheMisses: 0, cacheHits: 0 }
-	};
+	let layeredData = $state<Array<PieChartData>>([]);
 	let maxLayers = 4; // Maximum number of layers to calculate share depths for
 	let showDebugInfo = $state(false);
 
@@ -56,22 +53,11 @@
 		// Generate pie chart data for different depths
 		const newLayers: Array<PieChartData> = [];
 
-		// Reset the shares cache
-		sharesCache = { sharesCache: { cacheMap: new Map(), cacheMisses: 0, cacheHits: 0 } };
-
 		// Calculate shares at each depth (1 through maxLayers)
 		for (let depth = 1; depth <= maxLayers; depth++) {
 			try {
 				// Get provider shares for the current user at this depth
-				const [shares, updatedCache] = providerSharesCached(
-					sharesCache,
-					globalState.currentForest,
-					userZipper,
-					depth
-				);
-
-				// Update the cache for the next calculation
-				sharesCache = updatedCache;
+				const shares = providerShares(globalState.currentForest, userZipper, depth);
 
 				// Convert shares to pie slices
 				const slices = shareMapToPieSlices(shares);
@@ -269,30 +255,6 @@
 		font-style: italic;
 	}
 
-	.subtitle {
-		font-size: 1rem;
-		opacity: 0.8;
-		margin-bottom: 1rem;
-	}
-	/*
-	.debug-buttons {
-		display: flex;
-		gap: 8px;
-		margin-bottom: 0.8rem;
-	}
-
-	.debug-button {
-		padding: 0.3rem 0.8rem;
-		background-color: #f0f0f0;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.debug-button:hover {
-		background-color: #e8e8e8;
-	}
-*/
 	.debug-panel {
 		max-width: 500px;
 		margin-top: 20px;

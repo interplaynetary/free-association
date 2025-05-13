@@ -94,17 +94,24 @@ export class GunNode<T = any> {
 		return new Promise<T>((resolve, reject) => {
 			// Create a timeout to avoid hanging forever
 			const timeout = setTimeout(() => {
-				reject(new Error('Gun once() timed out after 10 seconds'));
+				console.warn(`Gun once() timed out after 10 seconds for path: ${this.path.join('/')}`);
+				resolve(null as any); // Resolve with null instead of rejecting
 			}, 10000);
 
-			this.chain.once((data: T) => {
+			try {
+				this.chain.once((data: T) => {
+					clearTimeout(timeout);
+					// console.log('[DEBUG GunNode] Received value from once()', {
+					//   path: this.path.join('/'),
+					//   data
+					// });
+					resolve(data);
+				});
+			} catch (error) {
 				clearTimeout(timeout);
-				// console.log('[DEBUG GunNode] Received value from once()', {
-				//   path: this.path.join('/'),
-				//   data
-				// });
-				resolve(data);
-			});
+				console.error(`Error in Gun once() for path: ${this.path.join('/')}`, error);
+				resolve(null as any); // Resolve with null instead of rejecting
+			}
 		});
 	}
 

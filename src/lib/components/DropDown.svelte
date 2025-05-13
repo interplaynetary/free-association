@@ -3,8 +3,7 @@
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
 	import { writable, get } from 'svelte/store';
-	import type { Forest } from '$lib/centralized/types';
-	import { filterForestNodes } from '../centralized/forestUtils';
+	import { filterForestNodes } from '$lib/centralized/forestUtils';
 	import { browser } from '$app/environment';
 
 	// Props using Svelte 5 runes
@@ -48,8 +47,8 @@
 		currentFilterTextStore.set(filterText);
 	});
 
-	// Get current forest
-	let forest: Forest = $derived(globalState.currentForest);
+	// Get current forest from global state (for backward compatibility)
+	let currentForest = $derived(globalState.currentForest);
 
 	// Update forest entries when filter or forest changes
 	$effect(() => {
@@ -61,7 +60,8 @@
 		loadingStore.set(true);
 
 		const filter = get(currentFilterTextStore);
-		const filteredUsers = filterForestNodes(forest, filter, excludeIds);
+		// Use the helper function that now mocks users data
+		const filteredUsers = filterForestNodes(currentForest, filter, excludeIds);
 
 		usersStore.set(filteredUsers);
 		loadingStore.set(false);
