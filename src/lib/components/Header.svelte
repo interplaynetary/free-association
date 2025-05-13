@@ -32,8 +32,9 @@
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
 
-	// Add document click listener to close dropdown when clicking outside
+	// Check auth status and show login automatically
 	onMount(() => {
+		// Add click outside handler
 		function handleClickOutside(event: MouseEvent) {
 			if (headerRef && !headerRef.contains(event.target as Node) && showLoginPanel) {
 				showLoginPanel = false;
@@ -41,6 +42,14 @@
 		}
 
 		document.addEventListener('mousedown', handleClickOutside);
+
+		// If not authenticated, automatically show login panel
+		if (!currentUser) {
+			// A small delay to ensure the component is fully mounted
+			setTimeout(() => {
+				showLoginPanel = true;
+			}, 100);
+		}
 
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
@@ -60,15 +69,19 @@
 		}
 	}
 
-	// Handles the click on a breadcrumb item
+	// Update handleBreadcrumbClick function to handle unauthenticated state
 	function handleBreadcrumbClick(index: number, event: MouseEvent) {
 		// If clicking on the root breadcrumb (index 0)
 		if (index === 0) {
 			// Prevent default navigation behavior
 			event.preventDefault();
 
+			// If user is not authenticated, show login panel regardless of route
+			if (!currentUser) {
+				showLoginPanel = true;
+			}
 			// If we're not in the soul route, navigate to the soul route
-			if (!isSoulRoute) {
+			else if (!isSoulRoute) {
 				// First navigate to the root node in the tree
 				globalState.navigateToPathIndex(0);
 				// Then go to the soul route
