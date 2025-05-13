@@ -32,6 +32,9 @@
 			// Use Gun's recall function to check for existing session
 			await recallUser();
 
+			// Small delay to ensure Gun has properly loaded the user state
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
 			// If user exists in Gun after recall, update local state
 			if (user.is?.pub) {
 				isAuthenticated = true;
@@ -47,6 +50,9 @@
 			}
 		} catch (error) {
 			console.error('Error recalling user session:', error);
+			// Reset auth state in case of error
+			isAuthenticated = false;
+			userAlias = '';
 		} finally {
 			isLoading = false;
 		}
@@ -56,6 +62,11 @@
 	async function handleAuthenticate() {
 		if (!username || !password) {
 			errorMessage = 'Please enter both username and password';
+			return;
+		}
+
+		// Don't attempt to authenticate if we're already loading
+		if (isLoading) {
 			return;
 		}
 
@@ -110,16 +121,30 @@
 
 	// Handle logout
 	function handleLogout() {
-		// Use Gun's logout function
-		logout();
+		// Set loading state while logout is in progress
+		isLoading = true;
+		errorMessage = '';
 
-		// Update local state
-		isAuthenticated = false;
-		userAlias = '';
+		try {
+			// Use Gun's logout function
+			logout();
 
-		// Update global state to reflect logged out status
-		globalState.setCurrentUser(null);
-		globalState.showToast('Logged out successfully', 'info');
+			// Update local state
+			isAuthenticated = false;
+			userAlias = '';
+
+			// Update global state to reflect logged out status
+			globalState.setCurrentUser(null);
+			globalState.showToast('Logged out successfully', 'info');
+		} catch (error) {
+			console.error('Logout error:', error);
+			globalState.showToast('Error during logout', 'error');
+		} finally {
+			// Give a small delay to ensure Gun has time to clean up
+			setTimeout(() => {
+				isLoading = false;
+			}, 200);
+		}
 	}
 
 	// Close the popup
@@ -138,23 +163,54 @@
 		reflect?: boolean;
 	}) {
 		const size = options.size || 70;
-		const pub = options.pub;
+		const pub = options.pub || '';
+
+		// Safety check for empty public key
+		if (!pub) {
+			// Return default avatar for empty pub key
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="#6b7280" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						?
+					</text>
+				</svg>
+			`)}`;
+		}
 
 		// Generate a color based on public key
-		const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
-		const saturation = 70;
-		const lightness = 60;
+		try {
+			const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
+			const saturation = 70;
+			const lightness = 60;
 
-		// Generate avatar SVG
-		return `data:image/svg+xml,${encodeURIComponent(`
-			<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-				<rect width="100%" height="100%" fill="hsl(${hue}, ${saturation}%, ${lightness}%)" />
-				<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
-					text-anchor="middle" dominant-baseline="middle">
-					${userAlias.charAt(0).toUpperCase()}
-				</text>
-			</svg>
-		`)}`;
+			// Get first character for avatar text (safely)
+			const firstChar = userAlias && userAlias.length > 0 ? userAlias.charAt(0).toUpperCase() : '?';
+
+			// Generate avatar SVG
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="hsl(${hue}, ${saturation}%, ${lightness}%)" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						${firstChar}
+					</text>
+				</svg>
+			`)}`;
+		} catch (error) {
+			// Handle any errors with a fallback avatar
+			console.error('Error generating avatar:', error);
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="#6b7280" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						!
+					</text>
+				</svg>
+			`)}`;
+		}
 	}
 </script>
 

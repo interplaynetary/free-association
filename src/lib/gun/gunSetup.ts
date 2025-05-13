@@ -1,10 +1,10 @@
 import Gun from 'gun/gun';
 import SEA from 'gun/sea.js';
 import 'gun/axe';
-//import 'gun/lib/radix';
-//import 'gun/lib/radisk';
-// import 'gun/lib/store';
-//import 'gun/lib/rindexed';
+import 'gun/lib/radix';
+import 'gun/lib/radisk';
+import 'gun/lib/store';
+import 'gun/lib/rindexed';
 import 'gun/lib/webrtc';
 import 'gun/lib/then';
 import 'gun/lib/yson.js';
@@ -32,13 +32,28 @@ export const gun = Gun({
 		'http://localhost:8765/gun'
 		//"https://gun-manhattan.herokuapp.com/gun", // Public relay peer for cross-device syncing
 	],
-	localStorage: false,
-	radisk: false
+	localStorage: true
 });
 
 // Get authenticated user space
 export const user = gun.user() as GunUser;
 user.recall({ sessionStorage: true });
+
+// Add error handling for Gun by extending the "in" event handler
+// This captures error messages coming from Gun
+// @ts-ignore - accessing Gun's private API
+gun.on('in', function (msg: any) {
+	// If the message contains an error, handle it
+	if (msg.err) {
+		// Filter out the "Invalid get request" errors to reduce console noise
+		if (typeof msg.err === 'string' && !msg.err.includes('Invalid get request!')) {
+			console.error('[GUN Error]:', msg.err);
+		}
+	}
+	// Pass the message to the next handler
+	// @ts-ignore - accessing Gun's private API
+	this.to.next(msg);
+});
 
 // Type for Gun metadata - helps with GunNode.ts linter errors
 export interface GunMeta {
@@ -166,26 +181,35 @@ export const recallUser = (): Promise<void> => {
 			// Fetch and restore alias if needed
 			if (user?.is?.alias === user?.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				user.get('alias').once((alias: string) => {
-					if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-						// Update user.is.alias with the correct value
-						if (user?.is) {
-							user.is.alias = alias;
-						}
-						console.log('Restored correct alias:', alias);
+				try {
+					user.get('alias').once((alias: string) => {
+						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
+							// Update user.is.alias with the correct value
+							if (user?.is) {
+								user.is.alias = alias;
+							}
+							console.log('Restored correct alias:', alias);
 
-						// Register in users list
-						registerUserInList(user?.is?.pub!, alias);
-					} else if (user?.is?.pub && user?.is?.alias) {
-						// Use alias even if it's the same as pub
-						registerUserInList(user?.is?.pub, user?.is?.alias);
-					}
-					resolve();
-				});
+							// Register in users list
+							registerUserInList(user?.is?.pub!, alias);
+						} else if (user?.is?.pub && user?.is?.alias) {
+							// Use alias even if it's the same as pub
+							registerUserInList(user?.is?.pub, user?.is?.alias);
+						}
+						resolve();
+					});
+				} catch (error) {
+					console.error('Error fetching user alias:', error);
+					resolve(); // Resolve anyway to not block the application
+				}
 				return;
 			} else if (user?.is?.pub && user?.is?.alias) {
 				// Register in users list with current alias
-				registerUserInList(user?.is?.pub, user?.is?.alias);
+				try {
+					registerUserInList(user?.is?.pub, user?.is?.alias);
+				} catch (error) {
+					console.error('Error registering user in list:', error);
+				}
 			}
 			resolve();
 			return;
@@ -198,61 +222,96 @@ export const recallUser = (): Promise<void> => {
 			// Check if alias equals pub key, which indicates a potential issue
 			if (user?.is?.alias === user?.is?.pub && user?.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				user.get('alias').once((alias: string) => {
-					if (alias && typeof alias === 'string' && user?.is?.pub && alias !== user?.is?.pub) {
-						// Update user.is.alias with the correct value
-						if (user?.is) {
-							user.is.alias = alias;
-						}
-						console.log('Restored correct alias:', alias);
+				try {
+					user.get('alias').once((alias: string) => {
+						if (alias && typeof alias === 'string' && user?.is?.pub && alias !== user?.is?.pub) {
+							// Update user.is.alias with the correct value
+							if (user?.is) {
+								user.is.alias = alias;
+							}
+							console.log('Restored correct alias:', alias);
 
-						// Register in users list
-						registerUserInList(user?.is?.pub!, alias);
-					} else if (user?.is?.pub && user?.is?.alias) {
-						// Use alias even if it's the same as pub
-						registerUserInList(user?.is?.pub, user?.is?.alias);
-					}
-					resolve();
-				});
+							// Register in users list
+							registerUserInList(user?.is?.pub!, alias);
+						} else if (user?.is?.pub && user?.is?.alias) {
+							// Use alias even if it's the same as pub
+							registerUserInList(user?.is?.pub, user?.is?.alias);
+						}
+						resolve();
+					});
+				} catch (error) {
+					console.error('Error fetching user alias in auth handler:', error);
+					resolve(); // Resolve anyway to not block the application
+				}
 			} else if (user?.is?.pub && user?.is?.alias) {
 				// Register in users list with current alias
-				registerUserInList(user?.is?.pub, user?.is?.alias);
+				try {
+					registerUserInList(user?.is?.pub, user?.is?.alias);
+				} catch (error) {
+					console.error('Error registering user in list:', error);
+				}
 				resolve();
 			} else {
 				resolve();
 			}
 		};
 
-		gun.on('auth', authHandler);
+		// Try to add auth handler safely
+		try {
+			gun.on('auth', authHandler);
+		} catch (error) {
+			console.error('Error setting up auth handler:', error);
+		}
 
 		// Attempt recall
-		user.recall({ sessionStorage: true });
+		try {
+			user.recall({ sessionStorage: true });
+		} catch (error) {
+			console.error('Error recalling user session:', error);
+			// Clean up auth handler if recall fails
+			(gun as any).off('auth', authHandler);
+			resolve();
+		}
 
 		// Safety timeout
 		setTimeout(() => {
-			(gun as any).off('auth', authHandler);
+			// Remove the auth handler if it's still active
+			try {
+				(gun as any).off('auth', authHandler);
+			} catch (error) {
+				console.error('Error removing auth handler:', error);
+			}
 
 			// Same alias check on timeout
 			if (user.is?.pub && user.is?.alias === user.is?.pub) {
 				// Use non-null assertion since we've already checked user.is.pub exists
-				user.get('alias').once((alias: string) => {
-					if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
-						if (user.is) {
-							user.is.alias = alias;
-						}
-						console.log('Restored correct alias on timeout:', alias);
+				try {
+					user.get('alias').once((alias: string) => {
+						if (alias && typeof alias === 'string' && user.is?.pub && alias !== user.is.pub) {
+							if (user.is) {
+								user.is.alias = alias;
+							}
+							console.log('Restored correct alias on timeout:', alias);
 
-						// Register in users list
-						registerUserInList(user.is.pub!, alias);
-					} else if (user.is?.pub && user.is?.alias) {
-						// Use current alias as fallback
-						registerUserInList(user.is.pub, user.is.alias);
-					}
+							// Register in users list
+							registerUserInList(user.is.pub!, alias);
+						} else if (user.is?.pub && user.is?.alias) {
+							// Use current alias as fallback
+							registerUserInList(user.is.pub, user.is.alias);
+						}
+						resolve();
+					});
+				} catch (error) {
+					console.error('Error fetching user alias on timeout:', error);
 					resolve();
-				});
+				}
 			} else if (user.is?.pub && user.is?.alias) {
 				// Register in users list with current alias
-				registerUserInList(user.is.pub, user.is.alias);
+				try {
+					registerUserInList(user.is.pub, user.is.alias);
+				} catch (error) {
+					console.error('Error registering user in list on timeout:', error);
+				}
 				resolve();
 			} else {
 				resolve();
@@ -264,40 +323,86 @@ export const recallUser = (): Promise<void> => {
 // Single authentication function that handles both login and signup
 export const authenticate = async (alias: string, pass: string): Promise<void> => {
 	return new Promise((resolve, reject) => {
+		// Input validation
+		if (!alias || typeof alias !== 'string') {
+			reject(new Error('Invalid username provided'));
+			return;
+		}
+
+		if (!pass || typeof pass !== 'string') {
+			reject(new Error('Invalid password provided'));
+			return;
+		}
+
+		// Clean alias to prevent errors
+		const cleanAlias = alias.trim();
+
 		// First try to login
-		user.auth(alias, pass, (ack: any) => {
+		user.auth(cleanAlias, pass, (ack: any) => {
+			// Handle case where ack is undefined or null
+			if (!ack) {
+				console.error('Received null/undefined acknowledgment from Gun during authentication');
+				reject(new Error('Authentication system error'));
+				return;
+			}
+
 			if (!ack.err) {
-				console.log('Authenticated user:', alias);
+				console.log('Authenticated user:', cleanAlias);
 
-				// Register authenticated user in users list
-				if (user?.is?.pub) {
-					registerUserInList(user.is.pub, alias);
-				}
-
-				resolve();
+				// Register authenticated user in users list after a small delay
+				// This helps ensure user.is is properly set
+				setTimeout(() => {
+					if (user?.is?.pub) {
+						try {
+							registerUserInList(user.is.pub, cleanAlias);
+						} catch (error) {
+							console.error('Error registering user in list:', error);
+							// Don't reject here, continue with auth process
+						}
+					}
+					resolve();
+				}, 50);
 				return;
 			}
 
 			// If login fails, create and authenticate new user
-			user.create(alias, pass, (createAck: any) => {
+			user.create(cleanAlias, pass, (createAck: any) => {
+				// Handle case where createAck is undefined or null
+				if (!createAck) {
+					reject(new Error('User creation system error'));
+					return;
+				}
+
 				if (createAck.err) {
 					reject(new Error(createAck.err));
 					return;
 				}
 
 				// After creation, authenticate
-				user.auth(alias, pass, (authAck: any) => {
+				user.auth(cleanAlias, pass, (authAck: any) => {
+					// Handle case where authAck is undefined or null
+					if (!authAck) {
+						reject(new Error('User authentication system error after creation'));
+						return;
+					}
+
 					if (authAck.err) {
 						reject(new Error(authAck.err));
 					} else {
-						console.log('Authenticated user:', alias);
+						console.log('Authenticated newly created user:', cleanAlias);
 
-						// Register newly created user in users list
-						if (user?.is?.pub) {
-							registerUserInList(user?.is?.pub, alias);
-						}
-
-						resolve();
+						// Register newly created user in users list after a small delay
+						setTimeout(() => {
+							if (user?.is?.pub) {
+								try {
+									registerUserInList(user.is.pub, cleanAlias);
+								} catch (error) {
+									console.error('Error registering newly created user in list:', error);
+									// Don't reject here, continue with auth process
+								}
+							}
+							resolve();
+						}, 50);
 					}
 				});
 			});
@@ -307,35 +412,73 @@ export const authenticate = async (alias: string, pass: string): Promise<void> =
 
 // Clean logout that clears storage
 export const logout = () => {
+	// Store user pub key before logout for reference
+	const userPub = user.is?.pub;
+
 	// Mark user as offline in the users list before logging out
-	if (user.is?.pub) {
-		console.log('Marking user as offline:', user.is.pub);
-		gun.get('users').get(user.is.pub).put({
-			online: false,
-			lastSeen: Date.now()
-		});
+	if (userPub) {
+		console.log('Marking user as offline:', userPub);
+		try {
+			gun.get('users').get(userPub).put({
+				online: false,
+				lastSeen: Date.now()
+			});
+		} catch (e) {
+			console.error('Error marking user offline:', e);
+		}
 	}
 
+	// First call leave to clear Gun's internal state
 	user.leave();
-	sessionStorage.clear();
-	localStorage.clear();
+
+	// Small delay to ensure Gun operations complete
+	setTimeout(() => {
+		try {
+			sessionStorage.clear();
+			localStorage.clear();
+		} catch (e) {
+			console.error('Error clearing storage:', e);
+		}
+	}, 100);
 };
 
 // Create a node reference at a path - helper function to work with GunNode
 export const getNodeRef = (path: string[]) => {
 	let ref: any;
+
+	// Safety check for empty path
+	if (!path || !Array.isArray(path) || path.length === 0) {
+		console.warn('getNodeRef called with invalid path:', path);
+		return null;
+	}
+
 	if (user.is?.pub) {
 		// user space
 		ref = user as any;
+
+		// Safely traverse the path
 		for (const segment of path) {
-			ref = ref.get(segment);
+			// Ensure segment is not null or undefined
+			if (segment === null || segment === undefined) {
+				console.warn('Invalid path segment (null/undefined) in path:', path);
+				return null;
+			}
+
+			// If ref is already null/undefined, don't try to get further
+			if (!ref) {
+				console.warn('getNodeRef reference is null during traversal');
+				return null;
+			}
+
+			ref = ref.get(String(segment)); // Ensure segment is a string
 		}
+
+		return ref;
 	} else {
-		// public space
-		//ref = gun as any;
-		console.log('You must be logged in!');
+		// Not authenticated
+		console.log('You must be logged in to access user space data!');
+		return null;
 	}
-	return ref;
 };
 
 // Helper to get encrypted user paths

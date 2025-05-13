@@ -366,25 +366,6 @@ export const globalState = $state({
 				}
 			}
 
-			// Create a new tree for the user if needed
-			if (!userTree) {
-				console.log('Creating new tree for user:', userData.alias);
-				try {
-					userTree = await GunUserTree.createRootNode(
-						userData.alias || 'My Tree',
-						100,
-						[userPub] // The user is the contributor to the root node
-					);
-
-					// Save the new tree
-					await GunUserTree.saveNode(userTree);
-				} catch (createError) {
-					console.error('Error creating root node:', createError);
-					globalState.showToast('Failed to create user tree', 'error');
-					return;
-				}
-			}
-
 			// Try to load the full tree with children, with fallback to just the root
 			let fullTree: TreeZipper | null = null;
 			try {
@@ -457,7 +438,6 @@ export const globalState = $state({
 			console.log('[FLOW] Saving node to Gun:', nodeId);
 			await GunUserTree.saveNode(childZipper);
 			console.log('[FLOW] Node saved to Gun');
-
 			// Instead of reloading the entire tree, we'll update our current forest and zipper directly
 			// This is more efficient than a full tree reload
 			console.log('[FLOW] Updating current zipper and forest with new node');
@@ -691,6 +671,110 @@ export const globalState = $state({
 					}, 3000) as unknown as number)
 				: null
 		};
+	},
+
+	// Delete a node and its children
+	deleteNode: async (nodeId: string): Promise<boolean> => {
+		console.log('[FLOW] deleteNode started:', nodeId);
+		if (!globalState.currentZipper) return false;
+
+		try {
+			// Don't allow deleting root node
+			if (nodeId === globalState.currentPath[0]) {
+				console.error('[FLOW] Cannot delete root node');
+				globalState.showToast('Cannot delete root node', 'error');
+				return false;
+			}
+
+			// Check if we're trying to delete the current node
+			const isCurrentNode = globalState.currentZipper.zipperCurrent.nodeId === nodeId;
+
+			if (isCurrentNode) {
+				// If we're on the node to delete, navigate up to parent first
+				if (globalState.currentPath.length <= 1) {
+					console.error('[FLOW] Cannot delete current node with no parent');
+					return false;
+				}
+
+				// Navigate to parent
+				console.log('[FLOW] Navigating to parent before deleting current node');
+				globalState.zoomOut();
+			}
+
+			// Find the parent of the node to delete
+			let parentZipper = null;
+			let parentNodeId = '';
+
+			if (globalState.currentPath.length > 1) {
+				// If we have a path, try to find parent using the path
+				const pathIndex = globalState.currentPath.indexOf(nodeId);
+				if (pathIndex > 0) {
+					parentNodeId = globalState.currentPath[pathIndex - 1];
+					// Get parent from forest if possible
+					parentZipper = globalState.currentForest.get(parentNodeId);
+				}
+			}
+
+			// If we couldn't find parent in the path, assume current node is parent
+			if (!parentZipper) {
+				parentZipper = globalState.currentZipper;
+				parentNodeId = parentZipper.zipperCurrent.nodeId;
+			}
+
+			// Verify the node exists in parent's children
+			if (!parentZipper.zipperCurrent.nodeChildren.has(nodeId)) {
+				console.error(`[FLOW] Node ${nodeId} not found in parent's children`);
+				return false;
+			}
+
+			// 1. Update parent in memory by removing the child reference
+			const updatedChildren = new Map(parentZipper.zipperCurrent.nodeChildren);
+			updatedChildren.delete(nodeId);
+
+			const updatedParentNode = {
+				...parentZipper.zipperCurrent,
+				nodeChildren: updatedChildren
+			};
+
+			const updatedParentZipper = {
+				...parentZipper,
+				zipperCurrent: updatedParentNode
+			};
+
+			// 2. Save the updated parent to Gun
+			console.log(`[FLOW] Updating parent node ${parentNodeId} to remove child reference`);
+			await GunUserTree.saveNode(updatedParentZipper);
+
+			// 3. Delete the node and all its children from Gun
+			console.log(`[FLOW] Deleting node ${nodeId} and its children from Gun`);
+			const deleteResult = await GunUserTree.deleteNode(nodeId);
+
+			if (!deleteResult) {
+				console.error(`[FLOW] Failed to delete node ${nodeId} from Gun`);
+				return false;
+			}
+
+			// 4. Update the in-memory state
+			// If we're viewing the deleted node's parent, update the current zipper
+			if (globalState.currentZipper.zipperCurrent.nodeId === parentNodeId) {
+				globalState.currentZipper = updatedParentZipper;
+			}
+
+			// 5. Update the forest if parent is root
+			const rootId = globalState.currentPath[0];
+			if (rootId === parentNodeId) {
+				globalState.currentForest.set(rootId, updatedParentZipper);
+			}
+
+			// 6. Force an update of path info if needed
+			globalState.updatePathInfo();
+
+			console.log(`[FLOW] Node ${nodeId} and its children deleted successfully`);
+			return true;
+		} catch (err) {
+			console.error('[FLOW] Error in deleteNode:', err);
+			return false;
+		}
 	}
 });
 

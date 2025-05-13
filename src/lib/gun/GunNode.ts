@@ -49,7 +49,7 @@ export class GunNode<T = any> {
 	 * @param options Optional Gun options (e.g., for certificates)
 	 * @returns This node instance for chaining
 	 */
-	public put(value: Partial<T>, options?: any): this {
+	public put(value: Partial<T> | null, options?: any): this {
 		// console.log('[DEBUG GunNode] Putting value to node', {
 		//   path: this.path.join('/'),
 		//   value,

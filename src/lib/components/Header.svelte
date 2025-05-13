@@ -32,8 +32,9 @@
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
 
-	// Add document click listener to close dropdown when clicking outside
+	// Check auth status and show login automatically
 	onMount(() => {
+		// Add click outside handler
 		function handleClickOutside(event: MouseEvent) {
 			if (headerRef && !headerRef.contains(event.target as Node) && showLoginPanel) {
 				showLoginPanel = false;
@@ -41,6 +42,14 @@
 		}
 
 		document.addEventListener('mousedown', handleClickOutside);
+
+		// If not authenticated, automatically show login panel
+		if (!currentUser) {
+			// A small delay to ensure the component is fully mounted
+			setTimeout(() => {
+				showLoginPanel = true;
+			}, 100);
+		}
 
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
@@ -60,15 +69,19 @@
 		}
 	}
 
-	// Handles the click on a breadcrumb item
+	// Update handleBreadcrumbClick function to handle unauthenticated state
 	function handleBreadcrumbClick(index: number, event: MouseEvent) {
 		// If clicking on the root breadcrumb (index 0)
 		if (index === 0) {
 			// Prevent default navigation behavior
 			event.preventDefault();
 
+			// If user is not authenticated, show login panel regardless of route
+			if (!currentUser) {
+				showLoginPanel = true;
+			}
 			// If we're not in the soul route, navigate to the soul route
-			if (!isSoulRoute) {
+			else if (!isSoulRoute) {
 				// First navigate to the root node in the tree
 				globalState.navigateToPathIndex(0);
 				// Then go to the soul route
@@ -108,13 +121,24 @@
 			return;
 		}
 
+		// Don't attempt to authenticate if we're already loading
+		if (isLoading) {
+			return;
+		}
+
+		// Clean the username input
+		const cleanUsername = username.trim();
+
 		errorMessage = '';
 		authMessage = '';
 		isLoading = true;
 
 		try {
 			// Use Gun's authenticate function which handles both login and signup
-			await authenticate(username, password);
+			await authenticate(cleanUsername, password);
+
+			// Add a small delay to ensure Gun state is fully updated
+			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Import user again to ensure it's defined and refreshed after authentication
 			const { user: gunUser } = await import('$lib/gun/gunSetup');
@@ -124,12 +148,17 @@
 				// Get user data directly from gun.user instance
 				const userData: UserData = {
 					pub: gunUser.is.pub,
-					alias: gunUser.is.alias || username,
-					username: username.toLowerCase()
+					alias: gunUser.is.alias || cleanUsername,
+					username: cleanUsername.toLowerCase()
 				};
 
-				// Store user in localStorage
-				localStorage.setItem('centralizedUser', JSON.stringify(userData));
+				// Store user in localStorage with a try/catch to prevent errors
+				try {
+					localStorage.setItem('centralizedUser', JSON.stringify(userData));
+				} catch (storageError) {
+					console.error('Error storing user in localStorage:', storageError);
+					// Continue anyway - this is not a critical error
+				}
 
 				// Update global state with the logged in user
 				await globalState.setCurrentUser(userData);
@@ -156,35 +185,95 @@
 
 	// Handle logout
 	async function handleLogout() {
-		localStorage.removeItem('centralizedUser');
-		await globalState.setCurrentUser(null);
-		globalState.showToast('Logged out successfully', 'info');
+		// Set loading state to prevent UI interactions during logout
+		isLoading = true;
 
-		// Keep panel open and reset form fields
-		username = '';
-		password = '';
-		errorMessage = '';
-		authMessage = '';
-		showPassword = false;
+		try {
+			// Remove user from localStorage
+			try {
+				localStorage.removeItem('centralizedUser');
+			} catch (error) {
+				console.error('Error removing user from localStorage:', error);
+				// Continue with logout process regardless
+			}
+
+			// Update global state to reflect logout
+			await globalState.setCurrentUser(null);
+
+			// Import logout function to ensure proper Gun cleanup
+			const { logout } = await import('$lib/gun/gunSetup');
+			logout();
+
+			// Show success message
+			globalState.showToast('Logged out successfully', 'info');
+		} catch (error) {
+			console.error('Logout error:', error);
+			globalState.showToast('Error during logout', 'error');
+		} finally {
+			// Small delay to ensure Gun has time to clean up
+			setTimeout(() => {
+				// Reset form fields
+				username = '';
+				password = '';
+				errorMessage = '';
+				authMessage = '';
+				showPassword = false;
+				isLoading = false;
+			}, 200);
+		}
 	}
 
 	// Generate avatar
 	function generateAvatar(pub: string, size = 32) {
-		// Generate a color based on public key
-		const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
-		const saturation = 70;
-		const lightness = 60;
+		// Safety check for empty public key
+		if (!pub) {
+			// Return default avatar for empty pub key
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="#6b7280" rx="${size / 4}" ry="${size / 4}" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						?
+					</text>
+				</svg>
+			`)}`;
+		}
 
-		// Generate avatar SVG
-		return `data:image/svg+xml,${encodeURIComponent(`
-			<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-				<rect width="100%" height="100%" fill="hsl(${hue}, ${saturation}%, ${lightness}%)" rx="${size / 4}" ry="${size / 4}" />
-				<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
-					text-anchor="middle" dominant-baseline="middle">
-					${currentUser?.alias.charAt(0).toUpperCase()}
-				</text>
-			</svg>
-		`)}`;
+		try {
+			// Generate a color based on public key
+			const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
+			const saturation = 70;
+			const lightness = 60;
+
+			// Get first character for avatar text (safely)
+			const firstChar =
+				currentUser?.alias && currentUser?.alias.length > 0
+					? currentUser.alias.charAt(0).toUpperCase()
+					: '?';
+
+			// Generate avatar SVG
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="hsl(${hue}, ${saturation}%, ${lightness}%)" rx="${size / 4}" ry="${size / 4}" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						${firstChar}
+					</text>
+				</svg>
+			`)}`;
+		} catch (error) {
+			// Handle any errors with a fallback avatar
+			console.error('Error generating avatar:', error);
+			return `data:image/svg+xml,${encodeURIComponent(`
+				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+					<rect width="100%" height="100%" fill="#6b7280" rx="${size / 4}" ry="${size / 4}" />
+					<text x="50%" y="50%" font-family="Arial" font-size="${size / 2}px" fill="white" 
+						text-anchor="middle" dominant-baseline="middle">
+						!
+					</text>
+				</svg>
+			`)}`;
+		}
 	}
 
 	// Check if current node has direct contribution children
