@@ -76,7 +76,9 @@ enterSibling :: String -> TreeZipper -> Maybe TreeZipper
 enterSibling name z = exitToParent z >>= enterChild name
 
 goToRoot :: TreeZipper -> TreeZipper
-goToRoot z = maybe z goToRoot (exitToParent z)
+goToRoot z = case exitToParent z of
+  Nothing -> z -- Already at root
+  Just parent -> goToRoot parent
 
 -- Modify the current node safely
 modifyNode :: (Node -> Node) -> TreeZipper -> TreeZipper
@@ -331,16 +333,14 @@ nonContributionChildrenFulfillment z =
 -- Safely get instances of a contributor
 getContributorInstances :: Forest -> String -> Set.Set TreeZipper
 getContributorInstances contribIndex contribId =
-  let emptyNode = createRootNode contribId contribId 0 [] Nothing
-      emptyZipper = TreeZipper emptyNode Nothing
-      defaultResult = Set.singleton emptyZipper
-   in Set.singleton $ Map.findWithDefault emptyZipper contribId contribIndex
+  case Map.lookup contribId contribIndex of
+    Just z -> Set.singleton z
+    Nothing -> Set.empty -- Return empty set for missing contributors
 
 -- Safely get a contributor node
 getContributorNode :: Forest -> String -> Maybe TreeZipper
 getContributorNode contribIndex contribId =
-  let instances = getContributorInstances contribIndex contribId
-   in listToMaybe (Set.toList instances)
+  Map.lookup contribId contribIndex
 
 -- Calculate fulfillment with caching (Declarative)
 fulfilled :: TreeZipper -> Float
@@ -506,9 +506,16 @@ normalizeShareMap = normalizeMap
 -- Normalized Shares-of-General-Fulfillment Map (Declarative)
 -------------------------------------------------------
 sharesOfGeneralFulfillmentMap :: Forest -> TreeZipper -> ShareMap
-sharesOfGeneralFulfillmentMap ci z =
+sharesOfGeneralFulfillmentMap ci z@(TreeZipper current ctx) =
   -- Use stored map if available, otherwise calculate fresh
-  Maybe.fromMaybe calculateFreshMap $ nodeSOGFMap $ zipperCurrent z
+  case nodeSOGFMap current of
+    Just cachedMap -> cachedMap
+    Nothing ->
+      -- Calculate fresh map and update the node with the new value
+      let freshMap = calculateFreshMap
+          updatedNode = current {nodeSOGFMap = Just freshMap}
+          updatedZipper = z {zipperCurrent = updatedNode}
+       in freshMap
   where
     -- Calculate a fresh map by normalizing the raw shares
     calculateFreshMap = normalizeShareMap rawShareMap
@@ -520,13 +527,19 @@ sharesOfGeneralFulfillmentMap ci z =
     contributorShares =
       [(nodeId (zipperCurrent c), shareOfGeneralFulfillment ci z c) | (_, c) <- Map.toList ci]
 
------------------------------------------------------------------------
--- Provider-centric shares in a declarative style
------------------------------------------------------------------------
+-- Calculate and update provider-centric shares
 providerShares :: Forest -> TreeZipper -> Int -> ShareMap
-providerShares ci provider depth =
+providerShares ci provider@(TreeZipper current ctx) depth =
   -- Use stored map if available, otherwise calculate fresh
-  Maybe.fromMaybe calculateFreshMap $ Map.lookup depth . nodeProviderSharesMap $ zipperCurrent provider
+  case Map.lookup depth (nodeProviderSharesMap current) of
+    Just cachedMap -> cachedMap
+    Nothing ->
+      -- Calculate fresh map and update the node with the new value
+      let freshMap = calculateFreshMap
+          updatedMaps = Map.insert depth freshMap (nodeProviderSharesMap current)
+          updatedNode = current {nodeProviderSharesMap = updatedMaps}
+          updatedZipper = provider {zipperCurrent = updatedNode}
+       in freshMap
   where
     -- Calculate a fresh map for the given depth
     calculateFreshMap = normalizeShareMap $ computeSharesForDepth depth
@@ -636,10 +649,10 @@ data SpaceTimeCoordinates = SpaceTimeCoordinates
     allDay :: Bool,
     recurrence :: Maybe String,
     customRecurrence :: Maybe CustomRecurrence,
-    startDate :: UTCTime,
-    startTime :: UTCTime,
-    endDate :: UTCTime,
-    endTime :: UTCTime,
+    startDate :: Maybe UTCTime,
+    startTime :: Maybe UTCTime,
+    endDate :: Maybe UTCTime,
+    endTime :: Maybe UTCTime,
     timeZone :: String
   }
   deriving (Show, Eq)
@@ -728,17 +741,13 @@ addToForest forest z = Map.insert (nodeId $ zipperCurrent z) z forest
 mergeContributors :: [Forest] -> Forest
 mergeContributors = foldl' (Map.unionWith (\_ new -> new)) Map.empty
 
--- Helper operator for safe navigation
-(?) :: Maybe a -> a -> a
-(?) = flip Maybe.fromMaybe
-
 -----------------------
 -- Example Usage --
 -----------------------
 exampleForest :: (Forest, Forest)
 exampleForest = (forest, ci)
   where
-    -- Create example capacities
+    -- Create example capacities with safe date handling
     roomCapacity =
       Capacity
         { capacityId = "room1",
@@ -753,10 +762,10 @@ exampleForest = (forest, ci)
                 allDay = True,
                 recurrence = Nothing,
                 customRecurrence = Nothing,
-                startDate = undefined, -- Would be actual UTCTime in real usage
-                startTime = undefined,
-                endDate = undefined,
-                endTime = undefined,
+                startDate = Nothing, -- Safe handling of missing dates
+                startTime = Nothing,
+                endDate = Nothing,
+                endTime = Nothing,
                 timeZone = "UTC"
               },
           maxDivisibility =
@@ -781,10 +790,10 @@ exampleForest = (forest, ci)
                 allDay = True,
                 recurrence = Nothing,
                 customRecurrence = Nothing,
-                startDate = undefined,
-                startTime = undefined,
-                endDate = undefined,
-                endTime = undefined,
+                startDate = Nothing,
+                startTime = Nothing,
+                endDate = Nothing,
+                endTime = Nothing,
                 timeZone = "UTC"
               },
           maxDivisibility =
