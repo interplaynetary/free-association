@@ -1,11 +1,17 @@
 import Control.Monad (forM_, unless)
-import Data.Function.Memoize (memoize)
 import Data.List (foldl', maximumBy, partition)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromJust, isJust, isNothing, listToMaybe, maybeToList)
 import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.Time (UTCTime)
+
+-- TODO:
+-- Use where clauses to localize logic.
+---Unsafe Partial Functions:
+   -- fromJust: Used in computeWeight and shareOfParent. These will crash if the Maybe is Nothing.
+   -- head: In exitToParent, head (ctxAncestors ctx) assumes a non-empty list, risking crashes.
+-- Fix: Replace with pattern matching or safe defaults (e.g., maybe 0).
 
 -- Node type with maps for PS and SOGF directly
 data Node = Node
@@ -212,14 +218,8 @@ deleteSubtree z =
 -- Calculate total points from all children (Declarative)
 totalChildPoints :: TreeZipper -> Int
 totalChildPoints z@(TreeZipper current _) =
-  -- Use memoization for total points calculation
-  memoized $ nodeId current
-  where
-    memoized = memoize computeTotal
-
-    -- Sum the points of all immediate children
-    computeTotal :: String -> Int
-    computeTotal _ = sum $ map (nodePoints . zipperCurrent) $ children z
+  -- Sum the points of all immediate children
+  sum $ map (nodePoints . zipperCurrent) $ children z
 
 -- Calculate a node's weight with caching (Declarative)
 weight :: TreeZipper -> Float
@@ -227,14 +227,11 @@ weight z@(TreeZipper current _) =
   case zipperContext z of
     -- Root node always has weight 1.0
     Nothing -> 1.0
-    -- Non-root nodes use memoized weight calculation
-    Just _ -> memoized $ nodeId current
+    -- Non-root nodes recursive weight calculation
+    Just _ -> computeWeight
   where
-    memoized = memoize computeWeight
-
     -- Declarative weight computation
-    computeWeight :: String -> Float
-    computeWeight _
+    computeWeight
       | total == 0 = 0
       | otherwise = nodeContribution * parentWeight
       where
@@ -255,16 +252,12 @@ shareOfParent z =
     -- Root node has 100% share
     Nothing -> 1.0
     -- Calculate share for non-root nodes
-    Just parent -> nodeRelativeShare
-      where
-        -- Get parent's total points
-        parentTotal = totalChildPoints parent
-        -- Get current node's points
-        currentPoints = nodePoints $ zipperCurrent z
-        -- Calculate relative share (handle division by zero)
-        nodeRelativeShare
-          | parentTotal == 0 = 0
-          | otherwise = fromIntegral currentPoints / fromIntegral parentTotal
+    Just parent ->
+      let parentTotal = totalChildPoints parent
+          currentPoints = nodePoints $ zipperCurrent z
+       in if parentTotal == 0
+            then 0
+            else fromIntegral currentPoints / fromIntegral parentTotal
 
 -- Calculate the proportion of total child points from contribution children (Declarative)
 contributionChildrenWeight :: TreeZipper -> Float
@@ -356,14 +349,10 @@ getContributorNode contribIndex contribId =
 -- Calculate fulfillment with caching (Declarative)
 fulfilled :: TreeZipper -> Float
 fulfilled z@(TreeZipper current _) =
-  -- Use memoization for fulfillment calculation
-  memoized $ nodeId current
+  -- Declarative computation of fulfillment
+  computeFulfillment
   where
-    memoized = memoize computeFulfillment
-
-    -- Declarative computation of fulfillment
-    computeFulfillment :: String -> Float
-    computeFulfillment _
+    computeFulfillment
       -- Leaf contribution node
       | Map.null (nodeChildren current) && isContribution z = 1.0
       -- Leaf non-contribution node
@@ -435,21 +424,12 @@ shareOfGeneralFulfillment ci target contributor =
 -- Get all descendants with caching (Declarative)
 getAllDescendantsCached :: TreeZipper -> [TreeZipper]
 getAllDescendantsCached z@(TreeZipper current _) =
-  -- This node plus all memoized descendants
-  z : memoizedDescendants (nodeId current)
-  where
-    -- Use memoization for descendant computation
-    memoizedDescendants = memoize computeDescendants
-
-    -- Function to compute descendants of children
-    computeDescendants :: String -> [TreeZipper]
-    computeDescendants _ =
-      -- Concatenate descendants of all children
-      concatMap getAllDescendants (children z)
+  -- This node plus all descendants 
+  z : concatMap getAllDescendantsCached (children z)
 
 -- | Get all descendants (including self)
 getAllDescendants :: TreeZipper -> [TreeZipper]
-getAllDescendants z = z : concatMap getAllDescendants (children z)
+getAllDescendants = getAllDescendantsCached  -- Now they're the same function
 
 -- Calculate mutual fulfillment between two nodes (Declarative)
 mutualFulfillment :: Forest -> TreeZipper -> TreeZipper -> Float
