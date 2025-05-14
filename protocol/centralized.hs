@@ -23,8 +23,6 @@ data Node = Node
   }
   deriving (Show, Eq)
 
--- No more cache functions needed
-
 ----------------------
 -- Core Data Types --
 ----------------------
