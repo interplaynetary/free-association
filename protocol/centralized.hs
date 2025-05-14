@@ -7,14 +7,6 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.Time (UTCTime)
 
--- TODO:
--- Let's make a persistance monad?
--- a generic interface for getting and setting in the graph
--- with an eye towards gun API
-
--- Questions to ask:
--- What data do we want to persist?
-
 -- Node type with maps for PS and SOGF directly
 data Node = Node
   { nodeId :: String,
