@@ -6,13 +6,6 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.Time (UTCTime)
 
--- TODO:
--- Use where clauses to localize logic.
----Unsafe Partial Functions:
-   -- fromJust: Used in computeWeight and shareOfParent. These will crash if the Maybe is Nothing.
-   -- head: In exitToParent, head (ctxAncestors ctx) assumes a non-empty list, risking crashes.
--- Fix: Replace with pattern matching or safe defaults (e.g., maybe 0).
-
 -- Node type with maps for PS and SOGF directly
 data Node = Node
   { nodeId :: String,
@@ -23,7 +16,6 @@ data Node = Node
     nodeManualFulfillment :: Maybe Float,
     nodeCapacities :: CapacityInventory,
     nodeCapacityShares :: CapacityShares,
-    -- Store the maps directly rather than in a cache
     nodeSOGFMap :: Maybe ShareMap,
     nodeProviderSharesMap :: Map.Map Int ShareMap
   }
@@ -69,7 +61,11 @@ exitToParent (TreeZipper current (Just ctx)) =
       siblings = ctxSiblings ctx
       ancestors = ctxAncestors ctx
       newParent = parent {nodeChildren = Map.insert (nodeId current) current siblings}
-   in Just $ TreeZipper newParent (if null ancestors then Nothing else Just (head ancestors))
+      -- Safely handle ancestors using pattern matching
+      newContext = case ancestors of
+        [] -> Nothing
+        (ancestor : _) -> Just ancestor
+   in Just $ TreeZipper newParent newContext
 
 -- The -: operator for more readable navigation chains
 (-:) :: a -> (a -> b) -> b
@@ -131,7 +127,7 @@ allChildren p = all p . children
 
 -- | Get all descendants (excluding self)
 descendants :: TreeZipper -> [TreeZipper]
-descendants = tail . getAllDescendantsCached
+descendants = tail . getAllDescendants
 
 ----------------------------
 -- Tree Modification API --
@@ -228,22 +224,21 @@ weight z@(TreeZipper current _) =
     -- Root node always has weight 1.0
     Nothing -> 1.0
     -- Non-root nodes recursive weight calculation
-    Just _ -> computeWeight
-  where
-    -- Declarative weight computation
-    computeWeight
-      | total == 0 = 0
-      | otherwise = nodeContribution * parentWeight
-      where
-        -- Get parent and its total points
-        parentZ = fromJust $ exitToParent z
-        total = totalChildPoints parentZ
-
-        -- Calculate this node's contribution to parent
-        nodeContribution = fromIntegral (nodePoints current) / fromIntegral total
-
-        -- Weight is recursive - multiply by parent's weight
-        parentWeight = weight parentZ
+    Just _ ->
+      case exitToParent z of
+        -- Guard against missing parent (shouldn't happen with valid zippers)
+        Nothing -> 1.0 -- Default to 1.0 (full weight) if parent cannot be found
+        Just parentZ ->
+          let -- Get parent's total points
+              total = totalChildPoints parentZ
+              -- Calculate this node's contribution to parent (safely handling division by zero)
+              nodeContribution =
+                if total == 0
+                  then 0
+                  else fromIntegral (nodePoints current) / fromIntegral total
+              -- Weight is recursive - multiply by parent's weight
+              parentWeight = weight parentZ
+           in nodeContribution * parentWeight
 
 -- Calculate a node's share of its parent (Declarative)
 shareOfParent :: TreeZipper -> Float
@@ -335,10 +330,11 @@ nonContributionChildrenFulfillment z =
 
 -- Safely get instances of a contributor
 getContributorInstances :: Forest -> String -> Set.Set TreeZipper
-getContributorInstances contribIndex contribId = Set.singleton $ Map.findWithDefault emptyZipper contribId contribIndex
-  where
-    emptyNode = createRootNode contribId contribId 0 [] Nothing
-    emptyZipper = TreeZipper emptyNode Nothing
+getContributorInstances contribIndex contribId =
+  let emptyNode = createRootNode contribId contribId 0 [] Nothing
+      emptyZipper = TreeZipper emptyNode Nothing
+      defaultResult = Set.singleton emptyZipper
+   in Set.singleton $ Map.findWithDefault emptyZipper contribId contribIndex
 
 -- Safely get a contributor node
 getContributorNode :: Forest -> String -> Maybe TreeZipper
@@ -349,24 +345,17 @@ getContributorNode contribIndex contribId =
 -- Calculate fulfillment with caching (Declarative)
 fulfilled :: TreeZipper -> Float
 fulfilled z@(TreeZipper current _) =
-  -- Declarative computation of fulfillment
   computeFulfillment
   where
-    computeFulfillment
-      -- Leaf contribution node
-      | Map.null (nodeChildren current) && isContribution z = 1.0
-      -- Leaf non-contribution node
-      | Map.null (nodeChildren current) = 0.0
-      -- Non-leaf node with manual fulfillment for contribution children
-      | hasManualFulfillment && hasDirectContributionChild z && not (hasNonContributionChild z) =
-          fromJust $ nodeManualFulfillment current
-      -- Non-leaf node with mixed children types and manual fulfillment
-      | hasManualFulfillment && hasDirectContributionChild z = manualContribShare
-      -- Other nodes (aggregate from children)
-      | otherwise = sum $ map weightedChildFulfillment $ children z
-
-    -- Helper predicates
+    -- Helper predicates and values localized in where clause
     hasManualFulfillment = isJust $ nodeManualFulfillment current
+    isLeafNode = Map.null (nodeChildren current)
+    isContribNode = isContribution z
+    hasContribChildren = hasDirectContributionChild z
+    hasNonContribChildren = hasNonContributionChild z
+
+    -- Safely extract manual fulfillment value with a default
+    getManualValue = Maybe.fromMaybe 0.0 $ nodeManualFulfillment current
 
     -- Weight a child's fulfillment by its share
     weightedChildFulfillment :: TreeZipper -> Float
@@ -377,8 +366,23 @@ fulfilled z@(TreeZipper current _) =
     manualContribShare =
       let contribWeight = contributionChildrenWeight z
           nonContribFulfillment = nonContributionChildrenFulfillment z
-          manualValue = fromJust $ nodeManualFulfillment current
-       in manualValue * contribWeight + nonContribFulfillment * (1.0 - contribWeight)
+       in getManualValue * contribWeight + nonContribFulfillment * (1.0 - contribWeight)
+
+    -- Main fulfillment calculation with pattern matching
+    computeFulfillment
+      -- Leaf contribution node
+      | isLeafNode && isContribNode = 1.0
+      -- Leaf non-contribution node
+      | isLeafNode = 0.0
+      -- Non-leaf node with manual fulfillment for contribution children only
+      | hasManualFulfillment && hasContribChildren && not hasNonContribChildren =
+          getManualValue
+      -- Non-leaf node with mixed children types and manual fulfillment
+      | hasManualFulfillment && hasContribChildren =
+          manualContribShare
+      -- Other nodes (aggregate from children)
+      | otherwise =
+          sum $ map weightedChildFulfillment $ children z
 
 -- Calculate the desire (unfulfilled need) of a node
 desire :: TreeZipper -> Float
@@ -421,21 +425,16 @@ shareOfGeneralFulfillment ci target contributor =
               contributorCount = Set.size $ nodeContributors $ zipperCurrent node
            in nodeWeight * nodeFulfillment / fromIntegral contributorCount
 
--- Get all descendants with caching (Declarative)
-getAllDescendantsCached :: TreeZipper -> [TreeZipper]
-getAllDescendantsCached z@(TreeZipper current _) =
-  -- This node plus all descendants 
-  z : concatMap getAllDescendantsCached (children z)
-
--- | Get all descendants (including self)
 getAllDescendants :: TreeZipper -> [TreeZipper]
-getAllDescendants = getAllDescendantsCached  -- Now they're the same function
+getAllDescendants z@(TreeZipper current _) =
+  -- This node plus all descendants
+  z : concatMap getAllDescendants (children z)
 
 -- Calculate mutual fulfillment between two nodes (Declarative)
 mutualFulfillment :: Forest -> TreeZipper -> TreeZipper -> Float
 mutualFulfillment ci a b =
   -- Mutual fulfillment is the minimum of shares each gives to the other
-  min (shareFromAToB) (shareFromBToA)
+  min shareFromAToB shareFromBToA
   where
     -- Get node IDs
     aId = nodeId $ zipperCurrent a
@@ -461,7 +460,9 @@ findHighestMutualPath ci root target =
       scorePath path = case followPath path root of
         Nothing -> 0
         Just node -> mutualFulfillment ci node target
-   in fmap fst $ maximumByMay (\a b -> compare (snd a) (snd b)) pathScores
+   in ( fst
+          <$> maximumByMay (\a b -> compare (snd a) (snd b)) pathScores
+      )
 
 -- Helper for safe maximum with empty lists
 maximumByMay :: (a -> a -> Ordering) -> [a] -> Maybe a
@@ -506,12 +507,13 @@ normalizeShareMap = normalizeMap
 -------------------------------------------------------
 sharesOfGeneralFulfillmentMap :: Forest -> TreeZipper -> ShareMap
 sharesOfGeneralFulfillmentMap ci z =
-  -- Leverage Maybe monad for cleaner lookup
+  -- Use stored map if available, otherwise calculate fresh
   Maybe.fromMaybe calculateFreshMap $ nodeSOGFMap $ zipperCurrent z
   where
+    -- Calculate a fresh map by normalizing the raw shares
     calculateFreshMap = normalizeShareMap rawShareMap
 
-    -- Calculate shares for all contributors at once using list operations
+    -- Filter out zero shares for efficiency
     rawShareMap = Map.fromList $ filter ((> 0) . snd) contributorShares
 
     -- Get all contributor pairs with their general fulfillment share
@@ -523,12 +525,13 @@ sharesOfGeneralFulfillmentMap ci z =
 -----------------------------------------------------------------------
 providerShares :: Forest -> TreeZipper -> Int -> ShareMap
 providerShares ci provider depth =
-  -- Use Maybe monad for cleaner lookup and handling of stored maps
+  -- Use stored map if available, otherwise calculate fresh
   Maybe.fromMaybe calculateFreshMap $ Map.lookup depth . nodeProviderSharesMap $ zipperCurrent provider
   where
+    -- Calculate a fresh map for the given depth
     calculateFreshMap = normalizeShareMap $ computeSharesForDepth depth
 
-    -- Pattern matching makes the code more declarative
+    -- Pattern matching for different depth calculations
     computeSharesForDepth :: Int -> ShareMap
     computeSharesForDepth 1 = directContributorShares
     computeSharesForDepth d = transitiveShares d
@@ -541,7 +544,7 @@ providerShares ci provider depth =
         -- Find all contributors in the entire tree
         allContributingNodes = provider : descendants provider
         allContributorIds = Set.unions $ map (nodeContributors . zipperCurrent) allContributingNodes
-        -- Get valid contributors that exist in the forest
+        -- Get valid contributors that exist in the forest (safely)
         validContributors = catMaybes [Map.lookup cid ci | cid <- Set.toList allContributorIds]
         -- Calculate mutual fulfillment for each contributor
         contributorMutualFulfillments =
