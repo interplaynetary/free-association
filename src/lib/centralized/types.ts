@@ -1,22 +1,4 @@
-// ==== Cache Types ====
-export type CacheValue =
-	| { type: 'float'; value: number }
-	| { type: 'int'; value: number }
-	| { type: 'stringList'; value: string[] }
-	| { type: 'shareMap'; value: ShareMap };
-
-export interface Cache<K> {
-	cacheMap: Map<K, CacheValue>;
-	cacheMisses: number;
-	cacheHits: number;
-}
-
-// Separate type for persistent cache data
-export interface PersistentCache {
-	pcSogfMap: ShareMap | null;
-	pcProviderShares: Map<number, ShareMap>; // Depth -> ShareMap
-}
-
+// ==== Core Data Types ====
 export interface Ctx {
 	ctxParent: Node;
 	ctxSiblings: Map<string, Node>;
@@ -97,20 +79,30 @@ export interface CapacityShare {
 export type CapacityInventory = Map<string, Capacity>;
 export type CapacityShares = Map<string, CapacityShare>;
 
-// ==== Node Type ====
-export interface Node {
+// ==== Node Type (Union Type) ====
+export type Node = RootNode | NonRootNode;
+
+export interface RootNode {
+	type: 'root';
+	nodeId: string;
+	nodeName: string;
+	nodeChildren: Map<string, Node>;
+	nodeManualFulfillment: number | null;
+	// Fields that should only exist at root level
+	nodeCapacities: CapacityInventory;
+	nodeCapacityShares: CapacityShares;
+	nodeSOGFMap: ShareMap | null;
+	nodeProviderSharesMap: Map<number, ShareMap>;
+}
+
+export interface NonRootNode {
+	type: 'non-root';
 	nodeId: string;
 	nodeName: string;
 	nodePoints: number;
-	nodeChildren: Map<string, Node>; // 1 - many
-	nodeContributors: Set<string>; // 1 - many
+	nodeChildren: Map<string, Node>;
+	nodeContributors: Set<string>;
 	nodeManualFulfillment: number | null;
-	nodeCapacities: CapacityInventory;
-	nodeCapacityShares: CapacityShares;
-	// Persistent cache (stored in database)
-	nodePersistentCache: PersistentCache;
-	// Transient cache (in-memory only)
-	nodeTransientCache: Cache<string>;
 }
 
 // ==== Navigation ====

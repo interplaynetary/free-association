@@ -41,15 +41,21 @@
 		"vite": "^6.2.5"
 	},
 	"dependencies": {
+		"@peerbit/document": "^9.6.2",
 		"@supabase/supabase-js": "^2.49.4",
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/d3": "^7.4.3",
+		"autoprefixer": "^10.4.21",
 		"bits-ui": "^1.4.6",
 		"d3": "^7.9.0",
+		"gun": "^0.2020.1240",
 		"maplibre-gl": "^5.4.0",
+		"peerbit": "^4.1.36",
 		"pmtiles": "^4.3.0",
 		"protomaps-themes-base": "^4.5.0",
 		"supabase": "^2.22.12",
-		"svelte-maplibre-gl": "^0.1.6"
+		"svelte-maplibre-gl": "^0.1.6",
+		"tailwindcss-animate": "^1.0.7",
+		"uuid": "^11.1.0"
 	}
 }

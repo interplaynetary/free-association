@@ -4,7 +4,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { filterForestNodes } from '$lib/centralized/forestUtils';
 	import { browser } from '$app/environment';
-	import { gun, user } from '../gun/gunSetup';
+	import { gun, user } from '../gun/user';
 
 	// Props using Svelte 5 runes
 	let {

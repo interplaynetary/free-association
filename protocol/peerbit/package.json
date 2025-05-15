@@ -1,0 +1,14 @@
+{
+  "name": "peerbit",
+  "version": "1.0.0",
+  "description": "This document explains our peer-to-peer implementation of the Free Association model using Peerbit.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "peerbit": "^4.1.36"
+  }
+}

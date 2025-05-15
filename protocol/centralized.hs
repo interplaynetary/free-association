@@ -6,19 +6,32 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.Time (UTCTime)
 
--- Node type with maps for PS and SOGF directly
-data Node = Node
-  { nodeId :: String,
-    nodeName :: String,
-    nodePoints :: Int,
-    nodeChildren :: Map.Map String Node,
-    nodeContributors :: Set.Set String,
-    nodeManualFulfillment :: Maybe Float,
-    nodeCapacities :: CapacityInventory,
-    nodeCapacityShares :: CapacityShares,
-    nodeSOGFMap :: Maybe ShareMap,
-    nodeProviderSharesMap :: Map.Map Int ShareMap
-  }
+-- NOTE: This is a centralized implementation of Free-Association protocol
+-- It serves as a reference implementation for decentralized/p2p/distributed implementations
+-- In this file, "Forest" is our centralized stand-in for looking up a peer's Tree over the network
+-- As each peer has their own tree (which only they can write to)
+
+-- Node type represented as either a root or non-root node
+data Node
+  = RootNode
+      { nodeId :: String,
+        nodeName :: String,
+        nodeChildren :: Map.Map String Node,
+        nodeManualFulfillment :: Maybe Float,
+        -- Fields that should only exist at root level
+        nodeCapacities :: CapacityInventory,
+        nodeCapacityShares :: CapacityShares,
+        nodeSOGFMap :: Maybe ShareMap,
+        nodeProviderSharesMap :: Map.Map Int ShareMap
+      }
+  | NonRootNode
+      { nodeId :: String,
+        nodeName :: String,
+        nodePoints :: Int,
+        nodeChildren :: Map.Map String Node,
+        nodeContributors :: Set.Set String,
+        nodeManualFulfillment :: Maybe Float
+      }
   deriving (Show, Eq)
 
 ----------------------
@@ -134,14 +147,15 @@ descendants = tail . getAllDescendants
 ----------------------------
 -- Tree Modification API --
 ----------------------------
-createRootNode :: String -> String -> Int -> [String] -> Maybe Float -> Node
-createRootNode id name pts contribs manual =
-  Node
+addToForest :: Forest -> TreeZipper -> Forest
+addToForest forest z = Map.insert (nodeId $ zipperCurrent z) z forest
+
+createRootNode :: String -> String -> Maybe Float -> Node
+createRootNode id name manual =
+  RootNode
     { nodeId = id,
       nodeName = name,
-      nodePoints = pts,
       nodeChildren = Map.empty,
-      nodeContributors = Set.fromList contribs,
       nodeManualFulfillment = clampManual manual,
       nodeCapacities = Map.empty,
       nodeCapacityShares = Map.empty,
@@ -152,36 +166,46 @@ createRootNode id name pts contribs manual =
   where
     clampManual = fmap (max 0 . min 1)
 
+-- Function to create a non-root node
+createNonRootNode :: String -> String -> Int -> [String] -> Maybe Float -> Node
+createNonRootNode id name pts contribs manual =
+  NonRootNode
+    { nodeId = id,
+      nodeName = name,
+      nodePoints = pts,
+      nodeChildren = Map.empty,
+      nodeContributors = Set.fromList contribs,
+      nodeManualFulfillment = clampManual manual
+    }
+  where
+    clampManual = fmap (max 0 . min 1)
+
 -- Add a child and update caches
 addChild :: String -> Int -> [String] -> Maybe Float -> TreeZipper -> Maybe TreeZipper
 addChild name pts contribs manual z@(TreeZipper current ctx) =
   -- Don't allow adding children to nodes with contributors
-  if not (Set.null (nodeContributors current))
-    then Nothing
-    else
-      let newChild =
-            Node
-              { nodeId = name,
-                nodeName = name,
-                nodePoints = pts,
-                nodeChildren = Map.empty,
-                nodeContributors = Set.fromList contribs,
-                nodeManualFulfillment = clampManual manual,
-                nodeCapacities = Map.empty,
-                nodeCapacityShares = Map.empty,
-                -- Initialize the maps
-                nodeSOGFMap = Nothing,
-                nodeProviderSharesMap = Map.empty
-              }
-          clampManual = fmap (max 0 . min 1)
+  case current of
+    NonRootNode {} ->
+      if not (Set.null (nodeContributors current))
+        then Nothing
+        else addChildToNode
+    RootNode {} -> addChildToNode
+  where
+    addChildToNode =
+      let newChild = createNonRootNode name name pts contribs manual
 
-          -- When making a structural change, reset the maps
-          updatedCurrent =
-            current
-              { nodeChildren = Map.insert name newChild (nodeChildren current),
-                nodeSOGFMap = Nothing,
-                nodeProviderSharesMap = Map.empty
-              }
+          -- When making a structural change, reset the maps in root nodes
+          updatedCurrent = case current of
+            RootNode {} ->
+              current
+                { nodeChildren = Map.insert name newChild (nodeChildren current),
+                  nodeSOGFMap = Nothing,
+                  nodeProviderSharesMap = Map.empty
+                }
+            NonRootNode {} ->
+              current
+                { nodeChildren = Map.insert name newChild (nodeChildren current)
+                }
        in Just z {zipperCurrent = updatedCurrent}
 
 -- Add contributors to a node and recursively delete its subtree
@@ -189,25 +213,35 @@ addContributors :: [String] -> TreeZipper -> TreeZipper
 addContributors contribs z =
   modifyNode updateNode z
   where
-    updateNode node =
-      node
-        { nodeContributors = Set.fromList contribs,
-          nodeChildren = Map.empty,
-          nodeSOGFMap = Nothing,
-          nodeProviderSharesMap = Map.empty
-        }
+    updateNode node = case node of
+      RootNode {} ->
+        node
+          { nodeChildren = Map.empty,
+            nodeSOGFMap = Nothing,
+            nodeProviderSharesMap = Map.empty
+          }
+      NonRootNode {} ->
+        node
+          { nodeContributors = Set.fromList contribs,
+            nodeChildren = Map.empty
+          }
 
 -- Helper to recursively delete a subtree
 deleteSubtree :: TreeZipper -> TreeZipper
 deleteSubtree z =
   modifyNode updateNode z
   where
-    updateNode node =
-      node
-        { nodeChildren = Map.empty,
-          nodeSOGFMap = Nothing,
-          nodeProviderSharesMap = Map.empty
-        }
+    updateNode node = case node of
+      RootNode {} ->
+        node
+          { nodeChildren = Map.empty,
+            nodeSOGFMap = Nothing,
+            nodeProviderSharesMap = Map.empty
+          }
+      NonRootNode {} ->
+        node
+          { nodeChildren = Map.empty
+          }
 
 -------------------------
 -- Core Calculations --
@@ -284,7 +318,10 @@ contributionChildrenWeight z =
 
 -- | Check if a node is a contribution node (has contributors and is not root)
 isContribution :: TreeZipper -> Bool
-isContribution z = not (Set.null (nodeContributors $ zipperCurrent z)) && isJust (zipperContext z)
+isContribution z@(TreeZipper current ctx) =
+  case current of
+    RootNode {} -> False -- Root nodes are never contribution nodes
+    NonRootNode {} -> not (Set.null (nodeContributors current)) && isJust ctx
 
 -- Check if a node has direct contribution children
 hasDirectContributionChild :: TreeZipper -> Bool
@@ -410,7 +447,10 @@ shareOfGeneralFulfillment ci target contributor =
 
         isContributingNode :: TreeZipper -> Bool
         isContributingNode node =
-          Set.member contribId (nodeContributors $ zipperCurrent node) && isContribution node
+          case zipperCurrent node of
+            RootNode {} -> False -- Root nodes can't have contributors
+            NonRootNode {nodeContributors = contribs} ->
+              Set.member contribId contribs && isContribution node
 
         -- Calculate weighted contribution for each node
         weightedContributions :: [Float]
@@ -422,7 +462,11 @@ shareOfGeneralFulfillment ci target contributor =
         weightedFulfillment node =
           let nodeWeight = weight node
               nodeFulfillment = fulfilled node
-              contributorCount = Set.size $ nodeContributors $ zipperCurrent node
+              -- Get contributor count safely
+              contributorCount =
+                case zipperCurrent node of
+                  RootNode {} -> 1 -- Should never happen but default to 1
+                  NonRootNode {nodeContributors = contribs} -> Set.size contribs
            in nodeWeight * nodeFulfillment / fromIntegral contributorCount
 
 getAllDescendants :: TreeZipper -> [TreeZipper]
@@ -507,15 +551,21 @@ normalizeShareMap = normalizeMap
 -------------------------------------------------------
 sharesOfGeneralFulfillmentMap :: Forest -> TreeZipper -> ShareMap
 sharesOfGeneralFulfillmentMap ci z@(TreeZipper current ctx) =
-  -- Use stored map if available, otherwise calculate fresh
-  case nodeSOGFMap current of
-    Just cachedMap -> cachedMap
-    Nothing ->
-      -- Calculate fresh map and update the node with the new value
-      let freshMap = calculateFreshMap
-          updatedNode = current {nodeSOGFMap = Just freshMap}
-          updatedZipper = z {zipperCurrent = updatedNode}
-       in freshMap
+  case current of
+    NonRootNode {} ->
+      -- Non-root nodes don't have share maps, so get the root's map
+      case goToRoot z of
+        rootZ -> sharesOfGeneralFulfillmentMap ci rootZ
+    RootNode {} ->
+      -- Root nodes can have cached share maps
+      case nodeSOGFMap current of
+        Just cachedMap -> cachedMap
+        Nothing ->
+          -- Calculate fresh map and update the node with the new value
+          let freshMap = calculateFreshMap
+              updatedNode = current {nodeSOGFMap = Just freshMap}
+              updatedZipper = z {zipperCurrent = updatedNode}
+           in freshMap
   where
     -- Calculate a fresh map by normalizing the raw shares
     calculateFreshMap = normalizeShareMap rawShareMap
@@ -530,16 +580,22 @@ sharesOfGeneralFulfillmentMap ci z@(TreeZipper current ctx) =
 -- Calculate and update provider-centric shares
 providerShares :: Forest -> TreeZipper -> Int -> ShareMap
 providerShares ci provider@(TreeZipper current ctx) depth =
-  -- Use stored map if available, otherwise calculate fresh
-  case Map.lookup depth (nodeProviderSharesMap current) of
-    Just cachedMap -> cachedMap
-    Nothing ->
-      -- Calculate fresh map and update the node with the new value
-      let freshMap = calculateFreshMap
-          updatedMaps = Map.insert depth freshMap (nodeProviderSharesMap current)
-          updatedNode = current {nodeProviderSharesMap = updatedMaps}
-          updatedZipper = provider {zipperCurrent = updatedNode}
-       in freshMap
+  case current of
+    NonRootNode {} ->
+      -- For non-root nodes, go to the root and calculate from there
+      case goToRoot provider of
+        rootZ -> providerShares ci rootZ depth
+    RootNode {} ->
+      -- Use stored map if available, otherwise calculate fresh
+      case Map.lookup depth (nodeProviderSharesMap current) of
+        Just cachedMap -> cachedMap
+        Nothing ->
+          -- Calculate fresh map and update the node with the new value
+          let freshMap = calculateFreshMap
+              updatedMaps = Map.insert depth freshMap (nodeProviderSharesMap current)
+              updatedNode = current {nodeProviderSharesMap = updatedMaps}
+              updatedZipper = provider {zipperCurrent = updatedNode}
+           in freshMap
   where
     -- Calculate a fresh map for the given depth
     calculateFreshMap = normalizeShareMap $ computeSharesForDepth depth
@@ -556,7 +612,16 @@ providerShares ci provider@(TreeZipper current ctx) depth =
       where
         -- Find all contributors in the entire tree
         allContributingNodes = provider : descendants provider
-        allContributorIds = Set.unions $ map (nodeContributors . zipperCurrent) allContributingNodes
+        -- Get all contributor IDs from all non-root nodes in the tree
+        allContributorIds = Set.unions $ map getNodeContributorIds allContributingNodes
+
+        -- Helper to safely extract contributor IDs from any node
+        getNodeContributorIds :: TreeZipper -> Set.Set String
+        getNodeContributorIds node =
+          case zipperCurrent node of
+            RootNode {} -> Set.empty -- Root nodes have no contributors
+            NonRootNode {nodeContributors = contribs} -> contribs
+
         -- Get valid contributors that exist in the forest (safely)
         validContributors = catMaybes [Map.lookup cid ci | cid <- Set.toList allContributorIds]
         -- Calculate mutual fulfillment for each contributor
@@ -589,7 +654,9 @@ directShare ci provider recipientId =
 -- Get a receiver's share from a specific capacity provider
 receiverShareFrom :: Forest -> TreeZipper -> TreeZipper -> Capacity -> Int -> Float
 receiverShareFrom ci receiver provider capacity maxDepth =
-  let providerShareMap = providerShares ci provider maxDepth
+  -- Get shares from the provider's root node
+  let providerRoot = getRoot provider
+      providerShareMap = providerShares ci providerRoot maxDepth
       receiverId = nodeId $ zipperCurrent receiver
    in Map.findWithDefault 0 receiverId providerShareMap
 
@@ -597,7 +664,9 @@ receiverShareFrom ci receiver provider capacity maxDepth =
 getPersonalCapacityShare :: Forest -> TreeZipper -> Capacity -> Float
 getPersonalCapacityShare ci person capacity =
   let capacityOwners =
-        [ owner | (_, owner) <- Map.toList ci, Map.member (capacityId capacity) (nodeCapacities $ zipperCurrent owner)
+        [ owner | (_, owner) <- Map.toList ci, case zipperCurrent (getRoot owner) of
+                                                 RootNode {nodeCapacities = caps} -> Map.member (capacityId capacity) caps
+                                                 NonRootNode {} -> False
         ]
       directShares = [receiverShareFrom ci person owner capacity 2 | owner <- capacityOwners]
       totalShare = if null directShares then 0 else maximum directShares
@@ -605,13 +674,16 @@ getPersonalCapacityShare ci person capacity =
 
 -- Update computed quantities for all capacity shares in a node
 updateComputedQuantities :: TreeZipper -> TreeZipper
-updateComputedQuantities z =
-  z
-    { zipperCurrent =
-        (zipperCurrent z)
-          { nodeCapacityShares = Map.map updateShare (nodeCapacityShares $ zipperCurrent z)
-          }
-    }
+updateComputedQuantities z@(TreeZipper current _) =
+  case current of
+    NonRootNode {} -> z -- Non-root nodes don't have capacity shares
+    RootNode {} ->
+      z
+        { zipperCurrent =
+            current
+              { nodeCapacityShares = Map.map updateShare (nodeCapacityShares current)
+              }
+        }
   where
     updateShare share =
       share
@@ -712,34 +784,35 @@ createCapacityShare cap percentage =
       computedQuantity = computeQuantityShare cap percentage
     }
 
--- Add a capacity to a node's inventory
+-- Add a capacity to a node's inventory (only works on root nodes)
 addCapacity :: Capacity -> TreeZipper -> TreeZipper
-addCapacity cap z =
-  z
-    { zipperCurrent =
-        (zipperCurrent z)
-          { nodeCapacities = Map.insert (capacityId cap) cap (nodeCapacities $ zipperCurrent z)
-          }
-    }
+addCapacity cap z@(TreeZipper current _) =
+  case current of
+    NonRootNode {} ->
+      -- For non-root nodes, this operation is not allowed
+      z
+    RootNode {} ->
+      z
+        { zipperCurrent =
+            current
+              { nodeCapacities = Map.insert (capacityId cap) cap (nodeCapacities current)
+              }
+        }
 
--- Add a share in another node's capacity
+-- Add a share in another node's capacity (only works on root nodes)
 addCapacityShare :: String -> CapacityShare -> TreeZipper -> TreeZipper
-addCapacityShare shareId share z =
-  z
-    { zipperCurrent =
-        (zipperCurrent z)
-          { nodeCapacityShares = Map.insert shareId share (nodeCapacityShares $ zipperCurrent z)
-          }
-    }
-
------------------------
--- Forest Management --
------------------------
-addToForest :: Forest -> TreeZipper -> Forest
-addToForest forest z = Map.insert (nodeId $ zipperCurrent z) z forest
-
-mergeContributors :: [Forest] -> Forest
-mergeContributors = foldl' (Map.unionWith (\_ new -> new)) Map.empty
+addCapacityShare shareId share z@(TreeZipper current _) =
+  case current of
+    NonRootNode {} ->
+      -- For non-root nodes, this operation is not allowed
+      z
+    RootNode {} ->
+      z
+        { zipperCurrent =
+            current
+              { nodeCapacityShares = Map.insert shareId share (nodeCapacityShares current)
+              }
+        }
 
 -----------------------
 -- Example Usage --
@@ -804,10 +877,10 @@ exampleForest = (forest, ci)
           hiddenUntilRequestAccepted = False
         }
 
-    -- Create roots with mutual contributors
-    aliceNode = createRootNode "alice" "Alice" 100 [] Nothing
-    bobNode = createRootNode "bob" "Bob" 100 [] Nothing
-    charlieNode = createRootNode "charlie" "Charlie" 100 [] Nothing -- Removed contributors
+    -- Create roots with mutual contributors (must be RootNodes to store capacities)
+    aliceNode = createRootNode "alice" "Alice" Nothing
+    bobNode = createRootNode "bob" "Bob" Nothing
+    charlieNode = createRootNode "charlie" "Charlie" Nothing
     aliceRoot = TreeZipper aliceNode Nothing
     bobRoot = TreeZipper bobNode Nothing
     charlieRoot = TreeZipper charlieNode Nothing
@@ -874,7 +947,8 @@ main = do
 
   -- Print Alice's room capacity
   putStrLn "Alice's Room Capacity:"
-  let aliceRoom = Map.lookup "room1" (nodeCapacities $ zipperCurrent alice)
+  let aliceCapacities = getNodeCapacities alice
+      aliceRoom = Map.lookup "room1" aliceCapacities
   case aliceRoom of
     Just room -> do
       putStrLn $ "  Quantity: " ++ show (quantity room) ++ " " ++ unit room
@@ -917,3 +991,37 @@ main = do
       putStrLn $ "  Bob's portion: " ++ show bobRoomQty ++ " " ++ unit room
       putStrLn $ "  Charlie's portion: " ++ show charlieRoomQty ++ " " ++ unit room
     Nothing -> putStrLn "  No room capacity found"
+
+-- Helper functions to access root-level data from any node
+
+-- Get the root zipper for any node
+getRoot :: TreeZipper -> TreeZipper
+getRoot = goToRoot
+
+-- Get capacity inventory for any node (by accessing root)
+getNodeCapacities :: TreeZipper -> CapacityInventory
+getNodeCapacities z =
+  case zipperCurrent (getRoot z) of
+    RootNode {nodeCapacities = caps} -> caps
+    NonRootNode {} -> Map.empty -- Should never happen for a valid tree
+
+-- Get capacity shares for any node (by accessing root)
+getNodeCapacityShares :: TreeZipper -> CapacityShares
+getNodeCapacityShares z =
+  case zipperCurrent (getRoot z) of
+    RootNode {nodeCapacityShares = shares} -> shares
+    NonRootNode {} -> Map.empty -- Should never happen for a valid tree
+
+-- Get SOGF map for any node (by accessing root)
+getNodeSOGFMap :: TreeZipper -> Maybe ShareMap
+getNodeSOGFMap z =
+  case zipperCurrent (getRoot z) of
+    RootNode {nodeSOGFMap = sogf} -> sogf
+    NonRootNode {} -> Nothing -- Should never happen for a valid tree
+
+-- Get provider shares map for any node (by accessing root)
+getNodeProviderSharesMap :: TreeZipper -> Map.Map Int ShareMap
+getNodeProviderSharesMap z =
+  case zipperCurrent (getRoot z) of
+    RootNode {nodeProviderSharesMap = sharesMap} -> sharesMap
+    NonRootNode {} -> Map.empty -- Should never happen for a valid tree

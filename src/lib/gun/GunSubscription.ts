@@ -1,5 +1,5 @@
-import { getNodeRef } from './gunSetup';
-import type { SubscriptionHandler, SubscriptionCleanup } from './gunSetup';
+import { getNodeRef } from './user';
+import type { SubscriptionHandler, SubscriptionCleanup } from './user';
 
 /**
  * A wrapper around Gun subscriptions that provides:

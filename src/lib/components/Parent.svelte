@@ -7,7 +7,7 @@
 	import { browser } from '$app/environment';
 
 	// Import centralized system functions
-	import { GunUserTree, enterChild, exitToParent } from '$lib/centralized';
+	import { Tree, enterChild, exitToParent } from '$lib/centralized';
 
 	// Import our types
 	import type { TreeZipper, Node } from '$lib/centralized/types';
@@ -204,7 +204,7 @@
 		};
 
 		const newPoints = calculateNewNodePoints();
-		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`; // Use GunUserTree's ID format
+		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`; // Use Tree's ID format
 		const newNodeName = 'New Node'; // Default name for better UX
 
 		console.log('[UI FLOW] Creating new node:', {

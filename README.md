@@ -1,6 +1,6 @@
 ## Free-Association: A Call for Mutual Self-Actualization 🌱 [![](https://img.shields.io/opencollective/backers/playnet)](https://opencollective.com/playnet#section-contributors) [![Join us on Telegram](https://img.shields.io/badge/Join-Telegram-blue?logo=telegram)](https://t.me/+jS7u3ZcKLoxmYWU5)
 
-_Free-Association_ is a legitimate alternative to capitalism that allows for the _spontaneous self-actualization of all through each other_ without any centralized control, planning, private-property, state intervention!
+_Free-Association_ is literally an actual alternative to capitalism that allows for the _spontaneous self-actualization of all through each other_ without any centralized control, planning, private-property, state intervention!
 
 This requires more than mere abstract agreement or forced cooperation - it demands real contribution to each other's self-actualization (tangible and intangible contributions towards needs, values, goals, social and/or material dependencies etc.).
 

@@ -1,16 +1,28 @@
 <script lang="ts">
-	import { globalState, type UserData } from '$lib/global.svelte';
-	import { GunUserTree, enterChild, exitToParent } from '$lib/centralized';
+	import { globalState } from '$lib/global.svelte';
+	import { Tree, enterChild, exitToParent } from '$lib/centralized';
 	import { onMount } from 'svelte';
-	import { user, authenticate } from '$lib/gun/gunSetup';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { user, login, signup, signout, username, userpub, type UserData } from '../gun/user';
 
 	// Get current zipper, path and pathInfo from global state
 	let currentZipper = $derived(globalState.currentZipper);
 	let currentPath = $derived(globalState.currentPath);
 	let pathInfo = $derived(globalState.pathInfo);
-	let currentUser = $derived(globalState.currentUser);
+
+	// Get user data with Svelte 5 derived values
+	// Use $ prefix for stores in Svelte 5
+	let alias = $derived($username);
+	let pub = $derived($userpub);
+	let currentUser = $derived(
+		pub
+			? {
+					pub,
+					alias
+				}
+			: null
+	);
 
 	// Get current route from $page store
 	let currentRoute = $derived($page.url.pathname);
@@ -23,10 +35,10 @@
 	// Login state
 	let showLoginPanel = $state(false);
 	let isLoading = $state(false);
-	let username = $state('');
+	let usernameInput = $state('');
 	let password = $state('');
 	let errorMessage = $state('');
-	let authMessage = $state(''); // Added to show authentication mode
+	let authMessage = $state('');
 	let showPassword = $state(false);
 
 	// Click outside handler
@@ -44,7 +56,7 @@
 		document.addEventListener('mousedown', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
-		if (!currentUser) {
+		if (!(user && user.is && user.is.pub)) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -61,7 +73,7 @@
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
 			// Reset form when closing
-			username = '';
+			usernameInput = '';
 			password = '';
 			errorMessage = '';
 			authMessage = '';
@@ -77,7 +89,7 @@
 			event.preventDefault();
 
 			// If user is not authenticated, show login panel regardless of route
-			if (!currentUser) {
+			if (!pub) {
 				showLoginPanel = true;
 			}
 			// If we're not in the soul route, navigate to the soul route
@@ -106,17 +118,12 @@
 		showPassword = !showPassword;
 	}
 
-	// Update auth message when username changes
-	function updateAuthMessage() {
-		authMessage = username ? 'Will attempt to sign in or create a new account if needed' : '';
-	}
-
 	// Handle login
-	async function handleLogin(event: Event) {
+	function handleLogin(event: Event) {
 		// Prevent default form submission
 		event.preventDefault();
 
-		if (!username || !password) {
+		if (!usernameInput || !password) {
 			errorMessage = 'Please enter both username and password';
 			return;
 		}
@@ -127,82 +134,100 @@
 		}
 
 		// Clean the username input
-		const cleanUsername = username.trim();
+		const cleanUsername = usernameInput.trim();
 
 		errorMessage = '';
 		authMessage = '';
 		isLoading = true;
 
 		try {
-			// Use Gun's authenticate function which handles both login and signup
-			await authenticate(cleanUsername, password);
+			// Try to login
+			login(cleanUsername, password);
 
-			// Add a small delay to ensure Gun state is fully updated
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// Reset form fields
+			usernameInput = '';
+			password = '';
 
-			// Import user again to ensure it's defined and refreshed after authentication
-			const { user: gunUser } = await import('$lib/gun/gunSetup');
+			// Add a short delay to allow Gun to process the auth
+			setTimeout(() => {
+				isLoading = false;
 
-			// If authentication is successful, get user data
-			if (gunUser?.is?.pub) {
-				// Get user data directly from gun.user instance
-				const userData: UserData = {
-					pub: gunUser.is.pub,
-					alias: gunUser.is.alias || cleanUsername,
-					username: cleanUsername.toLowerCase()
-				};
-
-				// Store user in localStorage with a try/catch to prevent errors
-				try {
-					localStorage.setItem('centralizedUser', JSON.stringify(userData));
-				} catch (storageError) {
-					console.error('Error storing user in localStorage:', storageError);
-					// Continue anyway - this is not a critical error
+				// If login failed (no pub), show error
+				if (!pub) {
+					errorMessage = 'Login failed. Would you like to create a new account?';
+				} else {
+					// Success, close the login panel
+					showLoginPanel = false;
 				}
-
-				// Update global state with the logged in user
-				await globalState.setCurrentUser(userData);
-
-				// Reset form fields but keep panel open
-				username = '';
-				password = '';
-				errorMessage = '';
-				authMessage = '';
-				showPassword = false;
-
-				// Show success message
-				globalState.showToast(`Logged in as ${userData.alias}`, 'success');
-			} else {
-				errorMessage = 'Authentication failed. Please try again.';
-			}
+			}, 500);
 		} catch (error) {
 			console.error('Authentication error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Authentication error';
-		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Handle signup
+	function handleSignup() {
+		if (!usernameInput || !password) {
+			errorMessage = 'Please enter both username and password';
+			return;
+		}
+
+		// Don't attempt to authenticate if we're already loading
+		if (isLoading) {
+			return;
+		}
+
+		// Clean the username input
+		const cleanUsername = usernameInput.trim();
+
+		errorMessage = '';
+		authMessage = '';
+		isLoading = true;
+
+		try {
+			// Use the signup function from user.ts
+			signup(cleanUsername, password);
+
+			// Add a short delay to allow Gun to process the signup
+			setTimeout(() => {
+				isLoading = false;
+
+				// If signup succeeded, pub will be set
+				if (pub) {
+					// Success, close the login panel
+					showLoginPanel = false;
+
+					// Reset form fields
+					usernameInput = '';
+					password = '';
+				} else {
+					errorMessage = 'Signup failed. Please try a different username.';
+				}
+			}, 500);
+		} catch (error) {
+			console.error('Signup error:', error);
+			errorMessage = error instanceof Error ? error.message : 'Signup error';
 			isLoading = false;
 		}
 	}
 
 	// Handle logout
-	async function handleLogout() {
+	function handleLogout() {
 		// Set loading state to prevent UI interactions during logout
 		isLoading = true;
 
 		try {
-			// Remove user from localStorage
-			try {
-				localStorage.removeItem('centralizedUser');
-			} catch (error) {
-				console.error('Error removing user from localStorage:', error);
-				// Continue with logout process regardless
-			}
+			// Call signout from user.ts
+			signout();
 
-			// Update global state to reflect logout
-			await globalState.setCurrentUser(null);
-
-			// Import logout function to ensure proper Gun cleanup
-			const { logout } = await import('$lib/gun/gunSetup');
-			logout();
+			// Reset form fields
+			usernameInput = '';
+			password = '';
+			errorMessage = '';
+			authMessage = '';
+			showPassword = false;
 
 			// Show success message
 			globalState.showToast('Logged out successfully', 'info');
@@ -212,21 +237,15 @@
 		} finally {
 			// Small delay to ensure Gun has time to clean up
 			setTimeout(() => {
-				// Reset form fields
-				username = '';
-				password = '';
-				errorMessage = '';
-				authMessage = '';
-				showPassword = false;
 				isLoading = false;
 			}, 200);
 		}
 	}
 
 	// Generate avatar
-	function generateAvatar(pub: string, size = 32) {
+	function generateAvatar(pubKey: string, size = 32) {
 		// Safety check for empty public key
-		if (!pub) {
+		if (!pubKey) {
 			// Return default avatar for empty pub key
 			return `data:image/svg+xml,${encodeURIComponent(`
 				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -241,15 +260,12 @@
 
 		try {
 			// Generate a color based on public key
-			const hue = Math.abs(pub.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
+			const hue = Math.abs(pubKey.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
 			const saturation = 70;
 			const lightness = 60;
 
 			// Get first character for avatar text (safely)
-			const firstChar =
-				currentUser?.alias && currentUser?.alias.length > 0
-					? currentUser.alias.charAt(0).toUpperCase()
-					: '?';
+			const firstChar = alias && alias.length > 0 ? alias.charAt(0).toUpperCase() : '?';
 
 			// Generate avatar SVG
 			return `data:image/svg+xml,${encodeURIComponent(`
@@ -282,7 +298,8 @@
 
 		// Check if any child has contributors
 		for (const child of currentZipper.zipperCurrent.nodeChildren.values()) {
-			if (child.nodeContributors.size > 0) return true;
+			// nodeContributors only exists on non-root nodes
+			if (child.type === 'non-root' && child.nodeContributors?.size > 0) return true;
 		}
 
 		return false;
@@ -344,16 +361,16 @@
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
 		<div class="login-panel">
-			{#if currentUser}
+			{#if user && user.is && user.is.pub}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img src={generateAvatar(currentUser.pub, 60)} alt={currentUser.alias} />
+							<img src={generateAvatar(user.is.pub, 60)} alt={alias} />
 						</div>
 						<div class="user-details">
-							<h3>Welcome, {currentUser.alias}</h3>
-							<p class="user-id">@{currentUser.username}</p>
+							<h3>Welcome, {alias}</h3>
+							<p class="user-id">@{alias}</p>
 						</div>
 					</div>
 					<div class="actions">
@@ -381,11 +398,14 @@
 							<input
 								type="text"
 								id="username"
-								bind:value={username}
+								bind:value={usernameInput}
 								placeholder="Enter username"
 								disabled={isLoading}
 								autocomplete="username"
-								oninput={updateAuthMessage}
+								oninput={() =>
+									(authMessage = usernameInput
+										? 'Will attempt to sign in or create a new account if needed'
+									: '')}
 							/>
 						</div>
 
@@ -415,14 +435,22 @@
 							<button
 								type="submit"
 								class="login-btn"
-								disabled={isLoading || !username || !password}
+								disabled={isLoading || !usernameInput || !password}
 							>
 								{#if isLoading}
 									<div class="spinner small"></div>
 									Signing in...
 								{:else}
-									Continue
+									Sign In
 								{/if}
+							</button>
+							<button
+								type="button"
+								class="signup-btn"
+								onclick={handleSignup}
+								disabled={isLoading || !usernameInput || !password}
+							>
+								Sign Up
 							</button>
 							<button
 								type="button"
@@ -433,8 +461,6 @@
 								Cancel
 							</button>
 						</div>
-
-						<div class="hint">One-click sign in or sign up</div>
 					</form>
 				</div>
 			{/if}
@@ -676,10 +702,12 @@
 		display: flex;
 		gap: 8px;
 		margin-top: 16px;
+		flex-wrap: wrap;
 	}
 
 	.login-btn,
-	.logout-btn {
+	.logout-btn,
+	.signup-btn {
 		flex: 1;
 		background: #2196f3;
 		color: white;
@@ -692,14 +720,17 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
+		min-width: 90px;
 	}
 
 	.login-btn:hover,
-	.logout-btn:hover {
+	.logout-btn:hover,
+	.signup-btn:hover {
 		background: #1976d2;
 	}
 
-	.login-btn:disabled {
+	.login-btn:disabled,
+	.signup-btn:disabled {
 		background: #bbdefb;
 		cursor: not-allowed;
 	}
@@ -710,6 +741,14 @@
 
 	.logout-btn:hover {
 		background: #d32f2f;
+	}
+
+	.signup-btn {
+		background: #4caf50;
+	}
+
+	.signup-btn:hover {
+		background: #388e3c;
 	}
 
 	.cancel-btn,
@@ -769,13 +808,6 @@
 		margin: 0;
 		color: #666;
 		font-size: 0.9em;
-	}
-
-	.hint {
-		margin-top: 12px;
-		font-size: 0.8em;
-		color: #666;
-		text-align: center;
 	}
 
 	.spinner {

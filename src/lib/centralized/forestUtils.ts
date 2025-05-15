@@ -1,6 +1,6 @@
 import type { Forest, TreeZipper } from './types';
-import { GunUserTree } from './tree';
-import { gun, user } from '../gun/gunSetup';
+import { Tree } from './tree';
+import { gun, user } from '../gun/user';
 
 /**
  * Get a node's name by ID
@@ -114,15 +114,6 @@ export function filterForestNodes(
 			});
 		}
 	});
-
-	// Also add fallback users if the list is empty
-	if (defaultUsers.length === 0) {
-		return [
-			{ id: 'ALICE123', name: 'Alice' },
-			{ id: 'BOB456', name: 'Bob' },
-			{ id: 'CHARLIE789', name: 'Charlie' }
-		].filter((user) => !excludeIds.includes(user.id));
-	}
 
 	return defaultUsers;
 }

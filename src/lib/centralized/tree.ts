@@ -1,56 +1,27 @@
 import { GunNode } from '../gun/GunNode';
 import type {
 	Node,
+	RootNode,
+	NonRootNode,
 	TreeZipper,
 	Ctx,
 	NavigationPath,
-	PersistentCache,
-	Cache,
-	CacheValue
+	ShareMap
 } from './types';
-import { emptyCache, cacheLookup, cacheInsert } from './cache';
-import { weight, fulfilled, desire, mutualFulfillment } from './calculations';
-import { user, recallUser } from '../gun/gunSetup';
-
-export function emptyPersistentCache(): PersistentCache {
-	return {
-		pcSogfMap: null,
-		pcProviderShares: new Map()
-	};
-}
+import { user } from '../gun/user';
 
 /**
- * GunUserTree class for managing tree structures using Gun within a user's secure space
- * Uses GunNode for persistence and TreeZipper pattern for navigation
+ * Tree class for managing tree structures using Gun within a user's secure space
+ * Following the Haskell reference implementation of the Free-Association protocol
  */
-export class GunUserTree {
-	/**
-	 * Initialize GunUserTree and ensure user authentication
-	 * @returns Promise that resolves when initialization is complete
-	 */
-	static async initialize(): Promise<void> {
-		// Ensure user is authenticated before proceeding
-		await recallUser();
-
-		if (!user.is?.pub) {
-			throw new Error('User must be authenticated to use GunUserTree');
-		}
-	}
-
+export class Tree {
 	/**
 	 * Create a root node in the user's tree
 	 * @param name Node name
-	 * @param pts Points value
-	 * @param contribs Contributors (defaults to current user)
 	 * @param manual Manual fulfillment value
 	 * @returns Promise resolving to a TreeZipper
 	 */
-	static async createRootNode(
-		name: string,
-		pts: number,
-		contribs?: string[],
-		manual: number | null = null
-	): Promise<TreeZipper> {
+	static async createRootNode(name: string, manual: number | null = null): Promise<TreeZipper> {
 		// Ensure user is authenticated
 		if (!user.is?.pub) {
 			throw new Error('User must be authenticated to create a root node');
@@ -59,39 +30,28 @@ export class GunUserTree {
 		const userPub = user.is.pub;
 		const nodeId = userPub; // Root node ID is the user's public key
 
-		// Use contributors or default to current user
-		const contributors = contribs || [userPub];
-
 		// Create root node in user space
 		const rootNode = new GunNode(['tree', 'root']);
-
-		// Convert contributors array to Gun-friendly object
-		const contributorsObj: Record<string, boolean> = {};
-		contributors.forEach((contrib) => {
-			contributorsObj[contrib] = true;
-		});
 
 		// Store node data
 		await rootNode.put({
 			nodeId,
 			nodeName: name,
-			nodePoints: pts,
-			nodeContributors: contributorsObj, // Use object instead of array
+			nodeType: 'root',
 			nodeManualFulfillment: clampManual(manual)
 		});
 
 		// Create an in-memory representation
-		const node: Node = {
+		const node: RootNode = {
+			type: 'root',
 			nodeId,
 			nodeName: name,
-			nodePoints: pts,
 			nodeChildren: new Map(),
-			nodeContributors: new Set(contributors),
 			nodeManualFulfillment: clampManual(manual),
 			nodeCapacities: new Map(),
 			nodeCapacityShares: new Map(),
-			nodePersistentCache: emptyPersistentCache(),
-			nodeTransientCache: emptyCache()
+			nodeSOGFMap: null,
+			nodeProviderSharesMap: new Map()
 		};
 
 		// Return as a zipper
@@ -102,11 +62,54 @@ export class GunUserTree {
 	}
 
 	/**
+	 * Load the full tree structure for the current user
+	 * @returns Promise resolving to a TreeZipper with the full tree
+	 */
+	static async loadFullTree(): Promise<TreeZipper | null> {
+		// Ensure user is authenticated
+		if (!user.is?.pub) {
+			throw new Error('User must be authenticated to load the full tree');
+		}
+
+		const userPub = user.is.pub;
+
+		// First load the root node
+		const rootZipper = await Tree.fetchNode(userPub);
+		if (!rootZipper) return null;
+
+		// Then load all children recursively
+		await Tree.loadChildrenRecursively(rootZipper);
+
+		return rootZipper;
+	}
+
+	/**
+	 * Recursively load all children for a node
+	 * @param zipper TreeZipper to load children for
+	 */
+	private static async loadChildrenRecursively(zipper: TreeZipper): Promise<void> {
+		const node = zipper.zipperCurrent;
+		const childrenIds = Array.from(node.nodeChildren.keys());
+
+		// Load each child's data and its children
+		for (const childId of childrenIds) {
+			const childZipper = await Tree.fetchNode(childId);
+			if (childZipper) {
+				// Update the placeholder with actual data
+				node.nodeChildren.set(childId, childZipper.zipperCurrent);
+
+				// Recursively load this child's children
+				await Tree.loadChildrenRecursively(childZipper);
+			}
+		}
+	}
+
+	/**
 	 * Add a child node to the current node
 	 * @param parentId Parent node ID
-	 * @param childId Child node ID (optional, will generate unique ID if not provided)
 	 * @param name Child node name
 	 * @param pts Points value
+	 * @param childId Child node ID (optional, will generate unique ID if not provided)
 	 * @param contribs Contributors
 	 * @param manual Manual fulfillment value
 	 * @returns Promise resolving to the child TreeZipper
@@ -129,17 +132,18 @@ export class GunUserTree {
 			childId || `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 		// Get parent node
-		const parentNode = await GunUserTree.fetchNode(parentId);
+		const parentNode = await Tree.fetchNode(parentId);
 		if (!parentNode) return null;
 
-		// Don't allow adding children to nodes with contributors
-		if (parentNode.zipperCurrent.nodeContributors.size > 0) {
+		// Don't allow adding children to nodes with contributors if parent is a non-root node
+		const parent = parentNode.zipperCurrent;
+		if (parent.type === 'non-root' && parent.nodeContributors.size > 0) {
 			return null;
 		}
 
 		// Convert contributors array to Gun-friendly object
 		const contributorsObj: Record<string, boolean> = {};
-		contribs.forEach((contrib) => {
+		contribs.forEach((contrib: string) => {
 			contributorsObj[contrib] = true;
 		});
 
@@ -150,12 +154,12 @@ export class GunUserTree {
 			nodeId: actualChildId,
 			nodeName: name,
 			nodePoints: pts,
-			nodeContributors: contributorsObj, // Use object instead of array
+			nodeType: 'non-root',
+			nodeContributors: contributorsObj,
 			nodeManualFulfillment: clampManual(manual)
 		});
 
 		// Create the edge from parent to child by adding a reference
-		// Find the parent node reference based on if it's root or a regular node
 		const parentRef =
 			parentId === user.is.pub
 				? new GunNode(['tree', 'root', 'children'])
@@ -164,17 +168,14 @@ export class GunUserTree {
 		await parentRef.get(actualChildId).put({ '#': `~${user.is.pub}/tree/nodes/${actualChildId}` });
 
 		// Create child node for in-memory representation
-		const childNodeObj: Node = {
+		const childNodeObj: NonRootNode = {
+			type: 'non-root',
 			nodeId: actualChildId,
 			nodeName: name,
 			nodePoints: pts,
 			nodeChildren: new Map(),
 			nodeContributors: new Set(contribs),
-			nodeManualFulfillment: clampManual(manual),
-			nodeCapacities: new Map(),
-			nodeCapacityShares: new Map(),
-			nodePersistentCache: emptyPersistentCache(),
-			nodeTransientCache: emptyCache()
+			nodeManualFulfillment: clampManual(manual)
 		};
 
 		// Create context for the zipper
@@ -212,70 +213,82 @@ export class GunUserTree {
 			const nodeRef = new GunNode(nodePath);
 			const nodeData = await nodeRef.once();
 
-			if (!nodeData) return null;
+			if (!nodeData) {
+				return null;
+			}
 
-			// Convert contributors object to a Set
-			const contributors = new Set<string>();
-			if (nodeData.nodeContributors) {
-				// If it's an array (old format), use it directly
-				if (Array.isArray(nodeData.nodeContributors)) {
-					nodeData.nodeContributors.forEach((contrib: string) => contributors.add(contrib));
-				}
-				// If it's an object (new format), use keys where value is true
-				else if (typeof nodeData.nodeContributors === 'object') {
-					// Check if it's a reference (soul)
-					if (nodeData.nodeContributors['#']) {
-						// Direct soul reference - use Gun directly to get the data
-						const soul = nodeData.nodeContributors['#'];
+			// Parse the children references
+			const childrenRef = isRoot
+				? new GunNode(['tree', 'root', 'children'])
+				: new GunNode(['tree', 'nodes', nodeId, 'children']);
 
-						// Use Gun to fetch data directly from the soul
-						const contributorsData = await new Promise<any>((resolve) => {
-							// Import gun dynamically to avoid circular dependencies
-							import('../gun/gunSetup')
-								.then(({ gun }) => {
-									gun.get(soul).once((data: any) => resolve(data));
-								})
-								.catch((err) => {
-									console.error('Error importing gun for contributor resolution:', err);
-									resolve(null);
-								});
-						});
+			const childrenData = await childrenRef.once();
+			const nodeChildren = new Map<string, Node>();
 
-						if (contributorsData) {
-							Object.entries(contributorsData).forEach(([key, value]) => {
-								if (value === true && key !== '_') {
-									contributors.add(key);
-								}
-							});
-						}
-					} else {
-						// Regular object - process normally
-						Object.entries(nodeData.nodeContributors).forEach(([key, value]) => {
-							if (value === true && key !== '_') {
-								contributors.add(key);
-							}
-						});
-					}
+			// Check if node is a root or non-root node
+			const isRootNode = isRoot || nodeData.nodeType === 'root';
+
+			if (childrenData) {
+				// Load each child reference
+				const childIds = Object.keys(childrenData).filter(
+					(id) => id && id !== '_' && !id.startsWith('>')
+				);
+
+				// Create placeholders for children
+				for (const id of childIds) {
+					const placeholder: NonRootNode = {
+						type: 'non-root',
+						nodeId: id,
+						nodeName: id, // Placeholder, will be loaded when needed
+						nodePoints: 0,
+						nodeChildren: new Map(),
+						nodeContributors: new Set(),
+						nodeManualFulfillment: null
+					};
+					nodeChildren.set(id, placeholder);
 				}
 			}
 
-			// Convert data to Node structure
-			const node: Node = {
+			// Convert contributors from Gun object to Set
+			const contributorsData = nodeData.nodeContributors || {};
+			const contributors = new Set(
+				Object.keys(contributorsData).filter((id) => contributorsData[id])
+			);
+
+			// Create the appropriate node type
+			let node: Node;
+
+			if (isRootNode) {
+				// Create a RootNode
+				node = {
+					type: 'root',
+					nodeId: nodeData.nodeId || nodeId,
+					nodeName: nodeData.nodeName || nodeId,
+					nodeChildren,
+					nodeManualFulfillment:
+						nodeData.nodeManualFulfillment !== undefined ? nodeData.nodeManualFulfillment : null,
+					nodeCapacities: new Map(), // Will be loaded separately if needed
+					nodeCapacityShares: new Map(), // Will be loaded separately if needed
+					nodeSOGFMap: null, // Will be calculated when needed
+					nodeProviderSharesMap: new Map() // Will be calculated when needed
+				};
+			} else {
+				// Create a NonRootNode
+				node = {
+					type: 'non-root',
 				nodeId: nodeData.nodeId || nodeId,
-				nodeName: nodeData.nodeName || '',
+					nodeName: nodeData.nodeName || nodeId,
 				nodePoints: nodeData.nodePoints || 0,
-				nodeChildren: new Map(),
+					nodeChildren,
 				nodeContributors: contributors,
-				nodeManualFulfillment: clampManual(nodeData.nodeManualFulfillment),
-				nodeCapacities: new Map(),
-				nodeCapacityShares: new Map(),
-				nodePersistentCache: emptyPersistentCache(),
-				nodeTransientCache: emptyCache()
-			};
+					nodeManualFulfillment:
+						nodeData.nodeManualFulfillment !== undefined ? nodeData.nodeManualFulfillment : null
+				};
+			}
 
 			return {
 				zipperCurrent: node,
-				zipperContext: null
+				zipperContext: null // Context is only set when navigating
 			};
 		} catch (error) {
 			console.error('Error fetching node:', error);
@@ -284,175 +297,11 @@ export class GunUserTree {
 	}
 
 	/**
-	 * Load full tree structure with children
-	 * @param maxDepth Maximum depth to load (default: 5)
-	 * @returns Promise resolving to a fully loaded TreeZipper
-	 */
-	static async loadFullTree(maxDepth = 5): Promise<TreeZipper | null> {
-		// Ensure user is authenticated
-		if (!user.is?.pub) {
-			throw new Error('User must be authenticated to load a tree');
-		}
-
-		console.log('[GUN FLOW] Starting loadFullTree with maxDepth:', maxDepth);
-		const visited = new Set<string>();
-
-		const loadNodeRecursive = async (id: string, depth = 0): Promise<Node | null> => {
-			try {
-				if (!id || visited.has(id) || depth > maxDepth) return null;
-				visited.add(id);
-
-				console.log(`[GUN FLOW] Loading node: ${id} at depth: ${depth}`);
-				const zipper = await GunUserTree.fetchNode(id);
-				if (!zipper) return null;
-
-				const node = zipper.zipperCurrent;
-				// Log contributors to confirm they're loaded correctly
-				console.log(
-					`[GUN FLOW] Node ${id} has ${node.nodeContributors.size} contributors:`,
-					Array.from(node.nodeContributors)
-				);
-
-				// Load children - different path based on node type
-				const isRoot = id === user?.is?.pub;
-				const childrenPath = isRoot
-					? ['tree', 'root', 'children']
-					: ['tree', 'nodes', id, 'children'];
-
-				try {
-					const childrenRef = new GunNode(childrenPath);
-					const children = await childrenRef.once();
-
-					// No children or invalid data, return the node as is
-					if (!children || typeof children !== 'object') return node;
-
-					const loadedChildren = new Map<string, Node>();
-
-					// Process each child reference
-					const childPromises = Object.keys(children)
-						.filter((key) => key !== '_') // Skip Gun metadata
-						.map(async (childId) => {
-							try {
-								// Extract the actual node ID from the reference or use the key
-								const childData = children[childId];
-								let actualChildId = childId;
-
-								if (childData && typeof childData === 'object' && childData['#']) {
-									const parts = childData['#'].split('/');
-									actualChildId = parts.length > 0 ? parts[parts.length - 1] : childId;
-								}
-
-								const child = await loadNodeRecursive(actualChildId, depth + 1);
-								if (child) {
-									loadedChildren.set(childId, child);
-								}
-							} catch (childError) {
-								console.error(`Error loading child node ${childId}:`, childError);
-								// Continue with other children even if one fails
-							}
-						});
-
-					// Wait for all child loads to complete (or fail)
-					await Promise.all(childPromises);
-
-					console.log(`[GUN FLOW] Node ${id} loaded with ${loadedChildren.size} children`);
-
-					// Create the node with loaded children
-					return {
-						...node,
-						nodeChildren: loadedChildren
-					};
-				} catch (childrenError) {
-					console.error(`Error loading children for node ${id}:`, childrenError);
-					// Return the node without children if we can't load them
-					return node;
-				}
-			} catch (nodeError) {
-				console.error(`Error in loadNodeRecursive for node ${id}:`, nodeError);
-				return null;
-			}
-		};
-
-		try {
-			// Start loading from the root node (user's public key)
-			console.log('[GUN FLOW] Starting recursive load from root:', user.is.pub);
-			const rootNode = await loadNodeRecursive(user.is.pub);
-			if (!rootNode) return null;
-
-			console.log('[GUN FLOW] Full tree loaded successfully');
-
-			return {
-				zipperCurrent: rootNode,
-				zipperContext: null
-			};
-		} catch (error) {
-			console.error('Error loading full tree:', error);
-			return null;
-		}
-	}
-
-	/**
-	 * Load SOGF map and provider shares from the user's tree
-	 * @param zipper TreeZipper to update with cache data
-	 * @returns Updated TreeZipper with cache data
-	 */
-	static async loadCacheData(zipper: TreeZipper): Promise<TreeZipper> {
-		// Ensure user is authenticated
-		if (!user.is?.pub) {
-			throw new Error('User must be authenticated to load cache data');
-		}
-
-		try {
-			// Load SOGF map
-			const sogfRef = new GunNode(['tree', 'persistentCache', 'sogfMap']);
-			const sogfData = await sogfRef.once();
-
-			let pcSogfMap: Map<string, number> | null = null;
-			if (sogfData && sogfData.map) {
-				const mapData = JSON.parse(sogfData.map);
-				pcSogfMap = new Map(Object.entries(mapData));
-			}
-
-			// Load provider shares
-			const sharesRef = new GunNode(['tree', 'providerShares']);
-			const sharesData = await sharesRef.once();
-
-			const pcProviderShares = new Map<number, Map<string, number>>();
-
-			if (sharesData) {
-				// Process each depth entry
-				for (const depthKey of Object.keys(sharesData).filter((k) => k !== '_')) {
-					const depth = parseInt(depthKey, 10);
-					if (isNaN(depth)) continue;
-
-					const depthData = await sharesRef.get(depthKey).once();
-					if (depthData && depthData.map) {
-						const mapData = JSON.parse(depthData.map);
-						pcProviderShares.set(depth, new Map(Object.entries(mapData)));
-					}
-				}
-			}
-
-			// Update zipper with cache data
-			return updateNodePersistentCache(
-				() => ({
-					pcSogfMap,
-					pcProviderShares
-				}),
-				zipper
-			);
-		} catch (error) {
-			console.error('Error loading cache data:', error);
-			return zipper; // Return original zipper on error
-		}
-	}
-
-	/**
-	 * Save a node to Gun (persist changes)
-	 * @param zipper TreeZipper containing node to save
-	 * @returns Promise resolving when saved
+	 * Save a node back to the database
+	 * @param zipper TreeZipper containing the node to save
 	 */
 	static async saveNode(zipper: TreeZipper): Promise<void> {
+		try {
 		// Ensure user is authenticated
 		if (!user.is?.pub) {
 			throw new Error('User must be authenticated to save a node');
@@ -460,236 +309,119 @@ export class GunUserTree {
 
 		const node = zipper.zipperCurrent;
 		const isRoot = node.nodeId === user.is.pub;
-
-		// Determine the correct path for this node
 		const nodePath = isRoot ? ['tree', 'root'] : ['tree', 'nodes', node.nodeId];
 		const nodeRef = new GunNode(nodePath);
 
-		// Convert contributors Set to Gun-friendly object
-		const contributorsObj: Record<string, boolean> = {};
-		node.nodeContributors.forEach((contrib) => {
-			contributorsObj[contrib] = true;
-		});
-
-		console.log(
-			'[GUN FLOW] Saving node',
-			node.nodeId,
-			'with',
-			node.nodeContributors.size,
-			'contributors:',
-			Array.from(node.nodeContributors)
-		);
-
-		// Save basic node data
-		await nodeRef.put({
+			// Save node properties
+			const saveData: Record<string, any> = {
 			nodeId: node.nodeId,
 			nodeName: node.nodeName,
-			nodePoints: node.nodePoints,
-			nodeContributors: contributorsObj, // Use object instead of array
+				nodeType: node.type,
 			nodeManualFulfillment: node.nodeManualFulfillment
-		});
+			};
 
-		// If this node has children references, save those too
-		if (node.nodeChildren.size > 0) {
-			const childrenPath = isRoot
-				? ['tree', 'root', 'children']
-				: ['tree', 'nodes', node.nodeId, 'children'];
-			const childrenRef = new GunNode(childrenPath);
-
-			// Save each child reference
-			for (const [childKey, childNode] of node.nodeChildren.entries()) {
-				await childrenRef.get(childKey).put({
-					'#': `~${user.is.pub}/tree/nodes/${childNode.nodeId}`
+			if (node.type === 'non-root') {
+				saveData.nodePoints = node.nodePoints;
+				
+				// Convert contributors Set to object
+				const contributorsObj: Record<string, boolean> = {};
+				node.nodeContributors.forEach((id) => {
+					contributorsObj[id] = true;
 				});
+				saveData.nodeContributors = contributorsObj;
 			}
-		}
 
-		console.log('[GUN FLOW] Node', node.nodeId, 'saved successfully');
+			// Save the node data
+			await nodeRef.put(saveData);
+			
+			// CRITICAL ADDITION: Now properly update the children references
+			const childrenRef = isRoot
+				? new GunNode(['tree', 'root', 'children'])
+				: new GunNode(['tree', 'nodes', node.nodeId, 'children']);
+			
+			// Clear existing children references first
+			await childrenRef.put(null);
+			
+			// Add references for each child
+			for (const [childId, childNode] of node.nodeChildren) {
+				// Create soul reference for this child
+				const childSoul = `~${user.is.pub}/tree/nodes/${childId}`;
+				await childrenRef.get(childId).put({ '#': childSoul });
+			}
+		} catch (error) {
+			console.error('Error saving node:', error);
+			throw error;
+		}
 	}
 
 	/**
-	 * Delete a node and its children from Gun database
+	 * Delete a node and its children
 	 * @param nodeId ID of the node to delete
-	 * @returns Promise resolving to true if deletion was successful
+	 * @returns Promise resolving to true if successful
 	 */
 	static async deleteNode(nodeId: string): Promise<boolean> {
-		console.log('[GUN FLOW] deleteNode started:', nodeId);
-
+		try {
 		// Ensure user is authenticated
 		if (!user.is?.pub) {
-			console.error('[GUN FLOW] User not authenticated');
 			throw new Error('User must be authenticated to delete a node');
 		}
 
-		try {
-			// Don't allow deleting the root node
+			// Cannot delete root node
 			if (nodeId === user.is.pub) {
-				console.error('[GUN FLOW] Cannot delete root node');
-				return false;
+				throw new Error('Cannot delete root node');
 			}
 
-			// Get node reference
-			const nodePath = ['tree', 'nodes', nodeId];
-			const nodeRef = new GunNode(nodePath);
-
-			// Get node data to check for children
-			const nodeData = await nodeRef.once();
-
-			if (!nodeData) {
-				console.error('[GUN FLOW] Node not found:', nodeId);
-				return false;
-			}
-
-			// First, recursively delete all children
-			// Get children references
-			const childrenRef = new GunNode([...nodePath, 'children']);
-			const children = await childrenRef.once();
-
-			if (children && typeof children === 'object') {
-				// Process each child
-				const childPromises = Object.keys(children)
-					.filter((key) => key !== '_') // Skip Gun metadata
-					.map(async (childId) => {
-						try {
-							// Extract the actual node ID from the reference
-							const childData = children[childId];
-							let actualChildId = childId;
-
-							if (childData && typeof childData === 'object' && childData['#']) {
-								const parts = childData['#'].split('/');
-								actualChildId = parts.length > 0 ? parts[parts.length - 1] : childId;
-							}
-
-							// Recursively delete this child
-							console.log(`[GUN FLOW] Deleting child ${actualChildId} of node ${nodeId}`);
-							await GunUserTree.deleteNode(actualChildId);
-						} catch (error) {
-							console.error(`[GUN FLOW] Error deleting child ${childId}:`, error);
-						}
-					});
-
-				// Wait for all child deletions to complete
-				await Promise.all(childPromises);
-			}
-
-			// Now delete the node itself
-			console.log(`[GUN FLOW] Deleting node data for ${nodeId}`);
-
-			// 1. Delete children references
-			await childrenRef.put(null);
-
-			// 2. Delete the node data
+			// Delete the node
+			const nodeRef = new GunNode(['tree', 'nodes', nodeId]);
 			await nodeRef.put(null);
 
-			console.log(`[GUN FLOW] Node ${nodeId} deleted successfully`);
 			return true;
 		} catch (error) {
-			console.error('[GUN FLOW] Error deleting node:', error);
+			console.error('Error deleting node:', error);
 			return false;
 		}
 	}
 
-	/**
-	 * Save cache data (SOGF map and provider shares)
-	 * @param zipper TreeZipper containing cache data to save
-	 * @returns Promise resolving when saved
-	 */
-	static async saveCacheData(zipper: TreeZipper): Promise<void> {
-		// Ensure user is authenticated
-		if (!user.is?.pub) {
-			throw new Error('User must be authenticated to save cache data');
-		}
-
-		const node = zipper.zipperCurrent;
-
-		// Save persistent cache data if needed
-		if (node.nodePersistentCache.pcSogfMap) {
-			const cacheRef = new GunNode(['tree', 'persistentCache']);
-			await cacheRef.get('sogfMap').put({
-				map: JSON.stringify(Object.fromEntries(node.nodePersistentCache.pcSogfMap))
-			});
-		}
-
-		// Save provider shares
-		if (node.nodePersistentCache.pcProviderShares.size > 0) {
-			const sharesRef = new GunNode(['tree', 'providerShares']);
-
-			for (const [depth, shares] of node.nodePersistentCache.pcProviderShares.entries()) {
-				await sharesRef.get(`${depth}`).put({
-					map: JSON.stringify(Object.fromEntries(shares))
-				});
-			}
-		}
-	}
-
-	/**
-	 * Calculate fulfillment for a node
-	 * @param zipper TreeZipper to calculate for
-	 * @returns Fulfillment value (0-1)
-	 */
-	static calculateFulfillment(zipper: TreeZipper): number {
-		return fulfilled(zipper);
-	}
-
-	/**
-	 * Calculate weight for a node
-	 * @param zipper TreeZipper to calculate for
-	 * @returns Weight value (0-1)
-	 */
-	static calculateWeight(zipper: TreeZipper): number {
-		return weight(zipper);
-	}
-
-	/**
-	 * Calculate desire for a node
-	 * @param zipper TreeZipper to calculate for
-	 * @returns Desire value (0-1)
-	 */
-	static calculateDesire(zipper: TreeZipper): number {
-		return desire(zipper);
-	}
-
-	/**
-	 * Calculate mutual fulfillment between two nodes
-	 * @param a First node
-	 * @param b Second node
-	 * @param trees Map of tree zippers by ID
-	 * @returns Mutual fulfillment value (0-1)
-	 */
-	static calculateMutualFulfillment(
-		a: TreeZipper,
-		b: TreeZipper,
-		trees: Map<string, TreeZipper>
-	): number {
-		return mutualFulfillment(trees, a, b);
+	static async fetchNodeWithChildren(nodeId: string): Promise<TreeZipper | null> {
+		const nodeZipper = await Tree.fetchNode(nodeId);
+		if (!nodeZipper) return null;
+		
+		// Load children recursively up to specified depth
+		await Tree.loadChildrenRecursively(nodeZipper);
+		
+		return nodeZipper;
 	}
 }
 
-// Helper functions (kept outside the class for compatibility with calculations.ts)
+// ==== Navigation Functions ====
 
-// Helper function to clamp manual fulfillment between 0 and 1
+/**
+ * Helper function to clamp manual fulfillment value between 0 and 1
+ */
 function clampManual(manual: number | null): number | null {
 	if (manual === null) return null;
 	return Math.max(0, Math.min(1, manual));
 }
 
 /**
- * Pure function to enter a child node
- * @param childId Child node ID
- * @param zipper Current TreeZipper
- * @returns New TreeZipper or null if child not found
+ * Enter a child node from the current node
+ * @param childId Child ID to enter
+ * @param zipper Current zipper
+ * @returns New zipper positioned at the child, or null if child not found
  */
 export function enterChild(childId: string, zipper: TreeZipper): TreeZipper | null {
 	const current = zipper.zipperCurrent;
-	const child = current.nodeChildren.get(childId);
+	const childMap = current.nodeChildren;
 
-	if (!child) return null;
+	if (!childMap.has(childId)) {
+		return null;
+	}
 
-	// Create new context with immutable updates
-	const siblings = new Map(current.nodeChildren);
+	const child = childMap.get(childId)!;
+	const siblings = new Map(childMap);
 	siblings.delete(childId);
 
-	const ctx: Ctx = {
+	const newCtx: Ctx = {
 		ctxParent: current,
 		ctxSiblings: siblings,
 		ctxAncestors: zipper.zipperContext
@@ -699,54 +431,146 @@ export function enterChild(childId: string, zipper: TreeZipper): TreeZipper | nu
 
 	return {
 		zipperCurrent: child,
-		zipperContext: ctx
+		zipperContext: newCtx
 	};
 }
 
 /**
- * Pure function to exit to parent node
- * @param zipper Current TreeZipper
- * @returns New TreeZipper or null if at root
+ * Exit from current node to its parent
+ * @param zipper Current zipper
+ * @returns New zipper positioned at the parent, or null if at root
  */
 export function exitToParent(zipper: TreeZipper): TreeZipper | null {
-	if (!zipper.zipperContext) return null;
-
 	const ctx = zipper.zipperContext;
+	if (!ctx) {
+		return null; // Already at root
+	}
+
+	const current = zipper.zipperCurrent;
 	const parent = ctx.ctxParent;
 	const siblings = ctx.ctxSiblings;
 	const ancestors = ctx.ctxAncestors;
 
-	// Immutably update parent children
+	// Add current node back to parent's children
 	const updatedChildren = new Map(siblings);
-	updatedChildren.set(zipper.zipperCurrent.nodeId, zipper.zipperCurrent);
+	updatedChildren.set(current.nodeId, current);
 
-	const newParent: Node = {
+	// Create updated parent with current node added back to its children
+	const updatedParent = {
 		...parent,
 		nodeChildren: updatedChildren
 	};
 
+	// Safely handle ancestors
+	const newContext = ancestors.length > 0 ? ancestors[0] : null;
+
 	return {
-		zipperCurrent: newParent,
-		zipperContext: ancestors.length > 0 ? ancestors[0] : null
+		zipperCurrent: updatedParent,
+		zipperContext: newContext
 	};
 }
 
 /**
- * Update a node's persistent cache
- * @param updater Function that transforms the persistent cache
- * @param zipper TreeZipper to update
- * @returns Updated TreeZipper
+ * Navigate to the root of the tree
+ * @param zipper Current zipper
+ * @returns Zipper positioned at the root
  */
-export function updateNodePersistentCache(
-	updater: (pc: PersistentCache) => PersistentCache,
-	zipper: TreeZipper
-): TreeZipper {
-	const node = zipper.zipperCurrent;
-	return {
-		...zipper,
-		zipperCurrent: {
-			...node,
-			nodePersistentCache: updater(node.nodePersistentCache)
+export function goToRoot(zipper: TreeZipper): TreeZipper {
+	let current = zipper;
+	while (true) {
+		const parent = exitToParent(current);
+		if (!parent) {
+			return current; // Already at root
 		}
-	};
+		current = parent;
+	}
+}
+
+/**
+ * Get all descendants of a node, including the node itself
+ * @param zipper Node to get descendants for
+ * @returns Array of zippers for all descendants
+ */
+export function getAllDescendants(zipper: TreeZipper): TreeZipper[] {
+	const result: TreeZipper[] = [zipper];
+	const current = zipper.zipperCurrent;
+
+	// Process all children
+	for (const [childId, _] of current.nodeChildren) {
+		const childZipper = enterChild(childId, zipper);
+		if (childZipper) {
+			result.push(...getAllDescendants(childZipper));
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Get only the descendants (excluding the node itself)
+ * @param zipper Node to get descendants for
+ * @returns Array of zippers for descendants
+ */
+export function descendants(zipper: TreeZipper): TreeZipper[] {
+	const allDescendants = getAllDescendants(zipper);
+	return allDescendants.slice(1); // Remove the first element (self)
+}
+
+/**
+ * Get all immediate children of a node
+ * @param zipper Node to get children for
+ * @returns Array of child zippers
+ */
+export function children(zipper: TreeZipper): TreeZipper[] {
+	const result: TreeZipper[] = [];
+	const current = zipper.zipperCurrent;
+
+	for (const [childId, _] of current.nodeChildren) {
+		const childZipper = enterChild(childId, zipper);
+		if (childZipper) {
+			result.push(childZipper);
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Follow a path from the current node
+ * @param path Array of node IDs to follow
+ * @param zipper Starting zipper
+ * @returns Resulting zipper or null if path invalid
+ */
+export function followPath(path: NavigationPath, zipper: TreeZipper): TreeZipper | null {
+	if (path.length === 0) {
+		return zipper;
+	}
+
+	const [first, ...rest] = path;
+	const child = enterChild(first, zipper);
+
+	if (!child) {
+		return null;
+	}
+
+	return followPath(rest, child);
+}
+
+/**
+ * Get the current path from root
+ * @param zipper Current zipper
+ * @returns Array of node IDs representing the path
+ */
+export function getCurrentPath(zipper: TreeZipper): NavigationPath {
+	const path: string[] = [];
+	let current = zipper;
+
+	while (current.zipperContext) {
+		path.unshift(current.zipperCurrent.nodeId);
+		const parent = exitToParent(current);
+		if (!parent) break;
+		current = parent;
+	}
+
+	return path;
 }

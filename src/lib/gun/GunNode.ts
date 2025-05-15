@@ -1,7 +1,6 @@
-import { gun, getNodeRef } from './gunSetup';
-import type { GunData } from './gunSetup';
+import { gun, getNodeRef } from './user';
 import { GunSubscription } from './GunSubscription';
-import type { SubscriptionCleanup, SubscriptionHandler } from './gunSetup';
+import type { GunData, SubscriptionCleanup, SubscriptionHandler } from './user';
 
 /**
  * Base class for Gun node wrappers that provides a consistent API

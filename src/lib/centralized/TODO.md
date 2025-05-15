@@ -49,17 +49,17 @@ const updatedChildren = new Map(currentNode.nodeChildren);
 updatedChildren.delete(nodeId);
 
 // Only updates the parent, doesn't delete the child node data
-GunUserTree.saveNode(updatedZipper)
+Tree.saveNode(updatedZipper)
 
 Missing Functionality in tree.ts
-The GunUserTree class in tree.ts lacks a proper deleteNode method. There's no code path that actually removes the node data from Gun's database.
+The Tree class in tree.ts lacks a proper deleteNode method. There's no code path that actually removes the node data from Gun's database.
 How Gun Deletion Works
 In Gun, to delete data properly, you need to:
 Remove references to the node from its parent(s)
 Set the actual node data to null to mark it for deletion
 
 Solution
-We need to implement a proper deleteNode method in GunUserTree. Here's how we can add it:
+We need to implement a proper deleteNode method in Tree. Here's how we can add it:
 
     /**
      * Delete a node and its children from Gun database
@@ -116,7 +116,7 @@ We need to implement a proper deleteNode method in GunUserTree. Here's how we ca
 
     						// Recursively delete this child
     						console.log(`[GUN FLOW] Deleting child ${actualChildId} of node ${nodeId}`);
-    						await GunUserTree.deleteNode(actualChildId);
+    						await Tree.deleteNode(actualChildId);
     					} catch (error) {
     						console.error(`[GUN FLOW] Error deleting child ${childId}:`, error);
     					}
@@ -217,11 +217,11 @@ Now let's update the handleNodeDeletion function in Parent.svelte to use our new
 
     		// 2. Save the updated parent to Gun
     		console.log(`[FLOW] Updating parent node ${parentNodeId} to remove child reference`);
-    		await GunUserTree.saveNode(updatedParentZipper);
+    		await Tree.saveNode(updatedParentZipper);
 
     		// 3. Delete the node and all its children from Gun
     		console.log(`[FLOW] Deleting node ${nodeId} and its children from Gun`);
-    		const deleteResult = await GunUserTree.deleteNode(nodeId);
+    		const deleteResult = await Tree.deleteNode(nodeId);
 
     		if (!deleteResult) {
     			console.error(`[FLOW] Failed to delete node ${nodeId} from Gun`);
@@ -258,7 +258,7 @@ The problem lies in how Gun handles object updates. When we're removing a contri
 Let's look at the flow of removing a contributor:
 In Parent.svelte, the handleRemoveContributor function filters out the contributor ID from the array
 This is passed to globalState.updateNode which correctly converts the array to a Set and saves it
-In GunUserTree.saveNode, we properly recreate the contributorsObj from the Set
+In Tree.saveNode, we properly recreate the contributorsObj from the Set
 The nodeContributors object is sent to Gun via nodeRef.put()
 However, there's a subtle issue with how Gun handles object updates:
 When the contributorsObj is saved:
@@ -279,3 +279,17 @@ This ensures that removed contributors are properly deleted from the database.
 Added proper error handling and logging to track the process.
 Enhanced Debugging:
 Added additional logging to the TagPill component to better track contributor removal events.
+
+TODO:
+
+- Meditate
+- Eat Food
+- Evaluate current state of code
+- make calculations simpler and remove caching of those values, like we do in haskell, use haskell as reference
+- make our Gunsetup login way simpler using svelte example from gun.eco
+- Can we make our existing tree.ts more elegant? Where do we repeat ourselves, or have conflicting ways of doing things
+- Can we find more elegant abstractions for writing to and saving a node?
+- Let's implement manual .put() of everything that is not being saved in the gun object? Or does guide, have a better way of storing collections than our :true method? I believe they used dates somehow
+
+- Lets move the
+- Lets try to implement it in Peerbit
