@@ -11,4 +11,10 @@ This is enabled by a mathematical framework where:
 
 The result? A **values-driven supercomputer** where resources scale with collective purpose, not capital. Unlike blockchain (wasteful) or federated systems (fragile), Free-Association leverages existing P2P protocols (e.g., PeerBit) for replication, adding an ethical economic layer. Developers plug in mutual recognition APIs; users define what “alignment” means for them.  
 
-By funding Free-Association, we move beyond the dead ends of tokenized greed and unpaid altruism. This is distributed computing that *rewards contribution to life*—where your laptop’s spare cycles heal the planet, your old phone hosts tools for justice, and every node strengthens a network that gives back as much as it takes. Let’s finally build the internet our values deserve.
+By funding Free-Association, we move beyond the dead ends of tokenized greed and unpaid altruism. This is distributed computing that *rewards contribution to life* — where your laptop’s spare cycles heal the planet, your old phone hosts tools for justice, and every node strengthens a network that gives back as much as it takes. Let’s finally build the internet our values deserve.
+
+1. storage/compute capacity (like any other capacity) get distributed according to mutual-contribution
+2. this means your data replciated/persisted across the network at exactly those parts of the network topology that have a vested interest in your well-being (they are direct/indirect mutual-contributors) these are likely the most efficient and antifragile places your data could be replicated and processes run
+3. free-association becomes a distributed constantly repartitioning communist computer, where data/processes can scale with your transitive-mutual-contribution, rather than fixed allotments of computation that we would buy or sell, here we would just contribute surplus compute/storage capacity into our networkand end up supporting (at a computational level) those programs that contribute to our aliveness
+
+this means that unhealthy digital programs (ones that dont contribute to our aliveness) would decrease over time in their storage/compute capacity, and healthy ones would scale healthily.

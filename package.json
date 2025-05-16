@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"author": "playnet",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -42,7 +43,6 @@
 	},
 	"dependencies": {
 		"@peerbit/document": "^9.6.2",
-		"@supabase/supabase-js": "^2.49.4",
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/d3": "^7.4.3",
 		"autoprefixer": "^10.4.21",
@@ -52,8 +52,6 @@
 		"maplibre-gl": "^5.4.0",
 		"peerbit": "^4.1.36",
 		"pmtiles": "^4.3.0",
-		"protomaps-themes-base": "^4.5.0",
-		"supabase": "^2.22.12",
 		"svelte-maplibre-gl": "^0.1.6",
 		"tailwindcss-animate": "^1.0.7",
 		"uuid": "^11.1.0"
