@@ -1,25 +1,29 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, currentNode, childNodes, userTree, currentPath } from '$lib/global.svelte';
+	import {
+		type Node,
+		type NonRootNode,
+		findNodeById,
+		updateNodeById,
+		updatePoints,
+		updateName,
+		fulfilled
+	} from '$lib/protocol/protocol';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';
-
-	// Import centralized system functions
-	import { Tree, enterChild, exitToParent } from '$lib/centralized';
-
-	// Import our types
-	import type { TreeZipper, Node } from '$lib/centralized/types';
+	import { get } from 'svelte/store';
 
 	// Define a type for visualization data
 	interface VisualizationNode {
 		id: string;
-		zipper: TreeZipper | null;
 		points: number;
 		children: VisualizationNode[];
 		nodeName?: string;
 		contributors?: string[];
+		fulfillment?: number;
 	}
 
 	// Directly use the global state without duplicating it
@@ -50,46 +54,32 @@
 	const BASE_SHRINK_RATE = -0.8;
 	const TAP_THRESHOLD = 250;
 
-	// Get children of current zipper (derived from global state)
-	let childZippers = $state<TreeZipper[]>([]);
-
-	$effect(() => {
-		if (!globalState.currentZipper) {
-			childZippers = [];
-			return;
-		}
-
-		childZippers = Array.from(globalState.currentZipper.zipperCurrent.nodeChildren.keys())
-			.map((id) => {
-				if (!globalState.currentZipper) return null;
-				return enterChild(id, globalState.currentZipper);
-			})
-			.filter(Boolean) as TreeZipper[];
-	});
-
 	// Format data for d3 to consume
 	let packData = $state({ id: '', selfPoints: 0, children: [] as VisualizationNode[] });
 
+	// Subscribe to the derived stores for reactive updates
 	$effect(() => {
-		const zipper = globalState.currentZipper;
-		if (!zipper) {
+		const node = get(currentNode);
+		const children = get(childNodes);
+
+		if (!node) {
 			packData = { id: '', selfPoints: 0, children: [] };
 			return;
 		}
 
-		const children = childZippers.map((child: TreeZipper) => ({
-			id: child.zipperCurrent.nodeId,
-			zipper: child,
-			points: child.zipperCurrent.nodePoints,
-			nodeName: child.zipperCurrent.nodeName,
-			contributors: Array.from(child.zipperCurrent.nodeContributors),
+		const mappedChildren = children.map((child) => ({
+			id: child.id,
+			points: child.type === 'NonRootNode' ? child.points : 0,
+			nodeName: child.name,
+			contributors:
+				child.type === 'NonRootNode' ? (child as NonRootNode).contributors.map((c) => c.id) : [],
 			children: [] as VisualizationNode[]
 		}));
 
 		packData = {
-			id: zipper.zipperCurrent.nodeId,
-			selfPoints: zipper.zipperCurrent.nodePoints,
-			children
+			id: node.id,
+			selfPoints: node.type === 'NonRootNode' ? node.points : 0,
+			children: mappedChildren
 		};
 	});
 
@@ -104,7 +94,6 @@
 		// Create hierarchy
 		const rootNode: VisualizationNode = {
 			id: data.id,
-			zipper: globalState.currentZipper,
 			points: data.selfPoints,
 			children: data.children
 		};
@@ -173,15 +162,15 @@
 	// Navigation functions
 	function zoomInto(nodeId: string) {
 		console.log('[UI FLOW] zoomInto called for node:', nodeId);
-		// Use the centralized navigation function
+		// Use the global state's navigation function
 		globalState.zoomInto(nodeId);
 		console.log('[UI FLOW] Navigation handled by global state');
 	}
 
 	async function handleAddNode() {
 		console.log('[UI FLOW] handleAddNode started');
-		if (!globalState.currentZipper) {
-			console.log('[UI FLOW] No currentZipper, aborting');
+		if (!globalState.currentNodeId) {
+			console.log('[UI FLOW] No currentNodeId, aborting');
 			return;
 		}
 
@@ -204,7 +193,7 @@
 		};
 
 		const newPoints = calculateNewNodePoints();
-		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`; // Use Tree's ID format
+		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		const newNodeName = 'New Node'; // Default name for better UX
 
 		console.log('[UI FLOW] Creating new node:', {
@@ -212,11 +201,11 @@
 			points: newPoints,
 			name: newNodeName
 		});
-		console.log('[UI FLOW] Current parent:', globalState.currentZipper.zipperCurrent.nodeId);
-		console.log('[UI FLOW] Current path:', globalState.currentPath);
+		console.log('[UI FLOW] Current parent:', globalState.currentNodeId);
+		console.log('[UI FLOW] Current path:', globalState.path);
 
 		try {
-			// Use the centralized addNode function with a default name
+			// Use the global state's addNode function
 			console.log('[UI FLOW] Calling globalState.addNode');
 			const success = await globalState.addNode(newNodeId, newPoints, newNodeName);
 
@@ -251,7 +240,7 @@
 		const { nodeId, newName } = detail;
 
 		try {
-			if (!globalState.currentZipper) return;
+			if (!globalState.currentNodeId) return;
 
 			// We'll use the global state's updateNode function
 			globalState
@@ -287,19 +276,29 @@
 		const { nodeId, contributorId } = detail;
 
 		try {
-			if (!globalState.currentZipper) return;
+			// Get the current tree
+			const tree = get(userTree);
+			if (!tree) return;
 
-			// Find the child zipper to get current contributors
-			const childZipper = enterChild(nodeId, globalState.currentZipper);
-			if (!childZipper) return;
+			// Find the node to update
+			const node = findNodeById(tree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-			// Get current contributors and remove the specified one
-			const contributors = Array.from(childZipper.zipperCurrent.nodeContributors);
-			const updatedContributors = contributors.filter((id) => id !== contributorId);
+			// Get current contributor IDs
+			const contributorIds = node.contributors.map((c) => c.id);
+			const updatedContributorIds = contributorIds.filter((id) => id !== contributorId);
 
-			// Use global state's updateNode function
+			// Map contributor IDs back to node references
+			const updatedContributors = updatedContributorIds
+				.map((id) => {
+					const contributorNode = findNodeById(tree, id);
+					return contributorNode;
+				})
+				.filter(Boolean) as Node[];
+
+			// Use global state's updateNode function with correct format
 			globalState
-				.updateNode(nodeId, { contributors: updatedContributors })
+				.updateNode(nodeId, { contributors: updatedContributorIds })
 				.then((success) => {
 					if (success) {
 						globalState.showToast('Contributor removed successfully', 'success');
@@ -340,36 +339,49 @@
 
 	function addContributorToNode(nodeId: string, userId: string) {
 		try {
-			if (!globalState.currentZipper) return;
+			// Get the current tree
+			const tree = get(userTree);
+			if (!tree) return;
 
-			// Find the child zipper to get current contributors
-			const childZipper = enterChild(nodeId, globalState.currentZipper);
-			if (!childZipper) return;
+			// Find the node to update
+			const node = findNodeById(tree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-			// Get current contributors and add the new one
-			const contributors = Array.from(childZipper.zipperCurrent.nodeContributors);
-			if (!contributors.includes(userId)) {
-				contributors.push(userId);
-			}
+			// Find the contributor node
+			const contributorNode = findNodeById(tree, userId);
+			if (!contributorNode) return;
 
-			// Use global state's updateNode function
-			globalState
-				.updateNode(nodeId, { contributors })
-				.then((success) => {
-					if (success) {
-						globalState.showToast('Contributor added successfully', 'success');
-					} else {
+			// Get current contributor IDs
+			const contributorIds = node.contributors.map((c) => c.id);
+
+			// Only add if not already present
+			if (!contributorIds.includes(userId)) {
+				const updatedContributorIds = [...contributorIds, userId];
+
+				// Use global state's updateNode function
+				globalState
+					.updateNode(nodeId, { contributors: updatedContributorIds })
+					.then((success) => {
+						if (success) {
+							globalState.showToast('Contributor added successfully', 'success');
+						} else {
+							globalState.showToast('Error adding contributor', 'error');
+						}
+					})
+					.catch((err) => {
+						console.error('Error adding contributor:', err);
 						globalState.showToast('Error adding contributor', 'error');
-					}
-				})
-				.catch((err) => {
-					console.error('Error adding contributor:', err);
-					globalState.showToast('Error adding contributor', 'error');
-				});
+					});
+			}
 		} catch (err) {
 			console.error('Error adding contributor:', err);
 			globalState.showToast('Error adding contributor', 'error');
 		}
+	}
+
+	// Calculate node fulfillment directly using protocol
+	function getNodeFulfillment(nodeId: string): number {
+		return globalState.getNodeFulfillment(nodeId);
 	}
 
 	// Growth handlers
@@ -466,9 +478,18 @@
 
 	function saveNodePoints(nodeId: string, points: number) {
 		try {
-			if (!globalState.currentZipper) return;
+			// Get the current tree
+			const tree = get(userTree);
+			if (!tree) return;
 
-			// Use global state's updateNode function
+			// Find the node and directly update it
+			const node = findNodeById(tree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
+
+			// Update points directly using simplified.ts function
+			updatePoints(node, points);
+
+			// Then sync with API via globalState
 			globalState
 				.updateNode(nodeId, { points })
 				.then((success) => {
@@ -551,19 +572,22 @@
 	function handleNodeDeletion(nodeId: string) {
 		if (confirm(`Delete this node?`)) {
 			try {
-				if (!globalState.currentZipper) return;
+				if (!globalState.currentNodeId) return;
 
-				// Find the child zipper to verify it exists
-				const childZipper = enterChild(nodeId, globalState.currentZipper);
-				if (!childZipper) {
-					console.error(`Child node not found: ${nodeId}`);
+				// Verify the node exists in the tree
+				const tree = get(userTree);
+				if (!tree) return;
+
+				const nodeExists = findNodeById(tree, nodeId) !== null;
+				if (!nodeExists) {
+					console.error(`Node not found: ${nodeId}`);
 					return;
 				}
 
 				console.log('[UI FLOW] Deleting node:', nodeId);
 
 				// Use the global state's deleteNode method which properly deletes
-				// the node and its children from Gun database
+				// the node and its children via the API
 				globalState
 					.deleteNode(nodeId)
 					.then((success) => {
@@ -617,7 +641,8 @@
 								id: child.data.id,
 								name: child.data.nodeName || 'Unnamed',
 								points: child.data.points,
-								contributors: child.data.contributors || []
+								contributors: child.data.contributors || [],
+								fulfillment: getNodeFulfillment(child.data.id)
 							}}
 							dimensions={{
 								x0: child.x0,

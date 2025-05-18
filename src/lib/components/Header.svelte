@@ -1,28 +1,16 @@
 <script lang="ts">
 	import { globalState } from '$lib/global.svelte';
-	import { Tree, enterChild, exitToParent } from '$lib/centralized';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { user, login, signup, signout, username, userpub, type UserData } from '../gun/user';
+	import { signIn, signOut } from '@auth/sveltekit/client';
 
-	// Get current zipper, path and pathInfo from global state
-	let currentZipper = $derived(globalState.currentZipper);
-	let currentPath = $derived(globalState.currentPath);
+	// Get current path and pathInfo from global state
+	let currentPath = $derived(globalState.path);
 	let pathInfo = $derived(globalState.pathInfo);
 
-	// Get user data with Svelte 5 derived values
-	// Use $ prefix for stores in Svelte 5
-	let alias = $derived($username);
-	let pub = $derived($userpub);
-	let currentUser = $derived(
-		pub
-			? {
-					pub,
-					alias
-				}
-			: null
-	);
+	// Use the new Auth.js user data
+	let currentUser = $derived(globalState.user);
 
 	// Get current route from $page store
 	let currentRoute = $derived($page.url.pathname);
@@ -56,7 +44,7 @@
 		document.addEventListener('mousedown', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
-		if (!(user && user.is && user.is.pub)) {
+		if (!currentUser) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -89,7 +77,7 @@
 			event.preventDefault();
 
 			// If user is not authenticated, show login panel regardless of route
-			if (!pub) {
+			if (!currentUser) {
 				showLoginPanel = true;
 			}
 			// If we're not in the soul route, navigate to the soul route
@@ -118,8 +106,8 @@
 		showPassword = !showPassword;
 	}
 
-	// Handle login
-	function handleLogin(event: Event) {
+	// Handle login with Auth.js
+	async function handleLogin(event: Event) {
 		// Prevent default form submission
 		event.preventDefault();
 
@@ -133,94 +121,101 @@
 			return;
 		}
 
-		// Clean the username input
-		const cleanUsername = usernameInput.trim();
-
 		errorMessage = '';
 		authMessage = '';
 		isLoading = true;
 
 		try {
-			// Try to login
-			login(cleanUsername, password);
+			// Use Auth.js credentials provider
+			const result = await signIn('credentials', {
+				username: usernameInput.trim(),
+				password: password,
+				redirect: false
+			});
 
-			// Reset form fields
-			usernameInput = '';
-			password = '';
-
-			// Add a short delay to allow Gun to process the auth
-			setTimeout(() => {
-				isLoading = false;
-
-				// If login failed (no pub), show error
-				if (!pub) {
-					errorMessage = 'Login failed. Would you like to create a new account?';
-				} else {
-					// Success, close the login panel
-					showLoginPanel = false;
-				}
-			}, 500);
+			if (result?.error) {
+				errorMessage = 'Invalid credentials. Please try again.';
+			} else {
+				// Success, close the login panel
+				showLoginPanel = false;
+				globalState.showToast('Signed in successfully', 'success');
+			}
 		} catch (error) {
 			console.error('Authentication error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Authentication error';
+		} finally {
 			isLoading = false;
+			// Reset form fields
+			usernameInput = '';
+			password = '';
 		}
 	}
 
-	// Handle signup
-	function handleSignup() {
+	// Handle signup/register
+	async function handleSignup() {
 		if (!usernameInput || !password) {
 			errorMessage = 'Please enter both username and password';
 			return;
 		}
 
-		// Don't attempt to authenticate if we're already loading
+		// Don't attempt to register if we're already loading
 		if (isLoading) {
 			return;
 		}
-
-		// Clean the username input
-		const cleanUsername = usernameInput.trim();
 
 		errorMessage = '';
 		authMessage = '';
 		isLoading = true;
 
 		try {
-			// Use the signup function from user.ts
-			signup(cleanUsername, password);
+			// Call register endpoint
+			const response = await fetch('/auth/register', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					username: usernameInput.trim(),
+					password: password
+				})
+			});
 
-			// Add a short delay to allow Gun to process the signup
-			setTimeout(() => {
-				isLoading = false;
+			const data = await response.json();
 
-				// If signup succeeded, pub will be set
-				if (pub) {
-					// Success, close the login panel
-					showLoginPanel = false;
+			if (response.ok) {
+				// After registration, sign in automatically
+				await signIn('credentials', {
+					username: usernameInput.trim(),
+					password: password,
+					redirect: false
+				});
 
-					// Reset form fields
-					usernameInput = '';
-					password = '';
-				} else {
-					errorMessage = 'Signup failed. Please try a different username.';
-				}
-			}, 500);
+				// Success, close the login panel
+				showLoginPanel = false;
+				globalState.showToast('Account created successfully!', 'success');
+			} else {
+				// Show error message from API
+				errorMessage = data.message || 'Registration failed. Please try a different username.';
+			}
 		} catch (error) {
-			console.error('Signup error:', error);
-			errorMessage = error instanceof Error ? error.message : 'Signup error';
+			console.error('Registration error:', error);
+			errorMessage = error instanceof Error ? error.message : 'Registration error';
+		} finally {
 			isLoading = false;
+			// Reset form fields
+			usernameInput = '';
+			password = '';
 		}
 	}
 
-	// Handle logout
-	function handleLogout() {
+	// Handle logout with Auth.js
+	async function handleLogout() {
 		// Set loading state to prevent UI interactions during logout
 		isLoading = true;
 
 		try {
-			// Call signout from user.ts
-			signout();
+			// Use Auth.js signOut
+			await signOut({ redirect: false });
 
 			// Reset form fields
 			usernameInput = '';
@@ -235,7 +230,7 @@
 			console.error('Logout error:', error);
 			globalState.showToast('Error during logout', 'error');
 		} finally {
-			// Small delay to ensure Gun has time to clean up
+			// Small delay to ensure state updates are processed
 			setTimeout(() => {
 				isLoading = false;
 			}, 200);
@@ -243,10 +238,10 @@
 	}
 
 	// Generate avatar
-	function generateAvatar(pubKey: string, size = 32) {
-		// Safety check for empty public key
-		if (!pubKey) {
-			// Return default avatar for empty pub key
+	function generateAvatar(name: string | null, size = 32) {
+		// Safety check for empty name
+		if (!name) {
+			// Return default avatar
 			return `data:image/svg+xml,${encodeURIComponent(`
 				<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
 					<rect width="100%" height="100%" fill="#6b7280" rx="${size / 4}" ry="${size / 4}" />
@@ -259,13 +254,13 @@
 		}
 
 		try {
-			// Generate a color based on public key
-			const hue = Math.abs(pubKey.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
+			// Generate a color based on name
+			const hue = Math.abs(name.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
 			const saturation = 70;
 			const lightness = 60;
 
-			// Get first character for avatar text (safely)
-			const firstChar = alias && alias.length > 0 ? alias.charAt(0).toUpperCase() : '?';
+			// Get first character for avatar text
+			const firstChar = name.charAt(0).toUpperCase();
 
 			// Generate avatar SVG
 			return `data:image/svg+xml,${encodeURIComponent(`
@@ -291,19 +286,6 @@
 			`)}`;
 		}
 	}
-
-	// Check if current node has direct contribution children
-	let hasDirectContributionChild = $derived(() => {
-		if (!currentZipper) return false;
-
-		// Check if any child has contributors
-		for (const child of currentZipper.zipperCurrent.nodeChildren.values()) {
-			// nodeContributors only exists on non-root nodes
-			if (child.type === 'non-root' && child.nodeContributors?.size > 0) return true;
-		}
-
-		return false;
-	});
 </script>
 
 <div class="header" bind:this={headerRef}>
@@ -341,10 +323,6 @@
 				<span>📊</span>
 			</a>
 
-			<a href="/contacts" class="icon-button contacts-button" title="View contacts">
-				<span>👥</span>
-			</a>
-
 			<button
 				class="icon-button add-button"
 				title="Add new node"
@@ -361,16 +339,16 @@
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
 		<div class="login-panel">
-			{#if user && user.is && user.is.pub}
+			{#if currentUser}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img src={generateAvatar(user.is.pub, 60)} alt={alias} />
+							<img src={generateAvatar(currentUser.name, 60)} alt={currentUser.name || 'User'} />
 						</div>
 						<div class="user-details">
-							<h3>Welcome, {alias}</h3>
-							<p class="user-id">@{alias}</p>
+							<h3>Welcome, {currentUser.name || 'User'}</h3>
+							<p class="user-id">@{currentUser.email || 'anonymous'}</p>
 						</div>
 					</div>
 					<div class="actions">
@@ -405,7 +383,7 @@
 								oninput={() =>
 									(authMessage = usernameInput
 										? 'Will attempt to sign in or create a new account if needed'
-									: '')}
+										: '')}
 							/>
 						</div>
 

@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { getNodeName } from '../centralized/forestUtils';
 
 	// Props using Svelte 5 runes
 	let {
@@ -21,18 +20,41 @@
 
 	// State
 	let displayName = $state(userId);
+	let isLoading = $state(true);
 
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Get current forest from global state (for backwards compatibility)
-	let currentForest = $derived(globalState.currentForest);
+	// Load user data
+	async function loadUserData() {
+		isLoading = true;
+		try {
+			// Fetch tree data from the API
+			const response = await fetch(`/api/tree/${userId}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.success && data.data) {
+					displayName = data.data.name || userId;
+				} else {
+					displayName = userId;
+				}
+			} else {
+				displayName = userId;
+			}
+		} catch (error) {
+			console.error(`Error loading tree data for ${userId}:`, error);
+			displayName = userId;
+		} finally {
+			isLoading = false;
+			updateTooltip(displayName);
+		}
+	}
 
-	// Update display name when forest or userId changes
+	// Initial load of user data
 	$effect(() => {
-		// Use the helper function to get name, passing the current forest for backward compatibility
-		displayName = getNodeName(currentForest, userId);
-		updateTooltip(displayName);
+		if (userId) {
+			loadUserData();
+		}
 	});
 
 	// Function to truncate and format display name

@@ -1,12 +1,34 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		%sveltekit.head%
-	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+
+<head>
+	<meta charset="utf-8" />
+	<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+	<script>
+		/*
+		// Create a proxy for window.location
+		window.location = new Proxy(window.location, {
+			get(target, prop) {
+				console.log(`Accessing location.${prop.toString()}`);
+				return target[prop];
+			},
+			set(target, prop, value) {
+				console.log(`Attempting to set location.${prop.toString()} to:`, value);
+				target[prop] = value;
+				return true;
+			},
+			deleteProperty(target, prop) {
+				console.log(`Attempting to delete location.${prop.toString()}`);
+				return false; // Prevent deletion
+			}
+		});*/
+	</script>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	%sveltekit.head%
+</head>
+
+<body data-sveltekit-preload-data="hover">
+	<div style="display: contents">%sveltekit.body%</div>
+</body>
+
 </html>

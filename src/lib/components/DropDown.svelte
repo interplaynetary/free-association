@@ -2,9 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { filterForestNodes } from '$lib/centralized/forestUtils';
 	import { browser } from '$app/environment';
-	import { gun, user } from '../gun/user';
 
 	// Props using Svelte 5 runes
 	let {
@@ -40,82 +38,59 @@
 	let loading = $state(true);
 	let searchFilter = $state(filterText);
 
-	// Cleanup function for Gun listeners
-	let cleanup: (() => void) | null = null;
-
 	// Update the filter when the prop changes
 	$effect(() => {
 		searchFilter = filterText;
 	});
 
 	// Function to update users list based on current filter
-	function updateUsersList() {
+	async function updateUsersList() {
 		loading = true;
 
-		// Clear any previous listener
-		if (cleanup) {
-			cleanup();
-			cleanup = null;
-		}
+		try {
+			// Fetch trees (users) from forest API
+			const response = await fetch('/api/forest');
+			if (response.ok) {
+				const data = await response.json();
 
-		// Get initial user list
-		const initialUsers = filterForestNodes(null, searchFilter, excludeIds);
-		usersArray = [...initialUsers];
+				if (data.success) {
+					// Filter trees based on search criteria and exclusions
+					const filteredUsers = data.trees
+						.filter((tree: any) => {
+							// Skip excluded users
+							if (excludeIds.includes(tree.id)) return false;
 
-		// Set up Gun listener for users
-		const userSubscriptions: Record<string, any> = {};
+							// Apply search filter if exists
+							if (searchFilter) {
+								const searchLower = searchFilter.toLowerCase();
+								const nameLower = (tree.name || '').toLowerCase();
+								const idLower = tree.id.toLowerCase();
 
-		// Listen to users in Gun
-		const usersRef = gun.get('users');
+								return nameLower.includes(searchLower) || idLower.includes(searchLower);
+							}
 
-		const listener = usersRef.map().on((userData: any, userId: string) => {
-			if (!userId || userId === '_' || excludeIds.includes(userId)) return;
+							return true;
+						})
+						.map((tree: any) => ({
+							id: tree.id,
+							name: tree.name || tree.id
+						}));
 
-			// Skip if this user is already in our subscriptions
-			if (userSubscriptions[userId]) return;
-
-			// Track this subscription
-			userSubscriptions[userId] = true;
-
-			// Get user name
-			const userName = userData?.name || userId;
-
-			// Check if matches filter
-			const matchesFilter =
-				!searchFilter ||
-				userName.toLowerCase().includes(searchFilter.toLowerCase()) ||
-				userId.toLowerCase().includes(searchFilter.toLowerCase());
-
-			if (matchesFilter) {
-				// Add to users array if not already present
-				const existingIndex = usersArray.findIndex((u) => u.id === userId);
-
-				if (existingIndex === -1) {
-					// Add new user
-					usersArray = [...usersArray, { id: userId, name: userName }];
+					usersArray = filteredUsers;
 				} else {
-					// Update existing user
-					const updatedUsers = [...usersArray];
-					updatedUsers[existingIndex] = { id: userId, name: userName };
-					usersArray = updatedUsers;
+					usersArray = [];
+					console.error('Failed to fetch trees:', data.message);
 				}
+			} else {
+				usersArray = [];
+				console.error('Failed to fetch trees, server returned:', response.status);
 			}
-		});
-
-		// Create cleanup function
-		cleanup = () => {
-			// Unsubscribe from Gun listener
-			if (listener && listener.off) {
-				listener.off();
-			}
-
-			// Clear subscriptions
-			Object.keys(userSubscriptions).forEach((key) => {
-				delete userSubscriptions[key];
-			});
-		};
-
-		loading = false;
+		} catch (error) {
+			console.error('Error fetching trees:', error);
+			usersArray = [];
+		} finally {
+			loading = false;
+		}
 	}
 
 	// Event handlers
@@ -208,7 +183,6 @@
 
 			return () => {
 				if (clickOutsideCleanup) clickOutsideCleanup();
-				if (cleanup) cleanup();
 			};
 		}
 	});
@@ -224,13 +198,6 @@
 	$effect(() => {
 		if (show && position && dropdownContainer && browser) {
 			setTimeout(adjustPosition, 0);
-		}
-	});
-
-	// Cleanup when component is destroyed
-	onDestroy(() => {
-		if (cleanup) {
-			cleanup();
 		}
 	});
 </script>
@@ -258,10 +225,10 @@
 
 		<div class="results" bind:this={resultsContainer}>
 			{#if loading && usersArray.length === 0}
-				<div class="message">Loading users...</div>
+				<div class="message">Loading trees...</div>
 			{:else if usersArray.length === 0}
 				<div class="message">
-					{searchFilter ? 'No matching users found' : 'No users available'}
+					{searchFilter ? 'No matching trees found' : 'No trees available'}
 				</div>
 			{:else}
 				{#each usersArray as item (item.id)}

@@ -1,55 +1,144 @@
-import {
-	Tree,
-	enterChild,
-	exitToParent,
-	goToRoot,
-	getCurrentPath,
-	followPath
-} from '$lib/centralized/tree';
-import type { TreeZipper, Forest, Node } from '$lib/centralized/types';
 import { browser } from '$app/environment';
-import { user, username, userpub, type UserData } from './gun/user';
-import { get } from 'svelte/store';
+import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
+import {
+	type Node,
+	type RootNode,
+	type NonRootNode,
+	findNodeById,
+	getPathToNode,
+	getParentNode,
+	createRootNode,
+	createNonRootNode,
+	addChild,
+	updateNodeById,
+	updateName,
+	updatePoints,
+	updateManualFulfillment,
+	deleteSubtree,
+	addContributors,
+	validateManualFulfillment,
+	fulfilled,
+	desire,
+	updateNodeById as updateNode
+} from '$lib/protocol/protocol';
 
-// Future TODO:
-// What is currentForest? What role does it play here? It seems ok.
-// Add manualFulfillfment to the Child.svelte / Parent.svelte
+// Auth.js user data types
+export interface UserData {
+	id: string; // Using Auth.js standard format
+	name: string | null;
+	email: string | null;
+	image: string | null;
+}
+
+/**
+ * Core Reactive Stores
+ *
+ * These stores form the foundation of our state management:
+ * - currentUser: The authenticated user from Auth.js
+ * - userTree: The complete tree structure for the current user
+ * - currentPath: The navigation path (array of node IDs) in the tree
+ */
+export const currentUser: Writable<UserData | null> = writable(null);
+export const userTree: Writable<RootNode | null> = writable(null);
+export const currentPath: Writable<string[]> = writable([]);
+
+/**
+ * Derived Stores
+ *
+ * These stores are computed from the core stores and automatically update
+ * when their dependencies change.
+ */
+
+// Current node ID (last element in the path)
+export const currentNodeId: Readable<string | null> = derived(currentPath, ($path) =>
+	$path.length > 0 ? $path[$path.length - 1] : null
+);
+
+// Current node object (found by ID in the tree)
+export const currentNode: Readable<Node | null> = derived(
+	[userTree, currentNodeId],
+	([$tree, $nodeId]) => {
+		if (!$tree || !$nodeId) return null;
+		return findNodeById($tree, $nodeId);
+	}
+);
+
+// Children of the current node
+export const childNodes: Readable<Node[]> = derived(currentNode, ($node) =>
+	$node ? $node.children : []
+);
+
+// Path information with node names for breadcrumb navigation
+export const pathInfo: Readable<Array<{ id: string; name: string }>> = derived(
+	[userTree, currentPath],
+	([$tree, $path]) => {
+		if (!$tree || $path.length === 0) return [];
+
+		return $path.map((id) => {
+			const node = findNodeById($tree, id);
+			return {
+				id,
+				name: node ? node.name : 'Unknown'
+			};
+		});
+	}
+);
+
+// Node fulfillment mapping
+export const nodeFulfillment: Readable<Record<string, number>> = derived(userTree, ($tree) => {
+	if (!$tree) return {};
+
+	const result: Record<string, number> = {};
+
+	// Calculate fulfillment for the root
+	result[$tree.id] = 1.0; // Root nodes are always fully fulfilled
+
+	// Process all children recursively
+	function processNode(node: Node) {
+		for (const child of node.children) {
+			// Only calculate if the tree is not null
+			if ($tree) {
+				result[child.id] = fulfilled(child, $tree);
+			} else {
+				result[child.id] = 0; // Default value if tree is null
+			}
+			processNode(child);
+		}
+	}
+
+	processNode($tree);
+	return result;
+});
+
+// Node desire mapping (unfulfilled need)
+export const nodeDesire: Readable<Record<string, number>> = derived(
+	[userTree, nodeFulfillment],
+	([$tree, $fulfillment]) => {
+		const result: Record<string, number> = {};
+
+		for (const [id, fulfillValue] of Object.entries($fulfillment)) {
+			result[id] = 1.0 - fulfillValue;
+		}
+
+		return result;
+	}
+);
 
 type ToastType = 'info' | 'success' | 'warning' | 'error';
 
-export interface PathItem {
-	id: string;
-	name: string;
-}
-
-// Add a debounce mechanism for path updates
-let pathUpdateTimeout: number | null = null;
-const PATH_UPDATE_DEBOUNCE_MS = 50;
-
+/**
+ * Global State
+ *
+ * A reactive object that combines:
+ * 1. Derived values from stores
+ * 2. UI state
+ * 3. Operations that modify the tree and sync with the API
+ */
 export const globalState = $state({
-	// Core navigation state (using our centralized system)
-	currentForest: new Map() as Forest,
-	currentZipper: null as TreeZipper | null,
-	currentPath: [] as string[],
-	get currentUser(): UserData | null {
-		const pub = get(userpub);
-		const alias = get(username);
-
-		if (!pub) return null;
-
-		return {
-			pub,
-			alias,
-			username: alias
-		};
-	},
-
-	// Enhanced path information with names
-	pathInfo: [] as PathItem[],
-
 	// UI state
 	deleteMode: false,
 	nodeToEdit: '',
+	initializationStarted: false,
 	toast: {
 		visible: false,
 		message: '',
@@ -57,178 +146,87 @@ export const globalState = $state({
 		timeoutId: null as number | null
 	},
 
-	// Update path information based on current path
-	updatePathInfo: () => {
-		// Debounce path updates to avoid multiple rapid-fire updates
-		if (pathUpdateTimeout !== null) {
-			clearTimeout(pathUpdateTimeout);
-		}
+	// Store accessors
+	get tree(): RootNode | null {
+		return get(userTree);
+	},
+	get user(): UserData | null {
+		return get(currentUser);
+	},
+	get path(): string[] {
+		return get(currentPath);
+	},
+	get currentNodeId(): string | null {
+		return get(currentNodeId);
+	},
+	get currentNode(): Node | null {
+		return get(currentNode);
+	},
+	get childNodes(): Node[] {
+		return get(childNodes);
+	},
+	get pathInfo(): Array<{ id: string; name: string }> {
+		return get(pathInfo);
+	},
 
-		pathUpdateTimeout = window.setTimeout(() => {
-			console.log('[FLOW] Updating path info for path:', globalState.currentPath);
+	// Protocol utilities
+	getNodeFulfillment(nodeId: string): number {
+		const fulfillmentMap = get(nodeFulfillment);
+		return fulfillmentMap[nodeId] || 0;
+	},
 
-			if (globalState.currentPath.length === 0) {
-				globalState.pathInfo = [];
-				return;
-			}
+	getNodeDesire(nodeId: string): number {
+		const desireMap = get(nodeDesire);
+		return desireMap[nodeId] || 1.0;
+	},
 
-			// Reset path info and rebuild
-			const newPathInfo: PathItem[] = [];
+	/**
+	 * Initialization and Authentication
+	 */
 
-			// Get the root tree
-			const rootId = globalState.currentPath[0];
-			const rootTree = globalState.currentForest.get(rootId);
+	// Initialize the system
+	initialize: async () => {
+		// Set flag to prevent duplicate initializations
+		globalState.initializationStarted = true;
 
-			if (!rootTree) {
-				console.error('[FLOW] Root tree not found in forest:', rootId);
-				globalState.pathInfo = newPathInfo;
-				return;
-			}
+		try {
+			console.log('Initializing global state...');
 
-			// Add root to path info
-			newPathInfo.push({
-				id: rootId,
-				name: rootTree.zipperCurrent.nodeName
+			// Check for user session using Auth.js endpoint
+			const response = await fetch('/auth/session', {
+				credentials: 'include'
 			});
 
-			// Process each path segment
-			if (globalState.currentPath.length > 1) {
-				let currentTree = rootTree;
+			if (response.ok) {
+				const session = await response.json();
+				if (session && session.user) {
+					console.log('User session found, loading user data...');
 
-				// Skip the first item (root) and process each path segment
-				for (let i = 1; i < globalState.currentPath.length; i++) {
-					const nodeId = globalState.currentPath[i];
-					const childTree = enterChild(nodeId, currentTree);
-
-					if (!childTree) {
-						console.error('[FLOW] Child not found in path:', nodeId);
-						break;
-					}
-
-					// Add to path info
-					newPathInfo.push({
-						id: nodeId,
-						name: childTree.zipperCurrent.nodeName
+					// Set user data
+					currentUser.set({
+						id: session.user.id || '',
+						name: session.user.name,
+						email: session.user.email,
+						image: session.user.image
 					});
 
-					// Move to next level
-					currentTree = childTree;
+					// Load user tree
+					await globalState.loadUserTree({
+						id: session.user.id,
+						name: session.user.name,
+						email: session.user.email,
+						image: session.user.image
+					});
+
+					console.log('Initialization complete');
+					return true;
 				}
 			}
-
-			// Update the global path info
-			globalState.pathInfo = newPathInfo;
-			console.log('[FLOW] Path info updated:', newPathInfo);
-
-			// Clear the timeout reference
-			pathUpdateTimeout = null;
-		}, PATH_UPDATE_DEBOUNCE_MS);
-	},
-
-	// Navigate to a specific path (array of node IDs)
-	navigateToPath: (newPath: string[]) => {
-		console.log('[FLOW] navigateToPath called with:', newPath);
-
-		if (!newPath.length) {
-			console.error('[FLOW] Empty path provided to navigateToPath');
-			return;
-		}
-
-		const rootId = newPath[0];
-		console.log('[FLOW] Root ID from path:', rootId);
-
-		// Get the root TreeZipper
-		const rootZipper = globalState.currentForest.get(rootId);
-		if (!rootZipper) {
-			console.error('[FLOW] Root zipper not found in forest for ID:', rootId);
-			return;
-		}
-
-		// Follow the path directly using the centralized followPath function
-		const targetZipper = followPath(newPath.slice(1), rootZipper);
-		if (!targetZipper) {
-			console.error('[FLOW] Failed to follow path:', newPath);
-			return;
-		}
-
-		// Update the global state
-		globalState.currentZipper = targetZipper;
-		globalState.currentPath = newPath;
-		globalState.updatePathInfo();
-	},
-
-	// Navigate to a specific index in the current path
-	navigateToPathIndex: (index: number) => {
-		if (index < 0 || index >= globalState.currentPath.length) return;
-
-		// If navigating to current position, no-op
-		if (index === globalState.currentPath.length - 1) return;
-
-		// Truncate the path to the desired index and navigate to it
-		const newPath = globalState.currentPath.slice(0, index + 1);
-		globalState.navigateToPath(newPath);
-	},
-
-	// Zoom into a specific child node
-	zoomInto: (nodeId: string) => {
-		if (!globalState.currentZipper) return;
-
-		const childZipper = enterChild(nodeId, globalState.currentZipper);
-		if (!childZipper) {
-			console.error(`Child node not found: ${nodeId}`);
-			return;
-		}
-
-		// Update current zipper
-		globalState.currentZipper = childZipper;
-
-		// Update path by adding the new node ID
-		globalState.currentPath = [...globalState.currentPath, nodeId];
-		globalState.updatePathInfo();
-	},
-
-	// Zoom out to parent node
-	zoomOut: () => {
-		if (!globalState.currentZipper || globalState.currentPath.length <= 1) return;
-
-		// Use the exitToParent function to navigate up
-		const parentZipper = exitToParent(globalState.currentZipper);
-		if (!parentZipper) {
-			console.error('Failed to exit to parent');
-			return;
-		}
-
-		// Update current zipper
-		globalState.currentZipper = parentZipper;
-
-		// Remove the last element from the path
-		globalState.currentPath = globalState.currentPath.slice(0, -1);
-		globalState.updatePathInfo();
-	},
-
-	// Initialize the system with Tree
-	initialize: async () => {
-		try {
-			// Create the forest
-			const forest = new Map<string, TreeZipper>();
-			globalState.currentForest = forest;
-
-			// Setup subscription to user auth state directly from userpub
-			userpub.subscribe((pub) => {
-				if (pub) {
-					// When user is authenticated, load their tree
-					const userData = globalState.currentUser;
-					if (userData) {
-						globalState.loadUserTree(userData);
-					}
-				} else if (globalState.currentZipper) {
-					// When user logs out, reset the state
-					globalState.resetState();
-				}
-			});
+			return false;
 		} catch (error) {
 			console.error('Error initializing global state:', error);
 			globalState.showToast('Failed to initialize application', 'error');
+			return false;
 		}
 	},
 
@@ -237,206 +235,198 @@ export const globalState = $state({
 		if (!userData) return;
 
 		try {
-			const userPub = userData.pub;
+			const userId = userData.id;
 
-			// First try to load the full tree
-			let fullTree: TreeZipper | null = null;
 			try {
-				fullTree = await Tree.loadFullTree();
-				console.log('Full tree loaded successfully');
-			} catch (loadError) {
-				console.warn('Failed to load full tree, will try alternatives:', loadError);
-			}
+				// Get the user's entire tree structure using the tree API
+				const response = await fetch(`/api/tree/${userId}`, {
+					credentials: 'include'
+				});
 
-			if (fullTree) {
-				// Successfully loaded the full tree
-				const forest: Forest = new Map<string, TreeZipper>();
-				forest.set(userPub, fullTree);
+				if (response.ok) {
+					const data = await response.json();
 
-				// Set as current tree
-				globalState.currentForest = forest;
-				globalState.currentZipper = fullTree;
-				globalState.currentPath = [userPub];
-			} else {
-				// Try to fetch just the user's node
-				let userTree: TreeZipper | null = null;
+					if (data.success) {
+						// Store the tree in the reactive store
+						userTree.set(data.data);
 
-				try {
-					userTree = await Tree.fetchNode(userPub);
-					console.log('User tree fetched successfully');
-				} catch (fetchError) {
-					console.warn('Failed to fetch user tree:', fetchError);
-				}
+						// Set initial path to root
+						currentPath.set([userId]);
 
-				if (userTree) {
-					// We have the user node, use it
-					const forest: Forest = new Map<string, TreeZipper>();
-					forest.set(userPub, userTree);
-
-					// Set as current tree
-					globalState.currentForest = forest;
-					globalState.currentZipper = userTree;
-					globalState.currentPath = [userPub];
-				} else {
-					// No tree exists - create a new root node for this user
-					console.log('No tree found for user, creating new tree:', userData.alias);
-
-					try {
-						// Create a new root node for this user
-						const rootName = userData.alias || 'My Tree';
-
-						// Create the root node with name
-						const newTree = await Tree.createRootNode(rootName);
-
-						if (!newTree) {
-							throw new Error('Failed to create root node');
-						}
-
-						// Save the new node to ensure it persists
-						await Tree.saveNode(newTree);
-
-						// Add to forest and set as current
-						const forest: Forest = new Map<string, TreeZipper>();
-						forest.set(userPub, newTree);
-						globalState.currentForest = forest;
-						globalState.currentZipper = newTree;
-						globalState.currentPath = [userPub];
-
-						console.log('Created new tree for user:', userData.alias);
-					} catch (createError) {
-						console.error('Failed to create new tree for user:', createError);
-						globalState.showToast('Failed to create new tree', 'error');
+						console.log('User tree fetched successfully');
 						return;
 					}
 				}
+
+				// Tree not found, create a new one
+				console.log('No tree found for user, creating new tree:', userData.name);
+
+				// Create a new root node using protocol function
+				const newTree = createRootNode(userId, userData.name || 'My Tree', userId);
+
+				// Set the tree in memory first
+				userTree.set(newTree);
+				currentPath.set([userId]);
+
+				// Then create via API
+				try {
+					const createResponse = await fetch('/api', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							id: userId,
+							name: newTree.name
+						}),
+						credentials: 'include'
+					});
+
+					if (!createResponse.ok) {
+						console.error('API error when creating root node');
+					}
+				} catch (apiError) {
+					console.error('API error when creating root node:', apiError);
+					// Continue - we prioritize in-memory state
+				}
+
+				console.log('Created new tree for user:', userData.name);
+			} catch (fetchError) {
+				console.error('Error fetching or creating user tree:', fetchError);
+				globalState.showToast('Failed to load or create user tree', 'error');
+				return;
 			}
 
-			// Update path info
-			globalState.updatePathInfo();
-			globalState.showToast(`Welcome, ${userData.alias}!`, 'success');
+			globalState.showToast(`Welcome, ${userData.name || 'User'}!`, 'success');
 		} catch (error) {
 			console.error('Error loading user tree:', error);
 			globalState.showToast('Failed to load user tree', 'error');
 		}
 	},
 
-	// Reset state when user logs out
-	resetState: () => {
-		globalState.currentZipper = null;
-		globalState.currentPath = [];
-		globalState.currentForest = new Map();
-		globalState.updatePathInfo();
+	/**
+	 * Navigation Functions
+	 */
+
+	// Set path directly
+	navigateToPath: async (newPath: string[]) => {
+		console.log('Navigating to path', newPath);
+		if (!newPath.length || !get(userTree)) return;
+		// sleep for 1 second
+		currentPath.set(newPath);
 	},
 
-	// Add node to current zipper
-	addNode: async (nodeId: string, points: number, name?: string) => {
-		if (!globalState.currentZipper || !globalState.currentUser) return false;
+	// Navigate to a specific index in the path
+	navigateToPathIndex: (index: number) => {
+		const path = get(currentPath);
+		if (index < 0 || index >= path.length) return;
+		if (index === path.length - 1) return; // Already at position
+		currentPath.set(path.slice(0, index + 1));
+	},
 
-		console.log('[FLOW] addNode started:', { nodeId, points, name });
+	// Add a node ID to the path (zoom in)
+	zoomInto: (nodeId: string) => {
+		const path = get(currentPath);
+		const tree = get(userTree);
+
+		if (!tree) return;
+
+		// Make sure the node exists
+		const node = findNodeById(tree, nodeId);
+		if (!node) return;
+
+		// Add the node to the path
+		currentPath.set([...path, nodeId]);
+	},
+
+	// Remove the last node ID from the path (zoom out)
+	zoomOut: () => {
+		const path = get(currentPath);
+		if (path.length <= 1) return;
+		currentPath.set(path.slice(0, -1));
+	},
+
+	// Reset all state (logout)
+	resetState: () => {
+		userTree.set(null);
+		currentPath.set([]);
+		currentUser.set(null);
+	},
+
+	/**
+	 * Tree Modification Functions
+	 */
+
+	// Add a new child node to the current node
+	addNode: async (nodeId: string, points: number, name: string = 'New Node'): Promise<boolean> => {
+		const tree = get(userTree);
+		const nodeId2 = get(currentNodeId);
+
+		if (!tree || !nodeId2) return false;
+
+		// Find the current node in our tree
+		const currentNode = findNodeById(tree, nodeId2);
+		if (!currentNode) return false;
 
 		try {
-			const parentId = globalState.currentZipper.zipperCurrent.nodeId;
-			console.log('[FLOW] Adding child to parent:', parentId);
+			// Update in-memory tree with protocol function
+			addChild(currentNode, nodeId, name, points);
 
-			// Add child using Tree
-			const childZipper = await Tree.addChild(
-				parentId,
-				name || 'New Node',
-				points,
-				nodeId // Use provided nodeId
-			);
-			console.log('[FLOW] childZipper created:', childZipper?.zipperCurrent.nodeId);
+			// Update the store to trigger reactivity
+			userTree.set(tree);
 
-			if (!childZipper) {
-				console.error('[FLOW] Failed to add child node - childZipper is null');
-				return false;
+			// Then update the API
+			try {
+				await fetch(`/api`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						id: nodeId,
+						name: name,
+						points: points,
+						parentId: nodeId2
+					}),
+					credentials: 'include'
+				});
+			} catch (apiError) {
+				console.error('API error when adding node:', apiError);
+				// Continue - we prioritize in-memory state
 			}
 
-			// Save the node
-			console.log('[FLOW] Saving node to Gun:', nodeId);
-			await Tree.saveNode(childZipper);
-			console.log('[FLOW] Node saved to Gun');
-
-			// Update the parent node's children directly
-			const currentNode = globalState.currentZipper.zipperCurrent;
-			currentNode.nodeChildren.set(nodeId, childZipper.zipperCurrent);
-
-			// Update the parent zipper with the modified node
-			globalState.currentZipper = {
-				...globalState.currentZipper,
-				zipperCurrent: currentNode
-			};
-
-			// Update the forest if needed
-			const rootId = globalState.currentPath[0];
-			if (rootId === parentId) {
-				globalState.currentForest.set(rootId, globalState.currentZipper);
-			}
-
-			console.log('[FLOW] Local state updated with new node');
 			return true;
 		} catch (err) {
-			console.error('[FLOW] Error adding node:', err);
+			console.error('Error adding node:', err);
 			return false;
 		}
 	},
 
-	// Handle adding a new node (implementation in Parent.svelte, but will be moved here)
-	handleAddNode: () => {
-		if (!globalState.currentZipper) return;
+	// Handle UI for adding a new node
+	handleAddNode: async () => {
+		if (!globalState.currentNodeId) return;
 
 		// Create a unique ID for the new node
 		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		const newNodeName = 'New Node';
+		const newPoints = 10;
 
-		// New nodes start with 10 points by default
-		globalState
-			.addNode(newNodeId, 10, newNodeName)
-			.then((success) => {
-				if (success) {
-					globalState.showToast('New node created', 'success');
+		try {
+			const success = await globalState.addNode(newNodeId, newPoints, newNodeName);
 
-					// Set node to edit mode
-					setTimeout(() => {
-						globalState.setNodeToEditMode(newNodeId);
-					}, 50);
-				} else {
-					globalState.showToast('Error creating node', 'error');
-				}
-			})
-			.catch((err) => {
-				console.error('Error in handleAddNode:', err);
+			if (success) {
+				globalState.showToast('New node created', 'success');
+				setTimeout(() => globalState.setNodeToEditMode(newNodeId), 50);
+			} else {
 				globalState.showToast('Error creating node', 'error');
-			});
-	},
-
-	// Toggle delete mode
-	toggleDeleteMode: () => {
-		globalState.deleteMode = !globalState.deleteMode;
-
-		globalState.showToast(
-			globalState.deleteMode
-				? 'Delete mode activated. Click a node to delete it.'
-				: 'Delete mode deactivated.',
-			globalState.deleteMode ? 'warning' : 'info'
-		);
-	},
-
-	// Set a node to edit mode
-	setNodeToEditMode: (nodeId: string) => {
-		globalState.nodeToEdit = nodeId;
-
-		// Auto-clear after a delay
-		if (browser) {
-			setTimeout(() => {
-				if (globalState.nodeToEdit === nodeId) {
-					globalState.nodeToEdit = '';
-				}
-			}, 1000);
+			}
+		} catch (err) {
+			console.error('Error in handleAddNode:', err);
+			globalState.showToast('Error creating node', 'error');
 		}
 	},
 
-	// Update node properties
+	// Update a node's properties (combines all update operations)
 	updateNode: async (
 		nodeId: string,
 		updates: {
@@ -446,103 +436,180 @@ export const globalState = $state({
 			manual?: number | null;
 		}
 	): Promise<boolean> => {
-		console.log('[FLOW] updateNode started:', { nodeId, updates });
-		if (!globalState.currentZipper) return false;
+		const tree = get(userTree);
+		if (!tree) return false;
 
 		try {
-			// Check if updating current node
-			const isCurrentNode = globalState.currentZipper.zipperCurrent.nodeId === nodeId;
-			console.log('[FLOW] Updating current node?', isCurrentNode);
+			// Update in-memory tree using protocol function
+			updateNodeById(tree, nodeId, (node) => {
+				// Update name if provided
+				if (updates.name !== undefined) {
+					updateName(node, updates.name);
+				}
 
-			let nodeToUpdate: TreeZipper | null = null;
+				// Update points if provided and node is NonRootNode
+				if (updates.points !== undefined && node.type === 'NonRootNode') {
+					updatePoints(node as NonRootNode, updates.points);
+				}
 
-			if (isCurrentNode) {
-				// Use current zipper directly
-				nodeToUpdate = globalState.currentZipper;
-			} else {
-				// Find the child zipper
-				const parentZipper = globalState.currentZipper;
-				nodeToUpdate = enterChild(nodeId, parentZipper);
+				// Update manual fulfillment if provided
+				if (updates.manual !== undefined) {
+					// Convert null to undefined for the API
+					const manualValue = updates.manual === null ? undefined : updates.manual;
+					updateManualFulfillment(node, manualValue);
+				}
+
+				// Handle contributors if provided and node is NonRootNode
+				if (updates.contributors?.length && node.type === 'NonRootNode') {
+					// Find contributor nodes in the tree
+					const contributorNodes: Node[] = [];
+
+					// Convert string IDs to Node references
+					for (const id of updates.contributors) {
+						const contributorNode = findNodeById(tree, id);
+						if (contributorNode) {
+							contributorNodes.push(contributorNode);
+						}
+					}
+
+					if (contributorNodes.length > 0) {
+						addContributors(node, contributorNodes);
+					}
+				}
+			});
+
+			// Update the store to trigger reactivity
+			userTree.set(tree);
+
+			// Then update the API
+			try {
+				await fetch(`/api/${nodeId}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						...(updates.name !== undefined ? { name: updates.name } : {}),
+						...(updates.points !== undefined ? { points: updates.points } : {}),
+						...(updates.contributors !== undefined ? { contributors: updates.contributors } : {}),
+						...(updates.manual !== undefined ? { manualFulfillment: updates.manual } : {})
+					}),
+					credentials: 'include'
+				});
+			} catch (apiError) {
+				console.error('API error when updating node:', apiError);
+				// Continue - we prioritize in-memory state
 			}
 
-			if (!nodeToUpdate) {
-				console.error('[FLOW] Node not found for update:', nodeId);
+			return true;
+		} catch (err) {
+			console.error('Error updating node:', err);
+			return false;
+		}
+	},
+
+	// Delete a node and its children
+	deleteNode: async (nodeId: string): Promise<boolean> => {
+		const tree = get(userTree);
+		const path = get(currentPath);
+
+		if (!tree || path.length === 0) return false;
+
+		try {
+			// Don't allow deleting root node
+			if (nodeId === path[0]) {
+				console.error('Cannot delete root node');
+				globalState.showToast('Cannot delete root node', 'error');
 				return false;
 			}
 
-			// Apply updates to the node
-			console.log('[FLOW] Applying updates to node');
-			const updatedNode: Node = { ...nodeToUpdate.zipperCurrent };
-
-			if (updates.name !== undefined) {
-				updatedNode.nodeName = updates.name;
+			// Find parent node
+			const parentNode = getParentNode(tree, nodeId);
+			if (!parentNode) {
+				console.error('Cannot find parent node');
+				return false;
 			}
 
-			if (updates.points !== undefined && updatedNode.type === 'non-root') {
-				updatedNode.nodePoints = updates.points;
-			}
-
-			if (updates.contributors !== undefined && updatedNode.type === 'non-root') {
-				updatedNode.nodeContributors = new Set(updates.contributors);
-			}
-
-			if (updates.manual !== undefined) {
-				updatedNode.nodeManualFulfillment = updates.manual;
-			}
-
-			// Create updated zipper
-			const updatedZipper: TreeZipper = {
-				...nodeToUpdate,
-				zipperCurrent: updatedNode
-			};
-
-			// Save the updated node
-			console.log('[FLOW] Saving updated node to Gun');
-			await Tree.saveNode(updatedZipper);
-			console.log('[FLOW] Node updated in Gun');
-
+			// Check if we're trying to delete the current node
+			const isCurrentNode = globalState.currentNodeId === nodeId;
 			if (isCurrentNode) {
-				// Update current zipper
-				globalState.currentZipper = updatedZipper;
-			} else {
-				// Update child in parent's children map
-				const currentNode = globalState.currentZipper.zipperCurrent;
-				currentNode.nodeChildren.set(nodeId, updatedNode);
+				// If we're on the node to delete, navigate up to parent first
+				if (path.length <= 1) {
+					console.error('Cannot delete current node with no parent');
+					return false;
+				}
 
-				// Update parent zipper
-				globalState.currentZipper = {
-					...globalState.currentZipper,
-					zipperCurrent: currentNode
-				};
+				// Navigate to parent
+				globalState.zoomOut();
 			}
 
-			// Update the forest if needed
-			const rootId = globalState.currentPath[0];
-			if (rootId === nodeId) {
-				globalState.currentForest.set(rootId, updatedZipper);
+			// First update local tree
+			const nodeToDelete = findNodeById(tree, nodeId);
+			if (nodeToDelete) {
+				// Delete all children from the node using protocol function
+				deleteSubtree(nodeToDelete);
+
+				// Remove it from its parent's children array
+				const childIndex = parentNode.children.findIndex((child) => child.id === nodeId);
+				if (childIndex !== -1) {
+					parentNode.children.splice(childIndex, 1);
+				}
+
+				// Update the store to trigger reactivity
+				userTree.set(tree);
+
+				// Then update the API
+				try {
+					await fetch(`/api/${nodeId}`, {
+						method: 'DELETE',
+						credentials: 'include'
+					});
+				} catch (apiError) {
+					console.error('API error when deleting node:', apiError);
+					// Continue - we prioritize in-memory state
+				}
 			}
 
-			// Update path info if name changed
-			if (updates.name !== undefined) {
-				globalState.updatePathInfo();
-			}
-
-			console.log('[FLOW] Node update completed successfully');
 			return true;
 		} catch (err) {
-			console.error('[FLOW] Error updating node:', err);
+			console.error('Error in deleteNode:', err);
 			return false;
+		}
+	},
+
+	/**
+	 * UI State Management
+	 */
+
+	// Toggle delete mode
+	toggleDeleteMode: () => {
+		globalState.deleteMode = !globalState.deleteMode;
+		globalState.showToast(
+			globalState.deleteMode
+				? 'Delete mode activated. Click a node to delete it.'
+				: 'Delete mode deactivated.',
+			globalState.deleteMode ? 'warning' : 'info'
+		);
+	},
+
+	// Set a node to edit mode (temporary state)
+	setNodeToEditMode: (nodeId: string) => {
+		globalState.nodeToEdit = nodeId;
+		if (browser) {
+			setTimeout(() => {
+				if (globalState.nodeToEdit === nodeId) {
+					globalState.nodeToEdit = '';
+				}
+			}, 1000);
 		}
 	},
 
 	// Display a toast notification
 	showToast: (message: string, type: ToastType = 'info') => {
-		// Clear any existing toast timeout
 		if (globalState.toast.timeoutId) {
 			clearTimeout(globalState.toast.timeoutId);
 		}
 
-		// Show new toast
 		globalState.toast = {
 			visible: true,
 			message,
@@ -553,107 +620,10 @@ export const globalState = $state({
 					}, 3000) as unknown as number)
 				: null
 		};
-	},
-
-	// Delete a node and its children
-	deleteNode: async (nodeId: string): Promise<boolean> => {
-		console.log('[FLOW] deleteNode started:', nodeId);
-		if (!globalState.currentZipper) return false;
-
-		try {
-			// Don't allow deleting root node
-			if (nodeId === globalState.currentPath[0]) {
-				console.error('[FLOW] Cannot delete root node');
-				globalState.showToast('Cannot delete root node', 'error');
-				return false;
-			}
-
-			// Check if we're trying to delete the current node
-			const isCurrentNode = globalState.currentZipper.zipperCurrent.nodeId === nodeId;
-
-			if (isCurrentNode) {
-				// If we're on the node to delete, navigate up to parent first
-				if (globalState.currentPath.length <= 1) {
-					console.error('[FLOW] Cannot delete current node with no parent');
-					return false;
-				}
-
-				// Navigate to parent
-				console.log('[FLOW] Navigating to parent before deleting current node');
-				globalState.zoomOut();
-			}
-
-			// Get the parent node
-			const parentNodeId = isCurrentNode
-				? globalState.currentPath[globalState.currentPath.length - 1]
-				: globalState.currentZipper.zipperCurrent.nodeId;
-
-			const parentZipper = globalState.currentZipper;
-
-			// Verify the node exists in parent's children
-			if (!parentZipper.zipperCurrent.nodeChildren.has(nodeId)) {
-				console.error(`[FLOW] Node ${nodeId} not found in parent's children`);
-				return false;
-			}
-
-			// Remove the child from parent's children
-			const updatedChildren = new Map(parentZipper.zipperCurrent.nodeChildren);
-			updatedChildren.delete(nodeId);
-
-			const updatedParentNode = {
-				...parentZipper.zipperCurrent,
-				nodeChildren: updatedChildren
-			};
-
-			const updatedParentZipper = {
-				...parentZipper,
-				zipperCurrent: updatedParentNode
-			};
-
-			// Save the updated parent to Gun
-			console.log(`[FLOW] Updating parent node ${parentNodeId} to remove child reference`);
-			await Tree.saveNode(updatedParentZipper);
-
-			// Delete the node from Gun
-			console.log(`[FLOW] Deleting node ${nodeId} from Gun`);
-			const deleteResult = await Tree.deleteNode(nodeId);
-
-			if (!deleteResult) {
-				console.error(`[FLOW] Failed to delete node ${nodeId} from Gun`);
-				return false;
-			}
-
-			// Update the current zipper to the updated parent
-			globalState.currentZipper = updatedParentZipper;
-
-			// Update the forest if parent is root
-			const rootId = globalState.currentPath[0];
-			if (rootId === parentNodeId) {
-				globalState.currentForest.set(rootId, updatedParentZipper);
-			}
-
-			// Force an update of path info
-			globalState.updatePathInfo();
-
-			console.log(`[FLOW] Node ${nodeId} deleted successfully`);
-			return true;
-		} catch (err) {
-			console.error('[FLOW] Error in deleteNode:', err);
-			return false;
-		}
 	}
 });
 
-// Listen for auth state changes to handle sign out
-if (browser) {
-	// Handle signout specifically by subscribing to userpub
-	userpub.subscribe((pub) => {
-		if (!pub && globalState.currentZipper) {
-			// User logged out
-			globalState.resetState();
-		}
-	});
-
-	// Initialize the system when imported
+// Initialize the system when imported, but only if not already initialized by a route
+if (browser && !globalState.initializationStarted) {
 	globalState.initialize();
 }

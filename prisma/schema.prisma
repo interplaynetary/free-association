@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Core node structure
+model Node {
+  id                String   @id
+  name              String
+  type              String   // 'RootNode' or 'NonRootNode'
+  points            Int?     // Only for NonRootNode
+  manual_fulfillment Float?
+  user_id           String?  // Required for RootNode, links to the user who owns this node  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Relations
+  children         Node[]   @relation("NodeChildren")
+  parent           Node?    @relation("NodeChildren", fields: [parent_id], references: [id], onDelete: Cascade)
+  parent_id        String?
+
+  // Many-to-many self-relation for contributors
+  contributors     Node[]   @relation("NodeContributors")
+  contributed_to   Node[]   @relation("NodeContributors")
+
+  // Capacities owned by this node (if it's a RootNode)
+  capacities       Capacity[]
+  
+  // Shares received by this node
+  capacity_shares  CapacityShare[] @relation("RecipientShares")
+  
+  // Share cache relations
+  provider_shares  ShareCache[]    @relation("ProviderShares")
+  recipient_shares ShareCache[]    @relation("RecipientShares")
+}
+
+// Capacities
+model Capacity {
+  id                        String   @id
+  name                      String
+  quantity                  Int
+  unit                      String
+  share_depth               Int
+  expanded                  Boolean  @default(false)
+  location_type             String   // 'Undefined', 'LiveLocation', 'Specific'
+  all_day                   Boolean  @default(false)
+  recurrence                String?
+  custom_recurrence_repeat_every Int?
+  custom_recurrence_repeat_unit  String? // 'Days', 'Weeks', 'Months', 'Years'
+  custom_recurrence_end_type     String? // 'Never', 'EndsOn', 'EndsAfter'
+  custom_recurrence_end_value    String? // Stores either date or count
+  start_date                String?
+  start_time                String?
+  end_date                  String?
+  end_time                  String?
+  time_zone                 String
+  max_natural_div           Int
+  max_percentage_div        Float
+  hidden_until_request_accepted Boolean @default(false)
+  
+  // Relations
+  owner           Node     @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  owner_id        String
+  shares          CapacityShare[]
+}
+
+// Capacity shares
+model CapacityShare {
+  id               String   @id
+  share_percentage Float
+  computed_quantity Int
+
+  // Relations
+  capacity         Capacity @relation(fields: [capacity_id], references: [id], onDelete: Cascade)
+  capacity_id      String
+  recipient        Node     @relation("RecipientShares", fields: [recipient_id], references: [id], onDelete: Cascade)
+  recipient_id     String
+}
+
+// Cache tables for expensive calculations
+model ShareCache {
+  provider_id      String
+  recipient_id     String
+  share_type       String   // 'SOGF' or 'ProviderShare'
+  depth            Int      @default(0) // Default to 0 for SOGF, other values for ProviderShare
+  share_value      Float
+  calculated_at    DateTime @default(now())
+
+  // Relations
+  provider         Node     @relation("ProviderShares", fields: [provider_id], references: [id], onDelete: Cascade)
+  recipient        Node     @relation("RecipientShares", fields: [recipient_id], references: [id], onDelete: Cascade)
+
+  @@id([provider_id, recipient_id, share_type, depth])
+}
+
+// Auth.js User model
+model User {
+  id              String    @id @default(cuid())
+  name            String?   @unique
+  email           String?   @unique
+  email_verified  DateTime?
+  image           String?
+  password        String?   // Required for credentials provider but not part of Auth.js default schema
+  role            String?   @default("user")
+  
+  // Auth.js related models
+  accounts        Account[]
+  sessions        Session[]
+}
+
+// Auth.js Account model
+model Account {
+  id                 String  @id
+  user_id            String
+  type               String
+  provider           String
+  provider_account_id String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+}
+
+// Auth.js Session model
+model Session {
+  id           String   @id
+  session_token String   @unique
+  user_id      String
+  expires      DateTime
+  
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// Auth.js Verification Token model
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+} 

@@ -1,15 +1,13 @@
 <script lang="ts">
 	/**
 	 * NestedPieExample.svelte - Example usage of the NestedPie component
-	 * Now using real data from the centralized system instead of example data
+	 * Now using real data from the API-based system
 	 */
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { providerShares } from '$lib/centralized/calculations';
-	import { getNodeName } from '$lib/centralized/forestUtils';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
-	import type { ShareMap, Forest, TreeZipper } from '$lib/centralized/types';
+	import type { TreeNode } from '$lib/types/api';
 
 	// State for pie chart data
 	let layeredData = $state<Array<PieChartData>>([]);
@@ -19,14 +17,13 @@
 	// Initialize with example data immediately to ensure the chart renders
 	layeredData = createExampleData();
 
-	// Watch for changes in the current user, forest or path
+	// Watch for changes in the current user and path
 	$effect(() => {
 		const currentUser = globalState.currentUser;
-		const currentForest = globalState.currentForest;
 		const currentPath = globalState.currentPath; // Adding this to trigger reactive updates when modifying the tree
 
-		if (currentUser && currentForest) {
-			// Update shares whenever forest or user changes
+		if (currentUser) {
+			// Update shares whenever user changes or path changes
 			updateProviderShares();
 		} else {
 			// If no user is logged in, use example data
@@ -35,20 +32,12 @@
 	});
 
 	// Function to update provider shares based on the current user
-	function updateProviderShares() {
+	async function updateProviderShares() {
 		const currentUser = globalState.currentUser;
-		if (!currentUser || !globalState.currentForest) return;
+		if (!currentUser) return;
 
 		// Get the username for the current user
-		const username = currentUser.username?.toLowerCase() || currentUser.pub.toLowerCase();
-
-		// Get the zipper for the current user from the forest
-		const userZipper = globalState.currentForest.get(username);
-		if (!userZipper) {
-			console.log(`User zipper not found for username: ${username}`);
-			layeredData = createExampleData();
-			return;
-		}
+		const username = currentUser.pub;
 
 		// Generate pie chart data for different depths
 		const newLayers: Array<PieChartData> = [];
@@ -56,11 +45,15 @@
 		// Calculate shares at each depth (1 through maxLayers)
 		for (let depth = 1; depth <= maxLayers; depth++) {
 			try {
-				// Get provider shares for the current user at this depth
-				const shares = providerShares(globalState.currentForest, userZipper, depth);
+				// Get provider shares for the current user at this depth via API
+				const response = await fetch(`/api/${username}/provider-shares?depth=${depth}`);
+				if (!response.ok) continue;
+
+				const data = await response.json();
+				if (!data.success) continue;
 
 				// Convert shares to pie slices
-				const slices = shareMapToPieSlices(shares);
+				const slices = await shareMapToPieSlices(data.shares);
 
 				// Only add to chart if we have actual shares
 				if (slices.length > 0) {
@@ -84,19 +77,37 @@
 	}
 
 	// Convert a share map to pie slices
-	function shareMapToPieSlices(shares: ShareMap): Array<PieSlice> {
+	async function shareMapToPieSlices(shares: Record<string, number>): Promise<Array<PieSlice>> {
 		// If empty, return empty array
-		if (shares.size === 0) return [];
+		if (Object.keys(shares).length === 0) return [];
 
-		const slices = Array.from(shares.entries())
-			.filter(([_, share]) => share > 0)
-			.map(([id, share]) => ({
-				name: getNodeName(globalState.currentForest, id),
-				value: Math.round(share * 100) // Convert to percentage value
-			}))
-			.sort((a, b) => b.value - a.value); // Sort by value descending
+		const slices: PieSlice[] = [];
 
-		return slices;
+		// Process each share entry
+		for (const [id, share] of Object.entries(shares)) {
+			if (share > 0) {
+				try {
+					// Fetch node name from API
+					const response = await fetch(`/api/${id}`);
+					if (!response.ok) continue;
+
+					const data = await response.json();
+					if (!data.success) continue;
+
+					const node = data.data as TreeNode;
+
+					slices.push({
+						name: node.name,
+						value: Math.round(share * 100) // Convert to percentage value
+					});
+				} catch (err) {
+					console.error(`Error fetching node info for ${id}:`, err);
+				}
+			}
+		}
+
+		// Sort by value descending
+		return slices.sort((a, b) => b.value - a.value);
 	}
 
 	// Create example data if no user is logged in or no shares are found
@@ -148,7 +159,7 @@
 
 	// Initialize on mount
 	onMount(() => {
-		if (globalState.currentUser && globalState.currentForest) {
+		if (globalState.currentUser) {
 			updateProviderShares();
 		} else {
 			layeredData = createExampleData();
@@ -169,7 +180,7 @@
 
 		Debug button for toggling debug info
 		<div class="debug-buttons">
-			<button class="debug-button" on:click={toggleDebugInfo}>
+			<button class="debug-button" onclick={toggleDebugInfo}>
 				{showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
 			</button>
 		</div>  -->

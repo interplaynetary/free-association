@@ -7,6 +7,7 @@
 		name: string;
 		points: number;
 		contributors: string[];
+		fulfillment?: number;
 	}
 
 	// Define interface for node dimensions
