@@ -2,32 +2,37 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
-	import { globalState } from '$lib/global.svelte';
 
 	let isLoading = $state(false);
 	let userId = $derived($page.data.session?.user?.id);
 
-	// Only initialize when in browser and user is logged in
-	$effect.root(() => {
+	// Function to redirect to user's root node
+	async function redirectToUserNode() {
 		if (!browser || !userId) return;
-
 		isLoading = true;
-
-		// Using top-level async IIFE to handle the async initialization
-		(async () => {
-			// Make sure global state is initialized
-			if (!globalState.tree) {
-				await globalState.initialize();
-			}
-
-			console.log('Going to user root node');
-			// Now redirect to user's root node
+		try {
 			goto(`/${userId}`);
-		})();
+		} catch (error) {
+			console.error('Error redirecting:', error);
+		} finally {
+			isLoading = false;
+		}
+	}
 
-		// Cleanup function that returns nothing (void)
-		return () => {};
-	});
+	// Function to trigger the header login panel
+	function openLoginPanel() {
+		if (!browser) return;
+		// Find the first breadcrumb and click it to open login panel
+		const loginTrigger = document.querySelector('.breadcrumb-item.auth-root') as HTMLElement | null;
+		if (loginTrigger) {
+			loginTrigger.click();
+		}
+	}
+
+	// Run the redirect if needed
+	if (userId) {
+		redirectToUserNode();
+	}
 </script>
 
 {#if isLoading}
@@ -41,8 +46,7 @@
 			<p>Connect, share, and fulfill needs in your network</p>
 
 			<div class="actions">
-				<a href="/auth/login" class="btn btn-primary">Sign In</a>
-				<a href="/auth/register" class="btn btn-outline">Create Account</a>
+				<button class="btn btn-primary" onclick={openLoginPanel}> Get Started </button>
 			</div>
 		</div>
 	</div>
@@ -101,6 +105,8 @@
 		text-decoration: none;
 		font-size: 1rem;
 		transition: all 0.2s ease;
+		cursor: pointer;
+		border: none;
 	}
 
 	.btn-primary {
@@ -110,15 +116,5 @@
 
 	.btn-primary:hover {
 		background-color: #1976d2;
-	}
-
-	.btn-outline {
-		border: 1px solid #2196f3;
-		color: #2196f3;
-		background: transparent;
-	}
-
-	.btn-outline:hover {
-		background-color: #f0f8ff;
 	}
 </style>

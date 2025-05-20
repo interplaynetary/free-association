@@ -1,13 +1,15 @@
 <script lang="ts">
 	/**
 	 * NestedPieExample.svelte - Example usage of the NestedPie component
-	 * Now using real data from the API-based system
+	 * Using direct tree access with simpleglobal
 	 */
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, currentUser, userTree, currentPath } from '$lib/simpleglobal.svelte';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
-	import type { TreeNode } from '$lib/types/api';
+	import type { Node, RootNode } from '$lib/protocol/protocol';
+	import { providerShares, normalizeShareMap } from '$lib/protocol/protocol';
+	import { get } from 'svelte/store';
 
 	// State for pie chart data
 	let layeredData = $state<Array<PieChartData>>([]);
@@ -19,10 +21,11 @@
 
 	// Watch for changes in the current user and path
 	$effect(() => {
-		const currentUser = globalState.currentUser;
-		const currentPath = globalState.currentPath; // Adding this to trigger reactive updates when modifying the tree
+		const user = get(currentUser);
+		const path = get(currentPath);
+		const tree = get(userTree);
 
-		if (currentUser) {
+		if (user && tree) {
 			// Update shares whenever user changes or path changes
 			updateProviderShares();
 		} else {
@@ -31,29 +34,38 @@
 		}
 	});
 
-	// Function to update provider shares based on the current user
-	async function updateProviderShares() {
-		const currentUser = globalState.currentUser;
-		if (!currentUser) return;
+	// Function to update provider shares based on the current user and tree
+	function updateProviderShares() {
+		const user = get(currentUser);
+		const tree = get(userTree);
 
-		// Get the username for the current user
-		const username = currentUser.pub;
+		if (!user || !tree) return;
 
 		// Generate pie chart data for different depths
 		const newLayers: Array<PieChartData> = [];
 
+		// Create nodes map for faster lookups
+		const nodesMap: Record<string, Node> = {};
+
+		// Populate nodes map (helper function to traverse tree)
+		function populateNodesMap(node: Node) {
+			nodesMap[node.id] = node;
+			for (const child of node.children) {
+				populateNodesMap(child);
+			}
+		}
+
+		// Start with the root node
+		populateNodesMap(tree);
+
 		// Calculate shares at each depth (1 through maxLayers)
 		for (let depth = 1; depth <= maxLayers; depth++) {
 			try {
-				// Get provider shares for the current user at this depth via API
-				const response = await fetch(`/api/${username}/provider-shares?depth=${depth}`);
-				if (!response.ok) continue;
-
-				const data = await response.json();
-				if (!data.success) continue;
+				// Calculate provider shares directly using protocol.ts
+				const shares = providerShares(tree, depth, nodesMap);
 
 				// Convert shares to pie slices
-				const slices = await shareMapToPieSlices(data.shares);
+				const slices = shareMapToPieSlices(shares, nodesMap);
 
 				// Only add to chart if we have actual shares
 				if (slices.length > 0) {
@@ -77,7 +89,10 @@
 	}
 
 	// Convert a share map to pie slices
-	async function shareMapToPieSlices(shares: Record<string, number>): Promise<Array<PieSlice>> {
+	function shareMapToPieSlices(
+		shares: Record<string, number>,
+		nodesMap: Record<string, Node>
+	): Array<PieSlice> {
 		// If empty, return empty array
 		if (Object.keys(shares).length === 0) return [];
 
@@ -86,22 +101,13 @@
 		// Process each share entry
 		for (const [id, share] of Object.entries(shares)) {
 			if (share > 0) {
-				try {
-					// Fetch node name from API
-					const response = await fetch(`/api/${id}`);
-					if (!response.ok) continue;
-
-					const data = await response.json();
-					if (!data.success) continue;
-
-					const node = data.data as TreeNode;
-
+				// Get node name from nodes map
+				const node = nodesMap[id];
+				if (node) {
 					slices.push({
 						name: node.name,
 						value: Math.round(share * 100) // Convert to percentage value
 					});
-				} catch (err) {
-					console.error(`Error fetching node info for ${id}:`, err);
 				}
 			}
 		}
@@ -148,7 +154,6 @@
 
 	// Handle pie click events
 	function handlePieClick(event: CustomEvent<{ data: PieSlice; layer: number }>): void {
-		console.log('Pie segment clicked:', event.detail);
 		// Show toast with the clicked segment info
 		globalState.showToast(`${event.detail.data.name}: ${event.detail.data.value}%`, 'info');
 	}
@@ -159,7 +164,7 @@
 
 	// Initialize on mount
 	onMount(() => {
-		if (globalState.currentUser) {
+		if (get(currentUser) && get(userTree)) {
 			updateProviderShares();
 		} else {
 			layeredData = createExampleData();
@@ -169,21 +174,11 @@
 
 <div class="container">
 	<div class="pie-container">
-		<!-- 
-		{#if globalState.currentUser}
-			<h3 class="subtitle">
-				Contribution Shares for {globalState.currentUser.alias}
-			</h3>
-		{:else}
-			<h3 class="subtitle">Example Contribution Shares (Log in to see your data)</h3>
-		{/if}
-
-		Debug button for toggling debug info
 		<div class="debug-buttons">
-			<button class="debug-button" onclick={toggleDebugInfo}>
+			<button class="debug-button" on:click={toggleDebugInfo}>
 				{showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
 			</button>
-		</div>  -->
+		</div>
 
 		<!-- Nested Pie Chart Component -->
 		<div class="chart-container" id="pie-chart-container">
@@ -212,9 +207,9 @@
 				<pre>{JSON.stringify(layeredData, null, 2)}</pre>
 
 				<strong>User:</strong>
-				{globalState.currentUser?.alias || 'Not logged in'}<br />
+				{get(currentUser)?.name || 'Not logged in'}<br />
 				<strong>Path:</strong>
-				{globalState.currentPath.join(' > ')}
+				{get(currentPath).join(' > ')}
 
 				<div class="share-details">
 					<strong>Current Share Details:</strong>
@@ -264,6 +259,18 @@
 	.no-data {
 		color: #666;
 		font-style: italic;
+	}
+
+	.debug-buttons {
+		margin-bottom: 10px;
+	}
+
+	.debug-button {
+		padding: 5px 10px;
+		background-color: #f0f0f0;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		cursor: pointer;
 	}
 
 	.debug-panel {

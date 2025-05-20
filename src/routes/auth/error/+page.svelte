@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 
-	// Get error details from URL using Svelte 5 derived state
-	let errorParam = $derived($page.url.searchParams.get('error'));
-	let errorType = $derived(getErrorType(errorParam));
+	// Get error message directly with a single derived value
+	let errorMessage = $derived(getErrorMessage($page.url.searchParams.get('error')));
 
-	function getErrorType(error: string | null): string {
+	function getErrorMessage(error: string | null): string {
 		if (!error) return 'Unknown error';
 
 		switch (error) {
@@ -39,7 +38,7 @@
 	<div class="error-card">
 		<h1>Authentication Error</h1>
 		<div class="error-message">
-			{errorType}
+			{errorMessage}
 		</div>
 		<div class="actions">
 			<a href="/auth/login" class="button">Try again</a>

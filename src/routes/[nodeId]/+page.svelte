@@ -1,56 +1,39 @@
 <script lang="ts">
 	import Parent from '$lib/components/Parent.svelte';
-	import { globalState } from '$lib/global.svelte';
+	import { currentPath, userTree } from '$lib/simpleglobal.svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { userTree } from '$lib/global.svelte';
+	import { get } from 'svelte/store';
 
 	// Get node ID from the route parameter
 	let nodeId = $derived($page.params.nodeId);
 
-	// Add loading state
+	// Loading states
 	let isLoading = $state(true);
-	let treeLoaded = $state(false);
 
-	// Initialize tree and set current path
-	$effect.root(() => {
+	// Set up navigation when the component loads
+	function setupNavigation() {
 		if (!browser) return;
 
-		// Using top-level async IIFE
-		(async () => {
-			// If tree is not loaded, initialize it
-			if (!globalState.tree) {
-				await globalState.initialize();
-			}
-
+		try {
 			// Set the current path to the node ID from the URL
 			if (nodeId) {
-				globalState.navigateToPath([nodeId]);
+				currentPath.set([nodeId]);
 			}
-
+		} finally {
 			isLoading = false;
-		})();
-
-		// Return cleanup function
-		return () => {};
-	});
-
-	// Track tree loading state with derived state
-	let isTreeLoaded = $derived(!!userTree);
-
-	$effect(() => {
-		if (isTreeLoaded) {
-			console.log('tree loaded', userTree);
-			treeLoaded = true;
 		}
-	});
+	}
+
+	// Call setup right away
+	setupNavigation();
 </script>
 
 {#if isLoading}
 	<div class="loading-container">
 		<p>Loading your tree...</p>
 	</div>
-{:else if treeLoaded}
+{:else if get(userTree)}
 	<Parent />
 {:else}
 	<div class="loading-container">

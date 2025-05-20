@@ -1,16 +1,39 @@
 <script lang="ts">
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, userTree, currentPath, currentUser } from '$lib/simpleglobal.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { signIn, signOut } from '@auth/sveltekit/client';
+	import { get } from 'svelte/store';
+	import {
+		findNodeById,
+		addChild,
+		createNonRootNode,
+		type Node as TreeNode
+	} from '$lib/protocol/protocol';
 
-	// Get current path and pathInfo from global state
-	let currentPath = $derived(globalState.path);
-	let pathInfo = $derived(globalState.pathInfo);
+	// Define type for path info
+	type PathInfo = Array<{ id: string; name: string }>;
 
-	// Use the new Auth.js user data
-	let currentUser = $derived(globalState.user);
+	// Derived values from path and tree
+	let currentPathInfo = $state<PathInfo>([]);
+
+	$effect(() => {
+		// Update path info when path changes
+		const path = get(currentPath);
+		const tree = get(userTree);
+		if (!tree) return;
+
+		const pathInfo: PathInfo = path.map((id) => {
+			const node = findNodeById(tree, id);
+			return {
+				id,
+				name: node ? node.name : 'Unknown'
+			};
+		});
+
+		currentPathInfo = pathInfo;
+	});
 
 	// Get current route from $page store
 	let currentRoute = $derived($page.url.pathname);
@@ -25,9 +48,20 @@
 	let isLoading = $state(false);
 	let usernameInput = $state('');
 	let password = $state('');
+	let confirmPassword = $state(''); // Added for registration
+	let isRegisterMode = $state(false); // Toggle between login and register
 	let errorMessage = $state('');
 	let authMessage = $state('');
 	let showPassword = $state(false);
+
+	// Initialize error state with URL error message if present
+	$effect(() => {
+		const urlError = $page.url.searchParams.get('error');
+		if (urlError) {
+			errorMessage = 'Login failed. Please check your credentials.';
+			showLoginPanel = true;
+		}
+	});
 
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
@@ -36,7 +70,11 @@
 	onMount(() => {
 		// Add click outside handler
 		function handleClickOutside(event: MouseEvent) {
-			if (headerRef && !headerRef.contains(event.target as Node) && showLoginPanel) {
+			if (
+				headerRef &&
+				!headerRef.contains(event.target as EventTarget & HTMLElement) &&
+				showLoginPanel
+			) {
 				showLoginPanel = false;
 			}
 		}
@@ -44,7 +82,7 @@
 		document.addEventListener('mousedown', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
-		if (!currentUser) {
+		if (!get(currentUser)) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -60,12 +98,55 @@
 	function toggleLoginPanel() {
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
-			// Reset form when closing
-			usernameInput = '';
-			password = '';
-			errorMessage = '';
-			authMessage = '';
-			showPassword = false;
+			resetForm();
+		}
+	}
+
+	// Reset form state
+	function resetForm() {
+		usernameInput = '';
+		password = '';
+		confirmPassword = '';
+		errorMessage = '';
+		authMessage = '';
+		showPassword = false;
+		isRegisterMode = false;
+	}
+
+	// Add new node handler (moved from global.svelte.ts)
+	function handleAddNode() {
+		const tree = get(userTree);
+		const path = get(currentPath);
+
+		if (!tree || path.length === 0) return;
+
+		// Get current node ID (last in path)
+		const currentNodeId = path[path.length - 1];
+
+		// Find the current node in the tree
+		const currentNode = findNodeById(tree, currentNodeId);
+		if (!currentNode) return;
+
+		// Create a unique ID for the new node
+		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+		const newNodeName = 'New Node';
+		const newPoints = 10;
+
+		try {
+			// Add child to the current node
+			addChild(currentNode, newNodeId, newNodeName, newPoints);
+
+			// Update the store to trigger reactivity
+			userTree.set(tree);
+
+			// Show success message
+			globalState.showToast('New node created', 'success');
+
+			// Set node to edit mode
+			setTimeout(() => globalState.setNodeToEditMode(newNodeId), 50);
+		} catch (err) {
+			console.error('Error in handleAddNode:', err);
+			globalState.showToast('Error creating node', 'error');
 		}
 	}
 
@@ -77,7 +158,7 @@
 			event.preventDefault();
 
 			// If user is not authenticated, show login panel regardless of route
-			if (!currentUser) {
+			if (!get(currentUser)) {
 				showLoginPanel = true;
 			}
 			// If we're not in the soul route, navigate to the soul route
@@ -88,7 +169,7 @@
 				goto('/');
 			}
 			// If we're in the soul route and at the root breadcrumb
-			else if (index === pathInfo.length - 1) {
+			else if (index === currentPathInfo.length - 1) {
 				// Toggle login panel
 				toggleLoginPanel();
 			} else {
@@ -106,13 +187,42 @@
 		showPassword = !showPassword;
 	}
 
-	// Handle login with Auth.js
-	async function handleLogin(event: Event) {
+	// Toggle between login and register mode
+	function toggleAuthMode() {
+		isRegisterMode = !isRegisterMode;
+		errorMessage = '';
+		authMessage = '';
+	}
+
+	// Validate the form data
+	function validateForm() {
+		if (!usernameInput || !password) {
+			errorMessage = 'Please enter both username and password';
+			return false;
+		}
+
+		if (isRegisterMode) {
+			if (password !== confirmPassword) {
+				errorMessage = 'Passwords do not match';
+				return false;
+			}
+
+			if (password.length < 8) {
+				errorMessage = 'Password must be at least 8 characters';
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	// Handle form submission (login or register)
+	async function handleSubmit(event: Event) {
 		// Prevent default form submission
 		event.preventDefault();
 
-		if (!usernameInput || !password) {
-			errorMessage = 'Please enter both username and password';
+		// Validate form inputs
+		if (!validateForm()) {
 			return;
 		}
 
@@ -126,6 +236,22 @@
 		isLoading = true;
 
 		try {
+			if (isRegisterMode) {
+				await handleSignup();
+			} else {
+				await handleLogin();
+			}
+		} catch (error) {
+			console.error('Authentication error:', error);
+			errorMessage = error instanceof Error ? error.message : 'Authentication error';
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Handle login with Auth.js
+	async function handleLogin() {
+		try {
 			// Use Auth.js credentials provider
 			const result = await signIn('credentials', {
 				username: usernameInput.trim(),
@@ -138,35 +264,18 @@
 			} else {
 				// Success, close the login panel
 				showLoginPanel = false;
+				resetForm();
 				globalState.showToast('Signed in successfully', 'success');
+				goto('/');
 			}
 		} catch (error) {
 			console.error('Authentication error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Authentication error';
-		} finally {
-			isLoading = false;
-			// Reset form fields
-			usernameInput = '';
-			password = '';
 		}
 	}
 
 	// Handle signup/register
 	async function handleSignup() {
-		if (!usernameInput || !password) {
-			errorMessage = 'Please enter both username and password';
-			return;
-		}
-
-		// Don't attempt to register if we're already loading
-		if (isLoading) {
-			return;
-		}
-
-		errorMessage = '';
-		authMessage = '';
-		isLoading = true;
-
 		try {
 			// Call register endpoint
 			const response = await fetch('/auth/register', {
@@ -184,61 +293,50 @@
 
 			if (response.ok) {
 				// After registration, sign in automatically
-				await signIn('credentials', {
+				const signInResult = await signIn('credentials', {
 					username: usernameInput.trim(),
 					password: password,
 					redirect: false
 				});
 
-				// Success, close the login panel
-				showLoginPanel = false;
-				globalState.showToast('Account created successfully!', 'success');
+				if (signInResult?.error) {
+					// Registration successful but sign-in failed
+					errorMessage = 'Account created, but automatic sign-in failed. Please sign in manually.';
+					isRegisterMode = false;
+				} else {
+					// Success, close the login panel
+					showLoginPanel = false;
+					resetForm();
+					globalState.showToast('Account created successfully!', 'success');
+					goto('/');
+				}
 			} else {
-				// Show error message from API
-				errorMessage = data.message || 'Registration failed. Please try a different username.';
+				// Registration failed
+				errorMessage =
+					data.error || data.message || 'Registration failed. Please try another username.';
 			}
 		} catch (error) {
 			console.error('Registration error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Registration error';
-		} finally {
-			isLoading = false;
-			// Reset form fields
-			usernameInput = '';
-			password = '';
 		}
 	}
 
-	// Handle logout with Auth.js
+	// Handle logout
 	async function handleLogout() {
-		// Set loading state to prevent UI interactions during logout
-		isLoading = true;
-
 		try {
-			// Use Auth.js signOut
 			await signOut({ redirect: false });
-
-			// Reset form fields
-			usernameInput = '';
-			password = '';
-			errorMessage = '';
-			authMessage = '';
-			showPassword = false;
-
-			// Show success message
-			globalState.showToast('Logged out successfully', 'info');
+			globalState.resetState();
+			globalState.showToast('Signed out successfully', 'info');
+			// Redirect to home after logout
+			goto('/');
 		} catch (error) {
 			console.error('Logout error:', error);
-			globalState.showToast('Error during logout', 'error');
-		} finally {
-			// Small delay to ensure state updates are processed
-			setTimeout(() => {
-				isLoading = false;
-			}, 200);
+			globalState.showToast('Error during sign out', 'error');
 		}
 	}
 
 	// Generate avatar
-	function generateAvatar(name: string | null, size = 32) {
+	function generateAvatar(name: string | null | undefined, size = 32) {
 		// Safety check for empty name
 		if (!name) {
 			// Return default avatar
@@ -293,17 +391,17 @@
 	<div class="header-main">
 		<div class="node-name">
 			<div class="breadcrumbs">
-				{#if pathInfo.length === 0}
+				{#if currentPathInfo.length === 0}
 					<div class="loading-path">Loading...</div>
 				{:else}
-					{#each pathInfo as segment, index}
+					{#each currentPathInfo as segment, index}
 						{#if index > 0}
 							<div class="breadcrumb-separator">/</div>
 						{/if}
 						<a
 							href={`/${segment.id}${segment.name ? ':' + segment.name.replace(/\s+/g, '-').toLowerCase() : ''}`}
 							class="breadcrumb-item"
-							class:current={index === pathInfo.length - 1}
+							class:current={index === currentPathInfo.length - 1}
 							class:auth-root={index === 0}
 							onclick={(e) => {
 								handleBreadcrumbClick(index, e);
@@ -323,10 +421,8 @@
 				<span>📊</span>
 			</a>
 
-			<button
-				class="icon-button add-button"
-				title="Add new node"
-				onclick={globalState.handleAddNode}><span>➕</span></button
+			<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
+				><span>➕</span></button
 			>
 			<button
 				class="icon-button delete-button"
@@ -339,16 +435,19 @@
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
 		<div class="login-panel">
-			{#if currentUser}
+			{#if get(currentUser)}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img src={generateAvatar(currentUser.name, 60)} alt={currentUser.name || 'User'} />
+							<img
+								src={generateAvatar(get(currentUser)?.name, 60)}
+								alt={get(currentUser)?.name || 'User'}
+							/>
 						</div>
 						<div class="user-details">
-							<h3>Welcome, {currentUser.name || 'User'}</h3>
-							<p class="user-id">@{currentUser.email || 'anonymous'}</p>
+							<h3>Welcome, {get(currentUser)?.name || 'User'}</h3>
+							<p class="user-id">@{get(currentUser)?.email || 'anonymous'}</p>
 						</div>
 					</div>
 					<div class="actions">
@@ -357,10 +456,14 @@
 					</div>
 				</div>
 			{:else}
-				<!-- Login form -->
+				<!-- Login/Register form -->
 				<div class="login-form">
-					<h3>Sign In / Sign Up</h3>
-					<p class="form-info">Enter your details to sign in, or create a new account</p>
+					<h3>{isRegisterMode ? 'Create Account' : 'Sign In'}</h3>
+					<p class="form-info">
+						{isRegisterMode
+							? 'Enter your details to create a new account'
+							: 'Enter your details to sign in'}
+					</p>
 
 					{#if errorMessage}
 						<div class="error-message">{errorMessage}</div>
@@ -370,7 +473,7 @@
 						<div class="auth-message">{authMessage}</div>
 					{/if}
 
-					<form onsubmit={handleLogin}>
+					<form onsubmit={handleSubmit}>
 						<div class="form-group">
 							<label for="username">Username</label>
 							<input
@@ -380,10 +483,6 @@
 								placeholder="Enter username"
 								disabled={isLoading}
 								autocomplete="username"
-								oninput={() =>
-									(authMessage = usernameInput
-										? 'Will attempt to sign in or create a new account if needed'
-										: '')}
 							/>
 						</div>
 
@@ -396,7 +495,7 @@
 									bind:value={password}
 									placeholder="Enter password"
 									disabled={isLoading}
-									autocomplete="current-password"
+									autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
 								/>
 								<button
 									type="button"
@@ -409,27 +508,39 @@
 							</div>
 						</div>
 
+						{#if isRegisterMode}
+							<div class="form-group password-group">
+								<label for="confirmPassword">Confirm Password</label>
+								<div class="password-input-container">
+									<input
+										type={showPassword ? 'text' : 'password'}
+										id="confirmPassword"
+										bind:value={confirmPassword}
+										placeholder="Confirm password"
+										disabled={isLoading}
+										autocomplete="new-password"
+									/>
+								</div>
+							</div>
+						{/if}
+
 						<div class="actions">
 							<button
 								type="submit"
-								class="login-btn"
-								disabled={isLoading || !usernameInput || !password}
+								class={isRegisterMode ? 'signup-btn' : 'login-btn'}
+								disabled={isLoading ||
+									!usernameInput ||
+									!password ||
+									(isRegisterMode && !confirmPassword)}
 							>
 								{#if isLoading}
 									<div class="spinner small"></div>
-									Signing in...
+									{isRegisterMode ? 'Creating account...' : 'Signing in...'}
 								{:else}
-									Sign In
+									{isRegisterMode ? 'Create Account' : 'Sign In'}
 								{/if}
 							</button>
-							<button
-								type="button"
-								class="signup-btn"
-								onclick={handleSignup}
-								disabled={isLoading || !usernameInput || !password}
-							>
-								Sign Up
-							</button>
+
 							<button
 								type="button"
 								class="cancel-btn"
@@ -438,6 +549,20 @@
 							>
 								Cancel
 							</button>
+						</div>
+
+						<div class="toggle-auth-mode">
+							{#if isRegisterMode}
+								Already have an account?
+								<button type="button" class="text-link" onclick={toggleAuthMode}>
+									Sign in instead
+								</button>
+							{:else}
+								Don't have an account?
+								<button type="button" class="text-link" onclick={toggleAuthMode}>
+									Create one now
+								</button>
+							{/if}
 						</div>
 					</form>
 				</div>
@@ -680,7 +805,28 @@
 		display: flex;
 		gap: 8px;
 		margin-top: 16px;
-		flex-wrap: wrap;
+		margin-bottom: 16px;
+	}
+
+	.toggle-auth-mode {
+		text-align: center;
+		margin-top: 8px;
+		font-size: 0.9em;
+		color: #666;
+	}
+
+	.text-link {
+		background: none;
+		border: none;
+		color: #2196f3;
+		padding: 0;
+		font-size: 1em;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+
+	.text-link:hover {
+		color: #1976d2;
 	}
 
 	.login-btn,

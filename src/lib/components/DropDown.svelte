@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { globalState } from '$lib/global.svelte';
 	import { browser } from '$app/environment';
 
 	// Props using Svelte 5 runes

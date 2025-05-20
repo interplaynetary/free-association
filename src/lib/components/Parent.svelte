@@ -1,15 +1,21 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { globalState, currentNode, childNodes, userTree, currentPath } from '$lib/global.svelte';
+	import { userTree, currentPath, globalState } from '$lib/simpleglobal.svelte';
 	import {
 		type Node,
 		type NonRootNode,
+		type RootNode,
 		findNodeById,
+		getParentNode,
 		updateNodeById,
 		updatePoints,
 		updateName,
-		fulfilled
+		updateManualFulfillment,
+		fulfilled,
+		addChild,
+		deleteSubtree,
+		addContributors
 	} from '$lib/protocol/protocol';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
@@ -26,7 +32,7 @@
 		fulfillment?: number;
 	}
 
-	// Directly use the global state without duplicating it
+	// UI state
 	let labelIndex = $state(0);
 	const nodeLabels = ['Node', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution'];
 
@@ -57,10 +63,28 @@
 	// Format data for d3 to consume
 	let packData = $state({ id: '', selfPoints: 0, children: [] as VisualizationNode[] });
 
+	// Helper functions to get current state
+	function getCurrentNodeId(): string | null {
+		const path = get(currentPath);
+		return path.length > 0 ? path[path.length - 1] : null;
+	}
+
+	function getCurrentNode(): Node | null {
+		const tree = get(userTree);
+		const nodeId = getCurrentNodeId();
+		if (!tree || !nodeId) return null;
+		return findNodeById(tree, nodeId);
+	}
+
+	function getChildNodes(): Node[] {
+		const currentNode = getCurrentNode();
+		return currentNode ? currentNode.children : [];
+	}
+
 	// Subscribe to the derived stores for reactive updates
 	$effect(() => {
-		const node = get(currentNode);
-		const children = get(childNodes);
+		const node = getCurrentNode();
+		const children = getChildNodes();
 
 		if (!node) {
 			packData = { id: '', selfPoints: 0, children: [] };
@@ -69,7 +93,7 @@
 
 		const mappedChildren = children.map((child) => ({
 			id: child.id,
-			points: child.type === 'NonRootNode' ? child.points : 0,
+			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
 			contributors:
 				child.type === 'NonRootNode' ? (child as NonRootNode).contributors.map((c) => c.id) : [],
@@ -78,7 +102,7 @@
 
 		packData = {
 			id: node.id,
-			selfPoints: node.type === 'NonRootNode' ? node.points : 0,
+			selfPoints: node.type === 'NonRootNode' ? (node as NonRootNode).points : 0,
 			children: mappedChildren
 		};
 	});
@@ -162,14 +186,14 @@
 	// Navigation functions
 	function zoomInto(nodeId: string) {
 		console.log('[UI FLOW] zoomInto called for node:', nodeId);
-		// Use the global state's navigation function
 		globalState.zoomInto(nodeId);
-		console.log('[UI FLOW] Navigation handled by global state');
+		console.log('[UI FLOW] Navigation handled');
 	}
 
 	async function handleAddNode() {
 		console.log('[UI FLOW] handleAddNode started');
-		if (!globalState.currentNodeId) {
+		const currentNodeId = getCurrentNodeId();
+		if (!currentNodeId) {
 			console.log('[UI FLOW] No currentNodeId, aborting');
 			return;
 		}
@@ -201,19 +225,29 @@
 			points: newPoints,
 			name: newNodeName
 		});
-		console.log('[UI FLOW] Current parent:', globalState.currentNodeId);
-		console.log('[UI FLOW] Current path:', globalState.path);
+		console.log('[UI FLOW] Current parent:', currentNodeId);
+		console.log('[UI FLOW] Current path:', get(currentPath));
 
 		try {
-			// Use the global state's addNode function
-			console.log('[UI FLOW] Calling globalState.addNode');
-			const success = await globalState.addNode(newNodeId, newPoints, newNodeName);
-
-			if (!success) {
-				console.log('[UI FLOW] addNode returned false');
-				globalState.showToast('Error creating node', 'error');
+			// Get the tree and current node
+			const tree = get(userTree);
+			if (!tree) {
+				globalState.showToast('Error creating node: No tree found', 'error');
 				return;
 			}
+
+			// Find the current node
+			const currentNode = findNodeById(tree, currentNodeId);
+			if (!currentNode) {
+				globalState.showToast('Error creating node: Current node not found', 'error');
+				return;
+			}
+
+			// Add child to current node
+			addChild(currentNode, newNodeId, newNodeName, newPoints);
+
+			// Update the store to trigger reactivity
+			userTree.set(tree);
 
 			console.log('[UI FLOW] addNode successful');
 			globalState.showToast('New node created', 'success');
@@ -221,7 +255,7 @@
 			// Set node to edit mode
 			console.log('[UI FLOW] Setting node to edit mode:', newNodeId);
 			setTimeout(() => {
-				globalState.setNodeToEditMode(newNodeId);
+				globalState.nodeToEdit = newNodeId;
 				console.log('[UI FLOW] Node edit mode set');
 			}, 50);
 		} catch (err) {
@@ -230,32 +264,22 @@
 		}
 	}
 
-	// Assign to global handle for toolbar access
-	$effect(() => {
-		globalState.handleAddNode = handleAddNode;
-	});
-
 	// Text editing handler
 	function handleTextEdit(detail: { nodeId: string; newName: string }) {
 		const { nodeId, newName } = detail;
 
 		try {
-			if (!globalState.currentNodeId) return;
+			const tree = get(userTree);
+			if (!tree) return;
 
-			// We'll use the global state's updateNode function
-			globalState
-				.updateNode(nodeId, { name: newName })
-				.then((success) => {
-					if (success) {
-						globalState.showToast(`Node renamed to "${newName}"`, 'success');
-					} else {
-						globalState.showToast('Error updating node name', 'error');
-					}
-				})
-				.catch((err) => {
-					console.error(`Error updating name for node ${nodeId}:`, err);
-					globalState.showToast('Error updating node name', 'error');
-				});
+			// Update the node name in memory
+			updateNodeById(tree, nodeId, (node) => {
+				updateName(node, newName);
+			});
+
+			// Update store to trigger reactivity
+			userTree.set(tree);
+			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
 			globalState.showToast('Error updating node name', 'error');
@@ -284,32 +308,17 @@
 			const node = findNodeById(tree, nodeId);
 			if (!node || node.type !== 'NonRootNode') return;
 
-			// Get current contributor IDs
-			const contributorIds = node.contributors.map((c) => c.id);
-			const updatedContributorIds = contributorIds.filter((id) => id !== contributorId);
+			// Get current contributor IDs and filter out the one to remove
+			const updatedContributors = (node as NonRootNode).contributors.filter(
+				(c) => c.id !== contributorId
+			);
 
-			// Map contributor IDs back to node references
-			const updatedContributors = updatedContributorIds
-				.map((id) => {
-					const contributorNode = findNodeById(tree, id);
-					return contributorNode;
-				})
-				.filter(Boolean) as Node[];
+			// Update the node's contributors
+			(node as NonRootNode).contributors = updatedContributors;
 
-			// Use global state's updateNode function with correct format
-			globalState
-				.updateNode(nodeId, { contributors: updatedContributorIds })
-				.then((success) => {
-					if (success) {
-						globalState.showToast('Contributor removed successfully', 'success');
-					} else {
-						globalState.showToast('Error removing contributor', 'error');
-					}
-				})
-				.catch((err) => {
-					console.error('Error removing contributor:', err);
-					globalState.showToast('Error removing contributor', 'error');
-				});
+			// Update the store to trigger reactivity
+			userTree.set(tree);
+			globalState.showToast('Contributor removed successfully', 'success');
 		} catch (err) {
 			console.error('Error removing contributor:', err);
 			globalState.showToast('Error removing contributor', 'error');
@@ -351,27 +360,16 @@
 			const contributorNode = findNodeById(tree, userId);
 			if (!contributorNode) return;
 
-			// Get current contributor IDs
-			const contributorIds = node.contributors.map((c) => c.id);
+			// Check if contributor already exists
+			const hasContributor = (node as NonRootNode).contributors.some((c) => c.id === userId);
 
-			// Only add if not already present
-			if (!contributorIds.includes(userId)) {
-				const updatedContributorIds = [...contributorIds, userId];
+			if (!hasContributor) {
+				// Add the contributor
+				(node as NonRootNode).contributors.push(contributorNode);
 
-				// Use global state's updateNode function
-				globalState
-					.updateNode(nodeId, { contributors: updatedContributorIds })
-					.then((success) => {
-						if (success) {
-							globalState.showToast('Contributor added successfully', 'success');
-						} else {
-							globalState.showToast('Error adding contributor', 'error');
-						}
-					})
-					.catch((err) => {
-						console.error('Error adding contributor:', err);
-						globalState.showToast('Error adding contributor', 'error');
-					});
+				// Update the store to trigger reactivity
+				userTree.set(tree);
+				globalState.showToast('Contributor added successfully', 'success');
 			}
 		} catch (err) {
 			console.error('Error adding contributor:', err);
@@ -381,7 +379,13 @@
 
 	// Calculate node fulfillment directly using protocol
 	function getNodeFulfillment(nodeId: string): number {
-		return globalState.getNodeFulfillment(nodeId);
+		const tree = get(userTree);
+		if (!tree) return 0;
+
+		const node = findNodeById(tree, nodeId);
+		if (!node) return 0;
+
+		return fulfilled(node, tree);
 	}
 
 	// Growth handlers
@@ -486,23 +490,11 @@
 			const node = findNodeById(tree, nodeId);
 			if (!node || node.type !== 'NonRootNode') return;
 
-			// Update points directly using simplified.ts function
-			updatePoints(node, points);
+			// Update points directly using protocol
+			updatePoints(node as NonRootNode, points);
 
-			// Then sync with API via globalState
-			globalState
-				.updateNode(nodeId, { points })
-				.then((success) => {
-					if (success) {
-						console.log(`Saved points for node ${nodeId}: ${points}`);
-					} else {
-						globalState.showToast('Error saving node points', 'error');
-					}
-				})
-				.catch((err) => {
-					console.error(`Error saving points for node ${nodeId}:`, err);
-					globalState.showToast('Error saving node points', 'error');
-				});
+			// Update the store to trigger reactivity
+			userTree.set(tree);
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
 			globalState.showToast('Error saving node points', 'error');
@@ -572,37 +564,54 @@
 	function handleNodeDeletion(nodeId: string) {
 		if (confirm(`Delete this node?`)) {
 			try {
-				if (!globalState.currentNodeId) return;
-
-				// Verify the node exists in the tree
 				const tree = get(userTree);
 				if (!tree) return;
 
-				const nodeExists = findNodeById(tree, nodeId) !== null;
-				if (!nodeExists) {
-					console.error(`Node not found: ${nodeId}`);
+				// Find the parent node first
+				const parentNode = getParentNode(tree, nodeId);
+				if (!parentNode) {
+					console.error('Cannot find parent node');
 					return;
 				}
 
-				console.log('[UI FLOW] Deleting node:', nodeId);
+				// Don't allow deleting root node
+				const path = get(currentPath);
+				if (nodeId === path[0]) {
+					console.error('Cannot delete root node');
+					globalState.showToast('Cannot delete root node', 'error');
+					return;
+				}
 
-				// Use the global state's deleteNode method which properly deletes
-				// the node and its children via the API
-				globalState
-					.deleteNode(nodeId)
-					.then((success) => {
-						if (success) {
-							console.log('[UI FLOW] Node deleted successfully');
-							globalState.showToast('Node deleted successfully', 'success');
-						} else {
-							console.error('[UI FLOW] Failed to delete node');
-							globalState.showToast('Error deleting node', 'error');
-						}
-					})
-					.catch((err) => {
-						console.error('[UI FLOW] Error deleting node:', err);
-						globalState.showToast('Error deleting node', 'error');
-					});
+				// Check if we're trying to delete the current node
+				const currentNodeId = getCurrentNodeId();
+				const isCurrentNode = currentNodeId === nodeId;
+				if (isCurrentNode) {
+					// If we're on the node to delete, navigate up to parent first
+					if (path.length <= 1) {
+						console.error('Cannot delete current node with no parent');
+						return;
+					}
+
+					// Navigate to parent
+					globalState.zoomOut();
+				}
+
+				// Find the node to delete
+				const nodeToDelete = findNodeById(tree, nodeId);
+				if (!nodeToDelete) {
+					globalState.showToast('Node not found', 'error');
+					return;
+				}
+
+				// Delete the node from its parent
+				const childIndex = parentNode.children.findIndex((child) => child.id === nodeId);
+				if (childIndex !== -1) {
+					parentNode.children.splice(childIndex, 1);
+				}
+
+				// Update the store
+				userTree.set(tree);
+				globalState.showToast('Node deleted successfully', 'success');
 			} catch (err) {
 				console.error(`Error in deletion process: ${err}`);
 				globalState.showToast('Error deleting node', 'error');

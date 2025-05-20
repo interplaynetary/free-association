@@ -9,7 +9,7 @@ export const GET: RequestHandler = async (event) => {
 	const authFunction = await event.locals.auth();
 	
 	// Sign out the user via Auth.js
-	await authFunction.signOut();
+	await authFunction?.signOut();
 	
 	// Redirect to home page
 	throw redirect(303, '/');
