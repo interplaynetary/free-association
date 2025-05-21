@@ -2,32 +2,13 @@
 	import Header from '$lib/components/Header.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { globalState, currentUser } from '$lib/simpleglobal.svelte';
-	import { page } from '$app/stores';
-	import type { UserData } from '$lib/simpleglobal.svelte';
+	import { globalState } from '$lib/global.svelte';
 
 	// Layout props
 	let { children }: LayoutProps = $props();
 
 	// Derived toast state
 	let toast = $derived(globalState.toast);
-
-	// Update user data from session
-	$effect(() => {
-		const session = $page.data.session;
-
-		if (session?.user) {
-			// Update currentUser store
-			currentUser.set({
-				id: session.user.id || '',
-				name: session.user.name || null,
-				email: session.user.email || null,
-				image: session.user.image || null
-			});
-		} else {
-			currentUser.set(null);
-		}
-	});
 </script>
 
 <main>

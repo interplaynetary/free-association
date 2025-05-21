@@ -1,96 +1,74 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { globalState, userTree, currentUser } from '$lib/simpleglobal.svelte';
-	import type { Capacity, CapacityShare, Node, RootNode } from '$lib/protocol/protocol';
+	import { globalState } from '$lib/global.svelte';
+	import type {
+		Capacity,
+		CapacityShare,
+		Node,
+		RootNode,
+		CapacitiesCollection
+	} from '$lib/protocol/protocol';
 	import {
 		findNodeById,
-		addCapacity as addCapacityToNode,
+		addCapacity as addCapacityToCollection,
 		updateNodeById
 	} from '$lib/protocol/protocol';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
+	import { username, userpub } from '$lib/gunSetup';
+	import { userTree, userCapacities, persist } from '$lib/state.svelte';
 
-	// Local state for capacity inventory
-	let capacityEntries = $state<Capacity[]>([]);
+	// UI state for expanded capacity editing
+	let capacityUIState = $state<Record<string, { expanded: boolean }>>({});
 
-	// Local state for expanded capacity editing
-	let openSettings = $state<string | null>(null);
+	// Reactive derived values
+	const capacityEntries = $derived(Object.values($userCapacities || {}));
 
-	// Initialize capacities when component mounts
+	// Initialize UI state when component mounts
 	onMount(() => {
-		loadCapacities();
+		// Initialize UI state for capacities
+		capacityEntries.forEach((cap) => {
+			if (!capacityUIState[cap.id]) {
+				capacityUIState[cap.id] = { expanded: false };
+			}
+		});
 	});
 
-	// Load capacities from the current user's root node in the tree
-	function loadCapacities() {
-		try {
-			const user = get(currentUser);
-			if (!user) {
-				capacityEntries = [];
-				return;
-			}
-
-			const tree = get(userTree);
-			if (!tree) {
-				capacityEntries = [];
-				return;
-			}
-
-			// Get capacities from the RootNode
-			capacityEntries = tree.capacities.map((cap) => ({
-				...cap,
-				expanded: false // Add any UI state properties that aren't in the model
-			}));
-		} catch (error) {
-			console.error('Error loading capacities:', error);
-			globalState.showToast('Error loading capacities', 'error');
-		}
-	}
-
-	// Add a new capacity to the tree
+	// Add a new capacity to the userCapacities store
 	function addCapacity(capacity: Capacity) {
-		const user = get(currentUser);
-		if (!user) return false;
+		if (!$username || !$userpub) return false;
 
-		const tree = get(userTree);
-		if (!tree) return false;
-
-		// Add capacity to the root node
-		addCapacityToNode(tree, capacity);
-
-		// Update the store to trigger reactivity
-		userTree.set(tree);
-
-		// Refresh local state
-		loadCapacities();
+		// Create a plain object copy of the capacity
+		const plainCapacity = { ...capacity };
+		
+		// Update the store directly
+		userCapacities.update((caps) => {
+			const newCaps = { ...(caps || {}) };
+			// Add capacity to the collection
+			addCapacityToCollection(newCaps, plainCapacity);
+			return newCaps;
+		});
 
 		globalState.showToast(`Capacity "${capacity.name}" created`, 'success');
 		return true;
 	}
 
-	// Update capacity in the tree
+	// Update capacity in the userCapacities store
 	function updateCapacity(capacity: Capacity) {
 		try {
-			const user = get(currentUser);
-			if (!user) return false;
+			if (!$username || !$userpub) return false;
 
-			const tree = get(userTree);
-			if (!tree) return false;
+			// Create a new plain object copy of the capacity
+			const plainCapacity = { ...capacity };
 
-			// Update the capacity in the tree
-			const index = tree.capacities.findIndex((c) => c.id === capacity.id);
-			if (index !== -1) {
-				tree.capacities[index] = capacity;
-			}
+			userCapacities.update((caps) => {
+				const newCaps = { ...(caps || {}) };
+				newCaps[plainCapacity.id] = plainCapacity;
+				return newCaps;
+			});
 
-			// Update the store to trigger reactivity
-			userTree.set(tree);
-
-			// Refresh local state
-			loadCapacities();
-
-			globalState.showToast(`Capacity "${capacity.name}" updated`, 'success');
+			globalState.showToast(`Capacity "${plainCapacity.name}" updated`, 'success');
 			return true;
 		} catch (error) {
 			console.error('Error updating capacity:', error);
@@ -99,23 +77,26 @@
 		}
 	}
 
-	// Delete capacity from the tree
+	// Handler for input events that updates capacity  
+	function handleCapacityUpdate(capacity: Capacity) {
+		return () => {
+			updateCapacity(capacity);
+		};
+	}
+
+	// Delete capacity from the userCapacities store
 	function deleteCapacity(capacityId: string) {
 		try {
-			const user = get(currentUser);
-			if (!user) return false;
+			if (!$username || !$userpub) return false;
 
-			const tree = get(userTree);
-			if (!tree) return false;
-
-			// Update the tree structure to remove the capacity
-			tree.capacities = tree.capacities.filter((c) => c.id !== capacityId);
-
-			// Update the store to trigger reactivity
-			userTree.set(tree);
-
-			// Refresh local state
-			loadCapacities();
+			// Update the store directly using the update method
+			userCapacities.update((caps) => {
+				const newCaps = { ...(caps || {}) };
+				if (newCaps[capacityId]) {
+					delete newCaps[capacityId];
+				}
+				return newCaps;
+			});
 
 			globalState.showToast('Capacity deleted', 'success');
 			return true;
@@ -184,8 +165,7 @@
 
 	// Create a new capacity
 	function createDefaultCapacity(): Capacity {
-		const user = get(currentUser);
-		if (!user) throw new Error('No user logged in');
+		if (!$username || !$userpub) throw new Error('No user logged in');
 
 		const now = new Date().toISOString();
 		return {
@@ -194,7 +174,6 @@
 			quantity: 0,
 			unit: '',
 			share_depth: 3,
-			expanded: false,
 			location_type: 'Undefined',
 			all_day: false,
 			start_date: now,
@@ -205,7 +184,7 @@
 			max_natural_div: 1,
 			max_percentage_div: 1.0,
 			hidden_until_request_accepted: false,
-			owner_id: user.id,
+			owner_id: $userpub,
 			shares: []
 		};
 	}
@@ -214,21 +193,14 @@
 	const colors = ['#22c55e', '#86efac', '#dcfce7'];
 
 	// Update capacity depth
-	function setEntryDepth(entries: Capacity[], entryId: string, newDepth: number) {
-		const idx = entries.findIndex((e) => e.id === entryId);
-		if (idx !== -1) {
-			entries[idx] = { ...entries[idx], share_depth: newDepth };
-			updateCapacity(entries[idx]);
-		}
+	function setEntryDepth(capacity: Capacity, newDepth: number) {
+		const updatedCapacity = { ...capacity, share_depth: newDepth };
+		updateCapacity(updatedCapacity);
 	}
 
 	// Add a new capacity row
 	function addCapacityRow() {
-		const user = get(currentUser);
-		if (!user) return;
-
-		const tree = get(userTree);
-		if (!tree) return;
+		if (!$username || !$userpub) return;
 
 		const newCapacity = createDefaultCapacity();
 
@@ -242,78 +214,21 @@
 
 	// Remove a capacity row
 	function removeCapacityRow(entryId: string) {
-		if (capacityEntries.length === 1) return;
+		if (capacityEntries.length <= 1) return;
 
 		const success = deleteCapacity(entryId);
-		if (success) {
-			capacityEntries = capacityEntries.filter((e) => e.id !== entryId);
+		if (!success) {
+			globalState.showToast('Failed to delete capacity', 'error');
 		}
 	}
 
 	// Toggle expanded state for a capacity
 	function toggleExpanded(entryId: string) {
-		const idx = capacityEntries.findIndex((e) => e.id === entryId);
-		if (idx !== -1) {
-			capacityEntries[idx].expanded = !capacityEntries[idx].expanded;
-		}
-	}
-
-	// Handle capacity updates from form inputs
-	function handleCapacityUpdate(capacity: Capacity) {
-		const idx = capacityEntries.findIndex((e) => e.id === capacity.id);
-		if (idx !== -1) {
-			capacityEntries[idx] = capacity;
-			updateCapacity(capacity);
-		}
-	}
-
-	// Convert form string dates to Date objects for saving
-	function prepareCapacityForSave(
-		capacity: Capacity,
-		startDateStr: string,
-		startTimeStr: string,
-		endDateStr: string,
-		endTimeStr: string
-	) {
-		// Parse date and time strings to Date objects
-		const startDate = parseDateTime(startDateStr, startTimeStr);
-		const endDate = parseDateTime(endDateStr, endTimeStr);
-
-		// Create a copy with the parsed dates as ISO strings
-		const updatedCapacity = {
-			...capacity,
-			location_type: capacity.location_type,
-			all_day: capacity.all_day,
-			recurrence: capacity.recurrence,
-			custom_recurrence_repeat_every: capacity.custom_recurrence_repeat_every,
-			custom_recurrence_repeat_unit: capacity.custom_recurrence_repeat_unit,
-			custom_recurrence_end_type: capacity.custom_recurrence_end_type,
-			custom_recurrence_end_value: capacity.custom_recurrence_end_value,
-			start_date: startDate.toISOString(),
-			start_time: startDate.toISOString(),
-			end_date: endDate.toISOString(),
-			end_time: endDate.toISOString(),
-			time_zone: capacity.time_zone,
-			max_natural_div: capacity.max_natural_div,
-			max_percentage_div: capacity.max_percentage_div,
-			hidden_until_request_accepted: capacity.hidden_until_request_accepted,
-			shares: capacity.shares
-		};
-
-		handleCapacityUpdate(updatedCapacity);
-	}
-
-	// Toggle capacity expanded state
-	function toggleCapacityExpanded(capacityId: string) {
-		const capacity = capacityEntries.find((c) => c.id === capacityId);
-		if (capacity) {
-			capacity.expanded = !capacity.expanded;
-			capacityEntries = [...capacityEntries]; // Trigger reactivity
+		if (capacityUIState[entryId]) {
+			capacityUIState[entryId].expanded = !capacityUIState[entryId].expanded;
 		}
 	}
 </script>
-
-<!-- <SixDegrees /> -->
 
 <div class="inventory-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
 	{#each capacityEntries as entry, i (entry.id)}
@@ -324,7 +239,7 @@
 					class="capacity-input name min-w-0 flex-1"
 					bind:value={entry.name}
 					placeholder="Name"
-					onblur={() => handleCapacityUpdate(entry)}
+					oninput={handleCapacityUpdate(entry)}
 				/>
 				<input
 					type="number"
@@ -333,14 +248,14 @@
 					step="0.01"
 					bind:value={entry.quantity}
 					placeholder="Qty"
-					onblur={() => handleCapacityUpdate(entry)}
+					oninput={handleCapacityUpdate(entry)}
 				/>
 				<input
 					type="text"
 					class="capacity-input unit w-20"
 					bind:value={entry.unit}
 					placeholder="Unit"
-					onblur={() => handleCapacityUpdate(entry)}
+					oninput={handleCapacityUpdate(entry)}
 				/>
 				<div class="depth-bar ml-2 flex gap-1">
 					{#each Array(3) as _, j}
@@ -348,7 +263,7 @@
 							class="depth-dot {j < entry.share_depth ? 'active' : ''}"
 							style="background: {j < entry.share_depth ? colors[j] : '#e5e7eb'}"
 							onclick={() => {
-								setEntryDepth(capacityEntries, entry.id, j + 1);
+								setEntryDepth(entry, j + 1);
 							}}
 						></span>
 					{/each}
@@ -375,11 +290,11 @@
 					type="button"
 					class="remove-btn ml-1"
 					onclick={() => removeCapacityRow(entry.id)}
-					disabled={capacityEntries.length === 1}>×</button
+					disabled={capacityEntries.length <= 1}>×</button
 				>
 			</div>
 
-			{#if entry.expanded}
+			{#if capacityUIState[entry.id]?.expanded}
 				<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
 					<div class="settings-content mx-8 my-8">
 						<div class="space-time-section mb-8">
@@ -394,7 +309,7 @@
 											value="Undefined"
 											bind:group={entry.location_type}
 											class="mr-3"
-											onchange={() => handleCapacityUpdate(entry)}
+											onchange={handleCapacityUpdate(entry)}
 										/>
 										<span class="text-sm text-gray-600">Undefined</span>
 									</label>
@@ -405,7 +320,7 @@
 											value="LiveLocation"
 											bind:group={entry.location_type}
 											class="mr-3"
-											onchange={() => handleCapacityUpdate(entry)}
+											onchange={handleCapacityUpdate(entry)}
 										/>
 										<span class="text-sm text-gray-600">Live location</span>
 									</label>
@@ -416,7 +331,7 @@
 											value="Specific"
 											bind:group={entry.location_type}
 											class="mr-3"
-											onchange={() => handleCapacityUpdate(entry)}
+											onchange={handleCapacityUpdate(entry)}
 										/>
 										<span class="text-sm text-gray-600">Specific coordinates</span>
 									</label>
@@ -431,7 +346,7 @@
 												type="checkbox"
 												bind:checked={entry.all_day}
 												class="mr-3 h-4 w-4"
-												onchange={() => handleCapacityUpdate(entry)}
+												onchange={handleCapacityUpdate(entry)}
 											/>
 											<span class="text-sm text-gray-600">All day</span>
 										</label>
@@ -444,7 +359,7 @@
 												type="date"
 												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
 												bind:value={entry.start_date}
-												onchange={() => handleCapacityUpdate(entry)}
+												onchange={handleCapacityUpdate(entry)}
 											/>
 										</div>
 
@@ -454,7 +369,7 @@
 												type="date"
 												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
 												bind:value={entry.end_date}
-												onchange={() => handleCapacityUpdate(entry)}
+												onchange={handleCapacityUpdate(entry)}
 											/>
 										</div>
 									</div>
@@ -466,7 +381,7 @@
 													type="time"
 													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
 													bind:value={entry.start_time}
-													onchange={() => handleCapacityUpdate(entry)}
+													onchange={handleCapacityUpdate(entry)}
 												/>
 											</div>
 
@@ -476,7 +391,7 @@
 													type="time"
 													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
 													bind:value={entry.end_time}
-													onchange={() => handleCapacityUpdate(entry)}
+													onchange={handleCapacityUpdate(entry)}
 												/>
 											</div>
 										</div>
@@ -490,19 +405,19 @@
 													type="text"
 													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
 													bind:value={entry.time_zone}
-													onchange={() => handleCapacityUpdate(entry)}
+													onchange={handleCapacityUpdate(entry)}
 												/>
 											</div>
 										</div>
 									{/if}
-									
+
 									<!-- Recurrence dropdown styled like Google Calendar -->
 									<div class="mb-6">
 										<div class="relative w-full md:w-auto">
 											<select
 												class="capacity-select w-full appearance-none rounded-md bg-gray-100 px-3 py-2"
 												bind:value={entry.recurrence}
-												onchange={() => handleCapacityUpdate(entry)}
+												onchange={handleCapacityUpdate(entry)}
 											>
 												{#each recurrenceOptions as option}
 													<option value={option}>{option}</option>
@@ -521,12 +436,12 @@
 													min="1"
 													class="capacity-input qty w-16 text-right"
 													bind:value={entry.custom_recurrence_repeat_every}
-													onchange={() => handleCapacityUpdate(entry)}
+													onchange={handleCapacityUpdate(entry)}
 												/>
 												<select
 													class="capacity-select ml-3 w-28"
 													bind:value={entry.custom_recurrence_repeat_unit}
-													onchange={() => handleCapacityUpdate(entry)}
+													onchange={handleCapacityUpdate(entry)}
 												>
 													<option value="days">days</option>
 													<option value="weeks">weeks</option>
@@ -547,7 +462,7 @@
 															checked={entry.custom_recurrence_end_type === 'never'}
 															onchange={() => {
 																entry.custom_recurrence_end_type = 'never';
-																handleCapacityUpdate(entry);
+																updateCapacity(entry);
 															}}
 															class="mr-3"
 														/>
@@ -563,8 +478,10 @@
 																checked={entry.custom_recurrence_end_type === 'endsOn'}
 																onchange={() => {
 																	entry.custom_recurrence_end_type = 'endsOn';
-																	entry.custom_recurrence_end_value = formatDateForInput(new Date());
-																	handleCapacityUpdate(entry);
+																	entry.custom_recurrence_end_value = formatDateForInput(
+																		new Date()
+																	);
+																	updateCapacity(entry);
 																}}
 																class="mr-3"
 															/>
@@ -576,7 +493,7 @@
 																	type="date"
 																	class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
 																	bind:value={entry.custom_recurrence_end_value}
-																	onchange={() => handleCapacityUpdate(entry)}
+																	onchange={handleCapacityUpdate(entry)}
 																/>
 															</div>
 														{/if}
@@ -592,7 +509,7 @@
 																onchange={() => {
 																	entry.custom_recurrence_end_type = 'endsAfter';
 																	entry.custom_recurrence_end_value = '5';
-																	handleCapacityUpdate(entry);
+																	updateCapacity(entry);
 																}}
 																class="mr-3"
 															/>
@@ -605,7 +522,7 @@
 																	min="1"
 																	class="capacity-input qty w-16 text-right"
 																	bind:value={entry.custom_recurrence_end_value}
-																	onchange={() => handleCapacityUpdate(entry)}
+																	onchange={handleCapacityUpdate(entry)}
 																/>
 																<span class="ml-2 text-sm text-gray-600">occurrences</span>
 															</div>
@@ -625,7 +542,7 @@
 									type="checkbox"
 									bind:checked={entry.hidden_until_request_accepted}
 									class="mr-3 h-4 w-4"
-									onchange={() => handleCapacityUpdate(entry)}
+									onchange={handleCapacityUpdate(entry)}
 								/>
 								<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
 							</label>
@@ -643,7 +560,7 @@
 										class="capacity-input qty w-full text-right"
 										bind:value={entry.max_natural_div}
 										placeholder="Natural"
-										onblur={() => handleCapacityUpdate(entry)}
+										onchange={handleCapacityUpdate(entry)}
 									/>
 								</div>
 								<div>
@@ -655,7 +572,7 @@
 										class="capacity-input qty w-full text-right"
 										bind:value={entry.max_percentage_div}
 										placeholder="Percentage (0-1)"
-										onblur={() => handleCapacityUpdate(entry)}
+										onchange={handleCapacityUpdate(entry)}
 									/>
 								</div>
 							</div>

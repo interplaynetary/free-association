@@ -21,14 +21,11 @@ import {
 	desire,
 	updateNodeById as updateNode
 } from '$lib/protocol/protocol';
+import { username, userpub } from '$lib/gunSetup';
+import { userTree, persist, manifest } from '$lib/state.svelte';
 
-// Auth.js user data types
-export interface UserData {
-	id: string; // Using Auth.js standard format
-	name: string | null;
-	email: string | null;
-	image: string | null;
-}
+// GunDB user data types from gunSetup
+// User identification is handled via username (alias) and userpub (public key)
 
 type ToastType = 'info' | 'success' | 'warning' | 'error';
 
@@ -36,15 +33,31 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  * Core Reactive Stores
  *
  * These stores form the foundation of our state management:
- * - currentUser: The authenticated user from Auth.js
- * - userTree: The complete tree structure for the current user
+ * - username & userpub: The authenticated user from Gun (imported from gunSetup)
+ * - userTree: The complete tree structure for the current user (imported from state)
  * - currentPath: The navigation path (array of node IDs) in the tree
  */
-export const currentUser: Writable<UserData | null> = writable(null);
-export const userTree: Writable<RootNode | null> = writable(null);
 export const currentPath: Writable<string[]> = writable([]);
 
-// We will do some simple logic for getting and putting the userTree to the server
+// Initialize currentPath when user logs in
+if (browser) {
+	// Watch for user authentication state changes
+	let lastPub = '';
+	userpub.subscribe((pub) => {
+		if (pub && pub !== lastPub) {
+			// User has logged in or changed - initialize path with user's pub
+			currentPath.set([pub]);
+			lastPub = pub;
+			console.log('Initialized currentPath with user public key:', pub);
+		} else if (!pub && lastPub) {
+			// User has logged out - clear path
+			currentPath.set([]);
+			lastPub = '';
+		}
+	});
+}
+
+// We will use the persist/manifest functions from state.ts for sync
 
 export const globalState = $state({
 	// UI state
@@ -93,7 +106,6 @@ export const globalState = $state({
 	resetState: () => {
 		userTree.set(null);
 		currentPath.set([]);
-		currentUser.set(null);
 	},
 
 	/**

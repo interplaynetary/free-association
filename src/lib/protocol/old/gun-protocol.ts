@@ -2,10 +2,6 @@
  * Free Association Protocol - Gun.js Implementation
  */
 
-import Gun from 'gun';
-import 'gun/sea';
-import jsonLogic from 'json-logic-js';
-
 // Gun and SEA type definitions
 interface IGunChain {
 	get: (key: string) => IGunChain;
@@ -37,10 +33,6 @@ interface GunNode {
 	children?: any[];
 	[key: string]: any;
 }
-
-// Initialize Gun
-const gun = Gun(['https://gun-relay.example.com/gun']);
-const user = gun.user();
 
 // Utility for generating random IDs
 const randomId = (): string => {

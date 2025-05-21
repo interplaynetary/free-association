@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { userTree, currentPath, globalState } from '$lib/simpleglobal.svelte';
+	import { userTree } from '$lib/state.svelte';
+	import { currentPath, globalState } from '$lib/global.svelte';
+	import { username, userpub } from '$lib/gunSetup';
 	import {
 		type Node,
 		type NonRootNode,
@@ -20,7 +22,6 @@
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';
-	import { get } from 'svelte/store';
 
 	// Define a type for visualization data
 	interface VisualizationNode {
@@ -38,6 +39,12 @@
 
 	// For tracking changes in d3 visualization
 	let updateCounter = $state(0);
+
+	// Function to manually trigger a UI update
+	function triggerUpdate() {
+		updateCounter++;
+		console.log('[UI FLOW] Triggered update', updateCounter);
+	}
 
 	// UI interaction state
 	let showUserDropdown = $state(false);
@@ -60,60 +67,65 @@
 	const BASE_SHRINK_RATE = -0.8;
 	const TAP_THRESHOLD = 250;
 
-	// Format data for d3 to consume
-	let packData = $state({ id: '', selfPoints: 0, children: [] as VisualizationNode[] });
+	// Reactive store subscriptions
+	const tree = $derived($userTree);
+	const path = $derived($currentPath);
+	const pub = $derived($userpub);
 
-	// Helper functions to get current state
-	function getCurrentNodeId(): string | null {
-		const path = get(currentPath);
-		return path.length > 0 ? path[path.length - 1] : null;
-	}
-
-	function getCurrentNode(): Node | null {
-		const tree = get(userTree);
-		const nodeId = getCurrentNodeId();
-		if (!tree || !nodeId) return null;
-		return findNodeById(tree, nodeId);
-	}
-
-	function getChildNodes(): Node[] {
-		const currentNode = getCurrentNode();
-		return currentNode ? currentNode.children : [];
-	}
-
-	// Subscribe to the derived stores for reactive updates
-	$effect(() => {
-		const node = getCurrentNode();
-		const children = getChildNodes();
-
-		if (!node) {
-			packData = { id: '', selfPoints: 0, children: [] };
-			return;
+	// Helper function to get current node ID
+	const currentNodeId = $derived.by(() => {
+		// If the path is empty but we have a user pub, use that as the root
+		if (path.length === 0 && pub) {
+			return pub;
 		}
 
-		const mappedChildren = children.map((child) => ({
+		return path.length > 0 ? path[path.length - 1] : null;
+	});
+
+	// Get the current node
+	const currentNode = $derived.by(() => {
+		if (!tree && currentNodeId && pub && currentNodeId === pub) {
+			// Initial load - wait for tree
+			console.log('[UI FLOW] Waiting for tree to be loaded');
+			return null;
+		}
+
+		if (!tree || !currentNodeId) return null;
+		return findNodeById(tree, currentNodeId);
+	});
+
+	// Get child nodes
+	const childNodes = $derived.by(() => {
+		return currentNode ? currentNode.children : [];
+	});
+
+	// Format data for d3 to consume
+	const packData = $derived.by(() => {
+		if (!currentNode) {
+			return { id: '', selfPoints: 0, children: [] };
+		}
+
+		const mappedChildren = childNodes.map((child) => ({
 			id: child.id,
 			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
-			contributors:
-				child.type === 'NonRootNode' ? (child as NonRootNode).contributors.map((c) => c.id) : [],
+			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
 			children: [] as VisualizationNode[]
 		}));
 
-		packData = {
-			id: node.id,
-			selfPoints: node.type === 'NonRootNode' ? (node as NonRootNode).points : 0,
+		return {
+			id: currentNode.id,
+			selfPoints: currentNode.type === 'NonRootNode' ? (currentNode as NonRootNode).points : 0,
 			children: mappedChildren
 		};
 	});
 
 	// Create hierarchy for d3
-	let hierarchyData: d3.HierarchyRectangularNode<VisualizationNode> | null = $state(null);
-
-	$effect(() => {
-		const data = packData;
+	const hierarchyData = $derived.by(() => {
 		// Force rerender when updateCounter changes
 		updateCounter;
+
+		const data = packData;
 
 		// Create hierarchy
 		const rootNode: VisualizationNode = {
@@ -158,7 +170,7 @@
 			.padding(0.005)
 			.round(false);
 
-		hierarchyData = treemap(hierarchy);
+		return treemap(hierarchy);
 	});
 
 	onMount(() => {
@@ -172,6 +184,14 @@
 			labelIndex = (labelIndex + 1) % nodeLabels.length;
 		}, 4000);
 
+		// Setup a subscription to the userTree store to trigger updates
+		const unsubscribe = userTree.subscribe((value) => {
+			if (value) {
+				console.log('[UI FLOW] userTree updated, triggering UI update');
+				triggerUpdate();
+			}
+		});
+
 		return () => {
 			// Clean up timers and event listeners
 			if (growthInterval !== null) clearInterval(growthInterval);
@@ -180,6 +200,7 @@
 			document.removeEventListener('mouseup', handleGlobalTouchEnd);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
 			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
+			unsubscribe();
 		};
 	});
 
@@ -192,7 +213,6 @@
 
 	async function handleAddNode() {
 		console.log('[UI FLOW] handleAddNode started');
-		const currentNodeId = getCurrentNodeId();
 		if (!currentNodeId) {
 			console.log('[UI FLOW] No currentNodeId, aborting');
 			return;
@@ -226,28 +246,42 @@
 			name: newNodeName
 		});
 		console.log('[UI FLOW] Current parent:', currentNodeId);
-		console.log('[UI FLOW] Current path:', get(currentPath));
+		console.log('[UI FLOW] Current path:', path);
 
 		try {
 			// Get the tree and current node
-			const tree = get(userTree);
 			if (!tree) {
 				globalState.showToast('Error creating node: No tree found', 'error');
 				return;
 			}
 
 			// Find the current node
-			const currentNode = findNodeById(tree, currentNodeId);
 			if (!currentNode) {
 				globalState.showToast('Error creating node: Current node not found', 'error');
 				return;
 			}
 
-			// Add child to current node
-			addChild(currentNode, newNodeId, newNodeName, newPoints);
+			// Create a deep clone of the current tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
 
-			// Update the store to trigger reactivity
-			userTree.set(tree);
+			// Find the current node in our cloned tree
+			const updatedCurrentNode = findNodeById(updatedTree, currentNodeId);
+			if (!updatedCurrentNode) {
+				globalState.showToast(
+					'Error creating node: Current node not found in updated tree',
+					'error'
+				);
+				return;
+			}
+
+			// Add child to current node in our cloned tree
+			addChild(updatedCurrentNode, newNodeId, newNodeName, newPoints);
+
+			// Update the store with the new tree to trigger reactivity
+			userTree.set(updatedTree);
+
+			// Force update counter to trigger redraw
+			triggerUpdate();
 
 			console.log('[UI FLOW] addNode successful');
 			globalState.showToast('New node created', 'success');
@@ -257,6 +291,7 @@
 			setTimeout(() => {
 				globalState.nodeToEdit = newNodeId;
 				console.log('[UI FLOW] Node edit mode set');
+				console.log('userTree Parent.275', $userTree);
 			}, 50);
 		} catch (err) {
 			console.error('[UI FLOW] Error in handleAddNode:', err);
@@ -269,16 +304,22 @@
 		const { nodeId, newName } = detail;
 
 		try {
-			const tree = get(userTree);
 			if (!tree) return;
 
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
 			// Update the node name in memory
-			updateNodeById(tree, nodeId, (node) => {
+			updateNodeById(updatedTree, nodeId, (node) => {
 				updateName(node, newName);
 			});
 
 			// Update store to trigger reactivity
-			userTree.set(tree);
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
+
 			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
@@ -300,24 +341,29 @@
 		const { nodeId, contributorId } = detail;
 
 		try {
-			// Get the current tree
-			const tree = get(userTree);
 			if (!tree) return;
 
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
 			// Find the node to update
-			const node = findNodeById(tree, nodeId);
+			const node = findNodeById(updatedTree, nodeId);
 			if (!node || node.type !== 'NonRootNode') return;
 
 			// Get current contributor IDs and filter out the one to remove
-			const updatedContributors = (node as NonRootNode).contributors.filter(
-				(c) => c.id !== contributorId
+			const updatedContributors = (node as NonRootNode).contributor_ids.filter(
+				(id) => id !== contributorId
 			);
 
 			// Update the node's contributors
-			(node as NonRootNode).contributors = updatedContributors;
+			(node as NonRootNode).contributor_ids = updatedContributors;
 
 			// Update the store to trigger reactivity
-			userTree.set(tree);
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
+
 			globalState.showToast('Contributor removed successfully', 'success');
 		} catch (err) {
 			console.error('Error removing contributor:', err);
@@ -348,27 +394,28 @@
 
 	function addContributorToNode(nodeId: string, userId: string) {
 		try {
-			// Get the current tree
-			const tree = get(userTree);
 			if (!tree) return;
 
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
 			// Find the node to update
-			const node = findNodeById(tree, nodeId);
+			const node = findNodeById(updatedTree, nodeId);
 			if (!node || node.type !== 'NonRootNode') return;
 
-			// Find the contributor node
-			const contributorNode = findNodeById(tree, userId);
-			if (!contributorNode) return;
-
 			// Check if contributor already exists
-			const hasContributor = (node as NonRootNode).contributors.some((c) => c.id === userId);
+			const hasContributor = (node as NonRootNode).contributor_ids.includes(userId);
 
 			if (!hasContributor) {
-				// Add the contributor
-				(node as NonRootNode).contributors.push(contributorNode);
+				// Add the contributor ID
+				(node as NonRootNode).contributor_ids.push(userId);
 
 				// Update the store to trigger reactivity
-				userTree.set(tree);
+				userTree.set(updatedTree);
+
+				// Force update
+				triggerUpdate();
+
 				globalState.showToast('Contributor added successfully', 'success');
 			}
 		} catch (err) {
@@ -379,7 +426,6 @@
 
 	// Calculate node fulfillment directly using protocol
 	function getNodeFulfillment(nodeId: string): number {
-		const tree = get(userTree);
 		if (!tree) return 0;
 
 		const node = findNodeById(tree, nodeId);
@@ -482,19 +528,23 @@
 
 	function saveNodePoints(nodeId: string, points: number) {
 		try {
-			// Get the current tree
-			const tree = get(userTree);
 			if (!tree) return;
 
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
 			// Find the node and directly update it
-			const node = findNodeById(tree, nodeId);
+			const node = findNodeById(updatedTree, nodeId);
 			if (!node || node.type !== 'NonRootNode') return;
 
 			// Update points directly using protocol
 			updatePoints(node as NonRootNode, points);
 
 			// Update the store to trigger reactivity
-			userTree.set(tree);
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
 			globalState.showToast('Error saving node points', 'error');
@@ -564,18 +614,19 @@
 	function handleNodeDeletion(nodeId: string) {
 		if (confirm(`Delete this node?`)) {
 			try {
-				const tree = get(userTree);
 				if (!tree) return;
 
+				// Create a clone of the tree to ensure reactivity
+				const updatedTree = structuredClone(tree);
+
 				// Find the parent node first
-				const parentNode = getParentNode(tree, nodeId);
+				const parentNode = getParentNode(updatedTree, nodeId);
 				if (!parentNode) {
 					console.error('Cannot find parent node');
 					return;
 				}
 
 				// Don't allow deleting root node
-				const path = get(currentPath);
 				if (nodeId === path[0]) {
 					console.error('Cannot delete root node');
 					globalState.showToast('Cannot delete root node', 'error');
@@ -583,7 +634,6 @@
 				}
 
 				// Check if we're trying to delete the current node
-				const currentNodeId = getCurrentNodeId();
 				const isCurrentNode = currentNodeId === nodeId;
 				if (isCurrentNode) {
 					// If we're on the node to delete, navigate up to parent first
@@ -597,7 +647,7 @@
 				}
 
 				// Find the node to delete
-				const nodeToDelete = findNodeById(tree, nodeId);
+				const nodeToDelete = findNodeById(updatedTree, nodeId);
 				if (!nodeToDelete) {
 					globalState.showToast('Node not found', 'error');
 					return;
@@ -610,7 +660,11 @@
 				}
 
 				// Update the store
-				userTree.set(tree);
+				userTree.set(updatedTree);
+
+				// Force update
+				triggerUpdate();
+
 				globalState.showToast('Node deleted successfully', 'success');
 			} catch (err) {
 				console.error(`Error in deletion process: ${err}`);

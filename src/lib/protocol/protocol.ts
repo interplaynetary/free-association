@@ -2,11 +2,11 @@
  * Free Association Protocol
  */
 
+// TODO: Compute QuantityShares does not take into account the filters!
+
 // Import json-logic-js with type assertion
 // @ts-ignore
 import jsonLogic from 'json-logic-js';
-
-// What if we did a simple persistence layer via user.put(JSON.stringify(tree))???????
 
 // Type definitions that match API response structures
 export interface BaseNode {
@@ -20,7 +20,6 @@ export interface BaseNode {
 export interface RootNode extends BaseNode {
 	type: 'RootNode';
 	user_id: string;
-	capacities: Capacity[];
 	created_at: string;
 	updated_at: string;
 }
@@ -34,13 +33,13 @@ export interface NonRootNode extends BaseNode {
 
 export type Node = RootNode | NonRootNode;
 
+// Separate capacities interfaces
 export interface Capacity {
 	id: string;
 	name: string;
 	quantity: number;
 	unit: string;
 	share_depth: number;
-	expanded: boolean;
 	location_type: string;
 	all_day: boolean;
 	recurrence?: string;
@@ -67,6 +66,11 @@ export interface CapacityShare {
 	computed_quantity: number;
 	capacity_id: string;
 	recipient_id: string;
+}
+
+// Collection of capacities
+export interface CapacitiesCollection {
+	[id: string]: Capacity;
 }
 
 export type ShareMap = Record<string, number>;
@@ -504,7 +508,6 @@ export function createRootNode(
 		user_id: userId,
 		children: [],
 		manual_fulfillment: validateManualFulfillment(manual),
-		capacities: [],
 		created_at: new Date().toISOString(),
 		updated_at: new Date().toISOString()
 	};
@@ -574,15 +577,15 @@ export function updateManualFulfillment(node: Node, value: number | undefined): 
 	node.manual_fulfillment = validateManualFulfillment(value);
 }
 
-// Add a capacity to a node (mutates the node)
-export function addCapacity(node: RootNode, capacity: Capacity): void {
-	node.capacities.push(capacity);
+// Add a capacity to a collection
+export function addCapacity(capacities: CapacitiesCollection, capacity: Capacity): void {
+	capacities[capacity.id] = capacity;
 }
 
-// Add a capacity share to a node (mutates the node)
-export function addCapacityShare(node: RootNode, share: CapacityShare): void {
+// Add a capacity share to a capacity in a collection
+export function addCapacityShare(capacities: CapacitiesCollection, share: CapacityShare): void {
 	// Find the matching capacity if it exists
-	const capacity = node.capacities.find((cap) => cap.id === share.capacity_id);
+	const capacity = capacities[share.capacity_id];
 
 	if (capacity) {
 		// Add the share to the capacity's shares array

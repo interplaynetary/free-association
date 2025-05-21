@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getColorForUserId } from '../utils/colorUtils';
+	import { gun } from '../gunSetup';
 
 	// Props using Svelte 5 runes
 	let {
@@ -23,26 +24,28 @@
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Load user data
+	// Load user data from Gun
 	async function loadUserData() {
 		isLoading = true;
 		try {
-			// Fetch tree data from the API
-			const response = await fetch(`/api/tree/${userId}`);
-			if (response.ok) {
-				const data = await response.json();
-				if (data.success && data.data) {
-					displayName = data.data.name || userId;
-				} else {
-					displayName = userId;
-				}
-			} else {
-				displayName = userId;
-			}
+			gun
+				.get('users')
+				.get(userId)
+				.once((pubUser: any) => {
+					if (pubUser && pubUser.name) {
+						displayName = pubUser.name;
+					} else {
+						// If no name is found, keep using the userId
+						displayName = userId;
+					}
+					isLoading = false;
+					updateTooltip(displayName);
+				});
+			isLoading = false;
+			updateTooltip(displayName);
 		} catch (error) {
-			console.error(`Error loading tree data for ${userId}:`, error);
+			console.error(`Error loading user data for ${userId}:`, error);
 			displayName = userId;
-		} finally {
 			isLoading = false;
 			updateTooltip(displayName);
 		}

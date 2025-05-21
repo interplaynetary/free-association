@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { browser } from '$app/environment';
+	import { gun, usersList } from '../gunSetup';
 
 	// Props using Svelte 5 runes
 	let {
@@ -45,50 +46,38 @@
 	// Function to update users list based on current filter
 	async function updateUsersList() {
 		loading = true;
+		usersArray = [];
 
 		try {
-			// Fetch trees (users) from forest API
-			const response = await fetch('/api/forest');
-			if (response.ok) {
-				const data = await response.json();
+			// Use Gun to fetch users
+			usersList.map().once((userData: any, userId: string) => {
+				// Skip if this is not a valid user entry or if in excluded list
+				if (!userData || !userId || excludeIds.includes(userId)) return;
 
-				if (data.success) {
-					// Filter trees based on search criteria and exclusions
-					const filteredUsers = data.trees
-						.filter((tree: any) => {
-							// Skip excluded users
-							if (excludeIds.includes(tree.id)) return false;
+				// Get user name, fallback to user ID if name not available
+				const userName = userData.name || userId;
 
-							// Apply search filter if exists
-							if (searchFilter) {
-								const searchLower = searchFilter.toLowerCase();
-								const nameLower = (tree.name || '').toLowerCase();
-								const idLower = tree.id.toLowerCase();
+				// Apply search filter if it exists
+				if (searchFilter) {
+					const searchLower = searchFilter.toLowerCase();
+					const nameLower = userName.toLowerCase();
+					const idLower = userId.toLowerCase();
 
-								return nameLower.includes(searchLower) || idLower.includes(searchLower);
-							}
-
-							return true;
-						})
-						.map((tree: any) => ({
-							id: tree.id,
-							name: tree.name || tree.id
-						}));
-
-					usersArray = filteredUsers;
-				} else {
-					usersArray = [];
-					console.error('Failed to fetch trees:', data.message);
+					if (!nameLower.includes(searchLower) && !idLower.includes(searchLower)) {
+						return;
+					}
 				}
-			} else {
-				usersArray = [];
-				console.error('Failed to fetch trees, server returned:', response.status);
-			}
+
+				// Add to users array
+				usersArray = [...usersArray, { id: userId, name: userName }];
+			});
 		} catch (error) {
-			console.error('Error fetching trees:', error);
-			usersArray = [];
+			console.error('Error fetching users from Gun:', error);
 		} finally {
-			loading = false;
+			// Set loading to false after a short delay to ensure we've collected users
+			setTimeout(() => {
+				loading = false;
+			}, 500);
 		}
 	}
 

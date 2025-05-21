@@ -1,19 +1,30 @@
 <script lang="ts">
-	import { globalState, userTree, currentPath, currentUser } from '$lib/simpleglobal.svelte';
+	import { globalState, currentPath } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { signIn, signOut } from '@auth/sveltekit/client';
 	import { get } from 'svelte/store';
+	import { username, userpub, login, signup, signout } from '$lib/gunSetup';
+	import { userTree } from '$lib/state.svelte';
 	import {
 		findNodeById,
 		addChild,
 		createNonRootNode,
-		type Node as TreeNode
+		type Node as TreeNode,
+		type RootNode
 	} from '$lib/protocol/protocol';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
+
+	// For tracking tree updates and forcing rerenders
+	let updateCounter = $state(0);
+
+	// Function to manually trigger a UI update when tree changes
+	function triggerUpdate() {
+		updateCounter++;
+		console.log('[UI FLOW] Header triggered update', updateCounter);
+	}
 
 	// Derived values from path and tree
 	let currentPathInfo = $state<PathInfo>([]);
@@ -33,6 +44,19 @@
 		});
 
 		currentPathInfo = pathInfo;
+	});
+
+	// Subscribe to userTree changes to ensure UI updates
+	onMount(() => {
+		const unsubscribe = userTree.subscribe((value) => {
+			if (value) {
+				triggerUpdate();
+			}
+		});
+
+		return () => {
+			unsubscribe();
+		};
 	});
 
 	// Get current route from $page store
@@ -82,7 +106,7 @@
 		document.addEventListener('mousedown', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
-		if (!get(currentUser)) {
+		if (!$username) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -113,7 +137,7 @@
 		isRegisterMode = false;
 	}
 
-	// Add new node handler (moved from global.svelte.ts)
+	// Add new node handler
 	function handleAddNode() {
 		const tree = get(userTree);
 		const path = get(currentPath);
@@ -123,9 +147,15 @@
 		// Get current node ID (last in path)
 		const currentNodeId = path[path.length - 1];
 
-		// Find the current node in the tree
-		const currentNode = findNodeById(tree, currentNodeId);
-		if (!currentNode) return;
+		// Create a deep clone of the tree to ensure reactivity
+		const updatedTree = structuredClone(tree);
+
+		// Find the current node in the cloned tree
+		const currentNode = findNodeById(updatedTree, currentNodeId);
+		if (!currentNode) {
+			globalState.showToast('Error creating node: Current node not found', 'error');
+			return;
+		}
 
 		// Create a unique ID for the new node
 		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -133,11 +163,14 @@
 		const newPoints = 10;
 
 		try {
-			// Add child to the current node
+			// Add child to the current node in the cloned tree
 			addChild(currentNode, newNodeId, newNodeName, newPoints);
 
-			// Update the store to trigger reactivity
-			userTree.set(tree);
+			// Update the store with the new tree to trigger reactivity
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
 
 			// Show success message
 			globalState.showToast('New node created', 'success');
@@ -158,7 +191,7 @@
 			event.preventDefault();
 
 			// If user is not authenticated, show login panel regardless of route
-			if (!get(currentUser)) {
+			if (!$username) {
 				showLoginPanel = true;
 			}
 			// If we're not in the soul route, navigate to the soul route
@@ -249,85 +282,40 @@
 		}
 	}
 
-	// Handle login with Auth.js
+	// Handle login with Gun
 	async function handleLogin() {
 		try {
-			// Use Auth.js credentials provider
-			const result = await signIn('credentials', {
-				username: usernameInput.trim(),
-				password: password,
-				redirect: false
-			});
-
-			if (result?.error) {
-				errorMessage = 'Invalid credentials. Please try again.';
-			} else {
-				// Success, close the login panel
-				showLoginPanel = false;
-				resetForm();
-				globalState.showToast('Signed in successfully', 'success');
-				goto('/');
-			}
+			login(usernameInput.trim(), password);
+			// Success handling is done via Gun's 'auth' event in gunSetup
+			showLoginPanel = false;
+			resetForm();
+			globalState.showToast('Signed in successfully', 'success');
 		} catch (error) {
 			console.error('Authentication error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Authentication error';
 		}
 	}
 
-	// Handle signup/register
+	// Handle signup/register with Gun
 	async function handleSignup() {
 		try {
-			// Call register endpoint
-			const response = await fetch('/auth/register', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					username: usernameInput.trim(),
-					password: password
-				})
-			});
-
-			const data = await response.json();
-
-			if (response.ok) {
-				// After registration, sign in automatically
-				const signInResult = await signIn('credentials', {
-					username: usernameInput.trim(),
-					password: password,
-					redirect: false
-				});
-
-				if (signInResult?.error) {
-					// Registration successful but sign-in failed
-					errorMessage = 'Account created, but automatic sign-in failed. Please sign in manually.';
-					isRegisterMode = false;
-				} else {
-					// Success, close the login panel
-					showLoginPanel = false;
-					resetForm();
-					globalState.showToast('Account created successfully!', 'success');
-					goto('/');
-				}
-			} else {
-				// Registration failed
-				errorMessage =
-					data.error || data.message || 'Registration failed. Please try another username.';
-			}
+			signup(usernameInput.trim(), password);
+			// Success handling is done via Gun's 'auth' event in gunSetup
+			showLoginPanel = false;
+			resetForm();
+			globalState.showToast('Account created successfully!', 'success');
 		} catch (error) {
 			console.error('Registration error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Registration error';
 		}
 	}
 
-	// Handle logout
+	// Handle logout with Gun
 	async function handleLogout() {
 		try {
-			await signOut({ redirect: false });
+			signout();
 			globalState.resetState();
 			globalState.showToast('Signed out successfully', 'info');
-			// Redirect to home after logout
 			goto('/');
 		} catch (error) {
 			console.error('Logout error:', error);
@@ -391,8 +379,19 @@
 	<div class="header-main">
 		<div class="node-name">
 			<div class="breadcrumbs">
-				{#if currentPathInfo.length === 0}
-					<div class="loading-path">Loading...</div>
+				{#if currentPathInfo.length === 0 && $username}
+					<!-- Fallback to showing username if no path but user is logged in -->
+					<a
+						href={`/${$userpub}`}
+						class="breadcrumb-item auth-root current"
+						onclick={(e) => handleBreadcrumbClick(0, e)}
+						tabindex="0"
+						aria-label={$username}
+					>
+						{$username}
+					</a>
+				{:else if currentPathInfo.length === 0}
+					<div class="loading-path">Login</div>
 				{:else}
 					{#each currentPathInfo as segment, index}
 						{#if index > 0}
@@ -435,19 +434,16 @@
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
 		<div class="login-panel">
-			{#if get(currentUser)}
+			{#if $username}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img
-								src={generateAvatar(get(currentUser)?.name, 60)}
-								alt={get(currentUser)?.name || 'User'}
-							/>
+							<img src={generateAvatar($username, 60)} alt={$username} />
 						</div>
 						<div class="user-details">
-							<h3>Welcome, {get(currentUser)?.name || 'User'}</h3>
-							<p class="user-id">@{get(currentUser)?.email || 'anonymous'}</p>
+							<h3>Welcome, {$username}</h3>
+							<p class="user-id">@{$username || 'anonymous'}</p>
 						</div>
 					</div>
 					<div class="actions">

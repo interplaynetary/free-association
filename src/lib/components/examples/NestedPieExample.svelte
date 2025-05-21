@@ -5,7 +5,9 @@
 	 */
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
-	import { globalState, currentUser, userTree, currentPath } from '$lib/simpleglobal.svelte';
+	import { globalState, currentPath } from '$lib/global.svelte';
+	import { username, userpub } from '$lib/gunSetup';
+	import { userTree } from '$lib/state.svelte';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/protocol/protocol';
 	import { providerShares, normalizeShareMap } from '$lib/protocol/protocol';
@@ -21,11 +23,10 @@
 
 	// Watch for changes in the current user and path
 	$effect(() => {
-		const user = get(currentUser);
-		const path = get(currentPath);
 		const tree = get(userTree);
+		const path = get(currentPath);
 
-		if (user && tree) {
+		if ($username && $userpub && tree) {
 			// Update shares whenever user changes or path changes
 			updateProviderShares();
 		} else {
@@ -36,10 +37,9 @@
 
 	// Function to update provider shares based on the current user and tree
 	function updateProviderShares() {
-		const user = get(currentUser);
-		const tree = get(userTree);
+		const tree = get(userTree) as RootNode;
 
-		if (!user || !tree) return;
+		if (!$username || !$userpub || !tree) return;
 
 		// Generate pie chart data for different depths
 		const newLayers: Array<PieChartData> = [];
@@ -164,7 +164,7 @@
 
 	// Initialize on mount
 	onMount(() => {
-		if (get(currentUser) && get(userTree)) {
+		if ($username && $userpub && get(userTree)) {
 			updateProviderShares();
 		} else {
 			layeredData = createExampleData();
@@ -175,7 +175,7 @@
 <div class="container">
 	<div class="pie-container">
 		<div class="debug-buttons">
-			<button class="debug-button" on:click={toggleDebugInfo}>
+			 <button class="debug-button" on:click={toggleDebugInfo}>
 				{showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
 			</button>
 		</div>
@@ -207,7 +207,7 @@
 				<pre>{JSON.stringify(layeredData, null, 2)}</pre>
 
 				<strong>User:</strong>
-				{get(currentUser)?.name || 'Not logged in'}<br />
+				{$username || 'Not logged in'}<br />
 				<strong>Path:</strong>
 				{get(currentPath).join(' > ')}
 
