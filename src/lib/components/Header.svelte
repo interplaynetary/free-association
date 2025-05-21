@@ -26,36 +26,47 @@
 		console.log('[UI FLOW] Header triggered update', updateCounter);
 	}
 
-	// Derived values from path and tree
-	let currentPathInfo = $state<PathInfo>([]);
+	// Reactive store subscriptions
+	const tree = $derived($userTree);
+	const path = $derived($currentPath);
+	const pub = $derived($userpub);
+	const user = $derived($username);
 
-	$effect(() => {
-		// Update path info when path changes
-		const path = get(currentPath);
-		const tree = get(userTree);
-		if (!tree) return;
+	// Derived path info based on current path and tree
+	const currentPathInfo = $derived.by(() => {
+		// Force update when counter changes
+		updateCounter;
 
-		const pathInfo: PathInfo = path.map((id) => {
+		if (!tree || path.length === 0) return [];
+
+		// Map each path ID to a name, finding the name in the tree
+		return path.map((id) => {
 			const node = findNodeById(tree, id);
 			return {
 				id,
 				name: node ? node.name : 'Unknown'
 			};
 		});
-
-		currentPathInfo = pathInfo;
 	});
 
 	// Subscribe to userTree changes to ensure UI updates
 	onMount(() => {
 		const unsubscribe = userTree.subscribe((value) => {
 			if (value) {
+				console.log('[UI FLOW] Header userTree updated, triggering UI update');
 				triggerUpdate();
 			}
 		});
 
+		// Also subscribe to currentPath changes
+		const unsubscribePath = currentPath.subscribe((value) => {
+			console.log('[UI FLOW] Header path updated:', value);
+			triggerUpdate();
+		});
+
 		return () => {
 			unsubscribe();
+			unsubscribePath();
 		};
 	});
 
@@ -106,7 +117,7 @@
 		document.addEventListener('mousedown', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
-		if (!$username) {
+		if (!user) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -139,9 +150,6 @@
 
 	// Add new node handler
 	function handleAddNode() {
-		const tree = get(userTree);
-		const path = get(currentPath);
-
 		if (!tree || path.length === 0) return;
 
 		// Get current node ID (last in path)
@@ -183,35 +191,23 @@
 		}
 	}
 
-	// Update handleBreadcrumbClick function to handle unauthenticated state
+	// Simplified breadcrumb click handler
 	function handleBreadcrumbClick(index: number, event: MouseEvent) {
-		// If clicking on the root breadcrumb (index 0)
-		if (index === 0) {
-			// Prevent default navigation behavior
-			event.preventDefault();
+		// Prevent default navigation behavior
+		event.preventDefault();
 
-			// If user is not authenticated, show login panel regardless of route
-			if (!$username) {
-				showLoginPanel = true;
-			}
-			// If we're not in the soul route, navigate to the soul route
-			else if (!isSoulRoute) {
-				// First navigate to the root node in the tree
-				globalState.navigateToPathIndex(0);
-				// Then go to the soul route
-				goto('/');
-			}
-			// If we're in the soul route and at the root breadcrumb
-			else if (index === currentPathInfo.length - 1) {
-				// Toggle login panel
-				toggleLoginPanel();
-			} else {
-				// We're in soul route but not at root level, navigate to root
-				globalState.navigateToPathIndex(0);
-			}
-		} else {
-			// For non-root breadcrumbs, navigate as usual
-			globalState.navigateToPathIndex(index);
+		// If user is not authenticated, show login panel
+		if (!user) {
+			showLoginPanel = true;
+			return;
+		}
+
+		// Simply update the path using the globalState function
+		globalState.navigateToPathIndex(index);
+
+		// If we're not in the soul route, navigate to the soul route
+		if (!isSoulRoute) {
+			goto('/');
 		}
 	}
 
@@ -379,16 +375,16 @@
 	<div class="header-main">
 		<div class="node-name">
 			<div class="breadcrumbs">
-				{#if currentPathInfo.length === 0 && $username}
+				{#if currentPathInfo.length === 0 && user}
 					<!-- Fallback to showing username if no path but user is logged in -->
 					<a
-						href={`/${$userpub}`}
+						href="/"
 						class="breadcrumb-item auth-root current"
 						onclick={(e) => handleBreadcrumbClick(0, e)}
 						tabindex="0"
-						aria-label={$username}
+						aria-label={user}
 					>
-						{$username}
+						{user}
 					</a>
 				{:else if currentPathInfo.length === 0}
 					<div class="loading-path">Login</div>
@@ -398,7 +394,7 @@
 							<div class="breadcrumb-separator">/</div>
 						{/if}
 						<a
-							href={`/${segment.id}${segment.name ? ':' + segment.name.replace(/\s+/g, '-').toLowerCase() : ''}`}
+							href="/"
 							class="breadcrumb-item"
 							class:current={index === currentPathInfo.length - 1}
 							class:auth-root={index === 0}

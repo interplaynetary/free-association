@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TagPill from './TagPill.svelte';
+	import { getColorForNameHash } from '$lib/utils/colorUtils';
 
 	// Define interface for node data
 	interface NodeData {
@@ -39,24 +40,6 @@
 	let isEditing = $state(false);
 	let editValue = $state('');
 	let editInput: HTMLInputElement | null = $state(null);
-
-	// Helper function to get color based on name
-	function getColorForName(name: string): string {
-		if (!name) return '#64748b'; // Default slate color
-
-		// Simple hash function for consistent colors
-		let hash = 0;
-		for (let i = 0; i < name.length; i++) {
-			hash = name.charCodeAt(i) + ((hash << 5) - hash);
-		}
-
-		// Generate colors in a pleasant range
-		const h = Math.abs(hash) % 360;
-		const s = 65 + (Math.abs(hash) % 20); // 65-85% saturation
-		const l = 60 + (Math.abs(hash) % 15); // 60-75% lightness
-
-		return `hsl(${h}, ${s}%, ${l}%)`;
-	}
 
 	// Prepare text segments
 	const segments = $derived(
@@ -211,7 +194,7 @@
 <div
 	class="treemap-node"
 	style="
-    background-color: {getColorForName(node.name)};
+    background-color: {getColorForNameHash(node.name)};
     border: {isOnlyChild ? 'none' : '1px solid #fff'};
     width: 100%;
     height: 100%;

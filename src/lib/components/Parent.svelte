@@ -320,6 +320,9 @@
 			// Force update
 			triggerUpdate();
 
+			// Clear edit mode
+			globalState.nodeToEdit = '';
+
 			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);

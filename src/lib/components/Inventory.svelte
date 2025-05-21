@@ -41,7 +41,7 @@
 
 		// Create a plain object copy of the capacity
 		const plainCapacity = { ...capacity };
-		
+
 		// Update the store directly
 		userCapacities.update((caps) => {
 			const newCaps = { ...(caps || {}) };
@@ -77,7 +77,7 @@
 		}
 	}
 
-	// Handler for input events that updates capacity  
+	// Handler for input events that updates capacity
 	function handleCapacityUpdate(capacity: Capacity) {
 		return () => {
 			updateCapacity(capacity);
