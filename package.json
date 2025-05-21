@@ -69,6 +69,7 @@
 		"pmtiles": "^4.3.0",
 		"svelte-maplibre-gl": "^0.1.6",
 		"tailwindcss-animate": "^1.0.7",
-		"uuid": "^11.1.0"
+		"uuid": "^11.1.0",
+		"zod": "^3.25.0"
 	}
 }

@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { browser } from '$app/environment';
-	import { gun, usersList } from '../gunSetup';
+	import { gun, usersList } from '$lib/state.svelte';
 
 	// Props using Svelte 5 runes
 	let {

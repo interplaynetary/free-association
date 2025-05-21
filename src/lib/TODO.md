@@ -50,3 +50,6 @@ user.get(recipients).get(recipientPubKey).put(JSON.stringify(structuredClone(get
 ✅ Local first recipientshare calculation based on filters, then distributed look up from centralized source
 
 ✅ Lets make the color scheme, pastels
+
+
+Lets use zod.dev/v4 for defining the zod structure for the JSON, which gives the parser and the types

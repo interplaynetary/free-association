@@ -4,8 +4,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
-	import { username, userpub, login, signup, signout } from '$lib/gunSetup';
-	import { userTree } from '$lib/state.svelte';
+	import { username, userpub, login, signup, signout, userTree } from '$lib/state.svelte';
 	import {
 		findNodeById,
 		addChild,

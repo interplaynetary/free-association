@@ -16,8 +16,7 @@
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
-	import { username, userpub } from '$lib/gunSetup';
-	import { userTree, userCapacities, persist } from '$lib/state.svelte';
+	import {  username, userpub, userTree, userCapacities, persist } from '$lib/state.svelte';
 
 	// UI state for expanded capacity editing
 	let capacityUIState = $state<Record<string, { expanded: boolean }>>({});

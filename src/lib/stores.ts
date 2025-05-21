@@ -5,7 +5,7 @@ Luckily, we can add our own subscriber system in regular .js files by writing ou
 The store below is a simplified version of the official Svelte writable store. You can also check it out in the interactive demo
 */
 // stores.js
-import { gun } from "./gunSetup"
+import { gun } from "./state.svelte"
 
 // Define types for Gun references and data
 type GunRef = {

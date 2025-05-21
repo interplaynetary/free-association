@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { gun } from '../gunSetup';
+	import { gun } from '$lib/state.svelte';
 
 	// Props using Svelte 5 runes
 	let {

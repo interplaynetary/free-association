@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { userTree } from '$lib/state.svelte';
+	import { username, userpub, userTree } from '$lib/state.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { username, userpub } from '$lib/gunSetup';
 	import {
 		type Node,
 		type NonRootNode,

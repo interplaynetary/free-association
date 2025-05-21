@@ -1,5 +1,7 @@
+import Gun from 'gun';
+import 'gun/sea';
+import 'gun/axe';
 import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
-import { user } from '$lib/gunSetup';
 import type { RootNode, CapacitiesCollection, Node, ShareMap } from '$lib/protocol/protocol';
 import {
 	createRootNode,
@@ -9,10 +11,88 @@ import {
 	getReceiverShares
 } from '$lib/protocol/protocol';
 
+// Database
+export const gun = Gun();
+
+export const usersList = gun.get('users');
+
+export let user = gun.user().recall({ sessionStorage: true });
+
+// Current User's username
+export const username = writable('');
+export const userpub = writable('');
+
+gun.on('auth', async () => {
+	const alias = await user.get('alias'); // username string
+	username.set(alias);
+	userpub.set(user.is?.pub);
+	usersList.get(user.is?.pub).put({
+		name: alias,
+		lastSeen: Date.now()
+	});
+
+	console.log(`signed in as ${alias}`);
+
+	// Load existing user data
+	manifest();
+
+	// Check if user has a tree, and if not, initialize one
+	user.get('tree').once((treeData: any) => {
+		// Use the healTree function from state.ts
+		const healedTree = healTree(treeData);
+
+		if (!healedTree && user.is?.pub) {
+			// No tree exists yet and healing couldn't help, create a new one
+			console.log('No tree found, creating initial tree for user');
+			const newTree = createRootNode(user.is.pub, alias, user.is.pub);
+			const jsonTree = JSON.stringify(newTree);
+			console.log('Storing new tree as JSON string:', jsonTree);
+			user.get('tree').put(jsonTree);
+			userTree.set(newTree);
+		}
+	});
+});
+
+export function login(username: string, password: string) {
+	user.auth(username, password, ({ err }: { err: any }) => err && alert(err));
+}
+
+export function signup(username: string, password: string) {
+	user.create(username, password, ({ err }: { err: any }) => {
+		if (err) {
+			alert(err);
+		} else {
+			login(username, password);
+		}
+	});
+}
+
+export function signout() {
+	user.leave();
+	username.set('');
+	userpub.set('');
+}
+
+// Force persist on window unload
+if (typeof window !== 'undefined' && user?.is?.pub) {
+	window.addEventListener('beforeunload', () => {
+		console.log('Window closing, forcing persistence...');
+		persist();
+	});
+}
+
+// Force persist on any disconnect
+gun.on('bye', () => {
+	if (user.is?.pub) {
+	console.log('Gun disconnecting, forcing persistence...');
+	persist();
+	}
+});
+
 // User Space
-const userTree: Writable<RootNode | null> = writable(null);
-const userSogf: Writable<ShareMap | null> = writable(null);
-const userProviderShares: Writable<{
+export const userTree: Writable<RootNode | null> = writable(null);
+export const userSogf: Writable<ShareMap | null> = writable(null);
+export const userProviderShares: Writable<{
 	1: ShareMap | null;
 	2: ShareMap | null;
 	3: ShareMap | null;
@@ -21,10 +101,9 @@ const userProviderShares: Writable<{
 	2: null,
 	3: null
 });
-const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
-const nodesMap: Writable<Record<string, Node>> = writable({});
-const contributors = writable([]); // list of contributor IDS (those recognized in our tree) this will be useful for mutual-recognition equations
-const recipientSharesMap: Writable<Record<string, any>> = writable({});
+export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
+export const nodesMap: Writable<Record<string, Node>> = writable({});
+export const recipientSharesMap: Writable<Record<string, any>> = writable({});
 
 // Public Space
 // For Public Templates
@@ -37,7 +116,7 @@ if we are properly updating the userCapacities writeable we should be automatica
 /**
  * Sequential recalculation of all dependent data when tree changes
  */
-function recalculateFromTree() {
+export function recalculateFromTree() {
 	console.log('[RECALC] Starting tree recalculation...');
 
 	// Get current state values
@@ -135,30 +214,22 @@ function recalculateFromTree() {
 /**
  * Recalculation when only capacities change
  */
-function recalculateFromCapacities() {
+export function recalculateFromCapacities() {
 	const tree = get(userTree);
 	const capacities = get(userCapacities);
 	const nodeMap = get(nodesMap);
 
 	if (!tree || !capacities) return;
 
-	console.log('[RECALC-CAP] Starting capacity recalculation...');
+	// Only recalculate recipient shares
+	Object.values(capacities).forEach((capacity) => {
+		if (capacity.owner_id === tree.id) {
+			calculateRecipientShares(capacity, tree, nodeMap);
+		}
+	});
 
-	// Only recalculate recipient shares, without triggering store updates
-	try {
-		Object.values(capacities).forEach((capacity) => {
-			if (capacity.owner_id === tree.id) {
-				calculateRecipientShares(capacity, tree, nodeMap);
-			}
-		});
-		
-		// Persist directly without updating store
-		persistCapacities(capacities);
-		
-		console.log('[RECALC-CAP] Capacity recalculation complete');
-	} catch (error) {
-		console.error('[RECALC-CAP] Error recalculating capacities:', error);
-	}
+	userCapacities.set(capacities);
+	persistCapacities();
 }
 
 /**
@@ -234,36 +305,37 @@ userTree.subscribe((tree) => {
 let capacitiesRecalcTimer: ReturnType<typeof setTimeout> | null = null;
 userCapacities.subscribe((capacities) => {
 	if (!capacities) return;
-	
-	console.log('[CAP-SUB] Capacities updated in store, count:', Object.keys(capacities).length);
-	
+
+	console.log('[CAPACITIES-SUB] Capacities updated, scheduling recalculation');
+	console.log('[CAPACITIES-SUB] Capacities count:', Object.keys(capacities).length);
+
+	// Force immediate capacity persistence on every change
+	// This ensures capacity changes are always saved, even if recalculation fails
+	console.log('[CAPACITIES-SUB] Forcing immediate capacities persistence');
+	try {
+		persistCapacities();
+	} catch (error) {
+		console.error('[CAPACITIES-SUB] Error during immediate persistence:', error);
+	}
+
 	// Clear any pending recalculation
-	if (capacitiesRecalcTimer) clearTimeout(capacitiesRecalcTimer);
-	
+	if (capacitiesRecalcTimer) {
+		console.log('[CAPACITIES-SUB] Clearing previous capacities recalc timer');
+		clearTimeout(capacitiesRecalcTimer);
+	}
+
 	// Schedule a recalculation after a short delay
+	console.log('[CAPACITIES-SUB] Setting new capacities recalc timer for 300ms');
 	capacitiesRecalcTimer = setTimeout(() => {
-		// Only recalculate recipient shares - don't trigger store update
+		console.log('[CAPACITIES-SUB] Timer fired, running capacities recalculation');
 		try {
-			console.log('[CAP-SUB] Recalculating recipient shares without triggering store update');
-			const tree = get(userTree);
-			const nodeMap = get(nodesMap);
-			
-			if (tree && capacities) {
-				// Update recipient shares in place, without setting the store again
-				Object.values(capacities).forEach((capacity) => {
-					if (capacity.owner_id === tree.id) {
-						calculateRecipientShares(capacity, tree, nodeMap);
-					}
-				});
-			}
-			
-			// Persist capacities directly - don't update the store
-			console.log('[CAP-SUB] Persisting capacities directly');
-			persistCapacities(capacities);
+			recalculateFromCapacities();
 		} catch (error) {
-			console.error('[CAP-SUB] Error in capacity recalculation:', error);
+			console.error('[CAPACITIES-SUB] Error during recalculation:', error);
+			// Even if recalculation fails, ensure capacities are persisted
+			console.log('[CAPACITIES-SUB] Forcing capacities persistence after error');
+			persistCapacities();
 		}
-		
 		capacitiesRecalcTimer = null;
 	}, 300); // 300ms debounce
 });
@@ -271,7 +343,7 @@ userCapacities.subscribe((capacities) => {
 /**
  * Persist the current application state to Gun
  */
-function persist() {
+export function persist() {
 	try {
 		console.log('[PERSIST] Starting full persistence...');
 
@@ -280,20 +352,17 @@ function persist() {
 
 		// Try to persist other data if available
 		try {
-			persistSogf();
+		persistSogf();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting SOGF:', e);
 		}
 		try {
-			persistProviderShares();
+		persistProviderShares();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting provider shares:', e);
 		}
 		try {
-			const capacities = get(userCapacities);
-			if(capacities) {
-				persistCapacities(capacities);
-			}
+		persistCapacities();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting capacities:', e);
 		}
@@ -309,7 +378,7 @@ function persist() {
 	}
 }
 
-function persistTree() {
+export function persistTree() {
 	const treeValue = get(userTree);
 	if (treeValue) {
 		console.log('[PERSIST] Starting tree persistence...');
@@ -334,14 +403,14 @@ function persistTree() {
 	}
 }
 
-function persistSogf() {
+export function persistSogf() {
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
 		user.get('sogf').put(structuredClone(sogfValue));
 	}
 }
 
-function persistProviderShares() {
+export function persistProviderShares() {
 	// Store provider shares by depth
 	const sharesValue = get(userProviderShares);
 	if (sharesValue) {
@@ -354,40 +423,52 @@ function persistProviderShares() {
 	}
 }
 
-// Persist capacities directly without updating the store
-function persistCapacities(capacitiesValue: CapacitiesCollection) {
-	console.log('[PERSIST-CAP-DIRECT] Persisting capacities directly...');
-	console.log('[PERSIST-CAP-DIRECT] Capacity count:', Object.keys(capacitiesValue).length);
-	
-	try {
-		// Create a deep clone
-		const capacitiesClone = structuredClone(capacitiesValue);
-		
-		// Serialize to JSON
-		const capacitiesJson = JSON.stringify(capacitiesClone);
-		console.log('[PERSIST-CAP-DIRECT] Serialized capacities length:', capacitiesJson.length);
-		console.log(
-			'[PERSIST-CAP-DIRECT] Capacities JSON preview:',
-			capacitiesJson.substring(0, 100) + '...'
-		);
-		
-		// Store in Gun with callback
-		user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST-CAP-DIRECT] Error saving capacities to Gun:', ack.err);
-			} else {
-				console.log('[PERSIST-CAP-DIRECT] Capacities successfully saved to Gun');
+export function persistCapacities() {
+	const userCapacitiesValue = get(userCapacities);
+	if (userCapacitiesValue) {
+		console.log('[PERSIST] Starting capacities persistence...');
+		console.log('[PERSIST] Capacities count:', Object.keys(userCapacitiesValue).length);
+
+		try {
+			// First create a deep clone to avoid any reactivity issues
+			const capacitiesClone = structuredClone(userCapacitiesValue);
+
+			// Then serialize to JSON
+			const capacitiesJson = JSON.stringify(capacitiesClone);
+			console.log('[PERSIST] Serialized capacities length:', capacitiesJson.length);
+			console.log(
+				'[PERSIST] Capacities JSON preview:',
+				capacitiesJson.length > 100 ? capacitiesJson.substring(0, 100) + '...' : capacitiesJson
+			);
+
+			// Store in Gun with ACK callback
+			user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
+				if (ack.err) {
+					console.error('[PERSIST] Error saving capacities to Gun:', ack.err);
+				} else {
+					console.log('[PERSIST] Capacities successfully saved to Gun');
+				}
+			});
+		} catch (error) {
+			console.error('[PERSIST] Error serializing capacities:', error);
+
+			// Fallback approach
+			try {
+				console.log('[PERSIST] Attempting fallback capacities persistence...');
+		const snapshot = $state.snapshot(userCapacitiesValue);
+		user.get('capacities').put(JSON.stringify(snapshot));
+				console.log('[PERSIST] Fallback capacities persistence completed');
+			} catch (fallbackError) {
+				console.error('[PERSIST] Critical error: Failed to persist capacities:', fallbackError);
 			}
-		});
-	} catch (error) {
-		console.error('[PERSIST-CAP-DIRECT] Error serializing or storing capacities:', error);
+		}
 	}
 }
 
 /**
  * Persist recipient-specific shares for efficient lookup
  */
-function persistRecipientShares() {
+export function persistRecipientShares() {
 	const tree = get(userTree);
 	const capacities = get(userCapacities);
 	const nodeMap = get(nodesMap);
@@ -427,7 +508,7 @@ function persistRecipientShares() {
 /**
  * Load the application state from Gun
  */
-function manifest() {
+export function manifest() {
 	console.log('[MANIFEST] Loading data from Gun');
 
 	// Load tree with healing
@@ -503,32 +584,56 @@ function manifest() {
 		});
 
 	user.get('capacities').once((capacitiesData: any) => {
-		console.log('[MANIFEST] Capacities data received:', capacitiesData ? 
-			(typeof capacitiesData === 'string' ? 
-				`String of length ${capacitiesData.length}` : 
-				`Object with ${Object.keys(capacitiesData).length} keys`) : 
-			'null');
-		
+		console.log('[MANIFEST] Loading capacities data...');
 		if (capacitiesData) {
 			try {
+				console.log(
+					'[MANIFEST] Raw capacities data from Gun:',
+					typeof capacitiesData === 'string'
+						? `String of length ${capacitiesData.length}`
+						: 'Object'
+				);
+
 				// Handle both stringified and object formats
 				let parsedCapacities;
 				if (typeof capacitiesData === 'object') {
-					console.log('[MANIFEST] Capacities already in object format');
+					console.log('[MANIFEST] Capacities data is already an object');
 					parsedCapacities = capacitiesData;
 				} else {
-					console.log('[MANIFEST] Parsing capacities from string');
+					console.log('[MANIFEST] Capacities data is a string, parsing...');
+					try {
 					parsedCapacities = JSON.parse(capacitiesData);
+						console.log('[MANIFEST] Successfully parsed capacities data');
+					} catch (parseError) {
+						console.error('[MANIFEST] Failed to parse capacities data:', parseError);
+						// Try to recover if this is a Svelte state object somehow
+						parsedCapacities = {};
+					}
 				}
-				
-				console.log('[MANIFEST] Setting capacities store with', 
-					Object.keys(parsedCapacities).length, 'capacities');
+
+				if (parsedCapacities) {
+					console.log('[MANIFEST] Loaded capacities count:', Object.keys(parsedCapacities).length);
+
+					// Log first capacity for debugging
+					const firstCapacityId = Object.keys(parsedCapacities)[0];
+					if (firstCapacityId) {
+						console.log('[MANIFEST] First capacity preview:', {
+							id: firstCapacityId,
+							name: parsedCapacities[firstCapacityId]?.name,
+							shareCount: parsedCapacities[firstCapacityId]?.shares?.length || 0
+						});
+					}
+
 				userCapacities.set(parsedCapacities);
+					console.log('[MANIFEST] Capacities loaded successfully');
+				}
 			} catch (err) {
-				console.error('[MANIFEST] Error parsing capacities data:', err);
+				console.error('[MANIFEST] Error processing capacities data:', err);
 			}
 		} else {
 			console.log('[MANIFEST] No capacities data found');
+			// Initialize with empty object if no data exists
+			userCapacities.set({});
 		}
 	});
 
@@ -540,7 +645,7 @@ function manifest() {
  * @param treeData The raw tree data from Gun
  * @returns A valid RootNode, either from the provided data or newly created
  */
-function healTree(treeData: any): RootNode | null {
+export function healTree(treeData: any): RootNode | null {
 	// Handle no data case
 	if (!treeData) {
 		console.log('[HEAL] No tree data provided to heal');
@@ -555,7 +660,7 @@ function healTree(treeData: any): RootNode | null {
 		} else {
 			console.log('[HEAL] Tree data is a string, parsing...');
 			try {
-				parsedTree = JSON.parse(treeData);
+			parsedTree = JSON.parse(treeData);
 				console.log('[HEAL] Successfully parsed tree data');
 			} catch (parseError) {
 				console.error('[HEAL] Failed to parse tree data:', parseError);
@@ -617,7 +722,7 @@ function healTree(treeData: any): RootNode | null {
 /**
  * Load recipient shares data
  */
-function loadRecipientShares() {
+export function loadRecipientShares() {
 	user.get('recipients').once((recipientsData: any) => {
 		if (recipientsData) {
 			// Gun handles this as a collection of keys
@@ -657,7 +762,7 @@ function loadRecipientShares() {
  * @param userId The user ID to lookup shares for
  * @returns Map of provider ID to their provided capacities and shares
  */
-function getUserSharesFromAllProviders(userId: string) {
+export function getUserSharesFromAllProviders(userId: string) {
 	// This function would be used to query the network for shares
 	// from other users who have the current user as a recipient
 
@@ -665,23 +770,3 @@ function getUserSharesFromAllProviders(userId: string) {
 	const recipients = get(recipientSharesMap);
 	return recipients[userId] || {};
 }
-
-// Export persistence functions
-export {
-	userTree,
-	userSogf,
-	userProviderShares,
-	userCapacities,
-	nodesMap,
-	recipientSharesMap,
-	persist,
-	persistSogf,
-	persistCapacities,
-	persistProviderShares,
-	persistRecipientShares,
-	manifest,
-	healTree,
-	recalculateFromTree,
-	recalculateFromCapacities,
-	getUserSharesFromAllProviders
-};
