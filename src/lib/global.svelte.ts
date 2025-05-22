@@ -21,7 +21,6 @@ import {
 	desire,
 	updateNodeById as updateNode
 } from '$lib/protocol/protocol';
-import {  } from '$lib/gunSetup';
 import { username, userpub, userTree, persist, manifest } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup

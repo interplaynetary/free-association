@@ -84,8 +84,8 @@ if (typeof window !== 'undefined' && user?.is?.pub) {
 // Force persist on any disconnect
 gun.on('bye', () => {
 	if (user.is?.pub) {
-	console.log('Gun disconnecting, forcing persistence...');
-	persist();
+		console.log('Gun disconnecting, forcing persistence...');
+		persist();
 	}
 });
 
@@ -109,9 +109,11 @@ export const recipientSharesMap: Writable<Record<string, any>> = writable({});
 // For Public Templates
 export const publicTemplates: Writable<Record<string, any>> = writable({}); // Tree Templates (An Array of stringified JSONs)
 
-/*
-if we are properly updating the userCapacities writeable we should be automatically running the persistance logic
-*/
+// Loading state flags to prevent recalculation loops
+export const isLoadingCapacities = writable(false);
+export const isLoadingTree = writable(false);
+export const isRecalculatingCapacities = writable(false);
+export const isRecalculatingTree = writable(false);
 
 /**
  * Sequential recalculation of all dependent data when tree changes
@@ -132,83 +134,121 @@ export function recalculateFromTree() {
 
 	console.log('[RECALC] Processing tree with', tree.children.length, 'children');
 
-	// Step 1: Calculate SOGF
 	try {
-		console.log('[RECALC] Calculating SOGF...');
-		const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap);
-		userSogf.set(sogf);
-		console.log('[RECALC] SOGF calculation complete');
-	} catch (error) {
-		console.error('[RECALC] Error calculating SOGF:', error);
-	}
+		// Set recalculating flag
+		isRecalculatingTree.set(true);
 
-	// Step 2: Calculate provider shares
-	try {
-		console.log('[RECALC] Calculating provider shares...');
-		const depth1Shares = providerShares(tree, 1, nodeMap);
-		const depth2Shares = providerShares(tree, 2, nodeMap);
-		const depth3Shares = providerShares(tree, 3, nodeMap);
-
-		userProviderShares.set({
-			1: depth1Shares,
-			2: depth2Shares,
-			3: depth3Shares
-		});
-		console.log('[RECALC] Provider shares calculation complete');
-	} catch (error) {
-		console.error('[RECALC] Error calculating provider shares:', error);
-	}
-
-	// Step 3: Calculate recipient shares if capacities exist
-	if (capacities) {
+		// Step 1: Calculate SOGF
 		try {
-			console.log(
-				'[RECALC] Calculating recipient shares for',
-				Object.keys(capacities).length,
-				'capacities...'
-			);
-
-			Object.values(capacities).forEach((capacity) => {
-				try {
-					if (capacity.owner_id === tree.id) {
-						calculateRecipientShares(capacity, tree, nodeMap);
-					}
-				} catch (capacityError) {
-					console.error(
-						'[RECALC] Error calculating shares for capacity:',
-						capacity.id,
-						capacityError
-					);
-				}
-			});
-
-			userCapacities.set(capacities);
-			console.log('[RECALC] Recipient shares calculation complete');
+			console.log('[RECALC] Calculating SOGF...');
+			const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap);
+			userSogf.set(sogf);
+			console.log('[RECALC] SOGF calculation complete');
 		} catch (error) {
-			console.error('[RECALC] Error calculating recipient shares:', error);
+			console.error('[RECALC] Error calculating SOGF:', error);
 		}
-	} else {
-		console.log('[RECALC] No capacities available, skipping recipient shares calculation');
-	}
 
-	// Step 4: Persist all data
-	try {
-		console.log('[RECALC] Persisting all updated data...');
-		persist();
-		console.log('[RECALC] Persistence complete');
-	} catch (error) {
-		console.error('[RECALC] Error during persistence:', error);
-
-		// Final fallback to ensure tree is saved
+		// Step 2: Calculate provider shares
 		try {
-			console.log('[RECALC] Attempting direct tree persistence as fallback...');
-			persistTree();
-		} catch (treeError) {
-			console.error('[RECALC] Critical error: Failed to persist tree:', treeError);
-		}
-	}
+			console.log('[RECALC] Calculating provider shares...');
+			const depth1Shares = providerShares(tree, 1, nodeMap);
+			const depth2Shares = providerShares(tree, 2, nodeMap);
+			const depth3Shares = providerShares(tree, 3, nodeMap);
 
-	console.log('[RECALC] Tree recalculation process complete');
+			userProviderShares.set({
+				1: depth1Shares,
+				2: depth2Shares,
+				3: depth3Shares
+			});
+			console.log('[RECALC] Provider shares calculation complete');
+		} catch (error) {
+			console.error('[RECALC] Error calculating provider shares:', error);
+		}
+
+		// Step 3: Calculate recipient shares if capacities exist and not loading
+		if (capacities && !get(isLoadingCapacities)) {
+			try {
+				console.log(
+					'[RECALC] Calculating recipient shares for',
+					Object.keys(capacities).length,
+					'capacities...'
+				);
+
+				// Set recalculating capacities flag to prevent loops
+				isRecalculatingCapacities.set(true);
+
+				// Track if any changes were made
+				let hasCapacityChanges = false;
+
+				Object.values(capacities).forEach((capacity) => {
+					try {
+						if (capacity.owner_id === tree.id) {
+							// Save state before calculation
+							const sharesBeforeCalc = JSON.stringify(capacity.recipient_shares || {});
+
+							calculateRecipientShares(capacity, tree, nodeMap);
+
+							// Check if anything changed
+							const sharesAfterCalc = JSON.stringify(capacity.recipient_shares || {});
+							if (sharesBeforeCalc !== sharesAfterCalc) {
+								hasCapacityChanges = true;
+							}
+						}
+					} catch (capacityError) {
+						console.error(
+							'[RECALC] Error calculating shares for capacity:',
+							capacity.id,
+							capacityError
+						);
+					}
+				});
+
+				// Only update capacities if changes were made
+				if (hasCapacityChanges) {
+					console.log('[RECALC] Capacity changes detected, updating capacities...');
+					userCapacities.set(capacities);
+				} else {
+					console.log('[RECALC] No capacity changes detected, skipping update');
+				}
+
+				// Reset capacities recalculation flag
+				isRecalculatingCapacities.set(false);
+
+				console.log('[RECALC] Recipient shares calculation complete');
+			} catch (error) {
+				console.error('[RECALC] Error calculating recipient shares:', error);
+				isRecalculatingCapacities.set(false);
+			}
+		} else if (get(isLoadingCapacities)) {
+			console.log(
+				'[RECALC] Skipping recipient shares calculation because capacities are being loaded'
+			);
+		} else {
+			console.log('[RECALC] No capacities available, skipping recipient shares calculation');
+		}
+
+		// Step 4: Persist all data
+		try {
+			console.log('[RECALC] Persisting all updated data...');
+			persist();
+			console.log('[RECALC] Persistence complete');
+		} catch (error) {
+			console.error('[RECALC] Error during persistence:', error);
+
+			// Final fallback to ensure tree is saved
+			try {
+				console.log('[RECALC] Attempting direct tree persistence as fallback...');
+				persistTree();
+			} catch (treeError) {
+				console.error('[RECALC] Critical error: Failed to persist tree:', treeError);
+			}
+		}
+
+		console.log('[RECALC] Tree recalculation process complete');
+	} finally {
+		// Always reset recalculating flag
+		isRecalculatingTree.set(false);
+	}
 }
 
 /**
@@ -221,15 +261,55 @@ export function recalculateFromCapacities() {
 
 	if (!tree || !capacities) return;
 
-	// Only recalculate recipient shares
-	Object.values(capacities).forEach((capacity) => {
-		if (capacity.owner_id === tree.id) {
-			calculateRecipientShares(capacity, tree, nodeMap);
-		}
-	});
+	console.log('[CAPACITIES-RECALC] Starting capacities recalculation...');
 
-	userCapacities.set(capacities);
-	persistCapacities();
+	try {
+		// Set the recalculation flag to prevent triggering another recalculation cycle
+		isRecalculatingCapacities.set(true);
+
+		// Track if any changes were made
+		let hasChanges = false;
+
+		// Only recalculate recipient shares
+		Object.values(capacities).forEach((capacity) => {
+			try {
+				if (capacity.owner_id === tree.id) {
+					// Save the state before calculation
+					const sharesBeforeCalc = JSON.stringify(capacity.recipient_shares || {});
+
+					// Calculate recipient shares
+					calculateRecipientShares(capacity, tree, nodeMap);
+
+					// Check if anything changed
+					const sharesAfterCalc = JSON.stringify(capacity.recipient_shares || {});
+					if (sharesBeforeCalc !== sharesAfterCalc) {
+						hasChanges = true;
+					}
+				}
+			} catch (error) {
+				console.error(
+					'[CAPACITIES-RECALC] Error calculating shares for capacity:',
+					capacity.id,
+					error
+				);
+			}
+		});
+
+		// Only update the store if changes were made
+		if (hasChanges) {
+			console.log('[CAPACITIES-RECALC] Changes detected, updating capacities...');
+			userCapacities.set(capacities);
+			console.log('[CAPACITIES-RECALC] Persisting changes...');
+			persistCapacities();
+		} else {
+			console.log('[CAPACITIES-RECALC] No changes detected, skipping update');
+		}
+
+		console.log('[CAPACITIES-RECALC] Recalculation complete');
+	} finally {
+		// Always reset the flag when done
+		isRecalculatingCapacities.set(false);
+	}
 }
 
 /**
@@ -271,6 +351,18 @@ userTree.subscribe((tree) => {
 
 	console.log('[TREE-RECALC-SUB] Tree updated, scheduling recalculation');
 	console.log('[TREE-RECALC-SUB] Tree has', tree.children.length, 'children');
+
+	// Skip recalculation if we're just loading from storage
+	if (get(isLoadingTree)) {
+		console.log('[TREE-RECALC-SUB] Skipping recalculation because tree is being loaded');
+		return;
+	}
+
+	// Skip recalculation if this update is from a recalculation
+	if (get(isRecalculatingTree)) {
+		console.log('[TREE-RECALC-SUB] Skipping recalculation because update is from recalculation');
+		return;
+	}
 
 	// Clear any pending recalculation
 	if (treeRecalcTimer) {
@@ -318,6 +410,18 @@ userCapacities.subscribe((capacities) => {
 		console.error('[CAPACITIES-SUB] Error during immediate persistence:', error);
 	}
 
+	// Skip recalculation if we're just loading from storage
+	if (get(isLoadingCapacities)) {
+		console.log('[CAPACITIES-SUB] Skipping recalculation because capacities are being loaded');
+		return;
+	}
+
+	// Skip recalculation if this update is from a recalculation
+	if (get(isRecalculatingCapacities)) {
+		console.log('[CAPACITIES-SUB] Skipping recalculation because update is from recalculation');
+		return;
+	}
+
 	// Clear any pending recalculation
 	if (capacitiesRecalcTimer) {
 		console.log('[CAPACITIES-SUB] Clearing previous capacities recalc timer');
@@ -352,17 +456,17 @@ export function persist() {
 
 		// Try to persist other data if available
 		try {
-		persistSogf();
+			persistSogf();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting SOGF:', e);
 		}
 		try {
-		persistProviderShares();
+			persistProviderShares();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting provider shares:', e);
 		}
 		try {
-		persistCapacities();
+			persistCapacities();
 		} catch (e) {
 			console.error('[PERSIST] Error persisting capacities:', e);
 		}
@@ -455,8 +559,8 @@ export function persistCapacities() {
 			// Fallback approach
 			try {
 				console.log('[PERSIST] Attempting fallback capacities persistence...');
-		const snapshot = $state.snapshot(userCapacitiesValue);
-		user.get('capacities').put(JSON.stringify(snapshot));
+				const snapshot = $state.snapshot(userCapacitiesValue);
+				user.get('capacities').put(JSON.stringify(snapshot));
 				console.log('[PERSIST] Fallback capacities persistence completed');
 			} catch (fallbackError) {
 				console.error('[PERSIST] Critical error: Failed to persist capacities:', fallbackError);
@@ -511,6 +615,9 @@ export function persistRecipientShares() {
 export function manifest() {
 	console.log('[MANIFEST] Loading data from Gun');
 
+	// Set loading flag before loading tree
+	isLoadingTree.set(true);
+
 	// Load tree with healing
 	user.get('tree').once((treeData: any) => {
 		console.log(
@@ -537,6 +644,9 @@ export function manifest() {
 		} else {
 			console.log('[MANIFEST] No tree data found and no user to create one');
 		}
+
+		// Reset loading flag after tree is loaded
+		isLoadingTree.set(false);
 	});
 
 	// Load SOGF
@@ -583,6 +693,9 @@ export function manifest() {
 			}
 		});
 
+	// Set loading flag before loading capacities
+	isLoadingCapacities.set(true);
+
 	user.get('capacities').once((capacitiesData: any) => {
 		console.log('[MANIFEST] Loading capacities data...');
 		if (capacitiesData) {
@@ -602,7 +715,7 @@ export function manifest() {
 				} else {
 					console.log('[MANIFEST] Capacities data is a string, parsing...');
 					try {
-					parsedCapacities = JSON.parse(capacitiesData);
+						parsedCapacities = JSON.parse(capacitiesData);
 						console.log('[MANIFEST] Successfully parsed capacities data');
 					} catch (parseError) {
 						console.error('[MANIFEST] Failed to parse capacities data:', parseError);
@@ -624,7 +737,7 @@ export function manifest() {
 						});
 					}
 
-				userCapacities.set(parsedCapacities);
+					userCapacities.set(parsedCapacities);
 					console.log('[MANIFEST] Capacities loaded successfully');
 				}
 			} catch (err) {
@@ -635,6 +748,9 @@ export function manifest() {
 			// Initialize with empty object if no data exists
 			userCapacities.set({});
 		}
+
+		// Reset loading flag after capacities are loaded
+		isLoadingCapacities.set(false);
 	});
 
 	loadRecipientShares();
@@ -660,7 +776,7 @@ export function healTree(treeData: any): RootNode | null {
 		} else {
 			console.log('[HEAL] Tree data is a string, parsing...');
 			try {
-			parsedTree = JSON.parse(treeData);
+				parsedTree = JSON.parse(treeData);
 				console.log('[HEAL] Successfully parsed tree data');
 			} catch (parseError) {
 				console.error('[HEAL] Failed to parse tree data:', parseError);
