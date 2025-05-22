@@ -20,7 +20,7 @@ import {
 	fulfilled,
 	desire,
 	updateNodeById as updateNode
-} from '$lib/protocol/protocol';
+} from '$lib/protocol';
 import { username, userpub, userTree, persist, manifest } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup

@@ -283,16 +283,36 @@ export function shareOfGeneralFulfillment(
 	return weightedContributions.reduce((sum, w) => sum + w, 0);
 }
 
+/**
+ * Extract all unique contributor IDs from a tree
+ */
+export function getAllContributorsFromTree(tree: Node): string[] {
+	const allContributorIds = new Set<string>();
+	const allNodes = [tree, ...getDescendants(tree)];
+
+	for (const node of allNodes) {
+		if (node.type === 'NonRootNode') {
+			for (const contributorId of (node as NonRootNode).contributor_ids) {
+				allContributorIds.add(contributorId);
+			}
+		}
+	}
+
+	return [...allContributorIds];
+}
+
 // Get normalized shares of general fulfillment map
 export function sharesOfGeneralFulfillmentMap(
 	rootNode: Node,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	specificContributors?: string[]
 ): ShareMap {
 	// Calculate all contributor shares
 	const sharesMap: ShareMap = {};
 
-	// Collect all potential contributors (all other root nodes)
-	const contributorIds = Object.keys(nodesMap).filter((id) => id !== rootNode.id);
+	// Use specific contributors if provided, otherwise consider all nodes except root
+	const contributorIds =
+		specificContributors || Object.keys(nodesMap).filter((id) => id !== rootNode.id);
 
 	for (const contributorId of contributorIds) {
 		const contributor = nodesMap[contributorId];
@@ -312,8 +332,21 @@ export function sharesOfGeneralFulfillmentMap(
 export function mutualFulfillment(
 	nodeA: Node,
 	nodeB: Node,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	cachedRecognition?: { ourShare: number; theirShare: number } | null,
+	directMutualValue?: number
 ): number {
+	// Use direct mutual value if provided (from the derived store)
+	if (directMutualValue !== undefined) {
+		return directMutualValue;
+	}
+
+	// Use cached values if provided (for network lookups)
+	if (cachedRecognition) {
+		return Math.min(cachedRecognition.ourShare, cachedRecognition.theirShare);
+	}
+
+	// Otherwise calculate locally
 	// Get share maps
 	const sharesFromA = sharesOfGeneralFulfillmentMap(nodeA, nodesMap);
 	const sharesFromB = sharesOfGeneralFulfillmentMap(nodeB, nodesMap);
@@ -330,7 +363,8 @@ export function mutualFulfillment(
 export function providerShares(
 	provider: Node,
 	depth: number,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	specificContributors?: string[]
 ): ShareMap {
 	if (depth === 1) {
 		// Direct contributor shares based on mutual fulfillment
@@ -344,21 +378,11 @@ export function providerShares(
 	function directContributorShares(provider: Node, nodesMap: Record<string, Node>): ShareMap {
 		const contributorShares: ShareMap = {};
 
-		// Find all contributors in the entire tree
-		const allNodes = [provider, ...getDescendants(provider)];
-
-		// Get all contributor IDs from all non-root nodes in the tree
-		const allContributorIds = new Set<string>();
-		for (const node of allNodes) {
-			if (node.type === 'NonRootNode') {
-				for (const contributorId of (node as NonRootNode).contributor_ids) {
-					allContributorIds.add(contributorId);
-				}
-			}
-		}
+		// Use specific contributors if provided, otherwise find all contributors in the tree
+		const contributorIds = specificContributors || getAllContributorsFromTree(provider);
 
 		// Calculate mutual fulfillment for each contributor
-		for (const contributorId of allContributorIds) {
+		for (const contributorId of contributorIds) {
 			const contributor = nodesMap[contributorId];
 			if (!contributor) continue;
 
@@ -391,7 +415,7 @@ export function providerShares(
 			const recipient = nodesMap[recipientId];
 			if (!recipient) continue;
 
-			const recipientDirectShares = providerShares(recipient, 1, nodesMap);
+			const recipientDirectShares = providerShares(recipient, 1, nodesMap, specificContributors);
 
 			for (const [subRecipientId, subShare] of Object.entries(recipientDirectShares)) {
 				const weightedShare = share * subShare;

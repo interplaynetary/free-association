@@ -11,7 +11,7 @@
 		createNonRootNode,
 		type Node as TreeNode,
 		type RootNode
-	} from '$lib/protocol/protocol';
+	} from '$lib/protocol';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;

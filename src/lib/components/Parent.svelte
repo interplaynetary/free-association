@@ -17,7 +17,7 @@
 		addChild,
 		deleteSubtree,
 		addContributors
-	} from '$lib/protocol/protocol';
+	} from '$lib/protocol';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';

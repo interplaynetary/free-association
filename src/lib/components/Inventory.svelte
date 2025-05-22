@@ -7,12 +7,12 @@
 		Node,
 		RootNode,
 		CapacitiesCollection
-	} from '$lib/protocol/protocol';
+	} from '$lib/protocol';
 	import {
 		findNodeById,
 		addCapacity as addCapacityToCollection,
 		updateNodeById
-	} from '$lib/protocol/protocol';
+	} from '$lib/protocol';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';

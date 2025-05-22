@@ -8,8 +8,8 @@
 	import { globalState, currentPath } from '$lib/global.svelte';
 	import { username, userpub, userTree } from '$lib/state.svelte';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
-	import type { Node, RootNode } from '$lib/protocol/protocol';
-	import { providerShares, normalizeShareMap } from '$lib/protocol/protocol';
+	import type { Node, RootNode } from '$lib/protocol';
+	import { providerShares, normalizeShareMap } from '$lib/protocol';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data
