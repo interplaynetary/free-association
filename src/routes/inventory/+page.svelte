@@ -6,11 +6,6 @@
 </script>
 
 <div class="mb-10 flex justify-between">
-	<div>
-		<h2 class="mt-10 mb-4 text-center text-2xl font-bold">Direct/Transitive</h2>
-		<h2 class="mb-4 text-center text-2xl font-bold">Mutual-Contribution</h2>
-		<NestedPieExample />
-	</div>
 	<div class="flex-1">
 		<Query />
 	</div>

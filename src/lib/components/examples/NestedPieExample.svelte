@@ -1,46 +1,49 @@
 <script lang="ts">
 	/**
 	 * NestedPieExample.svelte - Example usage of the NestedPie component
-	 * Using direct tree access with simpleglobal
+	 * Shows two rings: SOGF (direct contributions) and Provider Shares (mutual recognition)
 	 */
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { username, userpub, userTree } from '$lib/state.svelte';
+	import { username, userpub, userTree, userSogf, providerShares } from '$lib/state.svelte';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
-	import type { Node, RootNode } from '$lib/protocol';
-	import { providerShares, normalizeShareMap } from '$lib/protocol';
+	import type { Node, RootNode } from '$lib/schema';
+	import { normalizeShareMap } from '$lib/protocol';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data
 	let layeredData = $state<Array<PieChartData>>([]);
-	let maxLayers = 4; // Maximum number of layers to calculate share depths for
 	let showDebugInfo = $state(false);
 
 	// Initialize with example data immediately to ensure the chart renders
 	layeredData = createExampleData();
 
-	// Watch for changes in the current user and path
+	// Watch for changes in the current user, path, SOGF, or providerShares
 	$effect(() => {
 		const tree = get(userTree);
+		const sogf = get(userSogf);
+		const shares = get(providerShares);
 		const path = get(currentPath);
 
 		if ($username && $userpub && tree) {
-			// Update shares whenever user changes or path changes
-			updateProviderShares();
+			// Update shares whenever user data changes
+			updateChartData();
 		} else {
 			// If no user is logged in, use example data
 			layeredData = createExampleData();
 		}
 	});
 
-	// Function to update provider shares based on the current user and tree
-	function updateProviderShares() {
+	// Function to update chart data based on SOGF and providerShares
+	function updateChartData() {
 		const tree = get(userTree) as RootNode;
+		const sogf = get(userSogf);
+		const mutualRecognition = get(providerShares);
 
 		if (!$username || !$userpub || !tree) return;
 
-		// Generate pie chart data for different depths
+		// Generate pie chart data for the two layers
 		const newLayers: Array<PieChartData> = [];
 
 		// Create nodes map for faster lookups
@@ -57,24 +60,39 @@
 		// Start with the root node
 		populateNodesMap(tree);
 
-		// Calculate shares at each depth (1 through maxLayers)
-		for (let depth = 1; depth <= maxLayers; depth++) {
+		// Add SOGF layer (direct contributions to me)
+		if (sogf && Object.keys(sogf).length > 0) {
 			try {
-				// Calculate provider shares directly using protocol.ts
-				const shares = providerShares(tree, depth, nodesMap);
+				// Convert SOGF to pie slices
+				const sogfSlices = shareMapToPieSlices(sogf, nodesMap);
 
-				// Convert shares to pie slices
-				const slices = shareMapToPieSlices(shares, nodesMap);
-
-				// Only add to chart if we have actual shares
-				if (slices.length > 0) {
+				// Add SOGF layer
+				if (sogfSlices.length > 0) {
 					newLayers.push({
-						name: `Depth ${depth}`,
-						slices: slices
+						name: 'Direct Contributions (SOGF)',
+						slices: sogfSlices
 					});
 				}
 			} catch (err) {
-				console.error(`Error calculating shares at depth ${depth}:`, err);
+				console.error('Error creating SOGF layer:', err);
+			}
+		}
+
+		// Add Provider Shares layer (mutual recognition)
+		if (mutualRecognition && Object.keys(mutualRecognition).length > 0) {
+			try {
+				// Convert provider shares to pie slices
+				const providerSlices = shareMapToPieSlices(mutualRecognition, nodesMap);
+
+				// Add provider shares layer
+				if (providerSlices.length > 0) {
+					newLayers.push({
+						name: 'Mutual Recognition',
+						slices: providerSlices
+					});
+				}
+			} catch (err) {
+				console.error('Error creating Provider Shares layer:', err);
 			}
 		}
 
@@ -119,7 +137,7 @@
 	function createExampleData(): Array<PieChartData> {
 		return [
 			{
-				name: 'Direct Contributors',
+				name: 'Direct Contributions (SOGF)',
 				slices: [
 					{ name: 'Alice', value: 35 },
 					{ name: 'Bob', value: 25 },
@@ -129,23 +147,13 @@
 				]
 			},
 			{
-				name: 'Secondary Contributors',
+				name: 'Mutual Recognition',
 				slices: [
 					{ name: 'Alice', value: 30 },
 					{ name: 'Bob', value: 25 },
 					{ name: 'Charlie', value: 20 },
 					{ name: 'David', value: 15 },
 					{ name: 'Eve', value: 10 }
-				]
-			},
-			{
-				name: 'Tertiary Contributors',
-				slices: [
-					{ name: 'Alice', value: 25 },
-					{ name: 'Bob', value: 25 },
-					{ name: 'Charlie', value: 20 },
-					{ name: 'David', value: 15 },
-					{ name: 'Eve', value: 15 }
 				]
 			}
 		];
@@ -164,7 +172,7 @@
 	// Initialize on mount
 	onMount(() => {
 		if ($username && $userpub && get(userTree)) {
-			updateProviderShares();
+			updateChartData();
 		} else {
 			layeredData = createExampleData();
 		}
@@ -174,7 +182,7 @@
 <div class="container">
 	<div class="pie-container">
 		<div class="debug-buttons">
-			 <button class="debug-button" on:click={toggleDebugInfo}>
+			<button class="debug-button" onclick={toggleDebugInfo}>
 				{showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
 			</button>
 		</div>

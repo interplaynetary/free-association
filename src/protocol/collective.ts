@@ -8,6 +8,8 @@ Now we want to explore the possibility of an equation. Keep it simple. Look at t
 We want to understand if there is a way that we can recursively extend proportions into synthetic collectives of individuals if we can somehow extend from mutual fulfillment calculations of individuals derive synthetic collective.
 */
 
+// lets make this into an offer.
+
 /**
  * Enhanced with Memoization & Caching
  */

@@ -2,30 +2,31 @@ import Gun from 'gun';
 import 'gun/sea';
 import 'gun/axe';
 import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
-import type { RootNode, CapacitiesCollection, Node, ShareMap, NonRootNode } from '$lib/protocol';
 import {
 	createRootNode,
 	sharesOfGeneralFulfillmentMap,
-	providerShares,
 	calculateRecipientShares,
 	getReceiverShares,
-	getDescendants,
-	mutualFulfillment,
-	getAllContributorsFromTree
+	getAllContributorsFromTree,
+	normalizeShareMap
 } from '$lib/protocol';
+import {
+	type RootNode,
+	type CapacitiesCollection,
+	type Node,
+	type ShareMap,
+	type NonRootNode,
+	type RecognitionCache,
+	CapacitySchema,
+	CapacitiesCollectionSchema,
+	RecognitionCacheSchema,
+	ShareMapSchema
+} from '$lib/schema';
+import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from '$lib/validation';
 
 // User Space
 export const userTree: Writable<RootNode | null> = writable(null);
 export const userSogf: Writable<ShareMap | null> = writable(null);
-export const userProviderShares: Writable<{
-	1: ShareMap | null;
-	2: ShareMap | null;
-	3: ShareMap | null;
-}> = writable({
-	1: null,
-	2: null,
-	3: null
-});
 export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
 export const nodesMap: Writable<Record<string, Node>> = writable({});
 export const recipientSharesMap: Writable<Record<string, any>> = writable({});
@@ -34,16 +35,7 @@ export const contributors = writable<string[]>([]); // those we recognize in our
 export const mutualContributors = writable<string[]>([]); // those with whom we have mutual-recognition with
 
 // Cache for recognition values - maps contributor ID to {ourShare, theirShare}
-export const recognitionCache = writable<
-	Record<
-		string,
-		{
-			ourShare: number; // Share we assign to them in our SOGF
-			theirShare: number; // Share they assign to us in their SOGF
-			timestamp: number; // When this value was last updated
-		}
-	>
->({});
+export const recognitionCache = writable<RecognitionCache>({});
 // whenever we update ourShare we will recalculate all mutual-recognition values
 // we will update theirShare using a gun subscription
 
@@ -60,24 +52,17 @@ export const mutualRecognition = derived(recognitionCache, ($recognitionCache) =
 });
 
 // Derived store for normalized mutual recognition values (sum to 1.0)
-export const normalizedMutualRecognition = derived(mutualRecognition, ($mutualRecognition) => {
-	const normalizedValues: Record<string, number> = {};
-
-	// Calculate sum of all mutual recognition values
-	const sum = Object.values($mutualRecognition).reduce((total, value) => total + value, 0);
-
-	// If sum is zero, return empty object
-	if (sum === 0) return normalizedValues;
-
-	// Normalize each value
-	for (const [contributorId, value] of Object.entries($mutualRecognition)) {
-		normalizedValues[contributorId] = value / sum;
+export const providerShares = derived(mutualRecognition, ($mutualRecognition) => {
+	// If empty, return empty object
+	if (Object.keys($mutualRecognition).length === 0) {
+		return {};
 	}
 
-	return normalizedValues;
+	// Use the normalizeShareMap function from protocol.ts
+	return normalizeShareMap($mutualRecognition);
 });
 
-// Public SpaceThe leader of the Johnson Forest tendency had been in the Workers' Party.
+// Public Space
 // For Public Templates
 export const publicTemplates: Writable<Record<string, any>> = writable({}); // Tree Templates (An Array of stringified JSONs)
 
@@ -90,7 +75,7 @@ export const isRecalculatingTree = writable(false);
 // Database
 export const gun = Gun();
 
-export const usersList = gun.get('users');
+export const usersList = gun.get('freely-associating-players');
 
 export let user = gun.user().recall({ sessionStorage: true });
 
@@ -114,11 +99,13 @@ gun.on('auth', async () => {
 
 	// Check if user has a tree, and if not, initialize one
 	user.get('tree').once((treeData: any) => {
-		// Use the healTree function from state.ts
-		const healedTree = healTree(treeData);
+		// Parse the tree using our validation utility
+		const parsedTree = parseTree(treeData);
 
-		if (!healedTree && user.is?.pub) {
-			// No tree exists yet and healing couldn't help, create a new one
+		if (parsedTree && user.is?.pub) {
+			userTree.set(parsedTree);
+		} else if (user.is?.pub) {
+			// No tree exists, create a new one
 			console.log('No tree found, creating initial tree for user');
 			const newTree = createRootNode(user.is.pub, alias, user.is.pub);
 			const jsonTree = JSON.stringify(newTree);
@@ -209,69 +196,43 @@ export function recalculateFromTree() {
 			const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap, contributorsList);
 			userSogf.set(sogf);
 			console.log('[RECALC] SOGF calculation complete');
+
+			// Update recognition cache with our share values
+			contributorsList.forEach((contributorId) => {
+				const contributor = nodeMap[contributorId];
+				if (!contributor) return;
+
+				// Get our share from SOGF
+				const ourShare = sogf[contributorId] || 0;
+
+				// Only update if we have actual values
+				if (ourShare > 0) {
+					// Get existing entry
+					const existing = get(recognitionCache)[contributorId];
+					const theirShare = existing?.theirShare || 0;
+
+					updateRecognitionCache(contributorId, ourShare, theirShare);
+				}
+			});
 		} catch (error) {
 			console.error('[RECALC] Error calculating SOGF:', error);
 		}
 
-		// Step 2: Calculate provider shares
+		// Step 2: Update mutual contributors list
 		try {
-			console.log('[RECALC] Calculating provider shares...');
+			console.log('[RECALC] Updating mutual contributors...');
+			// Get current mutual recognition values
+			const mutualValues = get(mutualRecognition);
 			const contributorsList = get(contributors);
-			const mutualValues = get(normalizedMutualRecognition);
 
-			// Calculate using all identified contributors
-			const depth1Shares = providerShares(tree, 1, nodeMap, contributorsList);
-			const depth2Shares = providerShares(tree, 2, nodeMap, contributorsList);
-			const depth3Shares = providerShares(tree, 3, nodeMap, contributorsList);
+			// Update mutual contributors based on recognition
+			const mutualList =
+				Object.keys(mutualValues).length > 0 ? Object.keys(mutualValues) : contributorsList;
 
-			// Apply mutual recognition values to depth-1 shares if available
-			if (Object.keys(mutualValues).length > 0) {
-				console.log('[RECALC] Applying normalized mutual recognition values to depth-1 shares');
-
-				// Set the provider shares with the normalized mutual values
-				userProviderShares.set({
-					1: mutualValues,
-					2: depth2Shares,
-					3: depth3Shares
-				});
-			} else {
-				// Set provider shares with the calculated values
-				userProviderShares.set({
-					1: depth1Shares,
-					2: depth2Shares,
-					3: depth3Shares
-				});
-			}
-
-			// Update mutual contributors based on depth-1 shares
-			// These are contributors who have mutual recognition with us
-			const mutualList = Object.keys(depth1Shares);
 			mutualContributors.set(mutualList);
 			console.log('[RECALC] Found', mutualList.length, 'mutual contributors');
-
-			// Update recognition cache with calculated values
-			const sogf = get(userSogf);
-			if (sogf) {
-				mutualList.forEach((contributorId) => {
-					const contributor = nodeMap[contributorId];
-					if (!contributor) return;
-
-					// Get our share from SOGF
-					const ourShare = sogf[contributorId] || 0;
-
-					// Get their share from depth-1 shares
-					const theirShare = depth1Shares[contributorId] || 0;
-
-					// Only update if we have actual values
-					if (ourShare > 0 && theirShare > 0) {
-						updateRecognitionCache(contributorId, ourShare, theirShare);
-					}
-				});
-			}
-
-			console.log('[RECALC] Provider shares calculation complete');
 		} catch (error) {
-			console.error('[RECALC] Error calculating provider shares:', error);
+			console.error('[RECALC] Error updating mutual contributors:', error);
 		}
 
 		// Step 3: Calculate recipient shares if capacities exist and not loading
@@ -410,6 +371,9 @@ export function recalculateFromCapacities() {
 			userCapacities.set(capacities);
 			console.log('[CAPACITIES-RECALC] Persisting changes...');
 			persistCapacities();
+
+			// Also update recipient shares
+			persistRecipientShares();
 		} else {
 			console.log('[CAPACITIES-RECALC] No changes detected, skipping update');
 		}
@@ -629,15 +593,10 @@ export function persistSogf() {
 }
 
 export function persistProviderShares() {
-	// Store provider shares by depth
-	const sharesValue = get(userProviderShares);
-	if (sharesValue) {
-		if (sharesValue[1])
-			user.get('providerShares').get('first-degree').put(structuredClone(sharesValue[1]));
-		if (sharesValue[2])
-			user.get('providerShares').get('second-degree').put(structuredClone(sharesValue[2]));
-		if (sharesValue[3])
-			user.get('providerShares').get('third-degree').put(structuredClone(sharesValue[3]));
+	// Store provider shares
+	const shares = get(providerShares);
+	if (shares && Object.keys(shares).length > 0) {
+		user.get('providerShares').put(structuredClone(shares));
 	}
 }
 
@@ -732,7 +691,7 @@ export function manifest() {
 	// Set loading flag before loading tree
 	isLoadingTree.set(true);
 
-	// Load tree with healing
+	// Load tree
 	user.get('tree').once((treeData: any) => {
 		console.log(
 			'[MANIFEST] Raw tree data from Gun:',
@@ -740,17 +699,17 @@ export function manifest() {
 			treeData
 		);
 
-		const healedTree = healTree(treeData);
-		if (healedTree) {
-			console.log('[MANIFEST] Loaded tree with children count:', healedTree.children?.length || 0);
+		// Parse the tree using our validation utility
+		const parsedTree = parseTree(treeData);
 
-			if (healedTree.children?.length > 0) {
-				console.log('[MANIFEST] First child:', healedTree.children[0]);
+		if (parsedTree && user.is?.pub) {
+			console.log('[MANIFEST] Loaded tree with children count:', parsedTree.children?.length || 0);
+			if (parsedTree.children?.length > 0) {
+				console.log('[MANIFEST] First child:', parsedTree.children[0]);
 			}
-
-			userTree.set(healedTree);
+			userTree.set(parsedTree);
 		} else if (user.is?.pub) {
-			// If healing returned null but we have user data, create a new tree
+			// No valid tree data found, create a new one
 			console.log('[MANIFEST] No valid tree data found, creating initial tree');
 			const newTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
 			user.get('tree').put(JSON.stringify(newTree));
@@ -766,46 +725,11 @@ export function manifest() {
 	// Load SOGF
 	user.get('sogf').once((sogfData: any) => {
 		if (sogfData) {
-			userSogf.set(sogfData);
+			// Parse SOGF data with validation
+			const validatedSogf = parseShareMap(sogfData);
+			userSogf.set(validatedSogf);
 		}
 	});
-
-	// Load provider shares
-	user
-		.get('providerShares')
-		.get('first-degree')
-		.once((shareData: any) => {
-			if (shareData) {
-				userProviderShares.update((shares) => ({
-					...shares,
-					1: shareData
-				}));
-			}
-		});
-
-	user
-		.get('providerShares')
-		.get('second-degree')
-		.once((shareData: any) => {
-			if (shareData) {
-				userProviderShares.update((shares) => ({
-					...shares,
-					2: shareData
-				}));
-			}
-		});
-
-	user
-		.get('providerShares')
-		.get('third-degree')
-		.once((shareData: any) => {
-			if (shareData) {
-				userProviderShares.update((shares) => ({
-					...shares,
-					3: shareData
-				}));
-			}
-		});
 
 	// Set loading flag before loading capacities
 	isLoadingCapacities.set(true);
@@ -813,50 +737,10 @@ export function manifest() {
 	user.get('capacities').once((capacitiesData: any) => {
 		console.log('[MANIFEST] Loading capacities data...');
 		if (capacitiesData) {
-			try {
-				console.log(
-					'[MANIFEST] Raw capacities data from Gun:',
-					typeof capacitiesData === 'string'
-						? `String of length ${capacitiesData.length}`
-						: 'Object'
-				);
-
-				// Handle both stringified and object formats
-				let parsedCapacities;
-				if (typeof capacitiesData === 'object') {
-					console.log('[MANIFEST] Capacities data is already an object');
-					parsedCapacities = capacitiesData;
-				} else {
-					console.log('[MANIFEST] Capacities data is a string, parsing...');
-					try {
-						parsedCapacities = JSON.parse(capacitiesData);
-						console.log('[MANIFEST] Successfully parsed capacities data');
-					} catch (parseError) {
-						console.error('[MANIFEST] Failed to parse capacities data:', parseError);
-						// Try to recover if this is a Svelte state object somehow
-						parsedCapacities = {};
-					}
-				}
-
-				if (parsedCapacities) {
-					console.log('[MANIFEST] Loaded capacities count:', Object.keys(parsedCapacities).length);
-
-					// Log first capacity for debugging
-					const firstCapacityId = Object.keys(parsedCapacities)[0];
-					if (firstCapacityId) {
-						console.log('[MANIFEST] First capacity preview:', {
-							id: firstCapacityId,
-							name: parsedCapacities[firstCapacityId]?.name,
-							shareCount: parsedCapacities[firstCapacityId]?.shares?.length || 0
-						});
-					}
-
-					userCapacities.set(parsedCapacities);
-					console.log('[MANIFEST] Capacities loaded successfully');
-				}
-			} catch (err) {
-				console.error('[MANIFEST] Error processing capacities data:', err);
-			}
+			// Parse capacities with validation
+			const validatedCapacities = parseCapacities(capacitiesData);
+			console.log('[MANIFEST] Loaded capacities count:', Object.keys(validatedCapacities).length);
+			userCapacities.set(validatedCapacities);
 		} else {
 			console.log('[MANIFEST] No capacities data found');
 			// Initialize with empty object if no data exists
@@ -872,85 +756,6 @@ export function manifest() {
 
 	// Load recognition cache
 	loadRecognitionCache();
-}
-
-/**
- * Validates and heals tree data to ensure it has a valid structure
- * @param treeData The raw tree data from Gun
- * @returns A valid RootNode, either from the provided data or newly created
- */
-export function healTree(treeData: any): RootNode | null {
-	// Handle no data case
-	if (!treeData) {
-		console.log('[HEAL] No tree data provided to heal');
-		return null;
-	}
-
-	try {
-		// Parse if it's a string
-		let parsedTree;
-		if (typeof treeData === 'object') {
-			console.log('[HEAL] Tree data is already an object');
-		} else {
-			console.log('[HEAL] Tree data is a string, parsing...');
-			try {
-				parsedTree = JSON.parse(treeData);
-				console.log('[HEAL] Successfully parsed tree data');
-			} catch (parseError) {
-				console.error('[HEAL] Failed to parse tree data:', parseError);
-				return null;
-			}
-		}
-
-		// Use the parsed object or the original if it was already an object
-		parsedTree = parsedTree || treeData;
-
-		console.log('[HEAL] Tree structure:', {
-			id: parsedTree?.id,
-			type: parsedTree?.type,
-			hasChildren: Array.isArray(parsedTree?.children),
-			childCount: Array.isArray(parsedTree?.children) ? parsedTree.children.length : 0
-		});
-
-		if (parsedTree?.children?.length > 0) {
-			console.log('[HEAL] First child:', parsedTree.children[0]);
-		}
-
-		// Validate the tree structure
-		if (!parsedTree || !parsedTree.id || !parsedTree.type || !Array.isArray(parsedTree.children)) {
-			console.error('[HEAL] Invalid tree structure detected, needs healing:', parsedTree);
-
-			// Create a new tree if user is available
-			if (user.is?.pub) {
-				console.log('[HEAL] Creating new tree with user data');
-				parsedTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
-
-				// Save the healed tree back to Gun
-				user.get('tree').put(JSON.stringify(parsedTree));
-			} else {
-				console.log('[HEAL] Cannot heal tree - no user data available');
-				return null;
-			}
-		}
-
-		console.log('[HEAL] Returning healed tree with', parsedTree.children.length, 'children');
-
-		return parsedTree as RootNode;
-	} catch (err) {
-		console.error('[HEAL] Error parsing or healing tree data:', err);
-
-		// Create a recovery tree if possible
-		if (user.is?.pub) {
-			console.log('[HEAL] Creating recovery tree after error');
-			const newTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
-
-			// Save the recovery tree
-			user.get('tree').put(JSON.stringify(newTree));
-			return newTree;
-		}
-
-		return null;
-	}
 }
 
 /**
@@ -1060,16 +865,12 @@ export function persistRecognitionCache() {
 export function loadRecognitionCache() {
 	user.get('recognitionCache').once((data: any) => {
 		if (data) {
-			try {
-				const parsedCache = typeof data === 'string' ? JSON.parse(data) : data;
-				console.log(
-					`[MANIFEST] Loaded recognition cache with ${Object.keys(parsedCache).length} entries`
-				);
-				recognitionCache.set(parsedCache);
-			} catch (error) {
-				console.error('[MANIFEST] Error parsing recognition cache:', error);
-				recognitionCache.set({});
-			}
+			// Parse recognition cache with validation
+			const validatedCache = parseRecognitionCache(data);
+			console.log(
+				`[MANIFEST] Loaded recognition cache with ${Object.keys(validatedCache).length} entries`
+			);
+			recognitionCache.set(validatedCache);
 		}
 	});
 }

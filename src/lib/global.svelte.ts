@@ -1,9 +1,6 @@
 import { browser } from '$app/environment';
 import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
 import {
-	type Node,
-	type RootNode,
-	type NonRootNode,
 	findNodeById,
 	getPathToNode,
 	getParentNode,
@@ -19,8 +16,10 @@ import {
 	validateManualFulfillment,
 	fulfilled,
 	desire,
-	updateNodeById as updateNode
+	updateNodeById as updateNode,
+	isContribution
 } from '$lib/protocol';
+import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
 import { username, userpub, userTree, persist, manifest } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup
@@ -90,6 +89,12 @@ export const globalState = $state({
 		// Make sure the node exists
 		const node = findNodeById(tree, nodeId);
 		if (!node) return;
+
+		// Prevent zooming into nodes with contributors
+		if (isContribution(node)) {
+			globalState.showToast('Cannot zoom into nodes with contributors', 'warning');
+			return;
+		}
 
 		// Add the node to the path
 		currentPath.set([...path, nodeId]);

@@ -7,7 +7,7 @@
 	// Props using Svelte 5 runes
 	let {
 		title = 'Select User',
-		searchPlaceholder = 'Search users...',
+		searchPlaceholder = 'Search players...',
 		position = { x: 0, y: 0 },
 		width = 280,
 		maxHeight = 320,

@@ -5,13 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { username, userpub, login, signup, signout, userTree } from '$lib/state.svelte';
-	import {
-		findNodeById,
-		addChild,
-		createNonRootNode,
-		type Node as TreeNode,
-		type RootNode
-	} from '$lib/protocol';
+	import { findNodeById, addChild, createNonRootNode } from '$lib/protocol';
+	import { type Node as TreeNode, type RootNode } from '$lib/schema';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
@@ -201,6 +196,13 @@
 			return;
 		}
 
+		// If we're already at the root (only one breadcrumb item) and clicking the first item,
+		// and we're on the soul route, show the welcome panel instead of navigating
+		if (index === 0 && currentPathInfo.length === 1 && isSoulRoute) {
+			showLoginPanel = true;
+			return;
+		}
+
 		// Simply update the path using the globalState function
 		globalState.navigateToPathIndex(index);
 
@@ -208,6 +210,12 @@
 		if (!isSoulRoute) {
 			goto('/');
 		}
+	}
+
+	// Handler for clicking the "Login" text when not authenticated
+	function handleLoginClick(event: MouseEvent) {
+		event.preventDefault();
+		showLoginPanel = true;
 	}
 
 	// Toggle password visibility
@@ -386,7 +394,14 @@
 						{user}
 					</a>
 				{:else if currentPathInfo.length === 0}
-					<div class="loading-path">Login</div>
+					<button
+						class="breadcrumb-item loading-path"
+						onclick={handleLoginClick}
+						tabindex="0"
+						aria-label="Show login panel"
+					>
+						Login
+					</button>
 				{:else}
 					{#each currentPathInfo as segment, index}
 						{#if index > 0}
@@ -695,6 +710,16 @@
 		color: #888;
 		font-style: italic;
 		font-size: 1.95em;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 3px 5px;
+		border-radius: 4px;
+		transition: background-color 0.2s;
+	}
+
+	.loading-path:hover {
+		background-color: rgba(0, 0, 0, 0.05);
 	}
 
 	.header-controls {

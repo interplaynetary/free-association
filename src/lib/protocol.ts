@@ -5,74 +5,17 @@
 // Import json-logic-js with type assertion
 // @ts-ignore
 import jsonLogic from 'json-logic-js';
+import type {
+	Node,
+	RootNode,
+	NonRootNode,
+	Capacity,
+	CapacityShare,
+	CapacitiesCollection,
+	ShareMap
+} from '$lib/schema';
 
-// Type definitions that match API response structures
-export interface BaseNode {
-	id: string;
-	name: string;
-	type: string;
-	manual_fulfillment?: number;
-	children: Node[];
-}
-
-export interface RootNode extends BaseNode {
-	type: 'RootNode';
-	user_id: string;
-	created_at: string;
-	updated_at: string;
-}
-
-export interface NonRootNode extends BaseNode {
-	type: 'NonRootNode';
-	points: number;
-	parent_id: string;
-	contributor_ids: string[];
-}
-
-export type Node = RootNode | NonRootNode;
-
-// Separate capacities interfaces
-export interface Capacity {
-	id: string;
-	name: string;
-	quantity: number;
-	unit: string;
-	share_depth: number;
-	location_type: string;
-	all_day: boolean;
-	recurrence?: string;
-	custom_recurrence_repeat_every?: number;
-	custom_recurrence_repeat_unit?: string;
-	custom_recurrence_end_type?: string;
-	custom_recurrence_end_value?: string;
-	start_date?: string;
-	start_time?: string;
-	end_date?: string;
-	end_time?: string;
-	time_zone: string;
-	max_natural_div: number;
-	max_percentage_div: number;
-	hidden_until_request_accepted: boolean;
-	owner_id: string;
-	shares: CapacityShare[];
-	filter_rule?: any; // jsonLogic rule for filtering shares
-	recipient_shares?: Record<string, number>; // Store normalized shares after filtering
-}
-
-export interface CapacityShare {
-	id: string;
-	share_percentage: number;
-	computed_quantity: number;
-	capacity_id: string;
-	recipient_id: string;
-}
-
-// Collection of capacities
-export interface CapacitiesCollection {
-	[id: string]: Capacity;
-}
-
-export type ShareMap = Record<string, number>;
+// Type definitions are now imported from schema.ts instead of being defined here
 
 /**
  * Tree Navigation Functions
@@ -148,8 +91,8 @@ export function getParentNode(tree: Node, nodeId: string): Node | null {
 // Calculate total points from all children
 export function totalChildPoints(node: Node): number {
 	return node.children
-		.filter((child) => child.type === 'NonRootNode')
-		.reduce((sum, child) => sum + ((child as NonRootNode).points || 0), 0);
+		.filter((child: Node) => child.type === 'NonRootNode')
+		.reduce((sum: number, child: NonRootNode) => sum + (child.points || 0), 0);
 }
 
 // Calculate a node's weight
@@ -212,8 +155,8 @@ export function fulfilled(node: Node, tree: Node): number {
 	const hasManualFulfillment = node.manual_fulfillment !== undefined;
 	const isLeafNode = node.children.length === 0;
 	const isContribNode = isContribution(node);
-	const hasContribChildren = node.children.some((child) => isContribution(child));
-	const hasNonContribChildren = node.children.some((child) => !isContribution(child));
+	const hasContribChildren = node.children.some((child: Node) => isContribution(child));
+	const hasNonContribChildren = node.children.some((child: Node) => !isContribution(child));
 
 	// Safely extract manual fulfillment value with a default
 	const getManualValue = node.manual_fulfillment ?? 0.0;
@@ -234,11 +177,14 @@ export function fulfilled(node: Node, tree: Node): number {
 	}
 
 	// For other nodes, calculate weighted average fulfillment from children
-	const childWeights = node.children.map((child) => weight(child, tree));
-	const childFulfillments = node.children.map((child) => fulfilled(child, tree));
+	const childWeights = node.children.map((child: Node) => weight(child, tree));
+	const childFulfillments = node.children.map((child: Node) => fulfilled(child, tree));
 
-	const weightedSum = childWeights.reduce((sum, w, i) => sum + w * childFulfillments[i], 0);
-	const totalWeight = childWeights.reduce((sum, w) => sum + w, 0);
+	const weightedSum = childWeights.reduce(
+		(sum: number, w: number, i: number) => sum + w * childFulfillments[i],
+		0
+	);
+	const totalWeight = childWeights.reduce((sum: number, w: number) => sum + w, 0);
 
 	return totalWeight === 0 ? 0 : weightedSum / totalWeight;
 }
@@ -359,72 +305,30 @@ export function mutualFulfillment(
 	return Math.min(shareFromAToB, shareFromBToA);
 }
 
-// Calculate provider-centric shares
+// Calculate provider-centric shares (simplified to direct shares only)
 export function providerShares(
 	provider: Node,
-	depth: number,
 	nodesMap: Record<string, Node>,
 	specificContributors?: string[]
 ): ShareMap {
-	if (depth === 1) {
-		// Direct contributor shares based on mutual fulfillment
-		return directContributorShares(provider, nodesMap);
-	} else {
-		// Transitive shares for depth > 1
-		return transitiveShares(depth);
-	}
+	// Calculate direct contributor shares based on mutual fulfillment
+	const contributorShares: ShareMap = {};
 
-	// Helper function to calculate direct contributor shares
-	function directContributorShares(provider: Node, nodesMap: Record<string, Node>): ShareMap {
-		const contributorShares: ShareMap = {};
+	// Use specific contributors if provided, otherwise find all contributors in the tree
+	const contributorIds = specificContributors || getAllContributorsFromTree(provider);
 
-		// Use specific contributors if provided, otherwise find all contributors in the tree
-		const contributorIds = specificContributors || getAllContributorsFromTree(provider);
+	// Calculate mutual fulfillment for each contributor
+	for (const contributorId of contributorIds) {
+		const contributor = nodesMap[contributorId];
+		if (!contributor) continue;
 
-		// Calculate mutual fulfillment for each contributor
-		for (const contributorId of contributorIds) {
-			const contributor = nodesMap[contributorId];
-			if (!contributor) continue;
-
-			const mf = mutualFulfillment(provider, contributor, nodesMap);
-			if (mf > 0) {
-				contributorShares[contributorId] = mf;
-			}
+		const mf = mutualFulfillment(provider, contributor, nodesMap);
+		if (mf > 0) {
+			contributorShares[contributorId] = mf;
 		}
-
-		return normalizeShareMap(contributorShares);
 	}
 
-	// Helper function to calculate transitive shares
-	function transitiveShares(d: number): ShareMap {
-		let currentShares = directContributorShares(provider, nodesMap);
-
-		// Iteratively combine transitive shares
-		for (let i = 2; i <= d; i++) {
-			currentShares = combineTransitiveShares(currentShares);
-		}
-
-		return currentShares;
-	}
-
-	// Helper function to combine transitive shares
-	function combineTransitiveShares(currentShares: ShareMap): ShareMap {
-		const resultMap: ShareMap = {};
-
-		for (const [recipientId, share] of Object.entries(currentShares)) {
-			const recipient = nodesMap[recipientId];
-			if (!recipient) continue;
-
-			const recipientDirectShares = providerShares(recipient, 1, nodesMap, specificContributors);
-
-			for (const [subRecipientId, subShare] of Object.entries(recipientDirectShares)) {
-				const weightedShare = share * subShare;
-				resultMap[subRecipientId] = (resultMap[subRecipientId] || 0) + weightedShare;
-			}
-		}
-
-		return normalizeShareMap(resultMap);
-	}
+	return normalizeShareMap(contributorShares);
 }
 
 // Get a receiver's share from a specific capacity provider
@@ -432,11 +336,10 @@ export function receiverGeneralShareFrom(
 	receiver: Node,
 	provider: Node,
 	capacity: Capacity,
-	maxDepth: number,
 	nodesMap: Record<string, Node>
 ): number {
 	// Get shares from the provider
-	const providerShareMap = providerShares(provider, maxDepth, nodesMap);
+	const providerShareMap = providerShares(provider, nodesMap);
 	return providerShareMap[receiver.id] ?? 0;
 }
 
@@ -512,9 +415,8 @@ export function getRecurrenceEndValue(recurrenceEnd: any): string | null {
  */
 
 // Validate and normalize manual fulfillment values
-export function validateManualFulfillment(value: number | undefined): number | undefined {
-	if (value === undefined) return undefined;
-	return Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
+export function validateManualFulfillment(value: number | undefined): number | null {
+	return value === undefined ? null : Math.max(0, Math.min(1, value)); // Clamp between 0 and 1
 }
 
 // Create a new root node
@@ -737,7 +639,8 @@ export function applyJsonLogicFilter(
 		};
 
 		// Apply the rule using jsonLogic and ensure boolean return
-		const result = jsonLogic.apply(rule, data);
+		// Add type assertion to handle the unknown return type from jsonLogic
+		const result = jsonLogic.apply(rule, data) as boolean;
 		return Boolean(result);
 	};
 
@@ -807,7 +710,7 @@ export const FilterRules = {
  * };
  *
  * // Apply the filter to distribute the capacity
- * const shareMap = providerShares(provider, capacity.share_depth, nodesMap);
+ * const shareMap = providerShares(provider, nodesMap);
  * const filteredShares = applyCapacityFilter(capacity, shareMap, nodesMap);
  */
 
@@ -816,8 +719,8 @@ export function calculateRecipientShares(
 	provider: Node,
 	nodesMap: Record<string, Node>
 ): void {
-	// Get raw shares based on provider and share depth
-	const rawShares = providerShares(provider, capacity.share_depth, nodesMap);
+	// Get raw shares based on provider
+	const rawShares = providerShares(provider, nodesMap);
 
 	// Apply capacity filter if one exists
 	const filteredShares = applyCapacityFilter(capacity, rawShares, nodesMap);
@@ -837,12 +740,13 @@ export function updateCapacityShareQuantities(capacity: Capacity): void {
 		// Find existing share or create new one
 		let share = capacity.shares.find((s) => s.recipient_id === recipientId);
 		if (!share) {
-			share = createCapacityShare(capacity.id, recipientId, sharePercentage, capacity);
+			// Type assertion to handle sharePercentage as number
+			share = createCapacityShare(capacity.id, recipientId, sharePercentage as number, capacity);
 			capacity.shares.push(share);
 		} else {
-			// Update existing share
-			share.share_percentage = sharePercentage;
-			share.computed_quantity = computeQuantityShare(capacity, sharePercentage);
+			// Update existing share with type assertions
+			share.share_percentage = sharePercentage as number;
+			share.computed_quantity = computeQuantityShare(capacity, sharePercentage as number);
 		}
 	}
 }
