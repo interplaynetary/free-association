@@ -49,6 +49,9 @@
 		usersArray = [];
 
 		try {
+			// Use a Map to collect unique users and avoid duplicates
+			const usersMap = new Map<string, { id: string; name: string }>();
+
 			// Use Gun to fetch users
 			usersList.map().once((userData: any, userId: string) => {
 				// Skip if this is not a valid user entry or if in excluded list
@@ -68,16 +71,18 @@
 					}
 				}
 
-				// Add to users array
-				usersArray = [...usersArray, { id: userId, name: userName }];
+				// Add to users map (this automatically handles duplicates)
+				usersMap.set(userId, { id: userId, name: userName });
 			});
-		} catch (error) {
-			console.error('Error fetching users from Gun:', error);
-		} finally {
-			// Set loading to false after a short delay to ensure we've collected users
+
+			// Convert map to array after a short delay to ensure all callbacks have fired
 			setTimeout(() => {
+				usersArray = Array.from(usersMap.values());
 				loading = false;
 			}, 500);
+		} catch (error) {
+			console.error('Error fetching users from Gun:', error);
+			loading = false;
 		}
 	}
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { gun } from '$lib/state.svelte';
+	import { getUserName } from '$lib/state.svelte';
 
 	// Props using Svelte 5 runes
 	let {
@@ -24,23 +24,11 @@
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Load user data from Gun
+	// Load user data using centralized function
 	async function loadUserData() {
 		isLoading = true;
 		try {
-			gun
-				.get('users')
-				.get(userId)
-				.once((pubUser: any) => {
-					if (pubUser && pubUser.name) {
-						displayName = pubUser.name;
-					} else {
-						// If no name is found, keep using the userId
-						displayName = userId;
-					}
-					isLoading = false;
-					updateTooltip(displayName);
-				});
+			displayName = await getUserName(userId);
 			isLoading = false;
 			updateTooltip(displayName);
 		} catch (error) {

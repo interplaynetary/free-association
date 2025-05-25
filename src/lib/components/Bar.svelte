@@ -30,7 +30,7 @@
 </script>
 
 <script lang="ts">
-	import { nodesMap } from '$lib/state.svelte';
+	import { userNamesCache, getUserName } from '$lib/state.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
 
 	// Define the interface for bar segments
@@ -68,12 +68,18 @@
 	// Normalize segment values and add names/colors
 	const normalizedSegments = $derived(
 		segments.map((segment: BarSegment) => {
-			const node = $nodesMap[segment.id];
-			const name = node ? node.name : segment.id.substring(0, 6);
+			// Start with fallback name, will be updated asynchronously
+			let displayName = $userNamesCache[segment.id] || segment.id.substring(0, 8) + '...';
+
+			// Trigger async name lookup (will update cache and cause re-render)
+			getUserName(segment.id).then((name) => {
+				// The cache will be updated by getUserName, triggering reactivity
+			});
+
 			return {
 				...segment,
 				normalizedValue: totalValue ? (segment.value / totalValue) * 100 : 0,
-				label: name,
+				label: displayName,
 				color: getColorForUserId(segment.id)
 			};
 		})

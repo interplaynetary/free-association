@@ -214,9 +214,9 @@ export function shareOfGeneralFulfillment(
 
 	// Calculate weighted contribution for each node
 	const weightedContributions = contributingNodes.map((node) => {
-		const targetTree = nodesMap[target.id];
-		const nodeWeight = weight(node, targetTree);
-		const nodeFulfillment = fulfilled(node, targetTree);
+		// Use the target node itself as the tree for weight calculations
+		const nodeWeight = weight(node, target);
+		const nodeFulfillment = fulfilled(node, target);
 
 		// Get contributor count
 		const contributorCount =
@@ -261,13 +261,10 @@ export function sharesOfGeneralFulfillmentMap(
 		specificContributors || Object.keys(nodesMap).filter((id) => id !== rootNode.id);
 
 	for (const contributorId of contributorIds) {
-		const contributor = nodesMap[contributorId];
-		if (!contributor) continue;
-
 		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap);
-		if (share > 0) {
-			sharesMap[contributorId] = share;
-		}
+		// FIXED: Always include contributors in the map, even with 0 values
+		// This ensures removed contributors get explicit 0 values instead of being excluded
+		sharesMap[contributorId] = share;
 	}
 
 	// Normalize the shares
@@ -319,12 +316,12 @@ export function providerShares(
 
 	// Calculate mutual fulfillment for each contributor
 	for (const contributorId of contributorIds) {
-		const contributor = nodesMap[contributorId];
-		if (!contributor) continue;
+		// Note: Contributors don't need to exist in nodesMap since they are external user IDs
+		// The shareOfGeneralFulfillment function will find nodes that reference this contributorId
 
-		const mf = mutualFulfillment(provider, contributor, nodesMap);
-		if (mf > 0) {
-			contributorShares[contributorId] = mf;
+		const share = shareOfGeneralFulfillment(provider, contributorId, nodesMap);
+		if (share > 0) {
+			contributorShares[contributorId] = share;
 		}
 	}
 

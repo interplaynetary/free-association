@@ -26,18 +26,24 @@
 
 	// Create reactive derived store from providerShares
 	const providerSegments = derived(providerShares, ($providerShares) => {
+		console.log('[UI] providerShares changed:', $providerShares);
+
 		if (!$providerShares || Object.keys($providerShares).length === 0) {
+			console.log('[UI] No provider shares data for segments');
 			return [];
 		}
 
 		// Transform provider shares data into segments for Bar
-		return Object.entries($providerShares)
+		const segments = Object.entries($providerShares)
 			.filter(([_, value]) => value > 0) // Only include non-zero values
 			.map(([id, value]) => ({
 				id,
 				value: value * 100 // Convert from decimal to percentage
 			}))
 			.sort((a, b) => b.value - a.value); // Sort by value descending
+
+		console.log('[UI] Generated provider segments:', segments);
+		return segments;
 	});
 
 	// Ensure SOGF is calculated if we have a tree but no SOGF

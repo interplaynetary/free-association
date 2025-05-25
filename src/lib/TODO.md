@@ -8,19 +8,6 @@
 ## Narrative: Charecters
 - People can create charecters that they can play. (accounts) This makes it feel more approachable.
 
-// we should mantain a contact list of all the contributors we have ever added.
-// Contact management
-// The dropdown should be based on this (not the public)
-
-
-client.js:2949 [svelte] binding_property_non_reactive`bind:value={entry.unit}` (src/lib/components/Inventory.svelte:256:5) is binding to a non-reactive propertyhttps://svelte.dev/e/binding_property_non_reactive
-
-
-Fix dropdown
-
-Modify NestedPie to show SOGF for the first layer, and then each ring be mutual from the providerShares
-
-Add persistance
 
 Add filters to inventory UI
 
@@ -47,9 +34,3 @@ When change in capacities:
 but how does the other know when a capacity has changed efficiently, without being notified for all changes to capcities that dont involve us? if we mantain:
 user.get(recipients).get(recipientPubKey).put(JSON.stringify(structuredClone(getReceiverShares(recipientPubKey))))
 
-✅ Local first recipientshare calculation based on filters, then distributed look up from centralized source
-
-✅ Lets make the color scheme, pastels
-
-
-Lets use zod.dev/v4 for defining the zod structure for the JSON, which gives the parser and the types
