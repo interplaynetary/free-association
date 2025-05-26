@@ -8,7 +8,9 @@ import {
 	calculateRecipientShares,
 	getReceiverShares,
 	getAllContributorsFromTree,
-	normalizeShareMap
+	normalizeShareMap,
+	applyCapacityFilter,
+	updateCapacityShareQuantities
 } from '$lib/protocol';
 import {
 	type RootNode,
@@ -359,6 +361,9 @@ export function recalculateFromTree() {
 				// Set recalculating capacities flag to prevent loops
 				isRecalculatingCapacities.set(true);
 
+				// Get current provider shares
+				const currentProviderShares = get(providerShares);
+
 				// Track if any changes were made
 				let hasCapacityChanges = false;
 
@@ -368,7 +373,14 @@ export function recalculateFromTree() {
 							// Save state before calculation
 							const sharesBeforeCalc = JSON.stringify(capacity.recipient_shares || {});
 
-							calculateRecipientShares(capacity, tree, nodeMap);
+							// Apply capacity filter to the providerShares store value
+							const filteredShares = applyCapacityFilter(capacity, currentProviderShares, nodeMap);
+
+							// Store the filtered shares in the capacity
+							capacity.recipient_shares = filteredShares;
+
+							// Update computed quantities
+							updateCapacityShareQuantities(capacity);
 
 							// Check if anything changed
 							const sharesAfterCalc = JSON.stringify(capacity.recipient_shares || {});
@@ -440,6 +452,7 @@ export function recalculateFromCapacities() {
 	const tree = get(userTree);
 	const capacities = get(userCapacities);
 	const nodeMap = get(nodesMap);
+	const currentProviderShares = get(providerShares); // Get the store's providerShares
 
 	if (!tree || !capacities) return;
 
@@ -459,8 +472,14 @@ export function recalculateFromCapacities() {
 					// Save the state before calculation
 					const sharesBeforeCalc = JSON.stringify(capacity.recipient_shares || {});
 
-					// Calculate recipient shares
-					calculateRecipientShares(capacity, tree, nodeMap);
+					// Apply capacity filter to the providerShares store value
+					const filteredShares = applyCapacityFilter(capacity, currentProviderShares, nodeMap);
+
+					// Store the filtered shares in the capacity
+					capacity.recipient_shares = filteredShares;
+
+					// Update computed quantities
+					updateCapacityShareQuantities(capacity);
 
 					// Check if anything changed
 					const sharesAfterCalc = JSON.stringify(capacity.recipient_shares || {});

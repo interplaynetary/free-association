@@ -1,21 +1,28 @@
 <script lang="ts">
 	import type { Capacity } from '$lib/schema';
-	import { createEventDispatcher } from 'svelte';
+	import Bar from './Bar.svelte';
 
 	interface Props {
 		capacity: Capacity;
 		canDelete: boolean;
+		onupdate?: (capacity: Capacity) => void;
+		ondelete?: (id: string) => void;
 	}
 
-	let { capacity, canDelete }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		update: Capacity;
-		delete: string;
-	}>();
+	let { capacity, canDelete, onupdate, ondelete }: Props = $props();
 
 	// UI state for expanded capacity editing
 	let expanded = $state(false);
+
+	// Convert recipient_shares to bar segments
+	const recipientSegments = $derived(
+		capacity.recipient_shares
+			? Object.entries(capacity.recipient_shares).map(([userId, share]) => ({
+					id: userId,
+					value: share * 100 // Convert from 0-1 to 0-100 percentage
+				}))
+			: []
+	);
 
 	// Recurrence options
 	const recurrenceOptions = [
@@ -31,12 +38,12 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		dispatch('update', capacity);
+		onupdate?.(capacity);
 	}
 
 	// Delete this capacity
 	function handleDelete() {
-		dispatch('delete', capacity.id);
+		ondelete?.(capacity.id);
 	}
 
 	// Toggle expanded state
@@ -52,6 +59,13 @@
 </script>
 
 <div class="capacity-item">
+	<!-- Recipient shares bar -->
+	{#if recipientSegments.length > 0}
+		<div class="recipient-shares-bar mb-1">
+			<Bar segments={recipientSegments} height="8px" rounded={true} backgroundColor="#f3f4f6" />
+		</div>
+	{/if}
+
 	<div class="capacity-row flex items-center gap-2 rounded bg-white p-2 shadow-sm">
 		<input
 			type="text"

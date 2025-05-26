@@ -20,7 +20,18 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
 	server: {
 		watch: {
-			ignored: ['**/store/**', '**/store', 'store/**', 'store']
+			ignored: [
+				'**/store/**',
+				'**/store',
+				'store/**',
+				'store',
+				'**/radata/**',
+				'**/radata',
+				'radata/**',
+				'radata',
+				'radata-*',
+				'**/radata-*'
+			]
 		}
 	},
 	optimizeDeps: {
