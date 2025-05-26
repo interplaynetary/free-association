@@ -5,9 +5,10 @@
 	function getSegmentBorderRadius(
 		index: number,
 		total: number,
-		isVertical: boolean = false
+		isVertical: boolean = false,
+		rounded: boolean = false
 	): string {
-		if (total === 1) return 'inherit';
+		if (!rounded || total === 1) return rounded ? 'inherit' : '0';
 
 		if (isVertical) {
 			// Vertical layout: stack top to bottom
@@ -104,7 +105,12 @@
 				style:width={vertical ? '100%' : `${segment.normalizedValue}%`}
 				style:height={vertical ? `${segment.normalizedValue}%` : '100%'}
 				style:background-color={segment.color}
-				style:border-radius={getSegmentBorderRadius(i, normalizedSegments.length, vertical)}
+				style:border-radius={getSegmentBorderRadius(
+					i,
+					normalizedSegments.length,
+					vertical,
+					rounded
+				)}
 				data-id={segment.id}
 				data-value={segment.value}
 			>
@@ -145,6 +151,7 @@
 		justify-content: center;
 		overflow: hidden;
 		min-width: 1px;
+		min-height: 25px;
 	}
 
 	.segment-label,

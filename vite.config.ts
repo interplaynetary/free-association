@@ -18,6 +18,11 @@ const moduleExclude = (match: string): Plugin => {
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
+	server: {
+		watch: {
+			ignored: ['**/store/**', '**/store', 'store/**', 'store']
+		}
+	},
 	optimizeDeps: {
 		include: [
 			'gun',

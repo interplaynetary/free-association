@@ -86,7 +86,7 @@
 					segments={$barSegments}
 					width="100%"
 					vertical={!isMobile}
-					showLabels={true}
+					showLabels={false}
 					showValues={false}
 					rounded={false}
 				/>
@@ -105,7 +105,7 @@
 					segments={$providerSegments}
 					width="100%"
 					vertical={!isMobile}
-					showLabels={true}
+					showLabels={false}
 					showValues={false}
 					rounded={false}
 				/>
@@ -145,7 +145,7 @@
 
 	.bars {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		gap: 0.5rem;
 	}
 
@@ -176,7 +176,7 @@
 		}
 
 		.bars {
-			flex-direction: row;
+			flex-direction: column;
 			height: auto;
 		}
 

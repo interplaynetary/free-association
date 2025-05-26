@@ -24,8 +24,6 @@ import {
 } from '$lib/schema';
 import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from '$lib/validation';
 
-// Why are we maxing out our local storage so quickly
-
 // User Space
 export const userTree: Writable<RootNode | null> = writable(null);
 export const userSogf: Writable<ShareMap | null> = writable(null);
@@ -43,44 +41,25 @@ export const recognitionCache = writable<RecognitionCache>({});
 
 // Derived store for mutual recognition values (min of ourShare and theirShare)
 export const mutualRecognition = derived(recognitionCache, ($recognitionCache) => {
-	console.log(
-		`[MUTUAL-RECOGNITION] ${new Date().toISOString()} Recalculating from cache:`,
-		$recognitionCache
-	);
-
 	const mutualValues: Record<string, number> = {};
 
 	for (const [contributorId, recognition] of Object.entries($recognitionCache)) {
 		// Mutual recognition is the minimum of our share and their share
-		const mutualValue = Math.min(recognition.ourShare, recognition.theirShare);
-		mutualValues[contributorId] = mutualValue;
-
-		console.log(
-			`[MUTUAL-RECOGNITION] ${contributorId}: our=${recognition.ourShare.toFixed(4)}, their=${recognition.theirShare.toFixed(4)}, mutual=${mutualValue.toFixed(4)}`
-		);
+		mutualValues[contributorId] = Math.min(recognition.ourShare, recognition.theirShare);
 	}
 
-	console.log('[MUTUAL-RECOGNITION] Final mutual values:', mutualValues);
 	return mutualValues;
 });
 
 // Derived store for normalized mutual recognition values (sum to 1.0)
 export const providerShares = derived(mutualRecognition, ($mutualRecognition) => {
-	console.log(
-		`[PROVIDER-SHARES] ${new Date().toISOString()} Recalculating from mutual recognition:`,
-		$mutualRecognition
-	);
-
 	// If empty, return empty object
 	if (Object.keys($mutualRecognition).length === 0) {
-		console.log('[PROVIDER-SHARES] No mutual recognition data, returning empty');
 		return {};
 	}
 
 	// Use the normalizeShareMap function from protocol.ts
-	const normalized = normalizeShareMap($mutualRecognition);
-	console.log('[PROVIDER-SHARES] Normalized shares:', normalized);
-	return normalized;
+	return normalizeShareMap($mutualRecognition);
 });
 
 // Public Space
@@ -94,74 +73,9 @@ export const isRecalculatingCapacities = writable(false);
 export const isRecalculatingTree = writable(false);
 
 // Database
-export const gun = Gun({
-	peers: ['http://localhost:8765/gun']
-	//localStorage: false,
-	//radisk: false
-});
+export const gun = Gun();
 
 export const usersList = gun.get('freely-associating-players');
-
-// Cache for user names to avoid repeated Gun lookups
-export const userNamesCache = writable<Record<string, string>>({});
-
-/**
- * Get user name from Gun with caching
- * @param userId The user ID to look up
- * @returns Promise that resolves to the user's display name
- */
-export async function getUserName(userId: string): Promise<string> {
-	// Check cache first
-	const cache = get(userNamesCache);
-	if (cache[userId]) {
-		return cache[userId];
-	}
-
-	// Look up from freely-associating-players first
-	try {
-		const pubUser: any = await new Promise((resolve) => {
-			usersList.get(userId).once(resolve);
-		});
-
-		if (pubUser && pubUser.name) {
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: pubUser.name
-			}));
-			return pubUser.name;
-		}
-	} catch (error) {
-		console.log(
-			`[USER-NAME] Could not fetch from freely-associating-players for ${userId}:`,
-			error
-		);
-	}
-
-	// If not found, try the user's protected space
-	try {
-		const alias: any = await new Promise((resolve) => {
-			gun.get(`~${userId}`).get('alias').once(resolve);
-		});
-
-		if (alias && typeof alias === 'string') {
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: alias
-			}));
-			return alias;
-		}
-	} catch (error) {
-		console.log(`[USER-NAME] Could not fetch alias for user ${userId}:`, error);
-	}
-
-	// Fallback to truncated ID
-	const fallbackName = userId.substring(0, 8) + '...';
-	userNamesCache.update((cache) => ({
-		...cache,
-		[userId]: fallbackName
-	}));
-	return fallbackName;
-}
 
 export let user = gun.user().recall({ sessionStorage: true });
 
@@ -283,40 +197,22 @@ export function recalculateFromTree() {
 			userSogf.set(sogf);
 			console.log('[RECALC] SOGF calculation complete');
 
-			// CLEANUP: Remove recognition cache entries for contributors no longer in the tree
-			const currentCache = get(recognitionCache);
-			const cacheContributors = Object.keys(currentCache);
-			const removedContributors = cacheContributors.filter((id) => !contributorsList.includes(id));
-
-			if (removedContributors.length > 0) {
-				console.log(`[RECALC] Cleaning up cache for removed contributors:`, removedContributors);
-				recognitionCache.update((cache) => {
-					removedContributors.forEach((contributorId) => {
-						delete cache[contributorId];
-					});
-					return cache;
-				});
-			}
-
 			// Update recognition cache with our share values
 			contributorsList.forEach((contributorId) => {
-				// Note: contributor might not exist in nodeMap since contributors are external user IDs
+				const contributor = nodeMap[contributorId];
+				if (!contributor) return;
 
 				// Get our share from SOGF
 				const ourShare = sogf[contributorId] || 0;
-				console.log(
-					`[RECALC] Processing contributor ${contributorId}: ourShare=${ourShare.toFixed(4)}`
-				);
 
-				// Always update the cache with current ourShare (even if 0)
-				// Get existing entry to preserve theirShare
-				const existing = get(recognitionCache)[contributorId];
-				const theirShare = existing?.theirShare || 0;
+				// Only update if we have actual values
+				if (ourShare > 0) {
+					// Get existing entry
+					const existing = get(recognitionCache)[contributorId];
+					const theirShare = existing?.theirShare || 0;
 
-				console.log(
-					`[RECALC] Updating recognition for ${contributorId}: ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
-				);
-				updateRecognitionCache(contributorId, ourShare, theirShare);
+					updateRecognitionCache(contributorId, ourShare, theirShare);
+				}
 			});
 		} catch (error) {
 			console.error('[RECALC] Error calculating SOGF:', error);
@@ -329,20 +225,12 @@ export function recalculateFromTree() {
 			const mutualValues = get(mutualRecognition);
 			const contributorsList = get(contributors);
 
-			// FIXED: Only include contributors with actual mutual recognition > 0
-			const mutualList = Object.entries(mutualValues)
-				.filter(([_, value]) => value > 0)
-				.map(([contributorId, _]) => contributorId);
+			// Update mutual contributors based on recognition
+			const mutualList =
+				Object.keys(mutualValues).length > 0 ? Object.keys(mutualValues) : contributorsList;
 
-			// Fallback: if no mutual recognition yet, use empty array (not all contributors)
-			const finalMutualList = mutualList.length > 0 ? mutualList : [];
-
-			mutualContributors.set(finalMutualList);
-			console.log(
-				'[RECALC] Found',
-				finalMutualList.length,
-				'mutual contributors with recognition > 0'
-			);
+			mutualContributors.set(mutualList);
+			console.log('[RECALC] Found', mutualList.length, 'mutual contributors');
 		} catch (error) {
 			console.error('[RECALC] Error updating mutual contributors:', error);
 		}
@@ -700,8 +588,6 @@ export function persistTree() {
 export function persistSogf() {
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
-		// Ensure we're storing in the user's protected space using the correct pattern
-		// This follows the Gun guide's recommendation for user-specific data
 		user.get('sogf').put(structuredClone(sogfValue));
 	}
 }
@@ -940,27 +826,16 @@ export function updateRecognitionCache(
 	);
 
 	recognitionCache.update((cache) => {
-		const oldEntry = cache[contributorId];
 		cache[contributorId] = {
 			ourShare,
 			theirShare,
 			timestamp: Date.now()
 		};
-
-		console.log(`[MUTUAL] Cache entry for ${contributorId}:`, {
-			old: oldEntry,
-			new: cache[contributorId]
-		});
-
 		return cache;
 	});
 
 	// Persist the updated cache
 	persistRecognitionCache();
-
-	// Log the entire cache after update
-	const fullCache = get(recognitionCache);
-	console.log('[MUTUAL] Full recognition cache after update:', fullCache);
 }
 
 /**
@@ -1012,43 +887,30 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	const cache = get(recognitionCache);
 	const existing = cache[contributorId];
 
-	console.log(`[NETWORK] Existing cache entry for ${contributorId}:`, existing);
-
-	// Update the cache immediately with new theirShare
-	recognitionCache.update((cache) => {
-		if (existing) {
-			// Update only theirShare in existing entry
-			console.log(`[NETWORK] Updating existing entry for ${contributorId}`);
+	if (existing) {
+		// Update only theirShare in existing entry
+		recognitionCache.update((cache) => {
 			cache[contributorId] = {
 				...cache[contributorId],
 				theirShare,
 				timestamp: Date.now()
 			};
-		} else {
-			// Create new entry with default ourShare of 0
-			console.log(`[NETWORK] Creating new entry for ${contributorId} with ourShare=0`);
+			return cache;
+		});
+	} else {
+		// Create new entry with default ourShare of 0
+		recognitionCache.update((cache) => {
 			cache[contributorId] = {
 				ourShare: 0, // We don't know our share yet
 				theirShare,
 				timestamp: Date.now()
 			};
-		}
-
-		console.log(`[NETWORK] Updated cache entry for ${contributorId}:`, cache[contributorId]);
-		return cache;
-	});
+			return cache;
+		});
+	}
 
 	// Persist the updated cache
 	persistRecognitionCache();
-
-	// Log the updated cache and force reactivity check
-	const updatedCache = get(recognitionCache);
-	const updatedMutual = get(mutualRecognition);
-	const updatedProvider = get(providerShares);
-
-	console.log(`[NETWORK] Cache after network update from ${contributorId}:`, updatedCache);
-	console.log(`[NETWORK] Mutual recognition after update:`, updatedMutual);
-	console.log(`[NETWORK] Provider shares after update:`, updatedProvider);
 }
 
 /**
@@ -1058,24 +920,11 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
-	// FIXED: Use the correct Gun pattern for accessing other users' protected data
-	// The guide shows user data is stored under gun.get(`~${public_key}`)
-	const contributorSogf = gun.get(`~${contributorId}`).get('sogf');
-
-	// Add timeout protection as recommended by the Gun guide
-	// to prevent hanging when data doesn't exist
-	let hasReceived = false;
-	const timeout = setTimeout(() => {
-		if (!hasReceived) {
-			console.log(`[NETWORK] Timeout waiting for SOGF from ${contributorId}`);
-		}
-	}, 10000); // 10 second timeout
+	// Create a Gun reference to the contributor's SOGF
+	const contributorSogf = gun.user(contributorId).get('sogf');
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
-		hasReceived = true;
-		clearTimeout(timeout);
-
 		if (!sogfData) return;
 
 		console.log(`[NETWORK] Received SOGF update from ${contributorId}`);
@@ -1107,86 +956,26 @@ export function subscribeToAllMutualContributors() {
 	console.log(`[NETWORK] Set up ${currentMutualContributors.length} subscriptions`);
 }
 
-// Watch for changes to contributors and subscribe to get their SOGF data
-contributors.subscribe((allContributors) => {
-	if (!allContributors.length) return;
+// Watch for changes to mutual contributors and subscribe to new ones
+mutualContributors.subscribe((contributors) => {
+	if (!contributors.length) return;
 
 	// Only run this if we're authenticated
 	if (!user.is?.pub) return;
 
-	console.log(
-		`[NETWORK] Contributors changed, now have ${allContributors.length}, setting up subscriptions`
-	);
+	console.log(`[NETWORK] Mutual contributors changed, now have ${contributors.length}`);
 
 	// Get current recognition cache to check which ones we're already subscribed to
 	const cache = get(recognitionCache);
 
-	// Subscribe to ALL contributors to get their SOGF data
-	// This allows us to receive theirShare values and determine who's mutual
-	allContributors.forEach((contributorId) => {
+	// Subscribe to any contributors we don't have in our cache
+	contributors.forEach((contributorId) => {
 		if (
 			!cache[contributorId] ||
 			cache[contributorId].timestamp < Date.now() - 24 * 60 * 60 * 1000
 		) {
 			// Subscribe if we don't have data or it's older than 24 hours
-			console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
 			subscribeToContributorSOGF(contributorId);
-		} else {
-			console.log(`[NETWORK] Already have recent data for ${contributorId}, skipping subscription`);
 		}
 	});
 });
-
-/**
- * Debug function to log current state of all recognition-related stores
- */
-export function debugRecognitionState() {
-	console.log('=== RECOGNITION DEBUG STATE ===');
-
-	const currentContributors = get(contributors);
-	const currentMutual = get(mutualContributors);
-	const currentCache = get(recognitionCache);
-	const currentMutualRecognition = get(mutualRecognition);
-	const currentProviderShares = get(providerShares);
-	const currentSogf = get(userSogf);
-
-	console.log('Contributors:', currentContributors);
-	console.log('Mutual Contributors:', currentMutual);
-	console.log('User SOGF:', currentSogf);
-
-	// Detailed recognition cache breakdown
-	console.log('=== DETAILED RECOGNITION CACHE ===');
-	Object.entries(currentCache).forEach(([contributorId, entry]) => {
-		console.log(`${contributorId}:`, {
-			ourShare: entry.ourShare,
-			theirShare: entry.theirShare,
-			mutual: Math.min(entry.ourShare, entry.theirShare),
-			timestamp: new Date(entry.timestamp).toISOString()
-		});
-	});
-
-	console.log('Mutual Recognition:', currentMutualRecognition);
-	console.log('Provider Shares:', currentProviderShares);
-	console.log('=== END DEBUG ===');
-}
-
-/**
- * Debug function to manually trigger subscriptions for all contributors
- */
-export function debugTriggerSubscriptions() {
-	console.log('[DEBUG] Manually triggering subscriptions for all contributors');
-	const allContributors = get(contributors);
-
-	allContributors.forEach((contributorId) => {
-		console.log(`[DEBUG] Setting up subscription for: ${contributorId}`);
-		subscribeToContributorSOGF(contributorId);
-	});
-
-	console.log(`[DEBUG] Set up ${allContributors.length} subscriptions`);
-}
-
-// Expose debug functions to global scope for console access
-if (typeof window !== 'undefined') {
-	(window as any).debugRecognition = debugRecognitionState;
-	(window as any).debugTriggerSubscriptions = debugTriggerSubscriptions;
-}

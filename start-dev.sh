@@ -10,7 +10,7 @@ sleep 2
 
 # Start the development server
 echo "Starting development server..."
-npm run dev
+bun run dev
 
 # When the development server is stopped, kill the Gun relay server
 echo "Shutting down Gun relay server..."

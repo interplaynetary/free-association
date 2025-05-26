@@ -262,9 +262,9 @@ export function sharesOfGeneralFulfillmentMap(
 
 	for (const contributorId of contributorIds) {
 		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap);
-		// FIXED: Always include contributors in the map, even with 0 values
-		// This ensures removed contributors get explicit 0 values instead of being excluded
-		sharesMap[contributorId] = share;
+		if (share > 0) {
+			sharesMap[contributorId] = share;
+		}
 	}
 
 	// Normalize the shares
