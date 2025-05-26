@@ -141,13 +141,13 @@
 	function handleAddSubtreeFilter(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
-		
+
 		const rect = (event.target as HTMLElement).getBoundingClientRect();
 		dropdownPosition = {
 			x: rect.left,
 			y: rect.bottom + 5
 		};
-		
+
 		showSubtreeDropdown = true;
 	}
 
