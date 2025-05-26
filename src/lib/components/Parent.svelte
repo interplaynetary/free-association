@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { username, userpub, userTree } from '$lib/state.svelte';
+	import { username, userpub, userTree, createUsersDataProvider } from '$lib/state.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
+	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
 	import {
-		type Node,
-		type NonRootNode,
-		type RootNode,
 		findNodeById,
 		getParentNode,
 		updateNodeById,
@@ -49,6 +47,9 @@
 	let showUserDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
+
+	// Create users data provider for the dropdown
+	let usersDataProvider = createUsersDataProvider([]);
 
 	// Growth state
 	let touchStartTime = $state(0);
@@ -354,7 +355,7 @@
 
 			// Get current contributor IDs and filter out the one to remove
 			const updatedContributors = (node as NonRootNode).contributor_ids.filter(
-				(id) => id !== contributorId
+				(id: string) => id !== contributorId
 			);
 
 			// Update the node's contributors
@@ -373,7 +374,7 @@
 		}
 	}
 
-	function handleUserSelect(detail: { id: string; name: string }) {
+	function handleUserSelect(detail: { id: string; name: string; metadata?: any }) {
 		const { id: userId } = detail;
 
 		if (!activeNodeId) {
@@ -741,6 +742,8 @@
 			position={dropdownPosition}
 			show={showUserDropdown}
 			title="Select Contributor"
+			searchPlaceholder="Search users..."
+			dataProvider={usersDataProvider}
 			select={handleUserSelect}
 			close={handleDropdownClose}
 		/>

@@ -2,19 +2,19 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { browser } from '$app/environment';
-	import { gun, usersList } from '$lib/state.svelte';
+	import type { DropdownDataProvider } from '$lib/state.svelte';
 
 	// Props using Svelte 5 runes
 	let {
-		title = 'Select User',
-		searchPlaceholder = 'Search players...',
+		title = 'Select Item',
+		searchPlaceholder = 'Search...',
 		position = { x: 0, y: 0 },
 		width = 280,
 		maxHeight = 320,
-		excludeIds = [],
+		dataProvider,
 		filterText = '',
 		show = false,
-		select = (detail: { id: string; name: string }) => {},
+		select = (detail: { id: string; name: string; metadata?: any }) => {},
 		close = () => {}
 	} = $props<{
 		title?: string;
@@ -22,10 +22,10 @@
 		position?: { x: number; y: number };
 		width?: number;
 		maxHeight?: number;
-		excludeIds?: string[];
+		dataProvider: DropdownDataProvider;
 		filterText?: string;
 		show?: boolean;
-		select?: (detail: { id: string; name: string }) => void;
+		select?: (detail: { id: string; name: string; metadata?: any }) => void;
 		close?: () => void;
 	}>();
 
@@ -34,8 +34,6 @@
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let resultsContainer = $state<HTMLDivElement | null>(null);
 	let initialized = $state(false);
-	let usersArray = $state<Array<{ id: string; name: string }>>([]);
-	let loading = $state(true);
 	let searchFilter = $state(filterText);
 
 	// Update the filter when the prop changes
@@ -43,66 +41,20 @@
 		searchFilter = filterText;
 	});
 
-	// Function to update users list based on current filter
-	async function updateUsersList() {
-		loading = true;
-		usersArray = [];
-
-		try {
-			// Use a Map to collect unique users and avoid duplicates
-			const usersMap = new Map<string, { id: string; name: string }>();
-
-			// Use Gun to fetch users
-			usersList.map().once((userData: any, userId: string) => {
-				// Skip if this is not a valid user entry or if in excluded list
-				if (!userData || !userId || excludeIds.includes(userId)) return;
-
-				// Get user name, fallback to user ID if name not available
-				const userName = userData.name || userId;
-
-				// Apply search filter if it exists
-				if (searchFilter) {
-					const searchLower = searchFilter.toLowerCase();
-					const nameLower = userName.toLowerCase();
-					const idLower = userId.toLowerCase();
-
-					if (!nameLower.includes(searchLower) && !idLower.includes(searchLower)) {
-						return;
-					}
-				}
-
-				// Add to users map (this automatically handles duplicates)
-				usersMap.set(userId, { id: userId, name: userName });
-			});
-
-			// Convert map to array after a short delay to ensure all callbacks have fired
-			setTimeout(() => {
-				usersArray = Array.from(usersMap.values());
-				loading = false;
-			}, 500);
-		} catch (error) {
-			console.error('Error fetching users from Gun:', error);
-			loading = false;
-		}
-	}
-
 	// Event handlers
 	function handleClose() {
 		close();
 		show = false;
 	}
 
-	function handleSelect(id: string, name: string) {
-		select({ id, name });
+	function handleSelect(id: string, name: string, metadata?: any) {
+		select({ id, name, metadata });
 		handleClose();
 	}
 
 	// Initialize the component when shown
 	function initialize() {
 		if (!initialized && show) {
-			// Update users list
-			updateUsersList();
-
 			// Focus search input
 			if (searchInput) {
 				setTimeout(() => searchInput?.focus(), 50);
@@ -162,7 +114,7 @@
 	// Watch for search filter changes
 	$effect(() => {
 		if (initialized && searchFilter !== undefined) {
-			updateUsersList();
+			dataProvider.search(searchFilter);
 		}
 	});
 
@@ -182,7 +134,9 @@
 
 	// Effect to run initialize when show changes
 	$effect(() => {
+		console.log('DropDown show effect triggered:', { show, initialized, browser });
 		if (show && !initialized && browser) {
+			console.log('Initializing dropdown...');
 			initialize();
 		}
 	});
@@ -217,17 +171,29 @@
 		</div>
 
 		<div class="results" bind:this={resultsContainer}>
-			{#if loading && usersArray.length === 0}
-				<div class="message">Loading trees...</div>
-			{:else if usersArray.length === 0}
+			{#if dataProvider.loading && dataProvider.items.length === 0}
+				<div class="message">Loading...</div>
+			{:else if dataProvider.items.length === 0}
 				<div class="message">
-					{searchFilter ? 'No matching trees found' : 'No trees available'}
+					{searchFilter ? 'No matching items found' : 'No items available'}
 				</div>
 			{:else}
-				{#each usersArray as item (item.id)}
-					<div class="item" data-id={item.id} onclick={() => handleSelect(item.id, item.name)}>
-						<div class="color-dot" style="background-color: {getColorForUserId(item.id)}"></div>
-						<div class="item-name">{item.name || item.id}</div>
+				{#each dataProvider.items as item (item.id)}
+					<div
+						class="item"
+						data-id={item.id}
+						onclick={() => handleSelect(item.id, item.name, item.metadata)}
+					>
+						<div
+							class="color-dot"
+							style="background-color: {item.color || getColorForUserId(item.id)}"
+						></div>
+						<div class="item-content">
+							<div class="item-name">{item.name || item.id}</div>
+							{#if item.metadata?.contributorCount !== undefined}
+								<div class="item-meta">({item.metadata.contributorCount} contributors)</div>
+							{/if}
+						</div>
 					</div>
 				{/each}
 			{/if}
@@ -351,8 +317,17 @@
 		margin-right: 8px;
 	}
 
+	.item-content {
+		flex: 1;
+	}
+
 	.item-name {
 		flex: 1;
 		color: #333;
+	}
+
+	.item-meta {
+		font-size: 12px;
+		color: #666;
 	}
 </style>

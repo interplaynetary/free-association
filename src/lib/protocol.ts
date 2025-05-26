@@ -619,11 +619,78 @@ export function composeFilters(
  * This allows storing filter rules in a portable JSON format
  */
 
+// Check if a contributor appears in a specific subtree
+export function isInSubtree(
+	contributorId: string,
+	subtreeRootId: string,
+	nodesMap: Record<string, Node>
+): boolean {
+	const subtreeRoot = nodesMap[subtreeRootId];
+	if (!subtreeRoot) return false;
+
+	// Get all nodes in the subtree (including the root)
+	const subtreeNodes = [subtreeRoot, ...getDescendants(subtreeRoot)];
+
+	// Check if the contributor appears in any node in the subtree
+	return subtreeNodes.some((node) => {
+		if (node.type === 'NonRootNode') {
+			return (node as NonRootNode).contributor_ids.includes(contributorId);
+		}
+		return false;
+	});
+}
+
+// Get all contributors that appear in a specific subtree
+export function getContributorsInSubtree(
+	subtreeRootId: string,
+	nodesMap: Record<string, Node>
+): string[] {
+	const subtreeRoot = nodesMap[subtreeRootId];
+	if (!subtreeRoot) return [];
+
+	const contributorIds = new Set<string>();
+	const subtreeNodes = [subtreeRoot, ...getDescendants(subtreeRoot)];
+
+	subtreeNodes.forEach((node) => {
+		if (node.type === 'NonRootNode') {
+			(node as NonRootNode).contributor_ids.forEach((id) => contributorIds.add(id));
+		}
+	});
+
+	return [...contributorIds];
+}
+
+// Get a map of subtree names to their contributor lists
+export function getSubtreeContributorMap(
+	tree: Node,
+	nodesMap: Record<string, Node>
+): Record<string, { name: string; contributors: string[] }> {
+	const subtreeMap: Record<string, { name: string; contributors: string[] }> = {};
+
+	// Include the root
+	subtreeMap[tree.id] = {
+		name: tree.name,
+		contributors: getContributorsInSubtree(tree.id, nodesMap)
+	};
+
+	// Include all child subtrees
+	const allDescendants = getDescendants(tree);
+	allDescendants.forEach((node) => {
+		subtreeMap[node.id] = {
+			name: node.name,
+			contributors: getContributorsInSubtree(node.id, nodesMap)
+		};
+	});
+
+	return subtreeMap;
+}
+
 // Apply a jsonLogic rule to filter a share map
 export function applyJsonLogicFilter(
 	shareMap: ShareMap,
 	rule: any,
-	nodeContext: Record<string, Node> = {}
+	nodeContext: Record<string, Node> = {},
+	subtreeContributorMap?: Record<string, Record<string, boolean>>
 ): ShareMap {
 	// Create a predicate that evaluates the rule for each node
 	const predicate = (nodeId: string, share: number) => {
@@ -631,8 +698,9 @@ export function applyJsonLogicFilter(
 		const data = {
 			nodeId,
 			share,
-			node: nodeContext[nodeId] || null
-			// Add any other context data needed for evaluation
+			node: nodeContext[nodeId] || null,
+			// Add subtree contributor lookup for efficient filtering
+			subtreeContributors: subtreeContributorMap || {}
 		};
 
 		// Apply the rule using jsonLogic and ensure boolean return
@@ -649,7 +717,8 @@ export function applyJsonLogicFilter(
 export function applyCapacityFilter(
 	capacity: Capacity,
 	shareMap: ShareMap,
-	nodeContext: Record<string, Node> = {}
+	nodeContext: Record<string, Node> = {},
+	subtreeContributorMap?: Record<string, Record<string, boolean>>
 ): ShareMap {
 	// If no filter rule exists, return the original map normalized
 	if (!capacity.filter_rule) {
@@ -657,7 +726,7 @@ export function applyCapacityFilter(
 	}
 
 	// Apply the jsonLogic filter
-	return applyJsonLogicFilter(shareMap, capacity.filter_rule, nodeContext);
+	return applyJsonLogicFilter(shareMap, capacity.filter_rule, nodeContext, subtreeContributorMap);
 }
 
 // Common predicates as JsonLogic rules
@@ -682,6 +751,21 @@ export const FilterRules = {
 		some: [{ var: 'node.categories' }, { in: [{ var: '' }, categories] }]
 	}),
 
+	// Filter by contributors that appear in specific subtrees
+	inSubtrees: (subtreeIds: string[]): any => ({
+		some: [
+			subtreeIds,
+			{
+				'!!': { var: ['subtreeContributors', { var: '' }, { var: 'nodeId' }] }
+			}
+		]
+	}),
+
+	// Filter by contributors that appear in a specific subtree
+	inSubtree: (subtreeId: string): any => ({
+		in: [{ var: 'nodeId' }, { var: ['subtreeContributors', subtreeId] }]
+	}),
+
 	// Combine multiple rules with AND
 	and: (...rules: any[]): any => ({
 		and: rules
@@ -696,31 +780,42 @@ export const FilterRules = {
 /**
  * Example usage:
  *
- * // Create a capacity with a filter rule
+ * // Create a capacity with a filter rule that only distributes to contributors
+ * // who appear in specific subtrees (categories) of your tree
  * const capacity: Capacity = {
  *   // ... other capacity fields
  *   filter_rule: FilterRules.and(
  *     FilterRules.excludeNodes(['blocked-user-1', 'blocked-user-2']),
  *     FilterRules.aboveThreshold(0.05),
- *     FilterRules.byCategory(['art', 'music'])
+ *     FilterRules.inSubtree('art-projects-subtree-id') // Only contributors from art projects
  *   )
  * };
  *
+ * // Or filter by multiple subtrees
+ * const multiSubtreeCapacity: Capacity = {
+ *   // ... other capacity fields
+ *   filter_rule: FilterRules.inSubtrees(['art-projects-id', 'music-projects-id'])
+ * };
+ *
  * // Apply the filter to distribute the capacity
+ * const tree = get(userTree);
+ * const nodesMap = get(nodesMap);
+ * const subtreeMap = get(subtreeContributorMap);
  * const shareMap = providerShares(provider, nodesMap);
- * const filteredShares = applyCapacityFilter(capacity, shareMap, nodesMap);
+ * const filteredShares = applyCapacityFilter(capacity, shareMap, nodesMap, subtreeMap);
  */
 
 export function calculateRecipientShares(
 	capacity: Capacity,
 	provider: Node,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	subtreeContributorMap?: Record<string, Record<string, boolean>>
 ): void {
 	// Get raw shares based on provider
 	const rawShares = providerShares(provider, nodesMap);
 
 	// Apply capacity filter if one exists
-	const filteredShares = applyCapacityFilter(capacity, rawShares, nodesMap);
+	const filteredShares = applyCapacityFilter(capacity, rawShares, nodesMap, subtreeContributorMap);
 
 	// Store the filtered shares in the capacity
 	capacity.recipient_shares = filteredShares;

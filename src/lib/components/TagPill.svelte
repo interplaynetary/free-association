@@ -5,12 +5,14 @@
 	// Props using Svelte 5 runes
 	let {
 		userId,
+		displayName: providedDisplayName,
 		truncateLength = 10,
 		removable = true,
 		onClick = (userId: string, event?: MouseEvent) => {},
 		onRemove = (userId: string) => {}
 	} = $props<{
 		userId: string;
+		displayName?: string;
 		truncateLength?: number;
 		removable?: boolean;
 		onClick?: (userId: string, event?: MouseEvent) => void;
@@ -18,14 +20,21 @@
 	}>();
 
 	// State
-	let displayName = $state(userId);
-	let isLoading = $state(true);
+	let displayName = $state(providedDisplayName || userId);
+	let isLoading = $state(!providedDisplayName);
 
 	// Element reference
 	let pillElement: HTMLDivElement;
 
-	// Load user data using centralized function
+	// Load user data using centralized function (only if no displayName provided)
 	async function loadUserData() {
+		if (providedDisplayName) {
+			displayName = providedDisplayName;
+			isLoading = false;
+			updateTooltip(displayName);
+			return;
+		}
+
 		isLoading = true;
 		try {
 			displayName = await getUserName(userId);
@@ -38,6 +47,15 @@
 			updateTooltip(displayName);
 		}
 	}
+
+	// Update display name when providedDisplayName changes
+	$effect(() => {
+		if (providedDisplayName) {
+			displayName = providedDisplayName;
+			isLoading = false;
+			updateTooltip(displayName);
+		}
+	});
 
 	// Initial load of user data
 	$effect(() => {

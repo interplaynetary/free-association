@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { Capacity } from '$lib/schema';
 	import Bar from './Bar.svelte';
+	import TagPill from './TagPill.svelte';
+	import DropDown from './DropDown.svelte';
+	import { createSubtreesDataProvider } from '$lib/state.svelte';
+	import { FilterRules } from '$lib/protocol';
 
 	interface Props {
 		capacity: Capacity;
@@ -13,6 +17,88 @@
 
 	// UI state for expanded capacity editing
 	let expanded = $state(false);
+
+	// UI state for filter management
+	let selectedSubtrees = $state<string[]>([]);
+	let selectedSubtreeNames = $state<Record<string, string>>({});
+
+	// Dropdown state for adding subtree filters
+	let showSubtreeDropdown = $state(false);
+	let dropdownPosition = $state({ x: 0, y: 0 });
+
+	// Create subtrees data provider for the dropdown
+	let subtreesDataProvider = createSubtreesDataProvider();
+
+	// Reactive capacity properties for proper binding
+	let capacityName = $state(capacity.name);
+	let capacityQuantity = $state(capacity.quantity);
+	let capacityUnit = $state(capacity.unit);
+
+	// Initialize selected subtrees from existing filter rule
+	$effect(() => {
+		if (capacity.filter_rule) {
+			// Try to extract subtree IDs from the filter rule
+			try {
+				const rule = capacity.filter_rule;
+
+				// Handle single subtree filter: FilterRules.inSubtree(subtreeId)
+				if (rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+					const [nodeIdVar, subtreeContributors] = rule.in;
+					if (nodeIdVar?.var === 'nodeId' && subtreeContributors?.var?.length === 2) {
+						const subtreeId = subtreeContributors.var[1];
+						if (typeof subtreeId === 'string' && !selectedSubtrees.includes(subtreeId)) {
+							selectedSubtrees = [subtreeId];
+							// We'll get the name from the data provider when it loads
+						}
+					}
+				}
+
+				// Handle multiple subtrees filter: FilterRules.inSubtrees(subtreeIds)
+				if (rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+					const [subtreeIds] = rule.some;
+					if (Array.isArray(subtreeIds)) {
+						const validIds = subtreeIds.filter((id) => typeof id === 'string');
+						if (validIds.length > 0) {
+							selectedSubtrees = [...validIds];
+							// We'll get the names from the data provider when it loads
+						}
+					}
+				}
+			} catch (error) {
+				console.warn('Could not parse existing filter rule:', error);
+			}
+		}
+	});
+
+	// Update capacity properties when reactive values change
+	$effect(() => {
+		capacity.name = capacityName;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.quantity = capacityQuantity;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.unit = capacityUnit;
+		handleCapacityUpdate();
+	});
+
+	// Update selected subtree names when data provider loads
+	$effect(() => {
+		if (subtreesDataProvider.items.length > 0 && selectedSubtrees.length > 0) {
+			const newNames: Record<string, string> = {};
+			selectedSubtrees.forEach((subtreeId) => {
+				const item = subtreesDataProvider.items.find((item) => item.id === subtreeId);
+				if (item) {
+					newNames[subtreeId] = item.name;
+				}
+			});
+			selectedSubtreeNames = newNames;
+		}
+	});
 
 	// Convert recipient_shares to bar segments
 	const recipientSegments = $derived(
@@ -51,6 +137,70 @@
 		expanded = !expanded;
 	}
 
+	// Handle adding a subtree filter
+	function handleAddSubtreeFilter(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		dropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+		
+		showSubtreeDropdown = true;
+	}
+
+	// Handle subtree selection from dropdown
+	function handleSubtreeSelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: subtreeId, name: subtreeName } = detail;
+
+		// Don't add if already selected
+		if (selectedSubtrees.includes(subtreeId)) {
+			showSubtreeDropdown = false;
+			return;
+		}
+
+		// Add to selected subtrees
+		selectedSubtrees = [...selectedSubtrees, subtreeId];
+		selectedSubtreeNames = { ...selectedSubtreeNames, [subtreeId]: subtreeName };
+
+		// Update filter rule
+		updateSubtreeFilter();
+
+		// Close dropdown
+		showSubtreeDropdown = false;
+	}
+
+	// Handle removing a subtree filter
+	function handleRemoveSubtree(subtreeId: string) {
+		selectedSubtrees = selectedSubtrees.filter((id) => id !== subtreeId);
+		const { [subtreeId]: removed, ...rest } = selectedSubtreeNames;
+		selectedSubtreeNames = rest;
+		updateSubtreeFilter();
+	}
+
+	// Update the filter rule based on selected subtrees
+	function updateSubtreeFilter() {
+		if (selectedSubtrees.length === 0) {
+			// No filter selected, remove filter rule
+			capacity.filter_rule = undefined;
+		} else if (selectedSubtrees.length === 1) {
+			// Single subtree filter
+			capacity.filter_rule = FilterRules.inSubtree(selectedSubtrees[0]);
+		} else {
+			// Multiple subtrees filter
+			capacity.filter_rule = FilterRules.inSubtrees(selectedSubtrees);
+		}
+
+		handleCapacityUpdate();
+	}
+
+	// Close dropdown
+	function handleDropdownClose() {
+		showSubtreeDropdown = false;
+	}
+
 	// Format date for input
 	function formatDateForInput(date: Date | undefined): string {
 		if (!date) return '';
@@ -67,29 +217,29 @@
 	{/if}
 
 	<div class="capacity-row flex items-center gap-2 rounded bg-white p-2 shadow-sm">
+		<!-- Main capacity inputs -->
 		<input
 			type="text"
 			class="capacity-input name min-w-0 flex-1"
-			bind:value={capacity.name}
+			bind:value={capacityName}
 			placeholder="Name"
-			oninput={handleCapacityUpdate}
 		/>
 		<input
 			type="number"
 			class="capacity-input qty w-16 text-right"
 			min="0"
 			step="0.01"
-			bind:value={capacity.quantity}
+			bind:value={capacityQuantity}
 			placeholder="Qty"
-			oninput={handleCapacityUpdate}
 		/>
 		<input
 			type="text"
 			class="capacity-input unit w-20"
-			bind:value={capacity.unit}
+			bind:value={capacityUnit}
 			placeholder="Unit"
-			oninput={handleCapacityUpdate}
 		/>
+
+		<!-- Action buttons -->
 		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -113,10 +263,53 @@
 		>
 	</div>
 
+	<!-- Filter tags section (always visible, like contributors in Child.svelte) -->
+	<div class="filter-section mt-2">
+		<div class="filter-layout">
+			<!-- Add filter button -->
+			<div class="filter-button-container">
+				<button type="button" class="add-filter-btn" onclick={handleAddSubtreeFilter}>
+					<span class="add-icon">+</span>
+					<span class="add-text">Filter</span>
+				</button>
+			</div>
+
+			<!-- Filter tags -->
+			{#if selectedSubtrees.length > 0}
+				<div class="filter-tags-container">
+					{#each selectedSubtrees as subtreeId}
+						<div class="filter-tag-wrapper">
+							<TagPill
+								userId={subtreeId}
+								displayName={selectedSubtreeNames[subtreeId] || subtreeId}
+								truncateLength={15}
+								removable={true}
+								onClick={() => {}}
+								onRemove={() => handleRemoveSubtree(subtreeId)}
+							/>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Filter description -->
+		{#if selectedSubtrees.length > 0}
+			<div class="filter-description">
+				<span class="filter-desc-text">
+					Only contributors from {selectedSubtrees.length === 1
+						? 'this subtree'
+						: `${selectedSubtrees.length} subtrees`}
+				</span>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Expanded settings (space-time only) -->
 	{#if expanded}
 		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
-			<div class="settings-content mx-8 my-8">
-				<div class="space-time-section mb-8">
+			<div class="settings-content">
+				<div class="space-time-section mb-6">
 					<h4 class="mb-4 text-sm font-medium text-gray-700">Space-time coordinates</h4>
 
 					<div class="space-time-options mb-6 ml-2">
@@ -230,7 +423,7 @@
 								</div>
 							{/if}
 
-							<!-- Recurrence dropdown styled like Google Calendar -->
+							<!-- Recurrence dropdown -->
 							<div class="mb-6">
 								<div class="relative w-full md:w-auto">
 									<select
@@ -353,51 +546,65 @@
 					{/if}
 				</div>
 
-				<div class="hidden-option ml-2">
-					<label class="inline-flex items-center">
-						<input
-							type="checkbox"
-							bind:checked={capacity.hidden_until_request_accepted}
-							class="mr-3 h-4 w-4"
-							onchange={handleCapacityUpdate}
-						/>
-						<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
-					</label>
-				</div>
+				<div class="other-options mb-4">
+					<div class="max-divisibility-section mb-6">
+						<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
+						<div class="grid grid-cols-2 gap-8">
+							<div>
+								<input
+									type="number"
+									min="1"
+									step="1"
+									class="capacity-input qty w-full text-right"
+									bind:value={capacity.max_natural_div}
+									placeholder="Natural"
+									onchange={handleCapacityUpdate}
+								/>
+							</div>
+							<div>
+								<input
+									type="number"
+									min="0"
+									max="1"
+									step="0.01"
+									class="capacity-input qty w-full text-right"
+									bind:value={capacity.max_percentage_div}
+									placeholder="Percentage (0-1)"
+									onchange={handleCapacityUpdate}
+								/>
+							</div>
+						</div>
+					</div>
 
-				<div class="max-divisibility-section mb-6 ml-2">
-					<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
-
-					<div class="grid grid-cols-2 gap-8">
-						<div>
+					<div class="hidden-option">
+						<label class="inline-flex items-center">
 							<input
-								type="number"
-								min="1"
-								step="1"
-								class="capacity-input qty w-full text-right"
-								bind:value={capacity.max_natural_div}
-								placeholder="Natural"
+								type="checkbox"
+								bind:checked={capacity.hidden_until_request_accepted}
+								class="mr-3 h-4 w-4"
 								onchange={handleCapacityUpdate}
 							/>
-						</div>
-						<div>
-							<input
-								type="number"
-								min="0"
-								max="1"
-								step="0.01"
-								class="capacity-input qty w-full text-right"
-								bind:value={capacity.max_percentage_div}
-								placeholder="Percentage (0-1)"
-								onchange={handleCapacityUpdate}
-							/>
-						</div>
+							<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
+						</label>
 					</div>
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
+
+<!-- Subtree dropdown for adding filters -->
+{#if showSubtreeDropdown}
+	<DropDown
+		position={dropdownPosition}
+		show={showSubtreeDropdown}
+		title="Select Subtree Category"
+		searchPlaceholder="Search subtrees..."
+		dataProvider={subtreesDataProvider}
+		select={handleSubtreeSelect}
+		close={handleDropdownClose}
+	/>
+{/if}
 
 <style>
 	/* Make sure inputs and selects match our design */
@@ -483,6 +690,84 @@
 	.capacity-item {
 		display: flex;
 		flex-direction: column;
+	}
+
+	/* Filter section styling (similar to Child.svelte contributor layout) */
+	.filter-section {
+		background: rgba(255, 255, 255, 0.8);
+		border-radius: 6px;
+		padding: 8px 12px;
+		border: 1px solid rgba(229, 231, 235, 0.6);
+	}
+
+	.filter-layout {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.filter-button-container {
+		display: flex;
+		align-items: center;
+	}
+
+	.add-filter-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		border: 1px dashed #d1d5db;
+		border-radius: 12px;
+		background: rgba(249, 250, 251, 0.8);
+		color: #6b7280;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		height: 22px;
+		line-height: 1;
+	}
+
+	.add-filter-btn:hover {
+		border-color: #3b82f6;
+		color: #3b82f6;
+		background: rgba(248, 250, 252, 0.9);
+		transform: scale(1.02);
+	}
+
+	.add-icon {
+		font-size: 0.875rem;
+		font-weight: bold;
+		line-height: 1;
+	}
+
+	.add-text {
+		font-weight: 500;
+	}
+
+	.filter-tags-container {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		align-items: center;
+		flex: 1;
+	}
+
+	.filter-tag-wrapper {
+		display: flex;
+		align-items: center;
+	}
+
+	.filter-description {
+		margin-top: 6px;
+		padding-top: 6px;
+		border-top: 1px solid rgba(229, 231, 235, 0.4);
+	}
+
+	.filter-desc-text {
+		font-size: 0.75rem;
+		color: #6b7280;
+		font-style: italic;
 	}
 
 	/* Expanded settings styling */
