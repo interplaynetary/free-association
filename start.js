@@ -1,7 +1,9 @@
 import relay from '@gun-vue/relay';
 
 relay.init({
-	store: true,
+	host: 'localhost', // Domain or IP address where your relay is hosted (no 'http://')
+	port: 8765, // The port your relay will listen on (e.g., 8080)
+	store: true
 });
 
 /*

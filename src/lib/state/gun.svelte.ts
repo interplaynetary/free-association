@@ -394,21 +394,33 @@ export function manifest() {
 				console.log('[MANIFEST] First child:', parsedTree.children[0]);
 			}
 			userTree.set(parsedTree);
+
+			// Reset loading flag after tree is loaded
+			isLoadingTree.set(false);
+
+			// Trigger recalculation by setting the tree again after loading flag is cleared
+			// This ensures SOGF is calculated from the current tree state
+			setTimeout(() => {
+				console.log('[MANIFEST] Triggering tree recalculation after load');
+				userTree.set(parsedTree);
+			}, 50);
 		} else if (user.is?.pub) {
 			// No valid tree data found, create a new one
 			console.log('[MANIFEST] No valid tree data found, creating initial tree');
 			const newTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
 			user.get('tree').put(JSON.stringify(newTree));
 			userTree.set(newTree);
+
+			// Reset loading flag after tree is loaded
+			isLoadingTree.set(false);
 		} else {
 			console.log('[MANIFEST] No tree data found and no user to create one');
+			// Reset loading flag even if no tree
+			isLoadingTree.set(false);
 		}
-
-		// Reset loading flag after tree is loaded
-		isLoadingTree.set(false);
 	});
 
-	// Load SOGF
+	// Load SOGF - needed for network synchronization even though it will be recalculated
 	user.get('sogf').once((sogfData: any) => {
 		if (sogfData) {
 			// Parse SOGF data with validation

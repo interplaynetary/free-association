@@ -13,6 +13,7 @@ import {
 	nodesMap,
 	contributors,
 	mutualContributors,
+	allKnownContributors,
 	recognitionCache,
 	mutualRecognition,
 	providerShares,
@@ -56,6 +57,14 @@ export function recalculateFromTree() {
 			// Update contributors store
 			contributors.set(allContributorIds);
 			console.log('[RECALC] Found', allContributorIds.length, 'contributors');
+
+			// Update all known contributors (union of current and previous)
+			const currentKnownContributors = get(allKnownContributors);
+			const updatedKnownContributors = [
+				...new Set([...currentKnownContributors, ...allContributorIds])
+			];
+			allKnownContributors.set(updatedKnownContributors);
+			console.log('[RECALC] Total known contributors:', updatedKnownContributors.length);
 		} catch (error) {
 			console.error('[RECALC] Error collecting contributors:', error);
 		}
@@ -63,17 +72,25 @@ export function recalculateFromTree() {
 		// Step 1: Calculate SOGF
 		try {
 			console.log('[RECALC] Calculating SOGF...');
-			const contributorsList = get(contributors);
+			// Use ALL known contributors for SOGF calculation to ensure removed contributors get 0%
+			const allKnownContributorsList = get(allKnownContributors);
 
-			// Use specific contributors if available
-			const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap, contributorsList);
+			// Use all known contributors for SOGF calculation
+			const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap, allKnownContributorsList);
 			userSogf.set(sogf);
-			console.log('[RECALC] SOGF calculation complete');
+			console.log(
+				'[RECALC] SOGF calculation complete for',
+				allKnownContributorsList.length,
+				'known contributors'
+			);
 
 			// CLEANUP: Remove recognition cache entries for contributors no longer in the tree
 			const currentCache = get(recognitionCache);
 			const cacheContributors = Object.keys(currentCache);
-			const removedContributors = cacheContributors.filter((id) => !contributorsList.includes(id));
+			const currentContributorsList = get(contributors);
+			const removedContributors = cacheContributors.filter(
+				(id) => !currentContributorsList.includes(id)
+			);
 
 			if (removedContributors.length > 0) {
 				console.log(`[RECALC] Cleaning up cache for removed contributors:`, removedContributors);
@@ -85,14 +102,14 @@ export function recalculateFromTree() {
 				});
 			}
 
-			// Update recognition cache with our share values
-			contributorsList.forEach((contributorId) => {
+			// Update recognition cache with our share values for ALL known contributors
+			allKnownContributorsList.forEach((contributorId) => {
 				// Note: contributor might not exist in nodeMap since contributors are external user IDs
 
 				// Get our share from SOGF
 				const ourShare = sogf[contributorId] || 0;
 				console.log(
-					`[RECALC] Processing contributor ${contributorId}: ourShare=${ourShare.toFixed(4)}`
+					`[RECALC] Processing known contributor ${contributorId}: ourShare=${ourShare.toFixed(4)}`
 				);
 
 				// Always update the cache with current ourShare (even if 0)

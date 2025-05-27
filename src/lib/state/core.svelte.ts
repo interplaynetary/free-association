@@ -18,6 +18,9 @@ export const nodesMap: Writable<Record<string, Node>> = writable({});
 export const contributors = writable<string[]>([]);
 export const mutualContributors = writable<string[]>([]);
 
+// All contributors we've ever had - used for SOGF calculation to ensure removed contributors get 0%
+export const allKnownContributors = writable<string[]>([]);
+
 // Recognition cache - maps contributor ID to {ourShare, theirShare}
 export const recognitionCache = writable<RecognitionCache>({});
 

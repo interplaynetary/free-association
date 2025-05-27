@@ -262,12 +262,12 @@ export function sharesOfGeneralFulfillmentMap(
 
 	for (const contributorId of contributorIds) {
 		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap);
-		if (share > 0) {
-			sharesMap[contributorId] = share;
-		}
+		// FIXED: Include all contributors, even those with 0 shares
+		// This ensures Gun properly updates network data when contributors are removed
+		sharesMap[contributorId] = share;
 	}
 
-	// Normalize the shares
+	// Normalize the shares (this will handle the case where all shares are 0)
 	return normalizeShareMap(sharesMap);
 }
 
@@ -320,9 +320,9 @@ export function providerShares(
 		// The shareOfGeneralFulfillment function will find nodes that reference this contributorId
 
 		const share = shareOfGeneralFulfillment(provider, contributorId, nodesMap);
-		if (share > 0) {
-			contributorShares[contributorId] = share;
-		}
+		// FIXED: Include all contributors, even those with 0 shares
+		// This ensures consistency with SOGF and proper network updates
+		contributorShares[contributorId] = share;
 	}
 
 	return normalizeShareMap(contributorShares);
