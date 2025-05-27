@@ -12,6 +12,26 @@ import {
 } from './schema';
 
 /**
+ * Filter out Gun.js metadata properties from an object
+ * @param data Object to filter
+ * @returns Filtered object without Gun.js metadata
+ */
+function filterGunMetadata(data: unknown): unknown {
+	if (!data || typeof data !== 'object' || Array.isArray(data)) {
+		return data;
+	}
+
+	const filteredData: Record<string, any> = {};
+	for (const [key, value] of Object.entries(data)) {
+		// Filter out Gun.js metadata properties (keys starting with "_")
+		if (!key.startsWith('_')) {
+			filteredData[key] = value;
+		}
+	}
+	return filteredData;
+}
+
+/**
  * Parse and validate a tree from Gun database or other source
  * @param treeData Raw tree data (either string or object)
  * @returns Validated RootNode or null if validation fails
@@ -66,6 +86,9 @@ export function parseCapacities(capacitiesData: unknown) {
 			parsedData = capacitiesData;
 		}
 
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
 		// Validate with Zod schema
 		const result = CapacitiesCollectionSchema.safeParse(parsedData);
 
@@ -88,8 +111,24 @@ export function parseCapacities(capacitiesData: unknown) {
  */
 export function parseShareMap(shareMapData: unknown) {
 	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof shareMapData === 'string') {
+			try {
+				parsedData = JSON.parse(shareMapData);
+			} catch (error) {
+				console.error('Error parsing share map JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = shareMapData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
 		// Validate with Zod schema
-		const result = ShareMapSchema.safeParse(shareMapData);
+		const result = ShareMapSchema.safeParse(parsedData);
 
 		if (result.success) {
 			return result.data;
@@ -122,6 +161,9 @@ export function parseRecognitionCache(cacheData: unknown) {
 		} else {
 			parsedData = cacheData;
 		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
 
 		// Validate with Zod schema
 		const result = RecognitionCacheSchema.safeParse(parsedData);

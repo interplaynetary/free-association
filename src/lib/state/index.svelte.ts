@@ -1,0 +1,18 @@
+// Core reactive state and derived stores
+export * from './core.svelte';
+
+// Gun database and authentication
+export * from './gun.svelte';
+
+// Calculation and recalculation logic
+export * from './calculations.svelte';
+
+// Network subscriptions and mutual recognition
+export * from './network.svelte';
+
+// UI data providers
+export * from './ui-providers.svelte';
+
+// Import subscriptions to activate them
+import './subscriptions.svelte';
+import './network.svelte'; // This activates the network subscriptions

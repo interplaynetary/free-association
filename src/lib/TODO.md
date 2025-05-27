@@ -97,3 +97,9 @@ The issue is that **gnoman is receiving stale SOGF data**. Looking at the logs, 
 I believe the issue is that gun is merging the objects, but we need to explictly mark deleted contributors as zero instead of just not including them in our maps, our sharesOfGeneralFulfillment is using the contributors writeable which likely does not have the removed contributor, i believe this is the source of the error
 
 I think we need to mantain a writeable of all contributors that have been added, so we can use this for SOGF instead?
+
+
+------------------
+make the MultiLevel Dropdown visualize the tree structure simply and elegantly, similar to how a tree of folders is displayed in consoless
+
+lets adapt 
