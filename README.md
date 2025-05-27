@@ -359,3 +359,27 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 - **Inteface Overview (Older Version)**
 
 [![Interface Overview (Old)](https://img.youtube.com/vi/ro-y4MnOgNo/hqdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
+
+## For Devs 📚
+
+[Install bun](https://fenilsonani.com/articles/installation-step-of-bun)
+
+### For development:
+
+In one console:
+```
+bun install
+bun run dev
+```
+
+In another console start the gun relay:
+```
+bun start
+```
+
+### For production:
+```
+bun install
+bun run build
+npx serve build
+```
