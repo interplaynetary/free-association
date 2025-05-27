@@ -100,18 +100,7 @@ I think we need to mantain a writeable of all contributors that have been added,
 
 
 ------------------
-We have 18 fast-prompts left
-1) addressing why sogf loads with data that is no longer true, have we not persisted sogf properly?
-2) 
-3) include/exclude filters: both dropdowns should allow toggling between listing people or listing categories.
+We have 10 fast-prompts left
+1) include/exclude filters: both dropdowns should allow toggling between listing people or listing categories.
+2) changing the filter should lead to recalculation for that specific filter, it should not need to trigger
 
-
-1) We have strange behaviour, whereby the sogf bar seems to visualize all contributors that have ever been added to the tree, which seems to indicate to me that somehow what is being loaded is not what we are trying to persist (which should reflect the current state of the tree). Clearly we are somehow loading all the contributors ever added and not in fact the current sogf (upon making a change, it immediately recalculates and displays the correct sogf)
-
-2) ok so thats fine now we get the right data etc. but it makes me wonder whether we were ever really persisting the right information to sogf? Could it be that when we removed contributors we arent updating the sogf? Clearly our sogf was getting updated on addition of contributors since it contained all contributors ever added, but i wonder if it was actually removing contributors or setting their %'s to zero? You mentioned we dont need sogf, but we do! As you can see it is used in network.svelte.ts so it is important that the information is correct.'
-
-It seems to me that we persistSogf only in persist() and this is rarely called! This makes me curious how we could possibly even have accurate networked providerShare calculations? It seems to be that the providerShares are accurate! is it because they rely on recognitionCache and not sogf?
-
-Please thoroughly investigate these questions.
-
-3) somehow removing contributors completely from our tree is not sensed by the network, which seems to imply that we are not properly setting these contributors share values to 0% when we remove them
