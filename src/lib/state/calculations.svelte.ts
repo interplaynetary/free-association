@@ -84,23 +84,9 @@ export function recalculateFromTree() {
 				'known contributors'
 			);
 
-			// CLEANUP: Remove recognition cache entries for contributors no longer in the tree
-			const currentCache = get(recognitionCache);
-			const cacheContributors = Object.keys(currentCache);
-			const currentContributorsList = get(contributors);
-			const removedContributors = cacheContributors.filter(
-				(id) => !currentContributorsList.includes(id)
-			);
-
-			if (removedContributors.length > 0) {
-				console.log(`[RECALC] Cleaning up cache for removed contributors:`, removedContributors);
-				recognitionCache.update((cache) => {
-					removedContributors.forEach((contributorId) => {
-						delete cache[contributorId];
-					});
-					return cache;
-				});
-			}
+			// NOTE: We no longer clean up recognition cache entries for removed contributors
+			// This preserves theirShare data so that if a contributor is re-added,
+			// we still have their historical recognition data and they can appear in providerShares
 
 			// Update recognition cache with our share values for ALL known contributors
 			allKnownContributorsList.forEach((contributorId) => {

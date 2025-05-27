@@ -117,22 +117,12 @@ contributors.subscribe((allContributors) => {
 		`[NETWORK] Contributors changed, now have ${allContributors.length}, setting up subscriptions`
 	);
 
-	// Get current recognition cache to check which ones we're already subscribed to
-	const cache = get(recognitionCache);
-
-	// Subscribe to ALL contributors to get their SOGF data
-	// This allows us to receive theirShare values and determine who's mutual
+	// Subscribe to ALL contributors to get their current SOGF data
+	// We always re-subscribe to ensure we have the most current theirShare values
+	// This is especially important when contributors are re-added after being removed
 	allContributors.forEach((contributorId) => {
-		if (
-			!cache[contributorId] ||
-			cache[contributorId].timestamp < Date.now() - 24 * 60 * 60 * 1000
-		) {
-			// Subscribe if we don't have data or it's older than 24 hours
-			console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
-			subscribeToContributorSOGF(contributorId);
-		} else {
-			console.log(`[NETWORK] Already have recent data for ${contributorId}, skipping subscription`);
-		}
+		console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
+		subscribeToContributorSOGF(contributorId);
 	});
 });
 
