@@ -30,7 +30,8 @@ export default defineConfig({
 				'radata/**',
 				'radata',
 				'radata-*',
-				'**/radata-*'
+				'**/radata-*',
+				'store-*'
 			]
 		}
 	},

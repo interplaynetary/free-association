@@ -46,3 +46,9 @@ lerna-debug.log*
 *.sw?
 .svelte-kit/*
 
+# Ignore temporary files in radata
+radata-*
+/radata
+
+# Ignore the store directory
+/store/

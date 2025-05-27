@@ -29,10 +29,25 @@
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
 
-	// Reactive capacity properties for proper binding
+	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
 	let capacityQuantity = $state(capacity.quantity);
 	let capacityUnit = $state(capacity.unit);
+	let capacityLocationType = $state(capacity.location_type);
+	let capacityAllDay = $state(capacity.all_day);
+	let capacityStartDate = $state(capacity.start_date);
+	let capacityEndDate = $state(capacity.end_date);
+	let capacityStartTime = $state(capacity.start_time);
+	let capacityEndTime = $state(capacity.end_time);
+	let capacityTimeZone = $state(capacity.time_zone);
+	let capacityRecurrence = $state(capacity.recurrence);
+	let capacityCustomRecurrenceRepeatEvery = $state(capacity.custom_recurrence_repeat_every);
+	let capacityCustomRecurrenceRepeatUnit = $state(capacity.custom_recurrence_repeat_unit);
+	let capacityCustomRecurrenceEndType = $state(capacity.custom_recurrence_end_type);
+	let capacityCustomRecurrenceEndValue = $state(capacity.custom_recurrence_end_value);
+	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
+	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
+	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
 
 	// Initialize selected subtrees from existing filter rule
 	$effect(() => {
@@ -83,6 +98,81 @@
 
 	$effect(() => {
 		capacity.unit = capacityUnit;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.location_type = capacityLocationType;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.all_day = capacityAllDay;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.start_date = capacityStartDate;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.end_date = capacityEndDate;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.start_time = capacityStartTime;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.end_time = capacityEndTime;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.time_zone = capacityTimeZone;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.recurrence = capacityRecurrence;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.custom_recurrence_repeat_every = capacityCustomRecurrenceRepeatEvery;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.custom_recurrence_repeat_unit = capacityCustomRecurrenceRepeatUnit;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.custom_recurrence_end_type = capacityCustomRecurrenceEndType;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.custom_recurrence_end_value = capacityCustomRecurrenceEndValue;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.max_natural_div = capacityMaxNaturalDiv;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.max_percentage_div = capacityMaxPercentageDiv;
+		handleCapacityUpdate();
+	});
+
+	$effect(() => {
+		capacity.hidden_until_request_accepted = capacityHiddenUntilRequestAccepted;
 		handleCapacityUpdate();
 	});
 
@@ -319,7 +409,7 @@
 									type="radio"
 									name="location-type-{capacity.id}"
 									value="Undefined"
-									bind:group={capacity.location_type}
+									bind:group={capacityLocationType}
 									class="mr-3"
 									onchange={handleCapacityUpdate}
 								/>
@@ -330,7 +420,7 @@
 									type="radio"
 									name="location-type-{capacity.id}"
 									value="LiveLocation"
-									bind:group={capacity.location_type}
+									bind:group={capacityLocationType}
 									class="mr-3"
 									onchange={handleCapacityUpdate}
 								/>
@@ -341,22 +431,22 @@
 									type="radio"
 									name="location-type-{capacity.id}"
 									value="Specific"
-									bind:group={capacity.location_type}
+									bind:group={capacityLocationType}
 									class="mr-3"
 									onchange={handleCapacityUpdate}
 								/>
-								<span class="text-sm text-gray-600">Specific coordinates</span>
+								<span class="text-sm text-gray-600">Specific</span>
 							</label>
 						</div>
 					</div>
 
-					{#if capacity.location_type === 'Specific'}
+					{#if capacityLocationType === 'Specific'}
 						<div class="date-time-section mb-6 ml-2">
 							<div class="mb-4 ml-1">
 								<label class="inline-flex items-center">
 									<input
 										type="checkbox"
-										bind:checked={capacity.all_day}
+										bind:checked={capacityAllDay}
 										class="mr-3 h-4 w-4"
 										onchange={handleCapacityUpdate}
 									/>
@@ -370,7 +460,7 @@
 									<input
 										type="date"
 										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacity.start_date}
+										bind:value={capacityStartDate}
 										onchange={handleCapacityUpdate}
 									/>
 								</div>
@@ -380,19 +470,19 @@
 									<input
 										type="date"
 										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacity.end_date}
+										bind:value={capacityEndDate}
 										onchange={handleCapacityUpdate}
 									/>
 								</div>
 							</div>
 
-							{#if !capacity.all_day}
+							{#if !capacityAllDay}
 								<div class="mb-4 flex flex-col gap-4 md:flex-row">
 									<div class="md:w-1/2">
 										<input
 											type="time"
 											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacity.start_time}
+											bind:value={capacityStartTime}
 											onchange={handleCapacityUpdate}
 										/>
 									</div>
@@ -402,7 +492,7 @@
 										<input
 											type="time"
 											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacity.end_time}
+											bind:value={capacityEndTime}
 											onchange={handleCapacityUpdate}
 										/>
 									</div>
@@ -416,7 +506,7 @@
 										<input
 											type="text"
 											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacity.time_zone}
+											bind:value={capacityTimeZone}
 											onchange={handleCapacityUpdate}
 										/>
 									</div>
@@ -428,7 +518,7 @@
 								<div class="relative w-full md:w-auto">
 									<select
 										class="capacity-select w-full appearance-none rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacity.recurrence}
+										bind:value={capacityRecurrence}
 										onchange={handleCapacityUpdate}
 									>
 										{#each recurrenceOptions as option}
@@ -439,7 +529,7 @@
 							</div>
 
 							<!-- Custom recurrence options -->
-							{#if capacity.recurrence === 'Custom...' && capacity.custom_recurrence_repeat_every !== undefined}
+							{#if capacityRecurrence === 'Custom...' && capacityCustomRecurrenceRepeatEvery !== undefined}
 								<div class="custom-recurrence mt-4 rounded-md bg-gray-50 p-6">
 									<div class="mb-6 flex items-center">
 										<span class="mr-3 text-sm font-medium text-gray-600">Repeat every</span>
@@ -447,12 +537,12 @@
 											type="number"
 											min="1"
 											class="capacity-input qty w-16 text-right"
-											bind:value={capacity.custom_recurrence_repeat_every}
+											bind:value={capacityCustomRecurrenceRepeatEvery}
 											onchange={handleCapacityUpdate}
 										/>
 										<select
 											class="capacity-select ml-3 w-28"
-											bind:value={capacity.custom_recurrence_repeat_unit}
+											bind:value={capacityCustomRecurrenceRepeatUnit}
 											onchange={handleCapacityUpdate}
 										>
 											<option value="days">days</option>
@@ -471,9 +561,9 @@
 													type="radio"
 													name="ends-{capacity.id}"
 													value="never"
-													checked={capacity.custom_recurrence_end_type === 'never'}
+													checked={capacityCustomRecurrenceEndType === 'never'}
 													onchange={() => {
-														capacity.custom_recurrence_end_type = 'never';
+														capacityCustomRecurrenceEndType = 'never';
 														handleCapacityUpdate();
 													}}
 													class="mr-3"
@@ -487,22 +577,22 @@
 														type="radio"
 														name="ends-{capacity.id}"
 														value="endsOn"
-														checked={capacity.custom_recurrence_end_type === 'endsOn'}
+														checked={capacityCustomRecurrenceEndType === 'endsOn'}
 														onchange={() => {
-															capacity.custom_recurrence_end_type = 'endsOn';
-															capacity.custom_recurrence_end_value = formatDateForInput(new Date());
+															capacityCustomRecurrenceEndType = 'endsOn';
+															capacityCustomRecurrenceEndValue = formatDateForInput(new Date());
 															handleCapacityUpdate();
 														}}
 														class="mr-3"
 													/>
 													<span class="text-sm text-gray-600">On</span>
 												</label>
-												{#if capacity.custom_recurrence_end_type === 'endsOn'}
+												{#if capacityCustomRecurrenceEndType === 'endsOn'}
 													<div class="ml-6">
 														<input
 															type="date"
 															class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
-															bind:value={capacity.custom_recurrence_end_value}
+															bind:value={capacityCustomRecurrenceEndValue}
 															onchange={handleCapacityUpdate}
 														/>
 													</div>
@@ -515,23 +605,23 @@
 														type="radio"
 														name="ends-{capacity.id}"
 														value="endsAfter"
-														checked={capacity.custom_recurrence_end_type === 'endsAfter'}
+														checked={capacityCustomRecurrenceEndType === 'endsAfter'}
 														onchange={() => {
-															capacity.custom_recurrence_end_type = 'endsAfter';
-															capacity.custom_recurrence_end_value = '5';
+															capacityCustomRecurrenceEndType = 'endsAfter';
+															capacityCustomRecurrenceEndValue = '5';
 															handleCapacityUpdate();
 														}}
 														class="mr-3"
 													/>
 													<span class="text-sm text-gray-600">After</span>
 												</label>
-												{#if capacity.custom_recurrence_end_type === 'endsAfter'}
+												{#if capacityCustomRecurrenceEndType === 'endsAfter'}
 													<div class="ml-6 flex items-center">
 														<input
 															type="number"
 															min="1"
 															class="capacity-input qty w-16 text-right"
-															bind:value={capacity.custom_recurrence_end_value}
+															bind:value={capacityCustomRecurrenceEndValue}
 															onchange={handleCapacityUpdate}
 														/>
 														<span class="ml-2 text-sm text-gray-600">occurrences</span>
@@ -556,7 +646,7 @@
 									min="1"
 									step="1"
 									class="capacity-input qty w-full text-right"
-									bind:value={capacity.max_natural_div}
+									bind:value={capacityMaxNaturalDiv}
 									placeholder="Natural"
 									onchange={handleCapacityUpdate}
 								/>
@@ -568,7 +658,7 @@
 									max="1"
 									step="0.01"
 									class="capacity-input qty w-full text-right"
-									bind:value={capacity.max_percentage_div}
+									bind:value={capacityMaxPercentageDiv}
 									placeholder="Percentage (0-1)"
 									onchange={handleCapacityUpdate}
 								/>
@@ -580,7 +670,7 @@
 						<label class="inline-flex items-center">
 							<input
 								type="checkbox"
-								bind:checked={capacity.hidden_until_request_accepted}
+								bind:checked={capacityHiddenUntilRequestAccepted}
 								class="mr-3 h-4 w-4"
 								onchange={handleCapacityUpdate}
 							/>
