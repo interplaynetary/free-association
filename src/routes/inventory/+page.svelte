@@ -1,13 +1,12 @@
 <script lang="ts">
-	import NestedPieExample from '$lib/components/examples/NestedPieExample.svelte';
 	import Inventory from '$lib/components/Inventory.svelte';
-	import Query from '$lib/components/maps/Query.svelte';
+	import LocateUser from '$lib/components/maps/LocateUser.svelte';
 	import Shares from '$lib/components/Shares.svelte';
 </script>
 
 <div class="mb-10 flex justify-between">
 	<div class="flex-1">
-		<Query />
+		<LocateUser />
 	</div>
 </div>
 <div>
