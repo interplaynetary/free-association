@@ -5,7 +5,6 @@
 		GeoJSONSource,
 		CircleLayer,
 		Marker,
-		GlobeControl,
 		QuerySourceFeatures,
 		QueryRenderedFeatures,
 		FillExtrusionLayer,
@@ -13,20 +12,19 @@
 		RasterDEMTileSource,
 		HillshadeLayer,
 		Terrain,
-		TerrainControl,
 		Light,
-		Sky
+		Sky,
+		Projection
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 
 	let features: maplibregl.MapGeoJSONFeature[] = $state.raw([]);
-	let mode: 'source' | 'rendered' = $state('source');
+	let mode: 'source' = $state('source');
 	let show3DBuildings = $state(false);
 	let map: maplibregl.Map | undefined = $state.raw();
-	let pitch = $state(45);
-	let terrainExaggeration = $state(1.0);
-	let hillshadeExaggeration = $state(0.5);
-	let skyEnabled = $state(true);
+	let pitch = $state(0);
+	let isTerrainVisible = $state(false);
+	let isGlobeMode = $state(false);
 </script>
 
 <div class="flex h-[55vh] min-h-[300px] overflow-hidden rounded-md">
@@ -37,22 +35,21 @@
 		style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 		zoom={3}
 		center={{ lng: 120, lat: 20 }}
-		minZoom={2}
+		minZoom={}
 		maxPitch={85}
 		attributionControl={false}
 	>
+		<Projection type={isGlobeMode ? 'globe' : undefined} />
 		<Light anchor="map" />
-		{#if skyEnabled}
-			<Sky
-				sky-color="#001560"
-				horizon-color="#0090c0"
-				fog-color="#ffffff"
-				sky-horizon-blend={0.9}
-				horizon-fog-blend={0.8}
-				fog-ground-blend={0.7}
-				atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
-			/>
-		{/if}
+		<Sky
+			sky-color="#001560"
+			horizon-color="#0090c0"
+			fog-color="#ffffff"
+			sky-horizon-blend={0.9}
+			horizon-fog-blend={0.8}
+			fog-ground-blend={0.7}
+			atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
+		/>
 		<GeolocateControl
 			position="top-left"
 			positionOptions={{ enableHighAccuracy: true }}
@@ -62,50 +59,56 @@
 			ontrackuserlocationend={() => console.log('trackuserlocationend')}
 			ongeolocate={(ev) => console.log(`geolocate ${JSON.stringify(ev.coords, null, 2)}`)}
 		/>
-		<GlobeControl position="top-right" />
+		<CustomControl position="top-right">
+			<button
+				onclick={() => {
+					isGlobeMode = !isGlobeMode;
+				}}
+			>
+				<span>🌐</span>
+			</button>
+		</CustomControl>
 		<CustomControl position="top-right">
 			<button
 				onclick={() => {
 					show3DBuildings = !show3DBuildings;
-					if (show3DBuildings && map) {
-						map.setPitch(70);
-					} else if (map) {
-						map.setPitch(0);
-					}
+					if (map) map.setPitch(show3DBuildings ? 70 : 0);
 				}}
 			>
 				<span>🏢</span>
 			</button>
 		</CustomControl>
-		<TerrainControl position="top-right" source="terrain" />
+		<CustomControl position="top-right">
+			<button
+				onclick={() => {
+					isTerrainVisible = !isTerrainVisible;
+					if (map) map.setPitch(isTerrainVisible ? 70 : 0);
+				}}
+			>
+				<span>🏔️</span>
+			</button>
+		</CustomControl>
 
 		<RasterDEMTileSource
 			id="terrain"
 			tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
-			minzoom={0}
+			minzoom={2}
 			maxzoom={15}
 			encoding="terrarium"
 			attribution="<a href='https://github.com/tilezen/joerd/blob/master/docs/attribution.md'>Mapzen (Terrain)</a>"
 		>
-			<Terrain exaggeration={terrainExaggeration} />
-		</RasterDEMTileSource>
-
-		<RasterDEMTileSource
-			id="hillshade"
-			tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
-			minzoom={0}
-			maxzoom={15}
-			encoding="terrarium"
-		>
-			<HillshadeLayer
-				paint={{
-					'hillshade-exaggeration': hillshadeExaggeration,
-					'hillshade-illumination-anchor': 'map',
-					'hillshade-shadow-color': '#473B24',
-					'hillshade-accent-color': '#aaff00',
-					'hillshade-highlight-color': '#ffffff'
-				}}
-			/>
+			{#if isTerrainVisible}
+				<Terrain exaggeration={1.0} />
+				<HillshadeLayer
+					paint={{
+						'hillshade-exaggeration': 0.5,
+						'hillshade-illumination-anchor': 'map',
+						'hillshade-shadow-color': '#473B24',
+						'hillshade-accent-color': '#aaff00',
+						'hillshade-highlight-color': '#ffffff'
+					}}
+				/>
+			{/if}
 		</RasterDEMTileSource>
 
 		<GeoJSONSource
@@ -123,15 +126,13 @@
 				</QuerySourceFeatures>
 			{/if}
 			<CircleLayer paint={{ 'circle-color': 'red', 'circle-radius': 4 }}>
-				{#if mode === 'rendered'}
-					<QueryRenderedFeatures bind:features>
-						{#snippet children(feature: maplibregl.MapGeoJSONFeature)}
-							{#if feature.geometry.type === 'Point'}
-								<Marker lnglat={feature.geometry.coordinates as [number, number]} />
-							{/if}
-						{/snippet}
-					</QueryRenderedFeatures>
-				{/if}
+				<QueryRenderedFeatures bind:features>
+					{#snippet children(feature: maplibregl.MapGeoJSONFeature)}
+						{#if feature.geometry.type === 'Point'}
+							<Marker lnglat={feature.geometry.coordinates as [number, number]} />
+						{/if}
+					{/snippet}
+				</QueryRenderedFeatures>
 			</CircleLayer>
 		</GeoJSONSource>
 
