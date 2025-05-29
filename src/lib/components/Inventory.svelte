@@ -132,16 +132,16 @@
 	}
 
 	// Handle capacity update from child component
-	function handleCapacityUpdate(event: CustomEvent<Capacity>) {
-		const success = updateCapacity(event.detail);
+	function handleCapacityUpdate(capacity: Capacity) {
+		const success = updateCapacity(capacity);
 		if (!success) {
 			globalState.showToast('Failed to update capacity', 'error');
 		}
 	}
 
 	// Handle capacity delete from child component
-	function handleCapacityDelete(event: CustomEvent<string>) {
-		const success = deleteCapacity(event.detail);
+	function handleCapacityDelete(id: string) {
+		const success = deleteCapacity(id);
 		if (!success) {
 			globalState.showToast('Failed to delete capacity', 'error');
 		}
@@ -153,8 +153,8 @@
 		<CapacityComponent
 			capacity={entry}
 			canDelete={true}
-			on:update={handleCapacityUpdate}
-			on:delete={handleCapacityDelete}
+			onupdate={handleCapacityUpdate}
+			ondelete={handleCapacityDelete}
 		/>
 	{/each}
 	<button type="button" class="add-btn mx-auto my-2 h-10 w-10" onclick={addCapacityRow}>+</button>

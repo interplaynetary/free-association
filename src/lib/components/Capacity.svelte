@@ -85,11 +85,6 @@
 		}
 	});
 
-	// Update capacity when any property changes
-	$effect(() => {
-		handleCapacityUpdate();
-	});
-
 	// Update selected subtree names when data provider loads
 	$effect(() => {
 		if (subtreesDataProvider.items.length > 0 && selectedSubtrees.length > 0) {
@@ -251,6 +246,7 @@
 			class="capacity-input name min-w-0 flex-1"
 			bind:value={capacityName}
 			placeholder="Name"
+			onchange={handleCapacityUpdate}
 		/>
 		<input
 			type="number"
@@ -259,12 +255,14 @@
 			step="0.01"
 			bind:value={capacityQuantity}
 			placeholder="Qty"
+			onchange={handleCapacityUpdate}
 		/>
 		<input
 			type="text"
 			class="capacity-input unit w-20"
 			bind:value={capacityUnit}
 			placeholder="Unit"
+			onchange={handleCapacityUpdate}
 		/>
 
 		<!-- Action buttons -->
