@@ -9,7 +9,13 @@
 		QuerySourceFeatures,
 		QueryRenderedFeatures,
 		FillExtrusionLayer,
-		CustomControl
+		CustomControl,
+		RasterDEMTileSource,
+		HillshadeLayer,
+		Terrain,
+		TerrainControl,
+		Light,
+		Sky
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 
@@ -17,7 +23,10 @@
 	let mode: 'source' | 'rendered' = $state('source');
 	let show3DBuildings = $state(false);
 	let map: maplibregl.Map | undefined = $state.raw();
-	let pitch = $state(0);
+	let pitch = $state(45);
+	let terrainExaggeration = $state(1.0);
+	let hillshadeExaggeration = $state(0.5);
+	let skyEnabled = $state(true);
 </script>
 
 <div class="flex h-[55vh] min-h-[300px] overflow-hidden rounded-md">
@@ -29,8 +38,21 @@
 		zoom={3}
 		center={{ lng: 120, lat: 20 }}
 		minZoom={2}
+		maxPitch={85}
 		attributionControl={false}
 	>
+		<Light anchor="map" />
+		{#if skyEnabled}
+			<Sky
+				sky-color="#001560"
+				horizon-color="#0090c0"
+				fog-color="#ffffff"
+				sky-horizon-blend={0.9}
+				horizon-fog-blend={0.8}
+				fog-ground-blend={0.7}
+				atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
+			/>
+		{/if}
 		<GeolocateControl
 			position="top-left"
 			positionOptions={{ enableHighAccuracy: true }}
@@ -55,6 +77,37 @@
 				<span>🏢</span>
 			</button>
 		</CustomControl>
+		<TerrainControl position="top-right" source="terrain" />
+
+		<RasterDEMTileSource
+			id="terrain"
+			tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
+			minzoom={0}
+			maxzoom={15}
+			encoding="terrarium"
+			attribution="<a href='https://github.com/tilezen/joerd/blob/master/docs/attribution.md'>Mapzen (Terrain)</a>"
+		>
+			<Terrain exaggeration={terrainExaggeration} />
+		</RasterDEMTileSource>
+
+		<RasterDEMTileSource
+			id="hillshade"
+			tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
+			minzoom={0}
+			maxzoom={15}
+			encoding="terrarium"
+		>
+			<HillshadeLayer
+				paint={{
+					'hillshade-exaggeration': hillshadeExaggeration,
+					'hillshade-illumination-anchor': 'map',
+					'hillshade-shadow-color': '#473B24',
+					'hillshade-accent-color': '#aaff00',
+					'hillshade-highlight-color': '#ffffff'
+				}}
+			/>
+		</RasterDEMTileSource>
+
 		<GeoJSONSource
 			id="capacities"
 			data={'https://maplibre.org/maplibre-gl-js/docs/assets/significant-earthquakes-2015.geojson'}
