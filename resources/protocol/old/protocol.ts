@@ -6,8 +6,6 @@
 // @ts-ignore
 import jsonLogic from 'json-logic-js';
 
-// What if we did a simple persistence layer via user.put(JSON.stringify(tree))???????
-
 // Type definitions that match API response structures
 export interface BaseNode {
 	id: string;

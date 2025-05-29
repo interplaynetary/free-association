@@ -408,12 +408,15 @@ export function manifest() {
 		console.log('[MANIFEST] Loading capacities data...');
 		if (capacitiesData) {
 			// Parse capacities with validation
+			console.log('[MANIFEST] Capacities data:', capacitiesData);
 			const validatedCapacities = parseCapacities(capacitiesData);
 			console.log('[MANIFEST] Loaded capacities count:', Object.keys(validatedCapacities).length);
+			console.log('[MANIFEST] Post-Validation capacities:', validatedCapacities);
 			userCapacities.set(validatedCapacities);
 		} else {
 			console.log('[MANIFEST] No capacities data found');
 			// Initialize with empty object if no data exists
+			/*
 			const emptyCapacities = {};
 			userCapacities.set(emptyCapacities);
 
@@ -426,6 +429,7 @@ export function manifest() {
 					console.log('[MANIFEST] Initial empty capacities saved to Gun');
 				}
 			});
+			*/
 		}
 
 		// Reset loading flag after capacities are loaded

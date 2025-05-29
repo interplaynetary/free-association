@@ -266,5 +266,5 @@ capacityShares of our *mutual-contributors*: gun.get(`~${contributorId}`).get('c
 - Since capacityShares is the most auto-changeable value, changes to capacties (asides from changes to filters) wont trigger capacity subscriptions and wont require reprocessing of capacityShares.
 
 
-In order to transition:
-- 
+
+We already have: persistRecipientSharesCalculation
