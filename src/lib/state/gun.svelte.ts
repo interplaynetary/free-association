@@ -482,3 +482,122 @@ export function loadRecognitionCache() {
 		}
 	});
 }
+
+/**
+ * Convert a string duration like '30m', '2h', '1d', '1w', '3mo' to milliseconds
+ * @param {string} durationStr
+ * @returns {number} Duration in milliseconds
+ */
+function parseDuration(durationStr: string): number {
+	const durationRegex = /^(\d+)(s|m|h|d|w|mo)$/i;
+	const match = durationStr.match(durationRegex);
+
+	if (!match) {
+		throw new Error(`Invalid duration format: '${durationStr}'`);
+	}
+
+	const value = parseInt(match[1], 10);
+	const unit = match[2].toLowerCase();
+
+	const unitToMs: Record<string, number> = {
+		s: 1000,
+		m: 60 * 1000,
+		h: 60 * 60 * 1000,
+		d: 24 * 60 * 60 * 1000,
+		w: 7 * 24 * 60 * 60 * 1000,
+		mo: 30 * 24 * 60 * 60 * 1000 // Approximate month as 30 days
+	};
+
+	return value * unitToMs[unit];
+}
+
+/**
+ * Prune users from the usersList who haven't been seen within the specified duration
+ * @param {string} inactivityThreshold - Duration string like '30m', '1h', '2d', etc.
+ */
+export function clearUsersList(inactivityThreshold: string = '30m') {
+	let inactivityThresholdMs: number;
+	try {
+		inactivityThresholdMs = parseDuration(inactivityThreshold);
+	} catch (error) {
+		console.error(`[PRUNE] ${error}`);
+		return;
+	}
+
+	console.log(`[PRUNE] Starting to prune users inactive for more than ${inactivityThreshold}...`);
+
+	const thresholdTime = Date.now() - inactivityThresholdMs;
+
+	usersList.once((data: any) => {
+		if (data) {
+			const userIds = Object.keys(data);
+			console.log(`[PRUNE] Found ${userIds.length} users to check`);
+
+			let prunedCount = 0;
+			let checkedCount = 0;
+
+			userIds.forEach((userId) => {
+				usersList.get(userId).once((userData: any) => {
+					checkedCount++;
+
+					if (userData && userData.lastSeen) {
+						const lastSeen = userData.lastSeen;
+
+						if (lastSeen < thresholdTime) {
+							usersList.get(userId).put(null, (ack: any) => {
+								if (ack.err) {
+									console.error(`[PRUNE] Error removing inactive user ${userId}:`, ack.err);
+								} else {
+									console.log(
+										`[PRUNE] Removed inactive user ${userId} (last seen: ${new Date(lastSeen).toLocaleString()})`
+									);
+									prunedCount++;
+
+									userNamesCache.update((cache) => {
+										const newCache = { ...cache };
+										delete newCache[userId];
+										return newCache;
+									});
+								}
+							});
+						} else {
+							console.log(
+								`[PRUNE] User ${userId} is active (last seen: ${new Date(lastSeen).toLocaleString()})`
+							);
+						}
+					} else {
+						console.log(`[PRUNE] User ${userId} has no lastSeen data, removing...`);
+						usersList.get(userId).put(null, (ack: any) => {
+							if (ack.err) {
+								console.error(`[PRUNE] Error removing user without lastSeen ${userId}:`, ack.err);
+							} else {
+								console.log(`[PRUNE] Removed user without lastSeen data: ${userId}`);
+								prunedCount++;
+
+								userNamesCache.update((cache) => {
+									const newCache = { ...cache };
+									delete newCache[userId];
+									return newCache;
+								});
+							}
+						});
+					}
+
+					if (checkedCount === userIds.length) {
+						console.log(
+							`[PRUNE] Pruning complete. Checked ${checkedCount} users, removed ${prunedCount} inactive users.`
+						);
+					}
+				});
+			});
+		} else {
+			console.log('[PRUNE] No users found to prune');
+		}
+	});
+}
+
+// Expose to window for debugging
+if (typeof window !== 'undefined') {
+	(window as any).clearUsersList = clearUsersList;
+	console.log('[DEBUG] clearUsersList function exposed to window');
+}

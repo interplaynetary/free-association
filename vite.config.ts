@@ -31,7 +31,9 @@ export default defineConfig({
 				'radata',
 				'radata-*',
 				'**/radata-*',
-				'store-*'
+				'store-*',
+				'*.md',
+				'*.txt'
 			]
 		}
 	},

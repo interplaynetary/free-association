@@ -30,14 +30,16 @@ Have you been involved with projects or organisations relevant to this project b
 
 (Optional) This can help us determine if you are the right person to undertake this effort. (max 2500 characters)
 
-I'm Rüzgar, I've been exploring the post-capitalist economic design space for 9 years practically full time, working on wide ranges of projects p2p protocols, and distributed economic decision making algorithms.
+I'm Rüzgar, I've been exploring the post-capitalist economic design space for 9 years practically full time, working on a wide ranges of projects p2p protocols, and distributed economic decision making algorithms.
 
-Requested support
-
+Requested support:
+20000
 Requested Amount
 (between 5000 and 50000)
 (in Euro)
+
 Explain what the requested budget will be used for?
+
 Does the project have other funding sources, both past and present?
 (If you want, you can in addition attach a budget at the bottom of the form)
 
@@ -66,12 +68,6 @@ No file chosen
 No file chosen
 No file chosen
 How may we handle your information
-
-Your privacy is so important to us, we wrote a nifty privacy statement.
-
-We'd love to collect as little personal data from you as possible, but we're bound by some pesky rules and regulations. So, before you submit your proposal, please acknowledge the following:
-
-    I have read and understood NLnet’s Privacy Statement. I agree that the NLnet can collect, use, and share my personal information as described in the statement. I also understand that I have rights over my personal information, such as the right to access, correct, or delete it.
 
 Send me a copy of this application.
 PGP pubkey
