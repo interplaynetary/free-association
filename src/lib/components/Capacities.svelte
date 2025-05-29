@@ -148,7 +148,7 @@
 	}
 </script>
 
-<div class="inventory-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
+<div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
 	{#each capacityEntries as entry (entry.id)}
 		<CapacityComponent
 			capacity={entry}

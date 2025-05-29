@@ -1,7 +1,6 @@
 <script lang="ts">
-	// @ts-ignore
 	import { ourRecipientShares } from '$lib/state/core.svelte';
-	import { getUserName } from '$lib/state/gun.svelte';
+	import { getUserName, user } from '$lib/state/gun.svelte';
 
 	interface CapacityShare {
 		id: string;
@@ -11,8 +10,6 @@
 		provider: string;
 		share_percentage: number;
 	}
-
-	let capacityShares = $state<CapacityShare[]>([]);
 
 	// Green color scale for share percentage
 	const colors = ['#dcfce7', '#86efac', '#22c55e'];
@@ -28,34 +25,34 @@
 		console.log(`Navigating to provider: ${provider}`);
 	}
 
-	// Watch ourRecipientShares and update the display
+	let shares = $state<CapacityShare[]>([]);
 	$effect(() => {
-		const updateShares = async () => {
-			const shares: CapacityShare[] = [];
-
-			for (const [capacityId, capacity] of Object.entries($ourRecipientShares)) {
-				// Get the provider's name
-				const providerName = await getUserName(capacity.owner_id);
-
-				shares.push({
-					id: capacityId,
-					name: capacity.name,
-					quantity: capacity.quantity * (capacity.recipient_shares?.[capacity.owner_id] || 0),
-					unit: capacity.unit,
-					provider: providerName,
-					share_percentage: capacity.recipient_shares?.[capacity.owner_id] || 0
-				});
+		void (async () => {
+			const ourId = user.is?.pub;
+			if (!ourId || !$ourRecipientShares) {
+				shares = [];
+				return;
 			}
 
-			capacityShares = shares;
-		};
-
-		updateShares();
+			shares = await Promise.all(
+				Object.entries($ourRecipientShares).map(async ([capacityId, capacity]) => {
+					const sharePercentage = capacity.recipient_shares?.[ourId] || 0;
+					return {
+						id: capacityId,
+						name: capacity.name || '',
+						quantity: capacity.quantity * sharePercentage,
+						unit: capacity.unit || '',
+						provider: (await getUserName(capacity.owner_id)) || '',
+						share_percentage: sharePercentage
+					};
+				})
+			);
+		})();
 	});
 </script>
 
 <div class="shares-list grid grid-cols-1 gap-3 p-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-	{#each capacityShares as share (share.id)}
+	{#each shares as share (share.id)}
 		<div
 			class="capacity-share flex items-center justify-between rounded p-2 shadow-sm"
 			style="background-color: {getShareColor(share.share_percentage)}; border: 1px solid #e5e7eb;"
@@ -65,7 +62,7 @@
 					>{share.name}</span
 				>
 				<span class="share-value qty text-sm">
-					{share.quantity.toFixed(2)}
+					{Number.isInteger(share.quantity) ? share.quantity : share.quantity.toFixed(2)}
 					{share.unit}
 					<span class="text-xs text-gray-600">({(share.share_percentage * 100).toFixed(1)}%)</span>
 				</span>

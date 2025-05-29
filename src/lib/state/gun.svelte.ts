@@ -56,12 +56,6 @@ export const userNamesCache = writable<Record<string, string>>({});
  * @returns Promise that resolves to the user's display name
  */
 export async function getUserName(userId: string): Promise<string> {
-	// Check cache first
-	const cache = get(userNamesCache);
-	if (cache[userId]) {
-		return cache[userId];
-	}
-
 	// Look up from freely-associating-players first
 	try {
 		const pubUser: any = await new Promise((resolve) => {
@@ -69,10 +63,6 @@ export async function getUserName(userId: string): Promise<string> {
 		});
 
 		if (pubUser && pubUser.name) {
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: pubUser.name
-			}));
 			return pubUser.name;
 		}
 	} catch (error) {
@@ -89,10 +79,6 @@ export async function getUserName(userId: string): Promise<string> {
 		});
 
 		if (alias && typeof alias === 'string') {
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: alias
-			}));
 			return alias;
 		}
 	} catch (error) {
@@ -100,12 +86,7 @@ export async function getUserName(userId: string): Promise<string> {
 	}
 
 	// Fallback to truncated ID
-	const fallbackName = userId.substring(0, 8) + '...';
-	userNamesCache.update((cache) => ({
-		...cache,
-		[userId]: fallbackName
-	}));
-	return fallbackName;
+	return userId.substring(0, 8) + '...';
 }
 
 export let user = gun.user().recall({ sessionStorage: true });
@@ -543,12 +524,6 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 										`[PRUNE] Removed inactive user ${userId} (last seen: ${new Date(lastSeen).toLocaleString()})`
 									);
 									prunedCount++;
-
-									userNamesCache.update((cache) => {
-										const newCache = { ...cache };
-										delete newCache[userId];
-										return newCache;
-									});
 								}
 							});
 						} else {
@@ -564,12 +539,6 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 							} else {
 								console.log(`[PRUNE] Removed user without lastSeen data: ${userId}`);
 								prunedCount++;
-
-								userNamesCache.update((cache) => {
-									const newCache = { ...cache };
-									delete newCache[userId];
-									return newCache;
-								});
 							}
 						});
 					}

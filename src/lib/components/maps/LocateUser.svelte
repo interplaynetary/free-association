@@ -35,7 +35,7 @@
 		style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 		zoom={3}
 		center={{ lng: 120, lat: 20 }}
-		minZoom={}
+		minZoom={1}
 		maxPitch={85}
 		attributionControl={false}
 	>
@@ -125,15 +125,6 @@
 					{/snippet}
 				</QuerySourceFeatures>
 			{/if}
-			<CircleLayer paint={{ 'circle-color': 'red', 'circle-radius': 4 }}>
-				<QueryRenderedFeatures bind:features>
-					{#snippet children(feature: maplibregl.MapGeoJSONFeature)}
-						{#if feature.geometry.type === 'Point'}
-							<Marker lnglat={feature.geometry.coordinates as [number, number]} />
-						{/if}
-					{/snippet}
-				</QueryRenderedFeatures>
-			</CircleLayer>
 		</GeoJSONSource>
 
 		{#if show3DBuildings}
