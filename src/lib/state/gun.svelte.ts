@@ -171,6 +171,7 @@ export function signout() {
 	userpub.set('');
 }
 
+/*
 // Force persist on window unload
 if (typeof window !== 'undefined' && user?.is?.pub) {
 	window.addEventListener('beforeunload', () => {
@@ -186,6 +187,7 @@ gun.on('bye', () => {
 		persist();
 	}
 });
+*/
 
 /**
  * Persist recognition cache to Gun
@@ -293,13 +295,12 @@ export function persistCapacities() {
 			// First create a deep clone to avoid any reactivity issues
 			const capacitiesClone = structuredClone(userCapacitiesValue);
 
+			// Log the data being saved
+			console.log('[PERSIST] Saving capacities:', capacitiesClone);
+
 			// Then serialize to JSON
 			const capacitiesJson = JSON.stringify(capacitiesClone);
 			console.log('[PERSIST] Serialized capacities length:', capacitiesJson.length);
-			console.log(
-				'[PERSIST] Capacities JSON preview:',
-				capacitiesJson.length > 100 ? capacitiesJson.substring(0, 100) + '...' : capacitiesJson
-			);
 
 			// Store in Gun with ACK callback
 			user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
@@ -311,16 +312,6 @@ export function persistCapacities() {
 			});
 		} catch (error) {
 			console.error('[PERSIST] Error serializing capacities:', error);
-
-			// Fallback approach
-			try {
-				console.log('[PERSIST] Attempting fallback capacities persistence...');
-				const snapshot = $state.snapshot(userCapacitiesValue);
-				user.get('capacities').put(JSON.stringify(snapshot));
-				console.log('[PERSIST] Fallback capacities persistence completed');
-			} catch (fallbackError) {
-				console.error('[PERSIST] Critical error: Failed to persist capacities:', fallbackError);
-			}
 		}
 	}
 }

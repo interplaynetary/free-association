@@ -20,16 +20,17 @@
 	function addCapacity(capacity: Capacity) {
 		if (!$username || !$userpub) return false;
 
+		// Create a deep clone of current capacities
+		const newCapacities = structuredClone($userCapacities || {});
+
 		// Create a plain object copy of the capacity
 		const plainCapacity = { ...capacity };
 
-		// Update the store directly
-		userCapacities.update((caps) => {
-			const newCaps = { ...(caps || {}) };
-			// Add capacity to the collection
-			addCapacityToCollection(newCaps, plainCapacity);
-			return newCaps;
-		});
+		// Add capacity to the collection
+		addCapacityToCollection(newCapacities, plainCapacity);
+
+		// Set the store with the new value
+		userCapacities.set(newCapacities);
 
 		globalState.showToast(`Capacity "${capacity.name}" created`, 'success');
 		return true;
@@ -40,14 +41,17 @@
 		try {
 			if (!$username || !$userpub) return false;
 
-			// Create a new plain object copy of the capacity
-			const plainCapacity = { ...capacity };
+			// Create a deep clone of current capacities
+			const newCapacities = structuredClone($userCapacities || {});
 
-			userCapacities.update((caps) => {
-				const newCaps = { ...(caps || {}) };
-				newCaps[plainCapacity.id] = plainCapacity;
-				return newCaps;
-			});
+			// Create a deep copy of the capacity to ensure store updates
+			const plainCapacity = structuredClone(capacity);
+
+			// Add capacity to the collection
+			newCapacities[plainCapacity.id] = plainCapacity;
+
+			// Set the store with the new value
+			userCapacities.set(newCapacities);
 
 			globalState.showToast(`Capacity "${plainCapacity.name}" updated`, 'success');
 			return true;
@@ -79,17 +83,6 @@
 			globalState.showToast('Error deleting capacity', 'error');
 			return false;
 		}
-	}
-
-	// Helper functions for date/time handling
-	function getTodayDate(): Date {
-		return new Date();
-	}
-
-	function getOneHourLater(): Date {
-		const date = new Date();
-		date.setHours(date.getHours() + 1);
-		return date;
 	}
 
 	// Create a new capacity

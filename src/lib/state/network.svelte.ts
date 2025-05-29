@@ -1,6 +1,12 @@
 import { get } from 'svelte/store';
 import { gun, user, persistRecognitionCache } from './gun.svelte';
-import { contributors, mutualContributors, recognitionCache } from './core.svelte';
+import {
+	contributors,
+	mutualContributors,
+	recognitionCache,
+	networkCapacities
+} from './core.svelte';
+import type { CapacitiesCollection } from '$lib/schema';
 import { updateRecognitionCache } from './calculations.svelte';
 
 /**
@@ -91,19 +97,56 @@ export function subscribeToContributorSOGF(contributorId: string) {
 	});
 }
 
-/**
- * Set up subscriptions for all mutual contributors
- */
-export function subscribeToAllMutualContributors() {
-	console.log('[NETWORK] Setting up subscriptions for all mutual contributors');
+export function subscribeToContributorCapacities(contributorId: string) {
+	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s capacities`);
 
-	const currentMutualContributors = get(mutualContributors);
+	const contributorCapacities = gun.get(`~${contributorId}`).get('capacities');
 
-	currentMutualContributors.forEach((contributorId) => {
-		subscribeToContributorSOGF(contributorId);
+	// Add timeout protection as recommended by the Gun guide
+	// to prevent hanging when data doesn't exist
+	let hasReceived = false;
+	const timeout = setTimeout(() => {
+		if (!hasReceived) {
+			console.log(`[NETWORK] Timeout waiting for capacities from ${contributorId}`);
+		}
+	}, 10000); // 10 second timeout
+
+	// Subscribe to changes
+	contributorCapacities.on((capacitiesData: any) => {
+		hasReceived = true;
+		clearTimeout(timeout);
+
+		if (!capacitiesData) return;
+
+		console.log(`[NETWORK] Received capacities update from ${contributorId}:`, capacitiesData);
+
+		// Get our user ID
+		const ourId = user.is?.pub;
+		if (!ourId) return;
+
+		// Parse the capacities data if it's a string
+		let parsedCapacities;
+		try {
+			parsedCapacities =
+				typeof capacitiesData === 'string' ? JSON.parse(capacitiesData) : capacitiesData;
+		} catch (error) {
+			console.error('[NETWORK] Error parsing capacities data:', error);
+			return;
+		}
+
+		// Update the networkCapacities store with this contributor's capacities
+		networkCapacities.update((currentNetworkCapacities) => {
+			const updated = { ...currentNetworkCapacities };
+
+			// Update this contributor's capacities
+			updated[contributorId] = parsedCapacities;
+
+			console.log(
+				`[NETWORK] Updated networkCapacities for ${contributorId}: added ${Object.keys(parsedCapacities).length} capacities`
+			);
+			return updated;
+		});
 	});
-
-	console.log(`[NETWORK] Set up ${currentMutualContributors.length} subscriptions`);
 }
 
 // Watch for changes to contributors and subscribe to get their SOGF data
@@ -123,6 +166,48 @@ contributors.subscribe((allContributors) => {
 	allContributors.forEach((contributorId) => {
 		console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
 		subscribeToContributorSOGF(contributorId);
+	});
+});
+
+// Watch for changes to mutual contributors and subscribe to get their capacity data
+mutualContributors.subscribe((currentMutualContributors) => {
+	if (!currentMutualContributors.length) {
+		// If no mutual contributors, clear all network capacities
+		networkCapacities.set({});
+		return;
+	}
+
+	// Only run this if we're authenticated
+	if (!user.is?.pub) return;
+
+	console.log(
+		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up capacity subscriptions`
+	);
+
+	// Clean up capacities from contributors who are no longer mutual contributors
+	networkCapacities.update((currentNetworkCapacities) => {
+		if (!currentNetworkCapacities) return {};
+
+		const cleaned: Record<string, CapacitiesCollection> = {};
+		Object.entries(currentNetworkCapacities).forEach(([contributorId, capacities]) => {
+			// Keep capacities from current mutual contributors only
+			if (currentMutualContributors.includes(contributorId)) {
+				cleaned[contributorId] = capacities;
+			}
+		});
+
+		console.log(
+			`[NETWORK] Cleaned network capacities: kept ${Object.keys(cleaned).length} contributors from ${Object.keys(currentNetworkCapacities).length} total`
+		);
+		return cleaned;
+	});
+
+	// Subscribe to mutual contributors for capacity data only (SOGF handled by contributors subscription)
+	currentMutualContributors.forEach((contributorId) => {
+		console.log(
+			`[NETWORK] Setting up capacity subscription for mutual contributor: ${contributorId}`
+		);
+		subscribeToContributorCapacities(contributorId);
 	});
 });
 

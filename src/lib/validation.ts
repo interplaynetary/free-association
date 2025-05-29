@@ -89,17 +89,21 @@ export function parseCapacities(capacitiesData: unknown) {
 		// Filter out Gun.js metadata properties
 		parsedData = filterGunMetadata(parsedData);
 
+		// Log the data being validated
+		console.log('[VALIDATION] Validating capacities data:', parsedData);
+
 		// Validate with Zod schema
 		const result = CapacitiesCollectionSchema.safeParse(parsedData);
 
 		if (result.success) {
 			return result.data;
 		} else {
-			console.error('Capacities data validation failed:', result.error);
+			console.error('[VALIDATION] Capacities data validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
 			return {};
 		}
 	} catch (err) {
-		console.error('Error parsing capacities data:', err);
+		console.error('[VALIDATION] Error parsing capacities data:', err);
 		return {};
 	}
 }

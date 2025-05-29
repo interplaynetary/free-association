@@ -85,94 +85,8 @@
 		}
 	});
 
-	// Update capacity properties when reactive values change
+	// Update capacity when any property changes
 	$effect(() => {
-		capacity.name = capacityName;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.quantity = capacityQuantity;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.unit = capacityUnit;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.location_type = capacityLocationType;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.all_day = capacityAllDay;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.start_date = capacityStartDate;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.end_date = capacityEndDate;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.start_time = capacityStartTime;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.end_time = capacityEndTime;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.time_zone = capacityTimeZone;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.recurrence = capacityRecurrence;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.custom_recurrence_repeat_every = capacityCustomRecurrenceRepeatEvery;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.custom_recurrence_repeat_unit = capacityCustomRecurrenceRepeatUnit;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.custom_recurrence_end_type = capacityCustomRecurrenceEndType;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.custom_recurrence_end_value = capacityCustomRecurrenceEndValue;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.max_natural_div = capacityMaxNaturalDiv;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.max_percentage_div = capacityMaxPercentageDiv;
-		handleCapacityUpdate();
-	});
-
-	$effect(() => {
-		capacity.hidden_until_request_accepted = capacityHiddenUntilRequestAccepted;
 		handleCapacityUpdate();
 	});
 
@@ -214,7 +128,31 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		onupdate?.(capacity);
+		// Create a new capacity object with all current values
+		const updatedCapacity: Capacity = {
+			...capacity,
+			name: capacityName,
+			quantity: capacityQuantity,
+			unit: capacityUnit,
+			location_type: capacityLocationType,
+			all_day: capacityAllDay,
+			start_date: capacityStartDate,
+			end_date: capacityEndDate,
+			start_time: capacityStartTime,
+			end_time: capacityEndTime,
+			time_zone: capacityTimeZone,
+			recurrence: capacityRecurrence,
+			custom_recurrence_repeat_every: capacityCustomRecurrenceRepeatEvery,
+			custom_recurrence_repeat_unit: capacityCustomRecurrenceRepeatUnit,
+			custom_recurrence_end_type: capacityCustomRecurrenceEndType,
+			custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
+			max_natural_div: capacityMaxNaturalDiv,
+			max_percentage_div: capacityMaxPercentageDiv,
+			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted
+		};
+
+		// Update the parent
+		onupdate?.(updatedCapacity);
 	}
 
 	// Delete this capacity

@@ -215,3 +215,56 @@ UI Components (reactive updates)
 5. **Circular Dependency Prevention**: Clear dependency hierarchy
 6. **Code Organization**: Related functionality grouped together
 7. **Dependency Clarity**: Easy to understand what each module needs and provides
+
+
+
+# Ideal Flow
+
+## Core Reactive Chain (src/lib/state/core.svelte.ts)
+
+- **userTree** (writable) → triggers everything
+- **nodesMap** (derived from userTree)
+- **contributors** (calculated from tree)
+- **recognitionCache** (ourShare + theirShare from network)
+- **mutualRecognition** (derived: min of ourShare, theirShare)
+- **mutualContributors** (derived from mutualRecognition)
+- **providerShares** (derived: normalized mutualRecognition)
+- **subtreeContributorMap** (derived from userTree + nodesMap)
+
+- **capacities** (writable)
+- **capacityShares** (derived: from capacities and providerShares)
+
+- **recipientCapacityShares** (writable) // Populated via a subscription to our ID in the capacityShares of our mutual-contributors
+- **recipientCapacities** (derived: recipientCapacityShares) // Populated via a subscription the capacities of our mutual-contributors, filtering out those capacities in which we have no share
+
+
+▲ SOGF triggers providerShares recalculation
+▲ providerShares triggers capacityShares Recalculation (for *all capacities*)
+capacityShares maps CapacityIDs to {ContributorId: Percentage}
+▲ in a Capacity's Filters triggers capacityShares Recalculation (for *that specific capacity*)
+
+## Persistance Strategy:
+SOGF: Map{contributorId: Percentage}: This way we can subscribe to our own contributorId in one's sogf
+Capacities: JSON.stringify(structuredClone(capacities))
+
+capacityShares: {capacityId: Map{ContributorId: Percentage}}: 
+- With this approach, without JSON.stringifying, we would need to gun.get(`~${contributorId}`).get('capacityShares').map().on(cb filter for those capacities in which we have a Percentage)
+
+Or if instead the Provider stores:
+capacityShares: {contributorId: JSON.stringify(Map{CapacityId: Percentage})}: 
+- With this approach, without JSON.stringifying, we would need to gun.get(`~${contributorId}`).get('capacityShares').get(ourId).on(cb)
+- with this approach we would not need to store in memory the capacities others have access to but we don't, and the data would already be filtered for us.
+- it also makes making the shares other have private-easier for the future
+- In this approach, the recipientShares are not part of the Capacity Object directly (this would necessitate changing our schema)
+
+## What we subscribe to:
+SOGF of our *contributors*: gun.get(`~${contributorId}`).get('sogf');
+All Capacities of our *mutual-contributors*: gun.get(`~${contributorId}`).get('capacities');
+capacityShares of our *mutual-contributors*: gun.get(`~${contributorId}`).get('capacityShares');
+
+### Advantages of this seperation between capacities and capacityShares:
+- Since capacityShares is the most auto-changeable value, changes to capacties (asides from changes to filters) wont trigger capacity subscriptions and wont require reprocessing of capacityShares.
+
+
+In order to transition:
+- 

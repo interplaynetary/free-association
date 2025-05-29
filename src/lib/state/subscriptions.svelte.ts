@@ -99,6 +99,7 @@ userCapacities.subscribe((capacities) => {
 	if (!capacities) return;
 
 	console.log('[CAPACITIES-SUB] Capacities updated, scheduling recalculation');
+	console.log('[CAPACITIES-SUB] Capacities data:', capacities);
 	console.log('[CAPACITIES-SUB] Capacities count:', Object.keys(capacities).length);
 
 	// Force immediate capacity persistence on every change

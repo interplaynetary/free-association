@@ -112,31 +112,6 @@ export function recalculateFromTree() {
 			console.error('[RECALC] Error calculating SOGF:', error);
 		}
 
-		// Step 2: Update mutual contributors list
-		try {
-			console.log('[RECALC] Updating mutual contributors...');
-			// Get current mutual recognition values
-			const mutualValues = get(mutualRecognition);
-			const contributorsList = get(contributors);
-
-			// FIXED: Only include contributors with actual mutual recognition > 0
-			const mutualList = Object.entries(mutualValues)
-				.filter(([_, value]) => value > 0)
-				.map(([contributorId, _]) => contributorId);
-
-			// Fallback: if no mutual recognition yet, use empty array (not all contributors)
-			const finalMutualList = mutualList.length > 0 ? mutualList : [];
-
-			mutualContributors.set(finalMutualList);
-			console.log(
-				'[RECALC] Found',
-				finalMutualList.length,
-				'mutual contributors with recognition > 0'
-			);
-		} catch (error) {
-			console.error('[RECALC] Error updating mutual contributors:', error);
-		}
-
 		// Step 3: Calculate recipient shares if capacities exist and not loading
 		if (capacities && !get(isLoadingCapacities)) {
 			try {

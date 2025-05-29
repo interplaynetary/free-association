@@ -59,7 +59,7 @@ export const CapacityShareSchema = z.object({
 // Capacity schema
 export const CapacitySchema = z.object({
 	id: IdSchema,
-	name: NameSchema,
+	name: z.string(),
 	quantity: z.number().check(z.gte(0)),
 	unit: z.string(),
 	location_type: z.string(),

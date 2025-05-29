@@ -7,16 +7,56 @@ import {
 	getSubtreeContributorMap
 } from '$lib/protocol';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
+import { user } from './gun.svelte';
 
 // Core reactive state - these form the main reactive chain
 export const userTree: Writable<RootNode | null> = writable(null);
 export const userSogf: Writable<ShareMap | null> = writable(null);
 export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
+
+export const networkCapacities: Writable<Record<string, CapacitiesCollection>> = writable({});
+export const ourRecipientShares = derived(networkCapacities, ($networkCapacities) => {
+	if (!$networkCapacities) {
+		console.log('[RECIPIENT-SHARES] No network capacities available, returning empty');
+		return {};
+	}
+
+	// Get our user ID
+	const ourId = user.is?.pub;
+	if (!ourId) {
+		console.log('[RECIPIENT-SHARES] No user ID available, returning empty');
+		return {};
+	}
+
+	// Filter capacities where we have recipient_shares
+	const filteredCapacities: CapacitiesCollection = {};
+
+	// Iterate through each contributor's capacities
+	Object.entries($networkCapacities).forEach(([contributorId, contributorCapacities]) => {
+		// Check each capacity from this contributor
+		Object.entries(contributorCapacities).forEach(([capacityId, capacity]) => {
+			// Check if we have recipient_shares in this capacity and we're included
+			if (capacity.recipient_shares && capacity.recipient_shares[ourId]) {
+				filteredCapacities[capacityId] = capacity;
+			}
+		});
+	});
+
+	console.log(
+		'[RECIPIENT-SHARES] Network capacities by contributor:',
+		Object.keys($networkCapacities)
+	);
+	console.log(
+		`[RECIPIENT-SHARES] Filtered ${Object.keys(filteredCapacities).length} capacities where we have recipient shares`
+	);
+	return filteredCapacities;
+});
+
+// Node Map
 export const nodesMap: Writable<Record<string, Node>> = writable({});
 
 // Contributors state
 export const contributors = writable<string[]>([]);
-export const mutualContributors = writable<string[]>([]);
 
 // All contributors we've ever had - used for SOGF calculation to ensure removed contributors get 0%
 export const allKnownContributors = writable<string[]>([]);
@@ -48,6 +88,16 @@ export const mutualRecognition = derived(recognitionCache, ($recognitionCache) =
 
 	console.log('[MUTUAL-RECOGNITION] Final mutual values:', mutualValues);
 	return mutualValues;
+});
+
+// Derived store for mutual contributors list
+export const mutualContributors = derived(mutualRecognition, ($mutualRecognition) => {
+	// Filter for contributors with mutual recognition > 0
+	const mutualList = Object.entries($mutualRecognition)
+		.filter(([_, value]) => value > 0)
+		.map(([contributorId, _]) => contributorId);
+
+	return mutualList;
 });
 
 // Derived store for normalized mutual recognition values (sum to 1.0)
