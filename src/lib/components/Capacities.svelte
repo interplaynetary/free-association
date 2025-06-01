@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { Capacity, CapacityShare, Node, RootNode, CapacitiesCollection } from '$lib/schema';
+	import type { ProviderCapacity, CapacitiesCollection } from '$lib/schema';
 	import {
 		findNodeById,
 		addCapacity as addCapacityToCollection,
@@ -10,14 +10,25 @@
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
-	import { username, userpub, userTree, userCapacities, persist } from '$lib/state.svelte';
+	import {
+		username,
+		userpub,
+		userTree,
+		userCapacities,
+		userCapacitiesWithShares,
+		persist
+	} from '$lib/state.svelte';
 	import CapacityComponent from './Capacity.svelte';
 
 	// Reactive derived values
-	const capacityEntries = $derived(Object.values($userCapacities || {}));
+	const capacityEntries = $derived(
+		Object.entries($userCapacitiesWithShares || {})
+			.filter(([id, capacity]) => id && capacity)
+			.map(([id, capacity]) => ({ ...capacity, id }))
+	);
 
 	// Add a new capacity to the userCapacities store
-	function addCapacity(capacity: Capacity) {
+	function addCapacity(capacity: ProviderCapacity) {
 		if (!$username || !$userpub) return false;
 
 		// Create a deep clone of current capacities
@@ -37,7 +48,7 @@
 	}
 
 	// Update capacity in the userCapacities store
-	function updateCapacity(capacity: Capacity) {
+	function updateCapacity(capacity: ProviderCapacity) {
 		try {
 			if (!$username || !$userpub) return false;
 
@@ -86,7 +97,7 @@
 	}
 
 	// Create a new capacity
-	function createDefaultCapacity(): Capacity {
+	function createDefaultCapacity(): ProviderCapacity {
 		if (!$username || !$userpub) throw new Error('No user logged in');
 
 		const now = new Date().toISOString();
@@ -106,14 +117,13 @@
 			max_percentage_div: 1.0,
 			hidden_until_request_accepted: false,
 			owner_id: $userpub,
-			shares: [],
 			recurrence: null,
 			custom_recurrence_repeat_every: null,
 			custom_recurrence_repeat_unit: null,
 			custom_recurrence_end_type: null,
 			custom_recurrence_end_value: null,
 			filter_rule: null,
-			recipient_shares: null
+			recipient_shares: {}
 		};
 	}
 
@@ -132,7 +142,7 @@
 	}
 
 	// Handle capacity update from child component
-	function handleCapacityUpdate(capacity: Capacity) {
+	function handleCapacityUpdate(capacity: ProviderCapacity) {
 		const success = updateCapacity(capacity);
 		if (!success) {
 			globalState.showToast('Failed to update capacity', 'error');
@@ -151,7 +161,7 @@
 <div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
 	{#each capacityEntries as entry (entry.id)}
 		<CapacityComponent
-			capacity={entry}
+			capacity={entry as ProviderCapacity}
 			canDelete={true}
 			onupdate={handleCapacityUpdate}
 			ondelete={handleCapacityDelete}

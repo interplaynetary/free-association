@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { userTree, nodesMap, recipientSharesMap } from './core.svelte';
+import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svelte';
 import { usersList } from './gun.svelte';
 import { getSubtreeContributorMap } from '$lib/protocol';
 
@@ -170,6 +170,6 @@ export function getUserSharesFromAllProviders(userId: string) {
 	// from other users who have the current user as a recipient
 
 	// For demo/local usage - just return the local user's recipient map
-	const recipients = get(recipientSharesMap);
+	const recipients = get(userNetworkCapacitiesWithShares);
 	return recipients[userId] || {};
 }

@@ -1,5 +1,5 @@
 import Gun from 'gun';
-import 'gun/sea';
+import SEA from 'gun/sea';
 import 'gun/axe';
 import 'gun/lib/yson.js';
 import 'gun/lib/radix'; // Required for radix tree logic
@@ -18,10 +18,17 @@ import {
 	recognitionCache,
 	isLoadingTree,
 	isLoadingCapacities,
-	recipientSharesMap,
-	providerShares
+	isLoadingSogf,
+	isLoadingRecognitionCache,
+	providerShares,
+	contributorCapacityShares
 } from './core.svelte';
 
+if (typeof Gun.SEA === 'undefined') {
+	Gun.SEA = SEA;
+}
+
+/*
 async function requestPersistentStorage() {
 	if (typeof navigator !== 'undefined' && navigator?.storage?.persist) {
 		try {
@@ -37,6 +44,7 @@ async function requestPersistentStorage() {
 }
 
 requestPersistentStorage();
+*/
 
 // Database
 export const gun = Gun({
@@ -44,6 +52,17 @@ export const gun = Gun({
 	localStorage: false
 	//radisk: false
 });
+
+// Authentication state store
+export const isAuthenticating = writable(true);
+
+export let user = gun.user().recall({ sessionStorage: true });
+
+// SEA.throw = true
+
+// Current User's username
+export const username = writable('');
+export const userpub = writable('');
 
 export const usersList = gun.get('freely-associating-players');
 
@@ -89,47 +108,76 @@ export async function getUserName(userId: string): Promise<string> {
 	return userId.substring(0, 8) + '...';
 }
 
-export let user = gun.user().recall({ sessionStorage: true });
-
-// Current User's username
-export const username = writable('');
-export const userpub = writable('');
-
 // Check if user is already authenticated after recall
 if (typeof window !== 'undefined') {
-	// Small delay to allow recall to complete
-	setTimeout(() => {
-		if (user?.is?.pub) {
-			console.log('[RECALL] User already authenticated after recall:', user.is.alias);
-			// Set the user state
-			username.set(user.is.alias);
-			userpub.set(user.is.pub);
-			usersList.get(user.is?.pub).put({
-				name: user.is.alias,
-				lastSeen: Date.now()
-			});
+	const checkAuth = async () => {
+		try {
+			// Set authenticating state
+			isAuthenticating.set(true);
 
-			// Load the data since gun.on('auth') won't fire for recalled sessions
-			manifest();
-		} else {
-			console.log('[RECALL] No authenticated user found after recall');
+			// Wait for a small delay to allow recall to complete
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			if (user?.is?.pub) {
+				console.log('[RECALL] User already authenticated after recall:', user.is.alias);
+				// Set the user state
+				username.set(user.is.alias);
+				userpub.set(user.is.pub);
+				usersList.get(user.is?.pub).put({
+					name: user.is.alias,
+					lastSeen: Date.now()
+				});
+
+				// Load the data since gun.on('auth') won't fire for recalled sessions
+				await manifest();
+			} else {
+				console.log('[RECALL] No authenticated user found after recall');
+				// Clear the stores to ensure consistent state
+				username.set('');
+				userpub.set('');
+			}
+		} catch (error) {
+			console.error('[RECALL] Error during authentication check:', error);
+			// Clear the stores on error
+			username.set('');
+			userpub.set('');
+		} finally {
+			// Clear authenticating state
+			isAuthenticating.set(false);
 		}
-	}, 100);
+	};
+
+	// Start the authentication check
+	checkAuth();
 }
 
 gun.on('auth', async () => {
-	const alias = await user.get('alias'); // username string
-	username.set(alias);
-	userpub.set(user.is?.pub);
-	usersList.get(user.is?.pub).put({
-		name: alias,
-		lastSeen: Date.now()
-	});
+	try {
+		// Set authenticating state
+		isAuthenticating.set(true);
 
-	console.log(`signed in as ${alias}`);
+		const alias = await user.get('alias'); // username string
+		username.set(alias);
+		userpub.set(user.is?.pub);
+		usersList.get(user.is?.pub).put({
+			name: alias,
+			lastSeen: Date.now()
+		});
 
-	// Load existing user data
-	manifest();
+		console.log(`signed in as ${alias}`);
+		console.log(`userPub: ${user.is?.pub}`);
+
+		// Load existing user data
+		await manifest();
+	} catch (error) {
+		console.error('[AUTH] Error during authentication:', error);
+		// Clear the stores on error
+		username.set('');
+		userpub.set('');
+	} finally {
+		// Clear authenticating state
+		isAuthenticating.set(false);
+	}
 });
 
 export function login(username: string, password: string) {
@@ -137,48 +185,35 @@ export function login(username: string, password: string) {
 }
 
 export function signup(username: string, password: string) {
-	user.create(username, password, ({ err }: { err: any }) => {
-		if (err) {
-			alert(err);
-		} else {
-			login(username, password);
+	gun.get(`~@${username}`).once((data: any) => {
+		if (data) {
+			console.log('[SIGNUP] checking alias user data', data);
+			alert('Username already taken');
+			return;
 		}
+
+		user.create(username, password, ({ err }: { err: any }) => {
+			if (err) {
+				alert(err);
+			} else {
+				login(username, password);
+			}
+		});
 	});
 }
 
-export function signout() {
+export async function signout() {
 	user.leave();
+	/*
+	// Wait for user session to be fully cleared
+	const maxAttempts = 50; // 5 seconds total timeout
+	for (let i = 0; i < maxAttempts; i++) {
+		if (user._.sea === null) break;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+*/
 	username.set('');
 	userpub.set('');
-}
-
-/*
-// Force persist on window unload
-if (typeof window !== 'undefined' && user?.is?.pub) {
-	window.addEventListener('beforeunload', () => {
-		console.log('Window closing, forcing persistence...');
-		persist();
-	});
-}
-
-// Force persist on any disconnect
-gun.on('bye', () => {
-	if (user.is?.pub) {
-		console.log('Gun disconnecting, forcing persistence...');
-		persist();
-	}
-});
-*/
-
-/**
- * Persist recognition cache to Gun
- */
-export function persistRecognitionCache() {
-	const cache = get(recognitionCache);
-	if (cache) {
-		console.log(`[PERSIST] Saving recognition cache with ${Object.keys(cache).length} entries`);
-		user.get('recognitionCache').put(JSON.stringify(structuredClone(cache)));
-	}
 }
 
 /**
@@ -207,16 +242,6 @@ export function persist() {
 		} catch (e) {
 			console.error('[PERSIST] Error persisting capacities:', e);
 		}
-		try {
-			persistRecipientShares();
-		} catch (e) {
-			console.error('[PERSIST] Error persisting recipient shares:', e);
-		}
-		try {
-			persistRecognitionCache();
-		} catch (e) {
-			console.error('[PERSIST] Error persisting recognition cache:', e);
-		}
 
 		console.log('[PERSIST] Full persistence complete');
 	} catch (error) {
@@ -225,6 +250,12 @@ export function persist() {
 }
 
 export function persistTree() {
+	// Don't persist while loading
+	if (get(isLoadingTree)) {
+		console.log('[PERSIST] Skipping tree persistence because tree is being loaded');
+		return;
+	}
+
 	const treeValue = get(userTree);
 	if (treeValue) {
 		console.log('[PERSIST] Starting tree persistence...');
@@ -250,6 +281,12 @@ export function persistTree() {
 }
 
 export function persistSogf() {
+	// Don't persist while loading
+	if (get(isLoadingSogf)) {
+		console.log('[PERSIST] Skipping SOGF persistence because SOGF is being loaded');
+		return;
+	}
+
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
 		// Ensure we're storing in the user's protected space using the correct pattern
@@ -267,6 +304,12 @@ export function persistProviderShares() {
 }
 
 export function persistCapacities() {
+	// Don't persist while loading
+	if (get(isLoadingCapacities)) {
+		console.log('[PERSIST] Skipping capacities persistence because capacities are being loaded');
+		return;
+	}
+
 	const userCapacitiesValue = get(userCapacities);
 	if (userCapacitiesValue) {
 		console.log('[PERSIST] Starting capacities persistence...');
@@ -295,49 +338,6 @@ export function persistCapacities() {
 			console.error('[PERSIST] Error serializing capacities:', error);
 		}
 	}
-}
-
-export function persistRecipientShares() {
-	// This will need to be implemented with access to the recipient shares
-	// For now, we'll handle this in the calculations module
-}
-
-/**
- * Load recipient shares data
- */
-export function loadRecipientShares() {
-	user.get('recipients').once((recipientsData: any) => {
-		if (recipientsData) {
-			// Gun handles this as a collection of keys
-			const loadedRecipients: Record<string, any> = {};
-
-			// We'll need to wait for all the recipient data to load
-			let recipientsToLoad = Object.keys(recipientsData).length;
-			if (recipientsToLoad === 0) return;
-
-			Object.keys(recipientsData).forEach((recipientId) => {
-				user
-					.get('recipients')
-					.get(recipientId)
-					.once((data: any) => {
-						try {
-							if (typeof data === 'string') {
-								loadedRecipients[recipientId] = JSON.parse(data);
-							} else {
-								loadedRecipients[recipientId] = data;
-							}
-						} catch (e) {
-							console.error(`Error parsing recipient data for ${recipientId}:`, e);
-						}
-
-						recipientsToLoad--;
-						if (recipientsToLoad <= 0) {
-							recipientSharesMap.set(loadedRecipients);
-						}
-					});
-			});
-		}
-	});
 }
 
 /**
@@ -380,8 +380,8 @@ export function manifest() {
 			// No valid tree data found, create a new one
 			console.log('[MANIFEST] No valid tree data found, creating initial tree');
 			const newTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
-			user.get('tree').put(JSON.stringify(newTree));
 			userTree.set(newTree);
+			user.get('tree').put(JSON.stringify(newTree));
 
 			// Reset loading flag after tree is loaded
 			isLoadingTree.set(false);
@@ -393,12 +393,14 @@ export function manifest() {
 	});
 
 	// Load SOGF - needed for network synchronization even though it will be recalculated
+	isLoadingSogf.set(true);
 	user.get('sogf').once((sogfData: any) => {
 		if (sogfData) {
 			// Parse SOGF data with validation
 			const validatedSogf = parseShareMap(sogfData);
 			userSogf.set(validatedSogf);
 		}
+		isLoadingSogf.set(false);
 	});
 
 	// Set loading flag before loading capacities
@@ -409,6 +411,7 @@ export function manifest() {
 		if (capacitiesData) {
 			// Parse capacities with validation
 			console.log('[MANIFEST] Capacities data:', capacitiesData);
+			
 			const validatedCapacities = parseCapacities(capacitiesData);
 			console.log('[MANIFEST] Loaded capacities count:', Object.keys(validatedCapacities).length);
 			console.log('[MANIFEST] Post-Validation capacities:', validatedCapacities);
@@ -435,27 +438,39 @@ export function manifest() {
 		// Reset loading flag after capacities are loaded
 		isLoadingCapacities.set(false);
 	});
-
-	// Load recipient shares
-	loadRecipientShares();
-
-	// Load recognition cache
-	loadRecognitionCache();
 }
 
 /**
- * Load recognition cache from Gun
+ * Persist contributor capacity shares to gun
  */
-export function loadRecognitionCache() {
-	user.get('recognitionCache').once((data: any) => {
-		if (data) {
-			// Parse recognition cache with validation
-			const validatedCache = parseRecognitionCache(data);
-			console.log(
-				`[MANIFEST] Loaded recognition cache with ${Object.keys(validatedCache).length} entries`
-			);
-			recognitionCache.set(validatedCache);
-		}
+export function persistContributorCapacityShares() {
+	const ourId = user.is?.pub;
+	if (!ourId) {
+		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
+		return;
+	}
+
+	const shares = get(contributorCapacityShares);
+	console.log('[PERSIST] Persisting contributor capacity shares:', shares);
+
+	// For each contributor, store their shares under their path
+	Object.entries(shares).forEach(([contributorId, capacityShares]) => {
+		// Store under ~{contributorId}/capacityShares/{ourId}
+		user
+			.get('capacityShares')
+			.get(`~${contributorId}`)
+			.put(JSON.stringify(capacityShares), (ack: any) => {
+				if (ack.err) {
+					console.error(
+						`[PERSIST] Error persisting capacity shares for contributor ${contributorId}:`,
+						ack.err
+					);
+				} else {
+					console.log(
+						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
+					);
+				}
+			});
 	});
 }
 

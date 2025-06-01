@@ -7,10 +7,10 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	isRecalculatingCapacities
+	contributorCapacityShares
 } from './core.svelte';
-import { persistTree, persistCapacities } from './gun.svelte';
-import { recalculateFromTree, recalculateFromCapacities } from './calculations.svelte';
+import { persistTree, persistCapacities, persistContributorCapacityShares } from './gun.svelte';
+import { recalculateFromTree } from './calculations.svelte';
 
 /**
  * Update nodes map whenever the tree changes
@@ -92,55 +92,38 @@ userTree.subscribe((tree) => {
 });
 
 /**
- * Trigger recalculations when capacities change
+ * Trigger persistence when capacities change
  */
-let capacitiesRecalcTimer: ReturnType<typeof setTimeout> | null = null;
 userCapacities.subscribe((capacities) => {
 	if (!capacities) return;
 
-	console.log('[CAPACITIES-SUB] Capacities updated, scheduling recalculation');
-	console.log('[CAPACITIES-SUB] Capacities data:', capacities);
+	console.log('[CAPACITIES-SUB] Capacities updated');
 	console.log('[CAPACITIES-SUB] Capacities count:', Object.keys(capacities).length);
 
 	// Force immediate capacity persistence on every change
-	// This ensures capacity changes are always saved, even if recalculation fails
-	console.log('[CAPACITIES-SUB] Forcing immediate capacities persistence');
-	try {
-		persistCapacities();
-	} catch (error) {
-		console.error('[CAPACITIES-SUB] Error during immediate persistence:', error);
-	}
-
-	// Skip recalculation if we're just loading from storage
-	if (get(isLoadingCapacities)) {
-		console.log('[CAPACITIES-SUB] Skipping recalculation because capacities are being loaded');
-		return;
-	}
-
-	// Skip recalculation if this update is from a recalculation
-	if (get(isRecalculatingCapacities)) {
-		console.log('[CAPACITIES-SUB] Skipping recalculation because update is from recalculation');
-		return;
-	}
-
-	// Clear any pending recalculation
-	if (capacitiesRecalcTimer) {
-		console.log('[CAPACITIES-SUB] Clearing previous capacities recalc timer');
-		clearTimeout(capacitiesRecalcTimer);
-	}
-
-	// Schedule a recalculation after a short delay
-	console.log('[CAPACITIES-SUB] Setting new capacities recalc timer for 300ms');
-	capacitiesRecalcTimer = setTimeout(() => {
-		console.log('[CAPACITIES-SUB] Timer fired, running capacities recalculation');
+	// This ensures capacity changes are always saved
+	if (!get(isLoadingCapacities)) {
+		console.log('[CAPACITIES-SUB] Persisting capacities');
 		try {
-			recalculateFromCapacities();
-		} catch (error) {
-			console.error('[CAPACITIES-SUB] Error during recalculation:', error);
-			// Even if recalculation fails, ensure capacities are persisted
-			console.log('[CAPACITIES-SUB] Forcing capacities persistence after error');
 			persistCapacities();
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during persistence:', error);
 		}
-		capacitiesRecalcTimer = null;
-	}, 300); // 300ms debounce
+	} else {
+		console.log('[CAPACITIES-SUB] Skipping persistence because capacities are being loaded');
+	}
+});
+
+/**
+ * Trigger persistence when contributor capacity shares change
+ */
+contributorCapacityShares.subscribe((contributorCapacityShares) => {
+	console.log('[CONTRIBUTOR-CAPACITY-SHARES-SUB] Contributor capacity shares updated');
+	console.log(
+		'[CONTRIBUTOR-CAPACITY-SHARES-SUB] Contributor capacity shares count:',
+		Object.keys(contributorCapacityShares).length
+	);
+
+	// Persist the shares to gun
+	persistContributorCapacityShares();
 });

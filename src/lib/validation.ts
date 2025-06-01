@@ -1,7 +1,7 @@
 /**
  * Validation utilities for the Free Association Protocol
  */
-import { z } from 'zod/v4-mini';
+import { z } from 'zod/v4';
 import {
 	RootNodeSchema,
 	NodeSchema,
@@ -79,7 +79,7 @@ export function parseCapacities(capacitiesData: unknown) {
 			try {
 				parsedData = JSON.parse(capacitiesData);
 			} catch (error) {
-				console.error('Error parsing capacities data JSON:', error);
+				console.error('[VALIDATION] Error parsing capacities data JSON:', error);
 				return {};
 			}
 		} else {
@@ -90,20 +90,57 @@ export function parseCapacities(capacitiesData: unknown) {
 		parsedData = filterGunMetadata(parsedData);
 
 		// Log the data being validated
-		console.log('[VALIDATION] Validating capacities data:', parsedData);
+		console.log('[VALIDATION] Pre-validation capacities data:', parsedData);
 
 		// Validate with Zod schema
 		const result = CapacitiesCollectionSchema.safeParse(parsedData);
 
 		if (result.success) {
+			console.log('[VALIDATION] Capacities validation successful');
+			// Check if validation changed any values
+			const differences = findDifferences(parsedData, result.data);
+			if (Object.keys(differences).length > 0) {
+				console.log('[VALIDATION] Validation made the following changes:', differences);
+			} else {
+				console.log('[VALIDATION] Validation made no changes to data');
+			}
+
+			function findDifferences(
+				original: any,
+				validated: any,
+				path: string[] = []
+			): Record<string, { original: any; validated: any }> {
+				const diffs: Record<string, { original: any; validated: any }> = {};
+
+				if (typeof original !== typeof validated) {
+					diffs[path.join('.')] = { original, validated };
+					return diffs;
+				}
+
+				if (typeof original === 'object' && original !== null) {
+					Object.keys({ ...original, ...validated }).forEach((key) => {
+						const newDiffs = findDifferences(original[key], validated[key], [...path, key]);
+						Object.assign(diffs, newDiffs);
+					});
+				} else if (original !== validated) {
+					diffs[path.join('.')] = { original, validated };
+				}
+
+				return diffs;
+			}
+			console.log('[VALIDATION] Validated Capacities data:', result.data);
 			return result.data;
 		} else {
-			console.error('[VALIDATION] Capacities data validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Capacities validation failed. Data:', parsedData);
 			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			console.error(
+				'[VALIDATION] Validation error paths:',
+				result.error.issues.map((issue) => issue.path)
+			);
 			return {};
 		}
 	} catch (err) {
-		console.error('[VALIDATION] Error parsing capacities data:', err);
+		console.error('[VALIDATION] Error during capacities validation:', err);
 		return {};
 	}
 }
@@ -210,7 +247,7 @@ export function isValidCapacity(capacity: unknown): boolean {
  * @param data Data to validate
  * @returns Error message or null if valid
  */
-export function getValidationErrors(schema: z.ZodMiniType, data: unknown): string | null {
+export function getValidationErrors(schema: z.ZodType, data: unknown): string | null {
 	const result = schema.safeParse(data);
 	if (!result.success) {
 		return JSON.stringify(result.error, null, 2);

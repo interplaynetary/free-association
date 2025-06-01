@@ -4,7 +4,15 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
-	import { username, userpub, login, signup, signout, userTree } from '$lib/state.svelte';
+	import {
+		username,
+		userpub,
+		login,
+		signup,
+		signout,
+		userTree,
+		isAuthenticating
+	} from '$lib/state.svelte';
 	import { findNodeById, addChild, createNonRootNode } from '$lib/protocol';
 	import { type Node as TreeNode, type RootNode } from '$lib/schema';
 
@@ -25,6 +33,7 @@
 	const path = $derived($currentPath);
 	const pub = $derived($userpub);
 	const user = $derived($username);
+	const isAuthenticatingState = $derived($isAuthenticating);
 
 	// Derived path info based on current path and tree
 	const currentPathInfo = $derived.by(() => {
@@ -316,7 +325,7 @@
 	// Handle logout with Gun
 	async function handleLogout() {
 		try {
-			signout();
+			await signout();
 			globalState.resetState();
 			globalState.showToast('Signed out successfully', 'info');
 			goto('/');
@@ -382,8 +391,9 @@
 	<div class="header-main">
 		<div class="node-name">
 			<div class="breadcrumbs">
-				{#if currentPathInfo.length === 0 && user}
-					<!-- Fallback to showing username if no path but user is logged in -->
+				{#if isAuthenticatingState}
+					<div class="breadcrumb-item loading-path">Loading...</div>
+				{:else if currentPathInfo.length === 0 && user}
 					<a
 						href="/"
 						class="breadcrumb-item auth-root current"
@@ -444,7 +454,12 @@
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
 		<div class="login-panel">
-			{#if $username}
+			{#if isAuthenticatingState}
+				<div class="loading-state">
+					<div class="spinner"></div>
+					<p>Checking authentication...</p>
+				</div>
+			{:else if $username}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
@@ -1002,5 +1017,19 @@
 
 	.toggle-password:hover {
 		opacity: 1;
+	}
+
+	.loading-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 20px;
+		text-align: center;
+	}
+
+	.loading-state p {
+		margin-top: 12px;
+		color: #666;
 	}
 </style>

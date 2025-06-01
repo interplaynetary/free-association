@@ -233,9 +233,10 @@ UI Components (reactive updates)
 
 - **capacities** (writable)
 - **capacityShares** (derived: from capacities and providerShares)
+- **contributorCapacityShares** (derived: from capacityShares)
 
-- **recipientCapacityShares** (writable) // Populated via a subscription to our ID in the capacityShares of our mutual-contributors
-- **recipientCapacities** (derived: recipientCapacityShares) // Populated via a subscription the capacities of our mutual-contributors, filtering out those capacities in which we have no share
+- **networkCapacityShares** (writable) // Populated via a subscription to our ID in the capacityShares of our mutual-contributors
+- **userNetworkCapacitiesWithShares** (derived: networkCapacityShares and networkCapacities) // Populated via a subscription the capacities of our mutual-contributors, filtering out those capacities in which we have no share
 
 
 ▲ SOGF triggers providerShares recalculation
@@ -248,19 +249,19 @@ SOGF: Map{contributorId: Percentage}: This way we can subscribe to our own contr
 Capacities: JSON.stringify(structuredClone(capacities))
 
 capacityShares: {capacityId: Map{ContributorId: Percentage}}: 
+- this is useful for our existing rendering logic
 - With this approach, without JSON.stringifying, we would need to gun.get(`~${contributorId}`).get('capacityShares').map().on(cb filter for those capacities in which we have a Percentage)
 
-Or if instead the Provider stores:
-capacityShares: {contributorId: JSON.stringify(Map{CapacityId: Percentage})}: 
+Or if instead the Provider stores also:
+contributorCapacityShares: {contributorId: JSON.stringify(Map{CapacityId: Percentage})}: 
 - With this approach, without JSON.stringifying, we would need to gun.get(`~${contributorId}`).get('capacityShares').get(ourId).on(cb)
-- with this approach we would not need to store in memory the capacities others have access to but we don't, and the data would already be filtered for us.
 - it also makes making the shares other have private-easier for the future
 - In this approach, the recipientShares are not part of the Capacity Object directly (this would necessitate changing our schema)
 
 ## What we subscribe to:
 SOGF of our *contributors*: gun.get(`~${contributorId}`).get('sogf');
 All Capacities of our *mutual-contributors*: gun.get(`~${contributorId}`).get('capacities');
-capacityShares of our *mutual-contributors*: gun.get(`~${contributorId}`).get('capacityShares');
+contributorCapacityShares of our *mutual-contributors*: gun.get(`~${contributorId}`).get('contributorCapacityShares');
 
 ### Advantages of this seperation between capacities and capacityShares:
 - Since capacityShares is the most auto-changeable value, changes to capacties (asides from changes to filters) wont trigger capacity subscriptions and wont require reprocessing of capacityShares.
@@ -268,3 +269,5 @@ capacityShares of our *mutual-contributors*: gun.get(`~${contributorId}`).get('c
 
 
 We already have: persistRecipientSharesCalculation
+
+We should subscribe to our own tree, and capacities as well 

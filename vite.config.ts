@@ -15,6 +15,7 @@ const moduleExclude = (match: string): Plugin => {
 		}
 	};
 };
+
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
@@ -40,15 +41,17 @@ export default defineConfig({
 	optimizeDeps: {
 		include: [
 			'gun',
-			'gun/gun',
+			//'gun/gun',
 			'gun/sea',
 			'gun/sea.js',
+			'gun/axe',
 			'gun/lib/then',
 			'gun/lib/webrtc',
 			'gun/lib/radix',
 			'gun/lib/radisk',
 			'gun/lib/store',
-			'gun/lib/rindexed'
+			'gun/lib/rindexed',
+			'gun/lib/yson.js'
 		]
 	}
 });

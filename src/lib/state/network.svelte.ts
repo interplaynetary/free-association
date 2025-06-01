@@ -1,13 +1,16 @@
 import { get } from 'svelte/store';
-import { gun, user, persistRecognitionCache } from './gun.svelte';
+import { gun, user, isAuthenticating } from './gun.svelte';
 import {
 	contributors,
 	mutualContributors,
 	recognitionCache,
-	networkCapacities
+	networkCapacities,
+	networkCapacityShares
 } from './core.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
 import { updateRecognitionCache } from './calculations.svelte';
+import { parseCapacities } from '$lib/validation';
+import type { Writable } from 'svelte/store';
 
 /**
  * Update the recognition cache with a contributor's share for us from network
@@ -47,13 +50,27 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 		return cache;
 	});
 
-	// Persist the updated cache
-	persistRecognitionCache();
-
 	// Log the updated cache and force reactivity check
 	const updatedCache = get(recognitionCache);
 
 	console.log(`[NETWORK] Cache after network update from ${contributorId}:`, updatedCache);
+}
+
+function setupTimeoutProtection(contributorId: string, dataType: string) {
+	let hasReceived = false;
+	const timeout = setTimeout(() => {
+		if (!hasReceived) {
+			console.log(`[NETWORK] Timeout waiting for ${dataType} from ${contributorId}`);
+		}
+	}, 10000); // 10 second timeout
+
+	return {
+		markReceived: () => {
+			hasReceived = true;
+			clearTimeout(timeout);
+		},
+		hasReceived
+	};
 }
 
 /**
@@ -63,23 +80,12 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
-	// FIXED: Use the correct Gun pattern for accessing other users' protected data
-	// The guide shows user data is stored under gun.get(`~${public_key}`)
 	const contributorSogf = gun.get(`~${contributorId}`).get('sogf');
-
-	// Add timeout protection as recommended by the Gun guide
-	// to prevent hanging when data doesn't exist
-	let hasReceived = false;
-	const timeout = setTimeout(() => {
-		if (!hasReceived) {
-			console.log(`[NETWORK] Timeout waiting for SOGF from ${contributorId}`);
-		}
-	}, 10000); // 10 second timeout
+	//const timeoutProtection = setupTimeoutProtection(contributorId, 'SOGF');
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
-		hasReceived = true;
-		clearTimeout(timeout);
+		//timeoutProtection.markReceived();
 
 		if (!sogfData) return;
 
@@ -102,20 +108,8 @@ export function subscribeToContributorCapacities(contributorId: string) {
 
 	const contributorCapacities = gun.get(`~${contributorId}`).get('capacities');
 
-	// Add timeout protection as recommended by the Gun guide
-	// to prevent hanging when data doesn't exist
-	let hasReceived = false;
-	const timeout = setTimeout(() => {
-		if (!hasReceived) {
-			console.log(`[NETWORK] Timeout waiting for capacities from ${contributorId}`);
-		}
-	}, 10000); // 10 second timeout
-
 	// Subscribe to changes
 	contributorCapacities.on((capacitiesData: any) => {
-		hasReceived = true;
-		clearTimeout(timeout);
-
 		if (!capacitiesData) return;
 
 		console.log(`[NETWORK] Received capacities update from ${contributorId}:`, capacitiesData);
@@ -124,37 +118,112 @@ export function subscribeToContributorCapacities(contributorId: string) {
 		const ourId = user.is?.pub;
 		if (!ourId) return;
 
-		// Parse the capacities data if it's a string
-		let parsedCapacities;
-		try {
-			parsedCapacities =
-				typeof capacitiesData === 'string' ? JSON.parse(capacitiesData) : capacitiesData;
-		} catch (error) {
-			console.error('[NETWORK] Error parsing capacities data:', error);
+		// Parse and validate the capacities data
+		const validatedCapacities = parseCapacities(capacitiesData);
+		if (!validatedCapacities || Object.keys(validatedCapacities).length === 0) {
+			console.error('[NETWORK] Failed to validate capacities from contributor:', contributorId);
 			return;
 		}
 
-		// Update the networkCapacities store with this contributor's capacities
+		// Update the networkCapacities store with this contributor's validated capacities
 		networkCapacities.update((currentNetworkCapacities) => {
 			const updated = { ...currentNetworkCapacities };
-
-			// Update this contributor's capacities
-			updated[contributorId] = parsedCapacities;
-
+			updated[contributorId] = validatedCapacities;
 			console.log(
-				`[NETWORK] Updated networkCapacities for ${contributorId}: added ${Object.keys(parsedCapacities).length} capacities`
+				`[NETWORK] Updated networkCapacities for ${contributorId}: added ${Object.keys(validatedCapacities).length} capacities`
 			);
 			return updated;
 		});
 	});
 }
 
+/**
+ * Subscribe to our capacity shares from a contributor
+ * @param contributorId The contributor to subscribe to
+ */
+export function subscribeToContributorCapacityShares(contributorId: string) {
+	const ourId = user.is?.pub;
+	if (!ourId) {
+		console.log('[NETWORK] Cannot subscribe to capacity shares - not authenticated');
+		return;
+	}
+
+	console.log(
+		`[NETWORK] Setting up capacity shares subscription for contributor: ${contributorId}`
+	);
+
+	// Subscribe to our capacity shares from this contributor
+	gun
+		.get(`~${contributorId}`)
+		.get('capacityShares')
+		.get(ourId)
+		.on((shares: any) => {
+			if (!shares) {
+				console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
+				// Update store to remove shares for this contributor
+				networkCapacityShares.update((current) => {
+					const { [contributorId]: _, ...rest } = current;
+					return rest;
+				});
+				return;
+			}
+
+			try {
+				// Parse and validate the shares
+				let parsedShares: Record<string, number>;
+				if (typeof shares === 'string') {
+					parsedShares = JSON.parse(shares);
+				} else {
+					parsedShares = shares;
+				}
+
+				// Validate that all shares are numbers between 0 and 1
+				const validatedShares: Record<string, number> = {};
+				Object.entries(parsedShares).forEach(([capacityId, share]) => {
+					if (typeof share === 'number' && share >= 0 && share <= 1) {
+						validatedShares[capacityId] = share;
+					} else {
+						console.warn(`[NETWORK] Invalid share value for capacity ${capacityId}:`, share);
+					}
+				});
+
+				console.log(
+					`[NETWORK] Received capacity shares from contributor ${contributorId}:`,
+					validatedShares
+				);
+
+				// Update the store with the validated shares
+				networkCapacityShares.update((current) => ({
+					...current,
+					[contributorId]: validatedShares
+				}));
+			} catch (error) {
+				console.error(
+					`[NETWORK] Error parsing/validating capacity shares from contributor ${contributorId}:`,
+					error
+				);
+			}
+		});
+}
+
 // Watch for changes to contributors and subscribe to get their SOGF data
 contributors.subscribe((allContributors) => {
-	if (!allContributors.length) return;
+	// Don't process while authenticating
+	if (get(isAuthenticating)) {
+		console.log('[NETWORK] Skipping contributor subscription while authenticating');
+		return;
+	}
+
+	if (!allContributors.length) {
+		console.log('[NETWORK] No contributors to subscribe to');
+		return;
+	}
 
 	// Only run this if we're authenticated
-	if (!user.is?.pub) return;
+	if (!user.is?.pub) {
+		console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
+		return;
+	}
 
 	console.log(
 		`[NETWORK] Contributors changed, now have ${allContributors.length}, setting up subscriptions`
@@ -164,13 +233,23 @@ contributors.subscribe((allContributors) => {
 	// We always re-subscribe to ensure we have the most current theirShare values
 	// This is especially important when contributors are re-added after being removed
 	allContributors.forEach((contributorId) => {
-		console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
-		subscribeToContributorSOGF(contributorId);
+		try {
+			console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
+			subscribeToContributorSOGF(contributorId);
+		} catch (error) {
+			console.error(`[NETWORK] Error subscribing to contributor ${contributorId}:`, error);
+		}
 	});
 });
 
 // Watch for changes to mutual contributors and subscribe to get their capacity data
 mutualContributors.subscribe((currentMutualContributors) => {
+	// Don't process while authenticating
+	if (get(isAuthenticating)) {
+		console.log('[NETWORK] Skipping mutual contributor subscription while authenticating');
+		return;
+	}
+
 	if (!currentMutualContributors.length) {
 		// If no mutual contributors, clear all network capacities
 		networkCapacities.set({});
@@ -178,7 +257,10 @@ mutualContributors.subscribe((currentMutualContributors) => {
 	}
 
 	// Only run this if we're authenticated
-	if (!user.is?.pub) return;
+	if (!user.is?.pub) {
+		console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
+		return;
+	}
 
 	console.log(
 		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up capacity subscriptions`
@@ -204,10 +286,70 @@ mutualContributors.subscribe((currentMutualContributors) => {
 
 	// Subscribe to mutual contributors for capacity data only (SOGF handled by contributors subscription)
 	currentMutualContributors.forEach((contributorId) => {
+		try {
+			console.log(
+				`[NETWORK] Setting up capacity subscription for mutual contributor: ${contributorId}`
+			);
+			subscribeToContributorCapacities(contributorId);
+		} catch (error) {
+			console.error(`[NETWORK] Error subscribing to mutual contributor ${contributorId}:`, error);
+		}
+	});
+});
+
+// Watch for changes to mutual contributors and subscribe to get their capacity shares
+mutualContributors.subscribe((currentMutualContributors) => {
+	// Don't process while authenticating
+	if (get(isAuthenticating)) {
+		console.log('[NETWORK] Skipping mutual contributor subscription while authenticating');
+		return;
+	}
+
+	if (!currentMutualContributors.length) {
+		// If no mutual contributors, clear all capacity shares
+		networkCapacityShares.set({});
+		return;
+	}
+
+	// Only run this if we're authenticated
+	if (!user.is?.pub) {
+		console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
+		return;
+	}
+
+	console.log(
+		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up capacity shares subscriptions`
+	);
+
+	// Clean up shares from contributors who are no longer mutual contributors
+	networkCapacityShares.update((current) => {
+		const cleaned: Record<string, Record<string, number>> = {};
+		Object.entries(current).forEach(([contributorId, shares]) => {
+			// Keep shares from current mutual contributors only
+			if (currentMutualContributors.includes(contributorId)) {
+				cleaned[contributorId] = shares;
+			}
+		});
+
 		console.log(
-			`[NETWORK] Setting up capacity subscription for mutual contributor: ${contributorId}`
+			`[NETWORK] Cleaned capacity shares: kept ${Object.keys(cleaned).length} contributors from ${Object.keys(current).length} total`
 		);
-		subscribeToContributorCapacities(contributorId);
+		return cleaned;
+	});
+
+	// Subscribe to capacity shares for each mutual contributor
+	currentMutualContributors.forEach((contributorId) => {
+		try {
+			console.log(
+				`[NETWORK] Setting up capacity shares subscription for mutual contributor: ${contributorId}`
+			);
+			subscribeToContributorCapacityShares(contributorId);
+		} catch (error) {
+			console.error(
+				`[NETWORK] Error subscribing to mutual contributor capacity shares ${contributorId}:`,
+				error
+			);
+		}
 	});
 });
 

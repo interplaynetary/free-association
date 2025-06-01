@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Capacity } from '$lib/schema';
+	import type { ProviderCapacity } from '$lib/schema';
 	import Bar from './Bar.svelte';
 	import TagPill from './TagPill.svelte';
 	import DropDown from './DropDown.svelte';
@@ -7,9 +7,9 @@
 	import { FilterRules } from '$lib/protocol';
 
 	interface Props {
-		capacity: Capacity;
+		capacity: ProviderCapacity;
 		canDelete: boolean;
-		onupdate?: (capacity: Capacity) => void;
+		onupdate?: (capacity: ProviderCapacity) => void;
 		ondelete?: (id: string) => void;
 	}
 
@@ -101,12 +101,10 @@
 
 	// Convert recipient_shares to bar segments
 	const recipientSegments = $derived(
-		capacity.recipient_shares
-			? Object.entries(capacity.recipient_shares).map(([userId, share]) => ({
-					id: userId,
-					value: share * 100 // Convert from 0-1 to 0-100 percentage
-				}))
-			: []
+		Object.entries(capacity.recipient_shares || {}).map(([userId, share]) => ({
+			id: userId,
+			value: share * 100 // Convert from 0-1 to 0-100 percentage
+		}))
 	);
 
 	// Recurrence options
@@ -124,7 +122,7 @@
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
 		// Create a new capacity object with all current values
-		const updatedCapacity: Capacity = {
+		const updatedCapacity: ProviderCapacity = {
 			...capacity,
 			name: capacityName,
 			quantity: capacityQuantity,

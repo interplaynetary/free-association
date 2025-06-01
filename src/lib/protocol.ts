@@ -10,9 +10,11 @@ import type {
 	RootNode,
 	NonRootNode,
 	Capacity,
-	CapacityShare,
 	CapacitiesCollection,
-	ShareMap
+	ShareMap,
+	ProviderCapacity,
+	RecipientCapacity,
+	BaseCapacity
 } from '$lib/schema';
 
 // Type definitions are now imported from schema.ts instead of being defined here
@@ -345,14 +347,14 @@ export function receiverGeneralShareFrom(
  */
 
 // Compute quantity share based on capacity and percentage
-export function computeQuantityShare(capacity: Capacity, percentage: number): number {
-	const rawQuantity = Math.round(capacity.quantity * percentage);
-	const maxNatural = capacity.max_natural_div;
-	const maxPercent = capacity.max_percentage_div;
+export function computeQuantityShare(capacity: BaseCapacity, percentage: number): number {
+	const rawQuantity = Math.round((capacity.quantity || 0) * percentage);
+	const maxNatural = capacity.max_natural_div || 1;
+	const maxPercent = capacity.max_percentage_div || 1;
 
 	// Apply percentage divisibility constraint
 	const percentConstrained =
-		percentage > maxPercent ? Math.round(capacity.quantity * maxPercent) : rawQuantity;
+		percentage > maxPercent ? Math.round((capacity.quantity || 0) * maxPercent) : rawQuantity;
 
 	// Apply natural number divisibility constraint
 	const naturalConstrained = Math.floor(percentConstrained / maxNatural) * maxNatural;
@@ -361,19 +363,33 @@ export function computeQuantityShare(capacity: Capacity, percentage: number): nu
 }
 
 // Create a new capacity share
-export function createCapacityShare(
-	capacityId: string,
-	recipientId: string,
-	percentage: number,
-	capacity: Capacity
-): CapacityShare {
+export function createRecipientCapacity(
+	baseCapacity: BaseCapacity,
+	providerId: string,
+	percentage: number
+): RecipientCapacity {
 	return {
-		id: crypto.randomUUID(), // Generate random ID for new shares
-		capacity_id: capacityId,
-		recipient_id: recipientId,
+		...baseCapacity,
 		share_percentage: percentage,
-		computed_quantity: computeQuantityShare(capacity, percentage)
+		computed_quantity: computeQuantityShare(baseCapacity, percentage),
+		provider_id: providerId
 	};
+}
+
+// Add a capacity to a collection
+export function addCapacity(capacities: CapacitiesCollection, capacity: Capacity): void {
+	capacities[capacity.id] = capacity;
+}
+
+// Add a capacity share to a capacity in a collection
+export function addCapacityShare(capacities: CapacitiesCollection, share: RecipientCapacity): void {
+	// Find the matching capacity if it exists
+	const capacity = capacities[share.id];
+
+	if (capacity && 'recipient_shares' in capacity) {
+		// Add the share to the capacity's recipient_shares map
+		capacity.recipient_shares[share.provider_id] = share.share_percentage;
+	}
 }
 
 /**
@@ -497,22 +513,6 @@ export function deleteSubtree(node: Node): void {
 // Update the manual fulfillment of a node (mutates the node)
 export function updateManualFulfillment(node: Node, value: number | undefined): void {
 	node.manual_fulfillment = validateManualFulfillment(value);
-}
-
-// Add a capacity to a collection
-export function addCapacity(capacities: CapacitiesCollection, capacity: Capacity): void {
-	capacities[capacity.id] = capacity;
-}
-
-// Add a capacity share to a capacity in a collection
-export function addCapacityShare(capacities: CapacitiesCollection, share: CapacityShare): void {
-	// Find the matching capacity if it exists
-	const capacity = capacities[share.capacity_id];
-
-	if (capacity) {
-		// Add the share to the capacity's shares array
-		capacity.shares.push(share);
-	}
 }
 
 // Helper to find and update a node directly in a tree (mutates the tree)
@@ -715,7 +715,7 @@ export function applyJsonLogicFilter(
 
 // Helper to filter capacity shares using the capacity's filter rule
 export function applyCapacityFilter(
-	capacity: Capacity,
+	capacity: BaseCapacity,
 	shareMap: ShareMap,
 	nodeContext: Record<string, Node> = {},
 	subtreeContributorMap?: Record<string, Record<string, boolean>>
@@ -805,8 +805,9 @@ export const FilterRules = {
  * const filteredShares = applyCapacityFilter(capacity, shareMap, nodesMap, subtreeMap);
  */
 
+// Calculate recipient shares for a provider capacity
 export function calculateRecipientShares(
-	capacity: Capacity,
+	capacity: ProviderCapacity,
 	provider: Node,
 	nodesMap: Record<string, Node>,
 	subtreeContributorMap?: Record<string, Record<string, boolean>>
@@ -819,28 +820,6 @@ export function calculateRecipientShares(
 
 	// Store the filtered shares in the capacity
 	capacity.recipient_shares = filteredShares;
-
-	// Update computed quantities for existing shares
-	updateCapacityShareQuantities(capacity);
-}
-
-export function updateCapacityShareQuantities(capacity: Capacity): void {
-	if (!capacity.recipient_shares) return;
-
-	// Update quantities for existing shares or create new ones
-	for (const [recipientId, sharePercentage] of Object.entries(capacity.recipient_shares)) {
-		// Find existing share or create new one
-		let share = capacity.shares.find((s) => s.recipient_id === recipientId);
-		if (!share) {
-			// Type assertion to handle sharePercentage as number
-			share = createCapacityShare(capacity.id, recipientId, sharePercentage as number, capacity);
-			capacity.shares.push(share);
-		} else {
-			// Update existing share with type assertions
-			share.share_percentage = sharePercentage as number;
-			share.computed_quantity = computeQuantityShare(capacity, sharePercentage as number);
-		}
-	}
 }
 
 // Get all capacities where the receiver has shares from a provider
@@ -849,23 +828,22 @@ export function getReceiverCapacities(
 	provider: Node,
 	capacities: CapacitiesCollection,
 	nodesMap: Record<string, Node>
-): Capacity[] {
-	// Filter capacities owned by the provider
+): ProviderCapacity[] {
+	// Filter capacities owned by the provider and ensure they are provider capacities
 	const providerCapacities = Object.values(capacities).filter(
-		(capacity) => capacity.owner_id === provider.id
+		(capacity): capacity is ProviderCapacity =>
+			capacity.owner_id === provider.id && 'recipient_shares' in capacity
 	);
 
 	// Ensure all capacities have calculated recipient shares
 	providerCapacities.forEach((capacity) => {
-		if (!capacity.recipient_shares) {
-			calculateRecipientShares(capacity, provider, nodesMap);
-		}
+		calculateRecipientShares(capacity, provider, nodesMap);
 	});
 
 	// Return capacities where the receiver has a share
 	return providerCapacities.filter(
 		(capacity) =>
-			capacity.recipient_shares?.[receiver.id] !== undefined &&
+			capacity.recipient_shares[receiver.id] !== undefined &&
 			capacity.recipient_shares[receiver.id] > 0
 	);
 }
@@ -876,15 +854,16 @@ export function getReceiverShares(
 	provider: Node,
 	capacities: CapacitiesCollection,
 	nodesMap: Record<string, Node>
-): Record<string, { capacity: Capacity; share: number; quantity: number }> {
+): Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> {
 	// Get all capacities where receiver has shares
 	const receiverCapacities = getReceiverCapacities(receiver, provider, capacities, nodesMap);
 
 	// Create a map of capacity ID to share information
-	const sharesMap: Record<string, { capacity: Capacity; share: number; quantity: number }> = {};
+	const sharesMap: Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> =
+		{};
 
 	receiverCapacities.forEach((capacity) => {
-		const share = capacity.recipient_shares?.[receiver.id] || 0;
+		const share = capacity.recipient_shares[receiver.id] || 0;
 		sharesMap[capacity.id] = {
 			capacity,
 			share,

@@ -4,7 +4,8 @@ import {
 	sharesOfGeneralFulfillmentMap,
 	normalizeShareMap,
 	getAllContributorsFromTree,
-	getSubtreeContributorMap
+	getSubtreeContributorMap,
+	applyCapacityFilter
 } from '$lib/protocol';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
 import { user } from './gun.svelte';
@@ -15,42 +16,49 @@ export const userSogf: Writable<ShareMap | null> = writable(null);
 export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
 
 export const networkCapacities: Writable<Record<string, CapacitiesCollection>> = writable({});
-export const ourRecipientShares = derived(networkCapacities, ($networkCapacities) => {
-	if (!$networkCapacities) {
-		console.log('[RECIPIENT-SHARES] No network capacities available, returning empty');
-		return {};
-	}
+export const networkCapacityShares: Writable<Record<string, Record<string, number>>> = writable({});
 
-	// Get our user ID
-	const ourId = user.is?.pub;
-	if (!ourId) {
-		console.log('[RECIPIENT-SHARES] No user ID available, returning empty');
-		return {};
-	}
+export const userNetworkCapacitiesWithShares = derived(
+	[networkCapacityShares, networkCapacities],
+	([$networkCapacityShares, $networkCapacities]) => {
+		if (!$networkCapacityShares || !$networkCapacities) {
+			console.log('[NETWORK-CAPACITIES] No network data available, returning empty');
+			return {};
+		}
 
-	// Filter capacities where we have recipient_shares
-	const filteredCapacities: CapacitiesCollection = {};
+		console.log('networkCapacityShares', $networkCapacityShares);
+		console.log('networkCapacities', $networkCapacities);
 
-	// Iterate through each contributor's capacities
-	Object.entries($networkCapacities).forEach(([contributorId, contributorCapacities]) => {
-		// Check each capacity from this contributor
-		Object.entries(contributorCapacities).forEach(([capacityId, capacity]) => {
-			// Check if we have recipient_shares in this capacity and we're included
-			if (capacity.recipient_shares && capacity.recipient_shares[ourId]) {
-				filteredCapacities[capacityId] = capacity;
-			}
+		// Filter capacities where we have shares
+		const filteredCapacities: CapacitiesCollection = {};
+
+		// For each contributor's shares
+		Object.entries($networkCapacityShares).forEach(([contributorId, shares]) => {
+			// Get this contributor's capacities
+			const contributorCapacities = $networkCapacities[contributorId];
+			if (!contributorCapacities) return;
+
+			// For each capacity we have a share in
+			Object.entries(shares).forEach(([capacityId, share]) => {
+				const capacity = contributorCapacities[capacityId];
+				if (capacity) {
+					// Add the capacity with just our share and computed quantity
+					filteredCapacities[capacityId] = {
+						...capacity,
+						share_percentage: share,
+						computed_quantity: (capacity.quantity || 0) * share,
+						provider_id: contributorId
+					};
+				}
+			});
 		});
-	});
 
-	console.log(
-		'[RECIPIENT-SHARES] Network capacities by contributor:',
-		Object.keys($networkCapacities)
-	);
-	console.log(
-		`[RECIPIENT-SHARES] Filtered ${Object.keys(filteredCapacities).length} capacities where we have recipient shares`
-	);
-	return filteredCapacities;
-});
+		console.log(
+			`[NETWORK-CAPACITIES] Found ${Object.keys(filteredCapacities).length} capacities where we have shares`
+		);
+		return filteredCapacities;
+	}
+);
 
 // Node Map
 export const nodesMap: Writable<Record<string, Node>> = writable({});
@@ -146,6 +154,110 @@ export const subtreeContributorMap = derived([userTree, nodesMap], ([$userTree, 
 	return filterMap;
 });
 
+// Derived store for capacity shares - maps capacity IDs to their filtered share maps
+export const capacityShares = derived(
+	[userCapacities, providerShares, nodesMap, subtreeContributorMap],
+	([$userCapacities, $providerShares, $nodesMap, $subtreeContributorMap]) => {
+		console.log(
+			`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacities and provider shares`
+		);
+
+		// If no capacities or provider shares, return empty
+		if (!$userCapacities || Object.keys($providerShares).length === 0) {
+			console.log('[CAPACITY-SHARES] No capacities or provider shares, returning empty');
+			return {};
+		}
+
+		// Calculate filtered shares for each capacity
+		const shares: Record<string, ShareMap> = {};
+		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
+			try {
+				// Apply capacity filter to provider shares
+				const filteredShares = applyCapacityFilter(
+					capacity,
+					$providerShares,
+					$nodesMap,
+					$subtreeContributorMap
+				);
+
+				// Store the filtered shares
+				shares[capacityId] = filteredShares;
+			} catch (error) {
+				console.error(
+					'[CAPACITY-SHARES] Error calculating shares for capacity:',
+					capacityId,
+					error
+				);
+				// On error, use empty share map for this capacity
+				shares[capacityId] = {};
+			}
+		});
+
+		console.log('[CAPACITY-SHARES] Generated shares for', Object.keys(shares).length, 'capacities');
+		return shares;
+	}
+);
+
+// Derived store for contributor capacity shares - maps contributor IDs to their capacity shares
+export const contributorCapacityShares = derived(capacityShares, ($capacityShares) => {
+	console.log(`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacity shares`);
+
+	const contributorShares: Record<string, Record<string, number>> = {};
+
+	// For each capacity's shares
+	Object.entries($capacityShares).forEach(([capacityId, shares]) => {
+		// For each contributor's share in this capacity
+		Object.entries(shares).forEach(([contributorId, share]) => {
+			// Initialize the contributor's share map if it doesn't exist
+			if (!contributorShares[contributorId]) {
+				contributorShares[contributorId] = {};
+			}
+
+			// Add this capacity's share to the contributor's map
+			contributorShares[contributorId][capacityId] = share;
+		});
+	});
+
+	console.log('[CAPACITY-SHARES] Generated contributor shares map:', contributorShares);
+	return contributorShares;
+});
+
+// Derived store that combines userCapacities with capacityShares to match current schema
+export const userCapacitiesWithShares = derived(
+	[userCapacities, capacityShares],
+	([$userCapacities, $capacityShares]) => {
+		console.log(
+			`[CAPACITIES-WITH-SHARES] ${new Date().toISOString()} Combining capacities with shares`
+		);
+
+		if (!$userCapacities) {
+			console.log('[CAPACITIES-WITH-SHARES] No capacities available, returning null');
+			return null;
+		}
+
+		// Create a new capacities collection with shares included
+		const capacitiesWithShares: CapacitiesCollection = {};
+
+		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
+			// Get the shares for this capacity
+			const shares = $capacityShares[capacityId] || {};
+
+			// Create a new capacity object with the shares included
+			capacitiesWithShares[capacityId] = {
+				...capacity,
+				recipient_shares: shares
+			};
+		});
+
+		console.log(
+			'[CAPACITIES-WITH-SHARES] Generated',
+			Object.keys(capacitiesWithShares).length,
+			'capacities with shares'
+		);
+		return capacitiesWithShares;
+	}
+);
+
 // Derived store that provides subtree options for UI components
 export const subtreeOptions = derived([userTree, nodesMap], ([$userTree, $nodesMap]) => {
 	if (!$userTree) return [];
@@ -163,9 +275,11 @@ export const subtreeOptions = derived([userTree, nodesMap], ([$userTree, $nodesM
 // Loading state flags
 export const isLoadingCapacities = writable(false);
 export const isLoadingTree = writable(false);
+export const isLoadingSogf = writable(false);
+export const isLoadingRecognitionCache = writable(false);
+
 export const isRecalculatingCapacities = writable(false);
 export const isRecalculatingTree = writable(false);
 
 // Additional state
-export const recipientSharesMap: Writable<Record<string, any>> = writable({});
 export const publicTemplates: Writable<Record<string, any>> = writable({});

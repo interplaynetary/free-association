@@ -161,7 +161,7 @@ Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms
 
 **_Now who would you want to share space with?_**
 
-Well ideally, \*those that **satisfy your needs** (align with your values, goals, etc.) in the **_widest_** sense of the term.\*
+Well ideally, \*those that **satisfy your needs** (who contribution to the realization of your values, goals, etc.) in the **_widest_** sense of the term.\*
 
 And even more than that, it is even _more satisfying_ **_when the feeling is mutual!_**
 
@@ -367,17 +367,20 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 ### For development:
 
 In one console:
+
 ```
 bun install
 bun run dev
 ```
 
 In another console start the gun relay:
+
 ```
 bun start
 ```
 
 ### For production:
+
 ```
 bun install
 bun run build

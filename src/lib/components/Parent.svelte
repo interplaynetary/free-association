@@ -63,8 +63,8 @@
 	// Growth constants
 	const GROWTH_DELAY = 350;
 	const GROWTH_TICK = 16;
-	const BASE_GROWTH_RATE = 0.8;
-	const BASE_SHRINK_RATE = -0.8;
+	const BASE_GROWTH_RATE = 0.04;
+	const BASE_SHRINK_RATE = -0.04;
 	const TAP_THRESHOLD = 250;
 
 	// Reactive store subscriptions
@@ -467,18 +467,17 @@
 
 					// Calculate growth rate based on current size
 					let rate;
+					const currentPoints = node.data.points;
 					if (isShrinking) {
-						// More aggressive shrinking for larger nodes
-						rate = Math.min(
-							-0.2,
-							Math.max(-4, BASE_SHRINK_RATE * Math.sqrt(node.data.points / 10))
-						);
+						// For consistent relative change, use current points * constant rate
+						// This means it takes the same time to halve in size regardless of starting size
+						rate = currentPoints * BASE_SHRINK_RATE;
 					} else {
-						// More aggressive growth for smaller nodes
-						rate = Math.max(0.2, Math.min(4, BASE_GROWTH_RATE * Math.sqrt(node.data.points / 10)));
+						// For consistent relative change, use current points * constant rate
+						// This means it takes the same time to double in size regardless of starting size
+						rate = currentPoints * BASE_GROWTH_RATE;
 					}
 
-					const currentPoints = node.data.points;
 					const newPoints = Math.max(1, currentPoints + rate);
 
 					if (isNaN(newPoints)) {

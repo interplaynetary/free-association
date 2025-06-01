@@ -1,14 +1,20 @@
 <script lang="ts">
-	import { ourRecipientShares } from '$lib/state/core.svelte';
+	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 	import { getUserName, user } from '$lib/state/gun.svelte';
+	import type {
+		Node,
+		RootNode,
+		NonRootNode,
+		Capacity,
+		CapacitiesCollection,
+		ShareMap,
+		ProviderCapacity,
+		RecipientCapacity,
+		BaseCapacity
+	} from '$lib/schema';
 
-	interface CapacityShare {
-		id: string;
-		name: string;
-		quantity: number;
-		unit: string;
-		provider: string;
-		share_percentage: number;
+	interface ShareWithProvider extends RecipientCapacity {
+		provider_name: string;
 	}
 
 	// Green color scale for share percentage
@@ -25,26 +31,22 @@
 		console.log(`Navigating to provider: ${provider}`);
 	}
 
-	let shares = $state<CapacityShare[]>([]);
+	let shares = $state<ShareWithProvider[]>([]);
 	$effect(() => {
 		void (async () => {
-			const ourId = user.is?.pub;
-			if (!ourId || !$ourRecipientShares) {
+			if (!$userNetworkCapacitiesWithShares) {
 				shares = [];
 				return;
 			}
 
 			shares = await Promise.all(
-				Object.entries($ourRecipientShares).map(async ([capacityId, capacity]) => {
-					const sharePercentage = capacity.recipient_shares?.[ourId] || 0;
+				Object.entries($userNetworkCapacitiesWithShares).map(async ([capacityId, capacity]) => {
+					const providerName = await getUserName((capacity as RecipientCapacity).provider_id);
 					return {
+						...capacity,
 						id: capacityId,
-						name: capacity.name || '',
-						quantity: capacity.quantity * sharePercentage,
-						unit: capacity.unit || '',
-						provider: (await getUserName(capacity.owner_id)) || '',
-						share_percentage: sharePercentage
-					};
+						provider_name: providerName || ''
+					} as RecipientCapacity & { provider_name: string };
 				})
 			);
 		})();
@@ -62,7 +64,9 @@
 					>{share.name}</span
 				>
 				<span class="share-value qty text-sm">
-					{Number.isInteger(share.quantity) ? share.quantity : share.quantity.toFixed(2)}
+					{Number.isInteger(share.computed_quantity)
+						? share.computed_quantity
+						: share.computed_quantity.toFixed(2)}
 					{share.unit}
 					<span class="text-xs text-gray-600">({(share.share_percentage * 100).toFixed(1)}%)</span>
 				</span>
@@ -70,9 +74,9 @@
 			<button
 				type="button"
 				class="provider-btn rounded-md px-2 py-1 text-xs whitespace-nowrap"
-				onclick={() => handleProviderClick(share.provider)}
+				onclick={() => handleProviderClick(share.provider_name)}
 			>
-				{share.provider}
+				{share.provider_name}
 			</button>
 		</div>
 	{/each}
