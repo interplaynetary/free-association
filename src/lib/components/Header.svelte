@@ -206,9 +206,9 @@
 		}
 
 		// If we're already at the root (only one breadcrumb item) and clicking the first item,
-		// and we're on the soul route, show the welcome panel instead of navigating
+		// and we're on the soul route, toggle the login panel instead of navigating
 		if (index === 0 && currentPathInfo.length === 1 && isSoulRoute) {
-			showLoginPanel = true;
+			showLoginPanel = !showLoginPanel;
 			return;
 		}
 
@@ -384,6 +384,44 @@
 			`)}`;
 		}
 	}
+
+	// Add this function before the closing script tag
+	async function handleDownloadTree() {
+		if (!tree) {
+			globalState.showToast('No tree data available to download', 'error');
+			return;
+		}
+
+		try {
+			// Create the JSON data
+			const jsonData = JSON.stringify(tree, null, 2);
+			const blob = new Blob([jsonData], { type: 'application/json' });
+
+			// Show the file picker
+			const handle = await window.showSaveFilePicker({
+				suggestedName: `userTree_${user || 'anonymous'}_${new Date().toISOString().split('T')[0]}.json`,
+				types: [
+					{
+						description: 'JSON File',
+						accept: { 'application/json': ['.json'] }
+					}
+				]
+			});
+
+			// Write the file
+			const writable = await handle.createWritable();
+			await writable.write(blob);
+			await writable.close();
+
+			globalState.showToast('Tree data downloaded successfully', 'success');
+		} catch (error: unknown) {
+			// Don't show error for user cancellation
+			if (error instanceof Error && error.name !== 'AbortError') {
+				console.error('Error downloading tree:', error);
+				globalState.showToast('Error downloading tree data', 'error');
+			}
+		}
+	}
 </script>
 
 <div class="header" bind:this={headerRef}>
@@ -472,6 +510,9 @@
 						</div>
 					</div>
 					<div class="actions">
+						<button class="download-btn" onclick={handleDownloadTree}>
+							<span>📥</span> Download Tree
+						</button>
 						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
 						<button class="close-btn" onclick={toggleLoginPanel}>Close</button>
 					</div>
@@ -598,6 +639,7 @@
 		display: flex;
 		flex-direction: column;
 		position: relative;
+		flex: 1;
 	}
 
 	.header-main {
@@ -608,17 +650,17 @@
 		padding: 8px 16px;
 		background-color: white;
 		z-index: 20;
+		min-height: 52px;
 	}
 
 	.login-panel {
 		position: absolute;
-		top: 100%;
+		top: calc(100% - 8px);
 		left: 16px;
 		width: 320px;
 		background-color: white;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		border-radius: 8px;
-		margin-top: 8px;
 		padding: 16px;
 		z-index: 10;
 		animation: dropDown 0.2s ease-out;
@@ -1031,5 +1073,29 @@
 	.loading-state p {
 		margin-top: 12px;
 		color: #666;
+	}
+
+	.download-btn {
+		background: #4caf50;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-size: 0.95em;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-width: 90px;
+		flex: 1;
+	}
+
+	.download-btn:hover {
+		background: #388e3c;
+	}
+
+	.download-btn span {
+		font-size: 1.1em;
 	}
 </style>

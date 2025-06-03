@@ -61,3 +61,6 @@ Aesthetic:
 The bar on top of capacities isnt always accurate?
 Our recipientShares arent displaying for mutual-contributors other than ourselves...
 On top of that it seems to be super slow at updating, like reaallly slow, are we sure we are doing this as close as posisble to how we manage subscription to our contributor's sogf?
+
+
+client.js:2949 [svelte] ownership_invalid_mutationsrc/lib/components/DropDown.svelte mutated a value owned by src/lib/components/Capacity.svelte. This is strongly discouraged. Consider passing values to child components with `bind:`, or use a callback insteadhttps://svelte.dev/e/ownership_invalid_mutation

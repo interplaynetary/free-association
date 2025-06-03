@@ -7,6 +7,7 @@
 
 	// Reactive variable for mobile detection
 	let isMobile = $state(false);
+	let mediaQuery: MediaQueryList;
 
 	// Create reactive derived store from userSogf
 	const barSegments = derived(userSogf, ($sogf) => {
@@ -56,16 +57,17 @@
 		}
 
 		// Set up media query listener for responsive behavior
-		const mediaQuery = window.matchMedia('(max-width: 768px)');
+		mediaQuery = window.matchMedia('(max-width: 768px)');
+
+		// Function to handle media query changes
+		function handleMediaChange(e: MediaQueryListEvent | MediaQueryList) {
+			isMobile = e.matches;
+		}
 
 		// Set initial value
-		isMobile = mediaQuery.matches;
+		handleMediaChange(mediaQuery);
 
 		// Listen for changes
-		const handleMediaChange = (e: MediaQueryListEvent) => {
-			isMobile = e.matches;
-		};
-
 		mediaQuery.addEventListener('change', handleMediaChange);
 
 		// Cleanup listener on unmount
@@ -80,40 +82,60 @@
 		<Parent />
 	</div>
 	<div class="bars">
-		<div class="bar sogf-bar">
-			{#if $barSegments.length > 0}
-				<Bar
-					segments={$barSegments}
-					width="100%"
-					vertical={!isMobile}
-					showLabels={false}
-					showValues={false}
-					rounded={false}
-				/>
-			{:else}
-				<div class="placeholder">
-					<p>
-						You have not yet recognized any contributors! Adding contributors to a node makes it a
-						contribution!
-					</p>
-				</div>
-			{/if}
+		<div class="bar-group" class:vertical={!isMobile}>
+			<div class="bar-label">
+				{#if isMobile}
+					your<br />recognition
+				{:else}
+					YR
+				{/if}
+			</div>
+			<div class="bar-area">
+				{#if $barSegments.length > 0}
+					<Bar
+						segments={$barSegments}
+						width="100%"
+						height="100%"
+						vertical={!isMobile}
+						showLabels={false}
+						showValues={false}
+						rounded={false}
+					/>
+				{:else}
+					<div class="placeholder">
+						<p>
+							You have not yet recognized any contributors! Adding contributors to a node makes it a
+							contribution!
+						</p>
+					</div>
+				{/if}
+			</div>
 		</div>
-		<div class="bar provider-bar">
-			{#if $providerSegments.length > 0}
-				<Bar
-					segments={$providerSegments}
-					width="100%"
-					vertical={!isMobile}
-					showLabels={false}
-					showValues={false}
-					rounded={false}
-				/>
-			{:else}
-				<div class="placeholder">
-					<p>You don't have any mutual contributors yet!</p>
-				</div>
-			{/if}
+		<div class="bar-group" class:vertical={!isMobile}>
+			<div class="bar-label">
+				{#if isMobile}
+					mutual<br />recognition
+				{:else}
+					MR
+				{/if}
+			</div>
+			<div class="bar-area">
+				{#if $providerSegments.length > 0}
+					<Bar
+						segments={$providerSegments}
+						width="100%"
+						height="100%"
+						vertical={!isMobile}
+						showLabels={false}
+						showValues={false}
+						rounded={false}
+					/>
+				{:else}
+					<div class="placeholder">
+						<p>You don't have any mutual contributors yet!</p>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>
@@ -149,10 +171,66 @@
 		gap: 0.5rem;
 	}
 
-	.bar {
-		width: 100%;
+	.bar-group {
 		flex: 1;
-		overflow: auto;
+		display: grid;
+		min-height: 0;
+	}
+
+	/* Horizontal layout */
+	.bar-group {
+		grid-template-columns: auto 1fr;
+		gap: 0.75rem;
+		align-items: center;
+		height: 2rem;
+	}
+
+	/* Vertical layout */
+	.bar-group.vertical {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr;
+		gap: 0.25rem;
+		height: 100%;
+		min-height: 0;
+		max-height: 100%;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		width: 2rem;
+	}
+
+	.bar-group.vertical .bar-area {
+		flex: 1;
+		order: 1;
+		display: flex;
+		align-items: flex-end;
+		width: 100%;
+	}
+
+	.bar-group.vertical .bar-label {
+		order: 2;
+		font-size: min(0.5em, 1vw);
+		padding: 0 0.25rem;
+		max-width: 100%;
+		text-align: center;
+	}
+
+	.bar-area {
+		height: 100%;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.bar-label {
+		font-size: min(0.6em, 1.2vh);
+		color: #666;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		font-weight: 500;
+		line-height: 1.1;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.placeholder {
@@ -178,6 +256,7 @@
 		.bars {
 			flex-direction: column;
 			height: auto;
+			gap: 1rem;
 		}
 
 		.placeholder {

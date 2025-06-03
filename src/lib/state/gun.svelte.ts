@@ -48,7 +48,9 @@ requestPersistentStorage();
 
 // Database
 export const gun = Gun({
-	peers: ['http://localhost:8765/gun'],
+	peers: ['http://localhost:8765/gun', 'https://gun-manhattan.herokuapp.com/gun',
+		'https://peer.wallie.io/gun',
+		'https://gun.defucc.me/gun'],
 	localStorage: false
 	//radisk: false
 });
@@ -69,21 +71,10 @@ export const usersList = gun.get('freely-associating-players');
 // Cache for user names to avoid repeated Gun lookups
 export const userNamesCache = writable<Record<string, string>>({});
 
-/**
- * Get user name from Gun with caching
- * @param userId The user ID to look up
- * @returns Promise that resolves to the user's display name
- */
-export async function getUserName(userId: string): Promise<string> {
+export async function getUserName(userId: string) {
 	// Look up from freely-associating-players first
 	try {
-		const pubUser: any = await new Promise((resolve) => {
-			usersList.get(userId).once(resolve);
-		});
-
-		if (pubUser && pubUser.name) {
-			return pubUser.name;
-		}
+		const pubUser = usersList.get(userId).get('name');
 	} catch (error) {
 		console.log(
 			`[USER-NAME] Could not fetch from freely-associating-players for ${userId}:`,
@@ -93,13 +84,7 @@ export async function getUserName(userId: string): Promise<string> {
 
 	// If not found, try the user's protected space
 	try {
-		const alias: any = await new Promise((resolve) => {
-			gun.get(`~${userId}`).get('alias').once(resolve);
-		});
-
-		if (alias && typeof alias === 'string') {
-			return alias;
-		}
+		return gun.get(`~${userId}`).get('alias');
 	} catch (error) {
 		console.log(`[USER-NAME] Could not fetch alias for user ${userId}:`, error);
 	}
@@ -203,15 +188,10 @@ export function signup(username: string, password: string) {
 }
 
 export async function signout() {
-	user.leave();
-	/*
-	// Wait for user session to be fully cleared
-	const maxAttempts = 50; // 5 seconds total timeout
-	for (let i = 0; i < maxAttempts; i++) {
-		if (user._.sea === null) break;
-		await new Promise((resolve) => setTimeout(resolve, 100));
+	user().leave();
+	while (user._.sea != null) {
+		await new Promise(requestAnimationFrame);
 	}
-*/
 	username.set('');
 	userpub.set('');
 }
@@ -341,6 +321,40 @@ export function persistCapacities() {
 }
 
 /**
+ * Persist contributor capacity shares to gun
+ */
+export function persistContributorCapacityShares() {
+	const ourId = user.is?.pub;
+	if (!ourId) {
+		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
+		return;
+	}
+
+	const shares = get(contributorCapacityShares);
+	console.log('[PERSIST] Persisting contributor capacity shares:', shares);
+
+	// For each contributor, store their shares under their path
+	Object.entries(shares).forEach(([contributorId, capacityShares]) => {
+		// Store under contributorId/capacityShares/{ourId}
+		user
+			.get('capacityShares')
+			.get(contributorId)
+			.put(JSON.stringify(capacityShares), (ack: any) => {
+				if (ack.err) {
+					console.error(
+						`[PERSIST] Error persisting capacity shares for contributor ${contributorId}:`,
+						ack.err
+					);
+				} else {
+					console.log(
+						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
+					);
+				}
+			});
+	});
+}
+
+/**
  * Load the application state from Gun
  */
 export function manifest() {
@@ -411,7 +425,7 @@ export function manifest() {
 		if (capacitiesData) {
 			// Parse capacities with validation
 			console.log('[MANIFEST] Capacities data:', capacitiesData);
-			
+
 			const validatedCapacities = parseCapacities(capacitiesData);
 			console.log('[MANIFEST] Loaded capacities count:', Object.keys(validatedCapacities).length);
 			console.log('[MANIFEST] Post-Validation capacities:', validatedCapacities);
@@ -437,40 +451,6 @@ export function manifest() {
 
 		// Reset loading flag after capacities are loaded
 		isLoadingCapacities.set(false);
-	});
-}
-
-/**
- * Persist contributor capacity shares to gun
- */
-export function persistContributorCapacityShares() {
-	const ourId = user.is?.pub;
-	if (!ourId) {
-		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
-		return;
-	}
-
-	const shares = get(contributorCapacityShares);
-	console.log('[PERSIST] Persisting contributor capacity shares:', shares);
-
-	// For each contributor, store their shares under their path
-	Object.entries(shares).forEach(([contributorId, capacityShares]) => {
-		// Store under ~{contributorId}/capacityShares/{ourId}
-		user
-			.get('capacityShares')
-			.get(`~${contributorId}`)
-			.put(JSON.stringify(capacityShares), (ack: any) => {
-				if (ack.err) {
-					console.error(
-						`[PERSIST] Error persisting capacity shares for contributor ${contributorId}:`,
-						ack.err
-					);
-				} else {
-					console.log(
-						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
-					);
-				}
-			});
 	});
 }
 

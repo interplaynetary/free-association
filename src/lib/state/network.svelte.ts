@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { gun, user, isAuthenticating } from './gun.svelte';
 import {
 	contributors,
+	contributorCapacityShares,
 	mutualContributors,
 	recognitionCache,
 	networkCapacities,
@@ -81,12 +82,9 @@ export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
 	const contributorSogf = gun.get(`~${contributorId}`).get('sogf');
-	//const timeoutProtection = setupTimeoutProtection(contributorId, 'SOGF');
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
-		//timeoutProtection.markReceived();
-
 		if (!sogfData) return;
 
 		console.log(`[NETWORK] Received SOGF update from ${contributorId}`);
@@ -97,6 +95,18 @@ export function subscribeToContributorSOGF(contributorId: string) {
 
 		// Extract our share from their SOGF
 		const theirShare = sogfData[ourId] || 0;
+
+		// Check if this share matches our current cache
+		const currentCache = get(recognitionCache);
+		const existingEntry = currentCache[contributorId];
+		const isUnchanged = existingEntry && existingEntry.theirShare === theirShare;
+
+		if (isUnchanged) {
+			console.log(
+				`[NETWORK] Ignoring duplicate SOGF update from contributor ${contributorId}: share=${theirShare}`
+			);
+			return;
+		}
 
 		// Update our cache with their share for us
 		updateTheirShareFromNetwork(contributorId, theirShare);
@@ -122,6 +132,18 @@ export function subscribeToContributorCapacities(contributorId: string) {
 		const validatedCapacities = parseCapacities(capacitiesData);
 		if (!validatedCapacities || Object.keys(validatedCapacities).length === 0) {
 			console.error('[NETWORK] Failed to validate capacities from contributor:', contributorId);
+			return;
+		}
+
+		// Check if these capacities match our current network state
+		const currentNetworkCapacities = get(networkCapacities)[contributorId] || {};
+		const isUnchanged =
+			JSON.stringify(validatedCapacities) === JSON.stringify(currentNetworkCapacities);
+
+		if (isUnchanged) {
+			console.log(
+				`[NETWORK] Ignoring duplicate capacities update for contributor ${contributorId}`
+			);
 			return;
 		}
 
@@ -160,7 +182,6 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 		.on((shares: any) => {
 			if (!shares) {
 				console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
-				// Update store to remove shares for this contributor
 				networkCapacityShares.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -187,8 +208,18 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 					}
 				});
 
+				// Check if these shares match our current network state
+				const currentNetworkShares = get(networkCapacityShares)[contributorId] || {};
+				const isUnchanged =
+					JSON.stringify(validatedShares) === JSON.stringify(currentNetworkShares);
+
+				if (isUnchanged) {
+					console.log(`[NETWORK] Ignoring duplicate update for contributor ${contributorId}`);
+					return;
+				}
+
 				console.log(
-					`[NETWORK] Received capacity shares from contributor ${contributorId}:`,
+					`[NETWORK] Received new capacity shares from contributor ${contributorId}:`,
 					validatedShares
 				);
 
@@ -242,7 +273,7 @@ contributors.subscribe((allContributors) => {
 	});
 });
 
-// Watch for changes to mutual contributors and subscribe to get their capacity data
+// Watch for changes to mutual contributors and subscribe to get their capacity data and shares
 mutualContributors.subscribe((currentMutualContributors) => {
 	// Don't process while authenticating
 	if (get(isAuthenticating)) {
@@ -251,8 +282,9 @@ mutualContributors.subscribe((currentMutualContributors) => {
 	}
 
 	if (!currentMutualContributors.length) {
-		// If no mutual contributors, clear all network capacities
+		// If no mutual contributors, clear all network capacities and shares
 		networkCapacities.set({});
+		networkCapacityShares.set({});
 		return;
 	}
 
@@ -263,7 +295,7 @@ mutualContributors.subscribe((currentMutualContributors) => {
 	}
 
 	console.log(
-		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up capacity subscriptions`
+		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up subscriptions`
 	);
 
 	// Clean up capacities from contributors who are no longer mutual contributors
@@ -279,47 +311,12 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		});
 
 		console.log(
-			`[NETWORK] Cleaned network capacities: kept ${Object.keys(cleaned).length} contributors from ${Object.keys(currentNetworkCapacities).length} total`
+			`[NETWORK] Cleaned network capacities: kept ${Object.keys(cleaned).length} contributors from ${
+				Object.keys(currentNetworkCapacities).length
+			} total`
 		);
 		return cleaned;
 	});
-
-	// Subscribe to mutual contributors for capacity data only (SOGF handled by contributors subscription)
-	currentMutualContributors.forEach((contributorId) => {
-		try {
-			console.log(
-				`[NETWORK] Setting up capacity subscription for mutual contributor: ${contributorId}`
-			);
-			subscribeToContributorCapacities(contributorId);
-		} catch (error) {
-			console.error(`[NETWORK] Error subscribing to mutual contributor ${contributorId}:`, error);
-		}
-	});
-});
-
-// Watch for changes to mutual contributors and subscribe to get their capacity shares
-mutualContributors.subscribe((currentMutualContributors) => {
-	// Don't process while authenticating
-	if (get(isAuthenticating)) {
-		console.log('[NETWORK] Skipping mutual contributor subscription while authenticating');
-		return;
-	}
-
-	if (!currentMutualContributors.length) {
-		// If no mutual contributors, clear all capacity shares
-		networkCapacityShares.set({});
-		return;
-	}
-
-	// Only run this if we're authenticated
-	if (!user.is?.pub) {
-		console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
-		return;
-	}
-
-	console.log(
-		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up capacity shares subscriptions`
-	);
 
 	// Clean up shares from contributors who are no longer mutual contributors
 	networkCapacityShares.update((current) => {
@@ -332,23 +329,23 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		});
 
 		console.log(
-			`[NETWORK] Cleaned capacity shares: kept ${Object.keys(cleaned).length} contributors from ${Object.keys(current).length} total`
+			`[NETWORK] Cleaned capacity shares: kept ${Object.keys(cleaned).length} contributors from ${
+				Object.keys(current).length
+			} total`
 		);
 		return cleaned;
 	});
 
-	// Subscribe to capacity shares for each mutual contributor
+	// Subscribe to mutual contributors for both capacity data and shares
 	currentMutualContributors.forEach((contributorId) => {
 		try {
-			console.log(
-				`[NETWORK] Setting up capacity shares subscription for mutual contributor: ${contributorId}`
-			);
+			console.log(`[NETWORK] Setting up subscriptions for mutual contributor: ${contributorId}`);
+			// Set up capacity subscription
+			subscribeToContributorCapacities(contributorId);
+			// Set up capacity shares subscription
 			subscribeToContributorCapacityShares(contributorId);
 		} catch (error) {
-			console.error(
-				`[NETWORK] Error subscribing to mutual contributor capacity shares ${contributorId}:`,
-				error
-			);
+			console.error(`[NETWORK] Error subscribing to mutual contributor ${contributorId}:`, error);
 		}
 	});
 });

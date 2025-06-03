@@ -4,9 +4,7 @@
 	import { browser } from '$app/environment';
 	import type { DropdownDataProvider } from '$lib/state.svelte';
 
-    // we want to codify the structure of the 
-
-    
+	// we want to codify the structure of the
 
 	// Props using Svelte 5 runes
 	let {
@@ -48,7 +46,6 @@
 	// Event handlers
 	function handleClose() {
 		close();
-		show = false;
 	}
 
 	function handleSelect(id: string, name: string, metadata?: any) {

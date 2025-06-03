@@ -55,10 +55,30 @@
 	// Determine if this is the only child (occupies 100% of the space)
 	const isOnlyChild = $derived(nodeWidth >= 0.999 && nodeHeight >= 0.999);
 
-	// Calculate button and tag scaling values - continuous scaling approach
-	const buttonSize = $derived(Math.max(8, Math.min(24, nodeSizeRatio * 0.3))); // Scale button size (8-24px)
-	const buttonFontSize = $derived(Math.max(6, Math.min(16, nodeSizeRatio * 0.25))); // Scale button font (6-16px)
-	const tagScale = $derived(Math.max(0.4, Math.min(1, nodeSizeRatio * 0.02))); // Scale tags (0.4-1)
+	// Calculate available space and scaling factors
+	const hasContributors = $derived(node.contributors.length > 0);
+	const minButtonWidth = 33.33; // Minimum button width (1/3 of container)
+	const totalElements = $derived(node.contributors.length + 1); // +1 for the add button
+
+	// Calculate element widths ensuring button never goes below minimum
+	const buttonWidth = $derived(
+		hasContributors
+			? Math.max(minButtonWidth, 100 / totalElements) // Never smaller than 1/3
+			: 100 // Full width when no contributors
+	);
+
+	// Remaining width for tags
+	const remainingWidth = $derived(hasContributors ? 100 - buttonWidth : 0);
+
+	// Scale for tags based on available width and number of contributors
+	const tagScale = $derived(
+		hasContributors
+			? Math.min(1.2, remainingWidth / (node.contributors.length * 33.33)) // Scale down if too many tags
+			: 1
+	);
+
+	// Button font size remains proportional to its container
+	const buttonFontSize = $derived(Math.min(buttonWidth * 0.5, 48)); // Cap at 48px
 
 	// Calculate visibility factor (0-1) for smooth fade-in
 	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
@@ -211,13 +231,15 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: {isOnlyChild ? '2%' : '5%'};
       box-sizing: border-box;
+      padding: {isOnlyChild ? '2%' : '5%'};
     "
 	>
-		<div class="node-body">
+		<!-- Empty space above title -->
+		<div style="flex: 1;"></div>
+
+		<!-- Title section with auto height -->
+		<div class="node-body" style="flex: 0 0 auto;">
 			<!-- Node text with responsive editing based on screen size -->
 			{#if isEditing}
 				<div class="node-text-edit-container hidden md:block" style="font-size: {fontSize}rem;">
@@ -261,64 +283,96 @@
 					{/each}
 				</div>
 			{/if}
+		</div>
 
-			<!-- Contributors section -->
+		<!-- Contributors section takes remaining space -->
+		<div
+			class="contributor-container"
+			style="
+        flex: 1;
+        display: flex;
+        min-height: 0;
+        opacity: {visibilityFactor};
+        visibility: {visibilityFactor > 0.1 ? 'visible' : 'hidden'};
+        margin-top: {Math.max(4, nodeSizeRatio * 0.05)}px;
+    "
+		>
 			<div
-				class="contributor-container"
+				class="contributor-layout"
+				class:solo={!hasContributors}
 				style="
-          margin-top: {Math.max(1, nodeSizeRatio * 0.05)}px;
-          opacity: {visibilityFactor};
-          visibility: {visibilityFactor > 0.1 ? 'visible' : 'hidden'};
-        "
+					flex: 1;
+					display: flex;
+					align-items: stretch;
+					gap: 8px;
+					min-height: 0;
+				"
 			>
-				<div class="contributor-layout">
-					<!-- Add contributor button (positioned to the left) -->
-					<div class="button-container" class:has-tags={node.contributors.length > 0}>
-						<button
-							class="add-contributor-button"
-							style="
-                width: {buttonSize}px;
-                height: {buttonSize}px;
-                min-width: {buttonSize}px;
-                border-radius: {buttonSize / 2}px;
-                font-size: {buttonFontSize}px;
-              "
-							onclick={handleAddContributorClick}
-							title="Add contributor"
-						>
-							+
-						</button>
-					</div>
-
-					{#if node.contributors.length > 0}
-						<!-- Tag container with better overflow handling -->
-						<div class="tag-container" style="transform: scale({tagScale});">
-							{#if showFullContributorDetails}
-								<!-- Full tag pills for larger nodes -->
-								{#each node.contributors as contributorId}
-									<div class="tag-wrapper-item">
-										<TagPill
-											userId={contributorId}
-											{truncateLength}
-											onClick={(id, e) => handleTagClick(id, e)}
-											onRemove={handleRemoveContributor}
-										/>
-									</div>
-								{/each}
-							{:else}
-								<!-- Simplified view for smaller nodes -->
-								{#each node.contributors.slice(0, 3) as contributorId, i}
-									<div class="contributor-tag-mini" title={contributorId}></div>
-								{/each}
-								{#if node.contributors.length > 3}
-									<div class="contributor-more" title="More contributors">
-										+{node.contributors.length - 3}
-									</div>
-								{/if}
-							{/if}
-						</div>
-					{/if}
+				<div
+					class="button-container"
+					class:has-tags={hasContributors}
+					style="
+						width: {buttonWidth}%;
+						display: flex;
+						align-items: stretch;
+						min-height: 0;
+					"
+				>
+					<button
+						class="add-contributor-button"
+						style="
+							width: 100%;
+							height: 100%;
+							aspect-ratio: 1;
+							border-radius: 4px;
+							font-size: {buttonFontSize}px;
+						"
+						onclick={handleAddContributorClick}
+						title="Add contributor"
+					>
+						+
+					</button>
 				</div>
+
+				{#if hasContributors}
+					<div
+						class="tag-container"
+						style="
+							width: {remainingWidth}%;
+							display: flex;
+							flex-wrap: wrap;
+							align-items: center;
+							align-content: center;
+							min-height: 0;
+							min-width: 0;
+							max-width: {remainingWidth}%;
+							height: 100%;
+							gap: 8px;
+						"
+					>
+						{#if showFullContributorDetails}
+							{#each node.contributors as contributorId}
+								<div class="tag-wrapper-item">
+									<TagPill
+										userId={contributorId}
+										{truncateLength}
+										onClick={(id, e) => handleTagClick(id, e)}
+										onRemove={handleRemoveContributor}
+									/>
+								</div>
+							{/each}
+						{:else}
+							{#each node.contributors.slice(0, 3) as contributorId, i}
+								<div class="contributor-tag-mini" title={contributorId}></div>
+							{/each}
+							{#if node.contributors.length > 3}
+								<div class="contributor-more" title="More contributors">
+									+{node.contributors.length - 3}
+								</div>
+							{/if}
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -343,6 +397,7 @@
 		align-items: center;
 		gap: 4px;
 		max-width: 100%;
+		padding: 5%;
 	}
 
 	.node-text {
@@ -390,19 +445,14 @@
 	.contributor-layout {
 		display: flex;
 		width: 100%;
-		align-items: flex-start;
+	}
+
+	.contributor-layout.solo {
 		justify-content: center;
 	}
 
 	.button-container {
-		display: flex;
-		justify-content: center;
-		transition: all 0.2s ease;
-	}
-
-	.button-container.has-tags {
-		margin-right: 5px;
-		justify-content: flex-start;
+		transition: all 0.3s ease;
 	}
 
 	.add-contributor-button {
@@ -415,7 +465,7 @@
 		cursor: pointer;
 		border: none;
 		padding: 0;
-		transition: all 0.2s ease;
+		transition: all 0.3s ease;
 		z-index: 5;
 	}
 
@@ -426,20 +476,17 @@
 
 	.tag-container {
 		display: flex;
-		flex-wrap: wrap;
-		justify-content: flex-start;
-		align-items: center;
-		gap: 2px;
-		transform-origin: top left;
-		min-height: 24px;
-		flex: 1;
-		width: calc(100% - 30px);
 		overflow: hidden;
 	}
 
 	.tag-wrapper-item {
-		transform-origin: center;
-		margin: 2px;
+		display: flex;
+		align-items: center;
+		min-width: 0;
+	}
+
+	.tag-wrapper-item :global(div) {
+		min-width: 0;
 	}
 
 	.contributor-tag-mini {

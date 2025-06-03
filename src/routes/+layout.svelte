@@ -41,6 +41,10 @@
 		width: 100%;
 		z-index: 100;
 		background: white;
+		padding-bottom: 8px;
+		min-height: 60px;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.app-content {
@@ -50,6 +54,7 @@
 		padding: 16px;
 		position: relative;
 		z-index: 1;
+		height: calc(100vh - 60px);
 	}
 
 	.toast-container {

@@ -66,7 +66,7 @@
 
 	// Function to truncate and format display name
 	function getFormattedName(name: string): string {
-		return name.length > truncateLength ? name.substring(0, truncateLength - 2) + '...' : name;
+		return name?.length > truncateLength ? name?.substring(0, truncateLength - 2) + '...' : name;
 	}
 
 	// Update tooltip text

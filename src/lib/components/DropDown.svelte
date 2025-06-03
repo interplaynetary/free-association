@@ -44,7 +44,6 @@
 	// Event handlers
 	function handleClose() {
 		close();
-		show = false;
 	}
 
 	function handleSelect(id: string, name: string, metadata?: any) {
