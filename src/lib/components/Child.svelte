@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TagPill from './TagPill.svelte';
-	import { getColorForNameHash } from '$lib/utils/colorUtils';
+	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
 
 	// Define interface for node data
 	interface NodeData {
@@ -78,7 +78,7 @@
 	);
 
 	// Button font size remains proportional to its container
-	const buttonFontSize = $derived(Math.min(buttonWidth * 0.5, 48)); // Cap at 48px
+	const buttonFontSize = $derived(Math.min(buttonWidth * 0.3, 32)); // Adjusted scaling factor and max size
 
 	// Calculate visibility factor (0-1) for smooth fade-in
 	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
@@ -363,7 +363,11 @@
 							{/each}
 						{:else}
 							{#each node.contributors.slice(0, 3) as contributorId, i}
-								<div class="contributor-tag-mini" title={contributorId}></div>
+								<div
+									class="contributor-tag-mini"
+									title={contributorId}
+									style="background: {getColorForUserId(contributorId)};"
+								></div>
 							{/each}
 							{#if node.contributors.length > 3}
 								<div class="contributor-more" title="More contributors">
@@ -460,18 +464,19 @@
 		align-items: center;
 		justify-content: center;
 		background: rgba(200, 200, 200, 0.7);
-		line-height: 1;
+		line-height: 0; /* Ensure the line height doesn't affect centering */
 		color: #333;
 		cursor: pointer;
 		border: none;
 		padding: 0;
 		transition: all 0.3s ease;
 		z-index: 5;
+		font-family: Arial, sans-serif; /* Consistent font for the plus sign */
 	}
 
 	.add-contributor-button:hover {
 		background: rgba(200, 200, 200, 0.9);
-		transform: scale(1.1);
+		transform: scale(1.025);
 	}
 
 	.tag-container {
@@ -493,8 +498,6 @@
 		width: 10px;
 		height: 10px;
 		border-radius: 50%;
-		background: #e9f0f7;
-		border: 1px solid rgba(255, 255, 255, 0.5);
 		display: inline-block;
 		animation: fadeIn 0.2s ease-out;
 		margin: 0 2px;
