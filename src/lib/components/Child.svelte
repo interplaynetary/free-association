@@ -89,6 +89,34 @@
 	// Dynamically adjust truncation length based on node size
 	const truncateLength = $derived(Math.floor(Math.max(3, Math.min(12, nodeSizeRatio * 0.15))));
 
+	// Unified spacing calculations
+	const adaptivePadding = $derived(Math.max(1, Math.min(8, nodeSizeRatio * 0.1)));
+	const adaptiveGap = $derived(Math.max(2, Math.min(8, nodeSizeRatio * 0.08)));
+
+	// Button scaling
+	const contributorSize = $derived(Math.max(12, Math.min(40, nodeSizeRatio * 0.5)));
+
+	// Calculate actual space requirements
+	const titleHeight = $derived(segments.length * fontSize * 1.1); // Actual title height in rem
+	const titleHeightPx = $derived(titleHeight * 16); // Convert rem to pixels (assuming 16px base)
+	const containerHeightPx = $derived(nodeHeight * 100); // Container height in pixels
+
+	// Calculate where title ends (50% center + half title height)
+	const titleBottomPercent = $derived(50 + (titleHeightPx / containerHeightPx) * 50);
+
+	// Space available below title (from title bottom to container bottom, minus padding)
+	const availableSpaceBelow = $derived(
+		100 - titleBottomPercent - (adaptivePadding / containerHeightPx) * 100
+	);
+
+	// Space needed for contributors (button size + gap, converted to percentage)
+	const spaceNeededForContributors = $derived(
+		((contributorSize + adaptiveGap * 2) / containerHeightPx) * 100
+	);
+
+	// Use vertical layout if there's enough space below, otherwise horizontal
+	const useVerticalLayout = $derived(availableSpaceBelow >= spaceNeededForContributors);
+
 	// Function to handle add contributor button click
 	function handleAddContributorClick(event: MouseEvent) {
 		event.stopPropagation();
@@ -124,9 +152,14 @@
 
 	// Handle text edit start
 	function handleTextEditStart(event: MouseEvent | TouchEvent) {
-		// Prevent the click from bubbling up to the parent node
+		// More aggressive event stopping to prevent navigation
 		event.stopPropagation();
 		event.preventDefault();
+
+		// Also stop immediate propagation to prevent any other handlers
+		if ('stopImmediatePropagation' in event) {
+			event.stopImmediatePropagation();
+		}
 
 		// Only allow editing if we have a valid node ID
 		const nodeId = node.id;
@@ -153,6 +186,7 @@
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			isEditing = false;
+			// Let the global escape handler in the layout take care of navigation
 		}
 	}
 
@@ -220,165 +254,148 @@
     height: 100%;
     overflow: hidden;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
   "
 >
 	<div
-		class="node-content"
+		class="unified-node-content"
 		style="
       width: 100%;
       height: 100%;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: {adaptivePadding}px;
       box-sizing: border-box;
-      padding: {isOnlyChild ? '2%' : '5%'};
+      position: relative;
     "
 	>
-		<!-- Empty space above title -->
-		<div style="flex: 1;"></div>
-
-		<!-- Title section with auto height -->
-		<div class="node-body" style="flex: 0 0 auto;">
-			<!-- Node text with responsive editing based on screen size -->
+		<!-- Title - always centered in the container -->
+		<div
+			class="node-title-area"
+			style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 90%;
+        z-index: 2;
+      "
+		>
 			{#if isEditing}
-				<div class="node-text-edit-container hidden md:block" style="font-size: {fontSize}rem;">
-					<input
-						type="text"
-						class="node-text-edit-input rounded border border-gray-300 bg-white/90 px-2 py-1 text-center shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-						bind:this={editInput}
-						bind:value={editValue}
-						onkeydown={handleEditKeydown}
-						onblur={finishEditing}
-						style="
-              font-size: inherit;
-              width: 100%;
-              max-width: {Math.min(200, nodeSizeRatio * 3)}px;
-            "
-					/>
-				</div>
+				<input
+					type="text"
+					class="node-edit-input"
+					bind:this={editInput}
+					bind:value={editValue}
+					onkeydown={handleEditKeydown}
+					onblur={finishEditing}
+					style="
+          font-size: {fontSize}rem;
+          width: 100%;
+          max-width: {Math.min(200, nodeSizeRatio * 3)}px;
+        "
+				/>
 			{:else}
 				<div
-					class="node-text edit-text-field cursor-text"
+					class="node-title"
 					style="
-            user-select: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: {fontSize}rem;
-          "
+          font-size: {fontSize}rem;
+          text-align: center;
+          max-width: 100%;
+        "
 					title={node.name}
-					onclick={handleTextEditStart}
+					onmousedown={handleTextEditStart}
+					ontouchstart={handleTextEditStart}
 				>
-					{#each segments as segment, i}
-						<span
-							class="text-segment"
-							onclick={(e) => {
-								e.stopPropagation();
-								handleTextEditStart(e);
-							}}
-						>
-							{segment}
-						</span>
+					{#each segments as segment}
+						<span class="title-segment">{segment}</span>
 					{/each}
 				</div>
 			{/if}
 		</div>
 
-		<!-- Contributors section takes remaining space -->
-		<div
-			class="contributor-container"
-			style="
-        flex: 1;
-        display: flex;
-        min-height: 0;
-        opacity: {visibilityFactor};
-        visibility: {visibilityFactor > 0.1 ? 'visible' : 'hidden'};
-        margin-top: {Math.max(4, nodeSizeRatio * 0.05)}px;
-    "
-		>
+		<!-- Contributors - positioned to the right of title -->
+		{#if visibilityFactor > 0.1}
 			<div
-				class="contributor-layout"
-				class:solo={!hasContributors}
+				class="contributors-area"
 				style="
-					flex: 1;
-					display: flex;
-					align-items: stretch;
-					gap: 8px;
-					min-height: 0;
-				"
+          position: absolute;
+          opacity: {visibilityFactor};
+          z-index: 1;
+          top: 50%; 
+          left: 70%; 
+          transform: translateY(-50%);
+        "
 			>
 				<div
-					class="button-container"
-					class:has-tags={hasContributors}
+					class="contributors-layout"
 					style="
-						width: {buttonWidth}%;
-						display: flex;
-						align-items: stretch;
-						min-height: 0;
-					"
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: {Math.max(2, adaptiveGap * 0.5)}px;
+            flex-wrap: wrap;
+            flex-direction: column;
+          "
 				>
+					<!-- Add button -->
 					<button
 						class="add-contributor-button"
 						style="
-							width: 100%;
-							height: 100%;
-							aspect-ratio: 1;
-							border-radius: 4px;
-							font-size: {buttonFontSize}px;
-						"
+            width: {contributorSize}px;
+            height: {contributorSize}px;
+            font-size: {contributorSize * 0.5}px;
+          "
 						onclick={handleAddContributorClick}
 						title="Add contributor"
 					>
 						+
 					</button>
-				</div>
 
-				{#if hasContributors}
-					<div
-						class="tag-container"
-						style="
-							width: {remainingWidth}%;
-							display: flex;
-							flex-wrap: wrap;
-							align-items: center;
-							align-content: center;
-							min-height: 0;
-							min-width: 0;
-							max-width: {remainingWidth}%;
-							height: 100%;
-							gap: 8px;
-						"
-					>
+					<!-- Contributors -->
+					{#if hasContributors}
 						{#if showFullContributorDetails}
 							{#each node.contributors as contributorId}
-								<div class="tag-wrapper-item">
-									<TagPill
-										userId={contributorId}
-										{truncateLength}
-										onClick={(id, e) => handleTagClick(id, e)}
-										onRemove={handleRemoveContributor}
-									/>
-								</div>
+								<TagPill
+									userId={contributorId}
+									{truncateLength}
+									onClick={(id, e) => handleTagClick(id, e)}
+									onRemove={handleRemoveContributor}
+								/>
 							{/each}
 						{:else}
-							{#each node.contributors.slice(0, 3) as contributorId, i}
+							{#each node.contributors as contributorId}
 								<div
-									class="contributor-tag-mini"
+									class="mini-contributor"
 									title={contributorId}
-									style="background: {getColorForUserId(contributorId)};"
+									style="
+                  background: {getColorForUserId(contributorId)};
+                  width: {Math.max(6, contributorSize * 0.4)}px;
+                  height: {Math.max(6, contributorSize * 0.4)}px;
+                "
 								></div>
 							{/each}
 							{#if node.contributors.length > 3}
-								<div class="contributor-more" title="More contributors">
+								<div
+									class="more-contributors"
+									title="More contributors"
+									style="
+                    width: {Math.max(8, contributorSize * 0.5)}px;
+                    height: {Math.max(8, contributorSize * 0.5)}px;
+                    font-size: {Math.max(6, contributorSize * 0.3)}px;
+                  "
+								>
 									+{node.contributors.length - 3}
 								</div>
 							{/if}
 						{/if}
-					</div>
-				{/if}
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 </div>
 
@@ -391,72 +408,52 @@
 		position: relative;
 	}
 
-	.node-content {
+	.unified-node-content {
 		text-align: center;
 	}
 
-	.node-body {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 4px;
-		max-width: 100%;
-		padding: 5%;
+	.content-cluster {
+		transition: all 0.2s ease;
 	}
 
-	.node-text {
+	.node-title-area {
+		user-select: none;
+	}
+
+	.node-title {
 		color: rgba(0, 0, 0, 0.8);
 		text-shadow:
 			0px 0px 3px rgba(255, 255, 255, 0.8),
 			0px 0px 2px rgba(255, 255, 255, 0.6);
 		font-weight: 500;
-		overflow: hidden;
-		max-width: 100%;
-	}
-
-	.text-segment {
-		line-height: 1.2;
-		padding: 1px 0;
-	}
-
-	:global(.edit-text-field) {
 		cursor: text;
+		word-break: break-word;
+		hyphens: auto;
 	}
 
-	.node-text-edit-container {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		z-index: 100;
+	.title-segment {
+		line-height: 1.1;
+		display: block;
 	}
 
-	.node-text-edit-input {
+	.node-edit-input {
 		background: rgba(255, 255, 255, 0.9);
 		border: 1px solid rgba(0, 0, 0, 0.2);
 		border-radius: 4px;
-		padding: 4px;
+		padding: 4px 8px;
 		text-align: center;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 		color: #333;
+		outline: none;
 	}
 
-	.contributor-container {
-		width: 100%;
-		overflow: visible;
+	.node-edit-input:focus {
+		border-color: #2196f3;
+		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+	}
+
+	.contributors-area {
 		transition: opacity 0.3s ease;
-	}
-
-	.contributor-layout {
-		display: flex;
-		width: 100%;
-	}
-
-	.contributor-layout.solo {
-		justify-content: center;
-	}
-
-	.button-container {
-		transition: all 0.3s ease;
 	}
 
 	.add-contributor-button {
@@ -464,14 +461,14 @@
 		align-items: center;
 		justify-content: center;
 		background: rgba(200, 200, 200, 0.7);
-		line-height: 0; /* Ensure the line height doesn't affect centering */
+		border: none;
+		border-radius: 50%;
 		color: #333;
 		cursor: pointer;
-		border: none;
-		padding: 0;
 		transition: all 0.3s ease;
-		z-index: 5;
-		font-family: Arial, sans-serif; /* Consistent font for the plus sign */
+		font-family: Arial, sans-serif;
+		line-height: 0;
+		flex-shrink: 0;
 	}
 
 	.add-contributor-button:hover {
@@ -479,33 +476,13 @@
 		transform: scale(1.025);
 	}
 
-	.tag-container {
-		display: flex;
-		overflow: hidden;
-	}
-
-	.tag-wrapper-item {
-		display: flex;
-		align-items: center;
-		min-width: 0;
-	}
-
-	.tag-wrapper-item :global(div) {
-		min-width: 0;
-	}
-
-	.contributor-tag-mini {
-		width: 10px;
-		height: 10px;
+	.mini-contributor {
 		border-radius: 50%;
-		display: inline-block;
 		animation: fadeIn 0.2s ease-out;
-		margin: 0 2px;
+		flex-shrink: 0;
 	}
 
-	.contributor-more {
-		width: 14px;
-		height: 14px;
+	.more-contributors {
 		border-radius: 50%;
 		background: #d1e1f0;
 		color: #3a6b9e;
@@ -513,9 +490,8 @@
 		align-items: center;
 		justify-content: center;
 		font-weight: bold;
-		font-size: 9px;
 		animation: fadeIn 0.2s ease-out;
-		margin: 0 2px;
+		flex-shrink: 0;
 	}
 
 	@keyframes fadeIn {

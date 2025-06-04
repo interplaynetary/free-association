@@ -58,9 +58,17 @@ Aesthetic:
 
 - Add hash based coloring, so coloring is always consistent on the same strings for everything: nodes, tags, names (bar-colors) etc.
 
-The bar on top of capacities isnt always accurate?
-Our recipientShares arent displaying for mutual-contributors other than ourselves...
-On top of that it seems to be super slow at updating, like reaallly slow, are we sure we are doing this as close as posisble to how we manage subscription to our contributor's sogf?
-
-
 client.js:2949 [svelte] ownership_invalid_mutationsrc/lib/components/DropDown.svelte mutated a value owned by src/lib/components/Capacity.svelte. This is strongly discouraged. Consider passing values to child components with `bind:`, or use a callback insteadhttps://svelte.dev/e/ownership_invalid_mutation
+
+Fix capacity filters: includes/excludes
+name in Header loginPanel is not always resolving properly
+make mobile friendly
+
+Map:
+improve accuracy of location
+make capacities/shares feed into the map
+
+Allow people to put up their means of contact (phone number etc.)
+
+
+Make the dropdown into the userNameCache

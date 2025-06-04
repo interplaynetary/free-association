@@ -1,0 +1,311 @@
+<script lang="ts">
+	import ChatMessage from './ChatMessage.svelte';
+	import { onMount } from 'svelte';
+	import { username, user, gun } from '$lib/state/gun.svelte';
+	import debounce from 'lodash.debounce';
+	import SEA from 'gun/sea';
+
+	interface ChatProps {
+		chatId?: string;
+		placeholder?: string;
+		maxLength?: number;
+	}
+
+	let { chatId = 'chat', placeholder = 'Type a message...', maxLength = 100 }: ChatProps = $props();
+
+	interface Message {
+		who: string;
+		what: string;
+		when: number;
+		userPub?: string; // Add public key for gun-avatar
+	}
+
+	let newMessage = $state('');
+	let messages = $state<Message[]>([]);
+
+	let scrollBottom: HTMLDivElement;
+	let lastScrollTop = $state(0);
+	let canAutoScroll = $state(true);
+	let unreadMessages = $state(false);
+
+	function autoScroll() {
+		setTimeout(() => {
+			if (scrollBottom) {
+				// Scroll within the chat container only, not the entire page
+				const mainElement = scrollBottom.closest('main');
+				if (mainElement) {
+					mainElement.scrollTop = mainElement.scrollHeight;
+				}
+			}
+		}, 50);
+		unreadMessages = false;
+	}
+
+	function watchScroll(e: Event) {
+		const target = e.target as HTMLElement;
+		canAutoScroll = (target.scrollTop || Infinity) > lastScrollTop;
+		lastScrollTop = target.scrollTop;
+	}
+
+	const debouncedWatchScroll = debounce(watchScroll, 1000);
+
+	onMount(() => {
+		var match = {
+			// lexical queries are kind of like a limited RegEx or Glob.
+			'.': {
+				// property selector
+				'>': new Date(+new Date() - 1 * 1000 * 60 * 60 * 3).toISOString() // find any indexed property larger ~3 hours ago
+			},
+			'-': 1 // filter in reverse
+		};
+
+		// Get Messages
+		gun
+			.get(chatId)
+			.map(match)
+			.once(async (data: any, key: string) => {
+				if (data) {
+					console.log('Received message data:', data, 'key:', key);
+
+					// Key for end-to-end encryption
+					const encryptionKey = '#foo'; // rn this not secure, just hard coded this is what will allow for end to end encryption.
+
+					try {
+						// Get the user who posted this message
+						const userRef = gun.user(data);
+						let who = 'Anonymous';
+						let userPub = '';
+
+						// Try to get the alias and public key, with fallback
+						try {
+							who = (await userRef.get('alias').then()) || 'Anonymous';
+							// The public key should be stored in the message data itself
+							if (data && data.userPub) {
+								userPub = data.userPub;
+								console.log('Found userPub in message:', userPub);
+							} else {
+								console.log('No userPub found in message data:', data);
+							}
+						} catch (e) {
+							console.log('Could not get user info:', e);
+						}
+
+						// Decrypt the message content
+						let what = '';
+						try {
+							what = (await SEA.decrypt(data.what, encryptionKey)) || '';
+						} catch (e) {
+							console.log('Could not decrypt message:', e);
+							what = '[encrypted message]';
+						}
+
+						// Use the key as timestamp, or current time as fallback
+						const when = typeof key === 'string' ? new Date(key).getTime() : Date.now();
+
+						const message: Message = {
+							who,
+							what,
+							when,
+							userPub
+						};
+
+						console.log('Processed message:', message);
+
+						if (message.what && message.what !== '[encrypted message]') {
+							messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
+							if (canAutoScroll) {
+								autoScroll();
+							} else {
+								unreadMessages = true;
+							}
+						}
+					} catch (error) {
+						console.error('Error processing message:', error);
+					}
+				}
+			});
+	});
+
+	async function sendMessage() {
+		if (!newMessage.trim()) return;
+
+		try {
+			const encryptionKey = '#foo';
+			const secret = await SEA.encrypt(newMessage.trim(), encryptionKey);
+
+			// Debug logging
+			console.log('Sending message with userPub:', user.is?.pub);
+
+			// Create a message object with the encrypted content and user reference
+			const messageData = {
+				what: secret,
+				userPub: user.is?.pub, // Include the sender's public key
+				timestamp: Date.now(),
+				sender: user.is?.alias || 'Anonymous'
+			};
+
+			console.log('Message data being sent:', messageData);
+
+			// Create a new message node
+			const messageNode = user.get('all').set(messageData);
+
+			// Use timestamp as the key for the chat
+			const timestamp = new Date().toISOString();
+
+			// Put the message reference in the chat under the timestamp key
+			gun.get(chatId).get(timestamp).put(messageNode);
+
+			// Clear the input and scroll
+			newMessage = '';
+			canAutoScroll = true;
+			autoScroll();
+		} catch (error) {
+			console.error('Error sending message:', error);
+		}
+	}
+</script>
+
+<div class="container">
+	{#if $username}
+		<main onscroll={debouncedWatchScroll}>
+			{#each messages as message (message.when)}
+				<ChatMessage {message} sender={$username} />
+			{/each}
+
+			<div class="dummy" bind:this={scrollBottom}></div>
+		</main>
+
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				sendMessage();
+			}}
+		>
+			<input type="text" {placeholder} bind:value={newMessage} maxlength={maxLength} />
+
+			<button type="submit" disabled={!newMessage.trim()}>💥</button>
+		</form>
+
+		{#if !canAutoScroll}
+			<div class="scroll-button">
+				<button onclick={autoScroll} class:red={unreadMessages}>
+					{#if unreadMessages}
+						💬
+					{/if}
+					👇
+				</button>
+			</div>
+		{/if}
+	{:else}
+		<div class="login-message">
+			<p>Please log in to chat</p>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		min-height: 300px;
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		background: white;
+		overflow: hidden; /* Prevent container overflow */
+	}
+
+	main {
+		flex: 1;
+		overflow-y: auto;
+		overflow-x: hidden; /* Prevent horizontal overflow */
+		padding: 1rem;
+		max-height: 400px;
+		position: relative;
+		width: 100%;
+		box-sizing: border-box;
+		/* Ensure content stays within bounds */
+		word-wrap: break-word;
+		overflow-wrap: break-word;
+	}
+
+	/* Ensure all children of main respect the container width */
+	main > * {
+		max-width: 100%;
+		box-sizing: border-box;
+	}
+
+	form {
+		display: flex;
+		padding: 0.5rem;
+		border-top: 1px solid #e5e7eb;
+		background: #f9fafb;
+		flex-shrink: 0; /* Prevent form from shrinking */
+		box-sizing: border-box;
+	}
+
+	input {
+		flex: 1;
+		padding: 0.5rem;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		margin-right: 0.5rem;
+		min-width: 0; /* Allow input to shrink if needed */
+		box-sizing: border-box;
+	}
+
+	button {
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: 4px;
+		background: #3b82f6;
+		color: white;
+		cursor: pointer;
+		flex-shrink: 0; /* Prevent button from shrinking */
+	}
+
+	button:disabled {
+		background: #9ca3af;
+		cursor: not-allowed;
+	}
+
+	.scroll-button {
+		position: absolute;
+		bottom: 80px;
+		right: 1rem;
+		z-index: 10; /* Ensure it's above other content */
+	}
+
+	.scroll-button button {
+		border-radius: 50%;
+		width: 40px;
+		height: 40px;
+		background: #6b7280;
+	}
+
+	.scroll-button button.red {
+		background: #ef4444;
+	}
+
+	.dummy {
+		height: 1px;
+		width: 100%;
+		flex-shrink: 0;
+	}
+
+	.login-message {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: #6b7280;
+		font-style: italic;
+		padding: 1rem;
+		box-sizing: border-box;
+	}
+
+	.login-message p {
+		margin: 0;
+		text-align: center;
+	}
+</style>

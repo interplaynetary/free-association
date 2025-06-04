@@ -15,6 +15,7 @@
 	} from '$lib/state.svelte';
 	import { findNodeById, addChild, createNonRootNode } from '$lib/protocol';
 	import { type Node as TreeNode, type RootNode } from '$lib/schema';
+	import { gunAvatar } from 'gun-avatar';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
@@ -91,6 +92,7 @@
 	let errorMessage = $state('');
 	let authMessage = $state('');
 	let showPassword = $state(false);
+	let agreedToTerms = $state(false); // Added for terms agreement
 
 	// Initialize error state with URL error message if present
 	$effect(() => {
@@ -103,15 +105,16 @@
 
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
+	let loginPanelRef = $state<HTMLElement | null>(null);
 
 	// Check auth status and show login automatically
 	onMount(() => {
 		// Add click outside handler
 		function handleClickOutside(event: MouseEvent) {
 			if (
-				headerRef &&
-				!headerRef.contains(event.target as EventTarget & HTMLElement) &&
-				showLoginPanel
+				showLoginPanel &&
+				loginPanelRef &&
+				!loginPanelRef.contains(event.target as EventTarget & HTMLElement)
 			) {
 				showLoginPanel = false;
 			}
@@ -149,6 +152,7 @@
 		authMessage = '';
 		showPassword = false;
 		isRegisterMode = false;
+		agreedToTerms = false;
 	}
 
 	// Add new node handler
@@ -237,6 +241,7 @@
 		isRegisterMode = !isRegisterMode;
 		errorMessage = '';
 		authMessage = '';
+		agreedToTerms = false;
 	}
 
 	// Validate the form data
@@ -247,6 +252,11 @@
 		}
 
 		if (isRegisterMode) {
+			if (!agreedToTerms) {
+				errorMessage = 'Please agree to the Privacy Policy and Terms of Use';
+				return false;
+			}
+
 			if (password !== confirmPassword) {
 				errorMessage = 'Passwords do not match';
 				return false;
@@ -335,8 +345,27 @@
 		}
 	}
 
-	// Generate avatar
-	function generateAvatar(name: string | null | undefined, size = 32) {
+	// Generate avatar using gun-avatar or fallback
+	function generateAvatar(
+		name: string | null | undefined,
+		userPub: string | null | undefined = null,
+		size = 32
+	) {
+		// Use gun-avatar if we have a valid public key
+		if (userPub && userPub.length >= 87) {
+			try {
+				return gunAvatar({
+					pub: userPub,
+					size,
+					round: true,
+					draw: 'circles'
+				});
+			} catch (error) {
+				console.warn('Failed to generate gun-avatar:', error);
+			}
+		}
+
+		// Fallback avatar generation
 		// Safety check for empty name
 		if (!name) {
 			// Return default avatar
@@ -491,7 +520,7 @@
 
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
-		<div class="login-panel">
+		<div class="login-panel" bind:this={loginPanelRef}>
 			{#if isAuthenticatingState}
 				<div class="loading-state">
 					<div class="spinner"></div>
@@ -502,7 +531,7 @@
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img src={generateAvatar($username, 60)} alt={$username} />
+							<img src={generateAvatar($username, $userpub, 60)} alt={$username} />
 						</div>
 						<div class="user-details">
 							<h3>Welcome, {$username}</h3>
@@ -511,7 +540,7 @@
 					</div>
 					<div class="actions">
 						<button class="download-btn" onclick={handleDownloadTree}>
-							<span>📥</span> Download Tree
+							<span>📥</span>
 						</button>
 						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
 						<button class="close-btn" onclick={toggleLoginPanel}>Close</button>
@@ -584,6 +613,23 @@
 									/>
 								</div>
 							</div>
+
+							<div class="form-group checkbox-group">
+								<label class="checkbox-label">
+									<input
+										type="checkbox"
+										id="agreedToTerms"
+										bind:checked={agreedToTerms}
+										disabled={isLoading}
+									/>
+									<span class="checkbox-text">
+										I agree to the <a href="/privacy" target="_blank" class="terms-link"
+											>Privacy Policy</a
+										>
+										and <a href="/terms" target="_blank" class="terms-link">Terms of Use</a>
+									</span>
+								</label>
+							</div>
 						{/if}
 
 						<div class="actions">
@@ -593,7 +639,7 @@
 								disabled={isLoading ||
 									!usernameInput ||
 									!password ||
-									(isRegisterMode && !confirmPassword)}
+									(isRegisterMode && (!confirmPassword || !agreedToTerms))}
 							>
 								{#if isLoading}
 									<div class="spinner small"></div>
@@ -1097,5 +1143,39 @@
 
 	.download-btn span {
 		font-size: 1.1em;
+	}
+
+	/* Checkbox styles */
+	.checkbox-group {
+		margin-bottom: 16px;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		cursor: pointer;
+		font-size: 0.9em;
+		line-height: 1.4;
+	}
+
+	.checkbox-label input[type='checkbox'] {
+		width: auto;
+		margin: 0;
+		margin-top: 2px;
+		flex-shrink: 0;
+	}
+
+	.checkbox-text {
+		color: #555;
+	}
+
+	.terms-link {
+		color: #2196f3;
+		text-decoration: none;
+	}
+
+	.terms-link:hover {
+		text-decoration: underline;
 	}
 </style>

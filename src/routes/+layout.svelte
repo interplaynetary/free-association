@@ -3,12 +3,42 @@
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
+	import { onMount } from 'svelte';
 
 	// Layout props
 	let { children }: LayoutProps = $props();
 
 	// Derived toast state
 	let toast = $derived(globalState.toast);
+
+	// Set up global keyboard event listener
+	onMount(() => {
+		function handleGlobalKeydown(event: KeyboardEvent) {
+			// Handle escape key for zoom out navigation
+			if (event.key === 'Escape') {
+				// Check if we're currently editing (input fields, etc.)
+				const activeElement = document.activeElement;
+				const isEditing =
+					activeElement &&
+					(activeElement.tagName === 'INPUT' ||
+						activeElement.tagName === 'TEXTAREA' ||
+						activeElement.isContentEditable ||
+						activeElement.closest('.node-edit-input'));
+
+				// Only trigger navigation if we're not currently editing
+				if (!isEditing) {
+					event.preventDefault();
+					globalState.zoomOut();
+				}
+			}
+		}
+
+		document.addEventListener('keydown', handleGlobalKeydown);
+
+		return () => {
+			document.removeEventListener('keydown', handleGlobalKeydown);
+		};
+	});
 </script>
 
 <main>

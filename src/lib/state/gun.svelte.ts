@@ -48,9 +48,12 @@ requestPersistentStorage();
 
 // Database
 export const gun = Gun({
-	peers: ['http://localhost:8765/gun', 'https://gun-manhattan.herokuapp.com/gun',
+	peers: [
+		'http://localhost:8765/gun',
+		'https://gun-manhattan.herokuapp.com/gun',
 		'https://peer.wallie.io/gun',
-		'https://gun.defucc.me/gun'],
+		'https://gun.defucc.me/gun'
+	],
 	localStorage: false
 	//radisk: false
 });
@@ -74,7 +77,7 @@ export const userNamesCache = writable<Record<string, string>>({});
 export async function getUserName(userId: string) {
 	// Look up from freely-associating-players first
 	try {
-		const pubUser = usersList.get(userId).get('name');
+		return usersList.get(userId).get('name');
 	} catch (error) {
 		console.log(
 			`[USER-NAME] Could not fetch from freely-associating-players for ${userId}:`,

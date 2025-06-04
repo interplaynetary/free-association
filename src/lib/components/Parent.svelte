@@ -585,7 +585,12 @@
 				target.closest('.node-text-edit-container') ||
 				target.closest('.add-contributor-button') ||
 				target.closest('.tag-container') ||
-				target.closest('.contributor-container'))
+				target.closest('.contributor-container') ||
+				target.closest('.node-title') ||
+				target.closest('.node-title-area') ||
+				target.closest('.title-segment') ||
+				target.closest('.node-edit-input') ||
+				target.closest('.contributors-area'))
 		) {
 			// Click originated from text or contributor elements, don't navigate
 			return;

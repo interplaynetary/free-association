@@ -25,7 +25,7 @@ You can interact with an interface implementing this logic at [interplaynetary.g
      - _Taking the minimum of both shares ensures reciprocity in proportion._
      - This is _mutual-recognition of contribution towards each other's self-actualization_.
 
-4. **Shares of Surplus** are distributed across networks of _mutual-recognition of contribution_ at a declared **network-depth**.
+4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_ at a declared **network-depth**.
 
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
    - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
@@ -33,18 +33,15 @@ You can interact with an interface implementing this logic at [interplaynetary.g
    - For example: surplus-housing might be shared at depth = 2, whereas surplus-food might be shared at depth = 5.
    - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
 
-5. Your **direct-share** in another's **surplus-capacity** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
+5. Your **general-share** in another's **capacities** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
 
-   - For example: If we have 10% of _mutual-recognition_, and you are my only _mutual-relationship_, you would have 100% of my **total-mutual-recognition** (100% of my **direct-share**). If I have two _mutual-relationships_ each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **direct-share**).
+   - For example: If we have 10% of _mutual-recognition_, and you are my only _mutual-relationship_, you would have 100% of my **total-mutual-recognition** (100% of my **general-share**). If I have two _mutual-relationships_ each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **general-share**).
 
-6. Your **total-share** in another's _surplus-capacity_ combines your _direct-share_ with _transitive-share_ through the network.
-   - For example: You share in not just of your friends' surplus, but also friends of friends (up to the capacities' declared network depth).
-   - **Direct Share (Depth 1)**: Your immediate _share_ based on mutual recognition
-   - **Transitive Shares (Depth 2-6)**: _shares_ gained through network connections
-   - Each additional depth traverses one more relationship connection
-   - Transitive shares are calculated by multiplying direct shares along each unique path
-   - Paths already visited are tracked to prevent circular calculations
-   - Example: Your _share_ of C's surplus through connection B = (Your direct share of B) × (B's direct share of C)
+6. Your **specific-share** in another's _capacity_ is your **general-share** with _capacity's_ **filters** applied and then the result is normalized to 100%.
+   - This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
+     For example, a filter could limit the
+
+Additionally, capacities might declare a max-divisibility (either in % or in determinate quantities), this would also help with pruning in the algorithm.
 
 **Mathematically defined:**
 
@@ -54,72 +51,8 @@ Your Total-Recognition = 100%
 
 Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
 
-Direct-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
+General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
 ```
-
-<details>
-<summary>Transitive-Share Calculation</summary>
-
-```
-Efficient Provider-Centric Distribution Calculation
-
-Calculate once from provider outward, then lookup individual shares
-
-DistributeShares(Provider, MaxDepth):
-  // Initialize share distribution map
-  ShareMap = empty map of {Person → Share}
-  VisitedNodes = empty set
-
-  // Start with direct shares at depth 1
-  for each Person that Provider recognizes:
-    ShareMap[Person] = Direct-Share(Person, Provider)
-
-  // Process each depth level from 2 to MaxDepth
-  for depth from 2 to MaxDepth:
-    // Create temporary map for this depth's calculations
-    NewShares = empty map
-
-    // For each person who received shares in previous depths
-    for each Recipient in ShareMap who hasn't been fully processed:
-      VisitedNodes.add(Recipient)
-      RecipientShare = ShareMap[Recipient]
-
-      // Distribute Recipient's share to those they recognize
-      for each Connection that Recipient recognizes:
-        if Connection ∉ VisitedNodes:
-          // Connection gets a share proportional to their direct share from Recipient
-          // multiplied by Recipient's share from Provider
-          ConnectionDirectShare = Direct-Share(Connection, Recipient)
-          TransitiveShare = RecipientShare × ConnectionDirectShare
-
-          // Add to Connection's existing share (if any)
-          if Connection in NewShares:
-            NewShares[Connection] += TransitiveShare
-          else:
-            NewShares[Connection] = TransitiveShare
-
-    // Merge new shares into overall ShareMap
-    for each Person in NewShares:
-      if Person in ShareMap:
-        ShareMap[Person] += NewShares[Person]
-      else:
-        ShareMap[Person] = NewShares[Person]
-
-  return ShareMap
-
-// Individual's total share is then a simple lookup
-Total-Share(You, Provider, MaxDepth):
-  ShareMap = DistributeShares(Provider, MaxDepth)
-  return ShareMap[You] if You in ShareMap else 0
-```
-
-Filters can be added on top of the sharesMap for a particular Surplus, and the filtered map can then be normalized to provide a distribution.
-This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
-For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
-
-Additionally, capacities might declare a max-divisibility (either in % or in determinate quantities), this would also help with pruning in the algorithm.
-
-</details>
 
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>

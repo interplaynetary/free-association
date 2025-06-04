@@ -51,9 +51,12 @@ export const NodeSchema = z.union([RootNodeSchema, NonRootNodeSchema]);
 export const BaseCapacitySchema = z.object({
 	id: IdSchema,
 	name: z.string(),
+	emoji: z.optional(z.string()),
 	quantity: z.optional(z.number().gte(0)),
 	unit: z.optional(z.string()),
 	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().min(-180).max(180)),
+	latitude: z.optional(z.number().min(-90).max(90)),
 	all_day: z.optional(z.boolean()),
 	recurrence: z.optional(z.nullable(z.string())),
 	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),

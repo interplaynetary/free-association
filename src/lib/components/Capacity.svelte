@@ -3,8 +3,11 @@
 	import Bar from './Bar.svelte';
 	import TagPill from './TagPill.svelte';
 	import DropDown from './DropDown.svelte';
+	import Chat from './Chat.svelte';
 	import { createSubtreesDataProvider } from '$lib/state.svelte';
 	import { FilterRules } from '$lib/protocol';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -18,6 +21,9 @@
 	// UI state for expanded capacity editing
 	let expanded = $state(false);
 
+	// UI state for expanded chat
+	let chatExpanded = $state(false);
+
 	// UI state for filter management
 	let selectedSubtrees = $state<string[]>([]);
 	let selectedSubtreeNames = $state<Record<string, string>>({});
@@ -26,14 +32,22 @@
 	let showSubtreeDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 
+	// Emoji picker state
+	let showEmojiPicker = $state(false);
+	let emojiPickerContainer: HTMLDivElement | undefined = $state();
+	let emojiPickerElement: any = $state();
+
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
 
 	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
+	let capacityEmoji = $state(capacity.emoji);
 	let capacityQuantity = $state(capacity.quantity);
 	let capacityUnit = $state(capacity.unit);
 	let capacityLocationType = $state(capacity.location_type);
+	let capacityLongitude = $state(capacity.longitude);
+	let capacityLatitude = $state(capacity.latitude);
 	let capacityAllDay = $state(capacity.all_day);
 	let capacityStartDate = $state(capacity.start_date);
 	let capacityEndDate = $state(capacity.end_date);
@@ -48,6 +62,56 @@
 	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
+
+	// Load emoji picker client-side only
+	onMount(async () => {
+		if (browser) {
+			try {
+				// Dynamic import to avoid SSR issues
+				await import('emoji-picker-element');
+			} catch (error) {
+				console.warn('Failed to load emoji picker:', error);
+			}
+		}
+	});
+
+	// Initialize emoji picker when container is available
+	$effect(() => {
+		if (emojiPickerContainer && browser && !emojiPickerElement) {
+			try {
+				const picker = document.createElement('emoji-picker');
+				picker.style.position = 'absolute';
+				picker.style.zIndex = '1000';
+				picker.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
+				picker.style.border = '1px solid #e5e7eb';
+				picker.style.borderRadius = '8px';
+				picker.style.width = '320px';
+				picker.style.height = '400px';
+
+				// Listen for emoji selection
+				picker.addEventListener('emoji-click', (event: any) => {
+					capacityEmoji = event.detail.unicode;
+					handleCapacityUpdate();
+					showEmojiPicker = false;
+				});
+
+				emojiPickerElement = picker;
+			} catch (error) {
+				console.warn('Failed to create emoji picker:', error);
+			}
+		}
+	});
+
+	// Handle emoji picker visibility
+	$effect(() => {
+		if (emojiPickerElement && emojiPickerContainer) {
+			if (showEmojiPicker) {
+				emojiPickerContainer.appendChild(emojiPickerElement);
+			} else if (emojiPickerElement.parentNode) {
+				emojiPickerElement.parentNode.removeChild(emojiPickerElement);
+			}
+		}
+	});
 
 	// Initialize selected subtrees from existing filter rule
 	$effect(() => {
@@ -125,9 +189,12 @@
 		const updatedCapacity: ProviderCapacity = {
 			...capacity,
 			name: capacityName,
+			emoji: capacityEmoji,
 			quantity: capacityQuantity,
 			unit: capacityUnit,
 			location_type: capacityLocationType,
+			longitude: capacityLongitude,
+			latitude: capacityLatitude,
 			all_day: capacityAllDay,
 			start_date: capacityStartDate,
 			end_date: capacityEndDate,
@@ -156,6 +223,11 @@
 	// Toggle expanded state
 	function toggleExpanded() {
 		expanded = !expanded;
+	}
+
+	// Toggle chat state
+	function toggleChat() {
+		chatExpanded = !chatExpanded;
 	}
 
 	// Handle adding a subtree filter
@@ -222,14 +294,61 @@
 		showSubtreeDropdown = false;
 	}
 
+	// Handle emoji picker
+	function handleEmojiPickerToggle(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		showEmojiPicker = !showEmojiPicker;
+	}
+
+	// Close emoji picker when clicking outside
+	function handleClickOutside(event: MouseEvent) {
+		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
+			showEmojiPicker = false;
+		}
+	}
+
+	// Add click outside listener
+	$effect(() => {
+		if (showEmojiPicker) {
+			document.addEventListener('click', handleClickOutside);
+			return () => {
+				document.removeEventListener('click', handleClickOutside);
+			};
+		}
+	});
+
 	// Format date for input
 	function formatDateForInput(date: Date | undefined): string {
 		if (!date) return '';
 		return date.toISOString().split('T')[0];
 	}
+
+	// Helper functions for map marker integration
+	export function hasValidCoordinates(): boolean {
+		return (
+			typeof capacityLatitude === 'number' &&
+			typeof capacityLongitude === 'number' &&
+			capacityLatitude >= -90 &&
+			capacityLatitude <= 90 &&
+			capacityLongitude >= -180 &&
+			capacityLongitude <= 180
+		);
+	}
+
+	export function getLngLat(): [number, number] | null {
+		if (!hasValidCoordinates()) return null;
+		return [capacityLongitude!, capacityLatitude!];
+	}
+
+	export function updateCoordinatesFromMarker(lnglat: { lng: number; lat: number }) {
+		capacityLongitude = lnglat.lng;
+		capacityLatitude = lnglat.lat;
+		handleCapacityUpdate();
+	}
 </script>
 
-<div class="capacity-item">
+<div class="capacity-item" class:chat-expanded={chatExpanded}>
 	<!-- Recipient shares bar -->
 	{#if recipientSegments.length > 0}
 		<div class="recipient-shares-bar mb-1">
@@ -238,6 +357,22 @@
 	{/if}
 
 	<div class="capacity-row flex items-center gap-2 rounded bg-white p-2 shadow-sm">
+		<!-- Emoji picker button -->
+		<div class="relative">
+			<button
+				type="button"
+				class="emoji-btn"
+				onclick={handleEmojiPickerToggle}
+				title="Select emoji"
+			>
+				{capacityEmoji || '🏠'}
+			</button>
+			<!-- Emoji picker container -->
+			{#if showEmojiPicker}
+				<div bind:this={emojiPickerContainer} class="emoji-picker-container"></div>
+			{/if}
+		</div>
+
 		<!-- Main capacity inputs -->
 		<input
 			type="text"
@@ -264,6 +399,14 @@
 		/>
 
 		<!-- Action buttons -->
+		<button
+			type="button"
+			class="chat-btn ml-1"
+			onclick={toggleChat}
+			title="Chat about this capacity"
+		>
+			💬
+		</button>
 		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -329,6 +472,22 @@
 		{/if}
 	</div>
 
+	<!-- Expanded chat section -->
+	{#if chatExpanded}
+		<div class="chat-container mt-2 rounded border border-gray-200 bg-gray-50 p-3">
+			<div class="chat-header mb-2">
+				<h4 class="text-sm font-medium text-gray-700">
+					💬 Chat about {capacity.emoji || '🏠'}
+					{capacity.name}
+				</h4>
+				<p class="mt-1 text-xs text-gray-500">
+					Discuss this capacity with recipients and other stakeholders
+				</p>
+			</div>
+			<Chat chatId={capacity.id} placeholder={`Discuss ${capacity.name}...`} maxLength={200} />
+		</div>
+	{/if}
+
 	<!-- Expanded settings (space-time only) -->
 	{#if expanded}
 		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
@@ -376,6 +535,39 @@
 
 					{#if capacityLocationType === 'Specific'}
 						<div class="date-time-section mb-6 ml-2">
+							<!-- Geographic coordinates section -->
+							<div class="mb-6">
+								<h5 class="mb-4 text-sm font-medium text-gray-600">Geographic Coordinates</h5>
+								<div class="grid grid-cols-2 gap-4">
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">Latitude (-90 to 90)</label>
+										<input
+											type="number"
+											min="-90"
+											max="90"
+											step="0.000001"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityLatitude}
+											placeholder="e.g. 37.7749"
+											onchange={handleCapacityUpdate}
+										/>
+									</div>
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">Longitude (-180 to 180)</label>
+										<input
+											type="number"
+											min="-180"
+											max="180"
+											step="0.000001"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityLongitude}
+											placeholder="e.g. -122.4194"
+											onchange={handleCapacityUpdate}
+										/>
+									</div>
+								</div>
+							</div>
+
 							<div class="mb-4 ml-1">
 								<label class="inline-flex items-center">
 									<input
@@ -673,7 +865,8 @@
 
 	/* Icon buttons */
 	.remove-btn,
-	.settings-btn {
+	.settings-btn,
+	.chat-btn {
 		background: none;
 		border: none;
 		color: #cbd5e1;
@@ -690,8 +883,53 @@
 		height: 24px;
 	}
 
+	.emoji-btn {
+		background: none;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		padding: 4px 6px;
+		font-size: 1.2em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 32px;
+		height: 32px;
+	}
+
+	.emoji-btn:hover {
+		background: #f9fafb;
+		border-color: #3b82f6;
+		transform: scale(1.05);
+	}
+
+	.emoji-picker-container {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 1000;
+		margin-top: 4px;
+	}
+
 	.settings-btn {
 		font-size: 1em;
+	}
+
+	.settings-btn:hover {
+		background: #f3f4f6;
+		color: #4b5563;
+		transform: scale(1.05);
+	}
+
+	.chat-btn {
+		font-size: 1em;
+	}
+
+	.chat-btn:hover {
+		background: #f0f9ff;
+		color: #3b82f6;
+		transform: scale(1.05);
 	}
 
 	.remove-btn:disabled {
@@ -704,16 +942,14 @@
 		transform: scale(1.05);
 	}
 
-	.settings-btn:hover {
-		background: #f3f4f6;
-		color: #4b5563;
-		transform: scale(1.05);
-	}
-
 	/* Item container */
 	.capacity-item {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.capacity-item.chat-expanded {
+		margin-bottom: 2rem;
 	}
 
 	/* Filter section styling (similar to Child.svelte contributor layout) */
@@ -829,5 +1065,18 @@
 		appearance: auto;
 		margin-right: 0.5rem;
 		color: #3b82f6;
+	}
+
+	/* Chat container styling */
+	.chat-container {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.chat-header h4 {
+		margin: 0;
+	}
+
+	.chat-header p {
+		margin: 0;
 	}
 </style>
