@@ -26,6 +26,17 @@
 		return text.slice(0, maxLength - 3) + '...';
 	}
 
+	// Helper function to copy text to clipboard
+	async function copyToClipboard(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			globalState.showToast('Public key copied to clipboard', 'success');
+		} catch (err) {
+			console.error('Failed to copy text: ', err);
+			globalState.showToast('Failed to copy public key', 'error');
+		}
+	}
+
 	// For tracking tree updates and forcing rerenders
 	let updateCounter = $state(0);
 
@@ -367,12 +378,14 @@
 		// Use gun-avatar if we have a valid public key
 		if (userPub && userPub.length >= 87) {
 			try {
-				return gunAvatar({
+				// Using any type to bypass incorrect type definitions in gun-avatar
+				const avatarConfig: any = {
 					pub: userPub,
 					size,
 					round: true,
 					draw: 'circles'
-				});
+				};
+				return gunAvatar(avatarConfig);
 			} catch (error) {
 				console.warn('Failed to generate gun-avatar:', error);
 			}
@@ -427,41 +440,20 @@
 		}
 	}
 
-	// Add this function before the closing script tag
-	async function handleDownloadTree() {
+	// Replace handleDownloadTree with handleCopyTree
+	async function handleCopyTree() {
 		if (!tree) {
-			globalState.showToast('No tree data available to download', 'error');
+			globalState.showToast('No tree data available to copy', 'error');
 			return;
 		}
 
 		try {
-			// Create the JSON data
 			const jsonData = JSON.stringify(tree, null, 2);
-			const blob = new Blob([jsonData], { type: 'application/json' });
-
-			// Show the file picker
-			const handle = await window.showSaveFilePicker({
-				suggestedName: `userTree_${user || 'anonymous'}_${new Date().toISOString().split('T')[0]}.json`,
-				types: [
-					{
-						description: 'JSON File',
-						accept: { 'application/json': ['.json'] }
-					}
-				]
-			});
-
-			// Write the file
-			const writable = await handle.createWritable();
-			await writable.write(blob);
-			await writable.close();
-
-			globalState.showToast('Tree data downloaded successfully', 'success');
-		} catch (error: unknown) {
-			// Don't show error for user cancellation
-			if (error instanceof Error && error.name !== 'AbortError') {
-				console.error('Error downloading tree:', error);
-				globalState.showToast('Error downloading tree data', 'error');
-			}
+			await navigator.clipboard.writeText(jsonData);
+			globalState.showToast('Tree data copied to clipboard', 'success');
+		} catch (error) {
+			console.error('Error copying tree:', error);
+			globalState.showToast('Failed to copy tree data', 'error');
 		}
 	}
 </script>
@@ -552,11 +544,21 @@
 							<p class="user-id" title={'@' + ($username || 'anonymous')}>
 								@{truncateText($username || 'anonymous', 15)}
 							</p>
+							{#if $userpub}
+								<button
+									class="copy-pub-btn"
+									title="Click to copy your public key"
+									onclick={() => copyToClipboard($userpub)}
+								>
+									<span class="pub-text">🔑 {truncateText($userpub, 20)}</span>
+									<span class="copy-icon">📋</span>
+								</button>
+							{/if}
 						</div>
 					</div>
 					<div class="actions">
-						<button class="download-btn" onclick={handleDownloadTree}>
-							<span>📥</span>
+						<button class="copy-tree-btn" onclick={handleCopyTree}>
+							<span>🌲📋</span>
 						</button>
 						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
 						<button class="close-btn" onclick={toggleLoginPanel}>Close</button>
@@ -1137,7 +1139,7 @@
 		color: #666;
 	}
 
-	.download-btn {
+	.copy-tree-btn {
 		background: #4caf50;
 		color: white;
 		border: none;
@@ -1153,12 +1155,12 @@
 		flex: 1;
 	}
 
-	.download-btn:hover {
+	.copy-tree-btn:hover {
 		background: #388e3c;
 	}
 
-	.download-btn span {
-		font-size: 1.1em;
+	.copy-tree-btn:active {
+		transform: scale(0.98);
 	}
 
 	/* Checkbox styles */
@@ -1193,5 +1195,38 @@
 
 	.terms-link:hover {
 		text-decoration: underline;
+	}
+
+	.copy-pub-btn {
+		background: none;
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		padding: 4px 8px;
+		font-size: 0.8em;
+		color: #666;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		margin-top: 8px;
+		transition: all 0.2s ease;
+	}
+
+	.copy-pub-btn:hover {
+		background: #f5f5f5;
+		border-color: #ccc;
+	}
+
+	.pub-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		margin-right: 8px;
+	}
+
+	.copy-icon {
+		flex-shrink: 0;
+		font-size: 1.1em;
 	}
 </style>

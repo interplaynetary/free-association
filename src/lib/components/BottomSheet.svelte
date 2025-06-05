@@ -5,6 +5,12 @@
 	import { BottomSheet } from 'svelte-bottom-sheet';
 	import type { DropdownDataProvider } from '$lib/state.svelte';
 
+	// Helper function to truncate text
+	function truncateText(text: string, maxLength: number = 20): string {
+		if (!text || text.length <= maxLength) return text;
+		return text.slice(0, maxLength - 3) + '...';
+	}
+
 	// Props using Svelte 5 runes
 	let {
 		title = 'Select Item',
@@ -125,7 +131,9 @@
 										style="background-color: {item.color || getColorForUserId(item.id)}"
 									></div>
 									<div class="item-content">
-										<div class="item-name">{item.name || item.id}</div>
+										<div class="item-name" title={item.name || item.id}>
+											{truncateText(item.name || item.id, 20)}
+										</div>
 										{#if item.metadata?.contributorCount !== undefined}
 											<div class="item-meta">({item.metadata.contributorCount} contributors)</div>
 										{/if}
