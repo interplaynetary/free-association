@@ -170,24 +170,46 @@ gun.on('auth', async () => {
 
 export function login(username: string, password: string) {
 	user.auth(username, password, ({ err }: { err: any }) => err && alert(err));
+	/*
+    Ideally we want to do it like this also when we do gun.on('auth')
+
+	user.auth(username, password, ack => {
+		if (user._.sea) {
+			// The auth was in fact successful.
+			// You can check that priv and epriv keys are defined.
+			console.log('side auth: ' + user._.sea.pub);
+			proceed();
+			return;
+		}
+		if (ack.err) {
+			console.log('auth err: ' + ack.err);
+		} else {
+			console.log('auth: ' + ack.sea.pub);
+			proceed();
+		}
+	});
+	*/
 }
 
 export function signup(username: string, password: string) {
-	gun.get(`~@${username}`).once((data: any) => {
-		if (data) {
-			console.log('[SIGNUP] checking alias user data', data);
-			alert('Username already taken');
-			return;
-		}
-
-		user.create(username, password, ({ err }: { err: any }) => {
-			if (err) {
-				alert(err);
-			} else {
-				login(username, password);
+	gun.get(`~@${username}`).once(
+		(data: any) => {
+			if (data) {
+				console.log('[SIGNUP] checking alias user data', data);
+				alert('Username already taken');
+				return;
 			}
-		});
-	});
+
+			user.create(username, password, ({ err }: { err: any }) => {
+				if (err) {
+					alert(err);
+				} else {
+					login(username, password);
+				}
+			});
+		},
+		{ wait: 2000 }
+	);
 }
 
 export async function signout() {
