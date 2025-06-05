@@ -2,7 +2,6 @@
 	import ChatMessage from './ChatMessage.svelte';
 	import { onMount } from 'svelte';
 	import { username, user, gun } from '$lib/state/gun.svelte';
-	import debounce from 'lodash.debounce';
 	import SEA from 'gun/sea';
 
 	interface ChatProps {
@@ -47,8 +46,6 @@
 		lastScrollTop = target.scrollTop;
 	}
 
-	const debouncedWatchScroll = debounce(watchScroll, 1000);
-
 	onMount(() => {
 		var match = {
 			// lexical queries are kind of like a limited RegEx or Glob.
@@ -57,70 +54,33 @@
 				'>': new Date(+new Date() - 1 * 1000 * 60 * 60 * 3).toISOString() // find any indexed property larger ~3 hours ago
 			},
 			'-': 1 // filter in reverse
-		};
+		} as any;
 
-		// Get Messages
+		// Get Messages (simplified like example)
 		gun
 			.get(chatId)
 			.map(match)
 			.once(async (data: any, key: string) => {
 				if (data) {
-					console.log('Received message data:', data, 'key:', key);
-
 					// Key for end-to-end encryption
-					const encryptionKey = '#foo'; // rn this not secure, just hard coded this is what will allow for end to end encryption.
+					const encryptionKey = '#foo';
 
-					try {
-						// Get the user who posted this message
-						const userRef = gun.user(data);
-						let who = 'Anonymous';
-						let userPub = '';
+					// Create message object like the example, but with userPub for avatars
+					const userRef = gun.user(data);
+					const message: Message = {
+						who: ((await userRef.get('alias')) as string) || 'Anonymous',
+						what: (await SEA.decrypt(data.what, encryptionKey)) + '' || '',
+						when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
+						userPub: userRef.is?.pub || ''
+					};
 
-						// Try to get the alias and public key, with fallback
-						try {
-							who = (await userRef.get('alias').then()) || 'Anonymous';
-							// The public key should be stored in the message data itself
-							if (data && data.userPub) {
-								userPub = data.userPub;
-								console.log('Found userPub in message:', userPub);
-							} else {
-								console.log('No userPub found in message data:', data);
-							}
-						} catch (e) {
-							console.log('Could not get user info:', e);
+					if (message.what) {
+						messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
+						if (canAutoScroll) {
+							autoScroll();
+						} else {
+							unreadMessages = true;
 						}
-
-						// Decrypt the message content
-						let what = '';
-						try {
-							what = (await SEA.decrypt(data.what, encryptionKey)) || '';
-						} catch (e) {
-							console.log('Could not decrypt message:', e);
-							what = '[encrypted message]';
-						}
-
-						// Use the key as timestamp, or current time as fallback
-						const when = typeof key === 'string' ? new Date(key).getTime() : Date.now();
-
-						const message: Message = {
-							who,
-							what,
-							when,
-							userPub
-						};
-
-						console.log('Processed message:', message);
-
-						if (message.what && message.what !== '[encrypted message]') {
-							messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
-							if (canAutoScroll) {
-								autoScroll();
-							} else {
-								unreadMessages = true;
-							}
-						}
-					} catch (error) {
-						console.error('Error processing message:', error);
 					}
 				}
 			});
@@ -136,24 +96,14 @@
 			// Debug logging
 			console.log('Sending message with userPub:', user.is?.pub);
 
-			// Create a message object with the encrypted content and user reference
-			const messageData = {
-				what: secret,
-				userPub: user.is?.pub, // Include the sender's public key
-				timestamp: Date.now(),
-				sender: user.is?.alias || 'Anonymous'
-			};
+			// Store message in user space and reference it in chat (like the example)
+			const message = user.get('all').set({ what: secret });
+			const index = new Date().toISOString();
 
-			console.log('Message data being sent:', messageData);
+			console.log('Storing message reference in chat at index:', index);
 
-			// Create a new message node
-			const messageNode = user.get('all').set(messageData);
-
-			// Use timestamp as the key for the chat
-			const timestamp = new Date().toISOString();
-
-			// Put the message reference in the chat under the timestamp key
-			gun.get(chatId).get(timestamp).put(messageNode);
+			// Put the message reference in the chat
+			gun.get(chatId).get(index).put(message);
 
 			// Clear the input and scroll
 			newMessage = '';
@@ -167,7 +117,7 @@
 
 <div class="container">
 	{#if $username}
-		<main onscroll={debouncedWatchScroll}>
+		<main onscroll={watchScroll}>
 			{#each messages as message (message.when)}
 				<ChatMessage {message} sender={$username} />
 			{/each}
