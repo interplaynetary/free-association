@@ -5,7 +5,7 @@
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
 	import { createSubtreesDataProvider } from '$lib/state.svelte';
-	import { FilterRules } from '$lib/protocol';
+	import { Rules } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
@@ -24,9 +24,8 @@
 	// UI state for expanded chat
 	let chatExpanded = $state(false);
 
-	// UI state for filter management
+	// Simple filter state - just track selected subtree IDs
 	let selectedSubtrees = $state<string[]>([]);
-	let selectedSubtreeNames = $state<Record<string, string>>({});
 
 	// Dropdown state for adding subtree filters
 	let showSubtreeDropdown = $state(false);
@@ -62,7 +61,29 @@
 	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
-	let capacityFilterRule = $state(capacity.filter_rule);
+
+	// Derived filter rule - automatically updates when selectedSubtrees changes
+	let filterRule = $derived(() => {
+		if (selectedSubtrees.length === 0) {
+			return null;
+		} else if (selectedSubtrees.length === 1) {
+			return Rules.inSubtree(selectedSubtrees[0]);
+		} else {
+			return Rules.inSubtrees(selectedSubtrees);
+		}
+	});
+
+	// Get subtree names for display
+	let subtreeNames = $derived(() => {
+		const names: Record<string, string> = {};
+		selectedSubtrees.forEach((subtreeId) => {
+			const item = subtreesDataProvider.items.find((item) => item.id === subtreeId);
+			if (item) {
+				names[subtreeId] = item.name;
+			}
+		});
+		return names;
+	});
 
 	// Load emoji picker client-side only
 	onMount(async () => {
@@ -114,56 +135,6 @@
 		}
 	});
 
-	// Initialize selected subtrees from existing filter rule
-	$effect(() => {
-		if (capacity.filter_rule) {
-			// Try to extract subtree IDs from the filter rule
-			try {
-				const rule = capacity.filter_rule;
-
-				// Handle single subtree filter: FilterRules.inSubtree(subtreeId)
-				if (rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
-					const [nodeIdVar, subtreeContributors] = rule.in;
-					if (nodeIdVar?.var === 'nodeId' && subtreeContributors?.var?.length === 2) {
-						const subtreeId = subtreeContributors.var[1];
-						if (typeof subtreeId === 'string' && !selectedSubtrees.includes(subtreeId)) {
-							selectedSubtrees = [subtreeId];
-							// We'll get the name from the data provider when it loads
-						}
-					}
-				}
-
-				// Handle multiple subtrees filter: FilterRules.inSubtrees(subtreeIds)
-				if (rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
-					const [subtreeIds] = rule.some;
-					if (Array.isArray(subtreeIds)) {
-						const validIds = subtreeIds.filter((id) => typeof id === 'string');
-						if (validIds.length > 0) {
-							selectedSubtrees = [...validIds];
-							// We'll get the names from the data provider when it loads
-						}
-					}
-				}
-			} catch (error) {
-				console.warn('Could not parse existing filter rule:', error);
-			}
-		}
-	});
-
-	// Update selected subtree names when data provider loads
-	$effect(() => {
-		if (subtreesDataProvider.items.length > 0 && selectedSubtrees.length > 0) {
-			const newNames: Record<string, string> = {};
-			selectedSubtrees.forEach((subtreeId) => {
-				const item = subtreesDataProvider.items.find((item) => item.id === subtreeId);
-				if (item) {
-					newNames[subtreeId] = item.name;
-				}
-			});
-			selectedSubtreeNames = newNames;
-		}
-	});
-
 	// Convert recipient_shares to bar segments
 	const recipientSegments = $derived(
 		Object.entries(capacity.recipient_shares || {}).map(([userId, share]) => ({
@@ -186,8 +157,8 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		// First create a plain object with all our values
-		const plainCapacity = {
+		// Create updated capacity with current filter rule
+		const updatedCapacity = {
 			...capacity,
 			name: capacityName,
 			emoji: capacityEmoji,
@@ -210,11 +181,8 @@
 			max_natural_div: capacityMaxNaturalDiv,
 			max_percentage_div: capacityMaxPercentageDiv,
 			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
-			filter_rule: capacityFilterRule
+			filter_rule: filterRule()
 		};
-
-		// Create a completely new plain object
-		const updatedCapacity = JSON.parse(JSON.stringify(plainCapacity));
 
 		onupdate?.(updatedCapacity);
 	}
@@ -258,7 +226,7 @@
 
 	// Handle subtree selection from dropdown
 	function handleSubtreeSelect(detail: { id: string; name: string; metadata?: any }) {
-		const { id: subtreeId, name: subtreeName } = detail;
+		const { id: subtreeId } = detail;
 
 		// Don't add if already selected
 		if (selectedSubtrees.includes(subtreeId)) {
@@ -268,10 +236,9 @@
 
 		// Add to selected subtrees
 		selectedSubtrees = [...selectedSubtrees, subtreeId];
-		selectedSubtreeNames = { ...selectedSubtreeNames, [subtreeId]: subtreeName };
-
-		// Update filter rule
-		updateSubtreeFilter();
+		
+		// Update capacity
+		handleCapacityUpdate();
 
 		// Close dropdown
 		showSubtreeDropdown = false;
@@ -280,25 +247,6 @@
 	// Handle removing a subtree filter
 	function handleRemoveSubtree(subtreeId: string) {
 		selectedSubtrees = selectedSubtrees.filter((id) => id !== subtreeId);
-		const { [subtreeId]: removed, ...rest } = selectedSubtreeNames;
-		selectedSubtreeNames = rest;
-		updateSubtreeFilter();
-	}
-
-	// Update the filter rule based on selected subtrees
-	function updateSubtreeFilter() {
-		// Create the filter rule as a plain object first
-		let plainFilterRule;
-		if (selectedSubtrees.length === 0) {
-			plainFilterRule = undefined;
-		} else if (selectedSubtrees.length === 1) {
-			plainFilterRule = JSON.parse(JSON.stringify(FilterRules.inSubtree(selectedSubtrees[0])));
-		} else {
-			plainFilterRule = JSON.parse(JSON.stringify(FilterRules.inSubtrees(selectedSubtrees)));
-		}
-
-		// Now assign the plain object to our state
-		capacityFilterRule = plainFilterRule;
 		handleCapacityUpdate();
 	}
 
@@ -378,7 +326,7 @@
 				onclick={handleEmojiPickerToggle}
 				title="Select emoji"
 			>
-				{capacityEmoji || '🏠'}
+				{capacityEmoji || '(📦'}
 			</button>
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}
@@ -461,7 +409,7 @@
 						<div class="filter-tag-wrapper">
 							<TagPill
 								userId={subtreeId}
-								displayName={selectedSubtreeNames[subtreeId] || subtreeId}
+								displayName={subtreeNames()[subtreeId] || subtreeId}
 								truncateLength={15}
 								removable={true}
 								onClick={() => {}}

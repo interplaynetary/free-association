@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svelte';
 import { usersList } from './gun.svelte';
-import { getSubtreeContributorMap } from '$lib/protocol';
+import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
 // Generic dropdown data provider interface
 export interface DropdownItem {
@@ -119,15 +119,24 @@ export function createSubtreesDataProvider(): DropdownDataProvider {
 
 			// Convert to dropdown items and filter by search query
 			const allItems = Object.entries(subtreeMap)
-				.filter(([_, { contributors }]) => contributors.length > 0) // Only subtrees with contributors
-				.map(([subtreeId, { name, contributors }]) => ({
-					id: subtreeId,
-					name: name || subtreeId,
-					metadata: {
-						contributorCount: contributors.length,
-						contributors
-					}
-				}));
+				.map(([subtreeId, contributorRecord]) => {
+					// Convert contributorRecord to array of contributor IDs
+					const contributors = Object.keys(contributorRecord);
+					
+					// Find the node to get its name
+					const node = findNodeById(tree, subtreeId);
+					const name = node?.name || subtreeId;
+
+					return {
+						id: subtreeId,
+						name,
+						metadata: {
+							contributorCount: contributors.length,
+							contributors
+						}
+					};
+				})
+				.filter((item) => item.metadata.contributorCount > 0); // Only subtrees with contributors
 
 			// Apply search filter
 			if (searchQuery.trim()) {

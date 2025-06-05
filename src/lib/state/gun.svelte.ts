@@ -106,8 +106,9 @@ if (typeof window !== 'undefined') {
 			// Wait for a small delay to allow recall to complete
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
-			if (user?.is?.pub) {
-				console.log('[RECALL] User already authenticated after recall:', user.is.alias);
+			// Check for SEA keys first as it's the most reliable way to verify authentication
+			if (user._.sea) {
+				console.log('[RECALL] User authenticated via SEA check:', user.is.alias);
 				// Set the user state
 				username.set(user.is.alias);
 				userpub.set(user.is.pub);
@@ -117,7 +118,23 @@ if (typeof window !== 'undefined') {
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
-				await manifest();
+				manifest();
+				return;
+			}
+
+			// Fallback check for user.is.pub if SEA check fails
+			if (user?.is?.pub) {
+				console.log('[RECALL] User authenticated via pub check:', user.is.alias);
+				// Set the user state
+				username.set(user.is.alias);
+				userpub.set(user.is.pub);
+				usersList.get(user.is?.pub).put({
+					name: user.is.alias,
+					lastSeen: Date.now()
+				});
+
+				// Load the data since gun.on('auth') won't fire for recalled sessions
+				manifest();
 			} else {
 				console.log('[RECALL] No authenticated user found after recall');
 				// Clear the stores to ensure consistent state
@@ -144,19 +161,44 @@ gun.on('auth', async () => {
 		// Set authenticating state
 		isAuthenticating.set(true);
 
+		// Check for SEA keys first as it's the most reliable way to verify authentication
+		if (user._.sea) {
+			console.log('[AUTH] User authenticated via SEA check:', user.is.alias);
+			const alias = await user.get('alias'); // username string
+			username.set(alias);
+			userpub.set(user.is?.pub);
+			usersList.get(user.is?.pub).put({
+				name: alias,
+				lastSeen: Date.now()
+			});
+
+			console.log(`signed in as ${alias}`);
+			console.log(`userPub: ${user.is?.pub}`);
+
+			// Load existing user data
+			manifest();
+			return;
+		}
+
+		// Fallback to checking ack.sea if SEA check fails
 		const alias = await user.get('alias'); // username string
-		username.set(alias);
-		userpub.set(user.is?.pub);
-		usersList.get(user.is?.pub).put({
-			name: alias,
-			lastSeen: Date.now()
-		});
+		if (alias) {
+			console.log('[AUTH] User authenticated via alias check:', alias);
+			username.set(alias);
+			userpub.set(user.is?.pub);
+			usersList.get(user.is?.pub).put({
+				name: alias,
+				lastSeen: Date.now()
+			});
 
-		console.log(`signed in as ${alias}`);
-		console.log(`userPub: ${user.is?.pub}`);
+			console.log(`signed in as ${alias}`);
+			console.log(`userPub: ${user.is?.pub}`);
 
-		// Load existing user data
-		await manifest();
+			// Load existing user data
+			manifest();
+		} else {
+			throw new Error('Authentication failed - no alias found');
+		}
 	} catch (error) {
 		console.error('[AUTH] Error during authentication:', error);
 		// Clear the stores on error
@@ -170,25 +212,6 @@ gun.on('auth', async () => {
 
 export function login(username: string, password: string) {
 	user.auth(username, password, ({ err }: { err: any }) => err && alert(err));
-	/*
-    Ideally we want to do it like this also when we do gun.on('auth')
-
-	user.auth(username, password, ack => {
-		if (user._.sea) {
-			// The auth was in fact successful.
-			// You can check that priv and epriv keys are defined.
-			console.log('side auth: ' + user._.sea.pub);
-			proceed();
-			return;
-		}
-		if (ack.err) {
-			console.log('auth err: ' + ack.err);
-		} else {
-			console.log('auth: ' + ack.sea.pub);
-			proceed();
-		}
-	});
-	*/
 }
 
 export function signup(username: string, password: string) {
@@ -379,6 +402,14 @@ export function persistContributorCapacityShares() {
 	});
 }
 
+// Monitoring: Check connectivity with gun.back('opt.peers') and WebRTC stats:
+async function monitorWebRTC(pc: any) {
+	const report = await pc.getStats();
+	for (let dict of report.values()) {
+		console.log(`${dict.type}: id=${dict.id}, timestamp=${dict.timestamp}`);
+	}
+}
+
 /**
  * Load the application state from Gun
  */
@@ -418,7 +449,7 @@ export function manifest() {
 		} else if (user.is?.pub) {
 			// No valid tree data found, create a new one
 			console.log('[MANIFEST] No valid tree data found, creating initial tree');
-			const newTree = createRootNode(user.is.pub, user.is?.alias || 'My Root', user.is.pub);
+			const newTree = createRootNode(get(userpub), get(username), get(userpub));
 			userTree.set(newTree);
 			user.get('tree').put(JSON.stringify(newTree));
 
@@ -431,7 +462,7 @@ export function manifest() {
 		}
 	});
 
-	// Load SOGF - needed for network synchronization even though it will be recalculated
+	// Load SOGF - needed for network synchronization even though it will be recalculated // is it truly needed?
 	isLoadingSogf.set(true);
 	user.get('sogf').once((sogfData: any) => {
 		if (sogfData) {
@@ -457,21 +488,6 @@ export function manifest() {
 			userCapacities.set(validatedCapacities);
 		} else {
 			console.log('[MANIFEST] No capacities data found');
-			// Initialize with empty object if no data exists
-			/*
-			const emptyCapacities = {};
-			userCapacities.set(emptyCapacities);
-
-			// Persist the empty capacities to Gun so they're available on recall
-			console.log('[MANIFEST] Persisting initial empty capacities to Gun...');
-			user.get('capacities').put(JSON.stringify(emptyCapacities), (ack: { err?: any }) => {
-				if (ack.err) {
-					console.error('[MANIFEST] Error saving initial capacities to Gun:', ack.err);
-				} else {
-					console.log('[MANIFEST] Initial empty capacities saved to Gun');
-				}
-			});
-			*/
 		}
 
 		// Reset loading flag after capacities are loaded

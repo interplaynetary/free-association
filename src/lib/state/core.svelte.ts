@@ -5,8 +5,9 @@ import {
 	normalizeShareMap,
 	getAllContributorsFromTree,
 	getSubtreeContributorMap,
-	applyCapacityFilter
+	findNodeById
 } from '$lib/protocol';
+import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
 import { user } from './gun.svelte';
 
@@ -136,19 +137,8 @@ export const subtreeContributorMap = derived([userTree, nodesMap], ([$userTree, 
 
 	console.log('[SUBTREE-MAP] Calculating subtree contributor map...');
 
-	// Get the full subtree map with names and contributors
-	const fullMap = getSubtreeContributorMap($userTree, $nodesMap);
-
-	// Convert to the format expected by JSON Logic filters
-	// This creates a nested object: subtreeId -> contributorId -> true
-	const filterMap: Record<string, Record<string, boolean>> = {};
-
-	Object.entries(fullMap).forEach(([subtreeId, { contributors }]) => {
-		filterMap[subtreeId] = {};
-		contributors.forEach((contributorId) => {
-			filterMap[subtreeId][contributorId] = true;
-		});
-	});
+	// Get the subtree map directly - it already returns the format we need
+	const filterMap = getSubtreeContributorMap($userTree, $nodesMap);
 
 	console.log('[SUBTREE-MAP] Generated filter map for', Object.keys(filterMap).length, 'subtrees');
 	return filterMap;
@@ -172,13 +162,14 @@ export const capacityShares = derived(
 		const shares: Record<string, ShareMap> = {};
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
 			try {
+				// Create the context object for filtering
+				const context: FilterContext = {
+					node: $nodesMap,
+					subtreeContributors: $subtreeContributorMap
+				};
+
 				// Apply capacity filter to provider shares
-				const filteredShares = applyCapacityFilter(
-					capacity,
-					$providerShares,
-					$nodesMap,
-					$subtreeContributorMap
-				);
+				const filteredShares = applyCapacityFilter(capacity, $providerShares, context);
 
 				// Store the filtered shares
 				shares[capacityId] = filteredShares;
@@ -262,14 +253,25 @@ export const userCapacitiesWithShares = derived(
 export const subtreeOptions = derived([userTree, nodesMap], ([$userTree, $nodesMap]) => {
 	if (!$userTree) return [];
 
-	const fullMap = getSubtreeContributorMap($userTree, $nodesMap);
+	const subtreeMap = getSubtreeContributorMap($userTree, $nodesMap);
 
-	return Object.entries(fullMap).map(([subtreeId, { name, contributors }]) => ({
-		id: subtreeId,
-		name,
-		contributorCount: contributors.length,
-		contributors
-	}));
+	return Object.entries(subtreeMap)
+		.map(([subtreeId, contributorRecord]) => {
+			// Convert contributorRecord to array of contributor IDs
+			const contributors = Object.keys(contributorRecord);
+
+			// Find the node to get its name
+			const node = findNodeById($userTree, subtreeId);
+			const name = node?.name || subtreeId;
+
+			return {
+				id: subtreeId,
+				name,
+				contributorCount: contributors.length,
+				contributors
+			};
+		})
+		.filter((option) => option.contributorCount > 0); // Only include subtrees with contributors
 });
 
 // Loading state flags
