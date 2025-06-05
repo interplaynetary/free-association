@@ -49,7 +49,7 @@ requestPersistentStorage();
 // Database
 export const gun = Gun({
 	peers: [
-		'http://localhost:8765/gun',
+		//'http://localhost:8765/gun',
 		'https://gun-manhattan.herokuapp.com/gun',
 		'https://peer.wallie.io/gun',
 		'https://gun.defucc.me/gun'
@@ -421,7 +421,7 @@ export function manifest() {
 
 	// Load tree with fallback timeout for distributed sync
 	let treeLoaded = false;
-	
+
 	const handleTreeData = (treeData: any, isRetry = false) => {
 		const attemptLabel = isRetry ? 'retry' : 'initial';
 		console.log(
@@ -435,7 +435,10 @@ export function manifest() {
 			const parsedTree = parseTree(treeData);
 
 			if (parsedTree && user.is?.pub) {
-				console.log('[MANIFEST] Loaded tree with children count:', parsedTree.children?.length || 0);
+				console.log(
+					'[MANIFEST] Loaded tree with children count:',
+					parsedTree.children?.length || 0
+				);
 				if (parsedTree.children?.length > 0) {
 					console.log('[MANIFEST] First child:', parsedTree.children[0]);
 				}
