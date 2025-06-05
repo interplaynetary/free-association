@@ -106,3 +106,10 @@ Ok now i notice that maybe we have invalid rules or filtering is failing since a
 improve bottomsheet
 
 make chatMessage display the telegram style name and use gunAvatar for the profile.
+
+
+
+
+- Make it so that you can not select the input name field itself.
+- Going back to the main page is not working
+- capacities are not loading properly?

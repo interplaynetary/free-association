@@ -152,7 +152,7 @@
 
 	// Handle text edit start
 	function handleTextEditStart(event: MouseEvent | TouchEvent) {
-		// More aggressive event stopping to prevent navigation
+		// More aggressive event stopping to prevent navigation and text selection
 		event.stopPropagation();
 		event.preventDefault();
 
@@ -161,13 +161,25 @@
 			event.stopImmediatePropagation();
 		}
 
-		// Only allow editing if we have a valid node ID
-		const nodeId = node.id;
-		if (!nodeId) return;
+		// For touch events, also prevent default to stop text selection menus
+		if (event.type === 'touchstart') {
+			// Add a small delay for touch events to ensure proper handling
+			setTimeout(() => {
+				startEdit();
+			}, 10);
+		} else {
+			startEdit();
+		}
 
-		// Set up edit state
-		isEditing = true;
-		editValue = node.name || '';
+		function startEdit() {
+			// Only allow editing if we have a valid node ID
+			const nodeId = node.id;
+			if (!nodeId) return;
+
+			// Set up edit state
+			isEditing = true;
+			editValue = node.name || '';
+		}
 	}
 
 	// Handle text edit save
@@ -418,6 +430,11 @@
 
 	.node-title-area {
 		user-select: none;
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		-webkit-touch-callout: none;
+		-webkit-tap-highlight-color: transparent;
 	}
 
 	.node-title {
@@ -429,6 +446,13 @@
 		cursor: text;
 		word-break: break-word;
 		hyphens: auto;
+		user-select: none;
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		-webkit-touch-callout: none;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
 	}
 
 	.title-segment {

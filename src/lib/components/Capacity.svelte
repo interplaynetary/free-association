@@ -326,7 +326,7 @@
 				onclick={handleEmojiPickerToggle}
 				title="Select emoji"
 			>
-				{capacityEmoji || '(📦'}
+				{capacityEmoji || '📦'}
 			</button>
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}
@@ -341,7 +341,8 @@
 			bind:value={capacityName}
 			placeholder="Name"
 			onchange={handleCapacityUpdate}
-			style="width: {Math.max(capacityName?.length || 0, 4) + 2}ch; min-width: 4ch;"
+			style="width: {Math.max(capacityName?.length || 0, 'Name'.length) +
+				2}ch; min-width: {Math.max(4, 'Name'.length + 1)}ch;"
 		/>
 		<input
 			type="number"
@@ -351,7 +352,8 @@
 			bind:value={capacityQuantity}
 			placeholder="Qty"
 			onchange={handleCapacityUpdate}
-			style="width: {Math.max(capacityQuantity?.toString().length || 0, 3) + 1}ch; min-width: 3ch;"
+			style="width: {Math.max(capacityQuantity?.toString().length || 0, 'Qty'.length) +
+				1}ch; min-width: {Math.max(3, 'Qty'.length + 1)}ch;"
 		/>
 		<input
 			type="text"
@@ -359,7 +361,8 @@
 			bind:value={capacityUnit}
 			placeholder="Unit"
 			onchange={handleCapacityUpdate}
-			style="width: {Math.max(capacityUnit?.length || 0, 4) + 1}ch; min-width: 4ch;"
+			style="width: {Math.max(capacityUnit?.length || 0, 'Unit'.length) +
+				1}ch; min-width: {Math.max(4, 'Unit'.length + 1)}ch;"
 		/>
 
 		<!-- Action buttons -->
@@ -441,7 +444,7 @@
 		<div class="chat-container mt-2 rounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
-					💬 Chat about {capacity.emoji || '🏠'}
+					💬 Chat about {capacity.emoji || '📦'}
 					{capacity.name}
 				</h4>
 				<p class="mt-1 text-xs text-gray-500">

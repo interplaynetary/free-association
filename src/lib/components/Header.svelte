@@ -94,10 +94,14 @@
 
 	// Get current route from $page store
 	let currentRoute = $derived($page.url.pathname);
+	// Remove base path to get the actual route
+	let routeWithoutBase = $derived(
+		currentRoute.startsWith(base) ? currentRoute.slice(base.length) : currentRoute
+	);
 	let isSoulRoute = $derived(
-		currentRoute.startsWith('/') &&
-			(currentRoute === '/' ||
-				(!currentRoute.startsWith('/inventory') && !currentRoute.startsWith('/contacts')))
+		routeWithoutBase === '/' ||
+			routeWithoutBase === '' ||
+			(!routeWithoutBase.startsWith('/inventory') && !routeWithoutBase.startsWith('/contacts'))
 	);
 
 	// Login state
@@ -246,7 +250,7 @@
 
 		// If we're not in the soul route, navigate to the soul route
 		if (!isSoulRoute) {
-			goto('/');
+			goto(base + '/');
 		}
 	}
 
@@ -363,7 +367,7 @@
 			await signout();
 			globalState.resetState();
 			globalState.showToast('Signed out successfully', 'info');
-			goto('/');
+			goto(base + '/');
 		} catch (error) {
 			console.error('Logout error:', error);
 			globalState.showToast('Error during sign out', 'error');
@@ -468,7 +472,7 @@
 					<div class="breadcrumb-item loading-path">Loading...</div>
 				{:else if currentPathInfo.length === 0 && $username}
 					<a
-						href="/"
+						href="{base}/"
 						class="breadcrumb-item auth-root current"
 						onclick={(e) => handleBreadcrumbClick(0, e)}
 						tabindex="0"
@@ -491,7 +495,7 @@
 							<div class="breadcrumb-separator">/</div>
 						{/if}
 						<a
-							href="/"
+							href="{base}/"
 							class="breadcrumb-item"
 							class:current={index === currentPathInfo.length - 1}
 							class:auth-root={index === 0}
