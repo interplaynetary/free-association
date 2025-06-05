@@ -94,8 +94,6 @@ parseTree @ validation.ts:60Understand this error
 gun.svelte.ts:451 [MANIFEST] No valid tree data found, creating initial tree
 subscriptions.svelte.ts:20 [TREE-SUB] Tree updated in store, rebuilding nodes map
 
-
-
 Error Handling & Resilience
 Graceful Degradation:
 If filtering fails → capacity gets empty share map {}
@@ -103,4 +101,8 @@ If no filter rule → shares pass through unchanged
 Missing context → filters work with available data
 Invalid rules → system continues with unfiltered shares
 
-Ok now i notice that maybe we have invalid rules or filtering is failing since applying 
+Ok now i notice that maybe we have invalid rules or filtering is failing since applying
+
+improve bottomsheet
+
+make chatMessage display the telegram style name and use gunAvatar for the profile.

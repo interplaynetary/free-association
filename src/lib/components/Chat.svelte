@@ -68,7 +68,7 @@
 					// Create message object like the example, but with userPub for avatars
 					const userRef = gun.user(data);
 					const message: Message = {
-						who: ((await userRef.get('alias')) as string) || 'Anonymous',
+						who: (userRef.get('alias') as any) || 'Anonymous',
 						what: (await SEA.decrypt(data.what, encryptionKey)) + '' || '',
 						when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
 						userPub: userRef.is?.pub || ''

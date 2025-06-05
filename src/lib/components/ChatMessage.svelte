@@ -31,12 +31,13 @@
 			console.log('Using gun-avatar for:', username, 'with pub:', userPub.substring(0, 20) + '...');
 			// Use gun-avatar for GUN SEA public keys
 			try {
+				// @ts-ignore
 				return gunAvatar({
 					pub: userPub,
 					size: 32,
 					round: true,
 					draw: 'circles'
-				});
+				})
 			} catch (error) {
 				console.warn('Failed to generate gun-avatar:', error);
 			}
