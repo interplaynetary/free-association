@@ -29,6 +29,8 @@
 - **Direct peer-to-peer communication**: Your device communicates directly with other user devices
 - **Independent operation**: Each user independently chooses to run the protocol software
 - **Self-hosted infrastructure**: Users provide their own devices, internet, and storage
+- **Protocol Augmentation**: Users are fully responsible for augmenting the protocol to suit their social, technical, and legal requirements
+- **Compliance Filtering**: Users are wholly responsible for implementing any filters or limitations to their capacities to comply with the socio-technical-legal limits that apply to them
 
 ## 📋 Software License & Usage Terms
 

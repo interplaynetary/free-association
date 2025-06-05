@@ -1,10 +1,6 @@
 /**
  * Free Association Protocol
  */
-
-// Import json-logic-js with type assertion
-// @ts-ignore
-import jsonLogic from 'json-logic-js';
 import type {
 	Node,
 	RootNode,
@@ -16,6 +12,13 @@ import type {
 	RecipientCapacity,
 	BaseCapacity
 } from '$lib/schema';
+import {
+	filter,
+	normalizeShareMap,
+	applyCapacityFilter,
+	Rules,
+	type FilterContext
+} from '$lib/filters';
 
 // Type definitions are now imported from schema.ts instead of being defined here
 
@@ -396,20 +399,6 @@ export function addCapacityShare(capacities: CapacitiesCollection, share: Recipi
  * Utility Functions
  */
 
-// Normalize a ShareMap so values sum to 1
-export function normalizeShareMap(map: ShareMap): ShareMap {
-	const total = Object.values(map).reduce((sum, v) => sum + v, 0);
-
-	if (total === 0) return map;
-
-	const normalizedMap: ShareMap = {};
-	for (const [key, value] of Object.entries(map)) {
-		normalizedMap[key] = value / total;
-	}
-
-	return normalizedMap;
-}
-
 // Helper to convert a recurrence end object to a string value
 export function getRecurrenceEndValue(recurrenceEnd: any): string | null {
 	if (!recurrenceEnd) return null;
@@ -543,275 +532,6 @@ export function updateName(node: Node, name: string): void {
 	node.name = name;
 }
 
-// lets implement the filters that normalize
-/*
-Filters can be added on top of the sharesMap for a particular Surplus, and the filtered map can then be normalized to provide a distribution. This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a specific criteria. For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list. We should be able to pass in any predicate into the filter function
-*/
-
-// Filter shares based on a predicate function
-export function filterShareMap(
-	shareMap: ShareMap,
-	predicate: (nodeId: string, share: number) => boolean
-): ShareMap {
-	// Create a new map with only entries that satisfy the predicate
-	const filteredMap: ShareMap = {};
-
-	for (const [nodeId, share] of Object.entries(shareMap)) {
-		if (predicate(nodeId, share)) {
-			filteredMap[nodeId] = share;
-		}
-	}
-
-	return normalizeShareMap(filteredMap);
-}
-
-// Common predicates for filtering share maps
-
-// Keep only nodes in the include list
-export function includeFilter(includeList: string[]): (nodeId: string, share: number) => boolean {
-	return (nodeId: string, _: number) => includeList.includes(nodeId);
-}
-
-// Remove nodes in the exclude list
-export function excludeFilter(excludeList: string[]): (nodeId: string, share: number) => boolean {
-	return (nodeId: string, _: number) => !excludeList.includes(nodeId);
-}
-
-// Keep only nodes with shares above a threshold
-export function thresholdFilter(minShare: number): (nodeId: string, share: number) => boolean {
-	return (_: string, share: number) => share >= minShare;
-}
-
-// Filter by categories using a mapping of nodeId to categories
-export function categoryFilter(
-	nodeCategories: Record<string, string[]>,
-	categories: string[]
-): (nodeId: string, share: number) => boolean {
-	return (nodeId: string, _: number) => {
-		const nodeCategory = nodeCategories[nodeId] || [];
-		return nodeCategory.some((category) => categories.includes(category));
-	};
-}
-
-// Combine multiple filters using AND logic
-export function combineFilters(
-	...filters: ((nodeId: string, share: number) => boolean)[]
-): (nodeId: string, share: number) => boolean {
-	return (nodeId: string, share: number) => {
-		return filters.every((filter) => filter(nodeId, share));
-	};
-}
-
-// Compose multiple filters and apply them to a map
-export function composeFilters(
-	map: ShareMap,
-	...predicates: Array<(nodeId: string, share: number) => boolean>
-): ShareMap {
-	// Convert predicates to a single combined predicate
-	const combinedPredicate = combineFilters(...predicates);
-
-	// Use filterShareMap with the combined predicate
-	return filterShareMap(map, combinedPredicate);
-}
-
-/**
- * JSON Logic Filter System
- * This allows storing filter rules in a portable JSON format
- */
-
-// Check if a contributor appears in a specific subtree
-export function isInSubtree(
-	contributorId: string,
-	subtreeRootId: string,
-	nodesMap: Record<string, Node>
-): boolean {
-	const subtreeRoot = nodesMap[subtreeRootId];
-	if (!subtreeRoot) return false;
-
-	// Get all nodes in the subtree (including the root)
-	const subtreeNodes = [subtreeRoot, ...getDescendants(subtreeRoot)];
-
-	// Check if the contributor appears in any node in the subtree
-	return subtreeNodes.some((node) => {
-		if (node.type === 'NonRootNode') {
-			return (node as NonRootNode).contributor_ids.includes(contributorId);
-		}
-		return false;
-	});
-}
-
-// Get all contributors that appear in a specific subtree
-export function getContributorsInSubtree(
-	subtreeRootId: string,
-	nodesMap: Record<string, Node>
-): string[] {
-	const subtreeRoot = nodesMap[subtreeRootId];
-	if (!subtreeRoot) return [];
-
-	const contributorIds = new Set<string>();
-	const subtreeNodes = [subtreeRoot, ...getDescendants(subtreeRoot)];
-
-	subtreeNodes.forEach((node) => {
-		if (node.type === 'NonRootNode') {
-			(node as NonRootNode).contributor_ids.forEach((id) => contributorIds.add(id));
-		}
-	});
-
-	return [...contributorIds];
-}
-
-// Get a map of subtree names to their contributor lists
-export function getSubtreeContributorMap(
-	tree: Node,
-	nodesMap: Record<string, Node>
-): Record<string, { name: string; contributors: string[] }> {
-	const subtreeMap: Record<string, { name: string; contributors: string[] }> = {};
-
-	// Include the root
-	subtreeMap[tree.id] = {
-		name: tree.name,
-		contributors: getContributorsInSubtree(tree.id, nodesMap)
-	};
-
-	// Include all child subtrees
-	const allDescendants = getDescendants(tree);
-	allDescendants.forEach((node) => {
-		subtreeMap[node.id] = {
-			name: node.name,
-			contributors: getContributorsInSubtree(node.id, nodesMap)
-		};
-	});
-
-	return subtreeMap;
-}
-
-// Apply a jsonLogic rule to filter a share map
-export function applyJsonLogicFilter(
-	shareMap: ShareMap,
-	rule: any,
-	nodeContext: Record<string, Node> = {},
-	subtreeContributorMap?: Record<string, Record<string, boolean>>
-): ShareMap {
-	// Create a predicate that evaluates the rule for each node
-	const predicate = (nodeId: string, share: number) => {
-		// Create the data object for jsonLogic to evaluate
-		const data = {
-			nodeId,
-			share,
-			node: nodeContext[nodeId] || null,
-			// Add subtree contributor lookup for efficient filtering
-			subtreeContributors: subtreeContributorMap || {}
-		};
-
-		// Apply the rule using jsonLogic and ensure boolean return
-		// Add type assertion to handle the unknown return type from jsonLogic
-		const result = jsonLogic.apply(rule, data) as boolean;
-		return Boolean(result);
-	};
-
-	// Use our existing filter system
-	return filterShareMap(shareMap, predicate);
-}
-
-// Helper to filter capacity shares using the capacity's filter rule
-export function applyCapacityFilter(
-	capacity: BaseCapacity,
-	shareMap: ShareMap,
-	nodeContext: Record<string, Node> = {},
-	subtreeContributorMap?: Record<string, Record<string, boolean>>
-): ShareMap {
-	// If no filter rule exists, return the original map normalized
-	if (!capacity.filter_rule) {
-		return normalizeShareMap({ ...shareMap });
-	}
-
-	console.log('[FILTER-DEBUG] Applying filter:', capacity.filter_rule);
-	console.log('[FILTER-DEBUG] Subtree contributor map:', subtreeContributorMap);
-	console.log('[FILTER-DEBUG] Share map before filter:', shareMap);
-
-	// Apply the jsonLogic filter
-	const result = applyJsonLogicFilter(shareMap, capacity.filter_rule, nodeContext, subtreeContributorMap);
-	
-	console.log('[FILTER-DEBUG] Share map after filter:', result);
-	return result;
-}
-
-// Common predicates as JsonLogic rules
-export const FilterRules = {
-	// Include only specified nodeIds
-	includeNodes: (nodeIds: string[]): any => ({
-		in: [{ var: 'nodeId' }, nodeIds]
-	}),
-
-	// Exclude specified nodeIds
-	excludeNodes: (nodeIds: string[]): any => ({
-		'!': { in: [{ var: 'nodeId' }, nodeIds] }
-	}),
-
-	// Only include nodes with share above threshold
-	aboveThreshold: (threshold: number): any => ({
-		'>=': [{ var: 'share' }, threshold]
-	}),
-
-	// Filter by node category (assuming node.categories exists in context)
-	byCategory: (categories: string[]): any => ({
-		some: [{ var: 'node.categories' }, { in: [{ var: '' }, categories] }]
-	}),
-
-	// Filter by contributors that appear in specific subtrees
-	inSubtrees: (subtreeIds: string[]): any => ({
-		some: [
-			subtreeIds,
-			{
-				'!!': { var: ['subtreeContributors', { var: '' }, { var: 'nodeId' }] }
-			}
-		]
-	}),
-
-	// Filter by contributors that appear in a specific subtree
-	inSubtree: (subtreeId: string): any => ({
-		in: [{ var: 'nodeId' }, { var: ['subtreeContributors', subtreeId] }]
-	}),
-
-	// Combine multiple rules with AND
-	and: (...rules: any[]): any => ({
-		and: rules
-	}),
-
-	// Combine multiple rules with OR
-	or: (...rules: any[]): any => ({
-		or: rules
-	})
-};
-
-/**
- * Example usage:
- *
- * // Create a capacity with a filter rule that only distributes to contributors
- * // who appear in specific subtrees (categories) of your tree
- * const capacity: Capacity = {
- *   // ... other capacity fields
- *   filter_rule: FilterRules.and(
- *     FilterRules.excludeNodes(['blocked-user-1', 'blocked-user-2']),
- *     FilterRules.aboveThreshold(0.05),
- *     FilterRules.inSubtree('art-projects-subtree-id') // Only contributors from art projects
- *   )
- * };
- *
- * // Or filter by multiple subtrees
- * const multiSubtreeCapacity: Capacity = {
- *   // ... other capacity fields
- *   filter_rule: FilterRules.inSubtrees(['art-projects-id', 'music-projects-id'])
- * };
- *
- * // Apply the filter to distribute the capacity
- * const tree = get(userTree);
- * const nodesMap = get(nodesMap);
- * const subtreeMap = get(subtreeContributorMap);
- * const shareMap = providerShares(provider, nodesMap);
- * const filteredShares = applyCapacityFilter(capacity, shareMap, nodesMap, subtreeMap);
- */
-
 // Calculate recipient shares for a provider capacity
 export function calculateRecipientShares(
 	capacity: ProviderCapacity,
@@ -823,7 +543,11 @@ export function calculateRecipientShares(
 	const rawShares = providerShares(provider, nodesMap);
 
 	// Apply capacity filter if one exists
-	const filteredShares = applyCapacityFilter(capacity, rawShares, nodesMap, subtreeContributorMap);
+	const context: FilterContext = {
+		node: nodesMap,
+		subtreeContributors: subtreeContributorMap
+	};
+	const filteredShares = applyCapacityFilter(capacity, rawShares, context);
 
 	// Store the filtered shares in the capacity
 	capacity.recipient_shares = filteredShares;
@@ -880,3 +604,41 @@ export function getReceiverShares(
 
 	return sharesMap;
 }
+
+// Get a map of subtree names to their contributor lists
+export function getSubtreeContributorMap(
+	tree: Node,
+	nodesMap: Record<string, Node>
+): Record<string, Record<string, boolean>> {
+	const subtreeMap: Record<string, Record<string, boolean>> = {};
+
+	// Helper to get contributors from a subtree
+	function getContributorsInSubtree(node: Node): string[] {
+		const contributorIds = new Set<string>();
+		const subtreeNodes = [node, ...getDescendants(node)];
+
+		subtreeNodes.forEach((n) => {
+			if (n.type === 'NonRootNode') {
+				(n as NonRootNode).contributor_ids.forEach((id) => contributorIds.add(id));
+			}
+		});
+
+		return [...contributorIds];
+	}
+
+	// Include the root
+	subtreeMap[tree.id] = Object.fromEntries(getContributorsInSubtree(tree).map((id) => [id, true]));
+
+	// Include all child subtrees
+	const allDescendants = getDescendants(tree);
+	allDescendants.forEach((node) => {
+		subtreeMap[node.id] = Object.fromEntries(
+			getContributorsInSubtree(node).map((id) => [id, true])
+		);
+	});
+
+	return subtreeMap;
+}
+
+// Re-export filter-related functions
+export { filter, normalizeShareMap, applyCapacityFilter, Rules };
