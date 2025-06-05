@@ -12,8 +12,8 @@
 
 html, body {
   width: 100vw;
-  /* Use dynamic viewport height for mobile */
-  height: 100dvh;
+  /* Use custom CSS variable for reliable mobile viewport */
+  height: calc(var(--vh, 1vh) * 100);
   /* Fallback for older browsers */
   height: 100vh;
   overflow: hidden;

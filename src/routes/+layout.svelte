@@ -11,7 +11,7 @@
 	// Derived toast state
 	let toast = $derived(globalState.toast);
 
-	// Set up global keyboard event listener
+	// Set up global keyboard event listener and mobile viewport handling
 	onMount(() => {
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation
@@ -22,7 +22,7 @@
 					activeElement &&
 					(activeElement.tagName === 'INPUT' ||
 						activeElement.tagName === 'TEXTAREA' ||
-						activeElement.isContentEditable ||
+						(activeElement as HTMLElement).isContentEditable ||
 						activeElement.closest('.node-edit-input'));
 
 				// Only trigger navigation if we're not currently editing
@@ -33,9 +33,51 @@
 			}
 		}
 
+		// Mobile viewport height handling
+		function setViewportHeight() {
+			// Get the actual viewport height
+			const vh = window.innerHeight * 0.01;
+			document.documentElement.style.setProperty('--vh', `${vh}px`);
+
+			// For iOS Safari specifically - force height update
+			if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+				document.body.style.height = `${window.innerHeight}px`;
+			}
+
+			// Also update the root font size for consistent scaling
+			const vw = window.innerWidth * 0.01;
+			document.documentElement.style.setProperty('--vw', `${vw}px`);
+		}
+
+		// Set initial viewport height
+		setViewportHeight();
+
+		// Update on resize/orientation change
+		window.addEventListener('resize', setViewportHeight);
+		window.addEventListener('orientationchange', () => {
+			// Delay for orientation change to complete
+			setTimeout(setViewportHeight, 100);
+		});
+
+		// Handle mobile browser toolbar show/hide
+		let ticking = false;
+		function handleScroll() {
+			if (!ticking) {
+				requestAnimationFrame(() => {
+					setViewportHeight();
+					ticking = false;
+				});
+				ticking = true;
+			}
+		}
+
+		window.addEventListener('scroll', handleScroll, { passive: true });
 		document.addEventListener('keydown', handleGlobalKeydown);
 
 		return () => {
+			window.removeEventListener('resize', setViewportHeight);
+			window.removeEventListener('orientationchange', setViewportHeight);
+			window.removeEventListener('scroll', handleScroll);
 			document.removeEventListener('keydown', handleGlobalKeydown);
 		};
 	});
@@ -63,18 +105,20 @@
 	main {
 		display: flex;
 		flex-direction: column;
-		/* Use dynamic viewport height that respects mobile UI */
-		min-height: 100dvh;
-		height: 100dvh;
-		/* Fallback for browsers that don't support dvh */
-		min-height: 100vh;
+		/* Use custom CSS variable for reliable mobile viewport */
+		height: calc(var(--vh, 1vh) * 100);
+		min-height: calc(var(--vh, 1vh) * 100);
+		/* Fallback for browsers without custom properties */
 		height: 100vh;
+		min-height: 100vh;
 		/* Add safe area insets for mobile devices */
 		padding-top: env(safe-area-inset-top);
 		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: env(safe-area-inset-left);
 		padding-right: env(safe-area-inset-right);
 		overflow: hidden;
+		position: relative;
+		width: 100%;
 	}
 
 	.app-header {
@@ -98,6 +142,9 @@
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */
 		min-height: 0; /* Important for flexbox overflow */
+		/* Additional mobile support */
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+		transform: translateZ(0); /* Force hardware acceleration */
 	}
 
 	.toast-container {
