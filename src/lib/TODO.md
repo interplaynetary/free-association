@@ -72,3 +72,12 @@ Allow people to put up their means of contact (phone number etc.)
 
 
 Make the dropdown into the userNameCache
+
+
+
+
+
+username upon multipe refreshes gets corrupted, and the tree erased. a new one gets created, and the name of the new one is equal to the pub of the user instead of the user's alias. Lets fix our schema.ts which uses zod v4 to be more leniant, and validate to include healing.
+Occasionally this also leads to username being equal to userPub instead of the alias. Although the username tends to heal to the pubkey.
+
+✅ Lets make it so that if the breadcrumb path is longer than 10 charecters it gets truncated.

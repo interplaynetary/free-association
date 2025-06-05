@@ -20,6 +20,12 @@
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
 
+	// Helper function to truncate text
+	function truncateText(text: string, maxLength: number = 10): string {
+		if (text.length <= maxLength) return text;
+		return text.slice(0, maxLength - 3) + '...';
+	}
+
 	// For tracking tree updates and forcing rerenders
 	let updateCounter = $state(0);
 
@@ -475,7 +481,7 @@
 						tabindex="0"
 						aria-label={$username}
 					>
-						{$username}
+						{truncateText($username)}
 					</a>
 				{:else if currentPathInfo.length === 0}
 					<button
@@ -501,8 +507,9 @@
 							}}
 							tabindex="0"
 							aria-label={segment.name}
+							title={segment.name}
 						>
-							{segment.name}
+							{truncateText(segment.name)}
 						</a>
 					{/each}
 				{/if}
@@ -541,8 +548,10 @@
 							<img src={generateAvatar($username, $userpub, 60)} alt={$username} />
 						</div>
 						<div class="user-details">
-							<h3>Welcome, {$username}</h3>
-							<p class="user-id">@{$username || 'anonymous'}</p>
+							<h3 title={$username}>Welcome, {truncateText($username, 15)}</h3>
+							<p class="user-id" title={'@' + ($username || 'anonymous')}>
+								@{truncateText($username || 'anonymous', 15)}
+							</p>
 						</div>
 					</div>
 					<div class="actions">
