@@ -20,18 +20,15 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 2. Your **Total-Recognition** is always _100%_.
 
 3. Your **Mutual Recognition** with another is the minimum of your recognition of each other.
-
    - For example: If you are 50% of my _total-recognition_, and I am 10% of your _total-recognition_, our mutual-recognition is 10%, the minimum of the both.
      - _Taking the minimum of both shares ensures reciprocity in proportion._
      - This is _mutual-recognition of contribution towards each other's self-actualization_.
 
-4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_ at a declared **network-depth**.
-
+4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_.
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
    - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
-   - _Network-depth_ can be (re)declared dynamically.
-   - For example: surplus-housing might be shared at depth = 2, whereas surplus-food might be shared at depth = 5.
    - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
+   - Optionally declare max-divisibility (either amount or %) to reflect real-world limitations.
 
 5. Your **general-share** in another's **capacities** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
 
@@ -39,9 +36,7 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
 6. Your **specific-share** in another's _capacity_ is your **general-share** with _capacity's_ **filters** applied and then the result is normalized to 100%.
    - This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
-     For example, a filter could limit the
-
-Additionally, capacities might declare a max-divisibility (either in % or in determinate quantities), this would also help with pruning in the algorithm.
+     For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
 
 **Mathematically defined:**
 

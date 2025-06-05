@@ -212,20 +212,19 @@
 				onclick={() => toggleShare(share.id)}
 			>
 				<div class="flex min-w-0 flex-1 flex-col pr-2">
-					<span
-						class="share-value name overflow-hidden font-medium text-ellipsis whitespace-nowrap"
-					>
-						<span class="capacity-emoji">{share.emoji || '📦'}</span>
-						{share.name}
-					</span>
-					<span class="share-value qty text-sm">
-						{Number.isInteger(share.computed_quantity)
-							? share.computed_quantity
-							: share.computed_quantity.toFixed(2)}
-						{share.unit}
-						<span class="text-xs text-gray-600">({(share.share_percentage * 100).toFixed(1)}%)</span
-						>
-					</span>
+					<div class="share-main-info flex items-center gap-2 overflow-hidden">
+						<span class="share-value name font-medium text-ellipsis whitespace-nowrap flex-shrink-0">
+							<span class="capacity-emoji">{share.emoji || '📦'}</span>
+							{share.name}
+						</span>
+						<span class="share-value qty text-sm flex-shrink-0">
+							{Number.isInteger(share.computed_quantity)
+								? share.computed_quantity
+								: share.computed_quantity.toFixed(2)}
+							{share.unit}
+							<span class="text-xs text-gray-600 ml-1">({(share.share_percentage * 100).toFixed(1)}%)</span>
+						</span>
+					</div>
 					<!-- Show space-time preview inline if available -->
 					{#if hasSpaceTimeData(share)}
 						<div class="space-time-preview mt-1 text-xs text-gray-600">
@@ -338,6 +337,16 @@
 	.share-value {
 		min-width: 0;
 		line-height: 1.2;
+	}
+
+	.share-main-info {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.share-main-info .name {
+		overflow: hidden;
+		min-width: 0;
 	}
 
 	.capacity-emoji {

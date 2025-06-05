@@ -236,7 +236,7 @@
 
 		// Add to selected subtrees
 		selectedSubtrees = [...selectedSubtrees, subtreeId];
-		
+
 		// Update capacity
 		handleCapacityUpdate();
 
@@ -317,7 +317,7 @@
 		</div>
 	{/if}
 
-	<div class="capacity-row flex items-center gap-2 rounded bg-white p-2 shadow-sm">
+	<div class="capacity-row flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow-sm">
 		<!-- Emoji picker button -->
 		<div class="relative">
 			<button
@@ -337,26 +337,29 @@
 		<!-- Main capacity inputs -->
 		<input
 			type="text"
-			class="capacity-input name min-w-0 flex-1"
+			class="capacity-input name auto-size"
 			bind:value={capacityName}
 			placeholder="Name"
 			onchange={handleCapacityUpdate}
+			style="width: {Math.max(capacityName?.length || 0, 4) + 2}ch; min-width: 4ch;"
 		/>
 		<input
 			type="number"
-			class="capacity-input qty w-16 text-right"
+			class="capacity-input qty auto-size text-right"
 			min="0"
 			step="0.01"
 			bind:value={capacityQuantity}
 			placeholder="Qty"
 			onchange={handleCapacityUpdate}
+			style="width: {Math.max(capacityQuantity?.toString().length || 0, 3) + 1}ch; min-width: 3ch;"
 		/>
 		<input
 			type="text"
-			class="capacity-input unit w-20"
+			class="capacity-input unit auto-size"
 			bind:value={capacityUnit}
 			placeholder="Unit"
 			onchange={handleCapacityUpdate}
+			style="width: {Math.max(capacityUnit?.length || 0, 4) + 1}ch; min-width: 4ch;"
 		/>
 
 		<!-- Action buttons -->
@@ -794,7 +797,13 @@
 		outline: none;
 		transition: all 0.2s ease;
 		min-width: 0;
+		flex-shrink: 0;
 	}
+
+	.capacity-input.auto-size {
+		max-width: 200px; /* Prevent inputs from becoming too wide */
+	}
+
 	.capacity-input::placeholder {
 		color: #cbd5e1;
 	}
@@ -1039,5 +1048,15 @@
 
 	.chat-header p {
 		margin: 0;
+	}
+
+	/* Capacity row responsive behavior */
+	.capacity-row {
+		gap: 8px; /* Slightly smaller gap for better wrapping */
+	}
+
+	/* Ensure buttons don't wrap unnecessarily */
+	.capacity-row button {
+		flex-shrink: 0;
 	}
 </style>
