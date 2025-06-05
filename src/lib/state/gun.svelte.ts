@@ -419,48 +419,62 @@ export function manifest() {
 	// Set loading flag before loading tree
 	isLoadingTree.set(true);
 
-	// Load tree
-	user.get('tree').once((treeData: any) => {
+	// Load tree with fallback timeout for distributed sync
+	let treeLoaded = false;
+	
+	const handleTreeData = (treeData: any, isRetry = false) => {
+		const attemptLabel = isRetry ? 'retry' : 'initial';
 		console.log(
-			'[MANIFEST] Raw tree data from Gun:',
+			`[MANIFEST] Raw tree data from Gun (${attemptLabel}):`,
 			typeof treeData === 'string' ? `String of length ${treeData.length}` : 'Object:',
 			treeData
 		);
 
-		// Parse the tree using our validation utility
-		const parsedTree = parseTree(treeData);
+		// Process valid data
+		if (treeData !== undefined && treeData !== null) {
+			const parsedTree = parseTree(treeData);
 
-		if (parsedTree && user.is?.pub) {
-			console.log('[MANIFEST] Loaded tree with children count:', parsedTree.children?.length || 0);
-			if (parsedTree.children?.length > 0) {
-				console.log('[MANIFEST] First child:', parsedTree.children[0]);
-			}
-			userTree.set(parsedTree);
-
-			// Reset loading flag after tree is loaded
-			isLoadingTree.set(false);
-
-			// Trigger recalculation by setting the tree again after loading flag is cleared
-			// This ensures SOGF is calculated from the current tree state
-			setTimeout(() => {
-				console.log('[MANIFEST] Triggering tree recalculation after load');
+			if (parsedTree && user.is?.pub) {
+				console.log('[MANIFEST] Loaded tree with children count:', parsedTree.children?.length || 0);
+				if (parsedTree.children?.length > 0) {
+					console.log('[MANIFEST] First child:', parsedTree.children[0]);
+				}
 				userTree.set(parsedTree);
-			}, 50);
-		} else if (user.is?.pub) {
-			// No valid tree data found, create a new one
-			console.log('[MANIFEST] No valid tree data found, creating initial tree');
+				treeLoaded = true;
+				isLoadingTree.set(false);
+
+				// Trigger recalculation after load
+				setTimeout(() => {
+					console.log('[MANIFEST] Triggering tree recalculation after load');
+					userTree.set(parsedTree);
+				}, 50);
+				return;
+			}
+		}
+
+		// Create new tree only after retry attempt or if we have valid user context
+		if (isRetry && user.is?.pub && !treeLoaded) {
+			console.log('[MANIFEST] No valid tree data found after retry, creating initial tree');
 			const newTree = createRootNode(get(userpub), get(username), get(userpub));
 			userTree.set(newTree);
 			user.get('tree').put(JSON.stringify(newTree));
-
-			// Reset loading flag after tree is loaded
 			isLoadingTree.set(false);
-		} else {
-			console.log('[MANIFEST] No tree data found and no user to create one');
-			// Reset loading flag even if no tree
+		} else if (!isRetry && (treeData === undefined || treeData === null)) {
+			// First attempt with undefined - wait and retry once
+			console.log('[MANIFEST] Tree data undefined, retrying in 2s...');
+			setTimeout(() => {
+				if (!treeLoaded) {
+					user.get('tree').once((retryData: any) => handleTreeData(retryData, true));
+				}
+			}, 2000);
+		} else if (isRetry) {
+			console.log('[MANIFEST] No tree data available and no user context');
 			isLoadingTree.set(false);
 		}
-	});
+	};
+
+	// Initial tree load attempt
+	user.get('tree').once(handleTreeData);
 
 	// Load SOGF - needed for network synchronization even though it will be recalculated // is it truly needed?
 	isLoadingSogf.set(true);

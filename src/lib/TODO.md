@@ -70,14 +70,26 @@ make capacities/shares feed into the map
 
 Allow people to put up their means of contact (phone number etc.)
 
-
 Make the dropdown into the userNameCache
 
-
-
-
-
-username upon multipe refreshes gets corrupted, and the tree erased. a new one gets created, and the name of the new one is equal to the pub of the user instead of the user's alias. Lets fix our schema.ts which uses zod v4 to be more leniant, and validate to include healing.
-Occasionally this also leads to username being equal to userPub instead of the alias. Although the username tends to heal to the pubkey.
-
 ✅ Lets make it so that if the breadcrumb path is longer than 10 charecters it gets truncated.
+
+So i notice that our tree sometimes doesnt load during manifestation and it gets overwritten by a new tree! I dont think this is an issue with gun, rather it has to do with the way in which our tree loading differs from how we load capacities. With our capacities we never have this issue.
+
+[MANIFEST] Raw tree data from Gun: Object: undefined
+validation.ts:60 Tree data validation failed: ZodError: [
+{
+"expected": "object",
+"code": "invalid_type",
+"path": [],
+"message": "Invalid input: expected object, received undefined"
+}
+]
+at zod_v4.js?v=28d20a7b:1187:12
+at inst.safeParse (zod_v4.js?v=28d20a7b:9282:38)
+at parseTree (validation.ts:55:33)
+at User.<anonymous> (gun.svelte.ts:431:22)
+at once (chunk-QJ6Z5JNU.js?v=28d20a7b:1574:18)
+parseTree @ validation.ts:60Understand this error
+gun.svelte.ts:451 [MANIFEST] No valid tree data found, creating initial tree
+subscriptions.svelte.ts:20 [TREE-SUB] Tree updated in store, rebuilding nodes map
