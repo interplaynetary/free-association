@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
+	import { base } from '$app/paths';
 	import {
 		username,
 		userpub,
@@ -509,7 +510,7 @@
 		</div>
 
 		<div class="header-controls">
-			<a href="/inventory" class="icon-button inventory-button" title="View inventory">
+			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
 
@@ -641,10 +642,10 @@
 										disabled={isLoading}
 									/>
 									<span class="checkbox-text">
-										I agree to the <a href="/privacy" target="_blank" class="terms-link"
+										I agree to the <a href="{base}/privacy" target="_blank" class="terms-link"
 											>Privacy Policy</a
 										>
-										and <a href="/terms" target="_blank" class="terms-link">Terms of Use</a>
+										and <a href="{base}/terms" target="_blank" class="terms-link">Terms of Use</a>
 									</span>
 								</label>
 							</div>
