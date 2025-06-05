@@ -71,23 +71,23 @@
 
 					// Get the alias from the user reference - need to use .once() to get the actual value
 					userRef.get('alias').once((alias: string) => {
-						const message: Message = {
+					const message: Message = {
 							who: alias || 'Anonymous',
 							what: (decryptedMessage || '') + '',
-							when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
-							userPub: userRef.is?.pub || ''
-						};
+						when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
+						userPub: userRef.is?.pub || ''
+					};
 
 						if (message.what && message.what.trim()) {
 							messages = [...messages.filter((m) => m.when !== message.when), message]
 								.slice(-100)
 								.sort((a, b) => a.when - b.when);
-							if (canAutoScroll) {
-								autoScroll();
-							} else {
-								unreadMessages = true;
-							}
+						if (canAutoScroll) {
+							autoScroll();
+						} else {
+							unreadMessages = true;
 						}
+					}
 					});
 				}
 			});
