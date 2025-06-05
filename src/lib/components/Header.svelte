@@ -116,7 +116,14 @@
 				loginPanelRef &&
 				!loginPanelRef.contains(event.target as EventTarget & HTMLElement)
 			) {
-				showLoginPanel = false;
+				// Check if the click is on any header control buttons (inventory, add, delete)
+				const target = event.target as HTMLElement;
+				const isHeaderControlButton = target.closest('.header-controls');
+
+				// Don't close the login panel if clicking on header control buttons
+				if (!isHeaderControlButton) {
+					showLoginPanel = false;
+				}
 			}
 		}
 
