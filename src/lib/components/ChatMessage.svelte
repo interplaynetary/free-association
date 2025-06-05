@@ -26,7 +26,7 @@
 	console.log('ChatMessage - is own message:', message.who === sender);
 
 	// Generate avatar using gun-avatar if we have a public key, otherwise fallback
-	function generateAvatar(userPub?: string, username?: string): string {
+	function generateAvatar(userPub?: string, username?: string | any): string {
 		if (userPub && userPub.length >= 87) {
 			console.log('Using gun-avatar for:', username, 'with pub:', userPub.substring(0, 20) + '...');
 			// Use gun-avatar for GUN SEA public keys
@@ -37,7 +37,7 @@
 					size: 32,
 					round: true,
 					draw: 'circles'
-				})
+				});
 			} catch (error) {
 				console.warn('Failed to generate gun-avatar:', error);
 			}
@@ -46,7 +46,8 @@
 		}
 
 		// Fallback to simple color-based avatar if no valid public key
-		const name = username || 'Anonymous';
+		// Ensure username is a string
+		const name = (typeof username === 'string' ? username : 'Anonymous') || 'Anonymous';
 		const hue = Math.abs(name.split('').reduce((a, b) => a + b.charCodeAt(0), 0) % 360);
 		const firstChar = name.charAt(0).toUpperCase();
 
@@ -66,7 +67,14 @@
 	// Get color for user ID - use current user's pub for own messages, message data for others
 	const isOwnMessage = message.who === sender;
 	const userIdForColor = isOwnMessage ? $userpub : message.userPub || message.who;
-	const userColor = getColorForUserId(userIdForColor || message.who);
+	// Ensure we have a string for the color function
+	const colorId =
+		typeof userIdForColor === 'string'
+			? userIdForColor
+			: typeof message.who === 'string'
+				? message.who
+				: 'Anonymous';
+	const userColor = getColorForUserId(colorId);
 	const textColor = getContrastTextColor(userColor);
 
 	// Debug logging for color

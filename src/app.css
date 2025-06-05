@@ -12,6 +12,9 @@
 
 html, body {
   width: 100vw;
+  /* Use dynamic viewport height for mobile */
+  height: 100dvh;
+  /* Fallback for older browsers */
   height: 100vh;
   overflow: hidden;
   background-color: #ffffff;

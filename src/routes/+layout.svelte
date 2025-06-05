@@ -63,7 +63,18 @@
 	main {
 		display: flex;
 		flex-direction: column;
+		/* Use dynamic viewport height that respects mobile UI */
+		min-height: 100dvh;
+		height: 100dvh;
+		/* Fallback for browsers that don't support dvh */
 		min-height: 100vh;
+		height: 100vh;
+		/* Add safe area insets for mobile devices */
+		padding-top: env(safe-area-inset-top);
+		padding-bottom: env(safe-area-inset-bottom);
+		padding-left: env(safe-area-inset-left);
+		padding-right: env(safe-area-inset-right);
+		overflow: hidden;
 	}
 
 	.app-header {
@@ -75,6 +86,7 @@
 		min-height: 60px;
 		display: flex;
 		flex-direction: column;
+		flex-shrink: 0;
 	}
 
 	.app-content {
@@ -84,13 +96,14 @@
 		padding: 16px;
 		position: relative;
 		z-index: 1;
-		height: calc(100vh - 60px);
+		/* Remove fixed height calculation, let flexbox handle it */
+		min-height: 0; /* Important for flexbox overflow */
 	}
 
 	.toast-container {
 		position: fixed;
-		bottom: 20px;
-		right: 20px;
+		bottom: calc(20px + env(safe-area-inset-bottom));
+		right: calc(20px + env(safe-area-inset-right));
 		z-index: 1000;
 	}
 

@@ -65,23 +65,30 @@
 					// Key for end-to-end encryption
 					const encryptionKey = '#foo';
 
-					// Create message object like the example, but with userPub for avatars
+					// Get the user reference and fetch the alias properly
 					const userRef = gun.user(data);
-					const message: Message = {
-						who: (userRef.get('alias') as any) || 'Anonymous',
-						what: (await SEA.decrypt(data.what, encryptionKey)) + '' || '',
-						when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
-						userPub: userRef.is?.pub || ''
-					};
+					const decryptedMessage = await SEA.decrypt(data.what, encryptionKey);
 
-					if (message.what) {
-						messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
-						if (canAutoScroll) {
-							autoScroll();
-						} else {
-							unreadMessages = true;
+					// Get the alias from the user reference - need to use .once() to get the actual value
+					userRef.get('alias').once((alias: string) => {
+						const message: Message = {
+							who: alias || 'Anonymous',
+							what: (decryptedMessage || '') + '',
+							when: (gun as any).state?.is?.(data, 'what') || new Date(key).getTime() || Date.now(),
+							userPub: userRef.is?.pub || ''
+						};
+
+						if (message.what && message.what.trim()) {
+							messages = [...messages.filter((m) => m.when !== message.when), message]
+								.slice(-100)
+								.sort((a, b) => a.when - b.when);
+							if (canAutoScroll) {
+								autoScroll();
+							} else {
+								unreadMessages = true;
+							}
 						}
-					}
+					});
 				}
 			});
 	});
