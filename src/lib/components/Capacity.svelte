@@ -223,11 +223,19 @@
 	// Toggle expanded state
 	function toggleExpanded() {
 		expanded = !expanded;
+		// If we're expanding settings, close chat
+		if (expanded) {
+			chatExpanded = false;
+		}
 	}
 
 	// Toggle chat state
 	function toggleChat() {
 		chatExpanded = !chatExpanded;
+		// If we're expanding chat, close settings
+		if (chatExpanded) {
+			expanded = false;
+		}
 	}
 
 	// Handle adding a subtree filter
@@ -762,6 +770,18 @@
 					{/if}
 				</div>
 
+				<div class="hidden-option mb-4">
+					<label class="inline-flex items-center">
+						<input
+							type="checkbox"
+							bind:checked={capacityHiddenUntilRequestAccepted}
+							class="mr-3 h-4 w-4"
+							onchange={handleCapacityUpdate}
+						/>
+						<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
+					</label>
+				</div>
+
 				<div class="other-options mb-4">
 					<div class="max-divisibility-section mb-6">
 						<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
@@ -790,18 +810,6 @@
 								/>
 							</div>
 						</div>
-					</div>
-
-					<div class="hidden-option">
-						<label class="inline-flex items-center">
-							<input
-								type="checkbox"
-								bind:checked={capacityHiddenUntilRequestAccepted}
-								class="mr-3 h-4 w-4"
-								onchange={handleCapacityUpdate}
-							/>
-							<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
-						</label>
 					</div>
 				</div>
 			</div>

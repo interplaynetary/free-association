@@ -191,7 +191,7 @@ export function signup(username: string, password: string) {
 }
 
 export async function signout() {
-	user().leave();
+	user.leave();
 	while (user._.sea != null) {
 		await new Promise(requestAnimationFrame);
 	}

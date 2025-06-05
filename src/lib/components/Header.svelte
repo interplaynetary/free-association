@@ -460,15 +460,15 @@
 			<div class="breadcrumbs">
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">Loading...</div>
-				{:else if currentPathInfo.length === 0 && user}
+				{:else if currentPathInfo.length === 0 && $username}
 					<a
 						href="/"
 						class="breadcrumb-item auth-root current"
 						onclick={(e) => handleBreadcrumbClick(0, e)}
 						tabindex="0"
-						aria-label={user}
+						aria-label={$username}
 					>
-						{user}
+						{$username}
 					</a>
 				{:else if currentPathInfo.length === 0}
 					<button

@@ -2,14 +2,14 @@
 	import { onMount } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { browser } from '$app/environment';
-	import BottomSheet from 'svelte-bottom-sheet';
+	import { BottomSheet } from 'svelte-bottom-sheet';
 	import type { DropdownDataProvider } from '$lib/state.svelte';
 
 	// Props using Svelte 5 runes
 	let {
 		title = 'Select Item',
 		searchPlaceholder = 'Search...',
-		maxHeight = 0.7,
+		maxHeight = 0.8,
 		dataProvider,
 		filterText = '',
 		show = false,
@@ -145,137 +145,258 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		max-height: 80vh;
+		max-height: 85vh;
+		width: 100%;
+		max-width: 100vw;
+		overflow: hidden;
 	}
 
 	.header {
-		padding: 16px 20px 12px;
-		border-bottom: 1px solid #eee;
-		background-color: #f9f9f9;
+		padding: 20px 24px 16px;
+		border-bottom: 1px solid #e8e8e8;
+		background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
 		flex-shrink: 0;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 	}
 
 	.title {
-		margin: 0 0 12px 0;
-		font-size: 18px;
-		font-weight: 600;
-		color: #333;
+		margin: 0 0 16px 0;
+		font-size: 20px;
+		font-weight: 700;
+		color: #1a1a1a;
+		letter-spacing: -0.01em;
+		line-height: 1.2;
 	}
 
 	.search-input {
 		width: 100%;
-		padding: 12px 16px;
+		padding: 14px 18px;
 		border: none;
-		border-radius: 8px;
+		border-radius: 12px;
 		background: #ffffff;
-		box-shadow: inset 0 0 0 1px #e0e0e0;
+		box-shadow:
+			inset 0 0 0 1px #e8e8e8,
+			0 2px 4px rgba(0, 0, 0, 0.04);
 		outline: none;
 		font-size: 16px;
 		color: #333;
-		transition: box-shadow 0.2s;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		box-sizing: border-box;
 	}
 
 	.search-input:focus {
-		box-shadow: inset 0 0 0 2px #007aff;
+		box-shadow:
+			inset 0 0 0 2px #007aff,
+			0 4px 12px rgba(0, 122, 255, 0.15);
+		transform: translateY(-1px);
+	}
+
+	.search-input::placeholder {
+		color: #999;
 	}
 
 	.results {
 		overflow-y: auto;
 		overflow-x: hidden;
 		flex: 1;
-		padding-bottom: 20px;
+		padding-bottom: 24px;
 		scrollbar-width: thin;
-		scrollbar-color: #d0d0d0 #f5f5f5;
+		scrollbar-color: #d0d0d0 transparent;
 		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
 	}
 
 	.results::-webkit-scrollbar {
-		width: 6px;
+		width: 4px;
 	}
 
 	.results::-webkit-scrollbar-track {
-		background: #f5f5f5;
+		background: transparent;
 	}
 
 	.results::-webkit-scrollbar-thumb {
 		background-color: #d0d0d0;
-		border-radius: 3px;
+		border-radius: 2px;
+	}
+
+	.results::-webkit-scrollbar-thumb:hover {
+		background-color: #b0b0b0;
 	}
 
 	.message {
-		padding: 24px 20px;
+		padding: 32px 24px;
 		text-align: center;
 		color: #888;
-		font-size: 15px;
+		font-size: 16px;
+		line-height: 1.4;
 	}
 
 	.item {
-		padding: 16px 20px;
+		padding: 18px 24px;
 		cursor: pointer;
 		font-size: 16px;
-		border-bottom: 1px solid #f0f0f0;
+		border-bottom: 1px solid #f5f5f5;
 		display: flex;
-		align-items: center;
-		transition: background 0.2s;
-		min-height: 60px;
+		align-items: flex-start;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		min-height: 64px;
+		position: relative;
+		overflow: hidden;
 	}
 
 	.item:hover {
-		background-color: #f5f7fa;
+		background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+		transform: translateX(2px);
 	}
 
 	.item:active {
-		background-color: #e8f0fe;
+		background: linear-gradient(135deg, #e8f0fe 0%, #dae8fc 100%);
+		transform: translateX(1px);
+	}
+
+	.item:last-child {
+		border-bottom: none;
 	}
 
 	.color-dot {
-		width: 12px;
-		height: 12px;
+		width: 14px;
+		height: 14px;
 		border-radius: 50%;
-		margin-right: 12px;
+		margin-right: 16px;
+		margin-top: 3px;
 		flex-shrink: 0;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
 	.item-content {
 		flex: 1;
 		min-width: 0;
+		width: 100%;
+		overflow: hidden;
 	}
 
 	.item-name {
-		color: #333;
-		font-weight: 500;
-		margin-bottom: 2px;
+		color: #1a1a1a;
+		font-weight: 600;
+		margin-bottom: 4px;
+		line-height: 1.4;
 		word-wrap: break-word;
+		overflow-wrap: break-word;
+		hyphens: auto;
+		white-space: normal;
+		word-break: break-word;
+		max-width: 100%;
 	}
 
 	.item-meta {
 		font-size: 14px;
 		color: #666;
+		line-height: 1.3;
+		margin-top: 2px;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
-	/* Mobile-specific adjustments */
+	/* Enhanced mobile experience */
 	@media (max-width: 768px) {
+		.bottomsheet-container {
+			max-height: 90vh;
+		}
+
 		.header {
-			padding: 12px 16px 8px;
+			padding: 16px 20px 12px;
 		}
 
 		.title {
-			font-size: 16px;
-			margin-bottom: 8px;
+			font-size: 18px;
+			margin-bottom: 12px;
 		}
 
 		.search-input {
-			padding: 10px 12px;
+			padding: 12px 16px;
 			font-size: 16px; /* Prevents zoom on iOS */
+			border-radius: 10px;
 		}
 
 		.item {
-			padding: 12px 16px;
+			padding: 16px 20px;
+			min-height: 60px;
+		}
+
+		.color-dot {
+			width: 12px;
+			height: 12px;
+			margin-right: 14px;
+		}
+
+		.item-name {
+			font-size: 15px;
+			line-height: 1.3;
+		}
+
+		.item-meta {
+			font-size: 13px;
+		}
+
+		.message {
+			padding: 24px 20px;
+			font-size: 15px;
+		}
+	}
+
+	/* Extra small screens */
+	@media (max-width: 480px) {
+		.header {
+			padding: 12px 16px 10px;
+		}
+
+		.title {
+			font-size: 17px;
+			margin-bottom: 10px;
+		}
+
+		.search-input {
+			padding: 11px 14px;
+			border-radius: 8px;
+		}
+
+		.item {
+			padding: 14px 16px;
 			min-height: 56px;
+		}
+
+		.color-dot {
+			margin-right: 12px;
 		}
 
 		.message {
 			padding: 20px 16px;
+		}
+	}
+
+	/* Improve text selection */
+	.item-name,
+	.item-meta {
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-touch-callout: none;
+	}
+
+	/* Smooth animations */
+	@media (prefers-reduced-motion: no-preference) {
+		.item {
+			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		.search-input {
+			transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.item,
+		.search-input {
+			transition: none;
 		}
 	}
 </style>

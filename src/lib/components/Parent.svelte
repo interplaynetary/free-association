@@ -17,7 +17,7 @@
 		addContributors
 	} from '$lib/protocol';
 	import Child from '$lib/components/Child.svelte';
-	import DropDown from '$lib/components/DropDown.svelte';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import { browser } from '$app/environment';
 
 	// Define a type for visualization data
@@ -410,8 +410,13 @@
 			const hasContributor = (node as NonRootNode).contributor_ids.includes(userId);
 
 			if (!hasContributor) {
-				// Add the contributor ID
-				(node as NonRootNode).contributor_ids.push(userId);
+				// Get current contributors and add the new one
+				const currentContributors = [...(node as NonRootNode).contributor_ids];
+				currentContributors.push(userId);
+
+				// Use the protocol function to properly add contributors AND clear children
+				// This ensures the node becomes a proper leaf contribution node
+				addContributors(node, currentContributors);
 
 				// Update the store to trigger reactivity
 				userTree.set(updatedTree);
@@ -742,8 +747,7 @@
 
 	<!-- User dropdown for adding contributors -->
 	{#if showUserDropdown}
-		<DropDown
-			position={dropdownPosition}
+		<BottomSheet
 			show={showUserDropdown}
 			title="Select Contributor"
 			searchPlaceholder="Search users..."
