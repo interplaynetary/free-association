@@ -725,8 +725,15 @@ export function applyCapacityFilter(
 		return normalizeShareMap({ ...shareMap });
 	}
 
+	console.log('[FILTER-DEBUG] Applying filter:', capacity.filter_rule);
+	console.log('[FILTER-DEBUG] Subtree contributor map:', subtreeContributorMap);
+	console.log('[FILTER-DEBUG] Share map before filter:', shareMap);
+
 	// Apply the jsonLogic filter
-	return applyJsonLogicFilter(shareMap, capacity.filter_rule, nodeContext, subtreeContributorMap);
+	const result = applyJsonLogicFilter(shareMap, capacity.filter_rule, nodeContext, subtreeContributorMap);
+	
+	console.log('[FILTER-DEBUG] Share map after filter:', result);
+	return result;
 }
 
 // Common predicates as JsonLogic rules
