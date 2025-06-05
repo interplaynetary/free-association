@@ -62,6 +62,7 @@
 	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
+	let capacityFilterRule = $state(capacity.filter_rule);
 
 	// Load emoji picker client-side only
 	onMount(async () => {
@@ -185,8 +186,8 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		// Create a new capacity object with all current values
-		const updatedCapacity: ProviderCapacity = {
+		// First create a plain object with all our values
+		const plainCapacity = {
 			...capacity,
 			name: capacityName,
 			emoji: capacityEmoji,
@@ -208,10 +209,13 @@
 			custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
 			max_natural_div: capacityMaxNaturalDiv,
 			max_percentage_div: capacityMaxPercentageDiv,
-			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted
+			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
+			filter_rule: capacityFilterRule
 		};
 
-		// Update the parent
+		// Create a completely new plain object
+		const updatedCapacity = JSON.parse(JSON.stringify(plainCapacity));
+
 		onupdate?.(updatedCapacity);
 	}
 
@@ -283,17 +287,18 @@
 
 	// Update the filter rule based on selected subtrees
 	function updateSubtreeFilter() {
+		// Create the filter rule as a plain object first
+		let plainFilterRule;
 		if (selectedSubtrees.length === 0) {
-			// No filter selected, remove filter rule
-			capacity.filter_rule = undefined;
+			plainFilterRule = undefined;
 		} else if (selectedSubtrees.length === 1) {
-			// Single subtree filter
-			capacity.filter_rule = FilterRules.inSubtree(selectedSubtrees[0]);
+			plainFilterRule = JSON.parse(JSON.stringify(FilterRules.inSubtree(selectedSubtrees[0])));
 		} else {
-			// Multiple subtrees filter
-			capacity.filter_rule = FilterRules.inSubtrees(selectedSubtrees);
+			plainFilterRule = JSON.parse(JSON.stringify(FilterRules.inSubtrees(selectedSubtrees)));
 		}
 
+		// Now assign the plain object to our state
+		capacityFilterRule = plainFilterRule;
 		handleCapacityUpdate();
 	}
 
