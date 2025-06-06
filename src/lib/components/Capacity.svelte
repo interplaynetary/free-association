@@ -342,7 +342,7 @@
 			placeholder="Name"
 			onchange={handleCapacityUpdate}
 			style="width: {Math.max(capacityName?.length || 0, 'Name'.length) +
-				2}ch; min-width: {Math.max(4, 'Name'.length + 1)}ch;"
+				3}ch; min-width: {Math.max(6, 'Name'.length + 2)}ch;"
 		/>
 		<input
 			type="number"
@@ -353,7 +353,7 @@
 			placeholder="Qty"
 			onchange={handleCapacityUpdate}
 			style="width: {Math.max(capacityQuantity?.toString().length || 0, 'Qty'.length) +
-				1}ch; min-width: {Math.max(3, 'Qty'.length + 1)}ch;"
+				3}ch; min-width: {Math.max(5, 'Qty'.length + 2)}ch;"
 		/>
 		<input
 			type="text"
@@ -362,7 +362,7 @@
 			placeholder="Unit"
 			onchange={handleCapacityUpdate}
 			style="width: {Math.max(capacityUnit?.length || 0, 'Unit'.length) +
-				1}ch; min-width: {Math.max(4, 'Unit'.length + 1)}ch;"
+				3}ch; min-width: {Math.max(6, 'Unit'.length + 2)}ch;"
 		/>
 
 		<!-- Action buttons -->
