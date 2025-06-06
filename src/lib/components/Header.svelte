@@ -514,6 +514,14 @@
 		</div>
 
 		<div class="header-controls">
+			<a
+				href="https://playnet.lol"
+				class="icon-button playnet-button"
+				title="Visit playnet.lol"
+				target="_blank"
+			>
+				<span>✨</span>
+			</a>
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
