@@ -11,7 +11,7 @@
 	// Derived toast state
 	let toast = $derived(globalState.toast);
 
-	// Set up global keyboard event listener
+	// Set up global keyboard event listener and virtual keyboard handling
 	onMount(() => {
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation
@@ -33,90 +33,52 @@
 			}
 		}
 
-		// Mobile keyboard handling for viewport stability
-		function handleViewportChange() {
-			// Force a layout recalculation to ensure proper viewport reset
-			// This is particularly important for mobile browsers when keyboard closes
-			const main = document.querySelector('main');
-			if (main) {
-				// Temporarily force a style recalculation
-				main.style.height = '100dvh';
-
-				// Use requestAnimationFrame to ensure the browser processes the change
-				requestAnimationFrame(() => {
-					main.style.height = '100dvh';
-				});
+		// Modern VirtualKeyboard API for Chromium browsers
+		if ('virtualKeyboard' in navigator) {
+			try {
+				// @ts-ignore - VirtualKeyboard API is experimental
+				navigator.virtualKeyboard.overlaysContent = true;
+				console.log('VirtualKeyboard API enabled');
+			} catch (error) {
+				console.warn('VirtualKeyboard API failed to initialize:', error);
 			}
 		}
 
-		// Enhanced keyboard detection and layout correction
-		function setupMobileKeyboardHandling() {
-			let isKeyboardOpen = false;
-			let initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+		// Fallback: iOS Safari visual viewport handling
+		function handleViewportChange() {
+			const visualViewport = window.visualViewport;
+			if (visualViewport) {
+				const viewportHeight = visualViewport.height;
+				const windowHeight = window.innerHeight;
+				const keyboardHeight = Math.max(0, windowHeight - viewportHeight);
 
-			function detectKeyboardState() {
-				const currentHeight = window.visualViewport?.height || window.innerHeight;
-				const heightDifference = initialViewportHeight - currentHeight;
+				// Update CSS custom property for keyboard height
+				document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
 
-				// Keyboard is considered open if viewport height decreased significantly (more than 150px)
-				const keyboardNowOpen = heightDifference > 150;
-
-				if (isKeyboardOpen !== keyboardNowOpen) {
-					isKeyboardOpen = keyboardNowOpen;
-
-					if (!isKeyboardOpen) {
-						// Keyboard just closed - ensure layout resets properly
-						setTimeout(() => {
-							handleViewportChange();
-							// Double-check after a delay for stubborn browsers
-							setTimeout(handleViewportChange, 300);
-						}, 100);
-					}
+				// Prevent the interface from being stuck when keyboard dismisses
+				if (keyboardHeight === 0) {
+					// Small delay to ensure proper reset
+					setTimeout(() => {
+						window.scrollTo(0, 0);
+					}, 100);
 				}
 			}
+		}
 
-			// Update initial height on orientation change
-			function updateInitialHeight() {
-				setTimeout(() => {
-					initialViewportHeight = window.visualViewport?.height || window.innerHeight;
-				}, 500);
-			}
-
-			// Listen to various events that indicate viewport changes
-			if (window.visualViewport) {
-				window.visualViewport.addEventListener('resize', detectKeyboardState);
-				window.visualViewport.addEventListener('scroll', detectKeyboardState);
-			}
-
-			window.addEventListener('resize', detectKeyboardState);
-			window.addEventListener('orientationchange', updateInitialHeight);
-
-			// Also listen for focus/blur events on inputs as additional indicators
-			document.addEventListener('focusout', (event) => {
-				const target = event.target as Element;
-				if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-					// Input lost focus - keyboard might be closing
-					setTimeout(detectKeyboardState, 300);
-				}
-			});
-
-			// Cleanup function
-			return () => {
-				if (window.visualViewport) {
-					window.visualViewport.removeEventListener('resize', detectKeyboardState);
-					window.visualViewport.removeEventListener('scroll', detectKeyboardState);
-				}
-				window.removeEventListener('resize', detectKeyboardState);
-				window.removeEventListener('orientationchange', updateInitialHeight);
-			};
+		// Set up visual viewport listeners for fallback
+		if (window.visualViewport) {
+			window.visualViewport.addEventListener('resize', handleViewportChange);
+			// Initial call
+			handleViewportChange();
 		}
 
 		document.addEventListener('keydown', handleGlobalKeydown);
-		const cleanupKeyboard = setupMobileKeyboardHandling();
 
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
-			cleanupKeyboard?.();
+			if (window.visualViewport) {
+				window.visualViewport.removeEventListener('resize', handleViewportChange);
+			}
 		};
 	});
 </script>
@@ -156,6 +118,8 @@
 		box-sizing: border-box;
 		/* Prevent any overflow that could cause scrolling */
 		overflow: hidden;
+		/* Handle virtual keyboard appearance */
+		padding-bottom: max(env(safe-area-inset-bottom), env(keyboard-inset-height, 0px));
 	}
 
 	.app-header {
@@ -179,11 +143,13 @@
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */
 		min-height: 0; /* Important for flexbox overflow */
+		/* Adjust padding bottom for keyboard (fallback) */
+		padding-bottom: calc(16px + var(--keyboard-height, 0px));
 	}
 
 	.toast-container {
 		position: fixed;
-		bottom: calc(20px + env(safe-area-inset-bottom));
+		bottom: calc(20px + env(safe-area-inset-bottom) + env(keyboard-inset-height, 0px));
 		right: calc(20px + env(safe-area-inset-right));
 		z-index: 1000;
 		/* Ensure toast doesn't interfere with document flow */
@@ -231,5 +197,13 @@
 	.toast-error {
 		background-color: #f44336;
 		color: white;
+	}
+
+	/* Additional CSS for older browsers and edge cases */
+	@supports not (padding: env(keyboard-inset-height)) {
+		.app-content {
+			/* Fallback behavior for browsers without keyboard-inset support */
+			padding-bottom: calc(16px + var(--keyboard-height, 0px));
+		}
 	}
 </style>

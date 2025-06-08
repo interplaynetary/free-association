@@ -20,6 +20,11 @@ html, body {
   background-color: #ffffff;
 }
 
+:root {
+  /* Custom property for keyboard height fallback */
+  --keyboard-height: 0px;
+}
+
 /* ===== Layout Structure ===== */
 .container, .app-layout {
   width: 100%;

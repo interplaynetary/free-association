@@ -561,27 +561,110 @@
 	function handleGlobalTouchEnd() {
 		if (isTouching) {
 			stopGrowth();
+			resetInteractionState();
+		}
+	}
+
+	// Track active interaction to prevent duplicate events
+	let activePointerId: number | null = $state(null);
+	let interactionHandled = $state(false);
+	let isMultiTouch = $state(false);
+
+	// Handle touch start to detect multi-touch gestures
+	function handleTouchStart(
+		event: TouchEvent,
+		node: d3.HierarchyRectangularNode<VisualizationNode>
+	) {
+		// Detect multi-touch for shrinking
+		isMultiTouch = event.touches.length === 2;
+		console.log(
+			'[DEBUG] TouchStart - touches:',
+			event.touches.length,
+			'isMultiTouch:',
+			isMultiTouch
+		);
+
+		// Let the pointer event handle the main logic
+		// This is just for multi-touch detection
+	}
+
+	// Handle touch end to reset multi-touch state
+	function handleTouchEnd(event: TouchEvent) {
+		// Reset multi-touch state when fingers are lifted
+		if (event.touches.length < 2) {
+			isMultiTouch = false;
 		}
 	}
 
 	function handleGrowthStart(
-		event: MouseEvent | TouchEvent,
+		event: PointerEvent,
 		node: d3.HierarchyRectangularNode<VisualizationNode>
 	) {
+		console.log(
+			'[DEBUG] PointerDown - isPrimary:',
+			event.isPrimary,
+			'button:',
+			event.button,
+			'isMultiTouch:',
+			isMultiTouch
+		);
+
+		// Only handle primary pointer to prevent duplicates
+		if (!event.isPrimary) return;
+
+		// Prevent duplicate handling for the same interaction
+		if (interactionHandled) return;
+
+		// Set interaction tracking
+		activePointerId = event.pointerId;
+		interactionHandled = true;
+
 		// Set touch state
 		isTouching = true;
 		touchStartTime = Date.now();
 		activeGrowthNodeId = node.data.id;
 
-		// Determine if shrinking (right-click or two-finger touch)
-		const isShrinking =
-			event instanceof MouseEvent ? event.button === 2 : (event as TouchEvent).touches.length === 2;
+		// For touch events, delay processing to allow multi-touch detection
+		if (event.pointerType === 'touch') {
+			// Small delay to let touch events fire and detect multi-touch
+			setTimeout(() => {
+				if (!interactionHandled) return; // Check if interaction was cancelled
 
-		// Start growth with delay
-		startGrowth(node, isShrinking);
+				// Determine if shrinking (right-click or multi-touch)
+				const isShrinking = event.button === 2 || isMultiTouch;
+				console.log(
+					'[DEBUG] Delayed processing - isShrinking:',
+					isShrinking,
+					'button:',
+					event.button,
+					'isMultiTouch:',
+					isMultiTouch
+				);
+
+				// Start growth with delay
+				startGrowth(node, isShrinking);
+			}, 50); // 50ms delay to allow touch events to fire
+		} else {
+			// For mouse events, process immediately
+			const isShrinking = event.button === 2 || isMultiTouch;
+			console.log(
+				'[DEBUG] Immediate processing - isShrinking:',
+				isShrinking,
+				'button:',
+				event.button,
+				'isMultiTouch:',
+				isMultiTouch
+			);
+
+			// Start growth with delay
+			startGrowth(node, isShrinking);
+		}
 	}
 
-	function handleGrowthEnd(event: MouseEvent | TouchEvent) {
+	function handleGrowthEnd(event: PointerEvent) {
+		// Only handle if this is our active pointer
+		if (!event.isPrimary || event.pointerId !== activePointerId) return;
+
 		// Check if the click target is a text edit field, node-text element, or contributor element
 		const target = event.target as HTMLElement;
 		if (
@@ -598,6 +681,7 @@
 				target.closest('.contributors-area'))
 		) {
 			// Click originated from text or contributor elements, don't navigate
+			resetInteractionState();
 			return;
 		}
 
@@ -621,7 +705,24 @@
 				zoomInto(nodeId);
 			}
 		}
+
+		// Reset interaction state
+		resetInteractionState();
 	}
+
+	// Helper function to reset interaction tracking
+	function resetInteractionState() {
+		activePointerId = null;
+		interactionHandled = false;
+		isMultiTouch = false;
+	}
+
+	// Reset interaction state when navigation occurs
+	$effect(() => {
+		// Watch for path changes to reset interaction state
+		path;
+		resetInteractionState();
+	});
 
 	function handleNodeDeletion(nodeId: string) {
 		if (confirm(`Delete this node?`)) {
@@ -705,10 +806,10 @@
 							height: {(child.y1 - child.y0) * 100}%;
 							box-sizing: border-box;
 						"
-						onmousedown={(e) => handleGrowthStart(e, child)}
-						onmouseup={(e) => handleGrowthEnd(e)}
-						ontouchstart={(e) => handleGrowthStart(e, child)}
-						ontouchend={(e) => handleGrowthEnd(e)}
+						onpointerdown={(e) => handleGrowthStart(e, child)}
+						onpointerup={(e) => handleGrowthEnd(e)}
+						ontouchstart={(e) => handleTouchStart(e, child)}
+						ontouchend={(e) => handleTouchEnd(e)}
 						oncontextmenu={(e) => e.preventDefault()}
 					>
 						<Child
