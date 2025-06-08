@@ -130,17 +130,50 @@
 		// Create hierarchy
 		const rootNode: VisualizationNode = {
 			id: data.id,
-			points: data.selfPoints,
+			points: 0, // Don't include parent points in visualization
 			children: data.children
 		};
+
+		console.log('[DEBUG] Creating hierarchy with data:', data);
+		console.log('[DEBUG] Current tree state:', tree);
+		console.log('[DEBUG] Current node:', currentNode);
+		console.log(
+			'[DEBUG] Children points:',
+			data.children.map((c) => ({ name: c.nodeName, points: c.points }))
+		);
+		console.log(
+			'[DEBUG] Original children from tree:',
+			currentNode?.children?.map((c) => ({
+				name: c.name,
+				points: c.type === 'NonRootNode' ? c.points : 0
+			}))
+		);
 
 		const hierarchy = d3.hierarchy<VisualizationNode>(rootNode, (d) => d.children);
 
 		// Sum for sizing
 		hierarchy.sum((d) => d.points);
 
+		console.log(
+			'[DEBUG] After sum - hierarchy values:',
+			hierarchy.children?.map((c) => ({
+				name: c.data.nodeName,
+				points: c.data.points,
+				value: c.value
+			}))
+		);
+
 		// Sort by value for better layout
 		hierarchy.sort((a, b) => b.value! - a.value!);
+
+		console.log(
+			'[DEBUG] After sort - hierarchy values:',
+			hierarchy.children?.map((c) => ({
+				name: c.data.nodeName,
+				points: c.data.points,
+				value: c.value
+			}))
+		);
 
 		// Custom tile function to ensure nodes fill their container
 		function customTile(
@@ -170,7 +203,20 @@
 			.padding(0.005)
 			.round(false);
 
-		return treemap(hierarchy);
+		const result = treemap(hierarchy);
+
+		console.log(
+			'[DEBUG] After treemap - final dimensions:',
+			result.children?.map((c) => ({
+				name: c.data.nodeName,
+				points: c.data.points,
+				value: c.value,
+				width: (c.x1 - c.x0) * 100,
+				height: (c.y1 - c.y0) * 100
+			}))
+		);
+
+		return result;
 	});
 
 	onMount(() => {
@@ -725,7 +771,7 @@
 	});
 
 	function handleNodeDeletion(nodeId: string) {
-		if (confirm(`Delete this node?`)) {
+		if (confirm(`Delete this node and all its children?`)) {
 			try {
 				if (!tree) return;
 

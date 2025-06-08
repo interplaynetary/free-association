@@ -127,3 +127,5 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 	// Persist the shares to gun
 	persistContributorCapacityShares();
 });
+
+

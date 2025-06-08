@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { gunAvatar } from 'gun-avatar';
 	import { getColorForUserId, getContrastTextColor } from '../utils/colorUtils';
-	import { userpub } from '$lib/state/gun.svelte';
 
 	interface Message {
 		who: string;
 		what: string;
 		when: number;
-		userPub?: string; // Public key for gun-avatar
+		whopub?: string; // Public key for gun-avatar
 	}
 
 	interface ChatMessageProps {
@@ -20,20 +19,19 @@
 	const messageClass = message.who === sender ? 'sent' : 'received';
 	const ts = new Date(message.when);
 
-	// Debug logging for userPub
-	console.log('ChatMessage - userPub:', message.userPub, 'length:', message.userPub?.length);
-	console.log('ChatMessage - current user pub:', $userpub);
+	// Debug logging for whopub
+	console.log('ChatMessage - whopub:', message.whopub, 'length:', message.whopub?.length);
 	console.log('ChatMessage - is own message:', message.who === sender);
 
 	// Generate avatar using gun-avatar if we have a public key, otherwise fallback
-	function generateAvatar(userPub?: string, username?: string | any): string {
-		if (userPub && userPub.length >= 87) {
-			console.log('Using gun-avatar for:', username, 'with pub:', userPub.substring(0, 20) + '...');
+	function generateAvatar(whopub?: string, username?: string | any): string {
+		if (whopub && whopub.length >= 87) {
+			console.log('Using gun-avatar for:', username, 'with pub:', whopub.substring(0, 20) + '...');
 			// Use gun-avatar for GUN SEA public keys
 			try {
 				// @ts-ignore
 				return gunAvatar({
-					pub: userPub,
+					pub: whopub,
 					size: 32,
 					round: true,
 					draw: 'circles'
@@ -42,7 +40,7 @@
 				console.warn('Failed to generate gun-avatar:', error);
 			}
 		} else {
-			console.log('Fallback avatar for:', username, 'userPub length:', userPub?.length);
+			console.log('Fallback avatar for:', username, 'whopub length:', whopub?.length);
 		}
 
 		// Fallback to simple color-based avatar if no valid public key
@@ -62,15 +60,11 @@
 		`)}`;
 	}
 
-	const avatar = generateAvatar(message.userPub, message.who);
+	const avatar = generateAvatar(message.whopub, message.who);
 
-	// Get color for user ID - use current user's pub for own messages, message data for others
-	const isOwnMessage = message.who === sender;
-	const userIdForColor = isOwnMessage ? $userpub : message.userPub || message.who;
-	// Ensure we have a string for the color function
 	const colorId =
-		typeof userIdForColor === 'string'
-			? userIdForColor
+		typeof message.whopub === 'string'
+			? message.whopub
 			: typeof message.who === 'string'
 				? message.who
 				: 'Anonymous';
@@ -78,7 +72,7 @@
 	const textColor = getContrastTextColor(userColor);
 
 	// Debug logging for color
-	console.log('ChatMessage - userIdForColor:', userIdForColor, 'userColor:', userColor);
+	console.log('ChatMessage - message.whopub:', message.whopub, 'userColor:', userColor);
 </script>
 
 <div class={`message ${messageClass}`}>

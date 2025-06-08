@@ -3,6 +3,8 @@ import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svel
 import { usersList, userIds, userNamesCache } from './gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
+// await gun.user(data).get('pub') we can use this instead of .once
+
 // Generic dropdown data provider interface
 export interface DropdownItem {
 	id: string;

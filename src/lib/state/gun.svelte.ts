@@ -28,6 +28,8 @@ if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
 }
 
+// I wonder if it would be required 
+
 /*
 async function requestPersistentStorage() {
 	if (typeof navigator !== 'undefined' && navigator?.storage?.persist) {
@@ -45,6 +47,8 @@ async function requestPersistentStorage() {
 
 requestPersistentStorage();
 */
+
+export const GUN = Gun
 
 // Database
 export const gun = Gun({
