@@ -150,23 +150,29 @@
 		console.log(`Clicked on contributor: ${userId}`);
 	}
 
-	// Prevent text selection and other interfering behaviors
-	function preventTextSelection(event: Event) {
+	// Unified handler for all text selection prevention
+	function preventAllInterference(event: Event) {
 		event.preventDefault();
 		event.stopPropagation();
+		event.stopImmediatePropagation();
+
+		// Clear any existing selections as final insurance
+		requestAnimationFrame(() => {
+			document.getSelection()?.removeAllRanges();
+		});
+
 		return false;
 	}
 
-	// Handle text edit start - more streamlined for Svelte 5
-	function handleTextEditStart(event: MouseEvent | TouchEvent) {
-		// Prevent all default behaviors that could interfere
-		event.preventDefault();
-		event.stopPropagation();
+	// Handle edit initiation with comprehensive interference prevention
+	function handleTextEditStart(event: Event) {
+		// First prevent all default behaviors
+		preventAllInterference(event);
 
 		// Only allow editing if we have a valid node ID
 		if (!node.id) return;
 
-		// Set up edit state immediately - no need for delays in modern browsers
+		// Set up edit state
 		isEditing = true;
 		editValue = node.name || '';
 	}
@@ -310,8 +316,11 @@
 					title={node.name}
 					onmousedown={handleTextEditStart}
 					ontouchstart={handleTextEditStart}
-					onselectstart={preventTextSelection}
-					ondragstart={preventTextSelection}
+					onpointerdown={handleTextEditStart}
+					onselectstart={preventAllInterference}
+					ondragstart={preventAllInterference}
+					oncontextmenu={preventAllInterference}
+					ondblclick={preventAllInterference}
 				>
 					{#each segments as segment}
 						<span class="title-segment">{segment}</span>
@@ -420,12 +429,18 @@
 	}
 
 	.node-title-area {
+		/* Comprehensive text selection prevention */
 		user-select: none;
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
+		/* Touch interaction control */
 		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation;
+		/* Prevent drag operations */
+		-webkit-user-drag: none;
+		pointer-events: auto;
 	}
 
 	.node-title {
@@ -437,13 +452,15 @@
 		cursor: text;
 		word-break: break-word;
 		hyphens: auto;
+		/* Inherit all interference prevention from parent */
 		user-select: none;
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
 		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+		-webkit-tap-highlight-color: transparent;
 		touch-action: manipulation;
+		-webkit-user-drag: none;
 	}
 
 	.title-segment {

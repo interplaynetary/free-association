@@ -33,10 +33,90 @@
 			}
 		}
 
+		// Mobile keyboard handling for viewport stability
+		function handleViewportChange() {
+			// Force a layout recalculation to ensure proper viewport reset
+			// This is particularly important for mobile browsers when keyboard closes
+			const main = document.querySelector('main');
+			if (main) {
+				// Temporarily force a style recalculation
+				main.style.height = '100dvh';
+
+				// Use requestAnimationFrame to ensure the browser processes the change
+				requestAnimationFrame(() => {
+					main.style.height = '100dvh';
+				});
+			}
+		}
+
+		// Enhanced keyboard detection and layout correction
+		function setupMobileKeyboardHandling() {
+			let isKeyboardOpen = false;
+			let initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+
+			function detectKeyboardState() {
+				const currentHeight = window.visualViewport?.height || window.innerHeight;
+				const heightDifference = initialViewportHeight - currentHeight;
+
+				// Keyboard is considered open if viewport height decreased significantly (more than 150px)
+				const keyboardNowOpen = heightDifference > 150;
+
+				if (isKeyboardOpen !== keyboardNowOpen) {
+					isKeyboardOpen = keyboardNowOpen;
+
+					if (!isKeyboardOpen) {
+						// Keyboard just closed - ensure layout resets properly
+						setTimeout(() => {
+							handleViewportChange();
+							// Double-check after a delay for stubborn browsers
+							setTimeout(handleViewportChange, 300);
+						}, 100);
+					}
+				}
+			}
+
+			// Update initial height on orientation change
+			function updateInitialHeight() {
+				setTimeout(() => {
+					initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+				}, 500);
+			}
+
+			// Listen to various events that indicate viewport changes
+			if (window.visualViewport) {
+				window.visualViewport.addEventListener('resize', detectKeyboardState);
+				window.visualViewport.addEventListener('scroll', detectKeyboardState);
+			}
+
+			window.addEventListener('resize', detectKeyboardState);
+			window.addEventListener('orientationchange', updateInitialHeight);
+
+			// Also listen for focus/blur events on inputs as additional indicators
+			document.addEventListener('focusout', (event) => {
+				const target = event.target as Element;
+				if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+					// Input lost focus - keyboard might be closing
+					setTimeout(detectKeyboardState, 300);
+				}
+			});
+
+			// Cleanup function
+			return () => {
+				if (window.visualViewport) {
+					window.visualViewport.removeEventListener('resize', detectKeyboardState);
+					window.visualViewport.removeEventListener('scroll', detectKeyboardState);
+				}
+				window.removeEventListener('resize', detectKeyboardState);
+				window.removeEventListener('orientationchange', updateInitialHeight);
+			};
+		}
+
 		document.addEventListener('keydown', handleGlobalKeydown);
+		const cleanupKeyboard = setupMobileKeyboardHandling();
 
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
+			cleanupKeyboard?.();
 		};
 	});
 </script>
@@ -48,16 +128,16 @@
 	<div class="app-content">
 		{@render children()}
 	</div>
-
-	<!-- Toast notification -->
-	{#if toast.visible}
-		<div class="toast-container">
-			<div class="toast toast-{toast.type}">
-				{toast.message}
-			</div>
-		</div>
-	{/if}
 </main>
+
+<!-- Toast notification - moved outside main to avoid layout conflicts -->
+{#if toast.visible}
+	<div class="toast-container">
+		<div class="toast toast-{toast.type}">
+			{toast.message}
+		</div>
+	</div>
+{/if}
 
 <style>
 	main {
@@ -74,6 +154,8 @@
 		padding-right: env(safe-area-inset-right);
 		/* Ensure total dimensions don't exceed viewport */
 		box-sizing: border-box;
+		/* Prevent any overflow that could cause scrolling */
+		overflow: hidden;
 	}
 
 	.app-header {
@@ -104,6 +186,8 @@
 		bottom: calc(20px + env(safe-area-inset-bottom));
 		right: calc(20px + env(safe-area-inset-right));
 		z-index: 1000;
+		/* Ensure toast doesn't interfere with document flow */
+		pointer-events: none;
 	}
 
 	.toast {
@@ -114,6 +198,8 @@
 		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 		transition: all 0.3s ease;
 		animation: slide-in 0.3s ease forwards;
+		/* Re-enable pointer events for the toast itself */
+		pointer-events: auto;
 	}
 
 	@keyframes slide-in {
