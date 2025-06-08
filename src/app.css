@@ -21,23 +21,16 @@ html, body {
 }
 
 /* ===== Layout Structure ===== */
-main, .container, .app-layout {
+.container, .app-layout {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* Remove conflicting positioning that causes mobile layout issues */
+/* Layout components are now handled in +layout.svelte - removed conflicts */
 
-/* ===== Common Components ===== */
-.app-header {
-  width: 100%;
-  height: 50px;
-  flex-shrink: 0;
-}
-
-.app-content,
+/* ===== Panel Wrappers ===== */
 .panel-wrapper {
   flex: 1;
   overflow: auto;
@@ -84,27 +77,7 @@ main, .container, .app-layout {
   color: #d32f2f;
 }
 
-/* ===== Toast Notifications ===== */
-.toast-container {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-}
-
-.toast {
-  padding: 10px 20px;
-  border-radius: 4px;
-  background-color: #333;
-  color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.3s ease-out;
-}
-
-.toast-success { background-color: #28a745; }
-.toast-warning { background-color: #ffc107; color: #333; }
-.toast-error { background-color: #dc3545; }
+/* Toast styles are now handled in +layout.svelte - removed conflicts */
 
 /* ===== Utility Classes ===== */
 .flex-center {

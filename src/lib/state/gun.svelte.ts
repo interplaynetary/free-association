@@ -74,10 +74,96 @@ export const usersList = gun.get('freely-associating-players');
 // Cache for user names to avoid repeated Gun lookups
 export const userNamesCache = writable<Record<string, string>>({});
 
+// Store for tracking all user IDs
+export const userIds = writable<string[]>([]);
+
+// Centralized reactive subscription to usersList
+function setupUsersListSubscription() {
+	if (typeof window === 'undefined') return; // Only run in browser
+
+	console.log('[USERS] Setting up centralized usersList subscription');
+
+	// Track current users to detect additions/removals
+	const currentUsers = new Map<string, any>();
+
+	// Subscribe to all changes in the usersList
+	usersList.map().on((userData: any, userId: string) => {
+		console.log(`[USERS] User update: ${userId}`, userData);
+
+		if (!userId || userId === '_') return; // Skip invalid keys
+
+		if (userData === null || userData === undefined) {
+			// User was removed
+			console.log(`[USERS] User removed: ${userId}`);
+			currentUsers.delete(userId);
+
+			// Update userNamesCache to remove this user
+			userNamesCache.update((cache) => {
+				const { [userId]: _, ...rest } = cache;
+				return rest;
+			});
+		} else {
+			// User was added or updated
+			console.log(`[USERS] User added/updated: ${userId}`, userData);
+			currentUsers.set(userId, userData);
+
+			// Get the user's alias and update cache
+			const userName = userData.name;
+			if (userName && typeof userName === 'string') {
+				// Update userNamesCache with the name from usersList
+				userNamesCache.update((cache) => ({
+					...cache,
+					[userId]: userName
+				}));
+			} else {
+				// Try to get alias from user's protected space
+				gun
+					.get(`~${userId}`)
+					.get('alias')
+					.once((alias: any) => {
+						if (alias && typeof alias === 'string') {
+							console.log(`[USERS] Got alias from protected space for ${userId}: ${alias}`);
+							userNamesCache.update((cache) => ({
+								...cache,
+								[userId]: alias
+							}));
+						}
+					});
+			}
+		}
+
+		// Update userIds store with current user list
+		const allUserIds = Array.from(currentUsers.keys());
+		console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
+		userIds.set(allUserIds);
+	});
+}
+
 export async function getUserName(userId: string) {
+	// First check the reactive cache
+	const cache = get(userNamesCache);
+	if (cache[userId]) {
+		return cache[userId];
+	}
+
+	// If not in cache, try to get it and update cache
 	// Look up from freely-associating-players first
 	try {
-		return usersList.get(userId).get('name');
+		const name = usersList
+			.get(userId)
+			.get('name')
+			.once((data: string) => {
+				return data;
+			});
+
+		if (name && typeof name === 'string') {
+			// Update cache
+			userNamesCache.update((cache) => ({
+				...cache,
+				[userId]: name
+			}));
+			return name;
+		}
 	} catch (error) {
 		console.log(
 			`[USER-NAME] Could not fetch from freely-associating-players for ${userId}:`,
@@ -87,13 +173,32 @@ export async function getUserName(userId: string) {
 
 	// If not found, try the user's protected space
 	try {
-		return gun.get(`~${userId}`).get('alias');
+		const alias = gun
+			.get(`~${userId}`)
+			.get('alias')
+			.once((data: any) => {
+				return data;
+			});
+		if (alias && typeof alias === 'string') {
+			// Update cache
+			userNamesCache.update((cache) => ({
+				...cache,
+				[userId]: alias
+			}));
+			return alias;
+		}
 	} catch (error) {
 		console.log(`[USER-NAME] Could not fetch alias for user ${userId}:`, error);
 	}
 
 	// Fallback to truncated ID
-	return userId.substring(0, 8) + '...';
+	const fallbackName = userId.substring(0, 8) + '...';
+	return fallbackName;
+}
+
+// Initialize the centralized users subscription
+if (typeof window !== 'undefined') {
+	setupUsersListSubscription();
 }
 
 // Check if user is already authenticated after recall
@@ -164,15 +269,14 @@ gun.on('auth', async () => {
 		// Check for SEA keys first as it's the most reliable way to verify authentication
 		if (user._.sea) {
 			console.log('[AUTH] User authenticated via SEA check:', user.is.alias);
-			const alias = await user.get('alias'); // username string
-			username.set(alias);
+			username.set(user.is.alias);
 			userpub.set(user.is?.pub);
 			usersList.get(user.is?.pub).put({
-				name: alias,
+				name: user.is.alias,
 				lastSeen: Date.now()
 			});
 
-			console.log(`signed in as ${alias}`);
+			console.log(`signed in as ${user.is.alias}`);
 			console.log(`userPub: ${user.is?.pub}`);
 
 			// Load existing user data
@@ -180,18 +284,16 @@ gun.on('auth', async () => {
 			return;
 		}
 
-		// Fallback to checking ack.sea if SEA check fails
-		const alias = await user.get('alias'); // username string
-		if (alias) {
-			console.log('[AUTH] User authenticated via alias check:', alias);
-			username.set(alias);
+		if (user.is.alias) {
+			console.log('[AUTH] User authenticated via alias check:', user.is.alias);
+			username.set(user.is.alias);
 			userpub.set(user.is?.pub);
 			usersList.get(user.is?.pub).put({
-				name: alias,
+				name: user.is.alias,
 				lastSeen: Date.now()
 			});
 
-			console.log(`signed in as ${alias}`);
+			console.log(`signed in as ${user.is.alias}`);
 			console.log(`userPub: ${user.is?.pub}`);
 
 			// Load existing user data

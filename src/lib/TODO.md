@@ -106,7 +106,3 @@ Ok now i notice that maybe we have invalid rules or filtering is failing since a
 improve bottomsheet
 
 make chatMessage display the telegram style name and use gunAvatar for the profile.
-
-
-
-Make 100% 

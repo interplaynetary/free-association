@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svelte';
-import { usersList } from './gun.svelte';
+import { usersList, userIds, userNamesCache } from './gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
 // Generic dropdown data provider interface
@@ -21,53 +21,49 @@ export interface DropdownDataProvider {
 // Users data provider for dropdowns
 export function createUsersDataProvider(excludeIds: string[] = []): DropdownDataProvider {
 	let items = $state<DropdownItem[]>([]);
-	let loading = $state(true);
+	let loading = $state(false); // Start as not loading since we use reactive stores
 	let currentQuery = $state('');
 
-	async function loadUsers(searchQuery: string = '') {
-		loading = true;
-		items = [];
+	function loadUsers(searchQuery: string = '') {
+		// Get current reactive data
+		const allUserIds = get(userIds);
+		const namesCache = get(userNamesCache);
 
-		try {
-			// Use a Map to collect unique users and avoid duplicates
-			const usersMap = new Map<string, DropdownItem>();
+		console.log(`[USERS-PROVIDER] Loading users with query: "${searchQuery}"`);
+		console.log(`[USERS-PROVIDER] Available user IDs:`, allUserIds);
+		console.log(`[USERS-PROVIDER] Names cache:`, namesCache);
 
-			// Use Gun to fetch users
-			usersList.map().once((userData: any, userId: string) => {
-				// Skip if this is not a valid user entry or if in excluded list
-				if (!userData || !userId || excludeIds.includes(userId)) return;
+		// Filter and create dropdown items
+		const filteredItems: DropdownItem[] = [];
 
-				// Get user name, fallback to user ID if name not available
-				const userName = userData.name || userId;
+		allUserIds.forEach((userId) => {
+			// Skip if in excluded list
+			if (excludeIds.includes(userId)) return;
 
-				// Apply search filter if it exists
-				if (searchQuery) {
-					const searchLower = searchQuery.toLowerCase();
-					const nameLower = userName.toLowerCase();
-					const idLower = userId.toLowerCase();
+			// Get user name from cache
+			const userName = namesCache[userId] || userId;
 
-					if (!nameLower.includes(searchLower) && !idLower.includes(searchLower)) {
-						return;
-					}
+			// Apply search filter if it exists
+			if (searchQuery) {
+				const searchLower = searchQuery.toLowerCase();
+				const nameLower = userName.toLowerCase();
+				const idLower = userId.toLowerCase();
+
+				if (!nameLower.includes(searchLower) && !idLower.includes(searchLower)) {
+					return;
 				}
+			}
 
-				// Add to users map (this automatically handles duplicates)
-				usersMap.set(userId, {
-					id: userId,
-					name: userName,
-					color: undefined // Will be handled by the UI component
-				});
+			// Add to filtered items
+			filteredItems.push({
+				id: userId,
+				name: userName,
+				color: undefined // Will be handled by the UI component
 			});
+		});
 
-			// Convert map to array after a short delay to ensure all callbacks have fired
-			setTimeout(() => {
-				items = Array.from(usersMap.values());
-				loading = false;
-			}, 500);
-		} catch (error) {
-			console.error('Error fetching users from Gun:', error);
-			loading = false;
-		}
+		console.log(`[USERS-PROVIDER] Filtered items:`, filteredItems);
+		items = filteredItems;
 	}
 
 	function search(query: string) {
@@ -78,6 +74,16 @@ export function createUsersDataProvider(excludeIds: string[] = []): DropdownData
 	function refresh() {
 		loadUsers(currentQuery);
 	}
+
+	// Set up reactive subscriptions to the centralized stores
+	$effect(() => {
+		// Watch for changes in userIds or userNamesCache
+		const allUserIds = get(userIds);
+		const namesCache = get(userNamesCache);
+
+		// Reload users when reactive data changes
+		loadUsers(currentQuery);
+	});
 
 	// Initial load
 	loadUsers();
@@ -122,7 +128,7 @@ export function createSubtreesDataProvider(): DropdownDataProvider {
 				.map(([subtreeId, contributorRecord]) => {
 					// Convert contributorRecord to array of contributor IDs
 					const contributors = Object.keys(contributorRecord);
-					
+
 					// Find the node to get its name
 					const node = findNodeById(tree, subtreeId);
 					const name = node?.name || subtreeId;
