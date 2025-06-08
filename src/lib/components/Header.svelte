@@ -201,10 +201,28 @@
 			return;
 		}
 
+		// Calculate initial points for new node
+		const calculateNewNodePoints = (): number => {
+			// No siblings - set to 100 points
+			if (!currentNode.children || currentNode.children.length === 0) {
+				console.log('[UI FLOW] No siblings, setting new node to 100 points');
+				return 100;
+			}
+
+			// Has siblings - use 20% of total points
+			const currentLevelPoints = currentNode.children.reduce((sum: number, node: any) => {
+				// Only count NonRootNode points
+				return sum + (node.type === 'NonRootNode' ? node.points : 0);
+			}, 0);
+			const points = Math.max(1, currentLevelPoints * 0.2);
+			console.log('[UI FLOW] Calculated points based on siblings:', points);
+			return points;
+		};
+
 		// Create a unique ID for the new node
 		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		const newNodeName = 'New Node';
-		const newPoints = 10;
+		const newPoints = calculateNewNodePoints();
 
 		try {
 			// Add child to the current node in the cloned tree
@@ -514,14 +532,6 @@
 		</div>
 
 		<div class="header-controls">
-			<a
-				href="https://playnet.lol"
-				class="icon-button playnet-button"
-				title="Visit playnet.lol"
-				target="_blank"
-			>
-				<span>✨</span>
-			</a>
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>

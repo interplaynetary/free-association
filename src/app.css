@@ -28,11 +28,7 @@ main, .container, .app-layout {
   flex-direction: column;
 }
 
-main {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
+/* Remove conflicting positioning that causes mobile layout issues */
 
 /* ===== Common Components ===== */
 .app-header {

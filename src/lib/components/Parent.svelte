@@ -63,8 +63,8 @@
 	// Growth constants
 	const GROWTH_DELAY = 350;
 	const GROWTH_TICK = 16;
-	const BASE_GROWTH_RATE = 0.04;
-	const BASE_SHRINK_RATE = -0.04;
+	const BASE_GROWTH_RATE = 0.03;
+	const BASE_SHRINK_RATE = -0.03;
 	const TAP_THRESHOLD = 250;
 
 	// Reactive store subscriptions
@@ -226,12 +226,12 @@
 				return 100;
 			}
 
-			// Has siblings - use 10% of total points
+			// Has siblings - use 20% of total points
 			const currentLevelPoints = hierarchyData.children.reduce(
 				(sum: number, node: any) => sum + (node.data?.points || 0),
 				0
 			);
-			const points = Math.max(1, currentLevelPoints * 0.1);
+			const points = Math.max(1, currentLevelPoints * 0.2);
 			console.log('[UI FLOW] Calculated points based on siblings:', points);
 			return points;
 		};

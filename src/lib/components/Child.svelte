@@ -150,36 +150,25 @@
 		console.log(`Clicked on contributor: ${userId}`);
 	}
 
-	// Handle text edit start
-	function handleTextEditStart(event: MouseEvent | TouchEvent) {
-		// More aggressive event stopping to prevent navigation and text selection
-		event.stopPropagation();
+	// Prevent text selection and other interfering behaviors
+	function preventTextSelection(event: Event) {
 		event.preventDefault();
+		event.stopPropagation();
+		return false;
+	}
 
-		// Also stop immediate propagation to prevent any other handlers
-		if ('stopImmediatePropagation' in event) {
-			event.stopImmediatePropagation();
-		}
+	// Handle text edit start - more streamlined for Svelte 5
+	function handleTextEditStart(event: MouseEvent | TouchEvent) {
+		// Prevent all default behaviors that could interfere
+		event.preventDefault();
+		event.stopPropagation();
 
-		// For touch events, also prevent default to stop text selection menus
-		if (event.type === 'touchstart') {
-			// Add a small delay for touch events to ensure proper handling
-			setTimeout(() => {
-				startEdit();
-			}, 10);
-		} else {
-			startEdit();
-		}
+		// Only allow editing if we have a valid node ID
+		if (!node.id) return;
 
-		function startEdit() {
-			// Only allow editing if we have a valid node ID
-			const nodeId = node.id;
-			if (!nodeId) return;
-
-			// Set up edit state
-			isEditing = true;
-			editValue = node.name || '';
-		}
+		// Set up edit state immediately - no need for delays in modern browsers
+		isEditing = true;
+		editValue = node.name || '';
 	}
 
 	// Handle text edit save
@@ -321,6 +310,8 @@
 					title={node.name}
 					onmousedown={handleTextEditStart}
 					ontouchstart={handleTextEditStart}
+					onselectstart={preventTextSelection}
+					ondragstart={preventTextSelection}
 				>
 					{#each segments as segment}
 						<span class="title-segment">{segment}</span>
@@ -434,7 +425,7 @@
 		-moz-user-select: none;
 		-ms-user-select: none;
 		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: transparent;
+		-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 	}
 
 	.node-title {
@@ -451,7 +442,7 @@
 		-moz-user-select: none;
 		-ms-user-select: none;
 		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: transparent;
+		-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 		touch-action: manipulation;
 	}
 

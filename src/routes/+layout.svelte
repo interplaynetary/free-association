@@ -63,17 +63,17 @@
 	main {
 		display: flex;
 		flex-direction: column;
-		/* Modern viewport handling with fallback */
+		/* Use dynamic viewport height with proper fallbacks */
 		height: 100vh; /* Fallback for older browsers */
 		height: 100dvh; /* Modern dynamic viewport height */
-		min-height: 100vh;
-		min-height: 100dvh;
 		width: 100vw;
-		/* Add safe area support for mobile devices */
+		/* Use padding for safe areas (recommended approach) */
 		padding-top: env(safe-area-inset-top);
 		padding-bottom: env(safe-area-inset-bottom);
 		padding-left: env(safe-area-inset-left);
 		padding-right: env(safe-area-inset-right);
+		/* Ensure total dimensions don't exceed viewport */
+		box-sizing: border-box;
 	}
 
 	.app-header {
