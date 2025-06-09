@@ -3,115 +3,99 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-/* ===== Reset & Base ===== */
+/* ===== Enhanced Reset & Base for Cross-Browser Compatibility ===== */
 * {
   margin: 0;
   padding: 0;
+  /* Enhanced box-sizing with vendor prefixes */
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
   box-sizing: border-box;
+}
+
+/* Additional CSS reset for better cross-browser consistency */
+*:before,
+*:after {
+  -webkit-box-sizing: inherit;
+  -moz-box-sizing: inherit;
+  box-sizing: inherit;
 }
 
 html, body {
   width: 100vw;
-  /* Use dynamic viewport height for mobile */
-  height: 100dvh;
-  /* Fallback for older browsers */
-  height: 100vh;
+  /* Enhanced viewport height support with multiple fallbacks */
+  height: 100vh; /* Standard fallback */
+  height: -webkit-fill-available; /* iOS Safari specific */
+  height: 100dvh; /* Modern dynamic viewport height */
+  
+  /* Enhanced overflow handling with vendor prefixes */
   overflow: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  
   background-color: #ffffff;
+  
+  /* Enhanced font rendering for better cross-browser consistency */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 :root {
-  /* Custom property for keyboard height fallback */
+  /* CSS custom properties with vendor prefix fallbacks */
   --keyboard-height: 0px;
+  -webkit-keyboard-height: 0px;
+  -moz-keyboard-height: 0px;
 }
 
-/* ===== Layout Structure ===== */
+/* ===== Enhanced Global Layout Structure ===== */
 .container, .app-layout {
   width: 100%;
   height: 100%;
   display: flex;
+  display: -webkit-flex; /* Safari older versions */
+  display: -ms-flexbox; /* IE 10 */
   flex-direction: column;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
 }
 
-/* Layout components are now handled in +layout.svelte - removed conflicts */
-
-/* ===== Panel Wrappers ===== */
-.panel-wrapper {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-}
-
-/* All panel types share the same base styling */
-.inventory-wrapper,
-.login-wrapper,
-.charts-wrapper {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-  display: flex;
-}
-
-/* Only retain unique panel properties */
-.login-wrapper {
-  justify-content: center;
-  align-items: center;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.charts-wrapper {
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-/* ===== Status Elements ===== */
-.loading,
-.error,
-.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.error {
-  color: #d32f2f;
-}
-
-/* Toast styles are now handled in +layout.svelte - removed conflicts */
-
-/* ===== Utility Classes ===== */
-.flex-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.flex-column {
-  display: flex;
-  flex-direction: column;
-}
-
-.full-size {
-  width: 100%;
-  height: 100%;
-}
-
+/* ===== Global Utility Classes (enhanced for cross-browser) ===== */
 .clickable {
   cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
+  /* Enhanced touch support */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-.p-20 { padding: 20px; }
-.mt-10 { margin-top: 10px; }
-.mb-10 { margin-bottom: 10px; }
-
-/* ===== Animations ===== */
+/* ===== Enhanced Global Animations with vendor prefixes ===== */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(20px);
+    -webkit-transform: translateY(20px);
+    -moz-transform: translateY(20px);
+    -ms-transform: translateY(20px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0);
+    -webkit-transform: translateY(0);
+    -moz-transform: translateY(0);
+    -ms-transform: translateY(0);
+  }
+}
+
+@-webkit-keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    -webkit-transform: translateY(20px);
+  }
+  to { 
+    opacity: 1; 
+    -webkit-transform: translateY(0);
+  }
 }

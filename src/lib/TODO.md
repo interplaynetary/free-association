@@ -107,9 +107,7 @@ improve bottomsheet
 
 make chatMessage display the telegram style name and use gunAvatar for the profile.
 
-
-
-// So while we no longer face issues with respect to accidently selecting the text and creating the pop up, we are now longer able to open the keyboard to edit the text in some browsers. 
+// So while we no longer face issues with respect to accidently selecting the text and creating the pop up, we are now longer able to open the keyboard to edit the text in some browsers.
 
 // is there a more elegant scaling solution?
 
@@ -117,92 +115,9 @@ make chatMessage display the telegram style name and use gunAvatar for the profi
 
 // now on some phones we have troubles with text editing keyboard
 
-{
-  "id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-  "name": "ruzgar",
-  "type": "RootNode",
-  "manual_fulfillment": null,
-  "children": [
-    {
-      "id": "node_1749411321503_6fajvsu",
-      "name": "carnival",
-      "type": "NonRootNode",
-      "points": 3176.5470365060405,
-      "parent_id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-      "children": [
-        {
-          "id": "node_1749412630862_7exh3d3",
-          "name": "first-node",
-          "type": "NonRootNode",
-          "points": 100,
-          "parent_id": "node_1749411321503_6fajvsu",
-          "children": [],
-          "contributor_ids": [],
-          "manual_fulfillment": null
-        },
-        {
-          "id": "node_1749412637793_n9m2wbp",
-          "name": "second-node",
-          "type": "NonRootNode",
-          "points": 20,
-          "parent_id": "node_1749411321503_6fajvsu",
-          "children": [],
-          "contributor_ids": [],
-          "manual_fulfillment": null
-        },
-        {
-          "id": "node_1749412642744_7pjwwh5",
-          "name": "third-node",
-          "type": "NonRootNode",
-          "points": 24,
-          "parent_id": "node_1749411321503_6fajvsu",
-          "children": [],
-          "contributor_ids": [],
-          "manual_fulfillment": null
-        }
-      ],
-      "contributor_ids": [],
-      "manual_fulfillment": null
-    },
-    {
-      "id": "node_1749411456087_2i9xsfm",
-      "name": "clean water",
-      "type": "NonRootNode",
-      "points": 80.2379005681582,
-      "parent_id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-      "children": [],
-      "contributor_ids": [
-        "9_DPpUwtTrHlxY_FrAl185mVI4P8gn0HRnF9DT4QBrg.HOHgV50o8kuMq7ClkffD_pZVY2mOC4OF6i5g9qla2Cc"
-      ],
-      "manual_fulfillment": null
-    },
-    {
-      "id": "node_1749411462503_u5namex",
-      "name": "housing",
-      "type": "NonRootNode",
-      "points": 340.80440011242916,
-      "parent_id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-      "children": [],
-      "contributor_ids": [
-        "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-        "9hrvHLhqxQyE9VitfnonRQAyESduMpBBIkwzMXwZhOM.Sq1sQ-L9ZDY-64FKOf4nM7AokUGHAYVFf2dF_HnXKoI"
-      ],
-      "manual_fulfillment": null
-    },
-    {
-      "id": "node_1749411501038_ahi4oun",
-      "name": "Art",
-      "type": "NonRootNode",
-      "points": 216.30540538753357,
-      "parent_id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-      "children": [],
-      "contributor_ids": [
-        "xMd4p0Q4yAeRjxCD9jV-eeHDWLe7jefIFrGyGuZoy7I.MBI7GsdQ88trfgozwMH1mY3RGnGzNCpISeg5-mmbwVE"
-      ],
-      "manual_fulfillment": null
-    }
-  ],
-  "user_id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
-  "created_at": "2025-06-01T16:05:49.058Z",
-  "updated_at": "2025-06-01T16:05:49.058Z"
-}
+Why is my alias, appearing as my pubKey?
+
+Lets make the path better especially for really nested:
+ruzgar/.../current-path
+with ... being a back button?
+Or have it scale

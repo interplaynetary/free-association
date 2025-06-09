@@ -5,11 +5,11 @@
 </script>
 
 <div>
-	<h2 class="mt-10 mb-4 text-center text-2xl font-bold">Your Capacities</h2>
+	<h2 class="mt-4 mb-4 text-center text-2xl font-bold">Your Capacities</h2>
 	<Capacities />
 
-	<h2 class="mt-10 mb-4 text-center text-2xl font-bold">Your Shares</h2>
+	<h2 class="mt-4 mb-4 text-center text-2xl font-bold">Your Shares</h2>
 	<Shares />
-	<div class="mt-10"></div>
+	<div class="mt-4"></div>
 	<LocateUser />
 </div>

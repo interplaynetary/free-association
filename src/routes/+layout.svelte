@@ -11,7 +11,7 @@
 	// Derived toast state
 	let toast = $derived(globalState.toast);
 
-	// Set up global keyboard event listener and virtual keyboard handling
+	// Set up global keyboard event listener and reliable viewport handling
 	onMount(() => {
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation
@@ -33,44 +33,60 @@
 			}
 		}
 
-		// Modern VirtualKeyboard API for Chromium browsers
-		if ('virtualKeyboard' in navigator) {
-			try {
-				// @ts-ignore - VirtualKeyboard API is experimental
-				navigator.virtualKeyboard.overlaysContent = true;
-				console.log('VirtualKeyboard API enabled');
-			} catch (error) {
-				console.warn('VirtualKeyboard API failed to initialize:', error);
-			}
-		}
-
-		// Fallback: iOS Safari visual viewport handling
+		// Enhanced Visual Viewport API with better feature detection
 		function handleViewportChange() {
-			const visualViewport = window.visualViewport;
-			if (visualViewport) {
-				const viewportHeight = visualViewport.height;
-				const windowHeight = window.innerHeight;
-				const keyboardHeight = Math.max(0, windowHeight - viewportHeight);
+			// Multiple levels of feature detection for better compatibility
+			if (!window.visualViewport && !window.innerHeight) return;
 
-				// Update CSS custom property for keyboard height
+			let keyboardHeight = 0;
+
+			// Primary method: Visual Viewport API (best support)
+			if (window.visualViewport) {
+				keyboardHeight = window.innerHeight - window.visualViewport.height;
+			}
+			// Fallback method: Screen height comparison
+			else if (window.screen && window.screen.height) {
+				keyboardHeight = Math.max(0, window.screen.height - window.innerHeight - 100);
+			}
+
+			// Apply dynamic adjustment for virtual keyboard with vendor prefixes
+			if (keyboardHeight > 0) {
 				document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
-
-				// Prevent the interface from being stuck when keyboard dismisses
-				if (keyboardHeight === 0) {
-					// Small delay to ensure proper reset
-					setTimeout(() => {
-						window.scrollTo(0, 0);
-					}, 100);
-				}
+				// Also set with vendor prefixes for better compatibility
+				document.documentElement.style.setProperty(
+					'-webkit-keyboard-height',
+					`${keyboardHeight}px`
+				);
+				document.documentElement.style.setProperty('-moz-keyboard-height', `${keyboardHeight}px`);
+			} else {
+				document.documentElement.style.setProperty('--keyboard-height', '0px');
+				document.documentElement.style.setProperty('-webkit-keyboard-height', '0px');
+				document.documentElement.style.setProperty('-moz-keyboard-height', '0px');
 			}
 		}
 
-		// Set up visual viewport listeners for fallback
-		if (window.visualViewport) {
+		// Enhanced browser support detection and setup
+		const hasVisualViewport = 'visualViewport' in window;
+		const hasResizeObserver = 'ResizeObserver' in window;
+
+		// Set up Visual Viewport API listener with enhanced compatibility
+		if (hasVisualViewport) {
 			window.visualViewport.addEventListener('resize', handleViewportChange);
-			// Initial call
-			handleViewportChange();
+			// Also listen to scroll events for better mobile support
+			window.visualViewport.addEventListener('scroll', handleViewportChange);
 		}
+		// Fallback to window resize for older browsers
+		else {
+			window.addEventListener('resize', handleViewportChange);
+			// Additional orientation change listener for mobile
+			window.addEventListener('orientationchange', () => {
+				// Delay to ensure dimensions are updated
+				setTimeout(handleViewportChange, 100);
+			});
+		}
+
+		// Initial calculation
+		handleViewportChange();
 
 		document.addEventListener('keydown', handleGlobalKeydown);
 
@@ -78,6 +94,10 @@
 			document.removeEventListener('keydown', handleGlobalKeydown);
 			if (window.visualViewport) {
 				window.visualViewport.removeEventListener('resize', handleViewportChange);
+				window.visualViewport.removeEventListener('scroll', handleViewportChange);
+			}
+			if (window.resizeObserver) {
+				window.resizeObserver.disconnect();
 			}
 		};
 	});
@@ -105,21 +125,33 @@
 	main {
 		display: flex;
 		flex-direction: column;
-		/* Use dynamic viewport height with proper fallbacks */
-		height: 100vh; /* Fallback for older browsers */
+		/* Enhanced fallback chain for maximum browser support */
+		height: 100vh; /* Standard fallback */
+		height: -webkit-fill-available; /* iOS Safari fallback */
 		height: 100dvh; /* Modern dynamic viewport height */
-		width: 100vw;
-		/* Use padding for safe areas (recommended approach) */
-		padding-top: env(safe-area-inset-top);
+		width: 100vw; /* Standard fallback */
+		width: 100dvw; /* Modern dynamic viewport width */
+
+		/* Enhanced safe area support with vendor prefixes */
+		padding-top: constant(safe-area-inset-top); /* iOS 11.0-11.2 */
+		padding-top: env(safe-area-inset-top); /* iOS 11.2+ */
+		padding-bottom: constant(safe-area-inset-bottom);
 		padding-bottom: env(safe-area-inset-bottom);
+		padding-left: constant(safe-area-inset-left);
 		padding-left: env(safe-area-inset-left);
+		padding-right: constant(safe-area-inset-right);
 		padding-right: env(safe-area-inset-right);
-		/* Ensure total dimensions don't exceed viewport */
+
+		/* Enhanced box-sizing support */
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
 		box-sizing: border-box;
+
 		/* Prevent any overflow that could cause scrolling */
 		overflow: hidden;
-		/* Handle virtual keyboard appearance */
-		padding-bottom: max(env(safe-area-inset-bottom), env(keyboard-inset-height, 0px));
+
+		/* Enhanced mobile support */
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 	}
 
 	.app-header {
@@ -127,7 +159,6 @@
 		width: 100%;
 		z-index: 100;
 		background: white;
-		padding-bottom: 8px;
 		min-height: 60px;
 		display: flex;
 		flex-direction: column;
@@ -143,29 +174,54 @@
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */
 		min-height: 0; /* Important for flexbox overflow */
-		/* Adjust padding bottom for keyboard (fallback) */
-		padding-bottom: calc(16px + var(--keyboard-height, 0px));
 	}
 
 	.toast-container {
 		position: fixed;
-		bottom: calc(20px + env(safe-area-inset-bottom) + env(keyboard-inset-height, 0px));
-		right: calc(20px + env(safe-area-inset-right));
+		/* Enhanced safe area and keyboard height support with fallbacks */
+		bottom: 20px; /* Base fallback */
+		bottom: calc(20px + constant(safe-area-inset-bottom)); /* iOS 11.0-11.2 */
+		bottom: calc(20px + env(safe-area-inset-bottom)); /* iOS 11.2+ */
+		bottom: calc(
+			20px + env(safe-area-inset-bottom) + var(--keyboard-height, 0px)
+		); /* Full support */
+
+		right: 20px; /* Base fallback */
+		right: calc(20px + constant(safe-area-inset-right)); /* iOS 11.0-11.2 */
+		right: calc(20px + env(safe-area-inset-right)); /* iOS 11.2+ */
+
 		z-index: 100000; /* Ensure toasts appear above all dropdowns (99999) */
-		/* Ensure toast doesn't interfere with document flow */
+		/* Enhanced pointer events with vendor prefixes */
 		pointer-events: none;
+		-webkit-pointer-events: none;
+		-moz-pointer-events: none;
 	}
 
 	.toast {
 		padding: 12px 20px;
 		border-radius: 8px;
+		/* Enhanced border-radius with vendor prefixes for older browsers */
+		-webkit-border-radius: 8px;
+		-moz-border-radius: 8px;
 		margin-top: 10px;
 		font-size: 14px;
+		/* Enhanced box-shadow with vendor prefixes */
 		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		-webkit-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		-moz-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		/* Enhanced transitions with vendor prefixes */
 		transition: all 0.3s ease;
+		-webkit-transition: all 0.3s ease;
+		-moz-transition: all 0.3s ease;
+		-o-transition: all 0.3s ease;
+		/* Enhanced animations with vendor prefixes */
 		animation: slide-in 0.3s ease forwards;
+		-webkit-animation: slide-in 0.3s ease forwards;
+		-moz-animation: slide-in 0.3s ease forwards;
 		/* Re-enable pointer events for the toast itself */
 		pointer-events: auto;
+		-webkit-pointer-events: auto;
+		-moz-pointer-events: auto;
 	}
 
 	@keyframes slide-in {
@@ -175,6 +231,30 @@
 		}
 		to {
 			transform: translateX(0);
+			opacity: 1;
+		}
+	}
+
+	/* Enhanced webkit animations for Safari and older browsers */
+	@-webkit-keyframes slide-in {
+		from {
+			-webkit-transform: translateX(100%);
+			opacity: 0;
+		}
+		to {
+			-webkit-transform: translateX(0);
+			opacity: 1;
+		}
+	}
+
+	/* Enhanced moz animations for Firefox */
+	@-moz-keyframes slide-in {
+		from {
+			-moz-transform: translateX(100%);
+			opacity: 0;
+		}
+		to {
+			-moz-transform: translateX(0);
 			opacity: 1;
 		}
 	}
@@ -197,13 +277,5 @@
 	.toast-error {
 		background-color: #f44336;
 		color: white;
-	}
-
-	/* Additional CSS for older browsers and edge cases */
-	@supports not (padding: env(keyboard-inset-height)) {
-		.app-content {
-			/* Fallback behavior for browsers without keyboard-inset support */
-			padding-bottom: calc(16px + var(--keyboard-height, 0px));
-		}
 	}
 </style>
