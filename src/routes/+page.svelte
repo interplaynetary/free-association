@@ -141,12 +141,7 @@
 </div>
 
 <style>
-	:global(body) {
-		margin: 0;
-		padding: 0;
-		height: 100%;
-		overflow: hidden;
-	}
+	/* Removed conflicting :global(body) styles - handled by layout */
 
 	.layout {
 		display: grid;

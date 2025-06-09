@@ -152,14 +152,15 @@
 
 	// Unified handler for all text selection prevention
 	function preventAllInterference(event: Event) {
+		console.log('[DEBUG CHILD] preventAllInterference called, event type:', event.type);
+
+		// Clear selections first
+		document.getSelection()?.removeAllRanges();
+
+		// Always prevent these events
 		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
-
-		// Clear any existing selections as final insurance
-		requestAnimationFrame(() => {
-			document.getSelection()?.removeAllRanges();
-		});
 
 		return false;
 	}
@@ -177,16 +178,14 @@
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 
+		// Clear selections IMMEDIATELY before any other processing
+		document.getSelection()?.removeAllRanges();
+
 		// For pointer/mouse events, prevent default to stop text selection
 		// But allow touch events to preserve gesture for mobile keyboard
 		if (event.type !== 'touchstart') {
 			event.preventDefault();
 		}
-
-		// Clear any existing selections
-		requestAnimationFrame(() => {
-			document.getSelection()?.removeAllRanges();
-		});
 
 		// Only allow editing if we have a valid node ID
 		if (!node.id) {

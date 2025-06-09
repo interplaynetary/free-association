@@ -151,7 +151,7 @@
 		position: fixed;
 		bottom: calc(20px + env(safe-area-inset-bottom) + env(keyboard-inset-height, 0px));
 		right: calc(20px + env(safe-area-inset-right));
-		z-index: 1000;
+		z-index: 100000; /* Ensure toasts appear above all dropdowns (99999) */
 		/* Ensure toast doesn't interfere with document flow */
 		pointer-events: none;
 	}
