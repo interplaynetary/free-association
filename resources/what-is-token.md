@@ -89,7 +89,7 @@ The sandwich example reveals a fundamental pattern that applies across all recog
 ### The Universal Cycle Structure:
 
 1. **You contribute** (labor, ideas, compliance)
-2. **You receive recognition token** (money, role, credential) 
+2. **You receive recognition token** (money, role, title) 
 3. **You must surrender token for survival/maintenance** (buy food, maintain position, keep access)
 4. **Token recipient accumulates your recognition** 
 5. **Accumulated recognition enables control over your future contributions**
@@ -131,5 +131,4 @@ What I missed is that the problem isn't just transferability - it's **compulsory
 This is why the sandwich example is so powerful - it shows that even when you "earn" recognition, the system is structured to force you to surrender it, creating the very accumulation that then controls you.
 
 The universal dynamic is the **Recognition Surrender Imperative** - the systematic forcing of recognition token circulation that prevents individual retention of recognition power while enabling systemic accumulation.
-
 This reveals that transferability alone isn't the problem - it's transferability combined with **survival dependency** on token surrender that creates the inescapable trap.

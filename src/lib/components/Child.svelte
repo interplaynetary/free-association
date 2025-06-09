@@ -164,7 +164,7 @@
 		return false;
 	}
 
-	// Handle edit initiation with comprehensive interference prevention
+	// Handle edit initiation with selective interference prevention
 	function handleTextEditStart(event: Event) {
 		console.log(
 			'[DEBUG CHILD] handleTextEditStart called, event type:',
@@ -173,11 +173,17 @@
 			event.target
 		);
 
-		// Only prevent propagation, NOT preventDefault to preserve user gesture for mobile keyboard
+		// Prevent event propagation to parent but preserve user gesture
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 
-		// Clear selections without preventing default
+		// For pointer/mouse events, prevent default to stop text selection
+		// But allow touch events to preserve gesture for mobile keyboard
+		if (event.type !== 'touchstart') {
+			event.preventDefault();
+		}
+
+		// Clear any existing selections
 		requestAnimationFrame(() => {
 			document.getSelection()?.removeAllRanges();
 		});
