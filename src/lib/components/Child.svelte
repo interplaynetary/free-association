@@ -166,13 +166,30 @@
 
 	// Handle edit initiation with comprehensive interference prevention
 	function handleTextEditStart(event: Event) {
-		// First prevent all default behaviors
-		preventAllInterference(event);
+		console.log(
+			'[DEBUG CHILD] handleTextEditStart called, event type:',
+			event.type,
+			'target:',
+			event.target
+		);
+
+		// Only prevent propagation, NOT preventDefault to preserve user gesture for mobile keyboard
+		event.stopPropagation();
+		event.stopImmediatePropagation();
+
+		// Clear selections without preventing default
+		requestAnimationFrame(() => {
+			document.getSelection()?.removeAllRanges();
+		});
 
 		// Only allow editing if we have a valid node ID
-		if (!node.id) return;
+		if (!node.id) {
+			console.log('[DEBUG CHILD] No node ID, cannot edit');
+			return;
+		}
 
 		// Set up edit state
+		console.log('[DEBUG CHILD] Setting isEditing = true');
 		isEditing = true;
 		editValue = node.name || '';
 	}
@@ -220,16 +237,41 @@
 
 	// Set up and clean up event listeners when editing state changes
 	$effect(() => {
+		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
+
 		if (isEditing) {
 			// Add global event listener for clicks outside
 			document.addEventListener('mousedown', handleClickOutside);
 
 			// Focus the input when it's available (for desktop view)
 			if (editInput) {
+				console.log('[DEBUG CHILD] editInput exists, focusing immediately');
 				setTimeout(() => {
+					console.log('[DEBUG CHILD] Attempting to focus input, editInput:', editInput);
 					editInput?.focus();
 					editInput?.select();
+					console.log(
+						'[DEBUG CHILD] Focus/select called, document.activeElement:',
+						document.activeElement
+					);
 				}, 10);
+			} else {
+				console.log('[DEBUG CHILD] editInput not ready, setting up retry');
+				// Input not ready yet, try again with longer delay
+				setTimeout(() => {
+					console.log('[DEBUG CHILD] Retry - editInput:', editInput);
+					if (editInput) {
+						console.log('[DEBUG CHILD] Retry focusing input');
+						editInput.focus();
+						editInput.select();
+						console.log(
+							'[DEBUG CHILD] Retry focus/select called, document.activeElement:',
+							document.activeElement
+						);
+					} else {
+						console.log('[DEBUG CHILD] Input still not ready after retry');
+					}
+				}, 100);
 			}
 		} else {
 			// Remove the event listener when not editing
