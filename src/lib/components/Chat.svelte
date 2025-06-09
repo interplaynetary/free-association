@@ -16,7 +16,7 @@
 		who: string;
 		what: string;
 		when: number;
-		userPub?: string; // Add public key for gun-avatar
+		whopub?: string; // Match ChatMessage interface
 	}
 
 	let newMessage = $state('');
@@ -68,7 +68,7 @@
 					var message = {
 						// transform the data
 						who: await gun.user(data).get('alias'), // a user might lie who they are! So let the user system detect whose data it is.
-						what: (await SEA.decrypt(data.what, key)) + '', // force decrypt as text.
+						what: (await SEA.decrypt(data.what, encryptionKey)) + '', // Use encryptionKey, not key
 						when: GUN.state.is(data, 'what'), // get the internal timestamp for the what property.
 						whopub: await gun.user(data).get('pub')
 					};
@@ -76,6 +76,7 @@
 					if (message.what) {
 						// Simplified deduplication and sorting (like the example)
 						messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
+
 						if (canAutoScroll) {
 							autoScroll();
 						} else {

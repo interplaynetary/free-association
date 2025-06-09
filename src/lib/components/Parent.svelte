@@ -658,6 +658,26 @@
 		// Only handle primary pointer to prevent duplicates
 		if (!event.isPrimary) return;
 
+		// Check if the pointer target is a text edit field, node-text element, or contributor element
+		const target = event.target as HTMLElement;
+		if (
+			target &&
+			(target.closest('.node-text') ||
+				target.closest('.node-text-edit-container') ||
+				target.closest('.add-contributor-button') ||
+				target.closest('.tag-container') ||
+				target.closest('.contributor-container') ||
+				target.closest('.node-title') ||
+				target.closest('.node-title-area') ||
+				target.closest('.title-segment') ||
+				target.closest('.node-edit-input') ||
+				target.closest('.contributors-area'))
+		) {
+			// Click originated from text or contributor elements, don't handle here - let Child component handle it
+			console.log('[DEBUG] Ignoring pointer event on text/contributor element:', target.className);
+			return;
+		}
+
 		// Prevent duplicate handling for the same interaction
 		if (interactionHandled) return;
 

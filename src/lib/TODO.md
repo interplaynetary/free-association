@@ -117,10 +117,6 @@ make chatMessage display the telegram style name and use gunAvatar for the profi
 
 // now on some phones we have troubles with text editing keyboard
 
-// something weird is happening with the calculations at a nested level in the tree?
-
-// i also notice new nodes on lower depth levels in the tree are not 20%, they visually appear huge, additionally the new node is huge compared to the exisitng node (although) it cant be shrunk? (which indicates that it might have lower points. )
-
 {
   "id": "_f4-SArHyCatIB-rRTeNxgw3HSV_HfRdo4-KVJuGhj8.umowYpFeoJgpHPxQPyMY76x4LNeHHkM-zwRhS1QPFKo",
   "name": "ruzgar",
