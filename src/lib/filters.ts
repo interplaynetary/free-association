@@ -157,10 +157,47 @@ export function applyCapacityFilter(
 	context?: FilterContext
 ): ShareMap {
 	if (!capacity.filter_rule) {
-		return normalizeShareMap({ ...shareMap });
+		const normalized = normalizeShareMap({ ...shareMap });
+		// Apply percentage divisibility constraints
+		return applyPercentageConstraints(capacity, normalized);
 	}
 
-	return filter(shareMap, ruleToFilter(capacity.filter_rule), context);
+	const filtered = filter(shareMap, ruleToFilter(capacity.filter_rule), context);
+	// Apply percentage divisibility constraints to filtered results
+	return applyPercentageConstraints(capacity, filtered);
+}
+
+// Apply percentage divisibility constraints to a share map
+function applyPercentageConstraints(capacity: BaseCapacity, shareMap: ShareMap): ShareMap {
+	const maxPercent = capacity.max_percentage_div || 1;
+	const maxNatural = capacity.max_natural_div || 1;
+	const quantity = capacity.quantity || 0;
+
+	// If no constraints to apply or quantity is 0, return as-is
+	if ((maxPercent >= 1 && maxNatural <= 1) || quantity === 0) {
+		return shareMap;
+	}
+
+	const constrainedMap: ShareMap = {};
+
+	// Calculate effective step size based on both constraints
+	const naturalStep = maxNatural / quantity;
+	const percentStep = maxPercent;
+	const effectiveStep = Math.min(naturalStep, percentStep);
+
+	// Apply constraints to each share
+	for (const [recipientId, share] of Object.entries(shareMap)) {
+		// Round to the nearest valid step
+		const constrainedShare = Math.round(share / effectiveStep) * effectiveStep;
+
+		if (constrainedShare > 0) {
+			// Only include non-zero shares
+			constrainedMap[recipientId] = Math.min(constrainedShare, 1.0);
+		}
+	}
+
+	// Normalize to ensure they still sum to 1.0
+	return normalizeShareMap(constrainedMap);
 }
 
 // Normalize a ShareMap so values sum to 1

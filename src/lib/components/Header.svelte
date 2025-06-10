@@ -22,7 +22,7 @@
 	type PathInfo = Array<{ id: string; name: string }>;
 
 	// Helper function to truncate text
-	function truncateText(text: string, maxLength: number = 10): string {
+	function truncateText(text: string, maxLength: number = 14): string {
 		if (text.length <= maxLength) return text;
 		return text.slice(0, maxLength - 3) + '...';
 	}

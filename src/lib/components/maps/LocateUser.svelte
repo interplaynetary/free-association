@@ -118,7 +118,7 @@
 	}
 </script>
 
-<div class="flex h-[55vh] min-h-[300px] overflow-hidden rounded-md">
+<div class="flex h-[400px] max-h-[50vh] min-h-[300px] overflow-hidden rounded-md">
 	<MapLibre
 		bind:map
 		bind:pitch

@@ -41,16 +41,18 @@
 	let editValue = $state('');
 	let editInput: HTMLInputElement | null = $state(null);
 
-	// Prepare text segments
-	const segments = $derived(
-		node.name === 'Unnamed' ? [node.name] : node.name.split(/(?=[A-Z][^A-Z])/g)
-	);
-
 	// Calculate relative size for text scaling
 	const nodeWidth = $derived(dimensions.x1 - dimensions.x0);
 	const nodeHeight = $derived(dimensions.y1 - dimensions.y0);
 	const nodeSizeRatio = $derived(Math.min(nodeWidth, nodeHeight) * 100); // Size as percentage of parent
-	const fontSize = $derived(Math.max(0.5, Math.min(2, nodeSizeRatio * 0.1))); // Scale font size (0.5-2rem)
+
+	// Prepare text segments first
+	const segments = $derived(
+		node.name === 'Unnamed' ? [node.name] : node.name.split(/(?=[A-Z][^A-Z])/g)
+	);
+
+	// CSS-based responsive font size - let CSS handle the scaling
+	const fontSize = $derived(`clamp(0.4rem, ${Math.min(nodeWidth, nodeHeight) * 8}vw, 3rem)`);
 
 	// Determine if this is the only child (occupies 100% of the space)
 	const isOnlyChild = $derived(nodeWidth >= 0.999 && nodeHeight >= 0.999);
@@ -96,8 +98,8 @@
 	// Button scaling
 	const contributorSize = $derived(Math.max(12, Math.min(40, nodeSizeRatio * 0.5)));
 
-	// Calculate actual space requirements
-	const titleHeight = $derived(segments.length * fontSize * 1.1); // Actual title height in rem
+	// Calculate actual space requirements (simplified since fontSize is now CSS-based)
+	const titleHeight = $derived(segments.length * 1.5); // Approximate title height
 	const titleHeightPx = $derived(titleHeight * 16); // Convert rem to pixels (assuming 16px base)
 	const containerHeightPx = $derived(nodeHeight * 100); // Container height in pixels
 
@@ -347,7 +349,7 @@
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
 					style="
-          font-size: {fontSize}rem;
+          font-size: {fontSize};
           width: 100%;
           max-width: {Math.min(200, nodeSizeRatio * 3)}px;
         "
@@ -356,7 +358,7 @@
 				<div
 					class="node-title"
 					style="
-          font-size: {fontSize}rem;
+          font-size: {fontSize};
           text-align: center;
           max-width: 100%;
         "
@@ -499,6 +501,10 @@
 		cursor: text;
 		word-break: break-word;
 		hyphens: auto;
+		overflow-wrap: break-word;
+		word-wrap: break-word;
+		/* Prevent any overflow */
+		overflow: hidden;
 		/* Inherit all interference prevention from parent */
 		user-select: none;
 		-webkit-user-select: none;

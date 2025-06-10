@@ -11,6 +11,7 @@ import 'gun/lib/webrtc.js';
 import { writable, get } from 'svelte/store';
 import { createRootNode } from '$lib/protocol';
 import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from '$lib/validation';
+import { populateWithExampleData } from '$lib/components/examples/example';
 import {
 	userTree,
 	userSogf,
@@ -28,7 +29,7 @@ if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
 }
 
-// I wonder if it would be required 
+// I wonder if it would be required
 
 /*
 async function requestPersistentStorage() {
@@ -48,7 +49,7 @@ async function requestPersistentStorage() {
 requestPersistentStorage();
 */
 
-export const GUN = Gun
+export const GUN = Gun;
 
 // Database
 export const gun = Gun({
@@ -148,31 +149,6 @@ export async function getUserName(userId: string) {
 	const cache = get(userNamesCache);
 	if (cache[userId]) {
 		return cache[userId];
-	}
-
-	// If not in cache, try to get it and update cache
-	// Look up from freely-associating-players first
-	try {
-		const name = usersList
-			.get(userId)
-			.get('name')
-			.once((data: string) => {
-				return data;
-			});
-
-		if (name && typeof name === 'string') {
-			// Update cache
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: name
-			}));
-			return name;
-		}
-	} catch (error) {
-		console.log(
-			`[USER-NAME] Could not fetch from freely-associating-players for ${userId}:`,
-			error
-		);
 	}
 
 	// If not found, try the user's protected space
@@ -563,8 +539,11 @@ export function manifest() {
 
 		// Create new tree only after retry attempt or if we have valid user context
 		if (isRetry && user.is?.pub && !treeLoaded) {
-			console.log('[MANIFEST] No valid tree data found after retry, creating initial tree');
+			console.log(
+				'[MANIFEST] No valid tree data found after retry, creating initial tree with example data'
+			);
 			const newTree = createRootNode(get(userpub), get(username), get(userpub));
+			populateWithExampleData(newTree);
 			userTree.set(newTree);
 			user.get('tree').put(JSON.stringify(newTree));
 			isLoadingTree.set(false);

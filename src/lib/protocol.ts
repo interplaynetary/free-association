@@ -349,6 +349,52 @@ export function receiverGeneralShareFrom(
  * Capacity Utilities
  */
 
+// Constrain a share percentage according to max_percentage_div and max_natural_div
+export function constrainSharePercentage(capacity: BaseCapacity, percentage: number): number {
+	const maxPercent = capacity.max_percentage_div || 1;
+	const maxNatural = capacity.max_natural_div || 1;
+	const quantity = capacity.quantity || 0;
+
+	// If quantity is 0, no meaningful constraints can be applied
+	if (quantity === 0) {
+		return percentage;
+	}
+
+	// Calculate valid percentages based on natural divisibility
+	// Example: max_natural_div=5, quantity=20 → naturalStep=0.25 → valid percentages: 0, 0.25, 0.5, 0.75, 1.0
+	const naturalStep = maxNatural / quantity;
+
+	// Calculate valid percentages based on percentage divisibility
+	// Example: max_percentage_div=0.25 → valid percentages: 0, 0.25, 0.5, 0.75, 1.0
+	const percentStep = maxPercent;
+
+	// Use the more restrictive constraint (smaller step size)
+	const effectiveStep = Math.min(naturalStep, percentStep);
+
+	// Round to the nearest valid step
+	const constrainedPercentage = Math.round(percentage / effectiveStep) * effectiveStep;
+
+	// Ensure we don't exceed 100%
+	return Math.min(constrainedPercentage, 1.0);
+}
+
+// Apply percentage divisibility constraints to a share map
+export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMap): ShareMap {
+	const constrainedMap: ShareMap = {};
+
+	// Apply constraints to each share
+	for (const [recipientId, share] of Object.entries(shareMap)) {
+		const constrainedShare = constrainSharePercentage(capacity, share);
+		if (constrainedShare > 0) {
+			// Only include non-zero shares
+			constrainedMap[recipientId] = constrainedShare;
+		}
+	}
+
+	// Normalize to ensure they still sum to 1.0
+	return normalizeShareMap(constrainedMap);
+}
+
 // Compute quantity share based on capacity and percentage
 export function computeQuantityShare(capacity: BaseCapacity, percentage: number): number {
 	const rawQuantity = Math.round((capacity.quantity || 0) * percentage);
@@ -549,8 +595,11 @@ export function calculateRecipientShares(
 	};
 	const filteredShares = applyCapacityFilter(capacity, rawShares, context);
 
-	// Store the filtered shares in the capacity
-	capacity.recipient_shares = filteredShares;
+	// Apply percentage divisibility constraints
+	const constrainedShares = constrainShareMap(capacity, filteredShares);
+
+	// Store the constrained shares in the capacity
+	capacity.recipient_shares = constrainedShares;
 }
 
 // Get all capacities where the receiver has shares from a provider
