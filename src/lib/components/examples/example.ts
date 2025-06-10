@@ -40,7 +40,7 @@ export function populateWithExampleData(rootNode: RootNode): RootNode {
 	const realityHacking = subverse.children.find((child: Node) => child.id === 'realityHacking')!;
 	const loreSystem = subverse.children.find((child: Node) => child.id === 'loreSystem')!;
 
-	addChild(rootNode, 'money', 'Money', 10);
+	addChild(rootNode, 'money', '💸', 10);
 	addChild(rootNode, 'freeAssociation', 'Free Association', 10);
 	addChild(rootNode, 'automation', 'Automation of Useful & Repetitive Tasks', 10);
 	addChild(rootNode, 'commons', 'Socialization of Land & Means of Production', 10);

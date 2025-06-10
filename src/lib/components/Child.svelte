@@ -51,8 +51,36 @@
 		node.name === 'Unnamed' ? [node.name] : node.name.split(/(?=[A-Z][^A-Z])/g)
 	);
 
-	// CSS-based responsive font size - let CSS handle the scaling
-	const fontSize = $derived(`clamp(0.4rem, ${Math.min(nodeWidth, nodeHeight) * 8}vw, 3rem)`);
+	// Calculate font size based on actual text content and container constraints
+	const longestSegment = $derived(
+		segments.reduce(
+			(longest: string, segment: string) => (segment.length > longest.length ? segment : longest),
+			''
+		)
+	);
+
+	const fontSize = $derived(() => {
+		// More aggressive approach - use most of the available space
+		const availableWidth = nodeWidth * 0.9 * 400; // 90% of node width
+		const availableHeight = nodeHeight * 0.9 * 400; // 90% of node height
+
+		// More realistic character width
+		const charWidth = 0.55; // Closer to typical character width
+
+		// Calculate max font size using most of available space
+		const maxFontSizeForWidth = (availableWidth * 0.95) / (longestSegment.length * charWidth * 16); // 95% of available width
+
+		// Calculate height with tighter line spacing
+		const lineHeight = 1.15; // Tighter spacing
+		const maxFontSizeForHeight = (availableHeight * 0.95) / (segments.length * lineHeight * 16); // 95% of available height
+
+		// Take the more restrictive constraint
+		const calculatedSize = Math.min(maxFontSizeForWidth, maxFontSizeForHeight);
+
+		// Apply minimal safety margin
+		const safeSize = calculatedSize * 0.95; // Only 5% safety margin
+		return Math.max(0.4, Math.min(3.5, safeSize));
+	});
 
 	// Determine if this is the only child (occupies 100% of the space)
 	const isOnlyChild = $derived(nodeWidth >= 0.999 && nodeHeight >= 0.999);
@@ -349,7 +377,7 @@
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
 					style="
-          font-size: {fontSize};
+          font-size: {fontSize()}rem;
           width: 100%;
           max-width: {Math.min(200, nodeSizeRatio * 3)}px;
         "
@@ -357,11 +385,7 @@
 			{:else}
 				<div
 					class="node-title"
-					style="
-          font-size: {fontSize};
-          text-align: center;
-          max-width: 100%;
-        "
+					style="font-size: {fontSize()}rem;"
 					title={node.name}
 					onmousedown={handleTextEditStart}
 					ontouchstart={handleTextEditStart}
@@ -499,12 +523,18 @@
 			0px 0px 2px rgba(255, 255, 255, 0.6);
 		font-weight: 500;
 		cursor: text;
+		/* Advanced text fitting */
 		word-break: break-word;
 		hyphens: auto;
 		overflow-wrap: break-word;
 		word-wrap: break-word;
-		/* Prevent any overflow */
+		/* Constrain to container */
+		width: 100%;
+		max-width: 100%;
 		overflow: hidden;
+		text-align: center;
+		/* Font size will be set via inline style */
+		line-height: 1.1;
 		/* Inherit all interference prevention from parent */
 		user-select: none;
 		-webkit-user-select: none;
