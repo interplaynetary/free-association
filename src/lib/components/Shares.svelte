@@ -181,7 +181,7 @@
 				return;
 			}
 
-			shares = await Promise.all(
+			const allShares = await Promise.all(
 				Object.entries($userNetworkCapacitiesWithShares).map(async ([capacityId, capacity]) => {
 					const providerName = (await getUserName(
 						(capacity as RecipientCapacity).provider_id
@@ -196,6 +196,15 @@
 						provider_name: truncatedName
 					} as RecipientCapacity & { provider_name: string };
 				})
+			);
+
+			// Filter out shares with no name or zero/no quantity
+			shares = allShares.filter(
+				(share) =>
+					share.name &&
+					share.name.trim() !== '' &&
+					share.computed_quantity &&
+					share.computed_quantity > 0
 			);
 		})();
 	});
@@ -213,16 +222,20 @@
 			>
 				<div class="flex min-w-0 flex-1 flex-col pr-2">
 					<div class="share-main-info flex items-center gap-2 overflow-hidden">
-						<span class="share-value name font-medium text-ellipsis whitespace-nowrap flex-shrink-0">
+						<span
+							class="share-value name flex-shrink-0 font-medium text-ellipsis whitespace-nowrap"
+						>
 							<span class="capacity-emoji">{share.emoji || '📦'}</span>
 							{share.name}
 						</span>
-						<span class="share-value qty text-sm flex-shrink-0">
+						<span class="share-value qty flex-shrink-0 text-sm">
 							{Number.isInteger(share.computed_quantity)
 								? share.computed_quantity
 								: share.computed_quantity.toFixed(2)}
 							{share.unit}
-							<span class="text-xs text-gray-600 ml-1">({(share.share_percentage * 100).toFixed(1)}%)</span>
+							<span class="ml-1 text-xs text-gray-600"
+								>({(share.share_percentage * 100).toFixed(1)}%)</span
+							>
 						</span>
 					</div>
 					<!-- Show space-time preview inline if available -->

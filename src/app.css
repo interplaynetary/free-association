@@ -29,7 +29,7 @@ html, body {
   height: 100dvh; /* Modern dynamic viewport height */
   
   /* Enhanced overflow handling with vendor prefixes */
-  overflow: hidden;
+  /* Removed global overflow: hidden - let individual pages control their scrolling */
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   
   background-color: #ffffff;
@@ -57,6 +57,13 @@ html, body {
   flex-direction: column;
   -webkit-flex-direction: column;
   -ms-flex-direction: column;
+}
+
+/* ===== Root Page Specific Layout (prevent scrolling only on root) ===== */
+.root-page {
+  overflow: hidden;
+  height: 100%;
+  max-height: 100%;
 }
 
 /* ===== Global Utility Classes (enhanced for cross-browser) ===== */

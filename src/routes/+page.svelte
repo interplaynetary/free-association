@@ -77,7 +77,7 @@
 	});
 </script>
 
-<div class="layout">
+<div class="layout root-page">
 	<div class="parent">
 		<Parent />
 	</div>
@@ -151,6 +151,14 @@
 		height: 100%;
 		max-height: 100%;
 		overflow: hidden;
+	}
+
+	/* Root page specific: ensure it doesn't scroll */
+	.layout.root-page {
+		overflow: hidden;
+		height: 100%;
+		max-height: 100%;
+		position: relative;
 	}
 
 	.parent,

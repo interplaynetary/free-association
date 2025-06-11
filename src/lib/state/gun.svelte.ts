@@ -192,7 +192,7 @@ if (typeof window !== 'undefined') {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Check for SEA keys first as it's the most reliable way to verify authentication
-			if (user._.sea) {
+			if (user._.sea && user.is?.alias) {
 				console.log('[RECALL] User authenticated via SEA check:', user.is.alias);
 				// Set the user state
 				username.set(user.is.alias);
@@ -208,7 +208,7 @@ if (typeof window !== 'undefined') {
 			}
 
 			// Fallback check for user.is.pub if SEA check fails
-			if (user?.is?.pub) {
+			if (user?.is?.pub && user.is?.alias) {
 				console.log('[RECALL] User authenticated via pub check:', user.is.alias);
 				// Set the user state
 				username.set(user.is.alias);

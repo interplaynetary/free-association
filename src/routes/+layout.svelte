@@ -67,10 +67,9 @@
 
 		// Enhanced browser support detection and setup
 		const hasVisualViewport = 'visualViewport' in window;
-		const hasResizeObserver = 'ResizeObserver' in window;
 
 		// Set up Visual Viewport API listener with enhanced compatibility
-		if (hasVisualViewport) {
+		if (hasVisualViewport && window.visualViewport) {
 			window.visualViewport.addEventListener('resize', handleViewportChange);
 			// Also listen to scroll events for better mobile support
 			window.visualViewport.addEventListener('scroll', handleViewportChange);
@@ -92,12 +91,9 @@
 
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
-			if (window.visualViewport) {
+			if (hasVisualViewport && window.visualViewport) {
 				window.visualViewport.removeEventListener('resize', handleViewportChange);
 				window.visualViewport.removeEventListener('scroll', handleViewportChange);
-			}
-			if (window.resizeObserver) {
-				window.resizeObserver.disconnect();
 			}
 		};
 	});
@@ -147,8 +143,8 @@
 		-moz-box-sizing: border-box;
 		box-sizing: border-box;
 
-		/* Prevent any overflow that could cause scrolling */
-		overflow: hidden;
+		/* Allow normal overflow - individual pages control their scrolling */
+		overflow: visible;
 
 		/* Enhanced mobile support */
 		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
@@ -169,11 +165,14 @@
 		flex: 1;
 		width: 100%;
 		overflow-y: auto;
+		overflow-x: hidden; /* Prevent horizontal scrolling */
 		padding: 16px;
 		position: relative;
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */
 		min-height: 0; /* Important for flexbox overflow */
+		/* Enhanced mobile scrolling */
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.toast-container {
