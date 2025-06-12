@@ -1,4 +1,5 @@
 import Gun from 'gun';
+import 'gun/sea';
 import SEA from 'gun/sea';
 import 'gun/axe';
 import 'gun/lib/yson.js';
@@ -7,6 +8,11 @@ import 'gun/lib/radisk'; // Required for chunked disk storage
 import 'gun/lib/store'; // Bridges GUN storage adapter logic
 import 'gun/lib/rindexed'; // IndexedDB adapter for RAD in browser
 import 'gun/lib/webrtc.js';
+
+// Make sure SEA is attached to Gun
+if (typeof Gun.SEA === 'undefined') {
+  Gun.SEA = SEA;
+}
 
 import { writable, get } from 'svelte/store';
 import { createRootNode } from '$lib/protocol';
@@ -25,9 +31,7 @@ import {
 	contributorCapacityShares
 } from './core.svelte';
 
-if (typeof Gun.SEA === 'undefined') {
-	Gun.SEA = SEA;
-}
+// SEA already attached above
 
 // I wonder if it would be required
 
@@ -51,22 +55,54 @@ requestPersistentStorage();
 
 export const GUN = Gun;
 
-// Database
-export const gun = Gun({
-	peers: [
-		//'http://localhost:8765/gun',
-		'https://gun-manhattan.herokuapp.com/gun',
-		'https://peer.wallie.io/gun',
-		'https://gun.defucc.me/gun'
-	],
-	localStorage: false
-	//radisk: false
-});
+// Database - Make sure to initialize Gun properly
+let gunInstance;
+
+if (typeof window !== 'undefined') {
+	// Only initialize in browser environment
+	gunInstance = Gun({
+		peers: [
+			'http://localhost:8765/gun',
+			'https://gun-manhattan.herokuapp.com/gun',
+			'https://peer.wallie.io/gun',
+			'https://gun.defucc.me/gun'
+		],
+		localStorage: false
+		//radisk: false
+	});
+} else {
+	// Provide a more complete mock implementation for SSR
+	gunInstance = {
+		user: () => ({
+			recall: () => ({}),
+			_: { sea: null },
+			is: { alias: null, pub: null }
+		}),
+		get: () => ({
+			map: () => ({ on: () => ({}) }),
+			once: (cb) => { if (cb) cb(null); return { get: () => ({ once: (cb) => { if (cb) cb(null); return {}; } }) }; },
+			put: () => ({}),
+			get: () => ({ once: (cb) => { if (cb) cb(null); return {}; }, put: () => ({}) })
+		}),
+		on: (event, cb) => { if (cb) setTimeout(cb, 0); return gunInstance; }
+	};
+}
+
+export const gun = gunInstance;
 
 // Authentication state store
 export const isAuthenticating = writable(true);
 
-export let user = gun.user().recall({ sessionStorage: true });
+// Initialize user with proper checks
+export let user;
+
+if (typeof window !== 'undefined') {
+	// Only initialize in browser environment
+	user = gun.user().recall({ sessionStorage: true });
+} else {
+	// Provide a mock implementation for SSR
+	user = { _: { sea: null }, is: null };
+}
 
 // SEA.throw = true
 
