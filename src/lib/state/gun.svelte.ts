@@ -66,7 +66,13 @@ export const gun = Gun({
 // Authentication state store
 export const isAuthenticating = writable(true);
 
-export let user = gun.user().recall({ sessionStorage: true });
+export let user: any;
+
+if (typeof window !== 'undefined') {
+	user = gun.user().recall({ sessionStorage: true });
+} else {
+	user = { _:{ sea: null }, is: null };
+}
 
 // SEA.throw = true
 
