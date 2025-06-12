@@ -3,11 +3,11 @@
 
 	// Helper function to calculate border radius for each segment
 	function getSegmentBorderRadius(
-		index: number,
-		total: number,
-		isVertical: boolean = false,
-		rounded: boolean = false
-	): string {
+		index,
+		total,
+		isVertical = false,
+		rounded = false
+	) {
 		if (!rounded || total === 1) return rounded ? 'inherit' : '0';
 
 		if (isVertical) {
