@@ -10,21 +10,23 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
 ### Here's how it works:
 
-1. Your **Recognition** is your acknowledgment of _contributions towards your own self-actualization_
+1. Your **Total-Recognition** is always _100%_.
+
+2. Your **Recognition** is your acknowledgment of _contributions towards your own self-actualization_
 
    - Always represents a share/portion/percentage of one's total recognition (100%)
    - Non-transferable (unlike shares or equity that can be traded)
    - Dynamically (re)adjustable as relationships and contributions evolve
    - Not limited to direct personal consumption - recognition can be given to those contributing to broader social values and needs you care about.
 
-2. Your **Total-Recognition** is always _100%_.
-
 3. Your **Mutual Recognition** with another is the minimum of your recognition of each other.
+
    - For example: If you are 50% of my _total-recognition_, and I am 10% of your _total-recognition_, our mutual-recognition is 10%, the minimum of the both.
      - _Taking the minimum of both shares ensures reciprocity in proportion._
      - This is _mutual-recognition of contribution towards each other's self-actualization_.
 
 4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_.
+
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
    - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
    - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
@@ -76,8 +78,6 @@ The design space is vast, especially for all those decisions that do not concern
 If all people in the world are seperated through at most 6 degrees of seperation, then we can imagine all organization must at most be seperated by 3 or 4. This would be a significant computational gain for calculating transitive surplus shares.
 
 This computational advantage could make organizational-level Free-Association more immediately practical than individual-level implementations for certain types of surplus. Resources that naturally flow at organizational scales (like electricity generation, manufacturing capacity, or agricultural output) might be more efficiently distributed through these shorter organizational networks.
-
-This creates the possibility of a hybrid implementation strategy where organizational-level Free-Association emerges first for certain types of surplus, creating infrastructure and experience that later supports individual-level implementation for more personalized forms of surplus.
 
 </details>
 

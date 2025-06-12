@@ -52,7 +52,7 @@ requestPersistentStorage();
 export const GUN = Gun;
 
 // Database
-export const gun = Gun({
+export const gun = new Gun({
 	peers: [
 		//'http://localhost:8765/gun',
 		'https://gun-manhattan.herokuapp.com/gun',
