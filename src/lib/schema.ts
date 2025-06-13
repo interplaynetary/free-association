@@ -30,7 +30,8 @@ export const NonRootNodeSchema = z.object({
 	children: z.array(z.any()),
 	points: PointsSchema,
 	parent_id: IdSchema,
-	contributor_ids: z.array(IdSchema)
+	contributor_ids: z.array(IdSchema),
+	commitment_shares: z.optional(ShareMapSchema) // Percentage of recognition committed to other users
 });
 
 export const RootNodeSchema = z.object({
@@ -41,8 +42,7 @@ export const RootNodeSchema = z.object({
 	children: z.array(z.any()),
 	user_id: IdSchema,
 	created_at: z.string(),
-	updated_at: z.string(),
-	commitment_shares: z.optional(ShareMapSchema)
+	updated_at: z.string()
 });
 
 // Union type for Node (either RootNode or NonRootNode)

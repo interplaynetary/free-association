@@ -331,9 +331,9 @@ export function providerShares(
 
 	const baseShares = normalizeShareMap(contributorShares);
 	
-	// Apply commitment shares if this is a root node
-	if (provider.type === 'RootNode') {
-		return applyCommitmentShares(baseShares, (provider as RootNode).commitment_shares);
+	// Apply commitment shares if this is a non-root node
+	if (provider.type === 'NonRootNode') {
+		return applyCommitmentShares(baseShares, (provider as NonRootNode).commitment_shares);
 	}
 	
 	return baseShares;
@@ -716,22 +716,22 @@ export function applyCommitmentShares(
 	return normalizeShareMap(modifiedShares);
 }
 
-// Get the total percentage committed by a root node
-export function getTotalCommittedPercentage(node: RootNode): number {
+// Get the total percentage committed by a non-root node
+export function getTotalCommittedPercentage(node: NonRootNode): number {
 	if (!node.commitment_shares) return 0;
 	
 	return Object.values(node.commitment_shares).reduce((total, share) => total + share, 0);
 }
 
-// Get remaining commitment capacity for a root node
-export function getRemainingCommitmentCapacity(node: RootNode): number {
+// Get remaining commitment capacity for a non-root node
+export function getRemainingCommitmentCapacity(node: NonRootNode): number {
 	const totalCommitted = getTotalCommittedPercentage(node);
 	return Math.max(0, 1 - totalCommitted);
 }
 
 // Set commitment share for a specific recipient
 export function setCommitmentShare(
-	node: RootNode,
+	node: NonRootNode,
 	recipientId: string,
 	percentage: number
 ): boolean {
@@ -762,7 +762,7 @@ export function setCommitmentShare(
 }
 
 // Remove commitment share for a specific recipient
-export function removeCommitmentShare(node: RootNode, recipientId: string): boolean {
+export function removeCommitmentShare(node: NonRootNode, recipientId: string): boolean {
 	if (!node.commitment_shares || !node.commitment_shares[recipientId]) {
 		return false;
 	}
