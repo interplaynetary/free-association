@@ -10,9 +10,7 @@ import type {
 	ShareMap,
 	ProviderCapacity,
 	RecipientCapacity,
-	BaseCapacity,
-	Commitment,
-	CommitmentsCollection
+	BaseCapacity
 } from '$lib/schema';
 import {
 	filter,
@@ -691,186 +689,80 @@ export function getSubtreeContributorMap(
 	return subtreeMap;
 }
 
-/**
- * Commitment Functions
- */
-
-// Create a new commitment
-export function createCommitment(
-	id: string,
-	name: string,
-	percentage: number,
-	recipientId: string,
-	committerId: string,
-	description?: string,
-	tags: string[] = []
-): Commitment {
-	return {
-		id,
-		name,
-		description,
-		percentage: Math.max(0, Math.min(1, percentage)), // Clamp between 0 and 1
-		recipient_id: recipientId,
-		committer_id: committerId,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
-		active: true,
-		tags
-	};
-}
-
-// Update an existing commitment
-export function updateCommitment(
-	commitment: Commitment,
-	updates: Partial<Pick<Commitment, 'name' | 'description' | 'percentage' | 'active' | 'tags'>>
-): Commitment {
-	return {
-		...commitment,
-		...updates,
-		percentage: updates.percentage !== undefined 
-			? Math.max(0, Math.min(1, updates.percentage)) 
-			: commitment.percentage,
-		updated_at: new Date().toISOString()
-	};
-}
-
-// Get all active commitments by a user
-export function getCommitmentsByCommitter(
-	commitments: CommitmentsCollection,
-	committerId: string,
-	activeOnly: boolean = true
-): Commitment[] {
-	return Object.values(commitments).filter(
-		commitment => 
-			commitment.committer_id === committerId && 
-			(!activeOnly || commitment.active)
-	);
-}
-
-// Get all active commitments to a user
-export function getCommitmentsToRecipient(
-	commitments: CommitmentsCollection,
-	recipientId: string,
-	activeOnly: boolean = true
-): Commitment[] {
-	return Object.values(commitments).filter(
-		commitment => 
-			commitment.recipient_id === recipientId && 
-			(!activeOnly || commitment.active)
-	);
-}
-
-// Calculate total percentage committed by a user
-export function getTotalCommittedPercentage(
-	commitments: CommitmentsCollection,
-	committerId: string
-): number {
-	const userCommitments = getCommitmentsByCommitter(commitments, committerId);
-	return userCommitments.reduce((total, commitment) => total + commitment.percentage, 0);
-}
-
-// Calculate remaining percentage available for new commitments
-export function getRemainingCommitmentCapacity(
-	commitments: CommitmentsCollection,
-	committerId: string
-): number {
-	const totalCommitted = getTotalCommittedPercentage(commitments, committerId);
-	return Math.max(0, 1 - totalCommitted);
-}
-
-// Calculate the committed share of recognition for a specific recipient
-export function getCommittedShareForRecipient(
-	commitments: CommitmentsCollection,
-	committerId: string,
-	recipientId: string
-): number {
-	const userCommitments = getCommitmentsByCommitter(commitments, committerId);
-	return userCommitments
-		.filter(commitment => commitment.recipient_id === recipientId)
-		.reduce((total, commitment) => total + commitment.percentage, 0);
-}
-
-// Apply commitments to modify share distribution
-export function applyCommitments(
+// Apply commitment shares to modify the base share distribution
+export function applyCommitmentShares(
 	baseShares: ShareMap,
-	commitments: CommitmentsCollection,
-	committerId: string
+	commitmentShares?: ShareMap
 ): ShareMap {
-	const modifiedShares: ShareMap = { ...baseShares };
-	const userCommitments = getCommitmentsByCommitter(commitments, committerId);
+	if (!commitmentShares) {
+		return baseShares;
+	}
 	
-	// Apply each commitment
-	userCommitments.forEach(commitment => {
-		const currentShare = modifiedShares[commitment.recipient_id] || 0;
-		modifiedShares[commitment.recipient_id] = currentShare + commitment.percentage;
-	});
+	const modifiedShares: ShareMap = { ...baseShares };
+	
+	// Add commitment shares to base shares
+	for (const [recipientId, committedShare] of Object.entries(commitmentShares)) {
+		const currentShare = modifiedShares[recipientId] || 0;
+		modifiedShares[recipientId] = currentShare + committedShare;
+	}
 	
 	// Normalize to ensure total doesn't exceed 1.0
 	return normalizeShareMap(modifiedShares);
 }
 
-// Validate that a new commitment won't exceed 100% total
-export function validateCommitment(
-	commitments: CommitmentsCollection,
-	committerId: string,
-	newPercentage: number,
-	excludeCommitmentId?: string
-): { valid: boolean; error?: string; availableCapacity: number } {
-	const existingCommitments = getCommitmentsByCommitter(commitments, committerId)
-		.filter(c => c.id !== excludeCommitmentId);
+// Get the total percentage committed by a root node
+export function getTotalCommittedPercentage(node: RootNode): number {
+	if (!node.commitment_shares) return 0;
 	
-	const totalExisting = existingCommitments.reduce((sum, c) => sum + c.percentage, 0);
-	const availableCapacity = 1 - totalExisting;
-	
-	if (newPercentage > availableCapacity) {
-		return {
-			valid: false,
-			error: `Commitment of ${(newPercentage * 100).toFixed(1)}% exceeds available capacity of ${(availableCapacity * 100).toFixed(1)}%`,
-			availableCapacity
-		};
-	}
-	
-	return { valid: true, availableCapacity };
+	return Object.values(node.commitment_shares).reduce((total, share) => total + share, 0);
 }
 
-// Add a commitment to a collection
-export function addCommitment(
-	commitments: CommitmentsCollection,
-	commitment: Commitment
+// Get remaining commitment capacity for a root node
+export function getRemainingCommitmentCapacity(node: RootNode): number {
+	const totalCommitted = getTotalCommittedPercentage(node);
+	return Math.max(0, 1 - totalCommitted);
+}
+
+// Set commitment share for a specific recipient
+export function setCommitmentShare(
+	node: RootNode,
+	recipientId: string,
+	percentage: number
 ): boolean {
-	const validation = validateCommitment(commitments, commitment.committer_id, commitment.percentage);
+	if (!node.commitment_shares) {
+		node.commitment_shares = {};
+	}
 	
-	if (!validation.valid) {
+	const currentCommitment = node.commitment_shares[recipientId] || 0;
+	const otherCommitments = getTotalCommittedPercentage(node) - currentCommitment;
+	const availableCapacity = 1 - otherCommitments;
+	
+	// Validate the new percentage doesn't exceed available capacity
+	if (percentage > availableCapacity) {
 		return false;
 	}
 	
-	commitments[commitment.id] = commitment;
+	// Clamp percentage between 0 and 1
+	const clampedPercentage = Math.max(0, Math.min(1, percentage));
+	
+	if (clampedPercentage === 0) {
+		// Remove the commitment if percentage is 0
+		delete node.commitment_shares[recipientId];
+	} else {
+		node.commitment_shares[recipientId] = clampedPercentage;
+	}
+	
 	return true;
 }
 
-// Remove a commitment from a collection
-export function removeCommitment(
-	commitments: CommitmentsCollection,
-	commitmentId: string
-): boolean {
-	if (commitments[commitmentId]) {
-		delete commitments[commitmentId];
-		return true;
+// Remove commitment share for a specific recipient
+export function removeCommitmentShare(node: RootNode, recipientId: string): boolean {
+	if (!node.commitment_shares || !node.commitment_shares[recipientId]) {
+		return false;
 	}
-	return false;
-}
-
-// Deactivate a commitment instead of removing it (for audit trail)
-export function deactivateCommitment(
-	commitments: CommitmentsCollection,
-	commitmentId: string
-): boolean {
-	const commitment = commitments[commitmentId];
-	if (commitment) {
-		commitments[commitmentId] = updateCommitment(commitment, { active: false });
-		return true;
-	}
-	return false;
+	
+	delete node.commitment_shares[recipientId];
+	return true;
 }
 
 // Re-export filter-related functions
