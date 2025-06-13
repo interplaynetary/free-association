@@ -105,6 +105,23 @@ export const RecognitionCacheEntrySchema = z.object({
 // Recognition cache schema
 export const RecognitionCacheSchema = z.record(IdSchema, RecognitionCacheEntrySchema);
 
+// Commitment schema - represents a commitment to share a percentage of total recognition
+export const CommitmentSchema = z.object({
+	id: IdSchema,
+	name: z.string().min(1),
+	description: z.optional(z.string()),
+	percentage: PercentageSchema, // Percentage of total recognition to commit (0-1)
+	recipient_id: IdSchema, // Who receives this commitment
+	committer_id: IdSchema, // Who is making the commitment
+	created_at: z.string(),
+	updated_at: z.string(),
+	active: z.boolean().default(true),
+	tags: z.array(z.string()).default([])
+});
+
+// Commitments collection schema
+export const CommitmentsCollectionSchema = z.record(IdSchema, CommitmentSchema);
+
 // Re-export the infer type for convenience
 export type RootNode = z.infer<typeof RootNodeSchema>;
 export type NonRootNode = z.infer<typeof NonRootNodeSchema>;
@@ -117,3 +134,5 @@ export type CapacitiesCollection = z.infer<typeof CapacitiesCollectionSchema>;
 export type ShareMap = z.infer<typeof ShareMapSchema>;
 export type RecognitionCacheEntry = z.infer<typeof RecognitionCacheEntrySchema>;
 export type RecognitionCache = z.infer<typeof RecognitionCacheSchema>;
+export type Commitment = z.infer<typeof CommitmentSchema>;
+export type CommitmentsCollection = z.infer<typeof CommitmentsCollectionSchema>;
