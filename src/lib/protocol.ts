@@ -307,7 +307,7 @@ export function mutualFulfillment(
 	return Math.min(shareFromAToB, shareFromBToA);
 }
 
-// Calculate provider-centric shares (simplified to direct shares only)
+// Calculate provider-centric shares (includes commitment shares for root nodes)
 export function providerShares(
 	provider: Node,
 	nodesMap: Record<string, Node>,
@@ -323,14 +323,20 @@ export function providerShares(
 	for (const contributorId of contributorIds) {
 		// Note: Contributors don't need to exist in nodesMap since they are external user IDs
 		// The shareOfGeneralFulfillment function will find nodes that reference this contributorId
-
 		const share = shareOfGeneralFulfillment(provider, contributorId, nodesMap);
 		// FIXED: Include all contributors, even those with 0 shares
 		// This ensures consistency with SOGF and proper network updates
 		contributorShares[contributorId] = share;
 	}
 
-	return normalizeShareMap(contributorShares);
+	const baseShares = normalizeShareMap(contributorShares);
+	
+	// Apply commitment shares if this is a root node
+	if (provider.type === 'RootNode') {
+		return applyCommitmentShares(baseShares, (provider as RootNode).commitment_shares);
+	}
+	
+	return baseShares;
 }
 
 // Get a receiver's share from a specific capacity provider
