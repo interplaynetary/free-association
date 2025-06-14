@@ -31,7 +31,9 @@ export default defineConfig({
 			filename: 'sw.ts',
 			registerType: 'autoUpdate',
 			injectManifest: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+				swSrc: 'src/sw.ts',
+				swDest: 'service-worker.js'
 			},
 			manifest: {
 				name: 'Free Association',
