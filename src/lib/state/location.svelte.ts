@@ -61,3 +61,6 @@ export const currentLocationText = derived(currentLocation, ($location) => {
 	if (!$location) return 'No location';
 	return `${$location.latitude.toFixed(6)}, ${$location.longitude.toFixed(6)}`;
 });
+
+// Derived store of those who have access to our live-location:
+// those who have a share in a capacity that has a live-location rule.

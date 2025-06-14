@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 
 // GUN module exclusion function for text-encoding
 const moduleExclude = (match: string): Plugin => {
@@ -19,7 +20,45 @@ const moduleExclude = (match: string): Plugin => {
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding'), devtoolsJson()],
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		moduleExclude('text-encoding'),
+		devtoolsJson(),
+		SvelteKitPWA({
+			strategies: 'injectManifest',
+			srcDir: 'src',
+			filename: 'sw.ts',
+			registerType: 'autoUpdate',
+			injectManifest: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
+			},
+			manifest: {
+				name: 'Free Association',
+				short_name: 'FreeAssoc',
+				description: 'Free Association Network',
+				theme_color: '#ffffff',
+				background_color: '#ffffff',
+				display: 'standalone',
+				scope: '/',
+				start_url: '/',
+				icons: [
+					{
+						src: '/favicon.png',
+						sizes: '32x32',
+						type: 'image/png'
+					}
+				]
+			},
+			workbox: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
+			},
+			devOptions: {
+				enabled: true,
+				type: 'module'
+			}
+		})
+	],
 	server: {
 		watch: {
 			ignored: [

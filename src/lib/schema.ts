@@ -12,16 +12,6 @@ export const PercentageSchema = z.number().gte(0).lte(1);
 // ShareMap - a record of node IDs to percentage values
 export const ShareMapSchema = z.record(IdSchema, PercentageSchema);
 
-// We'll use a simpler approach without circular references for schema validation
-// Node schemas will validate most properties but not the recursive children structure
-export const BaseNodeSchema = z.object({
-	id: IdSchema,
-	name: NameSchema,
-	type: z.string(),
-	manual_fulfillment: z.nullable(z.number()),
-	children: z.array(z.any()) // This accepts any array for children
-});
-
 export const NonRootNodeSchema = z.object({
 	id: IdSchema,
 	name: NameSchema,
