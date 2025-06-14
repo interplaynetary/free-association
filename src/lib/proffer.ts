@@ -1,6 +1,8 @@
 import { z } from 'zod/v4';
 
 /*
+From Pekko Koskinen:
+
 ## **Slot**
 
 #### 
@@ -85,12 +87,22 @@ const CombinationSchema = z.object({
 	])
 });
 
+// Nested Proffer input definition
+const ProfferInputSchema: z.ZodType<any> = z.object({
+	type: z.literal('proffer'),
+	profferTemplate: z.lazy((): z.ZodType<any> => ProfferSchema), // Lazy to handle circular reference
+	completionRequirement: z.enum(['draft', 'active', 'completed']).default('completed'),
+	allowPartialCompletion: z.boolean().default(false),
+	minimumProgress: z.number().min(0).max(100).optional() // minimum completion percentage
+});
+
 // Input definition union
-const InputDefinitionSchema = z.union([
+const InputDefinitionSchema: z.ZodType<any> = z.union([
 	StrictTypeSchema,
 	StrictQuantitySchema,
 	DescriptiveSchema,
-	CombinationSchema
+	CombinationSchema,
+	ProfferInputSchema
 ]);
 
 // Logic upon input types
@@ -111,12 +123,13 @@ const AcceptanceLogicSchema = z.union([AutomaticAcceptanceSchema, GovernedAccept
 const SlotStatusSchema = z.enum(['empty', 'pending', 'filled']);
 
 // Slot schema
-const SlotSchema = z.object({
+const SlotSchema: z.ZodType<any> = z.object({
 	id: z.string(),
 	inputDefinition: InputDefinitionSchema,
 	acceptanceLogic: AcceptanceLogicSchema,
 	status: SlotStatusSchema,
 	currentInput: z.any().optional(), // the actual input data when filled
+	nestedProffer: z.lazy((): z.ZodType<any> => ProfferSchema).optional(), // Reference to nested Proffer instance
 	createdAt: z.date(),
 	updatedAt: z.date()
 });
@@ -156,7 +169,7 @@ const ProgressSchema = z.object({
 });
 
 // Proffer schema
-const ProfferSchema = z.object({
+const ProfferSchema: z.ZodType<any> = z.object({
 	id: z.string(),
 	description: ProfferDescriptionSchema,
 	requiredSlots: z.array(SlotSchema),
@@ -175,6 +188,7 @@ export type InputDefinition = z.infer<typeof InputDefinitionSchema>;
 export type AcceptanceLogic = z.infer<typeof AcceptanceLogicSchema>;
 export type ProfferDescription = z.infer<typeof ProfferDescriptionSchema>;
 export type Progress = z.infer<typeof ProgressSchema>;
+export type ProfferInput = z.infer<typeof ProfferInputSchema>;
 
 // Export schemas for validation
 export {
@@ -185,5 +199,58 @@ export {
 	ProfferDescriptionSchema,
 	ProgressSchema,
 	SlotStatusSchema,
-	ProfferStatusSchema
+	ProfferStatusSchema,
+	ProfferInputSchema
+};
+
+// Utility functions for nested Proffer validation
+export const validateNestedProfferSlot = (slot: Slot): boolean => {
+	if (slot.inputDefinition.type !== 'proffer' || !slot.nestedProffer) {
+		return false;
+	}
+
+	const requirement = slot.inputDefinition.completionRequirement;
+	const nestedProffer = slot.nestedProffer;
+
+	switch (requirement) {
+		case 'draft':
+			return nestedProffer.status !== 'cancelled';
+		case 'active':
+			return ['active', 'completed'].includes(nestedProffer.status);
+		case 'completed':
+			return nestedProffer.status === 'completed';
+		default:
+			return false;
+	}
+};
+
+export const calculateNestedProgress = (proffer: Proffer): Progress => {
+	const allSlots = [...proffer.requiredSlots, ...proffer.optionalSlots];
+	let totalNestedProgress = 0;
+	let nestedSlotCount = 0;
+
+	// Calculate progress including nested Proffers
+	allSlots.forEach((slot) => {
+		if (slot.inputDefinition.type === 'proffer' && slot.nestedProffer) {
+			nestedSlotCount++;
+			totalNestedProgress += slot.nestedProffer.progress.completionPercentage;
+		}
+	});
+
+	// Base progress calculation
+	const baseProgress = proffer.progress;
+
+	// If no nested Proffers, return base progress
+	if (nestedSlotCount === 0) {
+		return baseProgress;
+	}
+
+	// Weight nested progress into overall completion
+	const averageNestedProgress = totalNestedProgress / nestedSlotCount;
+	const weightedProgress = (baseProgress.completionPercentage + averageNestedProgress) / 2;
+
+	return {
+		...baseProgress,
+		completionPercentage: Math.round(weightedProgress)
+	};
 };
