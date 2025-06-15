@@ -125,8 +125,6 @@ Or have it scale
 Todo:
 browser scaling
 
-apply max divisibility.
-
 name-resolution saving to UserList: remove UserList from getUserName
 
 select is working strange on some inputs (i.e. bottomsheet)

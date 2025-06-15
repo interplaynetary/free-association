@@ -1,4 +1,4 @@
-import{t as n,a as i}from"../chunks/N0BH6kDF.js";import"../chunks/f90nCk5l.js";import{F as c,G as l,H as d,l as p,m as u,I as y,j as h,J as m}from"../chunks/DbFEi_cg.js";import{h as v,m as b}from"../chunks/zka_eJn8.js";import{i as P}from"../chunks/BitlYDzK.js";var w=n('<div class="privacy-container svelte-19q7san"><!></div>');function U(t,o){c(o,!1);const r=`# Privacy Policy
+import{t as n,a as i}from"../chunks/B8YV51FY.js";import"../chunks/DTudeJM4.js";import{H as c,I as l,J as d,l as p,m as u,K as y,j as h,M as m}from"../chunks/D8QEN0Si.js";import{h as v,m as b}from"../chunks/8z5RAWjk.js";import{i as P}from"../chunks/lENxRRKZ.js";var w=n('<div class="privacy-container svelte-19q7san"><!></div>');function U(t,o){c(o,!1);const r=`# Privacy Policy
 ## P2P Location & Messaging Protocol (Beta)
 
 **Last Updated:** 2025-06-04  
