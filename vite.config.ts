@@ -25,41 +25,7 @@ export default defineConfig({
 		sveltekit(),
 		moduleExclude('text-encoding'),
 		devtoolsJson(),
-		SvelteKitPWA({
-			strategies: 'injectManifest',
-			srcDir: 'src',
-			filename: 'sw.ts',
-			registerType: 'autoUpdate',
-			injectManifest: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-				swSrc: 'src/sw.ts',
-				swDest: 'service-worker.js'
-			},
-			manifest: {
-				name: 'Free Association',
-				short_name: 'FreeAssoc',
-				description: 'Free Association Network',
-				theme_color: '#ffffff',
-				background_color: '#ffffff',
-				display: 'standalone',
-				scope: '/',
-				start_url: '/',
-				icons: [
-					{
-						src: '/favicon.png',
-						sizes: '32x32',
-						type: 'image/png'
-					}
-				]
-			},
-			workbox: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
-			},
-			devOptions: {
-				enabled: true,
-				type: 'module'
-			}
-		})
+		SvelteKitPWA()
 	],
 	server: {
 		watch: {

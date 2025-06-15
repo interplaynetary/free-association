@@ -1,5 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
+import { userCapacitiesWithShares } from './core.svelte';
 
 // Live location data interface
 export interface LiveLocationData {
@@ -64,3 +65,28 @@ export const currentLocationText = derived(currentLocation, ($location) => {
 
 // Derived store of those who have access to our live-location:
 // those who have a share in a capacity that has a live-location rule.
+export const liveLocationAccessList = derived(
+	userCapacitiesWithShares,
+	($userCapacitiesWithShares) => {
+		if (!$userCapacitiesWithShares) {
+			return [];
+		}
+
+		const accessList: string[] = [];
+
+		// Iterate through all capacities
+		Object.entries($userCapacitiesWithShares).forEach(([capacityId, capacity]) => {
+			// If this is a provider capacity (our capacity), get recipients from recipient_shares
+			if ('recipient_shares' in capacity) {
+				Object.keys(capacity.recipient_shares).forEach((contributorId) => {
+					if (!accessList.includes(contributorId)) {
+						accessList.push(contributorId);
+					}
+				});
+			}
+		});
+
+		console.log('[LIVE-LOCATION-ACCESS] Contributors with live-location access:', accessList);
+		return accessList;
+	}
+);

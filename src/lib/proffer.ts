@@ -1,5 +1,7 @@
 import { z } from 'zod/v4';
 
+// Lets transition from functions to jsonlogic so we can be completely json encodable.
+
 /*
 From Pekko Koskinen:
 

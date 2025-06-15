@@ -10,7 +10,6 @@ import {
 } from '$lib/protocol';
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
-import { user } from './gun.svelte';
 
 // Core reactive state - these form the main reactive chain
 export const userTree: Writable<RootNode | null> = writable(null);

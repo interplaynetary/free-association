@@ -26,14 +26,18 @@
 		addContributor = (detail: { nodeId: string; clientX: number; clientY: number }) => {},
 		removeContributor = (detail: { nodeId: string; contributorId: string }) => {},
 		onTextEdit = (detail: { nodeId: string; newName: string }) => {},
-		shouldEdit = false // Flag to indicate if this node should immediately be in edit mode
+		onEditModeChange = (isEditing: boolean) => {},
+		shouldEdit = false, // Flag to indicate if this node should immediately be in edit mode
+		deleteMode = false // Pass delete mode from parent
 	} = $props<{
 		node: NodeData;
 		dimensions: Dimensions;
 		addContributor?: (detail: { nodeId: string; clientX: number; clientY: number }) => void;
 		removeContributor?: (detail: { nodeId: string; contributorId: string }) => void;
 		onTextEdit?: (detail: { nodeId: string; newName: string }) => void;
+		onEditModeChange?: (isEditing: boolean) => void;
 		shouldEdit?: boolean;
+		deleteMode?: boolean;
 	}>();
 
 	// Editing state
@@ -150,6 +154,12 @@
 	// Function to handle add contributor button click
 	function handleAddContributorClick(event: MouseEvent) {
 		event.stopPropagation();
+
+		// Prevent in delete mode
+		if (deleteMode) {
+			return;
+		}
+
 		const nodeId = node.id;
 		if (nodeId) {
 			addContributor({
@@ -162,6 +172,11 @@
 
 	// Function to handle remove contributor
 	function handleRemoveContributor(contributorId: string) {
+		// Prevent in delete mode
+		if (deleteMode) {
+			return;
+		}
+
 		const nodeId = node.id;
 		if (nodeId) {
 			removeContributor({ nodeId, contributorId });
@@ -203,6 +218,15 @@
 			'target:',
 			event.target
 		);
+
+		// Prevent editing in delete mode
+		if (deleteMode) {
+			console.log('[DEBUG CHILD] Edit prevented - delete mode active');
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+			event.preventDefault();
+			return;
+		}
 
 		// Prevent event propagation to parent but preserve user gesture
 		event.stopPropagation();
@@ -262,8 +286,11 @@
 	function handleClickOutside(event: MouseEvent) {
 		// Only if we're editing
 		if (isEditing) {
+			// Prevent the event from reaching parent (which would trigger navigation)
+			event.stopPropagation();
+			event.stopImmediatePropagation();
+
 			// For desktop view, check if the click is outside the input field
-			// For mobile view, modal handles its own click outside
 			if (editInput && !editInput.contains(event.target as Node)) {
 				finishEditing();
 			}
@@ -321,11 +348,16 @@
 
 	// Check if this node should enter edit mode (either from prop or from being newly created)
 	$effect(() => {
-		if (shouldEdit && !isEditing && node.id) {
+		if (shouldEdit && !isEditing && node.id && !deleteMode) {
 			// Start editing automatically
 			isEditing = true;
 			editValue = node.name || '';
 		}
+	});
+
+	// Notify parent when editing state changes
+	$effect(() => {
+		onEditModeChange(isEditing);
 	});
 </script>
 
@@ -447,6 +479,7 @@
 								<TagPill
 									userId={contributorId}
 									{truncateLength}
+									removable={!deleteMode}
 									onClick={(id, e) => handleTagClick(id, e)}
 									onRemove={handleRemoveContributor}
 								/>

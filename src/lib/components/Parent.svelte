@@ -48,6 +48,9 @@
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
 
+	// Track if any child is currently in edit mode to prevent navigation
+	let anyChildEditing = $state(false);
+
 	// Create users data provider for the dropdown
 	let usersDataProvider = createUsersDataProvider([]);
 
@@ -376,6 +379,11 @@
 		}
 	}
 
+	// Handle when any child enters or exits edit mode
+	function handleChildEditModeChange(isEditing: boolean) {
+		anyChildEditing = isEditing;
+	}
+
 	// Contributor management
 	function handleAddContributor(detail: { nodeId: string; clientX: number; clientY: number }) {
 		const { nodeId, clientX, clientY } = detail;
@@ -490,8 +498,8 @@
 
 	// Growth handlers
 	function startGrowth(node: d3.HierarchyRectangularNode<VisualizationNode>, isShrinking = false) {
-		// Don't allow growth in delete mode
-		if (globalState.deleteMode) return;
+		// Don't allow growth in delete mode or when any child is editing
+		if (globalState.deleteMode || anyChildEditing) return;
 
 		// Clear existing growth state
 		if (growthInterval !== null) clearInterval(growthInterval);
@@ -895,7 +903,9 @@
 							addContributor={handleAddContributor}
 							removeContributor={handleRemoveContributor}
 							onTextEdit={handleTextEdit}
+							onEditModeChange={handleChildEditModeChange}
 							shouldEdit={globalState.nodeToEdit === child.data.id}
+							deleteMode={globalState.deleteMode}
 						/>
 					</div>
 				{/each}

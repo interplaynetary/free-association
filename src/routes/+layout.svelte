@@ -89,11 +89,6 @@
 
 		document.addEventListener('keydown', handleGlobalKeydown);
 
-		// PWA registration - SvelteKit PWA auto-registers the service worker
-		if ('serviceWorker' in navigator) {
-			console.log('Service Worker supported');
-		}
-
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
 			if (hasVisualViewport && window.visualViewport) {
@@ -103,10 +98,6 @@
 		};
 	});
 </script>
-
-<svelte:head>
-	<meta name="theme-color" content="#ffffff" />
-</svelte:head>
 
 <main>
 	<div class="app-header">
