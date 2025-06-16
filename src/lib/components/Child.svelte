@@ -1,6 +1,7 @@
 <script lang="ts">
 	import TagPill from './TagPill.svelte';
 	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
+	import { globalState } from '$lib/global.svelte';
 
 	// Define interface for node data
 	interface NodeData {
@@ -26,24 +27,31 @@
 		addContributor = (detail: { nodeId: string; clientX: number; clientY: number }) => {},
 		removeContributor = (detail: { nodeId: string; contributorId: string }) => {},
 		onTextEdit = (detail: { nodeId: string; newName: string }) => {},
-		onEditModeChange = (isEditing: boolean) => {},
-		shouldEdit = false, // Flag to indicate if this node should immediately be in edit mode
-		deleteMode = false // Pass delete mode from parent
+		shouldEdit = false // Flag to indicate if this node should immediately be in edit mode
 	} = $props<{
 		node: NodeData;
 		dimensions: Dimensions;
 		addContributor?: (detail: { nodeId: string; clientX: number; clientY: number }) => void;
 		removeContributor?: (detail: { nodeId: string; contributorId: string }) => void;
 		onTextEdit?: (detail: { nodeId: string; newName: string }) => void;
-		onEditModeChange?: (isEditing: boolean) => void;
 		shouldEdit?: boolean;
-		deleteMode?: boolean;
 	}>();
 
-	// Editing state
+	// Editing state - now synced with global state
 	let isEditing = $state(false);
 	let editValue = $state('');
 	let editInput: HTMLInputElement | null = $state(null);
+
+	// Sync local editing state with global state
+	$effect(() => {
+		const isThisNodeBeingEdited = globalState.editMode && globalState.editingNodeId === node.id;
+		if (isThisNodeBeingEdited !== isEditing) {
+			isEditing = isThisNodeBeingEdited;
+			if (isEditing) {
+				editValue = node.name || '';
+			}
+		}
+	});
 
 	// Calculate relative size for text scaling
 	const nodeWidth = $derived(dimensions.x1 - dimensions.x0);
@@ -153,13 +161,19 @@
 
 	// Function to handle add contributor button click
 	function handleAddContributorClick(event: MouseEvent) {
-		event.stopPropagation();
-
-		// Prevent in delete mode
-		if (deleteMode) {
+		// Don't allow adding contributors in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot add contributors in delete mode', 'warning');
 			return;
 		}
 
+		// Don't allow adding contributors when editing
+		if (globalState.editMode) {
+			globalState.showToast('Cannot add contributors while editing', 'warning');
+			return;
+		}
+
+		event.stopPropagation();
 		const nodeId = node.id;
 		if (nodeId) {
 			addContributor({
@@ -172,8 +186,15 @@
 
 	// Function to handle remove contributor
 	function handleRemoveContributor(contributorId: string) {
-		// Prevent in delete mode
-		if (deleteMode) {
+		// Don't allow removing contributors in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot remove contributors in delete mode', 'warning');
+			return;
+		}
+
+		// Don't allow removing contributors when editing
+		if (globalState.editMode) {
+			globalState.showToast('Cannot remove contributors while editing', 'warning');
 			return;
 		}
 
@@ -219,15 +240,6 @@
 			event.target
 		);
 
-		// Prevent editing in delete mode
-		if (deleteMode) {
-			console.log('[DEBUG CHILD] Edit prevented - delete mode active');
-			event.stopPropagation();
-			event.stopImmediatePropagation();
-			event.preventDefault();
-			return;
-		}
-
 		// Prevent event propagation to parent but preserve user gesture
 		event.stopPropagation();
 		event.stopImmediatePropagation();
@@ -247,10 +259,15 @@
 			return;
 		}
 
-		// Set up edit state
-		console.log('[DEBUG CHILD] Setting isEditing = true');
-		isEditing = true;
-		editValue = node.name || '';
+		// Try to enter edit mode through global state
+		const canEdit = globalState.enterEditMode(node.id);
+		if (!canEdit) {
+			// Global state prevented editing (e.g., in delete mode)
+			return;
+		}
+
+		// Set up edit state - this will be synced via the effect above
+		console.log('[DEBUG CHILD] Edit mode entered successfully');
 	}
 
 	// Handle text edit save
@@ -268,8 +285,7 @@
 			finishEditing();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
-			isEditing = false;
-			// Let the global escape handler in the layout take care of navigation
+			finishEditing();
 		}
 	}
 
@@ -279,17 +295,15 @@
 		if (newName && newName !== node.name) {
 			saveTextEdit(newName);
 		}
-		isEditing = false;
+
+		// Exit edit mode through global state
+		globalState.exitEditMode();
 	}
 
 	// Handle click outside to finish editing
 	function handleClickOutside(event: MouseEvent) {
-		// Only if we're editing
-		if (isEditing) {
-			// Prevent the event from reaching parent (which would trigger navigation)
-			event.stopPropagation();
-			event.stopImmediatePropagation();
-
+		// Only if we're editing this specific node
+		if (isEditing && globalState.editingNodeId === node.id) {
 			// For desktop view, check if the click is outside the input field
 			if (editInput && !editInput.contains(event.target as Node)) {
 				finishEditing();
@@ -348,16 +362,14 @@
 
 	// Check if this node should enter edit mode (either from prop or from being newly created)
 	$effect(() => {
-		if (shouldEdit && !isEditing && node.id && !deleteMode) {
-			// Start editing automatically
-			isEditing = true;
-			editValue = node.name || '';
+		if (shouldEdit && !isEditing && node.id) {
+			// Try to enter edit mode through global state
+			const canEdit = globalState.enterEditMode(node.id);
+			if (canEdit) {
+				// Edit state will be synced via the effect above
+				console.log('[DEBUG CHILD] Auto-entering edit mode for new node');
+			}
 		}
-	});
-
-	// Notify parent when editing state changes
-	$effect(() => {
-		onEditModeChange(isEditing);
 	});
 </script>
 
@@ -479,7 +491,6 @@
 								<TagPill
 									userId={contributorId}
 									{truncateLength}
-									removable={!deleteMode}
 									onClick={(id, e) => handleTagClick(id, e)}
 									onRemove={handleRemoveContributor}
 								/>

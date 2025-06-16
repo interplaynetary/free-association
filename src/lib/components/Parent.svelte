@@ -48,9 +48,6 @@
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
 
-	// Track if any child is currently in edit mode to prevent navigation
-	let anyChildEditing = $state(false);
-
 	// Create users data provider for the dropdown
 	let usersDataProvider = createUsersDataProvider([]);
 
@@ -262,6 +259,19 @@
 
 	async function handleAddNode() {
 		console.log('[UI FLOW] handleAddNode started');
+
+		// Don't allow adding nodes when in edit mode
+		if (globalState.editMode) {
+			globalState.showToast('Cannot add nodes while editing', 'warning');
+			return;
+		}
+
+		// Don't allow adding nodes when in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot add nodes in delete mode', 'warning');
+			return;
+		}
+
 		if (!currentNodeId) {
 			console.log('[UI FLOW] No currentNodeId, aborting');
 			return;
@@ -370,18 +380,13 @@
 			triggerUpdate();
 
 			// Clear edit mode
-			globalState.nodeToEdit = '';
+			globalState.exitEditMode();
 
 			globalState.showToast(`Node renamed to "${newName}"`, 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
 			globalState.showToast('Error updating node name', 'error');
 		}
-	}
-
-	// Handle when any child enters or exits edit mode
-	function handleChildEditModeChange(isEditing: boolean) {
-		anyChildEditing = isEditing;
 	}
 
 	// Contributor management
@@ -498,8 +503,8 @@
 
 	// Growth handlers
 	function startGrowth(node: d3.HierarchyRectangularNode<VisualizationNode>, isShrinking = false) {
-		// Don't allow growth in delete mode or when any child is editing
-		if (globalState.deleteMode || anyChildEditing) return;
+		// Don't allow growth in delete mode
+		if (globalState.deleteMode) return;
 
 		// Clear existing growth state
 		if (growthInterval !== null) clearInterval(growthInterval);
@@ -666,6 +671,12 @@
 		// Only handle primary pointer to prevent duplicates
 		if (!event.isPrimary) return;
 
+		// Don't handle growth interactions when in edit mode
+		if (globalState.editMode) {
+			console.log('[DEBUG PARENT] Ignoring growth start - in edit mode');
+			return;
+		}
+
 		// Check if the pointer target is a text edit field, node-text element, or contributor element
 		const target = event.target as HTMLElement;
 		if (
@@ -738,6 +749,13 @@
 	function handleGrowthEnd(event: PointerEvent) {
 		// Only handle if this is our active pointer
 		if (!event.isPrimary || event.pointerId !== activePointerId) return;
+
+		// Don't handle interactions when in edit mode
+		if (globalState.editMode) {
+			console.log('[DEBUG PARENT] Ignoring interaction - in edit mode');
+			resetInteractionState();
+			return;
+		}
 
 		// Check if the click target is a text edit field, node-text element, or contributor element
 		const target = event.target as HTMLElement;
@@ -903,9 +921,7 @@
 							addContributor={handleAddContributor}
 							removeContributor={handleRemoveContributor}
 							onTextEdit={handleTextEdit}
-							onEditModeChange={handleChildEditModeChange}
 							shouldEdit={globalState.nodeToEdit === child.data.id}
-							deleteMode={globalState.deleteMode}
 						/>
 					</div>
 				{/each}

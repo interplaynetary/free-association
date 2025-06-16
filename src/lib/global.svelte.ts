@@ -61,6 +61,8 @@ export const globalState = $state({
 	// UI state
 	deleteMode: false,
 	nodeToEdit: '',
+	editMode: false, // Global edit mode flag
+	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
 	toast: {
 		visible: false,
@@ -69,11 +71,23 @@ export const globalState = $state({
 		timeoutId: null as number | null
 	},
 	navigateToPath: async (newPath: string[]) => {
+		// Prevent navigation when in edit mode
+		if (globalState.editMode) {
+			console.log('Navigation blocked: currently in edit mode');
+			return;
+		}
+
 		console.log('Navigating to path', newPath);
 		if (!newPath.length || !get(userTree)) return;
 		currentPath.set(newPath);
 	},
 	navigateToPathIndex: (index: number) => {
+		// Prevent navigation when in edit mode
+		if (globalState.editMode) {
+			console.log('Navigation blocked: currently in edit mode');
+			return;
+		}
+
 		const path = get(currentPath);
 		if (index < 0 || index >= path.length) return;
 		if (index === path.length - 1) return; // Already at position
@@ -81,6 +95,12 @@ export const globalState = $state({
 	},
 	// Add a node ID to the path (zoom in)
 	zoomInto: (nodeId: string) => {
+		// Prevent navigation when in edit mode
+		if (globalState.editMode) {
+			console.log('Navigation blocked: currently in edit mode');
+			return;
+		}
+
 		const path = get(currentPath);
 		const tree = get(userTree);
 
@@ -102,6 +122,12 @@ export const globalState = $state({
 
 	// Remove the last node ID from the path (zoom out)
 	zoomOut: () => {
+		// Prevent navigation when in edit mode
+		if (globalState.editMode) {
+			console.log('Navigation blocked: currently in edit mode');
+			return;
+		}
+
 		const path = get(currentPath);
 		if (path.length <= 1) return;
 		currentPath.set(path.slice(0, -1));
@@ -110,6 +136,10 @@ export const globalState = $state({
 	resetState: () => {
 		userTree.set(null);
 		currentPath.set([]);
+		globalState.editMode = false;
+		globalState.editingNodeId = '';
+		globalState.nodeToEdit = '';
+		globalState.deleteMode = false;
 	},
 
 	/**
@@ -118,6 +148,12 @@ export const globalState = $state({
 
 	// Toggle delete mode
 	toggleDeleteMode: () => {
+		// Don't allow toggling delete mode when in edit mode
+		if (globalState.editMode) {
+			globalState.showToast('Cannot toggle delete mode while editing', 'warning');
+			return;
+		}
+
 		globalState.deleteMode = !globalState.deleteMode;
 		globalState.showToast(
 			globalState.deleteMode
@@ -137,6 +173,33 @@ export const globalState = $state({
 				}
 			}, 1000);
 		}
+	},
+
+	// Enter edit mode for a specific node
+	enterEditMode: (nodeId: string) => {
+		// Don't allow editing when in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot edit nodes in delete mode', 'warning');
+			return false;
+		}
+
+		// If already editing a different node, exit that first
+		if (globalState.editMode && globalState.editingNodeId !== nodeId) {
+			globalState.exitEditMode();
+		}
+
+		globalState.editMode = true;
+		globalState.editingNodeId = nodeId;
+		console.log('[GLOBAL STATE] Entered edit mode for node:', nodeId);
+		return true;
+	},
+
+	// Exit edit mode
+	exitEditMode: () => {
+		globalState.editMode = false;
+		globalState.editingNodeId = '';
+		globalState.nodeToEdit = '';
+		console.log('[GLOBAL STATE] Exited edit mode');
 	},
 
 	// Display a toast notification

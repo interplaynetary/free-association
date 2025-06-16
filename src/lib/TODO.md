@@ -128,3 +128,84 @@ browser scaling
 name-resolution saving to UserList: remove UserList from getUserName
 
 select is working strange on some inputs (i.e. bottomsheet)
+
+
+Ideas:
+Joint request shares?
+Sharing time
+Sharing space
+Sharing Space-Time together?
+
+Dividing a Capacity Quantity
+Dividing Space-Holding-Time?
+
+How to divide an apartment?
+Over time?
+
+# providing capacitiy with specific-space and specific-time:
+
+Example: "Room 302 from 2-4pm on Tuesday"
+
+Division means:
+Temporal subdivision within the bounded time slot
+Concurrent sharing if physically possible
+Maximum constraints - both space and time are fixed boundaries
+
+Division mechanics:
+Person A gets 25% = 30 minutes (2:00-2:30pm)
+Person B gets 50% = 60 minutes (2:30-3:30pm)
+Person C gets 25% = 30 minutes (3:30-4:00pm)
+
+# providing capacitiy with specific-space and no specific-time:
+
+Example: "Room 302 whenever available"
+
+Division means:
+Temporal flexibility with spatial constraint
+Scheduling coordination required among recipients
+Time becomes the variable dimension for division
+
+Division mechanics:
+Person A: 30% = ~50 hours/week of room access
+Person B: 40% = ~67 hours/week of room access
+Person C: 30% = ~50 hours/week of room access
+Recipients coordinate scheduling among themselves
+
+# providing capacitiy with no specific-space and specific-time:
+
+Example: "A workspace (any of my 3 rooms) from 2-4pm Tuesday"
+
+Division means:
+Spatial flexibility with temporal constraint
+Parallel utilization across different spaces during same time
+Space becomes the variable dimension for division
+
+Division mechanics:
+Person A: 33% = 1 room for the 2-hour slot
+Person B: 33% = 1 room for the 2-hour slot
+Person C: 33% = 1 room for the 2-hour slot
+All happen simultaneously in different spaces
+
+
+# providing capacitiy with specific-space and no specific-time:
+
+Example: "A workspace whenever, wherever I have available"
+Division means:
+Maximum flexibility - both space and time are variable
+Optimal resource allocation across all dimensions
+Complex coordination but highest efficiency potential
+
+Division mechanics:
+Person A: 40% = ~202 room-hours/week (flexible when/where)
+Person B: 35% = ~176 room-hours/week (flexible when/where)
+Person C: 25% = ~126 room-hours/week (flexible when/where)
+Maximum coordination flexibility but requires communication systems
+
+
+
+
+// given that capacities also have units, what are we dividing the units or the space-time coordinates?
+
+rename from coordinate capacities to : availability for distribution
+
+when the unit is time, then the coordinates are the available time-slots

@@ -14,9 +14,16 @@
 	// Set up global keyboard event listener and reliable viewport handling
 	onMount(() => {
 		function handleGlobalKeydown(event: KeyboardEvent) {
-			// Handle escape key for zoom out navigation
+			// Handle escape key for zoom out navigation or exit edit mode
 			if (event.key === 'Escape') {
-				// Check if we're currently editing (input fields, etc.)
+				// If we're in edit mode, let the edit mode handle the escape
+				if (globalState.editMode) {
+					// The Child component will handle exiting edit mode
+					// Don't prevent default here to allow the input blur to work
+					return;
+				}
+
+				// Check if we're currently editing (input fields, etc.) - fallback check
 				const activeElement = document.activeElement;
 				const isEditing =
 					activeElement &&
