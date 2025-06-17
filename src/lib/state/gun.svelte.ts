@@ -71,7 +71,7 @@ export let user: any;
 if (typeof window !== 'undefined') {
 	user = gun.user().recall({ sessionStorage: true });
 } else {
-	user = { _:{ sea: null }, is: null };
+	user = { _: { sea: null }, is: null };
 }
 
 // SEA.throw = true
@@ -200,12 +200,21 @@ if (typeof window !== 'undefined') {
 			// Check for SEA keys first as it's the most reliable way to verify authentication
 			if (user._.sea && user.is?.alias) {
 				console.log('[RECALL] User authenticated via SEA check:', user.is.alias);
-				// Set the user state
-				username.set(user.is.alias);
-				userpub.set(user.is.pub);
-				usersList.get(user.is?.pub).put({
-					name: user.is.alias,
-					lastSeen: Date.now()
+
+				// Get the actual alias and pub from Gun storage instead of trusting user.is
+				user.get('alias').once((actualAlias: any) => {
+					user.get('pub').once((actualPub: any) => {
+						const aliasToUse = actualAlias || user.is.alias;
+						const pubToUse = actualPub || user.is.pub;
+						console.log('[RECALL] Using alias from storage:', aliasToUse);
+						console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+						username.set(aliasToUse);
+						userpub.set(pubToUse);
+						usersList.get(pubToUse).put({
+							name: aliasToUse,
+							lastSeen: Date.now()
+						});
+					});
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
@@ -216,12 +225,24 @@ if (typeof window !== 'undefined') {
 			// Fallback check for user.is.pub if SEA check fails
 			if (user?.is?.pub && user.is?.alias) {
 				console.log('[RECALL] User authenticated via pub check:', user.is.alias);
-				// Set the user state
-				username.set(user.is.alias);
-				userpub.set(user.is.pub);
-				usersList.get(user.is?.pub).put({
-					name: user.is.alias,
-					lastSeen: Date.now()
+
+				// Get the actual alias and pub from Gun storage instead of trusting user.is
+				user.get('alias').once((actualAlias: any) => {
+					user.get('pub').once((actualPub: any) => {
+						const aliasToUse = actualAlias || user.is.alias;
+						const pubToUse = actualPub || user.is.pub;
+						console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
+						console.log(
+							'[RECALL] Using pub from storage (pub fallback):',
+							pubToUse?.slice(0, 20) + '...'
+						);
+						username.set(aliasToUse);
+						userpub.set(pubToUse);
+						usersList.get(pubToUse).put({
+							name: aliasToUse,
+							lastSeen: Date.now()
+						});
+					});
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
@@ -255,35 +276,68 @@ gun.on('auth', async () => {
 		// Check for SEA keys first as it's the most reliable way to verify authentication
 		if (user._.sea) {
 			console.log('[AUTH] User authenticated via SEA check:', user.is.alias);
-			username.set(user.is.alias);
-			userpub.set(user.is?.pub);
-			usersList.get(user.is?.pub).put({
-				name: user.is.alias,
-				lastSeen: Date.now()
+
+			// Get the actual alias and pub from Gun storage instead of trusting user.is
+			user.get('alias').once((actualAlias: any) => {
+				user.get('pub').once((actualPub: any) => {
+					const aliasToUse = actualAlias || user.is.alias;
+					const pubToUse = actualPub || user.is.pub;
+					console.log('[AUTH] Using alias from storage:', aliasToUse);
+					console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+					username.set(aliasToUse);
+					userpub.set(pubToUse);
+					usersList.get(pubToUse).put({
+						name: aliasToUse,
+						lastSeen: Date.now()
+					});
+
+					console.log(`signed in as ${aliasToUse}`);
+					console.log(`userPub: ${pubToUse}`);
+
+					// Load existing user data
+					manifest();
+				});
 			});
 
-			console.log(`signed in as ${user.is.alias}`);
-			console.log(`userPub: ${user.is?.pub}`);
+			// Remove these unreliable console.log statements
+			// console.log(`signed in as ${user.is.alias}`);
+			// console.log(`userPub: ${user.is?.pub}`);
 
-			// Load existing user data
-			manifest();
+			// Don't call manifest() here anymore - it's called inside the callback above
 			return;
 		}
 
 		if (user.is.alias) {
 			console.log('[AUTH] User authenticated via alias check:', user.is.alias);
-			username.set(user.is.alias);
-			userpub.set(user.is?.pub);
-			usersList.get(user.is?.pub).put({
-				name: user.is.alias,
-				lastSeen: Date.now()
+
+			// Get the actual alias and pub from Gun storage instead of trusting user.is
+			user.get('alias').once((actualAlias: any) => {
+				user.get('pub').once((actualPub: any) => {
+					const aliasToUse = actualAlias || user.is.alias;
+					const pubToUse = actualPub || user.is.pub;
+					console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
+					console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
+					username.set(aliasToUse);
+					userpub.set(pubToUse);
+					usersList.get(pubToUse).put({
+						name: aliasToUse,
+						lastSeen: Date.now()
+					});
+
+					console.log(`signed in as ${aliasToUse} (fallback)`);
+					console.log(`userPub: ${pubToUse} (fallback)`);
+
+					// Load existing user data
+					manifest();
+				});
 			});
 
-			console.log(`signed in as ${user.is.alias}`);
-			console.log(`userPub: ${user.is?.pub}`);
+			// Remove these unreliable console.log statements
+			// console.log(`signed in as ${user.is.alias}`);
+			// console.log(`userPub: ${user.is?.pub}`);
 
-			// Load existing user data
-			manifest();
+			// Don't call manifest() here anymore - it's called inside the callback above
+			return;
 		} else {
 			throw new Error('Authentication failed - no alias found');
 		}

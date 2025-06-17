@@ -16,12 +16,12 @@
 
 	let { message, sender }: ChatMessageProps = $props();
 
-	const messageClass = message.who === sender ? 'sent' : 'received';
+	const messageClass = message.whopub === sender ? 'sent' : 'received';
 	const ts = new Date(message.when);
 
 	// Debug logging for whopub
 	console.log('ChatMessage - whopub:', message.whopub, 'length:', message.whopub?.length);
-	console.log('ChatMessage - is own message:', message.who === sender);
+	console.log('ChatMessage - is own message:', message.whopub === sender);
 
 	// Generate avatar using gun-avatar if we have a public key, otherwise fallback
 	function generateAvatar(whopub?: string, username?: string | any): string {

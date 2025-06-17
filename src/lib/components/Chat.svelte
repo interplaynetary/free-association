@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import { onMount } from 'svelte';
-	import { username, user, gun, GUN } from '$lib/state/gun.svelte';
+	import { username, userpub, user, gun, GUN } from '$lib/state/gun.svelte';
 	import SEA from 'gun/sea';
 
 	interface ChatProps {
@@ -47,20 +47,12 @@
 	}
 
 	onMount(() => {
-		var match = {
-			// lexical queries are kind of like a limited RegEx or Glob.
-			'.': {
-				// property selector
-				'>': new Date(+new Date() - 1 * 1000 * 60 * 60 * 3).toISOString() // find any indexed property larger ~3 hours ago
-			},
-			'-': 1 // filter in reverse
-		} as any;
-
+		// Remove the time filter to get all messages
 		// Get Messages (simplified like example)
 		gun
 			.get(chatId)
-			.map(match)
-			.once(async (data: any, key: string) => {
+			.map()
+			.on(async (data: any, key: string) => {
 				if (data) {
 					// Key for end-to-end encryption
 					const encryptionKey = '#foo';
@@ -73,14 +65,21 @@
 						whopub: await gun.user(data).get('pub')
 					};
 
-					if (message.what) {
-						// Simplified deduplication and sorting (like the example)
-						messages = [...messages.slice(-100), message].sort((a, b) => a.when - b.when);
+					if (message.what && message.when) {
+						// Check if message already exists to prevent duplicates
+						const messageExists = messages.some(
+							(m) => m.when === message.when && m.what === message.what
+						);
 
-						if (canAutoScroll) {
-							autoScroll();
-						} else {
-							unreadMessages = true;
+						if (!messageExists) {
+							// Add message and keep array sorted, but don't artificially limit to 100
+							messages = [...messages, message].sort((a, b) => a.when - b.when);
+
+							if (canAutoScroll) {
+								autoScroll();
+							} else {
+								unreadMessages = true;
+							}
 						}
 					}
 				}
@@ -117,12 +116,17 @@
 </script>
 
 <div class="container">
-	{#if $username}
+	{#if user.is?.pub}
 		<main onscroll={watchScroll}>
 			{#each messages as message (message.when)}
-				<ChatMessage {message} sender={$username} />
+				<ChatMessage {message} sender={$userpub} />
 			{/each}
-
+			<!-- Debug info -->
+			<pre>
+				Debug: username = "{$username}"<br />
+				Debug: user.is.alias = "{user.is?.alias}"<br />
+				Debug: user.is.pub = "{user.is?.pub?.slice(0, 20)}..."
+			</pre>
 			<div class="dummy" bind:this={scrollBottom}></div>
 		</main>
 
