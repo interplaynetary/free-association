@@ -460,7 +460,7 @@
 		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
 			<div class="settings-content">
 				<div class="space-time-section mb-6">
-					<h4 class="mb-4 text-sm font-medium text-gray-700">Space-time coordinates</h4>
+					<h4 class="mb-4 text-sm font-medium text-gray-700">Availability</h4>
 
 					<div class="space-time-options mb-6 ml-2">
 						<div class="flex flex-wrap gap-x-8 gap-y-3">

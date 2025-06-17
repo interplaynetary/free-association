@@ -121,12 +121,7 @@
 			{#each messages as message (message.when)}
 				<ChatMessage {message} sender={$userpub} />
 			{/each}
-			<!-- Debug info -->
-			<pre>
-				Debug: username = "{$username}"<br />
-				Debug: user.is.alias = "{user.is?.alias}"<br />
-				Debug: user.is.pub = "{user.is?.pub?.slice(0, 20)}..."
-			</pre>
+
 			<div class="dummy" bind:this={scrollBottom}></div>
 		</main>
 

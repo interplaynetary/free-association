@@ -74,7 +74,7 @@ if (typeof window !== 'undefined') {
 	user = { _: { sea: null }, is: null };
 }
 
-// SEA.throw = true
+// SEA.throw = true (do not use this in production)
 
 // Current User's username
 export const username = writable('');
