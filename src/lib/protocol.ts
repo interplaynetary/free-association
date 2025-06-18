@@ -759,6 +759,17 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
 		return false;
 	}
 
+	// Store original location info for rollback
+	const originalParent = getParentNode(tree, nodeId);
+	if (!originalParent) {
+		return false;
+	}
+	
+	const originalIndex = originalParent.children.findIndex(child => child.id === nodeId);
+	if (originalIndex === -1) {
+		return false;
+	}
+
 	// Extract the subtree
 	const subtree = extractSubtree(tree, nodeId);
 	if (!subtree) {
@@ -768,16 +779,19 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
 	// Insert at new location
 	const success = insertSubtree(tree, newParentId, subtree);
 	if (!success) {
-		// If insertion failed, we need to put the subtree back
-		// This is a bit tricky since we've already removed it
-		// For now, just return false - in a real implementation you'd want to restore it
+		// Rollback: restore subtree to original location
+		originalParent.children.splice(originalIndex, 0, subtree);
+		// Restore original parent_id if it's a NonRootNode
+		if (subtree.type === 'NonRootNode') {
+			(subtree as NonRootNode).parent_id = originalParent.id;
+		}
 		return false;
 	}
 
 	return true;
 }
 
-// Get the insertion index for a node at a specific position in parent's children
+// Move a node to a specific position in parent's children
 export function reorderNodeAtIndex(tree: Node, nodeId: string, newParentId: string, index: number): boolean {
 	// Validate the move
 	if (wouldCreateCycle(tree, nodeId, newParentId)) {
@@ -786,6 +800,17 @@ export function reorderNodeAtIndex(tree: Node, nodeId: string, newParentId: stri
 
 	// Can't move root node
 	if (tree.id === nodeId) {
+		return false;
+	}
+
+	// Store original location info for rollback
+	const originalParent = getParentNode(tree, nodeId);
+	if (!originalParent) {
+		return false;
+	}
+	
+	const originalIndex = originalParent.children.findIndex(child => child.id === nodeId);
+	if (originalIndex === -1) {
 		return false;
 	}
 
@@ -808,7 +833,18 @@ export function reorderNodeAtIndex(tree: Node, nodeId: string, newParentId: stri
 
 	// Insert at specific index
 	const clampedIndex = Math.max(0, Math.min(index, targetParent.children.length));
-	targetParent.children.splice(clampedIndex, 0, subtree);
+	
+	try {
+		targetParent.children.splice(clampedIndex, 0, subtree);
+	} catch (error) {
+		// Rollback: restore subtree to original location
+		originalParent.children.splice(originalIndex, 0, subtree);
+		// Restore original parent_id if it's a NonRootNode
+		if (subtree.type === 'NonRootNode') {
+			(subtree as NonRootNode).parent_id = originalParent.id;
+		}
+		return false;
+	}
 
 	return true;
 }
