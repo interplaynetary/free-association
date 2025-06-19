@@ -13,7 +13,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
-		"start": "node start.cjs"
+		"start": "node start.cjs",
+		"proffer-example": "bun run src/lib/tests/proffer-example.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",

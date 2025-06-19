@@ -20,7 +20,7 @@ import {
 	isContribution
 } from '$lib/protocol';
 import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
-import { username, userpub, userTree, persist, manifest } from '$lib/state.svelte';
+import { username, userpub, userTree, persist } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)

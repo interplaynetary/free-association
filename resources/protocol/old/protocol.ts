@@ -17,7 +17,6 @@ export interface BaseNode {
 
 export interface RootNode extends BaseNode {
 	type: 'RootNode';
-	user_id: string;
 	capacities: Capacity[];
 	created_at: string;
 	updated_at: string;
@@ -492,14 +491,12 @@ export function validateManualFulfillment(value: number | undefined): number | u
 export function createRootNode(
 	id: string,
 	name: string,
-	userId: string,
 	manual?: number
 ): RootNode {
 	return {
 		id,
 		name,
 		type: 'RootNode',
-		user_id: userId,
 		children: [],
 		manual_fulfillment: validateManualFulfillment(manual),
 		capacities: [],

@@ -61,6 +61,92 @@ export const userNetworkCapacitiesWithShares = derived(
 	}
 );
 
+// COMPOSE-FROM MODEL:
+// mapping our capacityIds to the capacityIds of our userNetworkCapacitiesWithShares that we want to compose from
+// userDesiredComposeFrom represents: "I want to composeInto MY capacity FROM THEIR capacity (via the share I have in their capacity)"
+// Structure: myCapacityId → theirCapacityId → desiredRatio
+// Example: "cooking-skill" → "ingredients-supply" → 0.7 means:
+//   "I want to compose FROM their ingredients supply INTO my cooking skill, using 70% of my existing share in their ingredients capacity"
+//   Note: This only works because I already have some share percentage in their ingredients capacity
+export const userDesiredComposeFrom = writable<Record<string, Record<string, number>>>({});
+
+// COMPOSE-INTO MODEL (opposite direction):
+// userDesiredComposeInto represents: "I want to composeInto THEIR capacity using MY capacity (via the share they have in my capacity)"
+// Structure: myCapacityId → theirCapacityId → desiredRatio
+// Example: "cooking-skill" → "meal-service" → 0.8 means:
+//   "I want to compose my cooking skill INTO their meal service, using 80% of their existing share in my cooking capacity"
+//   Note: This only works because they already have some share percentage in my cooking capacity
+export const userDesiredComposeInto = writable<Record<string, Record<string, number>>>({});
+
+// NETWORK COMPOSE-FROM MODEL:
+// networkDesiredComposeFrom represents what others want to composeInto via their shares
+// Structure: userId → theirCapacityId → ourCapacityId → desiredRatio
+// Example: "alice" → "ingredients-supply" → "cooking-skill" → 0.5 means:
+//   "Alice wants to compose FROM our cooking skill INTO her ingredients supply, using 50% of her existing share in our cooking capacity"
+//   Note: This only works because Alice already has some share percentage in our cooking capacity
+export const networkDesiredComposeFrom = writable<
+	Record<string, Record<string, Record<string, number>>>
+>({});
+
+// NETWORK COMPOSE-INTO MODEL (opposite direction):
+// networkDesiredComposeInto represents what others want to compose into our capacities via our shares
+// Structure: userId → theirCapacityId → ourCapacityId → desiredRatio
+// Example: "alice" → "ingredients-supply" → "cooking-skill" → 0.6 means:
+//   "Alice wants to compose her ingredients INTO our cooking skill, using 60% of our existing share in her ingredients capacity"
+//   Note: This only works because we already have some share percentage in Alice's ingredients capacity
+export const networkDesiredComposeInto = writable<
+	Record<string, Record<string, Record<string, number>>>
+>({});
+
+// FEASIBLE COMPOSE-FROM: Constrains raw desires by actual share-based access rights
+// We can only compose from capacities up to our share percentage in them
+export const feasibleComposeFrom = derived(
+	[userDesiredComposeFrom, userNetworkCapacitiesWithShares],
+	([$userDesiredComposeFrom, $userNetworkCapacitiesWithShares]) => {
+		console.log(
+			'[FEASIBLE-COMPOSE-FROM] Calculating feasible compose-from based on share constraints...'
+		);
+
+		const feasible: Record<string, Record<string, number>> = {};
+
+		Object.entries($userDesiredComposeFrom).forEach(([ourCapacityId, ourDesires]) => {
+			const feasibleDesires: Record<string, number> = {};
+
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredRatio]) => {
+				const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
+
+				if (!networkCapacity) {
+					console.warn(`[FEASIBLE-COMPOSE-FROM] No network capacity found for: ${theirCapacityId}`);
+					return;
+				}
+
+				// Our share percentage in their capacity constrains what we can feasibly use
+				const ourShareInTheirCapacity = (networkCapacity as any).share_percentage || 0;
+				const feasibleRatio = Math.min(desiredRatio, ourShareInTheirCapacity);
+
+				if (feasibleRatio > 0) {
+					feasibleDesires[theirCapacityId] = feasibleRatio;
+
+					if (feasibleRatio < desiredRatio) {
+						console.log(
+							`[FEASIBLE-COMPOSE-FROM] Constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredRatio.toFixed(3)} → feasible ${feasibleRatio.toFixed(3)} (limited by ${(ourShareInTheirCapacity * 100).toFixed(1)}% share)`
+						);
+					}
+				}
+			});
+
+			if (Object.keys(feasibleDesires).length > 0) {
+				feasible[ourCapacityId] = feasibleDesires;
+			}
+		});
+
+		console.log(
+			`[FEASIBLE-COMPOSE-FROM] Generated feasible compositions for ${Object.keys(feasible).length} capacities`
+		);
+		return feasible;
+	}
+);
+
 // Node Map
 export const nodesMap: Writable<Record<string, Node>> = writable({});
 
@@ -212,6 +298,330 @@ export const contributorCapacityShares = derived(capacityShares, ($capacityShare
 	console.log('[CAPACITY-SHARES] Generated contributor shares map:', contributorShares);
 	return contributorShares;
 });
+
+// FEASIBLE COMPOSE-INTO: Constrains raw desires by recipient's share in our capacities
+// We can only compose into capacities up to the recipient's share percentage in our capacity
+export const feasibleComposeInto = derived(
+	[userDesiredComposeInto, contributorCapacityShares, networkCapacities],
+	([$userDesiredComposeInto, $contributorCapacityShares, $networkCapacities]) => {
+		console.log(
+			'[FEASIBLE-COMPOSE-INTO] Calculating feasible compose-into based on recipient share constraints...'
+		);
+
+		const feasible: Record<string, Record<string, number>> = {};
+
+		Object.entries($userDesiredComposeInto).forEach(([ourCapacityId, ourDesires]) => {
+			const feasibleDesires: Record<string, number> = {};
+
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredRatio]) => {
+				// Find who owns the target capacity
+				const providerId = Object.keys($networkCapacities).find(
+					(id) => $networkCapacities[id] && $networkCapacities[id][theirCapacityId]
+				);
+
+				if (!providerId) {
+					console.warn(
+						`[FEASIBLE-COMPOSE-INTO] No provider found for capacity: ${theirCapacityId}`
+					);
+					return;
+				}
+
+				// Check how much share they have in our capacity (this constrains how much they can receive)
+				const theirShareInOurCapacity =
+					$contributorCapacityShares[providerId]?.[ourCapacityId] || 0;
+				const feasibleRatio = Math.min(desiredRatio, theirShareInOurCapacity);
+
+				if (feasibleRatio > 0) {
+					feasibleDesires[theirCapacityId] = feasibleRatio;
+
+					if (feasibleRatio < desiredRatio) {
+						console.log(
+							`[FEASIBLE-COMPOSE-INTO] Constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredRatio.toFixed(3)} → feasible ${feasibleRatio.toFixed(3)} (limited by ${(theirShareInOurCapacity * 100).toFixed(1)}% recipient share)`
+						);
+					}
+				}
+			});
+
+			if (Object.keys(feasibleDesires).length > 0) {
+				feasible[ourCapacityId] = feasibleDesires;
+			}
+		});
+
+		console.log(
+			`[FEASIBLE-COMPOSE-INTO] Generated feasible compositions for ${Object.keys(feasible).length} capacities`
+		);
+		return feasible;
+	}
+);
+
+// Helper function to calculate how well two desired amounts align
+function calculateDesireAlignment(ourDesire: number, theirDesire: number): number {
+	if (ourDesire === 0 || theirDesire === 0) return 0;
+
+	// Calculate the ratio between desires
+	const ratio = Math.min(ourDesire, theirDesire) / Math.max(ourDesire, theirDesire);
+
+	// Return a score between 0 and 1 where 1 = perfect alignment
+	return ratio;
+}
+
+// STEP 1: MUTUAL DESIRE (Aspirational - based on raw desires)
+// TYPE 1: Mutual Desire for Our Capacities
+// Both we and they want to enhance our capacity using their capacity (before constraints)
+export const mutualDesireOurCapacities = derived(
+	[userDesiredComposeFrom, networkDesiredComposeInto, userNetworkCapacitiesWithShares],
+	([$userDesiredComposeFrom, $networkDesiredComposeInto, $userNetworkCapacitiesWithShares]) => {
+		console.log('[MUTUAL-DESIRE-OURS] Calculating mutual desires for our capacities...');
+
+		if (!$userDesiredComposeFrom || !$networkDesiredComposeInto) {
+			console.log('[MUTUAL-DESIRE-OURS] No composition data available');
+			return {};
+		}
+
+		const mutualDesires: Record<
+			string,
+			{
+				ourCapacityId: string;
+				theirCapacityId: string;
+				ourDesiredAmount: number;
+				theirDesiredAmount: number;
+				providerId: string;
+				desireViability: number;
+			}
+		> = {};
+
+		Object.entries($userDesiredComposeFrom).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, ourDesiredAmount]) => {
+				const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
+				const providerId = (networkCapacity as any)?.provider_id;
+
+				if (!providerId) {
+					console.warn(`[MUTUAL-DESIRE-OURS] No provider found for capacity: ${theirCapacityId}`);
+					return;
+				}
+
+				// Check if they also want to compose their capacity into our capacity
+				const theirDesireForOurCapacity =
+					$networkDesiredComposeInto[providerId]?.[theirCapacityId]?.[ourCapacityId];
+				if (!theirDesireForOurCapacity) return;
+
+				const desireViability = calculateDesireAlignment(
+					ourDesiredAmount,
+					theirDesireForOurCapacity
+				);
+
+				const compositionKey = `${ourCapacityId}:${theirCapacityId}:${providerId}`;
+				mutualDesires[compositionKey] = {
+					ourCapacityId,
+					theirCapacityId,
+					ourDesiredAmount,
+					theirDesiredAmount: theirDesireForOurCapacity,
+					providerId,
+					desireViability
+				};
+
+				console.log(
+					`[MUTUAL-DESIRE-OURS] Found mutual desire: ${compositionKey} (desire viability: ${desireViability.toFixed(2)})`
+				);
+			});
+		});
+
+		console.log(
+			`[MUTUAL-DESIRE-OURS] Found ${Object.keys(mutualDesires).length} mutual desires for our capacities`
+		);
+		return mutualDesires;
+	}
+);
+
+// TYPE 2: Mutual Desire for Their Capacities
+// Both we and they want to enhance their capacity using our capacity (before constraints)
+export const mutualDesireTheirCapacities = derived(
+	[userDesiredComposeInto, networkDesiredComposeFrom, networkCapacities],
+	([$userDesiredComposeInto, $networkDesiredComposeFrom, $networkCapacities]) => {
+		console.log('[MUTUAL-DESIRE-THEIRS] Calculating mutual desires for their capacities...');
+
+		if (!$userDesiredComposeInto || !$networkDesiredComposeFrom) {
+			console.log('[MUTUAL-DESIRE-THEIRS] No composition data available');
+			return {};
+		}
+
+		const mutualDesires: Record<
+			string,
+			{
+				ourCapacityId: string;
+				theirCapacityId: string;
+				ourDesiredAmount: number;
+				theirDesiredAmount: number;
+				providerId: string;
+				desireViability: number;
+			}
+		> = {};
+
+		Object.entries($userDesiredComposeInto).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, ourDesiredAmount]) => {
+				// Find the provider who owns this capacity
+				const providerId = Object.keys($networkCapacities).find(
+					(id) => $networkCapacities[id] && $networkCapacities[id][theirCapacityId]
+				);
+
+				if (!providerId) {
+					console.warn(`[MUTUAL-DESIRE-THEIRS] No provider found for capacity: ${theirCapacityId}`);
+					return;
+				}
+
+				// Check if they also want to compose our capacity into their capacity
+				const theirDesireForOurCapacity =
+					$networkDesiredComposeFrom[providerId]?.[theirCapacityId]?.[ourCapacityId];
+				if (!theirDesireForOurCapacity) return;
+
+				const desireViability = calculateDesireAlignment(
+					ourDesiredAmount,
+					theirDesireForOurCapacity
+				);
+
+				const compositionKey = `${ourCapacityId}:${theirCapacityId}:${providerId}`;
+				mutualDesires[compositionKey] = {
+					ourCapacityId,
+					theirCapacityId,
+					ourDesiredAmount,
+					theirDesiredAmount: theirDesireForOurCapacity,
+					providerId,
+					desireViability
+				};
+
+				console.log(
+					`[MUTUAL-DESIRE-THEIRS] Found mutual desire: ${compositionKey} (desire viability: ${desireViability.toFixed(2)})`
+				);
+			});
+		});
+
+		console.log(
+			`[MUTUAL-DESIRE-THEIRS] Found ${Object.keys(mutualDesires).length} mutual desires for their capacities`
+		);
+		return mutualDesires;
+	}
+);
+
+// STEP 2: MUTUAL FEASIBLE (Realistic - constrained by shares)
+// TYPE 1: Mutual Feasible Enhancement of Our Capacities
+// Takes mutual desires and constrains them by actual share access
+export const mutualFeasibleOurCapacities = derived(
+	[mutualDesireOurCapacities, feasibleComposeFrom],
+	([$mutualDesireOurCapacities, $feasibleComposeFrom]) => {
+		console.log(
+			'[MUTUAL-FEASIBLE-OURS] Calculating feasible mutual enhancements of our capacities...'
+		);
+
+		const mutualFeasible: Record<
+			string,
+			{
+				ourCapacityId: string;
+				theirCapacityId: string;
+				ourDesiredAmount: number;
+				theirDesiredAmount: number;
+				ourFeasibleAmount: number;
+				providerId: string;
+				desireViability: number;
+				feasibleViability: number;
+				constraintRatio: number;
+			}
+		> = {};
+
+		Object.entries($mutualDesireOurCapacities).forEach(([compositionKey, mutualDesire]) => {
+			const { ourCapacityId, theirCapacityId } = mutualDesire;
+
+			// Get our feasible amount (constrained by our shares)
+			const ourFeasibleAmount = $feasibleComposeFrom[ourCapacityId]?.[theirCapacityId] || 0;
+
+			if (ourFeasibleAmount > 0) {
+				const feasibleViability = calculateDesireAlignment(
+					ourFeasibleAmount,
+					mutualDesire.theirDesiredAmount
+				);
+
+				const constraintRatio = ourFeasibleAmount / mutualDesire.ourDesiredAmount;
+
+				mutualFeasible[compositionKey] = {
+					...mutualDesire,
+					ourFeasibleAmount,
+					feasibleViability,
+					constraintRatio
+				};
+
+				console.log(
+					`[MUTUAL-FEASIBLE-OURS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${ourFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
+				);
+			}
+		});
+
+		console.log(
+			`[MUTUAL-FEASIBLE-OURS] Found ${Object.keys(mutualFeasible).length} feasible mutual enhancements of our capacities`
+		);
+		return mutualFeasible;
+	}
+);
+
+// TYPE 2: Mutual Feasible Enhancement of Their Capacities
+// Takes mutual desires and constrains them by recipient share access
+export const mutualFeasibleTheirCapacities = derived(
+	[mutualDesireTheirCapacities, feasibleComposeInto],
+	([$mutualDesireTheirCapacities, $feasibleComposeInto]) => {
+		console.log(
+			'[MUTUAL-FEASIBLE-THEIRS] Calculating feasible mutual enhancements of their capacities...'
+		);
+
+		const mutualFeasible: Record<
+			string,
+			{
+				ourCapacityId: string;
+				theirCapacityId: string;
+				ourDesiredAmount: number;
+				theirDesiredAmount: number;
+				ourFeasibleAmount: number;
+				providerId: string;
+				desireViability: number;
+				feasibleViability: number;
+				constraintRatio: number;
+			}
+		> = {};
+
+		Object.entries($mutualDesireTheirCapacities).forEach(([compositionKey, mutualDesire]) => {
+			const { ourCapacityId, theirCapacityId } = mutualDesire;
+
+			// Get our feasible amount (constrained by their shares in our capacity)
+			const ourFeasibleAmount = $feasibleComposeInto[ourCapacityId]?.[theirCapacityId] || 0;
+
+			if (ourFeasibleAmount > 0) {
+				const feasibleViability = calculateDesireAlignment(
+					ourFeasibleAmount,
+					mutualDesire.theirDesiredAmount
+				);
+
+				const constraintRatio = ourFeasibleAmount / mutualDesire.ourDesiredAmount;
+
+				mutualFeasible[compositionKey] = {
+					...mutualDesire,
+					ourFeasibleAmount,
+					feasibleViability,
+					constraintRatio
+				};
+
+				console.log(
+					`[MUTUAL-FEASIBLE-THEIRS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${ourFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
+				);
+			}
+		});
+
+		console.log(
+			`[MUTUAL-FEASIBLE-THEIRS] Found ${Object.keys(mutualFeasible).length} feasible mutual enhancements of their capacities`
+		);
+		return mutualFeasible;
+	}
+);
+
+// LEGACY EXPORTS (for backward compatibility)
+export const mutualEnhanceOurCapacities = mutualFeasibleOurCapacities;
+export const mutualEnhanceTheirCapacities = mutualFeasibleTheirCapacities;
 
 // Derived store that combines userCapacities with capacityShares to match current schema
 export const userCapacitiesWithShares = derived(

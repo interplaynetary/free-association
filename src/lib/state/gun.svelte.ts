@@ -9,9 +9,7 @@ import 'gun/lib/rindexed'; // IndexedDB adapter for RAD in browser
 import 'gun/lib/webrtc.js';
 
 import { writable, get } from 'svelte/store';
-import { createRootNode } from '$lib/protocol';
-import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from '$lib/validation';
-import { populateWithExampleData } from '$lib/components/examples/example';
+import { parseShareMap, parseRecognitionCache } from '$lib/validation';
 import {
 	userTree,
 	userSogf,
@@ -22,8 +20,11 @@ import {
 	isLoadingSogf,
 	isLoadingRecognitionCache,
 	providerShares,
-	contributorCapacityShares
+	contributorCapacityShares,
+	userDesiredComposeFrom,
+	userDesiredComposeInto
 } from './core.svelte';
+import { initializeUserDataSubscriptions } from './network.svelte';
 
 if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
@@ -88,68 +89,6 @@ export const userNamesCache = writable<Record<string, string>>({});
 // Store for tracking all user IDs
 export const userIds = writable<string[]>([]);
 
-// Centralized reactive subscription to usersList
-function setupUsersListSubscription() {
-	if (typeof window === 'undefined') return; // Only run in browser
-
-	console.log('[USERS] Setting up centralized usersList subscription');
-
-	// Track current users to detect additions/removals
-	const currentUsers = new Map<string, any>();
-
-	// Subscribe to all changes in the usersList
-	usersList.map().on((userData: any, userId: string) => {
-		console.log(`[USERS] User update: ${userId}`, userData);
-
-		if (!userId || userId === '_') return; // Skip invalid keys
-
-		if (userData === null || userData === undefined) {
-			// User was removed
-			console.log(`[USERS] User removed: ${userId}`);
-			currentUsers.delete(userId);
-
-			// Update userNamesCache to remove this user
-			userNamesCache.update((cache) => {
-				const { [userId]: _, ...rest } = cache;
-				return rest;
-			});
-		} else {
-			// User was added or updated
-			console.log(`[USERS] User added/updated: ${userId}`, userData);
-			currentUsers.set(userId, userData);
-
-			// Get the user's alias and update cache
-			const userName = userData.name;
-			if (userName && typeof userName === 'string') {
-				// Update userNamesCache with the name from usersList
-				userNamesCache.update((cache) => ({
-					...cache,
-					[userId]: userName
-				}));
-			} else {
-				// Try to get alias from user's protected space
-				gun
-					.get(`~${userId}`)
-					.get('alias')
-					.once((alias: any) => {
-						if (alias && typeof alias === 'string') {
-							console.log(`[USERS] Got alias from protected space for ${userId}: ${alias}`);
-							userNamesCache.update((cache) => ({
-								...cache,
-								[userId]: alias
-							}));
-						}
-					});
-			}
-		}
-
-		// Update userIds store with current user list
-		const allUserIds = Array.from(currentUsers.keys());
-		console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
-		userIds.set(allUserIds);
-	});
-}
-
 export async function getUserName(userId: string) {
 	// First check the reactive cache
 	const cache = get(userNamesCache);
@@ -180,11 +119,6 @@ export async function getUserName(userId: string) {
 	// Fallback to truncated ID
 	const fallbackName = userId.substring(0, 8) + '...';
 	return fallbackName;
-}
-
-// Initialize the centralized users subscription
-if (typeof window !== 'undefined') {
-	setupUsersListSubscription();
 }
 
 // Check if user is already authenticated after recall
@@ -218,7 +152,7 @@ if (typeof window !== 'undefined') {
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
-				manifest();
+				initializeUserDataSubscriptions();
 				return;
 			}
 
@@ -246,7 +180,7 @@ if (typeof window !== 'undefined') {
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
-				manifest();
+				initializeUserDataSubscriptions();
 			} else {
 				console.log('[RECALL] No authenticated user found after recall');
 				// Clear the stores to ensure consistent state
@@ -295,7 +229,7 @@ gun.on('auth', async () => {
 					console.log(`userPub: ${pubToUse}`);
 
 					// Load existing user data
-					manifest();
+					initializeUserDataSubscriptions();
 				});
 			});
 
@@ -328,7 +262,7 @@ gun.on('auth', async () => {
 					console.log(`userPub: ${pubToUse} (fallback)`);
 
 					// Load existing user data
-					manifest();
+					initializeUserDataSubscriptions();
 				});
 			});
 
@@ -336,7 +270,7 @@ gun.on('auth', async () => {
 			// console.log(`signed in as ${user.is.alias}`);
 			// console.log(`userPub: ${user.is?.pub}`);
 
-			// Don't call manifest() here anymore - it's called inside the callback above
+			// Don't call initializeUserDataSubscriptions() here anymore - it's called inside the callback above
 			return;
 		} else {
 			throw new Error('Authentication failed - no alias found');
@@ -544,117 +478,80 @@ export function persistContributorCapacityShares() {
 	});
 }
 
+/**
+ * Persist user's desired compose-from to Gun
+ */
+export function persistUserDesiredComposeFrom() {
+	const userDesiredComposeFromValue = get(userDesiredComposeFrom);
+	if (!userDesiredComposeFromValue || Object.keys(userDesiredComposeFromValue).length === 0) {
+		console.log('[PERSIST] No user desired compose-from data to persist');
+		return;
+	}
+
+	console.log('[PERSIST] Starting user desired compose-from persistence...');
+	console.log('[PERSIST] User desired compose-from:', userDesiredComposeFromValue);
+
+	try {
+		// Create a deep clone to avoid reactivity issues
+		const composeFromClone = structuredClone(userDesiredComposeFromValue);
+
+		// Serialize to JSON
+		const composeFromJson = JSON.stringify(composeFromClone);
+		console.log('[PERSIST] Serialized user desired compose-from length:', composeFromJson.length);
+
+		// Store in Gun under the expected path that network subscribers use
+		user.get('desiredComposeFrom').put(composeFromJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving user desired compose-from to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] User desired compose-from successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing user desired compose-from:', error);
+	}
+}
+
+/**
+ * Persist user's desired compose-into to Gun
+ */
+export function persistUserDesiredComposeInto() {
+	const userDesiredComposeIntoValue = get(userDesiredComposeInto);
+	if (!userDesiredComposeIntoValue || Object.keys(userDesiredComposeIntoValue).length === 0) {
+		console.log('[PERSIST] No user desired compose-into data to persist');
+		return;
+	}
+
+	console.log('[PERSIST] Starting user desired compose-into persistence...');
+	console.log('[PERSIST] User desired compose-into:', userDesiredComposeIntoValue);
+
+	try {
+		// Create a deep clone to avoid reactivity issues
+		const composeIntoClone = structuredClone(userDesiredComposeIntoValue);
+
+		// Serialize to JSON
+		const composeIntoJson = JSON.stringify(composeIntoClone);
+		console.log('[PERSIST] Serialized user desired compose-into length:', composeIntoJson.length);
+
+		// Store in Gun under the expected path that network subscribers use
+		user.get('desiredComposeInto').put(composeIntoJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving user desired compose-into to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] User desired compose-into successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing user desired compose-into:', error);
+	}
+}
+
 // Monitoring: Check connectivity with gun.back('opt.peers') and WebRTC stats:
 async function monitorWebRTC(pc: any) {
 	const report = await pc.getStats();
 	for (let dict of report.values()) {
 		console.log(`${dict.type}: id=${dict.id}, timestamp=${dict.timestamp}`);
 	}
-}
-
-/**
- * Load the application state from Gun
- */
-export function manifest() {
-	console.log('[MANIFEST] Loading data from Gun');
-
-	// Set loading flag before loading tree
-	isLoadingTree.set(true);
-
-	// Load tree with fallback timeout for distributed sync
-	let treeLoaded = false;
-
-	const handleTreeData = (treeData: any, isRetry = false) => {
-		const attemptLabel = isRetry ? 'retry' : 'initial';
-		console.log(
-			`[MANIFEST] Raw tree data from Gun (${attemptLabel}):`,
-			typeof treeData === 'string' ? `String of length ${treeData.length}` : 'Object:',
-			treeData
-		);
-
-		// Process valid data
-		if (treeData !== undefined && treeData !== null) {
-			const parsedTree = parseTree(treeData);
-
-			if (parsedTree && user.is?.pub) {
-				console.log(
-					'[MANIFEST] Loaded tree with children count:',
-					parsedTree.children?.length || 0
-				);
-				if (parsedTree.children?.length > 0) {
-					console.log('[MANIFEST] First child:', parsedTree.children[0]);
-				}
-				userTree.set(parsedTree);
-				treeLoaded = true;
-				isLoadingTree.set(false);
-
-				// Trigger recalculation after load
-				setTimeout(() => {
-					console.log('[MANIFEST] Triggering tree recalculation after load');
-					userTree.set(parsedTree);
-				}, 50);
-				return;
-			}
-		}
-
-		// Create new tree only after retry attempt or if we have valid user context
-		if (isRetry && user.is?.pub && !treeLoaded) {
-			console.log(
-				'[MANIFEST] No valid tree data found after retry, creating initial tree with example data'
-			);
-			const newTree = createRootNode(get(userpub), get(username), get(userpub));
-			populateWithExampleData(newTree);
-			userTree.set(newTree);
-			user.get('tree').put(JSON.stringify(newTree));
-			isLoadingTree.set(false);
-		} else if (!isRetry && (treeData === undefined || treeData === null)) {
-			// First attempt with undefined - wait and retry once
-			console.log('[MANIFEST] Tree data undefined, retrying in 2s...');
-			setTimeout(() => {
-				if (!treeLoaded) {
-					user.get('tree').once((retryData: any) => handleTreeData(retryData, true));
-				}
-			}, 2000);
-		} else if (isRetry) {
-			console.log('[MANIFEST] No tree data available and no user context');
-			isLoadingTree.set(false);
-		}
-	};
-
-	// Initial tree load attempt
-	user.get('tree').once(handleTreeData);
-
-	// Load SOGF - needed for network synchronization even though it will be recalculated // is it truly needed?
-	isLoadingSogf.set(true);
-	user.get('sogf').once((sogfData: any) => {
-		if (sogfData) {
-			// Parse SOGF data with validation
-			const validatedSogf = parseShareMap(sogfData);
-			userSogf.set(validatedSogf);
-		}
-		isLoadingSogf.set(false);
-	});
-
-	// Set loading flag before loading capacities
-	isLoadingCapacities.set(true);
-
-	user.get('capacities').once((capacitiesData: any) => {
-		console.log('[MANIFEST] Loading capacities data...');
-		if (capacitiesData) {
-			// Parse capacities with validation
-			console.log('[MANIFEST] Capacities data:', capacitiesData);
-
-			const validatedCapacities = parseCapacities(capacitiesData);
-			console.log('[MANIFEST] Loaded capacities count:', Object.keys(validatedCapacities).length);
-			console.log('[MANIFEST] Post-Validation capacities:', validatedCapacities);
-			userCapacities.set(validatedCapacities);
-		} else {
-			console.log('[MANIFEST] No capacities data found');
-		}
-
-		// Reset loading flag after capacities are loaded
-		isLoadingCapacities.set(false);
-	});
 }
 
 /**
@@ -758,8 +655,83 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 	});
 }
 
+/**
+ * Change the name of the user's tree root node
+ * @param {string} newName - The new name for the tree
+ */
+export function changeTreeName(newName: string) {
+	console.log(`[TREE-NAME] Changing tree name to: ${newName}`);
+
+	const currentTree = get(userTree);
+	if (!currentTree) {
+		console.error('[TREE-NAME] No tree found to rename');
+		return;
+	}
+
+	// Update the tree name
+	const updatedTree = {
+		...currentTree,
+		name: newName
+	};
+
+	// Update the store
+	userTree.set(updatedTree);
+
+	// Persist the changes
+	persistTree();
+
+	console.log(`[TREE-NAME] Tree name changed to: ${newName}`);
+}
+
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).clearUsersList = clearUsersList;
-	console.log('[DEBUG] clearUsersList function exposed to window');
+	(window as any).changeTreeName = changeTreeName;
+	console.log('[DEBUG] clearUsersList and changeTreeName functions exposed to window');
+}
+
+// secrets would be given to us?
+// We dont need writeable what we need is to be able to store the secrets in our private user-space only readable by the user (encrypted)
+// use pubkey to decrypt our own user-space? (or does gun do it automatically)
+
+var pair = user._.sea;
+
+export function saveSecret(pubkey: string, secret: string) {
+	// encrypt our own user-space
+	user.get('secrets').get(pubkey).put(SEA.encrypt(secret, pair));
+}
+
+export function getSecret(pubkey: string) {
+	// decrypt from our own user-space
+	return user
+		.get('secrets')
+		.get(pubkey)
+		.once((secret: string) => {
+			return SEA.decrypt(secret, pair);
+		});
+}
+
+interface Message {
+	who: string;
+	what: string;
+	when: number;
+	whopub?: string; // Match ChatMessage interface
+	path?: string;
+}
+
+export function sendMessage(path: string, pubkey: string[], message: Message) {
+	// pubKey -> messages
+	user.get('messages').get(pubkey).set(message);
+}
+
+export function readMessages(fromPubKey: string, path: string, pubkeys: string[]) {
+	// ourKey -> messages
+	gun
+		.get(`~${fromPubKey}`)
+		.get('messages')
+		.get(get(userpub))
+		.map()
+		.once((message: any) => {
+			return SEA.decrypt(getSecret(fromPubKey), pair);
+		});
 }

@@ -468,17 +468,11 @@ export function validateManualFulfillment(value: number | undefined): number | n
 }
 
 // Create a new root node
-export function createRootNode(
-	id: string,
-	name: string,
-	userId: string,
-	manual?: number
-): RootNode {
+export function createRootNode(id: string, name: string, manual?: number): RootNode {
 	return {
 		id,
 		name,
 		type: 'RootNode',
-		user_id: userId,
 		children: [],
 		manual_fulfillment: validateManualFulfillment(manual),
 		created_at: new Date().toISOString(),

@@ -29,7 +29,6 @@ export const RootNodeSchema = z.object({
 	type: z.literal('RootNode'),
 	manual_fulfillment: z.nullable(z.number()),
 	children: z.array(z.any()),
-	user_id: IdSchema,
 	created_at: z.string(),
 	updated_at: z.string()
 });
@@ -44,6 +43,15 @@ export const BaseCapacitySchema = z.object({
 	emoji: z.optional(z.string()),
 	quantity: z.optional(z.number().gte(0)),
 	unit: z.optional(z.string()),
+	max_natural_div: z.optional(z.number().gte(1)),
+	max_percentage_div: z.optional(PercentageSchema),
+
+	hidden_until_request_accepted: z.optional(z.boolean()),
+	owner_id: z.optional(IdSchema),
+	filter_rule: z.optional(z.nullable(z.any())),
+
+	// these should be part of a availability schema?
+	// availability?
 	location_type: z.optional(z.string()),
 	longitude: z.optional(z.number().min(-180).max(180)),
 	latitude: z.optional(z.number().min(-90).max(90)),
@@ -57,12 +65,7 @@ export const BaseCapacitySchema = z.object({
 	start_time: z.optional(z.nullable(z.string())),
 	end_date: z.optional(z.nullable(z.string())),
 	end_time: z.optional(z.nullable(z.string())),
-	time_zone: z.optional(z.string()),
-	max_natural_div: z.optional(z.number().gte(1)),
-	max_percentage_div: z.optional(PercentageSchema),
-	hidden_until_request_accepted: z.optional(z.boolean()),
-	owner_id: z.optional(IdSchema),
-	filter_rule: z.optional(z.nullable(z.any()))
+	time_zone: z.optional(z.string())
 });
 
 // Provider perspective - includes recipient shares
@@ -74,9 +77,11 @@ export const ProviderCapacitySchema = z.object({
 // Recipient perspective - includes our share info
 export const RecipientCapacitySchema = z.object({
 	...BaseCapacitySchema.shape,
+	// share_id: IdSchema
 	share_percentage: PercentageSchema,
 	computed_quantity: z.number().gte(0),
 	provider_id: IdSchema
+	// reciever_id: IdSchema
 });
 
 // Union type for Capacity (either provider or recipient perspective)
