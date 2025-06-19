@@ -28,6 +28,7 @@
 		nodeName?: string;
 		contributors?: string[];
 		fulfillment?: number;
+		hasChildren?: boolean; // Flag to indicate if this node has children in the full tree
 	}
 
 	// UI state
@@ -110,7 +111,8 @@
 			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
 			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
-			children: [] as VisualizationNode[]
+			children: [] as VisualizationNode[],
+			hasChildren: child.children.length > 0 // Check if this child has children in the full tree
 		}));
 
 		return {
@@ -910,7 +912,8 @@
 								name: child.data.nodeName || 'Unnamed',
 								points: child.data.points,
 								contributors: child.data.contributors || [],
-								fulfillment: getNodeFulfillment(child.data.id)
+								fulfillment: getNodeFulfillment(child.data.id),
+								hasChildren: child.data.hasChildren || false
 							}}
 							dimensions={{
 								x0: child.x0,

@@ -10,6 +10,7 @@
 		points: number;
 		contributors: string[];
 		fulfillment?: number;
+		hasChildren?: boolean; // Flag to indicate if this node has children
 	}
 
 	// Define interface for node dimensions
@@ -471,18 +472,20 @@
           "
 				>
 					<!-- Add button -->
-					<button
-						class="add-contributor-button"
-						style="
+					{#if !node.hasChildren}
+						<button
+							class="add-contributor-button"
+							style="
             width: {contributorSize}px;
             height: {contributorSize}px;
             font-size: {contributorSize * 0.5}px;
           "
-						onclick={handleAddContributorClick}
-						title="Add contributor"
-					>
-						+
-					</button>
+							onclick={handleAddContributorClick}
+							title="Add contributor"
+						>
+							+
+						</button>
+					{/if}
 
 					<!-- Contributors -->
 					{#if hasContributors}
