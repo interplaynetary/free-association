@@ -25,6 +25,9 @@ import {
 	userDesiredComposeInto
 } from './core.svelte';
 import { initializeUserDataSubscriptions } from './network.svelte';
+import { createRootNode } from '$lib/protocol';
+import { populateWithExampleData } from '$lib/examples/example';
+import { recalculateFromTree } from './calculations.svelte';
 
 if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
@@ -791,13 +794,52 @@ export function fixCorruptedUserListNames() {
 	});
 }
 
+/**
+ * Create a new tree and set it as the user's current tree
+ * @param {boolean} includeExampleData - Whether to populate with example data (default: true)
+ */
+export function createNewTree(includeExampleData: boolean = true) {
+	console.log('[TREE-CREATE] Creating new tree...');
+
+	const currentUserPub = get(userpub);
+	const currentUsername = get(username);
+
+	if (!currentUserPub || !currentUsername) {
+		console.error('[TREE-CREATE] Cannot create tree - user not authenticated');
+		return;
+	}
+
+	// Create a new root node
+	const newTree = createRootNode(currentUserPub, currentUsername);
+
+	// Optionally populate with example data
+	if (includeExampleData) {
+		console.log('[TREE-CREATE] Populating new tree with example data');
+		populateWithExampleData(newTree);
+	}
+
+	// Set the new tree
+	userTree.set(newTree);
+
+	// Persist to Gun
+	persistTree();
+
+	console.log(`[TREE-CREATE] New tree created and set with ${newTree.children.length} child nodes`);
+
+	// Trigger recalculation
+	recalculateFromTree();
+
+	return newTree;
+}
+
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).clearUsersList = clearUsersList;
 	(window as any).changeTreeName = changeTreeName;
 	(window as any).fixCorruptedUserListNames = fixCorruptedUserListNames;
+	(window as any).createNewTree = createNewTree;
 	console.log(
-		'[DEBUG] clearUsersList, changeTreeName, and fixCorruptedUserListNames functions exposed to window'
+		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, and createNewTree functions exposed to window'
 	);
 }
 

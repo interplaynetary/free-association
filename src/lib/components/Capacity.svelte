@@ -4,10 +4,12 @@
 	import TagPill from './TagPill.svelte';
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
+	import CompositionActivities from './CompositionActivities.svelte';
 	import { createSubtreesDataProvider } from '$lib/state.svelte';
 	import { Rules } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { getUserName } from '$lib/state/gun.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -307,6 +309,14 @@
 		capacityLatitude = lnglat.lat;
 		handleCapacityUpdate();
 	}
+
+	// Get current user name for composition activities
+	async function getCurrentUserName(): Promise<string> {
+		// For provider capacity, we are the provider, so we need our own name
+		// This is a bit of a hack since we don't have direct access to our own user info here
+		// In a real implementation, this would come from a user context
+		return 'You'; // Placeholder - could be improved with proper user context
+	}
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded}>
@@ -441,7 +451,16 @@
 
 	<!-- Expanded chat section -->
 	{#if chatExpanded}
-		<div class="chat-container mt-2 rounded border border-gray-200 bg-gray-50 p-3">
+		<!-- Composition section in expanded view -->
+			<CompositionActivities
+				capacityId={capacity.id}
+				providerId="self"
+				capacityName={capacity.name}
+				providerName="You"
+				showPreview={false}
+			/>
+
+		<div class="chat-containerrounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
 					💬 Chat about {capacity.emoji || '📦'}
@@ -1001,6 +1020,12 @@
 		font-size: 0.75rem;
 		color: #6b7280;
 		font-style: italic;
+	}
+
+	/* Composition section styling */
+	.composition-section {
+		border-bottom: 1px solid rgba(229, 231, 235, 0.3);
+		padding-bottom: 1.5rem;
 	}
 
 	/* Expanded settings styling */

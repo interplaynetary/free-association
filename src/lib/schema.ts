@@ -66,6 +66,8 @@ export const BaseCapacitySchema = z.object({
 	end_date: z.optional(z.nullable(z.string())),
 	end_time: z.optional(z.nullable(z.string())),
 	time_zone: z.optional(z.string())
+
+	// use-conditions: effects (possibly triggers)
 });
 
 // Provider perspective - includes recipient shares

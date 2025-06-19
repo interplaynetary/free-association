@@ -28,6 +28,9 @@ import type { Writable } from 'svelte/store';
  * Subscribe to our own tree data to detect external changes
  * Only updates local store if the incoming data differs from current state
  * Also handles initial tree creation when no data exists
+/**
+ * Subscribe to our own tree data to detect external changes
+ * Only updates local store if the incoming data differs from current state
  */
 export function subscribeToOwnTree() {
 	const ourId = user.is?.pub;
@@ -38,27 +41,9 @@ export function subscribeToOwnTree() {
 
 	console.log('[NETWORK] Setting up subscription to own tree data');
 
-	// First check if tree data exists, create if it doesn't
-	user.get('tree').once((existingData: any) => {
-		if (!existingData) {
-			console.log('[NETWORK] No existing tree found, creating initial tree with example data');
-			const newTree = createRootNode(get(userpub), get(username));
-			populateWithExampleData(newTree);
-			userTree.set(newTree);
-			user.get('tree').put(JSON.stringify(newTree));
-			isLoadingTree.set(false);
-			// Trigger immediate recalculation for new tree
-			console.log('[NETWORK] Triggering recalculation for new tree');
-			recalculateFromTree();
-		} else {
-			console.log('[NETWORK] Existing tree found, will be handled by subscription');
-		}
-	});
-
 	// Subscribe to changes in our own tree
 	user.get('tree').on((treeData: any) => {
 		if (!treeData) {
-			// This shouldn't happen often since we create tree above, but just in case
 			console.log('[NETWORK] No tree data in subscription, skipping');
 			return;
 		}
@@ -191,12 +176,13 @@ export function subscribeToOwnDesiredComposeFrom() {
 				parsedComposeFrom = composeFromData;
 			}
 
-			// Validate the structure
+			// Validate the structure - now expecting absolute units (positive numbers)
 			const validatedComposeFrom: Record<string, Record<string, number>> = {};
 			Object.entries(parsedComposeFrom).forEach(([capacityId, desires]) => {
 				if (typeof desires === 'object' && desires !== null) {
 					const validatedDesires: Record<string, number> = {};
 					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
+						// Accept any positive number (absolute units, not limited to 0-1 range)
 						if (typeof amount === 'number' && amount >= 0) {
 							validatedDesires[targetCapacityId] = amount;
 						}
@@ -256,12 +242,13 @@ export function subscribeToOwnDesiredComposeInto() {
 				parsedComposeInto = composeIntoData;
 			}
 
-			// Validate the structure
+			// Validate the structure - now expecting absolute units (positive numbers)
 			const validatedComposeInto: Record<string, Record<string, number>> = {};
 			Object.entries(parsedComposeInto).forEach(([capacityId, desires]) => {
 				if (typeof desires === 'object' && desires !== null) {
 					const validatedDesires: Record<string, number> = {};
 					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
+						// Accept any positive number (absolute units, not limited to 0-1 range)
 						if (typeof amount === 'number' && amount >= 0) {
 							validatedDesires[targetCapacityId] = amount;
 						}
@@ -632,12 +619,13 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 				parsedCompositions = compositionsData;
 			}
 
-			// Validate the structure
+			// Validate the structure - now expecting absolute units (positive numbers)
 			const validatedCompositions: Record<string, Record<string, number>> = {};
 			Object.entries(parsedCompositions).forEach(([capacityId, desires]) => {
 				if (typeof desires === 'object' && desires !== null) {
 					const validatedDesires: Record<string, number> = {};
 					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
+						// Accept any positive number (absolute units, not limited to 0-1 range)
 						if (typeof amount === 'number' && amount >= 0) {
 							validatedDesires[targetCapacityId] = amount;
 						}
@@ -712,12 +700,13 @@ export function subscribeToContributorDesiredComposeInto(contributorId: string) 
 				parsedComposeInto = composeIntoData;
 			}
 
-			// Validate the structure
+			// Validate the structure - now expecting absolute units (positive numbers)
 			const validatedComposeInto: Record<string, Record<string, number>> = {};
 			Object.entries(parsedComposeInto).forEach(([capacityId, desires]) => {
 				if (typeof desires === 'object' && desires !== null) {
 					const validatedDesires: Record<string, number> = {};
 					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
+						// Accept any positive number (absolute units, not limited to 0-1 range)
 						if (typeof amount === 'number' && amount >= 0) {
 							validatedDesires[targetCapacityId] = amount;
 						}
@@ -752,10 +741,10 @@ export function subscribeToContributorDesiredComposeInto(contributorId: string) 
 		} catch (error) {
 			console.error(
 				`[NETWORK] Error parsing/validating desired compose-into from contributor ${contributorId}:`,
-				error
-			);
-		}
-	});
+					error
+				);
+			}
+		});
 }
 
 // Watch for changes to contributors and subscribe to get their SOGF data

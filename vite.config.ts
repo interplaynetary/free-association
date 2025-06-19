@@ -25,7 +25,12 @@ export default defineConfig({
 		sveltekit(),
 		moduleExclude('text-encoding'),
 		devtoolsJson(),
-		SvelteKitPWA()
+		SvelteKitPWA({
+			// Zero-config: Let the plugin handle everything automatically
+			devOptions: {
+				enabled: true // Only enable dev support for testing
+			}
+		})
 	],
 	server: {
 		watch: {

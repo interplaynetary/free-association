@@ -17,6 +17,7 @@ const config = {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || '',
 			relative: false
 		}
+		// Zero-config PWA: Let @vite-pwa/sveltekit handle service worker automatically
 	},
 	extensions: ['.svelte', '.svx'],
 	alias: {

@@ -4,6 +4,8 @@
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { P2PNotificationManager } from '$lib/notifications';
 
 	// Layout props
 	let { children }: LayoutProps = $props();
@@ -11,8 +13,23 @@
 	// Derived toast state
 	let toast = $derived(globalState.toast);
 
+	// PWA and notifications (zero-config approach)
+	let notificationManager: P2PNotificationManager | null = null;
+
 	// Set up global keyboard event listener and reliable viewport handling
-	onMount(() => {
+	onMount(async () => {
+		// Initialize PWA with zero-config approach
+		if (browser) {
+			// Simple notification manager initialization
+			notificationManager = new P2PNotificationManager();
+
+			// Request notification permission
+			await notificationManager.requestPermission();
+
+			// Make it globally available for P2P code
+			(window as any).notificationManager = notificationManager;
+		}
+
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation or exit edit mode
 			if (event.key === 'Escape') {
@@ -104,6 +121,8 @@
 			}
 		};
 	});
+
+	// PWA manifest link - removed virtual module dependency
 </script>
 
 <main>

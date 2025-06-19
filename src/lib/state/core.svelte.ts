@@ -64,25 +64,25 @@ export const userNetworkCapacitiesWithShares = derived(
 // COMPOSE-FROM MODEL:
 // mapping our capacityIds to the capacityIds of our userNetworkCapacitiesWithShares that we want to compose from
 // userDesiredComposeFrom represents: "I want to composeInto MY capacity FROM THEIR capacity (via the share I have in their capacity)"
-// Structure: myCapacityId → theirCapacityId → desiredRatio
-// Example: "cooking-skill" → "ingredients-supply" → 0.7 means:
-//   "I want to compose FROM their ingredients supply INTO my cooking skill, using 70% of my existing share in their ingredients capacity"
+// Structure: myCapacityId → theirCapacityId → desiredAbsoluteUnits
+// Example: "cooking-skill" → "ingredients-supply" → 25 means:
+//   "I want to compose 25 units FROM their ingredients supply INTO my cooking skill"
 //   Note: This only works because I already have some share percentage in their ingredients capacity
 export const userDesiredComposeFrom = writable<Record<string, Record<string, number>>>({});
 
 // COMPOSE-INTO MODEL (opposite direction):
 // userDesiredComposeInto represents: "I want to composeInto THEIR capacity using MY capacity (via the share they have in my capacity)"
-// Structure: myCapacityId → theirCapacityId → desiredRatio
-// Example: "cooking-skill" → "meal-service" → 0.8 means:
-//   "I want to compose my cooking skill INTO their meal service, using 80% of their existing share in my cooking capacity"
+// Structure: myCapacityId → theirCapacityId → desiredAbsoluteUnits
+// Example: "cooking-skill" → "meal-service" → 30 means:
+//   "I want to compose 30 units of my cooking skill INTO their meal service"
 //   Note: This only works because they already have some share percentage in my cooking capacity
 export const userDesiredComposeInto = writable<Record<string, Record<string, number>>>({});
 
 // NETWORK COMPOSE-FROM MODEL:
 // networkDesiredComposeFrom represents what others want to composeInto via their shares
-// Structure: userId → theirCapacityId → ourCapacityId → desiredRatio
-// Example: "alice" → "ingredients-supply" → "cooking-skill" → 0.5 means:
-//   "Alice wants to compose FROM our cooking skill INTO her ingredients supply, using 50% of her existing share in our cooking capacity"
+// Structure: userId → theirCapacityId → ourCapacityId → desiredAbsoluteUnits
+// Example: "alice" → "ingredients-supply" → "cooking-skill" → 20 means:
+//   "Alice wants to compose 20 units FROM our cooking skill INTO her ingredients supply"
 //   Note: This only works because Alice already has some share percentage in our cooking capacity
 export const networkDesiredComposeFrom = writable<
 	Record<string, Record<string, Record<string, number>>>
@@ -90,29 +90,31 @@ export const networkDesiredComposeFrom = writable<
 
 // NETWORK COMPOSE-INTO MODEL (opposite direction):
 // networkDesiredComposeInto represents what others want to compose into our capacities via our shares
-// Structure: userId → theirCapacityId → ourCapacityId → desiredRatio
-// Example: "alice" → "ingredients-supply" → "cooking-skill" → 0.6 means:
-//   "Alice wants to compose her ingredients INTO our cooking skill, using 60% of our existing share in her ingredients capacity"
+// Structure: userId → theirCapacityId → ourCapacityId → desiredAbsoluteUnits
+// Example: "alice" → "ingredients-supply" → "cooking-skill" → 15 means:
+//   "Alice wants to compose 15 units of her ingredients INTO our cooking skill"
 //   Note: This only works because we already have some share percentage in Alice's ingredients capacity
 export const networkDesiredComposeInto = writable<
 	Record<string, Record<string, Record<string, number>>>
 >({});
 
-// FEASIBLE COMPOSE-FROM: Constrains raw desires by actual share-based access rights
-// We can only compose from capacities up to our share percentage in them
+// FEASIBLE COMPOSE-FROM: Constrains raw desires by share access and resource allocation
+// Step 1: Convert absolute unit desires to share-constrained feasible units
+// Step 2: Apply resource allocation constraints when total desires exceed available resources
 export const feasibleComposeFrom = derived(
 	[userDesiredComposeFrom, userNetworkCapacitiesWithShares],
 	([$userDesiredComposeFrom, $userNetworkCapacitiesWithShares]) => {
 		console.log(
-			'[FEASIBLE-COMPOSE-FROM] Calculating feasible compose-from based on share constraints...'
+			'[FEASIBLE-COMPOSE-FROM] Calculating feasible compose-from with absolute units and resource allocation...'
 		);
 
-		const feasible: Record<string, Record<string, number>> = {};
+		// Step 1: Individual share-based feasibility check
+		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
 
 		Object.entries($userDesiredComposeFrom).forEach(([ourCapacityId, ourDesires]) => {
-			const feasibleDesires: Record<string, number> = {};
+			const constrainedDesires: Record<string, number> = {};
 
-			Object.entries(ourDesires).forEach(([theirCapacityId, desiredRatio]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredAbsoluteUnits]) => {
 				const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
 
 				if (!networkCapacity) {
@@ -120,30 +122,93 @@ export const feasibleComposeFrom = derived(
 					return;
 				}
 
-				// Our share percentage in their capacity constrains what we can feasibly use
-				const ourShareInTheirCapacity = (networkCapacity as any).share_percentage || 0;
-				const feasibleRatio = Math.min(desiredRatio, ourShareInTheirCapacity);
+				// Get our available units from this capacity (computed_quantity is already share-adjusted)
+				const ourAvailableUnits = (networkCapacity as any).computed_quantity || 0;
+				const shareConstrainedUnits = Math.min(desiredAbsoluteUnits, ourAvailableUnits);
 
-				if (feasibleRatio > 0) {
-					feasibleDesires[theirCapacityId] = feasibleRatio;
+				if (shareConstrainedUnits > 0) {
+					constrainedDesires[theirCapacityId] = shareConstrainedUnits;
 
-					if (feasibleRatio < desiredRatio) {
+					if (shareConstrainedUnits < desiredAbsoluteUnits) {
 						console.log(
-							`[FEASIBLE-COMPOSE-FROM] Constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredRatio.toFixed(3)} → feasible ${feasibleRatio.toFixed(3)} (limited by ${(ourShareInTheirCapacity * 100).toFixed(1)}% share)`
+							`[FEASIBLE-COMPOSE-FROM] Share-constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredAbsoluteUnits} → ${shareConstrainedUnits} units (limited by available ${ourAvailableUnits} units)`
 						);
 					}
 				}
 			});
 
-			if (Object.keys(feasibleDesires).length > 0) {
-				feasible[ourCapacityId] = feasibleDesires;
+			if (Object.keys(constrainedDesires).length > 0) {
+				shareConstrainedDesires[ourCapacityId] = constrainedDesires;
 			}
 		});
 
+		// Step 2: Resource allocation constraints - group by source capacity
+		const sourceCapacityDemands: Record<
+			string,
+			{
+				totalDemand: number;
+				available: number;
+				consumers: Array<{ ourCapacityId: string; desiredUnits: number }>;
+			}
+		> = {};
+
+		// Group all desires by source capacity
+		Object.entries(shareConstrainedDesires).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredUnits]) => {
+				if (!sourceCapacityDemands[theirCapacityId]) {
+					const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
+					const availableUnits = (networkCapacity as any)?.computed_quantity || 0;
+
+					sourceCapacityDemands[theirCapacityId] = {
+						totalDemand: 0,
+						available: availableUnits,
+						consumers: []
+					};
+				}
+
+				sourceCapacityDemands[theirCapacityId].totalDemand += desiredUnits;
+				sourceCapacityDemands[theirCapacityId].consumers.push({
+					ourCapacityId,
+					desiredUnits
+				});
+			});
+		});
+
+		// Step 3: Apply proportional scaling when total demand exceeds available resources
+		const finalFeasible: Record<string, Record<string, number>> = {};
+
+		Object.entries(sourceCapacityDemands).forEach(([theirCapacityId, demandInfo]) => {
+			const { totalDemand, available, consumers } = demandInfo;
+
+			let scalingFactor = 1.0;
+			if (totalDemand > available) {
+				scalingFactor = available / totalDemand;
+				console.log(
+					`[FEASIBLE-COMPOSE-FROM] Resource allocation scaling for ${theirCapacityId}: ${totalDemand} demanded > ${available} available, scaling by ${scalingFactor.toFixed(3)}`
+				);
+			}
+
+			// Apply scaling to each consumer
+			consumers.forEach(({ ourCapacityId, desiredUnits }) => {
+				const finalFeasibleUnits = desiredUnits * scalingFactor;
+
+				if (!finalFeasible[ourCapacityId]) {
+					finalFeasible[ourCapacityId] = {};
+				}
+				finalFeasible[ourCapacityId][theirCapacityId] = finalFeasibleUnits;
+
+				if (scalingFactor < 1.0) {
+					console.log(
+						`[FEASIBLE-COMPOSE-FROM] Resource-allocated ${ourCapacityId} → ${theirCapacityId}: ${desiredUnits} → ${finalFeasibleUnits.toFixed(1)} units`
+					);
+				}
+			});
+		});
+
 		console.log(
-			`[FEASIBLE-COMPOSE-FROM] Generated feasible compositions for ${Object.keys(feasible).length} capacities`
+			`[FEASIBLE-COMPOSE-FROM] Generated resource-allocated feasible compositions for ${Object.keys(finalFeasible).length} capacities`
 		);
-		return feasible;
+		return finalFeasible;
 	}
 );
 
@@ -299,21 +364,23 @@ export const contributorCapacityShares = derived(capacityShares, ($capacityShare
 	return contributorShares;
 });
 
-// FEASIBLE COMPOSE-INTO: Constrains raw desires by recipient's share in our capacities
-// We can only compose into capacities up to the recipient's share percentage in our capacity
+// FEASIBLE COMPOSE-INTO: Constrains raw desires by recipient share and our capacity limits
+// Step 1: Convert absolute unit desires to recipient-share-constrained feasible units
+// Step 2: Apply resource allocation constraints when total desires exceed our capacity
 export const feasibleComposeInto = derived(
-	[userDesiredComposeInto, contributorCapacityShares, networkCapacities],
-	([$userDesiredComposeInto, $contributorCapacityShares, $networkCapacities]) => {
+	[userDesiredComposeInto, contributorCapacityShares, networkCapacities, userCapacities],
+	([$userDesiredComposeInto, $contributorCapacityShares, $networkCapacities, $userCapacities]) => {
 		console.log(
-			'[FEASIBLE-COMPOSE-INTO] Calculating feasible compose-into based on recipient share constraints...'
+			'[FEASIBLE-COMPOSE-INTO] Calculating feasible compose-into with absolute units and resource allocation...'
 		);
 
-		const feasible: Record<string, Record<string, number>> = {};
+		// Step 1: Individual recipient-share-based feasibility check
+		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
 
 		Object.entries($userDesiredComposeInto).forEach(([ourCapacityId, ourDesires]) => {
-			const feasibleDesires: Record<string, number> = {};
+			const constrainedDesires: Record<string, number> = {};
 
-			Object.entries(ourDesires).forEach(([theirCapacityId, desiredRatio]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredAbsoluteUnits]) => {
 				// Find who owns the target capacity
 				const providerId = Object.keys($networkCapacities).find(
 					(id) => $networkCapacities[id] && $networkCapacities[id][theirCapacityId]
@@ -326,39 +393,112 @@ export const feasibleComposeInto = derived(
 					return;
 				}
 
+				// Get our capacity info to calculate their share-based limit
+				const ourCapacity = $userCapacities?.[ourCapacityId];
+				if (!ourCapacity) {
+					console.warn(`[FEASIBLE-COMPOSE-INTO] Our capacity not found: ${ourCapacityId}`);
+					return;
+				}
+
 				// Check how much share they have in our capacity (this constrains how much they can receive)
 				const theirShareInOurCapacity =
 					$contributorCapacityShares[providerId]?.[ourCapacityId] || 0;
-				const feasibleRatio = Math.min(desiredRatio, theirShareInOurCapacity);
+				const ourCapacityQuantity = ourCapacity.quantity || 0;
+				const maxUnitsTheyCanReceive = ourCapacityQuantity * theirShareInOurCapacity;
 
-				if (feasibleRatio > 0) {
-					feasibleDesires[theirCapacityId] = feasibleRatio;
+				const shareConstrainedUnits = Math.min(desiredAbsoluteUnits, maxUnitsTheyCanReceive);
 
-					if (feasibleRatio < desiredRatio) {
+				if (shareConstrainedUnits > 0) {
+					constrainedDesires[theirCapacityId] = shareConstrainedUnits;
+
+					if (shareConstrainedUnits < desiredAbsoluteUnits) {
 						console.log(
-							`[FEASIBLE-COMPOSE-INTO] Constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredRatio.toFixed(3)} → feasible ${feasibleRatio.toFixed(3)} (limited by ${(theirShareInOurCapacity * 100).toFixed(1)}% recipient share)`
+							`[FEASIBLE-COMPOSE-INTO] Share-constrained ${ourCapacityId} → ${theirCapacityId}: desired ${desiredAbsoluteUnits} → ${shareConstrainedUnits} units (limited by ${(theirShareInOurCapacity * 100).toFixed(1)}% recipient share = ${maxUnitsTheyCanReceive} max units)`
 						);
 					}
 				}
 			});
 
-			if (Object.keys(feasibleDesires).length > 0) {
-				feasible[ourCapacityId] = feasibleDesires;
+			if (Object.keys(constrainedDesires).length > 0) {
+				shareConstrainedDesires[ourCapacityId] = constrainedDesires;
 			}
 		});
 
+		// Step 2: Resource allocation constraints - group by our source capacity
+		const ourCapacityDemands: Record<
+			string,
+			{
+				totalDemand: number;
+				available: number;
+				recipients: Array<{ theirCapacityId: string; desiredUnits: number }>;
+			}
+		> = {};
+
+		// Group all desires by our source capacity
+		Object.entries(shareConstrainedDesires).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredUnits]) => {
+				if (!ourCapacityDemands[ourCapacityId]) {
+					const ourCapacity = $userCapacities?.[ourCapacityId];
+					const availableUnits = ourCapacity?.quantity || 0;
+
+					ourCapacityDemands[ourCapacityId] = {
+						totalDemand: 0,
+						available: availableUnits,
+						recipients: []
+					};
+				}
+
+				ourCapacityDemands[ourCapacityId].totalDemand += desiredUnits;
+				ourCapacityDemands[ourCapacityId].recipients.push({
+					theirCapacityId,
+					desiredUnits
+				});
+			});
+		});
+
+		// Step 3: Apply proportional scaling when total demand exceeds our capacity
+		const finalFeasible: Record<string, Record<string, number>> = {};
+
+		Object.entries(ourCapacityDemands).forEach(([ourCapacityId, demandInfo]) => {
+			const { totalDemand, available, recipients } = demandInfo;
+
+			let scalingFactor = 1.0;
+			if (totalDemand > available) {
+				scalingFactor = available / totalDemand;
+				console.log(
+					`[FEASIBLE-COMPOSE-INTO] Resource allocation scaling for our ${ourCapacityId}: ${totalDemand} demanded > ${available} available, scaling by ${scalingFactor.toFixed(3)}`
+				);
+			}
+
+			// Apply scaling to each recipient
+			recipients.forEach(({ theirCapacityId, desiredUnits }) => {
+				const finalFeasibleUnits = desiredUnits * scalingFactor;
+
+				if (!finalFeasible[ourCapacityId]) {
+					finalFeasible[ourCapacityId] = {};
+				}
+				finalFeasible[ourCapacityId][theirCapacityId] = finalFeasibleUnits;
+
+				if (scalingFactor < 1.0) {
+					console.log(
+						`[FEASIBLE-COMPOSE-INTO] Resource-allocated ${ourCapacityId} → ${theirCapacityId}: ${desiredUnits} → ${finalFeasibleUnits.toFixed(1)} units`
+					);
+				}
+			});
+		});
+
 		console.log(
-			`[FEASIBLE-COMPOSE-INTO] Generated feasible compositions for ${Object.keys(feasible).length} capacities`
+			`[FEASIBLE-COMPOSE-INTO] Generated resource-allocated feasible compositions for ${Object.keys(finalFeasible).length} capacities`
 		);
-		return feasible;
+		return finalFeasible;
 	}
 );
 
-// Helper function to calculate how well two desired amounts align
+// Helper function to calculate how well two desired amounts align (absolute units)
 function calculateDesireAlignment(ourDesire: number, theirDesire: number): number {
 	if (ourDesire === 0 || theirDesire === 0) return 0;
 
-	// Calculate the ratio between desires
+	// Calculate the ratio between desires - works the same for absolute units
 	const ratio = Math.min(ourDesire, theirDesire) / Math.max(ourDesire, theirDesire);
 
 	// Return a score between 0 and 1 where 1 = perfect alignment
@@ -553,7 +693,7 @@ export const mutualFeasibleOurCapacities = derived(
 				);
 			}
 		});
-
+		
 		console.log(
 			`[MUTUAL-FEASIBLE-OURS] Found ${Object.keys(mutualFeasible).length} feasible mutual enhancements of our capacities`
 		);
