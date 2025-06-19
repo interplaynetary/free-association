@@ -683,11 +683,122 @@ export function changeTreeName(newName: string) {
 	console.log(`[TREE-NAME] Tree name changed to: ${newName}`);
 }
 
+/**
+ * Fix corrupted names in the usersList where names were saved as public keys
+ * This function checks each user in the usersList and corrects names that match their pubkey
+ */
+export function fixCorruptedUserListNames() {
+	console.log('[USERS-FIX] Starting to fix corrupted names in usersList...');
+
+	// Get current usersList data
+	usersList.once((usersData: any) => {
+		if (!usersData) {
+			console.log('[USERS-FIX] No users data found');
+			return;
+		}
+
+		const userIds = Object.keys(usersData).filter((id) => id !== '_');
+		console.log(`[USERS-FIX] Found ${userIds.length} users to check for corrupted names`);
+
+		let checkedCount = 0;
+		let fixedCount = 0;
+
+		userIds.forEach((userId) => {
+			const userData = usersData[userId];
+
+			if (!userData || !userData.name) {
+				console.log(`[USERS-FIX] User ${userId} has no name data, skipping`);
+				checkedCount++;
+				return;
+			}
+
+			// Check if the name is corrupted (equals the userId/pubkey)
+			const isCorrupted = userData.name === userId;
+
+			if (isCorrupted) {
+				console.log(
+					`[USERS-FIX] Found corrupted name for user ${userId.substring(0, 20)}... (name equals pubkey)`
+				);
+
+				// Try to get the correct alias from their protected space
+				gun
+					.get(`~${userId}`)
+					.get('alias')
+					.once((alias: any) => {
+						checkedCount++;
+
+						if (alias && typeof alias === 'string' && alias !== userId) {
+							console.log(
+								`[USERS-FIX] Fixing user ${userId.substring(0, 20)}... with correct alias: ${alias}`
+							);
+
+							// Update the usersList with the correct name
+							usersList.get(userId).put(
+								{
+									...userData,
+									name: alias,
+									lastSeen: Date.now(), // Update timestamp to show it was fixed
+									fixed: true // Mark as fixed
+								},
+								(ack: any) => {
+									if (ack.err) {
+										console.error(`[USERS-FIX] Error fixing user ${userId}:`, ack.err);
+									} else {
+										console.log(`[USERS-FIX] Successfully fixed user ${userId} -> ${alias}`);
+										fixedCount++;
+									}
+
+									// Log completion when all users have been processed
+									if (checkedCount === userIds.length) {
+										console.log(
+											`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
+										);
+									}
+								}
+							);
+						} else {
+							console.log(
+								`[USERS-FIX] Could not get valid alias for user ${userId.substring(0, 20)}..., keeping current name`
+							);
+
+							// Log completion when all users have been processed
+							if (checkedCount === userIds.length) {
+								console.log(
+									`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
+								);
+							}
+						}
+					});
+			} else {
+				console.log(
+					`[USERS-FIX] User ${userId.substring(0, 20)}... has valid name: ${userData.name}`
+				);
+				checkedCount++;
+
+				// Log completion when all users have been processed
+				if (checkedCount === userIds.length) {
+					console.log(
+						`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
+					);
+				}
+			}
+		});
+
+		// Handle case where no users need checking
+		if (userIds.length === 0) {
+			console.log('[USERS-FIX] No users to check');
+		}
+	});
+}
+
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).clearUsersList = clearUsersList;
 	(window as any).changeTreeName = changeTreeName;
-	console.log('[DEBUG] clearUsersList and changeTreeName functions exposed to window');
+	(window as any).fixCorruptedUserListNames = fixCorruptedUserListNames;
+	console.log(
+		'[DEBUG] clearUsersList, changeTreeName, and fixCorruptedUserListNames functions exposed to window'
+	);
 }
 
 // secrets would be given to us?
