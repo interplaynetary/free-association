@@ -7,9 +7,17 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	contributorCapacityShares
+	contributorCapacityShares,
+	userDesiredComposeFrom,
+	userDesiredComposeInto
 } from './core.svelte';
-import { persistTree, persistCapacities, persistContributorCapacityShares } from './gun.svelte';
+import {
+	persistTree,
+	persistCapacities,
+	persistContributorCapacityShares,
+	persistUserDesiredComposeFrom,
+	persistUserDesiredComposeInto
+} from './gun.svelte';
 import { recalculateFromTree } from './calculations.svelte';
 
 /**
@@ -128,4 +136,38 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 	persistContributorCapacityShares();
 });
 
+/**
+ * Trigger persistence when user desired compose-from changes
+ */
+userDesiredComposeFrom.subscribe((userDesiredComposeFrom) => {
+	console.log('[USER-COMPOSE-FROM-SUB] User desired compose-from updated');
+	console.log(
+		'[USER-COMPOSE-FROM-SUB] User desired compose-from capacities:',
+		Object.keys(userDesiredComposeFrom).length
+	);
 
+	// Persist the user desires to Gun
+	try {
+		persistUserDesiredComposeFrom();
+	} catch (error) {
+		console.error('[USER-COMPOSE-FROM-SUB] Error during persistence:', error);
+	}
+});
+
+/**
+ * Trigger persistence when user desired compose-into changes
+ */
+userDesiredComposeInto.subscribe((userDesiredComposeInto) => {
+	console.log('[USER-COMPOSE-INTO-SUB] User desired compose-into updated');
+	console.log(
+		'[USER-COMPOSE-INTO-SUB] User desired compose-into capacities:',
+		Object.keys(userDesiredComposeInto).length
+	);
+
+	// Persist the user desires to Gun
+	try {
+		persistUserDesiredComposeInto();
+	} catch (error) {
+		console.error('[USER-COMPOSE-INTO-SUB] Error during persistence:', error);
+	}
+});

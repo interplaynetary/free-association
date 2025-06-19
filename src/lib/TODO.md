@@ -209,3 +209,64 @@ Maximum coordination flexibility but requires communication systems
 rename from coordinate capacities to : availability for distribution
 
 when the unit is time, then the coordinates are the available time-slots
+
+
+messages dont load for long
+messaging needs toast notifications
+
+
+not possible to scroll without using the sidebar. 
+
+
+we need to be able to express desire/request
+so that we can properly also use % in our userNetworkCapacityShares To userCapacities Map (and we can express min/max in absolute quanitites of desire) and percent can be optimized accordingly.
+
+writeable store: userNetworkCapacitySharesToUserCapacitiesMap 
+this is what is persisted.
+
+writeable store: userRequests 
+this is what is persisted.
+
+writeable store: userCommitments 
+this is what is persisted.
+
+Share = {
+    capacityID: string 
+    recieverId: pubkey string
+    providerOfferedPct: %
+    providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
+    desiredQty: fetched number (from reciever) (can exceed offeredQty)
+    undesiredQty: derived number (offeredQty - desiredQty) (can exceed offeredQty, but the offeredQty is the max undesired used for other computations)
+    committed: fetched number (from provider)
+}
+
+
+
+compositionShare extends Share = {
+    capacityID: string 
+    recieverId: pubkey string
+    providerOfferedPct: %
+    providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
+    desiredQty: fetched number (from reciever) (can exceed offeredQty)
+
+    // this is at the level of recipientShares
+    undesiredQty: derived number (offeredQty - desiredQty) (can exceed offeredQty, but the offeredQty is the max undesired used for other computations)
+    committed: fetched number (from provider)
+}
+
+offered (share), desire/request, commmited
+
+there seems to be some bug with the providerShares
+I am not sure they are correctly being displayed or calculated.
+It seems  they show up differently on with different window sizes as well as the the bar that shows up on the Capacities is entirely different than what shows up in my Mutual-Reocgnition.
+
+Simple notifications system
+
+Ok we want to reformulate capacity composition as a specialized Multi-Commodity-Flow Problem using Glpk.md
+
+We want to represent consumption of inputs in composition
+
+But how much of inputs get consumed?
+
+
+// account getting wiped during manifestation

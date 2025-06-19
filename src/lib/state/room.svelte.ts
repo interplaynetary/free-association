@@ -18,10 +18,20 @@ export interface RoomInfo {
 	createdAt: number;
 }
 
+export interface MembershipPerspective {
+	userId: string;
+	roomId: string;
+	pubKeys: string[];
+	lastUpdated: number;
+}
+
 // Stores
 export const currentRoom: Writable<RoomInfo | null> = writable(null);
 export const roomMessages: Writable<Record<string, RoomMessage[]>> = writable({});
 export const myRoomMessages: Writable<Record<string, RoomMessage[]>> = writable({});
+export const membershipPerspectives: Writable<
+	Record<string, Record<string, MembershipPerspective>>
+> = writable({});
 
 // Track active subscriptions to avoid duplicates
 const activeSubscriptions = new Set<string>();
@@ -40,6 +50,15 @@ export const currentRoomChat: Readable<RoomMessage[]> = derived(
 		return roomMessagesList.sort((a, b) => a.timestamp - b.timestamp);
 	}
 );
+
+/**
+ * Get messages for a specific room (flexible approach)
+ */
+export function getRoomMessages(roomId: string): RoomMessage[] {
+	const messages = get(roomMessages);
+	const roomMessagesList = messages[roomId] || [];
+	return roomMessagesList.sort((a, b) => a.timestamp - b.timestamp);
+}
 
 /**
  * Create or host a new room with specified public keys
@@ -82,113 +101,199 @@ export function createRoom(roomId: string, pubKeys: string[]): Promise<void> {
 }
 
 /**
- * Join a room by subscribing to its info and setting up message subscriptions
- * @param roomId The room to join
- * @param hostId The public key of the room host
+ * Store our perspective of room membership
+ * @param roomId The room ID
+ * @param pubKeys Our view of who should be in the room
  */
-export function joinRoom(roomId: string, hostId: string): void {
-	console.log(`[ROOM] Joining room ${roomId} hosted by ${hostId}`);
+export function updateMembershipPerspective(roomId: string, pubKeys: string[]): void {
+	const ourId = user.is?.pub;
+	if (!ourId) {
+		console.log('[ROOM] Cannot update membership perspective - not authenticated');
+		return;
+	}
 
-	// Subscribe to room info from host
+	const perspective: MembershipPerspective = {
+		userId: ourId,
+		roomId,
+		pubKeys,
+		lastUpdated: Date.now()
+	};
+
+	console.log(`[ROOM] Updating our membership perspective for room ${roomId}:`, pubKeys);
+
+	// Store our perspective
 	gun
-		.get(`~${hostId}`)
-		.get('rooms')
+		.get(`~${ourId}`)
+		.get('roomMembership')
 		.get(roomId)
-		.on((roomData: any) => {
-			if (!roomData) {
-				console.log(`[ROOM] No room data found for ${roomId}`);
-				return;
+		.put(perspective, (ack: any) => {
+			if (ack.err) {
+				console.error(`[ROOM] Error updating membership perspective:`, ack.err);
+			} else {
+				console.log(`[ROOM] Successfully updated membership perspective for room ${roomId}`);
 			}
-
-			console.log(`[ROOM] Received room info for ${roomId}:`, roomData);
-
-			const roomInfo: RoomInfo = {
-				id: roomData.id,
-				pubKeys: roomData.pubKeys || [],
-				hostId: roomData.hostId,
-				createdAt: roomData.createdAt
-			};
-
-			currentRoom.set(roomInfo);
-
-			// Set up message subscriptions for all participants
-			manifestRoom(roomId, roomInfo.pubKeys);
 		});
+
+	// Update local store
+	membershipPerspectives.update((current) => {
+		const roomPerspectives = current[roomId] || {};
+		return {
+			...current,
+			[roomId]: {
+				...roomPerspectives,
+				[ourId]: perspective
+			}
+		};
+	});
 }
 
 /**
- * Post a message to a room in our user space
- * @param roomId The room to post to
- * @param content The message content
+ * Subscribe to membership perspectives from multiple users
+ * @param roomId The room to track
+ * @param userIds Array of user IDs whose perspectives to track
  */
-export function postMessageToRoom(roomId: string, content: string): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const ourId = user.is?.pub;
-		if (!ourId) {
-			reject(new Error('Cannot post message - not authenticated'));
+export function subscribeMembershipPerspectives(roomId: string, userIds: string[]): void {
+	console.log(
+		`[ROOM] Subscribing to membership perspectives for room ${roomId} from ${userIds.length} users`
+	);
+
+	userIds.forEach((userId) => {
+		const subscriptionKey = `membership:${roomId}:${userId}`;
+
+		if (activeSubscriptions.has(subscriptionKey)) {
+			console.log(`[ROOM] Already subscribed to membership perspective from ${userId}`);
 			return;
 		}
 
-		const message: RoomMessage = {
-			id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-			content,
-			authorId: ourId,
-			timestamp: Date.now(),
-			roomId
-		};
+		console.log(`[ROOM] Setting up membership perspective subscription from ${userId}`);
+		activeSubscriptions.add(subscriptionKey);
 
-		console.log(`[ROOM] Posting message to room ${roomId}:`, message);
-
-		// Store message in our user space under rooms/roomId/messages
 		gun
-			.get(`~${ourId}`)
-			.get('rooms')
+			.get(`~${userId}`)
+			.get('roomMembership')
 			.get(roomId)
-			.get('messages')
-			.get(message.id)
-			.put(message, (ack: any) => {
-				if (ack.err) {
-					console.error(`[ROOM] Error posting message to room ${roomId}:`, ack.err);
-					reject(new Error(ack.err));
-				} else {
-					console.log(`[ROOM] Successfully posted message to room ${roomId}`);
+			.on((perspectiveData: any) => {
+				if (!perspectiveData || !perspectiveData.pubKeys) return;
 
-					// Update our local store
-					myRoomMessages.update((current) => {
-						const roomMessages = current[roomId] || [];
-						return {
-							...current,
-							[roomId]: [...roomMessages, message]
-						};
-					});
+				const perspective: MembershipPerspective = {
+					userId: perspectiveData.userId || userId,
+					roomId: perspectiveData.roomId || roomId,
+					pubKeys: perspectiveData.pubKeys || [],
+					lastUpdated: perspectiveData.lastUpdated || Date.now()
+				};
 
-					resolve();
-				}
+				console.log(`[ROOM] Received membership perspective from ${userId}:`, perspective);
+
+				// Update local store
+				membershipPerspectives.update((current) => {
+					const roomPerspectives = current[roomId] || {};
+					return {
+						...current,
+						[roomId]: {
+							...roomPerspectives,
+							[userId]: perspective
+						}
+					};
+				});
 			});
 	});
 }
 
 /**
- * Manifest a room by setting up subscriptions to messages from specified public keys
- * @param roomId The room to manifest
- * @param pubKeys Array of public keys to subscribe to for messages
+ * Aggregate membership from multiple perspectives using different strategies
  */
-export function manifestRoom(roomId: string, pubKeys: string[]): void {
+export type MembershipStrategy = 'union' | 'intersection' | 'majority' | 'recent';
+
+export function aggregateMembership(
+	roomId: string,
+	strategy: MembershipStrategy = 'union'
+): string[] {
+	const perspectives = get(membershipPerspectives)[roomId] || {};
+	const perspectivesList = Object.values(perspectives);
+
+	if (perspectivesList.length === 0) return [];
+
+	console.log(
+		`[ROOM] Aggregating membership for room ${roomId} using ${strategy} strategy from ${perspectivesList.length} perspectives`
+	);
+
+	switch (strategy) {
+		case 'union': {
+			// Include anyone mentioned by anyone
+			const allPubKeys = new Set<string>();
+			perspectivesList.forEach((p) => p.pubKeys.forEach((pk) => allPubKeys.add(pk)));
+			return Array.from(allPubKeys);
+		}
+
+		case 'intersection': {
+			// Only include those mentioned by everyone
+			if (perspectivesList.length === 1) return perspectivesList[0].pubKeys;
+
+			const first = new Set(perspectivesList[0].pubKeys);
+			perspectivesList.slice(1).forEach((p) => {
+				const current = new Set(p.pubKeys);
+				first.forEach((pk) => {
+					if (!current.has(pk)) first.delete(pk);
+				});
+			});
+			return Array.from(first);
+		}
+
+		case 'majority': {
+			// Include those mentioned by >50% of perspectives
+			const counts = new Map<string, number>();
+			perspectivesList.forEach((p) => {
+				p.pubKeys.forEach((pk) => {
+					counts.set(pk, (counts.get(pk) || 0) + 1);
+				});
+			});
+
+			const threshold = Math.ceil(perspectivesList.length / 2);
+			return Array.from(counts.entries())
+				.filter(([_, count]) => count >= threshold)
+				.map(([pubkey, _]) => pubkey);
+		}
+
+		case 'recent': {
+			// Use the most recently updated perspective
+			const mostRecent = perspectivesList.reduce((latest, current) =>
+				current.lastUpdated > latest.lastUpdated ? current : latest
+			);
+			return mostRecent.pubKeys;
+		}
+
+		default:
+			return perspectivesList[0]?.pubKeys || [];
+	}
+}
+
+/**
+ * Flexible manifest function - subscribes to messages from specified public keys
+ * @param roomId The room identifier (for organization)
+ * @param pubKeys Array of public keys to subscribe to for messages
+ * @param clearExisting Whether to clear existing subscriptions for this room
+ */
+export function manifestRoom(
+	roomId: string,
+	pubKeys: string[],
+	clearExisting: boolean = true
+): void {
 	console.log(`[ROOM] Manifesting room ${roomId} with ${pubKeys.length} participants`);
 
-	// Clear existing subscriptions for this room
-	const existingKey = `${roomId}:*`;
-	activeSubscriptions.forEach((key) => {
-		if (key.startsWith(`${roomId}:`)) {
-			activeSubscriptions.delete(key);
-		}
-	});
+	if (clearExisting) {
+		// Clear existing subscriptions for this room
+		activeSubscriptions.forEach((key) => {
+			if (key.startsWith(`${roomId}:`)) {
+				activeSubscriptions.delete(key);
+			}
+		});
 
-	// Clear existing messages for this room
-	roomMessages.update((current) => {
-		const { [roomId]: _, ...rest } = current;
-		return rest;
-	});
+		// Clear existing messages for this room
+		roomMessages.update((current) => {
+			const { [roomId]: _, ...rest } = current;
+			return rest;
+		});
+	}
 
 	// Set up subscriptions for each participant
 	pubKeys.forEach((pubKey) => {
@@ -248,6 +353,144 @@ export function manifestRoom(roomId: string, pubKeys: string[]): void {
 }
 
 /**
+ * Manifest room using aggregated membership from multiple perspectives
+ * @param roomId The room to manifest
+ * @param perspectiveUsers Users whose membership perspectives to consider
+ * @param strategy How to aggregate the different perspectives
+ */
+export function manifestRoomFromPerspectives(
+	roomId: string,
+	perspectiveUsers: string[],
+	strategy: MembershipStrategy = 'union'
+): void {
+	console.log(
+		`[ROOM] Manifesting room ${roomId} from ${perspectiveUsers.length} user perspectives using ${strategy} strategy`
+	);
+
+	// First subscribe to all the membership perspectives
+	subscribeMembershipPerspectives(roomId, perspectiveUsers);
+
+	// Wait a moment for perspectives to load, then aggregate and manifest
+	setTimeout(() => {
+		const aggregatedPubKeys = aggregateMembership(roomId, strategy);
+		console.log(
+			`[ROOM] Aggregated ${aggregatedPubKeys.length} members for room ${roomId}:`,
+			aggregatedPubKeys
+		);
+
+		if (aggregatedPubKeys.length > 0) {
+			manifestRoom(roomId, aggregatedPubKeys);
+		}
+	}, 1000); // Give perspectives time to load
+
+	// Set up reactive updates when perspectives change
+	membershipPerspectives.subscribe((allPerspectives) => {
+		const roomPerspectives = allPerspectives[roomId];
+		if (roomPerspectives) {
+			const newAggregatedPubKeys = aggregateMembership(roomId, strategy);
+			const currentMessages = get(roomMessages)[roomId] || [];
+
+			// Only re-manifest if membership actually changed
+			const existingPubKeys = [...new Set(currentMessages.map((m) => m.authorId))];
+			const hasChanged =
+				JSON.stringify(newAggregatedPubKeys.sort()) !== JSON.stringify(existingPubKeys.sort());
+
+			if (hasChanged && newAggregatedPubKeys.length > 0) {
+				console.log(`[ROOM] Membership perspectives changed, re-manifesting room ${roomId}`);
+				manifestRoom(roomId, newAggregatedPubKeys);
+			}
+		}
+	});
+}
+
+/**
+ * Join a room by subscribing to its info and setting up message subscriptions
+ * @param roomId The room to join
+ * @param hostId The public key of the room host
+ */
+export function joinRoom(roomId: string, hostId: string): void {
+	console.log(`[ROOM] Joining room ${roomId} hosted by ${hostId}`);
+
+	// Subscribe to room info from host
+	gun
+		.get(`~${hostId}`)
+		.get('rooms')
+		.get(roomId)
+		.on((roomData: any) => {
+			if (!roomData) {
+				console.log(`[ROOM] No room data found for ${roomId}`);
+				return;
+			}
+
+			console.log(`[ROOM] Received room info for ${roomId}:`, roomData);
+
+			const roomInfo: RoomInfo = {
+				id: roomData.id,
+				pubKeys: roomData.pubKeys || [],
+				hostId: roomData.hostId,
+				createdAt: roomData.createdAt
+			};
+
+			currentRoom.set(roomInfo);
+
+			// Set up message subscriptions for all participants using flexible manifest
+			manifestRoom(roomId, roomInfo.pubKeys);
+		});
+}
+
+/**
+ * Post a message to a room in our user space
+ * @param roomId The room to post to
+ * @param content The message content
+ */
+export function postMessageToRoom(roomId: string, content: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const ourId = user.is?.pub;
+		if (!ourId) {
+			reject(new Error('Cannot post message - not authenticated'));
+			return;
+		}
+
+		const message: RoomMessage = {
+			id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			content,
+			authorId: ourId,
+			timestamp: Date.now(),
+			roomId
+		};
+
+		console.log(`[ROOM] Posting message to room ${roomId}:`, message);
+
+		// Store message in our user space under rooms/roomId/messages
+		gun
+			.get(`~${ourId}`)
+			.get('rooms')
+			.get(roomId)
+			.get('messages')
+			.get(message.id)
+			.put(message, (ack: any) => {
+				if (ack.err) {
+					console.error(`[ROOM] Error posting message to room ${roomId}:`, ack.err);
+					reject(new Error(ack.err));
+				} else {
+					console.log(`[ROOM] Successfully posted message to room ${roomId}`);
+
+					// Update our local store
+					myRoomMessages.update((current) => {
+						const roomMessages = current[roomId] || [];
+						return {
+							...current,
+							[roomId]: [...roomMessages, message]
+						};
+					});
+
+					resolve();
+				}
+			});
+	});
+}
+
+/**
  * Leave the current room and clean up subscriptions
  */
 export function leaveRoom(): void {
@@ -274,6 +517,32 @@ export function leaveRoom(): void {
 		const { [room.id]: _, ...rest } = current;
 		return rest;
 	});
+}
+
+/**
+ * Leave a specific room by ID (flexible approach)
+ */
+export function leaveRoomById(roomId: string): void {
+	console.log(`[ROOM] Leaving room ${roomId}`);
+
+	// Clear subscriptions for this room
+	activeSubscriptions.forEach((key) => {
+		if (key.startsWith(`${roomId}:`)) {
+			activeSubscriptions.delete(key);
+		}
+	});
+
+	// Clear room messages
+	roomMessages.update((current) => {
+		const { [roomId]: _, ...rest } = current;
+		return rest;
+	});
+
+	// Clear current room if it matches
+	const currentRoomState = get(currentRoom);
+	if (currentRoomState?.id === roomId) {
+		currentRoom.set(null);
+	}
 }
 
 /**
