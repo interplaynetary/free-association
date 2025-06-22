@@ -18,6 +18,7 @@
 	} from '$lib/protocol';
 	import Child from '$lib/components/Child.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
+	import DragDropSystem from '$lib/components/DragDropSystem.svelte';
 	import { browser } from '$app/environment';
 
 	// Define a type for visualization data
@@ -51,6 +52,9 @@
 
 	// Create users data provider for the dropdown
 	let usersDataProvider = createUsersDataProvider([]);
+	
+	// Drag and drop system reference
+	let dragDropSystem: DragDropSystem;
 
 	// Growth state
 	let touchStartTime = $state(0);
@@ -879,6 +883,35 @@
 			}
 		}
 	}
+	
+	// Handle reorder completion
+	function handleReorderComplete() {
+		// Force update to reflect changes
+		triggerUpdate();
+		globalState.showToast('Node moved successfully', 'success');
+	}
+	
+	// Svelte action to initialize drag and drop on elements
+	function initializeDragDrop(element: HTMLElement, nodeId: string) {
+		// Wait for dragDropSystem to be available
+		const initializeWhenReady = () => {
+			if (dragDropSystem) {
+				dragDropSystem.makeDraggable(element, nodeId);
+				dragDropSystem.makeDroppable(element, nodeId);
+			} else {
+				// Retry after a short delay
+				setTimeout(initializeWhenReady, 100);
+			}
+		};
+		
+		initializeWhenReady();
+		
+		return {
+			destroy() {
+				// Clean up drag/drop listeners if needed
+			}
+		};
+	}
 </script>
 
 <div class="node-container">
@@ -905,6 +938,7 @@
 						ontouchstart={(e) => handleTouchStart(e, child)}
 						ontouchend={(e) => handleTouchEnd(e)}
 						oncontextmenu={(e) => e.preventDefault()}
+						use:initializeDragDrop={child.data.id}
 					>
 						<Child
 							node={{
@@ -950,6 +984,15 @@
 			dataProvider={usersDataProvider}
 			select={handleUserSelect}
 			close={handleDropdownClose}
+		/>
+	{/if}
+	
+	<!-- Drag and Drop System -->
+	{#if tree}
+		<DragDropSystem 
+			bind:this={dragDropSystem}
+			{tree}
+			onReorderComplete={handleReorderComplete}
 		/>
 	{/if}
 </div>
