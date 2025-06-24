@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import * as d3 from 'd3';
-	import { get } from 'svelte/store';
 	import { username, userpub, userTree, createUsersDataProvider } from '$lib/state.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
@@ -15,14 +14,10 @@
 		fulfilled,
 		addChild,
 		deleteSubtree,
-		addContributors,
-		createRootNode
+		addContributors
 	} from '$lib/protocol';
-	import { persistTree } from '$lib/state/gun.svelte';
-	import { populateWithExampleData } from '$lib/examples/example';
 	import Child from '$lib/components/Child.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
-	import DragDropSystem from '$lib/components/DragDropSystem.svelte';
 	import { browser } from '$app/environment';
 
 	// Define a type for visualization data
@@ -56,9 +51,6 @@
 
 	// Create users data provider for the dropdown
 	let usersDataProvider = createUsersDataProvider([]);
-	
-	// Drag and drop system reference
-	let dragDropSystem: DragDropSystem;
 
 	// Growth state
 	let touchStartTime = $state(0);
@@ -287,23 +279,6 @@
 			return;
 		}
 
-		// Get the current tree, creating one if it doesn't exist
-		let workingTree = tree;
-		let workingCurrentNode = currentNode;
-
-		if (!tree) {
-			console.log('[UI FLOW] No tree found, creating new tree');
-			const newTree = createRootNode(get(userpub), get(username));
-			populateWithExampleData(newTree);
-			userTree.set(newTree);
-			persistTree();
-			console.log('[UI FLOW] New tree created and set');
-
-			// Use the newly created tree directly
-			workingTree = newTree;
-			workingCurrentNode = findNodeById(newTree, currentNodeId);
-		}
-
 		// Calculate initial points for new node
 		const calculateNewNodePoints = (): number => {
 			// No siblings - set to 100 points
@@ -333,78 +308,26 @@
 		});
 		console.log('[UI FLOW] Current parent:', currentNodeId);
 		console.log('[UI FLOW] Current path:', path);
-		console.log('[UI FLOW] About to enter try block...');
-		console.log('[UI FLOW] DEBUG - currentNodeId:', currentNodeId);
-		console.log('[UI FLOW] DEBUG - workingTree.id:', workingTree?.id);
-		console.log('[UI FLOW] DEBUG - workingTree children count:', workingTree?.children?.length);
 
 		try {
-			console.log('[UI FLOW] Entering try block');
-			console.log('[UI FLOW] workingTree exists:', !!workingTree);
-			console.log('[UI FLOW] workingCurrentNode exists:', !!workingCurrentNode);
-			console.log('[UI FLOW] userTree store exists:', !!userTree);
-			console.log('[UI FLOW] tree (derived) exists:', !!tree);
-
-			// Check if we have a working tree
-			if (!workingTree) {
-				console.log('[UI FLOW] No workingTree found');
+			// Get the tree and current node
+			if (!tree) {
 				globalState.showToast('Error creating node: No tree found', 'error');
 				return;
 			}
 
-			console.log('[UI FLOW] workingTree check passed');
-
 			// Find the current node
-			if (!workingCurrentNode) {
-				console.log('[UI FLOW] No workingCurrentNode found');
-				console.log('[UI FLOW] DEBUG - Trying to find node with ID:', currentNodeId);
-				console.log('[UI FLOW] DEBUG - Tree root ID:', workingTree.id);
-				console.log('[UI FLOW] DEBUG - Tree structure:', {
-					rootId: workingTree.id,
-					rootName: workingTree.name,
-					childrenCount: workingTree.children.length,
-					childrenIds: workingTree.children.map((c) => c.id)
-				});
-
-				// Try to find the node manually
-				const foundNode = findNodeById(workingTree, currentNodeId);
-				console.log('[UI FLOW] DEBUG - findNodeById result:', foundNode);
-
-				// Check if we're looking for the tree's root node
-				if (currentNodeId === workingTree.id) {
-					console.log('[UI FLOW] Current node IS the tree root, using workingTree as current node');
-					workingCurrentNode = workingTree;
-				} else {
-					console.log('[UI FLOW] Current node ID does not match tree structure');
-					console.log("[UI FLOW] This suggests user navigated to a different user's tree");
-					console.log('[UI FLOW] Creating new tree for current user');
-
-					// Create a new tree for the current user
-					const newTree = createRootNode(get(userpub), get(username));
-					populateWithExampleData(newTree);
-					userTree.set(newTree);
-					persistTree();
-					console.log('[UI FLOW] New tree created for current user');
-
-					// Update working variables to use the new tree
-					workingTree = newTree;
-					workingCurrentNode = newTree; // Root node is the current node
-					console.log('[UI FLOW] Updated workingTree and workingCurrentNode to new tree');
-				}
+			if (!currentNode) {
+				globalState.showToast('Error creating node: Current node not found', 'error');
+				return;
 			}
 
-			console.log('[UI FLOW] workingCurrentNode check passed');
-			console.log('[UI FLOW] About to clone tree');
-
-			// Create a deep clone of the working tree to ensure reactivity
-			const updatedTree = structuredClone(workingTree);
-
-			console.log('[UI FLOW] Tree cloned successfully');
+			// Create a deep clone of the current tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
 
 			// Find the current node in our cloned tree
 			const updatedCurrentNode = findNodeById(updatedTree, currentNodeId);
 			if (!updatedCurrentNode) {
-				console.log('[UI FLOW] Could not find current node in updated tree');
 				globalState.showToast(
 					'Error creating node: Current node not found in updated tree',
 					'error'
@@ -412,18 +335,11 @@
 				return;
 			}
 
-			console.log('[UI FLOW] Found current node in updated tree');
-			console.log('[UI FLOW] About to add child');
-
 			// Add child to current node in our cloned tree
 			addChild(updatedCurrentNode, newNodeId, newNodeName, newPoints);
 
-			console.log('[UI FLOW] Child added successfully');
-
 			// Update the store with the new tree to trigger reactivity
 			userTree.set(updatedTree);
-
-			console.log('[UI FLOW] Tree store updated');
 
 			// Force update counter to trigger redraw
 			triggerUpdate();
@@ -963,35 +879,6 @@
 			}
 		}
 	}
-	
-	// Handle reorder completion
-	function handleReorderComplete() {
-		// Force update to reflect changes
-		triggerUpdate();
-		globalState.showToast('Node moved successfully', 'success');
-	}
-	
-	// Svelte action to initialize drag and drop on elements
-	function initializeDragDrop(element: HTMLElement, nodeId: string) {
-		// Wait for dragDropSystem to be available
-		const initializeWhenReady = () => {
-			if (dragDropSystem) {
-				dragDropSystem.makeDraggable(element, nodeId);
-				dragDropSystem.makeDroppable(element, nodeId);
-			} else {
-				// Retry after a short delay
-				setTimeout(initializeWhenReady, 100);
-			}
-		};
-		
-		initializeWhenReady();
-		
-		return {
-			destroy() {
-				// Clean up drag/drop listeners if needed
-			}
-		};
-	}
 </script>
 
 <div class="node-container">
@@ -1018,7 +905,6 @@
 						ontouchstart={(e) => handleTouchStart(e, child)}
 						ontouchend={(e) => handleTouchEnd(e)}
 						oncontextmenu={(e) => e.preventDefault()}
-						use:initializeDragDrop={child.data.id}
 					>
 						<Child
 							node={{
@@ -1047,7 +933,7 @@
 					<div class="add-node-prompt">
 						<button class="add-node-button" onclick={handleAddNode}>
 							<span class="add-icon">➕</span>
-							<span class="add-text">{tree ? nodeLabels[labelIndex] : 'Play!'}</span>
+							<span class="add-text">{nodeLabels[labelIndex]}</span>
 						</button>
 					</div>
 				</div>
@@ -1064,15 +950,6 @@
 			dataProvider={usersDataProvider}
 			select={handleUserSelect}
 			close={handleDropdownClose}
-		/>
-	{/if}
-	
-	<!-- Drag and Drop System -->
-	{#if tree}
-		<DragDropSystem 
-			bind:this={dragDropSystem}
-			{tree}
-			onReorderComplete={handleReorderComplete}
 		/>
 	{/if}
 </div>
