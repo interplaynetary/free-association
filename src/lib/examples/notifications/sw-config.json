@@ -1,0 +1,85 @@
+{
+	"subscriptions": [
+		{
+			"id": "encrypted-chat",
+			"path": "chat",
+			"scope": "gun",
+			"filter": {
+				"requiredFields": ["what"]
+			},
+			"processor": "decrypt",
+			"notification": {
+				"title": "💬 {{userName}}",
+				"body": "{{decryptedMessage}}",
+				"requireInteraction": true,
+				"vibrate": [200, 100, 200],
+				"actions": [
+					{ "action": "reply", "title": "Reply" },
+					{ "action": "view", "title": "View" }
+				]
+			},
+			"routing": {
+				"defaultRoute": "/rooms",
+				"actions": {
+					"reply": "/rooms?action=reply&peerId={{user}}",
+					"view": "/rooms?chat={{_key}}"
+				}
+			}
+		},
+		{
+			"id": "capacity-network",
+			"path": "capacities",
+			"scope": "gun",
+			"processor": "enrichUser",
+			"notification": {
+				"title": "🎯 New Capacity",
+				"body": "{{userName}}: {{_preview}}",
+				"actions": [
+					{ "action": "view", "title": "View" },
+					{ "action": "connect", "title": "Connect", "condition": "userName" }
+				]
+			},
+			"routing": {
+				"defaultRoute": "/inventory",
+				"actions": {
+					"view": "/inventory?item={{_key}}",
+					"connect": "/rooms?peerId={{user}}"
+				}
+			}
+		},
+		{
+			"id": "personal-data",
+			"path": "",
+			"scope": "user",
+			"filter": {
+				"excludeFields": ["_", "alias", "pub", "epub", "epriv"]
+			},
+			"notification": {
+				"title": "👤 Data Updated",
+				"body": "{{_preview}}",
+				"requireInteraction": false,
+				"tag": "personal-{{_key}}"
+			},
+			"routing": {
+				"defaultRoute": "/"
+			}
+		},
+		{
+			"id": "network-pulse",
+			"path": "",
+			"scope": "gun", 
+			"filter": {
+				"excludeFields": ["_", "heartbeat", "freely-associating-players"]
+			},
+			"notification": {
+				"title": "🌐 Network",
+				"body": "{{_preview}}",
+				"requireInteraction": false,
+				"tag": "network-activity"
+			},
+			"routing": {
+				"defaultRoute": "/"
+			}
+		}
+	]
+} 
