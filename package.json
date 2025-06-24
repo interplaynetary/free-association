@@ -6,7 +6,7 @@
 	"author": "playnet",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "node scripts/generate-manifest.js && vite build && node scripts/generate-manifest.js",
+		"build": "vite build && node scripts/generate-manifest.js",
 		"build:capacitor": "vite build && npx cap sync",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",

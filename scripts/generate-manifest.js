@@ -1,5 +1,5 @@
-import { writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
 const basePath = process.env.BASE_PATH || '';
 
@@ -7,8 +7,8 @@ const manifest = {
 	name: 'Playnet',
 	short_name: 'Playnet',
 	description: 'Free association network platform',
-	start_url: basePath ? `${basePath}/` : '/',
-	scope: basePath ? `${basePath}/` : '/',
+	start_url: `${basePath}/`,
+	scope: `${basePath}/`,
 	display: 'standalone',
 	background_color: '#ffffff',
 	theme_color: '#000000',
@@ -21,20 +21,10 @@ const manifest = {
 	]
 };
 
-// Write to both static (for dev) and build (for production)
-const staticPath = resolve('static/manifest.json');
-const buildPath = resolve('build/manifest.json');
+// Ensure build directory exists
+mkdirSync('build', { recursive: true });
 
-try {
-	writeFileSync(staticPath, JSON.stringify(manifest, null, 2));
-	console.log('✓ Generated manifest.json for static directory');
-} catch (err) {
-	console.log('Note: Could not write to static directory (this is OK during build)');
-}
+// Write manifest to build directory
+writeFileSync('build/manifest.json', JSON.stringify(manifest, null, 2));
 
-try {
-	writeFileSync(buildPath, JSON.stringify(manifest, null, 2));
-	console.log('✓ Generated manifest.json for build directory');
-} catch (err) {
-	console.log('Note: Could not write to build directory (this is OK during dev)');
-}
+console.log(`Generated manifest.json with base path: ${basePath || '/'}`); 
