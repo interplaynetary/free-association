@@ -16,6 +16,7 @@
 		deleteSubtree,
 		addContributors
 	} from '$lib/protocol';
+	import { createNewTree } from '$lib/state/gun.svelte';
 	import Child from '$lib/components/Child.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import { browser } from '$app/environment';
@@ -257,6 +258,27 @@
 		console.log('[UI FLOW] zoomInto called for node:', nodeId);
 		globalState.zoomInto(nodeId);
 		console.log('[UI FLOW] Navigation handled');
+	}
+
+	function handleCreateNewTree() {
+		console.log('[UI FLOW] handleCreateNewTree started');
+
+		// Check if user is authenticated
+		if (!$username || !$userpub) {
+			console.log('[UI FLOW] User not authenticated, prompting to log in');
+			globalState.showToast('Please log in to start playing!', 'info');
+			return;
+		}
+
+		try {
+			const newTree = createNewTree(true); // Include example data
+			if (newTree) {
+				globalState.showToast('Greetings player, welcome to playnet!', 'success');
+			}
+		} catch (error) {
+			console.error('[UI FLOW] Error creating new tree:', error);
+			globalState.showToast('Error creating new tree', 'error');
+		}
 	}
 
 	async function handleAddNode() {
@@ -885,7 +907,15 @@
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
-			{#if hierarchyData && hierarchyData.children && hierarchyData.children.length > 0}
+			{#if !tree}
+				<div class="empty-state">
+					<div class="add-node-prompt">
+						<button class="play-button" onclick={handleCreateNewTree}>
+							<span class="play-text">Play! ✨</span>
+						</button>
+					</div>
+				</div>
+			{:else if hierarchyData && hierarchyData.children && hierarchyData.children.length > 0}
 				{#each hierarchyData.children as child}
 					<div
 						class="clickable"
@@ -1097,6 +1127,32 @@
 		transform: translateY(-2px);
 		box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
 		animation: none;
+	}
+
+	.play-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 18px 28px;
+		border: none;
+		border-radius: 8px;
+		background-color: #4caf50;
+		color: white;
+		font-size: 20px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 3px 8px rgba(76, 175, 80, 0.3);
+	}
+
+	.play-button:hover {
+		background-color: #388e3c;
+		transform: translateY(-2px);
+		box-shadow: 0 5px 12px rgba(76, 175, 80, 0.4);
+	}
+
+	.play-text {
+		font-size: 20px;
 	}
 
 	.add-icon {
