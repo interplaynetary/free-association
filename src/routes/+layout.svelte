@@ -1,5 +1,7 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
+	import SimpleNotificationTest from '$lib/components/SimpleNotificationTest.svelte';
+	import DraggedNode from '$lib/components/DraggedNode.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
@@ -11,7 +13,24 @@
 	let { children }: LayoutProps = $props();
 
 	// Set up global keyboard event listener and reliable viewport handling
-	onMount(async () => {
+	onMount(() => {
+		// SvelteKit will automatically register the service worker
+		// We just need to check if it's working
+		if (browser && 'serviceWorker' in navigator) {
+			navigator.serviceWorker.ready
+				.then((registration) => {
+					console.log('Service worker registered successfully:', registration);
+
+					// Request notification permission if not already granted
+					if ('Notification' in window && Notification.permission === 'default') {
+						return Notification.requestPermission();
+					}
+				})
+				.catch((error) => {
+					console.error('Service worker registration failed:', error);
+				});
+		}
+
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation or exit edit mode
 			if (event.key === 'Escape') {
@@ -105,9 +124,15 @@
 	});
 </script>
 
+<svelte:head>
+	<link rel="manifest" href="/manifest.json" />
+</svelte:head>
+
 <main>
 	<div class="app-header">
 		<Header />
+		<!-- Temporary debug component
+		<SimpleNotificationTest /> -->
 	</div>
 	<div class="app-content">
 		{@render children()}
@@ -116,6 +141,15 @@
 
 <!-- Toaster component for svelte-french-toast - positioned at the bottom -->
 <Toaster position="bottom-center" />
+
+<!-- DraggedNode component that appears on top of everything -->
+<DraggedNode
+	show={globalState.isDragging}
+	nodeName={globalState.draggedNodeName}
+	nodeColor={globalState.draggedNodeColor}
+	x={globalState.dragX}
+	y={globalState.dragY}
+/>
 
 <style>
 	main {

@@ -53,6 +53,10 @@
 	const pub = $derived($userpub);
 	const user = $derived($username);
 	const isAuthenticatingState = $derived($isAuthenticating);
+	// Add reactive state for delete mode
+	const isDeleteMode = $derived(globalState.deleteMode);
+	// Add reactive state for recompose mode
+	const isRecomposeMode = $derived(globalState.recomposeMode);
 
 	// Derived path info based on current path and tree
 	const currentPathInfo = $derived.by(() => {
@@ -182,6 +186,11 @@
 		showPassword = false;
 		isRegisterMode = false;
 		agreedToTerms = false;
+	}
+
+	// recompose handler
+	function handleRecompose() {
+		globalState.toggleRecomposeMode();
 	}
 
 	// Add new node handler
@@ -517,8 +526,30 @@
 							class="breadcrumb-item"
 							class:current={index === currentPathInfo.length - 1}
 							class:auth-root={index === 0}
+							class:drop-target={globalState.isDragging}
+							data-node-id={segment.id}
 							onclick={(e) => {
 								handleBreadcrumbClick(index, e);
+							}}
+							ondragover={(e) => {
+								e.preventDefault();
+							}}
+							ondrop={(e) => {
+								e.preventDefault();
+								if (globalState.isDragging && globalState.draggedNodeId) {
+									globalState.handleNodeReorder(globalState.draggedNodeId, segment.id);
+									globalState.endDrag();
+								}
+							}}
+							onpointerenter={(e) => {
+								if (globalState.isDragging) {
+									e.currentTarget.style.backgroundColor = 'rgba(33, 150, 243, 0.2)';
+								}
+							}}
+							onpointerleave={(e) => {
+								if (globalState.isDragging) {
+									e.currentTarget.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
+								}
 							}}
 							tabindex="0"
 							aria-label={segment.name}
@@ -532,6 +563,13 @@
 		</div>
 
 		<div class="header-controls">
+			<button
+				class="icon-button recompose-button"
+				class:recompose-active={isRecomposeMode}
+				title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+				onclick={handleRecompose}><span>↕️</span></button
+			>
+
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
@@ -541,7 +579,8 @@
 			>
 			<button
 				class="icon-button delete-button"
-				title="Toggle delete mode"
+				class:delete-active={isDeleteMode}
+				title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
 				onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
 			>
 		</div>
@@ -836,6 +875,18 @@
 		transition: background-color 0.2s;
 	}
 
+	.breadcrumb-item.drop-target {
+		background-color: rgba(33, 150, 243, 0.1);
+		border: 1px dashed #2196f3;
+		border-radius: 4px;
+		transition: all 0.2s ease;
+	}
+
+	.breadcrumb-item.drop-target:hover {
+		background-color: rgba(33, 150, 243, 0.2);
+		border-color: #1976d2;
+	}
+
 	.avatar-inline {
 		display: inline-flex;
 		width: 24px;
@@ -894,6 +945,64 @@
 
 	.icon-button:hover {
 		transform: scale(1.1);
+	}
+
+	/* Delete button active state with animation */
+	.delete-button.delete-active {
+		background-color: #ffebee;
+		border: 2px solid #f44336;
+		border-radius: 6px;
+		color: #d32f2f;
+		animation: pulse 2s ease-in-out infinite;
+		box-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
+	}
+
+	.delete-button.delete-active:hover {
+		background-color: #ffcdd2;
+		border-color: #d32f2f;
+		transform: scale(1.05); /* Slightly less scale when active */
+	}
+
+	/* Recompose button active state with animation */
+	.recompose-button.recompose-active {
+		background-color: #e3f2fd;
+		border: 2px solid #2196f3;
+		border-radius: 6px;
+		color: #1976d2;
+		animation: pulse-blue 2s ease-in-out infinite;
+		box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+	}
+
+	.recompose-button.recompose-active:hover {
+		background-color: #bbdefb;
+		border-color: #1976d2;
+		transform: scale(1.05); /* Slightly less scale when active */
+	}
+
+	/* Pulse animation for additional emphasis */
+	@keyframes pulse {
+		0%,
+		100% {
+			box-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
+		}
+		50% {
+			box-shadow:
+				0 0 16px rgba(244, 67, 54, 0.6),
+				0 0 24px rgba(244, 67, 54, 0.3);
+		}
+	}
+
+	/* Blue pulse animation for recompose button */
+	@keyframes pulse-blue {
+		0%,
+		100% {
+			box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+		}
+		50% {
+			box-shadow:
+				0 0 16px rgba(33, 150, 243, 0.6),
+				0 0 24px rgba(33, 150, 243, 0.3);
+		}
 	}
 
 	.login-form,

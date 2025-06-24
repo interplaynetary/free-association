@@ -11,7 +11,7 @@
 	import { browser } from '$app/environment';
 	import { getUserName } from '$lib/state/gun.svelte';
 	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
-	import { createCapacitiesDataProvider } from '$lib/state/ui-providers.svelte';
+	import { createCapacitiesDataProvider } from '$lib/utils/ui-providers.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;

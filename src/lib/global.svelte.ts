@@ -18,7 +18,9 @@ import {
 	fulfilled,
 	desire,
 	updateNodeById as updateNode,
-	isContribution
+	isContribution,
+	reorderNode,
+	wouldCreateCycle
 } from '$lib/protocol';
 import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
 import { username, userpub, userTree } from '$lib/state.svelte';
@@ -61,10 +63,19 @@ if (browser) {
 export const globalState = $state({
 	// UI state
 	deleteMode: false,
+	recomposeMode: false,
 	nodeToEdit: '',
 	editMode: false, // Global edit mode flag
+	recomposing: false,
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
+	// Drag state
+	isDragging: false,
+	draggedNodeId: '',
+	draggedNodeName: '',
+	draggedNodeColor: '',
+	dragX: 0,
+	dragY: 0,
 	navigateToPath: async (newPath: string[]) => {
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
@@ -149,12 +160,41 @@ export const globalState = $state({
 			return;
 		}
 
+		// Don't allow toggling delete mode when in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot toggle delete mode while in recompose mode', 'warning');
+			return;
+		}
+
 		globalState.deleteMode = !globalState.deleteMode;
 		globalState.showToast(
 			globalState.deleteMode
 				? 'Delete mode activated. Click a node to delete it.'
 				: 'Delete mode deactivated.',
 			globalState.deleteMode ? 'warning' : 'info'
+		);
+	},
+
+	// Toggle recompose mode
+	toggleRecomposeMode: () => {
+		// Don't allow toggling recompose mode when in edit mode
+		if (globalState.editMode) {
+			globalState.showToast('Cannot toggle recompose mode while editing', 'warning');
+			return;
+		}
+
+		// Don't allow toggling recompose mode when in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot toggle recompose mode while in delete mode', 'warning');
+			return;
+		}
+
+		globalState.recomposeMode = !globalState.recomposeMode;
+		globalState.showToast(
+			globalState.recomposeMode
+				? 'Recompose mode activated. Click a node to recompose it.'
+				: 'Recompose mode deactivated.',
+			globalState.recomposeMode ? 'info' : 'info'
 		);
 	},
 
@@ -175,6 +215,12 @@ export const globalState = $state({
 		// Don't allow editing when in delete mode
 		if (globalState.deleteMode) {
 			globalState.showToast('Cannot edit nodes in delete mode', 'warning');
+			return false;
+		}
+
+		// Don't allow editing when in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot edit nodes in recompose mode', 'warning');
 			return false;
 		}
 
@@ -218,6 +264,89 @@ export const globalState = $state({
 					icon: 'ℹ️'
 				});
 				break;
+		}
+	},
+
+	// Drag control functions
+	startDrag: (nodeId: string, nodeName: string, nodeColor: string, x: number, y: number) => {
+		globalState.isDragging = true;
+		globalState.draggedNodeId = nodeId;
+		globalState.draggedNodeName = nodeName;
+		globalState.draggedNodeColor = nodeColor;
+		globalState.dragX = x;
+		globalState.dragY = y;
+	},
+
+	updateDragPosition: (x: number, y: number) => {
+		globalState.dragX = x;
+		globalState.dragY = y;
+	},
+
+	endDrag: () => {
+		globalState.isDragging = false;
+		globalState.draggedNodeId = '';
+		globalState.draggedNodeName = '';
+		globalState.draggedNodeColor = '';
+		globalState.dragX = 0;
+		globalState.dragY = 0;
+	},
+
+	// Node reordering function
+	handleNodeReorder: (sourceNodeId: string, targetNodeId: string) => {
+		try {
+			const tree = get(userTree);
+			if (!tree) {
+				globalState.showToast('No tree available for reordering', 'error');
+				return false;
+			}
+
+			// Don't allow moving to self
+			if (sourceNodeId === targetNodeId) {
+				globalState.showToast('Cannot move node to itself', 'warning');
+				return false;
+			}
+
+			// Create a deep clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
+			// Check if this would create a cycle
+			if (wouldCreateCycle(updatedTree, sourceNodeId, targetNodeId)) {
+				globalState.showToast('Cannot move node to its own descendant', 'warning');
+				return false;
+			}
+
+			// Find the source and target nodes in the cloned tree
+			const sourceNode = findNodeById(updatedTree, sourceNodeId);
+			const targetNode = findNodeById(updatedTree, targetNodeId);
+
+			if (!sourceNode) {
+				globalState.showToast('Source node not found', 'error');
+				return false;
+			}
+
+			if (!targetNode) {
+				globalState.showToast('Target node not found', 'error');
+				return false;
+			}
+
+			// Use the protocol function to reorder the node
+			const success = reorderNode(updatedTree, sourceNodeId, targetNodeId);
+
+			if (!success) {
+				globalState.showToast('Failed to reorder node', 'error');
+				return false;
+			}
+
+			// Update the store with the new tree to trigger reactivity
+			userTree.set(updatedTree);
+
+			globalState.showToast(`Moved "${sourceNode.name}" to "${targetNode.name}"`, 'success');
+			console.log(`[REORDER] Successfully moved ${sourceNode.name} to ${targetNode.name}`);
+			return true;
+		} catch (err) {
+			console.error('Error in reorder process:', err);
+			globalState.showToast('Error reordering node', 'error');
+			return false;
 		}
 	}
 });

@@ -69,6 +69,9 @@
 	const BASE_SHRINK_RATE = -0.03;
 	const TAP_THRESHOLD = 250;
 
+	// Drag state (now using global state)
+	let dragStartTime = $state(0);
+
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
 	const path = $derived($currentPath);
@@ -249,6 +252,9 @@
 			document.removeEventListener('mouseup', handleGlobalTouchEnd);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
 			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
+			// Clean up drag listeners
+			document.removeEventListener('pointermove', handleDragMove);
+			document.removeEventListener('pointerup', handleDragEnd);
 			unsubscribe();
 		};
 	});
@@ -530,6 +536,12 @@
 		// Don't allow growth in delete mode
 		if (globalState.deleteMode) return;
 
+		// Don't allow growth in recompose mode
+		if (globalState.recomposeMode) return;
+
+		// Don't allow growth when dragging
+		if (globalState.isDragging) return;
+
 		// Clear existing growth state
 		if (growthInterval !== null) clearInterval(growthInterval);
 		if (growthTimeout !== null) clearTimeout(growthTimeout);
@@ -701,6 +713,16 @@
 			return;
 		}
 
+		// Check if we should start dragging (in recompose mode with any click, or normal mode with special click)
+		const shouldStartDrag =
+			!globalState.deleteMode &&
+			(globalState.recomposeMode || event.button === 1 || event.ctrlKey || event.metaKey); // Recompose mode allows any click, or middle click / Ctrl+click in normal mode
+
+		if (shouldStartDrag) {
+			startDragging(event, node);
+			return;
+		}
+
 		// Check if the pointer target is a text edit field, node-text element, or contributor element
 		const target = event.target as HTMLElement;
 		if (
@@ -811,11 +833,14 @@
 		// Always stop growth
 		stopGrowth();
 
-		// For short taps, trigger navigation or deletion
+		// For short taps, trigger navigation, deletion, or recompose
 		if (!wasGrowthEvent && nodeId) {
 			if (globalState.deleteMode) {
 				// Handle deletion
 				handleNodeDeletion(nodeId);
+			} else if (globalState.recomposeMode) {
+				// Handle recompose
+				handleNodeRecompose(nodeId);
 			} else {
 				// This was a tap, not a hold - navigate into the node
 				zoomInto(nodeId);
@@ -901,6 +926,104 @@
 			}
 		}
 	}
+
+	function handleNodeRecompose(nodeId: string) {
+		try {
+			if (!tree) {
+				globalState.showToast('No tree available for recompose', 'error');
+				return;
+			}
+
+			// Find the node to recompose
+			const nodeToRecompose = findNodeById(tree, nodeId);
+			if (!nodeToRecompose) {
+				globalState.showToast('Node not found', 'error');
+				return;
+			}
+
+			// For now, show a toast indicating recompose action
+			// In the future, this could trigger actual recomposition logic
+			globalState.showToast(`Recomposing node: ${nodeToRecompose.name}`, 'info');
+
+			console.log('[RECOMPOSE] Recomposing node:', nodeToRecompose);
+
+			// TODO: Implement actual recomposition logic here
+			// This could involve:
+			// - Recalculating fulfillment values
+			// - Redistributing points based on new criteria
+			// - Updating contributor relationships
+			// - Triggering optimization algorithms
+		} catch (err) {
+			console.error(`Error in recompose process: ${err}`);
+			globalState.showToast('Error recomposing node', 'error');
+		}
+	}
+
+	// Drag functions
+	function startDragging(
+		event: PointerEvent,
+		node: d3.HierarchyRectangularNode<VisualizationNode>
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		// Set global drag state
+		globalState.startDrag(
+			node.data.id,
+			node.data.nodeName || 'Unnamed',
+			'', // Will use computed color from nodeName
+			event.clientX,
+			event.clientY
+		);
+		dragStartTime = Date.now();
+
+		console.log('[DRAG] Started dragging node:', globalState.draggedNodeName);
+
+		// Add global event listeners for mouse movement and end
+		document.addEventListener('pointermove', handleDragMove);
+		document.addEventListener('pointerup', handleDragEnd);
+	}
+
+	function handleDragMove(event: PointerEvent) {
+		if (!globalState.isDragging) return;
+
+		// Update drag position
+		globalState.updateDragPosition(event.clientX, event.clientY);
+	}
+
+	function handleDragEnd(event: PointerEvent) {
+		if (!globalState.isDragging) return;
+
+		console.log('[DRAG] Ending drag');
+
+		// Check if this was a quick click (not a real drag)
+		const dragDuration = Date.now() - dragStartTime;
+		const wasDragGesture = dragDuration >= 200; // Consider it a drag if held for 200ms+
+
+		if (wasDragGesture && globalState.draggedNodeId) {
+			// Find what node we're dropping on by checking the element under the cursor
+			const elementUnder = document.elementFromPoint(event.clientX, event.clientY);
+			// Check for both node drops and breadcrumb drops
+			const dropTargetElement = elementUnder?.closest(
+				'.clickable[data-node-id], .breadcrumb-item[data-node-id]'
+			);
+
+			if (dropTargetElement) {
+				const targetNodeId = dropTargetElement.getAttribute('data-node-id');
+				if (targetNodeId && targetNodeId !== globalState.draggedNodeId) {
+					globalState.handleNodeReorder(globalState.draggedNodeId, targetNodeId);
+				}
+			}
+		}
+
+		// Reset global drag state
+		globalState.endDrag();
+		dragStartTime = 0;
+
+		// Remove global event listeners
+		document.removeEventListener('pointermove', handleDragMove);
+		document.removeEventListener('pointerup', handleDragEnd);
+	}
 </script>
 
 <div class="node-container">
@@ -920,8 +1043,14 @@
 					<div
 						class="clickable"
 						class:deleting={globalState.deleteMode}
+						class:recomposing={globalState.recomposeMode}
+						class:dragging-over={globalState.isDragging &&
+							globalState.draggedNodeId !== child.data.id}
+						class:being-dragged={globalState.isDragging &&
+							globalState.draggedNodeId === child.data.id}
 						class:growing={isGrowing && activeGrowthNodeId === child.data.id && !isShrinkingActive}
 						class:shrinking={isGrowing && activeGrowthNodeId === child.data.id && isShrinkingActive}
+						data-node-id={child.data.id}
 						style="
 							position: absolute;
 							left: {child.x0 * 100}%;
@@ -1074,6 +1203,33 @@
 
 	:global(.clickable.deleting:hover) {
 		opacity: 1;
+	}
+
+	:global(.clickable.recomposing) {
+		cursor: pointer;
+		opacity: 0.7;
+		transition: opacity 0.2s ease;
+	}
+
+	:global(.clickable.recomposing:hover) {
+		opacity: 1;
+	}
+
+	:global(.clickable.dragging-over) {
+		cursor: pointer;
+		opacity: 0.7;
+		transition: opacity 0.2s ease;
+	}
+
+	:global(.clickable.dragging-over:hover) {
+		opacity: 1;
+		background: rgba(33, 150, 243, 0.1) !important;
+		border: 2px dashed #2196f3 !important;
+	}
+
+	:global(.clickable.being-dragged) {
+		opacity: 0.3;
+		pointer-events: none;
 	}
 
 	:global(.clickable.growing) {

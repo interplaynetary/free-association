@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
-import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svelte';
-import { usersList, userIds, userNamesCache, getUserName } from './gun.svelte';
+import { userTree, nodesMap, userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
+import { usersList, userIds, userNamesCache, getUserName } from '$lib/state/gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
 // await gun.user(data).get('pub') we can use this instead of .once

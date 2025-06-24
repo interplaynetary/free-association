@@ -6,22 +6,10 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 	kit: {
 		adapter: adapter({
-			// GitHub Pages configuration
-			pages: 'build',
-			assets: 'build',
-			fallback: '404.html',
-			precompress: false,
-			strict: true
-		}),
-		paths: {
-			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || '',
-			relative: false
-		}
+			fallback: 'index.html'
+		})
 	},
-	extensions: ['.svelte', '.svx'],
-	alias: {
-		'@/*': './path/to/lib/*'
-	}
+	extensions: ['.svelte', '.svx']
 };
 
 export default config;

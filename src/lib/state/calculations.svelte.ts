@@ -143,7 +143,21 @@ export function recalculateFromTree() {
 					console.log(
 						`[RECALC] Updating recognition for ${contributorId}: ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
 					);
-					updateRecognitionCache(contributorId, ourShare, theirShare);
+					recognitionCache.update((cache) => {
+						const oldEntry = cache[contributorId];
+						cache[contributorId] = {
+							ourShare,
+							theirShare,
+							timestamp: Date.now()
+						};
+				
+						console.log(`[MUTUAL] Cache entry for ${contributorId}:`, {
+							old: oldEntry,
+							new: cache[contributorId]
+						});
+				
+						return cache;
+					});
 				});
 
 				console.log(
@@ -163,37 +177,4 @@ export function recalculateFromTree() {
 		// Always reset recalculating flag
 		isRecalculatingTree.set(false);
 	}
-}
-
-/**
- * Update the recognition cache with a value from another user
- */
-export function updateRecognitionCache(
-	contributorId: string,
-	ourShare: number,
-	theirShare: number
-) {
-	console.log(
-		`[MUTUAL] Updating cache for ${contributorId}: our=${ourShare.toFixed(4)}, their=${theirShare.toFixed(4)}`
-	);
-
-	recognitionCache.update((cache) => {
-		const oldEntry = cache[contributorId];
-		cache[contributorId] = {
-			ourShare,
-			theirShare,
-			timestamp: Date.now()
-		};
-
-		console.log(`[MUTUAL] Cache entry for ${contributorId}:`, {
-			old: oldEntry,
-			new: cache[contributorId]
-		});
-
-		return cache;
-	});
-
-	// Log the entire cache after update
-	const fullCache = get(recognitionCache);
-	console.log('[MUTUAL] Full recognition cache after update:', fullCache);
 }

@@ -174,6 +174,12 @@
 			return;
 		}
 
+		// Don't allow adding contributors in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot add contributors in recompose mode', 'warning');
+			return;
+		}
+
 		event.stopPropagation();
 		const nodeId = node.id;
 		if (nodeId) {
@@ -196,6 +202,12 @@
 		// Don't allow removing contributors when editing
 		if (globalState.editMode) {
 			globalState.showToast('Cannot remove contributors while editing', 'warning');
+			return;
+		}
+
+		// Don't allow removing contributors in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot remove contributors in recompose mode', 'warning');
 			return;
 		}
 

@@ -18,10 +18,8 @@ import {
 	networkDesiredComposeInto,
 } from '$lib/state/protocol/compose.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
-import { updateRecognitionCache, recalculateFromTree } from './calculations.svelte';
-import { parseCapacities, parseTree, parseShareMap } from '$lib/validation';
-import { createRootNode } from '$lib/protocol';
-import type { Writable } from 'svelte/store';
+import { recalculateFromTree } from './calculations.svelte';
+import { parseCapacities, parseTree } from '$lib/validation';
 
 /**
  * Subscribe to our own tree data to detect external changes
@@ -342,7 +340,6 @@ function setupUsersListSubscription() {
 
 /**
  * Initialize all user data subscriptions
- * This replaces the manifest() function
  */
 export function initializeUserDataSubscriptions() {
 	if (!user.is?.pub) {

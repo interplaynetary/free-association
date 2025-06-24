@@ -11,7 +11,7 @@ export * from './calculations.svelte';
 export * from './network.svelte';
 
 // UI data providers
-export * from './ui-providers.svelte';
+export * from '$lib/utils/ui-providers.svelte';
 
 // Import subscriptions to activate them
 import './subscriptions.svelte';
