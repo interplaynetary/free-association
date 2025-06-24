@@ -19,6 +19,7 @@ const moduleExclude = (match: string): Plugin => {
 
 // https://vite.dev/config/
 export default defineConfig({
+	base: process.env.NODE_ENV === 'production' ? process.env.BASE_PATH || '/' : '/',
 	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding'), devtoolsJson()],
 	// Required for Gun in service worker
 	define: {
