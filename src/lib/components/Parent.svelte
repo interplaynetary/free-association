@@ -947,12 +947,6 @@
 
 			console.log('[RECOMPOSE] Recomposing node:', nodeToRecompose);
 
-			// TODO: Implement actual recomposition logic here
-			// This could involve:
-			// - Recalculating fulfillment values
-			// - Redistributing points based on new criteria
-			// - Updating contributor relationships
-			// - Triggering optimization algorithms
 		} catch (err) {
 			console.error(`Error in recompose process: ${err}`);
 			globalState.showToast('Error recomposing node', 'error');

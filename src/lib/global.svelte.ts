@@ -329,6 +329,15 @@ export const globalState = $state({
 				return false;
 			}
 
+			// Check if target node has contributors (cannot have children)
+			if (isContribution(targetNode)) {
+				globalState.showToast(
+					`Cannot move node to "${targetNode.name}" - nodes with contributors cannot have children`,
+					'warning'
+				);
+				return false;
+			}
+
 			// Use the protocol function to reorder the node
 			const success = reorderNode(updatedTree, sourceNodeId, targetNodeId);
 

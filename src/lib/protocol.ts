@@ -697,7 +697,7 @@ export function extractSubtree(tree: Node, nodeId: string): Node | null {
 	}
 
 	// Find the node in parent's children and extract it
-	const nodeIndex = parent.children.findIndex(child => child.id === nodeId);
+	const nodeIndex = parent.children.findIndex((child) => child.id === nodeId);
 	if (nodeIndex === -1) {
 		return null;
 	}
@@ -740,7 +740,7 @@ export function wouldCreateCycle(tree: Node, nodeId: string, targetNodeId: strin
 
 	// Check if target is a descendant of the node to move
 	const descendants = getDescendants(nodeToMove);
-	return descendants.some(descendant => descendant.id === targetNodeId);
+	return descendants.some((descendant) => descendant.id === targetNodeId);
 }
 
 // Reorder a node by moving it to a new parent
@@ -752,6 +752,12 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
 
 	// Can't move root node
 	if (tree.id === nodeId) {
+		return false;
+	}
+
+	// Can't move to a node that has contributors (contributors can't have children)
+	const targetNode = findNodeById(tree, newParentId);
+	if (targetNode && isContribution(targetNode)) {
 		return false;
 	}
 
