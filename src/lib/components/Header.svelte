@@ -611,10 +611,12 @@
 							<input
 								type="text"
 								id="username"
+								name="username"
 								bind:value={usernameInput}
 								placeholder="Enter username"
 								disabled={isLoading}
 								autocomplete="username"
+								required
 							/>
 						</div>
 
@@ -624,10 +626,12 @@
 								<input
 									type={showPassword ? 'text' : 'password'}
 									id="password"
+									name="password"
 									bind:value={password}
 									placeholder="Enter password"
 									disabled={isLoading}
 									autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
+									required
 								/>
 								<button
 									type="button"
@@ -647,10 +651,12 @@
 									<input
 										type={showPassword ? 'text' : 'password'}
 										id="confirmPassword"
+										name="confirmPassword"
 										bind:value={confirmPassword}
 										placeholder="Confirm password"
 										disabled={isLoading}
 										autocomplete="new-password"
+										required
 									/>
 								</div>
 							</div>

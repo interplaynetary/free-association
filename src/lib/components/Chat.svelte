@@ -2,6 +2,7 @@
 	import ChatMessage from './ChatMessage.svelte';
 	import { onMount } from 'svelte';
 	import { username, userpub, user, gun, GUN } from '$lib/state/gun.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import SEA from 'gun/sea';
 
 	interface ChatProps {
@@ -21,6 +22,7 @@
 
 	let newMessage = $state('');
 	let messages = $state<Message[]>([]);
+	let isSending = $state(false);
 
 	let scrollBottom: HTMLDivElement;
 	let lastScrollTop = $state(0);
@@ -87,14 +89,28 @@
 	});
 
 	async function sendMessage() {
-		if (!newMessage.trim()) return;
+		if (!newMessage.trim() || isSending) return;
+
+		isSending = true;
 
 		try {
-			const encryptionKey = '#foo';
-			const secret = await SEA.encrypt(newMessage.trim(), encryptionKey);
+			// Validate user is logged in
+			if (!user.is?.pub) {
+				throw new Error('You must be logged in to send messages');
+			}
 
-			// Debug logging
-			console.log('Sending message with userPub:', user.is?.pub);
+			const encryptionKey = '#foo';
+			const messageText = newMessage.trim();
+
+			console.log('Starting to send message:', messageText);
+
+			const secret = await SEA.encrypt(messageText, encryptionKey);
+
+			if (!secret) {
+				throw new Error('Failed to encrypt message');
+			}
+
+			console.log('Message encrypted, sending with userPub:', user.is.pub);
 
 			// Store message in user space and reference it in chat (like the example)
 			const message = user.get('all').set({ what: secret });
@@ -103,15 +119,40 @@
 			console.log('Storing message reference in chat at index:', index);
 
 			// Put the message reference in the chat
-			gun.get(chatId).get(index).put(message);
+			await gun.get(chatId).get(index).put(message);
 
 			// Clear the input and scroll
 			newMessage = '';
 			canAutoScroll = true;
 			autoScroll();
+
+			console.log('Message sent successfully');
 		} catch (error) {
 			console.error('Error sending message:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+			globalState.showToast(errorMessage, 'error');
+		} finally {
+			isSending = false;
 		}
+	}
+
+	function handleFormSubmit(e: Event) {
+		e.preventDefault();
+		e.stopPropagation();
+		sendMessage();
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			sendMessage();
+		}
+	}
+
+	function handleButtonClick(e: Event) {
+		e.preventDefault();
+		e.stopPropagation();
+		sendMessage();
 	}
 </script>
 
@@ -125,15 +166,23 @@
 			<div class="dummy" bind:this={scrollBottom}></div>
 		</main>
 
-		<form
-			onsubmit={(e) => {
-				e.preventDefault();
-				sendMessage();
-			}}
-		>
-			<input type="text" {placeholder} bind:value={newMessage} maxlength={maxLength} />
+		<form onsubmit={handleFormSubmit}>
+			<input
+				type="text"
+				{placeholder}
+				bind:value={newMessage}
+				maxlength={maxLength}
+				onkeydown={handleKeyDown}
+				disabled={isSending}
+			/>
 
-			<button type="submit" disabled={!newMessage.trim()}>💥</button>
+			<button type="submit" disabled={!newMessage.trim() || isSending} onclick={handleButtonClick}>
+				{#if isSending}
+					⏳
+				{:else}
+					💥
+				{/if}
+			</button>
 		</form>
 
 		{#if !canAutoScroll}
@@ -202,6 +251,12 @@
 		margin-right: 0.5rem;
 		min-width: 0; /* Allow input to shrink if needed */
 		box-sizing: border-box;
+	}
+
+	input:disabled {
+		background: #f3f4f6;
+		color: #6b7280;
+		cursor: not-allowed;
 	}
 
 	button {

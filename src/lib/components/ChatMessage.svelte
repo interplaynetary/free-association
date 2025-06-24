@@ -17,6 +17,7 @@
 	let { message, sender }: ChatMessageProps = $props();
 
 	const messageClass = message.whopub === sender ? 'sent' : 'received';
+	const isOwnMessage = message.whopub === sender;
 	const ts = new Date(message.when);
 
 	// Debug logging for whopub
@@ -31,7 +32,7 @@
 			try {
 				// @ts-ignore
 				return gunAvatar({
-					pub: whopub, 					// @ts-ignore
+					pub: whopub, // @ts-ignore
 
 					size: 32,
 					round: true,
@@ -79,6 +80,11 @@
 <div class={`message ${messageClass}`}>
 	<img src={avatar} alt="avatar" />
 	<div class="message-text" style="background-color: {userColor}; color: {textColor};">
+		{#if !isOwnMessage}
+			<div class="sender-name" style="color: {textColor};">
+				{message.who || 'Anonymous'}
+			</div>
+		{/if}
 		<p>{message.what}</p>
 		<time style="color: {textColor}; opacity: 0.8;">{ts.toLocaleTimeString()}</time>
 	</div>
@@ -120,6 +126,15 @@
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 		border: 1px solid rgba(255, 255, 255, 0.2);
 		box-sizing: border-box;
+	}
+
+	.sender-name {
+		font-size: 0.75rem;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+		opacity: 0.9;
+		word-wrap: break-word;
+		overflow-wrap: break-word;
 	}
 
 	.message-text p {
