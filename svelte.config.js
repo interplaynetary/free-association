@@ -8,9 +8,8 @@ const config = {
 		adapter: adapter({
 			fallback: 'index.html'
 		}),
-		// Configure base path for GitHub Pages deployment
 		paths: {
-			base: process.env.BASE_PATH || ''
+			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH
 		}
 	},
 	extensions: ['.svelte', '.svx']

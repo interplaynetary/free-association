@@ -7,6 +7,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { base } from '$app/paths';
 	import { Toaster } from 'svelte-french-toast';
 
 	// Layout props
@@ -125,7 +126,7 @@
 </script>
 
 <svelte:head>
-	<link rel="manifest" href="/manifest.json" />
+	<link rel="manifest" href="{base}/manifest.json" />
 </svelte:head>
 
 <main>

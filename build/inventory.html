@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<link rel="icon" href="./favicon.png" />
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="default">
+	<meta name="apple-mobile-web-app-title" content="Playnet">
+	<link rel="apple-touch-icon" href="./favicon.png">
+	
+		<link rel="modulepreload" href="./_app/immutable/entry/start.D_nE3gc5.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/BWqOPg7E.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/ZjNQrdaN.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/CUh_UXd4.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.DG2KnyBd.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/Dp1pzeXC.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/eaQsrxS5.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/BDgML0BG.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/CTLQGSEP.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/DNHPwvaD.js">
+</head>
+
+
+<body data-sveltekit-preload-data="hover">
+	<div style="display: contents">
+			<script>
+				{
+					__sveltekit_195iujb = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						assets: "/free-association"
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("./_app/immutable/entry/start.D_nE3gc5.js"),
+						import("./_app/immutable/entry/app.DG2KnyBd.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+
+					if ('serviceWorker' in navigator) {
+						addEventListener('load', function () {
+							navigator.serviceWorker.register('./service-worker.js');
+						});
+					}
+				}
+			</script>
+		</div>
+</body>
+
+</html>

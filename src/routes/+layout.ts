@@ -1,6 +1,6 @@
 // Enable prerendering for static site generation
-export const prerender = false;
+export const prerender = true;
 export const ssr = false;
 
-// Disable client-side routing for static sites if needed
+// Enable client-side routing
 export const csr = true;

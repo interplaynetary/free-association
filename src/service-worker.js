@@ -91,9 +91,11 @@ async function doBackgroundSync() {
 
 	// Simple periodic notification (customize as needed)
 	if (Notification.permission === 'granted') {
+		// Get the base path from the service worker scope
+		const basePath = self.registration.scope.replace(self.location.origin, '').replace(/\/$/, '');
 		self.registration.showNotification('Playnet', {
 			body: 'Background sync completed',
-			icon: '/favicon.png',
+			icon: `${basePath}/favicon.png`,
 			tag: 'background-sync'
 		});
 	}
@@ -109,7 +111,9 @@ self.addEventListener('notificationclick', (event) => {
 			if (clientList.length > 0) {
 				return clientList[0].focus();
 			}
-			return clients.openWindow('/');
+			// Get the base path from the service worker scope
+			const basePath = self.registration.scope.replace(self.location.origin, '').replace(/\/$/, '');
+			return clients.openWindow(basePath || '/');
 		})
 	);
 });

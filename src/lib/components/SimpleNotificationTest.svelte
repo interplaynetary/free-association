@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { base } from '$app/paths';
 
 	let status = $state('Checking...');
 	let swRegistration: ServiceWorkerRegistration | null = $state(null);
@@ -26,7 +27,7 @@
 			if (swRegistration) {
 				await swRegistration.showNotification('Service Worker Test from Playnet', {
 					body: 'This is a SvelteKit service worker notification',
-					icon: '/favicon.png',
+					icon: `${base}/favicon.png`,
 					tag: `sw-test-${Date.now()}` // Unique tag for each notification
 				});
 				status = 'Service worker notification sent!';
@@ -55,7 +56,7 @@
 			// Try direct notification (no service worker needed)
 			new Notification('Direct Test from Playnet', {
 				body: 'This is a direct notification without service worker',
-				icon: '/favicon.png',
+				icon: `${base}/favicon.png`,
 				tag: `direct-test-${Date.now()}` // Unique tag for each notification
 			});
 
@@ -150,4 +151,3 @@
 		padding-top: 0.5rem;
 	}
 </style>
- 
