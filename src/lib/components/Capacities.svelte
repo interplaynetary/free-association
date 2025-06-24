@@ -15,8 +15,7 @@
 		userpub,
 		userTree,
 		userCapacities,
-		userCapacitiesWithShares,
-		persist
+		userCapacitiesWithShares
 	} from '$lib/state.svelte';
 	import CapacityComponent from './Capacity.svelte';
 

@@ -5,31 +5,13 @@
 	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { P2PNotificationManager } from '$lib/notifications';
+	import { Toaster } from 'svelte-french-toast';
 
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Derived toast state
-	let toast = $derived(globalState.toast);
-
-	// PWA and notifications (zero-config approach)
-	let notificationManager: P2PNotificationManager | null = null;
-
 	// Set up global keyboard event listener and reliable viewport handling
 	onMount(async () => {
-		// Initialize PWA with zero-config approach
-		if (browser) {
-			// Simple notification manager initialization
-			notificationManager = new P2PNotificationManager();
-
-			// Request notification permission
-			await notificationManager.requestPermission();
-
-			// Make it globally available for P2P code
-			(window as any).notificationManager = notificationManager;
-		}
-
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation or exit edit mode
 			if (event.key === 'Escape') {
@@ -121,8 +103,6 @@
 			}
 		};
 	});
-
-	// PWA manifest link - removed virtual module dependency
 </script>
 
 <main>
@@ -134,14 +114,8 @@
 	</div>
 </main>
 
-<!-- Toast notification - moved outside main to avoid layout conflicts -->
-{#if toast.visible}
-	<div class="toast-container">
-		<div class="toast toast-{toast.type}">
-			{toast.message}
-		</div>
-	</div>
-{/if}
+<!-- Toaster component for svelte-french-toast - positioned at the bottom -->
+<Toaster position="bottom-center" />
 
 <style>
 	main {
@@ -199,108 +173,5 @@
 		min-height: 0; /* Important for flexbox overflow */
 		/* Enhanced mobile scrolling */
 		-webkit-overflow-scrolling: touch;
-	}
-
-	.toast-container {
-		position: fixed;
-		/* Enhanced safe area and keyboard height support with fallbacks */
-		bottom: 20px; /* Base fallback */
-		bottom: calc(20px + constant(safe-area-inset-bottom)); /* iOS 11.0-11.2 */
-		bottom: calc(20px + env(safe-area-inset-bottom)); /* iOS 11.2+ */
-		bottom: calc(
-			20px + env(safe-area-inset-bottom) + var(--keyboard-height, 0px)
-		); /* Full support */
-
-		right: 20px; /* Base fallback */
-		right: calc(20px + constant(safe-area-inset-right)); /* iOS 11.0-11.2 */
-		right: calc(20px + env(safe-area-inset-right)); /* iOS 11.2+ */
-
-		z-index: 100000; /* Ensure toasts appear above all dropdowns (99999) */
-		/* Enhanced pointer events with vendor prefixes */
-		pointer-events: none;
-		-webkit-pointer-events: none;
-		-moz-pointer-events: none;
-	}
-
-	.toast {
-		padding: 12px 20px;
-		border-radius: 8px;
-		/* Enhanced border-radius with vendor prefixes for older browsers */
-		-webkit-border-radius: 8px;
-		-moz-border-radius: 8px;
-		margin-top: 10px;
-		font-size: 14px;
-		/* Enhanced box-shadow with vendor prefixes */
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-		-webkit-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-		-moz-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-		/* Enhanced transitions with vendor prefixes */
-		transition: all 0.3s ease;
-		-webkit-transition: all 0.3s ease;
-		-moz-transition: all 0.3s ease;
-		-o-transition: all 0.3s ease;
-		/* Enhanced animations with vendor prefixes */
-		animation: slide-in 0.3s ease forwards;
-		-webkit-animation: slide-in 0.3s ease forwards;
-		-moz-animation: slide-in 0.3s ease forwards;
-		/* Re-enable pointer events for the toast itself */
-		pointer-events: auto;
-		-webkit-pointer-events: auto;
-		-moz-pointer-events: auto;
-	}
-
-	@keyframes slide-in {
-		from {
-			transform: translateX(100%);
-			opacity: 0;
-		}
-		to {
-			transform: translateX(0);
-			opacity: 1;
-		}
-	}
-
-	/* Enhanced webkit animations for Safari and older browsers */
-	@-webkit-keyframes slide-in {
-		from {
-			-webkit-transform: translateX(100%);
-			opacity: 0;
-		}
-		to {
-			-webkit-transform: translateX(0);
-			opacity: 1;
-		}
-	}
-
-	/* Enhanced moz animations for Firefox */
-	@-moz-keyframes slide-in {
-		from {
-			-moz-transform: translateX(100%);
-			opacity: 0;
-		}
-		to {
-			-moz-transform: translateX(0);
-			opacity: 1;
-		}
-	}
-
-	.toast-success {
-		background-color: #4caf50;
-		color: white;
-	}
-
-	.toast-info {
-		background-color: #2196f3;
-		color: white;
-	}
-
-	.toast-warning {
-		background-color: #ff9800;
-		color: white;
-	}
-
-	.toast-error {
-		background-color: #f44336;
-		color: white;
 	}
 </style>

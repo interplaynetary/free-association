@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
+import toast from 'svelte-french-toast';
 import {
 	findNodeById,
 	getPathToNode,
@@ -20,7 +21,7 @@ import {
 	isContribution
 } from '$lib/protocol';
 import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
-import { username, userpub, userTree, persist } from '$lib/state.svelte';
+import { username, userpub, userTree } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
@@ -64,12 +65,6 @@ export const globalState = $state({
 	editMode: false, // Global edit mode flag
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
-	toast: {
-		visible: false,
-		message: '',
-		type: 'info' as ToastType,
-		timeoutId: null as number | null
-	},
 	navigateToPath: async (newPath: string[]) => {
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
@@ -202,21 +197,27 @@ export const globalState = $state({
 		console.log('[GLOBAL STATE] Exited edit mode');
 	},
 
-	// Display a toast notification
+	// Display a toast notification using svelte-french-toast
 	showToast: (message: string, type: ToastType = 'info') => {
-		if (globalState.toast.timeoutId) {
-			clearTimeout(globalState.toast.timeoutId);
+		switch (type) {
+			case 'success':
+				toast.success(message);
+				break;
+			case 'error':
+				toast.error(message);
+				break;
+			case 'warning':
+				toast(message, {
+					icon: '⚠️',
+					style: 'border: 1px solid #f59e0b; background: #fef3c7; color: #92400e;'
+				});
+				break;
+			case 'info':
+			default:
+				toast(message, {
+					icon: 'ℹ️'
+				});
+				break;
 		}
-
-		globalState.toast = {
-			visible: true,
-			message,
-			type,
-			timeoutId: browser
-				? (window.setTimeout(() => {
-						globalState.toast.visible = false;
-					}, 3000) as unknown as number)
-				: null
-		};
 	}
 });

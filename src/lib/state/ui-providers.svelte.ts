@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { userTree, nodesMap, userNetworkCapacitiesWithShares } from './core.svelte';
-import { usersList, userIds, userNamesCache } from './gun.svelte';
+import { usersList, userIds, userNamesCache, getUserName } from './gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
 // await gun.user(data).get('pub') we can use this instead of .once
@@ -123,7 +123,7 @@ export function createSubtreesDataProvider(): DropdownDataProvider {
 			}
 
 			// Get subtree contributor map
-			const subtreeMap = getSubtreeContributorMap(tree, nodeMap);
+			const subtreeMap = getSubtreeContributorMap(tree);
 
 			// Convert to dropdown items and filter by search query
 			const allItems = Object.entries(subtreeMap)
@@ -189,4 +189,79 @@ export function getUserSharesFromAllProviders(userId: string) {
 	// For demo/local usage - just return the local user's recipient map
 	const recipients = get(userNetworkCapacitiesWithShares);
 	return recipients[userId] || {};
+}
+
+// Capacities data provider for composition dropdowns
+export function createCapacitiesDataProvider(excludeCapacityId?: string): DropdownDataProvider {
+	let items = $state<DropdownItem[]>([]);
+	let loading = $state(false);
+	let currentQuery = $state('');
+	async function loadCapacities(searchQuery: string = '') {
+		try {
+			// Get current network capacities
+			const networkCapacities = get(userNetworkCapacitiesWithShares);
+
+			if (!networkCapacities) {
+				items = [];
+				return;
+			}
+
+			// Convert to dropdown items and filter by search query
+			const itemPromises = Object.entries(networkCapacities)
+				.filter(([capacityId]) => capacityId !== excludeCapacityId) // Exclude specified capacity
+				.map(async ([capacityId, capacity]) => {
+					const ownerName = await getUserName(capacity.owner_id || '');
+					return {
+						id: capacityId,
+						name: `${capacity.emoji || '📦'} ${capacity.name} (${ownerName})`,
+						metadata: capacity
+					};
+				});
+
+			const allItems = await Promise.all(itemPromises);
+
+			// Apply search filter
+			if (searchQuery.trim()) {
+				const query = searchQuery.toLowerCase();
+				items = allItems.filter(
+					(item) => item.name.toLowerCase().includes(query) || item.id.toLowerCase().includes(query)
+				);
+			} else {
+				items = allItems;
+			}
+		} catch (error) {
+			console.error('Error loading capacities:', error);
+			items = [];
+		}
+	}
+
+	function search(query: string) {
+		currentQuery = query;
+		Promise.resolve(loadCapacities(query));
+	}
+
+	function refresh() {
+		Promise.resolve(loadCapacities(currentQuery));
+	}
+
+	// Set up reactive subscription to network capacities
+	$effect(() => {
+		const networkCapacities = get(userNetworkCapacitiesWithShares);
+		// Reload capacities when network data changes
+		loadCapacities(currentQuery);
+	});
+
+	// Initial load
+	loadCapacities();
+
+	return {
+		get items() {
+			return items;
+		},
+		get loading() {
+			return loading;
+		},
+		search,
+		refresh
+	};
 }

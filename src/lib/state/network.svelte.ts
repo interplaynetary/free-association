@@ -2,26 +2,25 @@ import { get } from 'svelte/store';
 import { gun, user, username, userpub, userIds, userNamesCache, usersList } from './gun.svelte';
 import {
 	contributors,
-	contributorCapacityShares,
 	mutualContributors,
 	recognitionCache,
 	networkCapacities,
 	networkCapacityShares,
-	networkDesiredComposeFrom,
-	networkDesiredComposeInto,
 	userTree,
 	userCapacities,
-	userSogf,
-	userDesiredComposeFrom,
-	userDesiredComposeInto,
 	isLoadingTree,
 	isLoadingCapacities
 } from './core.svelte';
+import {
+	userDesiredComposeFrom,
+	userDesiredComposeInto,
+	networkDesiredComposeFrom,
+	networkDesiredComposeInto,
+} from '$lib/state/protocol/compose.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
 import { updateRecognitionCache, recalculateFromTree } from './calculations.svelte';
 import { parseCapacities, parseTree, parseShareMap } from '$lib/validation';
 import { createRootNode } from '$lib/protocol';
-import { populateWithExampleData } from '$lib/examples/example';
 import type { Writable } from 'svelte/store';
 
 /**

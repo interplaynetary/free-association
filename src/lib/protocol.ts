@@ -584,8 +584,7 @@ export function calculateRecipientShares(
 
 	// Apply capacity filter if one exists
 	const context: FilterContext = {
-		node: nodesMap,
-		subtreeContributors: subtreeContributorMap
+		subtreeContributors: subtreeContributorMap || {}
 	};
 	const filteredShares = applyCapacityFilter(capacity, rawShares, context);
 
@@ -649,10 +648,7 @@ export function getReceiverShares(
 }
 
 // Get a map of subtree names to their contributor lists
-export function getSubtreeContributorMap(
-	tree: Node,
-	nodesMap: Record<string, Node>
-): Record<string, Record<string, boolean>> {
+export function getSubtreeContributorMap(tree: Node): Record<string, Record<string, boolean>> {
 	const subtreeMap: Record<string, Record<string, boolean>> = {};
 
 	// Helper to get contributors from a subtree

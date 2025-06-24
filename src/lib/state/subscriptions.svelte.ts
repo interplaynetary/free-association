@@ -3,17 +3,18 @@ import type { Node } from '$lib/schema';
 import {
 	userTree,
 	userCapacities,
+	userSogf,
 	nodesMap,
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	contributorCapacityShares,
-	userDesiredComposeFrom,
-	userDesiredComposeInto
+	contributorCapacityShares
 } from './core.svelte';
+import { userDesiredComposeFrom, userDesiredComposeInto } from './protocol/compose.svelte';
 import {
 	persistTree,
 	persistCapacities,
+	persistSogf,
 	persistContributorCapacityShares,
 	persistUserDesiredComposeFrom,
 	persistUserDesiredComposeInto
@@ -46,6 +47,23 @@ userTree.subscribe((tree) => {
 		// This ensures tree changes are always saved, even if recalculation fails
 		console.log('[TREE-SUB] Forcing immediate tree persistence');
 		persistTree();
+	}
+});
+
+/**
+ * Trigger persistence when SOGF changes
+ */
+userSogf.subscribe((sogf) => {
+	if (!sogf) return;
+
+	console.log('[SOGF-SUB] SOGF updated');
+	console.log('[SOGF-SUB] SOGF contributor count:', Object.keys(sogf).length);
+
+	// Persist the SOGF to Gun
+	try {
+		persistSogf();
+	} catch (error) {
+		console.error('[SOGF-SUB] Error during persistence:', error);
 	}
 });
 

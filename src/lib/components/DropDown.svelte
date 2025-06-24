@@ -170,9 +170,9 @@
 		</div>
 
 		<div class="results" bind:this={resultsContainer}>
-			{#if dataProvider.loading && dataProvider.items.length === 0}
+			{#if dataProvider.loading && (!dataProvider.items || dataProvider.items.length === 0)}
 				<div class="message">Loading...</div>
-			{:else if dataProvider.items.length === 0}
+			{:else if !dataProvider.items || dataProvider.items.length === 0}
 				<div class="message">
 					{searchFilter ? 'No matching items found' : 'No items available'}
 				</div>

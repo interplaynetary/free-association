@@ -9,21 +9,17 @@ import 'gun/lib/rindexed'; // IndexedDB adapter for RAD in browser
 import 'gun/lib/webrtc.js';
 
 import { writable, get } from 'svelte/store';
-import { parseShareMap, parseRecognitionCache } from '$lib/validation';
 import {
 	userTree,
 	userSogf,
 	userCapacities,
-	recognitionCache,
 	isLoadingTree,
 	isLoadingCapacities,
 	isLoadingSogf,
-	isLoadingRecognitionCache,
 	providerShares,
-	contributorCapacityShares,
-	userDesiredComposeFrom,
-	userDesiredComposeInto
+	contributorCapacityShares
 } from './core.svelte';
+import { userDesiredComposeFrom, userDesiredComposeInto } from '$lib/state/protocol/compose.svelte';
 import { initializeUserDataSubscriptions } from './network.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/examples/example';
@@ -32,26 +28,6 @@ import { recalculateFromTree } from './calculations.svelte';
 if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
 }
-
-// I wonder if it would be required
-
-/*
-async function requestPersistentStorage() {
-	if (typeof navigator !== 'undefined' && navigator?.storage?.persist) {
-		try {
-			const isPersisted = await navigator.storage.persist();
-			console.log('Persistent storage granted?', isPersisted);
-			return isPersisted;
-		} catch (e) {
-			console.error('Error requesting persistent storage:', e);
-		}
-	} else {
-		console.warn('Persistent storage API not available (SSR or unsupported browser).');
-	}
-}
-
-requestPersistentStorage();
-*/
 
 export const GUN = Gun;
 
@@ -323,39 +299,6 @@ export async function signout() {
 	userpub.set('');
 }
 
-/**
- * Persist the current application state to Gun
- */
-export function persist() {
-	try {
-		console.log('[PERSIST] Starting full persistence...');
-
-		// Always persist tree first, as it's the most important
-		persistTree();
-
-		// Try to persist other data if available
-		try {
-			persistSogf();
-		} catch (e) {
-			console.error('[PERSIST] Error persisting SOGF:', e);
-		}
-		try {
-			persistProviderShares();
-		} catch (e) {
-			console.error('[PERSIST] Error persisting provider shares:', e);
-		}
-		try {
-			persistCapacities();
-		} catch (e) {
-			console.error('[PERSIST] Error persisting capacities:', e);
-		}
-
-		console.log('[PERSIST] Full persistence complete');
-	} catch (error) {
-		console.error('[PERSIST] Critical error persisting data to Gun:', error);
-	}
-}
-
 export function persistTree() {
 	// Don't persist while loading
 	if (get(isLoadingTree)) {
@@ -458,7 +401,7 @@ export function persistContributorCapacityShares() {
 	}
 
 	const shares = get(contributorCapacityShares);
-	console.log('[PERSIST] Persisting contributor capacity shares:', shares);
+	// console.log('[PERSIST] Persisting contributor capacity shares:', shares);
 
 	// For each contributor, store their shares under their path
 	Object.entries(shares).forEach(([contributorId, capacityShares]) => {
@@ -473,9 +416,9 @@ export function persistContributorCapacityShares() {
 						ack.err
 					);
 				} else {
-					console.log(
+					/*console.log(
 						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
-					);
+					); */
 				}
 			});
 	});
@@ -841,50 +784,4 @@ if (typeof window !== 'undefined') {
 	console.log(
 		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, and createNewTree functions exposed to window'
 	);
-}
-
-// secrets would be given to us?
-// We dont need writeable what we need is to be able to store the secrets in our private user-space only readable by the user (encrypted)
-// use pubkey to decrypt our own user-space? (or does gun do it automatically)
-
-var pair = user._.sea;
-
-export function saveSecret(pubkey: string, secret: string) {
-	// encrypt our own user-space
-	user.get('secrets').get(pubkey).put(SEA.encrypt(secret, pair));
-}
-
-export function getSecret(pubkey: string) {
-	// decrypt from our own user-space
-	return user
-		.get('secrets')
-		.get(pubkey)
-		.once((secret: string) => {
-			return SEA.decrypt(secret, pair);
-		});
-}
-
-interface Message {
-	who: string;
-	what: string;
-	when: number;
-	whopub?: string; // Match ChatMessage interface
-	path?: string;
-}
-
-export function sendMessage(path: string, pubkey: string[], message: Message) {
-	// pubKey -> messages
-	user.get('messages').get(pubkey).set(message);
-}
-
-export function readMessages(fromPubKey: string, path: string, pubkeys: string[]) {
-	// ourKey -> messages
-	gun
-		.get(`~${fromPubKey}`)
-		.get('messages')
-		.get(get(userpub))
-		.map()
-		.once((message: any) => {
-			return SEA.decrypt(getSecret(fromPubKey), pair);
-		});
 }

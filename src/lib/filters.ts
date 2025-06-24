@@ -4,6 +4,9 @@
  * This module provides two complementary filtering approaches:
  * 1. Runtime Filters: Pure functions for in-memory filtering (ShareFilter type)
  * 2. Serializable Rules: JSON Logic rules that can be stored and transmitted (JsonLogicRule type)
+ *
+ * The primary filtering context is subtree-based, allowing filters to operate on
+ * contributor groups within tree structures.
  */
 
 import type { Node, ShareMap, BaseCapacity } from './schema';
@@ -12,9 +15,7 @@ import jsonLogic from 'json-logic-js';
 
 // Core types for runtime filtering
 export type FilterContext = {
-	node?: Record<string, Node>;
-	subtreeContributors?: Record<string, Record<string, boolean>>;
-	[key: string]: any;
+	subtreeContributors: Record<string, Record<string, boolean>>;
 };
 
 export type ShareFilter = (nodeId: string, share: number, context?: FilterContext) => boolean;
@@ -72,14 +73,9 @@ export const Filters = {
 	aboveThreshold:
 		(threshold: number): ShareFilter =>
 		(_, share) =>
-			share >= threshold,
+			share >= threshold
 
-	byCategory:
-		(categories: string[], nodeCategories: Record<string, string[]>): ShareFilter =>
-		(nodeId) => {
-			const nodeCategory = nodeCategories[nodeId] || [];
-			return nodeCategory.some((category) => categories.includes(category));
-		}
+	// Note: byCategory removed as Node schema doesn't have categories property
 };
 
 /**
@@ -101,9 +97,7 @@ export const Rules = {
 		'>=': [{ var: 'share' }, threshold]
 	}),
 
-	byCategory: (categories: string[]): JsonLogicRule => ({
-		some: [{ var: 'node.categories' }, { in: [{ var: '' }, categories] }]
-	}),
+	// Note: byCategory removed as Node schema doesn't have categories property
 
 	inSubtrees: (subtreeIds: string[]): JsonLogicRule => ({
 		some: [
@@ -138,13 +132,11 @@ export const Rules = {
 
 // Convert a JSON Logic rule to a runtime filter
 export function ruleToFilter(rule: JsonLogicRule): ShareFilter {
-	return (nodeId: string, share: number, context: FilterContext = {}) => {
+	return (nodeId: string, share: number, context: FilterContext = { subtreeContributors: {} }) => {
 		const data = {
 			nodeId,
 			share,
-			node: context.node?.[nodeId] || null,
-			subtreeContributors: context.subtreeContributors || {},
-			...context
+			subtreeContributors: context.subtreeContributors
 		};
 		return Boolean(jsonLogic.apply(rule, data));
 	};

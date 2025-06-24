@@ -19,6 +19,9 @@ export const currentLocation: Writable<LiveLocationData | null> = writable(null)
 export const isLocationTracking = writable(false);
 export const locationError = writable<string | null>(null);
 
+// Block list for live location access
+export const liveLocationBlockList: Writable<string[]> = writable([]);
+
 // Update location from geolocation events
 export function updateLocation(coords: GeolocationCoordinates, timestamp?: number) {
 	const locationData: LiveLocationData = {
@@ -88,5 +91,18 @@ export const liveLocationAccessList = derived(
 
 		console.log('[LIVE-LOCATION-ACCESS] Contributors with live-location access:', accessList);
 		return accessList;
+	}
+);
+
+// Filtered access list that excludes blocked users
+export const filteredLiveLocationAccessList = derived(
+	[liveLocationAccessList, liveLocationBlockList],
+	([$accessList, $blockList]) => {
+		const filteredList = $accessList.filter((userId) => !$blockList.includes(userId));
+		console.log(
+			'[LIVE-LOCATION-ACCESS] Filtered access list (excluding blocked users):',
+			filteredList
+		);
+		return filteredList;
 	}
 );

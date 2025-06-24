@@ -269,4 +269,6 @@ We want to represent consumption of inputs in composition
 But how much of inputs get consumed?
 
 
-// account getting wiped during manifestation
+// compose into self (pubkey)
+// compose into other (contributorID)
+// compose into Capacity (capacityID)

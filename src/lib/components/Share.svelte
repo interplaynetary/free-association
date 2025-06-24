@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { getUserName } from '$lib/state/gun.svelte';
 	import Chat from './Chat.svelte';
-	import CompositionActivities from './CompositionActivities.svelte';
 	import type { RecipientCapacity } from '$lib/schema';
 
 	interface ShareWithProvider extends RecipientCapacity {
@@ -200,14 +199,6 @@
 					{/if}
 				</div>
 			{/if}
-			<!-- Show composition preview inline if available -->
-			<CompositionActivities
-				capacityId={share.id}
-				providerId={share.provider_id}
-				capacityName={share.name}
-				providerName={share.provider_name}
-				showPreview={true}
-			/>
 		</div>
 		<div class="flex items-center gap-2">
 			<button
@@ -228,15 +219,6 @@
 
 	{#if expanded}
 		<div class="expanded-content mt-2 space-y-3">
-			<!-- Composition section -->
-			<CompositionActivities
-				capacityId={share.id}
-				providerId={share.provider_id}
-				capacityName={share.name}
-				providerName={share.provider_name}
-				showPreview={false}
-			/>
-
 			<!-- Space-time coordinates section -->
 			{#if hasSpaceTimeData(share)}
 				<div class="space-time-coordinates rounded border border-gray-200 bg-blue-50 p-3">

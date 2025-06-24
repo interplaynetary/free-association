@@ -4,12 +4,14 @@
 	import TagPill from './TagPill.svelte';
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
-	import CompositionActivities from './CompositionActivities.svelte';
+	import CompositionItem from './CompositionItem.svelte';
 	import { createSubtreesDataProvider } from '$lib/state.svelte';
 	import { Rules } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { getUserName } from '$lib/state/gun.svelte';
+	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
+	import { createCapacitiesDataProvider } from '$lib/state/ui-providers.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -40,6 +42,9 @@
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
+
+	// Create capacity data provider for composition dropdowns
+	let capacityDataProvider = createCapacitiesDataProvider(capacity.id);
 
 	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
@@ -310,10 +315,97 @@
 		handleCapacityUpdate();
 	}
 
+	// State for tracking which capacities are selected for composition
+	let composeFromCapacities = $state<string[]>([]);
+	let composeIntoCapacities = $state<string[]>([]);
+
+	// State for tracking expanded composition items
+	let expandedCompositions = $state<Record<string, boolean>>({});
+
+	// Dropdown states for adding capacities
+	let showComposeFromDropdown = $state(false);
+	let showComposeIntoDropdown = $state(false);
+	let composeFromDropdownPosition = $state({ x: 0, y: 0 });
+	let composeIntoDropdownPosition = $state({ x: 0, y: 0 });
+
+	// Toggle composition expansion
+	function toggleComposition(compositionKey: string) {
+		expandedCompositions[compositionKey] = !expandedCompositions[compositionKey];
+	}
+
+	// Handle adding capacity to compose from
+	function handleAddComposeFrom(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		composeFromDropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+
+		showComposeFromDropdown = true;
+	}
+
+	// Handle adding capacity to compose into
+	function handleAddComposeInto(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		composeIntoDropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+
+		showComposeIntoDropdown = true;
+	}
+
+	// Handle selecting capacity for compose from
+	function handleComposeFromSelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: capacityId } = detail;
+
+		if (!composeFromCapacities.includes(capacityId)) {
+			composeFromCapacities = [...composeFromCapacities, capacityId];
+		}
+
+		showComposeFromDropdown = false;
+	}
+
+	// Handle selecting capacity for compose into
+	function handleComposeIntoSelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: capacityId } = detail;
+
+		if (!composeIntoCapacities.includes(capacityId)) {
+			composeIntoCapacities = [...composeIntoCapacities, capacityId];
+		}
+
+		showComposeIntoDropdown = false;
+	}
+
+	// Remove capacity from compose from list
+	function removeComposeFrom(capacityId: string) {
+		composeFromCapacities = composeFromCapacities.filter((id) => id !== capacityId);
+	}
+
+	// Remove capacity from compose into list
+	function removeComposeInto(capacityId: string) {
+		composeIntoCapacities = composeIntoCapacities.filter((id) => id !== capacityId);
+	}
+
+	// Close dropdowns
+	function handleComposeFromDropdownClose() {
+		showComposeFromDropdown = false;
+	}
+
+	function handleComposeIntoDropdownClose() {
+		showComposeIntoDropdown = false;
+	}
+
 	// Get current user name for composition activities
 	async function getCurrentUserName(): Promise<string> {
 		// For provider capacity, we are the provider, so we need our own name
-		// This is a bit of a hack since we don't have direct access to our own user info here
+		// This is a bit of a hack since we don't have direct access to our our user info here
 		// In a real implementation, this would come from a user context
 		return 'You'; // Placeholder - could be improved with proper user context
 	}
@@ -452,15 +544,140 @@
 	<!-- Expanded chat section -->
 	{#if chatExpanded}
 		<!-- Composition section in expanded view -->
-			<CompositionActivities
-				capacityId={capacity.id}
-				providerId="self"
-				capacityName={capacity.name}
-				providerName="You"
-				showPreview={false}
-			/>
+		<div class="composition-section mb-4 rounded border border-gray-200 bg-blue-50 p-3">
+			<div class="composition-header mb-3">
+				<h4 class="text-sm font-medium text-gray-700">🔄 Composition</h4>
+				<p class="mt-1 text-xs text-gray-500">
+					Enhance {capacity.emoji || '📦'}
+					{capacity.name} by composing with other capacities
+				</p>
+			</div>
 
-		<div class="chat-containerrounded border border-gray-200 bg-gray-50 p-3">
+			<div class="composition-columns grid grid-cols-1 gap-4 md:grid-cols-2">
+				<!-- Compose FROM column -->
+				<div class="compose-from-column">
+					<div class="column-header mb-3">
+						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
+							<span>FROM</span>
+						</h5>
+						<p class="mt-1 text-xs text-gray-500">Use their capacities to enhance yours</p>
+					</div>
+
+					<div class="column-content">
+						<!-- Add capacity button -->
+						<button type="button" class="add-capacity-btn mb-3" onclick={handleAddComposeFrom}>
+							<span class="add-icon">+</span>
+							<span class="add-text">Add capacity to compose from</span>
+						</button>
+
+						<!-- Compose from items -->
+						{#if composeFromCapacities.length > 0}
+							<div class="composition-items space-y-2">
+								{#each composeFromCapacities as capacityId}
+									{@const theirCapacity = capacityDataProvider.items.find(
+										(item) => item.id === capacityId
+									)?.metadata}
+									{#if theirCapacity}
+										{@const compositionKey = `${capacity.id}-${capacityId}-from`}
+										<CompositionItem
+											ourCapacity={{
+												id: capacity.id,
+												name: capacity.name,
+												emoji: capacity.emoji,
+												unit: capacity.unit,
+												quantity: capacity.quantity,
+												provider_name: 'You'
+											}}
+											theirCapacity={{
+												...theirCapacity,
+												id: capacityId,
+												provider_id: theirCapacity.owner_id || theirCapacity.provider_id
+											}}
+											direction="from"
+											expanded={expandedCompositions[compositionKey] || false}
+											onToggle={() => toggleComposition(compositionKey)}
+										/>
+										<button
+											type="button"
+											class="remove-composition-btn text-xs"
+											onclick={() => removeComposeFrom(capacityId)}
+										>
+											Remove
+										</button>
+									{/if}
+								{/each}
+							</div>
+						{:else}
+							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
+								No capacities selected for composition
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Compose INTO column -->
+				<div class="compose-into-column">
+					<div class="column-header mb-3">
+						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
+							<span>INTO</span>
+						</h5>
+						<p class="mt-1 text-xs text-gray-500">Use your capacity to enhance theirs</p>
+					</div>
+
+					<div class="column-content">
+						<!-- Add capacity button -->
+						<button type="button" class="add-capacity-btn mb-3" onclick={handleAddComposeInto}>
+							<span class="add-icon">+</span>
+							<span class="add-text">Add capacity to compose into</span>
+						</button>
+
+						<!-- Compose into items -->
+						{#if composeIntoCapacities.length > 0}
+							<div class="composition-items space-y-2">
+								{#each composeIntoCapacities as capacityId}
+									{@const theirCapacity = capacityDataProvider.items.find(
+										(item) => item.id === capacityId
+									)?.metadata}
+									{#if theirCapacity}
+										{@const compositionKey = `${capacity.id}-${capacityId}-into`}
+										<CompositionItem
+											ourCapacity={{
+												id: capacity.id,
+												name: capacity.name,
+												emoji: capacity.emoji,
+												unit: capacity.unit,
+												quantity: capacity.quantity,
+												provider_name: 'You'
+											}}
+											theirCapacity={{
+												...theirCapacity,
+												id: capacityId
+											}}
+											direction="into"
+											expanded={expandedCompositions[compositionKey] || false}
+											onToggle={() => toggleComposition(compositionKey)}
+										/>
+										<button
+											type="button"
+											class="remove-composition-btn text-xs"
+											onclick={() => removeComposeInto(capacityId)}
+										>
+											Remove
+										</button>
+									{/if}
+								{/each}
+							</div>
+						{:else}
+							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
+								No capacities selected for composition
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
 					💬 Chat about {capacity.emoji || '📦'}
@@ -808,6 +1025,32 @@
 	/>
 {/if}
 
+<!-- Compose from dropdown -->
+{#if showComposeFromDropdown}
+	<DropDown
+		position={composeFromDropdownPosition}
+		show={showComposeFromDropdown}
+		title="Select Capacity to Compose From"
+		searchPlaceholder="Search capacities..."
+		dataProvider={capacityDataProvider}
+		select={handleComposeFromSelect}
+		close={handleComposeFromDropdownClose}
+	/>
+{/if}
+
+<!-- Compose into dropdown -->
+{#if showComposeIntoDropdown}
+	<DropDown
+		position={composeIntoDropdownPosition}
+		show={showComposeIntoDropdown}
+		title="Select Capacity to Compose Into"
+		searchPlaceholder="Search capacities..."
+		dataProvider={capacityDataProvider}
+		select={handleComposeIntoSelect}
+		close={handleComposeIntoDropdownClose}
+	/>
+{/if}
+
 <style>
 	/* Make sure inputs and selects match our design */
 	.capacity-input {
@@ -1024,8 +1267,90 @@
 
 	/* Composition section styling */
 	.composition-section {
-		border-bottom: 1px solid rgba(229, 231, 235, 0.3);
-		padding-bottom: 1.5rem;
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.composition-header h4 {
+		margin: 0;
+	}
+
+	.composition-header p {
+		margin: 0;
+	}
+
+	.composition-columns {
+		gap: 1rem;
+	}
+
+	.compose-from-column,
+	.compose-into-column {
+		background: rgba(255, 255, 255, 0.5);
+		border-radius: 8px;
+		padding: 16px;
+		border: 1px solid rgba(229, 231, 235, 0.6);
+	}
+
+	.column-header h5 {
+		margin: 0;
+	}
+
+	.column-header p {
+		margin: 0;
+	}
+
+	.add-capacity-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 12px;
+		border: 1px dashed #d1d5db;
+		border-radius: 6px;
+		background: rgba(249, 250, 251, 0.8);
+		color: #6b7280;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		width: 100%;
+		justify-content: center;
+	}
+
+	.add-capacity-btn:hover {
+		border-color: #3b82f6;
+		color: #3b82f6;
+		background: rgba(248, 250, 252, 0.9);
+		transform: scale(1.02);
+	}
+
+	.add-capacity-btn .add-icon {
+		font-size: 0.875rem;
+		font-weight: bold;
+	}
+
+	.remove-composition-btn {
+		background: rgba(239, 68, 68, 0.1);
+		color: #dc2626;
+		border: 1px solid rgba(239, 68, 68, 0.2);
+		border-radius: 4px;
+		padding: 4px 8px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		margin-top: 4px;
+	}
+
+	.remove-composition-btn:hover {
+		background: rgba(239, 68, 68, 0.2);
+		border-color: #dc2626;
+	}
+
+	.composition-items {
+		max-height: 400px;
+		overflow-y: auto;
+	}
+
+	.empty-state {
+		background: rgba(243, 244, 246, 0.5);
+		border-radius: 6px;
+		border: 1px dashed #d1d5db;
 	}
 
 	/* Expanded settings styling */

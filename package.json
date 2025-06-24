@@ -17,6 +17,7 @@
 		"proffer-example": "bun run src/lib/tests/proffer-example.ts"
 	},
 	"devDependencies": {
+		"@capacitor/cli": "^7.4.0",
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
 		"@fontsource/fira-mono": "^5.0.0",
@@ -48,6 +49,9 @@
 		"vite-plugin-devtools-json": "^0.1.1"
 	},
 	"dependencies": {
+		"@capacitor/android": "^7.4.0",
+		"@capacitor/core": "^7.4.0",
+		"@capacitor/ios": "^7.4.0",
 		"@gun-vue/relay": "^0.6.1",
 		"@peerbit/document": "^9.6.2",
 		"@tailwindcss/postcss": "^4.1.4",
@@ -71,6 +75,7 @@
 		"pmtiles": "^4.3.0",
 		"push.js": "^1.0.12",
 		"svelte-bottom-sheet": "^2.2.0",
+		"svelte-french-toast": "^1.2.0",
 		"svelte-maplibre-gl": "^0.1.6",
 		"tailwindcss-animate": "^1.0.7",
 		"uuid": "^11.1.0",
