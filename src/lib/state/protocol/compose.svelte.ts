@@ -1,11 +1,11 @@
-import { writable, derived, get } from 'svelte/store';
-import type { Writable, Readable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
+import type { UserComposition, NetworkComposition } from '$lib/schema';
 import {
-    userCapacities,
-    userNetworkCapacitiesWithShares,
-    contributorCapacityShares, 
-    networkCapacities
-} from '../core.svelte';
+	userCapacities,
+	userNetworkCapacitiesWithShares,
+	contributorCapacityShares,
+	networkCapacities
+} from '$lib/state/core.svelte';
 
 // COMPOSE-FROM MODEL:
 // mapping our capacityIds to the capacityIds of our userNetworkCapacitiesWithShares that we want to compose from
@@ -14,7 +14,7 @@ import {
 // Example: "cooking-skill" → "ingredients-supply" → 25 means:
 //   "I want to compose 25 units FROM their ingredients supply INTO my cooking skill"
 //   Note: This only works because I already have some share percentage in their ingredients capacity
-export const userDesiredComposeFrom = writable<Record<string, Record<string, number>>>({});
+export const userDesiredComposeFrom = writable<UserComposition>({});
 
 // COMPOSE-INTO MODEL (opposite direction):
 // userDesiredComposeInto represents: "I want to composeInto THEIR capacity using MY capacity (via the share they have in my capacity)"
@@ -22,7 +22,7 @@ export const userDesiredComposeFrom = writable<Record<string, Record<string, num
 // Example: "cooking-skill" → "meal-service" → 30 means:
 //   "I want to compose 30 units of my cooking skill INTO their meal service"
 //   Note: This only works because they already have some share percentage in my cooking capacity
-export const userDesiredComposeInto = writable<Record<string, Record<string, number>>>({});
+export const userDesiredComposeInto = writable<UserComposition>({});
 
 // NETWORK COMPOSE-FROM MODEL:
 // networkDesiredComposeFrom represents what others want to composeInto via their shares
@@ -30,9 +30,7 @@ export const userDesiredComposeInto = writable<Record<string, Record<string, num
 // Example: "alice" → "ingredients-supply" → "cooking-skill" → 20 means:
 //   "Alice wants to compose 20 units FROM our cooking skill INTO her ingredients supply"
 //   Note: This only works because Alice already has some share percentage in our cooking capacity
-export const networkDesiredComposeFrom = writable<
-	Record<string, Record<string, Record<string, number>>>
->({});
+export const networkDesiredComposeFrom = writable<NetworkComposition>({});
 
 // NETWORK COMPOSE-INTO MODEL (opposite direction):
 // networkDesiredComposeInto represents what others want to compose into our capacities via our shares
@@ -40,9 +38,7 @@ export const networkDesiredComposeFrom = writable<
 // Example: "alice" → "ingredients-supply" → "cooking-skill" → 15 means:
 //   "Alice wants to compose 15 units of her ingredients INTO our cooking skill"
 //   Note: This only works because we already have some share percentage in Alice's ingredients capacity
-export const networkDesiredComposeInto = writable<
-	Record<string, Record<string, Record<string, number>>>
->({});
+export const networkDesiredComposeInto = writable<NetworkComposition>({});
 
 // FEASIBLE COMPOSE-FROM: Constrains raw desires by share access and resource allocation
 // Step 1: Convert absolute unit desires to share-constrained feasible units
@@ -55,7 +51,7 @@ export const feasibleComposeFrom = derived(
 		);
 
 		// Step 1: Individual share-based feasibility check
-		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
+		const shareConstrainedDesires: UserComposition = {};
 
 		Object.entries($userDesiredComposeFrom).forEach(([ourCapacityId, ourDesires]) => {
 			const constrainedDesires: Record<string, number> = {};
@@ -121,7 +117,7 @@ export const feasibleComposeFrom = derived(
 		});
 
 		// Step 3: Apply proportional scaling when total demand exceeds available resources
-		const finalFeasible: Record<string, Record<string, number>> = {};
+		const finalFeasible: UserComposition = {};
 
 		Object.entries(sourceCapacityDemands).forEach(([theirCapacityId, demandInfo]) => {
 			const { totalDemand, available, consumers } = demandInfo;
@@ -158,7 +154,6 @@ export const feasibleComposeFrom = derived(
 	}
 );
 
-
 // FEASIBLE COMPOSE-INTO: Constrains raw desires by recipient share and our capacity limits
 // Step 1: Convert absolute unit desires to recipient-share-constrained feasible units
 // Step 2: Apply resource allocation constraints when total desires exceed our capacity
@@ -170,7 +165,7 @@ export const feasibleComposeInto = derived(
 		);
 
 		// Step 1: Individual recipient-share-based feasibility check
-		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
+		const shareConstrainedDesires: UserComposition = {};
 
 		Object.entries($userDesiredComposeInto).forEach(([ourCapacityId, ourDesires]) => {
 			const constrainedDesires: Record<string, number> = {};
@@ -252,7 +247,7 @@ export const feasibleComposeInto = derived(
 		});
 
 		// Step 3: Apply proportional scaling when total demand exceeds our capacity
-		const finalFeasible: Record<string, Record<string, number>> = {};
+		const finalFeasible: UserComposition = {};
 
 		Object.entries(ourCapacityDemands).forEach(([ourCapacityId, demandInfo]) => {
 			const { totalDemand, available, recipients } = demandInfo;

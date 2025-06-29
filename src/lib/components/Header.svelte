@@ -75,12 +75,21 @@
 		});
 	});
 
+	// Effect to scroll breadcrumbs when path changes
+	$effect(() => {
+		// React to currentPathInfo changes
+		currentPathInfo;
+		// Scroll to end when path changes
+		scrollBreadcrumbsToEnd();
+	});
+
 	// Subscribe to userTree changes to ensure UI updates
 	onMount(() => {
 		const unsubscribe = userTree.subscribe((value) => {
 			if (value) {
 				console.log('[UI FLOW] Header userTree updated, triggering UI update');
 				triggerUpdate();
+				scrollBreadcrumbsToEnd();
 			}
 		});
 
@@ -88,6 +97,7 @@
 		const unsubscribePath = currentPath.subscribe((value) => {
 			console.log('[UI FLOW] Header path updated:', value);
 			triggerUpdate();
+			scrollBreadcrumbsToEnd();
 		});
 
 		return () => {
@@ -120,6 +130,9 @@
 	let showPassword = $state(false);
 	let agreedToTerms = $state(false); // Added for terms agreement
 
+	// Notification state
+	let showNotificationPanel = $state(false);
+
 	// Initialize error state with URL error message if present
 	$effect(() => {
 		const urlError = $page.url.searchParams.get('error');
@@ -132,6 +145,8 @@
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
 	let loginPanelRef = $state<HTMLElement | null>(null);
+	let notificationPanelRef = $state<HTMLElement | null>(null);
+	let breadcrumbsRef = $state<HTMLElement | null>(null);
 
 	// Check auth status and show login automatically
 	onMount(() => {
@@ -149,6 +164,21 @@
 				// Don't close the login panel if clicking on header control buttons
 				if (!isHeaderControlButton) {
 					showLoginPanel = false;
+				}
+			}
+
+			if (
+				showNotificationPanel &&
+				notificationPanelRef &&
+				!notificationPanelRef.contains(event.target as EventTarget & HTMLElement)
+			) {
+				// Check if the click is on any header control buttons
+				const target = event.target as HTMLElement;
+				const isHeaderControlButton = target.closest('.header-controls');
+
+				// Don't close the notification panel if clicking on header control buttons
+				if (!isHeaderControlButton) {
+					showNotificationPanel = false;
 				}
 			}
 		}
@@ -173,6 +203,23 @@
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
 			resetForm();
+		}
+	}
+
+	// Toggle notification panel
+	function toggleNotificationPanel() {
+		showNotificationPanel = !showNotificationPanel;
+	}
+
+	// Function to scroll breadcrumbs to show the rightmost (current) item
+	function scrollBreadcrumbsToEnd() {
+		if (breadcrumbsRef) {
+			// Small delay to ensure DOM is updated
+			setTimeout(() => {
+				if (breadcrumbsRef) {
+					breadcrumbsRef.scrollLeft = breadcrumbsRef.scrollWidth;
+				}
+			}, 50);
 		}
 	}
 
@@ -494,7 +541,7 @@
 	<!-- Main header row -->
 	<div class="header-main">
 		<div class="node-name">
-			<div class="breadcrumbs">
+			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">Loading...</div>
 				{:else if currentPathInfo.length === 0 && $username}
@@ -563,26 +610,35 @@
 		</div>
 
 		<div class="header-controls">
-			<button
-				class="icon-button recompose-button"
-				class:recompose-active={isRecomposeMode}
-				title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
-				onclick={handleRecompose}><span>↕️</span></button
-			>
+			{#if isSoulRoute}
+				<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
+					><span>➕</span></button
+				>
+				<button
+					class="icon-button recompose-button"
+					class:recompose-active={isRecomposeMode}
+					title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+					onclick={handleRecompose}><span>↕️</span></button
+				>
+				<button
+					class="icon-button delete-button"
+					class:delete-active={isDeleteMode}
+					title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
+					onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
+				>
+			{/if}
 
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
 
-			<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
-				><span>➕</span></button
-			>
 			<button
-				class="icon-button delete-button"
-				class:delete-active={isDeleteMode}
-				title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
-				onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
+				class="icon-button notification-button"
+				title="View notifications"
+				onclick={toggleNotificationPanel}
 			>
+				<span>🔔</span>
+			</button>
 		</div>
 	</div>
 
@@ -763,6 +819,19 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Notification panel (dropdown) -->
+	{#if showNotificationPanel}
+		<div class="notification-panel" bind:this={notificationPanelRef}>
+			<div class="notification-content">
+				<h3>Notifications</h3>
+				<p class="feature-message">This feature is not implemented yet</p>
+				<div class="actions">
+					<button class="close-btn" onclick={toggleNotificationPanel}>Close</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -798,6 +867,19 @@
 		animation: dropDown 0.2s ease-out;
 	}
 
+	.notification-panel {
+		position: absolute;
+		top: calc(100% - 8px);
+		right: 16px;
+		width: 280px;
+		background-color: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border-radius: 8px;
+		padding: 16px;
+		z-index: 10;
+		animation: dropDown 0.2s ease-out;
+	}
+
 	@keyframes dropDown {
 		from {
 			opacity: 0;
@@ -815,6 +897,19 @@
 		position: absolute;
 		top: -8px;
 		left: 24px;
+		width: 16px;
+		height: 16px;
+		background-color: white;
+		transform: rotate(45deg);
+		box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.05);
+	}
+
+	/* Adding a pointer/arrow to the notification panel */
+	.notification-panel::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		right: 24px;
 		width: 16px;
 		height: 16px;
 		background-color: white;
@@ -1366,5 +1461,29 @@
 	.copy-icon {
 		flex-shrink: 0;
 		font-size: 1.1em;
+	}
+
+	/* Notification panel styles */
+	.notification-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.notification-content h3 {
+		margin-top: 0;
+		margin-bottom: 16px;
+		font-size: 1.2em;
+		color: #333;
+	}
+
+	.feature-message {
+		color: #666;
+		font-style: italic;
+		text-align: center;
+		margin: 20px 0;
+		padding: 16px;
+		background: #f5f5f5;
+		border-radius: 4px;
+		border-left: 3px solid #2196f3;
 	}
 </style>

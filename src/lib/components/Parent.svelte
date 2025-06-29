@@ -16,7 +16,7 @@
 		deleteSubtree,
 		addContributors
 	} from '$lib/protocol';
-	import { createNewTree } from '$lib/state/gun.svelte';
+	import { createNewTree } from '$lib/utils/userUtils';
 	import Child from '$lib/components/Child.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import { browser } from '$app/environment';
@@ -946,7 +946,6 @@
 			globalState.showToast(`Recomposing node: ${nodeToRecompose.name}`, 'info');
 
 			console.log('[RECOMPOSE] Recomposing node:', nodeToRecompose);
-
 		} catch (err) {
 			console.error(`Error in recompose process: ${err}`);
 			globalState.showToast('Error recomposing node', 'error');

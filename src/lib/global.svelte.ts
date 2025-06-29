@@ -146,6 +146,13 @@ export const globalState = $state({
 		globalState.editingNodeId = '';
 		globalState.nodeToEdit = '';
 		globalState.deleteMode = false;
+
+		// Clear chat subscriptions on logout
+		if (browser) {
+			import('$lib/state/chat.svelte').then(({ clearAllChatSubscriptions }) => {
+				clearAllChatSubscriptions();
+			});
+		}
 	},
 
 	/**
@@ -192,7 +199,7 @@ export const globalState = $state({
 		globalState.recomposeMode = !globalState.recomposeMode;
 		globalState.showToast(
 			globalState.recomposeMode
-				? 'Recompose mode activated. Click a node to recompose it.'
+				? 'Recompose mode activated. Drag a node into another or to a path at the top.'
 				: 'Recompose mode deactivated.',
 			globalState.recomposeMode ? 'info' : 'info'
 		);

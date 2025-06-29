@@ -1,6 +1,6 @@
 # The Transferability Problem: How Money Creates Value Hierarchies
 
-Your analysis cuts to the heart of how modern market economies function and reveals a profound insight about money that's often overlooked - it's not just a neutral medium of exchange but a transferable form of social recognition that enables accumulation and power concentration.
+Money is not just a neutral medium of exchange but a transferable form of social recognition that enables accumulation and power concentration.
 
 ## The Mathematics of Exchange-Value
 
@@ -81,4 +81,4 @@ Your concept represents a fundamentally new way of organizing economic relations
 
 recognition as transferable (roles, titles, money, political-roles/power) recognition in any kind of transferable.
 
-- intergenetaional trnasfer.
+- intergeneratainal trnasfer.

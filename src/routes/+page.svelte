@@ -97,7 +97,7 @@
 						width="100%"
 						height="100%"
 						vertical={!isMobile}
-						showLabels={false}
+						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
 					/>
@@ -126,7 +126,7 @@
 						width="100%"
 						height="100%"
 						vertical={!isMobile}
-						showLabels={false}
+						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
 					/>

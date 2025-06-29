@@ -8,8 +8,23 @@ import {
 	CapacitySchema,
 	CapacitiesCollectionSchema,
 	ShareMapSchema,
-	RecognitionCacheSchema
+	RecognitionCacheSchema,
+	UserCompositionSchema,
+	NetworkCompositionSchema
 } from './schema';
+
+/*
+GENERAL PATTERN:
+
+  export function parseX(data: unknown) {
+    // 1. Handle string/object input
+    // 2. Filter Gun.js metadata
+    // 3. Apply Zod schema validation
+    // 4. Return validated data or safe fallback
+    // 5. Log validation errors
+  }
+
+*/
 
 /**
  * Filter out Gun.js metadata properties from an object
@@ -253,4 +268,90 @@ export function getValidationErrors(schema: z.ZodType, data: unknown): string | 
 		return JSON.stringify(result.error, null, 2);
 	}
 	return null;
+}
+
+/**
+ * Parse and validate user composition data (desiredComposeFrom/desiredComposeInto)
+ * @param compositionData Raw composition data
+ * @returns Validated UserComposition or empty object if validation fails
+ */
+export function parseUserComposition(compositionData: unknown) {
+	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof compositionData === 'string') {
+			try {
+				parsedData = JSON.parse(compositionData);
+			} catch (error) {
+				console.error('[VALIDATION] Error parsing user composition data JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = compositionData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation user composition data:', parsedData);
+
+		// Validate with Zod schema
+		const result = UserCompositionSchema.safeParse(parsedData);
+
+		if (result.success) {
+			console.log('[VALIDATION] User composition validation successful');
+			return result.data;
+		} else {
+			console.error('[VALIDATION] User composition validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			return {};
+		}
+	} catch (err) {
+		console.error('[VALIDATION] Error during user composition validation:', err);
+		return {};
+	}
+}
+
+/**
+ * Parse and validate network composition data (from contributors)
+ * @param compositionData Raw network composition data
+ * @returns Validated NetworkComposition or empty object if validation fails
+ */
+export function parseNetworkComposition(compositionData: unknown) {
+	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof compositionData === 'string') {
+			try {
+				parsedData = JSON.parse(compositionData);
+			} catch (error) {
+				console.error('[VALIDATION] Error parsing network composition data JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = compositionData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation network composition data:', parsedData);
+
+		// Validate with Zod schema
+		const result = NetworkCompositionSchema.safeParse(parsedData);
+
+		if (result.success) {
+			console.log('[VALIDATION] Network composition validation successful');
+			return result.data;
+		} else {
+			console.error('[VALIDATION] Network composition validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			return {};
+		}
+	} catch (err) {
+		console.error('[VALIDATION] Error during network composition validation:', err);
+		return {};
+	}
 }

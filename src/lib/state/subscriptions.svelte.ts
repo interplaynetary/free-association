@@ -18,7 +18,7 @@ import {
 	persistContributorCapacityShares,
 	persistUserDesiredComposeFrom,
 	persistUserDesiredComposeInto
-} from './gun.svelte';
+} from './persistence.svelte';
 import { recalculateFromTree } from './calculations.svelte';
 
 /**

@@ -114,3 +114,19 @@ export type CapacitiesCollection = z.infer<typeof CapacitiesCollectionSchema>;
 export type ShareMap = z.infer<typeof ShareMapSchema>;
 export type RecognitionCacheEntry = z.infer<typeof RecognitionCacheEntrySchema>;
 export type RecognitionCache = z.infer<typeof RecognitionCacheSchema>;
+
+// Composition desire schema - maps target capacity ID to desired absolute units
+export const CompositionDesireSchema = z.record(IdSchema, z.number().gte(0));
+
+// User composition schema - maps source capacity ID to composition desires
+// Structure: sourceCapacityId → targetCapacityId → absoluteUnits
+export const UserCompositionSchema = z.record(IdSchema, CompositionDesireSchema);
+
+// Network composition schema - maps user ID to their composition data
+// Structure: userId → sourceCapacityId → targetCapacityId → absoluteUnits
+export const NetworkCompositionSchema = z.record(IdSchema, UserCompositionSchema);
+
+// Export types
+export type CompositionDesire = z.infer<typeof CompositionDesireSchema>;
+export type UserComposition = z.infer<typeof UserCompositionSchema>;
+export type NetworkComposition = z.infer<typeof NetworkCompositionSchema>;
