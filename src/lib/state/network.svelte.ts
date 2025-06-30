@@ -236,15 +236,13 @@ function setupUsersListSubscription() {
 		if (!userId || userId === '_') return; // Skip invalid keys
 
 		if (userData === null || userData === undefined) {
-			// User was removed
-			console.log(`[USERS] User removed: ${userId}`);
+			// User was removed from usersList (they went offline or left the shared space)
+			console.log(`[USERS] User removed from usersList: ${userId}`);
 			currentUsers.delete(userId);
 
-			// Update userNamesCache to remove this user
-			userNamesCache.update((cache) => {
-				const { [userId]: _, ...rest } = cache;
-				return rest;
-			});
+			// Note: We intentionally don't remove from userNamesCache here
+			// because the cache serves a different purpose (performance optimization)
+			// and this user might still be referenced in our tree as a contributor
 		} else {
 			// User was added or updated
 			// console.log(`[USERS] User added/updated: ${userId}`, userData);
@@ -259,9 +257,9 @@ function setupUsersListSubscription() {
 					[userId]: userName
 				}));
 			} else {
-				// Try to get alias from user's protected space
+				// Try to get alias from user's protected space using Gun's user system
 				gun
-					.get(`~${userId}`)
+					.user(userId) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						if (alias && typeof alias === 'string') {
@@ -368,7 +366,7 @@ function setupTimeoutProtection(contributorId: string, dataType: string) {
 export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
-	const contributorSogf = gun.get(`~${contributorId}`).get('sogf');
+	const contributorSogf = gun.user(contributorId).get('sogf'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
@@ -403,7 +401,7 @@ export function subscribeToContributorSOGF(contributorId: string) {
 export function subscribeToContributorCapacities(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s capacities`);
 
-	const contributorCapacities = gun.get(`~${contributorId}`).get('capacities');
+	const contributorCapacities = gun.user(contributorId).get('capacities'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCapacities.on((capacitiesData: any) => {
@@ -463,7 +461,7 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 
 	// Subscribe to our capacity shares from this contributor
 	gun
-		.get(`~${contributorId}`)
+		.user(contributorId) // Use Gun's user system
 		.get('capacityShares')
 		.get(ourId)
 		.on((shares: any) => {
@@ -531,7 +529,7 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 export function subscribeToContributorDesiredComposeFrom(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-from`);
 
-	const contributorCompositions = gun.get(`~${contributorId}`).get('desiredComposeFrom');
+	const contributorCompositions = gun.user(contributorId).get('desiredComposeFrom'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCompositions.on((compositionsData: any) => {
@@ -583,7 +581,7 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 export function subscribeToContributorDesiredComposeInto(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-into`);
 
-	const contributorComposeInto = gun.get(`~${contributorId}`).get('desiredComposeInto');
+	const contributorComposeInto = gun.user(contributorId).get('desiredComposeInto'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorComposeInto.on((composeIntoData: any) => {

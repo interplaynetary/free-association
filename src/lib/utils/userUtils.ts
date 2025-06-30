@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { usersList, userTree, userpub, username} from '$lib/state.svelte';
+import { usersList, userTree, userpub, username } from '$lib/state.svelte';
 import { gun } from '$lib/state/gun.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/examples/example';
@@ -167,9 +167,9 @@ export function fixCorruptedUserListNames() {
 					`[USERS-FIX] Found corrupted name for user ${userId.substring(0, 20)}... (name equals pubkey)`
 				);
 
-				// Try to get the correct alias from their protected space
+				// Try to get the correct alias from their protected space using Gun's user system
 				gun
-					.get(`~${userId}`)
+					.user(userId) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						checkedCount++;

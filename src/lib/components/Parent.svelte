@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { username, userpub, userTree, createUsersDataProvider } from '$lib/state.svelte';
+	import { username, userpub, userTree } from '$lib/state.svelte';
+	import { createUsersDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
 	import {
@@ -10,10 +11,8 @@
 		updateNodeById,
 		updatePoints,
 		updateName,
-		updateManualFulfillment,
 		fulfilled,
 		addChild,
-		deleteSubtree,
 		addContributors
 	} from '$lib/protocol';
 	import { createNewTree } from '$lib/utils/userUtils';

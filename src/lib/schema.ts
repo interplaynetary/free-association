@@ -42,7 +42,11 @@ export const BaseCapacitySchema = z.object({
 	name: z.string(),
 	emoji: z.optional(z.string()),
 	quantity: z.optional(z.number().gte(0)),
-	unit: z.optional(z.string()),
+	unit: z.optional(
+		z.string().regex(/^$|^(?!\s*\d+\.?\d*\s*$).+$/, {
+			message: 'Unit must be text, not a number (e.g., "hours", "kg", "items")'
+		})
+	),
 	max_natural_div: z.optional(z.number().gte(1)),
 	max_percentage_div: z.optional(PercentageSchema),
 

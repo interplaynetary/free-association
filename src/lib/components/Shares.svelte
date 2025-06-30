@@ -14,16 +14,12 @@
 		BaseCapacity
 	} from '$lib/schema';
 
-	interface ShareWithProvider extends RecipientCapacity {
-		provider_name: string;
-	}
-
 	async function handleProviderClick(provider: string) {
 		// This function will be implemented later to navigate to the provider
 		console.log(`Navigating to provider: ${provider}`);
 	}
 
-	let shares = $state<ShareWithProvider[]>([]);
+	let shares = $state<RecipientCapacity[]>([]);
 	let expandedShares = $state<Set<string>>(new Set());
 
 	function toggleShare(shareId: string) {
@@ -43,21 +39,12 @@
 				return;
 			}
 
-			const allShares = await Promise.all(
-				Object.entries($userNetworkCapacitiesWithShares).map(async ([capacityId, capacity]) => {
-					const providerName = (await getUserName(
-						(capacity as RecipientCapacity).provider_id
-					)) as string;
-					const truncatedName =
-						providerName && providerName.length > 10
-							? providerName.substring(0, 10) + '...'
-							: (providerName as string) || '';
-					return {
+			const allShares = Object.entries($userNetworkCapacitiesWithShares).map(
+				([capacityId, capacity]) =>
+					({
 						...capacity,
-						id: capacityId,
-						provider_name: truncatedName
-					} as RecipientCapacity & { provider_name: string };
-				})
+						id: capacityId
+					}) as RecipientCapacity
 			);
 
 			// Filter out shares with no name or zero/no quantity

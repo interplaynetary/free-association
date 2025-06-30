@@ -548,3 +548,232 @@ export const mutualFeasibleTheirCapacities = derived(
 		return mutualFeasible;
 	}
 );
+
+// =============================================================================
+// CONSTRAINT METADATA STORES
+// =============================================================================
+
+// Constraint metadata interface
+interface ConstraintMetadata {
+	feasibleAmount: number;
+	constraintType: 'share_limit' | 'resource_competition' | 'no_constraint';
+	scalingFactor: number;
+	shareConstrainedAmount: number;
+	availableAmount: number;
+	totalDemandOnSource: number;
+	competitorCount: number;
+}
+
+// COMPOSE-FROM CONSTRAINT METADATA
+// Tracks detailed constraint information for each compose-from relationship
+export const feasibleComposeFromMetadata = derived(
+	[userDesiredComposeFrom, userNetworkCapacitiesWithShares],
+	([$userDesiredComposeFrom, $userNetworkCapacitiesWithShares]) => {
+		console.log('[FEASIBLE-METADATA-FROM] Calculating constraint metadata for compose-from...');
+
+		const metadata: Record<string, Record<string, ConstraintMetadata>> = {};
+
+		// Step 1: Calculate share-constrained amounts
+		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
+
+		Object.entries($userDesiredComposeFrom).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredAbsoluteUnits]) => {
+				const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
+				if (!networkCapacity) return;
+
+				const ourAvailableUnits = (networkCapacity as any).computed_quantity || 0;
+				const shareConstrainedUnits = Math.min(desiredAbsoluteUnits, ourAvailableUnits);
+
+				if (!shareConstrainedDesires[ourCapacityId]) {
+					shareConstrainedDesires[ourCapacityId] = {};
+				}
+				shareConstrainedDesires[ourCapacityId][theirCapacityId] = shareConstrainedUnits;
+			});
+		});
+
+		// Step 2: Calculate resource allocation demands
+		const sourceCapacityDemands: Record<
+			string,
+			{
+				totalDemand: number;
+				available: number;
+				consumers: Array<{ ourCapacityId: string; desiredUnits: number }>;
+			}
+		> = {};
+
+		Object.entries(shareConstrainedDesires).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredUnits]) => {
+				if (!sourceCapacityDemands[theirCapacityId]) {
+					const networkCapacity = $userNetworkCapacitiesWithShares[theirCapacityId];
+					const availableUnits = (networkCapacity as any)?.computed_quantity || 0;
+
+					sourceCapacityDemands[theirCapacityId] = {
+						totalDemand: 0,
+						available: availableUnits,
+						consumers: []
+					};
+				}
+
+				sourceCapacityDemands[theirCapacityId].totalDemand += desiredUnits;
+				sourceCapacityDemands[theirCapacityId].consumers.push({
+					ourCapacityId,
+					desiredUnits
+				});
+			});
+		});
+
+		// Step 3: Generate metadata for each composition
+		Object.entries(sourceCapacityDemands).forEach(([theirCapacityId, demandInfo]) => {
+			const { totalDemand, available, consumers } = demandInfo;
+			const scalingFactor = totalDemand > available ? available / totalDemand : 1.0;
+			const competitorCount = consumers.length;
+
+			consumers.forEach(({ ourCapacityId, desiredUnits }) => {
+				const finalFeasibleUnits = desiredUnits * scalingFactor;
+				const shareConstrainedAmount = desiredUnits;
+
+				// Determine constraint type
+				let constraintType: 'share_limit' | 'resource_competition' | 'no_constraint';
+				if (scalingFactor < 1.0) {
+					constraintType = 'resource_competition';
+				} else if (
+					shareConstrainedAmount < ($userDesiredComposeFrom[ourCapacityId]?.[theirCapacityId] || 0)
+				) {
+					constraintType = 'share_limit';
+				} else {
+					constraintType = 'no_constraint';
+				}
+
+				if (!metadata[ourCapacityId]) {
+					metadata[ourCapacityId] = {};
+				}
+
+				metadata[ourCapacityId][theirCapacityId] = {
+					feasibleAmount: finalFeasibleUnits,
+					constraintType,
+					scalingFactor,
+					shareConstrainedAmount,
+					availableAmount: available,
+					totalDemandOnSource: totalDemand,
+					competitorCount
+				};
+			});
+		});
+
+		console.log(
+			`[FEASIBLE-METADATA-FROM] Generated metadata for ${Object.keys(metadata).length} capacity compositions`
+		);
+		return metadata;
+	}
+);
+
+// COMPOSE-INTO CONSTRAINT METADATA
+// Tracks detailed constraint information for each compose-into relationship
+export const feasibleComposeIntoMetadata = derived(
+	[userDesiredComposeInto, contributorCapacityShares, networkCapacities, userCapacities],
+	([$userDesiredComposeInto, $contributorCapacityShares, $networkCapacities, $userCapacities]) => {
+		console.log('[FEASIBLE-METADATA-INTO] Calculating constraint metadata for compose-into...');
+
+		const metadata: Record<string, Record<string, ConstraintMetadata>> = {};
+
+		// Step 1: Calculate share-constrained amounts
+		const shareConstrainedDesires: Record<string, Record<string, number>> = {};
+
+		Object.entries($userDesiredComposeInto).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredAbsoluteUnits]) => {
+				const providerId = Object.keys($networkCapacities).find(
+					(id) => $networkCapacities[id] && $networkCapacities[id][theirCapacityId]
+				);
+				if (!providerId) return;
+
+				const ourCapacity = $userCapacities?.[ourCapacityId];
+				if (!ourCapacity) return;
+
+				const theirShareInOurCapacity =
+					$contributorCapacityShares[providerId]?.[ourCapacityId] || 0;
+				const ourCapacityQuantity = ourCapacity.quantity || 0;
+				const maxUnitsTheyCanReceive = ourCapacityQuantity * theirShareInOurCapacity;
+				const shareConstrainedUnits = Math.min(desiredAbsoluteUnits, maxUnitsTheyCanReceive);
+
+				if (!shareConstrainedDesires[ourCapacityId]) {
+					shareConstrainedDesires[ourCapacityId] = {};
+				}
+				shareConstrainedDesires[ourCapacityId][theirCapacityId] = shareConstrainedUnits;
+			});
+		});
+
+		// Step 2: Calculate resource allocation demands
+		const ourCapacityDemands: Record<
+			string,
+			{
+				totalDemand: number;
+				available: number;
+				recipients: Array<{ theirCapacityId: string; desiredUnits: number }>;
+			}
+		> = {};
+
+		Object.entries(shareConstrainedDesires).forEach(([ourCapacityId, ourDesires]) => {
+			Object.entries(ourDesires).forEach(([theirCapacityId, desiredUnits]) => {
+				if (!ourCapacityDemands[ourCapacityId]) {
+					const ourCapacity = $userCapacities?.[ourCapacityId];
+					const availableUnits = ourCapacity?.quantity || 0;
+
+					ourCapacityDemands[ourCapacityId] = {
+						totalDemand: 0,
+						available: availableUnits,
+						recipients: []
+					};
+				}
+
+				ourCapacityDemands[ourCapacityId].totalDemand += desiredUnits;
+				ourCapacityDemands[ourCapacityId].recipients.push({
+					theirCapacityId,
+					desiredUnits
+				});
+			});
+		});
+
+		// Step 3: Generate metadata for each composition
+		Object.entries(ourCapacityDemands).forEach(([ourCapacityId, demandInfo]) => {
+			const { totalDemand, available, recipients } = demandInfo;
+			const scalingFactor = totalDemand > available ? available / totalDemand : 1.0;
+			const competitorCount = recipients.length;
+
+			recipients.forEach(({ theirCapacityId, desiredUnits }) => {
+				const finalFeasibleUnits = desiredUnits * scalingFactor;
+				const shareConstrainedAmount = desiredUnits;
+
+				// Determine constraint type
+				let constraintType: 'share_limit' | 'resource_competition' | 'no_constraint';
+				if (scalingFactor < 1.0) {
+					constraintType = 'resource_competition';
+				} else if (
+					shareConstrainedAmount < ($userDesiredComposeInto[ourCapacityId]?.[theirCapacityId] || 0)
+				) {
+					constraintType = 'share_limit';
+				} else {
+					constraintType = 'no_constraint';
+				}
+
+				if (!metadata[ourCapacityId]) {
+					metadata[ourCapacityId] = {};
+				}
+
+				metadata[ourCapacityId][theirCapacityId] = {
+					feasibleAmount: finalFeasibleUnits,
+					constraintType,
+					scalingFactor,
+					shareConstrainedAmount,
+					availableAmount: available,
+					totalDemandOnSource: totalDemand,
+					competitorCount
+				};
+			});
+		});
+
+		console.log(
+			`[FEASIBLE-METADATA-INTO] Generated metadata for ${Object.keys(metadata).length} capacity compositions`
+		);
+		return metadata;
+	}
+);

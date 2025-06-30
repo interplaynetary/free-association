@@ -28,11 +28,15 @@ export function createUsersDataProvider(excludeIds: string[] = []): DropdownData
 
 	function loadUsers(searchQuery: string = '') {
 		// Get current reactive data
-		const allUserIds = get(userIds);
+		const onlineUserIds = get(userIds);
 		const namesCache = get(userNamesCache);
 
+		// Show all users we have cached names for (both online and offline)
+		const allUserIds = [...new Set([...onlineUserIds, ...Object.keys(namesCache)])];
+
 		console.log(`[USERS-PROVIDER] Loading users with query: "${searchQuery}"`);
-		console.log(`[USERS-PROVIDER] Available user IDs:`, allUserIds);
+		console.log(`[USERS-PROVIDER] Online user IDs:`, onlineUserIds);
+		console.log(`[USERS-PROVIDER] All cached user IDs:`, allUserIds);
 		console.log(`[USERS-PROVIDER] Names cache:`, namesCache);
 
 		// Filter and create dropdown items
@@ -80,10 +84,10 @@ export function createUsersDataProvider(excludeIds: string[] = []): DropdownData
 	// Set up reactive subscriptions to the centralized stores
 	$effect(() => {
 		// Watch for changes in userIds or userNamesCache
-		const allUserIds = get(userIds);
+		const onlineUserIds = get(userIds);
 		const namesCache = get(userNamesCache);
 
-		// Reload users when reactive data changes
+		// Reload users when either online users or cache changes
 		loadUsers(currentQuery);
 	});
 

@@ -1,5 +1,4 @@
 import { gun, user, userpub, GUN } from '$lib/state/gun.svelte';
-import { globalState } from '$lib/global.svelte';
 import { browser } from '$app/environment';
 import { writable, get, type Writable } from 'svelte/store';
 import SEA from 'gun/sea';

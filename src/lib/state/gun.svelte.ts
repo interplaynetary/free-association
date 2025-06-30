@@ -61,14 +61,9 @@ export async function getUserName(userId: string) {
 		return cache[userId];
 	}
 
-	// If not found, try the user's protected space
+	// If not found, try the user's protected space using Gun's user system
 	try {
-		const alias = gun
-			.get(`~${userId}`)
-			.get('alias')
-			.once((data: any) => {
-				return data;
-			});
+		const alias = await gun.user(userId).get('alias'); // Use Gun's user system like in chat.svelte.ts
 		if (alias && typeof alias === 'string') {
 			// Update cache
 			userNamesCache.update((cache) => ({

@@ -1,20 +1,29 @@
 <script lang="ts">
 	import { getUserName } from '$lib/state/gun.svelte';
+	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import Chat from './Chat.svelte';
 	import type { RecipientCapacity } from '$lib/schema';
 
-	interface ShareWithProvider extends RecipientCapacity {
-		provider_name: string;
-	}
-
 	interface Props {
-		share: ShareWithProvider;
+		share: RecipientCapacity;
 		expanded?: boolean;
 		onToggle?: () => void;
 		onProviderClick?: (provider: string) => void;
 	}
 
 	let { share, expanded = false, onToggle, onProviderClick }: Props = $props();
+
+	let providerName = $state<string>('');
+
+	// Get provider name asynchronously
+	$effect(() => {
+		void (async () => {
+			if (share.provider_id) {
+				const name = await getUserName(share.provider_id);
+				providerName = name && name.length > 10 ? name.substring(0, 10) + '...' : name || '';
+			}
+		})();
+	});
 
 	// Green color scale for share percentage
 	const colors = ['#dcfce7', '#86efac', '#22c55e'];
@@ -34,7 +43,7 @@
 	}
 
 	// Helper functions for space-time data formatting
-	function hasSpaceTimeData(share: ShareWithProvider): boolean {
+	function hasSpaceTimeData(share: RecipientCapacity): boolean {
 		return Boolean(
 			(share.location_type && share.location_type !== 'Undefined') ||
 				share.start_date ||
@@ -45,7 +54,7 @@
 		);
 	}
 
-	function formatLocation(share: ShareWithProvider): string {
+	function formatLocation(share: RecipientCapacity): string {
 		if (!share.location_type || share.location_type === 'Undefined') {
 			return '';
 		}
@@ -64,7 +73,7 @@
 		return '';
 	}
 
-	function formatTimeRange(share: ShareWithProvider): string {
+	function formatTimeRange(share: RecipientCapacity): string {
 		const parts: string[] = [];
 
 		// Date range
@@ -133,7 +142,7 @@
 		return parts.join(' • ');
 	}
 
-	function formatRecurrence(share: ShareWithProvider): string {
+	function formatRecurrence(share: RecipientCapacity): string {
 		if (!share.recurrence || share.recurrence === 'Does not repeat') {
 			return '';
 		}
@@ -157,16 +166,19 @@
 		return `🔄 ${share.recurrence}`;
 	}
 
-	function getChatId(share: ShareWithProvider): string {
+	function getChatId(share: RecipientCapacity): string {
 		// Use capacity ID as the chat ID for all conversations about this capacity
 		return share.id;
 	}
+
 </script>
 
 <div class="capacity-share-container">
 	<div
 		class="capacity-share flex cursor-pointer items-center justify-between rounded p-2 shadow-sm"
-		style="background-color: {getShareColor(share.share_percentage)}; border: 1px solid #e5e7eb;"
+		style="background-color: {getShareColor(
+			share.share_percentage
+		)}; border: 1px solid #e5e7eb; border-left: 8px solid {getColorForUserId(share.provider_id)};"
 		onclick={() => onToggle?.()}
 	>
 		<div class="flex min-w-0 flex-1 flex-col pr-2">
@@ -203,13 +215,14 @@
 		<div class="flex items-center gap-2">
 			<button
 				type="button"
-				class="provider-btn rounded-md px-2 py-1 text-xs whitespace-nowrap"
+				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
+				style="background-color: {getColorForUserId(share.provider_id)}; color: white; border: none; padding: 6px 16px;"
 				onclick={(e) => {
 					e.stopPropagation();
-					handleProviderClick(share.provider_name);
+					handleProviderClick(providerName);
 				}}
 			>
-				{share.provider_name}
+				{providerName}
 			</button>
 			<span class="expand-icon text-sm">
 				{expanded ? '▼' : '▶'}
@@ -249,12 +262,12 @@
 			<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
 				<div class="chat-header mb-2">
 					<h4 class="text-sm font-medium text-gray-700">
-						💬 Chat about {share.name} with {share.provider_name}
+						💬 Chat about {share.name} with {providerName}
 					</h4>
 				</div>
 				<Chat
 					chatId={getChatId(share)}
-					placeholder={`Message ${share.provider_name} about ${share.name}...`}
+					placeholder={`Message ${providerName} about ${share.name}...`}
 					maxLength={200}
 				/>
 			</div>
@@ -298,19 +311,19 @@
 	}
 
 	.provider-btn {
-		background: rgba(255, 255, 255, 0.5);
-		color: #4b5563;
-		border: none;
 		transition:
-			background 0.2s,
-			color 0.2s;
+			opacity 0.2s,
+			transform 0.2s;
 		cursor: pointer;
 		flex-shrink: 0;
+		text-shadow: none;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
 	.provider-btn:hover {
-		background: rgba(255, 255, 255, 0.8);
-		color: #1f2937;
+		opacity: 0.9;
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 	}
 
 	.expand-icon {

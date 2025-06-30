@@ -18,6 +18,8 @@
 		userDesiredComposeFrom,
 		userDesiredComposeInto
 	} from '$lib/state/protocol/compose.svelte';
+	import { globalState } from '$lib/global.svelte';
+	import { ProviderCapacitySchema } from '$lib/schema';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -198,7 +200,29 @@
 			filter_rule: filterRule()
 		};
 
-		onupdate?.(updatedCapacity);
+		// Validate using schema
+		const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
+
+		if (!validationResult.success) {
+			// Check for specific validation errors and show appropriate messages
+			const errors = validationResult.error.issues;
+			const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+
+			if (unitErrors.length > 0) {
+				globalState.showToast(unitErrors[0].message, 'warning');
+				// Revert unit to previous valid value
+				capacityUnit = capacity.unit || '';
+				return;
+			}
+
+			// Handle other validation errors
+			globalState.showToast('Invalid capacity data', 'error');
+			console.error('Capacity validation failed:', validationResult.error);
+			return;
+		}
+
+		// Validation passed, proceed with update
+		onupdate?.(validationResult.data);
 	}
 
 	// Delete this capacity

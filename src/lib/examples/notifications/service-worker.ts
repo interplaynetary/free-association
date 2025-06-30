@@ -234,7 +234,7 @@ const processors: Record<string, (data: any, key: string) => Promise<any>> = {
 	async enrichUser(data: any, key: string) {
 		try {
 			if (data.user && gun) {
-				const userAlias = await gun.get(`~${data.user}`).get('alias');
+				const userAlias = await gun.user(data.user).get('alias'); // Use Gun's user system
 				if (userAlias) {
 					data.userName = userAlias;
 					data._preview = `${userAlias}: ${data._preview}`;
