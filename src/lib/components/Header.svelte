@@ -790,7 +790,7 @@
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
-
+			<!--
 			<button
 				class="icon-button notification-button"
 				title="View notifications"
@@ -798,6 +798,7 @@
 			>
 				<span>🔔</span>
 			</button>
+		-->
 		</div>
 	</div>
 

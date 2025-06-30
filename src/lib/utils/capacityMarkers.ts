@@ -79,6 +79,41 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 			label: 'Location Type',
 			value: capacity.location_type
 		});
+
+		// Add specific location information if available
+		if (capacity.location_type === 'Specific') {
+			// Check if address is available first
+			if (
+				capacity.street_address ||
+				capacity.city ||
+				capacity.state_province ||
+				capacity.postal_code ||
+				capacity.country
+			) {
+				const addressParts = [
+					capacity.street_address,
+					capacity.city,
+					capacity.state_province,
+					capacity.postal_code,
+					capacity.country
+				].filter(Boolean);
+
+				if (addressParts.length > 0) {
+					details.push({
+						label: 'Address',
+						value: addressParts.join(', ')
+					});
+				}
+			}
+
+			// Show coordinates if available (in addition to or instead of address)
+			if (capacity.latitude !== undefined && capacity.longitude !== undefined) {
+				details.push({
+					label: 'Coordinates',
+					value: `${capacity.latitude.toFixed(6)}, ${capacity.longitude.toFixed(6)}`
+				});
+			}
+		}
 	}
 
 	if (capacity.start_date || capacity.start_time) {

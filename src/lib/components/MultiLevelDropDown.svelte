@@ -2,9 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import { browser } from '$app/environment';
-	import type { DropdownDataProvider } from '$lib/state.svelte';
-
-	// we want to codify the structure of the
+	import type { Readable } from 'svelte/store';
 
 	// Props using Svelte 5 runes
 	let {
@@ -24,7 +22,7 @@
 		position?: { x: number; y: number };
 		width?: number;
 		maxHeight?: number;
-		dataProvider: DropdownDataProvider;
+		dataProvider: Readable<Array<{ id: string; name: string; metadata?: any }>>;
 		filterText?: string;
 		show?: boolean;
 		select?: (detail: { id: string; name: string; metadata?: any }) => void;
@@ -37,6 +35,18 @@
 	let resultsContainer = $state<HTMLDivElement | null>(null);
 	let initialized = $state(false);
 	let searchFilter = $state(filterText);
+
+	// Get filtered items based on search
+	let filteredItems = $derived(() => {
+		const items = $dataProvider || [];
+		if (!searchFilter) return items;
+
+		const searchLower = searchFilter.toLowerCase();
+		return items.filter(
+			(item: { id: string; name: string; metadata?: any }) =>
+				item.name.toLowerCase().includes(searchLower) || item.id.toLowerCase().includes(searchLower)
+		);
+	});
 
 	// Update the filter when the prop changes
 	$effect(() => {
@@ -112,13 +122,6 @@
 		};
 	}
 
-	// Watch for search filter changes
-	$effect(() => {
-		if (initialized && searchFilter !== undefined) {
-			dataProvider.search(searchFilter);
-		}
-	});
-
 	// Lifecycle
 	onMount(() => {
 		if (browser) {
@@ -172,23 +175,18 @@
 		</div>
 
 		<div class="results" bind:this={resultsContainer}>
-			{#if dataProvider.loading && dataProvider.items.length === 0}
-				<div class="message">Loading...</div>
-			{:else if dataProvider.items.length === 0}
+			{#if !filteredItems() || filteredItems().length === 0}
 				<div class="message">
 					{searchFilter ? 'No matching items found' : 'No items available'}
 				</div>
 			{:else}
-				{#each dataProvider.items as item (item.id)}
+				{#each filteredItems() as item (item.id)}
 					<div
 						class="item"
 						data-id={item.id}
 						onclick={() => handleSelect(item.id, item.name, item.metadata)}
 					>
-						<div
-							class="color-dot"
-							style="background-color: {item.color || getColorForUserId(item.id)}"
-						></div>
+						<div class="color-dot" style="background-color: {getColorForUserId(item.id)}"></div>
 						<div class="item-content">
 							<div class="item-name">{item.name || item.id}</div>
 							{#if item.metadata?.contributorCount !== undefined}

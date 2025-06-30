@@ -5,18 +5,20 @@
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
 	import CompositionItem from './CompositionItem.svelte';
-	import { createSubtreesDataProvider } from '$lib/state.svelte';
 	import { Rules } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { get } from 'svelte/store';
 	import {
 		createCapacitiesDataProvider,
-		createAllNetworkCapacitiesDataProvider
+		createAllNetworkCapacitiesDataProvider,
+		createSubtreesDataProvider
 	} from '$lib/utils/ui-providers.svelte';
 	import {
 		userDesiredComposeFrom,
-		userDesiredComposeInto
+		userDesiredComposeInto,
+		networkDesiredComposeFrom,
+		networkDesiredComposeInto
 	} from '$lib/state/protocol/compose.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
@@ -36,6 +38,9 @@
 	// UI state for expanded chat
 	let chatExpanded = $state(false);
 
+	// UI state for expanded composition
+	let compositionExpanded = $state(false);
+
 	// Simple filter state - just track selected subtree IDs
 	let selectedSubtrees = $state<string[]>([]);
 
@@ -51,9 +56,9 @@
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
 
-	// Create capacity data providers for composition dropdowns
+	// Create reactive capacity data providers for composition and dropdowns
 	let composeFromDataProvider = createCapacitiesDataProvider(capacity.id); // Capacities we have shares in
-	let composeIntoDataProvider = createAllNetworkCapacitiesDataProvider(capacity.id); // All network capacities
+	let composeIntoDataProvider = createAllNetworkCapacitiesDataProvider(capacity.id); // All network capacities except this one
 
 	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
@@ -63,6 +68,14 @@
 	let capacityLocationType = $state(capacity.location_type);
 	let capacityLongitude = $state(capacity.longitude);
 	let capacityLatitude = $state(capacity.latitude);
+
+	// Address fields
+	let capacityStreetAddress = $state(capacity.street_address);
+	let capacityCity = $state(capacity.city);
+	let capacityStateProvince = $state(capacity.state_province);
+	let capacityPostalCode = $state(capacity.postal_code);
+	let capacityCountry = $state(capacity.country);
+
 	let capacityAllDay = $state(capacity.all_day);
 	let capacityStartDate = $state(capacity.start_date);
 	let capacityEndDate = $state(capacity.end_date);
@@ -93,7 +106,7 @@
 	let subtreeNames = $derived(() => {
 		const names: Record<string, string> = {};
 		selectedSubtrees.forEach((subtreeId) => {
-			const item = subtreesDataProvider.items.find((item) => item.id === subtreeId);
+			const item = $subtreesDataProvider.find((item) => item.id === subtreeId);
 			if (item) {
 				names[subtreeId] = item.name;
 			}
@@ -183,6 +196,14 @@
 			location_type: capacityLocationType,
 			longitude: capacityLongitude,
 			latitude: capacityLatitude,
+
+			// Address fields
+			street_address: capacityStreetAddress,
+			city: capacityCity,
+			state_province: capacityStateProvince,
+			postal_code: capacityPostalCode,
+			country: capacityCountry,
+
 			all_day: capacityAllDay,
 			start_date: capacityStartDate,
 			end_date: capacityEndDate,
@@ -233,18 +254,30 @@
 	// Toggle expanded state
 	function toggleExpanded() {
 		expanded = !expanded;
-		// If we're expanding settings, close chat
+		// If we're expanding settings, close chat and composition
 		if (expanded) {
 			chatExpanded = false;
+			compositionExpanded = false;
 		}
 	}
 
 	// Toggle chat state
 	function toggleChat() {
 		chatExpanded = !chatExpanded;
-		// If we're expanding chat, close settings
+		// If we're expanding chat, close settings and composition
 		if (chatExpanded) {
 			expanded = false;
+			compositionExpanded = false;
+		}
+	}
+
+	// Toggle composition state
+	function toggleComposition() {
+		compositionExpanded = !compositionExpanded;
+		// If we're expanding composition, close settings and chat
+		if (compositionExpanded) {
+			expanded = false;
+			chatExpanded = false;
 		}
 	}
 
@@ -346,7 +379,7 @@
 		handleCapacityUpdate();
 	}
 
-	// Derive composition capacities directly from stores (reactive)
+	// Track capacities we want to compose from (our desires)
 	let composeFromCapacities = $derived(() => {
 		const ourCapacityDesires = $userDesiredComposeFrom[capacity.id];
 		const result = ourCapacityDesires ? Object.keys(ourCapacityDesires) : [];
@@ -359,6 +392,29 @@
 		return result;
 	});
 
+	// Track capacities that want to compose into our capacity (their desires)
+	let networkComposeIntoCapacities = $derived(() => {
+		const result = new Set<string>();
+
+		// Look through network desires to find who wants to compose into our capacity
+		Object.entries($networkDesiredComposeInto).forEach(([providerId, providerDesires]) => {
+			Object.entries(providerDesires).forEach(([theirCapacityId, theirDesires]) => {
+				if (theirDesires[capacity.id]) {
+					result.add(theirCapacityId);
+				}
+			});
+		});
+
+		console.log(
+			`[CAPACITY-${capacity.id}] networkComposeIntoCapacities:`,
+			Array.from(result),
+			'from store:',
+			$networkDesiredComposeInto
+		);
+		return Array.from(result);
+	});
+
+	// Track capacities we want to compose into (our desires)
 	let composeIntoCapacities = $derived(() => {
 		const ourCapacityDesires = $userDesiredComposeInto[capacity.id];
 		const result = ourCapacityDesires ? Object.keys(ourCapacityDesires) : [];
@@ -371,8 +427,33 @@
 		return result;
 	});
 
+	// Track capacities that want to compose from our capacity (their desires)
+	let networkComposeFromCapacities = $derived(() => {
+		const result = new Set<string>();
+
+		// Look through network desires to find who wants to compose from our capacity
+		Object.entries($networkDesiredComposeFrom).forEach(([providerId, providerDesires]) => {
+			Object.entries(providerDesires).forEach(([theirCapacityId, theirDesires]) => {
+				if (theirDesires[capacity.id]) {
+					result.add(theirCapacityId);
+				}
+			});
+		});
+
+		console.log(
+			`[CAPACITY-${capacity.id}] networkComposeFromCapacities:`,
+			Array.from(result),
+			'from store:',
+			$networkDesiredComposeFrom
+		);
+		return Array.from(result);
+	});
+
 	// State for tracking expanded composition items
 	let expandedCompositions = $state<Record<string, boolean>>({});
+
+	// Location format state ('coordinates' or 'address')
+	let locationFormat = $state<'coordinates' | 'address'>('address');
 
 	// Dropdown states for adding capacities
 	let showComposeFromDropdown = $state(false);
@@ -381,7 +462,7 @@
 	let composeIntoDropdownPosition = $state({ x: 0, y: 0 });
 
 	// Toggle composition expansion
-	function toggleComposition(compositionKey: string) {
+	function toggleCompositionItem(compositionKey: string) {
 		expandedCompositions[compositionKey] = !expandedCompositions[compositionKey];
 	}
 
@@ -556,26 +637,17 @@
 		>
 			💬
 		</button>
-		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="16"
-				height="16"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<circle cx="12" cy="12" r="3"></circle>
-				<path
-					d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-				></path>
-			</svg>
+		<button
+			type="button"
+			class="composition-btn ml-1"
+			onclick={toggleComposition}
+			title="Compose with other capacities"
+		>
+			🔄
 		</button>
+		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}> ⚙️ </button>
 		<button type="button" class="remove-btn ml-1" onclick={handleDelete} disabled={!canDelete}
-			>×</button
+			>✖️</button
 		>
 	</div>
 
@@ -623,7 +695,22 @@
 
 	<!-- Expanded chat section -->
 	{#if chatExpanded}
-		<!-- Composition section in expanded view -->
+		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
+			<div class="chat-header mb-2">
+				<h4 class="text-sm font-medium text-gray-700">
+					💬 Chat about {capacity.emoji || '📦'}
+					{capacity.name}
+				</h4>
+				<p class="mt-1 text-xs text-gray-500">
+					Discuss this capacity with recipients and other stakeholders
+				</p>
+			</div>
+			<Chat chatId={capacity.id} placeholder={`Discuss ${capacity.name}...`} maxLength={200} />
+		</div>
+	{/if}
+
+	<!-- Expanded composition section -->
+	{#if compositionExpanded}
 		<div class="composition-section mb-4 rounded border border-gray-200 bg-blue-50 p-3">
 			<div class="composition-header mb-3">
 				<h4 class="text-sm font-medium text-gray-700">🔄 Composition</h4>
@@ -651,10 +738,11 @@
 						</button>
 
 						<!-- Compose from items -->
-						{#if composeFromCapacities().length > 0}
+						{#if composeFromCapacities().length > 0 || networkComposeIntoCapacities().length > 0}
 							<div class="composition-items space-y-2">
+								<!-- Show items we want to compose from -->
 								{#each composeFromCapacities() as capacityId}
-									{@const theirCapacity = composeFromDataProvider.items.find(
+									{@const theirCapacity = $composeFromDataProvider.find(
 										(item) => item.id === capacityId
 									)?.metadata}
 									{#if theirCapacity}
@@ -671,12 +759,52 @@
 											theirCapacity={{
 												...theirCapacity,
 												id: capacityId,
-												provider_id: theirCapacity.owner_id || theirCapacity.provider_id
+												unit: theirCapacity.unit || 'unit',
+												quantity: theirCapacity.quantity || 0,
+												provider_id:
+													(theirCapacity as any).owner_id ||
+													(theirCapacity as any).provider_id ||
+													'unknown'
 											}}
 											direction="from"
 											expanded={expandedCompositions[compositionKey] || false}
-											onToggle={() => toggleComposition(compositionKey)}
+											onToggle={() => toggleCompositionItem(compositionKey)}
 										/>
+									{/if}
+								{/each}
+
+								<!-- Show items that want to compose into our capacity -->
+								{#each networkComposeIntoCapacities() as capacityId}
+									{#if !composeFromCapacities().includes(capacityId)}
+										{@const theirCapacity = $composeFromDataProvider.find(
+											(item) => item.id === capacityId
+										)?.metadata}
+										{#if theirCapacity}
+											{@const compositionKey = `${capacity.id}-${capacityId}-from`}
+											<CompositionItem
+												ourCapacity={{
+													id: capacity.id,
+													name: capacity.name,
+													emoji: capacity.emoji,
+													unit: capacity.unit || 'unit',
+													quantity: capacity.quantity || 0,
+													provider_name: 'You'
+												}}
+												theirCapacity={{
+													...theirCapacity,
+													id: capacityId,
+													unit: theirCapacity.unit || 'unit',
+													quantity: theirCapacity.quantity || 0,
+													provider_id:
+														(theirCapacity as any).owner_id ||
+														(theirCapacity as any).provider_id ||
+														'unknown'
+												}}
+												direction="from"
+												expanded={expandedCompositions[compositionKey] || false}
+												onToggle={() => toggleCompositionItem(compositionKey)}
+											/>
+										{/if}
 									{/if}
 								{/each}
 							</div>
@@ -705,10 +833,11 @@
 						</button>
 
 						<!-- Compose into items -->
-						{#if composeIntoCapacities().length > 0}
+						{#if composeIntoCapacities().length > 0 || networkComposeFromCapacities().length > 0}
 							<div class="composition-items space-y-2">
+								<!-- Show items we want to compose into -->
 								{#each composeIntoCapacities() as capacityId}
-									{@const theirCapacity = composeIntoDataProvider.items.find(
+									{@const theirCapacity = $composeIntoDataProvider.find(
 										(item) => item.id === capacityId
 									)?.metadata}
 									{#if theirCapacity}
@@ -725,12 +854,52 @@
 											theirCapacity={{
 												...theirCapacity,
 												id: capacityId,
-												provider_id: theirCapacity.owner_id || theirCapacity.provider_id
+												unit: theirCapacity.unit || 'unit',
+												quantity: theirCapacity.quantity || 0,
+												provider_id:
+													(theirCapacity as any).owner_id ||
+													(theirCapacity as any).provider_id ||
+													'unknown'
 											}}
 											direction="into"
 											expanded={expandedCompositions[compositionKey] || false}
-											onToggle={() => toggleComposition(compositionKey)}
+											onToggle={() => toggleCompositionItem(compositionKey)}
 										/>
+									{/if}
+								{/each}
+
+								<!-- Show items that want to compose from our capacity -->
+								{#each networkComposeFromCapacities() as capacityId}
+									{#if !composeIntoCapacities().includes(capacityId)}
+										{@const theirCapacity = $composeIntoDataProvider.find(
+											(item) => item.id === capacityId
+										)?.metadata}
+										{#if theirCapacity}
+											{@const compositionKey = `${capacity.id}-${capacityId}-into`}
+											<CompositionItem
+												ourCapacity={{
+													id: capacity.id,
+													name: capacity.name,
+													emoji: capacity.emoji,
+													unit: capacity.unit || 'unit',
+													quantity: capacity.quantity || 0,
+													provider_name: 'You'
+												}}
+												theirCapacity={{
+													...theirCapacity,
+													id: capacityId,
+													unit: theirCapacity.unit || 'unit',
+													quantity: theirCapacity.quantity || 0,
+													provider_id:
+														(theirCapacity as any).owner_id ||
+														(theirCapacity as any).provider_id ||
+														'unknown'
+												}}
+												direction="into"
+												expanded={expandedCompositions[compositionKey] || false}
+												onToggle={() => toggleCompositionItem(compositionKey)}
+											/>
+										{/if}
 									{/if}
 								{/each}
 							</div>
@@ -742,19 +911,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
-
-		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
-			<div class="chat-header mb-2">
-				<h4 class="text-sm font-medium text-gray-700">
-					💬 Chat about {capacity.emoji || '📦'}
-					{capacity.name}
-				</h4>
-				<p class="mt-1 text-xs text-gray-500">
-					Discuss this capacity with recipients and other stakeholders
-				</p>
-			</div>
-			<Chat chatId={capacity.id} placeholder={`Discuss ${capacity.name}...`} maxLength={200} />
 		</div>
 	{/if}
 
@@ -805,38 +961,137 @@
 
 					{#if capacityLocationType === 'Specific'}
 						<div class="date-time-section mb-6 ml-2">
-							<!-- Geographic coordinates section -->
+							<!-- Location input type toggle -->
 							<div class="mb-6">
-								<h5 class="mb-4 text-sm font-medium text-gray-600">Geographic Coordinates</h5>
-								<div class="grid grid-cols-2 gap-4">
-									<div>
-										<label class="mb-2 block text-xs text-gray-500">Latitude (-90 to 90)</label>
+								<h5 class="mb-4 text-sm font-medium text-gray-600">Location Format</h5>
+								<div class="mb-4 flex flex-wrap gap-x-8 gap-y-3">
+									<label class="inline-flex items-center">
 										<input
-											type="number"
-											min="-90"
-											max="90"
-											step="0.000001"
-											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacityLatitude}
-											placeholder="e.g. 37.7749"
-											onchange={handleCapacityUpdate}
+											type="radio"
+											name="location-format-{capacity.id}"
+											value="address"
+											checked={locationFormat === 'address'}
+											class="mr-3"
+											onchange={() => {
+												locationFormat = 'address';
+											}}
 										/>
-									</div>
-									<div>
-										<label class="mb-2 block text-xs text-gray-500">Longitude (-180 to 180)</label>
+										<span class="text-sm text-gray-600">Address</span>
+									</label>
+									<label class="inline-flex items-center">
 										<input
-											type="number"
-											min="-180"
-											max="180"
-											step="0.000001"
-											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacityLongitude}
-											placeholder="e.g. -122.4194"
-											onchange={handleCapacityUpdate}
+											type="radio"
+											name="location-format-{capacity.id}"
+											value="coordinates"
+											checked={locationFormat === 'coordinates'}
+											class="mr-3"
+											onchange={() => {
+												locationFormat = 'coordinates';
+											}}
 										/>
-									</div>
+										<span class="text-sm text-gray-600">Coordinates</span>
+									</label>
 								</div>
 							</div>
+
+							<!-- Address section -->
+							{#if locationFormat === 'address'}
+								<div class="address-section mb-6">
+									<h5 class="mb-4 text-sm font-medium text-gray-600">Address</h5>
+									<div class="space-y-4">
+										<div>
+											<label class="mb-2 block text-xs text-gray-500">Street Address</label>
+											<input
+												type="text"
+												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+												bind:value={capacityStreetAddress}
+												placeholder="e.g. 123 Main St"
+												onchange={handleCapacityUpdate}
+											/>
+										</div>
+										<div class="grid grid-cols-2 gap-4">
+											<div>
+												<label class="mb-2 block text-xs text-gray-500">City</label>
+												<input
+													type="text"
+													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+													bind:value={capacityCity}
+													placeholder="e.g. San Francisco"
+													onchange={handleCapacityUpdate}
+												/>
+											</div>
+											<div>
+												<label class="mb-2 block text-xs text-gray-500">State/Province</label>
+												<input
+													type="text"
+													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+													bind:value={capacityStateProvince}
+													placeholder="e.g. CA"
+													onchange={handleCapacityUpdate}
+												/>
+											</div>
+										</div>
+										<div class="grid grid-cols-2 gap-4">
+											<div>
+												<label class="mb-2 block text-xs text-gray-500">Postal Code</label>
+												<input
+													type="text"
+													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+													bind:value={capacityPostalCode}
+													placeholder="e.g. 94102"
+													onchange={handleCapacityUpdate}
+												/>
+											</div>
+											<div>
+												<label class="mb-2 block text-xs text-gray-500">Country</label>
+												<input
+													type="text"
+													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+													bind:value={capacityCountry}
+													placeholder="e.g. United States"
+													onchange={handleCapacityUpdate}
+												/>
+											</div>
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							<!-- Geographic coordinates section -->
+							{#if locationFormat === 'coordinates'}
+								<div class="coordinates-section mb-6">
+									<h5 class="mb-4 text-sm font-medium text-gray-600">Geographic Coordinates</h5>
+									<div class="grid grid-cols-2 gap-4">
+										<div>
+											<label class="mb-2 block text-xs text-gray-500">Latitude (-90 to 90)</label>
+											<input
+												type="number"
+												min="-90"
+												max="90"
+												step="0.000001"
+												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+												bind:value={capacityLatitude}
+												placeholder="e.g. 37.7749"
+												onchange={handleCapacityUpdate}
+											/>
+										</div>
+										<div>
+											<label class="mb-2 block text-xs text-gray-500">Longitude (-180 to 180)</label
+											>
+											<input
+												type="number"
+												min="-180"
+												max="180"
+												step="0.000001"
+												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+												bind:value={capacityLongitude}
+												placeholder="e.g. -122.4194"
+												onchange={handleCapacityUpdate}
+											/>
+										</div>
+									</div>
+								</div>
+							{/if}
 
 							<div class="mb-4 ml-1">
 								<label class="inline-flex items-center">
@@ -1168,11 +1423,12 @@
 	/* Icon buttons */
 	.remove-btn,
 	.settings-btn,
-	.chat-btn {
+	.chat-btn,
+	.composition-btn {
 		background: none;
 		border: none;
 		color: #cbd5e1;
-		font-size: 1.3em;
+		font-size: 1em;
 		cursor: pointer;
 		padding: 0 4px;
 		line-height: 1;
@@ -1214,18 +1470,10 @@
 		margin-top: 4px;
 	}
 
-	.settings-btn {
-		font-size: 1em;
-	}
-
 	.settings-btn:hover {
 		background: #f3f4f6;
 		color: #4b5563;
 		transform: scale(1.05);
-	}
-
-	.chat-btn {
-		font-size: 1em;
 	}
 
 	.chat-btn:hover {
@@ -1234,10 +1482,17 @@
 		transform: scale(1.05);
 	}
 
+	.composition-btn:hover {
+		background: #f0fdf4;
+		color: #059669;
+		transform: scale(1.05);
+	}
+
 	.remove-btn:disabled {
 		color: #e5e7eb;
 		cursor: not-allowed;
 	}
+
 	.remove-btn:hover:not(:disabled) {
 		background: #fef2f2;
 		color: #ef4444;

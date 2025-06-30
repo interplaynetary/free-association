@@ -59,6 +59,14 @@ export const BaseCapacitySchema = z.object({
 	location_type: z.optional(z.string()),
 	longitude: z.optional(z.number().min(-180).max(180)),
 	latitude: z.optional(z.number().min(-90).max(90)),
+
+	// Address fields as alternative to coordinates
+	street_address: z.optional(z.string()),
+	city: z.optional(z.string()),
+	state_province: z.optional(z.string()),
+	postal_code: z.optional(z.string()),
+	country: z.optional(z.string()),
+
 	all_day: z.optional(z.boolean()),
 	recurrence: z.optional(z.nullable(z.string())),
 	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),

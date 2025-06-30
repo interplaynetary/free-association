@@ -64,9 +64,32 @@
 		}
 
 		if (share.location_type === 'Specific') {
+			// Check if address is available first
+			if (
+				share.street_address ||
+				share.city ||
+				share.state_province ||
+				share.postal_code ||
+				share.country
+			) {
+				const addressParts = [
+					share.street_address,
+					share.city,
+					share.state_province,
+					share.postal_code,
+					share.country
+				].filter(Boolean);
+
+				if (addressParts.length > 0) {
+					return `📍 ${addressParts.join(', ')}`;
+				}
+			}
+
+			// Fall back to coordinates if available
 			if (share.latitude !== undefined && share.longitude !== undefined) {
 				return `📍 ${share.latitude.toFixed(6)}, ${share.longitude.toFixed(6)}`;
 			}
+
 			return '📍 Specific location';
 		}
 
@@ -170,7 +193,6 @@
 		// Use capacity ID as the chat ID for all conversations about this capacity
 		return share.id;
 	}
-
 </script>
 
 <div class="capacity-share-container">
@@ -216,7 +238,9 @@
 			<button
 				type="button"
 				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
-				style="background-color: {getColorForUserId(share.provider_id)}; color: white; border: none; padding: 6px 16px;"
+				style="background-color: {getColorForUserId(
+					share.provider_id
+				)}; color: white; border: none; padding: 6px 16px;"
 				onclick={(e) => {
 					e.stopPropagation();
 					handleProviderClick(providerName);

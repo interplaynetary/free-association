@@ -10,7 +10,9 @@
 		feasibleComposeFromMetadata,
 		feasibleComposeIntoMetadata,
 		mutualDesireOurCapacities,
-		mutualDesireTheirCapacities
+		mutualDesireTheirCapacities,
+		networkDesiredComposeFrom,
+		networkDesiredComposeInto
 	} from '$lib/state/protocol/compose.svelte';
 	import {
 		userNetworkCapacitiesWithShares,
@@ -121,6 +123,24 @@
 		}
 	});
 
+	// Get their desire amount directly from network desires
+	let theirDesireAmount = $derived(() => {
+		const actualProviderId = providerId();
+		if (!actualProviderId) return 0;
+
+		if (direction === 'from') {
+			// They want to compose into our capacity
+			return (
+				$networkDesiredComposeInto[actualProviderId]?.[theirCapacity.id]?.[ourCapacity.id] || 0
+			);
+		} else {
+			// They want to compose from our capacity
+			return (
+				$networkDesiredComposeFrom[actualProviderId]?.[theirCapacity.id]?.[ourCapacity.id] || 0
+			);
+		}
+	});
+
 	// Get unit for composition
 	let compositionUnit = $derived(() => {
 		return direction === 'from' ? theirCapacity.unit : ourCapacity.unit;
@@ -131,11 +151,19 @@
 		const store = direction === 'from' ? userDesiredComposeFrom : userDesiredComposeInto;
 		const current = get(store);
 
+		// Convert empty/null/undefined to 0
+		const desiredAmount =
+			desiredQuantityInput === null ||
+			desiredQuantityInput === undefined ||
+			isNaN(desiredQuantityInput)
+				? 0
+				: desiredQuantityInput;
+
 		const updated = {
 			...current,
 			[ourCapacity.id]: {
 				...current[ourCapacity.id],
-				[theirCapacity.id]: desiredQuantityInput
+				[theirCapacity.id]: desiredAmount
 			}
 		};
 
@@ -349,8 +377,8 @@
 			<div class="their-desire">
 				<label class="desire-label">Their desire:</label>
 				<span class="their-value">
-					{#if mutualFeasibleInfo()}
-						{mutualFeasibleInfo()?.theirDesiredAmount.toFixed(1)} {compositionUnit()}
+					{#if theirDesireAmount() > 0}
+						{theirDesireAmount().toFixed(1)} {compositionUnit()}
 					{:else}
 						— {compositionUnit()}
 					{/if}
