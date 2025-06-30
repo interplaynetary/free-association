@@ -9,9 +9,17 @@
 	import { Rules } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { getUserName } from '$lib/state/gun.svelte';
-	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
-	import { createCapacitiesDataProvider } from '$lib/utils/ui-providers.svelte';
+	import { get } from 'svelte/store';
+	import {
+		createCapacitiesDataProvider,
+		createAllNetworkCapacitiesDataProvider
+	} from '$lib/utils/ui-providers.svelte';
+	import {
+		userDesiredComposeFrom,
+		userDesiredComposeInto
+	} from '$lib/state/protocol/compose.svelte';
+	import { globalState } from '$lib/global.svelte';
+	import { ProviderCapacitySchema } from '$lib/schema';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -43,8 +51,9 @@
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
 
-	// Create capacity data provider for composition dropdowns
-	let capacityDataProvider = createCapacitiesDataProvider(capacity.id);
+	// Create capacity data providers for composition dropdowns
+	let composeFromDataProvider = createCapacitiesDataProvider(capacity.id); // Capacities we have shares in
+	let composeIntoDataProvider = createAllNetworkCapacitiesDataProvider(capacity.id); // All network capacities
 
 	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
@@ -191,7 +200,29 @@
 			filter_rule: filterRule()
 		};
 
-		onupdate?.(updatedCapacity);
+		// Validate using schema
+		const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
+
+		if (!validationResult.success) {
+			// Check for specific validation errors and show appropriate messages
+			const errors = validationResult.error.issues;
+			const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+
+			if (unitErrors.length > 0) {
+				globalState.showToast(unitErrors[0].message, 'warning');
+				// Revert unit to previous valid value
+				capacityUnit = capacity.unit || '';
+				return;
+			}
+
+			// Handle other validation errors
+			globalState.showToast('Invalid capacity data', 'error');
+			console.error('Capacity validation failed:', validationResult.error);
+			return;
+		}
+
+		// Validation passed, proceed with update
+		onupdate?.(validationResult.data);
 	}
 
 	// Delete this capacity
@@ -315,9 +346,30 @@
 		handleCapacityUpdate();
 	}
 
-	// State for tracking which capacities are selected for composition
-	let composeFromCapacities = $state<string[]>([]);
-	let composeIntoCapacities = $state<string[]>([]);
+	// Derive composition capacities directly from stores (reactive)
+	let composeFromCapacities = $derived(() => {
+		const ourCapacityDesires = $userDesiredComposeFrom[capacity.id];
+		const result = ourCapacityDesires ? Object.keys(ourCapacityDesires) : [];
+		console.log(
+			`[CAPACITY-${capacity.id}] composeFromCapacities:`,
+			result,
+			'from store:',
+			$userDesiredComposeFrom
+		);
+		return result;
+	});
+
+	let composeIntoCapacities = $derived(() => {
+		const ourCapacityDesires = $userDesiredComposeInto[capacity.id];
+		const result = ourCapacityDesires ? Object.keys(ourCapacityDesires) : [];
+		console.log(
+			`[CAPACITY-${capacity.id}] composeIntoCapacities:`,
+			result,
+			'from store:',
+			$userDesiredComposeInto
+		);
+		return result;
+	});
 
 	// State for tracking expanded composition items
 	let expandedCompositions = $state<Record<string, boolean>>({});
@@ -365,9 +417,16 @@
 	function handleComposeFromSelect(detail: { id: string; name: string; metadata?: any }) {
 		const { id: capacityId } = detail;
 
-		if (!composeFromCapacities.includes(capacityId)) {
-			composeFromCapacities = [...composeFromCapacities, capacityId];
-		}
+		// Add to store with initial quantity of 0
+		const current = get(userDesiredComposeFrom);
+		const updated = {
+			...current,
+			[capacity.id]: {
+				...current[capacity.id],
+				[capacityId]: 0
+			}
+		};
+		userDesiredComposeFrom.set(updated);
 
 		showComposeFromDropdown = false;
 	}
@@ -376,21 +435,44 @@
 	function handleComposeIntoSelect(detail: { id: string; name: string; metadata?: any }) {
 		const { id: capacityId } = detail;
 
-		if (!composeIntoCapacities.includes(capacityId)) {
-			composeIntoCapacities = [...composeIntoCapacities, capacityId];
-		}
+		// Add to store with initial quantity of 0
+		const current = get(userDesiredComposeInto);
+		const updated = {
+			...current,
+			[capacity.id]: {
+				...current[capacity.id],
+				[capacityId]: 0
+			}
+		};
+		userDesiredComposeInto.set(updated);
 
 		showComposeIntoDropdown = false;
 	}
 
 	// Remove capacity from compose from list
 	function removeComposeFrom(capacityId: string) {
-		composeFromCapacities = composeFromCapacities.filter((id) => id !== capacityId);
+		const current = get(userDesiredComposeFrom);
+		if (current[capacity.id]) {
+			const { [capacityId]: _, ...remainingDesires } = current[capacity.id];
+			const updated = {
+				...current,
+				[capacity.id]: remainingDesires
+			};
+			userDesiredComposeFrom.set(updated);
+		}
 	}
 
 	// Remove capacity from compose into list
 	function removeComposeInto(capacityId: string) {
-		composeIntoCapacities = composeIntoCapacities.filter((id) => id !== capacityId);
+		const current = get(userDesiredComposeInto);
+		if (current[capacity.id]) {
+			const { [capacityId]: _, ...remainingDesires } = current[capacity.id];
+			const updated = {
+				...current,
+				[capacity.id]: remainingDesires
+			};
+			userDesiredComposeInto.set(updated);
+		}
 	}
 
 	// Close dropdowns
@@ -401,21 +483,19 @@
 	function handleComposeIntoDropdownClose() {
 		showComposeIntoDropdown = false;
 	}
-
-	// Get current user name for composition activities
-	async function getCurrentUserName(): Promise<string> {
-		// For provider capacity, we are the provider, so we need our own name
-		// This is a bit of a hack since we don't have direct access to our our user info here
-		// In a real implementation, this would come from a user context
-		return 'You'; // Placeholder - could be improved with proper user context
-	}
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded}>
 	<!-- Recipient shares bar -->
 	{#if recipientSegments.length > 0}
 		<div class="recipient-shares-bar mb-1">
-			<Bar segments={recipientSegments} height="8px" rounded={true} backgroundColor="#f3f4f6" />
+			<Bar
+				segments={recipientSegments}
+				height="8px"
+				rounded={true}
+				backgroundColor="#f3f4f6"
+				showLabelsAboveOnSelect={true}
+			/>
 		</div>
 	{/if}
 
@@ -571,10 +651,10 @@
 						</button>
 
 						<!-- Compose from items -->
-						{#if composeFromCapacities.length > 0}
+						{#if composeFromCapacities().length > 0}
 							<div class="composition-items space-y-2">
-								{#each composeFromCapacities as capacityId}
-									{@const theirCapacity = capacityDataProvider.items.find(
+								{#each composeFromCapacities() as capacityId}
+									{@const theirCapacity = composeFromDataProvider.items.find(
 										(item) => item.id === capacityId
 									)?.metadata}
 									{#if theirCapacity}
@@ -584,8 +664,8 @@
 												id: capacity.id,
 												name: capacity.name,
 												emoji: capacity.emoji,
-												unit: capacity.unit,
-												quantity: capacity.quantity,
+												unit: capacity.unit || 'unit',
+												quantity: capacity.quantity || 0,
 												provider_name: 'You'
 											}}
 											theirCapacity={{
@@ -597,13 +677,6 @@
 											expanded={expandedCompositions[compositionKey] || false}
 											onToggle={() => toggleComposition(compositionKey)}
 										/>
-										<button
-											type="button"
-											class="remove-composition-btn text-xs"
-											onclick={() => removeComposeFrom(capacityId)}
-										>
-											Remove
-										</button>
 									{/if}
 								{/each}
 							</div>
@@ -632,10 +705,10 @@
 						</button>
 
 						<!-- Compose into items -->
-						{#if composeIntoCapacities.length > 0}
+						{#if composeIntoCapacities().length > 0}
 							<div class="composition-items space-y-2">
-								{#each composeIntoCapacities as capacityId}
-									{@const theirCapacity = capacityDataProvider.items.find(
+								{#each composeIntoCapacities() as capacityId}
+									{@const theirCapacity = composeIntoDataProvider.items.find(
 										(item) => item.id === capacityId
 									)?.metadata}
 									{#if theirCapacity}
@@ -645,25 +718,19 @@
 												id: capacity.id,
 												name: capacity.name,
 												emoji: capacity.emoji,
-												unit: capacity.unit,
-												quantity: capacity.quantity,
+												unit: capacity.unit || 'unit',
+												quantity: capacity.quantity || 0,
 												provider_name: 'You'
 											}}
 											theirCapacity={{
 												...theirCapacity,
-												id: capacityId
+												id: capacityId,
+												provider_id: theirCapacity.owner_id || theirCapacity.provider_id
 											}}
 											direction="into"
 											expanded={expandedCompositions[compositionKey] || false}
 											onToggle={() => toggleComposition(compositionKey)}
 										/>
-										<button
-											type="button"
-											class="remove-composition-btn text-xs"
-											onclick={() => removeComposeInto(capacityId)}
-										>
-											Remove
-										</button>
 									{/if}
 								{/each}
 							</div>
@@ -1031,8 +1098,8 @@
 		position={composeFromDropdownPosition}
 		show={showComposeFromDropdown}
 		title="Select Capacity to Compose From"
-		searchPlaceholder="Search capacities..."
-		dataProvider={capacityDataProvider}
+		searchPlaceholder="Search capacities you have shares in..."
+		dataProvider={composeFromDataProvider}
 		select={handleComposeFromSelect}
 		close={handleComposeFromDropdownClose}
 	/>
@@ -1044,8 +1111,8 @@
 		position={composeIntoDropdownPosition}
 		show={showComposeIntoDropdown}
 		title="Select Capacity to Compose Into"
-		searchPlaceholder="Search capacities..."
-		dataProvider={capacityDataProvider}
+		searchPlaceholder="Search all network capacities..."
+		dataProvider={composeIntoDataProvider}
 		select={handleComposeIntoSelect}
 		close={handleComposeIntoDropdownClose}
 	/>

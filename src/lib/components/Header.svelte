@@ -14,8 +14,13 @@
 		userTree,
 		isAuthenticating
 	} from '$lib/state.svelte';
-	import { findNodeById, addChild, createNonRootNode } from '$lib/protocol';
-	import { type Node as TreeNode, type RootNode } from '$lib/schema';
+	import {
+		findNodeById,
+		addChild,
+		createNonRootNode,
+		searchTreeForNavigation
+	} from '$lib/protocol';
+	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
 
 	// Define type for path info
@@ -75,12 +80,21 @@
 		});
 	});
 
+	// Effect to scroll breadcrumbs when path changes
+	$effect(() => {
+		// React to currentPathInfo changes
+		currentPathInfo;
+		// Scroll to end when path changes
+		scrollBreadcrumbsToEnd();
+	});
+
 	// Subscribe to userTree changes to ensure UI updates
 	onMount(() => {
 		const unsubscribe = userTree.subscribe((value) => {
 			if (value) {
 				console.log('[UI FLOW] Header userTree updated, triggering UI update');
 				triggerUpdate();
+				scrollBreadcrumbsToEnd();
 			}
 		});
 
@@ -88,6 +102,7 @@
 		const unsubscribePath = currentPath.subscribe((value) => {
 			console.log('[UI FLOW] Header path updated:', value);
 			triggerUpdate();
+			scrollBreadcrumbsToEnd();
 		});
 
 		return () => {
@@ -120,6 +135,22 @@
 	let showPassword = $state(false);
 	let agreedToTerms = $state(false); // Added for terms agreement
 
+	// Notification state
+	let showNotificationPanel = $state(false);
+
+	// Search state
+	let showSearchPanel = $state(false);
+	let searchQuery = $state('');
+	let searchResults = $state<
+		Array<{
+			node: Node;
+			navigationPath: string[];
+			displayPath: string;
+			score: number;
+		}>
+	>([]);
+	let selectedResultIndex = $state(0);
+
 	// Initialize error state with URL error message if present
 	$effect(() => {
 		const urlError = $page.url.searchParams.get('error');
@@ -132,6 +163,10 @@
 	// Click outside handler
 	let headerRef = $state<HTMLElement | null>(null);
 	let loginPanelRef = $state<HTMLElement | null>(null);
+	let notificationPanelRef = $state<HTMLElement | null>(null);
+	let searchPanelRef = $state<HTMLElement | null>(null);
+	let searchInputRef = $state<HTMLInputElement | null>(null);
+	let breadcrumbsRef = $state<HTMLElement | null>(null);
 
 	// Check auth status and show login automatically
 	onMount(() => {
@@ -149,6 +184,39 @@
 				// Don't close the login panel if clicking on header control buttons
 				if (!isHeaderControlButton) {
 					showLoginPanel = false;
+				}
+			}
+
+			if (
+				showNotificationPanel &&
+				notificationPanelRef &&
+				!notificationPanelRef.contains(event.target as EventTarget & HTMLElement)
+			) {
+				// Check if the click is on any header control buttons
+				const target = event.target as HTMLElement;
+				const isHeaderControlButton = target.closest('.header-controls');
+
+				// Don't close the notification panel if clicking on header control buttons
+				if (!isHeaderControlButton) {
+					showNotificationPanel = false;
+				}
+			}
+
+			if (
+				showSearchPanel &&
+				searchPanelRef &&
+				!searchPanelRef.contains(event.target as EventTarget & HTMLElement)
+			) {
+				// Check if the click is on any header control buttons
+				const target = event.target as HTMLElement;
+				const isHeaderControlButton = target.closest('.header-controls');
+
+				// Don't close the search panel if clicking on header control buttons
+				if (!isHeaderControlButton) {
+					showSearchPanel = false;
+					searchQuery = '';
+					searchResults = [];
+					selectedResultIndex = 0;
 				}
 			}
 		}
@@ -173,6 +241,23 @@
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
 			resetForm();
+		}
+	}
+
+	// Toggle notification panel
+	function toggleNotificationPanel() {
+		showNotificationPanel = !showNotificationPanel;
+	}
+
+	// Function to scroll breadcrumbs to show the rightmost (current) item
+	function scrollBreadcrumbsToEnd() {
+		if (breadcrumbsRef) {
+			// Small delay to ensure DOM is updated
+			setTimeout(() => {
+				if (breadcrumbsRef) {
+					breadcrumbsRef.scrollLeft = breadcrumbsRef.scrollWidth;
+				}
+			}, 50);
 		}
 	}
 
@@ -488,13 +573,126 @@
 			globalState.showToast('Failed to copy tree data', 'error');
 		}
 	}
+
+	// Search functionality - now using improved protocol.ts functions
+
+	// Toggle search panel
+	function toggleSearchPanel() {
+		showSearchPanel = !showSearchPanel;
+
+		if (showSearchPanel) {
+			// Close other panels
+			showLoginPanel = false;
+			showNotificationPanel = false;
+
+			// Focus search input after a short delay
+			setTimeout(() => {
+				if (searchInputRef) {
+					searchInputRef.focus();
+				}
+			}, 100);
+		} else {
+			// Clear search when closing
+			searchQuery = '';
+			searchResults = [];
+			selectedResultIndex = 0;
+		}
+	}
+
+	// Handle search input changes
+	function handleSearchInput() {
+		if (!searchQuery.trim() || !tree) {
+			searchResults = [];
+			selectedResultIndex = 0;
+			return;
+		}
+
+		const results = searchTreeForNavigation(tree, searchQuery);
+		searchResults = results;
+		selectedResultIndex = 0;
+
+		// Navigate to first result if available
+		if (results.length > 0) {
+			previewSearchResult(results[0]);
+		}
+	}
+
+	// Preview a search result by navigating to it
+	function previewSearchResult(result: {
+		node: Node;
+		navigationPath: string[];
+		displayPath: string;
+		score: number;
+	}) {
+		if (!user) return;
+
+		// Navigate to the result's navigation path
+		globalState.navigateToPath(result.navigationPath);
+	}
+
+	// Navigate to selected search result
+	function navigateToSearchResult(result: {
+		node: Node;
+		navigationPath: string[];
+		displayPath: string;
+		score: number;
+	}) {
+		if (!user) {
+			showLoginPanel = true;
+			return;
+		}
+
+		// Navigate to the result
+		globalState.navigateToPath(result.navigationPath);
+
+		// Close search panel
+		toggleSearchPanel();
+
+		globalState.showToast(`Navigated to "${result.node.name}"`, 'success');
+	}
+
+	// Handle keyboard navigation in search
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (!searchResults.length) return;
+
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				selectedResultIndex = Math.min(selectedResultIndex + 1, searchResults.length - 1);
+				previewSearchResult(searchResults[selectedResultIndex]);
+				break;
+
+			case 'ArrowUp':
+				event.preventDefault();
+				selectedResultIndex = Math.max(selectedResultIndex - 1, 0);
+				previewSearchResult(searchResults[selectedResultIndex]);
+				break;
+
+			case 'Enter':
+				event.preventDefault();
+				if (searchResults[selectedResultIndex]) {
+					navigateToSearchResult(searchResults[selectedResultIndex]);
+				}
+				break;
+
+			case 'Escape':
+				event.preventDefault();
+				toggleSearchPanel();
+				break;
+		}
+	}
+
+	// Reactive effect for search
+	$effect(() => {
+		handleSearchInput();
+	});
 </script>
 
 <div class="header" bind:this={headerRef}>
 	<!-- Main header row -->
 	<div class="header-main">
 		<div class="node-name">
-			<div class="breadcrumbs">
+			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">Loading...</div>
 				{:else if currentPathInfo.length === 0 && $username}
@@ -563,26 +761,43 @@
 		</div>
 
 		<div class="header-controls">
-			<button
-				class="icon-button recompose-button"
-				class:recompose-active={isRecomposeMode}
-				title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
-				onclick={handleRecompose}><span>↕️</span></button
-			>
+			{#if isSoulRoute}
+				<button
+					class="icon-button search-button"
+					class:search-active={showSearchPanel}
+					title="Search tree"
+					onclick={toggleSearchPanel}
+				>
+					<span>🔍</span>
+				</button>
+				<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
+					><span>➕</span></button
+				>
+				<button
+					class="icon-button recompose-button"
+					class:recompose-active={isRecomposeMode}
+					title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+					onclick={handleRecompose}><span>↕️</span></button
+				>
+				<button
+					class="icon-button delete-button"
+					class:delete-active={isDeleteMode}
+					title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
+					onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
+				>
+			{/if}
 
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
 
-			<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
-				><span>➕</span></button
-			>
 			<button
-				class="icon-button delete-button"
-				class:delete-active={isDeleteMode}
-				title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
-				onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
+				class="icon-button notification-button"
+				title="View notifications"
+				onclick={toggleNotificationPanel}
 			>
+				<span>🔔</span>
+			</button>
 		</div>
 	</div>
 
@@ -763,6 +978,71 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Notification panel (dropdown) -->
+	{#if showNotificationPanel}
+		<div class="notification-panel" bind:this={notificationPanelRef}>
+			<div class="notification-content">
+				<h3>Notifications</h3>
+				<p class="feature-message">This feature is not implemented yet</p>
+				<div class="actions">
+					<button class="close-btn" onclick={toggleNotificationPanel}>Close</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Search panel (dropdown) -->
+	{#if showSearchPanel}
+		<div class="search-panel" bind:this={searchPanelRef}>
+			<div class="search-content">
+				<h3>Search Tree</h3>
+				<div class="search-input-container">
+					<input
+						type="text"
+						bind:this={searchInputRef}
+						bind:value={searchQuery}
+						placeholder="Type to search nodes..."
+						class="search-input"
+						onkeydown={handleSearchKeydown}
+					/>
+					<span class="search-icon">🔍</span>
+				</div>
+
+				{#if searchResults.length > 0}
+					<div class="search-results">
+						{#each searchResults as result, index}
+							<button
+								class="search-result"
+								class:selected={index === selectedResultIndex}
+								onclick={() => navigateToSearchResult(result)}
+								title={`Navigate to ${result.node.name}`}
+							>
+								<div class="result-info">
+									<span class="result-name">{result.node.name}</span>
+									<span class="result-path">{result.displayPath}</span>
+								</div>
+							</button>
+						{/each}
+					</div>
+				{:else if searchQuery.trim()}
+					<div class="no-results">
+						<p>No nodes found matching "{searchQuery}"</p>
+					</div>
+				{/if}
+
+				<div class="search-help">
+					<p>
+						<kbd>↑</kbd><kbd>↓</kbd> to navigate • <kbd>Enter</kbd> to select • <kbd>Esc</kbd> to close
+					</p>
+				</div>
+
+				<div class="actions">
+					<button class="close-btn" onclick={toggleSearchPanel}>Close</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -798,6 +1078,19 @@
 		animation: dropDown 0.2s ease-out;
 	}
 
+	.notification-panel {
+		position: absolute;
+		top: calc(100% - 8px);
+		right: 16px;
+		width: 280px;
+		background-color: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border-radius: 8px;
+		padding: 16px;
+		z-index: 10;
+		animation: dropDown 0.2s ease-out;
+	}
+
 	@keyframes dropDown {
 		from {
 			opacity: 0;
@@ -815,6 +1108,19 @@
 		position: absolute;
 		top: -8px;
 		left: 24px;
+		width: 16px;
+		height: 16px;
+		background-color: white;
+		transform: rotate(45deg);
+		box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.05);
+	}
+
+	/* Adding a pointer/arrow to the notification panel */
+	.notification-panel::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		right: 24px;
 		width: 16px;
 		height: 16px;
 		background-color: white;
@@ -1366,5 +1672,198 @@
 	.copy-icon {
 		flex-shrink: 0;
 		font-size: 1.1em;
+	}
+
+	/* Notification panel styles */
+	.notification-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.notification-content h3 {
+		margin-top: 0;
+		margin-bottom: 16px;
+		font-size: 1.2em;
+		color: #333;
+	}
+
+	.feature-message {
+		color: #666;
+		font-style: italic;
+		text-align: center;
+		margin: 20px 0;
+		padding: 16px;
+		background: #f5f5f5;
+		border-radius: 4px;
+		border-left: 3px solid #2196f3;
+	}
+
+	/* Search panel styles */
+	.search-panel {
+		position: absolute;
+		top: calc(100% - 8px);
+		right: 60px;
+		width: 350px;
+		max-height: 500px;
+		background-color: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border-radius: 8px;
+		padding: 16px;
+		z-index: 10;
+		animation: dropDown 0.2s ease-out;
+		overflow-y: auto;
+	}
+
+	.search-panel::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		right: 24px;
+		width: 16px;
+		height: 16px;
+		background-color: white;
+		transform: rotate(45deg);
+		box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.05);
+	}
+
+	.search-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.search-content h3 {
+		margin-top: 0;
+		margin-bottom: 16px;
+		font-size: 1.2em;
+		color: #333;
+	}
+
+	.search-input-container {
+		position: relative;
+		margin-bottom: 16px;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 10px 40px 10px 12px;
+		border: 2px solid #e0e0e0;
+		border-radius: 6px;
+		font-size: 0.95em;
+		background: #fafafa;
+		transition: all 0.2s ease;
+	}
+
+	.search-input:focus {
+		outline: none;
+		border-color: #2196f3;
+		background: white;
+		box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+	}
+
+	.search-icon {
+		position: absolute;
+		right: 12px;
+		top: 50%;
+		transform: translateY(-50%);
+		color: #666;
+		font-size: 16px;
+		pointer-events: none;
+	}
+
+	.search-results {
+		max-height: 300px;
+		overflow-y: auto;
+		margin-bottom: 16px;
+		border-radius: 6px;
+		border: 1px solid #e0e0e0;
+	}
+
+	.search-result {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 12px;
+		border: none;
+		background: white;
+		text-align: left;
+		cursor: pointer;
+		transition: background-color 0.2s ease;
+		border-bottom: 1px solid #f0f0f0;
+	}
+
+	.search-result:last-child {
+		border-bottom: none;
+	}
+
+	.search-result:hover,
+	.search-result.selected {
+		background-color: #f5f9ff;
+		border-left: 3px solid #2196f3;
+	}
+
+	.result-info {
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.result-name {
+		font-weight: 600;
+		color: #333;
+		margin-bottom: 2px;
+	}
+
+	.result-path {
+		font-size: 0.8em;
+		color: #666;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.no-results {
+		text-align: center;
+		padding: 20px;
+		color: #666;
+		background: #f9f9f9;
+		border-radius: 6px;
+		margin-bottom: 16px;
+	}
+
+	.search-help {
+		margin-bottom: 16px;
+		text-align: center;
+	}
+
+	.search-help p {
+		margin: 0;
+		font-size: 0.8em;
+		color: #666;
+	}
+
+	.search-help kbd {
+		background: #f0f0f0;
+		border: 1px solid #ccc;
+		border-radius: 3px;
+		padding: 2px 6px;
+		font-size: 0.8em;
+		margin: 0 2px;
+	}
+
+	/* Search button active state */
+	.search-button.search-active {
+		background-color: #e3f2fd;
+		border: 2px solid #2196f3;
+		border-radius: 6px;
+		color: #1976d2;
+		box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+	}
+
+	.search-button.search-active:hover {
+		background-color: #bbdefb;
+		border-color: #1976d2;
+		transform: scale(1.05);
 	}
 </style>

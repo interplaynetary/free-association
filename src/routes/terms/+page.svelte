@@ -76,14 +76,6 @@ This protocol software is provided under [LICENSE_TYPE] open source license:
 - **No Liability**: Maximum liability limited to $0 (zero dollars)
 - **Use at Own Risk**: Users assume all risks of software usage
 
-## 📞 Contact & Legal Information
-
-**Protocol Development**: [DEV_EMAIL]  
-**Security Issues**: [SECURITY_EMAIL]  
-**Open Source Repository**: [REPOSITORY_URL]  
-**Legal Entity**: [COMPANY_NAME]  
-**Jurisdiction**: [JURISDICTION]
-
 ## ⚠️ FINAL PROTOCOL WARNINGS
 
 **🚨 YOU ARE THE OPERATOR**: By running this software, YOU become a peer operator in a distributed network

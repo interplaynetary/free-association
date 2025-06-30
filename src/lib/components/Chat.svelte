@@ -1,9 +1,14 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
-	import { onMount } from 'svelte';
-	import { username, userpub, user, gun, GUN } from '$lib/state/gun.svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { username, userpub, user } from '$lib/state/gun.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import SEA from 'gun/sea';
+	import {
+		subscribeToChat,
+		getChatMessages,
+		sendMessage as sendChatMessage,
+		unsubscribeFromChat
+	} from '$lib/state/chat.svelte';
 
 	interface ChatProps {
 		chatId?: string;
@@ -13,21 +18,17 @@
 
 	let { chatId = 'chat', placeholder = 'Type a message...', maxLength = 100 }: ChatProps = $props();
 
-	interface Message {
-		who: string;
-		what: string;
-		when: number;
-		whopub?: string; // Match ChatMessage interface
-	}
-
 	let newMessage = $state('');
-	let messages = $state<Message[]>([]);
 	let isSending = $state(false);
 
 	let scrollBottom: HTMLDivElement;
 	let lastScrollTop = $state(0);
 	let canAutoScroll = $state(true);
 	let unreadMessages = $state(false);
+
+	// Get reactive store for messages
+	let messagesStore: any;
+	let messages = $state<any[]>([]);
 
 	function autoScroll() {
 		setTimeout(() => {
@@ -49,43 +50,36 @@
 	}
 
 	onMount(() => {
-		// Remove the time filter to get all messages
-		// Get Messages (simplified like example)
-		gun
-			.get(chatId)
-			.map()
-			.on(async (data: any, key: string) => {
-				if (data) {
-					// Key for end-to-end encryption
-					const encryptionKey = '#foo';
+		// Subscribe to the chat - this will start background listening
+		subscribeToChat(chatId);
 
-					var message = {
-						// transform the data
-						who: await gun.user(data).get('alias'), // a user might lie who they are! So let the user system detect whose data it is.
-						what: (await SEA.decrypt(data.what, encryptionKey)) + '', // Use encryptionKey, not key
-						when: GUN.state.is(data, 'what'), // get the internal timestamp for the what property.
-						whopub: await gun.user(data).get('pub')
-					};
+		// Get the reactive store for this chat
+		messagesStore = getChatMessages(chatId);
 
-					if (message.what && message.when) {
-						// Check if message already exists to prevent duplicates
-						const messageExists = messages.some(
-							(m) => m.when === message.when && m.what === message.what
-						);
+		// Subscribe to store changes with reactive updates
+		const unsubscribe = messagesStore.subscribe((newMessages: any[]) => {
+			const previousLength = messages.length;
+			messages = newMessages;
 
-						if (!messageExists) {
-							// Add message and keep array sorted, but don't artificially limit to 100
-							messages = [...messages, message].sort((a, b) => a.when - b.when);
-
-							if (canAutoScroll) {
-								autoScroll();
-							} else {
-								unreadMessages = true;
-							}
-						}
-					}
+			// Auto-scroll for new messages
+			if (newMessages.length > previousLength) {
+				if (canAutoScroll) {
+					autoScroll();
+				} else {
+					unreadMessages = true;
 				}
-			});
+			}
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	});
+
+	onDestroy(() => {
+		// Optionally unsubscribe when component is destroyed
+		// Comment this out if you want to keep listening in background
+		// unsubscribeFromChat(chatId);
 	});
 
 	async function sendMessage() {
@@ -94,39 +88,12 @@
 		isSending = true;
 
 		try {
-			// Validate user is logged in
-			if (!user.is?.pub) {
-				throw new Error('You must be logged in to send messages');
-			}
-
-			const encryptionKey = '#foo';
-			const messageText = newMessage.trim();
-
-			console.log('Starting to send message:', messageText);
-
-			const secret = await SEA.encrypt(messageText, encryptionKey);
-
-			if (!secret) {
-				throw new Error('Failed to encrypt message');
-			}
-
-			console.log('Message encrypted, sending with userPub:', user.is.pub);
-
-			// Store message in user space and reference it in chat (like the example)
-			const message = user.get('all').set({ what: secret });
-			const index = new Date().toISOString();
-
-			console.log('Storing message reference in chat at index:', index);
-
-			// Put the message reference in the chat
-			await gun.get(chatId).get(index).put(message);
+			await sendChatMessage(chatId, newMessage.trim());
 
 			// Clear the input and scroll
 			newMessage = '';
 			canAutoScroll = true;
 			autoScroll();
-
-			console.log('Message sent successfully');
 		} catch (error) {
 			console.error('Error sending message:', error);
 			const errorMessage = error instanceof Error ? error.message : 'Failed to send message';

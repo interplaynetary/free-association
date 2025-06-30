@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import { userTree, nodesMap, userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
-import { usersList, userIds, userNamesCache, getUserName } from '$lib/state/gun.svelte';
+import { userIds, userNamesCache, getUserName } from '$lib/state/gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
 // await gun.user(data).get('pub') we can use this instead of .once
@@ -28,11 +28,15 @@ export function createUsersDataProvider(excludeIds: string[] = []): DropdownData
 
 	function loadUsers(searchQuery: string = '') {
 		// Get current reactive data
-		const allUserIds = get(userIds);
+		const onlineUserIds = get(userIds);
 		const namesCache = get(userNamesCache);
 
+		// Show all users we have cached names for (both online and offline)
+		const allUserIds = [...new Set([...onlineUserIds, ...Object.keys(namesCache)])];
+
 		console.log(`[USERS-PROVIDER] Loading users with query: "${searchQuery}"`);
-		console.log(`[USERS-PROVIDER] Available user IDs:`, allUserIds);
+		console.log(`[USERS-PROVIDER] Online user IDs:`, onlineUserIds);
+		console.log(`[USERS-PROVIDER] All cached user IDs:`, allUserIds);
 		console.log(`[USERS-PROVIDER] Names cache:`, namesCache);
 
 		// Filter and create dropdown items
@@ -80,10 +84,10 @@ export function createUsersDataProvider(excludeIds: string[] = []): DropdownData
 	// Set up reactive subscriptions to the centralized stores
 	$effect(() => {
 		// Watch for changes in userIds or userNamesCache
-		const allUserIds = get(userIds);
+		const onlineUserIds = get(userIds);
 		const namesCache = get(userNamesCache);
 
-		// Reload users when reactive data changes
+		// Reload users when either online users or cache changes
 		loadUsers(currentQuery);
 	});
 
@@ -249,6 +253,101 @@ export function createCapacitiesDataProvider(excludeCapacityId?: string): Dropdo
 		const networkCapacities = get(userNetworkCapacitiesWithShares);
 		// Reload capacities when network data changes
 		loadCapacities(currentQuery);
+	});
+
+	// Initial load
+	loadCapacities();
+
+	return {
+		get items() {
+			return items;
+		},
+		get loading() {
+			return loading;
+		},
+		search,
+		refresh
+	};
+}
+
+// All network capacities data provider (for compose-into)
+export function createAllNetworkCapacitiesDataProvider(
+	excludeCapacityId?: string
+): DropdownDataProvider {
+	let items = $state<DropdownItem[]>([]);
+	let loading = $state(false);
+	let currentQuery = $state('');
+
+	async function loadCapacities(searchQuery: string = '') {
+		try {
+			// Import networkCapacities here to avoid circular dependency
+			const { networkCapacities } = await import('$lib/state/core.svelte');
+			const allNetworkCapacities = get(networkCapacities);
+
+			if (!allNetworkCapacities) {
+				items = [];
+				return;
+			}
+
+			// Flatten all capacities from all users
+			const itemPromises: Promise<DropdownItem>[] = [];
+
+			Object.entries(allNetworkCapacities).forEach(([userId, userCapacities]) => {
+				Object.entries(userCapacities).forEach(([capacityId, capacity]) => {
+					// Skip excluded capacity
+					if (capacityId === excludeCapacityId) return;
+
+					itemPromises.push(
+						(async () => {
+							const ownerName = await getUserName(userId);
+							return {
+								id: capacityId,
+								name: `${capacity.emoji || '📦'} ${capacity.name} (${ownerName})`,
+								metadata: {
+									...capacity,
+									owner_id: userId,
+									provider_id: userId
+								}
+							};
+						})()
+					);
+				});
+			});
+
+			const allItems = await Promise.all(itemPromises);
+
+			// Apply search filter
+			if (searchQuery.trim()) {
+				const query = searchQuery.toLowerCase();
+				items = allItems.filter(
+					(item) => item.name.toLowerCase().includes(query) || item.id.toLowerCase().includes(query)
+				);
+			} else {
+				items = allItems;
+			}
+		} catch (error) {
+			console.error('Error loading all network capacities:', error);
+			items = [];
+		}
+	}
+
+	function search(query: string) {
+		currentQuery = query;
+		Promise.resolve(loadCapacities(query));
+	}
+
+	function refresh() {
+		Promise.resolve(loadCapacities(currentQuery));
+	}
+
+	// Set up reactive subscription to all network capacities
+	$effect(() => {
+		// Re-import to get current value
+		import('$lib/state/core.svelte').then(({ networkCapacities }) => {
+			const allNetworkCapacities = get(networkCapacities);
+			// Reload capacities when network data changes
+			loadCapacities(currentQuery);
+		});
 	});
 
 	// Initial load

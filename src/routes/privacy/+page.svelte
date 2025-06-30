@@ -84,14 +84,6 @@
 - We have no access to user data
 - All privacy controls are user-managed
 
-## 📞 Privacy Contact Information
-
-For privacy-related questions about the protocol (not user data):
-
-**Privacy Contact**: [PRIVACY_EMAIL]  
-**Legal Entity**: [COMPANY_NAME]  
-**Jurisdiction**: [JURISDICTION]
-
 ---
 
 **PRIVACY ACKNOWLEDGMENT**

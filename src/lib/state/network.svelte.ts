@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { gun, user, username, userpub, userIds, userNamesCache, usersList } from './gun.svelte';
+import { gun, user, userpub, userIds, userNamesCache, usersList } from './gun.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -15,11 +15,11 @@ import {
 	userDesiredComposeFrom,
 	userDesiredComposeInto,
 	networkDesiredComposeFrom,
-	networkDesiredComposeInto,
+	networkDesiredComposeInto
 } from '$lib/state/protocol/compose.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
-import { parseCapacities, parseTree } from '$lib/validation';
+import { parseCapacities, parseTree, parseUserComposition } from '$lib/validation';
 
 /**
  * Subscribe to our own tree data to detect external changes
@@ -30,7 +30,7 @@ import { parseCapacities, parseTree } from '$lib/validation';
  * Only updates local store if the incoming data differs from current state
  */
 export function subscribeToOwnTree() {
-	const ourId = user.is?.pub;
+	const ourId = get(userpub);
 	if (!ourId) {
 		console.log('[NETWORK] Cannot subscribe to own tree - not authenticated');
 		return;
@@ -95,7 +95,7 @@ export function subscribeToOwnTree() {
  * Subscribe to our own capacities data
  */
 export function subscribeToOwnCapacities() {
-	const ourId = user.is?.pub;
+	const ourId = get(userpub);
 	if (!ourId) {
 		console.log('[NETWORK] Cannot subscribe to own capacities - not authenticated');
 		return;
@@ -148,7 +148,7 @@ export function subscribeToOwnCapacities() {
  * Subscribe to our own desired compose-from data
  */
 export function subscribeToOwnDesiredComposeFrom() {
-	const ourId = user.is?.pub;
+	const ourId = get(userpub);
 	if (!ourId) {
 		console.log('[NETWORK] Cannot subscribe to own desired compose-from - not authenticated');
 		return;
@@ -164,49 +164,21 @@ export function subscribeToOwnDesiredComposeFrom() {
 
 		console.log('[NETWORK] Received desired compose-from update from network');
 
-		try {
-			// Parse and validate the compose-from data
-			let parsedComposeFrom: Record<string, Record<string, number>>;
-			if (typeof composeFromData === 'string') {
-				parsedComposeFrom = JSON.parse(composeFromData);
-			} else {
-				parsedComposeFrom = composeFromData;
-			}
+		// Parse and validate using Zod schema
+		const validatedComposeFrom = parseUserComposition(composeFromData);
 
-			// Validate the structure - now expecting absolute units (positive numbers)
-			const validatedComposeFrom: Record<string, Record<string, number>> = {};
-			Object.entries(parsedComposeFrom).forEach(([capacityId, desires]) => {
-				if (typeof desires === 'object' && desires !== null) {
-					const validatedDesires: Record<string, number> = {};
-					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
-						// Accept any positive number (absolute units, not limited to 0-1 range)
-						if (typeof amount === 'number' && amount >= 0) {
-							validatedDesires[targetCapacityId] = amount;
-						}
-					});
-					if (Object.keys(validatedDesires).length > 0) {
-						validatedComposeFrom[capacityId] = validatedDesires;
-					}
-				}
-			});
-
-			// Get current state and compare
-			const currentComposeFrom = get(userDesiredComposeFrom);
-			if (
-				currentComposeFrom &&
-				JSON.stringify(currentComposeFrom) === JSON.stringify(validatedComposeFrom)
-			) {
-				console.log(
-					'[NETWORK] Incoming compose-from matches current compose-from, ignoring update'
-				);
-				return;
-			}
-
-			console.log('[NETWORK] Desired compose-from data changed, updating local store');
-			userDesiredComposeFrom.set(validatedComposeFrom);
-		} catch (error) {
-			console.error('[NETWORK] Error parsing own desired compose-from:', error);
+		// Get current state and compare
+		const currentComposeFrom = get(userDesiredComposeFrom);
+		if (
+			currentComposeFrom &&
+			JSON.stringify(currentComposeFrom) === JSON.stringify(validatedComposeFrom)
+		) {
+			console.log('[NETWORK] Incoming compose-from matches current compose-from, ignoring update');
+			return;
 		}
+
+		console.log('[NETWORK] Desired compose-from data changed, updating local store');
+		userDesiredComposeFrom.set(validatedComposeFrom);
 	});
 }
 
@@ -214,7 +186,7 @@ export function subscribeToOwnDesiredComposeFrom() {
  * Subscribe to our own desired compose-into data
  */
 export function subscribeToOwnDesiredComposeInto() {
-	const ourId = user.is?.pub;
+	const ourId = get(userpub);
 	if (!ourId) {
 		console.log('[NETWORK] Cannot subscribe to own desired compose-into - not authenticated');
 		return;
@@ -230,49 +202,21 @@ export function subscribeToOwnDesiredComposeInto() {
 
 		console.log('[NETWORK] Received desired compose-into update from network');
 
-		try {
-			// Parse and validate the compose-into data
-			let parsedComposeInto: Record<string, Record<string, number>>;
-			if (typeof composeIntoData === 'string') {
-				parsedComposeInto = JSON.parse(composeIntoData);
-			} else {
-				parsedComposeInto = composeIntoData;
-			}
+		// Parse and validate using Zod schema
+		const validatedComposeInto = parseUserComposition(composeIntoData);
 
-			// Validate the structure - now expecting absolute units (positive numbers)
-			const validatedComposeInto: Record<string, Record<string, number>> = {};
-			Object.entries(parsedComposeInto).forEach(([capacityId, desires]) => {
-				if (typeof desires === 'object' && desires !== null) {
-					const validatedDesires: Record<string, number> = {};
-					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
-						// Accept any positive number (absolute units, not limited to 0-1 range)
-						if (typeof amount === 'number' && amount >= 0) {
-							validatedDesires[targetCapacityId] = amount;
-						}
-					});
-					if (Object.keys(validatedDesires).length > 0) {
-						validatedComposeInto[capacityId] = validatedDesires;
-					}
-				}
-			});
-
-			// Get current state and compare
-			const currentComposeInto = get(userDesiredComposeInto);
-			if (
-				currentComposeInto &&
-				JSON.stringify(currentComposeInto) === JSON.stringify(validatedComposeInto)
-			) {
-				console.log(
-					'[NETWORK] Incoming compose-into matches current compose-into, ignoring update'
-				);
-				return;
-			}
-
-			console.log('[NETWORK] Desired compose-into data changed, updating local store');
-			userDesiredComposeInto.set(validatedComposeInto);
-		} catch (error) {
-			console.error('[NETWORK] Error parsing own desired compose-into:', error);
+		// Get current state and compare
+		const currentComposeInto = get(userDesiredComposeInto);
+		if (
+			currentComposeInto &&
+			JSON.stringify(currentComposeInto) === JSON.stringify(validatedComposeInto)
+		) {
+			console.log('[NETWORK] Incoming compose-into matches current compose-into, ignoring update');
+			return;
 		}
+
+		console.log('[NETWORK] Desired compose-into data changed, updating local store');
+		userDesiredComposeInto.set(validatedComposeInto);
 	});
 }
 
@@ -292,15 +236,13 @@ function setupUsersListSubscription() {
 		if (!userId || userId === '_') return; // Skip invalid keys
 
 		if (userData === null || userData === undefined) {
-			// User was removed
-			console.log(`[USERS] User removed: ${userId}`);
+			// User was removed from usersList (they went offline or left the shared space)
+			console.log(`[USERS] User removed from usersList: ${userId}`);
 			currentUsers.delete(userId);
 
-			// Update userNamesCache to remove this user
-			userNamesCache.update((cache) => {
-				const { [userId]: _, ...rest } = cache;
-				return rest;
-			});
+			// Note: We intentionally don't remove from userNamesCache here
+			// because the cache serves a different purpose (performance optimization)
+			// and this user might still be referenced in our tree as a contributor
 		} else {
 			// User was added or updated
 			// console.log(`[USERS] User added/updated: ${userId}`, userData);
@@ -315,9 +257,9 @@ function setupUsersListSubscription() {
 					[userId]: userName
 				}));
 			} else {
-				// Try to get alias from user's protected space
+				// Try to get alias from user's protected space using Gun's user system
 				gun
-					.get(`~${userId}`)
+					.user(userId) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						if (alias && typeof alias === 'string') {
@@ -342,7 +284,7 @@ function setupUsersListSubscription() {
  * Initialize all user data subscriptions
  */
 export function initializeUserDataSubscriptions() {
-	if (!user.is?.pub) {
+	if (!get(userpub)) {
 		console.log('[NETWORK] Cannot initialize subscriptions - not authenticated');
 		return;
 	}
@@ -352,7 +294,6 @@ export function initializeUserDataSubscriptions() {
 	// Set up all subscriptions (each handles its own loading state)
 	subscribeToOwnTree();
 	subscribeToOwnCapacities();
-	// Note: SOGF is calculated from tree, not loaded from storage
 	subscribeToOwnDesiredComposeFrom();
 	subscribeToOwnDesiredComposeInto();
 }
@@ -425,7 +366,7 @@ function setupTimeoutProtection(contributorId: string, dataType: string) {
 export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
-	const contributorSogf = gun.get(`~${contributorId}`).get('sogf');
+	const contributorSogf = gun.user(contributorId).get('sogf'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
@@ -434,7 +375,7 @@ export function subscribeToContributorSOGF(contributorId: string) {
 		console.log(`[NETWORK] Received SOGF update from ${contributorId}`);
 
 		// Get our user ID
-		const ourId = user.is?.pub;
+		const ourId = get(userpub);
 		if (!ourId) return;
 
 		// Extract our share from their SOGF
@@ -460,7 +401,7 @@ export function subscribeToContributorSOGF(contributorId: string) {
 export function subscribeToContributorCapacities(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s capacities`);
 
-	const contributorCapacities = gun.get(`~${contributorId}`).get('capacities');
+	const contributorCapacities = gun.user(contributorId).get('capacities'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCapacities.on((capacitiesData: any) => {
@@ -469,7 +410,7 @@ export function subscribeToContributorCapacities(contributorId: string) {
 		console.log(`[NETWORK] Received capacities update from ${contributorId}:`, capacitiesData);
 
 		// Get our user ID
-		const ourId = user.is?.pub;
+		const ourId = get(userpub);
 		if (!ourId) return;
 
 		// Parse and validate the capacities data
@@ -508,7 +449,7 @@ export function subscribeToContributorCapacities(contributorId: string) {
  * @param contributorId The contributor to subscribe to
  */
 export function subscribeToContributorCapacityShares(contributorId: string) {
-	const ourId = user.is?.pub;
+	const ourId = get(userpub);
 	if (!ourId) {
 		console.log('[NETWORK] Cannot subscribe to capacity shares - not authenticated');
 		return;
@@ -520,7 +461,7 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 
 	// Subscribe to our capacity shares from this contributor
 	gun
-		.get(`~${contributorId}`)
+		.user(contributorId) // Use Gun's user system
 		.get('capacityShares')
 		.get(ourId)
 		.on((shares: any) => {
@@ -588,7 +529,7 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 export function subscribeToContributorDesiredComposeFrom(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-from`);
 
-	const contributorCompositions = gun.get(`~${contributorId}`).get('desiredComposeFrom');
+	const contributorCompositions = gun.user(contributorId).get('desiredComposeFrom'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCompositions.on((compositionsData: any) => {
@@ -606,59 +547,30 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 			compositionsData
 		);
 
-		try {
-			// Parse and validate the compositions data
-			let parsedCompositions: Record<string, Record<string, number>>;
-			if (typeof compositionsData === 'string') {
-				parsedCompositions = JSON.parse(compositionsData);
-			} else {
-				parsedCompositions = compositionsData;
-			}
+		// Parse and validate using Zod schema
+		const validatedCompositions = parseUserComposition(compositionsData);
 
-			// Validate the structure - now expecting absolute units (positive numbers)
-			const validatedCompositions: Record<string, Record<string, number>> = {};
-			Object.entries(parsedCompositions).forEach(([capacityId, desires]) => {
-				if (typeof desires === 'object' && desires !== null) {
-					const validatedDesires: Record<string, number> = {};
-					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
-						// Accept any positive number (absolute units, not limited to 0-1 range)
-						if (typeof amount === 'number' && amount >= 0) {
-							validatedDesires[targetCapacityId] = amount;
-						}
-					});
-					if (Object.keys(validatedDesires).length > 0) {
-						validatedCompositions[capacityId] = validatedDesires;
-					}
-				}
-			});
+		// Check if these compositions match our current network state
+		const currentNetworkCompositions = get(networkDesiredComposeFrom)[contributorId] || {};
+		const isUnchanged =
+			JSON.stringify(validatedCompositions) === JSON.stringify(currentNetworkCompositions);
 
-			// Check if these compositions match our current network state
-			const currentNetworkCompositions = get(networkDesiredComposeFrom)[contributorId] || {};
-			const isUnchanged =
-				JSON.stringify(validatedCompositions) === JSON.stringify(currentNetworkCompositions);
-
-			if (isUnchanged) {
-				console.log(
-					`[NETWORK] Ignoring duplicate desired compositions update for contributor ${contributorId}`
-				);
-				return;
-			}
-
-			// Update the networkDesiredComposeFrom store
-			networkDesiredComposeFrom.update((current) => ({
-				...current,
-				[contributorId]: validatedCompositions
-			}));
-
+		if (isUnchanged) {
 			console.log(
-				`[NETWORK] Updated desired compositions for ${contributorId}: ${Object.keys(validatedCompositions).length} capacities with composition desires`
+				`[NETWORK] Ignoring duplicate desired compositions update for contributor ${contributorId}`
 			);
-		} catch (error) {
-			console.error(
-				`[NETWORK] Error parsing/validating desired compositions from contributor ${contributorId}:`,
-				error
-			);
+			return;
 		}
+
+		// Update the networkDesiredComposeFrom store
+		networkDesiredComposeFrom.update((current) => ({
+			...current,
+			[contributorId]: validatedCompositions
+		}));
+
+		console.log(
+			`[NETWORK] Updated desired compositions for ${contributorId}: ${Object.keys(validatedCompositions).length} capacities with composition desires`
+		);
 	});
 }
 
@@ -669,7 +581,7 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 export function subscribeToContributorDesiredComposeInto(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-into`);
 
-	const contributorComposeInto = gun.get(`~${contributorId}`).get('desiredComposeInto');
+	const contributorComposeInto = gun.user(contributorId).get('desiredComposeInto'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorComposeInto.on((composeIntoData: any) => {
@@ -687,60 +599,31 @@ export function subscribeToContributorDesiredComposeInto(contributorId: string) 
 			composeIntoData
 		);
 
-		try {
-			// Parse and validate the compose-into data
-			let parsedComposeInto: Record<string, Record<string, number>>;
-			if (typeof composeIntoData === 'string') {
-				parsedComposeInto = JSON.parse(composeIntoData);
-			} else {
-				parsedComposeInto = composeIntoData;
-			}
+		// Parse and validate using Zod schema
+		const validatedComposeInto = parseUserComposition(composeIntoData);
 
-			// Validate the structure - now expecting absolute units (positive numbers)
-			const validatedComposeInto: Record<string, Record<string, number>> = {};
-			Object.entries(parsedComposeInto).forEach(([capacityId, desires]) => {
-				if (typeof desires === 'object' && desires !== null) {
-					const validatedDesires: Record<string, number> = {};
-					Object.entries(desires).forEach(([targetCapacityId, amount]) => {
-						// Accept any positive number (absolute units, not limited to 0-1 range)
-						if (typeof amount === 'number' && amount >= 0) {
-							validatedDesires[targetCapacityId] = amount;
-						}
-					});
-					if (Object.keys(validatedDesires).length > 0) {
-						validatedComposeInto[capacityId] = validatedDesires;
-					}
-				}
-			});
+		// Check if these compose-into desires match our current network state
+		const currentNetworkComposeInto = get(networkDesiredComposeInto)[contributorId] || {};
+		const isUnchanged =
+			JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
 
-			// Check if these compose-into desires match our current network state
-			const currentNetworkComposeInto = get(networkDesiredComposeInto)[contributorId] || {};
-			const isUnchanged =
-				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
-
-			if (isUnchanged) {
-				console.log(
-					`[NETWORK] Ignoring duplicate desired compose-into update for contributor ${contributorId}`
-				);
-				return;
-			}
-
-			// Update the networkDesiredComposeInto store
-			networkDesiredComposeInto.update((current) => ({
-				...current,
-				[contributorId]: validatedComposeInto
-			}));
-
+		if (isUnchanged) {
 			console.log(
-				`[NETWORK] Updated desired compose-into for ${contributorId}: ${Object.keys(validatedComposeInto).length} capacities with compose-into desires`
+				`[NETWORK] Ignoring duplicate desired compose-into update for contributor ${contributorId}`
 			);
-		} catch (error) {
-			console.error(
-				`[NETWORK] Error parsing/validating desired compose-into from contributor ${contributorId}:`,
-					error
-				);
-			}
-		});
+			return;
+		}
+
+		// Update the networkDesiredComposeInto store
+		networkDesiredComposeInto.update((current) => ({
+			...current,
+			[contributorId]: validatedComposeInto
+		}));
+
+		console.log(
+			`[NETWORK] Updated desired compose-into for ${contributorId}: ${Object.keys(validatedComposeInto).length} capacities with compose-into desires`
+		);
+	});
 }
 
 // Watch for changes to contributors and subscribe to get their SOGF data
@@ -751,7 +634,7 @@ contributors.subscribe((allContributors) => {
 	}
 
 	// Only run this if we're authenticated
-	if (!user.is?.pub) {
+	if (!get(userpub)) {
 		console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
 		return;
 	}
@@ -785,7 +668,7 @@ mutualContributors.subscribe((currentMutualContributors) => {
 	}
 
 	// Only run this if we're authenticated
-	if (!user.is?.pub) {
+	if (!get(userpub)) {
 		console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
 		return;
 	}

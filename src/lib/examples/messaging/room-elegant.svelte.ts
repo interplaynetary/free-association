@@ -191,7 +191,7 @@ export const Room = {
 
 		userIds.forEach((userId) => {
 			gun
-				.get(`~${userId}`)
+				.user(userId) // Use Gun's user system
 				.get('rooms')
 				.map()
 				.once((roomData: any, roomId: string) => {
@@ -223,7 +223,7 @@ function getMembershipPerspective(roomId: string, userId: string): string[] {
 	let perspective: string[] = [];
 
 	gun
-		.get(`~${userId}`)
+		.user(userId) // Use Gun's user system
 		.get('roomMembership')
 		.get(roomId)
 		.once((data: any) => {
@@ -247,7 +247,7 @@ function manifestRoom(roomId: string, members: string[]): void {
 
 		// Gun subscriptions are stored as the gun chain reference
 		const subscription = gun
-			.get(`~${memberId}`)
+			.user(memberId) // Use Gun's user system
 			.get('rooms')
 			.get(roomId)
 			.get('messages')

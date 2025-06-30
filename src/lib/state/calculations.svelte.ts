@@ -1,8 +1,5 @@
 import { get } from 'svelte/store';
-import {
-	sharesOfGeneralFulfillmentMap,
-	getAllContributorsFromTree,
-} from '$lib/protocol';
+import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol';
 import type { RootNode, Node, ShareMap, RecognitionCache } from '$lib/schema';
 import {
 	userTree,
@@ -150,12 +147,12 @@ export function recalculateFromTree() {
 							theirShare,
 							timestamp: Date.now()
 						};
-				
+
 						console.log(`[MUTUAL] Cache entry for ${contributorId}:`, {
 							old: oldEntry,
 							new: cache[contributorId]
 						});
-				
+
 						return cache;
 					});
 				});

@@ -1,0 +1,56 @@
+<!-- https://gun.eco/docs/FAQ#can-a-lost-password-be-recovered -->
+
+<script>
+    $.as.route.page('settings', () => {
+        if (!S.user.is) { return $.as.route('hi') }
+        $.as('#settings', S.user);
+
+        ; (() => {
+            $('#pet').on('keyup', function () { $('.pet').text(this.value.length + ' letters.') });
+            $('#kiss').on('keyup', function () { $('.kiss').text(this.value.length + ' letters.') });
+
+            S.user.get('settings').get('pet').on(function (l) { $('#pet').val(Gun.text.random(l, '*')) });
+            S.user.get('settings').get('kiss').on(function (l) { $('#kiss').val(Gun.text.random(l, '*')) });
+
+            $('#recovery').on('submit', async (e) => {
+                var pet = $('#pet').val();
+                var kiss = $('#kiss').val();
+                var reminder = $('#pw-reminder').val(); // NOTE: THIS IS TEMPORARY!
+                if (!pet) { return S.tell("Please fill out the pet question!") }
+                if (!kiss) { return S.tell("Please fill out the first kiss question!") }
+                if (!reminder) { return S.tell("You need a password reminder.") } // NOTE: THIS IS TEMPORARY!
+                if (1 + pet.indexOf('*') || 1 + kiss.indexOf('*')) { return S.tell("Your answer should not have '*' in it.") }
+                $('#recovery .act').addClass('pulse');
+                var recover = await Gun.SEA.encrypt(reminder, await Gun.SEA.work(pet, kiss));
+                // NOTE: We are currently doing this manually, in the future we want to
+                // just automatically log the user back in based off the security questions
+                // rather than only giving them a "reminder" of what theirold  password is.
+                S.user.get('settings').put({
+                    recover: recover,
+                    pet: pet.length,
+                    kiss: kiss.length
+                }, (ack) => {
+                    $('#recovery .act').removeClass('pulse');
+                    S.tell(ack.err || "Saved!");
+                    $('#pw-reminder').val(''); // NOTE: THIS IS TEMPORARY!
+                });
+            });
+        })();
+
+
+        ; (() => {
+            $('#reset').on('submit', (e) => {
+                var old = $('#oldpass').val();
+                var pass = $('#newpass').val() || '';
+                if (9 > pass.length) { return S.tell("Your passphrase needs to be longer than 9 letters.") }
+                if (!S.user.is) { return S.tell("You need to be logged in to do that.") }
+                $('#oldnew').addClass('pulse');
+                S.user.auth(S.user.is.alias, old, (ack) => {
+                    $('#oldnew').removeClass('pulse');
+                    S.tell(ack.err || "Saved!");
+                    $('#oldpass, #newpass').val('');
+                }, { change: pass });
+            });
+        })();
+    });
+</script>
