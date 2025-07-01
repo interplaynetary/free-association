@@ -219,6 +219,16 @@
 					>
 				</span>
 			</div>
+			<!-- Show description preview if available -->
+			{#if share.description}
+				<div class="description-preview mt-1 text-xs text-gray-600">
+					<span class="description-text">
+						{share.description.length > 50
+							? share.description.substring(0, 50) + '...'
+							: share.description}
+					</span>
+				</div>
+			{/if}
 			<!-- Show space-time preview inline if available -->
 			{#if hasSpaceTimeData(share)}
 				<div class="space-time-preview mt-1 text-xs text-gray-600">
@@ -256,6 +266,19 @@
 
 	{#if expanded}
 		<div class="expanded-content mt-2 space-y-3">
+			<!-- Description section -->
+			{#if share.description}
+				<div class="description-section rounded border border-gray-200 bg-gray-50 p-3">
+					<div class="description-header mb-2">
+						<h4 class="text-sm font-medium text-gray-700">📝 Description</h4>
+					</div>
+					<div class="description-content">
+						<p class="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
+							{share.description}
+						</p>
+					</div>
+				</div>
+			{/if}
 			<!-- Space-time coordinates section -->
 			{#if hasSpaceTimeData(share)}
 				<div class="space-time-coordinates rounded border border-gray-200 bg-blue-50 p-3">
@@ -381,6 +404,28 @@
 		content: ' • ';
 		color: #d1d5db;
 		margin-left: 0.25rem;
+	}
+
+	.description-preview {
+		line-height: 1.3;
+	}
+
+	.description-text {
+		font-style: italic;
+		color: #6b7280;
+	}
+
+	.description-section {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.description-header h4 {
+		margin: 0;
+	}
+
+	.description-content p {
+		margin: 0;
+		word-wrap: break-word;
 	}
 
 	.expanded-content {

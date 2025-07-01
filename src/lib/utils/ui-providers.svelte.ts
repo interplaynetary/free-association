@@ -8,6 +8,11 @@ import {
 import { userIds, userNamesCache } from '$lib/state/gun.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 
+// Helper function to get display name for a user
+function getDisplayName(userId: string, namesCache: Record<string, string>): string {
+	return namesCache[userId] || `${userId.substring(0, 8)}...`;
+}
+
 // Simple reactive users data provider
 export function createUsersDataProvider(excludeIds: string[] = []) {
 	return derived([userIds, userNamesCache], ([$userIds, $userNamesCache]) => {
@@ -61,27 +66,36 @@ export function createSubtreesDataProvider() {
 
 // Simple reactive capacities data provider
 export function createCapacitiesDataProvider(excludeCapacityId?: string) {
-	return derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (!$userNetworkCapacitiesWithShares) {
-			return [];
+	return derived(
+		[userNetworkCapacitiesWithShares, userNamesCache],
+		([$userNetworkCapacitiesWithShares, $userNamesCache]) => {
+			if (!$userNetworkCapacitiesWithShares) {
+				return [];
+			}
+
+			// Convert to dropdown items
+			const items = Object.entries($userNetworkCapacitiesWithShares)
+				.filter(([capacityId]) => capacityId !== excludeCapacityId)
+				.map(([capacityId, capacity]) => {
+					// Get provider name from capacity metadata
+					const providerId = (capacity as any).owner_id || (capacity as any).provider_id;
+					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
+
+					return {
+						id: capacityId,
+						name: `${capacity.emoji || '📦'} ${capacity.name} (${providerName})`,
+						metadata: capacity
+					};
+				});
+
+			return items;
 		}
-
-		// Convert to dropdown items
-		const items = Object.entries($userNetworkCapacitiesWithShares)
-			.filter(([capacityId]) => capacityId !== excludeCapacityId)
-			.map(([capacityId, capacity]) => ({
-				id: capacityId,
-				name: `${capacity.emoji || '📦'} ${capacity.name}`,
-				metadata: capacity
-			}));
-
-		return items;
-	});
+	);
 }
 
 // Simple reactive all network capacities data provider
 export function createAllNetworkCapacitiesDataProvider(excludeCapacityId?: string) {
-	return derived([networkCapacities], ([$networkCapacities]) => {
+	return derived([networkCapacities, userNamesCache], ([$networkCapacities, $userNamesCache]) => {
 		if (!$networkCapacities) {
 			return [];
 		}
@@ -90,13 +104,15 @@ export function createAllNetworkCapacitiesDataProvider(excludeCapacityId?: strin
 		const items: Array<{ id: string; name: string; metadata: any }> = [];
 
 		Object.entries($networkCapacities).forEach(([userId, userCapacities]) => {
+			const providerName = getDisplayName(userId, $userNamesCache);
+
 			Object.entries(userCapacities).forEach(([capacityId, capacity]) => {
 				// Skip excluded capacity
 				if (capacityId === excludeCapacityId) return;
 
 				items.push({
 					id: capacityId,
-					name: `${capacity.emoji || '📦'} ${capacity.name}`,
+					name: `${capacity.emoji || '📦'} ${capacity.name} (${providerName})`,
 					metadata: {
 						...capacity,
 						owner_id: userId,

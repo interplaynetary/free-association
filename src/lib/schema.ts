@@ -47,6 +47,7 @@ export const BaseCapacitySchema = z.object({
 			message: 'Unit must be text, not a number (e.g., "hours", "kg", "items")'
 		})
 	),
+	description: z.optional(z.string()),
 	max_natural_div: z.optional(z.number().gte(1)),
 	max_percentage_div: z.optional(PercentageSchema),
 

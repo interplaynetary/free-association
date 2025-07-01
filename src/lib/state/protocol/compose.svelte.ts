@@ -464,22 +464,25 @@ export const mutualFeasibleOurCapacities = derived(
 			const ourFeasibleAmount = $feasibleComposeFrom[ourCapacityId]?.[theirCapacityId] || 0;
 
 			if (ourFeasibleAmount > 0) {
+				// Mutual feasible is the minimum of our feasible amount and their desired amount
+				const mutualFeasibleAmount = Math.min(ourFeasibleAmount, mutualDesire.theirDesiredAmount);
+
 				const feasibleViability = calculateDesireAlignment(
-					ourFeasibleAmount,
+					mutualFeasibleAmount,
 					mutualDesire.theirDesiredAmount
 				);
 
-				const constraintRatio = ourFeasibleAmount / mutualDesire.ourDesiredAmount;
+				const constraintRatio = mutualFeasibleAmount / mutualDesire.ourDesiredAmount;
 
 				mutualFeasible[compositionKey] = {
 					...mutualDesire,
-					ourFeasibleAmount,
+					ourFeasibleAmount: mutualFeasibleAmount,
 					feasibleViability,
 					constraintRatio
 				};
 
 				console.log(
-					`[MUTUAL-FEASIBLE-OURS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${ourFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
+					`[MUTUAL-FEASIBLE-OURS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${mutualFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
 				);
 			}
 		});
@@ -522,22 +525,25 @@ export const mutualFeasibleTheirCapacities = derived(
 			const ourFeasibleAmount = $feasibleComposeInto[ourCapacityId]?.[theirCapacityId] || 0;
 
 			if (ourFeasibleAmount > 0) {
+				// Mutual feasible is the minimum of our feasible amount and their desired amount
+				const mutualFeasibleAmount = Math.min(ourFeasibleAmount, mutualDesire.theirDesiredAmount);
+
 				const feasibleViability = calculateDesireAlignment(
-					ourFeasibleAmount,
+					mutualFeasibleAmount,
 					mutualDesire.theirDesiredAmount
 				);
 
-				const constraintRatio = ourFeasibleAmount / mutualDesire.ourDesiredAmount;
+				const constraintRatio = mutualFeasibleAmount / mutualDesire.ourDesiredAmount;
 
 				mutualFeasible[compositionKey] = {
 					...mutualDesire,
-					ourFeasibleAmount,
+					ourFeasibleAmount: mutualFeasibleAmount,
 					feasibleViability,
 					constraintRatio
 				};
 
 				console.log(
-					`[MUTUAL-FEASIBLE-THEIRS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${ourFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
+					`[MUTUAL-FEASIBLE-THEIRS] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(3)} → feasible ${mutualFeasibleAmount.toFixed(3)} (${(constraintRatio * 100).toFixed(1)}% achievable)`
 				);
 			}
 		});

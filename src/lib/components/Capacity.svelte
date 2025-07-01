@@ -65,6 +65,7 @@
 	let capacityEmoji = $state(capacity.emoji);
 	let capacityQuantity = $state(capacity.quantity);
 	let capacityUnit = $state(capacity.unit);
+	let capacityDescription = $state(capacity.description);
 	let capacityLocationType = $state(capacity.location_type);
 	let capacityLongitude = $state(capacity.longitude);
 	let capacityLatitude = $state(capacity.latitude);
@@ -193,6 +194,7 @@
 			emoji: capacityEmoji,
 			quantity: capacityQuantity,
 			unit: capacityUnit,
+			description: capacityDescription,
 			location_type: capacityLocationType,
 			longitude: capacityLongitude,
 			latitude: capacityLatitude,
@@ -452,6 +454,9 @@
 	// State for tracking expanded composition items
 	let expandedCompositions = $state<Record<string, boolean>>({});
 
+	// State for description field expansion
+	let descriptionExpanded = $state(false);
+
 	// Location format state ('coordinates' or 'address')
 	let locationFormat = $state<'coordinates' | 'address'>('address');
 
@@ -627,6 +632,38 @@
 			style="width: {Math.max(capacityUnit?.length || 0, 'Unit'.length) +
 				3}ch; min-width: {Math.max(6, 'Unit'.length + 2)}ch;"
 		/>
+		<!-- Description field with integrated toggle -->
+		<div class="description-field-container">
+			{#if descriptionExpanded}
+				<textarea
+					class="capacity-input description-textarea auto-size"
+					bind:value={capacityDescription}
+					placeholder="Description"
+					onchange={handleCapacityUpdate}
+					rows="3"
+				></textarea>
+			{:else}
+				<input
+					type="text"
+					class="capacity-input description auto-size"
+					bind:value={capacityDescription}
+					placeholder="Description"
+					onchange={handleCapacityUpdate}
+					style="width: {Math.max(capacityDescription?.length || 0, 'Description'.length) +
+						3}ch; min-width: {Math.max(12, 'Description'.length + 2)}ch;"
+				/>
+			{/if}
+			{#if capacityDescription}
+				<button
+					type="button"
+					class="description-expand-btn"
+					onclick={() => (descriptionExpanded = !descriptionExpanded)}
+					title={descriptionExpanded ? 'Collapse' : 'Expand'}
+				>
+					{descriptionExpanded ? '▼' : '▲'}
+				</button>
+			{/if}
+		</div>
 
 		<!-- Action buttons -->
 		<button
@@ -1733,5 +1770,48 @@
 	/* Ensure buttons don't wrap unnecessarily */
 	.capacity-row button {
 		flex-shrink: 0;
+	}
+
+	/* Description field with integrated toggle */
+	.description-field-container {
+		position: relative;
+		display: flex;
+		align-items: flex-start;
+	}
+
+	.description-expand-btn {
+		position: absolute;
+		right: 4px;
+		top: 50%;
+		transform: translateY(-50%);
+		background: none;
+		border: none;
+		color: #9ca3af;
+		font-size: 0.75rem;
+		cursor: pointer;
+		padding: 2px 4px;
+		border-radius: 2px;
+		transition: all 0.2s ease;
+		z-index: 1;
+		line-height: 1;
+	}
+
+	.description-expand-btn:hover {
+		background: #f3f4f6;
+		color: #6b7280;
+	}
+
+	.description-textarea {
+		resize: vertical;
+		min-height: 60px;
+		padding-right: 24px; /* Make room for the button */
+		font-family: inherit;
+		font-size: 1rem;
+		line-height: 1.4;
+	}
+
+	/* Adjust input padding when there's a toggle button */
+	.description-field-container input {
+		padding-right: 24px;
 	}
 </style>
