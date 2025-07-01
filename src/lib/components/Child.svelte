@@ -229,19 +229,24 @@
 		console.log(`Clicked on contributor: ${userId}`);
 	}
 
-	// Unified handler for all text selection prevention
+	// Selective handler for text selection prevention - only for specific events
 	function preventAllInterference(event: Event) {
 		console.log('[DEBUG CHILD] preventAllInterference called, event type:', event.type);
 
-		// Clear selections first
+		// Only prevent drag start events, not scroll-related events
+		if (event.type === 'dragstart') {
+			// Clear selections first
+			document.getSelection()?.removeAllRanges();
+
+			// Only prevent drag events, allow other events to bubble
+			event.preventDefault();
+			event.stopPropagation();
+			return false;
+		}
+
+		// For other events, just clear selections but allow normal behavior
 		document.getSelection()?.removeAllRanges();
-
-		// Always prevent these events
-		event.preventDefault();
-		event.stopPropagation();
-		event.stopImmediatePropagation();
-
-		return false;
+		return true;
 	}
 
 	// Handle edit initiation with selective interference prevention
@@ -255,14 +260,13 @@
 
 		// Prevent event propagation to parent but preserve user gesture
 		event.stopPropagation();
-		event.stopImmediatePropagation();
 
 		// Clear selections IMMEDIATELY before any other processing
 		document.getSelection()?.removeAllRanges();
 
 		// For pointer/mouse events, prevent default to stop text selection
-		// But allow touch events to preserve gesture for mobile keyboard
-		if (event.type !== 'touchstart') {
+		// But allow touch events to preserve gesture for mobile keyboard and scrolling
+		if (event.type !== 'touchstart' && event.type !== 'touchmove') {
 			event.preventDefault();
 		}
 
@@ -319,7 +323,14 @@
 		if (isEditing && globalState.editingNodeId === node.id) {
 			// For desktop view, check if the click is outside the input field
 			if (editInput && !editInput.contains(event.target as Node)) {
-				finishEditing();
+				// Don't finish editing if click was on a scrollbar or outside viewport
+				const clickedElement = event.target as Element;
+				const isScrollbarClick =
+					event.offsetX > clickedElement.clientWidth || event.offsetY > clickedElement.clientHeight;
+
+				if (!isScrollbarClick) {
+					finishEditing();
+				}
 			}
 		}
 	}

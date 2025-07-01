@@ -2,11 +2,13 @@
  * Utility functions for displaying capacities as map markers
  */
 import type { Capacity, CapacitiesCollection } from '$lib/schema';
+import { geocodeCapacityAddress, formatAddress } from './geocoding';
 
 export interface CapacityMarkerData {
 	id: string;
 	capacity: Capacity;
 	lnglat: { lng: number; lat: number };
+	source: 'coordinates' | 'geocoded'; // Track how we got the coordinates
 }
 
 /**
@@ -22,12 +24,104 @@ export function getCapacitiesWithCoordinates(
 			markers.push({
 				id,
 				capacity,
-				lnglat: { lng: capacity.longitude!, lat: capacity.latitude! }
+				lnglat: { lng: capacity.longitude!, lat: capacity.latitude! },
+				source: 'coordinates'
 			});
 		}
 	});
 
 	return markers;
+}
+
+/**
+ * Gets capacities that have addresses but no coordinates
+ */
+export function getCapacitiesWithAddresses(
+	capacities: CapacitiesCollection
+): Array<{ id: string; capacity: Capacity; address: string }> {
+	const addressCapacities: Array<{ id: string; capacity: Capacity; address: string }> = [];
+
+	Object.entries(capacities).forEach(([id, capacity]) => {
+		// Only include if has address but no valid coordinates
+		if (!hasValidCoordinates(capacity) && hasValidAddress(capacity)) {
+			const address = formatAddress({
+				street_address: capacity.street_address,
+				city: capacity.city,
+				state_province: capacity.state_province,
+				postal_code: capacity.postal_code,
+				country: capacity.country
+			});
+
+			if (address.trim()) {
+				addressCapacities.push({
+					id,
+					capacity,
+					address
+				});
+			}
+		}
+	});
+
+	return addressCapacities;
+}
+
+/**
+ * Geocodes capacities with addresses to get their coordinates
+ */
+export async function geocodeCapacitiesWithAddresses(
+	capacities: CapacitiesCollection
+): Promise<CapacityMarkerData[]> {
+	const addressCapacities = getCapacitiesWithAddresses(capacities);
+	const geocodedMarkers: CapacityMarkerData[] = [];
+
+	// Process geocoding with some delay to respect rate limits
+	for (const { id, capacity, address } of addressCapacities) {
+		try {
+			console.log(`[Geocoding] Attempting to geocode: ${address}`);
+			const results = await geocodeCapacityAddress({
+				street_address: capacity.street_address,
+				city: capacity.city,
+				state_province: capacity.state_province,
+				postal_code: capacity.postal_code,
+				country: capacity.country
+			});
+
+			if (results.length > 0) {
+				const result = results[0]; // Use the first (best) result
+				geocodedMarkers.push({
+					id,
+					capacity,
+					lnglat: { lng: result.longitude, lat: result.latitude },
+					source: 'geocoded'
+				});
+				console.log(
+					`[Geocoding] Success for ${capacity.name}: ${result.latitude}, ${result.longitude}`
+				);
+			} else {
+				console.warn(`[Geocoding] No results for ${capacity.name}: ${address}`);
+			}
+		} catch (error) {
+			console.warn(`[Geocoding] Failed for ${capacity.name}: ${address}`, error);
+		}
+	}
+
+	return geocodedMarkers;
+}
+
+/**
+ * Get all capacity markers (both with coordinates and geocoded from addresses)
+ */
+export async function getAllCapacityMarkers(
+	capacities: CapacitiesCollection
+): Promise<CapacityMarkerData[]> {
+	// Get capacities that already have coordinates
+	const coordinateMarkers = getCapacitiesWithCoordinates(capacities);
+
+	// Geocode capacities that have addresses but no coordinates
+	const geocodedMarkers = await geocodeCapacitiesWithAddresses(capacities);
+
+	// Combine and return
+	return [...coordinateMarkers, ...geocodedMarkers];
 }
 
 /**
@@ -41,6 +135,19 @@ export function hasValidCoordinates(capacity: Capacity): boolean {
 		capacity.latitude <= 90 &&
 		capacity.longitude >= -180 &&
 		capacity.longitude <= 180
+	);
+}
+
+/**
+ * Checks if a capacity has a valid address
+ */
+export function hasValidAddress(capacity: Capacity): boolean {
+	return !!(
+		capacity.street_address ||
+		capacity.city ||
+		capacity.state_province ||
+		capacity.postal_code ||
+		capacity.country
 	);
 }
 
@@ -161,7 +268,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	}
 
 	return {
-		title: `${capacity.emoji ? capacity.emoji + ' ' : ''}${capacity.name}`,
+		title: `${capacity.emoji || '📍'} ${capacity.name}`,
 		details
 	};
 }

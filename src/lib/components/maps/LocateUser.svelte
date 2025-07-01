@@ -18,11 +18,19 @@
 		Projection
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { userCapacitiesWithShares } from '$lib/state/core.svelte';
+	import { userCapacitiesWithShares, userCapacities } from '$lib/state/core.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import {
 		getCapacitiesWithCoordinates,
-		formatCapacityPopupContent
+		formatCapacityPopupContent,
+		getAllCapacityMarkers,
+		type CapacityMarkerData
 	} from '$lib/utils/capacityMarkers';
+	import {
+		reverseGeocode,
+		parseAddressComponents,
+		type ReverseGeocodeResult
+	} from '$lib/utils/geocoding';
 	import {
 		updateLocation,
 		setLocationTracking,
@@ -46,38 +54,113 @@
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(false);
 
-	// Simple derived store to get capacities with coordinates
-	const capacitiesWithCoords = $derived(() => {
-		if (!$userCapacitiesWithShares) {
+	// Capacity markers state (includes both coordinate and geocoded markers)
+	let capacitiesWithCoords = $state<CapacityMarkerData[]>([]);
+	let isLoadingGeocode = $state(false);
+
+	// Async function to load markers
+	async function loadCapacityMarkers(capacities: typeof $userCapacitiesWithShares) {
+		if (!capacities) {
 			console.log('[LocateUser] No userCapacitiesWithShares available');
-			return [];
+			capacitiesWithCoords = [];
+			return;
 		}
 
-		console.log('[LocateUser] userCapacitiesWithShares:', $userCapacitiesWithShares);
-		console.log('[LocateUser] Total capacities:', Object.keys($userCapacitiesWithShares).length);
+		console.log('[LocateUser] userCapacitiesWithShares:', capacities);
+		console.log('[LocateUser] Total capacities:', Object.keys(capacities).length);
 
-		// Check each capacity for coordinates
-		Object.entries($userCapacitiesWithShares).forEach(([id, capacity]) => {
+		// Check each capacity for coordinates and addresses
+		Object.entries(capacities).forEach(([id, capacity]) => {
 			console.log(`[LocateUser] Capacity ${id}:`, {
 				name: capacity.name,
 				location_type: capacity.location_type,
 				latitude: capacity.latitude,
 				longitude: capacity.longitude,
-				hasValidCoords: capacity.latitude !== undefined && capacity.longitude !== undefined
+				hasValidCoords: capacity.latitude !== undefined && capacity.longitude !== undefined,
+				hasAddress: !!(
+					capacity.street_address ||
+					capacity.city ||
+					capacity.state_province ||
+					capacity.postal_code ||
+					capacity.country
+				)
 			});
 		});
 
-		const capacities = getCapacitiesWithCoordinates($userCapacitiesWithShares);
-		console.log(`[LocateUser] Found ${capacities.length} capacities with coordinates:`, capacities);
-		return capacities;
+		try {
+			isLoadingGeocode = true;
+			const markers = await getAllCapacityMarkers(capacities);
+			capacitiesWithCoords = markers;
+			console.log(
+				`[LocateUser] Found ${markers.length} total markers (coordinate + geocoded):`,
+				markers
+			);
+		} catch (error) {
+			console.error('[LocateUser] Error getting capacity markers:', error);
+			// Fallback to just coordinate-based markers
+			capacitiesWithCoords = getCapacitiesWithCoordinates(capacities);
+		} finally {
+			isLoadingGeocode = false;
+		}
+	}
+
+	// Reactively update markers when userCapacitiesWithShares changes
+	$effect(() => {
+		loadCapacityMarkers($userCapacitiesWithShares);
 	});
 
-	// Simple coordinate change handler
-	function handleCapacityCoordinateChange(id: string, lnglat: { lng: number; lat: number }) {
-		if (onCapacityUpdate) {
-			onCapacityUpdate(id, lnglat);
-		} else {
-			console.log('Capacity marker moved:', { id, newCoordinates: lnglat });
+	// Update capacity coordinates in the store
+	async function handleCapacityCoordinateChange(id: string, lnglat: { lng: number; lat: number }) {
+		try {
+			// Call the optional callback first
+			if (onCapacityUpdate) {
+				onCapacityUpdate(id, lnglat);
+			}
+
+			// Update the capacity in the store
+			if ($userCapacities && $userCapacities[id]) {
+				// Create a deep clone of current capacities
+				const newCapacities = structuredClone($userCapacities);
+
+				// Update the specific capacity's coordinates
+				newCapacities[id] = {
+					...newCapacities[id],
+					longitude: lnglat.lng,
+					latitude: lnglat.lat
+				};
+
+				// Try to reverse geocode to get address (optional, don't fail if it doesn't work)
+				try {
+					console.log(`[LocateUser] Reverse geocoding coordinates: ${lnglat.lat}, ${lnglat.lng}`);
+					const reverseResult = await reverseGeocode(lnglat.lat, lnglat.lng);
+					const addressComponents = parseAddressComponents(reverseResult.address);
+
+					// Update address fields if reverse geocoding succeeded
+					newCapacities[id] = {
+						...newCapacities[id],
+						...addressComponents
+					};
+
+					console.log(`[LocateUser] Reverse geocoded address:`, addressComponents);
+				} catch (geocodeError) {
+					// Don't fail the coordinate update if geocoding fails
+					console.warn(
+						'[LocateUser] Reverse geocoding failed, coordinates updated without address:',
+						geocodeError
+					);
+				}
+
+				// Set the store with the new value
+				userCapacities.set(newCapacities);
+
+				console.log(`[LocateUser] Updated capacity ${id} coordinates:`, lnglat);
+				globalState.showToast(`Updated location for ${newCapacities[id].name}`, 'success');
+			} else {
+				console.warn(`[LocateUser] Capacity ${id} not found in user capacities`);
+			}
+		} catch (error) {
+			console.error('[LocateUser] Error updating capacity coordinates:', error);
+			globalState.showToast('Error updating location', 'error');
 		}
 	}
 
@@ -122,13 +205,17 @@
 	<MapLibre
 		bind:map
 		bind:pitch
-		class="flex-1"
+		class="map-container flex-1"
 		style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
 		zoom={3}
 		center={{ lng: 120, lat: 20 }}
 		minZoom={1}
 		maxPitch={85}
 		attributionControl={false}
+		touchZoomRotate={true}
+		touchPitch={true}
+		dragPan={true}
+		scrollZoom={true}
 	>
 		<Projection type={isGlobeMode ? 'globe' : undefined} />
 		<Light anchor="map" />
@@ -239,16 +326,17 @@
 			{/if}
 		</GeoJSONSource>
 
-		<!-- User capacity markers - simple approach like MarkerPopup.svelte -->
+		<!-- User capacity markers - both coordinate and geocoded from addresses -->
 		{#each capacitiesWithCoords as markerData (markerData.id)}
-			{@const { id, capacity, lnglat } = markerData}
+			{@const { id, capacity, lnglat, source } = markerData}
 			{@const popupContent = formatCapacityPopupContent(capacity)}
 			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
+			{@const isGeocoded = source === 'geocoded'}
 
 			<Marker
 				lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
-				draggable={true}
-				color="#3b82f6"
+				draggable={!isGeocoded}
+				color={isGeocoded ? '#f59e0b' : '#3b82f6'}
 				scale={1.2}
 				ondragend={(event) => {
 					const newLnglat = event.target.getLngLat();
@@ -259,12 +347,20 @@
 					<div class="capacity-marker">
 						<div class="marker-icon">{capacity.emoji || '🏠'}</div>
 						<div class="marker-label">{capacity.name}</div>
+						{#if isGeocoded}
+							<div class="geocoded-badge">📍</div>
+						{/if}
 					</div>
 				{/snippet}
 
 				<Popup anchor="bottom" offset={[0, -10]} closeButton={true}>
 					<div class="capacity-popup">
 						<h3 class="popup-title">{popupContent.title}</h3>
+						{#if isGeocoded}
+							<div class="geocoded-notice">
+								<small>📍 Location from address geocoding</small>
+							</div>
+						{/if}
 						<div class="popup-details">
 							{#each popupContent.details as detail}
 								<div class="detail-row">
@@ -280,6 +376,15 @@
 				</Popup>
 			</Marker>
 		{/each}
+
+		<!-- Loading indicator for geocoding -->
+		{#if isLoadingGeocode}
+			<CustomControl position="bottom-right">
+				<div class="geocoding-loading">
+					<span>🌍 Finding addresses...</span>
+				</div>
+			</CustomControl>
+		{/if}
 
 		{#if show3DBuildings}
 			<FillExtrusionLayer
@@ -416,6 +521,44 @@
 		font-family: monospace;
 	}
 
+	.geocoded-badge {
+		position: absolute;
+		top: -8px;
+		right: -8px;
+		background: #f59e0b;
+		color: white;
+		border-radius: 50%;
+		width: 16px;
+		height: 16px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 8px;
+		font-weight: bold;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	}
+
+	.geocoded-notice {
+		background: #fef3c7;
+		border: 1px solid #f59e0b;
+		border-radius: 4px;
+		padding: 4px 8px;
+		margin-bottom: 8px;
+		color: #92400e;
+		text-align: center;
+	}
+
+	.geocoding-loading {
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 8px;
+		padding: 8px 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e7eb;
+		font-size: 12px;
+		color: #6b7280;
+		font-weight: 500;
+	}
+
 	.location-status {
 		background: rgba(255, 255, 255, 0.95);
 		border-radius: 8px;
@@ -446,5 +589,18 @@
 		font-size: 11px;
 		color: #4b5563;
 		line-height: 1.2;
+	}
+
+	/* Ensure map doesn't interfere with page scrolling */
+	:global(.map-container) {
+		/* Contain touch events within the map */
+		touch-action: pan-x pan-y zoom-in zoom-out;
+		/* Prevent map from capturing touch events outside its bounds */
+		isolation: isolate;
+	}
+
+	:global(.maplibregl-canvas) {
+		/* Ensure map canvas doesn't interfere with page scrolling */
+		touch-action: pan-x pan-y zoom-in zoom-out;
 	}
 </style>

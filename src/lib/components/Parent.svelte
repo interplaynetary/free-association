@@ -652,8 +652,12 @@
 		}
 	}
 
-	function handleGlobalTouchEnd() {
-		if (isTouching) {
+	function handleGlobalTouchEnd(event: Event) {
+		// Only handle if the touch event is within our treemap container
+		const target = event.target as HTMLElement;
+		const isInTreemap = target?.closest('.treemap-container') !== null;
+
+		if (isTouching && isInTreemap) {
 			stopGrowth();
 			resetInteractionState();
 		}
@@ -972,19 +976,29 @@
 		console.log('[DRAG] Started dragging node:', globalState.draggedNodeName);
 
 		// Add global event listeners for mouse movement and end
-		document.addEventListener('pointermove', handleDragMove);
-		document.addEventListener('pointerup', handleDragEnd);
+		// Use capture phase to ensure we get the events before other handlers
+		document.addEventListener('pointermove', handleDragMove, { capture: true });
+		document.addEventListener('pointerup', handleDragEnd, { capture: true });
 	}
 
 	function handleDragMove(event: PointerEvent) {
 		if (!globalState.isDragging) return;
 
-		// Update drag position
-		globalState.updateDragPosition(event.clientX, event.clientY);
+		// Only handle if the event is related to dragging (not scrolling)
+		if (event.isPrimary && event.pointerType !== 'touch') {
+			// Update drag position for mouse/pen events
+			globalState.updateDragPosition(event.clientX, event.clientY);
+		} else if (event.pointerType === 'touch' && globalState.isDragging) {
+			// For touch events, only handle if we're actively dragging
+			globalState.updateDragPosition(event.clientX, event.clientY);
+		}
 	}
 
 	function handleDragEnd(event: PointerEvent) {
 		if (!globalState.isDragging) return;
+
+		// Only handle primary pointer events to avoid interference with scrolling
+		if (!event.isPrimary) return;
 
 		console.log('[DRAG] Ending drag');
 
@@ -1013,8 +1027,8 @@
 		dragStartTime = 0;
 
 		// Remove global event listeners
-		document.removeEventListener('pointermove', handleDragMove);
-		document.removeEventListener('pointerup', handleDragEnd);
+		document.removeEventListener('pointermove', handleDragMove, { capture: true });
+		document.removeEventListener('pointerup', handleDragEnd, { capture: true });
 	}
 </script>
 
@@ -1176,10 +1190,10 @@
 		left: 0;
 	}
 
-	:global(.clickable) {
+	.treemap-container :global(.clickable) {
 		cursor: pointer;
 		user-select: none;
-		touch-action: none;
+		touch-action: manipulation; /* Allow scrolling but prevent double-tap zoom */
 		transition:
 			left 0.12s linear,
 			top 0.12s linear,

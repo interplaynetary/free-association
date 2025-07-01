@@ -94,11 +94,22 @@
 		// Enhanced browser support detection and setup
 		const hasVisualViewport = 'visualViewport' in window;
 
+		// Store the scroll handler reference for cleanup
+		const scrollHandler = (event: Event) => {
+			// Only handle if viewport height is significantly smaller (keyboard is open)
+			const keyboardHeight = window.innerHeight - (window?.visualViewport?.height || 0);
+			if (keyboardHeight > 100) {
+				// Only if keyboard is likely open
+				handleViewportChange();
+			}
+		};
+
 		// Set up Visual Viewport API listener with enhanced compatibility
 		if (hasVisualViewport && window.visualViewport) {
 			window.visualViewport.addEventListener('resize', handleViewportChange);
-			// Also listen to scroll events for better mobile support
-			window.visualViewport.addEventListener('scroll', handleViewportChange);
+			// Only listen to scroll events when virtual keyboard is active
+			// This prevents interference with normal page scrolling
+			window.visualViewport.addEventListener('scroll', scrollHandler);
 		}
 		// Fallback to window resize for older browsers
 		else {
@@ -119,7 +130,7 @@
 			document.removeEventListener('keydown', handleGlobalKeydown);
 			if (hasVisualViewport && window.visualViewport) {
 				window.visualViewport.removeEventListener('resize', handleViewportChange);
-				window.visualViewport.removeEventListener('scroll', handleViewportChange);
+				window.visualViewport.removeEventListener('scroll', scrollHandler);
 			}
 		};
 	});

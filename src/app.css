@@ -60,11 +60,8 @@ html, body {
 }
 
 /* ===== Root Page Specific Layout (prevent scrolling only on root) ===== */
-.root-page {
-  overflow: hidden;
-  height: 100%;
-  max-height: 100%;
-}
+/* Removed global .root-page to prevent inheritance issues on other pages */
+/* Root page styles are now handled in +page.svelte with proper scoping */
 
 /* ===== Global Utility Classes (enhanced for cross-browser) ===== */
 .clickable {
@@ -75,7 +72,7 @@ html, body {
   user-select: none;
   /* Enhanced touch support */
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  touch-action: manipulation; /* Allow scrolling but prevent double-tap zoom */
 }
 
 /* ===== Enhanced Global Animations with vendor prefixes ===== */

@@ -183,20 +183,22 @@
 				{/each}
 			</select>
 
-			<select class="sort-select" bind:value={sortBy}>
-				<option value="name">Sort by name</option>
-				<option value="quantity">Sort by quantity</option>
-				<option value="percentage">Sort by percentage</option>
-				<option value="provider">Sort by provider</option>
-			</select>
+			<div class="sort-controls">
+				<select class="sort-select" bind:value={sortBy}>
+					<option value="name">Sort by name</option>
+					<option value="quantity">Sort by quantity</option>
+					<option value="percentage">Sort by percentage</option>
+					<option value="provider">Sort by provider</option>
+				</select>
 
-			<button
-				class="sort-direction-btn"
-				onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-				title="Toggle sort direction"
-			>
-				{sortDirection === 'asc' ? '↑' : '↓'}
-			</button>
+				<button
+					class="sort-direction-btn"
+					onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
+					title="Toggle sort direction"
+				>
+					{sortDirection === 'asc' ? '↑' : '↓'}
+				</button>
+			</div>
 
 			{#if searchQuery || selectedProvider !== 'all' || sortBy !== 'name' || sortDirection !== 'asc'}
 				<button class="clear-btn" onclick={clearFilters}>Clear</button>
@@ -246,34 +248,35 @@
 		flex-direction: column;
 		gap: 16px;
 		padding: 12px;
+		max-width: 100%;
+		overflow: hidden;
 	}
 
 	/* Filter Bar */
 	.filter-bar {
 		background: white;
 		border-radius: 8px;
-		padding: 12px 16px;
+		padding: 16px;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 		border: 1px solid #e5e7eb;
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		flex-wrap: wrap;
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.search-section {
-		flex: 1;
-		min-width: 200px;
+		width: 100%;
+		margin-bottom: 12px;
 	}
 
 	.search-input {
 		width: 100%;
-		padding: 8px 12px;
+		padding: 10px 14px;
 		border: 1px solid #d1d5db;
 		border-radius: 6px;
 		font-size: 14px;
 		background: #f9fafb;
 		transition: all 0.2s ease;
+		box-sizing: border-box;
 	}
 
 	.search-input:focus {
@@ -288,15 +291,15 @@
 	}
 
 	.filter-controls {
-		display: flex;
-		align-items: center;
+		display: grid;
+		grid-template-columns: 1fr auto auto;
 		gap: 8px;
-		flex-wrap: wrap;
+		align-items: center;
+		width: 100%;
 	}
 
-	.filter-select,
-	.sort-select {
-		padding: 6px 10px;
+	.filter-select {
+		padding: 8px 12px;
 		border: 1px solid #d1d5db;
 		border-radius: 6px;
 		font-size: 13px;
@@ -304,7 +307,29 @@
 		color: #374151;
 		cursor: pointer;
 		transition: border-color 0.2s ease;
-		min-width: 0; /* Allow shrinking */
+		width: 100%;
+		box-sizing: border-box;
+		min-width: 0;
+	}
+
+	.sort-controls {
+		display: flex;
+		gap: 4px;
+		align-items: center;
+		flex-shrink: 0;
+	}
+
+	.sort-select {
+		padding: 8px 10px;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		font-size: 13px;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+		transition: border-color 0.2s ease;
+		box-sizing: border-box;
+		width: 130px;
 	}
 
 	.filter-select:focus,
@@ -328,6 +353,7 @@
 		justify-content: center;
 		width: 32px;
 		height: 32px;
+		flex-shrink: 0;
 	}
 
 	.sort-direction-btn:hover {
@@ -346,6 +372,11 @@
 		font-size: 13px;
 		font-weight: 500;
 		transition: all 0.2s ease;
+		flex-shrink: 0;
+		white-space: nowrap;
+		grid-column: 1 / -1;
+		justify-self: center;
+		margin-top: 8px;
 	}
 
 	.clear-btn:hover {
@@ -387,28 +418,32 @@
 	}
 
 	/* Responsive Design */
-	@media (max-width: 640px) {
-		.filter-bar {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 12px;
+	@media (max-width: 480px) {
+		.shares-container {
+			padding: 8px;
 		}
 
-		.search-section {
-			min-width: unset;
+		.filter-bar {
+			padding: 12px;
 		}
 
 		.filter-controls {
-			justify-content: space-between;
-			flex-wrap: nowrap;
-			overflow-x: auto;
-			padding-bottom: 4px;
+			grid-template-columns: 1fr;
+			gap: 12px;
 		}
 
-		.filter-select,
+		.sort-controls {
+			justify-self: stretch;
+			justify-content: space-between;
+		}
+
 		.sort-select {
-			min-width: 120px;
-			flex-shrink: 0;
+			flex: 1;
+			width: auto;
+		}
+
+		.clear-btn {
+			margin-top: 4px;
 		}
 	}
 </style>
