@@ -113,8 +113,8 @@
 	async function handleCapacityCoordinateChange(id: string, lnglat: { lng: number; lat: number }) {
 		try {
 			// Call the optional callback first
-			if (onCapacityUpdate) {
-				onCapacityUpdate(id, lnglat);
+		if (onCapacityUpdate) {
+			onCapacityUpdate(id, lnglat);
 			}
 
 			// Update the capacity in the store
@@ -155,7 +155,7 @@
 
 				console.log(`[LocateUser] Updated capacity ${id} coordinates:`, lnglat);
 				globalState.showToast(`Updated location for ${newCapacities[id].name}`, 'success');
-			} else {
+		} else {
 				console.warn(`[LocateUser] Capacity ${id} not found in user capacities`);
 			}
 		} catch (error) {

@@ -92,34 +92,6 @@
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
 
-	// Synchronize state variables with capacity prop changes (e.g., from map updates)
-	$effect(() => {
-		// Update coordinate fields when capacity prop changes externally
-		if (capacity.longitude !== capacityLongitude) {
-			capacityLongitude = capacity.longitude;
-		}
-		if (capacity.latitude !== capacityLatitude) {
-			capacityLatitude = capacity.latitude;
-		}
-
-		// Also sync address fields in case they were updated via reverse geocoding
-		if (capacity.street_address !== capacityStreetAddress) {
-			capacityStreetAddress = capacity.street_address;
-		}
-		if (capacity.city !== capacityCity) {
-			capacityCity = capacity.city;
-		}
-		if (capacity.state_province !== capacityStateProvince) {
-			capacityStateProvince = capacity.state_province;
-		}
-		if (capacity.postal_code !== capacityPostalCode) {
-			capacityPostalCode = capacity.postal_code;
-		}
-		if (capacity.country !== capacityCountry) {
-			capacityCountry = capacity.country;
-		}
-	});
-
 	// Derived filter rule - automatically updates when selectedSubtrees changes
 	let filterRule = $derived(() => {
 		if (selectedSubtrees.length === 0) {
