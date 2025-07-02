@@ -157,9 +157,11 @@
 
 	// Update popup position based on mouse/touch event
 	function updatePopupPosition(event: MouseEvent) {
+		if (!barContainer) return;
+
 		const segmentRect = (event.target as HTMLElement).getBoundingClientRect();
 
-		// Use fixed positioning to escape container bounds
+		// Calculate position relative to viewport (for fixed positioning)
 		const centerX = segmentRect.left + segmentRect.width / 2;
 		const topY = segmentRect.top - 40; // Position above the segment with gap
 
@@ -168,6 +170,55 @@
 			y: topY,
 			show: true
 		};
+
+		// Hide popup on any scroll - simple and effective
+		const hideOnScroll = () => {
+			popupPosition = { x: 0, y: 0, show: false };
+			selectedSegmentId = null;
+			// Clean up all listeners
+			window.removeEventListener('scroll', hideOnScroll);
+			document.removeEventListener('touchmove', hideOnScroll);
+			// Remove from scrollable parent if it exists
+			if (barContainer) {
+				const scrollableParent = findScrollableParent(barContainer);
+				if (scrollableParent && scrollableParent !== window) {
+					scrollableParent.removeEventListener('scroll', hideOnScroll);
+				}
+			}
+		};
+
+		// Add listeners to window for document-level scrolling
+		window.addEventListener('scroll', hideOnScroll, { passive: true });
+		document.addEventListener('touchmove', hideOnScroll, { passive: true });
+
+		// Also add listener to the closest scrollable parent container
+		if (barContainer) {
+			const scrollableParent = findScrollableParent(barContainer);
+			if (scrollableParent && scrollableParent !== window) {
+				scrollableParent.addEventListener('scroll', hideOnScroll, { passive: true });
+			}
+		}
+	}
+
+	// Simple function to find the closest scrollable parent
+	function findScrollableParent(element: Element | null): Element | Window {
+		if (!element) return window;
+
+		let current = element.parentElement;
+		while (current && current !== document.documentElement) {
+			const style = window.getComputedStyle(current);
+			const hasScroll =
+				style.overflow === 'auto' ||
+				style.overflow === 'scroll' ||
+				style.overflowY === 'auto' ||
+				style.overflowY === 'scroll';
+
+			if (hasScroll && current.scrollHeight > current.clientHeight) {
+				return current;
+			}
+			current = current.parentElement;
+		}
+		return window;
 	}
 
 	// Function to determine if labels should be shown for a segment
@@ -242,7 +293,7 @@
 	{/each}
 </div>
 
-<!-- Popup for showLabelsAboveOnSelect - rendered outside bar container -->
+<!-- Popup for showLabelsAboveOnSelect - rendered at document level -->
 {#if showLabelsAboveOnSelect && popupPosition.show && popupLabel}
 	<div class="segment-popup" style:left="{popupPosition.x}px" style:top="{popupPosition.y}px">
 		<div class="popup-content">
@@ -318,7 +369,7 @@
 	/* Popup styles */
 	.segment-popup {
 		position: fixed;
-		z-index: 10000;
+		z-index: 999999;
 		pointer-events: none;
 		transform: translateX(-50%);
 		animation: popupFadeIn 0.15s ease-out;
