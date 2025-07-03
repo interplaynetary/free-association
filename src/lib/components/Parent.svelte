@@ -13,7 +13,8 @@
 		updateName,
 		fulfilled,
 		addChild,
-		addContributors
+		addContributors,
+		calculateNodePoints
 	} from '$lib/protocol';
 	import { createNewTree } from '$lib/utils/userUtils';
 	import Child from '$lib/components/Child.svelte';
@@ -306,25 +307,9 @@
 			return;
 		}
 
-		// Calculate initial points for new node
-		const calculateNewNodePoints = (): number => {
-			// No siblings - set to 100 points
-			if (!hierarchyData?.children || hierarchyData.children.length === 0) {
-				console.log('[UI FLOW] No siblings, setting new node to 100 points');
-				return 100;
-			}
-
-			// Has siblings - use 20% of total points
-			const currentLevelPoints = hierarchyData.children.reduce(
-				(sum: number, node: any) => sum + (node.data?.points || 0),
-				0
-			);
-			const points = Math.max(1, currentLevelPoints * 0.2);
-			console.log('[UI FLOW] Calculated points based on siblings:', points);
-			return points;
-		};
-
-		const newPoints = calculateNewNodePoints();
+		// Calculate initial points for new node using the protocol function
+		const newPoints = calculateNodePoints(currentNode!);
+		console.log('[UI FLOW] Calculated points based on siblings:', newPoints);
 		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		const newNodeName = 'New Node'; // Default name for better UX
 

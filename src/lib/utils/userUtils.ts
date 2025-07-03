@@ -270,13 +270,72 @@ export function createNewTree(includeExampleData: boolean = true) {
 	return newTree;
 }
 
+/**
+ * Update the user's tree from a JSON string
+ * @param {string} jsonString - The JSON string containing the tree data
+ */
+export function updateTreeFromJson(jsonString: string) {
+	console.log('[TREE-UPDATE] Updating tree from JSON...');
+
+	if (!jsonString || typeof jsonString !== 'string') {
+		console.error('[TREE-UPDATE] Invalid input: JSON string is required');
+		return false;
+	}
+
+	try {
+		// Parse the JSON string
+		const parsedTree = JSON.parse(jsonString);
+
+		// Basic validation - check if it looks like a valid tree structure
+		if (!parsedTree || typeof parsedTree !== 'object') {
+			console.error('[TREE-UPDATE] Invalid tree data: not an object');
+			return false;
+		}
+
+		// Check for required root node properties
+		if (!parsedTree.id || !parsedTree.name || !parsedTree.children) {
+			console.error(
+				'[TREE-UPDATE] Invalid tree data: missing required properties (id, name, children)'
+			);
+			return false;
+		}
+
+		// Check if children is an array
+		if (!Array.isArray(parsedTree.children)) {
+			console.error('[TREE-UPDATE] Invalid tree data: children must be an array');
+			return false;
+		}
+
+		// Optional: Check if it's a root node (has pub property)
+		if (parsedTree.pub) {
+			console.log(
+				`[TREE-UPDATE] Detected root node with pub: ${parsedTree.pub.substring(0, 20)}...`
+			);
+		}
+
+		// Update the userTree store
+		userTree.set(parsedTree);
+
+		console.log(
+			`[TREE-UPDATE] Tree successfully updated with ${parsedTree.children.length} child nodes`
+		);
+		console.log(`[TREE-UPDATE] Tree name: ${parsedTree.name}`);
+
+		return true;
+	} catch (error) {
+		console.error('[TREE-UPDATE] Error parsing JSON:', error);
+		return false;
+	}
+}
+
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).clearUsersList = clearUsersList;
 	(window as any).changeTreeName = changeTreeName;
 	(window as any).fixCorruptedUserListNames = fixCorruptedUserListNames;
 	(window as any).createNewTree = createNewTree;
+	(window as any).updateTreeFromJson = updateTreeFromJson;
 	console.log(
-		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, and createNewTree functions exposed to window'
+		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, createNewTree, and updateTreeFromJson functions exposed to window'
 	);
 }

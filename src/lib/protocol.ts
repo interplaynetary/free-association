@@ -767,6 +767,13 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
 		return false;
 	}
 
+	// Calculate appropriate points for the node in its new context
+	// This ensures consistent sizing relative to new siblings
+	if (subtree.type === 'NonRootNode') {
+		const newPoints = calculateNodePoints(targetNode!);
+		updatePoints(subtree as NonRootNode, newPoints);
+	}
+
 	// Insert at new location
 	const success = insertSubtree(tree, newParentId, subtree);
 	if (!success) {
@@ -897,3 +904,25 @@ export function searchTreeForNavigation(
 
 // Re-export filter-related functions
 export { filter, normalizeShareMap, applyCapacityFilter, Rules };
+
+/**
+ * Node Point Calculation Functions
+ */
+
+// Calculate appropriate points for a node based on its siblings
+// This uses the same logic as when creating new nodes
+export function calculateNodePoints(parentNode: Node): number {
+	// No siblings - set to 100 points
+	if (!parentNode.children || parentNode.children.length === 0) {
+		return 100;
+	}
+
+	// Has siblings - use 20% of total points
+	const currentLevelPoints = parentNode.children.reduce((sum: number, child: Node) => {
+		// Only count NonRootNode points
+		return sum + (child.type === 'NonRootNode' ? (child as NonRootNode).points : 0);
+	}, 0);
+
+	const points = Math.max(1, currentLevelPoints * 0.2);
+	return points;
+}
