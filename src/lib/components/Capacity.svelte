@@ -54,7 +54,6 @@
 	// Initialize selectedSubtrees from existing filter_rule
 	$effect(() => {
 		if (capacity.filter_rule && selectedSubtrees.length === 0) {
-			// Extract subtree IDs from the filter rule
 			const extractedSubtrees = extractSubtreeIdsFromRule(capacity.filter_rule);
 			if (extractedSubtrees.length > 0) {
 				selectedSubtrees = extractedSubtrees;
@@ -367,9 +366,47 @@
 		handleCapacityUpdate();
 	}
 
-	// Close dropdown
+	// Handle adding a capacity filter
+	function handleAddCapacityFilter(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		capacityDropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+
+		showCapacityDropdown = true;
+	}
+
+	// Handle capacity selection from dropdown
+	function handleCapacitySelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: capacityId } = detail;
+
+		if (selectedCapacities.includes(capacityId)) {
+			showCapacityDropdown = false;
+			return;
+		}
+
+		selectedCapacities = [...selectedCapacities, capacityId];
+		handleCapacityUpdate();
+		showCapacityDropdown = false;
+	}
+
+	// Handle removing a capacity filter
+	function handleRemoveCapacity(capacityId: string) {
+		selectedCapacities = selectedCapacities.filter((id) => id !== capacityId);
+		handleCapacityUpdate();
+	}
+
+	// Close dropdowns
 	function handleDropdownClose() {
 		showSubtreeDropdown = false;
+	}
+
+	function handleCapacityDropdownClose() {
+		showCapacityDropdown = false;
 	}
 
 	// Handle emoji picker
@@ -386,24 +423,48 @@
 		}
 	}
 
-	function extractSubtreeIdsFromRule(rule: any): string[] {
-		if (!rule) return [];
+	function extractFiltersFromRule(rule: any): { subtrees: string[], capacities: string[], mode: 'include' | 'exclude' } {
+		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
 		
+		let subtrees: string[] = [];
+		let capacities: string[] = [];
+		let mode: 'include' | 'exclude' = 'include';
+		
+		// Handle NOT rules (exclude mode)
+		if (rule['!']) {
+			mode = 'exclude';
+			rule = rule['!'];
+		}
+		
+		// Handle AND rules (multiple filters)
+		if (rule.and && Array.isArray(rule.and)) {
+			rule.and.forEach((subRule: any) => {
+				const subResult = extractFiltersFromRule(subRule);
+				subtrees.push(...subResult.subtrees);
+				capacities.push(...subResult.capacities);
+			});
+			return { subtrees, capacities, mode };
+		}
+		
+		// Handle single subtree rule
 		if (rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
 			const secondArg = rule.in[1];
 			if (secondArg?.var && Array.isArray(secondArg.var) && secondArg.var[0] === 'subtreeContributors') {
-				return [secondArg.var[1]];
+				subtrees.push(secondArg.var[1]);
+			} else if (Array.isArray(secondArg)) {
+				capacities.push(...secondArg);
 			}
 		}
 		
+		// Handle multiple subtree rule
 		if (rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
 			const subtreeIds = rule.some[0];
 			if (Array.isArray(subtreeIds)) {
-				return subtreeIds;
+				subtrees.push(...subtreeIds);
 			}
 		}
 		
-		return [];
+		return { subtrees, capacities, mode };
 	}
 
 	// Add click outside listener
@@ -771,19 +832,47 @@
 		>
 	</div>
 
-	<!-- Filter tags section (always visible, like contributors in Child.svelte) -->
+	<!-- Filter tags section -->
 	<div class="filter-section mt-2">
-		<div class="filter-layout">
-			<!-- Add filter button -->
+		<div class="filter-header">
+			<!-- Include/Exclude toggle -->
+			{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
+				<div class="filter-mode-toggle">
+					<button 
+						type="button" 
+						class="mode-btn" 
+						class:active={filterMode === 'include'}
+						onclick={() => { filterMode = 'include'; handleCapacityUpdate(); }}
+					>
+						Include
+					</button>
+					<button 
+						type="button" 
+						class="mode-btn" 
+						class:active={filterMode === 'exclude'}
+						onclick={() => { filterMode = 'exclude'; handleCapacityUpdate(); }}
+					>
+						Exclude
+					</button>
+				</div>
+			{/if}
+
+			<!-- Add filter buttons -->
 			<div class="filter-button-container">
 				<button type="button" class="add-filter-btn" onclick={handleAddSubtreeFilter}>
 					<span class="add-icon">+</span>
-					<span class="add-text">Filter</span>
+					<span class="add-text">Subtree</span>
+				</button>
+				<button type="button" class="add-filter-btn" onclick={handleAddCapacityFilter}>
+					<span class="add-icon">+</span>
+					<span class="add-text">Individual</span>
 				</button>
 			</div>
+		</div>
 
+		<div class="filter-layout">
 			<!-- Filter tags -->
-			{#if selectedSubtrees.length > 0}
+			{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 				<div class="filter-tags-container">
 					{#each selectedSubtrees as subtreeId}
 						<div class="filter-tag-wrapper">
@@ -797,17 +886,34 @@
 							/>
 						</div>
 					{/each}
+					{#each selectedCapacities as capacityId}
+						<div class="filter-tag-wrapper">
+							<TagPill
+								userId={capacityId}
+								displayName={$userNamesCache[capacityId] || capacityId.substring(0, 8) + '...'}
+								truncateLength={15}
+								removable={true}
+								onClick={() => {}}
+								onRemove={() => handleRemoveCapacity(capacityId)}
+							/>
+						</div>
+					{/each}
 				</div>
 			{/if}
 		</div>
 
 		<!-- Filter description -->
-		{#if selectedSubtrees.length > 0}
+		{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 			<div class="filter-description">
 				<span class="filter-desc-text">
-					Only contributors from {selectedSubtrees.length === 1
-						? 'this subtree'
-						: `${selectedSubtrees.length} subtrees`}
+					{filterMode === 'include' ? 'Only' : 'Exclude'} contributors 
+					{#if selectedSubtrees.length > 0 && selectedCapacities.length > 0}
+						from {selectedSubtrees.length} subtree{selectedSubtrees.length > 1 ? 's' : ''} and {selectedCapacities.length} individual{selectedCapacities.length > 1 ? 's' : ''}
+					{:else if selectedSubtrees.length > 0}
+						from {selectedSubtrees.length === 1 ? 'this subtree' : `${selectedSubtrees.length} subtrees`}
+					{:else}
+						{selectedCapacities.length === 1 ? 'this individual' : `${selectedCapacities.length} individuals`}
+					{/if}
 				</span>
 			</div>
 		{/if}
@@ -1699,9 +1805,46 @@
 		flex-wrap: wrap;
 	}
 
+	.filter-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+		gap: 8px;
+	}
+
+	.filter-mode-toggle {
+		display: flex;
+		border-radius: 4px;
+		overflow: hidden;
+		border: 1px solid #e5e7eb;
+		background: #f9fafb;
+	}
+
+	.mode-btn {
+		padding: 4px 8px;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.mode-btn.active {
+		background: #3b82f6;
+		color: white;
+	}
+
+	.mode-btn:hover:not(.active) {
+		background: #e5e7eb;
+		color: #374151;
+	}
+
 	.filter-button-container {
 		display: flex;
 		align-items: center;
+		gap: 4px;
 	}
 
 	.add-filter-btn {
