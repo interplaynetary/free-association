@@ -51,6 +51,17 @@
 	// Simple filter state - just track selected subtree IDs
 	let selectedSubtrees = $state<string[]>([]);
 
+	// Initialize selectedSubtrees from existing filter_rule
+	$effect(() => {
+		if (capacity.filter_rule && selectedSubtrees.length === 0) {
+			// Extract subtree IDs from the filter rule
+			const extractedSubtrees = extractSubtreeIdsFromRule(capacity.filter_rule);
+			if (extractedSubtrees.length > 0) {
+				selectedSubtrees = extractedSubtrees;
+			}
+		}
+	});
+
 	// Dropdown state for adding subtree filters
 	let showSubtreeDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
@@ -373,6 +384,26 @@
 		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
 			showEmojiPicker = false;
 		}
+	}
+
+	function extractSubtreeIdsFromRule(rule: any): string[] {
+		if (!rule) return [];
+		
+		if (rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+			const secondArg = rule.in[1];
+			if (secondArg?.var && Array.isArray(secondArg.var) && secondArg.var[0] === 'subtreeContributors') {
+				return [secondArg.var[1]];
+			}
+		}
+		
+		if (rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+			const subtreeIds = rule.some[0];
+			if (Array.isArray(subtreeIds)) {
+				return subtreeIds;
+			}
+		}
+		
+		return [];
 	}
 
 	// Add click outside listener
