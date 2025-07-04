@@ -278,3 +278,7 @@ But how much of inputs get consumed?
 
 // we should be loading via Play!
 // creating a new tree is not working right now for new users
+
+
+
+Somehow the user was able to click the play button after having logged in and before the tree was fully loaded, leading to their tree getting overwritten

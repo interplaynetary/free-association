@@ -3,8 +3,8 @@
 
 	// Helper function to calculate border radius for each segment
 	function getSegmentBorderRadius(
-		index: number,
-		total: number,
+		index,
+		total,
 		isVertical = false,
 		rounded = false
 	) {
