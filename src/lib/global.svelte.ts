@@ -138,6 +138,12 @@ export const globalState = $state({
 		if (path.length <= 1) return;
 		currentPath.set(path.slice(0, -1));
 	},
+
+	// Check if we can zoom out (path has more than one level)
+	canZoomOut: () => {
+		const path = get(currentPath);
+		return path.length > 1;
+	},
 	// Reset all state (logout)
 	resetState: () => {
 		userTree.set(null);

@@ -35,28 +35,47 @@
 		function handleGlobalKeydown(event: KeyboardEvent) {
 			// Handle escape key for zoom out navigation or exit edit mode
 			if (event.key === 'Escape') {
-				// If we're in edit mode, let the edit mode handle the escape
-				if (globalState.editMode) {
-					// The Child component will handle exiting edit mode
-					// Don't prevent default here to allow the input blur to work
-					return;
-				}
-
-				// Check if we're currently editing (input fields, etc.) - fallback check
-				const activeElement = document.activeElement;
-				const isEditing =
-					activeElement &&
-					(activeElement.tagName === 'INPUT' ||
-						activeElement.tagName === 'TEXTAREA' ||
-						(activeElement as HTMLElement).isContentEditable ||
-						activeElement.closest('.node-edit-input'));
-
-				// Only trigger navigation if we're not currently editing
-				if (!isEditing) {
-					event.preventDefault();
-					globalState.zoomOut();
-				}
+				handleBackNavigation();
 			}
+		}
+
+		function handleBackNavigation() {
+			// If we're in edit mode, let the edit mode handle the escape
+			if (globalState.editMode) {
+				// The Child component will handle exiting edit mode
+				// Don't prevent default here to allow the input blur to work
+				return;
+			}
+
+			// Check if we're currently editing (input fields, etc.) - fallback check
+			const activeElement = document.activeElement;
+			const isEditing =
+				activeElement &&
+				(activeElement.tagName === 'INPUT' ||
+					activeElement.tagName === 'TEXTAREA' ||
+					(activeElement as HTMLElement).isContentEditable ||
+					activeElement.closest('.node-edit-input'));
+
+			// Only trigger navigation if we're not currently editing
+			if (!isEditing) {
+				globalState.zoomOut();
+			}
+		}
+
+		function handlePopState(event: PopStateEvent) {
+			// Check if we're in edit mode or can zoom out
+			const canHandleBack = globalState.editMode || globalState.canZoomOut();
+
+			if (canHandleBack) {
+				// Handle back button same as escape key
+				event.preventDefault();
+				handleBackNavigation();
+
+				// Push a new state to maintain the current position
+				// This prevents the browser from actually going back
+				history.pushState(null, '', window.location.href);
+			}
+			// If we can't handle the back action, let the browser handle it normally
 		}
 
 		// Enhanced Visual Viewport API with better feature detection
@@ -124,10 +143,16 @@
 		// Initial calculation
 		handleViewportChange();
 
+		// Add event listeners
 		document.addEventListener('keydown', handleGlobalKeydown);
+		window.addEventListener('popstate', handlePopState);
+
+		// Push initial state to ensure back button can be intercepted
+		history.pushState(null, '', window.location.href);
 
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
+			window.removeEventListener('popstate', handlePopState);
 			if (hasVisualViewport && window.visualViewport) {
 				window.visualViewport.removeEventListener('resize', handleViewportChange);
 				window.visualViewport.removeEventListener('scroll', scrollHandler);

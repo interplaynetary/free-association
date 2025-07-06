@@ -106,33 +106,10 @@
 		}
 	}
 
-	// Setup click outside listener
-	function setupClickOutside() {
-		if (!browser) return () => {};
-
-		const handleClickOutside = (event: MouseEvent) => {
-			if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
-				handleClose();
-			}
-		};
-
-		document.addEventListener('click', handleClickOutside);
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
-	}
-
 	// Lifecycle
 	onMount(() => {
 		if (browser) {
 			initialize();
-
-			// Setup click outside handler
-			const clickOutsideCleanup = show ? setupClickOutside() : undefined;
-
-			return () => {
-				if (clickOutsideCleanup) clickOutsideCleanup();
-			};
 		}
 	});
 
@@ -149,6 +126,29 @@
 	$effect(() => {
 		if (show && position && dropdownContainer && browser) {
 			setTimeout(adjustPosition, 0);
+		}
+	});
+
+	// Effect to manage click outside listener
+	$effect(() => {
+		if (!browser) return;
+
+		if (show) {
+			const handleClickOutside = (event: MouseEvent) => {
+				if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
+					handleClose();
+				}
+			};
+
+			// Add listener after a small delay to prevent immediate closure
+			const timeoutId = setTimeout(() => {
+				document.addEventListener('click', handleClickOutside);
+			}, 100);
+
+			return () => {
+				clearTimeout(timeoutId);
+				document.removeEventListener('click', handleClickOutside);
+			};
 		}
 	});
 </script>

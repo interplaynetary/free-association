@@ -2,6 +2,7 @@
 	import TagPill from './TagPill.svelte';
 	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
+	//import { getUserName } from '$lib/state/gun.svelte';
 
 	// Define interface for node data
 	interface NodeData {

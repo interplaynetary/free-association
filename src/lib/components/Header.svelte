@@ -12,14 +12,10 @@
 		signup,
 		signout,
 		userTree,
-		isAuthenticating
+		isAuthenticating,
+		changePassword
 	} from '$lib/state.svelte';
-	import {
-		findNodeById,
-		addChild,
-		createNonRootNode,
-		calculateNodePoints
-	} from '$lib/protocol';
+	import { findNodeById, addChild, createNonRootNode, calculateNodePoints } from '$lib/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
@@ -152,6 +148,14 @@
 	>([]);
 	let selectedResultIndex = $state(0);
 
+	// Password change state
+	let showPasswordChange = $state(false);
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmNewPassword = $state('');
+	let passwordChangeError = $state('');
+	let isChangingPassword = $state(false);
+
 	// Initialize error state with URL error message if present
 	$effect(() => {
 		const urlError = $page.url.searchParams.get('error');
@@ -272,6 +276,9 @@
 		showPassword = false;
 		isRegisterMode = false;
 		agreedToTerms = false;
+		// Also reset password change form when login panel closes
+		showPasswordChange = false;
+		resetPasswordChangeForm();
 	}
 
 	// recompose handler
@@ -672,6 +679,61 @@
 	$effect(() => {
 		handleSearchInput();
 	});
+
+	// Toggle password change form
+	function togglePasswordChange() {
+		showPasswordChange = !showPasswordChange;
+		if (!showPasswordChange) {
+			resetPasswordChangeForm();
+		}
+	}
+
+	// Reset password change form
+	function resetPasswordChangeForm() {
+		currentPassword = '';
+		newPassword = '';
+		confirmNewPassword = '';
+		passwordChangeError = '';
+	}
+
+	// Handle password change
+	async function handlePasswordChange() {
+		// Validate inputs
+		if (!currentPassword || !newPassword || !confirmNewPassword) {
+			passwordChangeError = 'Please fill in all fields';
+			return;
+		}
+
+		if (newPassword !== confirmNewPassword) {
+			passwordChangeError = 'New passwords do not match';
+			return;
+		}
+
+		if (newPassword.length < 8) {
+			passwordChangeError = 'New password must be at least 8 characters';
+			return;
+		}
+
+		if (newPassword === currentPassword) {
+			passwordChangeError = 'New password must be different from current password';
+			return;
+		}
+
+		isChangingPassword = true;
+		passwordChangeError = '';
+
+		try {
+			await changePassword(currentPassword, newPassword);
+			globalState.showToast('Password changed successfully', 'success');
+			resetPasswordChangeForm();
+			showPasswordChange = false;
+		} catch (error) {
+			console.error('Password change error:', error);
+			passwordChangeError = error instanceof Error ? error.message : 'Failed to change password';
+		} finally {
+			isChangingPassword = false;
+		}
+	}
 </script>
 
 <div class="header" bind:this={headerRef}>
@@ -814,30 +876,98 @@
 									title="Click to copy your public key"
 									onclick={() => copyToClipboard($userpub)}
 								>
-									<span class="pub-text">🔑 {truncateText($userpub, 20)}</span>
+									<span class="pub-text"> {truncateText($userpub, 20)}</span>
 									<span class="copy-icon">📋</span>
 								</button>
 							{/if}
 						</div>
 					</div>
+
+					{#if showPasswordChange}
+						<div class="password-change-form">
+							<h4>Change Password</h4>
+
+							{#if passwordChangeError}
+								<div class="error-message">{passwordChangeError}</div>
+							{/if}
+
+							<div class="form-group">
+								<label for="currentPassword">Current Password</label>
+								<input
+									type="password"
+									id="currentPassword"
+									bind:value={currentPassword}
+									placeholder="Enter current password"
+									disabled={isChangingPassword}
+									required
+								/>
+							</div>
+
+							<div class="form-group">
+								<label for="newPassword">New Password</label>
+								<input
+									type="password"
+									id="newPassword"
+									bind:value={newPassword}
+									placeholder="Enter new password"
+									disabled={isChangingPassword}
+									required
+								/>
+							</div>
+
+							<div class="form-group">
+								<label for="confirmNewPassword">Confirm New Password</label>
+								<input
+									type="password"
+									id="confirmNewPassword"
+									bind:value={confirmNewPassword}
+									placeholder="Confirm new password"
+									disabled={isChangingPassword}
+									required
+								/>
+							</div>
+
+							<div class="password-change-actions">
+								<button
+									class="change-password-btn"
+									onclick={handlePasswordChange}
+									disabled={isChangingPassword ||
+										!currentPassword ||
+										!newPassword ||
+										!confirmNewPassword}
+								>
+									{#if isChangingPassword}
+										<div class="spinner small"></div>
+										Changing...
+									{:else}
+										Change Password
+									{/if}
+								</button>
+								<button
+									class="cancel-password-btn"
+									onclick={togglePasswordChange}
+									disabled={isChangingPassword}
+								>
+									Cancel
+								</button>
+							</div>
+						</div>
+					{/if}
+
 					<div class="actions">
-						<button class="copy-tree-btn" onclick={handleCopyTree}>
+						<button class="key-btn" title="Change password" onclick={togglePasswordChange}>
+							<span>🔑</span>
+						</button>
+						<button class="copy-tree-btn" title="Copy tree" onclick={handleCopyTree}>
 							<span>🌲📋</span>
 						</button>
 						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
-						<button class="close-btn" onclick={toggleLoginPanel}>Close</button>
 					</div>
 				</div>
 			{:else}
 				<!-- Login/Register form -->
 				<div class="login-form">
 					<h3>{isRegisterMode ? 'Create Account' : 'Sign In'}</h3>
-					<p class="form-info">
-						{isRegisterMode
-							? 'Enter your details to create a new account'
-							: 'Enter your details to sign in'}
-					</p>
-
 					{#if errorMessage}
 						<div class="error-message">{errorMessage}</div>
 					{/if}
@@ -935,15 +1065,6 @@
 								{:else}
 									{isRegisterMode ? 'Create Account' : 'Sign In'}
 								{/if}
-							</button>
-
-							<button
-								type="button"
-								class="cancel-btn"
-								onclick={toggleLoginPanel}
-								disabled={isLoading}
-							>
-								Cancel
 							</button>
 						</div>
 
@@ -1594,6 +1715,26 @@
 		transform: scale(0.98);
 	}
 
+	.key-btn {
+		background: #f5f5f5;
+		color: #333;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-size: 0.95em;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-width: 90px;
+		flex: 1;
+	}
+
+	.key-btn:hover {
+		background: #e0e0e0;
+	}
+
 	/* Checkbox styles */
 	.checkbox-group {
 		margin-bottom: 16px;
@@ -1852,5 +1993,68 @@
 		background-color: #bbdefb;
 		border-color: #1976d2;
 		transform: scale(1.05);
+	}
+
+	/* Password change form styles */
+	.password-change-form {
+		margin: 16px 0 0 0;
+		padding-top: 16px;
+		border-top: 1px solid #e0e0e0;
+	}
+
+	.password-change-form h4 {
+		margin: 0 0 12px 0;
+		color: #333;
+		font-size: 1.1em;
+	}
+
+	.password-change-actions {
+		display: flex;
+		gap: 8px;
+		margin-top: 16px;
+	}
+
+	.change-password-btn {
+		flex: 1;
+		background: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-size: 0.95em;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-width: 90px;
+	}
+
+	.change-password-btn:hover {
+		background: #1976d2;
+	}
+
+	.change-password-btn:disabled {
+		background: #bbdefb;
+		cursor: not-allowed;
+	}
+
+	.cancel-password-btn {
+		background: #f5f5f5;
+		color: #333;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-size: 0.95em;
+		cursor: pointer;
+	}
+
+	.cancel-password-btn:hover {
+		background: #e0e0e0;
+	}
+
+	.cancel-password-btn:disabled {
+		color: #999;
+		cursor: not-allowed;
 	}
 </style>

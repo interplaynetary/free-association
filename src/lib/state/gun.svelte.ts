@@ -280,6 +280,24 @@ export async function signout() {
 	userpub.set('');
 }
 
+export function changePassword(currentPassword: string, newPassword: string) {
+	const currentUsername = get(username);
+	if (!currentUsername) {
+		throw new Error('No authenticated user');
+	}
+
+	user.auth(
+		currentUsername,
+		currentPassword,
+		({ err }: { err: any }) => {
+			if (err) {
+				throw new Error(err);
+			}
+		},
+		{ change: newPassword }
+	);
+}
+
 // Monitoring: Check connectivity with gun.back('opt.peers') and WebRTC stats:
 export async function monitorWebRTC(pc: any) {
 	const report = await pc.getStats();
