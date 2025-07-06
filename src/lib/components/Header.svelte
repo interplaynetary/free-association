@@ -18,9 +18,9 @@
 		findNodeById,
 		addChild,
 		createNonRootNode,
-		searchTreeForNavigation,
 		calculateNodePoints
 	} from '$lib/protocol';
+	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
 

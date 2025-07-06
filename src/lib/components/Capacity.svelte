@@ -19,7 +19,7 @@
 		userDesiredComposeInto,
 		networkDesiredComposeFrom,
 		networkDesiredComposeInto
-	} from '$lib/state/protocol/compose.svelte';
+	} from '$lib/state/compose.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
 

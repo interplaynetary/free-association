@@ -76,6 +76,7 @@ export function subscribeToChat(chatId: string) {
 					// transform the data
 					who: await gun.user(data).get('alias'), // a user might lie who they are! So let the user system detect whose data it is.
 					what: (await SEA.decrypt(data.what, encryptionKey)) + '', // Use encryptionKey, not key
+					// @ts-ignore - GUN.state.is typing issue
 					when: GUN.state.is(data, 'what'), // get the internal timestamp for the what property.
 					whopub: await gun.user(data).get('pub')
 				};

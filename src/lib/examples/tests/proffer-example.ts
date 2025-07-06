@@ -7,7 +7,7 @@ import {
 	serializeProfferRegistry,
 	deserializeProfferRegistry,
 	calculateNestedProgress
-} from '../../proffer';
+} from '../experiments/proffer';
 
 // Helper function to create a slot
 function createSlot(

@@ -9,7 +9,7 @@ import {
 	providerShares,
 	contributorCapacityShares
 } from './core.svelte';
-import { userDesiredComposeFrom, userDesiredComposeInto } from './protocol/compose.svelte';
+import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
 import { user, userpub } from './gun.svelte';
 
 export function persistTree() {

@@ -143,8 +143,8 @@
 <main>
 	<div class="app-header">
 		<Header />
-		<!-- Temporary debug component
-		<SimpleNotificationTest /> -->
+		<!-- Temporary debug component -->
+		<!-- <SimpleNotificationTest /> -->
 	</div>
 	<div class="app-content">
 		{@render children()}

@@ -10,7 +10,7 @@ import {
 	isRecalculatingTree,
 	contributorCapacityShares
 } from './core.svelte';
-import { userDesiredComposeFrom, userDesiredComposeInto } from './protocol/compose.svelte';
+import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
 import {
 	persistTree,
 	persistCapacities,

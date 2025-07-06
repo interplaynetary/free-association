@@ -2,9 +2,9 @@ import Gun from 'gun';
 import SEA from 'gun/sea';
 import 'gun/axe';
 import 'gun/lib/yson.js';
-import 'gun/lib/radix'; // Required for radix tree logic
-import 'gun/lib/radisk'; // Required for chunked disk storage
-import 'gun/lib/store'; // Bridges GUN storage adapter logic
+//import 'gun/lib/radix'; // Required for radix tree logic
+//import 'gun/lib/radisk'; // Required for chunked disk storage
+//import 'gun/lib/store'; // Bridges GUN storage adapter logic
 import 'gun/lib/rindexed'; // IndexedDB adapter for RAD in browser
 import 'gun/lib/webrtc.js';
 

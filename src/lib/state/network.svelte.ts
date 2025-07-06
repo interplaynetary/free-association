@@ -16,7 +16,7 @@ import {
 	userDesiredComposeInto,
 	networkDesiredComposeFrom,
 	networkDesiredComposeInto
-} from '$lib/state/protocol/compose.svelte';
+} from '$lib/state/compose.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
 import { parseCapacities, parseTree, parseUserComposition } from '$lib/validation';
@@ -231,13 +231,13 @@ function setupUsersListSubscription() {
 
 	// Subscribe to all changes in the usersList
 	usersList.map().on((userData: any, userId: string) => {
-		console.log(`[USERS] User update: ${userId}`, userData);
+		//console.log(`[USERS] User update: ${userId}`, userData);
 
 		if (!userId || userId === '_') return; // Skip invalid keys
 
 		if (userData === null || userData === undefined) {
 			// User was removed from usersList (they went offline or left the shared space)
-			console.log(`[USERS] User removed from usersList: ${userId}`);
+			//console.log(`[USERS] User removed from usersList: ${userId}`);
 			currentUsers.delete(userId);
 
 			// Note: We intentionally don't remove from userNamesCache here
@@ -387,9 +387,9 @@ export function subscribeToContributorSOGF(contributorId: string) {
 		const isUnchanged = existingEntry && existingEntry.theirShare === theirShare;
 
 		if (isUnchanged) {
-			console.log(
+			/*console.log(
 				`[NETWORK] Ignoring duplicate SOGF update from contributor ${contributorId}: share=${theirShare}`
-			);
+			);*/
 			return;
 		}
 
@@ -426,9 +426,9 @@ export function subscribeToContributorCapacities(contributorId: string) {
 			JSON.stringify(validatedCapacities) === JSON.stringify(currentNetworkCapacities);
 
 		if (isUnchanged) {
-			console.log(
+			/*console.log(
 				`[NETWORK] Ignoring duplicate capacities update for contributor ${contributorId}`
-			);
+			);*/
 			return;
 		}
 
@@ -499,7 +499,7 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 					JSON.stringify(validatedShares) === JSON.stringify(currentNetworkShares);
 
 				if (isUnchanged) {
-					console.log(`[NETWORK] Ignoring duplicate update for contributor ${contributorId}`);
+					//console.log(`[NETWORK] Ignoring duplicate update for contributor ${contributorId}`);
 					return;
 				}
 
@@ -556,9 +556,9 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 			JSON.stringify(validatedCompositions) === JSON.stringify(currentNetworkCompositions);
 
 		if (isUnchanged) {
-			console.log(
+			/*console.log(
 				`[NETWORK] Ignoring duplicate desired compositions update for contributor ${contributorId}`
-			);
+			);*/
 			return;
 		}
 
@@ -608,9 +608,9 @@ export function subscribeToContributorDesiredComposeInto(contributorId: string) 
 			JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
 
 		if (isUnchanged) {
-			console.log(
+			/*console.log(
 				`[NETWORK] Ignoring duplicate desired compose-into update for contributor ${contributorId}`
-			);
+			);*/
 			return;
 		}
 

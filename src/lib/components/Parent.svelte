@@ -18,7 +18,7 @@
 	} from '$lib/protocol';
 	import { createNewTree } from '$lib/utils/userUtils';
 	import Child from '$lib/components/Child.svelte';
-	import BottomSheet from '$lib/components/BottomSheet.svelte';
+	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';
 
 	// Define a type for visualization data
@@ -1092,16 +1092,17 @@
 	</div>
 
 	<!-- User dropdown for adding contributors -->
-	{#if showUserDropdown}
-		<BottomSheet
-			show={showUserDropdown}
-			title="Select Contributor"
-			searchPlaceholder="Search users..."
-			dataProvider={usersDataProvider}
-			select={handleUserSelect}
-			close={handleDropdownClose}
-		/>
-	{/if}
+	<DropDown
+		show={showUserDropdown}
+		title="Select Contributor"
+		searchPlaceholder="Search users..."
+		position={dropdownPosition}
+		width={280}
+		maxHeight={320}
+		dataProvider={usersDataProvider}
+		select={handleUserSelect}
+		close={handleDropdownClose}
+	/>
 </div>
 
 <style>

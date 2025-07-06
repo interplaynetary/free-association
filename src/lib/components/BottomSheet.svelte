@@ -37,6 +37,7 @@
 	let initialized = $state(false);
 	let searchFilter = $state(filterText);
 	let isSheetOpen = $state(show);
+	let originalBodyOverflow = $state<string>('');
 
 	// Get filtered items based on search
 	let filteredItems = $derived(() => {
@@ -45,7 +46,7 @@
 
 		const searchLower = searchFilter.toLowerCase();
 		return items.filter(
-			(item) =>
+			(item: { name: string; id: string }) =>
 				item.name.toLowerCase().includes(searchLower) || item.id.toLowerCase().includes(searchLower)
 		);
 	});
@@ -58,6 +59,27 @@
 	// Update the filter when the prop changes
 	$effect(() => {
 		searchFilter = filterText;
+	});
+
+	// Manage body overflow to prevent scrolling issues
+	$effect(() => {
+		if (browser) {
+			if (isSheetOpen) {
+				// Store original overflow and disable body scrolling
+				originalBodyOverflow = document.body.style.overflow || '';
+				document.body.style.overflow = 'hidden';
+			} else {
+				// Restore original overflow
+				document.body.style.overflow = originalBodyOverflow;
+			}
+		}
+
+		// Cleanup function to restore overflow if component is unmounted
+		return () => {
+			if (browser && isSheetOpen) {
+				document.body.style.overflow = originalBodyOverflow;
+			}
+		};
 	});
 
 	// Event handlers
