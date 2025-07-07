@@ -1,5 +1,6 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
+import { NotificationManager } from './lib/notification-manager';
 
 // Polyfill window object for Gun in service worker context
 if (typeof window === 'undefined') {
@@ -14,10 +15,12 @@ if (typeof window === 'undefined') {
 }
 
 import Gun from 'gun';
-import 'gun/lib/rindexed';
-import 'gun/lib/store'; // Bridges GUN storage adapter logic
-import 'gun/lib/webrtc.js';
-import { NotificationManager } from './lib/notification-manager';
+import 'gun/lib/radix.js';
+import 'gun/lib/radisk.js';
+import 'gun/lib/store.js';
+import 'gun/lib/rindexed.js';
+import 'gun/lib/then.js';
+// import 'gun/sea';
 
 // Create Gun instance
 const gun = new Gun({
@@ -184,4 +187,4 @@ gun
 		}
 	});
 
-console.log('getConnectedPeers', getConnectedPeers())
+console.log('getConnectedPeers', getConnectedPeers());

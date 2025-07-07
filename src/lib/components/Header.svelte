@@ -130,6 +130,7 @@
 	let errorMessage = $state('');
 	let authMessage = $state('');
 	let showPassword = $state(false);
+	let showConfirmPassword = $state(false); // For registration confirm password
 	let agreedToTerms = $state(false); // Added for terms agreement
 
 	// Notification state
@@ -155,6 +156,9 @@
 	let confirmNewPassword = $state('');
 	let passwordChangeError = $state('');
 	let isChangingPassword = $state(false);
+	let showCurrentPassword = $state(false); // For password change current password
+	let showNewPassword = $state(false); // For password change new password
+	let showConfirmNewPassword = $state(false); // For password change confirm new password
 
 	// Initialize error state with URL error message if present
 	$effect(() => {
@@ -274,6 +278,7 @@
 		errorMessage = '';
 		authMessage = '';
 		showPassword = false;
+		showConfirmPassword = false;
 		isRegisterMode = false;
 		agreedToTerms = false;
 		// Also reset password change form when login panel closes
@@ -370,6 +375,26 @@
 		showPassword = !showPassword;
 	}
 
+	// Toggle confirm password visibility
+	function toggleConfirmPasswordVisibility() {
+		showConfirmPassword = !showConfirmPassword;
+	}
+
+	// Toggle current password visibility for password change
+	function toggleCurrentPasswordVisibility() {
+		showCurrentPassword = !showCurrentPassword;
+	}
+
+	// Toggle new password visibility for password change
+	function toggleNewPasswordVisibility() {
+		showNewPassword = !showNewPassword;
+	}
+
+	// Toggle confirm new password visibility for password change
+	function toggleConfirmNewPasswordVisibility() {
+		showConfirmNewPassword = !showConfirmNewPassword;
+	}
+
 	// Toggle between login and register mode
 	function toggleAuthMode() {
 		isRegisterMode = !isRegisterMode;
@@ -445,7 +470,7 @@
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
 			resetForm();
-			globalState.showToast('Signed in successfully', 'success');
+			// globalState.showToast('Signed in successfully', 'success');
 		} catch (error) {
 			console.error('Authentication error:', error);
 			errorMessage = error instanceof Error ? error.message : 'Authentication error';
@@ -694,6 +719,9 @@
 		newPassword = '';
 		confirmNewPassword = '';
 		passwordChangeError = '';
+		showCurrentPassword = false;
+		showNewPassword = false;
+		showConfirmNewPassword = false;
 	}
 
 	// Handle password change
@@ -897,46 +925,76 @@
 									handlePasswordChange();
 								}}
 							>
-								<div class="form-group">
+								<div class="form-group password-group">
 									<label for="currentPassword">Current Password</label>
-									<input
-										type="password"
-										id="currentPassword"
-										name="current-password"
-										bind:value={currentPassword}
-										placeholder="Enter current password"
-										disabled={isChangingPassword}
-										autocomplete="current-password"
-										required
-									/>
+									<div class="password-input-container">
+										<input
+											type={showCurrentPassword ? 'text' : 'password'}
+											id="currentPassword"
+											name="current-password"
+											bind:value={currentPassword}
+											placeholder="Enter current password"
+											disabled={isChangingPassword}
+											autocomplete="current-password"
+											required
+										/>
+										<button
+											type="button"
+											class="toggle-password"
+											onclick={toggleCurrentPasswordVisibility}
+											title={showCurrentPassword ? 'Hide password' : 'Show password'}
+										>
+											<span>{showCurrentPassword ? '🙈' : '🐵'}</span>
+										</button>
+									</div>
 								</div>
 
-								<div class="form-group">
+								<div class="form-group password-group">
 									<label for="newPassword">New Password</label>
-									<input
-										type="password"
-										id="newPassword"
-										name="new-password"
-										bind:value={newPassword}
-										placeholder="Enter new password"
-										disabled={isChangingPassword}
-										autocomplete="new-password"
-										required
-									/>
+									<div class="password-input-container">
+										<input
+											type={showNewPassword ? 'text' : 'password'}
+											id="newPassword"
+											name="new-password"
+											bind:value={newPassword}
+											placeholder="Enter new password"
+											disabled={isChangingPassword}
+											autocomplete="new-password"
+											required
+										/>
+										<button
+											type="button"
+											class="toggle-password"
+											onclick={toggleNewPasswordVisibility}
+											title={showNewPassword ? 'Hide password' : 'Show password'}
+										>
+											<span>{showNewPassword ? '🙈' : '🐵'}</span>
+										</button>
+									</div>
 								</div>
 
-								<div class="form-group">
+								<div class="form-group password-group">
 									<label for="confirmNewPassword">Confirm New Password</label>
-									<input
-										type="password"
-										id="confirmNewPassword"
-										name="new-password"
-										bind:value={confirmNewPassword}
-										placeholder="Confirm new password"
-										disabled={isChangingPassword}
-										autocomplete="new-password"
-										required
-									/>
+									<div class="password-input-container">
+										<input
+											type={showConfirmNewPassword ? 'text' : 'password'}
+											id="confirmNewPassword"
+											name="new-password"
+											bind:value={confirmNewPassword}
+											placeholder="Confirm new password"
+											disabled={isChangingPassword}
+											autocomplete="new-password"
+											required
+										/>
+										<button
+											type="button"
+											class="toggle-password"
+											onclick={toggleConfirmNewPasswordVisibility}
+											title={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+										>
+											<span>{showConfirmNewPassword ? '🙈' : '🐵'}</span>
+										</button>
+									</div>
 								</div>
 
 								<div class="password-change-actions">
@@ -1034,7 +1092,7 @@
 								<label for="confirmPassword">Confirm Password</label>
 								<div class="password-input-container">
 									<input
-										type={showPassword ? 'text' : 'password'}
+										type={showConfirmPassword ? 'text' : 'password'}
 										id="confirmPassword"
 										name="confirmPassword"
 										bind:value={confirmPassword}
@@ -1043,6 +1101,14 @@
 										autocomplete="new-password"
 										required
 									/>
+									<button
+										type="button"
+										class="toggle-password"
+										onclick={toggleConfirmPasswordVisibility}
+										title={showConfirmPassword ? 'Hide password' : 'Show password'}
+									>
+										<span>{showConfirmPassword ? '🙈' : '🐵'}</span>
+									</button>
 								</div>
 							</div>
 

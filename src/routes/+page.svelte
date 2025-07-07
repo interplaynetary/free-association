@@ -83,7 +83,10 @@
 	</div>
 	<div class="bars">
 		<div class="bar-group" class:vertical={!isMobile}>
-			<div class="bar-label">
+			<div
+				class="bar-label"
+				title="Your-Recognition: your acknowledgment of contributions towards the realization of your priorities"
+			>
 				{#if isMobile}
 					your<br />recognition
 				{:else}
@@ -112,7 +115,10 @@
 			</div>
 		</div>
 		<div class="bar-group" class:vertical={!isMobile}>
-			<div class="bar-label">
+			<div
+				class="bar-label"
+				title="Mutual-Recognition: Your mutual-recognition with another is the minimum of your recognition of each other. This displays your mutual-recognition with each as a % of your total-mutual-recognition with all!"
+			>
 				{#if isMobile}
 					mutual<br />recognition
 				{:else}
