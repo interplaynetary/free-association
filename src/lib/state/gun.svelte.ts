@@ -25,8 +25,8 @@ export const gun = new Gun({
 		'https://peer.wallie.io/gun',
 		'https://gun.defucc.me/gun'
 	],
-	localStorage: false
-	//radisk: false
+	localStorage: false,
+	radisk: false
 });
 
 // Authentication state store

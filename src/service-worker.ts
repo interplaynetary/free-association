@@ -15,6 +15,7 @@ if (typeof window === 'undefined') {
 
 import Gun from 'gun';
 import 'gun/lib/rindexed';
+import 'gun/lib/store'; // Bridges GUN storage adapter logic
 import 'gun/lib/webrtc.js';
 import { NotificationManager } from './lib/notification-manager';
 
@@ -25,7 +26,9 @@ const gun = new Gun({
 		'https://peer.wallie.io/gun',
 		'https://gun.defucc.me/gun'
 	],
-	localStorage: false
+	localStorage: false,
+	store: window.RindexedDB,
+	radisk: false
 });
 
 // Function to check connected peers
@@ -180,3 +183,5 @@ gun
 			});
 		}
 	});
+
+console.log('getConnectedPeers', getConnectedPeers())

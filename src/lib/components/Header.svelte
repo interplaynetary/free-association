@@ -891,66 +891,80 @@
 								<div class="error-message">{passwordChangeError}</div>
 							{/if}
 
-							<div class="form-group">
-								<label for="currentPassword">Current Password</label>
-								<input
-									type="password"
-									id="currentPassword"
-									bind:value={currentPassword}
-									placeholder="Enter current password"
-									disabled={isChangingPassword}
-									required
-								/>
-							</div>
+							<form
+								onsubmit={(e) => {
+									e.preventDefault();
+									handlePasswordChange();
+								}}
+							>
+								<div class="form-group">
+									<label for="currentPassword">Current Password</label>
+									<input
+										type="password"
+										id="currentPassword"
+										name="current-password"
+										bind:value={currentPassword}
+										placeholder="Enter current password"
+										disabled={isChangingPassword}
+										autocomplete="current-password"
+										required
+									/>
+								</div>
 
-							<div class="form-group">
-								<label for="newPassword">New Password</label>
-								<input
-									type="password"
-									id="newPassword"
-									bind:value={newPassword}
-									placeholder="Enter new password"
-									disabled={isChangingPassword}
-									required
-								/>
-							</div>
+								<div class="form-group">
+									<label for="newPassword">New Password</label>
+									<input
+										type="password"
+										id="newPassword"
+										name="new-password"
+										bind:value={newPassword}
+										placeholder="Enter new password"
+										disabled={isChangingPassword}
+										autocomplete="new-password"
+										required
+									/>
+								</div>
 
-							<div class="form-group">
-								<label for="confirmNewPassword">Confirm New Password</label>
-								<input
-									type="password"
-									id="confirmNewPassword"
-									bind:value={confirmNewPassword}
-									placeholder="Confirm new password"
-									disabled={isChangingPassword}
-									required
-								/>
-							</div>
+								<div class="form-group">
+									<label for="confirmNewPassword">Confirm New Password</label>
+									<input
+										type="password"
+										id="confirmNewPassword"
+										name="new-password"
+										bind:value={confirmNewPassword}
+										placeholder="Confirm new password"
+										disabled={isChangingPassword}
+										autocomplete="new-password"
+										required
+									/>
+								</div>
 
-							<div class="password-change-actions">
-								<button
-									class="change-password-btn"
-									onclick={handlePasswordChange}
-									disabled={isChangingPassword ||
-										!currentPassword ||
-										!newPassword ||
-										!confirmNewPassword}
-								>
-									{#if isChangingPassword}
-										<div class="spinner small"></div>
-										Changing...
-									{:else}
-										Change Password
-									{/if}
-								</button>
-								<button
-									class="cancel-password-btn"
-									onclick={togglePasswordChange}
-									disabled={isChangingPassword}
-								>
-									Cancel
-								</button>
-							</div>
+								<div class="password-change-actions">
+									<button
+										type="submit"
+										class="change-password-btn"
+										disabled={isChangingPassword ||
+											!currentPassword ||
+											!newPassword ||
+											!confirmNewPassword}
+									>
+										{#if isChangingPassword}
+											<div class="spinner small"></div>
+											Changing...
+										{:else}
+											Change Password
+										{/if}
+									</button>
+									<button
+										type="button"
+										class="cancel-password-btn"
+										onclick={togglePasswordChange}
+										disabled={isChangingPassword}
+									>
+										Cancel
+									</button>
+								</div>
+							</form>
 						</div>
 					{/if}
 
