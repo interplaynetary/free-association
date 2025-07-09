@@ -32,13 +32,10 @@ export const gun = new Gun({
 // Authentication state store
 export const isAuthenticating = writable(true);
 
-export let user: any;
-
-if (typeof window !== 'undefined') {
-	user = gun.user().recall({ sessionStorage: true });
-} else {
-	user = { _: { sea: null }, is: null };
-}
+// Initialize user immediately to avoid reference errors
+export const user = typeof window !== 'undefined' 
+	? gun.user().recall({ sessionStorage: true })
+	: { _: { sea: null }, is: null };
 
 // SEA.throw = true (do not use this in production)
 
