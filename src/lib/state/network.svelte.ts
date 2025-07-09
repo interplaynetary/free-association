@@ -1,5 +1,11 @@
 import { get } from 'svelte/store';
-import { gun, user, userpub, userIds, userNamesCache, usersList } from './gun.svelte';
+import { gun, user, userPub, usersList } from './gun.svelte';
+import {
+	userPubKeys,
+	userNamesOrAliasesCache,
+	userAliasesCache,
+	resolveToPublicKey
+} from '$lib/state/users.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -11,6 +17,7 @@ import {
 	isLoadingTree,
 	isLoadingCapacities
 } from './core.svelte';
+import { userContacts, isLoadingContacts } from './users.svelte';
 import {
 	userDesiredComposeFrom,
 	userDesiredComposeInto,
@@ -18,6 +25,7 @@ import {
 	networkDesiredComposeInto
 } from '$lib/state/compose.svelte';
 import type { CapacitiesCollection } from '$lib/schema';
+import { ContactsCollectionSchema } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
 import { parseCapacities, parseTree, parseUserComposition } from '$lib/validation';
 
@@ -30,9 +38,15 @@ import { parseCapacities, parseTree, parseUserComposition } from '$lib/validatio
  * Only updates local store if the incoming data differs from current state
  */
 export function subscribeToOwnTree() {
-	const ourId = get(userpub);
-	if (!ourId) {
-		console.log('[NETWORK] Cannot subscribe to own tree - not authenticated');
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to own tree - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to own tree - userPub not initialized');
 		return;
 	}
 
@@ -95,9 +109,15 @@ export function subscribeToOwnTree() {
  * Subscribe to our own capacities data
  */
 export function subscribeToOwnCapacities() {
-	const ourId = get(userpub);
-	if (!ourId) {
-		console.log('[NETWORK] Cannot subscribe to own capacities - not authenticated');
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to own capacities - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to own capacities - userPub not initialized');
 		return;
 	}
 
@@ -148,9 +168,15 @@ export function subscribeToOwnCapacities() {
  * Subscribe to our own desired compose-from data
  */
 export function subscribeToOwnDesiredComposeFrom() {
-	const ourId = get(userpub);
-	if (!ourId) {
-		console.log('[NETWORK] Cannot subscribe to own desired compose-from - not authenticated');
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to own desired compose-from - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to own desired compose-from - userPub not initialized');
 		return;
 	}
 
@@ -186,9 +212,15 @@ export function subscribeToOwnDesiredComposeFrom() {
  * Subscribe to our own desired compose-into data
  */
 export function subscribeToOwnDesiredComposeInto() {
-	const ourId = get(userpub);
-	if (!ourId) {
-		console.log('[NETWORK] Cannot subscribe to own desired compose-into - not authenticated');
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to own desired compose-into - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to own desired compose-into - userPub not initialized');
 		return;
 	}
 
@@ -220,6 +252,68 @@ export function subscribeToOwnDesiredComposeInto() {
 	});
 }
 
+/**
+ * Subscribe to our own contacts data
+ */
+export function subscribeToOwnContacts() {
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to own contacts - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to own contacts - userPub not initialized');
+		return;
+	}
+
+	console.log('[NETWORK] Setting up subscription to own contacts data');
+
+	user.get('contacts').on((contactsData: any) => {
+		if (!contactsData) {
+			console.log('[NETWORK] No contacts data found');
+			userContacts.set({});
+			isLoadingContacts.set(false);
+			return;
+		}
+
+		console.log('[NETWORK] Received contacts update from network');
+
+		// Set loading flag to prevent persistence loop
+		isLoadingContacts.set(true);
+
+		try {
+			// Parse JSON string if needed
+			const parsedData = typeof contactsData === 'string' ? JSON.parse(contactsData) : contactsData;
+
+			// Parse and validate contacts
+			const validatedContacts = ContactsCollectionSchema.parse(parsedData);
+			console.log('[NETWORK] Validated contacts:', validatedContacts);
+
+			// Get current contacts state
+			const currentContacts = get(userContacts);
+
+			// Compare to avoid unnecessary updates
+			if (JSON.stringify(currentContacts) === JSON.stringify(validatedContacts)) {
+				console.log('[NETWORK] Incoming contacts match current contacts, ignoring update');
+				isLoadingContacts.set(false);
+				return;
+			}
+
+			console.log('[NETWORK] Contacts data changed, updating local store');
+			console.log('[NETWORK] Loaded contacts count:', Object.keys(validatedContacts).length);
+
+			userContacts.set(validatedContacts);
+		} catch (error) {
+			console.error('[NETWORK] Error loading contacts:', error);
+			// On error, don't update the store
+		} finally {
+			isLoadingContacts.set(false);
+		}
+	});
+}
+
 // Centralized reactive subscription to usersList
 function setupUsersListSubscription() {
 	if (typeof window === 'undefined') return; // Only run in browser
@@ -230,15 +324,15 @@ function setupUsersListSubscription() {
 	const currentUsers = new Map<string, any>();
 
 	// Subscribe to all changes in the usersList
-	usersList.map().on((userData: any, userId: string) => {
+	usersList.map().on((userData: any, pubKey: string) => {
 		//console.log(`[USERS] User update: ${userId}`, userData);
 
-		if (!userId || userId === '_') return; // Skip invalid keys
+		if (!pubKey || pubKey === '_') return; // Skip invalid keys
 
 		if (userData === null || userData === undefined) {
 			// User was removed from usersList (they went offline or left the shared space)
 			//console.log(`[USERS] User removed from usersList: ${userId}`);
-			currentUsers.delete(userId);
+			currentUsers.delete(pubKey);
 
 			// Note: We intentionally don't remove from userNamesCache here
 			// because the cache serves a different purpose (performance optimization)
@@ -246,27 +340,27 @@ function setupUsersListSubscription() {
 		} else {
 			// User was added or updated
 			// console.log(`[USERS] User added/updated: ${userId}`, userData);
-			currentUsers.set(userId, userData);
+			currentUsers.set(pubKey, userData);
 
 			// Get the user's alias and update cache
 			const userName = userData.name;
 			if (userName && typeof userName === 'string') {
 				// Update userNamesCache with the name from usersList
-				userNamesCache.update((cache) => ({
+				userAliasesCache.update((cache) => ({
 					...cache,
-					[userId]: userName
+					[pubKey]: userName
 				}));
 			} else {
 				// Try to get alias from user's protected space using Gun's user system
 				gun
-					.user(userId) // Use Gun's user system
+					.user(pubKey) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						if (alias && typeof alias === 'string') {
-							console.log(`[USERS] Got alias from protected space for ${userId}: ${alias}`);
-							userNamesCache.update((cache) => ({
+							console.log(`[USERS] Got alias from protected space for ${pubKey}: ${alias}`);
+							userAliasesCache.update((cache) => ({
 								...cache,
-								[userId]: alias
+								[pubKey]: alias
 							}));
 						}
 					});
@@ -276,7 +370,7 @@ function setupUsersListSubscription() {
 		// Update userIds store with current user list
 		const allUserIds = Array.from(currentUsers.keys());
 		// console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
-		userIds.set(allUserIds);
+		userPubKeys.set(allUserIds);
 	});
 }
 
@@ -284,8 +378,13 @@ function setupUsersListSubscription() {
  * Initialize all user data subscriptions
  */
 export function initializeUserDataSubscriptions() {
-	if (!get(userpub)) {
-		console.log('[NETWORK] Cannot initialize subscriptions - not authenticated');
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot initialize subscriptions - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot initialize subscriptions - userPub not initialized');
 		return;
 	}
 
@@ -296,6 +395,7 @@ export function initializeUserDataSubscriptions() {
 	subscribeToOwnCapacities();
 	subscribeToOwnDesiredComposeFrom();
 	subscribeToOwnDesiredComposeInto();
+	subscribeToOwnContacts();
 }
 
 /**
@@ -361,12 +461,21 @@ function setupTimeoutProtection(contributorId: string, dataType: string) {
 
 /**
  * Set up network subscriptions for contributor's SOGF
- * @param contributorId The ID of the contributor to subscribe to
+ * @param contributorId The ID of the contributor to subscribe to (can be contactId or pubKey)
  */
 export function subscribeToContributorSOGF(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
 
-	const contributorSogf = gun.user(contributorId).get('sogf'); // Use Gun's user system
+	// Resolve contact ID to public key if needed
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot subscribe to SOGF for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
+	const contributorSogf = gun.user(pubKey).get('sogf'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorSogf.on((sogfData: any) => {
@@ -375,8 +484,14 @@ export function subscribeToContributorSOGF(contributorId: string) {
 		console.log(`[NETWORK] Received SOGF update from ${contributorId}`);
 
 		// Get our user ID
-		const ourId = get(userpub);
-		if (!ourId) return;
+		let ourId: string;
+		try {
+			ourId = get(userPub);
+			if (!ourId) return;
+		} catch (error) {
+			console.log(`[NETWORK] Cannot get userPub in SOGF subscription for ${contributorId}`);
+			return;
+		}
 
 		// Extract our share from their SOGF
 		const theirShare = sogfData[ourId] || 0;
@@ -401,7 +516,16 @@ export function subscribeToContributorSOGF(contributorId: string) {
 export function subscribeToContributorCapacities(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s capacities`);
 
-	const contributorCapacities = gun.user(contributorId).get('capacities'); // Use Gun's user system
+	// Resolve contact ID to public key if needed
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot subscribe to capacities for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
+	const contributorCapacities = gun.user(pubKey).get('capacities'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCapacities.on((capacitiesData: any) => {
@@ -410,8 +534,14 @@ export function subscribeToContributorCapacities(contributorId: string) {
 		console.log(`[NETWORK] Received capacities update from ${contributorId}:`, capacitiesData);
 
 		// Get our user ID
-		const ourId = get(userpub);
-		if (!ourId) return;
+		let ourId: string;
+		try {
+			ourId = get(userPub);
+			if (!ourId) return;
+		} catch (error) {
+			console.log(`[NETWORK] Cannot get userPub in capacities subscription for ${contributorId}`);
+			return;
+		}
 
 		// Parse and validate the capacities data
 		const validatedCapacities = parseCapacities(capacitiesData);
@@ -446,12 +576,18 @@ export function subscribeToContributorCapacities(contributorId: string) {
 
 /**
  * Subscribe to our capacity shares from a contributor
- * @param contributorId The contributor to subscribe to
+ * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
  */
 export function subscribeToContributorCapacityShares(contributorId: string) {
-	const ourId = get(userpub);
-	if (!ourId) {
-		console.log('[NETWORK] Cannot subscribe to capacity shares - not authenticated');
+	let ourId: string;
+	try {
+		ourId = get(userPub);
+		if (!ourId) {
+			console.log('[NETWORK] Cannot subscribe to capacity shares - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to capacity shares - userPub not initialized');
 		return;
 	}
 
@@ -459,9 +595,18 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 		`[NETWORK] Setting up capacity shares subscription for contributor: ${contributorId}`
 	);
 
+	// Resolve contact ID to public key if needed
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot subscribe to capacity shares for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
 	// Subscribe to our capacity shares from this contributor
 	gun
-		.user(contributorId) // Use Gun's user system
+		.user(pubKey) // Use Gun's user system
 		.get('capacityShares')
 		.get(ourId)
 		.on((shares: any) => {
@@ -524,12 +669,21 @@ export function subscribeToContributorCapacityShares(contributorId: string) {
 
 /**
  * Subscribe to a contributor's desired compose-from (they enhance their capacity from ours)
- * @param contributorId The contributor to subscribe to
+ * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
  */
 export function subscribeToContributorDesiredComposeFrom(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-from`);
 
-	const contributorCompositions = gun.user(contributorId).get('desiredComposeFrom'); // Use Gun's user system
+	// Resolve contact ID to public key if needed
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot subscribe to desired compose-from for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
+	const contributorCompositions = gun.user(pubKey).get('desiredComposeFrom'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorCompositions.on((compositionsData: any) => {
@@ -576,12 +730,21 @@ export function subscribeToContributorDesiredComposeFrom(contributorId: string) 
 
 /**
  * Subscribe to a contributor's desired compose-into (they want to enhance our capacities)
- * @param contributorId The contributor to subscribe to
+ * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
  */
 export function subscribeToContributorDesiredComposeInto(contributorId: string) {
 	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-into`);
 
-	const contributorComposeInto = gun.user(contributorId).get('desiredComposeInto'); // Use Gun's user system
+	// Resolve contact ID to public key if needed
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot subscribe to desired compose-into for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
+	const contributorComposeInto = gun.user(pubKey).get('desiredComposeInto'); // Use Gun's user system
 
 	// Subscribe to changes
 	contributorComposeInto.on((composeIntoData: any) => {
@@ -626,40 +789,155 @@ export function subscribeToContributorDesiredComposeInto(contributorId: string) 
 	});
 }
 
-// Watch for changes to contributors and subscribe to get their SOGF data
-contributors.subscribe((allContributors) => {
-	if (!allContributors.length) {
-		console.log('[NETWORK] No contributors to subscribe to');
-		return;
+/**
+ * Generic subscription manager for handling delta-based subscription updates
+ */
+class SubscriptionManager {
+	private activeSubscriptions: Set<string>;
+	private subscriptionType: string;
+
+	constructor(subscriptionType: string) {
+		this.activeSubscriptions = new Set();
+		this.subscriptionType = subscriptionType;
 	}
 
-	// Only run this if we're authenticated
-	if (!get(userpub)) {
-		console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
-		return;
+	/**
+	 * Update subscriptions based on new contributor list
+	 */
+	updateSubscriptions(
+		newContributors: string[],
+		subscribeFn: (contributorId: string) => void,
+		onAdd?: (contributorId: string) => void,
+		onRemove?: (contributorId: string) => void
+	) {
+		if (!newContributors.length) {
+			console.log(`[NETWORK] No ${this.subscriptionType} contributors to subscribe to`);
+			this.activeSubscriptions.clear();
+			return;
+		}
+
+		console.log(
+			`[NETWORK] ${this.subscriptionType} contributors changed, now have ${newContributors.length}, managing subscriptions`
+		);
+
+		// Calculate deltas
+		const newSet = new Set(newContributors);
+		const toAdd = newContributors.filter((id) => !this.activeSubscriptions.has(id));
+		const toRemove = Array.from(this.activeSubscriptions).filter((id) => !newSet.has(id));
+
+		// Handle removals
+		toRemove.forEach((contributorId) => {
+			console.log(`[NETWORK] Removing ${this.subscriptionType} subscription for: ${contributorId}`);
+			this.activeSubscriptions.delete(contributorId);
+			onRemove?.(contributorId);
+		});
+
+		// Handle additions
+		toAdd.forEach((contributorId) => {
+			try {
+				console.log(`[NETWORK] Adding ${this.subscriptionType} subscription for: ${contributorId}`);
+				subscribeFn(contributorId);
+				this.activeSubscriptions.add(contributorId);
+				onAdd?.(contributorId);
+			} catch (error) {
+				console.error(
+					`[NETWORK] Error subscribing to ${this.subscriptionType} contributor ${contributorId}:`,
+					error
+				);
+			}
+		});
+
+		console.log(
+			`[NETWORK] ${this.subscriptionType} subscriptions: +${toAdd.length} -${toRemove.length} (total: ${this.activeSubscriptions.size})`
+		);
 	}
+
+	has(contributorId: string): boolean {
+		return this.activeSubscriptions.has(contributorId);
+	}
+
+	add(contributorId: string): void {
+		this.activeSubscriptions.add(contributorId);
+	}
+
+	get size(): number {
+		return this.activeSubscriptions.size;
+	}
+}
+
+/**
+ * Helper to clean up multiple stores by filtering out removed contributors
+ */
+function cleanupNetworkStores(
+	removedContributors: string[],
+	currentContributors: string[],
+	stores: Array<{ store: any; name: string }>
+) {
+	if (removedContributors.length === 0) return;
 
 	console.log(
-		`[NETWORK] Contributors changed, now have ${allContributors.length}, setting up subscriptions`
+		`[NETWORK] Cleaning up data for removed contributors: ${removedContributors.join(', ')}`
 	);
 
-	// Subscribe to ALL contributors to get their current SOGF data
-	// We always re-subscribe to ensure we have the most current theirShare values
-	// This is especially important when contributors are re-added after being removed
-	allContributors.forEach((contributorId) => {
-		try {
-			console.log(`[NETWORK] Setting up subscription for contributor: ${contributorId}`);
-			subscribeToContributorSOGF(contributorId);
-		} catch (error) {
-			console.error(`[NETWORK] Error subscribing to contributor ${contributorId}:`, error);
-		}
+	stores.forEach(({ store, name }) => {
+		store.update((current: Record<string, any>) => {
+			const cleaned: Record<string, any> = {};
+			Object.entries(current).forEach(([contributorId, data]) => {
+				if (currentContributors.includes(contributorId)) {
+					cleaned[contributorId] = data;
+				}
+			});
+			console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
+			return cleaned;
+		});
 	});
+}
+
+/**
+ * Set up all mutual contributor subscriptions for a single contributor
+ */
+function setupMutualContributorSubscriptions(contributorId: string) {
+	subscribeToContributorCapacities(contributorId);
+	subscribeToContributorCapacityShares(contributorId);
+	subscribeToContributorDesiredComposeFrom(contributorId);
+	subscribeToContributorDesiredComposeInto(contributorId);
+}
+
+// Create subscription managers
+const sogfManager = new SubscriptionManager('SOGF');
+const mutualManager = new SubscriptionManager('mutual');
+
+// Watch for changes to contributors and subscribe to get their SOGF data
+contributors.subscribe((allContributors) => {
+	// Only run this if we're authenticated
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to contributors - userPub not initialized');
+		return;
+	}
+
+	sogfManager.updateSubscriptions(allContributors, subscribeToContributorSOGF);
 });
 
 // Watch for changes to mutual contributors and subscribe to get their capacity data and shares
 mutualContributors.subscribe((currentMutualContributors) => {
+	// Only run this if we're authenticated
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to mutual contributors - userPub not initialized');
+		return;
+	}
+
 	if (!currentMutualContributors.length) {
-		// If no mutual contributors, clear all network capacities, shares, and compositions
+		// Clear all network stores
 		networkCapacities.set({});
 		networkCapacityShares.set({});
 		networkDesiredComposeFrom.set({});
@@ -667,106 +945,21 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		return;
 	}
 
-	// Only run this if we're authenticated
-	if (!get(userpub)) {
-		console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
-		return;
-	}
+	// Define network stores for cleanup
+	const networkStores = [
+		{ store: networkCapacities, name: 'networkCapacities' },
+		{ store: networkCapacityShares, name: 'networkCapacityShares' },
+		{ store: networkDesiredComposeFrom, name: 'networkDesiredComposeFrom' },
+		{ store: networkDesiredComposeInto, name: 'networkDesiredComposeInto' }
+	];
 
-	console.log(
-		`[NETWORK] Mutual contributors changed, now have ${currentMutualContributors.length}, setting up subscriptions`
+	mutualManager.updateSubscriptions(
+		currentMutualContributors,
+		setupMutualContributorSubscriptions,
+		undefined, // onAdd callback not needed
+		(contributorId) =>
+			cleanupNetworkStores([contributorId], currentMutualContributors, networkStores)
 	);
-
-	// Clean up capacities from contributors who are no longer mutual contributors
-	networkCapacities.update((currentNetworkCapacities) => {
-		if (!currentNetworkCapacities) return {};
-
-		const cleaned: Record<string, CapacitiesCollection> = {};
-		Object.entries(currentNetworkCapacities).forEach(([contributorId, capacities]) => {
-			// Keep capacities from current mutual contributors only
-			if (currentMutualContributors.includes(contributorId)) {
-				cleaned[contributorId] = capacities;
-			}
-		});
-
-		console.log(
-			`[NETWORK] Cleaned network capacities: kept ${Object.keys(cleaned).length} contributors from ${
-				Object.keys(currentNetworkCapacities).length
-			} total`
-		);
-		return cleaned;
-	});
-
-	// Clean up shares from contributors who are no longer mutual contributors
-	networkCapacityShares.update((current) => {
-		const cleaned: Record<string, Record<string, number>> = {};
-		Object.entries(current).forEach(([contributorId, shares]) => {
-			// Keep shares from current mutual contributors only
-			if (currentMutualContributors.includes(contributorId)) {
-				cleaned[contributorId] = shares;
-			}
-		});
-
-		console.log(
-			`[NETWORK] Cleaned capacity shares: kept ${Object.keys(cleaned).length} contributors from ${
-				Object.keys(current).length
-			} total`
-		);
-		return cleaned;
-	});
-
-	// Clean up desired compositions from contributors who are no longer mutual contributors
-	networkDesiredComposeFrom.update((current) => {
-		const cleaned: Record<string, Record<string, Record<string, number>>> = {};
-		Object.entries(current).forEach(([contributorId, compositions]) => {
-			// Keep compositions from current mutual contributors only
-			if (currentMutualContributors.includes(contributorId)) {
-				cleaned[contributorId] = compositions;
-			}
-		});
-
-		console.log(
-			`[NETWORK] Cleaned desired compositions: kept ${Object.keys(cleaned).length} contributors from ${
-				Object.keys(current).length
-			} total`
-		);
-		return cleaned;
-	});
-
-	// Clean up desired compose-into from contributors who are no longer mutual contributors
-	networkDesiredComposeInto.update((current) => {
-		const cleaned: Record<string, Record<string, Record<string, number>>> = {};
-		Object.entries(current).forEach(([contributorId, composeInto]) => {
-			// Keep compose-into from current mutual contributors only
-			if (currentMutualContributors.includes(contributorId)) {
-				cleaned[contributorId] = composeInto;
-			}
-		});
-
-		console.log(
-			`[NETWORK] Cleaned desired compose-into: kept ${Object.keys(cleaned).length} contributors from ${
-				Object.keys(current).length
-			} total`
-		);
-		return cleaned;
-	});
-
-	// Subscribe to mutual contributors for capacity data, shares, and both composition directions
-	currentMutualContributors.forEach((contributorId) => {
-		try {
-			console.log(`[NETWORK] Setting up subscriptions for mutual contributor: ${contributorId}`);
-			// Set up capacity subscription
-			subscribeToContributorCapacities(contributorId);
-			// Set up capacity shares subscription
-			subscribeToContributorCapacityShares(contributorId);
-			// Set up desired compose-from subscription (they enhance their capacity from ours)
-			subscribeToContributorDesiredComposeFrom(contributorId);
-			// Set up desired compose-into subscription (they enhance our capacity using theirs)
-			subscribeToContributorDesiredComposeInto(contributorId);
-		} catch (error) {
-			console.error(`[NETWORK] Error subscribing to mutual contributor ${contributorId}:`, error);
-		}
-	});
 });
 
 /**
@@ -777,9 +970,14 @@ export function debugTriggerSubscriptions() {
 	const allContributors = get(contributors);
 
 	allContributors.forEach((contributorId) => {
-		console.log(`[DEBUG] Setting up subscription for: ${contributorId}`);
-		subscribeToContributorSOGF(contributorId);
+		if (!sogfManager.has(contributorId)) {
+			console.log(`[DEBUG] Setting up subscription for: ${contributorId}`);
+			subscribeToContributorSOGF(contributorId);
+			sogfManager.add(contributorId);
+		} else {
+			console.log(`[DEBUG] Already subscribed to: ${contributorId}`);
+		}
 	});
 
-	console.log(`[DEBUG] Set up ${allContributors.length} subscriptions`);
+	console.log(`[DEBUG] Active subscriptions: ${sogfManager.size}/${allContributors.length}`);
 }

@@ -1,4 +1,4 @@
-import { gun, user, userpub } from '$lib/state/gun.svelte';
+import { gun, user, userPub } from '$lib/state/gun.svelte';
 import SEA from 'gun/sea';
 import { get } from 'svelte/store';
 
@@ -41,7 +41,7 @@ export function readMessages(fromPubKey: string, path: string, pubkeys: string[]
 	gun
 		.get(`~${fromPubKey}`)
 		.get('messages')
-		.get(get(userpub))
+		.get(get(userPub))
 		.map()
 		.once((message: any) => {
 			return SEA.decrypt(getSecret(fromPubKey), pair);

@@ -6,8 +6,8 @@
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import {
-		username,
-		userpub,
+		userAlias,
+		userPub,
 		login,
 		signup,
 		signout,
@@ -52,8 +52,8 @@
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
 	const path = $derived($currentPath);
-	const pub = $derived($userpub);
-	const user = $derived($username);
+	const pub = $derived($userPub);
+	const user = $derived($userAlias);
 	const isAuthenticatingState = $derived($isAuthenticating);
 	// Add reactive state for delete mode
 	const isDeleteMode = $derived(globalState.deleteMode);
@@ -771,15 +771,15 @@
 			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">Loading...</div>
-				{:else if currentPathInfo.length === 0 && $username}
+				{:else if currentPathInfo.length === 0 && $userAlias}
 					<a
 						href="{base}/"
 						class="breadcrumb-item auth-root current"
 						onclick={(e) => handleBreadcrumbClick(0, e)}
 						tabindex="0"
-						aria-label={$username}
+						aria-label={$userAlias}
 					>
-						{truncateText($username)}
+						{truncateText($userAlias)}
 					</a>
 				{:else if currentPathInfo.length === 0}
 					<button
@@ -886,25 +886,25 @@
 					<div class="spinner"></div>
 					<p>Checking authentication...</p>
 				</div>
-			{:else if $username}
+			{:else if $userAlias}
 				<!-- Logged in view -->
 				<div class="welcome-panel">
 					<div class="user-profile">
 						<div class="avatar large">
-							<img src={generateAvatar($username, $userpub, 60)} alt={$username} />
+							<img src={generateAvatar($userAlias, $userPub, 60)} alt={$userAlias} />
 						</div>
 						<div class="user-details">
-							<h3 title={$username}>Welcome, {truncateText($username, 15)}</h3>
-							<p class="user-id" title={'@' + ($username || 'anonymous')}>
-								@{truncateText($username || 'anonymous', 15)}
+							<h3 title={$userAlias}>Welcome, {truncateText($userAlias, 15)}</h3>
+							<p class="user-id" title={'@' + ($userAlias || 'anonymous')}>
+								@{truncateText($userAlias || 'anonymous', 15)}
 							</p>
-							{#if $userpub}
+							{#if $userPub}
 								<button
 									class="copy-pub-btn"
 									title="Click to copy your public key"
-									onclick={() => copyToClipboard($userpub)}
+									onclick={() => copyToClipboard($userPub)}
 								>
-									<span class="pub-text"> {truncateText($userpub, 20)}</span>
+									<span class="pub-text"> {truncateText($userPub, 20)}</span>
 									<span class="copy-icon">📋</span>
 								</button>
 							{/if}

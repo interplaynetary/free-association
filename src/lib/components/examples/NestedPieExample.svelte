@@ -6,7 +6,7 @@
 	import NestedPie from '../NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { username, userpub, userTree, userSogf, providerShares } from '$lib/state.svelte';
+	import { userAlias, userPub, userTree, userSogf, providerShares } from '$lib/state.svelte';
 	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/schema';
 	import { normalizeShareMap } from '$lib/protocol';
@@ -26,7 +26,7 @@
 		const shares = get(providerShares);
 		const path = get(currentPath);
 
-		if ($username && $userpub && tree) {
+		if ($userAlias && $userPub && tree) {
 			// Update shares whenever user data changes
 			updateChartData();
 		} else {
@@ -41,7 +41,7 @@
 		const sogf = get(userSogf);
 		const mutualRecognition = get(providerShares);
 
-		if (!$username || !$userpub || !tree) return;
+		if (!$userAlias || !$userPub || !tree) return;
 
 		// Generate pie chart data for the two layers
 		const newLayers: Array<PieChartData> = [];
@@ -171,7 +171,7 @@
 
 	// Initialize on mount
 	onMount(() => {
-		if ($username && $userpub && get(userTree)) {
+		if ($userAlias && $userPub && get(userTree)) {
 			updateChartData();
 		} else {
 			layeredData = createExampleData();
@@ -214,7 +214,7 @@
 				<pre>{JSON.stringify(layeredData, null, 2)}</pre>
 
 				<strong>User:</strong>
-				{$username || 'Not logged in'}<br />
+				{$userAlias || 'Not logged in'}<br />
 				<strong>Path:</strong>
 				{get(currentPath).join(' > ')}
 

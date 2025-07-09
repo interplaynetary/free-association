@@ -42,44 +42,11 @@ if (typeof window !== 'undefined') {
 
 // SEA.throw = true (do not use this in production)
 
-// Current User's username
-export const username = writable('');
-export const userpub = writable('');
+// Current User's alias
+export const userAlias = writable('');
+export const userPub = writable('');
 
 export const usersList = gun.get('freely-associating-players');
-
-// Cache for user names to avoid repeated Gun lookups
-export const userNamesCache = writable<Record<string, string>>({});
-
-// Store for tracking all user IDs
-export const userIds = writable<string[]>([]);
-
-export async function getUserName(userId: string) {
-	// First check the reactive cache
-	const cache = get(userNamesCache);
-	if (cache[userId]) {
-		return cache[userId];
-	}
-
-	// If not found, try the user's protected space using Gun's user system
-	try {
-		const alias = await gun.user(userId).get('alias'); // Use Gun's user system like in chat.svelte.ts
-		if (alias && typeof alias === 'string') {
-			// Update cache
-			userNamesCache.update((cache) => ({
-				...cache,
-				[userId]: alias
-			}));
-			return alias;
-		}
-	} catch (error) {
-		console.log(`[USER-NAME] Could not fetch alias for user ${userId}:`, error);
-	}
-
-	// Fallback to truncated ID
-	const fallbackName = userId.substring(0, 8) + '...';
-	return fallbackName;
-}
 
 // Check if user is already authenticated after recall
 if (typeof window !== 'undefined') {
@@ -102,10 +69,10 @@ if (typeof window !== 'undefined') {
 						const pubToUse = actualPub || user.is.pub;
 						console.log('[RECALL] Using alias from storage:', aliasToUse);
 						console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-						username.set(aliasToUse);
-						userpub.set(pubToUse);
+						userAlias.set(aliasToUse);
+						userPub.set(pubToUse);
 						usersList.get(pubToUse).put({
-							name: aliasToUse,
+							alias: aliasToUse,
 							lastSeen: Date.now()
 						});
 					});
@@ -130,10 +97,10 @@ if (typeof window !== 'undefined') {
 							'[RECALL] Using pub from storage (pub fallback):',
 							pubToUse?.slice(0, 20) + '...'
 						);
-						username.set(aliasToUse);
-						userpub.set(pubToUse);
+						userAlias.set(aliasToUse);
+						userPub.set(pubToUse);
 						usersList.get(pubToUse).put({
-							name: aliasToUse,
+							alias: aliasToUse,
 							lastSeen: Date.now()
 						});
 					});
@@ -144,14 +111,14 @@ if (typeof window !== 'undefined') {
 			} else {
 				console.log('[RECALL] No authenticated user found after recall');
 				// Clear the stores to ensure consistent state
-				username.set('');
-				userpub.set('');
+				userAlias.set('');
+				userPub.set('');
 			}
 		} catch (error) {
 			console.error('[RECALL] Error during authentication check:', error);
 			// Clear the stores on error
-			username.set('');
-			userpub.set('');
+			userAlias.set('');
+			userPub.set('');
 		} finally {
 			// Clear authenticating state
 			isAuthenticating.set(false);
@@ -178,10 +145,10 @@ gun.on('auth', async () => {
 					const pubToUse = actualPub || user.is.pub;
 					console.log('[AUTH] Using alias from storage:', aliasToUse);
 					console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-					username.set(aliasToUse);
-					userpub.set(pubToUse);
+					userAlias.set(aliasToUse);
+					userPub.set(pubToUse);
 					usersList.get(pubToUse).put({
-						name: aliasToUse,
+						alias: aliasToUse,
 						lastSeen: Date.now()
 					});
 
@@ -211,10 +178,10 @@ gun.on('auth', async () => {
 					const pubToUse = actualPub || user.is.pub;
 					console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
 					console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
-					username.set(aliasToUse);
-					userpub.set(pubToUse);
+					userAlias.set(aliasToUse);
+					userPub.set(pubToUse);
 					usersList.get(pubToUse).put({
-						name: aliasToUse,
+						alias: aliasToUse,
 						lastSeen: Date.now()
 					});
 
@@ -238,32 +205,32 @@ gun.on('auth', async () => {
 	} catch (error) {
 		console.error('[AUTH] Error during authentication:', error);
 		// Clear the stores on error
-		username.set('');
-		userpub.set('');
+		userAlias.set('');
+		userPub.set('');
 	} finally {
 		// Clear authenticating state
 		isAuthenticating.set(false);
 	}
 });
 
-export function login(username: string, password: string) {
-	user.auth(username, password, ({ err }: { err: any }) => err && alert(err));
+export function login(alias: string, password: string) {
+	user.auth(alias, password, ({ err }: { err: any }) => err && alert(err));
 }
 
-export function signup(username: string, password: string) {
-	gun.get(`~@${username}`).once(
+export function signup(alias: string, password: string) {
+	gun.get(`~@${alias}`).once(
 		(data: any) => {
 			if (data) {
 				console.log('[SIGNUP] checking alias user data', data);
-				alert('Username already taken');
+				alert('Alias already taken');
 				return;
 			}
 
-			user.create(username, password, ({ err }: { err: any }) => {
+			user.create(alias, password, ({ err }: { err: any }) => {
 				if (err) {
 					alert(err);
 				} else {
-					login(username, password);
+					login(alias, password);
 				}
 			});
 		},
@@ -276,18 +243,18 @@ export async function signout() {
 	while (user._.sea != null) {
 		await new Promise(requestAnimationFrame);
 	}
-	username.set('');
-	userpub.set('');
+	userAlias.set('');
+	userPub.set('');
 }
 
 export function changePassword(currentPassword: string, newPassword: string) {
-	const currentUsername = get(username);
-	if (!currentUsername) {
+	const currentAlias = get(userAlias);
+	if (!currentAlias) {
 		throw new Error('No authenticated user');
 	}
 
 	user.auth(
-		currentUsername,
+		currentAlias,
 		currentPassword,
 		({ err }: { err: any }) => {
 			if (err) {

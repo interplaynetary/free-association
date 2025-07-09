@@ -8,8 +8,9 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	contributorCapacityShares
+	contributorCapacityShares,
 } from './core.svelte';
+import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
 import {
 	persistTree,
@@ -17,7 +18,8 @@ import {
 	persistSogf,
 	persistContributorCapacityShares,
 	persistUserDesiredComposeFrom,
-	persistUserDesiredComposeInto
+	persistUserDesiredComposeInto,
+	persistContacts
 } from './persistence.svelte';
 import { recalculateFromTree } from './calculations.svelte';
 
@@ -187,5 +189,28 @@ userDesiredComposeInto.subscribe((userDesiredComposeInto) => {
 		persistUserDesiredComposeInto();
 	} catch (error) {
 		console.error('[USER-COMPOSE-INTO-SUB] Error during persistence:', error);
+	}
+});
+
+/**
+ * Trigger persistence when contacts change
+ */
+userContacts.subscribe((contacts) => {
+	if (!contacts) return;
+
+	console.log('[CONTACTS-SUB] Contacts updated');
+	console.log('[CONTACTS-SUB] Contacts count:', Object.keys(contacts).length);
+
+	// Force immediate contacts persistence on every change
+	// This ensures contacts changes are always saved
+	if (!get(isLoadingContacts)) {
+		console.log('[CONTACTS-SUB] Persisting contacts');
+		try {
+			persistContacts();
+		} catch (error) {
+			console.error('[CONTACTS-SUB] Error during persistence:', error);
+		}
+	} else {
+		console.log('[CONTACTS-SUB] Skipping persistence because contacts are being loaded');
 	}
 });

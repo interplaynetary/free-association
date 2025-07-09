@@ -2,7 +2,7 @@
 	import TagPill from './TagPill.svelte';
 	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { userNamesCache } from '$lib/state/gun.svelte';
+	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	// Define interface for node data
 	interface NodeData {
@@ -526,7 +526,7 @@
 							{#each node.contributors as contributorId}
 								<div
 									class="mini-contributor"
-									title={$userNamesCache[contributorId]}
+									title={$userNamesOrAliasesCache[contributorId]}
 									style="
                   background: {getColorForUserId(contributorId)};
                   width: {Math.max(6, contributorSize * 0.4)}px;

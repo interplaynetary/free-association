@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import { onMount, onDestroy } from 'svelte';
-	import { username, userpub, user } from '$lib/state/gun.svelte';
+	import { userAlias, userPub, user } from '$lib/state/gun.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import {
 		subscribeToChat,
@@ -127,7 +127,7 @@
 	{#if user.is?.pub}
 		<main onscroll={watchScroll}>
 			{#each messages as message (message.when)}
-				<ChatMessage {message} sender={$userpub} />
+				<ChatMessage {message} sender={$userPub} />
 			{/each}
 
 			<div class="dummy" bind:this={scrollBottom}></div>

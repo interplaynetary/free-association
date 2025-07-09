@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { username, userpub, userTree } from '$lib/state.svelte';
-	import { createUsersDataProvider } from '$lib/utils/ui-providers.svelte';
+	import { userAlias, userPub, userTree } from '$lib/state.svelte';
+	import {
+		createContactsAndUsersDataProvider,
+		createChildContributorsDataProvider
+	} from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
 	import {
@@ -16,7 +19,9 @@
 		addContributors,
 		calculateNodePoints
 	} from '$lib/protocol';
-	import { createNewTree } from '$lib/utils/userUtils';
+	import { createContact } from '$lib/state/users.svelte';
+	import { updateContact } from '$lib/state/users.svelte';
+	import { createNewTree } from '$lib/utils/cleanUtils';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';
@@ -50,8 +55,22 @@
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
 
-	// Create users data provider for the dropdown
-	let usersDataProvider = createUsersDataProvider([]);
+	// Create users data provider for the dropdown - prioritizes contributors of the active node
+	let usersDataProvider = $derived.by(() => {
+		return activeNodeId
+			? createChildContributorsDataProvider(activeNodeId, [])
+			: createContactsAndUsersDataProvider([]);
+	});
+
+	// Get current node contributors for the dropdown
+	let currentContributors = $derived(() => {
+		if (!activeNodeId || !tree) return [];
+
+		const node = findNodeById(tree, activeNodeId);
+		if (!node || node.type !== 'NonRootNode') return [];
+
+		return (node as NonRootNode).contributor_ids || [];
+	});
 
 	// Growth state
 	let touchStartTime = $state(0);
@@ -75,7 +94,7 @@
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
 	const path = $derived($currentPath);
-	const pub = $derived($userpub);
+	const pub = $derived($userPub);
 
 	// Helper function to get current node ID
 	const currentNodeId = $derived.by(() => {
@@ -270,7 +289,7 @@
 		console.log('[UI FLOW] handleCreateNewTree started');
 
 		// Check if user is authenticated
-		if (!$username || !$userpub) {
+		if (!$userAlias || !$userPub) {
 			console.log('[UI FLOW] User not authenticated, prompting to log in');
 			globalState.showToast('Please log in to start playing!', 'info');
 			return;
@@ -448,15 +467,27 @@
 	}
 
 	function handleUserSelect(detail: { id: string; name: string; metadata?: any }) {
-		const { id: userId } = detail;
+		const { id: selectedId, metadata } = detail;
 
 		if (!activeNodeId) {
 			console.error('No node selected for adding contributor');
 			return;
 		}
 
+		// Determine the contributor ID to use:
+		// - For contacts: use the contact ID (starts with "contact_")
+		// - For regular users: use the public key (the id itself)
+		const contributorId = metadata?.isContact ? selectedId : selectedId;
+
+		console.log('[CONTRIBUTOR] Adding contributor:', {
+			selectedId,
+			contributorId,
+			isContact: metadata?.isContact,
+			name: detail.name
+		});
+
 		// Add the contributor
-		addContributorToNode(activeNodeId, userId);
+		addContributorToNode(activeNodeId, contributorId);
 
 		// Reset dropdown
 		showUserDropdown = false;
@@ -466,6 +497,56 @@
 	function handleDropdownClose() {
 		showUserDropdown = false;
 		activeNodeId = null;
+	}
+
+	function handleCreateContact(detail: { name: string; publicKey?: string }) {
+		try {
+			const newContact = createContact({
+				name: detail.name,
+				public_key: detail.publicKey
+			});
+
+			console.log('[CONTACT] Created new contact:', newContact);
+			globalState.showToast(`Contact "${detail.name}" created successfully`, 'success');
+
+			// Automatically add the new contact as a contributor to the active node
+			if (activeNodeId) {
+				addContributorToNode(activeNodeId, newContact.contact_id);
+			}
+		} catch (error) {
+			console.error('[CONTACT] Error creating contact:', error);
+			globalState.showToast('Error creating contact: ' + (error as Error).message, 'error');
+			throw error; // Re-throw so the dropdown can handle it
+		}
+	}
+
+	function handleUpdateContact(detail: { contactId: string; name: string }) {
+		try {
+			updateContact(detail.contactId, { name: detail.name });
+
+			console.log('[CONTACT] Updated contact:', detail);
+			globalState.showToast(`Contact renamed to "${detail.name}"`, 'success');
+		} catch (error) {
+			console.error('[CONTACT] Error updating contact:', error);
+			globalState.showToast('Error updating contact: ' + (error as Error).message, 'error');
+			throw error; // Re-throw so the dropdown can handle it
+		}
+	}
+
+	function handleRemoveItem(detail: { id: string; name: string; metadata?: any }) {
+		if (!activeNodeId) {
+			console.error('No node selected for removing contributor');
+			return;
+		}
+
+		// Remove the contributor
+		handleRemoveContributor({ nodeId: activeNodeId, contributorId: detail.id });
+
+		console.log('[CONTRIBUTOR] Removed contributor:', {
+			nodeId: activeNodeId,
+			contributorId: detail.id,
+			name: detail.name
+		});
 	}
 
 	function addContributorToNode(nodeId: string, userId: string) {
@@ -1100,7 +1181,12 @@
 		width={280}
 		maxHeight={320}
 		dataProvider={usersDataProvider}
+		selectedIds={currentContributors}
+		allowCreateContact={true}
 		select={handleUserSelect}
+		removeItem={handleRemoveItem}
+		createContact={handleCreateContact}
+		updateContact={handleUpdateContact}
 		close={handleDropdownClose}
 	/>
 </div>

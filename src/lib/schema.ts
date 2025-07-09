@@ -143,3 +143,114 @@ export const NetworkCompositionSchema = z.record(IdSchema, UserCompositionSchema
 export type CompositionDesire = z.infer<typeof CompositionDesireSchema>;
 export type UserComposition = z.infer<typeof UserCompositionSchema>;
 export type NetworkComposition = z.infer<typeof NetworkCompositionSchema>;
+
+// Contact schema - simplified to just essential fields
+export const ContactSchema = z.object({
+	contact_id: IdSchema,
+	name: NameSchema, // User-assigned name
+	public_key: z.optional(z.string()), // Their Gun public key (if they have one)
+	created_at: z.string(),
+	updated_at: z.string()
+});
+
+// ContactsCollection schema - indexed by contact_id
+export const ContactsCollectionSchema = z.record(IdSchema, ContactSchema);
+
+// Export contact types
+export type Contact = z.infer<typeof ContactSchema>;
+export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
+
+// Collective Tree Schema
+// it should have a root node (the id being the hash of the ids of the contributors)
+// it should be a merge of all the jsons of all the contributors
+// except that when we merge the children have weights in %'s not points!
+// we took the child's % of the siblings of a parent along a path across all userTrees and merged the %'s weighted by that user's share of collective recognition!
+
+// Collective Node Schema - similar to Node but with percentage-based children
+export const CollectiveNonRootNodeSchema = z.object({
+	id: IdSchema,
+	name: NameSchema,
+	type: z.literal('CollectiveNonRootNode'),
+	manual_fulfillment: z.nullable(z.number()),
+	children: z.array(z.any()), // Will be CollectiveNode instances
+	weight_percentage: PercentageSchema, // Percentage weight instead of points
+	parent_id: IdSchema,
+	contributor_ids: z.array(IdSchema),
+	// Additional collective-specific fields
+	source_contributors: z.record(IdSchema, PercentageSchema), // Maps contributor ID to their weight in this node
+	merged_from_nodes: z.array(IdSchema) // Original node IDs that were merged to create this
+});
+
+export const CollectiveRootNodeSchema = z.object({
+	id: IdSchema, // Hash of all contributor IDs
+	name: NameSchema,
+	type: z.literal('CollectiveRootNode'),
+	manual_fulfillment: z.nullable(z.number()),
+	children: z.array(z.any()), // Will be CollectiveNode instances
+	created_at: z.string(),
+	updated_at: z.string(),
+	// Collective-specific fields
+	contributors: z.array(IdSchema), // All contributor IDs
+	contributor_weights: z.record(IdSchema, PercentageSchema), // Each contributor's recognition share
+	source_trees: z.record(IdSchema, z.any()) // Maps contributor ID to their original tree
+});
+
+// Union type for CollectiveNode
+export const CollectiveNodeSchema = z.union([
+	CollectiveRootNodeSchema,
+	CollectiveNonRootNodeSchema
+]);
+
+// Collective Tree Schema - the complete structure
+export const CollectiveTreeSchema = z.object({
+	id: IdSchema, // Hash of contributor IDs
+	root: CollectiveRootNodeSchema,
+	contributors: z.array(IdSchema),
+	recognition_matrix: z.record(IdSchema, z.record(IdSchema, PercentageSchema)), // Mutual recognition between contributors
+	creation_timestamp: z.string(),
+	last_updated: z.string(),
+	// Metadata about the merge process
+	merge_algorithm_version: z.string(),
+	total_nodes_merged: z.number(),
+	merge_conflicts: z.optional(
+		z.array(
+			z.object({
+				path: z.string(),
+				contributors: z.array(IdSchema),
+				resolution: z.string()
+			})
+		)
+	)
+});
+
+// Tree merge configuration schema
+export const TreeMergeConfigSchema = z.object({
+	contributor_trees: z.record(IdSchema, NodeSchema), // Maps contributor ID to their tree
+	recognition_shares: z.record(IdSchema, PercentageSchema), // Each contributor's recognition weight
+	merge_strategy: z.enum(['weighted_average', 'consensus_threshold', 'priority_based']),
+	conflict_resolution: z.enum(['skip', 'merge', 'prioritize_highest_weight']),
+	minimum_weight_threshold: z.optional(PercentageSchema), // Minimum weight to include a node
+	name_collision_strategy: z.enum(['append_contributor', 'weighted_priority', 'manual_resolve'])
+});
+
+// Export collective types
+export type CollectiveRootNode = z.infer<typeof CollectiveRootNodeSchema>;
+export type CollectiveNonRootNode = z.infer<typeof CollectiveNonRootNodeSchema>;
+export type CollectiveNode = z.infer<typeof CollectiveNodeSchema>;
+export type CollectiveTree = z.infer<typeof CollectiveTreeSchema>;
+export type TreeMergeConfig = z.infer<typeof TreeMergeConfigSchema>;
+
+// Utility type for tree merging operations
+export const TreeMergeResultSchema = z.object({
+	collective_tree: CollectiveTreeSchema,
+	merge_stats: z.object({
+		total_contributors: z.number(),
+		nodes_merged: z.number(),
+		conflicts_resolved: z.number(),
+		execution_time_ms: z.number()
+	}),
+	warnings: z.array(z.string()),
+	errors: z.array(z.string())
+});
+
+export type TreeMergeResult = z.infer<typeof TreeMergeResultSchema>;

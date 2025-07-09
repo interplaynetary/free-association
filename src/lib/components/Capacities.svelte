@@ -11,8 +11,8 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
 	import {
-		username,
-		userpub,
+		userAlias,
+		userPub,
 		userTree,
 		userCapacities,
 		userCapacitiesWithShares
@@ -28,7 +28,7 @@
 
 	// Add a new capacity to the userCapacities store
 	function addCapacity(capacity: ProviderCapacity) {
-		if (!$username || !$userpub) return false;
+		if (!$userAlias || !$userPub) return false;
 
 		// Create a deep clone of current capacities
 		const newCapacities = structuredClone($userCapacities || {});
@@ -49,7 +49,7 @@
 	// Update capacity in the userCapacities store
 	function updateCapacity(capacity: ProviderCapacity) {
 		try {
-			if (!$username || !$userpub) return false;
+			if (!$userAlias || !$userPub) return false;
 
 			// Create a deep clone of current capacities
 			const newCapacities = structuredClone($userCapacities || {});
@@ -75,7 +75,7 @@
 	// Delete capacity from the userCapacities store
 	function deleteCapacity(capacityId: string) {
 		try {
-			if (!$username || !$userpub) return false;
+			if (!$userAlias || !$userPub) return false;
 
 			// Update the store directly using the update method
 			userCapacities.update((caps) => {
@@ -97,7 +97,7 @@
 
 	// Create a new capacity
 	function createDefaultCapacity(): ProviderCapacity {
-		if (!$username || !$userpub) throw new Error('No user logged in');
+		if (!$userAlias || !$userPub) throw new Error('No user logged in');
 
 		const now = new Date().toISOString();
 		return {
@@ -115,7 +115,7 @@
 			max_natural_div: 1,
 			max_percentage_div: 1.0,
 			hidden_until_request_accepted: false,
-			owner_id: $userpub,
+			owner_id: $userPub,
 			recurrence: null,
 			custom_recurrence_repeat_every: null,
 			custom_recurrence_repeat_unit: null,
@@ -128,7 +128,7 @@
 
 	// Add a new capacity row
 	function addCapacityRow() {
-		if (!$username || !$userpub) return;
+		if (!$userAlias || !$userPub) return;
 
 		const newCapacity = createDefaultCapacity();
 

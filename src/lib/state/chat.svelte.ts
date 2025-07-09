@@ -1,4 +1,4 @@
-import { gun, user, userpub, GUN } from '$lib/state/gun.svelte';
+import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
 import { browser } from '$app/environment';
 import { writable, get, type Writable } from 'svelte/store';
 import SEA from 'gun/sea';
@@ -92,7 +92,7 @@ export function subscribeToChat(chatId: string) {
 
 					if (!messageExists) {
 						// Get current userpub value from store
-						const currentUserPub = get(userpub);
+						const currentUserPub = get(userPub);
 						const isOwnMessage = (message.whopub as unknown as string) === currentUserPub;
 						const isNewMessage = currentMessages.length > 0; // Skip notifications for initial load
 

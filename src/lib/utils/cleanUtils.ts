@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { usersList, userTree, userpub, username } from '$lib/state.svelte';
+import { usersList, userTree, userPub, userAlias } from '$lib/state.svelte';
 import { gun } from '$lib/state/gun.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/examples/example';
@@ -51,48 +51,48 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 
 	usersList.once((data: any) => {
 		if (data) {
-			const userIds = Object.keys(data);
-			console.log(`[PRUNE] Found ${userIds.length} users to check`);
+			const userPubKeys = Object.keys(data);
+			console.log(`[PRUNE] Found ${userPubKeys.length} users to check`);
 
 			let prunedCount = 0;
 			let checkedCount = 0;
 
-			userIds.forEach((userId) => {
-				usersList.get(userId).once((userData: any) => {
+			userPubKeys.forEach((pubKey) => {
+				usersList.get(pubKey).once((userData: any) => {
 					checkedCount++;
 
 					if (userData && userData.lastSeen) {
 						const lastSeen = userData.lastSeen;
 
 						if (lastSeen < thresholdTime) {
-							usersList.get(userId).put(null, (ack: any) => {
+							usersList.get(pubKey).put(null, (ack: any) => {
 								if (ack.err) {
-									console.error(`[PRUNE] Error removing inactive user ${userId}:`, ack.err);
+									console.error(`[PRUNE] Error removing inactive user ${pubKey}:`, ack.err);
 								} else {
 									console.log(
-										`[PRUNE] Removed inactive user ${userId} (last seen: ${new Date(lastSeen).toLocaleString()})`
+										`[PRUNE] Removed inactive user ${pubKey} (last seen: ${new Date(lastSeen).toLocaleString()})`
 									);
 									prunedCount++;
 								}
 							});
 						} else {
 							console.log(
-								`[PRUNE] User ${userId} is active (last seen: ${new Date(lastSeen).toLocaleString()})`
+								`[PRUNE] User ${pubKey} is active (last seen: ${new Date(lastSeen).toLocaleString()})`
 							);
 						}
 					} else {
-						console.log(`[PRUNE] User ${userId} has no lastSeen data, removing...`);
-						usersList.get(userId).put(null, (ack: any) => {
+						console.log(`[PRUNE] User ${pubKey} has no lastSeen data, removing...`);
+						usersList.get(pubKey).put(null, (ack: any) => {
 							if (ack.err) {
-								console.error(`[PRUNE] Error removing user without lastSeen ${userId}:`, ack.err);
+								console.error(`[PRUNE] Error removing user without lastSeen ${pubKey}:`, ack.err);
 							} else {
-								console.log(`[PRUNE] Removed user without lastSeen data: ${userId}`);
+								console.log(`[PRUNE] Removed user without lastSeen data: ${pubKey}`);
 								prunedCount++;
 							}
 						});
 					}
 
-					if (checkedCount === userIds.length) {
+					if (checkedCount === userPubKeys.length) {
 						console.log(
 							`[PRUNE] Pruning complete. Checked ${checkedCount} users, removed ${prunedCount} inactive users.`
 						);
@@ -144,59 +144,59 @@ export function fixCorruptedUserListNames() {
 			return;
 		}
 
-		const userIds = Object.keys(usersData).filter((id) => id !== '_');
-		console.log(`[USERS-FIX] Found ${userIds.length} users to check for corrupted names`);
+		const userPubKeys = Object.keys(usersData).filter((pubkey) => pubkey !== '_');
+		console.log(`[USERS-FIX] Found ${userPubKeys.length} users to check for corrupted names`);
 
 		let checkedCount = 0;
 		let fixedCount = 0;
 
-		userIds.forEach((userId) => {
-			const userData = usersData[userId];
+		userPubKeys.forEach((pubKey) => {
+			const userData = usersData[pubKey];
 
 			if (!userData || !userData.name) {
-				console.log(`[USERS-FIX] User ${userId} has no name data, skipping`);
+				console.log(`[USERS-FIX] User ${pubKey} has no name data, skipping`);
 				checkedCount++;
 				return;
 			}
 
 			// Check if the name is corrupted (equals the userId/pubkey)
-			const isCorrupted = userData.name === userId;
+			const isCorrupted = userData.name === pubKey;
 
 			if (isCorrupted) {
 				console.log(
-					`[USERS-FIX] Found corrupted name for user ${userId.substring(0, 20)}... (name equals pubkey)`
+					`[USERS-FIX] Found corrupted name for user ${pubKey.substring(0, 20)}... (name equals pubkey)`
 				);
 
 				// Try to get the correct alias from their protected space using Gun's user system
 				gun
-					.user(userId) // Use Gun's user system
+					.user(pubKey) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						checkedCount++;
 
-						if (alias && typeof alias === 'string' && alias !== userId) {
+						if (alias && typeof alias === 'string' && alias !== pubKey) {
 							console.log(
-								`[USERS-FIX] Fixing user ${userId.substring(0, 20)}... with correct alias: ${alias}`
+								`[USERS-FIX] Fixing user ${pubKey.substring(0, 20)}... with correct alias: ${alias}`
 							);
 
 							// Update the usersList with the correct name
-							usersList.get(userId).put(
+							usersList.get(pubKey).put(
 								{
 									...userData,
-									name: alias,
+									alias: alias,
 									lastSeen: Date.now(), // Update timestamp to show it was fixed
 									fixed: true // Mark as fixed
 								},
 								(ack: any) => {
 									if (ack.err) {
-										console.error(`[USERS-FIX] Error fixing user ${userId}:`, ack.err);
+										console.error(`[USERS-FIX] Error fixing user ${pubKey}:`, ack.err);
 									} else {
-										console.log(`[USERS-FIX] Successfully fixed user ${userId} -> ${alias}`);
+										console.log(`[USERS-FIX] Successfully fixed user ${pubKey} -> ${alias}`);
 										fixedCount++;
 									}
 
 									// Log completion when all users have been processed
-									if (checkedCount === userIds.length) {
+									if (checkedCount === userPubKeys.length) {
 										console.log(
 											`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
 										);
@@ -205,11 +205,11 @@ export function fixCorruptedUserListNames() {
 							);
 						} else {
 							console.log(
-								`[USERS-FIX] Could not get valid alias for user ${userId.substring(0, 20)}..., keeping current name`
+								`[USERS-FIX] Could not get valid alias for user ${pubKey.substring(0, 20)}..., keeping current name`
 							);
 
 							// Log completion when all users have been processed
-							if (checkedCount === userIds.length) {
+							if (checkedCount === userPubKeys.length) {
 								console.log(
 									`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
 								);
@@ -218,12 +218,12 @@ export function fixCorruptedUserListNames() {
 					});
 			} else {
 				console.log(
-					`[USERS-FIX] User ${userId.substring(0, 20)}... has valid name: ${userData.name}`
+					`[USERS-FIX] User ${pubKey.substring(0, 20)}... has valid alias: ${userData.alias}`
 				);
 				checkedCount++;
 
 				// Log completion when all users have been processed
-				if (checkedCount === userIds.length) {
+				if (checkedCount === userPubKeys.length) {
 					console.log(
 						`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
 					);
@@ -232,7 +232,7 @@ export function fixCorruptedUserListNames() {
 		});
 
 		// Handle case where no users need checking
-		if (userIds.length === 0) {
+		if (userPubKeys.length === 0) {
 			console.log('[USERS-FIX] No users to check');
 		}
 	});
@@ -245,8 +245,8 @@ export function fixCorruptedUserListNames() {
 export function createNewTree(includeExampleData: boolean = true) {
 	console.log('[TREE-CREATE] Creating new tree...');
 
-	const currentUserPub = get(userpub);
-	const currentUsername = get(username);
+	const currentUserPub = get(userPub);
+	const currentUsername = get(userAlias);
 
 	if (!currentUserPub || !currentUsername) {
 		console.error('[TREE-CREATE] Cannot create tree - user not authenticated');

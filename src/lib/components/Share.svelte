@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getUserName } from '$lib/state/gun.svelte';
+	import { getUserName } from '$lib/state/users.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import Chat from './Chat.svelte';
 	import type { RecipientCapacity } from '$lib/schema';

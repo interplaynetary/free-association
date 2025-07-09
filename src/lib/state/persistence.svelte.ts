@@ -7,10 +7,11 @@ import {
 	isLoadingCapacities,
 	isLoadingSogf,
 	providerShares,
-	contributorCapacityShares
+	contributorCapacityShares,
 } from './core.svelte';
+import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
-import { user, userpub } from './gun.svelte';
+import { user, userPub } from './gun.svelte';
 
 export function persistTree() {
 	// Don't persist while loading
@@ -107,7 +108,7 @@ export function persistCapacities() {
  * Persist contributor capacity shares to gun
  */
 export function persistContributorCapacityShares() {
-	const ourId = get(userpub);
+	const ourId = get(userPub);
 	if (!ourId) {
 		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
 		return;
@@ -202,5 +203,46 @@ export function persistUserDesiredComposeInto() {
 		});
 	} catch (error) {
 		console.error('[PERSIST] Error serializing user desired compose-into:', error);
+	}
+}
+
+/**
+ * Persist user's contacts to Gun
+ */
+export function persistContacts() {
+	// Don't persist while loading
+	if (get(isLoadingContacts)) {
+		console.log('[PERSIST] Skipping contacts persistence because contacts are being loaded');
+		return;
+	}
+
+	const contactsValue = get(userContacts);
+
+	if (!contactsValue) {
+		console.log('[PERSIST] No contacts data to persist');
+		return;
+	}
+
+	console.log('[PERSIST] Starting contacts persistence...');
+	console.log('[PERSIST] Contacts count:', Object.keys(contactsValue).length);
+
+	try {
+		// Create a deep clone to avoid reactivity issues
+		const contactsClone = structuredClone(contactsValue);
+
+		// Serialize to JSON
+		const contactsJson = JSON.stringify(contactsClone);
+		console.log('[PERSIST] Serialized contacts length:', contactsJson.length);
+
+		// Store in Gun under the expected path that network subscribers use
+		user.get('contacts').put(contactsJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving contacts to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Contacts successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing contacts:', error);
 	}
 }

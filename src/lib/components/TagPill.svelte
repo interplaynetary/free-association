@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { getUserName } from '$lib/state.svelte';
+	import { getUserName } from '$lib/state/users.svelte';
 
 	// Props using Svelte 5 runes
 	let {

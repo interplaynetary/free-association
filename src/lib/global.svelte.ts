@@ -23,7 +23,7 @@ import {
 	wouldCreateCycle
 } from '$lib/protocol';
 import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
-import { username, userpub, userTree } from '$lib/state.svelte';
+import { userAlias, userPub, userTree } from '$lib/state.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
@@ -44,7 +44,7 @@ export const currentPath: Writable<string[]> = writable([]);
 if (browser) {
 	// Watch for user authentication state changes
 	let lastPub = '';
-	userpub.subscribe((pub) => {
+	userPub.subscribe((pub) => {
 		if (pub && pub !== lastPub) {
 			// User has logged in or changed - initialize path with user's pub
 			currentPath.set([pub]);

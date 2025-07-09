@@ -33,7 +33,6 @@
 				// @ts-ignore
 				return gunAvatar({
 					pub: whopub, // @ts-ignore
-
 					size: 32,
 					round: true,
 					draw: 'circles'
