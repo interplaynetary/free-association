@@ -8,7 +8,7 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	contributorCapacityShares,
+	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
@@ -22,6 +22,82 @@ import {
 	persistContacts
 } from './persistence.svelte';
 import { recalculateFromTree } from './calculations.svelte';
+
+/**
+ * Debounce helper for subscription persistence
+ */
+export function debounce<T extends (...args: any[]) => void>(func: T, delay: number): T {
+	let timeoutId: any;
+	return ((...args: any[]) => {
+		clearTimeout(timeoutId);
+		timeoutId = setTimeout(() => func(...args), delay);
+	}) as T;
+}
+
+// Debounced persistence functions
+const debouncedPersistSogf = debounce(() => {
+	console.log('[SOGF-SUB] Executing debounced SOGF persistence');
+	try {
+		persistSogf();
+	} catch (error) {
+		console.error('[SOGF-SUB] Error during debounced persistence:', error);
+	}
+}, 300);
+
+const debouncedPersistCapacities = debounce(() => {
+	console.log('[CAPACITIES-SUB] Executing debounced capacities persistence');
+	if (!get(isLoadingCapacities)) {
+		try {
+			persistCapacities();
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
+		}
+	} else {
+		console.log('[CAPACITIES-SUB] Skipping persistence because capacities are being loaded');
+	}
+}, 200);
+
+const debouncedPersistContributorCapacityShares = debounce(() => {
+	console.log(
+		'[CONTRIBUTOR-CAPACITY-SHARES-SUB] Executing debounced contributor capacity shares persistence'
+	);
+	try {
+		persistContributorCapacityShares();
+	} catch (error) {
+		console.error('[CONTRIBUTOR-CAPACITY-SHARES-SUB] Error during debounced persistence:', error);
+	}
+}, 200);
+
+const debouncedPersistUserDesiredComposeFrom = debounce(() => {
+	console.log('[USER-COMPOSE-FROM-SUB] Executing debounced compose-from persistence');
+	try {
+		persistUserDesiredComposeFrom();
+	} catch (error) {
+		console.error('[USER-COMPOSE-FROM-SUB] Error during debounced persistence:', error);
+	}
+}, 250);
+
+const debouncedPersistUserDesiredComposeInto = debounce(() => {
+	console.log('[USER-COMPOSE-INTO-SUB] Executing debounced compose-into persistence');
+	try {
+		persistUserDesiredComposeInto();
+	} catch (error) {
+		console.error('[USER-COMPOSE-INTO-SUB] Error during debounced persistence:', error);
+	}
+}, 250);
+
+const debouncedPersistContacts = debounce(() => {
+	console.log('[CONTACTS-SUB] Executing debounced contacts persistence');
+	if (!get(isLoadingContacts)) {
+		try {
+			persistContacts();
+		} catch (error) {
+			console.error('[CONTACTS-SUB] Error during debounced persistence:', error);
+		}
+	} else {
+		console.log('[CONTACTS-SUB] Skipping persistence because contacts are being loaded');
+	}
+}, 200);
 
 /**
  * Update nodes map whenever the tree changes
@@ -61,12 +137,8 @@ userSogf.subscribe((sogf) => {
 	console.log('[SOGF-SUB] SOGF updated');
 	console.log('[SOGF-SUB] SOGF contributor count:', Object.keys(sogf).length);
 
-	// Persist the SOGF to Gun
-	try {
-		persistSogf();
-	} catch (error) {
-		console.error('[SOGF-SUB] Error during persistence:', error);
-	}
+	// Debounced persistence function
+	debouncedPersistSogf();
 });
 
 /**
@@ -128,18 +200,8 @@ userCapacities.subscribe((capacities) => {
 	console.log('[CAPACITIES-SUB] Capacities updated');
 	console.log('[CAPACITIES-SUB] Capacities count:', Object.keys(capacities).length);
 
-	// Force immediate capacity persistence on every change
-	// This ensures capacity changes are always saved
-	if (!get(isLoadingCapacities)) {
-		console.log('[CAPACITIES-SUB] Persisting capacities');
-		try {
-			persistCapacities();
-		} catch (error) {
-			console.error('[CAPACITIES-SUB] Error during persistence:', error);
-		}
-	} else {
-		console.log('[CAPACITIES-SUB] Skipping persistence because capacities are being loaded');
-	}
+	// Debounced persistence function
+	debouncedPersistCapacities();
 });
 
 /**
@@ -152,8 +214,8 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 		Object.keys(contributorCapacityShares).length
 	);
 
-	// Persist the shares to gun
-	persistContributorCapacityShares();
+	// Debounced persistence function
+	debouncedPersistContributorCapacityShares();
 });
 
 /**
@@ -166,12 +228,8 @@ userDesiredComposeFrom.subscribe((userDesiredComposeFrom) => {
 		Object.keys(userDesiredComposeFrom).length
 	);
 
-	// Persist the user desires to Gun
-	try {
-		persistUserDesiredComposeFrom();
-	} catch (error) {
-		console.error('[USER-COMPOSE-FROM-SUB] Error during persistence:', error);
-	}
+	// Debounced persistence function
+	debouncedPersistUserDesiredComposeFrom();
 });
 
 /**
@@ -184,12 +242,8 @@ userDesiredComposeInto.subscribe((userDesiredComposeInto) => {
 		Object.keys(userDesiredComposeInto).length
 	);
 
-	// Persist the user desires to Gun
-	try {
-		persistUserDesiredComposeInto();
-	} catch (error) {
-		console.error('[USER-COMPOSE-INTO-SUB] Error during persistence:', error);
-	}
+	// Debounced persistence function
+	debouncedPersistUserDesiredComposeInto();
 });
 
 /**
@@ -201,16 +255,6 @@ userContacts.subscribe((contacts) => {
 	console.log('[CONTACTS-SUB] Contacts updated');
 	console.log('[CONTACTS-SUB] Contacts count:', Object.keys(contacts).length);
 
-	// Force immediate contacts persistence on every change
-	// This ensures contacts changes are always saved
-	if (!get(isLoadingContacts)) {
-		console.log('[CONTACTS-SUB] Persisting contacts');
-		try {
-			persistContacts();
-		} catch (error) {
-			console.error('[CONTACTS-SUB] Error during persistence:', error);
-		}
-	} else {
-		console.log('[CONTACTS-SUB] Skipping persistence because contacts are being loaded');
-	}
+	// Debounced persistence function
+	debouncedPersistContacts();
 });

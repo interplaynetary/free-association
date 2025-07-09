@@ -7,7 +7,7 @@ import {
 	isLoadingCapacities,
 	isLoadingSogf,
 	providerShares,
-	contributorCapacityShares,
+	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
@@ -53,9 +53,28 @@ export function persistSogf() {
 
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
-		// Ensure we're storing in the user's protected space using the correct pattern
-		// This follows the Gun guide's recommendation for user-specific data
-		user.get('sogf').put(structuredClone(sogfValue));
+		console.log('[PERSIST] Starting SOGF persistence...');
+		console.log('[PERSIST] SOGF data:', sogfValue);
+
+		try {
+			// Create a deep clone to avoid reactivity issues
+			const sogfClone = structuredClone(sogfValue);
+
+			// Serialize to JSON to preserve number types
+			const sogfJson = JSON.stringify(sogfClone);
+			console.log('[PERSIST] Serialized SOGF length:', sogfJson.length);
+
+			// Store in Gun with ACK callback
+			user.get('sogf').put(sogfJson, (ack: { err?: any }) => {
+				if (ack.err) {
+					console.error('[PERSIST] Error saving SOGF to Gun:', ack.err);
+				} else {
+					console.log('[PERSIST] SOGF successfully saved to Gun');
+				}
+			});
+		} catch (error) {
+			console.error('[PERSIST] Error serializing SOGF:', error);
+		}
 	}
 }
 

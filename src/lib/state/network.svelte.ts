@@ -24,294 +24,985 @@ import {
 	networkDesiredComposeFrom,
 	networkDesiredComposeInto
 } from '$lib/state/compose.svelte';
-import type { CapacitiesCollection } from '$lib/schema';
-import { ContactsCollectionSchema } from '$lib/schema';
+import type {
+	CapacitiesCollection,
+	RootNode,
+	UserComposition,
+	ShareMap,
+	ContactsCollection
+} from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
-import { parseCapacities, parseTree, parseUserComposition } from '$lib/validation';
+import {
+	parseCapacities,
+	parseTree,
+	parseUserComposition,
+	parseShareMap,
+	parseRecognitionCache,
+	parseContacts,
+	parseCapacityShares
+} from '$lib/validation';
+import { debounce } from './subscriptions.svelte';
 
 /**
- * Subscribe to our own tree data to detect external changes
- * Only updates local store if the incoming data differs from current state
- * Also handles initial tree creation when no data exists
-/**
- * Subscribe to our own tree data to detect external changes
- * Only updates local store if the incoming data differs from current state
+ * Enhanced Gun subscription wrapper using ReadableStream for proper lifecycle management
  */
-export function subscribeToOwnTree() {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to own tree - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to own tree - userPub not initialized');
-		return;
+class GunSubscriptionStream<T> {
+	private reader: ReadableStreamDefaultReader<T> | null = null;
+	private stream: ReadableStream<T> | null = null;
+	private isActive = false;
+	private gunRef: any;
+	private streamId: string;
+	private hasReceivedData = false;
+
+	constructor(
+		private gunPath: () => any,
+		private streamType: string,
+		private onData: (data: T) => void,
+		private onError?: (error: any) => void
+	) {
+		this.streamId = `${streamType}_${Math.random().toString(36).substr(2, 9)}`;
 	}
 
-	console.log('[NETWORK] Setting up subscription to own tree data');
-
-	// Subscribe to changes in our own tree
-	user.get('tree').on((treeData: any) => {
-		if (!treeData) {
-			console.log('[NETWORK] No tree data in subscription, skipping');
+	/**
+	 * Start the subscription stream
+	 */
+	async start(): Promise<void> {
+		if (this.isActive) {
+			console.warn(`[STREAM] ${this.streamType} stream already active`);
 			return;
 		}
-
-		console.log('[NETWORK] Received tree update from network');
-
-		// Set loading flag to prevent persistence loop
-		isLoadingTree.set(true);
-
-		// Parse the incoming tree data
-		const incomingTree = parseTree(treeData);
-		if (!incomingTree) {
-			console.log('[NETWORK] Failed to parse incoming tree data');
-			isLoadingTree.set(false);
-			return;
-		}
-
-		// Get current tree state
-		const currentTree = get(userTree);
-		if (!currentTree) {
-			console.log('[NETWORK] No current tree, updating with network data');
-			userTree.set(incomingTree);
-			isLoadingTree.set(false);
-			recalculateFromTree();
-			return;
-		}
-
-		// Compare trees to see if they're different
-		const currentTreeJson = JSON.stringify(currentTree);
-		const incomingTreeJson = JSON.stringify(incomingTree);
-
-		if (currentTreeJson === incomingTreeJson) {
-			console.log('[NETWORK] Incoming tree matches current tree, ignoring update');
-			isLoadingTree.set(false);
-			return;
-		}
-
-		console.log('[NETWORK] Tree data changed, updating local store');
-		console.log('[NETWORK] Current tree children count:', currentTree.children.length);
-		console.log('[NETWORK] Incoming tree children count:', incomingTree.children.length);
-
-		// Update the local tree with the new data
-		userTree.set(incomingTree);
-
-		// Clear loading flag after update
-		isLoadingTree.set(false);
-		recalculateFromTree();
-	});
-}
-
-/**
- * Subscribe to our own capacities data
- */
-export function subscribeToOwnCapacities() {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to own capacities - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to own capacities - userPub not initialized');
-		return;
-	}
-
-	console.log('[NETWORK] Setting up subscription to own capacities data');
-
-	user.get('capacities').on((capacitiesData: any) => {
-		if (!capacitiesData) {
-			console.log('[NETWORK] No capacities data found');
-			isLoadingCapacities.set(false);
-			return;
-		}
-
-		console.log('[NETWORK] Received capacities update from network');
-
-		// Set loading flag to prevent persistence loop
-		isLoadingCapacities.set(true);
-
-		// Parse and validate capacities
-		const validatedCapacities = parseCapacities(capacitiesData);
-		if (!validatedCapacities) {
-			console.error('[NETWORK] Failed to validate own capacities data');
-			isLoadingCapacities.set(false);
-			return;
-		}
-
-		// Get current capacities state
-		const currentCapacities = get(userCapacities);
-
-		// Compare to avoid unnecessary updates
-		if (
-			currentCapacities &&
-			JSON.stringify(currentCapacities) === JSON.stringify(validatedCapacities)
-		) {
-			console.log('[NETWORK] Incoming capacities match current capacities, ignoring update');
-			isLoadingCapacities.set(false);
-			return;
-		}
-
-		console.log('[NETWORK] Capacities data changed, updating local store');
-		console.log('[NETWORK] Loaded capacities count:', Object.keys(validatedCapacities).length);
-
-		userCapacities.set(validatedCapacities);
-		isLoadingCapacities.set(false);
-	});
-}
-
-/**
- * Subscribe to our own desired compose-from data
- */
-export function subscribeToOwnDesiredComposeFrom() {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to own desired compose-from - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to own desired compose-from - userPub not initialized');
-		return;
-	}
-
-	console.log('[NETWORK] Setting up subscription to own desired compose-from data');
-
-	user.get('desiredComposeFrom').on((composeFromData: any) => {
-		if (!composeFromData) {
-			console.log('[NETWORK] No desired compose-from data found');
-			return;
-		}
-
-		console.log('[NETWORK] Received desired compose-from update from network');
-
-		// Parse and validate using Zod schema
-		const validatedComposeFrom = parseUserComposition(composeFromData);
-
-		// Get current state and compare
-		const currentComposeFrom = get(userDesiredComposeFrom);
-		if (
-			currentComposeFrom &&
-			JSON.stringify(currentComposeFrom) === JSON.stringify(validatedComposeFrom)
-		) {
-			console.log('[NETWORK] Incoming compose-from matches current compose-from, ignoring update');
-			return;
-		}
-
-		console.log('[NETWORK] Desired compose-from data changed, updating local store');
-		userDesiredComposeFrom.set(validatedComposeFrom);
-	});
-}
-
-/**
- * Subscribe to our own desired compose-into data
- */
-export function subscribeToOwnDesiredComposeInto() {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to own desired compose-into - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to own desired compose-into - userPub not initialized');
-		return;
-	}
-
-	console.log('[NETWORK] Setting up subscription to own desired compose-into data');
-
-	user.get('desiredComposeInto').on((composeIntoData: any) => {
-		if (!composeIntoData) {
-			console.log('[NETWORK] No desired compose-into data found');
-			return;
-		}
-
-		console.log('[NETWORK] Received desired compose-into update from network');
-
-		// Parse and validate using Zod schema
-		const validatedComposeInto = parseUserComposition(composeIntoData);
-
-		// Get current state and compare
-		const currentComposeInto = get(userDesiredComposeInto);
-		if (
-			currentComposeInto &&
-			JSON.stringify(currentComposeInto) === JSON.stringify(validatedComposeInto)
-		) {
-			console.log('[NETWORK] Incoming compose-into matches current compose-into, ignoring update');
-			return;
-		}
-
-		console.log('[NETWORK] Desired compose-into data changed, updating local store');
-		userDesiredComposeInto.set(validatedComposeInto);
-	});
-}
-
-/**
- * Subscribe to our own contacts data
- */
-export function subscribeToOwnContacts() {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to own contacts - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to own contacts - userPub not initialized');
-		return;
-	}
-
-	console.log('[NETWORK] Setting up subscription to own contacts data');
-
-	user.get('contacts').on((contactsData: any) => {
-		if (!contactsData) {
-			console.log('[NETWORK] No contacts data found');
-			userContacts.set({});
-			isLoadingContacts.set(false);
-			return;
-		}
-
-		console.log('[NETWORK] Received contacts update from network');
-
-		// Set loading flag to prevent persistence loop
-		isLoadingContacts.set(true);
 
 		try {
-			// Parse JSON string if needed
-			const parsedData = typeof contactsData === 'string' ? JSON.parse(contactsData) : contactsData;
+			this.isActive = true;
+			console.log(`[STREAM] Starting ${this.streamType} stream ${this.streamId}`);
 
-			// Parse and validate contacts
-			const validatedContacts = ContactsCollectionSchema.parse(parsedData);
-			console.log('[NETWORK] Validated contacts:', validatedContacts);
+			this.stream = new ReadableStream<T>({
+				start: (controller) => {
+					try {
+						// Get the Gun reference
+						this.gunRef = this.gunPath();
 
-			// Get current contacts state
-			const currentContacts = get(userContacts);
+						if (!this.gunRef) {
+							console.warn(
+								`[STREAM] No Gun reference for ${this.streamType} stream ${this.streamId}`
+							);
+							// Don't complete the stream - keep it open to retry later
+							return;
+						}
 
-			// Compare to avoid unnecessary updates
-			if (JSON.stringify(currentContacts) === JSON.stringify(validatedContacts)) {
-				console.log('[NETWORK] Incoming contacts match current contacts, ignoring update');
-				isLoadingContacts.set(false);
+						// Set up the Gun subscription
+						this.gunRef.on((data: T) => {
+							if (this.isActive) {
+								this.hasReceivedData = true;
+								if (data !== null && data !== undefined) {
+									controller.enqueue(data);
+								}
+							}
+						});
+
+						console.log(`[STREAM] ${this.streamType} stream ${this.streamId} started successfully`);
+					} catch (error) {
+						console.error(`[STREAM] Error starting ${this.streamType} stream:`, error);
+						controller.error(error);
+						this.onError?.(error);
+					}
+				},
+				cancel: () => {
+					console.log(`[STREAM] Cancelling ${this.streamType} stream ${this.streamId}`);
+					this.cleanup();
+				}
+			});
+
+			// Get the reader and start processing
+			this.reader = this.stream.getReader();
+			this.processStream();
+		} catch (error) {
+			console.error(`[STREAM] Failed to start ${this.streamType} stream:`, error);
+			this.cleanup();
+			this.onError?.(error);
+		}
+	}
+
+	/**
+	 * Process the stream data
+	 */
+	private async processStream(): Promise<void> {
+		if (!this.reader) return;
+
+		try {
+			while (this.isActive) {
+				const { value, done } = await this.reader.read();
+
+				if (done) {
+					console.log(`[STREAM] ${this.streamType} stream ${this.streamId} completed`);
+					break;
+				}
+
+				if (value && this.isActive) {
+					this.onData(value);
+				}
+			}
+		} catch (error) {
+			if (this.isActive) {
+				console.error(`[STREAM] Error in ${this.streamType} stream:`, error);
+				this.onError?.(error);
+			}
+		} finally {
+			// Only cleanup if we're not active anymore (manual stop) or if we had an error
+			// Don't cleanup just because no data was received
+			if (!this.isActive) {
+				this.cleanup();
+			}
+		}
+	}
+
+	/**
+	 * Stop the subscription stream
+	 */
+	stop(): void {
+		if (!this.isActive) return;
+
+		console.log(`[STREAM] Stopping ${this.streamType} stream ${this.streamId}`);
+		this.isActive = false;
+		this.cleanup();
+	}
+
+	/**
+	 * Clean up resources
+	 */
+	private cleanup(): void {
+		this.isActive = false;
+
+		try {
+			// Cancel the reader
+			if (this.reader) {
+				this.reader.cancel();
+				this.reader = null;
+			}
+
+			// Clean up Gun subscription
+			if (this.gunRef && typeof this.gunRef.off === 'function') {
+				this.gunRef.off();
+				this.gunRef = null;
+			}
+
+			this.stream = null;
+			console.log(`[STREAM] Cleaned up ${this.streamType} stream ${this.streamId}`);
+		} catch (error) {
+			console.error(`[STREAM] Error during cleanup of ${this.streamType} stream:`, error);
+		}
+	}
+
+	/**
+	 * Check if stream is active
+	 */
+	get active(): boolean {
+		return this.isActive;
+	}
+}
+
+/**
+ * Enhanced subscription manager with ReadableStream support and memoization
+ */
+class StreamSubscriptionManager {
+	private activeStreams = new Map<string, GunSubscriptionStream<any>>();
+	private subscriptionType: string;
+	private lastContributorsList: string[] = [];
+	private isUpdating = false;
+
+	constructor(subscriptionType: string) {
+		this.subscriptionType = subscriptionType;
+	}
+
+	/**
+	 * Create a new subscription stream only if it doesn't already exist
+	 */
+	async createStream<T>(
+		contributorId: string,
+		gunPath: () => any,
+		streamType: string,
+		onData: (data: T) => void,
+		onError?: (error: any) => void
+	): Promise<void> {
+		const streamKey = `${contributorId}_${streamType}`;
+
+		// Check if stream already exists and is active
+		const existingStream = this.activeStreams.get(streamKey);
+		if (existingStream && existingStream.active) {
+			console.log(
+				`[STREAM-MANAGER] Stream ${streamKey} already exists and is active, skipping creation`
+			);
+			return;
+		}
+
+		// Only stop existing stream if it exists but is not active
+		if (existingStream) {
+			console.log(`[STREAM-MANAGER] Stopping inactive stream for ${streamKey}`);
+			existingStream.stop();
+			this.activeStreams.delete(streamKey);
+		}
+
+		// Create new stream
+		const stream = new GunSubscriptionStream(
+			gunPath,
+			`${this.subscriptionType}_${streamType}`,
+			onData,
+			onError
+		);
+
+		this.activeStreams.set(streamKey, stream);
+
+		try {
+			await stream.start();
+			console.log(`[STREAM-MANAGER] Created stream for ${streamKey}`);
+		} catch (error) {
+			console.error(`[STREAM-MANAGER] Failed to create stream for ${streamKey}:`, error);
+			this.activeStreams.delete(streamKey);
+			throw error;
+		}
+	}
+
+	/**
+	 * Stop a specific stream
+	 */
+	stopStream(contributorId: string, streamType: string): void {
+		const streamKey = `${contributorId}_${streamType}`;
+		const stream = this.activeStreams.get(streamKey);
+
+		if (stream) {
+			console.log(`[STREAM-MANAGER] Stopping stream for ${streamKey}`);
+			stream.stop();
+			this.activeStreams.delete(streamKey);
+		}
+	}
+
+	/**
+	 * Stop all streams for a contributor
+	 */
+	stopContributorStreams(contributorId: string): void {
+		const keysToRemove: string[] = [];
+
+		for (const [streamKey, stream] of this.activeStreams.entries()) {
+			if (streamKey.startsWith(`${contributorId}_`)) {
+				console.log(`[STREAM-MANAGER] Stopping contributor stream: ${streamKey}`);
+				stream.stop();
+				keysToRemove.push(streamKey);
+			}
+		}
+
+		keysToRemove.forEach((key) => this.activeStreams.delete(key));
+	}
+
+	/**
+	 * Stop all streams
+	 */
+	stopAllStreams(): void {
+		console.log(`[STREAM-MANAGER] Stopping all ${this.subscriptionType} streams`);
+
+		for (const [streamKey, stream] of this.activeStreams.entries()) {
+			stream.stop();
+		}
+
+		this.activeStreams.clear();
+		this.lastContributorsList = [];
+	}
+
+	/**
+	 * Check if contributor lists are equal
+	 */
+	private arraysEqual(a: string[], b: string[]): boolean {
+		if (a.length !== b.length) return false;
+		const sortedA = [...a].sort();
+		const sortedB = [...b].sort();
+		return sortedA.every((val, i) => val === sortedB[i]);
+	}
+
+	/**
+	 * Update subscriptions using delta-based approach with memoization
+	 */
+	async updateSubscriptions(
+		newContributors: string[],
+		createStreamFn: (contributorId: string) => Promise<void>
+	): Promise<void> {
+		// Prevent concurrent updates
+		if (this.isUpdating) {
+			console.log(`[STREAM-MANAGER] ${this.subscriptionType} update already in progress, skipping`);
+			return;
+		}
+
+		// Check if contributors list has actually changed
+		if (this.arraysEqual(newContributors, this.lastContributorsList)) {
+			console.log(
+				`[STREAM-MANAGER] ${this.subscriptionType} contributors unchanged, skipping update`
+			);
+			return;
+		}
+
+		this.isUpdating = true;
+
+		try {
+			if (!newContributors.length) {
+				console.log(
+					`[STREAM-MANAGER] No ${this.subscriptionType} contributors, stopping all streams`
+				);
+				this.stopAllStreams();
 				return;
 			}
 
-			console.log('[NETWORK] Contacts data changed, updating local store');
-			console.log('[NETWORK] Loaded contacts count:', Object.keys(validatedContacts).length);
+			console.log(
+				`[STREAM-MANAGER] Updating ${this.subscriptionType} subscriptions for ${newContributors.length} contributors`
+			);
 
-			userContacts.set(validatedContacts);
-		} catch (error) {
-			console.error('[NETWORK] Error loading contacts:', error);
-			// On error, don't update the store
+			// Calculate current contributors from active streams
+			const currentContributors = new Set<string>();
+			for (const streamKey of this.activeStreams.keys()) {
+				const contributorId = streamKey.split('_')[0];
+				currentContributors.add(contributorId);
+			}
+
+			const newContributorSet = new Set(newContributors);
+			const toAdd = newContributors.filter((id) => !currentContributors.has(id));
+			const toRemove = Array.from(currentContributors).filter((id) => !newContributorSet.has(id));
+
+			// Remove old streams for contributors no longer in the list
+			for (const contributorId of toRemove) {
+				console.log(`[STREAM-MANAGER] Removing streams for contributor: ${contributorId}`);
+				this.stopContributorStreams(contributorId);
+			}
+
+			// Add new streams for new contributors
+			for (const contributorId of toAdd) {
+				try {
+					console.log(`[STREAM-MANAGER] Adding streams for contributor: ${contributorId}`);
+					await createStreamFn(contributorId);
+				} catch (error) {
+					console.error(
+						`[STREAM-MANAGER] Failed to create streams for contributor ${contributorId}:`,
+						error
+					);
+				}
+			}
+
+			// Update last contributors list
+			this.lastContributorsList = [...newContributors];
+
+			console.log(
+				`[STREAM-MANAGER] ${this.subscriptionType} streams: +${toAdd.length} -${toRemove.length} (total: ${this.activeStreams.size})`
+			);
 		} finally {
+			this.isUpdating = false;
+		}
+	}
+
+	/**
+	 * Get stream count for debugging
+	 */
+	get streamCount(): number {
+		return this.activeStreams.size;
+	}
+
+	/**
+	 * Get active stream keys for debugging
+	 */
+	get activeStreamKeys(): string[] {
+		return Array.from(this.activeStreams.keys());
+	}
+}
+
+// Create stream managers
+const sogfStreamManager = new StreamSubscriptionManager('SOGF');
+const mutualStreamManager = new StreamSubscriptionManager('MUTUAL');
+const ownDataStreamManager = new StreamSubscriptionManager('OWN_DATA');
+
+// Helper to clean up multiple stores by filtering out removed contributors
+function cleanupNetworkStores(
+	removedContributors: string[],
+	currentContributors: string[],
+	stores: Array<{ store: any; name: string }>
+) {
+	if (removedContributors.length === 0) return;
+
+	console.log(
+		`[NETWORK] Cleaning up data for removed contributors: ${removedContributors.join(', ')}`
+	);
+
+	stores.forEach(({ store, name }) => {
+		store.update((current: Record<string, any>) => {
+			const cleaned: Record<string, any> = {};
+			Object.entries(current).forEach(([contributorId, data]) => {
+				if (currentContributors.includes(contributorId)) {
+					cleaned[contributorId] = data;
+				}
+			});
+			console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
+			return cleaned;
+		});
+	});
+}
+
+/**
+ * Higher-order function that wraps stream creation with authentication
+ */
+function withAuthentication<T extends any[]>(
+	fn: (userId: string, ...args: T) => Promise<void>
+): (...args: T) => Promise<void> {
+	return async (...args: T) => {
+		let ourId: string;
+		try {
+			ourId = get(userPub);
+			if (!ourId) {
+				console.log('[NETWORK] Cannot create stream - not authenticated');
+				return;
+			}
+		} catch (error) {
+			console.log('[NETWORK] Cannot create stream - userPub not initialized');
+			return;
+		}
+
+		return fn(ourId, ...args);
+	};
+}
+
+/**
+ * Generic data processor that handles validation, comparison, and store updates
+ */
+function createDataProcessor<T>(config: {
+	dataType: string;
+	validator?: (data: any) => T | null;
+	getCurrentData: () => T | null;
+	updateStore: (data: T) => void;
+	loadingFlag?: { set: (value: boolean) => void };
+	onUpdate?: () => void;
+	emptyValue?: T;
+}) {
+	return (rawData: any) => {
+		const { dataType, validator, getCurrentData, updateStore, loadingFlag, onUpdate, emptyValue } =
+			config;
+
+		if (!rawData) {
+			console.log(`[NETWORK] No ${dataType} data found`);
+			if (emptyValue !== undefined) {
+				updateStore(emptyValue);
+			}
+			loadingFlag?.set(false);
+			return;
+		}
+
+		console.log(`[NETWORK] Received ${dataType} update from stream`);
+		loadingFlag?.set(true);
+
+		try {
+			let processedData = rawData;
+
+			// Apply validator (which handles both parsing and validation)
+			if (validator) {
+				processedData = validator(rawData);
+				if (!processedData) {
+					console.error(`[NETWORK] Failed to validate ${dataType} data`);
+					loadingFlag?.set(false);
+					return;
+				}
+			}
+
+			// Check if data has changed
+			const currentData = getCurrentData();
+			if (currentData && JSON.stringify(currentData) === JSON.stringify(processedData)) {
+				console.log(`[NETWORK] Incoming ${dataType} matches current ${dataType}, ignoring update`);
+				loadingFlag?.set(false);
+				return;
+			}
+
+			console.log(`[NETWORK] ${dataType} data changed, updating local store`);
+			updateStore(processedData);
+			onUpdate?.();
+		} catch (error) {
+			console.error(`[NETWORK] Error processing ${dataType}:`, error);
+		} finally {
+			loadingFlag?.set(false);
+		}
+	};
+}
+
+/**
+ * Stream configuration interface
+ */
+interface StreamConfig<T> {
+	type: string;
+	streamManager: StreamSubscriptionManager;
+	getGunPath: (userId: string, contributorId?: string) => any;
+	processor: (data: any) => void;
+	errorHandler: (error: any) => void;
+}
+
+/**
+ * Generic stream factory function
+ */
+async function createStream<T>(
+	config: StreamConfig<T>,
+	userId: string,
+	contributorId?: string
+): Promise<void> {
+	const { type, streamManager, getGunPath, processor, errorHandler } = config;
+	const targetId = contributorId || userId;
+
+	console.log(`[NETWORK] Creating ${type} stream for: ${targetId}`);
+
+	await streamManager.createStream(
+		targetId,
+		() => getGunPath(userId, contributorId),
+		type,
+		processor,
+		errorHandler
+	);
+}
+
+/**
+ * Stream configurations for own data
+ */
+const ownDataStreamConfigs = {
+	tree: {
+		type: 'tree',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('tree'),
+		processor: createDataProcessor({
+			dataType: 'tree',
+			validator: parseTree,
+			getCurrentData: () => get(userTree),
+			updateStore: (data) => userTree.set(data),
+			loadingFlag: isLoadingTree,
+			onUpdate: () => recalculateFromTree()
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own tree stream:', error);
+			isLoadingTree.set(false);
+		}
+	},
+	capacities: {
+		type: 'capacities',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('capacities'),
+		processor: createDataProcessor({
+			dataType: 'capacities',
+			validator: parseCapacities,
+			getCurrentData: () => get(userCapacities),
+			updateStore: (data) => userCapacities.set(data),
+			loadingFlag: isLoadingCapacities
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own capacities stream:', error);
+			isLoadingCapacities.set(false);
+		}
+	},
+	contacts: {
+		type: 'contacts',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('contacts'),
+		processor: createDataProcessor({
+			dataType: 'contacts',
+			validator: parseContacts,
+			getCurrentData: () => get(userContacts),
+			updateStore: (data) => userContacts.set(data),
+			loadingFlag: isLoadingContacts,
+			emptyValue: {}
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own contacts stream:', error);
 			isLoadingContacts.set(false);
 		}
+	},
+	desiredComposeFrom: {
+		type: 'desiredComposeFrom',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('desiredComposeFrom'),
+		processor: createDataProcessor({
+			dataType: 'desiredComposeFrom',
+			validator: parseUserComposition,
+			getCurrentData: () => get(userDesiredComposeFrom),
+			updateStore: (data) => userDesiredComposeFrom.set(data),
+			emptyValue: {}
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own desiredComposeFrom stream:', error);
+		}
+	},
+	desiredComposeInto: {
+		type: 'desiredComposeInto',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('desiredComposeInto'),
+		processor: createDataProcessor({
+			dataType: 'desiredComposeInto',
+			validator: parseUserComposition,
+			getCurrentData: () => get(userDesiredComposeInto),
+			updateStore: (data) => userDesiredComposeInto.set(data),
+			emptyValue: {}
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own desiredComposeInto stream:', error);
+		}
+	}
+};
+
+/**
+ * Stream configurations for contributor data
+ */
+const contributorStreamConfigs = {
+	sogf: {
+		type: 'sogf',
+		streamManager: sogfStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) {
+				console.warn(
+					`[NETWORK] Cannot create SOGF stream for ${contributorId}: no public key available`
+				);
+				return null;
+			}
+			return gun.user(pubKey).get('sogf');
+		},
+		processor: (contributorId: string) => (sogfData: any) => {
+			if (!sogfData) return;
+
+			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`);
+
+			// Validate SOGF data using parseShareMap
+			const validatedSogfData = parseShareMap(sogfData);
+			if (!validatedSogfData || Object.keys(validatedSogfData).length === 0) {
+				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`);
+				return;
+			}
+
+			let ourId: string;
+			try {
+				ourId = get(userPub);
+				if (!ourId) return;
+			} catch (error) {
+				console.log(`[NETWORK] Cannot get userPub in SOGF stream for ${contributorId}`);
+				return;
+			}
+
+			const theirShare = validatedSogfData[ourId] || 0;
+			const currentCache = get(recognitionCache);
+			const existingEntry = currentCache[contributorId];
+			const isUnchanged = existingEntry && existingEntry.theirShare === theirShare;
+
+			if (!isUnchanged) {
+				updateTheirShareFromNetwork(contributorId, theirShare);
+			}
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in SOGF stream for ${contributorId}:`, error);
+		}
+	}
+};
+
+/**
+ * Stream configurations for mutual contributor data
+ */
+const mutualContributorStreamConfigs = {
+	capacities: {
+		type: 'capacities',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('capacities');
+		},
+		processor: (contributorId: string) =>
+			createDataProcessor({
+				dataType: 'capacities',
+				validator: parseCapacities,
+				getCurrentData: () => get(networkCapacities)[contributorId] || {},
+				updateStore: (data) => {
+					networkCapacities.update((current) => ({
+						...current,
+						[contributorId]: data
+					}));
+				}
+			}),
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in capacities stream for ${contributorId}:`, error);
+		}
+	},
+	capacityShares: {
+		type: 'capacityShares',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('capacityShares').get(userId);
+		},
+		processor: (contributorId: string) => (shares: any) => {
+			if (!shares) {
+				console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
+				networkCapacityShares.update((current) => {
+					const { [contributorId]: _, ...rest } = current;
+					return rest;
+				});
+				return;
+			}
+
+			console.log(`[NETWORK] Received capacity shares update from stream for ${contributorId}`);
+
+			// Validate capacity shares using parseCapacityShares
+			const validatedShares = parseCapacityShares(shares);
+			if (!validatedShares || Object.keys(validatedShares).length === 0) {
+				console.warn(`[NETWORK] Invalid capacity shares from ${contributorId}`);
+				return;
+			}
+
+			const currentNetworkShares = get(networkCapacityShares)[contributorId] || {};
+			const isUnchanged = JSON.stringify(validatedShares) === JSON.stringify(currentNetworkShares);
+
+			if (!isUnchanged) {
+				console.log(
+					`[NETWORK] Received new capacity shares from contributor ${contributorId}:`,
+					validatedShares
+				);
+				networkCapacityShares.update((current) => ({
+					...current,
+					[contributorId]: validatedShares
+				}));
+			}
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in capacity shares stream for ${contributorId}:`, error);
+		}
+	},
+	desiredComposeFrom: {
+		type: 'desiredComposeFrom',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('desiredComposeFrom');
+		},
+		processor: (contributorId: string) => (composeFromData: any) => {
+			if (!composeFromData) {
+				console.log(`[NETWORK] No desired compose-from from contributor ${contributorId}`);
+				networkDesiredComposeFrom.update((current) => {
+					const { [contributorId]: _, ...rest } = current;
+					return rest;
+				});
+				return;
+			}
+
+			console.log(
+				`[NETWORK] Received desired compose-from update from stream for ${contributorId}`
+			);
+
+			const validatedComposeFrom = parseUserComposition(composeFromData);
+			const currentNetworkComposeFrom = get(networkDesiredComposeFrom)[contributorId] || {};
+			const isUnchanged =
+				JSON.stringify(validatedComposeFrom) === JSON.stringify(currentNetworkComposeFrom);
+
+			if (!isUnchanged) {
+				networkDesiredComposeFrom.update((current) => ({
+					...current,
+					[contributorId]: validatedComposeFrom
+				}));
+			}
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in desired compose-from stream for ${contributorId}:`, error);
+		}
+	},
+	desiredComposeInto: {
+		type: 'desiredComposeInto',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('desiredComposeInto');
+		},
+		processor: (contributorId: string) => (composeIntoData: any) => {
+			if (!composeIntoData) {
+				console.log(`[NETWORK] No desired compose-into from contributor ${contributorId}`);
+				networkDesiredComposeInto.update((current) => {
+					const { [contributorId]: _, ...rest } = current;
+					return rest;
+				});
+				return;
+			}
+
+			console.log(
+				`[NETWORK] Received desired compose-into update from stream for ${contributorId}`
+			);
+
+			const validatedComposeInto = parseUserComposition(composeIntoData);
+			const currentNetworkComposeInto = get(networkDesiredComposeInto)[contributorId] || {};
+			const isUnchanged =
+				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
+
+			if (!isUnchanged) {
+				networkDesiredComposeInto.update((current) => ({
+					...current,
+					[contributorId]: validatedComposeInto
+				}));
+			}
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in desired compose-into stream for ${contributorId}:`, error);
+		}
+	}
+};
+
+/**
+ * Elegant stream creation functions using configurations
+ */
+const createOwnTreeStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.tree, userId);
+});
+
+const createOwnCapacitiesStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.capacities, userId);
+});
+
+const createOwnDesiredComposeFromStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.desiredComposeFrom, userId);
+});
+
+const createOwnDesiredComposeIntoStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.desiredComposeInto, userId);
+});
+
+const createOwnContactsStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.contacts, userId);
+});
+
+const createContributorSOGFStream = async (contributorId: string) => {
+	const config = contributorStreamConfigs.sogf;
+	const pubKey = resolveToPublicKey(contributorId);
+	if (!pubKey) {
+		console.warn(
+			`[NETWORK] Cannot create SOGF stream for ${contributorId}: no public key available`
+		);
+		return;
+	}
+
+	await config.streamManager.createStream(
+		contributorId,
+		() => config.getGunPath('', contributorId),
+		config.type,
+		config.processor(contributorId),
+		config.errorHandler(contributorId)
+	);
+};
+
+const createMutualContributorStreams = withAuthentication(
+	async (userId: string, contributorId: string) => {
+		console.log(`[NETWORK] Creating all mutual contributor streams for: ${contributorId}`);
+
+		const pubKey = resolveToPublicKey(contributorId);
+		if (!pubKey) {
+			console.warn(
+				`[NETWORK] Cannot create mutual contributor streams for ${contributorId}: no public key available`
+			);
+			return;
+		}
+
+		// Create all mutual contributor streams
+		const streamTypes = [
+			'capacities',
+			'capacityShares',
+			'desiredComposeFrom',
+			'desiredComposeInto'
+		] as const;
+
+		for (const streamType of streamTypes) {
+			const config = mutualContributorStreamConfigs[streamType];
+			const gunPath = config.getGunPath(userId, contributorId);
+
+			if (gunPath) {
+				await config.streamManager.createStream(
+					contributorId,
+					() => gunPath,
+					streamType,
+					config.processor(contributorId),
+					config.errorHandler(contributorId)
+				);
+			}
+		}
+	}
+);
+
+/**
+ * Initialize all user data streams
+ */
+export async function initializeUserDataStreams(): Promise<void> {
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot initialize streams - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot initialize streams - userPub not initialized');
+		return;
+	}
+
+	console.log('[NETWORK] Initializing all user data streams');
+
+	try {
+		// Stop existing streams first
+		ownDataStreamManager.stopAllStreams();
+
+		// Create new streams
+		await createOwnTreeStream();
+		await createOwnCapacitiesStream();
+		await createOwnContactsStream();
+		await createOwnDesiredComposeFromStream();
+		await createOwnDesiredComposeIntoStream();
+
+		// Setup users list subscription (still using old approach for now)
+		setupUsersListSubscription();
+
+		console.log('[NETWORK] User data streams initialized successfully');
+	} catch (error) {
+		console.error('[NETWORK] Error initializing user data streams:', error);
+	}
+}
+
+/**
+ * Update the recognition cache with a contributor's share for us from network
+ * @param contributorId The ID of the contributor
+ * @param theirShare Share they assign to us in their SOGF
+ */
+export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
+	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
+
+	// Get current cache entry
+	const cache = get(recognitionCache);
+	const existing = cache[contributorId];
+
+	console.log(`[NETWORK] Existing cache entry for ${contributorId}:`, existing);
+
+	// Update the cache immediately with new theirShare
+	recognitionCache.update((cache) => {
+		if (existing) {
+			// Update only theirShare in existing entry
+			console.log(`[NETWORK] Updating existing entry for ${contributorId}`);
+			cache[contributorId] = {
+				...cache[contributorId],
+				theirShare,
+				timestamp: Date.now()
+			};
+		} else {
+			// Create new entry with default ourShare of 0
+			console.log(`[NETWORK] Creating new entry for ${contributorId} with ourShare=0`);
+			cache[contributorId] = {
+				ourShare: 0, // We don't know our share yet
+				theirShare,
+				timestamp: Date.now()
+			};
+		}
+
+		console.log(`[NETWORK] Updated cache entry for ${contributorId}:`, cache[contributorId]);
+		return cache;
 	});
+
+	// Log the updated cache and force reactivity check
+	const updatedCache = get(recognitionCache);
+
+	console.log(`[NETWORK] Cache after network update from ${contributorId}:`, updatedCache);
 }
 
 // Centralized reactive subscription to usersList
@@ -374,541 +1065,8 @@ function setupUsersListSubscription() {
 	});
 }
 
-/**
- * Initialize all user data subscriptions
- */
-export function initializeUserDataSubscriptions() {
-	try {
-		if (!userPub || !get(userPub)) {
-			console.log('[NETWORK] Cannot initialize subscriptions - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot initialize subscriptions - userPub not initialized');
-		return;
-	}
-
-	console.log('[NETWORK] Initializing all user data subscriptions');
-	setupUsersListSubscription();
-	// Set up all subscriptions (each handles its own loading state)
-	subscribeToOwnTree();
-	subscribeToOwnCapacities();
-	subscribeToOwnDesiredComposeFrom();
-	subscribeToOwnDesiredComposeInto();
-	subscribeToOwnContacts();
-}
-
-/**
- * Update the recognition cache with a contributor's share for us from network
- * @param contributorId The ID of the contributor
- * @param theirShare Share they assign to us in their SOGF
- */
-export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
-	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
-
-	// Get current cache entry
-	const cache = get(recognitionCache);
-	const existing = cache[contributorId];
-
-	console.log(`[NETWORK] Existing cache entry for ${contributorId}:`, existing);
-
-	// Update the cache immediately with new theirShare
-	recognitionCache.update((cache) => {
-		if (existing) {
-			// Update only theirShare in existing entry
-			console.log(`[NETWORK] Updating existing entry for ${contributorId}`);
-			cache[contributorId] = {
-				...cache[contributorId],
-				theirShare,
-				timestamp: Date.now()
-			};
-		} else {
-			// Create new entry with default ourShare of 0
-			console.log(`[NETWORK] Creating new entry for ${contributorId} with ourShare=0`);
-			cache[contributorId] = {
-				ourShare: 0, // We don't know our share yet
-				theirShare,
-				timestamp: Date.now()
-			};
-		}
-
-		console.log(`[NETWORK] Updated cache entry for ${contributorId}:`, cache[contributorId]);
-		return cache;
-	});
-
-	// Log the updated cache and force reactivity check
-	const updatedCache = get(recognitionCache);
-
-	console.log(`[NETWORK] Cache after network update from ${contributorId}:`, updatedCache);
-}
-
-function setupTimeoutProtection(contributorId: string, dataType: string) {
-	let hasReceived = false;
-	const timeout = setTimeout(() => {
-		if (!hasReceived) {
-			console.log(`[NETWORK] Timeout waiting for ${dataType} from ${contributorId}`);
-		}
-	}, 10000); // 10 second timeout
-
-	return {
-		markReceived: () => {
-			hasReceived = true;
-			clearTimeout(timeout);
-		},
-		hasReceived
-	};
-}
-
-/**
- * Set up network subscriptions for contributor's SOGF
- * @param contributorId The ID of the contributor to subscribe to (can be contactId or pubKey)
- */
-export function subscribeToContributorSOGF(contributorId: string) {
-	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s SOGF`);
-
-	// Resolve contact ID to public key if needed
-	const pubKey = resolveToPublicKey(contributorId);
-	if (!pubKey) {
-		console.warn(
-			`[NETWORK] Cannot subscribe to SOGF for ${contributorId}: no public key available`
-		);
-		return;
-	}
-
-	const contributorSogf = gun.user(pubKey).get('sogf'); // Use Gun's user system
-
-	// Subscribe to changes
-	contributorSogf.on((sogfData: any) => {
-		if (!sogfData) return;
-
-		console.log(`[NETWORK] Received SOGF update from ${contributorId}`);
-
-		// Get our user ID
-		let ourId: string;
-		try {
-			ourId = get(userPub);
-			if (!ourId) return;
-		} catch (error) {
-			console.log(`[NETWORK] Cannot get userPub in SOGF subscription for ${contributorId}`);
-			return;
-		}
-
-		// Extract our share from their SOGF
-		const theirShare = sogfData[ourId] || 0;
-
-		// Check if this share matches our current cache
-		const currentCache = get(recognitionCache);
-		const existingEntry = currentCache[contributorId];
-		const isUnchanged = existingEntry && existingEntry.theirShare === theirShare;
-
-		if (isUnchanged) {
-			/*console.log(
-				`[NETWORK] Ignoring duplicate SOGF update from contributor ${contributorId}: share=${theirShare}`
-			);*/
-			return;
-		}
-
-		// Update our cache with their share for us
-		updateTheirShareFromNetwork(contributorId, theirShare);
-	});
-}
-
-export function subscribeToContributorCapacities(contributorId: string) {
-	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s capacities`);
-
-	// Resolve contact ID to public key if needed
-	const pubKey = resolveToPublicKey(contributorId);
-	if (!pubKey) {
-		console.warn(
-			`[NETWORK] Cannot subscribe to capacities for ${contributorId}: no public key available`
-		);
-		return;
-	}
-
-	const contributorCapacities = gun.user(pubKey).get('capacities'); // Use Gun's user system
-
-	// Subscribe to changes
-	contributorCapacities.on((capacitiesData: any) => {
-		if (!capacitiesData) return;
-
-		console.log(`[NETWORK] Received capacities update from ${contributorId}:`, capacitiesData);
-
-		// Get our user ID
-		let ourId: string;
-		try {
-			ourId = get(userPub);
-			if (!ourId) return;
-		} catch (error) {
-			console.log(`[NETWORK] Cannot get userPub in capacities subscription for ${contributorId}`);
-			return;
-		}
-
-		// Parse and validate the capacities data
-		const validatedCapacities = parseCapacities(capacitiesData);
-		if (!validatedCapacities || Object.keys(validatedCapacities).length === 0) {
-			console.error('[NETWORK] Failed to validate capacities from contributor:', contributorId);
-			return;
-		}
-
-		// Check if these capacities match our current network state
-		const currentNetworkCapacities = get(networkCapacities)[contributorId] || {};
-		const isUnchanged =
-			JSON.stringify(validatedCapacities) === JSON.stringify(currentNetworkCapacities);
-
-		if (isUnchanged) {
-			/*console.log(
-				`[NETWORK] Ignoring duplicate capacities update for contributor ${contributorId}`
-			);*/
-			return;
-		}
-
-		// Update the networkCapacities store with this contributor's validated capacities
-		networkCapacities.update((currentNetworkCapacities) => {
-			const updated = { ...currentNetworkCapacities };
-			updated[contributorId] = validatedCapacities;
-			console.log(
-				`[NETWORK] Updated networkCapacities for ${contributorId}: added ${Object.keys(validatedCapacities).length} capacities`
-			);
-			return updated;
-		});
-	});
-}
-
-/**
- * Subscribe to our capacity shares from a contributor
- * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
- */
-export function subscribeToContributorCapacityShares(contributorId: string) {
-	let ourId: string;
-	try {
-		ourId = get(userPub);
-		if (!ourId) {
-			console.log('[NETWORK] Cannot subscribe to capacity shares - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to capacity shares - userPub not initialized');
-		return;
-	}
-
-	console.log(
-		`[NETWORK] Setting up capacity shares subscription for contributor: ${contributorId}`
-	);
-
-	// Resolve contact ID to public key if needed
-	const pubKey = resolveToPublicKey(contributorId);
-	if (!pubKey) {
-		console.warn(
-			`[NETWORK] Cannot subscribe to capacity shares for ${contributorId}: no public key available`
-		);
-		return;
-	}
-
-	// Subscribe to our capacity shares from this contributor
-	gun
-		.user(pubKey) // Use Gun's user system
-		.get('capacityShares')
-		.get(ourId)
-		.on((shares: any) => {
-			if (!shares) {
-				console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
-				networkCapacityShares.update((current) => {
-					const { [contributorId]: _, ...rest } = current;
-					return rest;
-				});
-				return;
-			}
-
-			try {
-				// Parse and validate the shares
-				let parsedShares: Record<string, number>;
-				if (typeof shares === 'string') {
-					parsedShares = JSON.parse(shares);
-				} else {
-					parsedShares = shares;
-				}
-
-				// Validate that all shares are numbers between 0 and 1
-				const validatedShares: Record<string, number> = {};
-				Object.entries(parsedShares).forEach(([capacityId, share]) => {
-					if (typeof share === 'number' && share >= 0 && share <= 1) {
-						validatedShares[capacityId] = share;
-					} else {
-						console.warn(`[NETWORK] Invalid share value for capacity ${capacityId}:`, share);
-					}
-				});
-
-				// Check if these shares match our current network state
-				const currentNetworkShares = get(networkCapacityShares)[contributorId] || {};
-				const isUnchanged =
-					JSON.stringify(validatedShares) === JSON.stringify(currentNetworkShares);
-
-				if (isUnchanged) {
-					//console.log(`[NETWORK] Ignoring duplicate update for contributor ${contributorId}`);
-					return;
-				}
-
-				console.log(
-					`[NETWORK] Received new capacity shares from contributor ${contributorId}:`,
-					validatedShares
-				);
-
-				// Update the store with the validated shares
-				networkCapacityShares.update((current) => ({
-					...current,
-					[contributorId]: validatedShares
-				}));
-			} catch (error) {
-				console.error(
-					`[NETWORK] Error parsing/validating capacity shares from contributor ${contributorId}:`,
-					error
-				);
-			}
-		});
-}
-
-/**
- * Subscribe to a contributor's desired compose-from (they enhance their capacity from ours)
- * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
- */
-export function subscribeToContributorDesiredComposeFrom(contributorId: string) {
-	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-from`);
-
-	// Resolve contact ID to public key if needed
-	const pubKey = resolveToPublicKey(contributorId);
-	if (!pubKey) {
-		console.warn(
-			`[NETWORK] Cannot subscribe to desired compose-from for ${contributorId}: no public key available`
-		);
-		return;
-	}
-
-	const contributorCompositions = gun.user(pubKey).get('desiredComposeFrom'); // Use Gun's user system
-
-	// Subscribe to changes
-	contributorCompositions.on((compositionsData: any) => {
-		if (!compositionsData) {
-			console.log(`[NETWORK] No desired compositions from contributor ${contributorId}`);
-			networkDesiredComposeFrom.update((current) => {
-				const { [contributorId]: _, ...rest } = current;
-				return rest;
-			});
-			return;
-		}
-
-		console.log(
-			`[NETWORK] Received desired compositions update from ${contributorId}:`,
-			compositionsData
-		);
-
-		// Parse and validate using Zod schema
-		const validatedCompositions = parseUserComposition(compositionsData);
-
-		// Check if these compositions match our current network state
-		const currentNetworkCompositions = get(networkDesiredComposeFrom)[contributorId] || {};
-		const isUnchanged =
-			JSON.stringify(validatedCompositions) === JSON.stringify(currentNetworkCompositions);
-
-		if (isUnchanged) {
-			/*console.log(
-				`[NETWORK] Ignoring duplicate desired compositions update for contributor ${contributorId}`
-			);*/
-			return;
-		}
-
-		// Update the networkDesiredComposeFrom store
-		networkDesiredComposeFrom.update((current) => ({
-			...current,
-			[contributorId]: validatedCompositions
-		}));
-
-		console.log(
-			`[NETWORK] Updated desired compositions for ${contributorId}: ${Object.keys(validatedCompositions).length} capacities with composition desires`
-		);
-	});
-}
-
-/**
- * Subscribe to a contributor's desired compose-into (they want to enhance our capacities)
- * @param contributorId The contributor to subscribe to (can be contactId or pubKey)
- */
-export function subscribeToContributorDesiredComposeInto(contributorId: string) {
-	console.log(`[NETWORK] Setting up subscription to ${contributorId}'s desired compose-into`);
-
-	// Resolve contact ID to public key if needed
-	const pubKey = resolveToPublicKey(contributorId);
-	if (!pubKey) {
-		console.warn(
-			`[NETWORK] Cannot subscribe to desired compose-into for ${contributorId}: no public key available`
-		);
-		return;
-	}
-
-	const contributorComposeInto = gun.user(pubKey).get('desiredComposeInto'); // Use Gun's user system
-
-	// Subscribe to changes
-	contributorComposeInto.on((composeIntoData: any) => {
-		if (!composeIntoData) {
-			console.log(`[NETWORK] No desired compose-into from contributor ${contributorId}`);
-			networkDesiredComposeInto.update((current) => {
-				const { [contributorId]: _, ...rest } = current;
-				return rest;
-			});
-			return;
-		}
-
-		console.log(
-			`[NETWORK] Received desired compose-into update from ${contributorId}:`,
-			composeIntoData
-		);
-
-		// Parse and validate using Zod schema
-		const validatedComposeInto = parseUserComposition(composeIntoData);
-
-		// Check if these compose-into desires match our current network state
-		const currentNetworkComposeInto = get(networkDesiredComposeInto)[contributorId] || {};
-		const isUnchanged =
-			JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
-
-		if (isUnchanged) {
-			/*console.log(
-				`[NETWORK] Ignoring duplicate desired compose-into update for contributor ${contributorId}`
-			);*/
-			return;
-		}
-
-		// Update the networkDesiredComposeInto store
-		networkDesiredComposeInto.update((current) => ({
-			...current,
-			[contributorId]: validatedComposeInto
-		}));
-
-		console.log(
-			`[NETWORK] Updated desired compose-into for ${contributorId}: ${Object.keys(validatedComposeInto).length} capacities with compose-into desires`
-		);
-	});
-}
-
-/**
- * Generic subscription manager for handling delta-based subscription updates
- */
-class SubscriptionManager {
-	private activeSubscriptions: Set<string>;
-	private subscriptionType: string;
-
-	constructor(subscriptionType: string) {
-		this.activeSubscriptions = new Set();
-		this.subscriptionType = subscriptionType;
-	}
-
-	/**
-	 * Update subscriptions based on new contributor list
-	 */
-	updateSubscriptions(
-		newContributors: string[],
-		subscribeFn: (contributorId: string) => void,
-		onAdd?: (contributorId: string) => void,
-		onRemove?: (contributorId: string) => void
-	) {
-		if (!newContributors.length) {
-			console.log(`[NETWORK] No ${this.subscriptionType} contributors to subscribe to`);
-			this.activeSubscriptions.clear();
-			return;
-		}
-
-		console.log(
-			`[NETWORK] ${this.subscriptionType} contributors changed, now have ${newContributors.length}, managing subscriptions`
-		);
-
-		// Calculate deltas
-		const newSet = new Set(newContributors);
-		const toAdd = newContributors.filter((id) => !this.activeSubscriptions.has(id));
-		const toRemove = Array.from(this.activeSubscriptions).filter((id) => !newSet.has(id));
-
-		// Handle removals
-		toRemove.forEach((contributorId) => {
-			console.log(`[NETWORK] Removing ${this.subscriptionType} subscription for: ${contributorId}`);
-			this.activeSubscriptions.delete(contributorId);
-			onRemove?.(contributorId);
-		});
-
-		// Handle additions
-		toAdd.forEach((contributorId) => {
-			try {
-				console.log(`[NETWORK] Adding ${this.subscriptionType} subscription for: ${contributorId}`);
-				subscribeFn(contributorId);
-				this.activeSubscriptions.add(contributorId);
-				onAdd?.(contributorId);
-			} catch (error) {
-				console.error(
-					`[NETWORK] Error subscribing to ${this.subscriptionType} contributor ${contributorId}:`,
-					error
-				);
-			}
-		});
-
-		console.log(
-			`[NETWORK] ${this.subscriptionType} subscriptions: +${toAdd.length} -${toRemove.length} (total: ${this.activeSubscriptions.size})`
-		);
-	}
-
-	has(contributorId: string): boolean {
-		return this.activeSubscriptions.has(contributorId);
-	}
-
-	add(contributorId: string): void {
-		this.activeSubscriptions.add(contributorId);
-	}
-
-	get size(): number {
-		return this.activeSubscriptions.size;
-	}
-}
-
-/**
- * Helper to clean up multiple stores by filtering out removed contributors
- */
-function cleanupNetworkStores(
-	removedContributors: string[],
-	currentContributors: string[],
-	stores: Array<{ store: any; name: string }>
-) {
-	if (removedContributors.length === 0) return;
-
-	console.log(
-		`[NETWORK] Cleaning up data for removed contributors: ${removedContributors.join(', ')}`
-	);
-
-	stores.forEach(({ store, name }) => {
-		store.update((current: Record<string, any>) => {
-			const cleaned: Record<string, any> = {};
-			Object.entries(current).forEach(([contributorId, data]) => {
-				if (currentContributors.includes(contributorId)) {
-					cleaned[contributorId] = data;
-				}
-			});
-			console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
-			return cleaned;
-		});
-	});
-}
-
-/**
- * Set up all mutual contributor subscriptions for a single contributor
- */
-function setupMutualContributorSubscriptions(contributorId: string) {
-	subscribeToContributorCapacities(contributorId);
-	subscribeToContributorCapacityShares(contributorId);
-	subscribeToContributorDesiredComposeFrom(contributorId);
-	subscribeToContributorDesiredComposeInto(contributorId);
-}
-
-// Create subscription managers
-const sogfManager = new SubscriptionManager('SOGF');
-const mutualManager = new SubscriptionManager('mutual');
-
 // Watch for changes to contributors and subscribe to get their SOGF data
-contributors.subscribe((allContributors) => {
+const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
@@ -920,11 +1078,13 @@ contributors.subscribe((allContributors) => {
 		return;
 	}
 
-	sogfManager.updateSubscriptions(allContributors, subscribeToContributorSOGF);
-});
+	sogfStreamManager.updateSubscriptions(allContributors, createContributorSOGFStream);
+}, 100);
+
+contributors.subscribe(debouncedUpdateSOGFSubscriptions);
 
 // Watch for changes to mutual contributors and subscribe to get their capacity data and shares
-mutualContributors.subscribe((currentMutualContributors) => {
+const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: string[]) => {
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
@@ -942,6 +1102,7 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		networkCapacityShares.set({});
 		networkDesiredComposeFrom.set({});
 		networkDesiredComposeInto.set({});
+		mutualStreamManager.stopAllStreams();
 		return;
 	}
 
@@ -953,31 +1114,23 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		{ store: networkDesiredComposeInto, name: 'networkDesiredComposeInto' }
 	];
 
-	mutualManager.updateSubscriptions(
+	mutualStreamManager.updateSubscriptions(
 		currentMutualContributors,
-		setupMutualContributorSubscriptions,
-		undefined, // onAdd callback not needed
-		(contributorId) =>
-			cleanupNetworkStores([contributorId], currentMutualContributors, networkStores)
+		createMutualContributorStreams
 	);
-});
+}, 100);
+
+mutualContributors.subscribe(debouncedUpdateMutualSubscriptions);
 
 /**
  * Debug function to manually trigger subscriptions for all contributors
  */
 export function debugTriggerSubscriptions() {
-	console.log('[DEBUG] Manually triggering subscriptions for all contributors');
+	console.log('[DEBUG] Manually triggering stream subscriptions for all contributors');
 	const allContributors = get(contributors);
 
-	allContributors.forEach((contributorId) => {
-		if (!sogfManager.has(contributorId)) {
-			console.log(`[DEBUG] Setting up subscription for: ${contributorId}`);
-			subscribeToContributorSOGF(contributorId);
-			sogfManager.add(contributorId);
-		} else {
-			console.log(`[DEBUG] Already subscribed to: ${contributorId}`);
-		}
-	});
-
-	console.log(`[DEBUG] Active subscriptions: ${sogfManager.size}/${allContributors.length}`);
+	console.log(`[DEBUG] Active SOGF streams: ${sogfStreamManager.streamCount}`);
+	console.log(`[DEBUG] Active mutual streams: ${mutualStreamManager.streamCount}`);
+	console.log(`[DEBUG] Active own data streams: ${ownDataStreamManager.streamCount}`);
+	console.log(`[DEBUG] Total contributors: ${allContributors.length}`);
 }

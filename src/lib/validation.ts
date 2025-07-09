@@ -10,7 +10,8 @@ import {
 	ShareMapSchema,
 	RecognitionCacheSchema,
 	UserCompositionSchema,
-	NetworkCompositionSchema
+	NetworkCompositionSchema,
+	ContactsCollectionSchema
 } from './schema';
 
 /*
@@ -167,13 +168,17 @@ export function parseCapacities(capacitiesData: unknown) {
  */
 export function parseShareMap(shareMapData: unknown) {
 	try {
+		console.log('[VALIDATION] Raw share map input:', shareMapData);
+		console.log('[VALIDATION] Share map input type:', typeof shareMapData);
+		
 		// Parse if it's a string
 		let parsedData;
 		if (typeof shareMapData === 'string') {
 			try {
 				parsedData = JSON.parse(shareMapData);
+				console.log('[VALIDATION] Parsed from JSON string:', parsedData);
 			} catch (error) {
-				console.error('Error parsing share map JSON:', error);
+				console.error('[VALIDATION] Error parsing share map JSON:', error);
 				return {};
 			}
 		} else {
@@ -182,18 +187,56 @@ export function parseShareMap(shareMapData: unknown) {
 
 		// Filter out Gun.js metadata properties
 		parsedData = filterGunMetadata(parsedData);
+		console.log('[VALIDATION] After filtering Gun metadata:', parsedData);
+
+		// Convert string values to numbers (common Gun.js issue)
+		if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+			const convertedData: Record<string, number> = {};
+			Object.entries(parsedData).forEach(([key, value]) => {
+				console.log(`[VALIDATION] Processing key: ${key}, value: ${value}, type: ${typeof value}`);
+				
+				// Convert string numbers to actual numbers
+				if (typeof value === 'string') {
+					const numValue = parseFloat(value);
+					console.log(`[VALIDATION] String "${value}" converted to: ${numValue}, isNaN: ${isNaN(numValue)}`);
+					
+					if (!isNaN(numValue)) {
+						convertedData[key] = numValue;
+						console.log(`[VALIDATION] Successfully converted ${key}: "${value}" -> ${numValue}`);
+					} else {
+						console.warn(`[VALIDATION] Invalid share value for ${key}: ${value}`);
+					}
+				} else if (typeof value === 'number') {
+					convertedData[key] = value;
+					console.log(`[VALIDATION] Number value ${key}: ${value}`);
+				} else {
+					console.warn(`[VALIDATION] Invalid share type for ${key}:`, typeof value, value);
+				}
+			});
+			parsedData = convertedData;
+			console.log('[VALIDATION] Final converted data:', convertedData);
+		}
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation share map data:', parsedData);
 
 		// Validate with Zod schema
 		const result = ShareMapSchema.safeParse(parsedData);
 
 		if (result.success) {
+			console.log('[VALIDATION] Share map validation successful');
 			return result.data;
 		} else {
-			console.error('Share map validation failed:', result.error);
+			console.error('[VALIDATION] Share map validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			console.error('[VALIDATION] Detailed error breakdown:');
+			result.error.issues.forEach(issue => {
+				console.error(issue);
+			});
 			return {};
 		}
 	} catch (err) {
-		console.error('Error parsing share map:', err);
+		console.error('[VALIDATION] Error parsing share map:', err);
 		return {};
 	}
 }
@@ -352,6 +395,106 @@ export function parseNetworkComposition(compositionData: unknown) {
 		}
 	} catch (err) {
 		console.error('[VALIDATION] Error during network composition validation:', err);
+		return {};
+	}
+}
+
+/**
+ * Parse and validate contacts data
+ * @param contactsData Raw contacts data
+ * @returns Validated ContactsCollection or empty object if validation fails
+ */
+export function parseContacts(contactsData: unknown) {
+	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof contactsData === 'string') {
+			try {
+				parsedData = JSON.parse(contactsData);
+			} catch (error) {
+				console.error('[VALIDATION] Error parsing contacts data JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = contactsData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation contacts data:', parsedData);
+
+		// Validate with Zod schema
+		const result = ContactsCollectionSchema.safeParse(parsedData);
+
+		if (result.success) {
+			console.log('[VALIDATION] Contacts validation successful');
+			return result.data;
+		} else {
+			console.error('[VALIDATION] Contacts validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			return {};
+		}
+	} catch (err) {
+		console.error('[VALIDATION] Error during contacts validation:', err);
+		return {};
+	}
+}
+
+/**
+ * Parse and validate capacity shares data (percentage shares for capacities)
+ * @param sharesData Raw capacity shares data
+ * @returns Validated capacity shares or empty object if validation fails
+ */
+export function parseCapacityShares(sharesData: unknown) {
+	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof sharesData === 'string') {
+			try {
+				parsedData = JSON.parse(sharesData);
+			} catch (error) {
+				console.error('[VALIDATION] Error parsing capacity shares data JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = sharesData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation capacity shares data:', parsedData);
+
+		// Validate that it's an object
+		if (!parsedData || typeof parsedData !== 'object') {
+			console.error('[VALIDATION] Capacity shares data is not an object:', parsedData);
+			return {};
+		}
+
+		// Validate each capacity share entry
+		const validatedShares: Record<string, number> = {};
+		Object.entries(parsedData).forEach(([capacityId, share]) => {
+			// Validate capacity ID (must be non-empty string)
+			if (typeof capacityId !== 'string' || capacityId.trim() === '') {
+				console.warn('[VALIDATION] Invalid capacity ID in shares:', capacityId);
+				return;
+			}
+
+			// Validate share (must be number between 0 and 1)
+			if (typeof share === 'number' && share >= 0 && share <= 1 && !isNaN(share)) {
+				validatedShares[capacityId] = share;
+			} else {
+				console.warn('[VALIDATION] Invalid share value for capacity', capacityId, ':', share);
+			}
+		});
+
+		console.log('[VALIDATION] Capacity shares validation successful');
+		return validatedShares;
+	} catch (err) {
+		console.error('[VALIDATION] Error during capacity shares validation:', err);
 		return {};
 	}
 }

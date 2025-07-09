@@ -2,14 +2,14 @@ import Gun from 'gun';
 import SEA from 'gun/sea';
 import 'gun/axe';
 import 'gun/lib/yson.js';
-//import 'gun/lib/radix'; // Required for radix tree logic
-//import 'gun/lib/radisk'; // Required for chunked disk storage
-//import 'gun/lib/store'; // Bridges GUN storage adapter logic
+import 'gun/lib/radix'; // Required for radix tree logic
+import 'gun/lib/radisk'; // Required for chunked disk storage
+import 'gun/lib/store'; // Bridges GUN storage adapter logic
 import 'gun/lib/rindexed'; // IndexedDB adapter for RAD in browser
 import 'gun/lib/webrtc.js';
 
 import { writable, get } from 'svelte/store';
-import { initializeUserDataSubscriptions } from './network.svelte';
+import { initializeUserDataStreams } from './network.svelte';
 
 if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
@@ -79,7 +79,7 @@ if (typeof window !== 'undefined') {
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
-				initializeUserDataSubscriptions();
+				initializeUserDataStreams();
 				return;
 			}
 
@@ -107,7 +107,7 @@ if (typeof window !== 'undefined') {
 				});
 
 				// Load the data since gun.on('auth') won't fire for recalled sessions
-				initializeUserDataSubscriptions();
+				initializeUserDataStreams();
 			} else {
 				console.log('[RECALL] No authenticated user found after recall');
 				// Clear the stores to ensure consistent state
@@ -156,7 +156,7 @@ gun.on('auth', async () => {
 					console.log(`userPub: ${pubToUse}`);
 
 					// Load existing user data
-					initializeUserDataSubscriptions();
+					initializeUserDataStreams();
 				});
 			});
 
@@ -189,7 +189,7 @@ gun.on('auth', async () => {
 					console.log(`userPub: ${pubToUse} (fallback)`);
 
 					// Load existing user data
-					initializeUserDataSubscriptions();
+					initializeUserDataStreams();
 				});
 			});
 

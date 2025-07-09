@@ -1,3 +1,4 @@
+/*
 import { get } from 'svelte/store';
 import {
 	contributors,
@@ -9,9 +10,11 @@ import {
 } from './core.svelte';
 import { subscribeToContributorSOGF } from './network.svelte';
 
+*/
+
 /**
  * Debug function to log current state of all recognition-related stores
- */
+
 export function debugRecognitionState() {
 	console.log('=== RECOGNITION DEBUG STATE ===');
 
@@ -42,9 +45,6 @@ export function debugRecognitionState() {
 	console.log('=== END DEBUG ===');
 }
 
-/**
- * Debug function to manually trigger subscriptions for all contributors
- */
 export function debugTriggerSubscriptions() {
 	console.log('[DEBUG] Manually triggering subscriptions for all contributors');
 	const allContributors = get(contributors);
@@ -62,3 +62,5 @@ if (typeof window !== 'undefined') {
 	(window as any).debugRecognition = debugRecognitionState;
 	(window as any).debugTriggerSubscriptions = debugTriggerSubscriptions;
 }
+
+*/
