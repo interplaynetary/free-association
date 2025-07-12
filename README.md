@@ -13,27 +13,23 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 1. Your **Total-Recognition** is always _100%_.
 
 2. Your **Recognition** is your acknowledgment of _contributions towards your own self-actualization_
-
    - Always represents a share/portion/percentage of one's total recognition (100%)
    - Non-transferable (unlike shares or equity that can be traded)
    - Dynamically (re)adjustable as relationships and contributions evolve
    - Not limited to direct personal consumption - recognition can be given to those contributing to broader social values and needs you care about.
 
 3. Your **Mutual Recognition** with another is the minimum of your recognition of each other.
-
    - For example: If you are 50% of my _total-recognition_, and I am 10% of your _total-recognition_, our mutual-recognition is 10%, the minimum of the both.
      - _Taking the minimum of both shares ensures reciprocity in proportion._
      - This is _mutual-recognition of contribution towards each other's self-actualization_.
 
 4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_.
-
    - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
    - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
    - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
    - Optionally declare max-divisibility (either amount or %) to reflect real-world limitations.
 
 5. Your **general-share** in another's **capacities** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
-
    - For example: If we have 10% of _mutual-recognition_, and you are my only _mutual-relationship_, you would have 100% of my **total-mutual-recognition** (100% of my **general-share**). If I have two _mutual-relationships_ each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **general-share**).
 
 6. Your **specific-share** in another's _capacity_ is your **general-share** with _capacity's_ **filters** applied and then the result is normalized to 100%.
@@ -121,7 +117,7 @@ Total Recognition = 100%
 Total Recognition = True-Recognition + False-Recognition
    ∴ ↑False-Recognition = ↓True-Recognition
       ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
-         ∴ ↓Shares of Actually-Beneficial-Surplus from Actually-Beneficial-Contributors
+         ∴ ↓Shares of Actually-Beneficial-Capacities from Actually-Beneficial-Contributors
             ∴ ↓Real-Social-Material-Basis for Self-Actualization
                ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
 ```
@@ -146,18 +142,15 @@ For any participants A, B, C:
 Now combine this with a profound sociological discovery: everyone on Earth is connected to everyone else through at most six degrees of separation. In free association, this means:
 
 1. **First Degree** 👥: Your direct contributors (friends, colleagues, local community)
-
    - Their surplus capacity is shared based on your mutual recognition
    - You gain access to their skills, knowledge, resources
 
 2. **Second Degree** 🤝: Contributors to your contributors
-
    - A neighbor's friend who grows food
    - A colleague's network of skilled programmers
    - Each connection multiplies available surplus
 
 3. **Third Degree** 🏘️: Entire communities and networks
-
    - Housing cooperatives
    - Knowledge networks
    - Production collectives
