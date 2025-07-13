@@ -76,10 +76,10 @@ export const recognitionCache = writable<RecognitionCache>({});
 
 // Derived store for mutual recognition values (min of ourShare and theirShare)
 export const mutualRecognition = derived(recognitionCache, ($recognitionCache) => {
-	console.log(
+	/*console.log(
 		`[MUTUAL-RECOGNITION] ${new Date().toISOString()} Recalculating from cache:`,
 		$recognitionCache
-	);
+	);*/
 
 	const mutualValues: Record<string, number> = {};
 
@@ -87,10 +87,10 @@ export const mutualRecognition = derived(recognitionCache, ($recognitionCache) =
 		// Mutual recognition is the minimum of our share and their share
 		const mutualValue = Math.min(recognition.ourShare, recognition.theirShare);
 		mutualValues[contributorId] = mutualValue;
-
+		/*
 		console.log(
 			`[MUTUAL-RECOGNITION] ${contributorId}: our=${recognition.ourShare.toFixed(4)}, their=${recognition.theirShare.toFixed(4)}, mutual=${mutualValue.toFixed(4)}`
-		);
+		);*/
 	}
 
 	console.log('[MUTUAL-RECOGNITION] Final mutual values:', mutualValues);
@@ -109,10 +109,10 @@ export const mutualContributors = derived(mutualRecognition, ($mutualRecognition
 
 // Derived store for normalized mutual recognition values (sum to 1.0)
 export const providerShares = derived(mutualRecognition, ($mutualRecognition) => {
-	console.log(
+	/*console.log(
 		`[PROVIDER-SHARES] ${new Date().toISOString()} Recalculating from mutual recognition:`,
 		$mutualRecognition
-	);
+	);*/
 
 	// If empty, return empty object
 	if (Object.keys($mutualRecognition).length === 0) {
@@ -122,7 +122,7 @@ export const providerShares = derived(mutualRecognition, ($mutualRecognition) =>
 
 	// Use the normalizeShareMap function from protocol.ts
 	const normalized = normalizeShareMap($mutualRecognition);
-	console.log('[PROVIDER-SHARES] Normalized shares:', normalized);
+	//console.log('[PROVIDER-SHARES] Normalized shares:', normalized);
 	return normalized;
 });
 
@@ -135,7 +135,7 @@ export const subtreeContributorMap = derived([userTree], ([$userTree]) => {
 
 	console.log('[SUBTREE-MAP] Calculating subtree contributor map...');
 
-	// Get the subtree map directly - it already returns the format we need
+	// Get the subtree map - resolution will happen at the calculation level
 	const filterMap = getSubtreeContributorMap($userTree);
 
 	console.log('[SUBTREE-MAP] Generated filter map for', Object.keys(filterMap).length, 'subtrees');

@@ -160,6 +160,20 @@ export const ContactsCollectionSchema = z.record(IdSchema, ContactSchema);
 export type Contact = z.infer<typeof ContactSchema>;
 export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
 
+// Chat read state schema - tracks last read timestamp for each chat
+export const ChatReadStateSchema = z.object({
+	chatId: IdSchema,
+	lastReadTimestamp: z.number(),
+	updatedAt: z.number()
+});
+
+// Chat read states collection schema - indexed by chatId
+export const ChatReadStatesSchema = z.record(IdSchema, ChatReadStateSchema);
+
+// Export chat read state types
+export type ChatReadState = z.infer<typeof ChatReadStateSchema>;
+export type ChatReadStates = z.infer<typeof ChatReadStatesSchema>;
+
 // Collective Tree Schema
 // it should have a root node (the id being the hash of the ids of the contributors)
 // it should be a merge of all the jsons of all the contributors

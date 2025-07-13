@@ -2,10 +2,7 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { userAlias, userPub, userTree } from '$lib/state.svelte';
-	import {
-		createContactsAndUsersDataProvider,
-		createChildContributorsDataProvider
-	} from '$lib/utils/ui-providers.svelte';
+	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
 	import {
@@ -20,7 +17,12 @@
 		calculateNodePoints
 	} from '$lib/protocol';
 	import { createContact } from '$lib/state/users.svelte';
-	import { updateContact } from '$lib/state/users.svelte';
+	import { updateContact, userContacts } from '$lib/state/users.svelte';
+	import {
+		deleteContact,
+		getContactByPublicKey,
+		resolveToPublicKey
+	} from '$lib/state/users.svelte';
 	import { createNewTree } from '$lib/utils/cleanUtils';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
@@ -55,15 +57,17 @@
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
 
-	// Create users data provider for the dropdown - prioritizes contributors of the active node
+	// Create users data provider for the dropdown - simplified single provider
 	let usersDataProvider = $derived.by(() => {
-		return activeNodeId
-			? createChildContributorsDataProvider(activeNodeId, [])
-			: createContactsAndUsersDataProvider([]);
+		// Always use the child contributors provider for consistency
+		// It will handle cases where activeNodeId is null gracefully
+		const provider = createChildContributorsDataProvider(activeNodeId, []);
+
+		return provider;
 	});
 
 	// Get current node contributors for the dropdown
-	let currentContributors = $derived(() => {
+	let currentContributors = $derived.by(() => {
 		if (!activeNodeId || !tree) return [];
 
 		const node = findNodeById(tree, activeNodeId);
@@ -453,6 +457,9 @@
 			// Update the node's contributors
 			(node as NonRootNode).contributor_ids = updatedContributors;
 
+			// Run deduplication to ensure no duplicates exist
+			deduplicateContributorsInTree(updatedTree);
+
 			// Update the store to trigger reactivity
 			userTree.set(updatedTree);
 
@@ -499,6 +506,55 @@
 		activeNodeId = null;
 	}
 
+	// Specific substitution function - replaces all instances of a public key with a contact ID
+	function replacePublicKeyWithContactId(
+		treeToModify: Node,
+		publicKeyToReplace: string,
+		newContactId: string
+	): number {
+		let substitutionCount = 0;
+
+		// Recursive function to substitute public key with contact ID in a node and its children
+		function substituteInNode(node: Node): void {
+			// Only NonRootNodes have contributor_ids
+			if (node.type === 'NonRootNode') {
+				const nonRootNode = node as NonRootNode;
+				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+					// Replace all instances of the public key with the contact ID
+					const updatedContributors = nonRootNode.contributor_ids.map((contributorId) => {
+						if (contributorId === publicKeyToReplace) {
+							console.log(
+								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in node '${node.name}' (${node.id})`
+							);
+							substitutionCount++;
+							return newContactId;
+						}
+						return contributorId;
+					});
+
+					// Update the contributor_ids array
+					nonRootNode.contributor_ids = updatedContributors;
+				}
+			}
+
+			// Recursively substitute in all child nodes
+			if (node.children && node.children.length > 0) {
+				node.children.forEach(substituteInNode);
+			}
+		}
+
+		// Start substitution from the root
+		substituteInNode(treeToModify);
+
+		if (substitutionCount > 0) {
+			console.log(
+				`[SUBSTITUTION] Replaced ${substitutionCount} instances of public key with contact ID '${newContactId}'`
+			);
+		}
+
+		return substitutionCount;
+	}
+
 	function handleCreateContact(detail: { name: string; publicKey?: string }) {
 		try {
 			const newContact = createContact({
@@ -507,6 +563,37 @@
 			});
 
 			console.log('[CONTACT] Created new contact:', newContact);
+
+			// If the contact has a public key, substitute all instances of that public key with the contact ID
+			if (newContact.public_key && tree) {
+				console.log('[CONTACT] Substituting public key with contact ID in tree:', {
+					publicKey: newContact.public_key,
+					contactId: newContact.contact_id
+				});
+
+				// Create a clone of the tree to ensure reactivity
+				const updatedTree = structuredClone(tree);
+
+				// Run specific substitution for this public key -> contact ID
+				const substitutionChanges = replacePublicKeyWithContactId(
+					updatedTree,
+					newContact.public_key,
+					newContact.contact_id
+				);
+
+				// Then run deduplication to clean up any remaining duplicates
+				const deduplicationChanges = deduplicateContributorsInTree(updatedTree);
+
+				// Update the tree if there were changes
+				if (substitutionChanges || deduplicationChanges) {
+					console.log(
+						`[CONTACT] Tree updated: ${substitutionChanges} substitutions, deduplication: ${deduplicationChanges}`
+					);
+					userTree.set(updatedTree);
+					triggerUpdate();
+				}
+			}
+
 			globalState.showToast(`Contact "${detail.name}" created successfully`, 'success');
 
 			// Automatically add the new contact as a contributor to the active node
@@ -533,18 +620,122 @@
 		}
 	}
 
+	function handleDeleteContact(detail: { contactId: string; name: string; publicKey?: string }) {
+		try {
+			if (!tree) {
+				globalState.showToast('No tree found to update', 'error');
+				return;
+			}
+
+			const { contactId, name, publicKey } = detail;
+			console.log('[CONTACT] Deleting contact:', { contactId, name, publicKey });
+
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
+			// First, replace the specific contact_id with public key or remove it
+			let substitutionCount = 0;
+			let removalCount = 0;
+
+			function replaceSpecificContactId(node: Node): void {
+				if (node.type === 'NonRootNode') {
+					const nonRootNode = node as NonRootNode;
+					if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+						// Replace contact_id with public key, or remove if no public key
+						nonRootNode.contributor_ids = nonRootNode.contributor_ids
+							.map((contributorId) => {
+								if (contributorId === contactId) {
+									if (publicKey) {
+										console.log(
+											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in node '${node.name}' (${node.id})`
+										);
+										substitutionCount++;
+										return publicKey;
+									} else {
+										console.log(
+											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from node '${node.name}' (${node.id})`
+										);
+										removalCount++;
+										return null; // Mark for removal
+									}
+								}
+								return contributorId;
+							})
+							.filter((id) => id !== null) as string[]; // Remove null entries
+					}
+				}
+
+				// Recursively process all child nodes
+				if (node.children && node.children.length > 0) {
+					node.children.forEach(replaceSpecificContactId);
+				}
+			}
+
+			// Start replacement from the root
+			replaceSpecificContactId(updatedTree);
+
+			// Then run unified deduplication to clean up any remaining duplicates
+			const deduplicationChanges = deduplicateContributorsInTree(updatedTree);
+
+			// Update the tree if there were changes
+			if (substitutionCount > 0 || removalCount > 0 || deduplicationChanges) {
+				console.log(
+					`[CONTACT] Tree updated: ${substitutionCount} substitutions, ${removalCount} removals${deduplicationChanges ? ', plus deduplication' : ''}`
+				);
+				userTree.set(updatedTree);
+				triggerUpdate();
+			}
+
+			// Delete the contact from userContacts
+			deleteContact(contactId);
+
+			// Show success message
+			let message = `Contact "${name}" deleted`;
+			if (substitutionCount > 0) {
+				message += ` and replaced with public key in ${substitutionCount} node(s)`;
+			}
+			if (removalCount > 0) {
+				message += ` and removed from ${removalCount} node(s)`;
+			}
+
+			globalState.showToast(message, 'success');
+
+			console.log('[CONTACT] Contact deletion completed successfully');
+		} catch (error) {
+			console.error('[CONTACT] Error deleting contact:', error);
+			globalState.showToast('Error deleting contact: ' + (error as Error).message, 'error');
+		}
+	}
+
 	function handleRemoveItem(detail: { id: string; name: string; metadata?: any }) {
 		if (!activeNodeId) {
 			console.error('No node selected for removing contributor');
 			return;
 		}
 
-		// Remove the contributor
-		handleRemoveContributor({ nodeId: activeNodeId, contributorId: detail.id });
+		// Get the contributor ID to remove
+		const contributorId = detail.id;
 
-		console.log('[CONTRIBUTOR] Removed contributor:', {
+		// If this is a contact being removed, also check if we need to remove the associated public key
+		let contributorIdsToRemove = [contributorId];
+
+		if (detail.metadata?.isContact && detail.metadata?.userId) {
+			// This is a contact - also remove its public key if it exists as a contributor
+			const publicKey = detail.metadata.userId;
+			if (publicKey !== contributorId) {
+				// Only add if it's different from the contact ID
+				contributorIdsToRemove.push(publicKey);
+			}
+		}
+
+		// Remove all the contributor IDs - safe to use activeNodeId here since we checked above
+		contributorIdsToRemove.forEach((idToRemove) => {
+			handleRemoveContributor({ nodeId: activeNodeId!, contributorId: idToRemove });
+		});
+
+		console.log('[CONTRIBUTOR] Removed contributor(s):', {
 			nodeId: activeNodeId,
-			contributorId: detail.id,
+			contributorIds: contributorIdsToRemove,
 			name: detail.name
 		});
 	}
@@ -572,6 +763,9 @@
 				// This ensures the node becomes a proper leaf contribution node
 				addContributors(node, currentContributors);
 
+				// Run deduplication to ensure no duplicates exist
+				deduplicateContributorsInTree(updatedTree);
+
 				// Update the store to trigger reactivity
 				userTree.set(updatedTree);
 
@@ -594,6 +788,112 @@
 		if (!node) return 0;
 
 		return fulfilled(node, tree);
+	}
+
+	// Unified deduplication function - prefers contact IDs over public keys
+	function deduplicateContributorsInTree(treeToModify: Node): boolean {
+		let hasChanges = false;
+		let deduplicatedCount = 0;
+
+		// Recursive function to deduplicate contributors in a node and its children
+		function deduplicateNodeContributors(node: Node): void {
+			// Only NonRootNodes have contributor_ids
+			if (node.type === 'NonRootNode') {
+				const nonRootNode = node as NonRootNode;
+				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+					const originalLength = nonRootNode.contributor_ids.length;
+					const originalContributors = [...nonRootNode.contributor_ids];
+
+					// First pass: collect all contact IDs and their resolved public keys
+					const contactIdToPublicKey = new Map<string, string>();
+					const publicKeyToContactId = new Map<string, string>();
+
+					originalContributors.forEach((contributorId) => {
+						if (contributorId.startsWith('contact_')) {
+							const resolvedPublicKey = resolveToPublicKey(contributorId);
+							if (resolvedPublicKey) {
+								contactIdToPublicKey.set(contributorId, resolvedPublicKey);
+								publicKeyToContactId.set(resolvedPublicKey, contributorId);
+							}
+						}
+					});
+
+					// Create a set to track resolved public keys we've already seen
+					const seenPublicKeys = new Set<string>();
+					const deduplicatedContributors: string[] = [];
+
+					// Second pass: deduplicate, preferring contact IDs over public keys
+					originalContributors.forEach((contributorId) => {
+						if (contributorId.startsWith('contact_')) {
+							// This is a contact ID - resolve to public key to check for duplicates
+							const resolvedPublicKey = resolveToPublicKey(contributorId);
+							if (resolvedPublicKey) {
+								if (!seenPublicKeys.has(resolvedPublicKey)) {
+									seenPublicKeys.add(resolvedPublicKey);
+									// Always prefer the contact ID over the public key
+									deduplicatedContributors.push(contributorId);
+								} else {
+									// This public key was already seen - this is a duplicate contact
+									console.log(
+										`[DEDUP] Removing duplicate contact '${contributorId}' from node '${node.name}' (${node.id})`
+									);
+									deduplicatedCount++;
+								}
+							} else {
+								// Contact ID couldn't be resolved - keep it anyway
+								deduplicatedContributors.push(contributorId);
+							}
+						} else {
+							// This is a public key - check if we have a contact ID for this person
+							if (publicKeyToContactId.has(contributorId)) {
+								// We have a contact ID for this person - remove the public key
+								console.log(
+									`[DEDUP] Removing public key '${contributorId.substring(0, 20)}...' in favor of contact ID '${publicKeyToContactId.get(contributorId)}' from node '${node.name}' (${node.id})`
+								);
+								deduplicatedCount++;
+							} else {
+								// No contact ID for this person - keep the public key if not already seen
+								if (!seenPublicKeys.has(contributorId)) {
+									seenPublicKeys.add(contributorId);
+									deduplicatedContributors.push(contributorId);
+								} else {
+									// This is a duplicate public key
+									console.log(
+										`[DEDUP] Removing duplicate public key '${contributorId.substring(0, 20)}...' from node '${node.name}' (${node.id})`
+									);
+									deduplicatedCount++;
+								}
+							}
+						}
+					});
+
+					// Update the contributor_ids array
+					nonRootNode.contributor_ids = deduplicatedContributors;
+
+					// Check if any contributors were removed
+					if (nonRootNode.contributor_ids.length < originalLength) {
+						hasChanges = true;
+						console.log(
+							`[DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributor_ids.length} contributors`
+						);
+					}
+				}
+			}
+
+			// Recursively deduplicate all child nodes
+			if (node.children && node.children.length > 0) {
+				node.children.forEach(deduplicateNodeContributors);
+			}
+		}
+
+		// Start deduplication from the root
+		deduplicateNodeContributors(treeToModify);
+
+		if (hasChanges) {
+			console.log(`[DEDUP] Deduplicated ${deduplicatedCount} contributor entries from tree`);
+		}
+
+		return hasChanges;
 	}
 
 	// Growth handlers
@@ -1187,6 +1487,7 @@
 		removeItem={handleRemoveItem}
 		createContact={handleCreateContact}
 		updateContact={handleUpdateContact}
+		deleteContact={handleDeleteContact}
 		close={handleDropdownClose}
 	/>
 </div>

@@ -1,6 +1,6 @@
 import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
 import { browser } from '$app/environment';
-import { writable, get, type Writable } from 'svelte/store';
+import { writable, get, type Writable, derived } from 'svelte/store';
 import SEA from 'gun/sea';
 
 interface Message {
@@ -16,10 +16,59 @@ interface ChatSubscription {
 	unsubscribe?: () => void;
 }
 
+// Chat read state interface - tracks last read timestamp for each chat
+interface ChatReadState {
+	chatId: string;
+	lastReadTimestamp: number;
+	updatedAt: number;
+}
+
+// Map of chatId -> ChatReadState
+type ChatReadStates = Record<string, ChatReadState>;
+
 // Global chat state - using Map to track subscriptions, but stores for reactivity
 const chatSubscriptions = new Map<string, ChatSubscription>();
 let notificationManager: any = null;
 const isWindowFocused = writable(true);
+
+// Store for chat read states - persisted across sessions
+export const chatReadStates = writable<ChatReadStates>({});
+
+// Loading state for read states
+export const isLoadingChatReadStates = writable(false);
+
+// Reactive unread counts store - updates when messages or read states change
+export const unreadCounts = derived([chatReadStates], ([$chatReadStates]) => {
+	const counts: Record<string, number> = {};
+
+	// Calculate unread count for each chat that has a subscription
+	for (const [chatId, subscription] of chatSubscriptions.entries()) {
+		const messages = get(subscription.store);
+		const readState = $chatReadStates[chatId];
+
+		if (!readState) {
+			// If no read state, all messages are unread
+			counts[chatId] = messages.length;
+		} else {
+			// Count messages newer than last read timestamp
+			counts[chatId] = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+		}
+	}
+
+	// Also check read states for chats that might not have subscriptions yet
+	Object.keys($chatReadStates).forEach((chatId) => {
+		if (!(chatId in counts)) {
+			const subscription = chatSubscriptions.get(chatId);
+			if (subscription) {
+				const messages = get(subscription.store);
+				const readState = $chatReadStates[chatId];
+				counts[chatId] = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+			}
+		}
+	});
+
+	return counts;
+});
 
 // Initialize notification manager and window focus tracking
 if (browser) {
@@ -49,6 +98,7 @@ if (browser) {
 
 /**
  * Subscribe to a chat and start listening for messages in the background
+ * NOTE: This is now primarily used by the network module for stream management
  */
 export function subscribeToChat(chatId: string) {
 	// Don't create duplicate subscriptions
@@ -56,7 +106,7 @@ export function subscribeToChat(chatId: string) {
 		return chatSubscriptions.get(chatId)!;
 	}
 
-	console.log(`[Chat State] Subscribing to chat: ${chatId}`);
+	console.log(`[Chat State] Creating chat subscription for: ${chatId}`);
 
 	const subscription: ChatSubscription = {
 		chatId,
@@ -64,72 +114,11 @@ export function subscribeToChat(chatId: string) {
 		unsubscribe: undefined
 	};
 
-	// Set up Gun subscription
-	const gunRef = gun.get(chatId).map();
-
-	const unsubscribe = gunRef.on(async (data: any, key: string) => {
-		if (data) {
-			try {
-				const encryptionKey = '#foo';
-
-				var message = {
-					// transform the data
-					who: await gun.user(data).get('alias'), // a user might lie who they are! So let the user system detect whose data it is.
-					what: (await SEA.decrypt(data.what, encryptionKey)) + '', // Use encryptionKey, not key
-					// @ts-ignore - GUN.state.is typing issue
-					when: GUN.state.is(data, 'what'), // get the internal timestamp for the what property.
-					whopub: await gun.user(data).get('pub')
-				};
-
-				if (message.what && message.when) {
-					// Get current messages from store
-					const currentMessages = get(subscription.store);
-
-					// Check if message already exists to prevent duplicates
-					const messageExists = currentMessages.some(
-						(m: Message) => m.when === message.when && m.what === message.what
-					);
-
-					if (!messageExists) {
-						// Get current userpub value from store
-						const currentUserPub = get(userPub);
-						const isOwnMessage = (message.whopub as unknown as string) === currentUserPub;
-						const isNewMessage = currentMessages.length > 0; // Skip notifications for initial load
-
-						// Add message and keep sorted, then update store
-						const updatedMessages = [...currentMessages, message as unknown as Message].sort(
-							(a, b) => a.when - b.when
-						);
-						subscription.store.set(updatedMessages);
-
-						// Show notification for new messages from others when window is not focused
-						if (!isOwnMessage && isNewMessage && !get(isWindowFocused) && notificationManager) {
-							notificationManager.onPeerMessage(
-								{
-									id: message.when.toString(),
-									text: message.what,
-									sender: message.who
-								},
-								message.whopub || 'unknown',
-								message.who
-							);
-						}
-
-						console.log(`[Chat State] New message in ${chatId}:`, message.what);
-					}
-				}
-			} catch (error) {
-				console.error(`[Chat State] Error processing message in ${chatId}:`, error);
-			}
-		}
-	});
-
-	subscription.unsubscribe = () => {
-		gunRef.off();
-		console.log(`[Chat State] Unsubscribed from chat: ${chatId}`);
-	};
+	// Note: Gun subscription is now handled by network.svelte.ts
+	// This function just creates the store structure
 
 	chatSubscriptions.set(chatId, subscription);
+
 	return subscription;
 }
 
@@ -208,13 +197,165 @@ export function clearAllChatSubscriptions() {
 }
 
 /**
- * Check if a chat has unread messages (messages received while window was not focused)
+ * Clear all chat subscriptions and read states (useful for logout)
+ */
+export function clearAllChatData() {
+	clearAllChatSubscriptions();
+	clearChatReadStates();
+	console.log('[Chat State] Cleared all chat data');
+}
+
+/**
+ * Mark a chat as read up to a specific timestamp
+ * @param chatId The chat ID to mark as read
+ * @param timestamp Optional timestamp to mark as read (defaults to current time)
+ */
+export function markChatAsRead(chatId: string, timestamp?: number): void {
+	const readTimestamp = timestamp || Date.now();
+
+	console.log(`[Chat State] Marking chat ${chatId} as read up to timestamp: ${readTimestamp}`);
+
+	chatReadStates.update((states) => {
+		const existingState = states[chatId];
+
+		// Only update if the new timestamp is newer than the existing one
+		if (!existingState || readTimestamp > existingState.lastReadTimestamp) {
+			states[chatId] = {
+				chatId,
+				lastReadTimestamp: readTimestamp,
+				updatedAt: Date.now()
+			};
+			console.log(`[Chat State] Updated read state for ${chatId}:`, states[chatId]);
+		}
+
+		return states;
+	});
+}
+
+/**
+ * Get the number of unread messages in a chat (reactive version)
+ * @param chatId The chat ID to check
+ * @returns Number of unread messages
+ */
+export function getUnreadMessageCount(chatId: string): number {
+	// Get subscription (create if doesn't exist for store access)
+	const subscription = chatSubscriptions.get(chatId) || subscribeToChat(chatId);
+
+	const messages = get(subscription.store);
+	const readStates = get(chatReadStates);
+	const readState = readStates[chatId];
+
+	if (!readState) {
+		// If no read state, all messages are unread
+		return messages.length;
+	}
+
+	// Count messages newer than last read timestamp
+	const unreadCount = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+	console.log(
+		`[Chat State] Unread count for ${chatId}: ${unreadCount} (last read: ${readState.lastReadTimestamp})`
+	);
+
+	return unreadCount;
+}
+
+/**
+ * Get reactive unread count for a specific chat
+ * @param chatId The chat ID to check
+ * @returns Reactive unread count
+ */
+export function getReactiveUnreadCount(chatId: string) {
+	// Ensure subscription exists
+	const subscription = chatSubscriptions.get(chatId) || subscribeToChat(chatId);
+
+	return derived([subscription.store, chatReadStates], ([$messages, $readStates]) => {
+		const readState = $readStates[chatId];
+
+		if (!readState) {
+			// If no read state, all messages are unread
+			return $messages.length;
+		}
+
+		// Count messages newer than last read timestamp
+		return $messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+	});
+}
+
+/**
+ * Get the timestamp of the last message in a chat
+ * @param chatId The chat ID to check
+ * @returns Timestamp of the last message, or null if no messages
+ */
+export function getLastMessageTimestamp(chatId: string): number | null {
+	const subscription = chatSubscriptions.get(chatId);
+	if (!subscription) return null;
+
+	const messages = get(subscription.store);
+	if (messages.length === 0) return null;
+
+	// Messages are sorted by timestamp, so last message is the newest
+	return messages[messages.length - 1].when;
+}
+
+/**
+ * Mark a chat as read up to the latest message
+ * @param chatId The chat ID to mark as read
+ */
+export function markChatAsFullyRead(chatId: string): void {
+	const lastMessageTimestamp = getLastMessageTimestamp(chatId);
+	if (lastMessageTimestamp) {
+		markChatAsRead(chatId, lastMessageTimestamp);
+	}
+}
+
+/**
+ * Get all chat IDs that have unread messages
+ * @returns Array of chat IDs with unread messages
+ */
+export function getChatsWithUnreadMessages(): string[] {
+	const chatsWithUnread: string[] = [];
+	const readStates = get(chatReadStates);
+
+	// Check all chats we have read states for, not just subscribed chats
+	for (const chatId of Object.keys(readStates)) {
+		if (getUnreadMessageCount(chatId) > 0) {
+			chatsWithUnread.push(chatId);
+		}
+	}
+
+	return chatsWithUnread;
+}
+
+/**
+ * Get read state for a specific chat
+ * @param chatId The chat ID
+ * @returns ChatReadState or null if not found
+ */
+export function getChatReadState(chatId: string): ChatReadState | null {
+	const readStates = get(chatReadStates);
+	return readStates[chatId] || null;
+}
+
+/**
+ * Set read states (used for loading from network)
+ * @param states The read states to set
+ */
+export function setChatReadStates(states: ChatReadStates): void {
+	console.log('[Chat State] Setting read states from network:', states);
+	chatReadStates.set(states);
+}
+
+/**
+ * Clear all read states (useful for logout)
+ */
+export function clearChatReadStates(): void {
+	console.log('[Chat State] Clearing all read states');
+	chatReadStates.set({});
+}
+
+/**
+ * Check if a chat has unread messages (using read state timestamps)
  */
 export function hasUnreadMessages(chatId: string): boolean {
-	const subscription = chatSubscriptions.get(chatId);
-	if (!subscription) return false;
-
-	// This is a simple implementation - you might want to track read/unread state more sophisticatedly
-	const messages = get(subscription.store);
-	return messages.length > 0 && !get(isWindowFocused);
+	return getUnreadMessageCount(chatId) > 0;
 }

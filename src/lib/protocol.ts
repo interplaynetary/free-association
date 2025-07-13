@@ -207,14 +207,30 @@ export function desire(node: Node, tree: Node): number {
 export function shareOfGeneralFulfillment(
 	target: Node,
 	contributorId: string,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): number {
+	// Resolve the contributor ID to public key if resolver is provided
+	const resolvedContributorId = resolveToPublicKey
+		? resolveToPublicKey(contributorId) || contributorId
+		: contributorId;
+
 	// Find all nodes where this contributor is listed
 	const targetAndDescendants = [target, ...getDescendants(target)];
 	const contributingNodes = targetAndDescendants.filter((node) => {
 		if (node.type === 'RootNode') return false; // Root nodes can't have contributors
 
-		return (node as NonRootNode).contributor_ids.includes(contributorId) && isContribution(node);
+		const nodeContributorIds = (node as NonRootNode).contributor_ids;
+
+		// Check if any of the node's contributor IDs resolve to our target contributor
+		const hasContributor = nodeContributorIds.some((nodeContribId) => {
+			const resolvedNodeContribId = resolveToPublicKey
+				? resolveToPublicKey(nodeContribId) || nodeContribId
+				: nodeContribId;
+			return resolvedNodeContribId === resolvedContributorId;
+		});
+
+		return hasContributor && isContribution(node);
 	});
 
 	// Calculate weighted contribution for each node
@@ -223,9 +239,22 @@ export function shareOfGeneralFulfillment(
 		const nodeWeight = weight(node, target);
 		const nodeFulfillment = fulfilled(node, target);
 
-		// Get contributor count
-		const contributorCount =
-			node.type === 'RootNode' ? 1 : (node as NonRootNode).contributor_ids.length;
+		// Get contributor count - resolve all contributor IDs to public keys and deduplicate
+		let contributorCount: number;
+		if (node.type === 'RootNode') {
+			contributorCount = 1;
+		} else {
+			const nodeContributorIds = (node as NonRootNode).contributor_ids;
+
+			// Resolve all contributor IDs to public keys
+			const resolvedContributorIds = nodeContributorIds.map((id) =>
+				resolveToPublicKey ? resolveToPublicKey(id) || id : id
+			);
+
+			// Remove duplicates by converting to Set and back to array
+			const uniqueContributorIds = [...new Set(resolvedContributorIds)];
+			contributorCount = uniqueContributorIds.length;
+		}
 
 		return (nodeWeight * nodeFulfillment) / contributorCount;
 	});
@@ -236,15 +265,23 @@ export function shareOfGeneralFulfillment(
 
 /**
  * Extract all unique contributor IDs from a tree
+ * If resolveToPublicKey is provided, resolves contact IDs to public keys
  */
-export function getAllContributorsFromTree(tree: Node): string[] {
+export function getAllContributorsFromTree(
+	tree: Node,
+	resolveToPublicKey?: (id: string) => string | undefined
+): string[] {
 	const allContributorIds = new Set<string>();
 	const allNodes = [tree, ...getDescendants(tree)];
 
 	for (const node of allNodes) {
 		if (node.type === 'NonRootNode') {
 			for (const contributorId of (node as NonRootNode).contributor_ids) {
-				allContributorIds.add(contributorId);
+				// Resolve to public key if resolver is provided
+				const resolvedId = resolveToPublicKey
+					? resolveToPublicKey(contributorId) || contributorId
+					: contributorId;
+				allContributorIds.add(resolvedId);
 			}
 		}
 	}
@@ -256,17 +293,26 @@ export function getAllContributorsFromTree(tree: Node): string[] {
 export function sharesOfGeneralFulfillmentMap(
 	rootNode: Node,
 	nodesMap: Record<string, Node>,
-	specificContributors?: string[]
+	specificContributors?: string[],
+	resolveToPublicKey?: (id: string) => string | undefined
 ): ShareMap {
 	// Calculate all contributor shares
 	const sharesMap: ShareMap = {};
 
-	// Use specific contributors if provided, otherwise consider all nodes except root
+	// Use specific contributors if provided, otherwise get contributors from tree
 	const contributorIds =
-		specificContributors || Object.keys(nodesMap).filter((id) => id !== rootNode.id);
+		specificContributors || getAllContributorsFromTree(rootNode, resolveToPublicKey);
 
-	for (const contributorId of contributorIds) {
-		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap);
+	// If specificContributors were provided, resolve them too
+	const resolvedContributorIds = contributorIds.map((id) =>
+		resolveToPublicKey ? resolveToPublicKey(id) || id : id
+	);
+
+	// Remove duplicates after resolution
+	const uniqueContributorIds = [...new Set(resolvedContributorIds)];
+
+	for (const contributorId of uniqueContributorIds) {
+		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap, resolveToPublicKey);
 		// FIXED: Include all contributors, even those with 0 shares
 		// This ensures Gun properly updates network data when contributors are removed
 		sharesMap[contributorId] = share;
@@ -282,7 +328,8 @@ export function mutualFulfillment(
 	nodeB: Node,
 	nodesMap: Record<string, Node>,
 	cachedRecognition?: { ourShare: number; theirShare: number } | null,
-	directMutualValue?: number
+	directMutualValue?: number,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): number {
 	// Use direct mutual value if provided (from the derived store)
 	if (directMutualValue !== undefined) {
@@ -296,8 +343,8 @@ export function mutualFulfillment(
 
 	// Otherwise calculate locally
 	// Get share maps
-	const sharesFromA = sharesOfGeneralFulfillmentMap(nodeA, nodesMap);
-	const sharesFromB = sharesOfGeneralFulfillmentMap(nodeB, nodesMap);
+	const sharesFromA = sharesOfGeneralFulfillmentMap(nodeA, nodesMap, undefined, resolveToPublicKey);
+	const sharesFromB = sharesOfGeneralFulfillmentMap(nodeB, nodesMap, undefined, resolveToPublicKey);
 
 	// Extract shares with safe lookup (defaults to 0)
 	const shareFromAToB = sharesFromA[nodeB.id] ?? 0;
@@ -311,20 +358,30 @@ export function mutualFulfillment(
 export function providerShares(
 	provider: Node,
 	nodesMap: Record<string, Node>,
-	specificContributors?: string[]
+	specificContributors?: string[],
+	resolveToPublicKey?: (id: string) => string | undefined
 ): ShareMap {
 	// Calculate direct contributor shares based on mutual fulfillment
 	const contributorShares: ShareMap = {};
 
 	// Use specific contributors if provided, otherwise find all contributors in the tree
-	const contributorIds = specificContributors || getAllContributorsFromTree(provider);
+	const contributorIds =
+		specificContributors || getAllContributorsFromTree(provider, resolveToPublicKey);
+
+	// If specificContributors were provided, resolve them too
+	const resolvedContributorIds = contributorIds.map((id) =>
+		resolveToPublicKey ? resolveToPublicKey(id) || id : id
+	);
+
+	// Remove duplicates after resolution
+	const uniqueContributorIds = [...new Set(resolvedContributorIds)];
 
 	// Calculate mutual fulfillment for each contributor
-	for (const contributorId of contributorIds) {
+	for (const contributorId of uniqueContributorIds) {
 		// Note: Contributors don't need to exist in nodesMap since they are external user IDs
 		// The shareOfGeneralFulfillment function will find nodes that reference this contributorId
 
-		const share = shareOfGeneralFulfillment(provider, contributorId, nodesMap);
+		const share = shareOfGeneralFulfillment(provider, contributorId, nodesMap, resolveToPublicKey);
 		// FIXED: Include all contributors, even those with 0 shares
 		// This ensures consistency with SOGF and proper network updates
 		contributorShares[contributorId] = share;
@@ -338,10 +395,11 @@ export function receiverGeneralShareFrom(
 	receiver: Node,
 	provider: Node,
 	capacity: Capacity,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): number {
 	// Get shares from the provider
-	const providerShareMap = providerShares(provider, nodesMap);
+	const providerShareMap = providerShares(provider, nodesMap, undefined, resolveToPublicKey);
 	return providerShareMap[receiver.id] ?? 0;
 }
 
@@ -577,10 +635,11 @@ export function calculateRecipientShares(
 	capacity: ProviderCapacity,
 	provider: Node,
 	nodesMap: Record<string, Node>,
-	subtreeContributorMap?: Record<string, Record<string, boolean>>
+	subtreeContributorMap?: Record<string, Record<string, boolean>>,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): void {
 	// Get raw shares based on provider
-	const rawShares = providerShares(provider, nodesMap);
+	const rawShares = providerShares(provider, nodesMap, undefined, resolveToPublicKey);
 
 	// Apply capacity filter if one exists
 	const context: FilterContext = {
@@ -600,7 +659,8 @@ export function getReceiverCapacities(
 	receiver: Node,
 	provider: Node,
 	capacities: CapacitiesCollection,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): ProviderCapacity[] {
 	// Filter capacities owned by the provider and ensure they are provider capacities
 	const providerCapacities = Object.values(capacities).filter(
@@ -610,7 +670,7 @@ export function getReceiverCapacities(
 
 	// Ensure all capacities have calculated recipient shares
 	providerCapacities.forEach((capacity) => {
-		calculateRecipientShares(capacity, provider, nodesMap);
+		calculateRecipientShares(capacity, provider, nodesMap, undefined, resolveToPublicKey);
 	});
 
 	// Return capacities where the receiver has a share
@@ -626,10 +686,17 @@ export function getReceiverShares(
 	receiver: Node,
 	provider: Node,
 	capacities: CapacitiesCollection,
-	nodesMap: Record<string, Node>
+	nodesMap: Record<string, Node>,
+	resolveToPublicKey?: (id: string) => string | undefined
 ): Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> {
 	// Get all capacities where receiver has shares
-	const receiverCapacities = getReceiverCapacities(receiver, provider, capacities, nodesMap);
+	const receiverCapacities = getReceiverCapacities(
+		receiver,
+		provider,
+		capacities,
+		nodesMap,
+		resolveToPublicKey
+	);
 
 	// Create a map of capacity ID to share information
 	const sharesMap: Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> =
@@ -648,7 +715,10 @@ export function getReceiverShares(
 }
 
 // Get a map of subtree names to their contributor lists
-export function getSubtreeContributorMap(tree: Node): Record<string, Record<string, boolean>> {
+export function getSubtreeContributorMap(
+	tree: Node,
+	resolveToPublicKey?: (id: string) => string | undefined
+): Record<string, Record<string, boolean>> {
 	const subtreeMap: Record<string, Record<string, boolean>> = {};
 
 	// Helper to get contributors from a subtree
@@ -658,7 +728,11 @@ export function getSubtreeContributorMap(tree: Node): Record<string, Record<stri
 
 		subtreeNodes.forEach((n) => {
 			if (n.type === 'NonRootNode') {
-				(n as NonRootNode).contributor_ids.forEach((id) => contributorIds.add(id));
+				(n as NonRootNode).contributor_ids.forEach((id) => {
+					// Resolve to public key if resolver is provided
+					const resolvedId = resolveToPublicKey ? resolveToPublicKey(id) || id : id;
+					contributorIds.add(resolvedId);
+				});
 			}
 		});
 
@@ -786,7 +860,6 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
 	return true;
 }
 
-
 /**
  * Node Point Calculation Functions
  */
@@ -811,4 +884,3 @@ export function calculateNodePoints(parentNode: Node): number {
 
 // Re-export filter-related functions
 export { filter, normalizeShareMap, applyCapacityFilter, Rules };
-

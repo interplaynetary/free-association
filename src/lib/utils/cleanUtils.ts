@@ -1,8 +1,10 @@
 import { get } from 'svelte/store';
 import { usersList, userTree, userPub, userAlias } from '$lib/state.svelte';
+import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
 import { gun } from '$lib/state/gun.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/examples/example';
+import type { Node, NonRootNode } from '$lib/schema';
 
 /**
  * Convert a string duration like '30m', '2h', '1d', '1w', '3mo' to milliseconds
@@ -328,6 +330,213 @@ export function updateTreeFromJson(jsonString: string) {
 	}
 }
 
+/**
+ * Clean up orphaned contact_ids in the user's tree that no longer have corresponding contact data.
+ * This function recursively traverses the tree and removes any contact_ids from contributor_ids arrays
+ * that are not present in the userContacts store.
+ */
+export function cleanOrphanedContactIds() {
+	console.log("[TREE-CLEAN] Starting to clean orphaned contact_ids in user's tree...");
+
+	const currentTree = get(userTree);
+	if (!currentTree) {
+		console.error('[TREE-CLEAN] No tree found to clean');
+		return false;
+	}
+
+	const userContactsData = get(userContacts);
+	if (!userContactsData || Object.keys(userContactsData).length === 0) {
+		console.log('[TREE-CLEAN] No userContacts data found, nothing to clean');
+		return false;
+	}
+
+	const validContactIds = new Set(Object.keys(userContactsData));
+	let cleanedCount = 0;
+	let hasChanges = false;
+
+	// Recursive function to clean contact_ids from a node and its children
+	function cleanNodeContributors(node: Node): void {
+		// Only NonRootNodes have contributor_ids
+		if (node.type === 'NonRootNode') {
+			const nonRootNode = node as NonRootNode;
+			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+				const originalLength = nonRootNode.contributor_ids.length;
+
+				// Filter out orphaned contact_ids
+				nonRootNode.contributor_ids = nonRootNode.contributor_ids.filter((contributorId) => {
+					// If it's a contact_id, check if it still exists in userContacts
+					if (contributorId.startsWith('contact_')) {
+						const exists = validContactIds.has(contributorId);
+						if (!exists) {
+							console.log(
+								`[TREE-CLEAN] Removing orphaned contact_id '${contributorId}' from node '${node.name}' (${node.id})`
+							);
+							cleanedCount++;
+						}
+						return exists;
+					}
+					// Keep all non-contact contributors (public keys)
+					return true;
+				});
+
+				// Check if any contributors were removed
+				if (nonRootNode.contributor_ids.length < originalLength) {
+					hasChanges = true;
+				}
+			}
+		}
+
+		// Recursively clean all child nodes
+		if (node.children && node.children.length > 0) {
+			node.children.forEach(cleanNodeContributors);
+		}
+	}
+
+	// Start cleaning from the root
+	cleanNodeContributors(currentTree);
+
+	// Update the tree if there were changes
+	if (hasChanges) {
+		console.log(`[TREE-CLEAN] Cleaned ${cleanedCount} orphaned contact_ids from tree, updating...`);
+		userTree.set(currentTree);
+		console.log('[TREE-CLEAN] Tree updated with cleaned contact_ids');
+		return true;
+	} else {
+		console.log('[TREE-CLEAN] No orphaned contact_ids found, tree is clean');
+		return false;
+	}
+}
+
+/**
+ * Deduplicate contributors in the user's tree where the same person appears as both contact ID and public key.
+ * This function resolves contact IDs to public keys and removes duplicates.
+ */
+export function deduplicateContributors() {
+	console.log("[TREE-DEDUP] Starting to deduplicate contributors in user's tree...");
+
+	const currentTree = get(userTree);
+	if (!currentTree) {
+		console.error('[TREE-DEDUP] No tree found to deduplicate');
+		return false;
+	}
+
+	const userContactsData = get(userContacts);
+	if (!userContactsData || Object.keys(userContactsData).length === 0) {
+		console.log('[TREE-DEDUP] No userContacts data found, nothing to deduplicate');
+		return false;
+	}
+
+	let deduplicatedCount = 0;
+	let hasChanges = false;
+
+	// Recursive function to deduplicate contributors in a node and its children
+	function deduplicateNodeContributors(node: Node): void {
+		// Only NonRootNodes have contributor_ids
+		if (node.type === 'NonRootNode') {
+			const nonRootNode = node as NonRootNode;
+			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+				const originalLength = nonRootNode.contributor_ids.length;
+				const originalContributors = [...nonRootNode.contributor_ids];
+
+				// Create a set to track resolved public keys we've already seen
+				const seenPublicKeys = new Set<string>();
+				const deduplicatedContributors: string[] = [];
+
+								// First pass: collect all contact IDs and their resolved public keys
+				const contactIdToPublicKey = new Map<string, string>();
+				const publicKeyToContactId = new Map<string, string>();
+				
+				originalContributors.forEach((contributorId) => {
+					if (contributorId.startsWith('contact_')) {
+						const resolvedPublicKey = resolveToPublicKey(contributorId);
+						if (resolvedPublicKey) {
+							contactIdToPublicKey.set(contributorId, resolvedPublicKey);
+							publicKeyToContactId.set(resolvedPublicKey, contributorId);
+						}
+					}
+				});
+
+				// Second pass: deduplicate, preferring contact IDs over public keys
+				originalContributors.forEach((contributorId) => {
+					if (contributorId.startsWith('contact_')) {
+						// This is a contact ID - resolve to public key to check for duplicates
+						const resolvedPublicKey = resolveToPublicKey(contributorId);
+						if (resolvedPublicKey) {
+							if (!seenPublicKeys.has(resolvedPublicKey)) {
+								seenPublicKeys.add(resolvedPublicKey);
+								// Always prefer the contact ID over the public key
+								deduplicatedContributors.push(contributorId);
+							} else {
+								// This public key was already seen - this is a duplicate contact
+								console.log(
+									`[TREE-DEDUP] Removing duplicate contact '${contributorId}' (resolves to '${resolvedPublicKey.substring(0, 20)}...') from node '${node.name}' (${node.id})`
+								);
+								deduplicatedCount++;
+							}
+						} else {
+							// Contact ID couldn't be resolved - keep it anyway
+							deduplicatedContributors.push(contributorId);
+						}
+					} else {
+						// This is a public key - check if we have a contact ID for this person
+						if (publicKeyToContactId.has(contributorId)) {
+							// We have a contact ID for this person - remove the public key
+							console.log(
+								`[TREE-DEDUP] Removing public key '${contributorId.substring(0, 20)}...' in favor of contact ID '${publicKeyToContactId.get(contributorId)}' from node '${node.name}' (${node.id})`
+							);
+							deduplicatedCount++;
+						} else {
+							// No contact ID for this person - keep the public key if not already seen
+							if (!seenPublicKeys.has(contributorId)) {
+								seenPublicKeys.add(contributorId);
+								deduplicatedContributors.push(contributorId);
+							} else {
+								// This is a duplicate public key
+								console.log(
+									`[TREE-DEDUP] Removing duplicate public key '${contributorId.substring(0, 20)}...' from node '${node.name}' (${node.id})`
+								);
+								deduplicatedCount++;
+							}
+						}
+					}
+				});
+
+				// Update the contributor_ids array
+				nonRootNode.contributor_ids = deduplicatedContributors;
+
+				// Check if any contributors were removed
+				if (nonRootNode.contributor_ids.length < originalLength) {
+					hasChanges = true;
+					console.log(
+						`[TREE-DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributor_ids.length} contributors`
+					);
+				}
+			}
+		}
+
+		// Recursively deduplicate all child nodes
+		if (node.children && node.children.length > 0) {
+			node.children.forEach(deduplicateNodeContributors);
+		}
+	}
+
+	// Start deduplication from the root
+	deduplicateNodeContributors(currentTree);
+
+	// Update the tree if there were changes
+	if (hasChanges) {
+		console.log(
+			`[TREE-DEDUP] Deduplicated ${deduplicatedCount} contributor entries from tree, updating...`
+		);
+		userTree.set(currentTree);
+		console.log('[TREE-DEDUP] Tree updated with deduplicated contributors');
+		return true;
+	} else {
+		console.log('[TREE-DEDUP] No duplicate contributors found, tree is clean');
+		return false;
+	}
+}
+
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).clearUsersList = clearUsersList;
@@ -335,7 +544,9 @@ if (typeof window !== 'undefined') {
 	(window as any).fixCorruptedUserListNames = fixCorruptedUserListNames;
 	(window as any).createNewTree = createNewTree;
 	(window as any).updateTreeFromJson = updateTreeFromJson;
+	(window as any).cleanOrphanedContactIds = cleanOrphanedContactIds;
+	(window as any).deduplicateContributors = deduplicateContributors;
 	console.log(
-		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, createNewTree, and updateTreeFromJson functions exposed to window'
+		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, createNewTree, updateTreeFromJson, cleanOrphanedContactIds, and deduplicateContributors functions exposed to window'
 	);
 }

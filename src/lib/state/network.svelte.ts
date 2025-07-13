@@ -4,6 +4,7 @@ import {
 	userPubKeys,
 	userNamesOrAliasesCache,
 	userAliasesCache,
+	userNamesCache,
 	resolveToPublicKey
 } from '$lib/state/users.svelte';
 import {
@@ -24,6 +25,8 @@ import {
 	networkDesiredComposeFrom,
 	networkDesiredComposeInto
 } from '$lib/state/compose.svelte';
+import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
+import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 import type {
 	CapacitiesCollection,
 	RootNode,
@@ -39,9 +42,11 @@ import {
 	parseShareMap,
 	parseRecognitionCache,
 	parseContacts,
-	parseCapacityShares
+	parseCapacityShares,
+	parseChatReadStates
 } from '$lib/validation';
 import { debounce } from './subscriptions.svelte';
+import { derived } from 'svelte/store';
 
 /**
  * Enhanced Gun subscription wrapper using ReadableStream for proper lifecycle management
@@ -413,6 +418,7 @@ class StreamSubscriptionManager {
 const sogfStreamManager = new StreamSubscriptionManager('SOGF');
 const mutualStreamManager = new StreamSubscriptionManager('MUTUAL');
 const ownDataStreamManager = new StreamSubscriptionManager('OWN_DATA');
+const chatStreamManager = new StreamSubscriptionManager('CHAT');
 
 // Helper to clean up multiple stores by filtering out removed contributors
 function cleanupNetworkStores(
@@ -601,7 +607,11 @@ const ownDataStreamConfigs = {
 			dataType: 'contacts',
 			validator: parseContacts,
 			getCurrentData: () => get(userContacts),
-			updateStore: (data) => userContacts.set(data),
+			updateStore: (data) => {
+				// Update the contacts store
+				console.log('[Network Contacts]', data);
+				userContacts.set(data);
+			},
 			loadingFlag: isLoadingContacts,
 			emptyValue: {}
 		}),
@@ -638,6 +648,87 @@ const ownDataStreamConfigs = {
 		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredComposeInto stream:', error);
+		}
+	},
+	chatReadStates: {
+		type: 'chatReadStates',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('chatReadStates'),
+		processor: createDataProcessor({
+			dataType: 'chatReadStates',
+			validator: parseChatReadStates,
+			getCurrentData: () => get(chatReadStates),
+			updateStore: (data) => setChatReadStates(data),
+			loadingFlag: isLoadingChatReadStates,
+			emptyValue: {}
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own chatReadStates stream:', error);
+			isLoadingChatReadStates.set(false);
+		}
+	}
+};
+
+/**
+ * Stream configurations for chat data
+ */
+const chatStreamConfigs = {
+	messages: {
+		type: 'messages',
+		streamManager: chatStreamManager,
+		getGunPath: (userId: string, chatId: string) => gun.get(chatId).map(),
+		processor: (chatId: string) => (data: any) => {
+			if (!data) return;
+
+			// Handle Gun's map data structure
+			const handleMessage = async (messageData: any, key: string) => {
+				try {
+					const SEA = await import('gun/sea');
+					const encryptionKey = '#foo';
+
+					// Properly await all Gun chain resolutions
+					const who = await gun.user(messageData).get('alias');
+					const whopub = await gun.user(messageData).get('pub');
+
+					const what = (await SEA.default.decrypt(messageData.what, encryptionKey)) + '';
+					// @ts-ignore - GUN.state.is typing issue
+					const when = GUN.state.is(messageData, 'what');
+
+					const message = {
+						who: typeof who === 'string' ? who : 'Anonymous',
+						what,
+						when,
+						whopub: typeof whopub === 'string' ? whopub : ''
+					};
+
+					if (message.what && message.when) {
+						// Import chat functions dynamically to avoid circular imports
+						const { getChatMessages } = await import('$lib/state/chat.svelte');
+						const chatStore = getChatMessages(chatId);
+						const currentMessages = get(chatStore);
+
+						// Check if message already exists to prevent duplicates
+						const messageExists = currentMessages.some(
+							(m: any) => m.when === message.when && m.what === message.what
+						);
+
+						if (!messageExists) {
+							// Add message and keep sorted
+							const updatedMessages = [...currentMessages, message].sort((a, b) => a.when - b.when);
+							chatStore.set(updatedMessages);
+							console.log(`[NETWORK-CHAT] New message in ${chatId}:`, message.what);
+						}
+					}
+				} catch (error) {
+					console.error(`[NETWORK-CHAT] Error processing message in ${chatId}:`, error);
+				}
+			};
+
+			// Gun's map() provides individual items, so we handle each one
+			void handleMessage(data, '');
+		},
+		errorHandler: (chatId: string) => (error: any) => {
+			console.error(`[NETWORK-CHAT] Error in messages stream for ${chatId}:`, error);
 		}
 	}
 };
@@ -869,7 +960,24 @@ const createOwnContactsStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.contacts, userId);
 });
 
+const createOwnChatReadStatesStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.chatReadStates, userId);
+});
+
+const createChatMessagesStream = async (chatId: string) => {
+	const config = chatStreamConfigs.messages;
+	await config.streamManager.createStream(
+		chatId,
+		() => config.getGunPath('', chatId),
+		config.type,
+		config.processor(chatId),
+		config.errorHandler(chatId)
+	);
+};
+
 const createContributorSOGFStream = async (contributorId: string) => {
+	console.log(`[STREAM-DEBUG] Creating SOGF stream for contributor: ${contributorId}`);
+
 	const config = contributorStreamConfigs.sogf;
 	const pubKey = resolveToPublicKey(contributorId);
 	if (!pubKey) {
@@ -879,13 +987,18 @@ const createContributorSOGFStream = async (contributorId: string) => {
 		return;
 	}
 
+	console.log(`[STREAM-DEBUG] Resolved ${contributorId} to ${pubKey} for SOGF stream`);
+
+	// Use resolved public key as stream key to prevent duplicates
 	await config.streamManager.createStream(
-		contributorId,
+		pubKey,
 		() => config.getGunPath('', contributorId),
 		config.type,
-		config.processor(contributorId),
-		config.errorHandler(contributorId)
+		config.processor(pubKey),
+		config.errorHandler(pubKey)
 	);
+
+	console.log(`[STREAM-DEBUG] Created SOGF stream with key: ${pubKey}`);
 };
 
 const createMutualContributorStreams = withAuthentication(
@@ -913,12 +1026,13 @@ const createMutualContributorStreams = withAuthentication(
 			const gunPath = config.getGunPath(userId, contributorId);
 
 			if (gunPath) {
+				// Use resolved public key as stream key to prevent duplicates
 				await config.streamManager.createStream(
-					contributorId,
+					pubKey,
 					() => gunPath,
 					streamType,
-					config.processor(contributorId),
-					config.errorHandler(contributorId)
+					config.processor(pubKey),
+					config.errorHandler(pubKey)
 				);
 			}
 		}
@@ -944,6 +1058,7 @@ export async function initializeUserDataStreams(): Promise<void> {
 	try {
 		// Stop existing streams first
 		ownDataStreamManager.stopAllStreams();
+		chatStreamManager.stopAllStreams();
 
 		// Create new streams
 		await createOwnTreeStream();
@@ -951,6 +1066,7 @@ export async function initializeUserDataStreams(): Promise<void> {
 		await createOwnContactsStream();
 		await createOwnDesiredComposeFromStream();
 		await createOwnDesiredComposeIntoStream();
+		await createOwnChatReadStatesStream();
 
 		// Setup users list subscription (still using old approach for now)
 		setupUsersListSubscription();
@@ -963,46 +1079,61 @@ export async function initializeUserDataStreams(): Promise<void> {
 
 /**
  * Update the recognition cache with a contributor's share for us from network
- * @param contributorId The ID of the contributor
+ * @param contributorId The ID of the contributor (could be contact ID or public key)
  * @param theirShare Share they assign to us in their SOGF
  */
 export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
 	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
 
-	// Get current cache entry
-	const cache = get(recognitionCache);
-	const existing = cache[contributorId];
+	// Resolve to public key for unified cache storage
+	const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
 
-	console.log(`[NETWORK] Existing cache entry for ${contributorId}:`, existing);
+	if (resolvedContributorId !== contributorId) {
+		console.log(`[NETWORK] Resolved ${contributorId} to ${resolvedContributorId}`);
+	}
+
+	console.log(`[NETWORK-DEBUG] Current recognition cache before update:`, get(recognitionCache));
+
+	// Get current cache entry using the resolved ID
+	const cache = get(recognitionCache);
+	const existing = cache[resolvedContributorId];
+
+	console.log(`[NETWORK] Existing cache entry for ${resolvedContributorId}:`, existing);
 
 	// Update the cache immediately with new theirShare
 	recognitionCache.update((cache) => {
 		if (existing) {
 			// Update only theirShare in existing entry
-			console.log(`[NETWORK] Updating existing entry for ${contributorId}`);
-			cache[contributorId] = {
-				...cache[contributorId],
+			console.log(`[NETWORK] Updating existing entry for ${resolvedContributorId}`);
+			cache[resolvedContributorId] = {
+				...cache[resolvedContributorId],
 				theirShare,
 				timestamp: Date.now()
 			};
 		} else {
 			// Create new entry with default ourShare of 0
-			console.log(`[NETWORK] Creating new entry for ${contributorId} with ourShare=0`);
-			cache[contributorId] = {
+			console.log(`[NETWORK] Creating new entry for ${resolvedContributorId} with ourShare=0`);
+			cache[resolvedContributorId] = {
 				ourShare: 0, // We don't know our share yet
 				theirShare,
 				timestamp: Date.now()
 			};
 		}
 
-		console.log(`[NETWORK] Updated cache entry for ${contributorId}:`, cache[contributorId]);
+		console.log(
+			`[NETWORK] Updated cache entry for ${resolvedContributorId}:`,
+			cache[resolvedContributorId]
+		);
 		return cache;
 	});
 
 	// Log the updated cache and force reactivity check
 	const updatedCache = get(recognitionCache);
 
-	console.log(`[NETWORK] Cache after network update from ${contributorId}:`, updatedCache);
+	console.log(
+		`[NETWORK-DEBUG] Cache after network update from ${resolvedContributorId}:`,
+		updatedCache
+	);
 }
 
 // Centralized reactive subscription to usersList
@@ -1065,8 +1196,53 @@ function setupUsersListSubscription() {
 	});
 }
 
+// Derived store for all chat IDs we need to subscribe to
+const chatIdsToSubscribe = derived(
+	[userCapacities, userNetworkCapacitiesWithShares],
+	([$userCapacities, $userNetworkCapacitiesWithShares]) => {
+		const chatIds = new Set<string>();
+
+		// Add all user capacity IDs (these are used as chat IDs)
+		if ($userCapacities) {
+			Object.keys($userCapacities).forEach((capacityId) => {
+				chatIds.add(capacityId);
+			});
+		}
+
+		// Add all network capacity IDs that we have shares in
+		if ($userNetworkCapacitiesWithShares) {
+			Object.keys($userNetworkCapacitiesWithShares).forEach((capacityId) => {
+				chatIds.add(capacityId);
+			});
+		}
+
+		return Array.from(chatIds);
+	}
+);
+
+// Watch for changes to chat IDs and subscribe to their message streams
+const debouncedUpdateChatSubscriptions = debounce((chatIds: string[]) => {
+	// Only run this if we're authenticated
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot subscribe to chats - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to chats - userPub not initialized');
+		return;
+	}
+
+	console.log(`[NETWORK] Updating chat subscriptions for ${chatIds.length} chats`);
+	chatStreamManager.updateSubscriptions(chatIds, createChatMessagesStream);
+}, 100);
+
+chatIdsToSubscribe.subscribe(debouncedUpdateChatSubscriptions);
+
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
+	console.log('[STREAM-DEBUG] debouncedUpdateSOGFSubscriptions called with contributors:', allContributors);
+
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
@@ -1078,6 +1254,7 @@ const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) =>
 		return;
 	}
 
+	console.log('[STREAM-DEBUG] About to update SOGF subscriptions for', allContributors.length, 'contributors');
 	sogfStreamManager.updateSubscriptions(allContributors, createContributorSOGFStream);
 }, 100);
 
@@ -1128,9 +1305,12 @@ mutualContributors.subscribe(debouncedUpdateMutualSubscriptions);
 export function debugTriggerSubscriptions() {
 	console.log('[DEBUG] Manually triggering stream subscriptions for all contributors');
 	const allContributors = get(contributors);
+	const allChatIds = get(chatIdsToSubscribe);
 
 	console.log(`[DEBUG] Active SOGF streams: ${sogfStreamManager.streamCount}`);
 	console.log(`[DEBUG] Active mutual streams: ${mutualStreamManager.streamCount}`);
 	console.log(`[DEBUG] Active own data streams: ${ownDataStreamManager.streamCount}`);
+	console.log(`[DEBUG] Active chat streams: ${chatStreamManager.streamCount}`);
 	console.log(`[DEBUG] Total contributors: ${allContributors.length}`);
+	console.log(`[DEBUG] Total chat IDs: ${allChatIds.length}`);
 }

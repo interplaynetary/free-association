@@ -22,6 +22,7 @@
 	} from '$lib/state/compose.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
+	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -37,6 +38,9 @@
 
 	// UI state for expanded chat
 	let chatExpanded = $state(false);
+
+	// Get reactive unread message count for this capacity's chat
+	let unreadCount = getReactiveUnreadCount(capacity.id);
 
 	// UI state for expanded composition
 	let compositionExpanded = $state(false);
@@ -668,11 +672,14 @@
 		<!-- Action buttons -->
 		<button
 			type="button"
-			class="chat-btn ml-1"
+			class="chat-btn relative ml-1"
 			onclick={toggleChat}
 			title="Chat about this capacity"
 		>
 			💬
+			{#if $unreadCount > 0}
+				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+			{/if}
 		</button>
 		<button
 			type="button"
@@ -1523,6 +1530,28 @@
 		background: #f0fdf4;
 		color: #059669;
 		transform: scale(1.05);
+	}
+
+	/* Unread message badge */
+	.unread-badge {
+		position: absolute;
+		top: -2px;
+		right: -2px;
+		background: #ef4444;
+		color: white;
+		font-size: 0.65rem;
+		font-weight: 600;
+		line-height: 1;
+		min-width: 16px;
+		height: 16px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+		z-index: 10;
+		border: 1px solid white;
 	}
 
 	.remove-btn:disabled {

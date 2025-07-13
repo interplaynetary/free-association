@@ -11,9 +11,23 @@ import {
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
+import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 
+/**
+ * Check if the user object is properly initialized and has the necessary methods
+ */
+function isUserInitialized(): boolean {
+	return !!(user && typeof user.get === 'function');
+}
+
 export function persistTree() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping tree persistence');
+		return;
+	}
+
 	// Don't persist while loading
 	if (get(isLoadingTree)) {
 		console.log('[PERSIST] Skipping tree persistence because tree is being loaded');
@@ -45,6 +59,12 @@ export function persistTree() {
 }
 
 export function persistSogf() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping SOGF persistence');
+		return;
+	}
+
 	// Don't persist while loading
 	if (get(isLoadingSogf)) {
 		console.log('[PERSIST] Skipping SOGF persistence because SOGF is being loaded');
@@ -79,6 +99,12 @@ export function persistSogf() {
 }
 
 export function persistProviderShares() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping provider shares persistence');
+		return;
+	}
+
 	// Store provider shares
 	const shares = get(providerShares);
 	if (shares && Object.keys(shares).length > 0) {
@@ -87,6 +113,12 @@ export function persistProviderShares() {
 }
 
 export function persistCapacities() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping capacities persistence');
+		return;
+	}
+
 	// Don't persist while loading
 	if (get(isLoadingCapacities)) {
 		console.log('[PERSIST] Skipping capacities persistence because capacities are being loaded');
@@ -127,6 +159,12 @@ export function persistCapacities() {
  * Persist contributor capacity shares to gun
  */
 export function persistContributorCapacityShares() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping contributor capacity shares persistence');
+		return;
+	}
+
 	const ourId = get(userPub);
 	if (!ourId) {
 		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
@@ -161,6 +199,12 @@ export function persistContributorCapacityShares() {
  * Persist user's desired compose-from to Gun
  */
 export function persistUserDesiredComposeFrom() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping user desired compose-from persistence');
+		return;
+	}
+
 	const userDesiredComposeFromValue = get(userDesiredComposeFrom);
 	if (!userDesiredComposeFromValue || Object.keys(userDesiredComposeFromValue).length === 0) {
 		console.log('[PERSIST] No user desired compose-from data to persist');
@@ -195,6 +239,12 @@ export function persistUserDesiredComposeFrom() {
  * Persist user's desired compose-into to Gun
  */
 export function persistUserDesiredComposeInto() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping user desired compose-into persistence');
+		return;
+	}
+
 	const userDesiredComposeIntoValue = get(userDesiredComposeInto);
 	if (!userDesiredComposeIntoValue || Object.keys(userDesiredComposeIntoValue).length === 0) {
 		console.log('[PERSIST] No user desired compose-into data to persist');
@@ -229,6 +279,12 @@ export function persistUserDesiredComposeInto() {
  * Persist user's contacts to Gun
  */
 export function persistContacts() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping contacts persistence');
+		return;
+	}
+
 	// Don't persist while loading
 	if (get(isLoadingContacts)) {
 		console.log('[PERSIST] Skipping contacts persistence because contacts are being loaded');
@@ -242,8 +298,16 @@ export function persistContacts() {
 		return;
 	}
 
+	// Additional safety check: don't persist empty contacts during initialization
+	// to avoid race condition where empty store overwrites loaded data from network
+	if (Object.keys(contactsValue).length === 0) {
+		console.log('[PERSIST] Skipping persistence of empty contacts (likely initialization)');
+		return;
+	}
+
 	console.log('[PERSIST] Starting contacts persistence...');
 	console.log('[PERSIST] Contacts count:', Object.keys(contactsValue).length);
+	console.log('[PERSIST] Contacts:', contactsValue);
 
 	try {
 		// Create a deep clone to avoid reactivity issues
@@ -258,10 +322,65 @@ export function persistContacts() {
 			if (ack.err) {
 				console.error('[PERSIST] Error saving contacts to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] Contacts successfully saved to Gun');
+				console.log('[PERSIST] Contacts successfully saved to Gun', contactsJson);
 			}
 		});
 	} catch (error) {
 		console.error('[PERSIST] Error serializing contacts:', error);
+	}
+}
+
+/**
+ * Persist chat read states to Gun
+ */
+export function persistChatReadStates() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping chat read states persistence');
+		return;
+	}
+
+	// Don't persist while loading
+	if (get(isLoadingChatReadStates)) {
+		console.log(
+			'[PERSIST] Skipping chat read states persistence because read states are being loaded'
+		);
+		return;
+	}
+
+	const chatReadStatesValue = get(chatReadStates);
+
+	if (!chatReadStatesValue) {
+		console.log('[PERSIST] No chat read states data to persist');
+		return;
+	}
+
+	// Additional safety check: don't persist empty read states during initialization
+	if (Object.keys(chatReadStatesValue).length === 0) {
+		console.log('[PERSIST] Skipping persistence of empty chat read states (likely initialization)');
+		return;
+	}
+
+	console.log('[PERSIST] Starting chat read states persistence...');
+	console.log('[PERSIST] Chat read states count:', Object.keys(chatReadStatesValue).length);
+
+	try {
+		// Create a deep clone to avoid reactivity issues
+		const readStatesClone = structuredClone(chatReadStatesValue);
+
+		// Serialize to JSON
+		const readStatesJson = JSON.stringify(readStatesClone);
+		console.log('[PERSIST] Serialized chat read states length:', readStatesJson.length);
+
+		// Store in Gun with ACK callback
+		user.get('chatReadStates').put(readStatesJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving chat read states to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Chat read states successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing chat read states:', error);
 	}
 }

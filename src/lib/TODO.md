@@ -268,17 +268,4 @@ We want to represent consumption of inputs in composition
 
 But how much of inputs get consumed?
 
-
-// compose into self (pubkey)
-// compose into other (contributorID)
-// compose into Capacity (capacityID)
-
-
-// lets add parsers for composeFrom / composeInto
-
-// we should be loading via Play!
-// creating a new tree is not working right now for new users
-
-
-
 Somehow the user was able to click the play button after having logged in and before the tree was fully loaded, leading to their tree getting overwritten

@@ -11,7 +11,8 @@ import {
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
-	ContactsCollectionSchema
+	ContactsCollectionSchema,
+	ChatReadStatesSchema
 } from './schema';
 
 /*
@@ -170,7 +171,7 @@ export function parseShareMap(shareMapData: unknown) {
 	try {
 		console.log('[VALIDATION] Raw share map input:', shareMapData);
 		console.log('[VALIDATION] Share map input type:', typeof shareMapData);
-		
+
 		// Parse if it's a string
 		let parsedData;
 		if (typeof shareMapData === 'string') {
@@ -194,12 +195,14 @@ export function parseShareMap(shareMapData: unknown) {
 			const convertedData: Record<string, number> = {};
 			Object.entries(parsedData).forEach(([key, value]) => {
 				console.log(`[VALIDATION] Processing key: ${key}, value: ${value}, type: ${typeof value}`);
-				
+
 				// Convert string numbers to actual numbers
 				if (typeof value === 'string') {
 					const numValue = parseFloat(value);
-					console.log(`[VALIDATION] String "${value}" converted to: ${numValue}, isNaN: ${isNaN(numValue)}`);
-					
+					console.log(
+						`[VALIDATION] String "${value}" converted to: ${numValue}, isNaN: ${isNaN(numValue)}`
+					);
+
 					if (!isNaN(numValue)) {
 						convertedData[key] = numValue;
 						console.log(`[VALIDATION] Successfully converted ${key}: "${value}" -> ${numValue}`);
@@ -230,7 +233,7 @@ export function parseShareMap(shareMapData: unknown) {
 			console.error('[VALIDATION] Share map validation failed. Data:', parsedData);
 			console.error('[VALIDATION] Validation errors:', result.error.issues);
 			console.error('[VALIDATION] Detailed error breakdown:');
-			result.error.issues.forEach(issue => {
+			result.error.issues.forEach((issue) => {
 				console.error(issue);
 			});
 			return {};
@@ -410,6 +413,7 @@ export function parseContacts(contactsData: unknown) {
 		let parsedData;
 		if (typeof contactsData === 'string') {
 			try {
+				console.log('[Validation] Contacts', contactsData);
 				parsedData = JSON.parse(contactsData);
 			} catch (error) {
 				console.error('[VALIDATION] Error parsing contacts data JSON:', error);
@@ -429,7 +433,7 @@ export function parseContacts(contactsData: unknown) {
 		const result = ContactsCollectionSchema.safeParse(parsedData);
 
 		if (result.success) {
-			console.log('[VALIDATION] Contacts validation successful');
+			console.log('[VALIDATION] Contacts validation successful. Data:', result.data);
 			return result.data;
 		} else {
 			console.error('[VALIDATION] Contacts validation failed. Data:', parsedData);
@@ -495,6 +499,49 @@ export function parseCapacityShares(sharesData: unknown) {
 		return validatedShares;
 	} catch (err) {
 		console.error('[VALIDATION] Error during capacity shares validation:', err);
+		return {};
+	}
+}
+
+/**
+ * Parse and validate chat read states data
+ * @param readStatesData Raw chat read states data
+ * @returns Validated ChatReadStates or empty object if validation fails
+ */
+export function parseChatReadStates(readStatesData: unknown) {
+	try {
+		// Parse if it's a string
+		let parsedData;
+		if (typeof readStatesData === 'string') {
+			try {
+				parsedData = JSON.parse(readStatesData);
+			} catch (error) {
+				console.error('[VALIDATION] Error parsing chat read states data JSON:', error);
+				return {};
+			}
+		} else {
+			parsedData = readStatesData;
+		}
+
+		// Filter out Gun.js metadata properties
+		parsedData = filterGunMetadata(parsedData);
+
+		// Log the data being validated
+		console.log('[VALIDATION] Pre-validation chat read states data:', parsedData);
+
+		// Validate with Zod schema
+		const result = ChatReadStatesSchema.safeParse(parsedData);
+
+		if (result.success) {
+			console.log('[VALIDATION] Chat read states validation successful');
+			return result.data;
+		} else {
+			console.error('[VALIDATION] Chat read states validation failed. Data:', parsedData);
+			console.error('[VALIDATION] Validation errors:', result.error.issues);
+			return {};
+		}
+	} catch (err) {
+		console.error('[VALIDATION] Error during chat read states validation:', err);
 		return {};
 	}
 }

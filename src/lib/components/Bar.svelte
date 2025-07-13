@@ -2,7 +2,12 @@
 	// Helper function to get a color based on index
 
 	// Helper function to calculate border radius for each segment
-	function getSegmentBorderRadius(index, total, isVertical = false, rounded = false) {
+	function getSegmentBorderRadius(
+		index: number,
+		total: number,
+		isVertical = false,
+		rounded = false
+	) {
 		if (!rounded || total === 1) return rounded ? 'inherit' : '0';
 
 		if (isVertical) {
@@ -74,7 +79,7 @@
 	// Normalize segment values and add names/colors
 	const normalizedSegments = $derived(
 		segments.map((segment: BarSegment) => {
-			// Get name from reactive cache only
+			// Get name from reactive cache (now includes contact names via fixed getUserName)
 			let displayName = $userNamesOrAliasesCache[segment.id] || segment.id.substring(0, 8) + '...';
 
 			return {
@@ -86,12 +91,12 @@
 		})
 	);
 
-	// Trigger name lookups for uncached segments
+	// Trigger name lookups for all segments to ensure we get the best name (contact > alias)
 	$effect(() => {
 		segments.forEach((segment: BarSegment) => {
-			if (!$userNamesOrAliasesCache[segment.id]) {
-				getUserName(segment.id);
-			}
+			// Always call getUserName to ensure we get the best available name
+			// getUserName will check for contact names first, then fallback to aliases
+			getUserName(segment.id);
 		});
 	});
 
@@ -233,7 +238,7 @@
 			return;
 		}
 
-		// Get the name directly from cache or fallback
+		// Get the name directly from reactive cache or fallback
 		const cachedName = $userNamesOrAliasesCache[selectedSegmentId];
 		popupLabel = cachedName || selectedSegmentId.substring(0, 8) + '...';
 	});

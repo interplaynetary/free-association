@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
+	import { resolveToPublicKey } from '$lib/state/users.svelte';
 	import { browser } from '$app/environment';
 	import type { Readable } from 'svelte/store';
 
@@ -20,6 +21,7 @@
 		removeItem = (detail: { id: string; name: string; metadata?: any }) => {},
 		createContact = (detail: { name: string; publicKey?: string }) => {},
 		updateContact = (detail: { contactId: string; name: string }) => {},
+		deleteContact = (detail: { contactId: string; name: string; publicKey?: string }) => {},
 		close = () => {}
 	} = $props<{
 		title?: string;
@@ -36,6 +38,7 @@
 		removeItem?: (detail: { id: string; name: string; metadata?: any }) => void;
 		createContact?: (detail: { name: string; publicKey?: string }) => void;
 		updateContact?: (detail: { contactId: string; name: string }) => void;
+		deleteContact?: (detail: { contactId: string; name: string; publicKey?: string }) => void;
 		close?: () => void;
 	}>();
 
@@ -108,7 +111,39 @@
 			: typeof selectedIds === 'function'
 				? selectedIds()
 				: [];
-		return ids.includes(itemId);
+
+		// Simple check first for direct match
+		if (ids.includes(itemId)) {
+			return true;
+		}
+
+		// Get the current item's metadata to understand its type
+		const items = $dataProvider || [];
+		const currentItem = items.find((item: { id: string; metadata?: any }) => item.id === itemId);
+		if (!currentItem) return false;
+
+		// For more intelligent matching, check if this person is represented 
+		// by a different ID in the contributors list
+		if (currentItem.metadata?.isContact) {
+			// This is a contact item - check if its public key is in the contributors list
+			const publicKey = currentItem.metadata?.userId;
+			if (publicKey && publicKey !== itemId && ids.includes(publicKey)) {
+				return true;
+			}
+		} else {
+			// This is a user item (public key) - check if any contact ID that resolves to this public key is selected
+			const publicKey = itemId;
+			for (const contributorId of ids) {
+				if (contributorId.startsWith('contact_')) {
+					const resolvedPublicKey = resolveToPublicKey(contributorId);
+					if (resolvedPublicKey === publicKey) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// Update the filter when the prop changes
@@ -129,6 +164,12 @@
 
 	// Helper function to determine if an entry should show the "edit contact" button
 	function shouldShowEditButton(item: { id: string; name: string; metadata?: any }): boolean {
+		// Only show for contact entries
+		return item.metadata?.isContact === true;
+	}
+
+	// Helper function to determine if an entry should show the "delete contact" button
+	function shouldShowDeleteButton(item: { id: string; name: string; metadata?: any }): boolean {
 		// Only show for contact entries
 		return item.metadata?.isContact === true;
 	}
@@ -326,6 +367,48 @@
 		}
 	}
 
+	// Contact deletion handler
+	function handleDeleteContact(contactId: string, contactName: string, event?: Event) {
+		// Prevent the click from bubbling up and closing the dropdown
+		if (event) {
+			event.stopPropagation();
+			event.preventDefault();
+		}
+
+		// Show confirmation dialog
+		const confirmed = confirm(
+			`Delete contact "${contactName}"?\n\nThis will remove the contact and replace any references in the tree with the public key (if available) or remove them entirely.`
+		);
+
+		if (!confirmed) {
+			return;
+		}
+
+		try {
+			// Find the contact metadata to get the public key
+			const items = filteredItems();
+			const contactItem = items.find(
+				(item: { id: string; metadata?: any }) => item.id === contactId && item.metadata?.isContact
+			);
+			const publicKey = contactItem?.metadata?.userId; // The userId contains the public key for contacts
+
+			// Call the deleteContact prop with contact details
+			deleteContact({
+				contactId,
+				name: contactName,
+				publicKey
+			});
+
+			console.log('[CONTACT] Deleted contact:', { contactId, name: contactName, publicKey });
+
+			// Close the dropdown to show the updated list
+			handleClose();
+		} catch (error) {
+			console.error('[CONTACT] Error deleting contact:', error);
+			// Keep dropdown open so user can see the error
+		}
+	}
+
 	// Initialize the component when shown
 	function initialize() {
 		if (!initialized && show) {
@@ -384,6 +467,8 @@
 			initialize();
 		}
 	});
+
+
 
 	// Effect to adjust position when position or show changes
 	$effect(() => {
@@ -528,6 +613,15 @@
 										>
 											×
 										</button>
+										{#if editingMode === 'edit'}
+											<button
+												class="delete-entry-button"
+												onclick={(e) => handleDeleteContact(item.id, item.name, e)}
+												title="Delete contact"
+											>
+												🗑️
+											</button>
+										{/if}
 									</div>
 								</div>
 								<div class="item-meta">
@@ -548,25 +642,30 @@
 									{#if isItemSelected(item.id)}
 										<span class="selected-icon">✓</span>
 									{/if}
-									{#if item.metadata?.isChildContributor}
-										<span class="child-contributor-icon">⭐</span>
-									{:else if item.metadata?.isContact}
-										<span class="contact-icon">👤</span>
+
+									<!-- Enhanced icon display with better logic -->
+									{#if item.metadata?.isContact}
+										<span class="contact-icon" title="Contact">👤</span>
 									{/if}
-									{item.name || item.id}
+
+									<span class="item-display-name">{item.name || item.id}</span>
+
 									{#if isItemSelected(item.id)}
 										<span class="remove-hint">click to remove</span>
 									{/if}
 								</div>
-								{#if item.metadata?.contributorCount !== undefined}
-									<div class="item-meta">({item.metadata.contributorCount} contributors)</div>
-								{:else if item.metadata?.isChildContributor}
-									<div class="item-meta">Current contributor</div>
-								{:else if item.metadata?.isContact && item.metadata?.gunAlias && item.metadata.gunAlias !== item.name}
-									<div class="item-meta">@{item.metadata.gunAlias}</div>
-								{:else if !item.metadata?.isContact && item.metadata?.gunAlias && item.metadata.gunAlias !== item.name}
-									<div class="item-meta">@{item.metadata.gunAlias}</div>
-								{/if}
+
+								<!-- Enhanced metadata display -->
+								<div class="item-meta">
+									{#if item.metadata?.contributorCount !== undefined}
+										({item.metadata.contributorCount} contributors)
+									{/if}
+
+									<!-- Show Gun alias when available -->
+									{#if item.metadata?.isContact && item.metadata?.gunAlias}
+										<span class="gun-alias">@{item.metadata.gunAlias}</span>
+									{/if}
+								</div>
 							</div>
 
 							{#if shouldShowAddButton(item)}
@@ -797,43 +896,56 @@
 		display: flex;
 		align-items: center;
 		transition: background 0.2s;
+		position: relative;
+		border-left: 3px solid transparent;
 	}
 
 	.item:hover {
 		background-color: #f5f7fa;
 	}
 
-	.item.is-child-contributor {
+	/* SELECTED STATE - highest priority, overrides everything */
+	.item.is-selected {
+		background-color: #e3f2fd;
+		border-left: 4px solid #2196f3;
+		font-weight: 500;
+	}
+
+	.item.is-selected:hover {
+		background-color: #bbdefb;
+	}
+
+	/* CONTACT STATE - only when not selected */
+	.item:not(.is-selected).is-contact {
+		background-color: #f8fffe;
+		border-left: 3px solid #4caf50;
+	}
+
+	.item:not(.is-selected).is-contact:hover {
+		background-color: #f0f8f0;
+	}
+
+	/* CONTRIBUTOR STATE - only when not selected */
+	.item:not(.is-selected).is-child-contributor {
 		background-color: #f0f4ff;
 		border-left: 3px solid #2196f3;
 		font-weight: 500;
 	}
 
-	.item.is-child-contributor:hover {
+	.item:not(.is-selected).is-child-contributor:hover {
 		background-color: #e3f2fd;
 	}
 
-	.item.is-contact {
-		background-color: #f8fffe;
-		border-left: 3px solid #4caf50;
-	}
-
-	.item.is-contact:hover {
-		background-color: #f0f8f0;
-	}
-
-	.item.is-selected {
-		background-color: #e3f2fd;
+	/* CONTACT + CONTRIBUTOR - simplified approach */
+	.item:not(.is-selected).is-contact.is-child-contributor {
+		background-color: #f4f8ff;
 		border-left: 3px solid #2196f3;
+		border-right: 2px solid #4caf50;
+		font-weight: 500;
 	}
 
-	.item.is-selected:hover {
-		background-color: #bbdefb;
-		cursor: pointer;
-	}
-
-	.item.is-selected .item-content {
-		cursor: pointer;
+	.item:not(.is-selected).is-contact.is-child-contributor:hover {
+		background-color: #e6f3ff;
 	}
 
 	.color-dot {
@@ -853,28 +965,61 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
+		flex-wrap: wrap;
+	}
+
+	.item-display-name {
+		font-weight: inherit;
+		color: inherit;
 	}
 
 	.selected-icon {
 		color: #2196f3;
 		font-weight: bold;
 		font-size: 12px;
+		margin-right: 2px;
 	}
 
 	.child-contributor-icon {
 		font-size: 12px;
 		opacity: 0.8;
 		color: #2196f3;
+		margin-right: 2px;
 	}
 
 	.contact-icon {
 		font-size: 12px;
-		opacity: 0.7;
+		opacity: 0.8;
+		color: #4caf50;
+		margin-right: 2px;
 	}
 
 	.item-meta {
 		font-size: 12px;
 		color: #666;
+		margin-top: 2px;
+		line-height: 1.3;
+	}
+
+	.gun-alias {
+		color: #888;
+		font-style: italic;
+		font-size: 11px;
+		opacity: 0.9;
+	}
+
+	.remove-hint {
+		font-size: 10px;
+		color: #999;
+		font-style: italic;
+		margin-left: auto;
+		opacity: 0;
+		transition: opacity 0.2s;
+		white-space: nowrap;
+	}
+
+	.item.is-selected:hover .remove-hint {
+		opacity: 1;
 	}
 
 	.item.is-editing {
@@ -1011,16 +1156,30 @@
 		cursor: not-allowed;
 	}
 
-	.remove-hint {
-		font-size: 10px;
-		color: #999;
-		font-style: italic;
-		margin-left: auto;
-		opacity: 0;
-		transition: opacity 0.2s;
+	.delete-entry-button {
+		padding: 4px 8px;
+		border-radius: 4px;
+		font-size: 12px;
+		cursor: pointer;
+		transition: all 0.2s;
+		border: 1px solid #f44336;
+		background: transparent;
+		color: #f44336;
+		margin-left: 8px;
+		min-width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.item.is-selected:hover .remove-hint {
-		opacity: 1;
+	.delete-entry-button:hover:not(:disabled) {
+		background-color: #ffebee;
+		color: #f44336;
+	}
+
+	.delete-entry-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

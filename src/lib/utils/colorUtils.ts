@@ -1,4 +1,5 @@
 import * as d3 from 'd3';
+import { resolveToPublicKey } from '$lib/state/users.svelte';
 
 const nameColors = new Map();
 
@@ -72,14 +73,20 @@ function getBrightness(hex: string): number {
 
 /**
  * Get a color for a user ID that's consistent across the application
+ * Prioritizes using the public key for colors when available
  * @param userId User ID to get color for
  * @returns Hex color code
  */
 export function getColorForUserId(userId: string): string {
 	if (!userId) return '#cccccc';
 
-	// Get a consistent index from the user ID
-	const index = hashString(userId) % COLOR_PALETTE.length;
+	// Resolve to public key if possible to ensure consistent colors
+	// for the same person regardless of contact ID vs public key
+	const resolvedKey = resolveToPublicKey(userId);
+	const colorKey = resolvedKey || userId;
+
+	// Get a consistent index from the resolved key
+	const index = hashString(colorKey) % COLOR_PALETTE.length;
 	return COLOR_PALETTE[index];
 }
 
@@ -124,18 +131,18 @@ export function getColorForName(name: string) {
 
 // Helper function to get color based on name
 export function getColorForNameHash(name: string): string {
-    if (!name) return '#64748b'; // Default slate color
+	if (!name) return '#64748b'; // Default slate color
 
-    // Simple hash function for consistent colors
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
+	// Simple hash function for consistent colors
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = name.charCodeAt(i) + ((hash << 5) - hash);
+	}
 
-    // Generate colors in a pleasant range
-    const h = Math.abs(hash) % 360;
-    const s = 55 + (Math.abs(hash) % 15); // 55-70% saturation - softer but still vibrant
-    const l = 70 + (Math.abs(hash) % 10); // 70-80% lightness - brighter, softer tones
+	// Generate colors in a pleasant range
+	const h = Math.abs(hash) % 360;
+	const s = 55 + (Math.abs(hash) % 15); // 55-70% saturation - softer but still vibrant
+	const l = 70 + (Math.abs(hash) % 10); // 70-80% lightness - brighter, softer tones
 
-    return `hsl(${h}, ${s}%, ${l}%)`;
+	return `hsl(${h}, ${s}%, ${l}%)`;
 }

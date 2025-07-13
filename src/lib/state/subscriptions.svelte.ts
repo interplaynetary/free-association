@@ -12,6 +12,7 @@ import {
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
+import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import {
 	persistTree,
 	persistCapacities,
@@ -19,7 +20,8 @@ import {
 	persistContributorCapacityShares,
 	persistUserDesiredComposeFrom,
 	persistUserDesiredComposeInto,
-	persistContacts
+	persistContacts,
+	persistChatReadStates
 } from './persistence.svelte';
 import { recalculateFromTree } from './calculations.svelte';
 
@@ -96,6 +98,19 @@ const debouncedPersistContacts = debounce(() => {
 		}
 	} else {
 		console.log('[CONTACTS-SUB] Skipping persistence because contacts are being loaded');
+	}
+}, 200);
+
+const debouncedPersistChatReadStates = debounce(() => {
+	console.log('[CHAT-READ-STATES-SUB] Executing debounced chat read states persistence');
+	if (!get(isLoadingChatReadStates)) {
+		try {
+			persistChatReadStates();
+		} catch (error) {
+			console.error('[CHAT-READ-STATES-SUB] Error during debounced persistence:', error);
+		}
+	} else {
+		console.log('[CHAT-READ-STATES-SUB] Skipping persistence because read states are being loaded');
 	}
 }, 200);
 
@@ -228,6 +243,14 @@ userDesiredComposeFrom.subscribe((userDesiredComposeFrom) => {
 		Object.keys(userDesiredComposeFrom).length
 	);
 
+	// Don't persist empty compose-from during initialization
+	if (Object.keys(userDesiredComposeFrom).length === 0) {
+		console.log(
+			'[USER-COMPOSE-FROM-SUB] Skipping persistence of empty compose-from (likely initialization)'
+		);
+		return;
+	}
+
 	// Debounced persistence function
 	debouncedPersistUserDesiredComposeFrom();
 });
@@ -242,6 +265,14 @@ userDesiredComposeInto.subscribe((userDesiredComposeInto) => {
 		Object.keys(userDesiredComposeInto).length
 	);
 
+	// Don't persist empty compose-into during initialization
+	if (Object.keys(userDesiredComposeInto).length === 0) {
+		console.log(
+			'[USER-COMPOSE-INTO-SUB] Skipping persistence of empty compose-into (likely initialization)'
+		);
+		return;
+	}
+
 	// Debounced persistence function
 	debouncedPersistUserDesiredComposeInto();
 });
@@ -255,6 +286,34 @@ userContacts.subscribe((contacts) => {
 	console.log('[CONTACTS-SUB] Contacts updated');
 	console.log('[CONTACTS-SUB] Contacts count:', Object.keys(contacts).length);
 
+	// Don't persist empty contacts during initialization to avoid race condition
+	// where empty store overwrites loaded data from network
+	if (Object.keys(contacts).length === 0) {
+		console.log('[CONTACTS-SUB] Skipping persistence of empty contacts (likely initialization)');
+		return;
+	}
+
 	// Debounced persistence function
 	debouncedPersistContacts();
+});
+
+/**
+ * Trigger persistence when chat read states change
+ */
+chatReadStates.subscribe((readStates) => {
+	if (!readStates) return;
+
+	console.log('[CHAT-READ-STATES-SUB] Chat read states updated');
+	console.log('[CHAT-READ-STATES-SUB] Read states count:', Object.keys(readStates).length);
+
+	// Don't persist empty read states during initialization
+	if (Object.keys(readStates).length === 0) {
+		console.log(
+			'[CHAT-READ-STATES-SUB] Skipping persistence of empty read states (likely initialization)'
+		);
+		return;
+	}
+
+	// Debounced persistence function
+	debouncedPersistChatReadStates();
 });

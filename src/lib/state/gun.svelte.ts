@@ -26,16 +26,17 @@ export const gun = new Gun({
 		'https://gun.defucc.me/gun'
 	],
 	localStorage: false,
-	radisk: false
+	radisk: true
 });
 
 // Authentication state store
 export const isAuthenticating = writable(true);
 
 // Initialize user immediately to avoid reference errors
-export const user = typeof window !== 'undefined' 
-	? gun.user().recall({ sessionStorage: true })
-	: { _: { sea: null }, is: null };
+export const user =
+	typeof window !== 'undefined'
+		? gun.user().recall({ sessionStorage: true })
+		: { _: { sea: null }, is: null };
 
 // SEA.throw = true (do not use this in production)
 
@@ -210,29 +211,135 @@ gun.on('auth', async () => {
 	}
 });
 
-export function login(alias: string, password: string) {
-	user.auth(alias, password, ({ err }: { err: any }) => err && alert(err));
+// Custom error classes for better error handling
+class NetworkError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'NetworkError';
+	}
 }
 
-export function signup(alias: string, password: string) {
-	gun.get(`~@${alias}`).once(
-		(data: any) => {
-			if (data) {
-				console.log('[SIGNUP] checking alias user data', data);
-				alert('Alias already taken');
-				return;
-			}
+class AuthError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AuthError';
+	}
+}
 
-			user.create(alias, password, ({ err }: { err: any }) => {
-				if (err) {
-					alert(err);
-				} else {
-					login(alias, password);
-				}
+// Helper function to distinguish network errors from auth errors
+function isNetworkError(err: any): boolean {
+	if (!err) return false;
+
+	const errorMessage = typeof err === 'string' ? err : err.message || err.toString();
+	const networkIndicators = [
+		'timeout',
+		'network',
+		'connection',
+		'offline',
+		'unreachable',
+		'failed to fetch',
+		'net::',
+		'cors',
+		'no peers',
+		'peer',
+		'disconnect'
+	];
+
+	return networkIndicators.some((indicator) => errorMessage.toLowerCase().includes(indicator));
+}
+
+// Helper function for exponential backoff delay
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function login(alias: string, password: string): Promise<void> {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			await new Promise<void>((resolve, reject) => {
+				user.auth(alias, password, ({ err }: { err: any }) => {
+					if (err) {
+						// Retry on network errors, fail immediately on auth errors
+						if (isNetworkError(err)) {
+							reject(new NetworkError(err));
+						} else {
+							reject(new AuthError(err));
+						}
+					} else {
+						resolve();
+					}
+				});
 			});
-		},
-		{ wait: 2000 }
-	);
+			return; // Success
+		} catch (error) {
+			if (error instanceof AuthError) {
+				// Don't retry auth failures, show error immediately
+				alert(error.message);
+				throw error;
+			}
+			if (attempt === 2) {
+				// Final attempt failed, show error
+				alert(error instanceof Error ? error.message : 'Login failed after 3 attempts');
+				throw error;
+			}
+			// Wait before retrying with exponential backoff
+			await sleep(1000 * Math.pow(2, attempt));
+		}
+	}
+}
+
+export async function signup(alias: string, password: string): Promise<void> {
+	// First check if alias exists
+	const aliasExists = await new Promise<boolean>((resolve) => {
+		gun.get(`~@${alias}`).once(
+			(data: any) => {
+				resolve(!!data);
+			},
+			{ wait: 2000 }
+		);
+	});
+
+	if (aliasExists) {
+		alert('Alias already taken');
+		throw new AuthError('Alias already taken');
+	}
+
+	// Attempt to create user with retry logic
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			await new Promise<void>((resolve, reject) => {
+				user.create(alias, password, ({ err }: { err: any }) => {
+					if (err) {
+						// Retry on network errors, fail immediately on auth errors
+						if (isNetworkError(err)) {
+							reject(new NetworkError(err));
+						} else {
+							reject(new AuthError(err));
+						}
+					} else {
+						resolve();
+					}
+				});
+			});
+
+			// If user creation succeeds, attempt login
+			await login(alias, password);
+			return; // Success
+		} catch (error) {
+			if (error instanceof AuthError) {
+				// Don't retry auth failures, show error immediately
+				alert(error.message);
+				throw error;
+			}
+			if (attempt === 2) {
+				// Final attempt failed, show error
+				alert(error instanceof Error ? error.message : 'Signup failed after 3 attempts');
+				throw error;
+			}
+			// Wait before retrying with exponential backoff
+			await sleep(1000 * Math.pow(2, attempt));
+		}
+	}
 }
 
 export async function signout() {

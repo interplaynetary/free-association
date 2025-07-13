@@ -7,7 +7,10 @@
 		subscribeToChat,
 		getChatMessages,
 		sendMessage as sendChatMessage,
-		unsubscribeFromChat
+		unsubscribeFromChat,
+		markChatAsRead,
+		getLastMessageTimestamp,
+		getUnreadMessageCount
 	} from '$lib/state/chat.svelte';
 
 	interface ChatProps {
@@ -25,6 +28,9 @@
 	let lastScrollTop = $state(0);
 	let canAutoScroll = $state(true);
 	let unreadMessages = $state(false);
+	let mainElement: HTMLElement | null = null;
+	let isUserActivelyViewing = $state(false);
+	let markAsReadTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Get reactive store for messages
 	let messagesStore: any;
@@ -34,19 +40,59 @@
 		setTimeout(() => {
 			if (scrollBottom) {
 				// Scroll within the chat container only, not the entire page
-				const mainElement = scrollBottom.closest('main');
+				mainElement = scrollBottom.closest('main');
 				if (mainElement) {
 					mainElement.scrollTop = mainElement.scrollHeight;
 				}
 			}
 		}, 50);
 		unreadMessages = false;
+
+		// Mark chat as read when user scrolls to bottom
+		markChatAsReadDebounced();
 	}
 
 	function watchScroll(e: Event) {
 		const target = e.target as HTMLElement;
-		canAutoScroll = (target.scrollTop || Infinity) > lastScrollTop;
-		lastScrollTop = target.scrollTop;
+		const newScrollTop = target.scrollTop;
+		canAutoScroll = (newScrollTop || Infinity) > lastScrollTop;
+		lastScrollTop = newScrollTop;
+
+		// Check if user is near the bottom of the chat
+		const isNearBottom = newScrollTop + target.clientHeight >= target.scrollHeight - 100;
+
+		// If user is actively scrolling and near the bottom, mark as read
+		if (isNearBottom && canAutoScroll) {
+			isUserActivelyViewing = true;
+			markChatAsReadDebounced();
+		}
+	}
+
+	function markChatAsReadDebounced() {
+		// Clear any existing timeout
+		if (markAsReadTimeout) {
+			clearTimeout(markAsReadTimeout);
+		}
+
+		// Set a new timeout to mark as read after a short delay
+		markAsReadTimeout = setTimeout(() => {
+			if (isUserActivelyViewing || canAutoScroll) {
+				const lastMessageTimestamp = getLastMessageTimestamp(chatId);
+				if (lastMessageTimestamp) {
+					markChatAsRead(chatId, lastMessageTimestamp);
+					console.log(`[Chat] Marked ${chatId} as read up to ${lastMessageTimestamp}`);
+				}
+			}
+		}, 1000); // 1 second delay
+	}
+
+	function handleVisibilityChange() {
+		if (document.visibilityState === 'visible') {
+			// User returned to the tab - if they're viewing this chat, mark as read
+			if (canAutoScroll) {
+				markChatAsReadDebounced();
+			}
+		}
 	}
 
 	onMount(() => {
@@ -55,6 +101,9 @@
 
 		// Get the reactive store for this chat
 		messagesStore = getChatMessages(chatId);
+
+		// Set up visibility change listener
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		// Subscribe to store changes with reactive updates
 		const unsubscribe = messagesStore.subscribe((newMessages: any[]) => {
@@ -69,10 +118,27 @@
 					unreadMessages = true;
 				}
 			}
+
+			// If user is actively viewing and there are new messages, mark as read
+			if (newMessages.length > 0 && (canAutoScroll || isUserActivelyViewing)) {
+				markChatAsReadDebounced();
+			}
 		});
+
+		// Mark as read when component mounts if user is at bottom
+		setTimeout(() => {
+			if (canAutoScroll && messages.length > 0) {
+				isUserActivelyViewing = true;
+				markChatAsReadDebounced();
+			}
+		}, 500);
 
 		return () => {
 			unsubscribe();
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			if (markAsReadTimeout) {
+				clearTimeout(markAsReadTimeout);
+			}
 		};
 	});
 
@@ -80,6 +146,11 @@
 		// Optionally unsubscribe when component is destroyed
 		// Comment this out if you want to keep listening in background
 		// unsubscribeFromChat(chatId);
+
+		// Clean up timeout
+		if (markAsReadTimeout) {
+			clearTimeout(markAsReadTimeout);
+		}
 	});
 
 	async function sendMessage() {

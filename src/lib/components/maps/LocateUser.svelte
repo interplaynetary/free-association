@@ -39,6 +39,7 @@
 		currentLocationText,
 		isLocationTracking
 	} from '$lib/state/location.svelte';
+	import { debounce } from '$lib/state/subscriptions.svelte';
 
 	interface Props {
 		onCapacityUpdate?: (id: string, lnglat: { lng: number; lat: number }) => void;
@@ -104,9 +105,13 @@
 		}
 	}
 
+	// Create a debounced version of loadCapacityMarkers to prevent excessive geocoding
+	// when userCapacitiesWithShares updates frequently as new capacities and shares stream in
+	const debouncedLoadCapacityMarkers = debounce(loadCapacityMarkers, 500);
+
 	// Reactively update markers when userCapacitiesWithShares changes
 	$effect(() => {
-		loadCapacityMarkers($userCapacitiesWithShares);
+		debouncedLoadCapacityMarkers($userCapacitiesWithShares);
 	});
 
 	// Update capacity coordinates in the store

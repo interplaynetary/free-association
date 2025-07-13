@@ -3,6 +3,7 @@
 	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import Chat from './Chat.svelte';
 	import type { RecipientCapacity } from '$lib/schema';
+	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 
 	interface Props {
 		share: RecipientCapacity;
@@ -24,6 +25,9 @@
 			}
 		})();
 	});
+
+	// Get reactive unread message count for this share's chat
+	let unreadCount = getReactiveUnreadCount(getChatId(share));
 
 	// Green color scale for share percentage
 	const colors = ['#dcfce7', '#86efac', '#22c55e'];
@@ -245,6 +249,9 @@
 			{/if}
 		</div>
 		<div class="flex items-center gap-2">
+			{#if $unreadCount > 0}
+				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+			{/if}
 			<button
 				type="button"
 				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
@@ -386,6 +393,25 @@
 
 	.chat-header h4 {
 		margin: 0;
+	}
+
+	/* Unread message badge */
+	.unread-badge {
+		background: #ef4444;
+		color: white;
+		font-size: 0.65rem;
+		font-weight: 600;
+		line-height: 1;
+		min-width: 16px;
+		height: 16px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+		border: 1px solid white;
+		flex-shrink: 0;
 	}
 
 	.space-time-preview {

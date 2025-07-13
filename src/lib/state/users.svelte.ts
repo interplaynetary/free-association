@@ -98,6 +98,14 @@ export function createContact(
 		[contact_id]: validatedContact
 	}));
 
+	// Force update the names cache immediately to ensure reactivity
+	if (hasValidPublicKey) {
+		userNamesCache.update((cache) => ({
+			...cache,
+			[contactData.public_key!]: contactData.name
+		}));
+	}
+
 	return validatedContact;
 }
 
@@ -120,6 +128,14 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 
 		// Validate the updated contact
 		const validatedContact = ContactSchema.parse(updatedContact);
+
+		// Force update the names cache immediately if name changed and has public key
+		if (updates.name && validatedContact.public_key) {
+			userNamesCache.update((cache) => ({
+				...cache,
+				[validatedContact.public_key!]: validatedContact.name
+			}));
+		}
 
 		return {
 			...contacts,
@@ -259,44 +275,43 @@ export async function getUserAlias(pubkey: string) {
 /**
  * Get display name for a user by either pubKey or contactId
  * Prioritizes contact names over Gun aliases
+ * Always caches results for reactive components
  */
 export async function getUserName(identifier: string): Promise<string> {
-	// Check if this is a contactId
-	if (getIdentifierType(identifier) === 'contactId') {
-		const contacts = get(userContacts);
-		const contact = contacts[identifier];
-		if (contact) {
-			return contact.name;
-		}
-		// If contactId not found, return the identifier itself as fallback
-		return identifier;
-	}
-
-	// For pubKey-based lookup, first check the reactive cache
+	// First check if we already have this cached
 	const cache = get(userNamesCache);
 	if (cache[identifier]) {
 		return cache[identifier];
 	}
 
-	// Check if we have a contact with this public key
+	let displayName: string;
+
+	// Check if this is a contactId
+	if (getIdentifierType(identifier) === 'contactId') {
+		const contacts = get(userContacts);
+		const contact = contacts[identifier];
+		if (contact) {
+			displayName = contact.name;
+		} else {
+		// If contactId not found, return the identifier itself as fallback
+			displayName = identifier;
+	}
+	} else {
+		// For pubKey-based lookup, check if we have a contact with this public key
 	const contact = getContactByPublicKey(identifier);
 	if (contact) {
-		// Cache the contact name
-		userNamesCache.update((cache) => ({
-			...cache,
-			[identifier]: contact.name
-		}));
-		return contact.name;
+			displayName = contact.name;
+		} else {
+	// If no contact found, fall back to Gun alias
+			displayName = await getUserAlias(identifier);
+		}
 	}
 
-	// If no contact found, fall back to Gun alias
-	const alias = await getUserAlias(identifier);
-
-	// Cache the alias result
+	// Always cache the result for reactive components
 	userNamesCache.update((cache) => ({
 		...cache,
-		[identifier]: alias
+		[identifier]: displayName
 	}));
 
-	return alias;
+	return displayName;
 }

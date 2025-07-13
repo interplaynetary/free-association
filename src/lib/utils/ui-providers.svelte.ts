@@ -9,20 +9,22 @@ import {
 	userPubKeys,
 	userNamesOrAliasesCache,
 	userContacts,
-	getContactByPublicKey
+	getContactByPublicKey,
+	getUserAlias
 } from '$lib/state/users.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
+import { userAliasesCache } from '$lib/state/users.svelte';
 
 // Helper function to get display name for a user
 function getDisplayName(userId: string, namesCache: Record<string, string>): string {
 	return namesCache[userId] || `${userId.substring(0, 8)}...`;
 }
 
-// Contacts and users data provider - prioritizes contacts and adds metadata
+// Simplified contacts and users data provider - no more complex merging logic
 export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
-		[userContacts, userPubKeys, userNamesOrAliasesCache],
-		([$userContacts, $userIds, $userNamesCache]) => {
+		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache],
+		([$userContacts, $userIds, $userNamesCache, $userAliasesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -34,13 +36,14 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				};
 			}> = [];
 
-			// First, add all contacts (these get priority)
+			// Simple approach: Just add all contacts and users in one unified way
+			const processedIds = new Set<string>();
+
+			// Add all contacts first (they get priority)
 			if ($userContacts) {
 				Object.values($userContacts).forEach((contact) => {
 					if (excludeIds.includes(contact.contact_id)) return;
 
-					// For contacts, use the contact ID as the ID (this allows contact-based operations)
-					// But include the public key in metadata for Gun operations
 					items.push({
 						id: contact.contact_id,
 						name: contact.name,
@@ -48,29 +51,25 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 							userId: contact.public_key || contact.contact_id,
 							isContact: true,
 							contactName: contact.name,
-							gunAlias: contact.public_key ? $userNamesCache[contact.public_key] : undefined
+							gunAlias: contact.public_key ? $userAliasesCache[contact.public_key] : undefined
 						}
 					});
+
+					// Mark both the contact ID and public key as processed so we don't add them again
+					processedIds.add(contact.contact_id); // Add the contact ID itself
+					if (contact.public_key) {
+						processedIds.add(contact.public_key); // Add the public key too
+					}
 				});
 			}
 
-			// Then add all other users (online users, cached users) that aren't already added as contacts
+			// Add all users that aren't already added as contacts
 			if ($userIds) {
-				const contactPublicKeys = Object.values($userContacts || {})
-					.map((contact) => contact.public_key)
-					.filter(Boolean);
-
 				const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
 
 				allUserIds.forEach((userId) => {
 					if (excludeIds.includes(userId)) return;
-
-					// Skip if this user is already added as a contact
-					if (contactPublicKeys.includes(userId)) return;
-
-					// Check if we have a contact by public key (to avoid duplicates)
-					const existingContact = getContactByPublicKey(userId);
-					if (existingContact) return; // Already added above
+					if (processedIds.has(userId)) return; // Skip if already added as contact
 
 					items.push({
 						id: userId,
@@ -78,7 +77,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 						metadata: {
 							userId,
 							isContact: false,
-							gunAlias: $userNamesCache[userId]
+							gunAlias: $userAliasesCache[userId]
 						}
 					});
 				});
@@ -246,27 +245,15 @@ export const createReactiveCapacitiesDataProvider = createCapacitiesDataProvider
 export const createReactiveAllNetworkCapacitiesDataProvider =
 	createAllNetworkCapacitiesDataProvider;
 
-// Child contributors prioritized data provider - prioritizes contributors of specific node
+// Simplified child contributors data provider - builds on top of base provider
 export function createChildContributorsDataProvider(
-	childNodeId: string,
+	childNodeId: string | null,
 	excludeIds: string[] = []
 ) {
 	return derived(
-		[userTree, userContacts, userPubKeys, userNamesOrAliasesCache],
-		([$userTree, $userContacts, $userIds, $userNamesCache]) => {
-			const items: Array<{
-				id: string;
-				name: string;
-				metadata: {
-					userId: string;
-					isContact: boolean;
-					isChildContributor: boolean;
-					contactName?: string;
-					gunAlias?: string;
-				};
-			}> = [];
-
-			// First, get the contributors of the specific child node
+		[createContactsAndUsersDataProvider(excludeIds), userTree],
+		([$baseItems, $userTree]) => {
+			// Get the contributors of the specific child node
 			let childContributors: string[] = [];
 			if ($userTree && childNodeId) {
 				const childNode = findNodeById($userTree, childNodeId);
@@ -275,128 +262,27 @@ export function createChildContributorsDataProvider(
 				}
 			}
 
-			// Track which IDs we've already added to avoid duplicates
-			const addedIds = new Set<string>();
-
-			// FIRST PRIORITY: Add child contributors
-			// Follow the same pattern as the original provider
-			childContributors.forEach((contributorId) => {
-				if (excludeIds.includes(contributorId)) return;
-
-				// Check if this is a contact ID (direct lookup)
-				if (contributorId.startsWith('contact_') && $userContacts?.[contributorId]) {
-					const contact = $userContacts[contributorId];
-					if (addedIds.has(contact.contact_id)) return;
-
-					items.push({
-						id: contact.contact_id,
-						name: contact.name,
+			// Enhance base items with contributor metadata and prioritized sorting
+			return $baseItems
+				.map((item) => ({
+					...item,
 						metadata: {
-							userId: contact.public_key || contact.contact_id,
-							isContact: true,
-							isChildContributor: true,
-							contactName: contact.name,
-							gunAlias: contact.public_key ? $userNamesCache[contact.public_key] : undefined
-						}
-					});
-					addedIds.add(contact.contact_id);
-					if (contact.public_key) addedIds.add(contact.public_key);
-				}
-				// Check if this is a public key that has a contact
-				else {
-					const existingContact = getContactByPublicKey(contributorId);
-					if (existingContact) {
-						if (addedIds.has(existingContact.contact_id)) return;
-
-						items.push({
-							id: existingContact.contact_id,
-							name: existingContact.name,
-							metadata: {
-								userId: contributorId,
-								isContact: true,
-								isChildContributor: true,
-								contactName: existingContact.name,
-								gunAlias: $userNamesCache[contributorId]
-							}
-						});
-						addedIds.add(existingContact.contact_id);
-						addedIds.add(contributorId);
-					} else {
-						// No contact found, treat as regular user
-						if (addedIds.has(contributorId)) return;
-
-						items.push({
-							id: contributorId,
-							name: $userNamesCache[contributorId] || contributorId,
-							metadata: {
-								userId: contributorId,
-								isContact: false,
-								isChildContributor: true,
-								gunAlias: $userNamesCache[contributorId]
-							}
-						});
-						addedIds.add(contributorId);
+						...item.metadata,
+						isChildContributor: childContributors.includes(item.id)
 					}
-				}
-			});
+				}))
+				.sort((a, b) => {
+					// Priority: child contributors first, then contacts, then alphabetically
+					const aIsChildContributor = a.metadata?.isChildContributor || false;
+					const bIsChildContributor = b.metadata?.isChildContributor || false;
+					const aIsContact = a.metadata?.isContact || false;
+					const bIsContact = b.metadata?.isContact || false;
 
-			// SECOND PRIORITY: Add remaining contacts (not already added as child contributors)
-			if ($userContacts) {
-				Object.values($userContacts).forEach((contact) => {
-					if (excludeIds.includes(contact.contact_id) || addedIds.has(contact.contact_id)) return;
+					if (aIsChildContributor && !bIsChildContributor) return -1;
+					if (!aIsChildContributor && bIsChildContributor) return 1;
+					if (aIsContact && !bIsContact) return -1;
+					if (!aIsContact && bIsContact) return 1;
 
-					items.push({
-						id: contact.contact_id,
-						name: contact.name,
-						metadata: {
-							userId: contact.public_key || contact.contact_id,
-							isContact: true,
-							isChildContributor: false,
-							contactName: contact.name,
-							gunAlias: contact.public_key ? $userNamesCache[contact.public_key] : undefined
-						}
-					});
-					addedIds.add(contact.contact_id);
-					if (contact.public_key) addedIds.add(contact.public_key);
-				});
-			}
-
-			// THIRD PRIORITY: Add other users (not already added as child contributors or contacts)
-			if ($userIds) {
-				const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
-
-				allUserIds.forEach((userId) => {
-					if (excludeIds.includes(userId) || addedIds.has(userId)) return;
-
-					// Check if we have a contact by public key (to avoid duplicates)
-					const existingContact = getContactByPublicKey(userId);
-					if (existingContact) return; // Already added above
-
-					items.push({
-						id: userId,
-						name: $userNamesCache[userId] || userId,
-						metadata: {
-							userId,
-							isContact: false,
-							isChildContributor: false,
-							gunAlias: $userNamesCache[userId]
-						}
-					});
-					addedIds.add(userId);
-				});
-			}
-
-			// Sort by priority: child contributors first, then contacts, then users, alphabetically within each group
-			return items.sort((a, b) => {
-				// Child contributors first
-				if (a.metadata.isChildContributor && !b.metadata.isChildContributor) return -1;
-				if (!a.metadata.isChildContributor && b.metadata.isChildContributor) return 1;
-
-				// Within child contributors or non-child contributors, contacts next
-				if (a.metadata.isContact && !b.metadata.isContact) return -1;
-				if (!a.metadata.isContact && b.metadata.isContact) return 1;
-
-				// Then alphabetically by name
 				return a.name.localeCompare(b.name);
 			});
 		}

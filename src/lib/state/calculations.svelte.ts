@@ -1,6 +1,10 @@
 import { get } from 'svelte/store';
-import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol';
-import type { RootNode, Node, ShareMap, RecognitionCache } from '$lib/schema';
+import {
+	sharesOfGeneralFulfillmentMap,
+	getAllContributorsFromTree,
+	getDescendants
+} from '$lib/protocol';
+import type { RootNode, Node, NonRootNode, ShareMap, RecognitionCache } from '$lib/schema';
 import {
 	userTree,
 	userSogf,
@@ -11,6 +15,7 @@ import {
 	isRecalculatingTree,
 	capacityShares
 } from './core.svelte';
+import { resolveToPublicKey } from './users.svelte';
 
 /**
  * Compare two ShareMap objects for equality
@@ -76,35 +81,60 @@ export function recalculateFromTree() {
 		// Set recalculating flag
 		isRecalculatingTree.set(true);
 
-		// Step 0: Collect all contributors in the tree
+		// Step 0: Collect all contributors in the tree (with resolution to public keys)
 		try {
 			console.log('[RECALC] Collecting contributors from tree...');
-			const allContributorIds = getAllContributorsFromTree(tree);
+
+			// Debug: Check what's in the raw tree
+			const allNodes = [tree, ...getDescendants(tree)];
+			const rawContributorIds = new Set<string>();
+			allNodes.forEach((node) => {
+				if (node.type === 'NonRootNode') {
+					(node as NonRootNode).contributor_ids.forEach((id: string) => rawContributorIds.add(id));
+				}
+			});
+			console.log('[RECALC-DEBUG] Raw contributor IDs from tree:', [...rawContributorIds]);
+
+			const allContributorIds = getAllContributorsFromTree(tree, resolveToPublicKey);
+			console.log('[RECALC-DEBUG] Resolved contributor IDs:', allContributorIds);
 
 			// Check if contributors have changed
 			const currentContributors = get(contributors);
 			const contributorsChanged = !arrayEqual(currentContributors, allContributorIds);
 
+			console.log('[RECALC-DEBUG] Current contributors store:', currentContributors);
+			console.log('[RECALC-DEBUG] Contributors changed:', contributorsChanged);
+
 			if (contributorsChanged) {
 				console.log('[RECALC] Contributors have changed, updating store');
 				contributors.set(allContributorIds);
-				console.log('[RECALC] Found', allContributorIds.length, 'contributors');
+				console.log('[RECALC] Found', allContributorIds.length, 'resolved contributors');
 			} else {
 				console.log('[RECALC] Contributors unchanged, skipping update');
 			}
 
 			// Check if all known contributors have changed
 			const currentKnownContributors = get(allKnownContributors);
+
+			// Resolve all current known contributors to public keys and combine with new ones
+			const resolvedCurrentKnownContributors = currentKnownContributors.map(
+				(id) => resolveToPublicKey(id) || id
+			);
 			const updatedKnownContributors = [
-				...new Set([...currentKnownContributors, ...allContributorIds])
+				...new Set([...resolvedCurrentKnownContributors, ...allContributorIds])
 			];
 			const knownContributorsChanged = !arrayEqual(
 				currentKnownContributors,
 				updatedKnownContributors
 			);
 
+			console.log('[RECALC-DEBUG] Current known contributors:', currentKnownContributors);
+			console.log('[RECALC-DEBUG] Updated known contributors:', updatedKnownContributors);
+			console.log('[RECALC-DEBUG] Known contributors changed:', knownContributorsChanged);
+
 			if (knownContributorsChanged) {
 				console.log('[RECALC] All known contributors have changed, updating store');
+				// Ensure allKnownContributors only contains public keys
 				allKnownContributors.set(updatedKnownContributors);
 				console.log('[RECALC] Total known contributors:', updatedKnownContributors.length);
 			} else {
@@ -120,8 +150,13 @@ export function recalculateFromTree() {
 			const allKnownContributorsList = get(allKnownContributors);
 			const nodeMap = get(nodesMap);
 
-			// Calculate SOGF using all known contributors
-			const sogf = sharesOfGeneralFulfillmentMap(tree, nodeMap, allKnownContributorsList);
+			// Calculate SOGF using all known contributors with unified identifiers
+			const sogf = sharesOfGeneralFulfillmentMap(
+				tree,
+				nodeMap,
+				allKnownContributorsList,
+				resolveToPublicKey
+			);
 
 			// Compare with current SOGF to see if it has changed
 			const currentSogf = get(userSogf);
@@ -131,7 +166,36 @@ export function recalculateFromTree() {
 				console.log('[RECALC] SOGF has changed, updating stores and recognition cache');
 				userSogf.set(sogf);
 
-				// Update recognition cache with our share values
+				console.log(
+					'[RECALC-DEBUG] Current recognition cache before update:',
+					get(recognitionCache)
+				);
+
+				// Clean up recognition cache: merge contact ID entries with their public key entries
+				recognitionCache.update((cache) => {
+					const cleanedCache: Record<string, any> = {};
+
+					// First pass: collect all entries, resolving contact IDs to public keys
+					Object.entries(cache).forEach(([contributorId, entry]) => {
+						const resolvedId = resolveToPublicKey(contributorId) || contributorId;
+
+						if (cleanedCache[resolvedId]) {
+							// Merge with existing entry, keeping the higher values and latest timestamp
+							cleanedCache[resolvedId] = {
+								ourShare: Math.max(cleanedCache[resolvedId].ourShare, entry.ourShare),
+								theirShare: Math.max(cleanedCache[resolvedId].theirShare, entry.theirShare),
+								timestamp: Math.max(cleanedCache[resolvedId].timestamp, entry.timestamp)
+							};
+						} else {
+							cleanedCache[resolvedId] = { ...entry };
+						}
+					});
+
+					console.log('[RECALC-DEBUG] Cleaned recognition cache:', cleanedCache);
+					return cleanedCache;
+				});
+
+				// Update recognition cache with our share values (using unified public keys)
 				allKnownContributorsList.forEach((contributorId) => {
 					const ourShare = sogf[contributorId] || 0;
 					const existing = get(recognitionCache)[contributorId];
@@ -156,6 +220,8 @@ export function recalculateFromTree() {
 						return cache;
 					});
 				});
+
+				console.log('[RECALC-DEBUG] Recognition cache after update:', get(recognitionCache));
 
 				console.log(
 					'[RECALC] SOGF calculation complete for',
