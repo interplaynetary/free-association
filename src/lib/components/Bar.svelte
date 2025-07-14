@@ -2,12 +2,7 @@
 	// Helper function to get a color based on index
 
 	// Helper function to calculate border radius for each segment
-	function getSegmentBorderRadius(
-		index: number,
-		total: number,
-		isVertical = false,
-		rounded = false
-	) {
+	function getSegmentBorderRadius(index: any, total: number, isVertical = false, rounded = false) {
 		if (!rounded || total === 1) return rounded ? 'inherit' : '0';
 
 		if (isVertical) {

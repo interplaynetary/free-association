@@ -94,6 +94,12 @@
 
 	// Drag state (now using global state)
 	let dragStartTime = $state(0);
+	let initialPointerX = $state(0);
+	let initialPointerY = $state(0);
+	let hasMovedSignificantly = $state(false);
+
+	// Movement threshold for distinguishing between tap and drag
+	const MOVEMENT_THRESHOLD = 10; // pixels
 
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
@@ -278,6 +284,8 @@
 			// Clean up drag listeners
 			document.removeEventListener('pointermove', handleDragMove);
 			document.removeEventListener('pointerup', handleDragEnd);
+			// Clean up recompose movement listener
+			document.removeEventListener('pointermove', handleRecomposeMovement, { capture: true });
 			unsubscribe();
 		};
 	});
@@ -1039,6 +1047,9 @@
 		event: TouchEvent,
 		node: d3.HierarchyRectangularNode<VisualizationNode>
 	) {
+		// Prevent default touch behaviors that might interfere with our drag
+		event.preventDefault();
+
 		// Detect multi-touch for shrinking
 		isMultiTouch = event.touches.length === 2;
 		console.log(
@@ -1054,6 +1065,9 @@
 
 	// Handle touch end to reset multi-touch state
 	function handleTouchEnd(event: TouchEvent) {
+		// Prevent default touch behaviors
+		event.preventDefault();
+
 		// Reset multi-touch state when fingers are lifted
 		if (event.touches.length < 2) {
 			isMultiTouch = false;
@@ -1082,12 +1096,13 @@
 			return;
 		}
 
-		// Check if we should start dragging (in recompose mode with any click, or normal mode with special click)
-		const shouldStartDrag =
+		// Check if we should start dragging immediately (non-recompose mode special clicks)
+		const shouldStartDragImmediately =
 			!globalState.deleteMode &&
-			(globalState.recomposeMode || event.button === 1 || event.ctrlKey || event.metaKey); // Recompose mode allows any click, or middle click / Ctrl+click in normal mode
+			!globalState.recomposeMode &&
+			(event.button === 1 || event.ctrlKey || event.metaKey); // Middle click / Ctrl+click in normal mode
 
-		if (shouldStartDrag) {
+		if (shouldStartDragImmediately) {
 			startDragging(event, node);
 			return;
 		}
@@ -1124,6 +1139,16 @@
 		touchStartTime = Date.now();
 		activeGrowthNodeId = node.data.id;
 
+		// Track initial position for movement detection
+		initialPointerX = event.clientX;
+		initialPointerY = event.clientY;
+		hasMovedSignificantly = false;
+
+		// Add movement listener for recompose mode drag detection
+		if (globalState.recomposeMode) {
+			document.addEventListener('pointermove', handleRecomposeMovement, { capture: true });
+		}
+
 		// For touch events, delay processing to allow multi-touch detection
 		if (event.pointerType === 'touch') {
 			// Small delay to let touch events fire and detect multi-touch
@@ -1141,8 +1166,11 @@
 					isMultiTouch
 				);
 
-				// Start growth with delay
-				startGrowth(node, isShrinking);
+				// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+				if (!globalState.recomposeMode) {
+					// Start growth with delay
+					startGrowth(node, isShrinking);
+				}
 			}, 50); // 50ms delay to allow touch events to fire
 		} else {
 			// For mouse events, process immediately
@@ -1156,8 +1184,11 @@
 				isMultiTouch
 			);
 
-			// Start growth with delay
-			startGrowth(node, isShrinking);
+			// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+			if (!globalState.recomposeMode) {
+				// Start growth with delay
+				startGrowth(node, isShrinking);
+			}
 		}
 	}
 
@@ -1207,8 +1238,12 @@
 			if (globalState.deleteMode) {
 				// Handle deletion
 				handleNodeDeletion(nodeId);
-			} else if (globalState.recomposeMode) {
-				// Handle recompose
+			} else if (globalState.recomposeMode && !globalState.isDragging && !hasMovedSignificantly) {
+				// In recompose mode, allow navigation if not currently dragging and no significant movement
+				// This enables zooming even while recompose mode is active
+				zoomInto(nodeId);
+			} else if (globalState.recomposeMode && (globalState.isDragging || hasMovedSignificantly)) {
+				// Handle recompose only if we're actually dragging or moved significantly
 				handleNodeRecompose(nodeId);
 			} else {
 				// This was a tap, not a hold - navigate into the node
@@ -1225,6 +1260,40 @@
 		activePointerId = null;
 		interactionHandled = false;
 		isMultiTouch = false;
+		hasMovedSignificantly = false;
+
+		// Remove recompose movement listener if it exists
+		if (globalState.recomposeMode) {
+			document.removeEventListener('pointermove', handleRecomposeMovement, { capture: true });
+		}
+	}
+
+	// Handle movement during recompose mode to detect drag vs tap
+	function handleRecomposeMovement(event: PointerEvent) {
+		if (!globalState.recomposeMode || !isTouching || globalState.isDragging) return;
+
+		// Only handle primary pointer
+		if (!event.isPrimary || event.pointerId !== activePointerId) return;
+
+		const dx = Math.abs(event.clientX - initialPointerX);
+		const dy = Math.abs(event.clientY - initialPointerY);
+
+		// If movement exceeds threshold, start dragging
+		if ((dx > MOVEMENT_THRESHOLD || dy > MOVEMENT_THRESHOLD) && !hasMovedSignificantly) {
+			hasMovedSignificantly = true;
+
+			// Find the node to start dragging
+			if (activeGrowthNodeId) {
+				const node = hierarchyData?.children?.find((child) => child.data.id === activeGrowthNodeId);
+				if (node) {
+					console.log('[RECOMPOSE] Movement detected, starting drag');
+					// Remove the movement listener since we're starting a drag
+					document.removeEventListener('pointermove', handleRecomposeMovement, { capture: true });
+					// Start dragging
+					startDragging(event, node);
+				}
+			}
+		}
 	}
 
 	// Reset interaction state when navigation occurs
@@ -1338,6 +1407,13 @@
 			event.clientY
 		);
 		dragStartTime = Date.now();
+		
+		// Initialize movement tracking if not already done
+		if (initialPointerX === 0 && initialPointerY === 0) {
+			initialPointerX = event.clientX;
+			initialPointerY = event.clientY;
+		}
+		hasMovedSignificantly = true; // Mark as moved since we're dragging
 
 		console.log('[DRAG] Started dragging node:', globalState.draggedNodeName);
 
@@ -1350,12 +1426,8 @@
 	function handleDragMove(event: PointerEvent) {
 		if (!globalState.isDragging) return;
 
-		// Only handle if the event is related to dragging (not scrolling)
-		if (event.isPrimary && event.pointerType !== 'touch') {
-			// Update drag position for mouse/pen events
-			globalState.updateDragPosition(event.clientX, event.clientY);
-		} else if (event.pointerType === 'touch' && globalState.isDragging) {
-			// For touch events, only handle if we're actively dragging
+		// Update drag position for both mouse and touch events when actively dragging
+		if (event.isPrimary) {
 			globalState.updateDragPosition(event.clientX, event.clientY);
 		}
 	}
@@ -1372,6 +1444,8 @@
 		const dragDuration = Date.now() - dragStartTime;
 		const wasDragGesture = dragDuration >= 200; // Consider it a drag if held for 200ms+
 
+		let targetNodeId: string | null = null;
+
 		if (wasDragGesture && globalState.draggedNodeId) {
 			// Find what node we're dropping on by checking the element under the cursor
 			const elementUnder = document.elementFromPoint(event.clientX, event.clientY);
@@ -1381,9 +1455,20 @@
 			);
 
 			if (dropTargetElement) {
-				const targetNodeId = dropTargetElement.getAttribute('data-node-id');
+				targetNodeId = dropTargetElement.getAttribute('data-node-id');
 				if (targetNodeId && targetNodeId !== globalState.draggedNodeId) {
-					globalState.handleNodeReorder(globalState.draggedNodeId, targetNodeId);
+					const success = globalState.handleNodeReorder(globalState.draggedNodeId, targetNodeId);
+
+					// If the drag was successful, navigate to the target location
+					if (success) {
+						console.log('[DRAG] Successfully moved node, navigating to target:', targetNodeId);
+						// Small delay to ensure the tree update has been processed
+						setTimeout(() => {
+							if (targetNodeId) {
+								zoomInto(targetNodeId);
+							}
+						}, 100);
+					}
 				}
 			}
 		}
@@ -1391,6 +1476,9 @@
 		// Reset global drag state
 		globalState.endDrag();
 		dragStartTime = 0;
+		initialPointerX = 0;
+		initialPointerY = 0;
+		hasMovedSignificantly = false;
 
 		// Remove global event listeners
 		document.removeEventListener('pointermove', handleDragMove, { capture: true });
@@ -1566,7 +1654,7 @@
 	.treemap-container :global(.clickable) {
 		cursor: pointer;
 		user-select: none;
-		touch-action: manipulation; /* Allow scrolling but prevent double-tap zoom */
+		touch-action: none; /* Disable browser touch behaviors */
 		transition:
 			left 0.12s linear,
 			top 0.12s linear,

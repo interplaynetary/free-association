@@ -1350,6 +1350,7 @@
 		font-size: 1.95em;
 		display: flex;
 		align-items: center;
+		touch-action: none; /* Disable browser touch behaviors for drag and drop */
 	}
 
 	.breadcrumb-item:hover {

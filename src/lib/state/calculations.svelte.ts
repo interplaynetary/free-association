@@ -134,7 +134,6 @@ export function recalculateFromTree() {
 
 			if (knownContributorsChanged) {
 				console.log('[RECALC] All known contributors have changed, updating store');
-				// Ensure allKnownContributors only contains public keys
 				allKnownContributors.set(updatedKnownContributors);
 				console.log('[RECALC] Total known contributors:', updatedKnownContributors.length);
 			} else {
@@ -170,30 +169,6 @@ export function recalculateFromTree() {
 					'[RECALC-DEBUG] Current recognition cache before update:',
 					get(recognitionCache)
 				);
-
-				// Clean up recognition cache: merge contact ID entries with their public key entries
-				recognitionCache.update((cache) => {
-					const cleanedCache: Record<string, any> = {};
-
-					// First pass: collect all entries, resolving contact IDs to public keys
-					Object.entries(cache).forEach(([contributorId, entry]) => {
-						const resolvedId = resolveToPublicKey(contributorId) || contributorId;
-
-						if (cleanedCache[resolvedId]) {
-							// Merge with existing entry, keeping the higher values and latest timestamp
-							cleanedCache[resolvedId] = {
-								ourShare: Math.max(cleanedCache[resolvedId].ourShare, entry.ourShare),
-								theirShare: Math.max(cleanedCache[resolvedId].theirShare, entry.theirShare),
-								timestamp: Math.max(cleanedCache[resolvedId].timestamp, entry.timestamp)
-							};
-						} else {
-							cleanedCache[resolvedId] = { ...entry };
-						}
-					});
-
-					console.log('[RECALC-DEBUG] Cleaned recognition cache:', cleanedCache);
-					return cleanedCache;
-				});
 
 				// Update recognition cache with our share values (using unified public keys)
 				allKnownContributorsList.forEach((contributorId) => {

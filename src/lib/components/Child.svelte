@@ -1,8 +1,8 @@
 <script lang="ts">
-	import TagPill from './TagPill.svelte';
 	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
+	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
+	import { pie, arc } from 'd3-shape';
 
 	// Define interface for node data
 	interface NodeData {
@@ -99,70 +99,73 @@
 	// Determine if this is the only child (occupies 100% of the space)
 	const isOnlyChild = $derived(nodeWidth >= 0.999 && nodeHeight >= 0.999);
 
-	// Calculate available space and scaling factors
-	const hasContributors = $derived(node.contributors.length > 0);
-	const minButtonWidth = 33.33; // Minimum button width (1/3 of container)
-	const totalElements = $derived(node.contributors.length + 1); // +1 for the add button
-
-	// Calculate element widths ensuring button never goes below minimum
-	const buttonWidth = $derived(
-		hasContributors
-			? Math.max(minButtonWidth, 100 / totalElements) // Never smaller than 1/3
-			: 100 // Full width when no contributors
-	);
-
-	// Remaining width for tags
-	const remainingWidth = $derived(hasContributors ? 100 - buttonWidth : 0);
-
-	// Scale for tags based on available width and number of contributors
-	const tagScale = $derived(
-		hasContributors
-			? Math.min(1.2, remainingWidth / (node.contributors.length * 33.33)) // Scale down if too many tags
-			: 1
-	);
-
-	// Button font size remains proportional to its container
-	const buttonFontSize = $derived(Math.min(buttonWidth * 0.3, 32)); // Adjusted scaling factor and max size
-
-	// Calculate visibility factor (0-1) for smooth fade-in
-	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
-
-	// Dynamically decide between full and mini view based on size
-	const showFullContributorDetails = $derived(nodeSizeRatio >= 25);
-
-	// Dynamically adjust truncation length based on node size
-	const truncateLength = $derived(Math.floor(Math.max(3, Math.min(12, nodeSizeRatio * 0.15))));
-
 	// Unified spacing calculations
 	const adaptivePadding = $derived(Math.max(1, Math.min(8, nodeSizeRatio * 0.1)));
-	const adaptiveGap = $derived(Math.max(2, Math.min(8, nodeSizeRatio * 0.08)));
 
 	// Button scaling
 	const contributorSize = $derived(Math.max(12, Math.min(40, nodeSizeRatio * 0.5)));
 
-	// Calculate actual space requirements (simplified since fontSize is now CSS-based)
-	const titleHeight = $derived(segments.length * 1.5); // Approximate title height
-	const titleHeightPx = $derived(titleHeight * 16); // Convert rem to pixels (assuming 16px base)
-	const containerHeightPx = $derived(nodeHeight * 100); // Container height in pixels
+	// Calculate visibility factor (0-1) for smooth fade-in
+	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
 
-	// Calculate where title ends (50% center + half title height)
-	const titleBottomPercent = $derived(50 + (titleHeightPx / containerHeightPx) * 50);
+	// Calculate button positioning - place it between title end and container edge
+	const titleWidthPercent = $derived(
+		((longestSegment.length * fontSize() * 0.6) / (nodeWidth * 100)) * 100
+	); // Title width as percentage
+	const titleEndPercent = $derived(50 + titleWidthPercent / 2); // Where title ends
+	const buttonCenterPercent = $derived(titleEndPercent + (100 - titleEndPercent) / 2); // Middle of remaining space
+	const availableSpacePercent = $derived(100 - titleEndPercent); // Space available for button
+	const buttonSizePercent = $derived(Math.min(availableSpacePercent * 0.6, 15)); // Button size as percentage, max 15%
 
-	// Space available below title (from title bottom to container bottom, minus padding)
-	const availableSpaceBelow = $derived(
-		100 - titleBottomPercent - (adaptivePadding / containerHeightPx) * 100
-	);
+	// Check if node has contributors for styling
+	const hasContributors = $derived(node.contributors.length > 0);
 
-	// Space needed for contributors (button size + gap, converted to percentage)
-	const spaceNeededForContributors = $derived(
-		((contributorSize + adaptiveGap * 2) / containerHeightPx) * 100
-	);
+	// Create pie chart data for contributors
+	const pieData = $derived(() => {
+		if (!hasContributors) return [];
 
-	// Use vertical layout if there's enough space below, otherwise horizontal
-	const useVerticalLayout = $derived(availableSpaceBelow >= spaceNeededForContributors);
+		// Simple data array - each contributor gets value 1 (equal segments)
+		const data = node.contributors.map((id: string) => ({ id, value: 1 }));
 
-	// Function to handle add contributor button click
-	function handleAddContributorClick(event: MouseEvent) {
+		// Create pie generator following D3 docs exactly
+		const pieGenerator = pie<any>()
+			.value((d: any) => d.value)
+			.sort(null);
+
+		return pieGenerator(data);
+	});
+
+	// Simple arc generator
+	const arcPath = $derived(() => {
+		const radius = 20; // Fixed radius for simplicity
+		return arc<any>().innerRadius(0).outerRadius(radius);
+	});
+
+	// Load contributor names
+	let contributorNames = $state<Record<string, string>>({});
+
+	$effect(() => {
+		// Load names for all contributors
+		node.contributors.forEach(async (contributorId: string) => {
+			if (!contributorNames[contributorId]) {
+				try {
+					const name = await getUserName(contributorId);
+					contributorNames = {
+						...contributorNames,
+						[contributorId]: name
+					};
+				} catch (error) {
+					console.error('Failed to load contributor name:', error);
+				}
+			}
+		});
+	});
+
+	// State for tracking hovered segment
+	let hoveredSegment = $state<string | null>(null);
+
+	// Function to handle add contributor button click (mouse or touch)
+	function handleAddContributorClick(event: MouseEvent | TouchEvent) {
 		// Don't allow adding contributors in delete mode
 		if (globalState.deleteMode) {
 			globalState.showToast('Cannot add contributors in delete mode', 'warning');
@@ -184,50 +187,26 @@
 		event.stopPropagation();
 		const nodeId = node.id;
 		if (nodeId) {
+			// Get coordinates from either mouse or touch event
+			let clientX: number, clientY: number;
+
+			if (event.type === 'touchstart' && 'touches' in event) {
+				// Touch event - get coordinates from the first touch point
+				const touch = event.touches[0];
+				clientX = touch.clientX;
+				clientY = touch.clientY;
+			} else {
+				// Mouse event - get coordinates directly
+				clientX = (event as MouseEvent).clientX;
+				clientY = (event as MouseEvent).clientY;
+			}
+
 			addContributor({
 				nodeId,
-				clientX: event.clientX,
-				clientY: event.clientY
+				clientX,
+				clientY
 			});
 		}
-	}
-
-	// Function to handle remove contributor
-	function handleRemoveContributor(contributorId: string) {
-		// Don't allow removing contributors in delete mode
-		if (globalState.deleteMode) {
-			globalState.showToast('Cannot remove contributors in delete mode', 'warning');
-			return;
-		}
-
-		// Don't allow removing contributors when editing
-		if (globalState.editMode) {
-			globalState.showToast('Cannot remove contributors while editing', 'warning');
-			return;
-		}
-
-		// Don't allow removing contributors in recompose mode
-		if (globalState.recomposeMode) {
-			globalState.showToast('Cannot remove contributors in recompose mode', 'warning');
-			return;
-		}
-
-		const nodeId = node.id;
-		if (nodeId) {
-			removeContributor({ nodeId, contributorId });
-		}
-	}
-
-	// Handle click on tag
-	function handleTagClick(userId: string, event?: MouseEvent) {
-		// Prevent default behavior if event is passed
-		if (event) {
-			event.stopPropagation();
-			event.preventDefault();
-		}
-
-		// For future functionality - could navigate to contributor view
-		console.log(`Clicked on contributor: ${userId}`);
 	}
 
 	// Selective handler for text selection prevention - only for specific events
@@ -471,86 +450,94 @@
 			{/if}
 		</div>
 
-		<!-- Contributors - positioned to the right of title -->
-		{#if visibilityFactor > 0.1}
-			<div
-				class="contributors-area"
-				style="
-          position: absolute;
-          opacity: {visibilityFactor};
-          z-index: 1;
-          top: 50%; 
-          left: 70%; 
-          transform: translateY(-50%);
-        "
-			>
-				<div
-					class="contributors-layout"
+		<!-- Add Contributor Button - positioned between title end and container edge -->
+		{#if visibilityFactor > 0.1 && !node.hasChildren}
+			{#if hasContributors}
+				<!-- Pie Chart for Contributors -->
+				<svg
+					class="add-contributor-button pie-chart"
 					style="
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: {Math.max(2, adaptiveGap * 0.5)}px;
-            flex-wrap: wrap;
-            flex-direction: column;
+            position: absolute;
+            opacity: {visibilityFactor};
+            top: 50%; 
+            left: {buttonCenterPercent}%;
+            transform: translate(-50%, -50%);
+            width: {buttonSizePercent}%;
+            height: {buttonSizePercent}%;
+            cursor: pointer;
           "
+					viewBox="-25 -25 50 50"
+					onclick={handleAddContributorClick}
+					ontouchstart={handleAddContributorClick}
 				>
-					<!-- Add button -->
-					{#if !node.hasChildren}
-						<button
-							class="add-contributor-button"
-							style="
-            width: {contributorSize}px;
-            height: {contributorSize}px;
-            font-size: {contributorSize * 0.5}px;
-          "
-							onclick={handleAddContributorClick}
-							title="Add contributor"
-						>
-							+
-						</button>
-					{/if}
+					{#each pieData() as segment, i}
+						<path
+							d={arcPath()(segment)}
+							fill={getColorForUserId(segment.data.id)}
+							onmouseenter={() => (hoveredSegment = segment.data.id)}
+							onmouseleave={() => (hoveredSegment = null)}
+							style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
+						/>
+					{/each}
 
-					<!-- Contributors -->
-					{#if hasContributors}
-						{#if showFullContributorDetails}
-							{#each node.contributors as contributorId}
-								<TagPill
-									userId={contributorId}
-									{truncateLength}
-									onClick={(id, e) => handleTagClick(id, e)}
-									onRemove={handleRemoveContributor}
-								/>
-							{/each}
-						{:else}
-							{#each node.contributors as contributorId}
-								<div
-									class="mini-contributor"
-									title={$userNamesOrAliasesCache[contributorId]}
-									style="
-                  background: {getColorForUserId(contributorId)};
-                  width: {Math.max(6, contributorSize * 0.4)}px;
-                  height: {Math.max(6, contributorSize * 0.4)}px;
-                "
-								></div>
-							{/each}
-							{#if node.contributors.length > 3}
-								<div
-									class="more-contributors"
-									title="More contributors"
-									style="
-                    width: {Math.max(8, contributorSize * 0.5)}px;
-                    height: {Math.max(8, contributorSize * 0.5)}px;
-                    font-size: {Math.max(6, contributorSize * 0.3)}px;
-                  "
-								>
-									+{node.contributors.length - 3}
-								</div>
-							{/if}
-						{/if}
-					{/if}
-				</div>
-			</div>
+					<!-- Plus sign in center for adding more contributors -->
+					<circle
+						cx={0}
+						cy={0}
+						r={6}
+						fill="rgba(255, 255, 255, 0.9)"
+						stroke="rgba(0, 0, 0, 0.3)"
+						stroke-width="1"
+					/>
+					<text
+						x={0}
+						y={0}
+						text-anchor="middle"
+						dominant-baseline="middle"
+						font-size="8"
+						fill="#333"
+						font-weight="bold"
+					>
+						+
+					</text>
+				</svg>
+
+				<!-- Tooltip for hovered segment -->
+				{#if hoveredSegment}
+					<div
+						class="contributor-tooltip"
+						style="
+							position: absolute;
+							top: {50 - buttonSizePercent / 2 - 5}%;
+							left: {buttonCenterPercent}%;
+							transform: translateX(-50%);
+							z-index: 1000;
+						"
+					>
+						{contributorNames[hoveredSegment] || hoveredSegment}
+					</div>
+				{/if}
+			{:else}
+				<!-- Simple button when no contributors -->
+				<button
+					class="add-contributor-button"
+					style="
+            position: absolute;
+            opacity: {visibilityFactor};
+            top: 50%; 
+            left: {buttonCenterPercent}%;
+            transform: translate(-50%, -50%);
+            width: {buttonSizePercent}%;
+            height: {buttonSizePercent}%;
+            font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
+          "
+					onclick={handleAddContributorClick}
+					ontouchstart={handleAddContributorClick}
+					title="Add contributor"
+				>
+					+
+				</button>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -566,10 +553,6 @@
 
 	.unified-node-content {
 		text-align: center;
-	}
-
-	.content-cluster {
-		transition: all 0.2s ease;
 	}
 
 	.node-title-area {
@@ -638,56 +621,58 @@
 		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 	}
 
-	.contributors-area {
-		transition: opacity 0.3s ease;
-	}
-
 	.add-contributor-button {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(200, 200, 200, 0.7);
-		border: none;
-		border-radius: 50%;
-		color: #333;
+		background: rgba(255, 255, 255, 0.7);
+		color: #555;
 		cursor: pointer;
-		transition: all 0.3s ease;
+		transition: all 0.2s ease;
 		font-family: Arial, sans-serif;
-		line-height: 0;
-		flex-shrink: 0;
+		font-weight: normal;
+		line-height: 1;
 	}
 
 	.add-contributor-button:hover {
-		background: rgba(200, 200, 200, 0.9);
-		transform: scale(1.025);
+		background: rgba(255, 255, 255, 0.9);
+		color: #333;
 	}
 
-	.mini-contributor {
-		border-radius: 50%;
-		animation: fadeIn 0.2s ease-out;
-		flex-shrink: 0;
+	.pie-chart {
+		border-radius: 4px;
+		transition: opacity 0.2s ease;
 	}
 
-	.more-contributors {
-		border-radius: 50%;
-		background: #d1e1f0;
-		color: #3a6b9e;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-weight: bold;
-		animation: fadeIn 0.2s ease-out;
-		flex-shrink: 0;
+	.pie-chart:hover {
+		opacity: 0.9;
 	}
 
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: scale(0.8);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
+	.pie-chart path {
+		transition: opacity 0.2s ease;
+	}
+
+	.pie-chart path:hover {
+		opacity: 0.8;
+	}
+
+	.contributor-tooltip {
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 4px 8px;
+		border-radius: 4px;
+		font-size: 12px;
+		pointer-events: none;
+		white-space: nowrap;
+	}
+
+	.contributor-tooltip::after {
+		content: '';
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		border: 4px solid transparent;
+		border-top-color: rgba(0, 0, 0, 0.8);
 	}
 </style>
