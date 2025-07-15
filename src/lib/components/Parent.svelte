@@ -14,8 +14,10 @@
 		fulfilled,
 		addChild,
 		addContributors,
-		calculateNodePoints
+		calculateNodePoints,
+		getPathToNode
 	} from '$lib/protocol';
+	import { get } from 'svelte/store';
 	import { createContact } from '$lib/state/users.svelte';
 	import { updateContact, userContacts } from '$lib/state/users.svelte';
 	import {
@@ -1407,7 +1409,7 @@
 			event.clientY
 		);
 		dragStartTime = Date.now();
-		
+
 		// Initialize movement tracking if not already done
 		if (initialPointerX === 0 && initialPointerY === 0) {
 			initialPointerX = event.clientX;
@@ -1465,7 +1467,14 @@
 						// Small delay to ensure the tree update has been processed
 						setTimeout(() => {
 							if (targetNodeId) {
-								zoomInto(targetNodeId);
+								// Get the absolute path to the target node instead of just appending
+								const updatedTree = get(userTree);
+								if (updatedTree) {
+									const absolutePath = getPathToNode(updatedTree, targetNodeId);
+									if (absolutePath) {
+										globalState.navigateToPath(absolutePath);
+									}
+								}
 							}
 						}, 100);
 					}
