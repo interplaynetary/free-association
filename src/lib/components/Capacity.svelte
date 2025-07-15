@@ -45,6 +45,9 @@
 	// UI state for expanded composition
 	let compositionExpanded = $state(false);
 
+	// UI state for expanded availability
+	let availabilityExpanded = $state(false);
+
 	// Simple filter state - just track selected subtree IDs
 	let selectedSubtrees = $state<string[]>([]);
 
@@ -189,6 +192,18 @@
 		'Custom...'
 	];
 
+	// Helper to track original value on focus
+	function handleFocus(fieldName: string, currentValue: any) {
+		originalValues[fieldName] = currentValue;
+	}
+
+	// Helper to save only if value changed on blur
+	function handleBlurIfChanged(fieldName: string, currentValue: any) {
+		if (originalValues[fieldName] !== currentValue) {
+			handleCapacityUpdate();
+		}
+	}
+
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
 		// Create updated capacity with current filter rule
@@ -260,30 +275,44 @@
 	// Toggle expanded state
 	function toggleExpanded() {
 		expanded = !expanded;
-		// If we're expanding settings, close chat and composition
+		// If we're expanding settings, close chat, composition, and availability
 		if (expanded) {
 			chatExpanded = false;
 			compositionExpanded = false;
+			availabilityExpanded = false;
 		}
 	}
 
 	// Toggle chat state
 	function toggleChat() {
 		chatExpanded = !chatExpanded;
-		// If we're expanding chat, close settings and composition
+		// If we're expanding chat, close settings, composition, and availability
 		if (chatExpanded) {
 			expanded = false;
 			compositionExpanded = false;
+			availabilityExpanded = false;
 		}
 	}
 
 	// Toggle composition state
 	function toggleComposition() {
 		compositionExpanded = !compositionExpanded;
-		// If we're expanding composition, close settings and chat
+		// If we're expanding composition, close settings, chat, and availability
 		if (compositionExpanded) {
 			expanded = false;
 			chatExpanded = false;
+			availabilityExpanded = false;
+		}
+	}
+
+	// Toggle availability state
+	function toggleAvailability() {
+		availabilityExpanded = !availabilityExpanded;
+		// If we're expanding availability, close settings, chat, and composition
+		if (availabilityExpanded) {
+			expanded = false;
+			chatExpanded = false;
+			compositionExpanded = false;
 		}
 	}
 
@@ -464,6 +493,9 @@
 	// Location format state ('coordinates' or 'address')
 	let locationFormat = $state<'coordinates' | 'address'>('address');
 
+	// Track original values for change detection
+	let originalValues = $state<Record<string, any>>({});
+
 	// Dropdown states for adding capacities
 	let showComposeFromDropdown = $state(false);
 	let showComposeIntoDropdown = $state(false);
@@ -612,7 +644,8 @@
 			class="capacity-input name auto-size"
 			bind:value={capacityName}
 			placeholder="Name"
-			onchange={handleCapacityUpdate}
+			onfocus={() => handleFocus('name', capacityName)}
+			onblur={() => handleBlurIfChanged('name', capacityName)}
 			style="width: {Math.max(capacityName?.length || 0, 'Name'.length) +
 				3}ch; min-width: {Math.max(6, 'Name'.length + 2)}ch;"
 		/>
@@ -623,7 +656,8 @@
 			step="0.01"
 			bind:value={capacityQuantity}
 			placeholder="Qty"
-			onchange={handleCapacityUpdate}
+			onfocus={() => handleFocus('quantity', capacityQuantity)}
+			onblur={() => handleBlurIfChanged('quantity', capacityQuantity)}
 			style="width: {Math.max(capacityQuantity?.toString().length || 0, 'Qty'.length) +
 				3}ch; min-width: {Math.max(5, 'Qty'.length + 2)}ch;"
 		/>
@@ -632,7 +666,8 @@
 			class="capacity-input unit auto-size"
 			bind:value={capacityUnit}
 			placeholder="Unit"
-			onchange={handleCapacityUpdate}
+			onfocus={() => handleFocus('unit', capacityUnit)}
+			onblur={() => handleBlurIfChanged('unit', capacityUnit)}
 			style="width: {Math.max(capacityUnit?.length || 0, 'Unit'.length) +
 				3}ch; min-width: {Math.max(6, 'Unit'.length + 2)}ch;"
 		/>
@@ -643,7 +678,8 @@
 					class="capacity-input description-textarea auto-size"
 					bind:value={capacityDescription}
 					placeholder="Description"
-					onchange={handleCapacityUpdate}
+					onfocus={() => handleFocus('description', capacityDescription)}
+					onblur={() => handleBlurIfChanged('description', capacityDescription)}
 					rows="3"
 				></textarea>
 			{:else}
@@ -652,7 +688,8 @@
 					class="capacity-input description auto-size"
 					bind:value={capacityDescription}
 					placeholder="Description"
-					onchange={handleCapacityUpdate}
+					onfocus={() => handleFocus('description', capacityDescription)}
+					onblur={() => handleBlurIfChanged('description', capacityDescription)}
 					style="width: {Math.max(capacityDescription?.length || 0, 'Description'.length) +
 						3}ch; min-width: {Math.max(12, 'Description'.length + 2)}ch;"
 				/>
@@ -688,6 +725,14 @@
 			title="Compose with other capacities"
 		>
 			🔄
+		</button>
+		<button
+			type="button"
+			class="availability-btn ml-1"
+			onclick={toggleAvailability}
+			title="Set availability and scheduling"
+		>
+			📅
 		</button>
 		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}> ⚙️ </button>
 		<button type="button" class="remove-btn ml-1" onclick={handleDelete} disabled={!canDelete}
@@ -958,380 +1003,56 @@
 		</div>
 	{/if}
 
-	<!-- Expanded settings (space-time only) -->
-	{#if expanded}
-		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
-			<div class="settings-content">
-				<div class="space-time-section mb-6">
-					<h4 class="mb-4 text-sm font-medium text-gray-700">Availability</h4>
+	<!-- Expanded availability section -->
+	{#if availabilityExpanded}
+		<div class="availability-section mt-2 mb-4 rounded-md bg-green-50 p-3 shadow-sm">
+			<div class="availability-header mb-3">
+				<h4 class="text-sm font-medium text-gray-700">📅 Availability</h4>
+				<p class="mt-1 text-xs text-gray-500">
+					Set location, timing, and scheduling for this capacity
+				</p>
+			</div>
 
-					<div class="space-time-options mb-6 ml-2">
-						<div class="flex flex-wrap gap-x-8 gap-y-3">
-							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									name="location-type-{capacity.id}"
-									value="Undefined"
-									bind:group={capacityLocationType}
-									class="mr-3"
-									onchange={handleCapacityUpdate}
-								/>
-								<span class="text-sm text-gray-600">Undefined</span>
-							</label>
-							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									name="location-type-{capacity.id}"
-									value="LiveLocation"
-									bind:group={capacityLocationType}
-									class="mr-3"
-									onchange={handleCapacityUpdate}
-								/>
-								<span class="text-sm text-gray-600">Live location</span>
-							</label>
-							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									name="location-type-{capacity.id}"
-									value="Specific"
-									bind:group={capacityLocationType}
-									class="mr-3"
-									onchange={handleCapacityUpdate}
-								/>
-								<span class="text-sm text-gray-600">Specific</span>
-							</label>
-						</div>
-					</div>
-
-					{#if capacityLocationType === 'Specific'}
-						<div class="date-time-section mb-6 ml-2">
-							<!-- Location input type toggle -->
-							<div class="mb-6">
-								<h5 class="mb-4 text-sm font-medium text-gray-600">Location Format</h5>
-								<div class="mb-4 flex flex-wrap gap-x-8 gap-y-3">
-									<label class="inline-flex items-center">
-										<input
-											type="radio"
-											name="location-format-{capacity.id}"
-											value="address"
-											checked={locationFormat === 'address'}
-											class="mr-3"
-											onchange={() => {
-												locationFormat = 'address';
-											}}
-										/>
-										<span class="text-sm text-gray-600">Address</span>
-									</label>
-									<label class="inline-flex items-center">
-										<input
-											type="radio"
-											name="location-format-{capacity.id}"
-											value="coordinates"
-											checked={locationFormat === 'coordinates'}
-											class="mr-3"
-											onchange={() => {
-												locationFormat = 'coordinates';
-											}}
-										/>
-										<span class="text-sm text-gray-600">Coordinates</span>
-									</label>
-								</div>
-							</div>
-
-							<!-- Address section -->
-							{#if locationFormat === 'address'}
-								<div class="address-section mb-6">
-									<h5 class="mb-4 text-sm font-medium text-gray-600">Address</h5>
-									<div class="space-y-4">
-										<div>
-											<label class="mb-2 block text-xs text-gray-500">Street Address</label>
-											<input
-												type="text"
-												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-												bind:value={capacityStreetAddress}
-												placeholder="e.g. 123 Main St"
-												onchange={handleCapacityUpdate}
-											/>
-										</div>
-										<div class="grid grid-cols-2 gap-4">
-											<div>
-												<label class="mb-2 block text-xs text-gray-500">City</label>
-												<input
-													type="text"
-													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-													bind:value={capacityCity}
-													placeholder="e.g. San Francisco"
-													onchange={handleCapacityUpdate}
-												/>
-											</div>
-											<div>
-												<label class="mb-2 block text-xs text-gray-500">State/Province</label>
-												<input
-													type="text"
-													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-													bind:value={capacityStateProvince}
-													placeholder="e.g. CA"
-													onchange={handleCapacityUpdate}
-												/>
-											</div>
-										</div>
-										<div class="grid grid-cols-2 gap-4">
-											<div>
-												<label class="mb-2 block text-xs text-gray-500">Postal Code</label>
-												<input
-													type="text"
-													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-													bind:value={capacityPostalCode}
-													placeholder="e.g. 94102"
-													onchange={handleCapacityUpdate}
-												/>
-											</div>
-											<div>
-												<label class="mb-2 block text-xs text-gray-500">Country</label>
-												<input
-													type="text"
-													class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-													bind:value={capacityCountry}
-													placeholder="e.g. United States"
-													onchange={handleCapacityUpdate}
-												/>
-											</div>
-										</div>
-									</div>
-								</div>
-							{/if}
-
-							<!-- Geographic coordinates section -->
-							{#if locationFormat === 'coordinates'}
-								<div class="coordinates-section mb-6">
-									<h5 class="mb-4 text-sm font-medium text-gray-600">Geographic Coordinates</h5>
-									<div class="grid grid-cols-2 gap-4">
-										<div>
-											<label class="mb-2 block text-xs text-gray-500">Latitude (-90 to 90)</label>
-											<input
-												type="number"
-												min="-90"
-												max="90"
-												step="0.000001"
-												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-												bind:value={capacityLatitude}
-												placeholder="e.g. 37.7749"
-												onchange={handleCapacityUpdate}
-											/>
-										</div>
-										<div>
-											<label class="mb-2 block text-xs text-gray-500">Longitude (-180 to 180)</label
-											>
-											<input
-												type="number"
-												min="-180"
-												max="180"
-												step="0.000001"
-												class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-												bind:value={capacityLongitude}
-												placeholder="e.g. -122.4194"
-												onchange={handleCapacityUpdate}
-											/>
-										</div>
-									</div>
-								</div>
-							{/if}
-
-							<div class="mb-4 ml-1">
-								<label class="inline-flex items-center">
-									<input
-										type="checkbox"
-										bind:checked={capacityAllDay}
-										class="mr-3 h-4 w-4"
-										onchange={handleCapacityUpdate}
-									/>
-									<span class="text-sm text-gray-600">All day</span>
-								</label>
-							</div>
-
-							<div class="mb-4 flex flex-col gap-6">
-								<div>
-									<h5 class="mb-2 text-sm text-gray-600">Start Date</h5>
-									<input
-										type="date"
-										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacityStartDate}
-										onchange={handleCapacityUpdate}
-									/>
-								</div>
-
-								<div>
-									<h5 class="mb-2 text-sm text-gray-600">End Date</h5>
-									<input
-										type="date"
-										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacityEndDate}
-										onchange={handleCapacityUpdate}
-									/>
-								</div>
-							</div>
-
-							{#if !capacityAllDay}
-								<div class="mb-4 flex flex-col gap-4 md:flex-row">
-									<div class="md:w-1/2">
-										<input
-											type="time"
-											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacityStartTime}
-											onchange={handleCapacityUpdate}
-										/>
-									</div>
-
-									<div class="flex items-center md:w-1/2">
-										<span class="mx-2 hidden text-gray-400 md:inline">to</span>
-										<input
-											type="time"
-											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacityEndTime}
-											onchange={handleCapacityUpdate}
-										/>
-									</div>
-								</div>
-
-								<div class="mb-4">
-									<button class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none">
-										Time zone
-									</button>
-									<div class="mt-2">
-										<input
-											type="text"
-											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
-											bind:value={capacityTimeZone}
-											onchange={handleCapacityUpdate}
-										/>
-									</div>
-								</div>
-							{/if}
-
-							<!-- Recurrence dropdown -->
-							<div class="mb-6">
-								<div class="relative w-full md:w-auto">
-									<select
-										class="capacity-select w-full appearance-none rounded-md bg-gray-100 px-3 py-2"
-										bind:value={capacityRecurrence}
-										onchange={handleCapacityUpdate}
-									>
-										{#each recurrenceOptions as option}
-											<option value={option}>{option}</option>
-										{/each}
-									</select>
-								</div>
-							</div>
-
-							<!-- Custom recurrence options -->
-							{#if capacityRecurrence === 'Custom...' && capacityCustomRecurrenceRepeatEvery !== undefined}
-								<div class="custom-recurrence mt-4 rounded-md bg-gray-50 p-6">
-									<div class="mb-6 flex items-center">
-										<span class="mr-3 text-sm font-medium text-gray-600">Repeat every</span>
-										<input
-											type="number"
-											min="1"
-											class="capacity-input qty w-16 text-right"
-											bind:value={capacityCustomRecurrenceRepeatEvery}
-											onchange={handleCapacityUpdate}
-										/>
-										<select
-											class="capacity-select ml-3 w-28"
-											bind:value={capacityCustomRecurrenceRepeatUnit}
-											onchange={handleCapacityUpdate}
-										>
-											<option value="days">days</option>
-											<option value="weeks">weeks</option>
-											<option value="months">months</option>
-											<option value="years">years</option>
-										</select>
-									</div>
-
-									<div class="ends-section ml-2">
-										<span class="mb-4 block text-sm font-medium text-gray-600">Ends</span>
-
-										<div class="radio-options space-y-4">
-											<label class="inline-flex items-center">
-												<input
-													type="radio"
-													name="ends-{capacity.id}"
-													value="never"
-													checked={capacityCustomRecurrenceEndType === 'never'}
-													onchange={() => {
-														capacityCustomRecurrenceEndType = 'never';
-														handleCapacityUpdate();
-													}}
-													class="mr-3"
-												/>
-												<span class="text-sm text-gray-600">Never</span>
-											</label>
-
-											<div class="flex items-center">
-												<label class="inline-flex items-center">
-													<input
-														type="radio"
-														name="ends-{capacity.id}"
-														value="endsOn"
-														checked={capacityCustomRecurrenceEndType === 'endsOn'}
-														onchange={() => {
-															capacityCustomRecurrenceEndType = 'endsOn';
-															capacityCustomRecurrenceEndValue = formatDateForInput(new Date());
-															handleCapacityUpdate();
-														}}
-														class="mr-3"
-													/>
-													<span class="text-sm text-gray-600">On</span>
-												</label>
-												{#if capacityCustomRecurrenceEndType === 'endsOn'}
-													<div class="ml-6">
-														<input
-															type="date"
-															class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
-															bind:value={capacityCustomRecurrenceEndValue}
-															onchange={handleCapacityUpdate}
-														/>
-													</div>
-												{/if}
-											</div>
-
-											<div class="flex items-center">
-												<label class="inline-flex items-center">
-													<input
-														type="radio"
-														name="ends-{capacity.id}"
-														value="endsAfter"
-														checked={capacityCustomRecurrenceEndType === 'endsAfter'}
-														onchange={() => {
-															capacityCustomRecurrenceEndType = 'endsAfter';
-															capacityCustomRecurrenceEndValue = '5';
-															handleCapacityUpdate();
-														}}
-														class="mr-3"
-													/>
-													<span class="text-sm text-gray-600">After</span>
-												</label>
-												{#if capacityCustomRecurrenceEndType === 'endsAfter'}
-													<div class="ml-6 flex items-center">
-														<input
-															type="number"
-															min="1"
-															class="capacity-input qty w-16 text-right"
-															bind:value={capacityCustomRecurrenceEndValue}
-															onchange={handleCapacityUpdate}
-														/>
-														<span class="ml-2 text-sm text-gray-600">occurrences</span>
-													</div>
-												{/if}
-											</div>
-										</div>
-									</div>
-								</div>
-							{/if}
-						</div>
-					{/if}
+			<div class="space-time-options mb-6 ml-2">
+				<div class="flex flex-wrap gap-x-8 gap-y-3">
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{capacity.id}"
+							value="Undefined"
+							bind:group={capacityLocationType}
+							class="mr-3"
+							onchange={handleCapacityUpdate}
+						/>
+						<span class="text-sm text-gray-600">Undefined</span>
+					</label>
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{capacity.id}"
+							value="LiveLocation"
+							bind:group={capacityLocationType}
+							class="mr-3"
+							onchange={handleCapacityUpdate}
+						/>
+						<span class="text-sm text-gray-600">Live location</span>
+					</label>
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{capacity.id}"
+							value="Specific"
+							bind:group={capacityLocationType}
+							class="mr-3"
+							onchange={handleCapacityUpdate}
+						/>
+						<span class="text-sm text-gray-600">Specific</span>
+					</label>
 				</div>
+			</div>
 
-				<div class="hidden-option mb-4">
+			{#if capacityLocationType === 'LiveLocation' || capacityLocationType === 'Specific'}
+				<div class="hidden-option mb-4 ml-2">
 					<label class="inline-flex items-center">
 						<input
 							type="checkbox"
@@ -1342,7 +1063,355 @@
 						<span class="text-sm font-medium text-gray-600">Hidden till Request Accepted</span>
 					</label>
 				</div>
+			{/if}
 
+			{#if capacityLocationType === 'Specific'}
+				<div class="date-time-section mb-6 ml-2">
+					<!-- Location input type toggle -->
+					<div class="mb-6">
+						<h5 class="mb-4 text-sm font-medium text-gray-600">Location Format</h5>
+						<div class="mb-4 flex flex-wrap gap-x-8 gap-y-3">
+							<label class="inline-flex items-center">
+								<input
+									type="radio"
+									name="location-format-{capacity.id}"
+									value="address"
+									checked={locationFormat === 'address'}
+									class="mr-3"
+									onchange={() => {
+										locationFormat = 'address';
+									}}
+								/>
+								<span class="text-sm text-gray-600">Address</span>
+							</label>
+							<label class="inline-flex items-center">
+								<input
+									type="radio"
+									name="location-format-{capacity.id}"
+									value="coordinates"
+									checked={locationFormat === 'coordinates'}
+									class="mr-3"
+									onchange={() => {
+										locationFormat = 'coordinates';
+									}}
+								/>
+								<span class="text-sm text-gray-600">Coordinates</span>
+							</label>
+						</div>
+					</div>
+
+					<!-- Address section -->
+					{#if locationFormat === 'address'}
+						<div class="address-section mb-6">
+							<h5 class="mb-4 text-sm font-medium text-gray-600">Address</h5>
+							<div class="space-y-4">
+								<div>
+									<label class="mb-2 block text-xs text-gray-500">Street Address</label>
+									<input
+										type="text"
+										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+										bind:value={capacityStreetAddress}
+										placeholder="e.g. 123 Main St"
+										onfocus={() => handleFocus('streetAddress', capacityStreetAddress)}
+										onblur={() => handleBlurIfChanged('streetAddress', capacityStreetAddress)}
+									/>
+								</div>
+								<div class="grid grid-cols-2 gap-4">
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">City</label>
+										<input
+											type="text"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityCity}
+											placeholder="e.g. San Francisco"
+											onfocus={() => handleFocus('city', capacityCity)}
+											onblur={() => handleBlurIfChanged('city', capacityCity)}
+										/>
+									</div>
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">State/Province</label>
+										<input
+											type="text"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityStateProvince}
+											placeholder="e.g. CA"
+											onfocus={() => handleFocus('stateProvince', capacityStateProvince)}
+											onblur={() => handleBlurIfChanged('stateProvince', capacityStateProvince)}
+										/>
+									</div>
+								</div>
+								<div class="grid grid-cols-2 gap-4">
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">Postal Code</label>
+										<input
+											type="text"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityPostalCode}
+											placeholder="e.g. 94102"
+											onfocus={() => handleFocus('postalCode', capacityPostalCode)}
+											onblur={() => handleBlurIfChanged('postalCode', capacityPostalCode)}
+										/>
+									</div>
+									<div>
+										<label class="mb-2 block text-xs text-gray-500">Country</label>
+										<input
+											type="text"
+											class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+											bind:value={capacityCountry}
+											placeholder="e.g. United States"
+											onfocus={() => handleFocus('country', capacityCountry)}
+											onblur={() => handleBlurIfChanged('country', capacityCountry)}
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Geographic coordinates section -->
+					{#if locationFormat === 'coordinates'}
+						<div class="coordinates-section mb-6">
+							<h5 class="mb-4 text-sm font-medium text-gray-600">Geographic Coordinates</h5>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label class="mb-2 block text-xs text-gray-500">Latitude (-90 to 90)</label>
+									<input
+										type="number"
+										min="-90"
+										max="90"
+										step="0.000001"
+										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+										bind:value={capacityLatitude}
+										placeholder="e.g. 37.7749"
+										onfocus={() => handleFocus('latitude', capacityLatitude)}
+										onblur={() => handleBlurIfChanged('latitude', capacityLatitude)}
+									/>
+								</div>
+								<div>
+									<label class="mb-2 block text-xs text-gray-500">Longitude (-180 to 180)</label>
+									<input
+										type="number"
+										min="-180"
+										max="180"
+										step="0.000001"
+										class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+										bind:value={capacityLongitude}
+										placeholder="e.g. -122.4194"
+										onfocus={() => handleFocus('longitude', capacityLongitude)}
+										onblur={() => handleBlurIfChanged('longitude', capacityLongitude)}
+									/>
+								</div>
+							</div>
+						</div>
+					{/if}
+
+					<div class="mb-4 ml-1">
+						<label class="inline-flex items-center">
+							<input
+								type="checkbox"
+								bind:checked={capacityAllDay}
+								class="mr-3 h-4 w-4"
+								onchange={handleCapacityUpdate}
+							/>
+							<span class="text-sm text-gray-600">All day</span>
+						</label>
+					</div>
+
+					<div class="mb-4 flex flex-col gap-6">
+						<div>
+							<h5 class="mb-2 text-sm text-gray-600">Start Date</h5>
+							<input
+								type="date"
+								class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+								bind:value={capacityStartDate}
+								onfocus={() => handleFocus('startDate', capacityStartDate)}
+								onblur={() => handleBlurIfChanged('startDate', capacityStartDate)}
+							/>
+						</div>
+
+						<div>
+							<h5 class="mb-2 text-sm text-gray-600">End Date</h5>
+							<input
+								type="date"
+								class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+								bind:value={capacityEndDate}
+								onfocus={() => handleFocus('endDate', capacityEndDate)}
+								onblur={() => handleBlurIfChanged('endDate', capacityEndDate)}
+							/>
+						</div>
+					</div>
+
+					{#if !capacityAllDay}
+						<div class="mb-4 flex flex-col gap-4 md:flex-row">
+							<div class="md:w-1/2">
+								<input
+									type="time"
+									class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+									bind:value={capacityStartTime}
+									onfocus={() => handleFocus('startTime', capacityStartTime)}
+									onblur={() => handleBlurIfChanged('startTime', capacityStartTime)}
+								/>
+							</div>
+
+							<div class="flex items-center md:w-1/2">
+								<span class="mx-2 hidden text-gray-400 md:inline">to</span>
+								<input
+									type="time"
+									class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+									bind:value={capacityEndTime}
+									onfocus={() => handleFocus('endTime', capacityEndTime)}
+									onblur={() => handleBlurIfChanged('endTime', capacityEndTime)}
+								/>
+							</div>
+						</div>
+
+						<div class="mb-4">
+							<button class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none">
+								Time zone
+							</button>
+							<div class="mt-2">
+								<input
+									type="text"
+									class="capacity-input w-full rounded-md bg-gray-100 px-3 py-2"
+									bind:value={capacityTimeZone}
+									onfocus={() => handleFocus('timeZone', capacityTimeZone)}
+									onblur={() => handleBlurIfChanged('timeZone', capacityTimeZone)}
+								/>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Recurrence dropdown -->
+					<div class="mb-6">
+						<div class="relative w-full md:w-auto">
+							<select
+								class="capacity-select w-full appearance-none rounded-md bg-gray-100 px-3 py-2"
+								bind:value={capacityRecurrence}
+								onchange={handleCapacityUpdate}
+							>
+								{#each recurrenceOptions as option}
+									<option value={option}>{option}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<!-- Custom recurrence options -->
+					{#if capacityRecurrence === 'Custom...' && capacityCustomRecurrenceRepeatEvery !== undefined}
+						<div class="custom-recurrence mt-4 rounded-md bg-gray-50 p-6">
+							<div class="mb-6 flex items-center">
+								<span class="mr-3 text-sm font-medium text-gray-600">Repeat every</span>
+								<input
+									type="number"
+									min="1"
+									class="capacity-input qty w-16 text-right"
+									bind:value={capacityCustomRecurrenceRepeatEvery}
+									onfocus={() => handleFocus('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+									onblur={() => handleBlurIfChanged('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+								/>
+								<select
+									class="capacity-select ml-3 w-28"
+									bind:value={capacityCustomRecurrenceRepeatUnit}
+									onchange={handleCapacityUpdate}
+								>
+									<option value="days">days</option>
+									<option value="weeks">weeks</option>
+									<option value="months">months</option>
+									<option value="years">years</option>
+								</select>
+							</div>
+
+							<div class="ends-section ml-2">
+								<span class="mb-4 block text-sm font-medium text-gray-600">Ends</span>
+
+								<div class="radio-options space-y-4">
+									<label class="inline-flex items-center">
+										<input
+											type="radio"
+											name="ends-{capacity.id}"
+											value="never"
+											checked={capacityCustomRecurrenceEndType === 'never'}
+											onchange={() => {
+												capacityCustomRecurrenceEndType = 'never';
+												handleCapacityUpdate();
+											}}
+											class="mr-3"
+										/>
+										<span class="text-sm text-gray-600">Never</span>
+									</label>
+
+									<div class="flex items-center">
+										<label class="inline-flex items-center">
+											<input
+												type="radio"
+												name="ends-{capacity.id}"
+												value="endsOn"
+												checked={capacityCustomRecurrenceEndType === 'endsOn'}
+												onchange={() => {
+													capacityCustomRecurrenceEndType = 'endsOn';
+													capacityCustomRecurrenceEndValue = formatDateForInput(new Date());
+													handleCapacityUpdate();
+												}}
+												class="mr-3"
+											/>
+											<span class="text-sm text-gray-600">On</span>
+										</label>
+										{#if capacityCustomRecurrenceEndType === 'endsOn'}
+											<div class="ml-6">
+												<input
+													type="date"
+													class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
+													bind:value={capacityCustomRecurrenceEndValue}
+													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+												/>
+											</div>
+										{/if}
+									</div>
+
+									<div class="flex items-center">
+										<label class="inline-flex items-center">
+											<input
+												type="radio"
+												name="ends-{capacity.id}"
+												value="endsAfter"
+												checked={capacityCustomRecurrenceEndType === 'endsAfter'}
+												onchange={() => {
+													capacityCustomRecurrenceEndType = 'endsAfter';
+													capacityCustomRecurrenceEndValue = '5';
+													handleCapacityUpdate();
+												}}
+												class="mr-3"
+											/>
+											<span class="text-sm text-gray-600">After</span>
+										</label>
+										{#if capacityCustomRecurrenceEndType === 'endsAfter'}
+											<div class="ml-6 flex items-center">
+												<input
+													type="number"
+													min="1"
+													class="capacity-input qty w-16 text-right"
+													bind:value={capacityCustomRecurrenceEndValue}
+													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+												/>
+												<span class="ml-2 text-sm text-gray-600">occurrences</span>
+											</div>
+										{/if}
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+				{/if}
+			</div>
+	{/if}
+
+	<!-- Expanded settings (other options only) -->
+	{#if expanded}
+		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
+			<div class="settings-content">
 				<div class="other-options mb-4">
 					<div class="max-divisibility-section mb-6">
 						<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
@@ -1355,7 +1424,8 @@
 									class="capacity-input qty w-full text-right"
 									bind:value={capacityMaxNaturalDiv}
 									placeholder="Natural"
-									onchange={handleCapacityUpdate}
+									onfocus={() => handleFocus('maxNaturalDiv', capacityMaxNaturalDiv)}
+									onblur={() => handleBlurIfChanged('maxNaturalDiv', capacityMaxNaturalDiv)}
 								/>
 							</div>
 							<div>
@@ -1367,7 +1437,8 @@
 									class="capacity-input qty w-full text-right"
 									bind:value={capacityMaxPercentageDiv}
 									placeholder="Percentage (0-1)"
-									onchange={handleCapacityUpdate}
+									onfocus={() => handleFocus('maxPercentageDiv', capacityMaxPercentageDiv)}
+									onblur={() => handleBlurIfChanged('maxPercentageDiv', capacityMaxPercentageDiv)}
 								/>
 							</div>
 						</div>
@@ -1468,7 +1539,8 @@
 	.remove-btn,
 	.settings-btn,
 	.chat-btn,
-	.composition-btn {
+	.composition-btn,
+	.availability-btn {
 		background: none;
 		border: none;
 		color: #cbd5e1;
@@ -1529,6 +1601,12 @@
 	.composition-btn:hover {
 		background: #f0fdf4;
 		color: #059669;
+		transform: scale(1.05);
+	}
+
+	.availability-btn:hover {
+		background: #f0fdf4;
+		color: #16a34a;
 		transform: scale(1.05);
 	}
 
@@ -1663,6 +1741,19 @@
 	}
 
 	.composition-header p {
+		margin: 0;
+	}
+
+	/* Availability section styling */
+	.availability-section {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.availability-header h4 {
+		margin: 0;
+	}
+
+	.availability-header p {
 		margin: 0;
 	}
 

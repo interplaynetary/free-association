@@ -44,7 +44,7 @@ import {
 	parseContacts,
 	parseCapacityShares,
 	parseChatReadStates
-} from '$lib/validation';
+} from '$lib/validators/validation';
 import { debounce } from './subscriptions.svelte';
 import { derived } from 'svelte/store';
 

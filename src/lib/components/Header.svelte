@@ -1335,6 +1335,7 @@
 		-ms-overflow-style: none; /* IE and Edge */
 		max-width: 100%;
 		padding-bottom: 4px;
+		touch-action: pan-x; /* Allow horizontal scrolling but prevent vertical gestures */
 	}
 
 	.breadcrumbs::-webkit-scrollbar {
@@ -1350,7 +1351,7 @@
 		font-size: 1.95em;
 		display: flex;
 		align-items: center;
-		touch-action: none; /* Disable browser touch behaviors for drag and drop */
+		touch-action: manipulation; /* Disable double-tap zoom but allow other touch gestures */
 	}
 
 	.breadcrumb-item:hover {

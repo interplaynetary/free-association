@@ -122,7 +122,7 @@
 		const currentItem = items.find((item: { id: string; metadata?: any }) => item.id === itemId);
 		if (!currentItem) return false;
 
-		// For more intelligent matching, check if this person is represented 
+		// For more intelligent matching, check if this person is represented
 		// by a different ID in the contributors list
 		if (currentItem.metadata?.isContact) {
 			// This is a contact item - check if its public key is in the contributors list
@@ -146,20 +146,19 @@
 		return false;
 	}
 
-	// Update the filter when the prop changes
+	// Update the filter when the prop changes, but only after initial setup
 	$effect(() => {
-		searchFilter = filterText;
+		// Only sync with prop after the dropdown has been initialized
+		// This prevents restoring old search values when opening fresh
+		if (initialized) {
+			searchFilter = filterText;
+		}
 	});
 
 	// Helper function to determine if an entry should show the "add to contacts" button
 	function shouldShowAddButton(item: { id: string; name: string; metadata?: any }): boolean {
-		// Only show for non-contact entries that have meaningful Gun aliases
-		return (
-			!item.metadata?.isContact &&
-			item.metadata?.gunAlias &&
-			item.metadata.gunAlias !== item.id && // Has a real alias, not just the ID
-			item.metadata.gunAlias.length > 3 // Meaningful alias length
-		);
+		// Show for all non-contact entries - users should be able to add anyone to contacts
+		return !item.metadata?.isContact;
 	}
 
 	// Helper function to determine if an entry should show the "edit contact" button
@@ -179,6 +178,7 @@
 		showCreateForm = false;
 		resetCreateForm();
 		handleCancelNaming();
+		initialized = false; // Reset so dropdown initializes fresh next time
 		close();
 	}
 
@@ -412,6 +412,9 @@
 	// Initialize the component when shown
 	function initialize() {
 		if (!initialized && show) {
+			// Clear search filter to start fresh
+			searchFilter = '';
+
 			// Focus search input
 			if (searchInput) {
 				setTimeout(() => searchInput?.focus(), 50);
@@ -468,8 +471,6 @@
 		}
 	});
 
-
-
 	// Effect to adjust position when position or show changes
 	$effect(() => {
 		if (show && position && dropdownContainer && browser) {
@@ -482,20 +483,22 @@
 		if (!browser) return;
 
 		if (show) {
-			const handleClickOutside = (event: MouseEvent) => {
+			const handleClickOutside = (event: MouseEvent | TouchEvent) => {
 				if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
 					handleClose();
 				}
 			};
 
-			// Add listener after a small delay to prevent immediate closure
+			// Add listeners after a small delay to prevent immediate closure
 			const timeoutId = setTimeout(() => {
 				document.addEventListener('click', handleClickOutside);
+				document.addEventListener('touchstart', handleClickOutside);
 			}, 100);
 
 			return () => {
 				clearTimeout(timeoutId);
 				document.removeEventListener('click', handleClickOutside);
+				document.removeEventListener('touchstart', handleClickOutside);
 			};
 		}
 	});
@@ -626,7 +629,9 @@
 								</div>
 								<div class="item-meta">
 									{#if editingMode === 'create'}
-										@{item.metadata?.gunAlias}
+										{item.metadata?.gunAlias
+											? `@${item.metadata.gunAlias}`
+											: `Public key: ${item.id.substring(0, 12)}...`}
 									{:else}
 										Contact: {item.metadata?.contactName || 'Editing contact name'}
 									{/if}

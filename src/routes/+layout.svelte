@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
-	import SimpleNotificationTest from '$lib/components/SimpleNotificationTest.svelte';
+	import SimpleNotificationTest from '$lib/components/examples/SimpleNotificationTest.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';

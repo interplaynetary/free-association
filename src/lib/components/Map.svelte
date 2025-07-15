@@ -62,17 +62,17 @@
 	// Async function to load markers
 	async function loadCapacityMarkers(capacities: typeof $userCapacitiesWithShares) {
 		if (!capacities) {
-			console.log('[LocateUser] No userCapacitiesWithShares available');
+			console.log('[Map] No userCapacitiesWithShares available');
 			capacitiesWithCoords = [];
 			return;
 		}
 
-		console.log('[LocateUser] userCapacitiesWithShares:', capacities);
-		console.log('[LocateUser] Total capacities:', Object.keys(capacities).length);
+		console.log('[Map] userCapacitiesWithShares:', capacities);
+		console.log('[Map] Total capacities:', Object.keys(capacities).length);
 
 		// Check each capacity for coordinates and addresses
 		Object.entries(capacities).forEach(([id, capacity]) => {
-			console.log(`[LocateUser] Capacity ${id}:`, {
+			console.log(`[Map] Capacity ${id}:`, {
 				name: capacity.name,
 				location_type: capacity.location_type,
 				latitude: capacity.latitude,
@@ -93,11 +93,11 @@
 			const markers = await getAllCapacityMarkers(capacities);
 			capacitiesWithCoords = markers;
 			console.log(
-				`[LocateUser] Found ${markers.length} total markers (coordinate + geocoded):`,
+				`[Map] Found ${markers.length} total markers (coordinate + geocoded):`,
 				markers
 			);
 		} catch (error) {
-			console.error('[LocateUser] Error getting capacity markers:', error);
+			console.error('[Map] Error getting capacity markers:', error);
 			// Fallback to just coordinate-based markers
 			capacitiesWithCoords = getCapacitiesWithCoordinates(capacities);
 		} finally {
@@ -136,7 +136,7 @@
 
 				// Try to reverse geocode to get address (optional, don't fail if it doesn't work)
 				try {
-					console.log(`[LocateUser] Reverse geocoding coordinates: ${lnglat.lat}, ${lnglat.lng}`);
+					console.log(`[Map] Reverse geocoding coordinates: ${lnglat.lat}, ${lnglat.lng}`);
 					const reverseResult = await reverseGeocode(lnglat.lat, lnglat.lng);
 					const addressComponents = parseAddressComponents(reverseResult.address);
 
@@ -146,11 +146,11 @@
 						...addressComponents
 					};
 
-					console.log(`[LocateUser] Reverse geocoded address:`, addressComponents);
+					console.log(`[Map] Reverse geocoded address:`, addressComponents);
 				} catch (geocodeError) {
 					// Don't fail the coordinate update if geocoding fails
 					console.warn(
-						'[LocateUser] Reverse geocoding failed, coordinates updated without address:',
+						'[Map] Reverse geocoding failed, coordinates updated without address:',
 						geocodeError
 					);
 				}
@@ -158,13 +158,13 @@
 				// Set the store with the new value
 				userCapacities.set(newCapacities);
 
-				console.log(`[LocateUser] Updated capacity ${id} coordinates:`, lnglat);
+				console.log(`[Map] Updated capacity ${id} coordinates:`, lnglat);
 				globalState.showToast(`Updated location for ${newCapacities[id].name}`, 'success');
 		} else {
-				console.warn(`[LocateUser] Capacity ${id} not found in user capacities`);
+				console.warn(`[Map] Capacity ${id} not found in user capacities`);
 			}
 		} catch (error) {
-			console.error('[LocateUser] Error updating capacity coordinates:', error);
+			console.error('[Map] Error updating capacity coordinates:', error);
 			globalState.showToast('Error updating location', 'error');
 		}
 	}
@@ -175,12 +175,12 @@
 	}
 
 	function handleTrackUserLocationStart() {
-		console.log('[LocateUser] Location tracking started');
+		console.log('[Map] Location tracking started');
 		setLocationTracking(true);
 	}
 
 	function handleTrackUserLocationEnd() {
-		console.log('[LocateUser] Location tracking ended');
+		console.log('[Map] Location tracking ended');
 		setLocationTracking(false);
 	}
 

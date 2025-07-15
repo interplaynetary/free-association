@@ -321,6 +321,10 @@
 		justify-content: center;
 		overflow: hidden;
 		min-width: 1px;
+	}
+
+	/* Apply minimum height only for horizontal bars */
+	.stacked-bar:not(.vertical) .bar-segment {
 		min-height: 25px;
 	}
 

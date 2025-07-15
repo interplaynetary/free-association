@@ -44,6 +44,11 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				Object.values($userContacts).forEach((contact) => {
 					if (excludeIds.includes(contact.contact_id)) return;
 
+					// Proactively load alias for contact if they have a public key
+					if (contact.public_key && !$userAliasesCache[contact.public_key]) {
+						getUserAlias(contact.public_key).catch(console.error);
+					}
+
 					items.push({
 						id: contact.contact_id,
 						name: contact.name,

@@ -44,6 +44,21 @@
 
 	// Reactive state for desired quantity input
 	let desiredQuantityInput = $state(0);
+	
+	// Track original values for change detection
+	let originalValues = $state<Record<string, any>>({});
+
+	// Helper to track original value on focus
+	function handleFocus(fieldName: string, currentValue: any) {
+		originalValues[fieldName] = currentValue;
+	}
+
+	// Helper to save only if value changed on blur
+	function handleBlurIfChanged(fieldName: string, currentValue: any) {
+		if (originalValues[fieldName] !== currentValue) {
+			handleQuantityChange();
+		}
+	}
 
 	// Determine provider ID using the same logic as compose.svelte.ts
 	let providerId = $derived(() => {
@@ -367,7 +382,8 @@
 						min="0"
 						step="0.1"
 						bind:value={desiredQuantityInput}
-						onchange={handleQuantityChange}
+						onfocus={() => handleFocus('quantity', desiredQuantityInput)}
+						onblur={() => handleBlurIfChanged('quantity', desiredQuantityInput)}
 						onclick={(e) => e.stopPropagation()}
 						placeholder="0"
 					/>
