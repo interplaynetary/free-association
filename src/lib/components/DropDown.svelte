@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
-	import { resolveToPublicKey } from '$lib/state/users.svelte';
+	import {
+		resolveToPublicKey,
+		userAliasesCache,
+		updateContact as updateContactInStore
+	} from '$lib/state/users.svelte';
 	import { browser } from '$app/environment';
 	import type { Readable } from 'svelte/store';
 
@@ -53,8 +57,7 @@
 	// Contact creation state
 	let showCreateForm = $state(false);
 	let createForm = $state({
-		name: '',
-		publicKey: ''
+		name: ''
 	});
 	let isCreating = $state(false);
 
@@ -64,6 +67,30 @@
 	let editingEntryInput = $state<HTMLInputElement | null>(null);
 	let isCreatingFromEntry = $state(false);
 	let editingMode = $state<'create' | 'edit'>('create'); // Track whether we're creating or editing
+
+	// Alias selection state for contact editing
+	let editingContactAlias = $state('');
+	let editingContactAliasInput = $state<HTMLInputElement | null>(null);
+	let showAliasDropdown = $state(false);
+	let selectedAliasIndex = $state(0);
+
+	// Create a filtered aliases store that reactively filters available aliases
+	let filteredAliases = $derived(() => {
+		if (!editingContactAlias.trim() || editingMode !== 'edit') {
+			return [];
+		}
+
+		const aliases = $userAliasesCache || {};
+		const searchTerm = editingContactAlias.toLowerCase();
+
+		return Object.entries(aliases)
+			.filter(
+				([pubkey, alias]) =>
+					alias.toLowerCase().includes(searchTerm) && alias.toLowerCase() !== searchTerm // Don't show exact matches
+			)
+			.map(([pubkey, alias]) => ({ pubkey, alias }))
+			.slice(0, 10); // Limit to 10 results
+	});
 
 	// Get filtered items based on search
 	let filteredItems = $derived(() => {
@@ -221,8 +248,7 @@
 
 	function resetCreateForm() {
 		createForm = {
-			name: '',
-			publicKey: ''
+			name: ''
 		};
 		isCreating = false;
 	}
@@ -236,8 +262,7 @@
 
 		try {
 			await createContact({
-				name: createForm.name.trim(),
-				publicKey: createForm.publicKey.trim() || undefined
+				name: createForm.name.trim()
 			});
 
 			// Reset and close
@@ -294,6 +319,11 @@
 		editingEntryName = currentName; // Pre-fill with current name
 		editingMode = 'edit';
 
+		// Initialize alias editing state
+		editingContactAlias = '';
+		showAliasDropdown = false;
+		selectedAliasIndex = 0;
+
 		// Focus the input after a short delay
 		setTimeout(() => {
 			editingEntryInput?.focus();
@@ -306,6 +336,11 @@
 		editingEntryName = '';
 		isCreatingFromEntry = false;
 		editingMode = 'create';
+
+		// Reset alias editing state
+		editingContactAlias = '';
+		showAliasDropdown = false;
+		selectedAliasIndex = 0;
 	}
 
 	function handleCancelNamingWithEvent(event: Event) {
@@ -336,7 +371,12 @@
 					publicKey: entryId // The entryId is the public key for non-contact entries
 				});
 			} else {
-				// Editing an existing contact
+				// Editing an existing contact - update name in store and notify parent
+				updateContactInStore(entryId, {
+					name: entryName.trim()
+				});
+
+				// Also notify parent component through prop
 				await updateContact({
 					contactId: entryId,
 					name: entryName.trim()
@@ -364,6 +404,55 @@
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			handleCancelNaming();
+		}
+	}
+
+	// Alias selection handlers
+	function handleAliasInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		editingContactAlias = target.value;
+		showAliasDropdown = target.value.trim().length > 0;
+		selectedAliasIndex = 0;
+	}
+
+	function handleSelectAlias(alias: string, pubkey: string) {
+		editingContactAlias = alias;
+		showAliasDropdown = false;
+		selectedAliasIndex = 0;
+
+		// Update the contact with the selected alias's pubkey
+		if (editingEntryId) {
+			updateContactInStore(editingEntryId, {
+				public_key: pubkey,
+				name: editingEntryName
+			});
+
+			// Also notify parent component through prop
+			updateContact({
+				contactId: editingEntryId,
+				name: editingEntryName
+			});
+		}
+	}
+
+	function handleAliasKeydown(event: KeyboardEvent) {
+		const aliases = filteredAliases();
+
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			selectedAliasIndex = Math.min(selectedAliasIndex + 1, aliases.length - 1);
+		} else if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			selectedAliasIndex = Math.max(selectedAliasIndex - 1, 0);
+		} else if (event.key === 'Enter' && aliases.length > 0) {
+			event.preventDefault();
+			const selectedAlias = aliases[selectedAliasIndex];
+			if (selectedAlias) {
+				handleSelectAlias(selectedAlias.alias, selectedAlias.pubkey);
+			}
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			showAliasDropdown = false;
 		}
 	}
 
@@ -478,7 +567,7 @@
 		}
 	});
 
-	// Effect to manage click outside listener
+	// Effect to manage click outside and keyboard listeners
 	$effect(() => {
 		if (!browser) return;
 
@@ -489,16 +578,24 @@
 				}
 			};
 
+			const handleKeydown = (event: KeyboardEvent) => {
+				if (event.key === 'Escape') {
+					handleClose();
+				}
+			};
+
 			// Add listeners after a small delay to prevent immediate closure
 			const timeoutId = setTimeout(() => {
 				document.addEventListener('click', handleClickOutside);
 				document.addEventListener('touchstart', handleClickOutside);
+				document.addEventListener('keydown', handleKeydown);
 			}, 100);
 
 			return () => {
 				clearTimeout(timeoutId);
 				document.removeEventListener('click', handleClickOutside);
 				document.removeEventListener('touchstart', handleClickOutside);
+				document.removeEventListener('keydown', handleKeydown);
 			};
 		}
 	});
@@ -546,14 +643,6 @@
 						onkeydown={handleCreateFormKeydown}
 					/>
 				</div>
-				<div class="form-field">
-					<input
-						type="text"
-						placeholder="Public key (optional)"
-						bind:value={createForm.publicKey}
-						onkeydown={handleCreateFormKeydown}
-					/>
-				</div>
 				<div class="form-actions">
 					<button class="cancel-button" onclick={handleHideCreateForm} disabled={isCreating}>
 						Cancel
@@ -590,17 +679,53 @@
 							<!-- Editing mode for this entry -->
 							<div class="item-content editing">
 								<div class="editing-form">
-									<input
-										type="text"
-										placeholder={editingMode === 'create'
-											? 'Enter contact name'
-											: 'Edit contact name'}
-										bind:this={editingEntryInput}
-										bind:value={editingEntryName}
-										onkeydown={(e) => handleEntryKeydown(e, item.id)}
-										onclick={(e) => e.stopPropagation()}
-										disabled={isCreatingFromEntry}
-									/>
+									<div class="input-row">
+										<input
+											type="text"
+											placeholder={editingMode === 'create'
+												? 'Enter contact name'
+												: 'Edit contact name'}
+											bind:this={editingEntryInput}
+											bind:value={editingEntryName}
+											onkeydown={(e) => handleEntryKeydown(e, item.id)}
+											onclick={(e) => e.stopPropagation()}
+											disabled={isCreatingFromEntry}
+										/>
+
+										{#if editingMode === 'edit'}
+											<div class="alias-input-container">
+												<input
+													type="text"
+													placeholder="Link to alias (optional)"
+													bind:this={editingContactAliasInput}
+													bind:value={editingContactAlias}
+													oninput={handleAliasInput}
+													onkeydown={handleAliasKeydown}
+													onclick={(e) => e.stopPropagation()}
+													disabled={isCreatingFromEntry}
+												/>
+
+												{#if showAliasDropdown && filteredAliases().length > 0}
+													<div class="alias-dropdown">
+														{#each filteredAliases() as aliasItem, index}
+															<div
+																class="alias-item"
+																class:selected={index === selectedAliasIndex}
+																onclick={() => handleSelectAlias(aliasItem.alias, aliasItem.pubkey)}
+															>
+																<span class="alias-name"
+																	>@{aliasItem.alias.length > 10
+																		? aliasItem.alias.substring(0, 10) + '...'
+																		: aliasItem.alias}</span
+																>
+															</div>
+														{/each}
+													</div>
+												{/if}
+											</div>
+										{/if}
+									</div>
+
 									<div class="editing-actions">
 										<button
 											class="save-entry-button"
@@ -1039,24 +1164,92 @@
 
 	.editing-form {
 		display: flex;
+		flex-direction: column;
 		gap: 8px;
-		align-items: center;
 		margin-bottom: 4px;
 	}
 
-	.editing-form input {
+	.input-row {
+		display: flex;
+		gap: 8px;
+		align-items: flex-start;
+	}
+
+	.input-row input {
 		flex: 1;
 		padding: 6px 10px;
 		border: 1px solid #ddd;
 		border-radius: 4px;
-		font-size: 13px;
+		font-size: 12px;
+		outline: none;
+		transition: border-color 0.2s;
+		min-width: 0; /* Allows flex item to shrink below content size */
+	}
+
+	.input-row input:focus {
+		border-color: #2196f3;
+		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+	}
+
+	.alias-input-container {
+		position: relative;
+		flex: 1;
+		min-width: 0; /* Allows flex item to shrink below content size */
+	}
+
+	.alias-input-container input {
+		width: 100%;
+		padding: 6px 10px;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 12px;
 		outline: none;
 		transition: border-color 0.2s;
 	}
 
-	.editing-form input:focus {
-		border-color: #2196f3;
-		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+	.alias-input-container input:focus {
+		border-color: #4caf50;
+		box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+	}
+
+	.alias-dropdown {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		background: white;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		max-height: 160px;
+		overflow-y: auto;
+		z-index: 1000;
+		margin-top: 2px;
+		font-size: 12px;
+	}
+
+	.alias-item {
+		padding: 6px 8px;
+		cursor: pointer;
+		border-bottom: 1px solid #f0f0f0;
+		transition: background-color 0.2s;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.alias-item:hover,
+	.alias-item.selected {
+		background-color: #f5f7fa;
+	}
+
+	.alias-item:last-child {
+		border-bottom: none;
+	}
+
+	.alias-name {
+		font-weight: 500;
+		color: #4caf50;
 	}
 
 	.editing-actions {

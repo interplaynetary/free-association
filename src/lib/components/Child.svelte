@@ -297,20 +297,26 @@
 		globalState.exitEditMode();
 	}
 
-	// Handle click outside to finish editing
-	function handleClickOutside(event: MouseEvent) {
+	// Handle click/touch outside to finish editing
+	function handleOutsideInteraction(event: MouseEvent | TouchEvent) {
 		// Only if we're editing this specific node
 		if (isEditing && globalState.editingNodeId === node.id) {
-			// For desktop view, check if the click is outside the input field
+			// Check if the interaction is outside the input field
 			if (editInput && !editInput.contains(event.target as Node)) {
-				// Don't finish editing if click was on a scrollbar or outside viewport
-				const clickedElement = event.target as Element;
-				const isScrollbarClick =
-					event.offsetX > clickedElement.clientWidth || event.offsetY > clickedElement.clientHeight;
+				// For mouse events, check for scrollbar clicks
+				if (event.type === 'mousedown') {
+					const mouseEvent = event as MouseEvent;
+					const clickedElement = mouseEvent.target as Element;
+					const isScrollbarClick =
+						mouseEvent.offsetX > clickedElement.clientWidth ||
+						mouseEvent.offsetY > clickedElement.clientHeight;
 
-				if (!isScrollbarClick) {
-					finishEditing();
+					if (isScrollbarClick) {
+						return;
+					}
 				}
+
+				finishEditing();
 			}
 		}
 	}
@@ -320,16 +326,24 @@
 		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
 
 		if (isEditing) {
-			// Add global event listener for clicks outside
-			document.addEventListener('mousedown', handleClickOutside);
+			// Add global event listeners for both mouse and touch interactions outside
+			document.addEventListener('mousedown', handleOutsideInteraction);
+			document.addEventListener('touchstart', handleOutsideInteraction);
 
-			// Focus the input when it's available (for desktop view)
+			// Focus the input when it's available (works for both desktop and mobile)
 			if (editInput) {
 				console.log('[DEBUG CHILD] editInput exists, focusing immediately');
 				setTimeout(() => {
 					console.log('[DEBUG CHILD] Attempting to focus input, editInput:', editInput);
 					editInput?.focus();
-					editInput?.select();
+					// Select text only if not on mobile to avoid virtual keyboard issues
+					if (
+						!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+							navigator.userAgent
+						)
+					) {
+						editInput?.select();
+					}
 					console.log(
 						'[DEBUG CHILD] Focus/select called, document.activeElement:',
 						document.activeElement
@@ -343,7 +357,14 @@
 					if (editInput) {
 						console.log('[DEBUG CHILD] Retry focusing input');
 						editInput.focus();
-						editInput.select();
+						// Select text only if not on mobile to avoid virtual keyboard issues
+						if (
+							!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+								navigator.userAgent
+							)
+						) {
+							editInput.select();
+						}
 						console.log(
 							'[DEBUG CHILD] Retry focus/select called, document.activeElement:',
 							document.activeElement
@@ -354,13 +375,15 @@
 				}, 100);
 			}
 		} else {
-			// Remove the event listener when not editing
-			document.removeEventListener('mousedown', handleClickOutside);
+			// Remove the event listeners when not editing
+			document.removeEventListener('mousedown', handleOutsideInteraction);
+			document.removeEventListener('touchstart', handleOutsideInteraction);
 		}
 
 		// Clean up function
 		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('mousedown', handleOutsideInteraction);
+			document.removeEventListener('touchstart', handleOutsideInteraction);
 		};
 	});
 
@@ -429,6 +452,9 @@
           width: 100%;
           max-width: {Math.min(200, nodeSizeRatio * 3)}px;
         "
+					autocomplete="off"
+					autocorrect="off"
+					spellcheck="false"
 				/>
 			{:else}
 				<div
@@ -614,6 +640,12 @@
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 		color: #333;
 		outline: none;
+		/* Ensure proper touch interaction */
+		touch-action: manipulation;
+		user-select: text;
+		-webkit-user-select: text;
+		-moz-user-select: text;
+		-ms-user-select: text;
 	}
 
 	.node-edit-input:focus {
