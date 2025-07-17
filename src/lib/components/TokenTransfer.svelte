@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { walletState, sendTransaction } from '$lib/state/wallet.svelte';
+	import { walletState, sendTransaction, getTokenDecimals, getTokenSymbol } from '$lib/state/wallet.svelte';
 	import { getContactByWalletAddress } from '$lib/state/users.svelte';
 	import { toast } from 'svelte-french-toast';
 	
@@ -11,6 +11,7 @@
 	let amount: string = '';
 	let isTransferring = false;
 	let transferError: string | null = null;
+	let tokenSymbol: string = 'DOT'; // Default, will be updated when wallet connects
 
 	// Validation
 	$: isValidAmount = amount && parseFloat(amount) > 0;
@@ -25,6 +26,15 @@
 	$: recipientContact = recipientAddress ? getContactByWalletAddress(recipientAddress) : null;
 	$: displayRecipientName = recipientName || recipientContact?.name || truncateAddress(recipientAddress);
 
+	// Update token symbol when wallet connects
+	$: if ($walletState.isConnected && $walletState.api) {
+		getTokenSymbol().then(symbol => {
+			tokenSymbol = symbol;
+		}).catch(err => {
+			console.error('Failed to get token symbol:', err);
+		});
+	}
+
 	async function handleTransfer() {
 		if (!canTransfer) return;
 
@@ -32,8 +42,11 @@
 		transferError = null;
 
 		try {
+			// Get token decimals from chain metadata
+			const decimals = await getTokenDecimals();
+			
 			// Convert amount to planck (smallest unit)
-			const amountInPlanck = parseFloat(amount) * Math.pow(10, 10); // DOT has 10 decimal places
+			const amountInPlanck = parseFloat(amount) * Math.pow(10, decimals);
 			
 			const txHash = await sendTransaction(recipientAddress, amountInPlanck.toString());
 			
@@ -90,7 +103,7 @@
 				<div class="ml-3">
 					<h3 class="text-sm font-medium text-amber-800">Wallet Required</h3>
 					<p class="text-sm text-amber-700 mt-1">
-						Please connect your Polkadot wallet to send tokens.
+						Please connect your Polkadot wallet to send {tokenSymbol} tokens.
 					</p>
 				</div>
 			</div>
@@ -101,7 +114,7 @@
 				<svg class="w-5 h-5 text-purple-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
 					<path d="M8 5a1 1 0 100 2h5.586L2 18.586A1 1 0 003.414 20L15 8.414V14a1 1 0 102 0V6a1 1 0 00-1-1H8z"/>
 				</svg>
-				<h3 class="text-lg font-semibold text-gray-900">Send DOT Tokens</h3>
+				<h3 class="text-lg font-semibold text-gray-900">Send {tokenSymbol} Tokens</h3>
 			</div>
 
 			<form on:submit|preventDefault={handleTransfer} class="space-y-4">
@@ -138,7 +151,7 @@
 
 				<div>
 					<label for="amount" class="block text-sm font-medium text-gray-700 mb-1">
-						Amount (DOT)
+						Amount ({tokenSymbol})
 					</label>
 					<div class="relative">
 						<input
@@ -151,7 +164,7 @@
 							required
 						/>
 						<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-							<span class="text-gray-500 text-sm">DOT</span>
+							<span class="text-gray-500 text-sm">{tokenSymbol}</span>
 						</div>
 					</div>
 					{#if $walletState.balance}

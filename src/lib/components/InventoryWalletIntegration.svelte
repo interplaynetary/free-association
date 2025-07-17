@@ -10,6 +10,7 @@
 	let selectedRecipient: string | null = null;
 	let showTransferModal = false;
 	let providerNames: Record<string, string> = {};
+	let tokenSymbol: string = 'DOT'; // Default token symbol
 	let providersWithWallets: Array<{
 		providerId: string;
 		name: string;
@@ -103,7 +104,7 @@
 	<div class="mb-6">
 		<h3 class="text-lg font-semibold text-gray-900 mb-2">💰 Send Tokens to Capacity Providers</h3>
 		<p class="text-gray-600 text-sm">
-			Send DOT tokens to people who provide capacities you have shares in.
+			Send {tokenSymbol} tokens to people who provide capacities you have shares in.
 		</p>
 	</div>
 
