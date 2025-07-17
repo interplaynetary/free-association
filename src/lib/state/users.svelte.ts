@@ -201,6 +201,51 @@ export function isWalletAddressInUse(wallet_address: string, excludeContactId?: 
 	);
 }
 
+/**
+ * Save user's own wallet address
+ */
+export async function saveUserWalletAddress(userPub: string, walletAddress: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (!userPub || !walletAddress) {
+			reject(new Error('User public key and wallet address are required'));
+			return;
+		}
+
+		// Save to Gun under user's space
+		gun
+			.user(userPub)
+			.get('profile')
+			.get('wallet_address')
+			.put(walletAddress, (ack) => {
+				if (ack.err) {
+					reject(new Error('Failed to save wallet address'));
+				} else {
+					resolve();
+				}
+			});
+	});
+}
+
+/**
+ * Get user's own wallet address
+ */
+export async function getUserWalletAddress(userPub: string): Promise<string | null> {
+	return new Promise((resolve) => {
+		if (!userPub) {
+			resolve(null);
+			return;
+		}
+
+		gun
+			.user(userPub)
+			.get('profile')
+			.get('wallet_address')
+			.once((data) => {
+				resolve(data || null);
+			});
+	});
+}
+
 // ================================
 // USER IDENTIFICATION FUNCTIONS
 // ================================

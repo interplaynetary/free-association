@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
-	import { userContacts, getUserName } from '$lib/state/users.svelte';
+	import { userContacts, getUserName, getUserWalletAddress } from '$lib/state/users.svelte';
 	import { walletState } from '$lib/state/wallet.svelte';
 	import WalletConnection from './WalletConnection.svelte';
 	import TokenTransfer from './TokenTransfer.svelte';
@@ -226,6 +226,6 @@
 
 <style>
 	.inventory-wallet-integration {
-		@apply max-w-2xl;
+		max-width: 42rem;
 	}
 </style>

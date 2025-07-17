@@ -2,7 +2,6 @@
 	import { walletState, sendTransaction } from '$lib/state/wallet.svelte';
 	import { getContactByWalletAddress } from '$lib/state/users.svelte';
 	import { toast } from 'svelte-french-toast';
-	import { formatBalance } from '@polkadot/util';
 	
 	export let recipientAddress: string = '';
 	export let recipientName: string = '';
@@ -214,6 +213,7 @@
 
 <style>
 	.token-transfer {
-		@apply max-w-md mx-auto;
+		max-width: 28rem;
+		margin: 0 auto;
 	}
 </style>

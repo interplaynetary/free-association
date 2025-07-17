@@ -228,6 +228,7 @@
 
 <style>
 	.wallet-connection {
-		@apply max-w-md mx-auto;
+		max-width: 28rem;
+		margin: 0 auto;
 	}
 </style>

@@ -56,7 +56,14 @@ export default defineConfig({
 			'gun/lib/radisk',
 			'gun/lib/store',
 			'gun/lib/rindexed',
-			'gun/lib/yson.js'
+			'gun/lib/yson.js',
+			'@polkadot/api',
+			'@polkadot/extension-dapp',
+			'@polkadot/extension-inject',
+			'@polkadot/util',
+			'@polkadot/util-crypto',
+			'@polkadot/keyring',
+			'@polkadot/types'
 		]
 	}
 });

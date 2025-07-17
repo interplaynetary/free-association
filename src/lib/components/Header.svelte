@@ -19,6 +19,7 @@
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
+	import { saveUserWalletAddress, getUserWalletAddress } from '$lib/state/users.svelte';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
@@ -159,6 +160,12 @@
 	let showCurrentPassword = $state(false); // For password change current password
 	let showNewPassword = $state(false); // For password change new password
 	let showConfirmNewPassword = $state(false); // For password change confirm new password
+	
+	// Wallet address state
+	let userWalletAddress = $state('');
+	let isEditingWallet = $state(false);
+	let walletAddressInput = $state('');
+	let isSavingWallet = $state(false);
 
 	// Initialize error state with URL error message if present
 	$effect(() => {
@@ -178,7 +185,16 @@
 	let breadcrumbsRef = $state<HTMLElement | null>(null);
 
 	// Check auth status and show login automatically
-	onMount(() => {
+	onMount(async () => {
+		// Load user's wallet address if logged in
+		if (pub) {
+			const address = await getUserWalletAddress(pub);
+			if (address) {
+				userWalletAddress = address;
+				walletAddressInput = address;
+			}
+		}
+		
 		// Add click outside handler
 		function handleClickOutside(event: MouseEvent) {
 			if (
@@ -762,6 +778,32 @@
 			isChangingPassword = false;
 		}
 	}
+	
+	// Handle wallet address save
+	async function handleSaveWalletAddress() {
+		if (!walletAddressInput.trim()) {
+			globalState.showToast('Please enter a wallet address', 'error');
+			return;
+		}
+
+		if (!pub) {
+			globalState.showToast('You must be logged in to save wallet address', 'error');
+			return;
+		}
+
+		isSavingWallet = true;
+		try {
+			await saveUserWalletAddress(pub, walletAddressInput.trim());
+			userWalletAddress = walletAddressInput.trim();
+			isEditingWallet = false;
+			globalState.showToast('Wallet address saved successfully', 'success');
+		} catch (error) {
+			console.error('Failed to save wallet address:', error);
+			globalState.showToast('Failed to save wallet address', 'error');
+		} finally {
+			isSavingWallet = false;
+		}
+	}
 </script>
 
 <div class="header" bind:this={headerRef}>
@@ -1023,6 +1065,77 @@
 									</button>
 								</div>
 							</form>
+						</div>
+					{/if}
+
+					{#if !showPasswordChange}
+						<div class="wallet-section">
+							<h4>💰 Polkadot Wallet Address</h4>
+							{#if isEditingWallet}
+								<div class="wallet-edit">
+									<input
+										type="text"
+										bind:value={walletAddressInput}
+										placeholder="Enter your Polkadot address"
+										class="wallet-input"
+										disabled={isSavingWallet}
+									/>
+									<div class="wallet-actions">
+										<button
+											class="save-wallet-btn"
+											onclick={handleSaveWalletAddress}
+											disabled={isSavingWallet}
+										>
+											{isSavingWallet ? 'Saving...' : 'Save'}
+										</button>
+										<button
+											class="cancel-btn"
+											onclick={() => {
+												isEditingWallet = false;
+												walletAddressInput = userWalletAddress;
+											}}
+											disabled={isSavingWallet}
+										>
+											Cancel
+										</button>
+									</div>
+								</div>
+							{:else if userWalletAddress}
+								<div class="wallet-display">
+									<p class="wallet-address" title={userWalletAddress}>
+										{truncateText(userWalletAddress, 20)}
+									</p>
+									<div class="wallet-buttons">
+										<button
+											class="copy-wallet-btn"
+											title="Copy wallet address"
+											onclick={() => copyToClipboard(userWalletAddress)}
+										>
+											<span>📋</span>
+										</button>
+										<button
+											class="edit-wallet-btn"
+											title="Edit wallet address"
+											onclick={() => {
+												isEditingWallet = true;
+												walletAddressInput = userWalletAddress;
+											}}
+										>
+											<span>✏️</span>
+										</button>
+									</div>
+								</div>
+							{:else}
+								<button
+									class="add-wallet-btn"
+									onclick={() => {
+										isEditingWallet = true;
+										walletAddressInput = '';
+									}}
+								>
+									Add Wallet Address
+								</button>
+							{/if}
 						</div>
 					{/if}
 
@@ -2138,5 +2251,120 @@
 	.cancel-password-btn:disabled {
 		color: #999;
 		cursor: not-allowed;
+	}
+
+	/* Wallet section styles */
+	.wallet-section {
+		margin: 16px 0;
+		padding: 16px;
+		background: #f9f9f9;
+		border-radius: 8px;
+		border: 1px solid #e0e0e0;
+	}
+
+	.wallet-section h4 {
+		margin: 0 0 12px 0;
+		color: #333;
+		font-size: 1em;
+	}
+
+	.wallet-edit {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.wallet-input {
+		width: 100%;
+		padding: 8px 12px;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 0.9em;
+		font-family: monospace;
+	}
+
+	.wallet-input:focus {
+		outline: none;
+		border-color: #2196f3;
+	}
+
+	.wallet-actions {
+		display: flex;
+		gap: 8px;
+		justify-content: flex-end;
+	}
+
+	.save-wallet-btn {
+		background: #4caf50;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 6px 16px;
+		font-size: 0.9em;
+		cursor: pointer;
+	}
+
+	.save-wallet-btn:hover:not(:disabled) {
+		background: #388e3c;
+	}
+
+	.save-wallet-btn:disabled {
+		background: #cccccc;
+		cursor: not-allowed;
+	}
+
+	.wallet-display {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+
+	.wallet-address {
+		margin: 0;
+		font-family: monospace;
+		font-size: 0.85em;
+		color: #555;
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.wallet-buttons {
+		display: flex;
+		gap: 4px;
+	}
+
+	.copy-wallet-btn,
+	.edit-wallet-btn {
+		background: none;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 4px 8px;
+		cursor: pointer;
+		font-size: 0.9em;
+		transition: all 0.2s ease;
+	}
+
+	.copy-wallet-btn:hover,
+	.edit-wallet-btn:hover {
+		background: #f0f0f0;
+		border-color: #999;
+	}
+
+	.add-wallet-btn {
+		background: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 16px;
+		font-size: 0.9em;
+		cursor: pointer;
+		width: 100%;
+	}
+
+	.add-wallet-btn:hover {
+		background: #1976d2;
 	}
 </style>
