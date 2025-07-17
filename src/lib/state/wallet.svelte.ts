@@ -157,7 +157,9 @@ async function fetchBalance(address: string): Promise<void> {
 		}
 
 		const { data: balance } = await state.api.query.system.account(address);
-		const formattedBalance = formatBalance(balance.free, { withUnit: 'DOT' });
+		const decimals = await getTokenDecimals();
+		const symbol = await getTokenSymbol();
+		const formattedBalance = formatBalance(balance.free, { withUnit: symbol, decimals });
 
 		walletState.update(state => ({
 			...state,
@@ -170,6 +172,28 @@ async function fetchBalance(address: string): Promise<void> {
 			balance: null
 		}));
 	}
+}
+
+// Get token decimals from chain metadata
+export async function getTokenDecimals(): Promise<number> {
+	const state = get(walletState);
+	if (!state.api) {
+		throw new Error('API not initialized');
+	}
+	
+	const decimals = state.api.registry.chainDecimals[0]; // DOT is the first token
+	return decimals;
+}
+
+// Get token symbol from chain metadata
+export async function getTokenSymbol(): Promise<string> {
+	const state = get(walletState);
+	if (!state.api) {
+		throw new Error('API not initialized');
+	}
+	
+	const symbol = state.api.registry.chainTokens[0]; // DOT is the first token
+	return symbol;
 }
 
 // Send transaction

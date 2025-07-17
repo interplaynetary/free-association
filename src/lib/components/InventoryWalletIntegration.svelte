@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 	import { userContacts, getUserName } from '$lib/state/users.svelte';
-	import { walletState } from '$lib/state/wallet.svelte';
+	import { walletState, getTokenSymbol } from '$lib/state/wallet.svelte';
 	import WalletConnection from './WalletConnection.svelte';
 	import TokenTransfer from './TokenTransfer.svelte';
 	import { toast } from 'svelte-french-toast';
@@ -10,6 +10,7 @@
 	let selectedRecipient: string | null = null;
 	let showTransferModal = false;
 	let providerNames: Record<string, string> = {};
+	let tokenSymbol: string = 'DOT'; // Default, will be updated when wallet connects
 	let providersWithWallets: Array<{
 		providerId: string;
 		name: string;
@@ -29,6 +30,15 @@
 		for (const providerId of providerIds) {
 			const name = await getUserName(providerId);
 			providerNames[providerId] = name;
+		}
+
+		// Update token symbol when wallet connects
+		if ($walletState.isConnected && $walletState.api) {
+			try {
+				tokenSymbol = await getTokenSymbol();
+			} catch (err) {
+				console.error('Failed to get token symbol:', err);
+			}
 		}
 	});
 
@@ -103,7 +113,7 @@
 	<div class="mb-6">
 		<h3 class="text-lg font-semibold text-gray-900 mb-2">💰 Send Tokens to Capacity Providers</h3>
 		<p class="text-gray-600 text-sm">
-			Send DOT tokens to people who provide capacities you have shares in.
+			Send {tokenSymbol} tokens to people who provide capacities you have shares in.
 		</p>
 	</div>
 
