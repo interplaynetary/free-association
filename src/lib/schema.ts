@@ -149,6 +149,7 @@ export const ContactSchema = z.object({
 	contact_id: IdSchema,
 	name: NameSchema, // User-assigned name
 	public_key: z.optional(z.string()), // Their Gun public key (if they have one)
+	wallet_address: z.optional(z.string()), // Their Polkadot wallet address
 	created_at: z.string(),
 	updated_at: z.string()
 });
