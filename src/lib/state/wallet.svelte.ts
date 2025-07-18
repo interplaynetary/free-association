@@ -16,6 +16,7 @@ export interface WalletState {
 	accounts: WalletAccount[];
 	balance: string | null;
 	error: string | null;
+	api: any | null;
 }
 
 // Store
@@ -25,7 +26,8 @@ export const walletState = writable<WalletState>({
 	selectedAccount: null,
 	accounts: [],
 	balance: null,
-	error: null
+	error: null,
+	api: null
 });
 
 // Derived stores
@@ -36,6 +38,7 @@ export const walletBalance = derived(walletState, ($state) => $state.balance);
 
 // Configuration
 const APP_NAME = 'Free Association';
+const WESTEND_ENDPOINT = 'wss://westend-rpc.polkadot.io';
 
 // Simple wallet connection simulation
 export async function connectWallet(): Promise<void> {
@@ -48,7 +51,10 @@ export async function connectWallet(): Promise<void> {
 		}
 
 		// Use dynamic import to load polkadot modules
-		const { web3Enable, web3Accounts } = await import('@polkadot/extension-dapp');
+		const [{ web3Enable, web3Accounts }, { ApiPromise, WsProvider }] = await Promise.all([
+			import('@polkadot/extension-dapp'),
+			import('@polkadot/api')
+		]);
 
 		// Enable web3 extensions
 		const extensions = await web3Enable(APP_NAME);
@@ -62,6 +68,26 @@ export async function connectWallet(): Promise<void> {
 		
 		if (accounts.length === 0) {
 			throw new Error('No accounts found. Please create an account in your wallet.');
+		}
+
+		// Connect to Westend
+		const provider = new WsProvider(WESTEND_ENDPOINT);
+		const api = await ApiPromise.create({ provider });
+		await api.isReady;
+
+		// Fetch real balance for first account
+		let balance = null;
+		if (accounts[0]) {
+			try {
+				const { data: { free } } = await api.query.system.account(accounts[0].address);
+				const decimals = api.registry.chainDecimals[0] || 12;
+				const symbol = api.registry.chainTokens[0] || 'WND';
+				const balanceInWND = free.toNumber() / Math.pow(10, decimals);
+				balance = `${balanceInWND.toFixed(4)} ${symbol}`;
+			} catch (err) {
+				console.warn('Failed to fetch balance:', err);
+				balance = '0.0000 WND';
+			}
 		}
 
 		// Update state
@@ -81,7 +107,8 @@ export async function connectWallet(): Promise<void> {
 				source: accounts[0].meta.source,
 				type: accounts[0].type
 			} : null,
-			balance: '10.0000 DOT', // Mock balance
+			balance,
+			api,
 			error: null
 		}));
 
@@ -100,14 +127,26 @@ export async function connectWallet(): Promise<void> {
 
 // Disconnect wallet
 export function disconnectWallet(): void {
-	walletState.update(state => ({
-		...state,
-		isConnected: false,
-		selectedAccount: null,
-		accounts: [],
-		balance: null,
-		error: null
-	}));
+	walletState.update(state => {
+		// Disconnect API if it exists
+		if (state.api) {
+			try {
+				state.api.disconnect();
+			} catch (err) {
+				console.warn('Error disconnecting API:', err);
+			}
+		}
+		
+		return {
+			...state,
+			isConnected: false,
+			selectedAccount: null,
+			accounts: [],
+			balance: null,
+			api: null,
+			error: null
+		};
+	});
 	toast.success('Wallet disconnected');
 }
 
@@ -120,34 +159,72 @@ export async function selectAccount(address: string): Promise<void> {
 		throw new Error('Account not found');
 	}
 
+	// Fetch real balance for selected account
+	let balance = null;
+	if (state.api) {
+		try {
+			const { data: { free } } = await state.api.query.system.account(address);
+			const decimals = state.api.registry.chainDecimals[0] || 12;
+			const symbol = state.api.registry.chainTokens[0] || 'WND';
+			const balanceInWND = free.toNumber() / Math.pow(10, decimals);
+			balance = `${balanceInWND.toFixed(4)} ${symbol}`;
+		} catch (err) {
+			console.warn('Failed to fetch balance:', err);
+			balance = '0.0000 WND';
+		}
+	}
+
 	walletState.update(state => ({
 		...state,
 		selectedAccount: account,
-		balance: '10.0000 DOT' // Mock balance
+		balance
 	}));
 }
 
-// Send transaction (simplified)
+// Send transaction
 export async function sendTransaction(
 	recipientAddress: string,
 	amount: string
 ): Promise<string> {
 	const state = get(walletState);
 	
-	if (!state.isConnected || !state.selectedAccount) {
-		throw new Error('Wallet not connected');
+	if (!state.isConnected || !state.selectedAccount || !state.api) {
+		throw new Error('Wallet not connected or API not available');
 	}
 
 	try {
-		// Simulate transaction
-		await new Promise(resolve => setTimeout(resolve, 2000));
-
-		// Mock transaction hash
-		const mockHash = '0x' + Math.random().toString(16).substring(2, 66);
+		// Import web3FromSource for signing
+		const { web3FromSource } = await import('@polkadot/extension-dapp');
 		
-		toast.success(`Transaction sent! Hash: ${mockHash.substring(0, 8)}...`);
+		// Get injector for signing
+		const injector = await web3FromSource(state.selectedAccount.source);
 		
-		return mockHash;
+		// Create transfer transaction
+		const transfer = state.api.tx.balances.transfer(recipientAddress, amount);
+		
+		// Sign and send transaction
+		const txHash = await transfer.signAndSend(
+			state.selectedAccount.address,
+			{ signer: injector.signer },
+			(result: any) => {
+				if (result.status.isInBlock) {
+					console.log('Transaction in block:', result.status.asInBlock.toString());
+				} else if (result.status.isFinalized) {
+					console.log('Transaction finalized:', result.status.asFinalized.toString());
+				}
+			}
+		);
+		
+		toast.success(`Transaction sent! Hash: ${txHash.toString().substring(0, 8)}...`);
+		
+		// Refresh balance after transaction
+		setTimeout(() => {
+			if (state.selectedAccount) {
+				selectAccount(state.selectedAccount.address);
+			}
+		}, 3000);
+		
+		return txHash.toString();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Transaction failed';
 		toast.error(errorMessage);
@@ -183,6 +260,24 @@ export async function autoConnectWallet(): Promise<void> {
 			localStorage.removeItem('wallet-connected');
 		}
 	}
+}
+
+// Get token decimals from chain
+export async function getTokenDecimals(): Promise<number> {
+	const state = get(walletState);
+	if (!state.api) {
+		throw new Error('API not available');
+	}
+	return state.api.registry.chainDecimals[0] || 12;
+}
+
+// Get token symbol from chain
+export async function getTokenSymbol(): Promise<string> {
+	const state = get(walletState);
+	if (!state.api) {
+		throw new Error('API not available');
+	}
+	return state.api.registry.chainTokens[0] || 'WND';
 }
 
 // Store connection state

@@ -10,7 +10,7 @@
 	let selectedRecipient: string | null = null;
 	let showTransferModal = false;
 	let providerNames: Record<string, string> = {};
-	let tokenSymbol: string = 'DOT'; // Default token symbol
+	let tokenSymbol: string = 'WND'; // Default token symbol
 	let providersWithWallets: Array<{
 		providerId: string;
 		name: string;
