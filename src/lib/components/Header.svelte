@@ -193,15 +193,12 @@
 
 	// Check auth status and show login automatically
 	onMount(() => {
-		// Add click outside handler
-		function handleClickOutside(event: MouseEvent) {
-			if (
-				showLoginPanel &&
-				loginPanelRef &&
-				!loginPanelRef.contains(event.target as EventTarget & HTMLElement)
-			) {
+		// Add click/touch outside handler
+		function handleClickOutside(event: MouseEvent | TouchEvent) {
+			const target = event.target as HTMLElement;
+
+			if (showLoginPanel && loginPanelRef && !loginPanelRef.contains(target)) {
 				// Check if the click is on any header control buttons (inventory, add, delete)
-				const target = event.target as HTMLElement;
 				const isHeaderControlButton = target.closest('.header-controls');
 
 				// Don't close the login panel if clicking on header control buttons
@@ -210,13 +207,8 @@
 				}
 			}
 
-			if (
-				showNotificationPanel &&
-				notificationPanelRef &&
-				!notificationPanelRef.contains(event.target as EventTarget & HTMLElement)
-			) {
+			if (showNotificationPanel && notificationPanelRef && !notificationPanelRef.contains(target)) {
 				// Check if the click is on any header control buttons
-				const target = event.target as HTMLElement;
 				const isHeaderControlButton = target.closest('.header-controls');
 
 				// Don't close the notification panel if clicking on header control buttons
@@ -225,13 +217,8 @@
 				}
 			}
 
-			if (
-				showSearchPanel &&
-				searchPanelRef &&
-				!searchPanelRef.contains(event.target as EventTarget & HTMLElement)
-			) {
+			if (showSearchPanel && searchPanelRef && !searchPanelRef.contains(target)) {
 				// Check if the click is on any header control buttons
-				const target = event.target as HTMLElement;
 				const isHeaderControlButton = target.closest('.header-controls');
 
 				// Don't close the search panel if clicking on header control buttons
@@ -245,6 +232,7 @@
 		}
 
 		document.addEventListener('mousedown', handleClickOutside);
+		document.addEventListener('touchstart', handleClickOutside);
 
 		// If not authenticated, automatically show login panel
 		if (!user) {
@@ -256,6 +244,7 @@
 
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('touchstart', handleClickOutside);
 		};
 	});
 
