@@ -11,7 +11,7 @@
 	let amount: string = '';
 	let isTransferring = false;
 	let transferError: string | null = null;
-	let tokenSymbol: string = 'DOT'; // Default, will be updated when wallet connects
+	let tokenSymbol: string = 'WND'; // Default, will be updated when wallet connects
 
 	// Validation
 	$: isValidAmount = amount && parseFloat(amount) > 0;

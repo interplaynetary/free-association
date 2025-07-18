@@ -60,6 +60,7 @@
 		"@gun-vue/relay": "^0.6.1",
 		"@jsonquerylang/jsonquery": "^5.0.4",
 		"@peerbit/document": "^9.6.2",
+		"@polkadot/api": "^12.6.2",
 		"@polkadot/extension-dapp": "^0.47.6",
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/bcryptjs": "^3.0.0",
