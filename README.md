@@ -4,7 +4,7 @@ _Free-Association_ is literally an actual alternative to capitalism that allows 
 
 This requires more than mere abstract agreement or forced cooperation - it demands real contribution to each other's self-actualization (tangible and intangible contributions towards needs, values, goals, social and/or material dependencies etc.).
 
-**_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **_surplus-distribution_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
+**_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **capacity-distribution\_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
 
 You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
 
@@ -45,7 +45,80 @@ Your Total-Recognition = 100%
 Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
 
 General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
+
+Compose-From(You, Your-Capacity, Provider, Their-Capacity) = Your-Desired-Units-From-Their-Capacity-Into-Your-Capacity
+Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) = Your-Desired-Units-From-Your-Capacity-Into-Their-Capacity
+
+Share-Constrained-From(You, Your-Capacity, Provider, Their-Capacity) =
+    minimum(Compose-From(You, Your-Capacity, Provider, Their-Capacity),
+            Your-Share-of-Their-Capacity × Their-Capacity-Quantity)
+
+Share-Constrained-Into(You, Your-Capacity, Recipient, Their-Capacity) =
+    minimum(Compose-Into(You, Your-Capacity, Recipient, Their-Capacity),
+            Their-Share-of-Your-Capacity × Your-Capacity-Quantity)
+
+**Compose-From Scaling (Provider's Perspective):**
+For Provider's capacity j:
+Total-Demand-For-Provider-Capacity(j) = Σ Share-Constrained-From(All-Participants, All-Their-Capacities, Provider, j)
+
+Provider-Allocation-Factor(j) = minimum(1, Provider-Available-Units(j) / Total-Demand-For-Provider-Capacity(j))
+
+Feasible-Compose-From(You, Your-Capacity, Provider, Their-Capacity) =
+    Share-Constrained-From(You, Your-Capacity, Provider, Their-Capacity) ×
+    Provider-Allocation-Factor(Their-Capacity)
+
+**Compose-Into Scaling (Your Perspective):**
+For Your capacity i:
+Total-Desired-Distribution-From-Your-Capacity(i) = Σ Share-Constrained-Into(You, i, All-Recipients, All-Their-Capacities)
+
+Your-Allocation-Factor(i) = minimum(1, Your-Available-Units(i) / Total-Desired-Distribution-From-Your-Capacity(i))
+
+Feasible-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) =
+    Share-Constrained-Into(You, Your-Capacity, Recipient, Their-Capacity) ×
+    Your-Allocation-Factor(Your-Capacity)
+
+**Proportional Scaling Properties:**
+- **Compose-From**: When Provider-Allocation-Factor < 1, all participants wanting that provider's capacity get scaled by the same factor
+- **Compose-Into**: When Your-Allocation-Factor < 1, all your desired distributions from your capacity get scaled by the same factor
+
+Desire-Alignment(Your-Desire, Their-Desire) = minimum(Your-Desire, Their-Desire) / maximum(Your-Desire, Their-Desire)
+
+Mutual-Compose-From(You, Your-Capacity, Provider, Their-Capacity) =
+    minimum(Feasible-Compose-From(You, Your-Capacity, Provider, Their-Capacity),
+            Compose-Into(Provider, Their-Capacity, You, Your-Capacity))
+
+Mutual-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) =
+    minimum(Feasible-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity),
+            Compose-From(Recipient, Their-Capacity, You, Your-Capacity))
 ```
+
+## Capacity Composition: Enhanced Mutual Fulfillment 🔗
+
+
+This would allow us to compose our capacities into gift-economy based supply chains / higher-order collective capacities **while retaining mutual-recognition proportions**.
+
+So we can start to organize complex and increasingly powerful cooperative processes, that operate within the realm of mutual-fulfillment and mutual-desire
+
+The network effects of this system are particularly fascinating. As more participants engage in mutual composition, the complexity and richness of possible supply chains grows exponentially. A cooking capacity might compose ingredient supplies, which compose farming capacities, which compose transportation networks, which compose community gathering spaces—all operating on principles of mutual desire and shared benefit. Each link in these chains strengthens the whole network, creating resilient webs of interdependence that are fundamentally different from the fragile, hierarchical supply chains of traditional capitalism. When disruption occurs, the network can adapt and flow around obstacles because relationships are based on genuine mutual benefit rather than contractual obligation.
+
+We have a world to win! Lets play! 🌍✨☺️
+
+### How Composition Works:
+
+1. **Compose-From**: You enhance your capacity using shares you have in others' capacities
+   - Example: You enhance your "cooking-skill" using your share in someone's "ingredients-supply"
+   - Constrained by your share percentage in their capacity
+
+2. **Compose-Into**: You enhance others' capacities using shares they have in your capacities
+   - Example: You enhance someone's "meal-service" using their share in your "cooking-skill"
+   - Constrained by their share percentage in your capacity
+
+3. **Resource Allocation**: When total desired composition exceeds available capacity
+   - Applies proportional scaling across all participants
+   - Maintains mathematical integrity
+
+4. **Mutual Composition**: Most fulfilling when desires align bidirectionally
+   - Both parties desire this composition
 
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>
@@ -79,7 +152,7 @@ This computational advantage could make organizational-level Free-Association mo
 
 ## Why does any of that matter?
 
-With your **surplus-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
+With your **capacity-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
 
 Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms surplus-capacity.
 

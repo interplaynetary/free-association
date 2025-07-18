@@ -254,11 +254,15 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function login(alias: string, password: string): Promise<void> {
+	console.log(`[LOGIN] Attempting login for alias: "${alias}"`);
+
 	for (let attempt = 0; attempt < 3; attempt++) {
 		try {
 			await new Promise<void>((resolve, reject) => {
+				console.log(`[LOGIN] Attempt ${attempt + 1} for alias: "${alias}"`);
 				user.auth(alias, password, ({ err }: { err: any }) => {
 					if (err) {
+						console.log(`[LOGIN] Auth failed for "${alias}":`, err);
 						// Retry on network errors, fail immediately on auth errors
 						if (isNetworkError(err)) {
 							reject(new NetworkError(err));
@@ -266,6 +270,7 @@ export async function login(alias: string, password: string): Promise<void> {
 							reject(new AuthError(err));
 						}
 					} else {
+						console.log(`[LOGIN] Auth succeeded for "${alias}"`);
 						resolve();
 					}
 				});
@@ -273,16 +278,17 @@ export async function login(alias: string, password: string): Promise<void> {
 			return; // Success
 		} catch (error) {
 			if (error instanceof AuthError) {
-				// Don't retry auth failures, show error immediately
-				alert(error.message);
+				// Don't retry auth failures, throw error immediately for UI to handle
+				console.log(`[LOGIN] AuthError - not retrying:`, error.message);
 				throw error;
 			}
 			if (attempt === 2) {
-				// Final attempt failed, show error
-				alert(error instanceof Error ? error.message : 'Login failed after 3 attempts');
+				// Final attempt failed, throw error for UI to handle
+				console.log(`[LOGIN] Final attempt failed:`, error);
 				throw error;
 			}
 			// Wait before retrying with exponential backoff
+			console.log(`[LOGIN] Retrying after network error, attempt ${attempt + 1}`);
 			await sleep(1000 * Math.pow(2, attempt));
 		}
 	}
@@ -300,7 +306,6 @@ export async function signup(alias: string, password: string): Promise<void> {
 	});
 
 	if (aliasExists) {
-		alert('Alias already taken');
 		throw new AuthError('Alias already taken');
 	}
 
@@ -327,13 +332,11 @@ export async function signup(alias: string, password: string): Promise<void> {
 			return; // Success
 		} catch (error) {
 			if (error instanceof AuthError) {
-				// Don't retry auth failures, show error immediately
-				alert(error.message);
+				// Don't retry auth failures, throw error immediately for UI to handle
 				throw error;
 			}
 			if (attempt === 2) {
-				// Final attempt failed, show error
-				alert(error instanceof Error ? error.message : 'Signup failed after 3 attempts');
+				// Final attempt failed, throw error for UI to handle
 				throw error;
 			}
 			// Wait before retrying with exponential backoff
@@ -376,3 +379,4 @@ export async function monitorWebRTC(pc: any) {
 		console.log(`${dict.type}: id=${dict.id}, timestamp=${dict.timestamp}`);
 	}
 }
+

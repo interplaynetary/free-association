@@ -19,6 +19,8 @@
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
+	import { startTour } from '$lib/utils/tour';
+	import { browser } from '$app/environment';
 
 	// Define type for path info
 	type PathInfo = Array<{ id: string; name: string }>;
@@ -37,6 +39,18 @@
 		} catch (err) {
 			console.error('Failed to copy text: ', err);
 			globalState.showToast('Failed to copy public key', 'error');
+		}
+	}
+
+	// Function to start the guided tour
+	function handleTourClick() {
+		if (!browser) return;
+
+		try {
+			startTour();
+		} catch (error) {
+			console.error('Failed to start tour:', error);
+			globalState.showToast('Failed to start tour', 'error');
 		}
 	}
 
@@ -466,7 +480,7 @@
 	// Handle login with Gun
 	async function handleLogin() {
 		try {
-			login(usernameInput.trim(), password);
+			await login(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
 			resetForm();
@@ -480,7 +494,7 @@
 	// Handle signup/register with Gun
 	async function handleSignup() {
 		try {
-			signup(usernameInput.trim(), password);
+			await signup(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
 			resetForm();
@@ -866,6 +880,11 @@
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
+
+			<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
+				<span>❓</span>
+			</button>
+
 			<!--
 			<button
 				class="icon-button notification-button"
