@@ -85,6 +85,7 @@ export function createContact(
 		contact_id,
 		name: contactData.name,
 		public_key: hasValidPublicKey ? contactData.public_key : undefined,
+		wallet_address: contactData.wallet_address,
 		created_at: now,
 		updated_at: now
 	};
@@ -175,6 +176,74 @@ export function isPublicKeyInUse(public_key: string, excludeContactId?: string):
 	return Object.values(contacts).some(
 		(contact) => contact.public_key === public_key && contact.contact_id !== excludeContactId
 	);
+}
+
+/**
+ * Get contact by wallet address
+ */
+export function getContactByWalletAddress(wallet_address: string): Contact | undefined {
+	const contacts = get(userContacts);
+	return Object.values(contacts).find((contact) => contact.wallet_address === wallet_address);
+}
+
+/**
+ * Check if a wallet address is already in use
+ */
+export function isWalletAddressInUse(wallet_address: string, excludeContactId?: string): boolean {
+	// Only check for duplicates if we have a meaningful wallet address
+	if (!wallet_address || wallet_address.trim() === '') {
+		return false;
+	}
+
+	const contacts = get(userContacts);
+	return Object.values(contacts).some(
+		(contact) => contact.wallet_address === wallet_address && contact.contact_id !== excludeContactId
+	);
+}
+
+/**
+ * Save user's own wallet address
+ */
+export async function saveUserWalletAddress(userPub: string, walletAddress: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (!userPub || !walletAddress) {
+			reject(new Error('User public key and wallet address are required'));
+			return;
+		}
+
+		// Save to Gun under user's space
+		gun
+			.user(userPub)
+			.get('profile')
+			.get('wallet_address')
+			.put(walletAddress, (ack) => {
+				if (ack.err) {
+					reject(new Error('Failed to save wallet address'));
+				} else {
+					resolve();
+				}
+			});
+	});
+}
+
+/**
+ * Get user's own wallet address
+ */
+export async function getUserWalletAddress(userPub: string): Promise<string | null> {
+	return new Promise((resolve) => {
+		if (!userPub) {
+			resolve(null);
+			return;
+		}
+
+		gun
+			.user(userPub)
+			.get('profile')
+			.get('wallet_address')
+			.once((data) => {
+				resolve(data || null);
+			});
+	});
 }
 
 // ================================
