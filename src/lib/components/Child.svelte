@@ -10,7 +10,9 @@
 		name: string;
 		points: number;
 		contributors: string[];
+		antiContributors?: string[];
 		fulfillment?: number;
+		manualFulfillment?: number; // Add manual fulfillment to interface
 		hasChildren?: boolean; // Flag to indicate if this node has children
 	}
 
@@ -27,15 +29,19 @@
 		node,
 		dimensions,
 		addContributor = (detail: { nodeId: string; clientX: number; clientY: number }) => {},
+		addAntiContributor = (detail: { nodeId: string; clientX: number; clientY: number }) => {},
 		removeContributor = (detail: { nodeId: string; contributorId: string }) => {},
 		onTextEdit = (detail: { nodeId: string; newName: string }) => {},
+		onManualFulfillmentChange = (detail: { nodeId: string; value: number }) => {}, // Add callback for manual fulfillment
 		shouldEdit = false // Flag to indicate if this node should immediately be in edit mode
 	} = $props<{
 		node: NodeData;
 		dimensions: Dimensions;
 		addContributor?: (detail: { nodeId: string; clientX: number; clientY: number }) => void;
+		addAntiContributor?: (detail: { nodeId: string; clientX: number; clientY: number }) => void;
 		removeContributor?: (detail: { nodeId: string; contributorId: string }) => void;
 		onTextEdit?: (detail: { nodeId: string; newName: string }) => void;
+		onManualFulfillmentChange?: (detail: { nodeId: string; value: number }) => void; // Add callback type
 		shouldEdit?: boolean;
 	}>();
 
@@ -117,8 +123,10 @@
 	const availableSpacePercent = $derived(100 - titleEndPercent); // Space available for button
 	const buttonSizePercent = $derived(Math.min(availableSpacePercent * 0.6, 15)); // Button size as percentage, max 15%
 
-	// Check if node has contributors for styling
+	// Check if node has contributors or anti-contributors for styling
 	const hasContributors = $derived(node.contributors.length > 0);
+	const hasAntiContributors = $derived((node.antiContributors || []).length > 0);
+	const hasAnyContributors = $derived(hasContributors || hasAntiContributors);
 
 	// Create pie chart data for contributors
 	const pieData = $derived(() => {
@@ -126,6 +134,21 @@
 
 		// Simple data array - each contributor gets value 1 (equal segments)
 		const data = node.contributors.map((id: string) => ({ id, value: 1 }));
+
+		// Create pie generator following D3 docs exactly
+		const pieGenerator = pie<any>()
+			.value((d: any) => d.value)
+			.sort(null);
+
+		return pieGenerator(data);
+	});
+
+	// Create pie chart data for anti-contributors
+	const antiPieData = $derived(() => {
+		if (!hasAntiContributors) return [];
+
+		// Simple data array - each anti-contributor gets value 1 (equal segments)
+		const data = (node.antiContributors || []).map((id: string) => ({ id, value: 1 }));
 
 		// Create pie generator following D3 docs exactly
 		const pieGenerator = pie<any>()
@@ -159,10 +182,30 @@
 				}
 			}
 		});
+
+		// Load names for all anti-contributors
+		(node.antiContributors || []).forEach(async (contributorId: string) => {
+			if (!contributorNames[contributorId]) {
+				try {
+					const name = await getUserName(contributorId);
+					contributorNames = {
+						...contributorNames,
+						[contributorId]: name
+					};
+				} catch (error) {
+					console.error('Failed to load anti-contributor name:', error);
+				}
+			}
+		});
 	});
 
 	// State for tracking hovered segment
 	let hoveredSegment = $state<string | null>(null);
+
+	// Get current slider value from node data
+	const currentSliderValue = $derived(
+		node.manualFulfillment !== undefined ? Math.round(node.manualFulfillment * 100) : 100
+	);
 
 	// Function to handle add contributor button click (mouse or touch)
 	function handleAddContributorClick(event: MouseEvent | TouchEvent) {
@@ -202,6 +245,51 @@
 			}
 
 			addContributor({
+				nodeId,
+				clientX,
+				clientY
+			});
+		}
+	}
+
+	// Function to handle add anti-contributor button click (mouse or touch)
+	function handleAddAntiContributorClick(event: MouseEvent | TouchEvent) {
+		// Don't allow adding anti-contributors in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot add anti-contributors in delete mode', 'warning');
+			return;
+		}
+
+		// Don't allow adding anti-contributors when editing
+		if (globalState.editMode) {
+			globalState.showToast('Cannot add anti-contributors while editing', 'warning');
+			return;
+		}
+
+		// Don't allow adding anti-contributors in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot add anti-contributors in recompose mode', 'warning');
+			return;
+		}
+
+		event.stopPropagation();
+		const nodeId = node.id;
+		if (nodeId) {
+			// Get coordinates from either mouse or touch event
+			let clientX: number, clientY: number;
+
+			if (event.type === 'touchstart' && 'touches' in event) {
+				// Touch event - get coordinates from the first touch point
+				const touch = event.touches[0];
+				clientX = touch.clientX;
+				clientY = touch.clientY;
+			} else {
+				// Mouse event - get coordinates directly
+				clientX = (event as MouseEvent).clientX;
+				clientY = (event as MouseEvent).clientY;
+			}
+
+			addAntiContributor({
 				nodeId,
 				clientX,
 				clientY
@@ -476,93 +564,212 @@
 			{/if}
 		</div>
 
-		<!-- Add Contributor Button - positioned between title end and container edge -->
-		{#if visibilityFactor > 0.1 && !node.hasChildren}
-			{#if hasContributors}
-				<!-- Pie Chart for Contributors -->
-				<svg
-					class="add-contributor-button pie-chart"
-					style="
-            position: absolute;
-            opacity: {visibilityFactor};
-            top: 50%; 
-            left: {buttonCenterPercent}%;
-            transform: translate(-50%, -50%);
-            width: {buttonSizePercent}%;
-            height: {buttonSizePercent}%;
-            cursor: pointer;
-          "
-					viewBox="-25 -25 50 50"
-					onclick={handleAddContributorClick}
-					ontouchstart={handleAddContributorClick}
-				>
-					{#each pieData() as segment, i}
-						<path
-							d={arcPath()(segment)}
-							fill={getColorForUserId(segment.data.id)}
-							onmouseenter={() => (hoveredSegment = segment.data.id)}
-							onmouseleave={() => (hoveredSegment = null)}
-							style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
-						/>
-					{/each}
+		<!-- Manual Fulfillment Slider - only for contribution nodes -->
+		{#if hasContributors && !node.hasChildren && visibilityFactor > 0.1}
+			<div
+				class="manual-fulfillment-slider"
+				style="
+					position: absolute;
+					top: 70%;
+					left: 50%;
+					transform: translateX(-50%);
+					width: 70%;
+					max-width: 120px;
+					z-index: 3;
+					opacity: {visibilityFactor};
+				"
+				onmousedown={(e) => e.stopPropagation()}
+				ontouchstart={(e) => e.stopPropagation()}
+				onpointerdown={(e) => e.stopPropagation()}
+			>
+				<input
+					type="range"
+					min="0"
+					max="100"
+					value={currentSliderValue}
+					oninput={(event) => {
+						const newValue = parseFloat(event.currentTarget.value);
+						const protocolValue = newValue / 100; // Convert to 0-1 range for protocol
+						console.log(
+							`[SLIDER-INPUT] Moving slider to ${newValue}%, protocol value: ${protocolValue}`
+						);
+						onManualFulfillmentChange({ nodeId: node.id, value: protocolValue });
+					}}
+					class="fulfillment-slider"
+				/>
+				<div class="slider-value">
+					{currentSliderValue}%
+				</div>
+			</div>
+		{/if}
 
-					<!-- Plus sign in center for adding more contributors -->
-					<circle
-						cx={0}
-						cy={0}
-						r={6}
-						fill="rgba(255, 255, 255, 0.9)"
-						stroke="rgba(0, 0, 0, 0.3)"
-						stroke-width="1"
-					/>
-					<text
-						x={0}
-						y={0}
-						text-anchor="middle"
-						dominant-baseline="middle"
-						font-size="8"
-						fill="#333"
-						font-weight="bold"
+		<!-- Contributor Buttons Container - centered and consistent -->
+		{#if visibilityFactor > 0.1 && !node.hasChildren}
+			<div
+				class="contributor-buttons-container"
+				style="
+					position: absolute;
+					top: 50%;
+					left: {buttonCenterPercent}%;
+					transform: translate(-50%, -50%);
+					width: {buttonSizePercent}%;
+					height: {hasAnyContributors ? buttonSizePercent * 2.2 : buttonSizePercent}%;
+					opacity: {visibilityFactor};
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+					align-items: center;
+					gap: {Math.max(2, buttonSizePercent * 0.1)}px;
+				"
+			>
+				<!-- Contributor Button (always present) -->
+				{#if hasContributors}
+					<!-- Pie Chart for Contributors -->
+					<svg
+						class="add-contributor-button pie-chart"
+						style="
+							width: 100%;
+							height: {hasAnyContributors ? '45%' : '100%'};
+							cursor: pointer;
+							flex-shrink: 0;
+						"
+						viewBox="-25 -25 50 50"
+						onclick={handleAddContributorClick}
+						ontouchstart={handleAddContributorClick}
+					>
+						{#each pieData() as segment, i}
+							<path
+								d={arcPath()(segment)}
+								fill={getColorForUserId(segment.data.id)}
+								onmouseenter={() => (hoveredSegment = segment.data.id)}
+								onmouseleave={() => (hoveredSegment = null)}
+								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
+							/>
+						{/each}
+
+						<!-- Plus sign in center for adding more contributors -->
+						<circle
+							cx={0}
+							cy={0}
+							r={6}
+							fill="rgba(255, 255, 255, 0.9)"
+							stroke="rgba(0, 0, 0, 0.3)"
+							stroke-width="1"
+						/>
+						<text
+							x={0}
+							y={0}
+							text-anchor="middle"
+							dominant-baseline="middle"
+							font-size="8"
+							fill="#333"
+							font-weight="bold"
+						>
+							+
+						</text>
+					</svg>
+				{:else}
+					<!-- Simple button when no contributors -->
+					<button
+						class="add-contributor-button"
+						style="
+							width: 100%;
+							height: {hasAnyContributors ? '45%' : '100%'};
+							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
+							flex-shrink: 0;
+						"
+						onclick={handleAddContributorClick}
+						ontouchstart={handleAddContributorClick}
+						title="Add contributor"
 					>
 						+
-					</text>
-				</svg>
-
-				<!-- Tooltip for hovered segment -->
-				{#if hoveredSegment}
-					<div
-						class="contributor-tooltip"
-						style="
-							position: absolute;
-							top: {50 - buttonSizePercent / 2 - 5}%;
-							left: {buttonCenterPercent}%;
-							transform: translateX(-50%);
-							z-index: 1000;
-						"
-					>
-						{contributorNames[hoveredSegment] || hoveredSegment}
-					</div>
+					</button>
 				{/if}
-			{:else}
-				<!-- Simple button when no contributors -->
-				<button
-					class="add-contributor-button"
+
+				<!-- Anti-Contributor Button -->
+				{#if hasAntiContributors}
+					<!-- Pie Chart for Anti-Contributors -->
+					<svg
+						class="add-anti-contributor-button pie-chart"
+						style="
+							width: 100%;
+							height: 45%;
+							cursor: pointer;
+							flex-shrink: 0;
+						"
+						viewBox="-25 -25 50 50"
+						onclick={handleAddAntiContributorClick}
+						ontouchstart={handleAddAntiContributorClick}
+					>
+						{#each antiPieData() as segment, i}
+							<path
+								d={arcPath()(segment)}
+								fill={getColorForUserId(segment.data.id)}
+								onmouseenter={() => (hoveredSegment = segment.data.id)}
+								onmouseleave={() => (hoveredSegment = null)}
+								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
+							/>
+						{/each}
+
+						<!-- Minus sign in center for adding more anti-contributors -->
+						<circle
+							cx={0}
+							cy={0}
+							r={6}
+							fill="rgba(255, 255, 255, 0.9)"
+							stroke="rgba(0, 0, 0, 0.3)"
+							stroke-width="1"
+						/>
+						<text
+							x={0}
+							y={0}
+							text-anchor="middle"
+							dominant-baseline="middle"
+							font-size="8"
+							fill="#333"
+							font-weight="bold"
+						>
+							−
+						</text>
+					</svg>
+				{:else}
+					<!-- Simple button when no anti-contributors -->
+					<button
+						class="add-anti-contributor-button"
+						style="
+							width: 100%;
+							height: 45%;
+							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
+							flex-shrink: 0;
+						"
+						onclick={handleAddAntiContributorClick}
+						ontouchstart={handleAddAntiContributorClick}
+						title="Add anti-contributor"
+					>
+						−
+					</button>
+				{/if}
+			</div>
+
+			<!-- Tooltips for hovered segments -->
+			{#if hoveredSegment}
+				<div
+					class="contributor-tooltip"
 					style="
-            position: absolute;
-            opacity: {visibilityFactor};
-            top: 50%; 
-            left: {buttonCenterPercent}%;
-            transform: translate(-50%, -50%);
-            width: {buttonSizePercent}%;
-            height: {buttonSizePercent}%;
-            font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
-          "
-					onclick={handleAddContributorClick}
-					ontouchstart={handleAddContributorClick}
-					title="Add contributor"
+						position: absolute;
+						top: {50 - (hasAnyContributors ? buttonSizePercent * 1.1 : buttonSizePercent / 2) - 5}%;
+						left: {buttonCenterPercent}%;
+						transform: translateX(-50%);
+						z-index: 1000;
+					"
 				>
-					+
-				</button>
+					{contributorNames[hoveredSegment] || hoveredSegment}
+					{#if (node.antiContributors || []).includes(hoveredSegment)}
+						<span class="tooltip-type">(anti-contributor)</span>
+					{:else}
+						<span class="tooltip-type">(contributor)</span>
+					{/if}
+				</div>
 			{/if}
 		{/if}
 	</div>
@@ -671,6 +878,24 @@
 		color: #333;
 	}
 
+	.add-anti-contributor-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(255, 220, 220, 0.7);
+		color: #555;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-family: Arial, sans-serif;
+		font-weight: normal;
+		line-height: 1;
+	}
+
+	.add-anti-contributor-button:hover {
+		background: rgba(255, 220, 220, 0.9);
+		color: #333;
+	}
+
 	.pie-chart {
 		border-radius: 4px;
 		transition: opacity 0.2s ease;
@@ -688,6 +913,11 @@
 		opacity: 0.8;
 	}
 
+	.contributor-buttons-container {
+		/* Ensure flexbox layout works properly */
+		min-height: 20px;
+	}
+
 	.contributor-tooltip {
 		background: rgba(0, 0, 0, 0.8);
 		color: white;
@@ -698,6 +928,12 @@
 		white-space: nowrap;
 	}
 
+	.contributor-tooltip .tooltip-type {
+		opacity: 0.7;
+		font-size: 10px;
+		margin-left: 4px;
+	}
+
 	.contributor-tooltip::after {
 		content: '';
 		position: absolute;
@@ -706,5 +942,74 @@
 		transform: translateX(-50%);
 		border: 4px solid transparent;
 		border-top-color: rgba(0, 0, 0, 0.8);
+	}
+
+	.manual-fulfillment-slider {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.fulfillment-slider {
+		width: 100%;
+		height: 6px;
+		-webkit-appearance: none;
+		background: rgba(255, 255, 255, 0.3);
+		outline: none;
+		border-radius: 3px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		pointer-events: auto;
+		z-index: 10;
+		position: relative;
+	}
+
+	.fulfillment-slider:hover {
+		background: rgba(255, 255, 255, 0.5);
+	}
+
+	.fulfillment-slider::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 16px;
+		height: 16px;
+		background: #2196f3;
+		cursor: pointer;
+		border-radius: 50%;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		transition: all 0.2s ease;
+	}
+
+	.fulfillment-slider::-webkit-slider-thumb:hover {
+		background: #1976d2;
+		transform: scale(1.1);
+	}
+
+	.fulfillment-slider::-moz-range-thumb {
+		width: 16px;
+		height: 16px;
+		background: #2196f3;
+		cursor: pointer;
+		border-radius: 50%;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		border: none;
+		transition: all 0.2s ease;
+	}
+
+	.fulfillment-slider::-moz-range-thumb:hover {
+		background: #1976d2;
+		transform: scale(1.1);
+	}
+
+	.slider-value {
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 2px 6px;
+		border-radius: 3px;
+		font-size: 10px;
+		font-weight: 500;
+		white-space: nowrap;
+		text-shadow: none;
 	}
 </style>

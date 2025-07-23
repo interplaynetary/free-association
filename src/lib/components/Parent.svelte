@@ -15,7 +15,8 @@
 		addChild,
 		addContributors,
 		calculateNodePoints,
-		getPathToNode
+		getPathToNode,
+		updateManualFulfillment
 	} from '$lib/protocol';
 	import { get } from 'svelte/store';
 	import { createContact } from '$lib/state/users.svelte';
@@ -37,6 +38,7 @@
 		children: VisualizationNode[];
 		nodeName?: string;
 		contributors?: string[];
+		antiContributors?: string[];
 		fulfillment?: number;
 		hasChildren?: boolean; // Flag to indicate if this node has children in the full tree
 	}
@@ -58,6 +60,7 @@
 	let showUserDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 	let activeNodeId = $state<string | null>(null);
+	let contributorMode = $state<'contributor' | 'anti-contributor'>('contributor');
 
 	// Create users data provider for the dropdown - simplified single provider
 	let usersDataProvider = $derived.by(() => {
@@ -68,14 +71,18 @@
 		return provider;
 	});
 
-	// Get current node contributors for the dropdown
+	// Get current node contributors for the dropdown (based on current mode)
 	let currentContributors = $derived.by(() => {
 		if (!activeNodeId || !tree) return [];
 
 		const node = findNodeById(tree, activeNodeId);
 		if (!node || node.type !== 'NonRootNode') return [];
 
-		return (node as NonRootNode).contributor_ids || [];
+		if (contributorMode === 'anti-contributor') {
+			return (node as NonRootNode).anti_contributors_ids || [];
+		} else {
+			return (node as NonRootNode).contributor_ids || [];
+		}
 	});
 
 	// Growth state
@@ -146,6 +153,8 @@
 			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
 			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
+			antiContributors:
+				child.type === 'NonRootNode' ? (child as NonRootNode).anti_contributors_ids : [],
 			children: [] as VisualizationNode[],
 			hasChildren: child.children.length > 0 // Check if this child has children in the full tree
 		}));
@@ -436,12 +445,75 @@
 		}
 	}
 
+	// Manual fulfillment change handler
+	function handleManualFulfillmentChange(detail: { nodeId: string; value: number }) {
+		const { nodeId, value } = detail;
+
+		console.log(`[MANUAL-FULFILLMENT-DEBUG] Handling change for node ${nodeId}, value=${value}`);
+
+		try {
+			if (!tree) {
+				console.log('[MANUAL-FULFILLMENT-DEBUG] No tree available');
+				return;
+			}
+
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
+			// Check the node before update
+			const nodeBefore = findNodeById(updatedTree, nodeId);
+			console.log(`[MANUAL-FULFILLMENT-DEBUG] Node before update:`, nodeBefore?.manual_fulfillment);
+
+			// Update the manual fulfillment in memory
+			const success = updateNodeById(updatedTree, nodeId, (node) => {
+				console.log(`[MANUAL-FULFILLMENT-DEBUG] Updating node ${nodeId} with value ${value}`);
+				updateManualFulfillment(node, value);
+				console.log(
+					`[MANUAL-FULFILLMENT-DEBUG] Node after protocol update:`,
+					node.manual_fulfillment
+				);
+			});
+
+			if (!success) {
+				console.error(`[MANUAL-FULFILLMENT-DEBUG] Failed to find/update node ${nodeId}`);
+				return;
+			}
+
+			// Check the node after update
+			const nodeAfter = findNodeById(updatedTree, nodeId);
+			console.log(`[MANUAL-FULFILLMENT-DEBUG] Node after update:`, nodeAfter?.manual_fulfillment);
+
+			// Update store to trigger reactivity
+			console.log(`[MANUAL-FULFILLMENT-DEBUG] Setting updated tree in store`);
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
+
+			globalState.showToast(`Manual fulfillment set to ${Math.round(value * 100)}%`, 'success');
+		} catch (err) {
+			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
+			globalState.showToast('Error updating manual fulfillment', 'error');
+		}
+	}
+
 	// Contributor management
 	function handleAddContributor(detail: { nodeId: string; clientX: number; clientY: number }) {
 		const { nodeId, clientX, clientY } = detail;
 
-		// Show user dropdown
+		// Show user dropdown in contributor mode
 		activeNodeId = nodeId;
+		contributorMode = 'contributor';
+		dropdownPosition = { x: clientX, y: clientY };
+		showUserDropdown = true;
+	}
+
+	function handleAddAntiContributor(detail: { nodeId: string; clientX: number; clientY: number }) {
+		const { nodeId, clientX, clientY } = detail;
+
+		// Show user dropdown in anti-contributor mode
+		activeNodeId = nodeId;
+		contributorMode = 'anti-contributor';
 		dropdownPosition = { x: clientX, y: clientY };
 		showUserDropdown = true;
 	}
@@ -483,6 +555,43 @@
 		}
 	}
 
+	function handleRemoveAntiContributor(detail: { nodeId: string; contributorId: string }) {
+		const { nodeId, contributorId } = detail;
+
+		try {
+			if (!tree) return;
+
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
+
+			// Get current anti-contributor IDs and filter out the one to remove
+			const updatedAntiContributors = ((node as NonRootNode).anti_contributors_ids || []).filter(
+				(id: string) => id !== contributorId
+			);
+
+			// Update the node's anti-contributors
+			(node as NonRootNode).anti_contributors_ids = updatedAntiContributors;
+
+			// Run deduplication to ensure no duplicates exist
+			deduplicateContributorsInTree(updatedTree);
+
+			// Update the store to trigger reactivity
+			userTree.set(updatedTree);
+
+			// Force update
+			triggerUpdate();
+
+			globalState.showToast('Anti-contributor removed successfully', 'success');
+		} catch (err) {
+			console.error('Error removing anti-contributor:', err);
+			globalState.showToast('Error removing anti-contributor', 'error');
+		}
+	}
+
 	function handleUserSelect(detail: { id: string; name: string; metadata?: any }) {
 		const { id: selectedId, metadata } = detail;
 
@@ -496,24 +605,30 @@
 		// - For regular users: use the public key (the id itself)
 		const contributorId = metadata?.isContact ? selectedId : selectedId;
 
-		console.log('[CONTRIBUTOR] Adding contributor:', {
+		console.log(`[${contributorMode.toUpperCase()}] Adding ${contributorMode}:`, {
 			selectedId,
 			contributorId,
 			isContact: metadata?.isContact,
 			name: detail.name
 		});
 
-		// Add the contributor
-		addContributorToNode(activeNodeId, contributorId);
+		// Add the contributor or anti-contributor based on mode
+		if (contributorMode === 'anti-contributor') {
+			addAntiContributorToNode(activeNodeId, contributorId);
+		} else {
+			addContributorToNode(activeNodeId, contributorId);
+		}
 
 		// Reset dropdown
 		showUserDropdown = false;
 		activeNodeId = null;
+		contributorMode = 'contributor'; // Reset to default mode
 	}
 
 	function handleDropdownClose() {
 		showUserDropdown = false;
 		activeNodeId = null;
+		contributorMode = 'contributor'; // Reset to default mode
 	}
 
 	// Specific substitution function - replaces all instances of a public key with a contact ID
@@ -526,15 +641,17 @@
 
 		// Recursive function to substitute public key with contact ID in a node and its children
 		function substituteInNode(node: Node): void {
-			// Only NonRootNodes have contributor_ids
+			// Only NonRootNodes have contributor_ids and anti_contributor_ids
 			if (node.type === 'NonRootNode') {
 				const nonRootNode = node as NonRootNode;
+
+				// Handle regular contributors
 				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
 					// Replace all instances of the public key with the contact ID
 					const updatedContributors = nonRootNode.contributor_ids.map((contributorId) => {
 						if (contributorId === publicKeyToReplace) {
 							console.log(
-								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in node '${node.name}' (${node.id})`
+								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in contributors of node '${node.name}' (${node.id})`
 							);
 							substitutionCount++;
 							return newContactId;
@@ -544,6 +661,24 @@
 
 					// Update the contributor_ids array
 					nonRootNode.contributor_ids = updatedContributors;
+				}
+
+				// Handle anti-contributors
+				if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+					// Replace all instances of the public key with the contact ID
+					const updatedAntiContributors = nonRootNode.anti_contributors_ids.map((contributorId) => {
+						if (contributorId === publicKeyToReplace) {
+							console.log(
+								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in anti-contributors of node '${node.name}' (${node.id})`
+							);
+							substitutionCount++;
+							return newContactId;
+						}
+						return contributorId;
+					});
+
+					// Update the anti_contributors_ids array
+					nonRootNode.anti_contributors_ids = updatedAntiContributors;
 				}
 			}
 
@@ -606,9 +741,13 @@
 
 			globalState.showToast(`Contact "${detail.name}" created successfully`, 'success');
 
-			// Automatically add the new contact as a contributor to the active node
+			// Automatically add the new contact to the active node based on current mode
 			if (activeNodeId) {
-				addContributorToNode(activeNodeId, newContact.contact_id);
+				if (contributorMode === 'anti-contributor') {
+					addAntiContributorToNode(activeNodeId, newContact.contact_id);
+				} else {
+					addContributorToNode(activeNodeId, newContact.contact_id);
+				}
 			}
 		} catch (error) {
 			console.error('[CONTACT] Error creating contact:', error);
@@ -650,6 +789,8 @@
 			function replaceSpecificContactId(node: Node): void {
 				if (node.type === 'NonRootNode') {
 					const nonRootNode = node as NonRootNode;
+
+					// Handle regular contributors
 					if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
 						// Replace contact_id with public key, or remove if no public key
 						nonRootNode.contributor_ids = nonRootNode.contributor_ids
@@ -657,13 +798,38 @@
 								if (contributorId === contactId) {
 									if (publicKey) {
 										console.log(
-											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in node '${node.name}' (${node.id})`
+											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in contributors of node '${node.name}' (${node.id})`
 										);
 										substitutionCount++;
 										return publicKey;
 									} else {
 										console.log(
-											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from node '${node.name}' (${node.id})`
+											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from contributors of node '${node.name}' (${node.id})`
+										);
+										removalCount++;
+										return null; // Mark for removal
+									}
+								}
+								return contributorId;
+							})
+							.filter((id) => id !== null) as string[]; // Remove null entries
+					}
+
+					// Handle anti-contributors
+					if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+						// Replace contact_id with public key, or remove if no public key
+						nonRootNode.anti_contributors_ids = nonRootNode.anti_contributors_ids
+							.map((contributorId) => {
+								if (contributorId === contactId) {
+									if (publicKey) {
+										console.log(
+											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in anti-contributors of node '${node.name}' (${node.id})`
+										);
+										substitutionCount++;
+										return publicKey;
+									} else {
+										console.log(
+											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from anti-contributors of node '${node.name}' (${node.id})`
 										);
 										removalCount++;
 										return null; // Mark for removal
@@ -738,12 +904,16 @@
 			}
 		}
 
-		// Remove all the contributor IDs - safe to use activeNodeId here since we checked above
+		// Remove all the contributor IDs based on current mode - safe to use activeNodeId here since we checked above
 		contributorIdsToRemove.forEach((idToRemove) => {
-			handleRemoveContributor({ nodeId: activeNodeId!, contributorId: idToRemove });
+			if (contributorMode === 'anti-contributor') {
+				handleRemoveAntiContributor({ nodeId: activeNodeId!, contributorId: idToRemove });
+			} else {
+				handleRemoveContributor({ nodeId: activeNodeId!, contributorId: idToRemove });
+			}
 		});
 
-		console.log('[CONTRIBUTOR] Removed contributor(s):', {
+		console.log(`[${contributorMode.toUpperCase()}] Removed ${contributorMode}(s):`, {
 			nodeId: activeNodeId,
 			contributorIds: contributorIdsToRemove,
 			name: detail.name
@@ -767,11 +937,12 @@
 			if (!hasContributor) {
 				// Get current contributors and add the new one
 				const currentContributors = [...(node as NonRootNode).contributor_ids];
+				const currentAntiContributors = [...((node as NonRootNode).anti_contributors_ids || [])];
 				currentContributors.push(userId);
 
 				// Use the protocol function to properly add contributors AND clear children
 				// This ensures the node becomes a proper leaf contribution node
-				addContributors(node, currentContributors);
+				addContributors(node, currentContributors, currentAntiContributors);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -790,6 +961,49 @@
 		}
 	}
 
+	function addAntiContributorToNode(nodeId: string, userId: string) {
+		try {
+			if (!tree) return;
+
+			// Create a clone of the tree to ensure reactivity
+			const updatedTree = structuredClone(tree);
+
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
+
+			// Check if anti-contributor already exists
+			const hasAntiContributor = ((node as NonRootNode).anti_contributors_ids || []).includes(
+				userId
+			);
+
+			if (!hasAntiContributor) {
+				// Get current contributors and anti-contributors, add the new anti-contributor
+				const currentContributors = [...(node as NonRootNode).contributor_ids];
+				const currentAntiContributors = [...((node as NonRootNode).anti_contributors_ids || [])];
+				currentAntiContributors.push(userId);
+
+				// Use the protocol function to properly add both types AND clear children
+				// This ensures the node becomes a proper leaf contribution node
+				addContributors(node, currentContributors, currentAntiContributors);
+
+				// Run deduplication to ensure no duplicates exist
+				deduplicateContributorsInTree(updatedTree);
+
+				// Update the store to trigger reactivity
+				userTree.set(updatedTree);
+
+				// Force update
+				triggerUpdate();
+
+				globalState.showToast('Anti-contributor added successfully', 'success');
+			}
+		} catch (err) {
+			console.error('Error adding anti-contributor:', err);
+			globalState.showToast('Error adding anti-contributor', 'error');
+		}
+	}
+
 	// Calculate node fulfillment directly using protocol
 	function getNodeFulfillment(nodeId: string): number {
 		if (!tree) return 0;
@@ -800,93 +1014,133 @@
 		return fulfilled(node, tree);
 	}
 
-	// Unified deduplication function - prefers contact IDs over public keys
+	// Get manual fulfillment value for a node
+	function getNodeManualFulfillment(nodeId: string): number | null {
+		if (!tree) return null;
+
+		const node = findNodeById(tree, nodeId);
+		if (!node) return null;
+
+		console.log(
+			`[GET-MANUAL-FULFILLMENT-DEBUG] Node ${nodeId}: manual_fulfillment=${node.manual_fulfillment}`
+		);
+		return node.manual_fulfillment;
+	}
+
+	// Unified deduplication function - prefers contact IDs over public keys (for both contributors and anti-contributors)
 	function deduplicateContributorsInTree(treeToModify: Node): boolean {
 		let hasChanges = false;
 		let deduplicatedCount = 0;
 
+		// Helper function to deduplicate a contributor array
+		function deduplicateContributorArray(
+			contributorIds: string[],
+			arrayType: 'contributors' | 'anti-contributors',
+			nodeName: string,
+			nodeId: string
+		): string[] {
+			if (!contributorIds || contributorIds.length === 0) return contributorIds;
+
+			const originalLength = contributorIds.length;
+
+			// First pass: collect all contact IDs and their resolved public keys
+			const contactIdToPublicKey = new Map<string, string>();
+			const publicKeyToContactId = new Map<string, string>();
+
+			contributorIds.forEach((contributorId) => {
+				if (contributorId.startsWith('contact_')) {
+					const resolvedPublicKey = resolveToPublicKey(contributorId);
+					if (resolvedPublicKey) {
+						contactIdToPublicKey.set(contributorId, resolvedPublicKey);
+						publicKeyToContactId.set(resolvedPublicKey, contributorId);
+					}
+				}
+			});
+
+			// Create a set to track resolved public keys we've already seen
+			const seenPublicKeys = new Set<string>();
+			const deduplicatedContributors: string[] = [];
+
+			// Second pass: deduplicate, preferring contact IDs over public keys
+			contributorIds.forEach((contributorId) => {
+				if (contributorId.startsWith('contact_')) {
+					// This is a contact ID - resolve to public key to check for duplicates
+					const resolvedPublicKey = resolveToPublicKey(contributorId);
+					if (resolvedPublicKey) {
+						if (!seenPublicKeys.has(resolvedPublicKey)) {
+							seenPublicKeys.add(resolvedPublicKey);
+							// Always prefer the contact ID over the public key
+							deduplicatedContributors.push(contributorId);
+						} else {
+							// This public key was already seen - this is a duplicate contact
+							console.log(
+								`[DEDUP] Removing duplicate contact '${contributorId}' from ${arrayType} in node '${nodeName}' (${nodeId})`
+							);
+							deduplicatedCount++;
+						}
+					} else {
+						// Contact ID couldn't be resolved - keep it anyway
+						deduplicatedContributors.push(contributorId);
+					}
+				} else {
+					// This is a public key - check if we have a contact ID for this person
+					if (publicKeyToContactId.has(contributorId)) {
+						// We have a contact ID for this person - remove the public key
+						console.log(
+							`[DEDUP] Removing public key '${contributorId.substring(0, 20)}...' in favor of contact ID '${publicKeyToContactId.get(contributorId)}' from ${arrayType} in node '${nodeName}' (${nodeId})`
+						);
+						deduplicatedCount++;
+					} else {
+						// No contact ID for this person - keep the public key if not already seen
+						if (!seenPublicKeys.has(contributorId)) {
+							seenPublicKeys.add(contributorId);
+							deduplicatedContributors.push(contributorId);
+						} else {
+							// This is a duplicate public key
+							console.log(
+								`[DEDUP] Removing duplicate public key '${contributorId.substring(0, 20)}...' from ${arrayType} in node '${nodeName}' (${nodeId})`
+							);
+							deduplicatedCount++;
+						}
+					}
+				}
+			});
+
+			// Check if any contributors were removed
+			if (deduplicatedContributors.length < originalLength) {
+				hasChanges = true;
+				console.log(
+					`[DEDUP] Node '${nodeName}' (${nodeId}) ${arrayType}: ${originalLength} → ${deduplicatedContributors.length}`
+				);
+			}
+
+			return deduplicatedContributors;
+		}
+
 		// Recursive function to deduplicate contributors in a node and its children
 		function deduplicateNodeContributors(node: Node): void {
-			// Only NonRootNodes have contributor_ids
+			// Only NonRootNodes have contributor_ids and anti_contributor_ids
 			if (node.type === 'NonRootNode') {
 				const nonRootNode = node as NonRootNode;
-				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-					const originalLength = nonRootNode.contributor_ids.length;
-					const originalContributors = [...nonRootNode.contributor_ids];
 
-					// First pass: collect all contact IDs and their resolved public keys
-					const contactIdToPublicKey = new Map<string, string>();
-					const publicKeyToContactId = new Map<string, string>();
+				// Deduplicate regular contributors
+				if (nonRootNode.contributor_ids) {
+					nonRootNode.contributor_ids = deduplicateContributorArray(
+						nonRootNode.contributor_ids,
+						'contributors',
+						node.name,
+						node.id
+					);
+				}
 
-					originalContributors.forEach((contributorId) => {
-						if (contributorId.startsWith('contact_')) {
-							const resolvedPublicKey = resolveToPublicKey(contributorId);
-							if (resolvedPublicKey) {
-								contactIdToPublicKey.set(contributorId, resolvedPublicKey);
-								publicKeyToContactId.set(resolvedPublicKey, contributorId);
-							}
-						}
-					});
-
-					// Create a set to track resolved public keys we've already seen
-					const seenPublicKeys = new Set<string>();
-					const deduplicatedContributors: string[] = [];
-
-					// Second pass: deduplicate, preferring contact IDs over public keys
-					originalContributors.forEach((contributorId) => {
-						if (contributorId.startsWith('contact_')) {
-							// This is a contact ID - resolve to public key to check for duplicates
-							const resolvedPublicKey = resolveToPublicKey(contributorId);
-							if (resolvedPublicKey) {
-								if (!seenPublicKeys.has(resolvedPublicKey)) {
-									seenPublicKeys.add(resolvedPublicKey);
-									// Always prefer the contact ID over the public key
-									deduplicatedContributors.push(contributorId);
-								} else {
-									// This public key was already seen - this is a duplicate contact
-									console.log(
-										`[DEDUP] Removing duplicate contact '${contributorId}' from node '${node.name}' (${node.id})`
-									);
-									deduplicatedCount++;
-								}
-							} else {
-								// Contact ID couldn't be resolved - keep it anyway
-								deduplicatedContributors.push(contributorId);
-							}
-						} else {
-							// This is a public key - check if we have a contact ID for this person
-							if (publicKeyToContactId.has(contributorId)) {
-								// We have a contact ID for this person - remove the public key
-								console.log(
-									`[DEDUP] Removing public key '${contributorId.substring(0, 20)}...' in favor of contact ID '${publicKeyToContactId.get(contributorId)}' from node '${node.name}' (${node.id})`
-								);
-								deduplicatedCount++;
-							} else {
-								// No contact ID for this person - keep the public key if not already seen
-								if (!seenPublicKeys.has(contributorId)) {
-									seenPublicKeys.add(contributorId);
-									deduplicatedContributors.push(contributorId);
-								} else {
-									// This is a duplicate public key
-									console.log(
-										`[DEDUP] Removing duplicate public key '${contributorId.substring(0, 20)}...' from node '${node.name}' (${node.id})`
-									);
-									deduplicatedCount++;
-								}
-							}
-						}
-					});
-
-					// Update the contributor_ids array
-					nonRootNode.contributor_ids = deduplicatedContributors;
-
-					// Check if any contributors were removed
-					if (nonRootNode.contributor_ids.length < originalLength) {
-						hasChanges = true;
-						console.log(
-							`[DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributor_ids.length} contributors`
-						);
-					}
+				// Deduplicate anti-contributors
+				if (nonRootNode.anti_contributors_ids) {
+					nonRootNode.anti_contributors_ids = deduplicateContributorArray(
+						nonRootNode.anti_contributors_ids,
+						'anti-contributors',
+						node.name,
+						node.id
+					);
 				}
 			}
 
@@ -1540,7 +1794,9 @@
 								name: child.data.nodeName || 'Unnamed',
 								points: child.data.points,
 								contributors: child.data.contributors || [],
+								antiContributors: child.data.antiContributors || [],
 								fulfillment: getNodeFulfillment(child.data.id),
+								manualFulfillment: getNodeManualFulfillment(child.data.id) ?? undefined,
 								hasChildren: child.data.hasChildren || false
 							}}
 							dimensions={{
@@ -1550,8 +1806,10 @@
 								y1: child.y1
 							}}
 							addContributor={handleAddContributor}
+							addAntiContributor={handleAddAntiContributor}
 							removeContributor={handleRemoveContributor}
 							onTextEdit={handleTextEdit}
+							onManualFulfillmentChange={handleManualFulfillmentChange}
 							shouldEdit={globalState.nodeToEdit === child.data.id}
 						/>
 					</div>
@@ -1572,7 +1830,9 @@
 	<!-- User dropdown for adding contributors -->
 	<DropDown
 		show={showUserDropdown}
-		title="Select Contributor"
+		title={contributorMode === 'anti-contributor'
+			? 'Select Anti-Contributor'
+			: 'Select Contributor'}
 		searchPlaceholder="Search users..."
 		position={dropdownPosition}
 		width={280}

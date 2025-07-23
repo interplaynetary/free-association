@@ -20,7 +20,8 @@ export const NonRootNodeSchema = z.object({
 	children: z.array(z.any()),
 	points: PointsSchema,
 	parent_id: IdSchema,
-	contributor_ids: z.array(IdSchema)
+	contributor_ids: z.array(IdSchema),
+	anti_contributors_ids: z.array(IdSchema)
 });
 
 export const RootNodeSchema = z.object({

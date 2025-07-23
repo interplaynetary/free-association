@@ -271,3 +271,7 @@ But how much of inputs get consumed?
 Somehow the user was able to click the play button after having logged in and before the tree was fully loaded, leading to their tree getting overwritten
 
 I am unsure whether contacts successfully get mutual-recognition / shares of surplus, when initially added as contacts?
+
+
+
+collective.ts not taking into account fulfillment

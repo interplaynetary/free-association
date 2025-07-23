@@ -1,5 +1,21 @@
 /**
  * Free Association Protocol
+ *
+ * This protocol implements a clean, intuitive node architecture:
+ *
+ * CONTRIBUTION NODES: Represent actual work done by people
+ * - Have positive contributors who delivered the work
+ * - Can have manual_fulfillment to assess work quality (defaults to 100%)
+ * - Can have anti-contributors who hampered the work quality
+ * - Anti-contributors only effective when manual_fulfillment < 100% (creates desire)
+ *
+ * NON-CONTRIBUTION NODES: Represent structural decomposition
+ * - No direct contributors (abstract organization of work)
+ * - Fulfillment calculated from weighted children (structural completion)
+ * - Cannot have manual_fulfillment (would break recursive calculation)
+ * - Cannot have anti-contributors (people don't hamper abstract structure)
+ *
+ * This clean separation preserves both semantic clarity and mathematical elegance.
  */
 import type {
 	Node,
@@ -151,24 +167,21 @@ export function shareOfParent(node: Node, tree: Node): number {
 
 // Check if a node is a contribution node (has contributors and is not root)
 export function isContribution(node: Node): boolean {
-	return node.type === 'NonRootNode' && (node as NonRootNode).contributor_ids?.length > 0;
+	if (node.type === 'RootNode') return false;
+
+	const nonRootNode = node as NonRootNode;
+	return nonRootNode.contributor_ids?.length > 0;
 }
 
 // Calculate the fulfillment value for a node
 export function fulfilled(node: Node, tree: Node): number {
 	// Helper predicates and values
-	const hasManualFulfillment = node.manual_fulfillment !== undefined;
 	const isLeafNode = node.children.length === 0;
 	const isContribNode = isContribution(node);
-	const hasContribChildren = node.children.some((child: Node) => isContribution(child));
-	const hasNonContribChildren = node.children.some((child: Node) => !isContribution(child));
 
-	// Safely extract manual fulfillment value with a default
-	const getManualValue = node.manual_fulfillment ?? 0.0;
-
-	// Leaf contribution node
+	// Leaf contribution node - allow manual fulfillment override
 	if (isLeafNode && isContribNode) {
-		return 1.0;
+		return node.manual_fulfillment ?? 1.0;
 	}
 
 	// Leaf non-contribution node
@@ -176,12 +189,7 @@ export function fulfilled(node: Node, tree: Node): number {
 		return 0.0;
 	}
 
-	// Non-leaf node with manual fulfillment for contribution children only
-	if (hasManualFulfillment && hasContribChildren && !hasNonContribChildren) {
-		return getManualValue;
-	}
-
-	// For other nodes, calculate weighted average fulfillment from children
+	// Non-leaf nodes: calculate weighted average fulfillment from children
 	const childWeights = node.children.map((child: Node) => weight(child, tree));
 	const childFulfillments = node.children.map((child: Node) => fulfilled(child, tree));
 
@@ -203,6 +211,52 @@ export function desire(node: Node, tree: Node): number {
  * Mutual Fulfillment
  */
 
+/**
+ * Helper Functions for Recognition Calculation
+ */
+
+// Resolve contributor ID to public key if resolver provided
+function resolveContributorId(
+	contributorId: string,
+	resolveToPublicKey?: (id: string) => string | undefined
+): string {
+	return resolveToPublicKey ? resolveToPublicKey(contributorId) || contributorId : contributorId;
+}
+
+// Get unique resolved contributor IDs from a list
+function getUniqueResolvedIds(
+	contributorIds: string[],
+	resolveToPublicKey?: (id: string) => string | undefined
+): string[] {
+	const resolvedIds = contributorIds.map((id) => resolveContributorId(id, resolveToPublicKey));
+	return [...new Set(resolvedIds)];
+}
+
+// Check if a contributor appears in a list of contributor IDs
+function contributorAppearsIn(
+	targetContributorId: string,
+	contributorIds: string[],
+	resolveToPublicKey?: (id: string) => string | undefined
+): boolean {
+	return contributorIds.some(
+		(id) => resolveContributorId(id, resolveToPublicKey) === targetContributorId
+	);
+}
+
+// Calculate contributor share for a single node
+function calculateNodeContributorShare(
+	node: NonRootNode,
+	contributorId: string,
+	nodeWeight: number,
+	nodeValue: number, // fulfillment for positive, desire for negative
+	contributorIds: string[],
+	resolveToPublicKey?: (id: string) => string | undefined
+): number {
+	const uniqueContributorIds = getUniqueResolvedIds(contributorIds, resolveToPublicKey);
+	const contributorCount = uniqueContributorIds.length;
+	return (nodeWeight * nodeValue) / contributorCount;
+}
+
 // Calculate a node's share of general fulfillment to another node
 export function shareOfGeneralFulfillment(
 	target: Node,
@@ -210,61 +264,92 @@ export function shareOfGeneralFulfillment(
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): number {
-	// Resolve the contributor ID to public key if resolver is provided
-	const resolvedContributorId = resolveToPublicKey
-		? resolveToPublicKey(contributorId) || contributorId
-		: contributorId;
-
-	// Find all nodes where this contributor is listed
+	const resolvedContributorId = resolveContributorId(contributorId, resolveToPublicKey);
 	const targetAndDescendants = [target, ...getDescendants(target)];
-	const contributingNodes = targetAndDescendants.filter((node) => {
-		if (node.type === 'RootNode') return false; // Root nodes can't have contributors
 
-		const nodeContributorIds = (node as NonRootNode).contributor_ids;
+	// Step 1: Calculate total influence pools
+	let P_total = 0; // Total positive influence from contribution nodes
+	let N_total = 0; // Total anti influence from contribution nodes with anti-contributors
 
-		// Check if any of the node's contributor IDs resolve to our target contributor
-		const hasContributor = nodeContributorIds.some((nodeContribId) => {
-			const resolvedNodeContribId = resolveToPublicKey
-				? resolveToPublicKey(nodeContribId) || nodeContribId
-				: nodeContribId;
-			return resolvedNodeContribId === resolvedContributorId;
-		});
+	for (const node of targetAndDescendants) {
+		if (node.type === 'NonRootNode') {
+			const nodeWeight = weight(node, target);
+			const nodeFulfillment = fulfilled(node, target);
+			const nodeDesire = desire(node, target);
 
-		return hasContributor && isContribution(node);
-	});
+			// Positive influence: contribution nodes
+			if (isContribution(node)) {
+				P_total += nodeWeight * nodeFulfillment;
 
-	// Calculate weighted contribution for each node
-	const weightedContributions = contributingNodes.map((node) => {
-		// Use the target node itself as the tree for weight calculations
-		const nodeWeight = weight(node, target);
-		const nodeFulfillment = fulfilled(node, target);
-
-		// Get contributor count - resolve all contributor IDs to public keys and deduplicate
-		let contributorCount: number;
-		if (node.type === 'RootNode') {
-			contributorCount = 1;
-		} else {
-			const nodeContributorIds = (node as NonRootNode).contributor_ids;
-
-			// Resolve all contributor IDs to public keys
-			const resolvedContributorIds = nodeContributorIds.map((id) =>
-				resolveToPublicKey ? resolveToPublicKey(id) || id : id
-			);
-
-			// Remove duplicates by converting to Set and back to array
-			const uniqueContributorIds = [...new Set(resolvedContributorIds)];
-			contributorCount = uniqueContributorIds.length;
+				// Anti influence: contribution nodes with anti-contributors
+				const antiContributorIds = (node as NonRootNode).anti_contributors_ids || [];
+				if (antiContributorIds.length > 0) {
+					N_total += nodeWeight * nodeDesire;
+				}
+			}
 		}
+	}
 
-		return (nodeWeight * nodeFulfillment) / contributorCount;
-	});
+	// Step 2: Calculate recognition pools
+	const totalInfluence = P_total + N_total;
+	const positivePool = totalInfluence > 0 ? P_total / totalInfluence : 0;
+	const antiPool = totalInfluence > 0 ? N_total / totalInfluence : 0;
 
-	// Sum the weighted contributions
-	return weightedContributions.reduce((sum, w) => sum + w, 0);
+	// Step 3: Find relevant nodes and calculate shares
+	let rawPositiveShare = 0;
+	let rawAntiShare = 0;
+
+	for (const node of targetAndDescendants) {
+		if (node.type === 'NonRootNode') {
+			const nonRootNode = node as NonRootNode;
+			const nodeWeight = weight(node, target);
+			const nodeFulfillment = fulfilled(node, target);
+			const nodeDesire = desire(node, target);
+
+			// Process positive contributions
+			if (
+				isContribution(node) &&
+				contributorAppearsIn(resolvedContributorId, nonRootNode.contributor_ids, resolveToPublicKey)
+			) {
+				rawPositiveShare += calculateNodeContributorShare(
+					nonRootNode,
+					resolvedContributorId,
+					nodeWeight,
+					nodeFulfillment,
+					nonRootNode.contributor_ids,
+					resolveToPublicKey
+				);
+			}
+
+			// Process negative contributions (only on contribution nodes)
+			if (isContribution(node)) {
+				const antiContributorIds = nonRootNode.anti_contributors_ids || [];
+				if (
+					antiContributorIds.length > 0 &&
+					contributorAppearsIn(resolvedContributorId, antiContributorIds, resolveToPublicKey)
+				) {
+					rawAntiShare += calculateNodeContributorShare(
+						nonRootNode,
+						resolvedContributorId,
+						nodeWeight,
+						nodeDesire,
+						antiContributorIds,
+						resolveToPublicKey
+					);
+				}
+			}
+		}
+	}
+
+	// Step 4: Apply pool-bounded recognition
+	const boundedPositiveShare = P_total > 0 ? (rawPositiveShare / P_total) * positivePool : 0;
+	const boundedAntiShare = N_total > 0 ? (rawAntiShare / N_total) * antiPool : 0;
+
+	return boundedPositiveShare - boundedAntiShare;
 }
 
 /**
- * Extract all unique contributor IDs from a tree
+ * Extract all unique contributor IDs from a tree (both positive and negative contributors)
  * If resolveToPublicKey is provided, resolves contact IDs to public keys
  */
 export function getAllContributorsFromTree(
@@ -276,12 +361,20 @@ export function getAllContributorsFromTree(
 
 	for (const node of allNodes) {
 		if (node.type === 'NonRootNode') {
-			for (const contributorId of (node as NonRootNode).contributor_ids) {
-				// Resolve to public key if resolver is provided
-				const resolvedId = resolveToPublicKey
-					? resolveToPublicKey(contributorId) || contributorId
-					: contributorId;
-				allContributorIds.add(resolvedId);
+			const nonRootNode = node as NonRootNode;
+
+			// Add positive contributors from contribution nodes
+			if (isContribution(node)) {
+				const resolvedPositiveIds = getUniqueResolvedIds(
+					nonRootNode.contributor_ids,
+					resolveToPublicKey
+				);
+				resolvedPositiveIds.forEach((id) => allContributorIds.add(id));
+
+				// Add anti-contributors from contribution nodes
+				const antiContributorIds = nonRootNode.anti_contributors_ids || [];
+				const resolvedAntiIds = getUniqueResolvedIds(antiContributorIds, resolveToPublicKey);
+				resolvedAntiIds.forEach((id) => allContributorIds.add(id));
 			}
 		}
 	}
@@ -545,6 +638,7 @@ export function createNonRootNode(
 	parentId: string,
 	pts: number,
 	contributorIds: string[] = [],
+	antiContributorIds: string[] = [],
 	manual?: number
 ): NonRootNode {
 	return {
@@ -555,6 +649,7 @@ export function createNonRootNode(
 		parent_id: parentId,
 		children: [],
 		contributor_ids: contributorIds,
+		anti_contributors_ids: antiContributorIds,
 		manual_fulfillment: validateManualFulfillment(manual)
 	};
 }
@@ -566,25 +661,57 @@ export function addChild(
 	name: string,
 	points: number,
 	contributorIds: string[] = [],
+	antiContributorIds: string[] = [],
 	manual?: number
 ): void {
-	// Don't allow adding children to nodes with contributors
-	if (parentNode.type === 'NonRootNode' && (parentNode as NonRootNode).contributor_ids.length > 0) {
-		throw new Error('Cannot add children to nodes with contributors');
+	// Don't allow adding children to nodes with contributors or anti-contributors
+	if (
+		parentNode.type === 'NonRootNode' &&
+		((parentNode as NonRootNode).contributor_ids.length > 0 ||
+			((parentNode as NonRootNode).anti_contributors_ids || []).length > 0)
+	) {
+		throw new Error('Cannot add children to nodes with contributors or anti-contributors');
+	}
+
+	// Anti-contributors can only be placed on contribution nodes
+	if (antiContributorIds.length > 0 && contributorIds.length === 0) {
+		throw new Error(
+			'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors).'
+		);
 	}
 
 	// Create the new child
-	const newChild = createNonRootNode(id, name, parentNode.id, points, contributorIds, manual);
+	const newChild = createNonRootNode(
+		id,
+		name,
+		parentNode.id,
+		points,
+		contributorIds,
+		antiContributorIds,
+		manual
+	);
 
 	// Directly add the child to the parent's children array
 	parentNode.children.push(newChild);
 }
 
-// Add contributors to a node and clear its children (mutates the node)
-export function addContributors(node: Node, contributorIds: string[]): void {
+// Add contributors/anti-contributors to a node and clear its children (mutates the node)
+export function addContributors(
+	node: Node,
+	contributorIds: string[] = [],
+	antiContributorIds: string[] = []
+): void {
 	if (node.type === 'NonRootNode') {
-		// Update contributors and clear children
+		// Anti-contributors can only be placed on contribution nodes
+		if (antiContributorIds.length > 0 && contributorIds.length === 0) {
+			throw new Error(
+				'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors).'
+			);
+		}
+
+		// Update contributors and anti-contributors, and clear children
 		(node as NonRootNode).contributor_ids = [...contributorIds];
+		(node as NonRootNode).anti_contributors_ids = [...antiContributorIds];
 		node.children = [];
 	} else {
 		// Root nodes can't have contributors, but we still clear children
@@ -747,6 +874,47 @@ export function getSubtreeContributorMap(
 	allDescendants.forEach((node) => {
 		subtreeMap[node.id] = Object.fromEntries(
 			getContributorsInSubtree(node).map((id) => [id, true])
+		);
+	});
+
+	return subtreeMap;
+}
+
+// Get a map of subtree names to their anti-contributor lists
+export function getSubtreeAntiContributorMap(
+	tree: Node,
+	resolveToPublicKey?: (id: string) => string | undefined
+): Record<string, Record<string, boolean>> {
+	const subtreeMap: Record<string, Record<string, boolean>> = {};
+
+	// Helper to get anti-contributors from contribution nodes in a subtree
+	function getAntiContributorsInSubtree(node: Node): string[] {
+		const antiContributorIds = new Set<string>();
+		const subtreeNodes = [node, ...getDescendants(node)];
+
+		subtreeNodes.forEach((n) => {
+			if (n.type === 'NonRootNode' && isContribution(n)) {
+				const nodeAntiContributorIds = (n as NonRootNode).anti_contributors_ids || [];
+				nodeAntiContributorIds.forEach((id) => {
+					const resolvedId = resolveToPublicKey ? resolveToPublicKey(id) || id : id;
+					antiContributorIds.add(resolvedId);
+				});
+			}
+		});
+
+		return [...antiContributorIds];
+	}
+
+	// Include the root
+	subtreeMap[tree.id] = Object.fromEntries(
+		getAntiContributorsInSubtree(tree).map((id) => [id, true])
+	);
+
+	// Include all child subtrees
+	const allDescendants = getDescendants(tree);
+	allDescendants.forEach((node) => {
+		subtreeMap[node.id] = Object.fromEntries(
+			getAntiContributorsInSubtree(node).map((id) => [id, true])
 		);
 	});
 
