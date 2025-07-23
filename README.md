@@ -45,6 +45,12 @@ Your Total-Recognition = 100%
 Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
 
 General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
+
+Specific-Share(You, Provider, Capacity) = General-Share(You, Provider) × Filter(You, Capacity) / Σ (General-Share(Each-Filtered-Participant, Provider) × Filter(Each-Filtered-Participant, Capacity))
+
+where Filter(Participant, Capacity) = 1 if Participant satisfies Capacity's filter criteria, 0 otherwise
+
+
 ```
 
 <details>
