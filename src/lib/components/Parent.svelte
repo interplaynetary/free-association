@@ -490,7 +490,7 @@
 			// Force update
 			triggerUpdate();
 
-			globalState.showToast(`Manual fulfillment set to ${Math.round(value * 100)}%`, 'success');
+			globalState.showToast(`Fulfillment set to ${Math.round(value * 100)}%`, 'success');
 		} catch (err) {
 			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
 			globalState.showToast('Error updating manual fulfillment', 'error');

@@ -275,3 +275,11 @@ I am unsure whether contacts successfully get mutual-recognition / shares of sur
 
 
 collective.ts not taking into account fulfillment
+
+compose from seems to lose data sometimes
+compose into seems to lose data sometimes
+
+
+Common Language:
+- Node titles so that merging is good
+- Merge capacities with same titles

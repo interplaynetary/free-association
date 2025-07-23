@@ -581,6 +581,7 @@
 				onmousedown={(e) => e.stopPropagation()}
 				ontouchstart={(e) => e.stopPropagation()}
 				onpointerdown={(e) => e.stopPropagation()}
+				onclick={(e) => e.stopPropagation()}
 			>
 				<input
 					type="range"
@@ -621,6 +622,10 @@
 					align-items: center;
 					gap: {Math.max(2, buttonSizePercent * 0.1)}px;
 				"
+				onmousedown={(e) => e.stopPropagation()}
+				ontouchstart={(e) => e.stopPropagation()}
+				onpointerdown={(e) => e.stopPropagation()}
+				onclick={(e) => e.stopPropagation()}
 			>
 				<!-- Contributor Button (always present) -->
 				{#if hasContributors}
