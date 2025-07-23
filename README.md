@@ -45,7 +45,39 @@ Your Total-Recognition = 100%
 Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
 
 General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
+```
 
+<details>
+  <summary><b><i>Capacity Composition</i></b></summary>
+
+This allows us to compose our capacities into gift-economy based supply chains / higher-order collective capacities **while retaining mutual-recognition proportions**.
+
+So we can organize complex and increasingly powerful cooperative processes, that operate within the realm of mutual-fulfillment and mutual-desire
+
+The network effects of this system are particularly fascinating. As more participants engage in mutual composition, the complexity and richness of possible supply chains grows exponentially. A cooking capacity might compose ingredient supplies, which compose farming capacities, which compose transportation networks, which compose community gathering spaces—all operating on principles of mutual desire and shared benefit. Each link in these chains strengthens the whole network, creating resilient webs of interdependence that are fundamentally different from the fragile, hierarchical supply chains of traditional capitalism. When disruption occurs, the network can adapt and flow around obstacles because relationships are based on genuine mutual benefit rather than contractual obligation.
+
+We have a world to win! Lets play! 🌍✨☺️
+
+### How Composition Works:
+
+1. **Compose-From**: You enhance your capacity using shares you have in others' capacities
+   - Example: You enhance your "cooking-skill" using your share in someone's "ingredients-supply"
+   - Constrained by your share percentage in their capacity
+
+2. **Compose-Into**: You enhance others' capacities using shares they have in your capacities
+   - Example: You enhance someone's "meal-service" using their share in your "cooking-skill"
+   - Constrained by their share percentage in your capacity
+
+3. **Resource Allocation**: When total desired composition exceeds available capacity
+   - Applies proportional scaling across all participants
+   - Maintains mathematical integrity
+
+4. **Mutual Composition**: Most fulfilling when desires align bidirectionally
+   - Both parties desire this composition
+
+**Mathematically defined:**
+
+```
 Compose-From(You, Your-Capacity, Provider, Their-Capacity) = Your-Desired-Units-From-Their-Capacity-Into-Your-Capacity
 Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) = Your-Desired-Units-From-Your-Capacity-Into-Their-Capacity
 
@@ -92,33 +124,7 @@ Mutual-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) =
             Compose-From(Recipient, Their-Capacity, You, Your-Capacity))
 ```
 
-## Capacity Composition: Enhanced Mutual Fulfillment 🔗
-
-
-This would allow us to compose our capacities into gift-economy based supply chains / higher-order collective capacities **while retaining mutual-recognition proportions**.
-
-So we can start to organize complex and increasingly powerful cooperative processes, that operate within the realm of mutual-fulfillment and mutual-desire
-
-The network effects of this system are particularly fascinating. As more participants engage in mutual composition, the complexity and richness of possible supply chains grows exponentially. A cooking capacity might compose ingredient supplies, which compose farming capacities, which compose transportation networks, which compose community gathering spaces—all operating on principles of mutual desire and shared benefit. Each link in these chains strengthens the whole network, creating resilient webs of interdependence that are fundamentally different from the fragile, hierarchical supply chains of traditional capitalism. When disruption occurs, the network can adapt and flow around obstacles because relationships are based on genuine mutual benefit rather than contractual obligation.
-
-We have a world to win! Lets play! 🌍✨☺️
-
-### How Composition Works:
-
-1. **Compose-From**: You enhance your capacity using shares you have in others' capacities
-   - Example: You enhance your "cooking-skill" using your share in someone's "ingredients-supply"
-   - Constrained by your share percentage in their capacity
-
-2. **Compose-Into**: You enhance others' capacities using shares they have in your capacities
-   - Example: You enhance someone's "meal-service" using their share in your "cooking-skill"
-   - Constrained by their share percentage in your capacity
-
-3. **Resource Allocation**: When total desired composition exceeds available capacity
-   - Applies proportional scaling across all participants
-   - Maintains mathematical integrity
-
-4. **Mutual Composition**: Most fulfilling when desires align bidirectionally
-   - Both parties desire this composition
+</details>
 
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>
@@ -378,5 +384,4 @@ bun start
 ```
 bun install
 bun run build
-npx serve build
 ```
