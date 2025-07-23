@@ -1069,6 +1069,11 @@
 								autocomplete="username"
 								required
 							/>
+							{#if isRegisterMode}
+								<div class="form-info">
+									⚠️ Choose wisely! Usernames cannot be changed after creation
+								</div>
+							{/if}
 						</div>
 
 						<div class="form-group password-group">
@@ -1119,6 +1124,9 @@
 									</button>
 								</div>
 							</div>
+							{#if isRegisterMode}
+								<div class="form-info">🔐 Save this password!</div>
+							{/if}
 
 							<div class="form-group checkbox-group">
 								<label class="checkbox-label">
@@ -2146,5 +2154,20 @@
 	.cancel-password-btn:disabled {
 		color: #999;
 		cursor: not-allowed;
+	}
+
+	.form-info {
+		margin-top: 4px;
+		color: #64748b;
+		font-size: 0.85em;
+		line-height: 1.4;
+	}
+
+	.security-info {
+		margin-top: 8px;
+		padding: 8px;
+		background: #f0f9ff;
+		border-left: 3px solid #0ea5e9;
+		border-radius: 4px;
 	}
 </style>
