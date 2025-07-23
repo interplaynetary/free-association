@@ -598,7 +598,13 @@
 					}}
 					class="fulfillment-slider"
 				/>
-				<div class="slider-value">
+				<div
+					class="slider-value"
+					style="
+						font-size: {Math.max(8, Math.min(14, buttonSizePercent * 0.3))}px;
+						margin-top: {Math.max(2, buttonSizePercent * 0.15)}px;
+					"
+				>
 					{currentSliderValue}%
 				</div>
 			</div>
@@ -1012,7 +1018,6 @@
 		color: white;
 		padding: 2px 6px;
 		border-radius: 3px;
-		font-size: 10px;
 		font-weight: 500;
 		white-space: nowrap;
 		text-shadow: none;
