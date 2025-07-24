@@ -73,17 +73,21 @@
 
 	// Normalize segment values and add names/colors
 	const normalizedSegments = $derived(
-		segments.map((segment: BarSegment) => {
-			// Get name from reactive cache (now includes contact names via fixed getUserName)
-			let displayName = $userNamesOrAliasesCache[segment.id] || segment.id.substring(0, 8) + '...';
+		segments
+			.map((segment: BarSegment) => {
+				// Get name from reactive cache (now includes contact names via fixed getUserName)
+				let displayName =
+					$userNamesOrAliasesCache[segment.id] || segment.id.substring(0, 8) + '...';
 
-			return {
-				...segment,
-				normalizedValue: totalValue ? (segment.value / totalValue) * 100 : 0,
-				label: displayName,
-				color: getColorForUserId(segment.id)
-			};
-		})
+				return {
+					...segment,
+					normalizedValue: totalValue ? (segment.value / totalValue) * 100 : 0,
+					label: displayName,
+					color: getColorForUserId(segment.id)
+				};
+			})
+			// Sort segments by value in descending order
+			.sort((a: BarSegment, b: BarSegment) => b.value - a.value)
 	);
 
 	// Trigger name lookups for all segments to ensure we get the best name (contact > alias)
