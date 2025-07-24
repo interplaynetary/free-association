@@ -44,7 +44,7 @@
 
 	// Reactive state for desired quantity input
 	let desiredQuantityInput = $state(0);
-	
+
 	// Track original values for change detection
 	let originalValues = $state<Record<string, any>>({});
 
@@ -279,7 +279,7 @@
 			return {
 				type: 'resource_competition',
 				message: `⚡ Resource competition: scaled to ${(scalingFactor * 100).toFixed(1)}% due to ${competitorText} (${totalDemandOnSource.toFixed(1)} total demand on ${availableAmount.toFixed(1)} available)`,
-				severity: 'warning'
+				severity: 'success'
 			};
 		}
 
@@ -291,7 +291,7 @@
 				return {
 					type: 'share_access_limit',
 					message: `🔒 Share access limit: your ${(sharePercentage * 100).toFixed(1)}% share provides ${availableAmount.toFixed(1)} units maximum`,
-					severity: 'warning'
+					severity: 'success'
 				};
 			} else {
 				const actualProviderId = providerId();
@@ -300,7 +300,7 @@
 					return {
 						type: 'share_access_limit',
 						message: `🔒 Share access limit: their ${(theirShare * 100).toFixed(1)}% share provides ${availableAmount.toFixed(1)} units maximum`,
-						severity: 'warning'
+						severity: 'success'
 					};
 				}
 			}
@@ -326,7 +326,7 @@
 			return {
 				type: 'reciprocal_bottleneck',
 				message: `🔄 Reciprocal bottleneck: they want ${theirDesire.toFixed(1)} but constraints limit mutual feasible to ${mutualFeasible.toFixed(1)}`,
-				severity: 'warning'
+				severity: 'success'
 			};
 		}
 
@@ -336,14 +336,14 @@
 			return {
 				type: 'general_constraint',
 				message: `⚠️ Constrained to ${(constraintRatio * 100).toFixed(1)}% of desired amount - multiple limiting factors`,
-				severity: 'warning'
+				severity: 'success'
 			};
 		}
 
 		// Case 9: Well aligned (everything looks good)
 		return {
 			type: 'well_aligned',
-			message: `✅ Well aligned: mutual interest confirmed with ${(mutualInfo.desireViability * 100).toFixed(1)}% desire match`,
+			message: `✅ Well aligned: mutual interest with ${(mutualInfo.desireViability * 100).toFixed(1)}% desire match`,
 			severity: 'success'
 		};
 	});

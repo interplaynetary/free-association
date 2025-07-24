@@ -10,6 +10,8 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
 ### Here's how it works:
 
+**Self-actualization** is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
+
 1. Your **Total-Recognition** is always _100%_.
 
 2. Your **Recognition** is your acknowledgment of _contributions towards your own self-actualization_

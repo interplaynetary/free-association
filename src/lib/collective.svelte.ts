@@ -16,6 +16,8 @@ A note on privacy:
 
 import type { Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
 import { mutualFulfillment as originalMutualFulfillment } from '$lib/protocol';
+import { writable, derived, get } from 'svelte/store';
+import type { Writable } from 'svelte/store';
 
 /**
  * Enhanced with Memoization & Caching
@@ -32,6 +34,12 @@ interface Collective {
 
 type Entity = Node | Collective;
 type Forest = Map<string, Node>; // Maps node IDs to nodes
+
+// we will subscribe to collectiveMembers trees to populate collectiveForest
+export const collectiveMembers: Writable<Array<Entity>> = writable([]);
+export const collectiveForest: Writable<Forest> = writable(new Map());
+
+// ideally using the same format as userTree (so not strings etc.)
 
 // Helper function to check if entity is a collective
 function isCollective(entity: Entity): entity is Collective {
