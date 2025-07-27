@@ -56,81 +56,81 @@ where Filter(Participant, Capacity) = 1 if Participant satisfies Capacity's filt
 ```
 
 <details>
-  <summary><b><i>Capacity Composition</i></b></summary>
+  <summary><b><i>Slot-to-Slot Capacity Composition</i></b></summary>
 
-This allows us to compose our capacities into gift-economy based supply chains / higher-order collective capacities **while retaining mutual-recognition proportions**.
+This allows us to compose specific **time-bound, location-aware slots** into gift-economy based supply chains and higher-order collective capacities **while retaining mutual-recognition proportions**.
 
-So we can organize complex and increasingly powerful cooperative processes, that operate within the realm of mutual-fulfillment and mutual-desire
+Unlike generic capacity composition, slot-aware composition enables time-coordinated cooperation: your Tuesday morning cooking slot can compose directly with someone's Tuesday afternoon ingredients slot, creating precise temporal and spatial coordination.
 
-The network effects of this system are particularly fascinating. As more participants engage in mutual composition, the complexity and richness of possible supply chains grows exponentially. A cooking capacity might compose ingredient supplies, which compose farming capacities, which compose transportation networks, which compose community gathering spaces—all operating on principles of mutual desire and shared benefit. Each link in these chains strengthens the whole network, creating resilient webs of interdependence that are fundamentally different from the fragile, hierarchical supply chains of traditional capitalism. When disruption occurs, the network can adapt and flow around obstacles because relationships are based on genuine mutual benefit rather than contractual obligation.
+The network effects are particularly powerful because slot composition preserves **context**. A cooking capacity might compose specific morning prep slots with specific ingredient delivery slots, which compose with specific farming harvest slots, which compose with specific transportation availability slots—all operating with precise timing and location awareness. This creates supply chains that are not just economically efficient but temporally and spatially coordinated.
 
-We have a world to win! Lets play! 🌍✨☺️
+### How Slot-to-Slot Composition Works:
 
-### How Composition Works:
+1. **Slot Claiming First**: Before composition, you claim specific slots using your shares
+   - Direct calculation: `slot.quantity × your_share_percentage = max_available_units`
+   - Constrained by `max_concurrent_users` limits
+   - Example: Your 30% share of Bob's "morning consulting" (8 units) = 2.4 units available
 
-1. **Compose-From**: You enhance your capacity using shares you have in others' capacities
-   - Example: You enhance your "cooking-skill" using your share in someone's "ingredients-supply"
-   - Constrained by your share percentage in their capacity
+2. **Slot Compose-From**: You compose FROM your claimed slots INTO others' claimed slots
+   - Example: You compose 2 units FROM your claimed "Tuesday cooking" slot INTO Alice's claimed "Tuesday dinner service" slot
+   - Constrained by your allocated amounts from step 1
 
-2. **Compose-Into**: You enhance others' capacities using shares they have in your capacities
-   - Example: You enhance someone's "meal-service" using their share in your "cooking-skill"
-   - Constrained by their share percentage in your capacity
+3. **Slot Compose-Into**: You compose FROM others' claimed slots INTO your claimed slots
+   - Example: Alice composes 1.5 units FROM her claimed "ingredient supply" slot INTO your claimed "cooking preparation" slot
+   - Constrained by both her allocated amounts AND your recipient share limits
 
-3. **Resource Allocation**: When total desired composition exceeds available capacity
-   - Applies proportional scaling across all participants
-   - Maintains mathematical integrity
+4. **Direct Constraint Application**: No proportional scaling - direct limits only
+   - Source constraint: Limited by your allocated slot amounts
+   - Recipient constraint: Limited by their share percentage in your capacity
+   - Concurrency constraint: Limited by `max_concurrent_users`
 
-4. **Mutual Composition**: Most fulfilling when desires align bidirectionally
-   - Both parties desire this composition
+5. **Mutual Slot Composition**: Most fulfilling when desires align bidirectionally
+   - Both parties desire the same specific slot-to-slot composition
+   - Preserves temporal and spatial context (time, location, quantity)
 
 **Mathematically defined:**
 
 ```
-Compose-From(You, Your-Capacity, Provider, Their-Capacity) = Your-Desired-Units-From-Their-Capacity-Into-Your-Capacity
-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) = Your-Desired-Units-From-Your-Capacity-Into-Their-Capacity
+**Phase 1: Slot Claiming (Direct Share-Based)**
+Max-Available-Units(You, Provider, Slot) = Slot.quantity × Your-Share-Percentage-in-Provider-Capacity
+Allocated-Slot-Units(You, Provider, Slot) = minimum(Your-Desired-Units, Max-Available-Units, Slot.max_concurrent_users)
 
-Share-Constrained-From(You, Your-Capacity, Provider, Their-Capacity) =
-    minimum(Compose-From(You, Your-Capacity, Provider, Their-Capacity),
-            Your-Share-of-Their-Capacity × Their-Capacity-Quantity)
+**Phase 2: Slot-to-Slot Composition**
+Slot-Compose-From(You, Your-Slot, Provider, Their-Slot) = Your-Desired-Units-From-Their-Slot-Into-Your-Slot
+Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot) = Your-Desired-Units-From-Your-Slot-Into-Their-Slot
 
-Share-Constrained-Into(You, Your-Capacity, Recipient, Their-Capacity) =
-    minimum(Compose-Into(You, Your-Capacity, Recipient, Their-Capacity),
-            Their-Share-of-Your-Capacity × Your-Capacity-Quantity)
+**Direct Constraints (No Scaling):**
+Feasible-Slot-Compose-From(You, Your-Slot, Provider, Their-Slot) =
+    minimum(Slot-Compose-From(You, Your-Slot, Provider, Their-Slot),
+            Allocated-Slot-Units(You, Provider, Their-Slot))
 
-**Compose-From Scaling (Provider's Perspective):**
-For Provider's capacity j:
-Total-Demand-For-Provider-Capacity(j) = Σ Share-Constrained-From(All-Participants, All-Their-Capacities, Provider, j)
+Feasible-Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot) =
+    minimum(Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot),
+            Allocated-Slot-Units(You, You, Your-Slot),
+            Recipient-Share-in-Your-Capacity × Your-Capacity-Total-Quantity)
 
-Provider-Allocation-Factor(j) = minimum(1, Provider-Available-Units(j) / Total-Demand-For-Provider-Capacity(j))
+**Mutual Slot Composition:**
+Mutual-Feasible-Slot-Composition(You, Your-Slot, Provider, Their-Slot) =
+    minimum(Feasible-Slot-Compose-From(You, Your-Slot, Provider, Their-Slot),
+            Slot-Compose-Into(Provider, Their-Slot, You, Your-Slot))
 
-Feasible-Compose-From(You, Your-Capacity, Provider, Their-Capacity) =
-    Share-Constrained-From(You, Your-Capacity, Provider, Their-Capacity) ×
-    Provider-Allocation-Factor(Their-Capacity)
-
-**Compose-Into Scaling (Your Perspective):**
-For Your capacity i:
-Total-Desired-Distribution-From-Your-Capacity(i) = Σ Share-Constrained-Into(You, i, All-Recipients, All-Their-Capacities)
-
-Your-Allocation-Factor(i) = minimum(1, Your-Available-Units(i) / Total-Desired-Distribution-From-Your-Capacity(i))
-
-Feasible-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) =
-    Share-Constrained-Into(You, Your-Capacity, Recipient, Their-Capacity) ×
-    Your-Allocation-Factor(Your-Capacity)
-
-**Proportional Scaling Properties:**
-- **Compose-From**: When Provider-Allocation-Factor < 1, all participants wanting that provider's capacity get scaled by the same factor
-- **Compose-Into**: When Your-Allocation-Factor < 1, all your desired distributions from your capacity get scaled by the same factor
-
-Desire-Alignment(Your-Desire, Their-Desire) = minimum(Your-Desire, Their-Desire) / maximum(Your-Desire, Their-Desire)
-
-Mutual-Compose-From(You, Your-Capacity, Provider, Their-Capacity) =
-    minimum(Feasible-Compose-From(You, Your-Capacity, Provider, Their-Capacity),
-            Compose-Into(Provider, Their-Capacity, You, Your-Capacity))
-
-Mutual-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity) =
-    minimum(Feasible-Compose-Into(You, Your-Capacity, Recipient, Their-Capacity),
-            Compose-From(Recipient, Their-Capacity, You, Your-Capacity))
+**Context Preservation:**
+Each composition maintains:
+- Temporal context: start_date, end_date, time_zone, recurrence
+- Spatial context: location_type, longitude, latitude, street_address
+- Quantity context: specific units being composed
+- Constraint context: advance_notice_hours, booking_window_hours
 ```
+
+**Key Advantages of Slot-Aware Composition:**
+
+- **Time Coordination**: "Tuesday 2pm cooking" + "Tuesday 1pm ingredients" = coordinated meal preparation
+- **Location Awareness**: Compose slots based on proximity and travel time
+- **Context Preservation**: Each composition retains when, where, and how much
+- **Direct Constraints**: No complex scaling - clear UI showing "2.4 units available (30% of 8 total)"
+- **Mutual Timing**: Both parties can see exactly when and where composition would occur
+
+This enables supply chains that coordinate in **space and time**, not just economically!
 
 </details>
 
@@ -393,3 +393,5 @@ bun start
 bun install
 bun run build
 ```
+
+We have a world to win! Lets play! 🌍✨☺️
