@@ -12,7 +12,8 @@
 	import {
 		createCapacitiesDataProvider,
 		createAllNetworkCapacitiesDataProvider,
-		createSubtreesDataProvider
+		createSubtreesDataProvider,
+		createContactsAndUsersDataProvider
 	} from '$lib/utils/ui-providers.svelte';
 	import {
 		userDesiredComposeFrom,
@@ -23,6 +24,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
+	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -48,22 +50,38 @@
 	// UI state for expanded availability
 	let availabilityExpanded = $state(false);
 
-	// Simple filter state - just track selected subtree IDs
+	// Filter state
 	let selectedSubtrees = $state<string[]>([]);
+	let selectedCapacities = $state<string[]>([]);
+	let filterMode = $state<'include' | 'exclude'>('include');
 
-	// Initialize selectedSubtrees from existing filter_rule
+	// Initialize filter state from existing filter_rule
 	$effect(() => {
-		if (capacity.filter_rule && selectedSubtrees.length === 0) {
-			const extractedSubtrees = extractSubtreeIdsFromRule(capacity.filter_rule);
-			if (extractedSubtrees.length > 0) {
-				selectedSubtrees = extractedSubtrees;
+		if (capacity.filter_rule) {
+			const filters = extractFiltersFromRule(capacity.filter_rule);
+			
+			// Only update if the extracted values differ from current state
+			if (JSON.stringify(filters.subtrees) !== JSON.stringify(selectedSubtrees) ||
+				JSON.stringify(filters.capacities) !== JSON.stringify(selectedCapacities) ||
+				filters.mode !== filterMode) {
+				
+				selectedSubtrees = filters.subtrees;
+				selectedCapacities = filters.capacities;
+				filterMode = filters.mode;
 			}
+		} else if (selectedSubtrees.length > 0 || selectedCapacities.length > 0) {
+			// Clear filters if no rule exists
+			selectedSubtrees = [];
+			selectedCapacities = [];
+			filterMode = 'include';
 		}
 	});
 
-	// Dropdown state for adding subtree filters
+	// Dropdown states
 	let showSubtreeDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
+	let showCapacityDropdown = $state(false);
+	let capacityDropdownPosition = $state({ x: 0, y: 0 });
 
 	// Emoji picker state
 	let showEmojiPicker = $state(false);
@@ -72,6 +90,9 @@
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
+	
+	// Create contacts and users data provider for individual filtering
+	let contactsAndUsersDataProvider = createContactsAndUsersDataProvider();
 
 	// Create reactive capacity data providers for composition and dropdowns
 	let composeFromDataProvider = createCapacitiesDataProvider(capacity.id); // Capacities we have shares in
@@ -109,15 +130,43 @@
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
 
-	// Derived filter rule - automatically updates when selectedSubtrees changes
+	// Derived filter rule - automatically updates when filter state changes
 	let filterRule = $derived(() => {
-		if (selectedSubtrees.length === 0) {
+		// If no filters are selected, return null
+		if (selectedSubtrees.length === 0 && selectedCapacities.length === 0) {
 			return null;
-		} else if (selectedSubtrees.length === 1) {
-			return Rules.inSubtree(selectedSubtrees[0]);
-		} else {
-			return Rules.inSubtrees(selectedSubtrees);
 		}
+
+		let rules: any[] = [];
+
+		// Add subtree filters
+		if (selectedSubtrees.length > 0) {
+			if (selectedSubtrees.length === 1) {
+				rules.push(Rules.inSubtree(selectedSubtrees[0]));
+			} else {
+				rules.push(Rules.inSubtrees(selectedSubtrees));
+			}
+		}
+
+		// Add individual capacity filters
+		if (selectedCapacities.length > 0) {
+			rules.push(Rules.includeNodes(selectedCapacities));
+		}
+
+		// Combine rules
+		let combinedRule;
+		if (rules.length === 1) {
+			combinedRule = rules[0];
+		} else {
+			combinedRule = Rules.and(...rules);
+		}
+
+		// Apply exclude mode if needed
+		if (filterMode === 'exclude') {
+			combinedRule = Rules.not(combinedRule);
+		}
+
+		return combinedRule;
 	});
 
 	// Get subtree names for display
@@ -214,6 +263,7 @@
 		}
 	}
 
+
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
 		// Create updated capacity with current filter rule
@@ -249,7 +299,7 @@
 			max_natural_div: capacityMaxNaturalDiv,
 			max_percentage_div: capacityMaxPercentageDiv,
 			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
-			filter_rule: filterRule()
+			filter_rule: filterRule
 		};
 
 		// Validate using schema
@@ -421,6 +471,12 @@
 		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
 			showEmojiPicker = false;
 		}
+	}
+
+	// Helper function to extract subtree IDs from a rule (legacy compatibility)
+	function extractSubtreeIdsFromRule(rule: any): string[] {
+		const result = extractFiltersFromRule(rule);
+		return result.subtrees;
 	}
 
 	function extractFiltersFromRule(rule: any): { subtrees: string[], capacities: string[], mode: 'include' | 'exclude' } {
@@ -890,7 +946,7 @@
 						<div class="filter-tag-wrapper">
 							<TagPill
 								userId={capacityId}
-								displayName={$userNamesCache[capacityId] || capacityId.substring(0, 8) + '...'}
+								displayName={$userNamesOrAliasesCache[capacityId] || capacityId.substring(0, 8) + '...'}
 								truncateLength={15}
 								removable={true}
 								onClick={() => {}}
@@ -1622,6 +1678,19 @@
 		dataProvider={composeIntoDataProvider}
 		select={handleComposeIntoSelect}
 		close={handleComposeIntoDropdownClose}
+	/>
+{/if}
+
+<!-- Capacity dropdown for adding individual filters -->
+{#if showCapacityDropdown}
+	<DropDown
+		position={capacityDropdownPosition}
+		show={showCapacityDropdown}
+		title="Select Individual"
+		searchPlaceholder="Search people..."
+		dataProvider={contactsAndUsersDataProvider}
+		select={handleCapacitySelect}
+		close={handleCapacityDropdownClose}
 	/>
 {/if}
 
