@@ -17,7 +17,8 @@ import {
 	userCapacities,
 	isLoadingTree,
 	isLoadingCapacities,
-	subtreeContributorMap
+	subtreeContributorMap,
+	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import {
@@ -809,6 +810,7 @@ const mutualContributorStreamConfigs = {
 					// Filter capacities based on filter rules
 					const ourId = get(userPub);
 					const subtreeContributors = get(subtreeContributorMap);
+					const currentContributorShares = get(contributorCapacityShares);
 					
 					const filteredCapacities: CapacitiesCollection = {};
 					
@@ -822,9 +824,12 @@ const mutualContributorStreamConfigs = {
 								subtreeContributors: subtreeContributors
 							};
 							
+							// Get our actual share in this capacity, or 0 if we don't have one
+							const ourShare = currentContributorShares[ourId]?.[capacityId] || 0;
+							
 							// Convert the rule to a filter and check if we pass
 							const filterFn = ruleToFilter(capacity.filter_rule);
-							isAllowed = filterFn(ourId, 1, context); // Use share of 1 for visibility check
+							isAllowed = filterFn(ourId, ourShare, context);
 						}
 						
 						// Only include this capacity if we're allowed to see it
