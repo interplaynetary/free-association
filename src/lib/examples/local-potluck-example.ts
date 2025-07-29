@@ -7,6 +7,17 @@ import {
 import { get } from 'svelte/store';
 import { userNetworkCapacitiesWithShares } from '../state/core.svelte';
 
+// Helper function to get total computed quantity from slot-based structure
+function getTotalComputedQuantity(capacity: any): number {
+	if (capacity.computed_quantities && Array.isArray(capacity.computed_quantities)) {
+		return capacity.computed_quantities.reduce(
+			(sum: number, slot: any) => sum + (slot.quantity || 0),
+			0
+		);
+	}
+	return 0;
+}
+
 /**
  * Example: Local Potluck Composition using Network Capacities
  *
@@ -23,7 +34,7 @@ export function demonstrateLocalComposition() {
 	console.log('Available network capacities:');
 	Object.entries(networkCapacities).forEach(([capacityId, capacity]) => {
 		console.log(
-			`  ${capacity.emoji || '📦'} ${capacity.name}: ${capacity.computed_quantity} ${capacity.unit} (from ${capacity.provider_id})`
+			`  ${capacity.emoji || '📦'} ${capacity.name}: ${getTotalComputedQuantity(capacity)} ${capacity.unit} (from ${capacity.provider_id})`
 		);
 	});
 
@@ -31,11 +42,11 @@ export function demonstrateLocalComposition() {
 
 	// Create a potluck using network capacities
 	const potluckComponents = Object.entries(networkCapacities)
-		.filter(([_, capacity]) => (capacity.computed_quantity || 0) > 0)
+		.filter(([_, capacity]) => getTotalComputedQuantity(capacity) > 0)
 		.map(([capacityId, capacity]) => ({
 			capacityId,
 			providerId: capacity.provider_id,
-			quantity: Math.min(capacity.computed_quantity || 0, 2), // Use up to 2 units of each
+			quantity: Math.min(getTotalComputedQuantity(capacity), 2), // Use up to 2 units of each
 			displayName: `${capacity.emoji || '📦'} ${capacity.name}`
 		}));
 
@@ -108,7 +119,7 @@ export function explainCompositionParadigm() {
 
 	console.log('How it works:');
 	console.log("1. Network layer: You subscribe to shares in others' capacities");
-	console.log('2. Computation layer: Your computed_quantity respects divisibility constraints');
+	console.log('2. Computation layer: Your computed_quantities respect divisibility constraints');
 	console.log('3. Composition layer: You compose these computed quantities into offerings');
 	console.log('4. Reactivity: Compositions auto-update when mutual recognition changes');
 
@@ -116,12 +127,12 @@ export function explainCompositionParadigm() {
 	console.log('Alice has 12 🥧 pie slices, max_percentage_div: 0.8 (keeps 20% for herself)');
 	console.log('Your mutual recognition with Alice: 15%');
 	console.log(
-		'Your computed_quantity: Math.floor(12 * 0.15) = 1 slice (respects natural divisibility)'
+		'Your computed_quantities: Math.floor(12 * 0.15) = 1 slice per slot (respects natural divisibility)'
 	);
 	console.log('Your potluck composition: Requires 2 slices, you have 1 → NOT FEASIBLE');
 	console.log('');
 	console.log('If mutual recognition improves to 25%:');
-	console.log('Your new computed_quantity: Math.floor(12 * 0.25) = 3 slices');
+	console.log('Your new computed_quantities: Math.floor(12 * 0.25) = 3 slices per slot');
 	console.log('Your potluck composition: Requires 2 slices, you have 3 → NOW FEASIBLE');
 	console.log('Total potluck capacity automatically increases!');
 

@@ -10,7 +10,7 @@ import {
 	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
-import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
+import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './compose.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 
@@ -196,23 +196,25 @@ export function persistContributorCapacityShares() {
 }
 
 /**
- * Persist user's desired compose-from to Gun
+ * Persist user's desired slot compose-from to Gun
  */
-export function persistUserDesiredComposeFrom() {
+export function persistUserDesiredSlotComposeFrom() {
 	// Check if user is initialized
 	if (!isUserInitialized()) {
-		console.log('[PERSIST] User not initialized, skipping user desired compose-from persistence');
+		console.log(
+			'[PERSIST] User not initialized, skipping user desired slot compose-from persistence'
+		);
 		return;
 	}
 
-	const userDesiredComposeFromValue = get(userDesiredComposeFrom);
+	const userDesiredComposeFromValue = get(userDesiredSlotComposeFrom);
 	if (!userDesiredComposeFromValue || Object.keys(userDesiredComposeFromValue).length === 0) {
-		console.log('[PERSIST] No user desired compose-from data to persist');
+		console.log('[PERSIST] No user desired slot compose-from data to persist');
 		return;
 	}
 
-	console.log('[PERSIST] Starting user desired compose-from persistence...');
-	console.log('[PERSIST] User desired compose-from:', userDesiredComposeFromValue);
+	console.log('[PERSIST] Starting user desired slot compose-from persistence...');
+	console.log('[PERSIST] User desired slot compose-from:', userDesiredComposeFromValue);
 
 	try {
 		// Create a deep clone to avoid reactivity issues
@@ -220,39 +222,44 @@ export function persistUserDesiredComposeFrom() {
 
 		// Serialize to JSON
 		const composeFromJson = JSON.stringify(composeFromClone);
-		console.log('[PERSIST] Serialized user desired compose-from length:', composeFromJson.length);
+		console.log(
+			'[PERSIST] Serialized user desired slot compose-from length:',
+			composeFromJson.length
+		);
 
 		// Store in Gun under the expected path that network subscribers use
-		user.get('desiredComposeFrom').put(composeFromJson, (ack: { err?: any }) => {
+		user.get('desiredSlotComposeFrom').put(composeFromJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving user desired compose-from to Gun:', ack.err);
+				console.error('[PERSIST] Error saving user desired slot compose-from to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] User desired compose-from successfully saved to Gun');
+				console.log('[PERSIST] User desired slot compose-from successfully saved to Gun');
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing user desired compose-from:', error);
+		console.error('[PERSIST] Error serializing user desired slot compose-from:', error);
 	}
 }
 
 /**
- * Persist user's desired compose-into to Gun
+ * Persist user's desired slot compose-into to Gun
  */
-export function persistUserDesiredComposeInto() {
+export function persistUserDesiredSlotComposeInto() {
 	// Check if user is initialized
 	if (!isUserInitialized()) {
-		console.log('[PERSIST] User not initialized, skipping user desired compose-into persistence');
+		console.log(
+			'[PERSIST] User not initialized, skipping user desired slot compose-into persistence'
+		);
 		return;
 	}
 
-	const userDesiredComposeIntoValue = get(userDesiredComposeInto);
+	const userDesiredComposeIntoValue = get(userDesiredSlotComposeInto);
 	if (!userDesiredComposeIntoValue || Object.keys(userDesiredComposeIntoValue).length === 0) {
-		console.log('[PERSIST] No user desired compose-into data to persist');
+		console.log('[PERSIST] No user desired slot compose-into data to persist');
 		return;
 	}
 
-	console.log('[PERSIST] Starting user desired compose-into persistence...');
-	console.log('[PERSIST] User desired compose-into:', userDesiredComposeIntoValue);
+	console.log('[PERSIST] Starting user desired slot compose-into persistence...');
+	console.log('[PERSIST] User desired slot compose-into:', userDesiredComposeIntoValue);
 
 	try {
 		// Create a deep clone to avoid reactivity issues
@@ -260,18 +267,21 @@ export function persistUserDesiredComposeInto() {
 
 		// Serialize to JSON
 		const composeIntoJson = JSON.stringify(composeIntoClone);
-		console.log('[PERSIST] Serialized user desired compose-into length:', composeIntoJson.length);
+		console.log(
+			'[PERSIST] Serialized user desired slot compose-into length:',
+			composeIntoJson.length
+		);
 
 		// Store in Gun under the expected path that network subscribers use
-		user.get('desiredComposeInto').put(composeIntoJson, (ack: { err?: any }) => {
+		user.get('desiredSlotComposeInto').put(composeIntoJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving user desired compose-into to Gun:', ack.err);
+				console.error('[PERSIST] Error saving user desired slot compose-into to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] User desired compose-into successfully saved to Gun');
+				console.log('[PERSIST] User desired slot compose-into successfully saved to Gun');
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing user desired compose-into:', error);
+		console.error('[PERSIST] Error serializing user desired slot compose-into:', error);
 	}
 }
 

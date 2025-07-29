@@ -68,7 +68,6 @@ The network effects are particularly powerful because slot composition preserves
 
 1. **Slot Claiming First**: Before composition, you claim specific slots using your shares
    - Direct calculation: `slot.quantity × your_share_percentage = max_available_units`
-   - Constrained by `max_concurrent_users` limits
    - Example: Your 30% share of Bob's "morning consulting" (8 units) = 2.4 units available
 
 2. **Slot Compose-From**: You compose FROM your claimed slots INTO others' claimed slots
@@ -82,7 +81,6 @@ The network effects are particularly powerful because slot composition preserves
 4. **Direct Constraint Application**: No proportional scaling - direct limits only
    - Source constraint: Limited by your allocated slot amounts
    - Recipient constraint: Limited by their share percentage in your capacity
-   - Concurrency constraint: Limited by `max_concurrent_users`
 
 5. **Mutual Slot Composition**: Most fulfilling when desires align bidirectionally
    - Both parties desire the same specific slot-to-slot composition
@@ -93,7 +91,7 @@ The network effects are particularly powerful because slot composition preserves
 ```
 **Phase 1: Slot Claiming (Direct Share-Based)**
 Max-Available-Units(You, Provider, Slot) = Slot.quantity × Your-Share-Percentage-in-Provider-Capacity
-Allocated-Slot-Units(You, Provider, Slot) = minimum(Your-Desired-Units, Max-Available-Units, Slot.max_concurrent_users)
+Allocated-Slot-Units(You, Provider, Slot) = minimum(Your-Desired-Units, Max-Available-Units)
 
 **Phase 2: Slot-to-Slot Composition**
 Slot-Compose-From(You, Your-Slot, Provider, Their-Slot) = Your-Desired-Units-From-Their-Slot-Into-Your-Slot

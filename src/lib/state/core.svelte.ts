@@ -4,7 +4,8 @@ import {
 	normalizeShareMap,
 	getSubtreeContributorMap,
 	findNodeById,
-	computeQuantityShare
+	computeQuantityShare,
+	computeQuantityShares
 } from '$lib/protocol';
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
@@ -41,11 +42,13 @@ export const userNetworkCapacitiesWithShares = derived(
 			Object.entries(shares).forEach(([capacityId, share]) => {
 				const capacity = contributorCapacities[capacityId];
 				if (capacity) {
-					// Add the capacity with just our share and properly computed quantity
+					const computedQuantities = computeQuantityShares(capacity, share);
+
+					// Add the capacity with just our share and properly computed quantities
 					filteredCapacities[capacityId] = {
 						...capacity,
 						share_percentage: share,
-						computed_quantity: computeQuantityShare(capacity, share),
+						computed_quantities: computedQuantities,
 						provider_id: contributorId
 					};
 				}
@@ -55,6 +58,7 @@ export const userNetworkCapacitiesWithShares = derived(
 		console.log(
 			`[NETWORK-CAPACITIES] Found ${Object.keys(filteredCapacities).length} capacities where we have shares`
 		);
+
 		return filteredCapacities;
 	}
 );

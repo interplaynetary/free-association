@@ -11,6 +11,8 @@ import {
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
+	UserSlotCompositionSchema,
+	NetworkSlotCompositionSchema,
 	ContactsCollectionSchema,
 	ChatReadStatesSchema
 } from '../schema';
@@ -125,6 +127,93 @@ export function parseTree(treeData: unknown) {
 }
 
 /**
+ * Migrates old capacity structure to new slot-based structure
+ */
+function migrateCapacityToSlotBased(capacity: any): any {
+	// If it already has availability_slots, it's already in the new format
+	if (capacity.availability_slots) {
+		return capacity;
+	}
+
+	// If it has the old structure properties, migrate them to a slot
+	if (typeof capacity.quantity !== 'undefined' || capacity.location_type || capacity.start_date) {
+		const slotId = `migrated-slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+		// Create a slot from the old capacity properties
+		const migratedSlot: any = {
+			id: slotId,
+			quantity: capacity.quantity || 1
+		};
+
+		// Migrate location properties
+		if (capacity.location_type) migratedSlot.location_type = capacity.location_type;
+		if (capacity.longitude) migratedSlot.longitude = capacity.longitude;
+		if (capacity.latitude) migratedSlot.latitude = capacity.latitude;
+		if (capacity.street_address) migratedSlot.street_address = capacity.street_address;
+		if (capacity.city) migratedSlot.city = capacity.city;
+		if (capacity.state_province) migratedSlot.state_province = capacity.state_province;
+		if (capacity.postal_code) migratedSlot.postal_code = capacity.postal_code;
+		if (capacity.country) migratedSlot.country = capacity.country;
+
+		// Migrate time properties
+		if (capacity.all_day !== undefined) migratedSlot.all_day = capacity.all_day;
+		if (capacity.start_date) migratedSlot.start_date = capacity.start_date;
+		if (capacity.start_time) migratedSlot.start_time = capacity.start_time;
+		if (capacity.end_date) migratedSlot.end_date = capacity.end_date;
+		if (capacity.end_time) migratedSlot.end_time = capacity.end_time;
+		if (capacity.time_zone) migratedSlot.time_zone = capacity.time_zone;
+		if (capacity.recurrence) migratedSlot.recurrence = capacity.recurrence;
+		if (capacity.custom_recurrence_repeat_every)
+			migratedSlot.custom_recurrence_repeat_every = capacity.custom_recurrence_repeat_every;
+		if (capacity.custom_recurrence_repeat_unit)
+			migratedSlot.custom_recurrence_repeat_unit = capacity.custom_recurrence_repeat_unit;
+		if (capacity.custom_recurrence_end_type)
+			migratedSlot.custom_recurrence_end_type = capacity.custom_recurrence_end_type;
+		if (capacity.custom_recurrence_end_value)
+			migratedSlot.custom_recurrence_end_value = capacity.custom_recurrence_end_value;
+
+		// Create the new capacity structure
+		const migratedCapacity: any = {
+			id: capacity.id,
+			name: capacity.name || '',
+			emoji: capacity.emoji || '',
+			unit: capacity.unit || '',
+			description: capacity.description || '',
+			max_natural_div: capacity.max_natural_div,
+			max_percentage_div: capacity.max_percentage_div,
+			hidden_until_request_accepted: capacity.hidden_until_request_accepted,
+			owner_id: capacity.owner_id,
+			filter_rule: capacity.filter_rule,
+			availability_slots: [migratedSlot]
+		};
+
+		// Handle different capacity types
+		if (capacity.recipient_shares) {
+			migratedCapacity.recipient_shares = capacity.recipient_shares;
+		}
+		if (capacity.share_percentage !== undefined) {
+			migratedCapacity.share_percentage = capacity.share_percentage;
+			migratedCapacity.provider_id = capacity.provider_id;
+			// Migrate computed_quantity to computed_quantities
+			if (capacity.computed_quantity !== undefined) {
+				migratedCapacity.computed_quantities = [
+					{
+						slot_id: slotId,
+						quantity: capacity.computed_quantity
+					}
+				];
+			}
+		}
+
+		console.log(`[MIGRATION] Migrated old capacity ${capacity.id} to slot-based structure`);
+		return migratedCapacity;
+	}
+
+	// Return as-is if no migration is needed
+	return capacity;
+}
+
+/**
  * Parse and validate capacities data
  * @param capacitiesData Raw capacities data
  * @returns Validated CapacitiesCollection or empty object if validation fails
@@ -134,7 +223,26 @@ export function parseCapacities(capacitiesData: unknown) {
 		schema: CapacitiesCollectionSchema,
 		defaultValue: {},
 		functionName: 'capacities',
-		enableLogging: true
+		enableLogging: true,
+		preprocess: (data: unknown) => {
+			if (!data || typeof data !== 'object') {
+				return data;
+			}
+
+			// If it's a capacities collection, migrate each capacity
+			const capacitiesObj = data as Record<string, any>;
+			const migratedCapacities: Record<string, any> = {};
+
+			Object.entries(capacitiesObj).forEach(([id, capacity]) => {
+				if (capacity && typeof capacity === 'object') {
+					migratedCapacities[id] = migrateCapacityToSlotBased(capacity);
+				} else {
+					migratedCapacities[id] = capacity;
+				}
+			});
+
+			return migratedCapacities;
+		}
 	});
 }
 
@@ -242,6 +350,34 @@ export function parseNetworkComposition(compositionData: unknown) {
 		schema: NetworkCompositionSchema,
 		defaultValue: {},
 		functionName: 'network composition',
+		enableLogging: true
+	});
+}
+
+/**
+ * Parse and validate user slot composition data
+ * @param slotCompositionData Raw user slot composition data
+ * @returns Validated UserSlotComposition or empty object if validation fails
+ */
+export function parseUserSlotComposition(slotCompositionData: unknown) {
+	return parseData(slotCompositionData, {
+		schema: UserSlotCompositionSchema,
+		defaultValue: {},
+		functionName: 'user slot composition',
+		enableLogging: true
+	});
+}
+
+/**
+ * Parse and validate network slot composition data
+ * @param slotCompositionData Raw network slot composition data
+ * @returns Validated NetworkSlotComposition or empty object if validation fails
+ */
+export function parseNetworkSlotComposition(slotCompositionData: unknown) {
+	return parseData(slotCompositionData, {
+		schema: NetworkSlotCompositionSchema,
+		defaultValue: {},
+		functionName: 'network slot composition',
 		enableLogging: true
 	});
 }

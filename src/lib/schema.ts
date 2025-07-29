@@ -37,12 +37,53 @@ export const RootNodeSchema = z.object({
 // Union type for Node (either RootNode or NonRootNode)
 export const NodeSchema = z.union([RootNodeSchema, NonRootNodeSchema]);
 
+// Availability Slot Schema - unified allocation model
+export const AvailabilitySlotSchema = z.object({
+	id: IdSchema, // Unique identifier for this slot
+	quantity: z.number().gte(0),
+
+	// Timing constraints (for edge cases - replaces manual claiming)
+	advance_notice_hours: z.optional(z.number().gte(0)), // Required notice for booking
+	booking_window_hours: z.optional(z.number().gte(0)), // How far in advance can book
+
+	// Time pattern fields (moved from BaseCapacity)
+	all_day: z.optional(z.boolean()),
+	recurrence: z.optional(z.nullable(z.string())),
+	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),
+	custom_recurrence_repeat_unit: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_type: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_value: z.optional(z.nullable(z.string())),
+	start_date: z.optional(z.nullable(z.string())),
+	start_time: z.optional(z.nullable(z.string())),
+	end_date: z.optional(z.nullable(z.string())),
+	end_time: z.optional(z.nullable(z.string())),
+	time_zone: z.optional(z.string()),
+
+	// Location fields (moved from BaseCapacity - each slot can have different location)
+	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().min(-180).max(180)),
+	latitude: z.optional(z.number().min(-90).max(90)),
+	street_address: z.optional(z.string()),
+	city: z.optional(z.string()),
+	state_province: z.optional(z.string()),
+	postal_code: z.optional(z.string()),
+	country: z.optional(z.string()),
+
+	// Hierarchical relationship for subset allocation
+	parent_slot_id: z.optional(IdSchema), // If this is a subset of another slot
+
+	// Mutual agreement for coordination
+	mutual_agreement_required: z.optional(z.boolean().default(false)), // Requires explicit bilateral consent
+
+	// Slot-specific metadata
+	priority: z.optional(z.number()) // For conflict resolution
+});
+
 // Base capacity schema without any share information
 export const BaseCapacitySchema = z.object({
 	id: IdSchema,
 	name: z.string(),
 	emoji: z.optional(z.string()),
-	quantity: z.optional(z.number().gte(0)),
 	unit: z.optional(
 		z.string().regex(/^$|^(?!\s*\d+\.?\d*\s*$).+$/, {
 			message: 'Unit must be text, not a number (e.g., "hours", "kg", "items")'
@@ -56,30 +97,8 @@ export const BaseCapacitySchema = z.object({
 	owner_id: z.optional(IdSchema),
 	filter_rule: z.optional(z.nullable(z.any())),
 
-	// these should be part of a availability schema?
-	// availability?
-	location_type: z.optional(z.string()),
-	longitude: z.optional(z.number().min(-180).max(180)),
-	latitude: z.optional(z.number().min(-90).max(90)),
-
-	// Address fields as alternative to coordinates
-	street_address: z.optional(z.string()),
-	city: z.optional(z.string()),
-	state_province: z.optional(z.string()),
-	postal_code: z.optional(z.string()),
-	country: z.optional(z.string()),
-
-	all_day: z.optional(z.boolean()),
-	recurrence: z.optional(z.nullable(z.string())),
-	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),
-	custom_recurrence_repeat_unit: z.optional(z.nullable(z.string())),
-	custom_recurrence_end_type: z.optional(z.nullable(z.string())),
-	custom_recurrence_end_value: z.optional(z.nullable(z.string())),
-	start_date: z.optional(z.nullable(z.string())),
-	start_time: z.optional(z.nullable(z.string())),
-	end_date: z.optional(z.nullable(z.string())),
-	end_time: z.optional(z.nullable(z.string())),
-	time_zone: z.optional(z.string())
+	// Multiple availability slots instead of single quantity/time/location
+	availability_slots: z.array(AvailabilitySlotSchema)
 
 	// use-conditions: effects (possibly triggers)
 });
@@ -90,12 +109,40 @@ export const ProviderCapacitySchema = z.object({
 	recipient_shares: z.record(IdSchema, PercentageSchema)
 });
 
+// Slot-specific computed quantity
+export const SlotComputedQuantitySchema = z.object({
+	slot_id: IdSchema,
+	quantity: z.number().gte(0)
+});
+
+// Slot claim tracking
+export const SlotClaimSchema = z.object({
+	id: IdSchema, // Unique claim ID
+	capacity_id: IdSchema,
+	slot_id: IdSchema,
+	claimer_id: IdSchema,
+	desired_quantity: z.number().gte(0),
+	feasible_quantity: z.number().gte(0), // After credit and competition constraints
+	allocated_quantity: z.number().gte(0), // Actually allocated amount
+	status: z.enum(['pending', 'confirmed', 'cancelled']),
+	claim_timestamp: z.string(),
+	fulfillment_timestamp: z.optional(z.string())
+});
+
+// User's desired slot claims (mirrors userDesiredComposeFrom structure)
+export const UserSlotClaimsSchema = z.record(IdSchema, z.record(IdSchema, z.number().gte(0)));
+// Structure: capacityId → slotId → desiredQuantity
+
+// Network slot claims (all users' claims)
+export const NetworkSlotClaimsSchema = z.record(IdSchema, UserSlotClaimsSchema);
+// Structure: userId → capacityId → slotId → desiredQuantity
+
 // Recipient perspective - includes our share info
 export const RecipientCapacitySchema = z.object({
 	...BaseCapacitySchema.shape,
 	// share_id: IdSchema
 	share_percentage: PercentageSchema,
-	computed_quantity: z.number().gte(0),
+	computed_quantities: z.array(SlotComputedQuantitySchema), // Per-slot computed quantities
 	provider_id: IdSchema
 	// reciever_id: IdSchema
 });
@@ -120,6 +167,11 @@ export const RecognitionCacheSchema = z.record(IdSchema, RecognitionCacheEntrySc
 export type RootNode = z.infer<typeof RootNodeSchema>;
 export type NonRootNode = z.infer<typeof NonRootNodeSchema>;
 export type Node = z.infer<typeof NodeSchema>;
+export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
+export type SlotComputedQuantity = z.infer<typeof SlotComputedQuantitySchema>;
+export type SlotClaim = z.infer<typeof SlotClaimSchema>;
+export type UserSlotClaims = z.infer<typeof UserSlotClaimsSchema>;
+export type NetworkSlotClaims = z.infer<typeof NetworkSlotClaimsSchema>;
 export type BaseCapacity = z.infer<typeof BaseCapacitySchema>;
 export type ProviderCapacity = z.infer<typeof ProviderCapacitySchema>;
 export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
@@ -144,6 +196,29 @@ export const NetworkCompositionSchema = z.record(IdSchema, UserCompositionSchema
 export type CompositionDesire = z.infer<typeof CompositionDesireSchema>;
 export type UserComposition = z.infer<typeof UserCompositionSchema>;
 export type NetworkComposition = z.infer<typeof NetworkCompositionSchema>;
+
+// Slot-aware composition schemas - enables slot-to-slot composition
+// Structure: targetCapacityId → targetSlotId → desiredAbsoluteUnits
+export const SlotCompositionDesireSchema = z.record(
+	IdSchema,
+	z.record(IdSchema, z.number().gte(0))
+);
+
+// User slot composition schema - maps source slots to target slots
+// Structure: sourceCapacityId → sourceSlotId → targetCapacityId → targetSlotId → absoluteUnits
+export const UserSlotCompositionSchema = z.record(
+	IdSchema,
+	z.record(IdSchema, SlotCompositionDesireSchema)
+);
+
+// Network slot composition schema - maps user ID to their slot composition data
+// Structure: userId → sourceCapacityId → sourceSlotId → targetCapacityId → targetSlotId → absoluteUnits
+export const NetworkSlotCompositionSchema = z.record(IdSchema, UserSlotCompositionSchema);
+
+// Export slot composition types
+export type SlotCompositionDesire = z.infer<typeof SlotCompositionDesireSchema>;
+export type UserSlotComposition = z.infer<typeof UserSlotCompositionSchema>;
+export type NetworkSlotComposition = z.infer<typeof NetworkSlotCompositionSchema>;
 
 // Contact schema - simplified to just essential fields
 export const ContactSchema = z.object({

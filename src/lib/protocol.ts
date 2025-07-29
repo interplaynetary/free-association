@@ -501,19 +501,25 @@ export function receiverGeneralShareFrom(
  */
 
 // Constrain a share percentage according to max_percentage_div and max_natural_div
+// Note: With slot-based quantities, we use the maximum quantity across all slots for natural constraints
 export function constrainSharePercentage(capacity: BaseCapacity, percentage: number): number {
 	const maxPercent = capacity.max_percentage_div || 1;
 	const maxNatural = capacity.max_natural_div || 1;
-	const quantity = capacity.quantity || 0;
 
-	// If quantity is 0, no meaningful constraints can be applied
-	if (quantity === 0) {
+	// Find the maximum quantity across all slots to apply natural constraints
+	const maxQuantity = capacity.availability_slots.reduce(
+		(max, slot) => Math.max(max, slot.quantity),
+		0
+	);
+
+	// If no slots or all quantities are 0, no meaningful constraints can be applied
+	if (maxQuantity === 0) {
 		return percentage;
 	}
 
 	// Calculate valid percentages based on natural divisibility
-	// Example: max_natural_div=5, quantity=20 → naturalStep=0.25 → valid percentages: 0, 0.25, 0.5, 0.75, 1.0
-	const naturalStep = maxNatural / quantity;
+	// Example: max_natural_div=5, maxQuantity=20 → naturalStep=0.25 → valid percentages: 0, 0.25, 0.5, 0.75, 1.0
+	const naturalStep = maxNatural / maxQuantity;
 
 	// Calculate valid percentages based on percentage divisibility
 	// Example: max_percentage_div=0.25 → valid percentages: 0, 0.25, 0.5, 0.75, 1.0
@@ -546,20 +552,48 @@ export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMap): S
 	return normalizeShareMap(constrainedMap);
 }
 
-// Compute quantity share based on capacity and percentage
-export function computeQuantityShare(capacity: BaseCapacity, percentage: number): number {
-	const rawQuantity = Math.round((capacity.quantity || 0) * percentage);
+// Compute quantity share for a single availability slot
+export function computeSlotQuantityShare(
+	slot: { id: string; quantity: number },
+	capacity: BaseCapacity,
+	percentage: number
+): { slot_id: string; quantity: number } {
+	const rawQuantity = Math.round(slot.quantity * percentage);
 	const maxNatural = capacity.max_natural_div || 1;
 	const maxPercent = capacity.max_percentage_div || 1;
 
 	// Apply percentage divisibility constraint
 	const percentConstrained =
-		percentage > maxPercent ? Math.round((capacity.quantity || 0) * maxPercent) : rawQuantity;
+		percentage > maxPercent ? Math.round(slot.quantity * maxPercent) : rawQuantity;
 
 	// Apply natural number divisibility constraint
 	const naturalConstrained = Math.floor(percentConstrained / maxNatural) * maxNatural;
 
-	return naturalConstrained;
+	return {
+		slot_id: slot.id,
+		quantity: naturalConstrained
+	};
+}
+
+// Compute quantity shares for all availability slots in a capacity
+export function computeQuantityShares(
+	capacity: BaseCapacity,
+	percentage: number
+): Array<{ slot_id: string; quantity: number }> {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		console.log('[COMPUTE-QUANTITIES] No availability_slots found, returning empty array');
+		return [];
+	}
+
+	return capacity.availability_slots.map((slot) =>
+		computeSlotQuantityShare(slot, capacity, percentage)
+	);
+}
+
+// Legacy function for backward compatibility - returns total across all slots
+export function computeQuantityShare(capacity: BaseCapacity, percentage: number): number {
+	const slotShares = computeQuantityShares(capacity, percentage);
+	return slotShares.reduce((total, slot) => total + slot.quantity, 0);
 }
 
 // Create a new capacity share
@@ -571,7 +605,7 @@ export function createRecipientCapacity(
 	return {
 		...baseCapacity,
 		share_percentage: percentage,
-		computed_quantity: computeQuantityShare(baseCapacity, percentage),
+		computed_quantities: computeQuantityShares(baseCapacity, percentage),
 		provider_id: providerId
 	};
 }

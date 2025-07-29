@@ -52,7 +52,12 @@ export interface LocationResult {
 /**
  * Calculate distance between two points using Haversine formula
  */
-export const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+export const calculateDistance = (
+	lat1: number,
+	lng1: number,
+	lat2: number,
+	lng2: number
+): number => {
 	const R = 6371000; // Earth's radius in meters
 	const φ1 = (lat1 * Math.PI) / 180;
 	const φ2 = (lat2 * Math.PI) / 180;
@@ -89,7 +94,11 @@ export const extractLocation = (obj: any): LocationPoint | null => {
 /**
  * Estimate travel time based on distance and mode
  */
-export const estimateTravelTime = (distance: number, mode: string, customSpeed?: number): number => {
+export const estimateTravelTime = (
+	distance: number,
+	mode: string,
+	customSpeed?: number
+): number => {
 	if (customSpeed) {
 		return (distance / 1000 / customSpeed) * 60; // Convert to minutes
 	}
@@ -196,4 +205,170 @@ export function groupObjectsByTravelTime(
 	});
 
 	return groups;
-} 
+}
+
+// =============================================================================
+// SLOT-AWARE LOCATION FUNCTIONS
+// Functions specifically designed for slot-based capacity structures
+// =============================================================================
+
+/**
+ * Extract locations from slot-based capacity
+ * Returns all unique locations from availability slots
+ */
+export const extractCapacityLocations = (capacity: any): LocationPoint[] => {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return [];
+	}
+
+	const locations: LocationPoint[] = [];
+	const seen = new Set<string>();
+
+	capacity.availability_slots.forEach((slot: any) => {
+		if (slot.latitude != null && slot.longitude != null) {
+			const locationKey = `${slot.latitude},${slot.longitude}`;
+			if (!seen.has(locationKey)) {
+				seen.add(locationKey);
+				locations.push({ lat: slot.latitude, lng: slot.longitude });
+			}
+		}
+	});
+
+	return locations;
+};
+
+/**
+ * Extract the primary location from a capacity (first slot with location)
+ */
+export const extractCapacityPrimaryLocation = (capacity: any): LocationPoint | null => {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return null;
+	}
+
+	for (const slot of capacity.availability_slots) {
+		if (slot.latitude != null && slot.longitude != null) {
+			return { lat: slot.latitude, lng: slot.longitude };
+		}
+	}
+
+	return null;
+};
+
+/**
+ * Sort slot-based capacities by proximity to a reference point
+ */
+export function sortCapacitiesByProximity(
+	capacities: Record<string, any>,
+	config: LocationSortConfig
+): LocationResult[] {
+	const results: LocationResult[] = [];
+
+	Object.entries(capacities).forEach(([objectId, capacity]) => {
+		const primaryLocation = extractCapacityPrimaryLocation(capacity);
+
+		if (primaryLocation) {
+			const distance = calculateDistance(
+				config.lat,
+				config.lng,
+				primaryLocation.lat,
+				primaryLocation.lng
+			);
+
+			if (!config.maxDistance || distance <= config.maxDistance) {
+				const travelTime = estimateTravelTime(
+					distance,
+					config.travelMode || 'walking',
+					config.speedKmh
+				);
+
+				results.push({
+					objectId,
+					object: capacity,
+					location: primaryLocation,
+					distance,
+					travelTime
+				});
+			}
+		}
+	});
+
+	// Sort by distance (could be extended to sort by travel time too)
+	results.sort((a, b) => a.distance - b.distance);
+
+	return results;
+}
+
+/**
+ * Find capacities within a specific travel time, handling slot-based locations
+ */
+export function findCapacitiesWithinTravelTime(
+	capacities: Record<string, any>,
+	reference: LocationPoint,
+	maxTravelTime: number,
+	mode: string = 'driving'
+): string[] {
+	const within: string[] = [];
+
+	Object.entries(capacities).forEach(([capacityId, capacity]) => {
+		const primaryLocation = extractCapacityPrimaryLocation(capacity);
+
+		if (primaryLocation) {
+			const distance = calculateDistance(
+				reference.lat,
+				reference.lng,
+				primaryLocation.lat,
+				primaryLocation.lng
+			);
+
+			const travelTime = estimateTravelTime(distance, mode);
+
+			if (travelTime <= maxTravelTime) {
+				within.push(capacityId);
+			}
+		}
+	});
+
+	return within;
+}
+
+/**
+ * Group capacities by travel time ranges (slot-aware version)
+ */
+export function groupCapacitiesByTravelTime(
+	capacities: Record<string, any>,
+	reference: LocationPoint,
+	timeRanges: Array<{ label: string; min: number; max: number }>,
+	mode: string = 'driving'
+): Record<string, string[]> {
+	const groups: Record<string, string[]> = {};
+
+	// Initialize groups
+	timeRanges.forEach((range) => {
+		groups[range.label] = [];
+	});
+
+	Object.entries(capacities).forEach(([capacityId, capacity]) => {
+		const primaryLocation = extractCapacityPrimaryLocation(capacity);
+
+		if (primaryLocation) {
+			const distance = calculateDistance(
+				reference.lat,
+				reference.lng,
+				primaryLocation.lat,
+				primaryLocation.lng
+			);
+
+			const travelTime = estimateTravelTime(distance, mode);
+
+			// Find the appropriate time range
+			for (const range of timeRanges) {
+				if (travelTime >= range.min && travelTime < range.max) {
+					groups[range.label].push(capacityId);
+					break;
+				}
+			}
+		}
+	});
+
+	return groups;
+}

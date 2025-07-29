@@ -103,26 +103,33 @@
 		return {
 			id: crypto.randomUUID(),
 			name: '',
-			quantity: 0,
+			emoji: '',
 			unit: '',
-			location_type: 'Undefined',
-			all_day: false,
-			start_date: now,
-			start_time: now,
-			end_date: now,
-			end_time: now,
-			time_zone: getLocalTimeZone(),
+			description: '',
 			max_natural_div: 1,
 			max_percentage_div: 1.0,
 			hidden_until_request_accepted: false,
 			owner_id: $userPub,
-			recurrence: null,
-			custom_recurrence_repeat_every: null,
-			custom_recurrence_repeat_unit: null,
-			custom_recurrence_end_type: null,
-			custom_recurrence_end_value: null,
 			filter_rule: null,
-			recipient_shares: {}
+			recipient_shares: {},
+			availability_slots: [
+				{
+					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					quantity: 1,
+					location_type: 'Undefined',
+					all_day: false,
+					start_date: now,
+					start_time: now,
+					end_date: now,
+					end_time: now,
+					time_zone: getLocalTimeZone(),
+					recurrence: null,
+					custom_recurrence_repeat_every: null,
+					custom_recurrence_repeat_unit: null,
+					custom_recurrence_end_type: null,
+					custom_recurrence_end_value: null
+				}
+			]
 		};
 	}
 

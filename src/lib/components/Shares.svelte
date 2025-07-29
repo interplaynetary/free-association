@@ -22,7 +22,7 @@
 	// Search and filter state
 	let searchQuery = $state('');
 	let selectedProvider = $state('all');
-	let sortBy = $state<'name' | 'quantity' | 'percentage' | 'provider'>('name');
+	let sortBy = $state<'name' | 'active_slots' | 'percentage' | 'provider'>('name');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
 	let expandedShares = $state<Set<string>>(new Set());
@@ -35,6 +35,14 @@
 			newExpanded.add(shareId);
 		}
 		expandedShares = newExpanded;
+	}
+
+	// Helper function to count active slots (slots with quantity > 0)
+	function getActiveSlotCount(share: RecipientCapacity): number {
+		if (!share.computed_quantities || !Array.isArray(share.computed_quantities)) {
+			return 0;
+		}
+		return share.computed_quantities.filter(slot => slot.quantity > 0).length;
 	}
 
 	// Base shares data - all valid shares
@@ -51,13 +59,9 @@
 				}) as RecipientCapacity
 		);
 
-		// Filter out shares with no name or zero/no quantity
+		// Filter out shares with no name or no active slots
 		return sharesList.filter(
-			(share) =>
-				share.name &&
-				share.name.trim() !== '' &&
-				share.computed_quantity &&
-				share.computed_quantity > 0
+			(share) => share.name && share.name.trim() !== '' && getActiveSlotCount(share) > 0
 		);
 	});
 
@@ -131,8 +135,8 @@
 				case 'name':
 					comparison = a.name.localeCompare(b.name);
 					break;
-				case 'quantity':
-					comparison = (a.computed_quantity || 0) - (b.computed_quantity || 0);
+				case 'active_slots':
+					comparison = getActiveSlotCount(a) - getActiveSlotCount(b);
 					break;
 				case 'percentage':
 					comparison = a.share_percentage - b.share_percentage;
@@ -186,7 +190,7 @@
 			<div class="sort-controls">
 				<select class="sort-select" bind:value={sortBy}>
 					<option value="name">Sort by name</option>
-					<option value="quantity">Sort by quantity</option>
+					<option value="active_slots">Sort by active slots</option>
 					<option value="percentage">Sort by percentage</option>
 					<option value="provider">Sort by provider</option>
 				</select>

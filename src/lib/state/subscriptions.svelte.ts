@@ -11,15 +11,15 @@ import {
 	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
-import { userDesiredComposeFrom, userDesiredComposeInto } from './compose.svelte';
+import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './compose.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import {
 	persistTree,
 	persistCapacities,
 	persistSogf,
 	persistContributorCapacityShares,
-	persistUserDesiredComposeFrom,
-	persistUserDesiredComposeInto,
+	persistUserDesiredSlotComposeFrom,
+	persistUserDesiredSlotComposeInto,
 	persistContacts,
 	persistChatReadStates
 } from './persistence.svelte';
@@ -70,21 +70,21 @@ const debouncedPersistContributorCapacityShares = debounce(() => {
 	}
 }, 200);
 
-const debouncedPersistUserDesiredComposeFrom = debounce(() => {
-	console.log('[USER-COMPOSE-FROM-SUB] Executing debounced compose-from persistence');
+const debouncedPersistUserDesiredSlotComposeFrom = debounce(() => {
+	console.log('[USER-SLOT-COMPOSE-FROM-SUB] Executing debounced slot compose-from persistence');
 	try {
-		persistUserDesiredComposeFrom();
+		persistUserDesiredSlotComposeFrom();
 	} catch (error) {
-		console.error('[USER-COMPOSE-FROM-SUB] Error during debounced persistence:', error);
+		console.error('[USER-SLOT-COMPOSE-FROM-SUB] Error during debounced persistence:', error);
 	}
 }, 250);
 
-const debouncedPersistUserDesiredComposeInto = debounce(() => {
-	console.log('[USER-COMPOSE-INTO-SUB] Executing debounced compose-into persistence');
+const debouncedPersistUserDesiredSlotComposeInto = debounce(() => {
+	console.log('[USER-SLOT-COMPOSE-INTO-SUB] Executing debounced slot compose-into persistence');
 	try {
-		persistUserDesiredComposeInto();
+		persistUserDesiredSlotComposeInto();
 	} catch (error) {
-		console.error('[USER-COMPOSE-INTO-SUB] Error during debounced persistence:', error);
+		console.error('[USER-SLOT-COMPOSE-INTO-SUB] Error during debounced persistence:', error);
 	}
 }, 250);
 
@@ -234,47 +234,47 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 });
 
 /**
- * Trigger persistence when user desired compose-from changes
+ * Trigger persistence when user desired slot compose-from changes
  */
-userDesiredComposeFrom.subscribe((userDesiredComposeFrom) => {
-	console.log('[USER-COMPOSE-FROM-SUB] User desired compose-from updated');
+userDesiredSlotComposeFrom.subscribe((userDesiredSlotComposeFrom) => {
+	console.log('[USER-SLOT-COMPOSE-FROM-SUB] User desired slot compose-from updated');
 	console.log(
-		'[USER-COMPOSE-FROM-SUB] User desired compose-from capacities:',
-		Object.keys(userDesiredComposeFrom).length
+		'[USER-SLOT-COMPOSE-FROM-SUB] User desired slot compose-from capacities:',
+		Object.keys(userDesiredSlotComposeFrom).length
 	);
 
-	// Don't persist empty compose-from during initialization
-	if (Object.keys(userDesiredComposeFrom).length === 0) {
+	// Don't persist empty slot compose-from during initialization
+	if (Object.keys(userDesiredSlotComposeFrom).length === 0) {
 		console.log(
-			'[USER-COMPOSE-FROM-SUB] Skipping persistence of empty compose-from (likely initialization)'
+			'[USER-SLOT-COMPOSE-FROM-SUB] Skipping persistence of empty slot compose-from (likely initialization)'
 		);
 		return;
 	}
 
 	// Debounced persistence function
-	debouncedPersistUserDesiredComposeFrom();
+	debouncedPersistUserDesiredSlotComposeFrom();
 });
 
 /**
- * Trigger persistence when user desired compose-into changes
+ * Trigger persistence when user desired slot compose-into changes
  */
-userDesiredComposeInto.subscribe((userDesiredComposeInto) => {
-	console.log('[USER-COMPOSE-INTO-SUB] User desired compose-into updated');
+userDesiredSlotComposeInto.subscribe((userDesiredSlotComposeInto) => {
+	console.log('[USER-SLOT-COMPOSE-INTO-SUB] User desired slot compose-into updated');
 	console.log(
-		'[USER-COMPOSE-INTO-SUB] User desired compose-into capacities:',
-		Object.keys(userDesiredComposeInto).length
+		'[USER-SLOT-COMPOSE-INTO-SUB] User desired slot compose-into capacities:',
+		Object.keys(userDesiredSlotComposeInto).length
 	);
 
-	// Don't persist empty compose-into during initialization
-	if (Object.keys(userDesiredComposeInto).length === 0) {
+	// Don't persist empty slot compose-into during initialization
+	if (Object.keys(userDesiredSlotComposeInto).length === 0) {
 		console.log(
-			'[USER-COMPOSE-INTO-SUB] Skipping persistence of empty compose-into (likely initialization)'
+			'[USER-SLOT-COMPOSE-INTO-SUB] Skipping persistence of empty slot compose-into (likely initialization)'
 		);
 		return;
 	}
 
 	// Debounced persistence function
-	debouncedPersistUserDesiredComposeInto();
+	debouncedPersistUserDesiredSlotComposeInto();
 });
 
 /**

@@ -26,7 +26,10 @@ import {
 	type TimeIndex,
 	createTimeIndex,
 	findObjectsInTimeRange,
-	getObjectTimeSlots
+	getObjectTimeSlots,
+	createSlotAwareTimeIndex,
+	findCapacitiesInTimeRange,
+	getCapacityAvailableSlots
 } from './time.svelte';
 
 import {
@@ -35,7 +38,12 @@ import {
 	type LocationResult,
 	sortObjectsByProximity,
 	findObjectsWithinTravelTime,
-	groupObjectsByTravelTime
+	groupObjectsByTravelTime,
+	extractCapacityLocations,
+	extractCapacityPrimaryLocation,
+	sortCapacitiesByProximity,
+	findCapacitiesWithinTravelTime,
+	groupCapacitiesByTravelTime
 } from './space.svelte';
 
 /**
@@ -48,23 +56,13 @@ import {
 // ===== CAPACITY-SPECIFIC TYPES =====
 
 // Property definitions
-const BASE_PROPERTIES = [
-	'name',
-	'unit',
-	'description',
-	'emoji',
-	'location_type',
-	'city',
-	'state_province',
-	'country',
-	'recurrence',
-	'time_zone',
-	'owner_id'
-] as const;
+const BASE_PROPERTIES = ['name', 'unit', 'description', 'emoji', 'owner_id'] as const;
 
 const RECIPIENT_PROPERTIES = ['provider_id'] as const;
 const INDEXABLE_PROPERTIES = [...BASE_PROPERTIES, ...RECIPIENT_PROPERTIES] as const;
-const NUMERIC_PROPERTIES = ['quantity', 'share_percentage', 'computed_quantity'] as const;
+// Note: With slot-based structure, 'quantity' is now per-slot, 'computed_quantity' is now 'computed_quantities'
+// For filtering purposes, we may need to aggregate or handle these differently
+const NUMERIC_PROPERTIES = ['share_percentage'] as const;
 
 export type BaseProperty = (typeof BASE_PROPERTIES)[number];
 export type RecipientProperty = (typeof RECIPIENT_PROPERTIES)[number];
@@ -94,7 +92,7 @@ export type NumericRangeLookup = Record<string, string[]>;
 
 export interface CapacityLookups {
 	properties: PropertyLookupTables;
-	numericRanges: Record<NumericProperty, NumericRangeLookup>;
+	numericRanges: { share_percentage: NumericRangeLookup }; // Simplified for slot-based structure
 	hasLocation: string[];
 	hasSchedule: string[];
 	hasRecurrence: string[];
@@ -103,7 +101,7 @@ export interface CapacityLookups {
 
 export interface CapacityCriteria {
 	properties?: Partial<Record<IndexableProperty, string[]>>;
-	numericRanges?: Partial<Record<NumericProperty, string[]>>;
+	numericRanges?: { share_percentage?: string[] }; // Simplified for slot-based structure
 	hasLocation?: boolean;
 	hasSchedule?: boolean;
 	hasRecurrence?: boolean;
@@ -113,29 +111,32 @@ export interface CapacityCriteria {
 // ===== CAPACITY-SPECIFIC HELPER FUNCTIONS =====
 
 const hasLocationInfo = (capacity: any) =>
-	!!(
-		capacity.location_type ||
-		capacity.longitude ||
-		capacity.latitude ||
-		capacity.street_address ||
-		capacity.city ||
-		capacity.state_province ||
-		capacity.country
-	);
+	capacity.availability_slots?.some(
+		(slot: any) =>
+			!!(
+				slot.location_type ||
+				slot.longitude ||
+				slot.latitude ||
+				slot.street_address ||
+				slot.city ||
+				slot.state_province ||
+				slot.country
+			)
+	) ?? false;
 
 const hasScheduleInfo = (capacity: any) =>
-	!!(
-		capacity.start_date ||
-		capacity.start_time ||
-		capacity.end_date ||
-		capacity.end_time ||
-		capacity.all_day
-	);
+	capacity.availability_slots?.some(
+		(slot: any) =>
+			!!(slot.start_date || slot.start_time || slot.end_date || slot.end_time || slot.all_day)
+	) ?? false;
 
 const hasRecurrenceInfo = (capacity: any) =>
-	!!(capacity.recurrence || capacity.custom_recurrence_repeat_every);
+	capacity.availability_slots?.some(
+		(slot: any) => !!(slot.recurrence || slot.custom_recurrence_repeat_every)
+	) ?? false;
 
-const hasQuantityInfo = (capacity: any) => capacity.quantity != null;
+const hasQuantityInfo = (capacity: any) =>
+	capacity.availability_slots?.some((slot: any) => slot.quantity != null) ?? false;
 
 // ===== CAPACITY-SPECIFIC FUNCTIONS =====
 
@@ -144,9 +145,8 @@ export function createCapacityLookups(
 	customRanges?: Partial<Record<NumericProperty, RangeDefinition[]>>
 ): CapacityLookups {
 	const ranges = {
-		quantity: customRanges?.quantity || DEFAULT_QUANTITY_RANGES,
-		share_percentage: customRanges?.share_percentage || DEFAULT_PERCENTAGE_RANGES,
-		computed_quantity: customRanges?.computed_quantity || DEFAULT_QUANTITY_RANGES
+		share_percentage: customRanges?.share_percentage || DEFAULT_PERCENTAGE_RANGES
+		// Note: quantity and computed_quantity are now slot-based and need different handling
 	};
 
 	const config: ObjectLookupConfig = {
@@ -171,9 +171,8 @@ export function createCapacityLookups(
 	return {
 		properties,
 		numericRanges: {
-			quantity: genericLookups.ranges.quantity || {},
-			share_percentage: genericLookups.ranges.share_percentage || {},
-			computed_quantity: genericLookups.ranges.computed_quantity || {}
+			share_percentage: genericLookups.ranges.share_percentage || {}
+			// Note: quantity and computed_quantity ranges removed due to slot-based structure
 		},
 		hasLocation: genericLookups.custom.hasLocation || [],
 		hasSchedule: genericLookups.custom.hasSchedule || [],
@@ -200,7 +199,7 @@ const convertCapacityCriteria = (
 
 	const genericLookups: ObjectLookups = {
 		properties: lookups.properties,
-		ranges: lookups.numericRanges,
+		ranges: { share_percentage: lookups.numericRanges.share_percentage },
 		arrays: {},
 		custom: {
 			hasLocation: lookups.hasLocation,
@@ -301,6 +300,34 @@ export const createCapacityProximitySort = (config: LocationSortConfig) =>
 		return sortObjectsByProximity($userNetworkCapacitiesWithShares, config);
 	});
 
+/**
+ * Create reactive time index for capacities (slot-aware)
+ */
+export const createCapacitySlotTimeIndex = (config: TimeIndexConfig = {}) =>
+	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
+		if (
+			!$userNetworkCapacitiesWithShares ||
+			Object.keys($userNetworkCapacitiesWithShares).length === 0
+		) {
+			return createSlotAwareTimeIndex({}, config);
+		}
+		return createSlotAwareTimeIndex($userNetworkCapacitiesWithShares, config);
+	});
+
+/**
+ * Create reactive proximity-sorted capacities (slot-aware)
+ */
+export const createCapacitySlotProximitySort = (config: LocationSortConfig) =>
+	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
+		if (
+			!$userNetworkCapacitiesWithShares ||
+			Object.keys($userNetworkCapacitiesWithShares).length === 0
+		) {
+			return [];
+		}
+		return sortCapacitiesByProximity($userNetworkCapacitiesWithShares, config);
+	});
+
 // ===== LEGACY ALIASES =====
 
 export const createQuantityRanges = createRanges;
@@ -326,17 +353,25 @@ export {
 	createObjectLookups,
 	findObjectsWithAll,
 	findObjectsWithAny,
-	
+
 	// Time functions
 	createTimeIndex,
 	findObjectsInTimeRange,
 	getObjectTimeSlots,
-	
+	createSlotAwareTimeIndex,
+	findCapacitiesInTimeRange,
+	getCapacityAvailableSlots,
+
 	// Location functions
 	sortObjectsByProximity,
 	findObjectsWithinTravelTime,
 	groupObjectsByTravelTime,
-	
+	extractCapacityLocations,
+	extractCapacityPrimaryLocation,
+	sortCapacitiesByProximity,
+	findCapacitiesWithinTravelTime,
+	groupCapacitiesByTravelTime,
+
 	// Utility functions
 	createRanges,
 	createPercentageRanges

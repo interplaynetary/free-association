@@ -16,6 +16,9 @@
 
 	let providerName = $state<string>('');
 
+	// UI state for expanded slots
+	let slotsExpanded = $state(false);
+
 	// Get provider name asynchronously
 	$effect(() => {
 		void (async () => {
@@ -46,151 +49,83 @@
 		}
 	}
 
-	// Helper functions for space-time data formatting
-	function hasSpaceTimeData(share: RecipientCapacity): boolean {
-		return Boolean(
-			(share.location_type && share.location_type !== 'Undefined') ||
-				share.start_date ||
-				share.start_time ||
-				share.end_date ||
-				share.end_time ||
-				(share.recurrence && share.recurrence !== 'Does not repeat')
-		);
+	// Toggle expanded state
+	function toggleExpanded() {
+		expanded = !expanded;
+		// If we're expanding main content, close slots
+		if (expanded) {
+			slotsExpanded = false;
+		}
 	}
 
-	function formatLocation(share: RecipientCapacity): string {
-		if (!share.location_type || share.location_type === 'Undefined') {
-			return '';
+	// Toggle chat state
+	function toggleChat() {
+		expanded = !expanded;
+		// If we're expanding chat, close slots
+		if (expanded) {
+			slotsExpanded = false;
 		}
-
-		if (share.location_type === 'LiveLocation') {
-			return '📍 Live location';
-		}
-
-		if (share.location_type === 'Specific') {
-			// Check if address is available first
-			if (
-				share.street_address ||
-				share.city ||
-				share.state_province ||
-				share.postal_code ||
-				share.country
-			) {
-				const addressParts = [
-					share.street_address,
-					share.city,
-					share.state_province,
-					share.postal_code,
-					share.country
-				].filter(Boolean);
-
-				if (addressParts.length > 0) {
-					return `📍 ${addressParts.join(', ')}`;
-				}
-			}
-
-			// Fall back to coordinates if available
-			if (share.latitude !== undefined && share.longitude !== undefined) {
-				return `📍 ${share.latitude.toFixed(6)}, ${share.longitude.toFixed(6)}`;
-			}
-
-			return '📍 Specific location';
-		}
-
-		return '';
 	}
 
-	function formatTimeRange(share: RecipientCapacity): string {
-		const parts: string[] = [];
-
-		// Date range
-		if (share.start_date || share.end_date) {
-			const startDate = share.start_date ? new Date(share.start_date).toLocaleDateString() : '';
-			const endDate = share.end_date ? new Date(share.end_date).toLocaleDateString() : '';
-
-			if (startDate && endDate) {
-				if (startDate === endDate) {
-					parts.push(`📅 ${startDate}`);
-				} else {
-					parts.push(`📅 ${startDate} - ${endDate}`);
-				}
-			} else if (startDate) {
-				parts.push(`📅 From ${startDate}`);
-			} else if (endDate) {
-				parts.push(`📅 Until ${endDate}`);
-			}
+	// Toggle slots expansion
+	function toggleSlots() {
+		slotsExpanded = !slotsExpanded;
+		// If we're expanding slots, close the main expanded section
+		if (slotsExpanded && expanded) {
+			expanded = false;
 		}
-
-		// Time range (if not all day)
-		if (!share.all_day && (share.start_time || share.end_time)) {
-			const formatTime = (timeValue: string | null | undefined): string => {
-				if (!timeValue) return '';
-
-				// Handle different time formats
-				let timeString = '';
-
-				// If it's a full datetime string, extract the time part
-				if (timeValue.includes('T')) {
-					const date = new Date(timeValue);
-					timeString = date.toTimeString().slice(0, 5); // Get HH:MM
-				} else if (timeValue.includes(':')) {
-					// If it's already in HH:MM or HH:MM:SS format, take first 5 characters
-					timeString = timeValue.slice(0, 5);
-				} else {
-					timeString = timeValue;
-				}
-
-				return timeString;
-			};
-
-			const startTime = formatTime(share.start_time);
-			const endTime = formatTime(share.end_time);
-
-			if (startTime && endTime) {
-				if (startTime === endTime) {
-					parts.push(`🕐 ${startTime}`); // Show single time when start and end are the same
-				} else {
-					parts.push(`🕐 ${startTime} - ${endTime}`);
-				}
-			} else if (startTime) {
-				parts.push(`🕐 From ${startTime}`);
-			} else if (endTime) {
-				parts.push(`🕐 Until ${endTime}`);
-			}
-		} else if (share.all_day) {
-			parts.push('🕐 All day');
-		}
-
-		// Time zone
-		if (share.time_zone) {
-			parts.push(`🌍 ${share.time_zone}`);
-		}
-
-		return parts.join(' • ');
 	}
 
-	function formatRecurrence(share: RecipientCapacity): string {
-		if (!share.recurrence || share.recurrence === 'Does not repeat') {
-			return '';
+	// Get computed quantity for a specific slot
+	function getSlotComputedQuantity(slotId: string): number {
+		const slotQuantity = share.computed_quantities?.find((cq) => cq.slot_id === slotId);
+		return slotQuantity?.quantity || 0;
+	}
+
+	// Get count of slots with non-zero quantities
+	function getActiveSlotCount(): number {
+		if (!share.computed_quantities || !Array.isArray(share.computed_quantities)) {
+			return 0;
+		}
+		return share.computed_quantities.filter((slot) => slot.quantity > 0).length;
+	}
+
+	// Get total number of slots available
+	function getTotalSlotCount(): number {
+		return share.availability_slots?.length || 0;
+	}
+
+	// Format slot time display
+	function formatSlotTimeDisplay(slot: any): string {
+		const parts = [];
+
+		if (slot.start_date) {
+			parts.push(new Date(slot.start_date).toLocaleDateString());
 		}
 
-		if (share.recurrence === 'Custom...' && share.custom_recurrence_repeat_every) {
-			let customText = `🔄 Every ${share.custom_recurrence_repeat_every} ${share.custom_recurrence_repeat_unit || 'days'}`;
+		if (!slot.all_day && slot.start_time) {
+			parts.push(slot.start_time);
+		}
 
-			if (share.custom_recurrence_end_type === 'endsOn' && share.custom_recurrence_end_value) {
-				const endDate = new Date(share.custom_recurrence_end_value).toLocaleDateString();
-				customText += ` until ${endDate}`;
-			} else if (
-				share.custom_recurrence_end_type === 'endsAfter' &&
-				share.custom_recurrence_end_value
-			) {
-				customText += ` for ${share.custom_recurrence_end_value} occurrences`;
+		if (slot.all_day) {
+			parts.push('All day');
+		}
+
+		return parts.length > 0 ? parts.join(' ') : 'No time set';
+	}
+
+	// Format slot location display
+	function formatSlotLocationDisplay(slot: any): string {
+		if (slot.location_type === 'Specific') {
+			if (slot.street_address) {
+				return slot.street_address;
 			}
-
-			return customText;
+			if (slot.latitude && slot.longitude) {
+				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+			}
 		}
 
-		return `🔄 ${share.recurrence}`;
+		return slot.location_type || 'No location';
 	}
 
 	function getChatId(share: RecipientCapacity): string {
@@ -205,7 +140,7 @@
 		style="background-color: {getShareColor(
 			share.share_percentage
 		)}; border: 1px solid #e5e7eb; border-left: 8px solid {getColorForUserId(share.provider_id)};"
-		onclick={() => onToggle?.()}
+		onclick={toggleSlots}
 	>
 		<div class="flex min-w-0 flex-1 flex-col pr-2">
 			<div class="share-main-info flex items-center gap-2 overflow-hidden">
@@ -213,11 +148,7 @@
 					<span class="capacity-emoji">{share.emoji || '📦'}</span>
 					{share.name}
 				</span>
-				<span class="share-value qty flex-shrink-0 text-sm">
-					{Number.isInteger(share.computed_quantity)
-						? share.computed_quantity
-						: share.computed_quantity.toFixed(2)}
-					{share.unit}
+				<span class="share-value slot-count flex-shrink-0 text-sm">
 					<span class="ml-1 text-xs text-gray-600"
 						>({(share.share_percentage * 100).toFixed(1)}%)</span
 					>
@@ -233,24 +164,39 @@
 					</span>
 				</div>
 			{/if}
-			<!-- Show space-time preview inline if available -->
-			{#if hasSpaceTimeData(share)}
-				<div class="space-time-preview mt-1 text-xs text-gray-600">
-					{#if formatLocation(share)}
-						<span class="space-time-item">{formatLocation(share)}</span>
-					{/if}
-					{#if formatTimeRange(share)}
-						<span class="space-time-item">{formatTimeRange(share)}</span>
-					{/if}
-					{#if formatRecurrence(share)}
-						<span class="space-time-item">{formatRecurrence(share)}</span>
-					{/if}
-				</div>
-			{/if}
 		</div>
 		<div class="flex items-center gap-2">
 			{#if $unreadCount > 0}
 				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+			{/if}
+			<!-- Chat button -->
+			<button
+				type="button"
+				class="chat-btn relative"
+				onclick={(e) => {
+					e.stopPropagation();
+					toggleChat();
+				}}
+				title="Chat about this capacity"
+			>
+				💬
+				{#if $unreadCount > 0 && !expanded}
+					<span class="unread-badge-btn">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+				{/if}
+			</button>
+			<!-- Slots button -->
+			{#if share.availability_slots && share.availability_slots.length > 0}
+				<button
+					type="button"
+					class="slots-btn"
+					onclick={(e) => {
+						e.stopPropagation();
+						toggleSlots();
+					}}
+					title="View availability slots"
+				>
+					🕒
+				</button>
 			{/if}
 			<button
 				type="button"
@@ -266,10 +212,83 @@
 				{providerName}
 			</button>
 			<span class="expand-icon text-sm">
-				{expanded ? '▼' : '▶'}
+				{slotsExpanded ? '▼' : '▶'}
 			</span>
 		</div>
 	</div>
+
+	<!-- Expanded slots section -->
+	{#if slotsExpanded}
+		<div class="slots-section mt-2 rounded border border-gray-200 bg-purple-50 p-3">
+			<div class="slots-header mb-3">
+				<h4 class="text-sm font-medium text-gray-700">🕒 Your Share Allocation</h4>
+				<p class="mt-1 text-xs text-gray-500">
+					Your {(share.share_percentage * 100).toFixed(1)}% share of each availability slot
+				</p>
+			</div>
+
+			<div class="slots-content">
+				{#if share.availability_slots && share.availability_slots.length > 0}
+					<div class="slots-list space-y-3">
+						{#each share.availability_slots as slot (slot.id)}
+							{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+							<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+								<!-- Slot header row -->
+								<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+									<!-- Slot identifier -->
+									<span class="slot-label flex-1 font-medium">
+										Slot {slot.id.slice(-8)}
+									</span>
+
+									<!-- Your share quantity -->
+									<span
+										class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+									>
+										{Number.isInteger(computedQuantity)
+											? computedQuantity
+											: computedQuantity.toFixed(2)}
+										{share.unit}
+									</span>
+
+									<!-- Total slot quantity for context -->
+									<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+										of {slot.quantity} total
+									</span>
+								</div>
+
+								<!-- Slot summary row -->
+								<div class="slot-summary mb-2 text-xs text-gray-500">
+									<div class="flex flex-wrap gap-4">
+										<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+										<span>📍 {formatSlotLocationDisplay(slot)}</span>
+										{#if slot.mutual_agreement_required}
+											<span>🤝 Mutual agreement required</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Constraints info if present -->
+								{#if slot.advance_notice_hours || slot.booking_window_hours}
+									<div class="slot-constraints text-xs text-gray-500">
+										{#if slot.advance_notice_hours}
+											<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+										{/if}
+										{#if slot.booking_window_hours}
+											<span>📅 Book within {slot.booking_window_hours}h window</span>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="empty-slots py-6 text-center text-xs text-gray-500 italic">
+						No slots defined for this capacity.
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
 
 	{#if expanded}
 		<div class="expanded-content mt-2 space-y-3">
@@ -283,31 +302,6 @@
 						<p class="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
 							{share.description}
 						</p>
-					</div>
-				</div>
-			{/if}
-			<!-- Space-time coordinates section -->
-			{#if hasSpaceTimeData(share)}
-				<div class="space-time-coordinates rounded border border-gray-200 bg-blue-50 p-3">
-					<div class="space-time-header mb-2">
-						<h4 class="text-sm font-medium text-gray-700">📍 Space-time coordinates</h4>
-					</div>
-					<div class="space-time-info space-y-2">
-						{#if formatLocation(share)}
-							<div class="space-time-coordinate">
-								<span class="coordinate-text text-sm text-gray-700">{formatLocation(share)}</span>
-							</div>
-						{/if}
-						{#if formatTimeRange(share)}
-							<div class="space-time-coordinate">
-								<span class="coordinate-text text-sm text-gray-700">{formatTimeRange(share)}</span>
-							</div>
-						{/if}
-						{#if formatRecurrence(share)}
-							<div class="space-time-coordinate">
-								<span class="coordinate-text text-sm text-gray-700">{formatRecurrence(share)}</span>
-							</div>
-						{/if}
 					</div>
 				</div>
 			{/if}
@@ -364,6 +358,52 @@
 		display: inline-block;
 	}
 
+	.chat-btn {
+		background: none;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		padding: 2px 6px;
+		color: #6b7280;
+		font-size: 1em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.chat-btn:hover {
+		background: #f0f9ff;
+		border-color: #3b82f6;
+		color: #3b82f6;
+		transform: scale(1.05);
+	}
+
+	.slots-btn {
+		background: none;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		padding: 2px 6px;
+		color: #6b7280;
+		font-size: 1em;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.slots-btn:hover {
+		background: #fdf4ff;
+		border-color: #a855f7;
+		color: #a855f7;
+		transform: scale(1.05);
+	}
+
 	.provider-btn {
 		transition:
 			opacity 0.2s,
@@ -414,22 +454,36 @@
 		flex-shrink: 0;
 	}
 
-	.space-time-preview {
+	.unread-badge-btn {
+		position: absolute;
+		top: -2px;
+		right: -2px;
+		background: #ef4444;
+		color: white;
+		font-size: 0.65rem;
+		font-weight: 600;
+		line-height: 1;
+		min-width: 16px;
+		height: 16px;
+		border-radius: 8px;
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem;
-		margin-top: 0.25rem;
-		line-height: 1.3;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+		border: 1px solid white;
+		z-index: 10;
 	}
 
-	.space-time-item {
-		display: inline-block;
+	.slots-preview {
+		display: flex;
+		align-items: center;
 	}
 
-	.space-time-item:not(:last-child)::after {
-		content: ' • ';
-		color: #d1d5db;
-		margin-left: 0.25rem;
+	.slots-count {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
 	}
 
 	.description-preview {
@@ -458,27 +512,66 @@
 		animation: slideDown 0.2s ease-out;
 	}
 
-	.space-time-coordinates {
+	/* Slots section styling */
+	.slots-section {
 		animation: slideDown 0.2s ease-out;
 	}
 
-	.space-time-header h4 {
+	.slots-header h4 {
 		margin: 0;
 	}
 
-	.space-time-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+	.slots-header p {
+		margin: 0;
 	}
 
-	.space-time-coordinate {
-		display: flex;
+	.slots-list {
+		max-height: 500px;
+		overflow-y: auto;
+	}
+
+	.slot-item {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.slot-label {
+		font-weight: 500;
+		color: #374151;
+	}
+
+	.slot-quantity {
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+	}
+
+	.slot-total {
+		font-weight: 500;
+	}
+
+	.slot-summary span {
+		display: inline-flex;
 		align-items: center;
+		gap: 2px;
 	}
 
-	.coordinate-text {
-		line-height: 1.4;
+	.slot-constraints {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-top: 0.5rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid #f3f4f6;
+	}
+
+	.slot-constraints span {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.empty-slots {
+		background: rgba(243, 244, 246, 0.5);
+		border-radius: 6px;
+		border: 1px dashed #d1d5db;
 	}
 
 	@keyframes slideDown {

@@ -288,3 +288,87 @@ export function findObjectsInTimeRange(
 export function getObjectTimeSlots(timeIndex: TimeIndex, objectId: string): TimeSlot[] {
 	return timeIndex.objectSchedules[objectId] || [];
 }
+
+// =============================================================================
+// SLOT-AWARE TIME FUNCTIONS
+// Functions specifically designed for slot-based capacity structures
+// =============================================================================
+
+/**
+ * Create time index for slot-based capacities
+ * Expands each capacity into multiple time entries based on its availability slots
+ */
+export function createSlotAwareTimeIndex(
+	capacities: Record<string, any>,
+	config: TimeIndexConfig = {}
+): TimeIndex {
+	const expandedObjects: Record<string, any> = {};
+
+	// Expand each capacity into separate entries for each availability slot
+	Object.entries(capacities).forEach(([capacityId, capacity]) => {
+		if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+			capacity.availability_slots.forEach((slot: any, index: number) => {
+				const slotKey = `${capacityId}:slot:${slot.id || index}`;
+
+				// Create a virtual object for this slot with time properties at the top level
+				expandedObjects[slotKey] = {
+					...slot, // All slot properties (includes time data)
+					original_capacity_id: capacityId,
+					original_capacity: capacity,
+					slot_id: slot.id || index.toString()
+				};
+			});
+		}
+	});
+
+	// Use the existing generic time index with expanded objects
+	return createTimeIndex(expandedObjects, config);
+}
+
+/**
+ * Find capacities that have availability slots in a specific time range
+ * Returns capacity IDs (not slot keys)
+ */
+export function findCapacitiesInTimeRange(
+	capacities: Record<string, any>,
+	timeRange: { start: string; end: string },
+	config: TimeIndexConfig = {}
+): string[] {
+	const slotTimeIndex = createSlotAwareTimeIndex(capacities, config);
+	const availableSlotKeys = findObjectsInTimeRange(slotTimeIndex, timeRange);
+
+	// Extract unique capacity IDs from slot keys
+	const capacityIds = new Set<string>();
+	availableSlotKeys.forEach((slotKey) => {
+		const [capacityId] = slotKey.split(':slot:');
+		if (capacityId) {
+			capacityIds.add(capacityId);
+		}
+	});
+
+	return Array.from(capacityIds);
+}
+
+/**
+ * Get available slots for a specific capacity in a time range
+ */
+export function getCapacityAvailableSlots(
+	capacity: any,
+	timeRange: { start: string; end: string },
+	config: TimeIndexConfig = {}
+): any[] {
+	if (!capacity.availability_slots) return [];
+
+	const startDate = new Date(timeRange.start);
+	const endDate = new Date(timeRange.end);
+	const slotMinutes = config.timeSlotMinutes || 30;
+
+	return capacity.availability_slots.filter((slot: any) => {
+		// Check if this slot overlaps with the time range
+		// Create virtual time slots for this slot
+		const slotStart = new Date(startDate.getTime());
+		const slotEnd = new Date(slotStart.getTime() + slotMinutes * 60 * 1000);
+
+		return isAvailableInSlot(slot, slotStart, slotEnd);
+	});
+}

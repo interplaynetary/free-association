@@ -20,17 +20,18 @@ import {
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import {
-	userDesiredComposeFrom,
-	userDesiredComposeInto,
-	networkDesiredComposeFrom,
-	networkDesiredComposeInto
+	userDesiredSlotComposeFrom,
+	userDesiredSlotComposeInto,
+	networkDesiredSlotComposeFrom,
+	networkDesiredSlotComposeInto
 } from '$lib/state/compose.svelte';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
 import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 import type {
 	CapacitiesCollection,
 	RootNode,
-	UserComposition,
+	UserSlotComposition,
+	NetworkSlotComposition,
 	ShareMap,
 	ContactsCollection
 } from '$lib/schema';
@@ -39,6 +40,9 @@ import {
 	parseCapacities,
 	parseTree,
 	parseUserComposition,
+	parseNetworkComposition,
+	parseUserSlotComposition,
+	parseNetworkSlotComposition,
 	parseShareMap,
 	parseRecognitionCache,
 	parseContacts,
@@ -621,33 +625,33 @@ const ownDataStreamConfigs = {
 		}
 	},
 	desiredComposeFrom: {
-		type: 'desiredComposeFrom',
+		type: 'desiredSlotComposeFrom',
 		streamManager: ownDataStreamManager,
-		getGunPath: (userId: string) => user.get('desiredComposeFrom'),
+		getGunPath: (userId: string) => user.get('desiredSlotComposeFrom'),
 		processor: createDataProcessor({
-			dataType: 'desiredComposeFrom',
-			validator: parseUserComposition,
-			getCurrentData: () => get(userDesiredComposeFrom),
-			updateStore: (data) => userDesiredComposeFrom.set(data),
+			dataType: 'desiredSlotComposeFrom',
+			validator: parseUserSlotComposition,
+			getCurrentData: () => get(userDesiredSlotComposeFrom),
+			updateStore: (data) => userDesiredSlotComposeFrom.set(data),
 			emptyValue: {}
 		}),
 		errorHandler: (error: any) => {
-			console.error('[NETWORK] Error in own desiredComposeFrom stream:', error);
+			console.error('[NETWORK] Error in own desiredSlotComposeFrom stream:', error);
 		}
 	},
 	desiredComposeInto: {
-		type: 'desiredComposeInto',
+		type: 'desiredSlotComposeInto',
 		streamManager: ownDataStreamManager,
-		getGunPath: (userId: string) => user.get('desiredComposeInto'),
+		getGunPath: (userId: string) => user.get('desiredSlotComposeInto'),
 		processor: createDataProcessor({
-			dataType: 'desiredComposeInto',
-			validator: parseUserComposition,
-			getCurrentData: () => get(userDesiredComposeInto),
-			updateStore: (data) => userDesiredComposeInto.set(data),
+			dataType: 'desiredSlotComposeInto',
+			validator: parseUserSlotComposition,
+			getCurrentData: () => get(userDesiredSlotComposeInto),
+			updateStore: (data) => userDesiredSlotComposeInto.set(data),
 			emptyValue: {}
 		}),
 		errorHandler: (error: any) => {
-			console.error('[NETWORK] Error in own desiredComposeInto stream:', error);
+			console.error('[NETWORK] Error in own desiredSlotComposeInto stream:', error);
 		}
 	},
 	chatReadStates: {
@@ -859,18 +863,18 @@ const mutualContributorStreamConfigs = {
 			console.error(`[NETWORK] Error in capacity shares stream for ${contributorId}:`, error);
 		}
 	},
-	desiredComposeFrom: {
-		type: 'desiredComposeFrom',
+	desiredSlotComposeFrom: {
+		type: 'desiredSlotComposeFrom',
 		streamManager: mutualStreamManager,
 		getGunPath: (userId: string, contributorId: string) => {
 			const pubKey = resolveToPublicKey(contributorId);
 			if (!pubKey) return null;
-			return gun.user(pubKey).get('desiredComposeFrom');
+			return gun.user(pubKey).get('desiredSlotComposeFrom');
 		},
 		processor: (contributorId: string) => (composeFromData: any) => {
 			if (!composeFromData) {
-				console.log(`[NETWORK] No desired compose-from from contributor ${contributorId}`);
-				networkDesiredComposeFrom.update((current) => {
+				console.log(`[NETWORK] No desired slot compose-from from contributor ${contributorId}`);
+				networkDesiredSlotComposeFrom.update((current: NetworkSlotComposition) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
 				});
@@ -878,37 +882,37 @@ const mutualContributorStreamConfigs = {
 			}
 
 			console.log(
-				`[NETWORK] Received desired compose-from update from stream for ${contributorId}`
+				`[NETWORK] Received desired slot compose-from update from stream for ${contributorId}`
 			);
 
-			const validatedComposeFrom = parseUserComposition(composeFromData);
-			const currentNetworkComposeFrom = get(networkDesiredComposeFrom)[contributorId] || {};
+			const validatedComposeFrom = parseUserSlotComposition(composeFromData);
+			const currentNetworkComposeFrom = get(networkDesiredSlotComposeFrom)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeFrom) === JSON.stringify(currentNetworkComposeFrom);
 
 			if (!isUnchanged) {
-				networkDesiredComposeFrom.update((current) => ({
+				networkDesiredSlotComposeFrom.update((current: NetworkSlotComposition) => ({
 					...current,
 					[contributorId]: validatedComposeFrom
 				}));
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
-			console.error(`[NETWORK] Error in desired compose-from stream for ${contributorId}:`, error);
+			console.error(`[NETWORK] Error in desired slot compose-from stream for ${contributorId}:`, error);
 		}
 	},
-	desiredComposeInto: {
-		type: 'desiredComposeInto',
+	desiredSlotComposeInto: {
+		type: 'desiredSlotComposeInto',
 		streamManager: mutualStreamManager,
 		getGunPath: (userId: string, contributorId: string) => {
 			const pubKey = resolveToPublicKey(contributorId);
 			if (!pubKey) return null;
-			return gun.user(pubKey).get('desiredComposeInto');
+			return gun.user(pubKey).get('desiredSlotComposeInto');
 		},
 		processor: (contributorId: string) => (composeIntoData: any) => {
 			if (!composeIntoData) {
-				console.log(`[NETWORK] No desired compose-into from contributor ${contributorId}`);
-				networkDesiredComposeInto.update((current) => {
+				console.log(`[NETWORK] No desired slot compose-into from contributor ${contributorId}`);
+				networkDesiredSlotComposeInto.update((current: NetworkSlotComposition) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
 				});
@@ -916,23 +920,26 @@ const mutualContributorStreamConfigs = {
 			}
 
 			console.log(
-				`[NETWORK] Received desired compose-into update from stream for ${contributorId}`
+				`[NETWORK] Received desired slot compose-into update from stream for ${contributorId}`
 			);
 
-			const validatedComposeInto = parseUserComposition(composeIntoData);
-			const currentNetworkComposeInto = get(networkDesiredComposeInto)[contributorId] || {};
+			const validatedComposeInto = parseUserSlotComposition(composeIntoData);
+			const currentNetworkComposeInto = get(networkDesiredSlotComposeInto)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
 
 			if (!isUnchanged) {
-				networkDesiredComposeInto.update((current) => ({
+				networkDesiredSlotComposeInto.update((current: NetworkSlotComposition) => ({
 					...current,
 					[contributorId]: validatedComposeInto
 				}));
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
-			console.error(`[NETWORK] Error in desired compose-into stream for ${contributorId}:`, error);
+			console.error(
+				`[NETWORK] Error in desired slot compose-into stream for ${contributorId}:`,
+				error
+			);
 		}
 	}
 };
@@ -948,11 +955,11 @@ const createOwnCapacitiesStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.capacities, userId);
 });
 
-const createOwnDesiredComposeFromStream = withAuthentication(async (userId: string) => {
+const createOwnDesiredSlotComposeFromStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.desiredComposeFrom, userId);
 });
 
-const createOwnDesiredComposeIntoStream = withAuthentication(async (userId: string) => {
+const createOwnDesiredSlotComposeIntoStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.desiredComposeInto, userId);
 });
 
@@ -1017,8 +1024,8 @@ const createMutualContributorStreams = withAuthentication(
 		const streamTypes = [
 			'capacities',
 			'capacityShares',
-			'desiredComposeFrom',
-			'desiredComposeInto'
+			'desiredSlotComposeFrom',
+			'desiredSlotComposeInto'
 		] as const;
 
 		for (const streamType of streamTypes) {
@@ -1064,8 +1071,8 @@ export async function initializeUserDataStreams(): Promise<void> {
 		await createOwnTreeStream();
 		await createOwnCapacitiesStream();
 		await createOwnContactsStream();
-		await createOwnDesiredComposeFromStream();
-		await createOwnDesiredComposeIntoStream();
+		await createOwnDesiredSlotComposeFromStream();
+		await createOwnDesiredSlotComposeIntoStream();
 		await createOwnChatReadStatesStream();
 
 		// Setup users list subscription (still using old approach for now)
@@ -1241,7 +1248,10 @@ chatIdsToSubscribe.subscribe(debouncedUpdateChatSubscriptions);
 
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
-	console.log('[STREAM-DEBUG] debouncedUpdateSOGFSubscriptions called with contributors:', allContributors);
+	console.log(
+		'[STREAM-DEBUG] debouncedUpdateSOGFSubscriptions called with contributors:',
+		allContributors
+	);
 
 	// Only run this if we're authenticated
 	try {
@@ -1254,7 +1264,11 @@ const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) =>
 		return;
 	}
 
-	console.log('[STREAM-DEBUG] About to update SOGF subscriptions for', allContributors.length, 'contributors');
+	console.log(
+		'[STREAM-DEBUG] About to update SOGF subscriptions for',
+		allContributors.length,
+		'contributors'
+	);
 	sogfStreamManager.updateSubscriptions(allContributors, createContributorSOGFStream);
 }, 100);
 
@@ -1277,8 +1291,8 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 		// Clear all network stores
 		networkCapacities.set({});
 		networkCapacityShares.set({});
-		networkDesiredComposeFrom.set({});
-		networkDesiredComposeInto.set({});
+		networkDesiredSlotComposeFrom.set({});
+		networkDesiredSlotComposeInto.set({});
 		mutualStreamManager.stopAllStreams();
 		return;
 	}
@@ -1287,8 +1301,8 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 	const networkStores = [
 		{ store: networkCapacities, name: 'networkCapacities' },
 		{ store: networkCapacityShares, name: 'networkCapacityShares' },
-		{ store: networkDesiredComposeFrom, name: 'networkDesiredComposeFrom' },
-		{ store: networkDesiredComposeInto, name: 'networkDesiredComposeInto' }
+		{ store: networkDesiredSlotComposeFrom, name: 'networkDesiredComposeFrom' },
+		{ store: networkDesiredSlotComposeInto, name: 'networkDesiredComposeInto' }
 	];
 
 	mutualStreamManager.updateSubscriptions(

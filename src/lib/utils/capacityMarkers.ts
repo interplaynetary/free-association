@@ -20,11 +20,27 @@ export function getCapacitiesWithCoordinates(
 	const markers: CapacityMarkerData[] = [];
 
 	Object.entries(capacities).forEach(([id, capacity]) => {
-		if (hasValidCoordinates(capacity)) {
+		// Safety check: ensure availability_slots exists and is an array
+		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+			return; // Skip this capacity if it doesn't have properly initialized slots
+		}
+
+		// Find the first slot with valid coordinates
+		const slotWithCoords = capacity.availability_slots.find(
+			(slot) =>
+				typeof slot.latitude === 'number' &&
+				typeof slot.longitude === 'number' &&
+				slot.latitude >= -90 &&
+				slot.latitude <= 90 &&
+				slot.longitude >= -180 &&
+				slot.longitude <= 180
+		);
+
+		if (slotWithCoords) {
 			markers.push({
 				id,
 				capacity,
-				lnglat: { lng: capacity.longitude!, lat: capacity.latitude! },
+				lnglat: { lng: slotWithCoords.longitude!, lat: slotWithCoords.latitude! },
 				source: 'coordinates'
 			});
 		}
@@ -42,22 +58,41 @@ export function getCapacitiesWithAddresses(
 	const addressCapacities: Array<{ id: string; capacity: Capacity; address: string }> = [];
 
 	Object.entries(capacities).forEach(([id, capacity]) => {
+		// Safety check: ensure availability_slots exists and is an array
+		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+			return; // Skip this capacity if it doesn't have properly initialized slots
+		}
+
 		// Only include if has address but no valid coordinates
 		if (!hasValidCoordinates(capacity) && hasValidAddress(capacity)) {
-			const address = formatAddress({
-				street_address: capacity.street_address,
-				city: capacity.city,
-				state_province: capacity.state_province,
-				postal_code: capacity.postal_code,
-				country: capacity.country
-			});
+			// Find the first slot with address information
+			const slotWithAddress = capacity.availability_slots.find(
+				(slot) =>
+					!!(
+						slot.street_address ||
+						slot.city ||
+						slot.state_province ||
+						slot.postal_code ||
+						slot.country
+					)
+			);
 
-			if (address.trim()) {
-				addressCapacities.push({
-					id,
-					capacity,
-					address
+			if (slotWithAddress) {
+				const address = formatAddress({
+					street_address: slotWithAddress.street_address,
+					city: slotWithAddress.city,
+					state_province: slotWithAddress.state_province,
+					postal_code: slotWithAddress.postal_code,
+					country: slotWithAddress.country
 				});
+
+				if (address.trim()) {
+					addressCapacities.push({
+						id,
+						capacity,
+						address
+					});
+				}
 			}
 		}
 	});
@@ -78,12 +113,33 @@ export async function geocodeCapacitiesWithAddresses(
 	for (const { id, capacity, address } of addressCapacities) {
 		try {
 			console.log(`[Geocoding] Attempting to geocode: ${address}`);
+
+			// Safety check: ensure availability_slots exists and is an array
+			if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+				console.warn(`[Geocoding] Skipping capacity ${id} - no valid slots`);
+				continue;
+			}
+
+			// Find the first slot with address information
+			const slotWithAddress = capacity.availability_slots.find(
+				(slot) =>
+					!!(
+						slot.street_address ||
+						slot.city ||
+						slot.state_province ||
+						slot.postal_code ||
+						slot.country
+					)
+			);
+
+			if (!slotWithAddress) continue;
+
 			const results = await geocodeCapacityAddress({
-				street_address: capacity.street_address,
-				city: capacity.city,
-				state_province: capacity.state_province,
-				postal_code: capacity.postal_code,
-				country: capacity.country
+				street_address: slotWithAddress.street_address,
+				city: slotWithAddress.city,
+				state_province: slotWithAddress.state_province,
+				postal_code: slotWithAddress.postal_code,
+				country: slotWithAddress.country
 			});
 
 			if (results.length > 0) {
@@ -125,43 +181,87 @@ export async function getAllCapacityMarkers(
 }
 
 /**
- * Checks if a capacity has valid geographic coordinates
+ * Checks if a capacity has valid geographic coordinates (from any slot)
  */
 export function hasValidCoordinates(capacity: Capacity): boolean {
-	return (
-		typeof capacity.latitude === 'number' &&
-		typeof capacity.longitude === 'number' &&
-		capacity.latitude >= -90 &&
-		capacity.latitude <= 90 &&
-		capacity.longitude >= -180 &&
-		capacity.longitude <= 180
+	// Safety check: ensure availability_slots exists and is an array
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return false; // No valid coordinates if slots aren't properly initialized
+	}
+
+	return capacity.availability_slots.some(
+		(slot) =>
+			typeof slot.latitude === 'number' &&
+			typeof slot.longitude === 'number' &&
+			slot.latitude >= -90 &&
+			slot.latitude <= 90 &&
+			slot.longitude >= -180 &&
+			slot.longitude <= 180
 	);
 }
 
 /**
- * Checks if a capacity has a valid address
+ * Checks if a capacity has a valid address (from any slot)
  */
 export function hasValidAddress(capacity: Capacity): boolean {
-	return !!(
-		capacity.street_address ||
-		capacity.city ||
-		capacity.state_province ||
-		capacity.postal_code ||
-		capacity.country
+	// Safety check: ensure availability_slots exists and is an array
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return false; // No valid address if slots aren't properly initialized
+	}
+
+	return capacity.availability_slots.some(
+		(slot) =>
+			!!(
+				slot.street_address ||
+				slot.city ||
+				slot.state_province ||
+				slot.postal_code ||
+				slot.country
+			)
 	);
 }
 
 /**
  * Updates a capacity's coordinates from a marker drag event
+ * Note: This updates the coordinates of the first slot with location data
  */
 export function updateCapacityCoordinates(
 	capacity: Capacity,
 	lnglat: { lng: number; lat: number }
 ): Capacity {
+	// Safety check: ensure availability_slots exists and is an array
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		// If no slots exist, create a default slot with the coordinates
+		return {
+			...capacity,
+			availability_slots: [
+				{
+					id: `slot-${Date.now()}`,
+					quantity: 1,
+					longitude: lnglat.lng,
+					latitude: lnglat.lat,
+					location_type: 'Specific'
+				}
+			]
+		};
+	}
+
+	// Find the first slot with coordinates or create updated slots
+	const updatedSlots = capacity.availability_slots.map((slot, index) => {
+		// Update the first slot that has coordinates, or the first slot if none have coordinates
+		if (index === 0 || (slot.latitude !== undefined && slot.longitude !== undefined)) {
+			return {
+				...slot,
+				longitude: lnglat.lng,
+				latitude: lnglat.lat
+			};
+		}
+		return slot;
+	});
+
 	return {
 		...capacity,
-		longitude: lnglat.lng,
-		latitude: lnglat.lat
+		availability_slots: updatedSlots
 	};
 }
 
@@ -174,72 +274,99 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 } {
 	const details: Array<{ label: string; value: string }> = [];
 
-	if (capacity.quantity !== undefined) {
+	// Safety check: ensure availability_slots exists and is an array
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		// Return basic info if no slots are initialized
+		return {
+			title: capacity.name || 'Capacity',
+			details: [
+				{
+					label: 'Status',
+					value: 'No availability slots defined'
+				}
+			]
+		};
+	}
+
+	// Show total quantity across all slots
+	const totalQuantity = capacity.availability_slots.reduce((sum, slot) => sum + slot.quantity, 0);
+	if (totalQuantity > 0) {
 		details.push({
-			label: 'Quantity',
-			value: `${capacity.quantity}${capacity.unit ? ' ' + capacity.unit : ''}`
+			label: 'Total Quantity',
+			value: `${totalQuantity}${capacity.unit ? ' ' + capacity.unit : ''}`
 		});
 	}
 
-	if (capacity.location_type) {
+	// Show location information from first slot with location data
+	const slotWithLocation = capacity.availability_slots.find((slot) => slot.location_type);
+	if (slotWithLocation?.location_type) {
 		details.push({
 			label: 'Location Type',
-			value: capacity.location_type
+			value: slotWithLocation.location_type
 		});
 
 		// Add specific location information if available
-		if (capacity.location_type === 'Specific') {
+		if (slotWithLocation.location_type === 'Specific') {
 			// Check if address is available first
-			if (
-				capacity.street_address ||
-				capacity.city ||
-				capacity.state_province ||
-				capacity.postal_code ||
-				capacity.country
-			) {
-				const addressParts = [
-					capacity.street_address,
-					capacity.city,
-					capacity.state_province,
-					capacity.postal_code,
-					capacity.country
-				].filter(Boolean);
+			const addressParts = [
+				slotWithLocation.street_address,
+				slotWithLocation.city,
+				slotWithLocation.state_province,
+				slotWithLocation.postal_code,
+				slotWithLocation.country
+			].filter(Boolean);
 
-				if (addressParts.length > 0) {
-					details.push({
-						label: 'Address',
-						value: addressParts.join(', ')
-					});
-				}
+			if (addressParts.length > 0) {
+				details.push({
+					label: 'Address',
+					value: addressParts.join(', ')
+				});
 			}
 
 			// Show coordinates if available (in addition to or instead of address)
-			if (capacity.latitude !== undefined && capacity.longitude !== undefined) {
+			if (slotWithLocation.latitude !== undefined && slotWithLocation.longitude !== undefined) {
 				details.push({
 					label: 'Coordinates',
-					value: `${capacity.latitude.toFixed(6)}, ${capacity.longitude.toFixed(6)}`
+					value: `${slotWithLocation.latitude.toFixed(6)}, ${slotWithLocation.longitude.toFixed(6)}`
 				});
 			}
 		}
 	}
 
-	if (capacity.start_date || capacity.start_time) {
-		const startInfo = [capacity.start_date, capacity.start_time].filter(Boolean).join(' ');
-		if (startInfo) {
-			details.push({
-				label: 'Start',
-				value: startInfo
-			});
-		}
-	}
+	// Show time information from slots (aggregate or show multiple if different)
+	const slotsWithTime = capacity.availability_slots.filter(
+		(slot) => slot.start_date || slot.start_time || slot.end_date || slot.end_time
+	);
 
-	if (capacity.end_date || capacity.end_time) {
-		const endInfo = [capacity.end_date, capacity.end_time].filter(Boolean).join(' ');
-		if (endInfo) {
+	if (slotsWithTime.length > 0) {
+		// If multiple slots have different time patterns, show count
+		if (slotsWithTime.length > 1) {
 			details.push({
-				label: 'End',
-				value: endInfo
+				label: 'Time Slots',
+				value: `${slotsWithTime.length} different time patterns`
 			});
+		} else {
+			// Show details of single time pattern
+			const slot = slotsWithTime[0];
+			if (slot.start_date || slot.start_time) {
+				const startInfo = [slot.start_date, slot.start_time].filter(Boolean).join(' ');
+				if (startInfo) {
+					details.push({
+						label: 'Start',
+						value: startInfo
+					});
+				}
+			}
+
+			if (slot.end_date || slot.end_time) {
+				const endInfo = [slot.end_date, slot.end_time].filter(Boolean).join(' ');
+				if (endInfo) {
+					details.push({
+						label: 'End',
+						value: endInfo
+					});
+				}
+			}
 		}
 	}
 
@@ -259,10 +386,14 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 			label: 'Your Share',
 			value: `${(capacity.share_percentage * 100).toFixed(1)}%`
 		});
-		if (capacity.computed_quantity !== undefined) {
+		if (capacity.computed_quantities && capacity.computed_quantities.length > 0) {
+			const totalQuantity = capacity.computed_quantities.reduce(
+				(sum, slot) => sum + slot.quantity,
+				0
+			);
 			details.push({
 				label: 'Your Quantity',
-				value: `${capacity.computed_quantity}${capacity.unit ? ' ' + capacity.unit : ''}`
+				value: `${totalQuantity}${capacity.unit ? ' ' + capacity.unit : ''}`
 			});
 		}
 	}
