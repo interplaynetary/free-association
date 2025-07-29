@@ -279,7 +279,7 @@ sw.addEventListener('message', async (event) => {
 		try {
 			await handler();
 		} catch (error) {
-			console.error(`[SW] Handler error for ${message.type}:`, error);
+			console.error('[SW] Handler error for %s:', message.type, error);
 		}
 	}
 });
