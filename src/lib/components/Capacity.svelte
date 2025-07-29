@@ -5,14 +5,15 @@
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
 	import CompositionItem from './CompositionItem.svelte';
-	import { Rules } from '$lib/filters';
+	import { Rules, type JsonLogicRule } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { get } from 'svelte/store';
 	import {
 		createCapacitiesDataProvider,
 		createAllNetworkCapacitiesDataProvider,
-		createSubtreesDataProvider
+		createSubtreesDataProvider,
+		createContactsAndUsersDataProvider
 	} from '$lib/utils/ui-providers.svelte';
 	import {
 		userDesiredComposeFrom,
@@ -23,6 +24,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
+	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -48,12 +50,46 @@
 	// UI state for expanded availability
 	let availabilityExpanded = $state(false);
 
-	// Simple filter state - just track selected subtree IDs
+	// Filter state
 	let selectedSubtrees = $state<string[]>([]);
+	let selectedCapacities = $state<string[]>([]);
+	let filterMode = $state<'include' | 'exclude'>('include');
 
-	// Dropdown state for adding subtree filters
+	// Track if we're initializing from capacity to prevent loops
+	let isInitializingFromCapacity = $state(false);
+
+	// Initialize filter state from existing filter_rule
+	$effect(() => {
+		if (isInitializingFromCapacity) {
+			return;
+		}
+
+		if (capacity.filter_rule) {
+			const filters = extractFiltersFromRule(capacity.filter_rule);
+
+			// Only update if the extracted values differ from current state
+			if (
+				JSON.stringify(filters.subtrees) !== JSON.stringify(selectedSubtrees) ||
+				JSON.stringify(filters.capacities) !== JSON.stringify(selectedCapacities) ||
+				filters.mode !== filterMode
+			) {
+				selectedSubtrees = filters.subtrees;
+				selectedCapacities = filters.capacities;
+				filterMode = filters.mode;
+			}
+		} else if (selectedSubtrees.length > 0 || selectedCapacities.length > 0) {
+			// Clear filters if no rule exists
+			selectedSubtrees = [];
+			selectedCapacities = [];
+			filterMode = 'include';
+		}
+	});
+
+	// Dropdown states
 	let showSubtreeDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
+	let showCapacityDropdown = $state(false);
+	let capacityDropdownPosition = $state({ x: 0, y: 0 });
 
 	// Emoji picker state
 	let showEmojiPicker = $state(false);
@@ -62,6 +98,9 @@
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
+
+	// Create contacts and users data provider for individual filtering
+	let contactsAndUsersDataProvider = createContactsAndUsersDataProvider();
 
 	// Create reactive capacity data providers for composition and dropdowns
 	let composeFromDataProvider = createCapacitiesDataProvider(capacity.id); // Capacities we have shares in
@@ -99,15 +138,47 @@
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
 	let capacityHiddenUntilRequestAccepted = $state(capacity.hidden_until_request_accepted);
 
-	// Derived filter rule - automatically updates when selectedSubtrees changes
+	// Derived filter rule - automatically updates when filter state changes
 	let filterRule = $derived(() => {
-		if (selectedSubtrees.length === 0) {
+		// If no filters are selected, return null
+		if (selectedSubtrees.length === 0 && selectedCapacities.length === 0) {
 			return null;
-		} else if (selectedSubtrees.length === 1) {
-			return Rules.inSubtree(selectedSubtrees[0]);
-		} else {
-			return Rules.inSubtrees(selectedSubtrees);
 		}
+
+		let rules: JsonLogicRule[] = [];
+
+		// Add subtree filters
+		if (selectedSubtrees.length > 0) {
+			// Convert reactive array to plain array
+			const plainSubtrees = [...selectedSubtrees];
+			if (plainSubtrees.length === 1) {
+				rules.push(Rules.inSubtree(plainSubtrees[0]));
+			} else {
+				rules.push(Rules.inSubtrees(plainSubtrees));
+			}
+		}
+
+		// Add individual capacity filters
+		if (selectedCapacities.length > 0) {
+			// Convert reactive array to plain array
+			const plainCapacities = [...selectedCapacities];
+			rules.push(Rules.includeNodes(plainCapacities));
+		}
+
+		// Combine rules
+		let combinedRule: JsonLogicRule;
+		if (rules.length === 1) {
+			combinedRule = rules[0];
+		} else {
+			combinedRule = Rules.and(...rules);
+		}
+
+		// Apply exclude mode if needed
+		if (filterMode === 'exclude') {
+			combinedRule = Rules.not(combinedRule);
+		}
+
+		return combinedRule;
 	});
 
 	// Get subtree names for display
@@ -206,65 +277,79 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		// Create updated capacity with current filter rule
-		const updatedCapacity = {
-			...capacity,
-			name: capacityName,
-			emoji: capacityEmoji,
-			quantity: capacityQuantity,
-			unit: capacityUnit,
-			description: capacityDescription,
-			location_type: capacityLocationType,
-			longitude: capacityLongitude,
-			latitude: capacityLatitude,
+		try {
+			// Set flag to prevent effect loop
+			isInitializingFromCapacity = true;
 
-			// Address fields
-			street_address: capacityStreetAddress,
-			city: capacityCity,
-			state_province: capacityStateProvince,
-			postal_code: capacityPostalCode,
-			country: capacityCountry,
+			// Create updated capacity with current filter rule
+			const updatedCapacity = {
+				...capacity,
+				name: capacityName,
+				emoji: capacityEmoji,
+				quantity: capacityQuantity,
+				unit: capacityUnit,
+				description: capacityDescription,
+				location_type: capacityLocationType,
+				longitude: capacityLongitude,
+				latitude: capacityLatitude,
 
-			all_day: capacityAllDay,
-			start_date: capacityStartDate,
-			end_date: capacityEndDate,
-			start_time: capacityStartTime,
-			end_time: capacityEndTime,
-			time_zone: capacityTimeZone,
-			recurrence: capacityRecurrence,
-			custom_recurrence_repeat_every: capacityCustomRecurrenceRepeatEvery,
-			custom_recurrence_repeat_unit: capacityCustomRecurrenceRepeatUnit,
-			custom_recurrence_end_type: capacityCustomRecurrenceEndType,
-			custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
-			max_natural_div: capacityMaxNaturalDiv,
-			max_percentage_div: capacityMaxPercentageDiv,
-			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
-			filter_rule: filterRule()
-		};
+				// Address fields
+				street_address: capacityStreetAddress,
+				city: capacityCity,
+				state_province: capacityStateProvince,
+				postal_code: capacityPostalCode,
+				country: capacityCountry,
 
-		// Validate using schema
-		const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
+				all_day: capacityAllDay,
+				start_date: capacityStartDate,
+				end_date: capacityEndDate,
+				start_time: capacityStartTime,
+				end_time: capacityEndTime,
+				time_zone: capacityTimeZone,
+				recurrence: capacityRecurrence,
+				custom_recurrence_repeat_every: capacityCustomRecurrenceRepeatEvery,
+				custom_recurrence_repeat_unit: capacityCustomRecurrenceRepeatUnit,
+				custom_recurrence_end_type: capacityCustomRecurrenceEndType,
+				custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
+				max_natural_div: capacityMaxNaturalDiv,
+				max_percentage_div: capacityMaxPercentageDiv,
+				hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
+				filter_rule: filterRule()
+			};
 
-		if (!validationResult.success) {
-			// Check for specific validation errors and show appropriate messages
-			const errors = validationResult.error.issues;
-			const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+			// Validate using schema
+			const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
 
-			if (unitErrors.length > 0) {
-				globalState.showToast(unitErrors[0].message, 'warning');
-				// Revert unit to previous valid value
-				capacityUnit = capacity.unit || '';
+			if (!validationResult.success) {
+				// Check for specific validation errors and show appropriate messages
+				const errors = validationResult.error.issues;
+				const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+
+				if (unitErrors.length > 0) {
+					globalState.showToast(unitErrors[0].message, 'warning');
+					// Revert unit to previous valid value
+					capacityUnit = capacity.unit || '';
+					return;
+				}
+
+				// Handle other validation errors
+				globalState.showToast('Invalid capacity data', 'error');
+				console.error('Capacity validation failed:', validationResult.error);
 				return;
 			}
 
-			// Handle other validation errors
-			globalState.showToast('Invalid capacity data', 'error');
-			console.error('Capacity validation failed:', validationResult.error);
-			return;
-		}
-
-		// Validation passed, proceed with update
-		onupdate?.(validationResult.data);
+			// Validation passed, proceed with update
+			const updatePromise = onupdate?.(validationResult.data);
+			if (updatePromise instanceof Promise) {
+				updatePromise.finally(() => {
+					isInitializingFromCapacity = false;
+				});
+			} else {
+				isInitializingFromCapacity = false;
+			}
+		} catch (error) {
+			console.error('Error updating capacity:', error);
+			globalState.showToast('Failed to update capacity', 'error');
 	}
 
 	// Delete this capacity
@@ -356,9 +441,47 @@
 		handleCapacityUpdate();
 	}
 
-	// Close dropdown
+	// Handle adding a capacity filter
+	function handleAddCapacityFilter(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		capacityDropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+
+		showCapacityDropdown = true;
+	}
+
+	// Handle capacity selection from dropdown
+	function handleCapacitySelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: capacityId } = detail;
+
+		if (selectedCapacities.includes(capacityId)) {
+			showCapacityDropdown = false;
+			return;
+		}
+
+		selectedCapacities = [...selectedCapacities, capacityId];
+		handleCapacityUpdate();
+		showCapacityDropdown = false;
+	}
+
+	// Handle removing a capacity filter
+	function handleRemoveCapacity(capacityId: string) {
+		selectedCapacities = selectedCapacities.filter((id) => id !== capacityId);
+		handleCapacityUpdate();
+	}
+
+	// Close dropdowns
 	function handleDropdownClose() {
 		showSubtreeDropdown = false;
+	}
+
+	function handleCapacityDropdownClose() {
+		showCapacityDropdown = false;
 	}
 
 	// Handle emoji picker
@@ -373,6 +496,66 @@
 		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
 			showEmojiPicker = false;
 		}
+	}
+
+	// Helper function to extract subtree IDs from a rule (legacy compatibility)
+	function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
+		const result = extractFiltersFromRule(rule);
+		return result.subtrees;
+	}
+
+	function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
+		subtrees: string[];
+		capacities: string[];
+		mode: 'include' | 'exclude';
+	} {
+		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
+
+		let subtrees: string[] = [];
+		let capacities: string[] = [];
+		let mode: 'include' | 'exclude' = 'include';
+
+		// Handle NOT rules (exclude mode)
+		if ('!' in rule && rule['!']) {
+			mode = 'exclude';
+			rule = rule['!'] as JsonLogicRule;
+		}
+
+		// Handle AND rules (multiple filters)
+		if ('and' in rule && rule.and && Array.isArray(rule.and)) {
+			(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
+				const subResult = extractFiltersFromRule(subRule);
+				subtrees.push(...subResult.subtrees);
+				capacities.push(...subResult.capacities);
+			});
+			return { subtrees, capacities, mode };
+		}
+
+		// Handle single subtree rule
+		if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+			const secondArg = rule.in[1];
+			if (
+				typeof secondArg === 'object' &&
+				secondArg !== null &&
+				'var' in secondArg &&
+				Array.isArray(secondArg.var) &&
+				secondArg.var[0] === 'subtreeContributors'
+			) {
+				subtrees.push(secondArg.var[1] as string);
+			} else if (Array.isArray(secondArg)) {
+				capacities.push(...(secondArg as string[]));
+			}
+		}
+
+		// Handle multiple subtree rule
+		if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+			const subtreeIds = rule.some[0];
+			if (Array.isArray(subtreeIds)) {
+				subtrees.push(...(subtreeIds as string[]));
+			}
+		}
+
+		return { subtrees, capacities, mode };
 	}
 
 	// Add click outside listener
@@ -740,19 +923,53 @@
 		>
 	</div>
 
-	<!-- Filter tags section (always visible, like contributors in Child.svelte) -->
+	<!-- Filter tags section -->
 	<div class="filter-section mt-2">
-		<div class="filter-layout">
-			<!-- Add filter button -->
+		<div class="filter-header">
+			<!-- Include/Exclude toggle -->
+			{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
+				<div class="filter-mode-toggle">
+					<button
+						type="button"
+						class="mode-btn"
+						class:active={filterMode === 'include'}
+						onclick={() => {
+							filterMode = 'include';
+							handleCapacityUpdate();
+						}}
+					>
+						Include
+					</button>
+					<button
+						type="button"
+						class="mode-btn"
+						class:active={filterMode === 'exclude'}
+						onclick={() => {
+							filterMode = 'exclude';
+							handleCapacityUpdate();
+						}}
+					>
+						Exclude
+					</button>
+				</div>
+			{/if}
+
+			<!-- Add filter buttons -->
 			<div class="filter-button-container">
 				<button type="button" class="add-filter-btn" onclick={handleAddSubtreeFilter}>
 					<span class="add-icon">+</span>
-					<span class="add-text">Filter</span>
+					<span class="add-text">Subtree</span>
+				</button>
+				<button type="button" class="add-filter-btn" onclick={handleAddCapacityFilter}>
+					<span class="add-icon">+</span>
+					<span class="add-text">Individual</span>
 				</button>
 			</div>
+		</div>
 
+		<div class="filter-layout">
 			<!-- Filter tags -->
-			{#if selectedSubtrees.length > 0}
+			{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 				<div class="filter-tags-container">
 					{#each selectedSubtrees as subtreeId}
 						<div class="filter-tag-wrapper">
@@ -766,17 +983,40 @@
 							/>
 						</div>
 					{/each}
+					{#each selectedCapacities as capacityId}
+						<div class="filter-tag-wrapper">
+							<TagPill
+								userId={capacityId}
+								displayName={$userNamesOrAliasesCache[capacityId] ||
+									capacityId.substring(0, 8) + '...'}
+								truncateLength={15}
+								removable={true}
+								onClick={() => {}}
+								onRemove={() => handleRemoveCapacity(capacityId)}
+							/>
+						</div>
+					{/each}
 				</div>
 			{/if}
 		</div>
 
 		<!-- Filter description -->
-		{#if selectedSubtrees.length > 0}
+		{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 			<div class="filter-description">
 				<span class="filter-desc-text">
-					Only contributors from {selectedSubtrees.length === 1
-						? 'this subtree'
-						: `${selectedSubtrees.length} subtrees`}
+					{filterMode === 'include' ? 'Only' : 'Exclude'} contributors
+					{#if selectedSubtrees.length > 0 && selectedCapacities.length > 0}
+						from {selectedSubtrees.length} subtree{selectedSubtrees.length > 1 ? 's' : ''} and {selectedCapacities.length}
+						individual{selectedCapacities.length > 1 ? 's' : ''}
+					{:else if selectedSubtrees.length > 0}
+						from {selectedSubtrees.length === 1
+							? 'this subtree'
+							: `${selectedSubtrees.length} subtrees`}
+					{:else}
+						{selectedCapacities.length === 1
+							? 'this individual'
+							: `${selectedCapacities.length} individuals`}
+					{/if}
 				</span>
 			</div>
 		{/if}
@@ -1306,8 +1546,13 @@
 									min="1"
 									class="capacity-input qty w-16 text-right"
 									bind:value={capacityCustomRecurrenceRepeatEvery}
-									onfocus={() => handleFocus('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
-									onblur={() => handleBlurIfChanged('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+									onfocus={() =>
+										handleFocus('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+									onblur={() =>
+										handleBlurIfChanged(
+											'customRecurrenceRepeatEvery',
+											capacityCustomRecurrenceRepeatEvery
+										)}
 								/>
 								<select
 									class="capacity-select ml-3 w-28"
@@ -1362,8 +1607,16 @@
 													type="date"
 													class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
 													bind:value={capacityCustomRecurrenceEndValue}
-													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
-													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onfocus={() =>
+														handleFocus(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
+													onblur={() =>
+														handleBlurIfChanged(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
 												/>
 											</div>
 										{/if}
@@ -1392,8 +1645,16 @@
 													min="1"
 													class="capacity-input qty w-16 text-right"
 													bind:value={capacityCustomRecurrenceEndValue}
-													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
-													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onfocus={() =>
+														handleFocus(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
+													onblur={() =>
+														handleBlurIfChanged(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
 												/>
 												<span class="ml-2 text-sm text-gray-600">occurrences</span>
 											</div>
@@ -1404,8 +1665,8 @@
 						</div>
 					{/if}
 				</div>
-				{/if}
-			</div>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Expanded settings (other options only) -->
@@ -1485,6 +1746,19 @@
 		dataProvider={composeIntoDataProvider}
 		select={handleComposeIntoSelect}
 		close={handleComposeIntoDropdownClose}
+	/>
+{/if}
+
+<!-- Capacity dropdown for adding individual filters -->
+{#if showCapacityDropdown}
+	<DropDown
+		position={capacityDropdownPosition}
+		show={showCapacityDropdown}
+		title="Select Individual"
+		searchPlaceholder="Search people..."
+		dataProvider={contactsAndUsersDataProvider}
+		select={handleCapacitySelect}
+		close={handleCapacityDropdownClose}
 	/>
 {/if}
 
@@ -1668,9 +1942,46 @@
 		flex-wrap: wrap;
 	}
 
+	.filter-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+		gap: 8px;
+	}
+
+	.filter-mode-toggle {
+		display: flex;
+		border-radius: 4px;
+		overflow: hidden;
+		border: 1px solid #e5e7eb;
+		background: #f9fafb;
+	}
+
+	.mode-btn {
+		padding: 4px 8px;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.mode-btn.active {
+		background: #3b82f6;
+		color: white;
+	}
+
+	.mode-btn:hover:not(.active) {
+		background: #e5e7eb;
+		color: #374151;
+	}
+
 	.filter-button-container {
 		display: flex;
 		align-items: center;
+		gap: 4px;
 	}
 
 	.add-filter-btn {
