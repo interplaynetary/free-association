@@ -310,7 +310,7 @@
 				max_natural_div: capacityMaxNaturalDiv,
 				max_percentage_div: capacityMaxPercentageDiv,
 				hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
-				filter_rule: filterRule
+				filter_rule: filterRule()
 			};
 
 			// Validate using schema
