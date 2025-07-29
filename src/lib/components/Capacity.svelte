@@ -5,7 +5,7 @@
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
 	import CompositionItem from './CompositionItem.svelte';
-	import { Rules } from '$lib/filters';
+	import { Rules, type JsonLogicRule } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { get } from 'svelte/store';
@@ -55,16 +55,24 @@
 	let selectedCapacities = $state<string[]>([]);
 	let filterMode = $state<'include' | 'exclude'>('include');
 
+	// Track if we're initializing from capacity to prevent loops
+	let isInitializingFromCapacity = $state(false);
+
 	// Initialize filter state from existing filter_rule
-	$effect([capacity.filter_rule], () => {
+	$effect(() => {
+		if (isInitializingFromCapacity) {
+			return;
+		}
+
 		if (capacity.filter_rule) {
 			const filters = extractFiltersFromRule(capacity.filter_rule);
-			
+
 			// Only update if the extracted values differ from current state
-			if (JSON.stringify(filters.subtrees) !== JSON.stringify(selectedSubtrees) ||
+			if (
+				JSON.stringify(filters.subtrees) !== JSON.stringify(selectedSubtrees) ||
 				JSON.stringify(filters.capacities) !== JSON.stringify(selectedCapacities) ||
-				filters.mode !== filterMode) {
-				
+				filters.mode !== filterMode
+			) {
 				selectedSubtrees = filters.subtrees;
 				selectedCapacities = filters.capacities;
 				filterMode = filters.mode;
@@ -90,7 +98,7 @@
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
-	
+
 	// Create contacts and users data provider for individual filtering
 	let contactsAndUsersDataProvider = createContactsAndUsersDataProvider();
 
@@ -137,7 +145,7 @@
 			return null;
 		}
 
-		let rules: any[] = [];
+		let rules: JsonLogicRule[] = [];
 
 		// Add subtree filters
 		if (selectedSubtrees.length > 0) {
@@ -154,7 +162,7 @@
 		}
 
 		// Combine rules
-		let combinedRule;
+		let combinedRule: JsonLogicRule;
 		if (rules.length === 1) {
 			combinedRule = rules[0];
 		} else {
@@ -263,68 +271,80 @@
 		}
 	}
 
-
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		// Create updated capacity with current filter rule
-		const updatedCapacity = {
-			...capacity,
-			name: capacityName,
-			emoji: capacityEmoji,
-			quantity: capacityQuantity,
-			unit: capacityUnit,
-			description: capacityDescription,
-			location_type: capacityLocationType,
-			longitude: capacityLongitude,
-			latitude: capacityLatitude,
+		try {
+			// Set flag to prevent effect loop
+			isInitializingFromCapacity = true;
 
-			// Address fields
-			street_address: capacityStreetAddress,
-			city: capacityCity,
-			state_province: capacityStateProvince,
-			postal_code: capacityPostalCode,
-			country: capacityCountry,
+			// Create updated capacity with current filter rule
+			const updatedCapacity = {
+				...capacity,
+				name: capacityName,
+				emoji: capacityEmoji,
+				quantity: capacityQuantity,
+				unit: capacityUnit,
+				description: capacityDescription,
+				location_type: capacityLocationType,
+				longitude: capacityLongitude,
+				latitude: capacityLatitude,
 
-			all_day: capacityAllDay,
-			start_date: capacityStartDate,
-			end_date: capacityEndDate,
-			start_time: capacityStartTime,
-			end_time: capacityEndTime,
-			time_zone: capacityTimeZone,
-			recurrence: capacityRecurrence,
-			custom_recurrence_repeat_every: capacityCustomRecurrenceRepeatEvery,
-			custom_recurrence_repeat_unit: capacityCustomRecurrenceRepeatUnit,
-			custom_recurrence_end_type: capacityCustomRecurrenceEndType,
-			custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
-			max_natural_div: capacityMaxNaturalDiv,
-			max_percentage_div: capacityMaxPercentageDiv,
-			hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
-			filter_rule: filterRule
-		};
+				// Address fields
+				street_address: capacityStreetAddress,
+				city: capacityCity,
+				state_province: capacityStateProvince,
+				postal_code: capacityPostalCode,
+				country: capacityCountry,
 
-		// Validate using schema
-		const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
+				all_day: capacityAllDay,
+				start_date: capacityStartDate,
+				end_date: capacityEndDate,
+				start_time: capacityStartTime,
+				end_time: capacityEndTime,
+				time_zone: capacityTimeZone,
+				recurrence: capacityRecurrence,
+				custom_recurrence_repeat_every: capacityCustomRecurrenceRepeatEvery,
+				custom_recurrence_repeat_unit: capacityCustomRecurrenceRepeatUnit,
+				custom_recurrence_end_type: capacityCustomRecurrenceEndType,
+				custom_recurrence_end_value: capacityCustomRecurrenceEndValue,
+				max_natural_div: capacityMaxNaturalDiv,
+				max_percentage_div: capacityMaxPercentageDiv,
+				hidden_until_request_accepted: capacityHiddenUntilRequestAccepted,
+				filter_rule: filterRule
+			};
 
-		if (!validationResult.success) {
-			// Check for specific validation errors and show appropriate messages
-			const errors = validationResult.error.issues;
-			const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+			// Validate using schema
+			const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
 
-			if (unitErrors.length > 0) {
-				globalState.showToast(unitErrors[0].message, 'warning');
-				// Revert unit to previous valid value
-				capacityUnit = capacity.unit || '';
+			if (!validationResult.success) {
+				// Check for specific validation errors and show appropriate messages
+				const errors = validationResult.error.issues;
+				const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
+
+				if (unitErrors.length > 0) {
+					globalState.showToast(unitErrors[0].message, 'warning');
+					// Revert unit to previous valid value
+					capacityUnit = capacity.unit || '';
+					return;
+				}
+
+				// Handle other validation errors
+				globalState.showToast('Invalid capacity data', 'error');
+				console.error('Capacity validation failed:', validationResult.error);
 				return;
 			}
 
-			// Handle other validation errors
-			globalState.showToast('Invalid capacity data', 'error');
-			console.error('Capacity validation failed:', validationResult.error);
-			return;
+			// Validation passed, proceed with update
+			onupdate?.(validationResult.data);
+		} catch (error) {
+			console.error('Error updating capacity:', error);
+			globalState.showToast('Failed to update capacity', 'error');
+		} finally {
+			// Reset flag after a short delay to allow the update to propagate
+			setTimeout(() => {
+				isInitializingFromCapacity = false;
+			}, 100);
 		}
-
-		// Validation passed, proceed with update
-		onupdate?.(validationResult.data);
 	}
 
 	// Delete this capacity
@@ -474,52 +494,62 @@
 	}
 
 	// Helper function to extract subtree IDs from a rule (legacy compatibility)
-	function extractSubtreeIdsFromRule(rule: any): string[] {
+	function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
 		const result = extractFiltersFromRule(rule);
 		return result.subtrees;
 	}
 
-	function extractFiltersFromRule(rule: any): { subtrees: string[], capacities: string[], mode: 'include' | 'exclude' } {
+	function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
+		subtrees: string[];
+		capacities: string[];
+		mode: 'include' | 'exclude';
+	} {
 		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
-		
+
 		let subtrees: string[] = [];
 		let capacities: string[] = [];
 		let mode: 'include' | 'exclude' = 'include';
-		
+
 		// Handle NOT rules (exclude mode)
-		if (rule['!']) {
+		if ('!' in rule && rule['!']) {
 			mode = 'exclude';
-			rule = rule['!'];
+			rule = rule['!'] as JsonLogicRule;
 		}
-		
+
 		// Handle AND rules (multiple filters)
-		if (rule.and && Array.isArray(rule.and)) {
-			rule.and.forEach((subRule: any) => {
+		if ('and' in rule && rule.and && Array.isArray(rule.and)) {
+			(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
 				const subResult = extractFiltersFromRule(subRule);
 				subtrees.push(...subResult.subtrees);
 				capacities.push(...subResult.capacities);
 			});
 			return { subtrees, capacities, mode };
 		}
-		
+
 		// Handle single subtree rule
-		if (rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+		if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
 			const secondArg = rule.in[1];
-			if (secondArg?.var && Array.isArray(secondArg.var) && secondArg.var[0] === 'subtreeContributors') {
-				subtrees.push(secondArg.var[1]);
+			if (
+				typeof secondArg === 'object' &&
+				secondArg !== null &&
+				'var' in secondArg &&
+				Array.isArray(secondArg.var) &&
+				secondArg.var[0] === 'subtreeContributors'
+			) {
+				subtrees.push(secondArg.var[1] as string);
 			} else if (Array.isArray(secondArg)) {
-				capacities.push(...secondArg);
+				capacities.push(...(secondArg as string[]));
 			}
 		}
-		
+
 		// Handle multiple subtree rule
-		if (rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+		if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
 			const subtreeIds = rule.some[0];
 			if (Array.isArray(subtreeIds)) {
-				subtrees.push(...subtreeIds);
+				subtrees.push(...(subtreeIds as string[]));
 			}
 		}
-		
+
 		return { subtrees, capacities, mode };
 	}
 
@@ -894,19 +924,25 @@
 			<!-- Include/Exclude toggle -->
 			{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 				<div class="filter-mode-toggle">
-					<button 
-						type="button" 
-						class="mode-btn" 
+					<button
+						type="button"
+						class="mode-btn"
 						class:active={filterMode === 'include'}
-						onclick={() => { filterMode = 'include'; handleCapacityUpdate(); }}
+						onclick={() => {
+							filterMode = 'include';
+							handleCapacityUpdate();
+						}}
 					>
 						Include
 					</button>
-					<button 
-						type="button" 
-						class="mode-btn" 
+					<button
+						type="button"
+						class="mode-btn"
 						class:active={filterMode === 'exclude'}
-						onclick={() => { filterMode = 'exclude'; handleCapacityUpdate(); }}
+						onclick={() => {
+							filterMode = 'exclude';
+							handleCapacityUpdate();
+						}}
 					>
 						Exclude
 					</button>
@@ -946,7 +982,8 @@
 						<div class="filter-tag-wrapper">
 							<TagPill
 								userId={capacityId}
-								displayName={$userNamesOrAliasesCache[capacityId] || capacityId.substring(0, 8) + '...'}
+								displayName={$userNamesOrAliasesCache[capacityId] ||
+									capacityId.substring(0, 8) + '...'}
 								truncateLength={15}
 								removable={true}
 								onClick={() => {}}
@@ -962,13 +999,18 @@
 		{#if selectedSubtrees.length > 0 || selectedCapacities.length > 0}
 			<div class="filter-description">
 				<span class="filter-desc-text">
-					{filterMode === 'include' ? 'Only' : 'Exclude'} contributors 
+					{filterMode === 'include' ? 'Only' : 'Exclude'} contributors
 					{#if selectedSubtrees.length > 0 && selectedCapacities.length > 0}
-						from {selectedSubtrees.length} subtree{selectedSubtrees.length > 1 ? 's' : ''} and {selectedCapacities.length} individual{selectedCapacities.length > 1 ? 's' : ''}
+						from {selectedSubtrees.length} subtree{selectedSubtrees.length > 1 ? 's' : ''} and {selectedCapacities.length}
+						individual{selectedCapacities.length > 1 ? 's' : ''}
 					{:else if selectedSubtrees.length > 0}
-						from {selectedSubtrees.length === 1 ? 'this subtree' : `${selectedSubtrees.length} subtrees`}
+						from {selectedSubtrees.length === 1
+							? 'this subtree'
+							: `${selectedSubtrees.length} subtrees`}
 					{:else}
-						{selectedCapacities.length === 1 ? 'this individual' : `${selectedCapacities.length} individuals`}
+						{selectedCapacities.length === 1
+							? 'this individual'
+							: `${selectedCapacities.length} individuals`}
 					{/if}
 				</span>
 			</div>
@@ -1499,8 +1541,13 @@
 									min="1"
 									class="capacity-input qty w-16 text-right"
 									bind:value={capacityCustomRecurrenceRepeatEvery}
-									onfocus={() => handleFocus('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
-									onblur={() => handleBlurIfChanged('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+									onfocus={() =>
+										handleFocus('customRecurrenceRepeatEvery', capacityCustomRecurrenceRepeatEvery)}
+									onblur={() =>
+										handleBlurIfChanged(
+											'customRecurrenceRepeatEvery',
+											capacityCustomRecurrenceRepeatEvery
+										)}
 								/>
 								<select
 									class="capacity-select ml-3 w-28"
@@ -1555,8 +1602,16 @@
 													type="date"
 													class="capacity-input w-40 rounded-md bg-gray-100 px-3 py-2"
 													bind:value={capacityCustomRecurrenceEndValue}
-													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
-													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onfocus={() =>
+														handleFocus(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
+													onblur={() =>
+														handleBlurIfChanged(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
 												/>
 											</div>
 										{/if}
@@ -1585,8 +1640,16 @@
 													min="1"
 													class="capacity-input qty w-16 text-right"
 													bind:value={capacityCustomRecurrenceEndValue}
-													onfocus={() => handleFocus('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
-													onblur={() => handleBlurIfChanged('customRecurrenceEndValue', capacityCustomRecurrenceEndValue)}
+													onfocus={() =>
+														handleFocus(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
+													onblur={() =>
+														handleBlurIfChanged(
+															'customRecurrenceEndValue',
+															capacityCustomRecurrenceEndValue
+														)}
 												/>
 												<span class="ml-2 text-sm text-gray-600">occurrences</span>
 											</div>
@@ -1597,8 +1660,8 @@
 						</div>
 					{/if}
 				</div>
-				{/if}
-			</div>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Expanded settings (other options only) -->
