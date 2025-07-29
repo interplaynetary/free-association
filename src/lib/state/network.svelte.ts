@@ -16,7 +16,8 @@ import {
 	userTree,
 	userCapacities,
 	isLoadingTree,
-	isLoadingCapacities
+	isLoadingCapacities,
+	subtreeContributorMap
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import {
@@ -34,6 +35,7 @@ import type {
 	ShareMap,
 	ContactsCollection
 } from '$lib/schema';
+import { ruleToFilter, type FilterContext } from '$lib/filters';
 import { recalculateFromTree } from './calculations.svelte';
 import {
 	parseCapacities,
@@ -804,9 +806,38 @@ const mutualContributorStreamConfigs = {
 				validator: parseCapacities,
 				getCurrentData: () => get(networkCapacities)[contributorId] || {},
 				updateStore: (data) => {
+					// Filter capacities based on filter rules
+					const ourId = get(userPub);
+					const subtreeContributors = get(subtreeContributorMap);
+					
+					const filteredCapacities: CapacitiesCollection = {};
+					
+					Object.entries(data).forEach(([capacityId, capacity]) => {
+						// Check if we're allowed to see this capacity
+						let isAllowed = true;
+						
+						if (capacity.filter_rule && ourId) {
+							// Create filter context
+							const context: FilterContext = {
+								subtreeContributors: subtreeContributors
+							};
+							
+							// Convert the rule to a filter and check if we pass
+							const filterFn = ruleToFilter(capacity.filter_rule);
+							isAllowed = filterFn(ourId, 1, context); // Use share of 1 for visibility check
+						}
+						
+						// Only include this capacity if we're allowed to see it
+						if (isAllowed) {
+							filteredCapacities[capacityId] = capacity;
+						} else {
+							console.log(`[NETWORK] Filtered out capacity ${capacityId} from ${contributorId} due to filter rules`);
+						}
+					});
+					
 					networkCapacities.update((current) => ({
 						...current,
-						[contributorId]: data
+						[contributorId]: filteredCapacities
 					}));
 				}
 			}),

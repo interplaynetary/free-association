@@ -6,7 +6,7 @@ import {
 	findNodeById,
 	computeQuantityShare
 } from '$lib/protocol';
-import { applyCapacityFilter, ruleToFilter, type FilterContext } from '$lib/filters';
+import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import type { RootNode, CapacitiesCollection, Node, ShareMap, RecognitionCache } from '$lib/schema';
 
 // Core reactive state - these form the main reactive chain
@@ -187,53 +187,28 @@ export const capacityShares = derived(
 );
 
 // Derived store for contributor capacity shares - maps contributor IDs to their capacity shares
-// This applies capacity filter rules to determine which contributors can see which capacities
-export const contributorCapacityShares = derived(
-	[capacityShares, userCapacities, subtreeContributorMap],
-	([$capacityShares, $userCapacities, $subtreeContributorMap]) => {
-		console.log(`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacity shares`);
+export const contributorCapacityShares = derived(capacityShares, ($capacityShares) => {
+	console.log(`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacity shares`);
 
-		const contributorShares: Record<string, Record<string, number>> = {};
+	const contributorShares: Record<string, Record<string, number>> = {};
 
-		// For each capacity
-		Object.entries($capacityShares).forEach(([capacityId, shares]) => {
-			// Get the capacity to check its filter rule
-			const capacity = $userCapacities?.[capacityId];
-			if (!capacity) return;
+	// For each capacity's shares
+	Object.entries($capacityShares).forEach(([capacityId, shares]) => {
+		// For each contributor's share in this capacity
+		Object.entries(shares).forEach(([contributorId, share]) => {
+			// Initialize the contributor's share map if it doesn't exist
+			if (!contributorShares[contributorId]) {
+				contributorShares[contributorId] = {};
+			}
 
-			// For each contributor's share in this capacity
-			Object.entries(shares).forEach(([contributorId, share]) => {
-				// Check if this contributor is allowed to see this capacity
-				let isAllowed = true;
-				
-				if (capacity.filter_rule) {
-					// Create filter context
-					const context: FilterContext = {
-						subtreeContributors: $subtreeContributorMap
-					};
-					
-					// Convert the rule to a filter and check if contributor passes
-					const filterFn = ruleToFilter(capacity.filter_rule);
-					isAllowed = filterFn(contributorId, share, context);
-				}
-
-				// Only include this share if the contributor is allowed
-				if (isAllowed) {
-					// Initialize the contributor's share map if it doesn't exist
-					if (!contributorShares[contributorId]) {
-						contributorShares[contributorId] = {};
-					}
-
-					// Add this capacity's share to the contributor's map
-					contributorShares[contributorId][capacityId] = share;
-				}
-			});
+			// Add this capacity's share to the contributor's map
+			contributorShares[contributorId][capacityId] = share;
 		});
+	});
 
-		console.log('[CAPACITY-SHARES] Generated contributor shares map:', contributorShares);
-		return contributorShares;
-	}
-);
+	console.log('[CAPACITY-SHARES] Generated contributor shares map:', contributorShares);
+	return contributorShares;
+});
 
 // Derived store that combines userCapacities with capacityShares to match current schema
 export const userCapacitiesWithShares = derived(
