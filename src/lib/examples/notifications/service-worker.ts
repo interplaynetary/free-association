@@ -207,7 +207,7 @@ async function handleDataChange(
 
 		console.log(`[SW] Notification sent for ${subscription.id}`);
 	} catch (error) {
-		console.error(`[SW] Notification error for ${subscription.id}:`, error);
+		console.error(`[SW] Notification error for %s:`, subscription.id, error);
 	}
 }
 
