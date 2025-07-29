@@ -339,16 +339,17 @@
 			}
 
 			// Validation passed, proceed with update
-			onupdate?.(validationResult.data);
+			const updatePromise = onupdate?.(validationResult.data);
+			if (updatePromise instanceof Promise) {
+				updatePromise.finally(() => {
+					isInitializingFromCapacity = false;
+				});
+			} else {
+				isInitializingFromCapacity = false;
+			}
 		} catch (error) {
 			console.error('Error updating capacity:', error);
 			globalState.showToast('Failed to update capacity', 'error');
-		} finally {
-			// Reset flag after a short delay to allow the update to propagate
-			setTimeout(() => {
-				isInitializingFromCapacity = false;
-			}, 100);
-		}
 	}
 
 	// Delete this capacity
