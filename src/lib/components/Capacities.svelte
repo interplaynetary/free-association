@@ -54,6 +54,7 @@
 			// Create a deep clone of current capacities
 			const newCapacities = structuredClone($userCapacities || {});
 
+
 			// Create a deep copy of the capacity to ensure store updates
 			const plainCapacity = structuredClone(capacity);
 

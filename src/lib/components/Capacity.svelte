@@ -149,16 +149,20 @@
 
 		// Add subtree filters
 		if (selectedSubtrees.length > 0) {
-			if (selectedSubtrees.length === 1) {
-				rules.push(Rules.inSubtree(selectedSubtrees[0]));
+			// Convert reactive array to plain array
+			const plainSubtrees = [...selectedSubtrees];
+			if (plainSubtrees.length === 1) {
+				rules.push(Rules.inSubtree(plainSubtrees[0]));
 			} else {
-				rules.push(Rules.inSubtrees(selectedSubtrees));
+				rules.push(Rules.inSubtrees(plainSubtrees));
 			}
 		}
 
 		// Add individual capacity filters
 		if (selectedCapacities.length > 0) {
-			rules.push(Rules.includeNodes(selectedCapacities));
+			// Convert reactive array to plain array
+			const plainCapacities = [...selectedCapacities];
+			rules.push(Rules.includeNodes(plainCapacities));
 		}
 
 		// Combine rules
