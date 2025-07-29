@@ -56,7 +56,7 @@
 	let filterMode = $state<'include' | 'exclude'>('include');
 
 	// Initialize filter state from existing filter_rule
-	$effect(() => {
+	$effect([capacity.filter_rule], () => {
 		if (capacity.filter_rule) {
 			const filters = extractFiltersFromRule(capacity.filter_rule);
 			
