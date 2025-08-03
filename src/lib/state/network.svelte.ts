@@ -898,7 +898,10 @@ const mutualContributorStreamConfigs = {
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
-			console.error(`[NETWORK] Error in desired slot compose-from stream for ${contributorId}:`, error);
+			console.error(
+				`[NETWORK] Error in desired slot compose-from stream for ${contributorId}:`,
+				error
+			);
 		}
 	},
 	desiredSlotComposeInto: {
@@ -1092,7 +1095,8 @@ export async function initializeUserDataStreams(): Promise<void> {
 export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
 	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
 
-	// Resolve to public key for unified cache storage
+	// CRITICAL: Always resolve to public key for unified cache storage
+	// This ensures consistency with our calculation layer and prevents feedback loops
 	const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
 
 	if (resolvedContributorId !== contributorId) {
@@ -1101,13 +1105,13 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 
 	console.log(`[NETWORK-DEBUG] Current recognition cache before update:`, get(recognitionCache));
 
-	// Get current cache entry using the resolved ID
+	// Get current cache entry using the resolved ID (consistent with calculation layer)
 	const cache = get(recognitionCache);
 	const existing = cache[resolvedContributorId];
 
 	console.log(`[NETWORK] Existing cache entry for ${resolvedContributorId}:`, existing);
 
-	// Update the cache immediately with new theirShare
+	// Update the cache immediately with new theirShare using resolved public key
 	recognitionCache.update((cache) => {
 		if (existing) {
 			// Update only theirShare in existing entry
@@ -1118,7 +1122,7 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 				timestamp: Date.now()
 			};
 		} else {
-			// Create new entry with default ourShare of 0
+			// Create new entry with default ourShare of 0, using resolved public key
 			console.log(`[NETWORK] Creating new entry for ${resolvedContributorId} with ourShare=0`);
 			cache[resolvedContributorId] = {
 				ourShare: 0, // We don't know our share yet

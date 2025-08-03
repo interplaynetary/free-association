@@ -74,10 +74,11 @@ export function persistSogf() {
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
 		console.log('[PERSIST] Starting SOGF persistence...');
-		console.log('[PERSIST] SOGF data:', sogfValue);
+		console.log('[PERSIST] SOGF data (already contains public keys):', sogfValue);
 
 		try {
-			// Create a deep clone to avoid reactivity issues
+			// Our core stores now contain public keys by design, so no filtering needed
+			// This prevents feedback loops between network and persistence layers
 			const sogfClone = structuredClone(sogfValue);
 
 			// Serialize to JSON to preserve number types
@@ -93,7 +94,7 @@ export function persistSogf() {
 				}
 			});
 		} catch (error) {
-			console.error('[PERSIST] Error serializing SOGF:', error);
+			console.error('[PERSIST] Error processing SOGF:', error);
 		}
 	}
 }
@@ -108,7 +109,17 @@ export function persistProviderShares() {
 	// Store provider shares
 	const shares = get(providerShares);
 	if (shares && Object.keys(shares).length > 0) {
-		user.get('providerShares').put(structuredClone(shares));
+		console.log('[PERSIST] Starting provider shares persistence...');
+		console.log('[PERSIST] Provider shares (already contains public keys):', shares);
+
+		// Our core stores now contain public keys by design, so no filtering needed
+		user.get('providerShares').put(structuredClone(shares), (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving provider shares to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Provider shares successfully saved to Gun');
+			}
+		});
 	}
 }
 
@@ -131,11 +142,11 @@ export function persistCapacities() {
 		console.log('[PERSIST] Capacities count:', Object.keys(userCapacitiesValue).length);
 
 		try {
-			// First create a deep clone to avoid any reactivity issues
+			// Our core stores now contain public keys by design, so no filtering needed
+			// This prevents feedback loops between network and persistence layers
 			const capacitiesClone = structuredClone(userCapacitiesValue);
 
-			// Log the data being saved
-			console.log('[PERSIST] Saving capacities:', capacitiesClone);
+			console.log('[PERSIST] Saving capacities (already contains public keys):', capacitiesClone);
 
 			// Then serialize to JSON
 			const capacitiesJson = JSON.stringify(capacitiesClone);
@@ -150,7 +161,7 @@ export function persistCapacities() {
 				}
 			});
 		} catch (error) {
-			console.error('[PERSIST] Error serializing capacities:', error);
+			console.error('[PERSIST] Error processing capacities:', error);
 		}
 	}
 }

@@ -396,13 +396,26 @@ export function sharesOfGeneralFulfillmentMap(
 	const contributorIds =
 		specificContributors || getAllContributorsFromTree(rootNode, resolveToPublicKey);
 
-	// If specificContributors were provided, resolve them too
-	const resolvedContributorIds = contributorIds.map((id) =>
-		resolveToPublicKey ? resolveToPublicKey(id) || id : id
-	);
+	// If specificContributors were provided, resolve them and filter out unresolvable ones
+	const resolvedContributorIds = contributorIds
+		.map((id) => resolveToPublicKey ? resolveToPublicKey(id) || id : id)
+		.filter((id) => {
+			// Filter out contact IDs that couldn't be resolved to public keys
+			// This prevents meaningless contact IDs from being included in network data
+			if (id.startsWith('contact_') && resolveToPublicKey) {
+				const resolved = resolveToPublicKey(id);
+				if (!resolved || resolved === id) {
+					console.warn(`[SOGF] Excluding unresolvable contact ID ${id} from SOGF calculation`);
+					return false;
+				}
+			}
+			return true;
+		});
 
-	// Remove duplicates after resolution
+	// Remove duplicates after resolution and filtering
 	const uniqueContributorIds = [...new Set(resolvedContributorIds)];
+
+	console.log(`[SOGF] Calculating shares for ${uniqueContributorIds.length} valid contributors`);
 
 	for (const contributorId of uniqueContributorIds) {
 		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap, resolveToPublicKey);

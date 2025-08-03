@@ -1,29 +1,32 @@
 import { get } from 'svelte/store';
-import type { Node } from '$lib/schema';
 import {
+	userSogf,
 	userTree,
 	userCapacities,
-	userSogf,
-	nodesMap,
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
+	isRecalculatingCapacities,
+	nodesMap,
 	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
-import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './compose.svelte';
-import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
+import { recalculateFromTree } from './calculations.svelte';
 import {
 	persistTree,
-	persistCapacities,
 	persistSogf,
+	persistCapacities,
 	persistContributorCapacityShares,
-	persistUserDesiredSlotComposeFrom,
-	persistUserDesiredSlotComposeInto,
 	persistContacts,
 	persistChatReadStates
 } from './persistence.svelte';
-import { recalculateFromTree } from './calculations.svelte';
+import type { Node } from '$lib/schema';
+import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/compose.svelte';
+import {
+	persistUserDesiredSlotComposeFrom,
+	persistUserDesiredSlotComposeInto
+} from '$lib/state/persistence.svelte';
+import { chatReadStates, isLoadingChatReadStates } from '$lib/state/chat.svelte';
 
 /**
  * Debounce helper for subscription persistence
@@ -316,4 +319,72 @@ chatReadStates.subscribe((readStates) => {
 
 	// Debounced persistence function
 	debouncedPersistChatReadStates();
+});
+
+/**
+ * Trigger recalculation when contacts change (for proper contact ID resolution)
+ * This ensures SOGF calculations use correctly resolved public keys
+ */
+let contactsRecalcTimer: ReturnType<typeof setTimeout> | null = null;
+userContacts.subscribe((contacts) => {
+	// Only recalculate if we have a tree and contacts are not being loaded
+	if (!get(userTree) || get(isLoadingContacts)) return;
+
+	console.log(
+		'[CONTACTS-RECALC-SUB] Contacts updated, scheduling recalculation for proper resolution'
+	);
+
+	// Clear any pending recalculation
+	if (contactsRecalcTimer) {
+		clearTimeout(contactsRecalcTimer);
+	}
+
+	// Schedule a recalculation after a short delay to ensure contact resolution works
+	contactsRecalcTimer = setTimeout(() => {
+		console.log('[CONTACTS-RECALC-SUB] Timer fired, running recalculation with updated contacts');
+		try {
+			recalculateFromTree();
+		} catch (error) {
+			console.error('[CONTACTS-RECALC-SUB] Error during contacts-triggered recalculation:', error);
+		}
+		contactsRecalcTimer = null;
+	}, 100); // Short delay to allow reactive updates
+});
+
+/**
+ * Trigger recalculation after all loading is complete
+ * This ensures proper calculation when both tree and contacts are available
+ */
+function tryRecalculateAfterLoading() {
+	// Check if all critical stores are done loading
+	const treeLoading = get(isLoadingTree);
+	const contactsLoading = get(isLoadingContacts);
+	const isRecalculating = get(isRecalculatingTree);
+
+	// Only proceed if nothing is loading and we're not already recalculating
+	if (!treeLoading && !contactsLoading && !isRecalculating && get(userTree)) {
+		console.log('[POST-LOAD-RECALC] All loading complete, triggering recalculation');
+		setTimeout(() => {
+			try {
+				recalculateFromTree();
+			} catch (error) {
+				console.error('[POST-LOAD-RECALC] Error during post-loading recalculation:', error);
+			}
+		}, 200); // Allow time for reactive updates to settle
+	}
+}
+
+// Watch for loading state changes to trigger post-load recalculation
+isLoadingTree.subscribe((loading) => {
+	if (!loading) {
+		console.log('[POST-LOAD-RECALC] Tree loading completed');
+		tryRecalculateAfterLoading();
+	}
+});
+
+isLoadingContacts.subscribe((loading) => {
+	if (!loading) {
+		console.log('[POST-LOAD-RECALC] Contacts loading completed');
+		tryRecalculateAfterLoading();
+	}
 });

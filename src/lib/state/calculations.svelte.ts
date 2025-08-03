@@ -150,6 +150,7 @@ export function recalculateFromTree() {
 			const nodeMap = get(nodesMap);
 
 			// Calculate SOGF using all known contributors with unified identifiers
+			// This already returns public keys due to the enhanced protocol filtering
 			const sogf = sharesOfGeneralFulfillmentMap(
 				tree,
 				nodeMap,
@@ -170,26 +171,33 @@ export function recalculateFromTree() {
 					get(recognitionCache)
 				);
 
-				// Update recognition cache with our share values (using unified public keys)
+				// Update recognition cache with our share values 
+				// CRITICAL: Always use resolved public keys as cache keys to ensure consistency
 				allKnownContributorsList.forEach((contributorId) => {
-					const ourShare = sogf[contributorId] || 0;
-					const existing = get(recognitionCache)[contributorId];
+					// Ensure we're using the resolved public key as the cache key
+					const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
+					const ourShare = sogf[resolvedContributorId] || 0;
+					
+					// Get existing cache entry using resolved key
+					const existing = get(recognitionCache)[resolvedContributorId];
 					const theirShare = existing?.theirShare || 0;
 
 					console.log(
-						`[RECALC] Updating recognition for ${contributorId}: ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
+						`[RECALC] Updating recognition for ${resolvedContributorId}: ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
 					);
+					
 					recognitionCache.update((cache) => {
-						const oldEntry = cache[contributorId];
-						cache[contributorId] = {
+						const oldEntry = cache[resolvedContributorId];
+						// Always store using resolved public key
+						cache[resolvedContributorId] = {
 							ourShare,
 							theirShare,
 							timestamp: Date.now()
 						};
 
-						console.log(`[MUTUAL] Cache entry for ${contributorId}:`, {
+						console.log(`[MUTUAL] Cache entry for ${resolvedContributorId}:`, {
 							old: oldEntry,
-							new: cache[contributorId]
+							new: cache[resolvedContributorId]
 						});
 
 						return cache;
