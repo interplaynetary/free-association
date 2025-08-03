@@ -35,6 +35,16 @@
 	// UI state for expanded slots
 	let slotsExpanded = $state(false);
 
+	// Slot filtering and ordering state
+	let slotFilterBy = $state<'all' | 'time' | 'location' | 'quantity'>('all');
+	let slotSortBy = $state<'time' | 'location' | 'quantity'>('time');
+	let slotSortDirection = $state<'asc' | 'desc'>('asc');
+
+	// Section expansion state
+	let pastSlotsExpanded = $state(false);
+	let recurringSlotsExpanded = $state(true);
+	let currentFutureSlotsExpanded = $state(true);
+
 	// Simple filter state - just track selected subtree IDs
 	let selectedSubtrees = $state<string[]>([]);
 
@@ -312,6 +322,109 @@
 		return date.toISOString().split('T')[0];
 	}
 
+	// Utility function to check if a slot is recurring
+	function isSlotRecurring(slot: any): boolean {
+		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
+	}
+
+	// Utility function to check if a slot is in the past
+	function isSlotInPast(slot: any): boolean {
+		if (!slot.start_date) return false;
+
+		const now = new Date();
+		const slotDate = new Date(slot.start_date);
+
+		// If it's all day, compare dates only
+		if (slot.all_day) {
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const slotDateOnly = new Date(
+				slotDate.getFullYear(),
+				slotDate.getMonth(),
+				slotDate.getDate()
+			);
+			return slotDateOnly < today;
+		}
+
+		// If it has time, create full datetime
+		if (slot.start_time) {
+			const [hours, minutes] = slot.start_time.split(':');
+			slotDate.setHours(parseInt(hours), parseInt(minutes));
+		}
+
+		return slotDate < now;
+	}
+
+	// Utility function to get slot priority for sorting
+	function getSlotSortValue(slot: any, sortBy: string): number | string {
+		switch (sortBy) {
+			case 'time':
+				if (!slot.start_date) return '9999-12-31';
+				return slot.start_date;
+			case 'location':
+				if (slot.location_type === 'Specific') {
+					if (slot.street_address) {
+						return slot.street_address.toLowerCase();
+					}
+					if (slot.latitude && slot.longitude) {
+						return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+					}
+				}
+				return (slot.location_type || 'No location').toLowerCase();
+			case 'quantity':
+				return slot.quantity || 0;
+			default:
+				return 0;
+		}
+	}
+
+	// Categorize and sort slots
+	let categorizedSlots = $derived(() => {
+		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+			return { past: [], recurring: [], currentFuture: [] };
+		}
+
+		const past: any[] = [];
+		const recurring: any[] = [];
+		const currentFuture: any[] = [];
+
+		// Categorize slots
+		capacity.availability_slots.forEach((slot) => {
+			if (isSlotRecurring(slot)) {
+				recurring.push(slot);
+			} else if (isSlotInPast(slot)) {
+				past.push(slot);
+			} else {
+				currentFuture.push(slot);
+			}
+		});
+
+		// Sort each category
+		const sortFn = (a: any, b: any) => {
+			const aValue = getSlotSortValue(a, slotSortBy);
+			const bValue = getSlotSortValue(b, slotSortBy);
+
+			if (typeof aValue === 'string' && typeof bValue === 'string') {
+				const comparison = aValue.localeCompare(bValue);
+				return slotSortDirection === 'asc' ? comparison : -comparison;
+			}
+
+			const comparison = (aValue as number) - (bValue as number);
+			return slotSortDirection === 'asc' ? comparison : -comparison;
+		};
+
+		past.sort(sortFn);
+		recurring.sort(sortFn);
+		currentFuture.sort(sortFn);
+
+		return { past, recurring, currentFuture };
+	});
+
+	// Get total slot count for display
+	let totalSlotCount = $derived(() => {
+		const { past, recurring, currentFuture } = categorizedSlots();
+		return past.length + recurring.length + currentFuture.length;
+	});
+
 	// State for description field expansion
 	let descriptionExpanded = $state(false);
 
@@ -541,31 +654,133 @@
 			<div class="slots-header mb-3">
 				<h4 class="text-sm font-medium text-gray-700">🕒 Availability Slots</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					Manage specific time and location slots for this capacity
+					Manage specific time and location slots for this capacity ({totalSlotCount()} total)
 				</p>
 			</div>
 
-			<div class="slots-content">
-				<!-- Add slot button -->
-				<button type="button" class="add-slot-btn mb-4" onclick={handleAddSlot}>
-					<span class="add-icon">+</span>
-					<span class="add-text">Add new slot</span>
-				</button>
+			<!-- Add slot button -->
+			<button type="button" class="add-slot-btn mb-4" onclick={handleAddSlot}>
+				<span class="add-icon">+</span>
+				<span class="add-text">Add new slot</span>
+			</button>
 
-				<!-- Existing slots -->
-				{#if capacity.availability_slots && capacity.availability_slots.length > 0}
-					<div class="slots-list space-y-3">
-						{#each capacity.availability_slots as slot (slot.id)}
-							<Slot
-								{slot}
-								capacityId={capacity.id}
-								unit={capacity.unit}
-								canDelete={capacity.availability_slots.length > 1}
-								onupdate={handleSlotUpdate}
-								ondelete={handleSlotDelete}
-							/>
-						{/each}
-					</div>
+			<!-- Slot controls -->
+			<div class="slots-controls mb-4 rounded border border-gray-200 bg-white p-3">
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="text-xs font-medium text-gray-600">Sort by:</span>
+					<select class="slot-control-select" bind:value={slotSortBy}>
+						<option value="time">Time</option>
+						<option value="location">Location</option>
+						<option value="quantity">Quantity</option>
+					</select>
+					<button
+						class="slot-control-btn"
+						onclick={() => (slotSortDirection = slotSortDirection === 'asc' ? 'desc' : 'asc')}
+						title="Toggle sort direction"
+					>
+						{slotSortDirection === 'asc' ? '↑' : '↓'}
+					</button>
+				</div>
+			</div>
+
+			<div class="slots-content space-y-4">
+				{#if totalSlotCount() > 0}
+					<!-- Recurring slots section -->
+					{#if categorizedSlots().recurring.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (recurringSlotsExpanded = !recurringSlotsExpanded)}
+							>
+								<span class="category-icon">{recurringSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title"
+									>🔄 Recurring Availability ({categorizedSlots().recurring.length})</span
+								>
+							</button>
+							{#if recurringSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().recurring as slot (slot.id)}
+										<div class="slot-wrapper">
+											<div class="slot-badges mb-2">
+												<span class="recurrence-badge bg-purple-100 text-purple-800">
+													{slot.recurrence}
+												</span>
+											</div>
+											<Slot
+												{slot}
+												capacityId={capacity.id}
+												unit={capacity.unit}
+												canDelete={capacity.availability_slots.length > 1}
+												onupdate={handleSlotUpdate}
+												ondelete={handleSlotDelete}
+											/>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Current/Future slots section -->
+					{#if categorizedSlots().currentFuture.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (currentFutureSlotsExpanded = !currentFutureSlotsExpanded)}
+							>
+								<span class="category-icon">{currentFutureSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title"
+									>📅 Current & Upcoming Availability ({categorizedSlots().currentFuture
+										.length})</span
+								>
+							</button>
+							{#if currentFutureSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().currentFuture as slot (slot.id)}
+										<Slot
+											{slot}
+											capacityId={capacity.id}
+											unit={capacity.unit}
+											canDelete={capacity.availability_slots.length > 1}
+											onupdate={handleSlotUpdate}
+											ondelete={handleSlotDelete}
+										/>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Past slots section -->
+					{#if categorizedSlots().past.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (pastSlotsExpanded = !pastSlotsExpanded)}
+							>
+								<span class="category-icon">{pastSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title"
+									>📜 Past Availability ({categorizedSlots().past.length})</span
+								>
+							</button>
+							{#if pastSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().past as slot (slot.id)}
+										<div class="slot-wrapper past-slot">
+											<Slot
+												{slot}
+												capacityId={capacity.id}
+												unit={capacity.unit}
+												canDelete={capacity.availability_slots.length > 1}
+												onupdate={handleSlotUpdate}
+												ondelete={handleSlotDelete}
+											/>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
 				{:else}
 					<div class="empty-slots py-6 text-center text-xs text-gray-500 italic">
 						No slots defined. Click "Add new slot" to get started.
@@ -1024,6 +1239,124 @@
 		background: rgba(243, 244, 246, 0.5);
 		border-radius: 6px;
 		border: 1px dashed #d1d5db;
+	}
+
+	/* Slot controls styling */
+	.slots-controls {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.slot-control-select {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+		transition: border-color 0.2s ease;
+	}
+
+	.slot-control-select:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+
+	.slot-control-btn {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		background: white;
+		color: #6b7280;
+		cursor: pointer;
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+	}
+
+	.slot-control-btn:hover {
+		background: #f3f4f6;
+		border-color: #9ca3af;
+		color: #374151;
+	}
+
+	/* Slot category styling */
+	.slot-category {
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		background: white;
+		overflow: hidden;
+	}
+
+	.category-header {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 16px;
+		background: #f9fafb;
+		border: none;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-size: 0.875rem;
+		font-weight: 500;
+		text-align: left;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.category-header:hover {
+		background: #f3f4f6;
+	}
+
+	.category-icon {
+		color: #6b7280;
+		font-size: 0.75rem;
+		transition: transform 0.2s ease;
+	}
+
+	.category-title {
+		color: #374151;
+		flex: 1;
+	}
+
+	.category-content {
+		padding: 16px;
+		background: white;
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.slot-wrapper {
+		margin-bottom: 12px;
+	}
+
+	.slot-wrapper:last-child {
+		margin-bottom: 0;
+	}
+
+	.past-slot {
+		opacity: 0.7;
+	}
+
+	.slot-badges {
+		display: flex;
+		gap: 4px;
+		flex-wrap: wrap;
+	}
+
+	/* Badge styling */
+	.recurrence-badge {
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+		font-size: 0.6rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 2px 6px;
+		border-radius: 4px;
 	}
 
 	/* Animation for expanding sections */

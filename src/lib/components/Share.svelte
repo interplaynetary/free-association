@@ -19,6 +19,16 @@
 	// UI state for expanded slots
 	let slotsExpanded = $state(false);
 
+	// Slot filtering and ordering state
+	let slotFilterBy = $state<'all' | 'time' | 'location' | 'quantity'>('all');
+	let slotSortBy = $state<'time' | 'location' | 'quantity'>('time');
+	let slotSortDirection = $state<'asc' | 'desc'>('asc');
+
+	// Section expansion state
+	let pastSlotsExpanded = $state(false);
+	let recurringSlotsExpanded = $state(true);
+	let currentFutureSlotsExpanded = $state(true);
+
 	// Get provider name asynchronously
 	$effect(() => {
 		void (async () => {
@@ -95,31 +105,154 @@
 		return share.availability_slots?.length || 0;
 	}
 
-	// Format slot time display
-	function formatSlotTimeDisplay(slot: any): string {
-		const parts = [];
+	// Helper function to safely extract time from potentially malformed time strings
+	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
+		if (!timeValue) return undefined;
 
-		if (slot.start_date) {
-			parts.push(new Date(slot.start_date).toLocaleDateString());
+		// If it's already in HH:MM format, return as-is
+		if (/^\d{2}:\d{2}$/.test(timeValue)) {
+			return timeValue;
 		}
 
-		if (!slot.all_day && slot.start_time) {
-			parts.push(slot.start_time);
+		// If it's an ISO datetime string, extract just the time part
+		if (timeValue.includes('T')) {
+			try {
+				const date = new Date(timeValue);
+				return date.toTimeString().substring(0, 5); // Get HH:MM from "HH:MM:SS GMT..."
+			} catch (e) {
+				console.warn('Failed to parse time:', timeValue);
+				return undefined;
+			}
 		}
 
-		if (slot.all_day) {
-			parts.push('All day');
-		}
-
-		return parts.length > 0 ? parts.join(' ') : 'No time set';
+		// If it's some other format, try to extract time
+		console.warn('Unknown time format:', timeValue);
+		return undefined;
 	}
 
-	// Format slot location display
+	// Helper function to format time without leading zeros (08:30 → 8:30)
+	function formatTimeClean(timeStr: string): string {
+		if (!timeStr) return timeStr;
+
+		const [hours, minutes] = timeStr.split(':');
+		const cleanHours = parseInt(hours).toString(); // Remove leading zero
+		return `${cleanHours}:${minutes}`;
+	}
+
+	// Helper function to format date for display with smart labels
+	function formatDateForDisplay(date: Date): string {
+		const today = new Date();
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
+		if (date.toDateString() === today.toDateString()) {
+			return 'Today';
+		} else if (date.toDateString() === tomorrow.toDateString()) {
+			return 'Tomorrow';
+		} else {
+			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		}
+	}
+
+	// Format slot time display - clean and comprehensive
+	function formatSlotTimeDisplay(slot: any): string {
+		// Clean the time values
+		const rawStartTime = safeExtractTime(slot.start_time);
+		const rawEndTime = safeExtractTime(slot.end_time);
+
+		// Format times without leading zeros
+		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
+		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
+
+		// Handle "All day" case first
+		if (slot.all_day) {
+			const startDate = slot.start_date ? new Date(slot.start_date) : null;
+			const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+				// Multi-day all-day event
+				const startStr = formatDateForDisplay(startDate);
+				const endStr = formatDateForDisplay(endDate);
+				return `${startStr} - ${endStr}, All day`;
+			} else if (startDate) {
+				// Single day all-day event
+				const dateStr = formatDateForDisplay(startDate);
+				return `${dateStr}, All day`;
+			}
+			return 'All day';
+		}
+
+		// Handle timed slots
+		const startDate = slot.start_date ? new Date(slot.start_date) : null;
+		const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+		if (startDate) {
+			const startDateStr = formatDateForDisplay(startDate);
+
+			// Check if we have an end date and it's different from start date
+			if (endDate && startDate.getTime() !== endDate.getTime()) {
+				// Multi-day timed event
+				const endDateStr = formatDateForDisplay(endDate);
+				const startTimeStr = cleanStartTime || '';
+				const endTimeStr = cleanEndTime || '';
+
+				if (startTimeStr && endTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+				} else if (startTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+				} else {
+					return `${startDateStr} - ${endDateStr}`;
+				}
+			} else {
+				// Single day or no end date
+				if (cleanStartTime) {
+					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+					return `${startDateStr}, ${timeRange}`;
+				}
+				return startDateStr;
+			}
+		}
+
+		// Just time, no date
+		if (cleanStartTime) {
+			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+		}
+
+		return 'No time set';
+	}
+
+	// Format slot location display - show complete address
 	function formatSlotLocationDisplay(slot: any): string {
 		if (slot.location_type === 'Specific') {
+			// Build complete address from components
+			const addressParts = [];
+
 			if (slot.street_address) {
-				return slot.street_address;
+				addressParts.push(slot.street_address);
 			}
+
+			if (slot.city) {
+				addressParts.push(slot.city);
+			}
+
+			if (slot.state_province) {
+				addressParts.push(slot.state_province);
+			}
+
+			if (slot.postal_code) {
+				addressParts.push(slot.postal_code);
+			}
+
+			if (slot.country) {
+				addressParts.push(slot.country);
+			}
+
+			// If we have address components, join them with commas
+			if (addressParts.length > 0) {
+				return addressParts.join(', ');
+			}
+
+			// Fall back to coordinates if no address components
 			if (slot.latitude && slot.longitude) {
 				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
 			}
@@ -132,6 +265,101 @@
 		// Use capacity ID as the chat ID for all conversations about this capacity
 		return share.id;
 	}
+
+	// Utility function to check if a slot is recurring
+	function isSlotRecurring(slot: any): boolean {
+		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
+	}
+
+	// Utility function to check if a slot is in the past
+	function isSlotInPast(slot: any): boolean {
+		if (!slot.start_date) return false;
+
+		const now = new Date();
+		const slotDate = new Date(slot.start_date);
+
+		// If it's all day, compare dates only
+		if (slot.all_day) {
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			const slotDateOnly = new Date(
+				slotDate.getFullYear(),
+				slotDate.getMonth(),
+				slotDate.getDate()
+			);
+			return slotDateOnly < today;
+		}
+
+		// If it has time, create full datetime
+		if (slot.start_time) {
+			const [hours, minutes] = slot.start_time.split(':');
+			slotDate.setHours(parseInt(hours), parseInt(minutes));
+		}
+
+		return slotDate < now;
+	}
+
+	// Utility function to get slot priority for sorting
+	function getSlotSortValue(slot: any, sortBy: string): number | string {
+		switch (sortBy) {
+			case 'time':
+				if (!slot.start_date) return '9999-12-31';
+				return slot.start_date;
+			case 'location':
+				return formatSlotLocationDisplay(slot).toLowerCase();
+			case 'quantity':
+				return getSlotComputedQuantity(slot.id);
+			default:
+				return 0;
+		}
+	}
+
+	// Categorize and sort slots
+	let categorizedSlots = $derived(() => {
+		if (!share.availability_slots || !Array.isArray(share.availability_slots)) {
+			return { past: [], recurring: [], currentFuture: [] };
+		}
+
+		const past: any[] = [];
+		const recurring: any[] = [];
+		const currentFuture: any[] = [];
+
+		// Categorize slots
+		share.availability_slots.forEach((slot) => {
+			if (isSlotRecurring(slot)) {
+				recurring.push(slot);
+			} else if (isSlotInPast(slot)) {
+				past.push(slot);
+			} else {
+				currentFuture.push(slot);
+			}
+		});
+
+		// Sort each category
+		const sortFn = (a: any, b: any) => {
+			const aValue = getSlotSortValue(a, slotSortBy);
+			const bValue = getSlotSortValue(b, slotSortBy);
+
+			if (typeof aValue === 'string' && typeof bValue === 'string') {
+				const comparison = aValue.localeCompare(bValue);
+				return slotSortDirection === 'asc' ? comparison : -comparison;
+			}
+
+			const comparison = (aValue as number) - (bValue as number);
+			return slotSortDirection === 'asc' ? comparison : -comparison;
+		};
+
+		past.sort(sortFn);
+		recurring.sort(sortFn);
+		currentFuture.sort(sortFn);
+
+		return { past, recurring, currentFuture };
+	});
+
+	// Get total slot count for display
+	let totalSlotCount = $derived(() => {
+		const { past, recurring, currentFuture } = categorizedSlots();
+		return past.length + recurring.length + currentFuture.length;
+	});
 </script>
 
 <div class="capacity-share-container">
@@ -184,20 +412,6 @@
 					<span class="unread-badge-btn">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
 				{/if}
 			</button>
-			<!-- Slots button -->
-			{#if share.availability_slots && share.availability_slots.length > 0}
-				<button
-					type="button"
-					class="slots-btn"
-					onclick={(e) => {
-						e.stopPropagation();
-						toggleSlots();
-					}}
-					title="View availability slots"
-				>
-					🕒
-				</button>
-			{/if}
 			<button
 				type="button"
 				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
@@ -223,64 +437,230 @@
 			<div class="slots-header mb-3">
 				<h4 class="text-sm font-medium text-gray-700">🕒 Your Share Allocation</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					Your {(share.share_percentage * 100).toFixed(1)}% share of each availability slot
+					Your {(share.share_percentage * 100).toFixed(1)}% share of each availability slot ({totalSlotCount()}
+					total)
 				</p>
 			</div>
 
-			<div class="slots-content">
-				{#if share.availability_slots && share.availability_slots.length > 0}
-					<div class="slots-list space-y-3">
-						{#each share.availability_slots as slot (slot.id)}
-							{@const computedQuantity = getSlotComputedQuantity(slot.id)}
-							<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
-								<!-- Slot header row -->
-								<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-									<!-- Slot identifier -->
-									<span class="slot-label flex-1 font-medium">
-										Slot {slot.id.slice(-8)}
-									</span>
+			<!-- Slot controls -->
+			<div class="slots-controls mb-4 rounded border border-gray-200 bg-white p-3">
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="text-xs font-medium text-gray-600">Sort by:</span>
+					<select class="slot-control-select" bind:value={slotSortBy}>
+						<option value="time">Time</option>
+						<option value="location">Location</option>
+						<option value="quantity">Quantity</option>
+					</select>
+					<button
+						class="slot-control-btn"
+						onclick={() => (slotSortDirection = slotSortDirection === 'asc' ? 'desc' : 'asc')}
+						title="Toggle sort direction"
+					>
+						{slotSortDirection === 'asc' ? '↑' : '↓'}
+					</button>
+				</div>
+			</div>
 
-									<!-- Your share quantity -->
-									<span
-										class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
-									>
-										{Number.isInteger(computedQuantity)
-											? computedQuantity
-											: computedQuantity.toFixed(2)}
-										{share.unit}
-									</span>
+			<div class="slots-content space-y-4">
+				{#if totalSlotCount() > 0}
+					<!-- Recurring slots section -->
+					{#if categorizedSlots().recurring.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (recurringSlotsExpanded = !recurringSlotsExpanded)}
+							>
+								<span class="category-icon">{recurringSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title"
+									>🔄 Recurring Slots ({categorizedSlots().recurring.length})</span
+								>
+							</button>
+							{#if recurringSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().recurring as slot (slot.id)}
+										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+											<!-- Slot header row -->
+											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+												<!-- Your share quantity -->
+												<span
+													class="slot-quantity flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-sm font-medium text-purple-800"
+												>
+													{Number.isInteger(computedQuantity)
+														? computedQuantity
+														: computedQuantity.toFixed(2)}
+													{share.unit}
+												</span>
 
-									<!-- Total slot quantity for context -->
-									<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-										of {slot.quantity} total
-									</span>
+												<!-- Total slot quantity for context -->
+												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+													of {slot.quantity} total
+												</span>
+
+												<!-- Recurrence indicator -->
+												<span
+													class="recurrence-badge flex-shrink-0 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800"
+												>
+													{slot.recurrence}
+												</span>
+											</div>
+
+											<!-- Slot summary row -->
+											<div class="slot-summary mb-2 text-xs text-gray-500">
+												<div class="flex flex-wrap gap-4">
+													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													{#if slot.mutual_agreement_required}
+														<span>🤝 Mutual agreement required</span>
+													{/if}
+												</div>
+											</div>
+
+											<!-- Constraints info if present -->
+											{#if slot.advance_notice_hours || slot.booking_window_hours}
+												<div class="slot-constraints text-xs text-gray-500">
+													{#if slot.advance_notice_hours}
+														<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+													{/if}
+													{#if slot.booking_window_hours}
+														<span>📅 Book within {slot.booking_window_hours}h window</span>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									{/each}
 								</div>
+							{/if}
+						</div>
+					{/if}
 
-								<!-- Slot summary row -->
-								<div class="slot-summary mb-2 text-xs text-gray-500">
-									<div class="flex flex-wrap gap-4">
-										<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-										<span>📍 {formatSlotLocationDisplay(slot)}</span>
-										{#if slot.mutual_agreement_required}
-											<span>🤝 Mutual agreement required</span>
-										{/if}
-									</div>
+					<!-- Current/Future slots section -->
+					{#if categorizedSlots().currentFuture.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (currentFutureSlotsExpanded = !currentFutureSlotsExpanded)}
+							>
+								<span class="category-icon">{currentFutureSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title"
+									>📅 Current & Upcoming Slots ({categorizedSlots().currentFuture.length})</span
+								>
+							</button>
+							{#if currentFutureSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().currentFuture as slot (slot.id)}
+										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+											<!-- Slot header row -->
+											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+												<!-- Your share quantity -->
+												<span
+													class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+												>
+													{Number.isInteger(computedQuantity)
+														? computedQuantity
+														: computedQuantity.toFixed(2)}
+													{share.unit}
+												</span>
+
+												<!-- Total slot quantity for context -->
+												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+													of {slot.quantity} total
+												</span>
+											</div>
+
+											<!-- Slot summary row -->
+											<div class="slot-summary mb-2 text-xs text-gray-500">
+												<div class="flex flex-wrap gap-4">
+													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													{#if slot.mutual_agreement_required}
+														<span>🤝 Mutual agreement required</span>
+													{/if}
+												</div>
+											</div>
+
+											<!-- Constraints info if present -->
+											{#if slot.advance_notice_hours || slot.booking_window_hours}
+												<div class="slot-constraints text-xs text-gray-500">
+													{#if slot.advance_notice_hours}
+														<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+													{/if}
+													{#if slot.booking_window_hours}
+														<span>📅 Book within {slot.booking_window_hours}h window</span>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									{/each}
 								</div>
+							{/if}
+						</div>
+					{/if}
 
-								<!-- Constraints info if present -->
-								{#if slot.advance_notice_hours || slot.booking_window_hours}
-									<div class="slot-constraints text-xs text-gray-500">
-										{#if slot.advance_notice_hours}
-											<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
-										{/if}
-										{#if slot.booking_window_hours}
-											<span>📅 Book within {slot.booking_window_hours}h window</span>
-										{/if}
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
+					<!-- Past slots section -->
+					{#if categorizedSlots().past.length > 0}
+						<div class="slot-category">
+							<button
+								class="category-header"
+								onclick={() => (pastSlotsExpanded = !pastSlotsExpanded)}
+							>
+								<span class="category-icon">{pastSlotsExpanded ? '▼' : '▶'}</span>
+								<span class="category-title">📜 Past Slots ({categorizedSlots().past.length})</span>
+							</button>
+							{#if pastSlotsExpanded}
+								<div class="category-content">
+									{#each categorizedSlots().past as slot (slot.id)}
+										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										<div
+											class="slot-item rounded border border-gray-200 bg-gray-50 p-3 opacity-75 shadow-sm"
+										>
+											<!-- Slot header row -->
+											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+												<!-- Your share quantity -->
+												<span
+													class="slot-quantity flex-shrink-0 rounded bg-gray-200 px-2 py-1 text-sm font-medium text-gray-700"
+												>
+													{Number.isInteger(computedQuantity)
+														? computedQuantity
+														: computedQuantity.toFixed(2)}
+													{share.unit}
+												</span>
+
+												<!-- Total slot quantity for context -->
+												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+													of {slot.quantity} total
+												</span>
+											</div>
+
+											<!-- Slot summary row -->
+											<div class="slot-summary mb-2 text-xs text-gray-500">
+												<div class="flex flex-wrap gap-4">
+													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													{#if slot.mutual_agreement_required}
+														<span>🤝 Mutual agreement required</span>
+													{/if}
+												</div>
+											</div>
+
+											<!-- Constraints info if present -->
+											{#if slot.advance_notice_hours || slot.booking_window_hours}
+												<div class="slot-constraints text-xs text-gray-500">
+													{#if slot.advance_notice_hours}
+														<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+													{/if}
+													{#if slot.booking_window_hours}
+														<span>📅 Book within {slot.booking_window_hours}h window</span>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
 				{:else}
 					<div class="empty-slots py-6 text-center text-xs text-gray-500 italic">
 						No slots defined for this capacity.
@@ -587,5 +967,111 @@
 			padding-top: 0.75rem;
 			padding-bottom: 0.75rem;
 		}
+	}
+
+	/* Slot controls styling */
+	.slots-controls {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.slot-control-select {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+		transition: border-color 0.2s ease;
+	}
+
+	.slot-control-select:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+
+	.slot-control-btn {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		background: white;
+		color: #6b7280;
+		cursor: pointer;
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition: all 0.2s ease;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+	}
+
+	.slot-control-btn:hover {
+		background: #f3f4f6;
+		border-color: #9ca3af;
+		color: #374151;
+	}
+
+	/* Slot category styling */
+	.slot-category {
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		background: white;
+		overflow: hidden;
+	}
+
+	.category-header {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 12px 16px;
+		background: #f9fafb;
+		border: none;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-size: 0.875rem;
+		font-weight: 500;
+		text-align: left;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.category-header:hover {
+		background: #f3f4f6;
+	}
+
+	.category-icon {
+		color: #6b7280;
+		font-size: 0.75rem;
+		transition: transform 0.2s ease;
+	}
+
+	.category-title {
+		color: #374151;
+		flex: 1;
+	}
+
+	.category-content {
+		padding: 16px;
+		background: white;
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.category-content .slot-item {
+		margin-bottom: 12px;
+	}
+
+	.category-content .slot-item:last-child {
+		margin-bottom: 0;
+	}
+
+	/* Badge styling */
+	.recurrence-badge {
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+		font-size: 0.6rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 </style>

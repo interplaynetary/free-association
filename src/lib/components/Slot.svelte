@@ -1,6 +1,25 @@
 <script lang="ts">
 	import type { AvailabilitySlot } from '$lib/schema';
 	import { AvailabilitySlotSchema } from '$lib/schema';
+	import { derived } from 'svelte/store';
+	import SlotCompositionItem from './SlotCompositionItem.svelte';
+	import DropDown from './DropDown.svelte';
+	import {
+		createSlotsDataProvider,
+		createAllocatedSlotsDataProvider
+	} from '$lib/utils/ui-providers.svelte';
+	import {
+		userDesiredSlotComposeFrom,
+		userDesiredSlotComposeInto,
+		networkDesiredSlotComposeFrom,
+		networkDesiredSlotComposeInto
+	} from '$lib/state/compose.svelte';
+	import {
+		userNetworkCapacitiesWithShares,
+		networkCapacities,
+		userCapacities
+	} from '$lib/state/core.svelte';
+	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	interface Props {
 		slot: AvailabilitySlot;
@@ -17,6 +36,278 @@
 	let timeExpanded = $state(false);
 	let constraintsExpanded = $state(false);
 	let locationExpanded = $state(false);
+	let compositionsExpanded = $state(false);
+
+	// Provider name cache for compositions
+	let providerNames = $state<Record<string, string>>({});
+
+	// Composition UI state
+	let expandedCompositions = $state<Record<string, boolean>>({});
+	let showAddComposeFrom = $state(false);
+	let showAddComposeInto = $state(false);
+
+	// Data providers for slot selection
+	// FROM: Show slots from ALL capacities EXCEPT the current capacity
+	let composeFromDataProvider = derived(
+		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+			const items: Array<{
+				id: string;
+				name: string;
+				metadata: {
+					capacityId: string;
+					slotId: string;
+					capacityName: string;
+					providerId?: string;
+					providerName?: string;
+					quantity: number;
+					location?: string;
+					timeInfo?: string;
+					isOwned: boolean;
+				};
+			}> = [];
+
+			// Track seen slots to avoid duplicates (capacity:slot)
+			const seenSlots = new Set<string>();
+
+			// Helper function to format slot display info
+			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
+				const timeParts = [];
+				if (slotData.start_date) {
+					timeParts.push(new Date(slotData.start_date).toLocaleDateString());
+				}
+				if (!slotData.all_day && slotData.start_time) {
+					timeParts.push(slotData.start_time);
+				}
+				if (slotData.all_day) {
+					timeParts.push('All day');
+				}
+				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
+
+				let location = 'No location';
+				if (slotData.location_type === 'Specific') {
+					if (slotData.street_address) {
+						location = slotData.street_address;
+					} else if (slotData.latitude && slotData.longitude) {
+						location = `${slotData.latitude.toFixed(4)}, ${slotData.longitude.toFixed(4)}`;
+					}
+				} else if (slotData.location_type) {
+					location = slotData.location_type;
+				}
+				return { timeInfo, location };
+			}
+
+			// Add slots from user's own capacities (EXCEPT current capacity)
+			if ($userCapacities) {
+				Object.entries($userCapacities).forEach(([capId, capacity]) => {
+					if (capId === capacityId) return; // Skip current capacity
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slotData: any) => {
+							if (slotData.id === slot.id) return; // Skip current slot just in case
+
+							// Create unique key to avoid duplicates
+							const slotKey = `${capId}:${slotData.id}`;
+							if (seenSlots.has(slotKey)) return;
+							seenSlots.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slotData);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+
+							items.push({
+								id: slotKey, // Use unique key combining capacity and slot ID
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slotData.id,
+									capacityName: capacity.name,
+									quantity: slotData.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: true
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Add slots from network capacities (shares) - ALL of them since they're other people's
+			if ($userNetworkCapacitiesWithShares) {
+				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+					const providerId = (capacity as any).provider_id;
+					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slotData: any) => {
+							// Create unique key to avoid duplicates
+							const slotKey = `${capId}:${slotData.id}`;
+							if (seenSlots.has(slotKey)) return;
+							seenSlots.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slotData);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+
+							items.push({
+								id: slotKey, // Use unique key combining capacity and slot ID
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slotData.id,
+									capacityName: capacity.name,
+									providerId,
+									providerName,
+									quantity: slotData.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: false
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Sort by capacity name, then time
+			return items.sort((a, b) => {
+				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
+				if (capCompare !== 0) return capCompare;
+				const aTime = a.metadata.timeInfo || '';
+				const bTime = b.metadata.timeInfo || '';
+				return aTime.localeCompare(bTime);
+			});
+		}
+	);
+
+	// INTO: Show allocated slots from ALL capacities except current slot
+	let composeIntoDataProvider = derived(
+		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+			const items: Array<{
+				id: string;
+				name: string;
+				metadata: {
+					capacityId: string;
+					slotId: string;
+					capacityName: string;
+					providerId?: string;
+					providerName?: string;
+					quantity: number;
+					location?: string;
+					timeInfo?: string;
+					isOwned: boolean;
+				};
+			}> = [];
+
+			// Track seen slots to avoid duplicates (capacity:slot)
+			const seenSlots = new Set<string>();
+
+			// Helper function to format slot display info
+			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
+				const timeParts = [];
+				if (slotData.start_date) {
+					timeParts.push(new Date(slotData.start_date).toLocaleDateString());
+				}
+				if (!slotData.all_day && slotData.start_time) {
+					timeParts.push(slotData.start_time);
+				}
+				if (slotData.all_day) {
+					timeParts.push('All day');
+				}
+				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
+
+				let location = 'No location';
+				if (slotData.location_type === 'Specific') {
+					if (slotData.street_address) {
+						location = slotData.street_address;
+					} else if (slotData.latitude && slotData.longitude) {
+						location = `${slotData.latitude.toFixed(4)}, ${slotData.longitude.toFixed(4)}`;
+					}
+				} else if (slotData.location_type) {
+					location = slotData.location_type;
+				}
+				return { timeInfo, location };
+			}
+
+			// Add slots from user's own capacities (INCLUDING current capacity for INTO)
+			if ($userCapacities) {
+				Object.entries($userCapacities).forEach(([capId, capacity]) => {
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slotData: any) => {
+							if (slotData.id === slot.id && capId === capacityId) return; // Skip current slot
+
+							// Create unique key to avoid duplicates
+							const slotKey = `${capId}:${slotData.id}`;
+							if (seenSlots.has(slotKey)) return;
+							seenSlots.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slotData);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+
+							items.push({
+								id: slotKey,
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slotData.id,
+									capacityName: capacity.name,
+									quantity: slotData.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: true
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Add slots from network capacities (shares)
+			if ($userNetworkCapacitiesWithShares) {
+				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+					const providerId = (capacity as any).provider_id;
+					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slotData: any) => {
+							// Create unique key to avoid duplicates
+							const slotKey = `${capId}:${slotData.id}`;
+							if (seenSlots.has(slotKey)) return;
+							seenSlots.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slotData);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+
+							items.push({
+								id: slotKey,
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slotData.id,
+									capacityName: capacity.name,
+									providerId,
+									providerName,
+									quantity: slotData.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: false
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Sort by capacity name, then time
+			return items.sort((a, b) => {
+				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
+				if (capCompare !== 0) return capCompare;
+				const aTime = a.metadata.timeInfo || '';
+				const bTime = b.metadata.timeInfo || '';
+				return aTime.localeCompare(bTime);
+			});
+		}
+	);
 
 	// Reactive slot properties for proper binding
 	let slotId = $state(slot.id);
@@ -24,7 +315,6 @@
 	let slotAdvanceNoticeHours = $state(slot.advance_notice_hours);
 	let slotBookingWindowHours = $state(slot.booking_window_hours);
 	let slotMutualAgreementRequired = $state(slot.mutual_agreement_required);
-	let slotPriority = $state(slot.priority);
 
 	// Time fields
 	let slotAllDay = $state(slot.all_day);
@@ -32,6 +322,10 @@
 	let slotEndDate = $state(slot.end_date);
 	let slotStartTime = $state(slot.start_time);
 	let slotEndTime = $state(slot.end_time);
+
+	// Computed properties for time inputs (convert stored values to HH:MM format)
+	let displayStartTime = $derived(() => safeExtractTime(slotStartTime) || '');
+	let displayEndTime = $derived(() => safeExtractTime(slotEndTime) || '');
 	let slotTimeZone = $state(slot.time_zone);
 	let slotRecurrence = $state(slot.recurrence);
 	let slotCustomRecurrenceRepeatEvery = $state(slot.custom_recurrence_repeat_every);
@@ -88,7 +382,6 @@
 			advance_notice_hours: slotAdvanceNoticeHours,
 			booking_window_hours: slotBookingWindowHours,
 			mutual_agreement_required: slotMutualAgreementRequired,
-			priority: slotPriority,
 
 			// Time fields
 			all_day: slotAllDay,
@@ -144,31 +437,158 @@
 		locationExpanded = !locationExpanded;
 	}
 
-	// Format time display
-	function formatTimeDisplay(): string {
-		const parts = [];
-
-		if (slotStartDate) {
-			parts.push(new Date(slotStartDate).toLocaleDateString());
-		}
-
-		if (!slotAllDay && slotStartTime) {
-			parts.push(slotStartTime);
-		}
-
-		if (slotAllDay) {
-			parts.push('All day');
-		}
-
-		return parts.length > 0 ? parts.join(' ') : 'No time set';
+	function toggleCompositions() {
+		compositionsExpanded = !compositionsExpanded;
 	}
 
-	// Format location display
+	// Helper function to safely extract time from potentially malformed time strings
+	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
+		if (!timeValue) return undefined;
+
+		// If it's already in HH:MM format, return as-is
+		if (/^\d{2}:\d{2}$/.test(timeValue)) {
+			return timeValue;
+		}
+
+		// If it's an ISO datetime string, extract just the time part
+		if (timeValue.includes('T')) {
+			try {
+				const date = new Date(timeValue);
+				return date.toTimeString().substring(0, 5); // Get HH:MM from "HH:MM:SS GMT..."
+			} catch (e) {
+				console.warn('Failed to parse time:', timeValue);
+				return undefined;
+			}
+		}
+
+		// If it's some other format, try to extract time
+		console.warn('Unknown time format:', timeValue);
+		return undefined;
+	}
+
+	// Helper function to format time without leading zeros (08:30 → 8:30)
+	function formatTimeClean(timeStr: string): string {
+		if (!timeStr) return timeStr;
+
+		const [hours, minutes] = timeStr.split(':');
+		const cleanHours = parseInt(hours).toString(); // Remove leading zero
+		return `${cleanHours}:${minutes}`;
+	}
+
+	// Format time display for button - clean and simple
+	function formatTimeDisplay(): string {
+		// Use the display values which are already in clean HH:MM format
+		const rawStartTime = displayStartTime();
+		const rawEndTime = displayEndTime();
+
+		// Format times without leading zeros
+		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
+		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
+
+		// Handle "All day" case first
+		if (slotAllDay) {
+			const startDate = slotStartDate ? new Date(slotStartDate) : null;
+			const endDate = slotEndDate ? new Date(slotEndDate) : null;
+
+			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+				// Multi-day all-day event
+				const startStr = formatDateForDisplay(startDate);
+				const endStr = formatDateForDisplay(endDate);
+				return `${startStr} - ${endStr}, All day`;
+			} else if (startDate) {
+				// Single day all-day event
+				const dateStr = formatDateForDisplay(startDate);
+				return `${dateStr}, All day`;
+			}
+			return 'All day';
+		}
+
+		// Handle timed slots
+		const startDate = slotStartDate ? new Date(slotStartDate) : null;
+		const endDate = slotEndDate ? new Date(slotEndDate) : null;
+
+		if (startDate) {
+			const startDateStr = formatDateForDisplay(startDate);
+
+			// Check if we have an end date and it's different from start date
+			if (endDate && startDate.getTime() !== endDate.getTime()) {
+				// Multi-day timed event
+				const endDateStr = formatDateForDisplay(endDate);
+				const startTimeStr = cleanStartTime || '';
+				const endTimeStr = cleanEndTime || '';
+
+				if (startTimeStr && endTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+				} else if (startTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+				} else {
+					return `${startDateStr} - ${endDateStr}`;
+				}
+			} else {
+				// Single day or no end date
+				if (cleanStartTime) {
+					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+					return `${startDateStr}, ${timeRange}`;
+				}
+				return startDateStr;
+			}
+		}
+
+		// Just time, no date
+		if (cleanStartTime) {
+			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+		}
+
+		return 'No time set';
+	}
+
+	// Helper function to format date for display with smart labels
+	function formatDateForDisplay(date: Date): string {
+		const today = new Date();
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+
+		if (date.toDateString() === today.toDateString()) {
+			return 'Today';
+		} else if (date.toDateString() === tomorrow.toDateString()) {
+			return 'Tomorrow';
+		} else {
+			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		}
+	}
+
+	// Format location display - show complete address
 	function formatLocationDisplay(): string {
 		if (slotLocationType === 'Specific') {
+			// Build complete address from components
+			const addressParts = [];
+
 			if (slotStreetAddress) {
-				return slotStreetAddress;
+				addressParts.push(slotStreetAddress);
 			}
+
+			if (slotCity) {
+				addressParts.push(slotCity);
+			}
+
+			if (slotStateProvince) {
+				addressParts.push(slotStateProvince);
+			}
+
+			if (slotPostalCode) {
+				addressParts.push(slotPostalCode);
+			}
+
+			if (slotCountry) {
+				addressParts.push(slotCountry);
+			}
+
+			// If we have address components, join them with commas
+			if (addressParts.length > 0) {
+				return addressParts.join(', ');
+			}
+
+			// Fall back to coordinates if no address components
 			if (slotLatitude && slotLongitude) {
 				return `${slotLatitude.toFixed(4)}, ${slotLongitude.toFixed(4)}`;
 			}
@@ -199,11 +619,299 @@
 			parts.push('Agreement req.');
 		}
 
-		if (slotPriority && slotPriority !== 0) {
-			parts.push(`Priority: ${slotPriority}`);
+		return parts.length > 0 ? parts.join(', ') : 'No constraints';
+	}
+
+	// Load provider names asynchronously
+	$effect(() => {
+		void (async () => {
+			const capacities = Object.values($userNetworkCapacitiesWithShares || {});
+			const uniqueProviders = [
+				...new Set(capacities.map((cap: any) => cap.provider_id).filter(Boolean))
+			];
+
+			for (const providerId of uniqueProviders) {
+				if (!providerNames[providerId]) {
+					try {
+						const name = await getUserName(providerId);
+						if (name) {
+							providerNames = {
+								...providerNames,
+								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
+							};
+						}
+					} catch (error) {
+						console.warn('Failed to get provider name:', providerId, error);
+					}
+				}
+			}
+		})();
+	});
+
+	// ============================================================================
+	// COMPOSITION LOGIC - Following Original Capacity Pattern
+	// ============================================================================
+
+	// Slots we want to compose FROM (our desires)
+	let userComposeFromSlots = $derived(() => {
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'from';
+		}> = [];
+
+		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapId, sourceSlots]) => {
+			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
+				Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
+					Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
+						if (desiredAmount > 0 && targetCapId === capacityId && targetSlotId === slot.id) {
+							result.push({
+								sourceCapacityId: sourceCapId,
+								sourceSlotId: sourceSlotId,
+								targetCapacityId: targetCapId,
+								targetSlotId: targetSlotId,
+								desiredAmount: desiredAmount,
+								direction: 'from'
+							});
+						}
+					});
+				});
+			});
+		});
+
+		return result;
+	});
+
+	// Slots that want to compose INTO our slot (their desires)
+	let networkComposeIntoSlots = $derived(() => {
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'from';
+		}> = [];
+
+		Object.entries($networkDesiredSlotComposeFrom).forEach(([userId, userCompositions]) => {
+			Object.entries(userCompositions).forEach(([sourceCapId, sourceSlots]) => {
+				Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
+					Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
+						Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
+							if (desiredAmount > 0 && targetCapId === capacityId && targetSlotId === slot.id) {
+								result.push({
+									sourceCapacityId: sourceCapId,
+									sourceSlotId: sourceSlotId,
+									targetCapacityId: targetCapId,
+									targetSlotId: targetSlotId,
+									desiredAmount: desiredAmount,
+									direction: 'from'
+								});
+							}
+						});
+					});
+				});
+			});
+		});
+
+		return result;
+	});
+
+	// Slots we want to compose INTO (our desires)
+	let userComposeIntoSlots = $derived(() => {
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'into';
+		}> = [];
+
+		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapId, sourceSlots]) => {
+			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
+				Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
+					Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
+						if (desiredAmount > 0 && sourceCapId === capacityId && sourceSlotId === slot.id) {
+							result.push({
+								sourceCapacityId: sourceCapId,
+								sourceSlotId: sourceSlotId,
+								targetCapacityId: targetCapId,
+								targetSlotId: targetSlotId,
+								desiredAmount: desiredAmount,
+								direction: 'into'
+							});
+						}
+					});
+				});
+			});
+		});
+
+		return result;
+	});
+
+	// Slots that want to compose FROM our slot (their desires)
+	let networkComposeFromSlots = $derived(() => {
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'into';
+		}> = [];
+
+		Object.entries($networkDesiredSlotComposeInto).forEach(([userId, userCompositions]) => {
+			Object.entries(userCompositions).forEach(([sourceCapId, sourceSlots]) => {
+				Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
+					Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
+						Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
+							if (desiredAmount > 0 && sourceCapId === capacityId && sourceSlotId === slot.id) {
+								result.push({
+									sourceCapacityId: sourceCapId,
+									sourceSlotId: sourceSlotId,
+									targetCapacityId: targetCapId,
+									targetSlotId: targetSlotId,
+									desiredAmount: desiredAmount,
+									direction: 'into'
+								});
+							}
+						});
+					});
+				});
+			});
+		});
+
+		return result;
+	});
+
+	// FROM other slots = compositions coming INTO this slot
+	let fromOtherSlots = $derived(() => {
+		const userCompositions = userComposeFromSlots();
+		const networkCompositions = networkComposeIntoSlots();
+
+		// Create a set of user composition keys to avoid duplicates
+		const userCompositionKeys = new Set(
+			userCompositions.map(
+				(comp) =>
+					`${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`
+			)
+		);
+
+		// Filter network compositions to exclude ones already in user compositions
+		const filteredNetworkCompositions = networkCompositions.filter((comp) => {
+			const key = `${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`;
+			return !userCompositionKeys.has(key);
+		});
+
+		return [...userCompositions, ...filteredNetworkCompositions];
+	});
+
+	// INTO other slots = compositions going FROM this slot
+	let intoOtherSlots = $derived(() => {
+		const userCompositions = userComposeIntoSlots();
+		const networkCompositions = networkComposeFromSlots();
+
+		// Create a set of user composition keys to avoid duplicates
+		const userCompositionKeys = new Set(
+			userCompositions.map(
+				(comp) =>
+					`${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`
+			)
+		);
+
+		// Filter network compositions to exclude ones already in user compositions
+		const filteredNetworkCompositions = networkCompositions.filter((comp) => {
+			const key = `${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`;
+			return !userCompositionKeys.has(key);
+		});
+
+		return [...userCompositions, ...filteredNetworkCompositions];
+	});
+
+	// Total compositions count for display in button
+	let totalCompositionsCount = $derived(() => {
+		return fromOtherSlots().length + intoOtherSlots().length;
+	});
+
+	// Toggle composition item expansion
+	function toggleCompositionItem(compositionKey: string) {
+		expandedCompositions = {
+			...expandedCompositions,
+			[compositionKey]: !expandedCompositions[compositionKey]
+		};
+	}
+
+	// Handle adding new compose-from relationship
+	function handleAddComposeFrom() {
+		showAddComposeFrom = !showAddComposeFrom;
+		if (showAddComposeFrom) {
+			showAddComposeInto = false;
+		}
+	}
+
+	// Handle adding new compose-into relationship
+	function handleAddComposeInto() {
+		showAddComposeInto = !showAddComposeInto;
+		if (showAddComposeInto) {
+			showAddComposeFrom = false;
+		}
+	}
+
+	// Handle selecting a target slot for FROM composition
+	function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
+		const targetCapacityId = data.metadata?.capacityId;
+		const targetSlotId = data.metadata?.slotId;
+
+		if (!targetCapacityId || !targetSlotId) {
+			console.error('Invalid slot data for FROM composition:', data);
+			return;
 		}
 
-		return parts.length > 0 ? parts.join(', ') : 'No constraints';
+		// Initialize the composition desire
+		const currentDesires = $userDesiredSlotComposeFrom;
+		if (!currentDesires[capacityId]) currentDesires[capacityId] = {};
+		if (!currentDesires[capacityId][slot.id]) currentDesires[capacityId][slot.id] = {};
+		if (!currentDesires[capacityId][slot.id][targetCapacityId]) {
+			currentDesires[capacityId][slot.id][targetCapacityId] = {};
+		}
+
+		// Set initial desire of 1 unit
+		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
+
+		userDesiredSlotComposeFrom.set(currentDesires);
+
+		showAddComposeFrom = false;
+	}
+
+	// Handle selecting a source slot for INTO composition
+	function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
+		const sourceCapacityId = data.metadata?.capacityId;
+		const sourceSlotId = data.metadata?.slotId;
+
+		if (!sourceCapacityId || !sourceSlotId) {
+			console.error('Invalid slot data for INTO composition:', data);
+			return;
+		}
+
+		// Initialize the composition desire
+		const currentDesires = $userDesiredSlotComposeInto;
+		if (!currentDesires[sourceCapacityId]) currentDesires[sourceCapacityId] = {};
+		if (!currentDesires[sourceCapacityId][sourceSlotId])
+			currentDesires[sourceCapacityId][sourceSlotId] = {};
+		if (!currentDesires[sourceCapacityId][sourceSlotId][capacityId]) {
+			currentDesires[sourceCapacityId][sourceSlotId][capacityId] = {};
+		}
+
+		// Set initial desire of 1 unit
+		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
+
+		userDesiredSlotComposeInto.set(currentDesires);
+
+		showAddComposeInto = false;
 	}
 </script>
 
@@ -235,16 +943,6 @@
 			⏰ {formatTimeDisplay()}
 		</button>
 
-		<!-- Constraints button -->
-		<button
-			type="button"
-			class="section-btn constraints-btn"
-			onclick={toggleConstraints}
-			title="Edit constraints"
-		>
-			⚙️ {formatConstraintsDisplay()}
-		</button>
-
 		<!-- Location button -->
 		<button
 			type="button"
@@ -253,6 +951,26 @@
 			title="Edit location"
 		>
 			📍 {formatLocationDisplay()}
+		</button>
+
+		<!-- Compositions button -->
+		<button
+			type="button"
+			class="section-btn compositions-btn"
+			onclick={toggleCompositions}
+			title="View slot compositions"
+		>
+			🔄 Compositions ({totalCompositionsCount()})
+		</button>
+
+		<!-- Constraints button -->
+		<button
+			type="button"
+			class="section-btn constraints-btn"
+			onclick={toggleConstraints}
+			title="Edit constraints"
+		>
+			⚙️ {formatConstraintsDisplay()}
 		</button>
 
 		<!-- Delete button -->
@@ -265,17 +983,6 @@
 		>
 			✖️
 		</button>
-	</div>
-
-	<!-- Slot summary row -->
-	<div class="slot-summary mb-2 text-xs text-gray-500">
-		<div class="flex flex-wrap gap-4">
-			<span>⏰ {formatTimeDisplay()}</span>
-			<span>📍 {formatLocationDisplay()}</span>
-			{#if slotMutualAgreementRequired}
-				<span>🤝 Mutual agreement required</span>
-			{/if}
-		</div>
 	</div>
 
 	<!-- Expanded slot details -->
@@ -326,9 +1033,13 @@
 						<input
 							type="time"
 							class="slot-input w-full"
-							bind:value={slotStartTime}
-							onfocus={() => handleFocus('startTime', slotStartTime)}
-							onblur={() => handleBlurIfChanged('startTime', slotStartTime)}
+							value={displayStartTime()}
+							onfocus={() => handleFocus('startTime', displayStartTime())}
+							onchange={(e) => {
+								const target = e.target as HTMLInputElement;
+								slotStartTime = target.value; // Store as HH:MM format
+								handleSlotUpdate();
+							}}
 						/>
 					</div>
 					<div>
@@ -336,9 +1047,13 @@
 						<input
 							type="time"
 							class="slot-input w-full"
-							bind:value={slotEndTime}
-							onfocus={() => handleFocus('endTime', slotEndTime)}
-							onblur={() => handleBlurIfChanged('endTime', slotEndTime)}
+							value={displayEndTime()}
+							onfocus={() => handleFocus('endTime', displayEndTime())}
+							onchange={(e) => {
+								const target = e.target as HTMLInputElement;
+								slotEndTime = target.value; // Store as HH:MM format
+								handleSlotUpdate();
+							}}
 						/>
 					</div>
 				</div>
@@ -440,18 +1155,6 @@
 					/>
 					<span class="text-sm text-gray-600">Requires mutual agreement</span>
 				</label>
-			</div>
-
-			<div class="mt-4">
-				<label class="mb-1 block text-xs text-gray-500">Priority (optional)</label>
-				<input
-					type="number"
-					class="slot-input w-24"
-					bind:value={slotPriority}
-					placeholder="0"
-					onfocus={() => handleFocus('priority', slotPriority)}
-					onblur={() => handleBlurIfChanged('priority', slotPriority)}
-				/>
 			</div>
 		</div>
 	{/if}
@@ -614,6 +1317,129 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Compositions section -->
+	{#if compositionsExpanded}
+		<div class="slot-details compositions-details mt-3 rounded bg-purple-50 p-4">
+			<h5 class="mb-3 text-sm font-medium text-gray-700">🔄 Slot Compositions</h5>
+
+			<div class="composition-columns grid grid-cols-1 gap-4 md:grid-cols-2">
+				<!-- Compose FROM column -->
+				<div class="compose-from-column">
+					<div class="column-header mb-3">
+						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
+							<span>FROM other slots</span>
+						</h5>
+						<p class="mt-1 text-xs text-gray-500">Other slots composing into this slot</p>
+					</div>
+
+					<div class="column-content">
+						<!-- Add slot button -->
+						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeInto}>
+							<span class="add-icon">+</span>
+							<span class="add-text">Add source slot</span>
+						</button>
+
+						<!-- Add slot dropdown -->
+						{#if showAddComposeInto}
+							<div class="add-dropdown mb-3">
+								<DropDown
+									dataProvider={composeIntoDataProvider}
+									searchPlaceholder="Select source slot..."
+									select={handleSelectComposeIntoSlot}
+									show={showAddComposeInto}
+									close={() => (showAddComposeInto = false)}
+									width={280}
+									maxHeight={200}
+								/>
+							</div>
+						{/if}
+
+						<!-- From other slots items -->
+						{#if fromOtherSlots().length > 0}
+							<div class="composition-items space-y-2">
+								{#each fromOtherSlots() as composition}
+									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
+									<SlotCompositionItem
+										sourceCapacityId={composition.sourceCapacityId}
+										sourceSlotId={composition.sourceSlotId}
+										targetCapacityId={composition.targetCapacityId}
+										targetSlotId={composition.targetSlotId}
+										direction="from"
+										currentCapacityId={capacityId}
+										currentSlotId={slot.id}
+										expanded={expandedCompositions[compositionKey] || false}
+										onToggle={() => toggleCompositionItem(compositionKey)}
+									/>
+								{/each}
+							</div>
+						{:else}
+							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
+								No other slots composing into this slot
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Compose INTO column -->
+				<div class="compose-into-column">
+					<div class="column-header mb-3">
+						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
+							<span>INTO other slots</span>
+						</h5>
+						<p class="mt-1 text-xs text-gray-500">This slot composing into other slots</p>
+					</div>
+
+					<div class="column-content">
+						<!-- Add slot button -->
+						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeFrom}>
+							<span class="add-icon">+</span>
+							<span class="add-text">Add target slot</span>
+						</button>
+
+						<!-- Add slot dropdown -->
+						{#if showAddComposeFrom}
+							<div class="add-dropdown mb-3">
+								<DropDown
+									dataProvider={composeFromDataProvider}
+									searchPlaceholder="Select target slot..."
+									select={handleSelectComposeFromSlot}
+									show={showAddComposeFrom}
+									close={() => (showAddComposeFrom = false)}
+									width={280}
+									maxHeight={200}
+								/>
+							</div>
+						{/if}
+
+						<!-- Into other slots items -->
+						{#if intoOtherSlots().length > 0}
+							<div class="composition-items space-y-2">
+								{#each intoOtherSlots() as composition}
+									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
+									<SlotCompositionItem
+										sourceCapacityId={composition.sourceCapacityId}
+										sourceSlotId={composition.sourceSlotId}
+										targetCapacityId={composition.targetCapacityId}
+										targetSlotId={composition.targetSlotId}
+										direction="into"
+										currentCapacityId={capacityId}
+										currentSlotId={slot.id}
+										expanded={expandedCompositions[compositionKey] || false}
+										onToggle={() => toggleCompositionItem(compositionKey)}
+									/>
+								{/each}
+							</div>
+						{:else}
+							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
+								This slot not composing into other slots
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -740,13 +1566,11 @@
 		font-size: 0.75rem;
 		cursor: pointer;
 		transition: all 0.2s ease;
-		min-width: 80px;
 		text-align: left;
 		line-height: 1.2;
-		max-width: 150px;
 		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		display: inline-block;
+		width: auto;
 	}
 
 	.section-btn:hover {
@@ -771,5 +1595,106 @@
 		background: #f0fdf4;
 		border-color: #10b981;
 		color: #047857;
+	}
+
+	.compositions-btn:hover {
+		background: #faf5ff;
+		border-color: #8b5cf6;
+		color: #7c2d12;
+	}
+
+	.compositions-details {
+		background: #faf5ff;
+	}
+
+	.compositions-list {
+		max-height: 400px;
+		overflow-y: auto;
+	}
+
+	.empty-compositions {
+		text-align: center;
+		padding: 16px;
+		background: rgba(245, 245, 245, 0.3);
+		border: 1px dashed #d1d5db;
+		border-radius: 6px;
+	}
+
+	/* Composition columns styling */
+	.composition-columns {
+		gap: 1rem;
+	}
+
+	.compose-from-column,
+	.compose-into-column {
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		background: white;
+		padding: 12px;
+	}
+
+	.column-header h5 {
+		margin: 0;
+		color: #374151;
+	}
+
+	.column-header p {
+		margin: 0;
+	}
+
+	.add-slot-btn {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border: 2px dashed #d1d5db;
+		border-radius: 6px;
+		background: #f9fafb;
+		color: #6b7280;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-size: 0.875rem;
+	}
+
+	.add-slot-btn:hover {
+		border-color: #9ca3af;
+		background: #f3f4f6;
+		color: #374151;
+	}
+
+	.add-icon {
+		font-size: 1.2em;
+		font-weight: bold;
+	}
+
+	.add-dropdown {
+		animation: slideDown 0.2s ease-out;
+		position: relative;
+		z-index: 100;
+	}
+
+	/* Override the DropDown's fixed positioning for our use case */
+	.add-dropdown :global(.dropdown-container) {
+		position: relative !important;
+		top: 0 !important;
+		left: 0 !important;
+		width: 100% !important;
+		max-width: 280px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e7eb;
+	}
+
+	.empty-state {
+		background: rgba(243, 244, 246, 0.5);
+		border-radius: 6px;
+		border: 1px dashed #d1d5db;
+		font-style: italic;
+	}
+
+	.composition-items {
+		max-height: 300px;
+		overflow-y: auto;
 	}
 </style>

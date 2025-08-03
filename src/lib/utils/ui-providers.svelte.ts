@@ -3,7 +3,8 @@ import {
 	userTree,
 	nodesMap,
 	userNetworkCapacitiesWithShares,
-	networkCapacities
+	networkCapacities,
+	userCapacities
 } from '$lib/state/core.svelte';
 import {
 	userPubKeys,
@@ -12,6 +13,7 @@ import {
 	getContactByPublicKey,
 	getUserAlias
 } from '$lib/state/users.svelte';
+import { allocatedSlots } from '$lib/state/slots.svelte';
 import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 import { userAliasesCache } from '$lib/state/users.svelte';
 
@@ -271,7 +273,7 @@ export function createChildContributorsDataProvider(
 			return $baseItems
 				.map((item) => ({
 					...item,
-						metadata: {
+					metadata: {
 						...item.metadata,
 						isChildContributor: childContributors.includes(item.id)
 					}
@@ -288,7 +290,232 @@ export function createChildContributorsDataProvider(
 					if (aIsContact && !bIsContact) return -1;
 					if (!aIsContact && bIsContact) return 1;
 
-				return a.name.localeCompare(b.name);
+					return a.name.localeCompare(b.name);
+				});
+		}
+	);
+}
+
+// Simple reactive slots data provider for composition
+export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: string[] = []) {
+	return derived(
+		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+			const items: Array<{
+				id: string;
+				name: string;
+				metadata: {
+					capacityId: string;
+					slotId: string;
+					capacityName: string;
+					providerId?: string;
+					providerName?: string;
+					quantity: number;
+					location?: string;
+					timeInfo?: string;
+					isOwned: boolean;
+				};
+			}> = [];
+
+			// Helper function to format slot display info
+			function formatSlotInfo(slot: any): { timeInfo: string; location: string } {
+				const timeParts = [];
+
+				if (slot.start_date) {
+					timeParts.push(new Date(slot.start_date).toLocaleDateString());
+				}
+
+				if (!slot.all_day && slot.start_time) {
+					timeParts.push(slot.start_time);
+				}
+
+				if (slot.all_day) {
+					timeParts.push('All day');
+				}
+
+				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
+
+				let location = 'No location';
+				if (slot.location_type === 'Specific') {
+					if (slot.street_address) {
+						location = slot.street_address;
+					} else if (slot.latitude && slot.longitude) {
+						location = `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+					}
+				} else if (slot.location_type) {
+					location = slot.location_type;
+				}
+
+				return { timeInfo, location };
+			}
+
+			// Add slots from user's own capacities
+			if ($userCapacities) {
+				Object.entries($userCapacities).forEach(([capId, capacity]) => {
+					if (capacityId && capId !== capacityId) return;
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slot: any) => {
+							if (excludeSlotIds.includes(slot.id)) return;
+
+							const { timeInfo, location } = formatSlotInfo(slot);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+
+							items.push({
+								id: slot.id,
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slot.id,
+									capacityName: capacity.name,
+									quantity: slot.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: true
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Add slots from network capacities (shares)
+			if ($userNetworkCapacitiesWithShares) {
+				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+					if (capacityId && capId !== capacityId) return;
+
+					const providerId = (capacity as any).provider_id;
+					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slot: any) => {
+							if (excludeSlotIds.includes(slot.id)) return;
+
+							const { timeInfo, location } = formatSlotInfo(slot);
+							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+
+							items.push({
+								id: slot.id,
+								name: displayName,
+								metadata: {
+									capacityId: capId,
+									slotId: slot.id,
+									capacityName: capacity.name,
+									providerId,
+									providerName,
+									quantity: slot.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: false
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Sort by capacity name, then time
+			return items.sort((a, b) => {
+				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
+				if (capCompare !== 0) return capCompare;
+				const aTime = a.metadata.timeInfo || '';
+				const bTime = b.metadata.timeInfo || '';
+				return aTime.localeCompare(bTime);
+			});
+		}
+	);
+}
+
+// Get all allocated slots for a user (for compose-from scenarios)
+export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) {
+	return derived(
+		[userCapacities, allocatedSlots, userNamesOrAliasesCache],
+		([$userCapacities, $allocatedSlots, $userNamesCache]) => {
+			const items: Array<{
+				id: string;
+				name: string;
+				metadata: {
+					capacityId: string;
+					slotId: string;
+					capacityName: string;
+					quantity: number;
+					allocatedAmount: number;
+					location?: string;
+					timeInfo?: string;
+				};
+			}> = [];
+
+			if (!$userCapacities || !$allocatedSlots) return items;
+
+			// Helper function to format slot display info (same as above)
+			function formatSlotInfo(slot: any): { timeInfo: string; location: string } {
+				const timeParts = [];
+
+				if (slot.start_date) {
+					timeParts.push(new Date(slot.start_date).toLocaleDateString());
+				}
+
+				if (!slot.all_day && slot.start_time) {
+					timeParts.push(slot.start_time);
+				}
+
+				if (slot.all_day) {
+					timeParts.push('All day');
+				}
+
+				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
+
+				let location = 'No location';
+				if (slot.location_type === 'Specific') {
+					if (slot.street_address) {
+						location = slot.street_address;
+					} else if (slot.latitude && slot.longitude) {
+						location = `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+					}
+				} else if (slot.location_type) {
+					location = slot.location_type;
+				}
+
+				return { timeInfo, location };
+			}
+
+			// Only include slots that are allocated (we have claimed amounts)
+			Object.entries($userCapacities).forEach(([capId, capacity]) => {
+				if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+					capacity.availability_slots.forEach((slot: any) => {
+						if (excludeSlotIds.includes(slot.id)) return;
+
+						// Check if this slot is allocated (we have some amount claimed)
+						const allocatedAmount = $allocatedSlots[capId]?.[slot.id] || 0;
+						if (allocatedAmount <= 0) return;
+
+						const { timeInfo, location } = formatSlotInfo(slot);
+						const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo} (${allocatedAmount} available)`;
+
+						items.push({
+							id: slot.id,
+							name: displayName,
+							metadata: {
+								capacityId: capId,
+								slotId: slot.id,
+								capacityName: capacity.name,
+								quantity: slot.quantity || 0,
+								allocatedAmount,
+								location,
+								timeInfo
+							}
+						});
+					});
+				}
+			});
+
+			// Sort by capacity name, then time
+			return items.sort((a, b) => {
+				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
+				if (capCompare !== 0) return capCompare;
+				const aTime = a.metadata.timeInfo || '';
+				const bTime = b.metadata.timeInfo || '';
+				return aTime.localeCompare(bTime);
 			});
 		}
 	);

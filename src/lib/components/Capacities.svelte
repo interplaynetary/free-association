@@ -18,6 +18,11 @@
 		userCapacitiesWithShares
 	} from '$lib/state.svelte';
 	import CapacityComponent from './Capacity.svelte';
+	import {
+		userDesiredSlotComposeFrom,
+		userDesiredSlotComposeInto
+	} from '$lib/state/compose.svelte';
+	import { userDesiredSlotClaims } from '$lib/state/slots.svelte';
 
 	// Reactive derived values
 	const capacityEntries = $derived(
@@ -72,12 +77,112 @@
 		}
 	}
 
-	// Delete capacity from the userCapacities store
+	// Comprehensive slot composition cleanup when deleting a capacity
+	function cleanupCapacitySlotData(capacityId: string) {
+		console.log(`🧹 [CLEANUP] Starting comprehensive cleanup for capacity: ${capacityId}`);
+
+		// Get the capacity to find all its slot IDs before deletion
+		const capacity = $userCapacities?.[capacityId];
+		if (!capacity) {
+			console.warn(`[CLEANUP] Capacity ${capacityId} not found, skipping slot cleanup`);
+			return;
+		}
+
+		const slotIds = capacity.availability_slots?.map((slot: any) => slot.id) || [];
+		console.log(`[CLEANUP] Found ${slotIds.length} slots to clean up:`, slotIds);
+
+		// 1. Clean up userDesiredSlotComposeFrom (where deleted capacity is SOURCE)
+		userDesiredSlotComposeFrom.update((current) => {
+			const updated = { ...current };
+			let changes = 0;
+
+			// Remove entries where deleted capacity is the source
+			if (updated[capacityId]) {
+				changes += Object.keys(updated[capacityId]).length;
+				delete updated[capacityId];
+			}
+
+			// Remove entries where deleted capacity is the target
+			Object.keys(updated).forEach((sourceCapId) => {
+				Object.keys(updated[sourceCapId]).forEach((sourceSlotId) => {
+					if (updated[sourceCapId][sourceSlotId][capacityId]) {
+						changes += Object.keys(updated[sourceCapId][sourceSlotId][capacityId]).length;
+						delete updated[sourceCapId][sourceSlotId][capacityId];
+
+						// Clean up empty objects
+						if (Object.keys(updated[sourceCapId][sourceSlotId]).length === 0) {
+							delete updated[sourceCapId][sourceSlotId];
+						}
+						if (Object.keys(updated[sourceCapId]).length === 0) {
+							delete updated[sourceCapId];
+						}
+					}
+				});
+			});
+
+			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeFrom entries`);
+			return updated;
+		});
+
+		// 2. Clean up userDesiredSlotComposeInto (where deleted capacity is SOURCE or TARGET)
+		userDesiredSlotComposeInto.update((current) => {
+			const updated = { ...current };
+			let changes = 0;
+
+			// Remove entries where deleted capacity is the source
+			if (updated[capacityId]) {
+				changes += Object.keys(updated[capacityId]).length;
+				delete updated[capacityId];
+			}
+
+			// Remove entries where deleted capacity is the target
+			Object.keys(updated).forEach((sourceCapId) => {
+				Object.keys(updated[sourceCapId]).forEach((sourceSlotId) => {
+					if (updated[sourceCapId][sourceSlotId][capacityId]) {
+						changes += Object.keys(updated[sourceCapId][sourceSlotId][capacityId]).length;
+						delete updated[sourceCapId][sourceSlotId][capacityId];
+
+						// Clean up empty objects
+						if (Object.keys(updated[sourceCapId][sourceSlotId]).length === 0) {
+							delete updated[sourceCapId][sourceSlotId];
+						}
+						if (Object.keys(updated[sourceCapId]).length === 0) {
+							delete updated[sourceCapId];
+						}
+					}
+				});
+			});
+
+			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeInto entries`);
+			return updated;
+		});
+
+		// 3. Clean up userDesiredSlotClaims (remove all slot claims for deleted capacity)
+		userDesiredSlotClaims.update((current) => {
+			const updated = { ...current };
+			let changes = 0;
+
+			if (updated[capacityId]) {
+				changes = Object.keys(updated[capacityId]).length;
+				delete updated[capacityId];
+			}
+
+			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotClaims entries`);
+			return updated;
+		});
+
+		console.log(`✅ [CLEANUP] Completed comprehensive cleanup for capacity: ${capacityId}`);
+	}
+
+	// Delete capacity from the userCapacities store with comprehensive cleanup
 	function deleteCapacity(capacityId: string) {
 		try {
 			if (!$userAlias || !$userPub) return false;
 
-			// Update the store directly using the update method
+			// STEP 1: Clean up all slot composition data BEFORE deleting the capacity
+			cleanupCapacitySlotData(capacityId);
+
+			// STEP 2: Remove the capacity itself
 			userCapacities.update((caps) => {
 				const newCaps = { ...(caps || {}) };
 				if (newCaps[capacityId]) {
@@ -86,7 +191,7 @@
 				return newCaps;
 			});
 
-			globalState.showToast('Capacity deleted', 'success');
+			globalState.showToast('Capacity and all related slot data deleted', 'success');
 			return true;
 		} catch (error) {
 			console.error('Error deleting capacity:', error);

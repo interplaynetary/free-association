@@ -1,5 +1,17 @@
 /// <reference types="@sveltejs/kit" />
-import './lib/gun-polyfill';
+
+// Polyfill window object for Gun in service worker context - must be before imports
+if (typeof window === 'undefined') {
+	// @ts-ignore
+	globalThis.window = {
+		crypto: self.crypto,
+		TextEncoder: self.TextEncoder,
+		TextDecoder: self.TextDecoder,
+		WebSocket: self.WebSocket,
+		location: self.location
+	};
+}
+
 import { build, files, version } from '$service-worker';
 import { NotificationManager } from './lib/notification-manager';
 

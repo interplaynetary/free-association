@@ -13,7 +13,7 @@
 		mutualDesireTheirCapacities,
 		networkDesiredComposeFrom,
 		networkDesiredComposeInto
-	} from '$lib/state/compose.svelte';
+	} from '$lib/state/originalCompose.svelte';
 	import {
 		userNetworkCapacitiesWithShares,
 		networkCapacities,
