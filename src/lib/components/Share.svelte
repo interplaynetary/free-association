@@ -472,7 +472,7 @@
 							>
 								<span class="category-icon">{recurringSlotsExpanded ? '▼' : '▶'}</span>
 								<span class="category-title"
-									>🔄 Recurring Slots ({categorizedSlots().recurring.length})</span
+									>🔄 Recurring ({categorizedSlots().recurring.length})</span
 								>
 							</button>
 							{#if recurringSlotsExpanded}
@@ -543,7 +543,7 @@
 							>
 								<span class="category-icon">{currentFutureSlotsExpanded ? '▼' : '▶'}</span>
 								<span class="category-title"
-									>📅 Current & Upcoming Slots ({categorizedSlots().currentFuture.length})</span
+									>📅 Current & Upcoming ({categorizedSlots().currentFuture.length})</span
 								>
 							</button>
 							{#if currentFutureSlotsExpanded}
@@ -606,7 +606,7 @@
 								onclick={() => (pastSlotsExpanded = !pastSlotsExpanded)}
 							>
 								<span class="category-icon">{pastSlotsExpanded ? '▼' : '▶'}</span>
-								<span class="category-title">📜 Past Slots ({categorizedSlots().past.length})</span>
+								<span class="category-title">📜 Past ({categorizedSlots().past.length})</span>
 							</button>
 							{#if pastSlotsExpanded}
 								<div class="category-content">

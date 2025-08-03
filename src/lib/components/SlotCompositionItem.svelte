@@ -25,16 +25,16 @@
 		onToggle?: () => void;
 	}
 
-	let { 
+	let {
 		sourceCapacityId,
-		sourceSlotId, 
+		sourceSlotId,
 		targetCapacityId,
 		targetSlotId,
 		direction,
 		currentCapacityId,
 		currentSlotId,
-		expanded = false, 
-		onToggle 
+		expanded = false,
+		onToggle
 	}: Props = $props();
 
 	// Reactive state for desired quantity input
@@ -57,11 +57,11 @@
 
 	// Get source and target capacity/slot info
 	let sourceCapacity = $derived(() => {
-		return $userCapacities[sourceCapacityId] || $userNetworkCapacitiesWithShares[sourceCapacityId];
+		return ($userCapacities?.[sourceCapacityId]) || $userNetworkCapacitiesWithShares[sourceCapacityId];
 	});
 
 	let targetCapacity = $derived(() => {
-		return $userCapacities[targetCapacityId] || $userNetworkCapacitiesWithShares[targetCapacityId];
+		return ($userCapacities?.[targetCapacityId]) || $userNetworkCapacitiesWithShares[targetCapacityId];
 	});
 
 	let sourceSlot = $derived(() => {
@@ -88,14 +88,14 @@
 		return parts.length > 0 ? parts.join(' ') : 'No time set';
 	}
 
-	// Determine provider ID 
+	// Determine provider ID
 	let providerId = $derived(() => {
 		if (direction === 'from') {
 			// For FROM: the source is from another provider, target is ours
 			const sourceCap = $userNetworkCapacitiesWithShares[sourceCapacityId];
 			return (sourceCap as any)?.provider_id;
 		} else {
-			// For INTO: the target is another provider, source is ours  
+			// For INTO: the target is another provider, source is ours
 			return Object.keys($networkCapacities).find(
 				(id) => $networkCapacities[id] && $networkCapacities[id][targetCapacityId]
 			);
@@ -104,7 +104,10 @@
 
 	// Update input when store changes
 	$effect(() => {
-		desiredQuantityInput = $userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[targetSlotId] || 0;
+		desiredQuantityInput =
+			$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
+				targetSlotId
+			] || 0;
 	});
 
 	// Get their desire amount directly from network desires
@@ -115,12 +118,16 @@
 		if (direction === 'from') {
 			// They want to compose into our slot
 			return (
-				$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[targetSlotId] || 0
+				$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+					targetCapacityId
+				]?.[targetSlotId] || 0
 			);
 		} else {
 			// They want to compose from our slot
 			return (
-				$networkDesiredSlotComposeInto[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[targetSlotId] || 0
+				$networkDesiredSlotComposeInto[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+					targetCapacityId
+				]?.[targetSlotId] || 0
 			);
 		}
 	});
@@ -147,7 +154,8 @@
 		const updated = { ...current };
 		if (!updated[sourceCapacityId]) updated[sourceCapacityId] = {};
 		if (!updated[sourceCapacityId][sourceSlotId]) updated[sourceCapacityId][sourceSlotId] = {};
-		if (!updated[sourceCapacityId][sourceSlotId][targetCapacityId]) updated[sourceCapacityId][sourceSlotId][targetCapacityId] = {};
+		if (!updated[sourceCapacityId][sourceSlotId][targetCapacityId])
+			updated[sourceCapacityId][sourceSlotId][targetCapacityId] = {};
 
 		updated[sourceCapacityId][sourceSlotId][targetCapacityId][targetSlotId] = desiredAmount;
 
@@ -230,11 +238,24 @@
 	{#if expanded}
 		<div class="details">
 			<div class="analysis">
-				<div><strong>Source:</strong> {sourceCapacity()?.name} - {formatSlotInfo(sourceSlot())}</div>
-				<div><strong>Target:</strong> {targetCapacity()?.name} - {formatSlotInfo(targetSlot())}</div>
+				<div>
+					<strong>Source:</strong>
+					{sourceCapacity()?.name} - {formatSlotInfo(sourceSlot())}
+				</div>
+				<div>
+					<strong>Target:</strong>
+					{targetCapacity()?.name} - {formatSlotInfo(targetSlot())}
+				</div>
 				<div><strong>Our desire:</strong> {desiredQuantityInput} {compositionUnit()}</div>
-				<div><strong>Their desire:</strong> {theirDesireAmount().toFixed(1)} {compositionUnit()}</div>
-				<div><strong>Direction:</strong> {direction === 'from' ? 'FROM other slot' : 'INTO other slot'}</div>
+				<div>
+					<strong>Their desire:</strong>
+					{theirDesireAmount().toFixed(1)}
+					{compositionUnit()}
+				</div>
+				<div>
+					<strong>Direction:</strong>
+					{direction === 'from' ? 'FROM other slot' : 'INTO other slot'}
+				</div>
 				{#if !providerId()}
 					<div class="warning">⚠️ Provider not found - slot composition may not work</div>
 				{/if}

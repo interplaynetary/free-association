@@ -283,3 +283,5 @@ compose into seems to lose data sometimes
 Common Language:
 - Node titles so that merging is good
 - Merge capacities with same titles
+
+Add ignore? to slotSchema! This would unessecarily update others! It is user side only

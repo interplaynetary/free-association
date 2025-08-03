@@ -602,3 +602,344 @@ export const feasibleSlotComposeIntoMetadata = derived(
 		return metadata;
 	}
 );
+
+// =============================================================================
+// REDISTRIBUTION LOGIC - Secondary Level (Elegant Implementation)
+// =============================================================================
+
+/**
+ * SLOT REDISTRIBUTION SYSTEM
+ *
+ * When we have allocated slots but desire less for our own compositions,
+ * redistribute the excess to others based on:
+ * 1. What they want (networkDesiredSlotComposeFrom)
+ * 2. Their share proportions (contributorCapacityShares)
+ *
+ * This maintains efficiency by only computing our own redistribution view.
+ *
+ * EXAMPLE SCENARIO:
+ *
+ * 1. Initial State:
+ *    - We allocated 10 units from Alice's "morning-consulting" slot
+ *    - We only want to use 6 units (userDesiredSlotComposeInto shows 6 units total)
+ *    - Excess = 10 - 6 = 4 units available for redistribution
+ *
+ * 2. Network Desires vs Existing Allocations:
+ *    - Bob wants 3 units from Alice's "morning-consulting" → his "project-work"
+ *    - Bob already has 1 unit allocated → Gap = 3 - 1 = 2 units
+ *    - Carol wants 2 units from Alice's "morning-consulting" → her "design-sprint"
+ *    - Carol already has 0 units allocated → Gap = 2 - 0 = 2 units
+ *    - Total gap = 4 units (only redistribute to fill unmet gaps)
+ *
+ * 3. Share Constraints on Gaps:
+ *    - Bob has 40% share in Alice's capacity, already allocated 1 unit
+ *    - Bob's remaining share capacity = (40% × 5 total) - 1 = 1 unit
+ *    - Bob's effective gap = min(2 gap in desires, 1 remaining share) = 1 unit
+ *    - Carol has 60% share, already allocated 0 units
+ *    - Carol's remaining share capacity = (60% × 5 total) - 0 = 3 units
+ *    - Carol's effective gap = min(2 gap in desires, 3 remaining share) = 2 units
+ *
+ * 4. Gap-Based Redistribution:
+ *    - Available excess = 4 units
+ *    - Total effective gaps = 1 + 2 = 3 units
+ *    - Redistribution ratio = 4/3 = 1.33 (excess can fully cover gaps)
+ *    - Bob gets: 1 × 1.0 = 1 unit (fills his gap completely)
+ *    - Carol gets: 2 × 1.0 = 2 units (fills her gap completely)
+ *    - Total redistributed: 3 units, 1 unit remains as true excess
+ *
+ * 5. Enhanced Feasible Compositions:
+ *    - Bob's feasible composition enhanced from 1 → 2 units (gap filled)
+ *    - Carol's feasible composition enhanced from 0 → 2 units (gap filled)
+ *    - Efficient gap-filling ensures those who need it most get redistributed capacity
+ */
+
+// Helper: Initialize nested object structure safely
+const ensureNestedPath = (obj: any, path: string[]) => {
+	let current = obj;
+	for (const key of path) {
+		if (!current[key]) current[key] = {};
+		current = current[key];
+	}
+	return current;
+};
+
+// Helper: Calculate total desires from a slot
+const calculateSlotDesires = (desires: any, capacityId: string, slotId: string): number => {
+	const slotDesires = desires[capacityId]?.[slotId] as
+		| Record<string, Record<string, number>>
+		| undefined;
+	if (!slotDesires) return 0;
+
+	return Object.values(slotDesires).reduce(
+		(total: number, targetSlots: Record<string, number>) =>
+			total + Object.values(targetSlots).reduce((sum: number, amount: number) => sum + amount, 0),
+		0
+	);
+};
+
+// Helper: Calculate constrained gap for a participant
+const calculateConstrainedGap = (
+	desiredAmount: number,
+	alreadyAllocated: number,
+	contributorShare: number,
+	capacityTotalQuantity: number
+): number => {
+	const unmetGap = Math.max(0, desiredAmount - alreadyAllocated);
+	if (unmetGap === 0) return 0;
+
+	const maxTheyCanReceive = capacityTotalQuantity * contributorShare;
+	const maxAdditionalTheyCanReceive = Math.max(0, maxTheyCanReceive - alreadyAllocated);
+
+	return Math.min(unmetGap, maxAdditionalTheyCanReceive);
+};
+
+// Calculate our excess slot capacity available for redistribution
+export const redistributableSlotCapacity = derived(
+	[allocatedSlotAmounts, userDesiredSlotComposeInto, userDesiredSlotComposeFrom, userCapacities],
+	([
+		$allocatedSlotAmounts,
+		$userDesiredSlotComposeInto,
+		$userDesiredSlotComposeFrom,
+		$userCapacities
+	]) => {
+		console.log(
+			'[REDISTRIBUTION] Calculating excess slot capacity available for redistribution...'
+		);
+
+		if (!$userCapacities) return {};
+
+		const redistributable: Record<string, Record<string, number>> = {};
+
+		Object.entries($allocatedSlotAmounts).forEach(([capacityId, slots]) => {
+			// Only consider our own capacities for redistribution
+			if (!$userCapacities[capacityId]) return;
+
+			Object.entries(slots).forEach(([slotId, allocatedAmount]) => {
+				// Calculate total desires from this slot (both directions)
+				const intoDesires = calculateSlotDesires($userDesiredSlotComposeInto, capacityId, slotId);
+				const fromDesires = calculateSlotDesires($userDesiredSlotComposeFrom, capacityId, slotId);
+				const totalDesires = intoDesires + fromDesires;
+
+				// Calculate excess capacity
+				const excessCapacity = allocatedAmount - totalDesires;
+
+				if (excessCapacity > 0) {
+					ensureNestedPath(redistributable, [capacityId])[slotId] = excessCapacity;
+					console.log(
+						`[REDISTRIBUTION] Found ${excessCapacity.toFixed(2)} excess units in ${capacityId}:${slotId} (allocated: ${allocatedAmount}, our desires: ${totalDesires})`
+					);
+				}
+			});
+		});
+
+		console.log(
+			`[REDISTRIBUTION] Found redistributable capacity in ${Object.keys(redistributable).length} capacities`
+		);
+		return redistributable;
+	}
+);
+
+// Enhanced feasible compositions with redistribution
+export const feasibleSlotComposeIntoWithRedistribution = derived(
+	[
+		feasibleSlotComposeInto,
+		redistributableSlotCapacity,
+		networkDesiredSlotComposeFrom,
+		contributorCapacityShares,
+		userCapacities
+	],
+	([
+		$feasibleSlotComposeInto,
+		$redistributableSlotCapacity,
+		$networkDesiredSlotComposeFrom,
+		$contributorCapacityShares,
+		$userCapacities
+	]) => {
+		console.log('[REDISTRIBUTION] Enhancing feasible compositions with redistributed capacity...');
+
+		if (!$userCapacities) return $feasibleSlotComposeInto;
+
+		// Start with existing feasible compositions
+		const enhanced: UserSlotComposition = JSON.parse(JSON.stringify($feasibleSlotComposeInto));
+
+		// Process each slot with redistributable capacity
+		Object.entries($redistributableSlotCapacity).forEach(([ourCapacityId, ourSlots]) => {
+			const ourCapacity = $userCapacities[ourCapacityId];
+			if (!ourCapacity) return;
+
+			const ourCapacityTotalQuantity =
+				ourCapacity.availability_slots?.reduce((total, slot) => total + slot.quantity, 0) || 0;
+
+			Object.entries(ourSlots).forEach(([ourSlotId, excessCapacity]) => {
+				// Collect participant gaps for this slot
+				const participantGaps: Array<{
+					contributorId: string;
+					theirCapacityId: string;
+					theirSlotId: string;
+					effectiveGap: number;
+				}> = [];
+
+				Object.entries($networkDesiredSlotComposeFrom).forEach(
+					([contributorId, contributorDesires]) => {
+						const desiresFromOurSlot = contributorDesires[ourCapacityId]?.[ourSlotId];
+						if (!desiresFromOurSlot) return;
+
+						const contributorShare =
+							$contributorCapacityShares[contributorId]?.[ourCapacityId] || 0;
+						if (contributorShare === 0) return;
+
+						Object.entries(desiresFromOurSlot).forEach(([theirCapacityId, theirSlots]) => {
+							Object.entries(theirSlots).forEach(([theirSlotId, desiredAmount]) => {
+								const alreadyAllocated =
+									$feasibleSlotComposeInto[ourCapacityId]?.[ourSlotId]?.[theirCapacityId]?.[
+										theirSlotId
+									] || 0;
+
+								const effectiveGap = calculateConstrainedGap(
+									desiredAmount,
+									alreadyAllocated,
+									contributorShare,
+									ourCapacityTotalQuantity
+								);
+
+								if (effectiveGap > 0) {
+									participantGaps.push({
+										contributorId,
+										theirCapacityId,
+										theirSlotId,
+										effectiveGap
+									});
+
+									console.log(
+										`[REDISTRIBUTION] Gap found for ${contributorId}: desired=${desiredAmount}, allocated=${alreadyAllocated}, gap=${effectiveGap}`
+									);
+								}
+							});
+						});
+					}
+				);
+
+				// Apply proportional redistribution if there are gaps
+				const totalGaps = participantGaps.reduce((total, p) => total + p.effectiveGap, 0);
+
+				if (totalGaps > 0 && excessCapacity > 0) {
+					const redistributionRatio = Math.min(1, excessCapacity / totalGaps);
+
+					participantGaps.forEach(({ theirCapacityId, theirSlotId, effectiveGap }) => {
+						const redistributedAmount = effectiveGap * redistributionRatio;
+
+						// Add to enhanced feasible compositions
+						const targetPath = ensureNestedPath(enhanced, [
+							ourCapacityId,
+							ourSlotId,
+							theirCapacityId
+						]);
+						const existingAmount = targetPath[theirSlotId] || 0;
+						targetPath[theirSlotId] = existingAmount + redistributedAmount;
+
+						console.log(
+							`[REDISTRIBUTION] Enhanced ${ourCapacityId}:${ourSlotId} → ${theirCapacityId}:${theirSlotId}: +${redistributedAmount.toFixed(2)} (from excess redistribution)`
+						);
+					});
+				}
+			});
+		});
+
+		console.log(
+			'[REDISTRIBUTION] Enhanced feasible compositions with gap-based redistributed capacity'
+		);
+		return enhanced;
+	}
+);
+
+// =============================================================================
+// MUTUAL FEASIBLE WITH REDISTRIBUTION (Enhanced)
+// =============================================================================
+
+// Enhanced mutual feasible compositions that include redistribution
+export const mutualFeasibleSlotCompositionsWithRedistribution = derived(
+	[
+		mutualSlotDesires,
+		feasibleSlotComposeFrom,
+		feasibleSlotComposeInto,
+		feasibleSlotComposeIntoWithRedistribution
+	],
+	([
+		$mutualSlotDesires,
+		$feasibleSlotComposeFrom,
+		$feasibleSlotComposeInto,
+		$feasibleSlotComposeIntoWithRedistribution
+	]) => {
+		console.log(
+			'[MUTUAL-FEASIBLE-SLOTS-ENHANCED] Calculating feasible mutual slot compositions with redistribution...'
+		);
+
+		const mutualFeasible: Record<
+			string,
+			{
+				sourceCapacityId: string;
+				sourceSlotId: string;
+				targetCapacityId: string;
+				targetSlotId: string;
+				ourDesiredAmount: number;
+				theirDesiredAmount: number;
+				ourFeasibleAmount: number;
+				providerId: string;
+				compositionType: 'from' | 'into';
+				desireViability: number;
+				feasibleViability: number;
+				constraintRatio: number;
+				redistributionEnhanced?: boolean;
+			}
+		> = {};
+
+		Object.entries($mutualSlotDesires).forEach(([compositionKey, mutualDesire]) => {
+			const { sourceCapacityId, sourceSlotId, targetCapacityId, targetSlotId, compositionType } =
+				mutualDesire;
+
+			// Get feasible amount (enhanced for 'into', original for 'from')
+			const feasibleStore =
+				compositionType === 'from'
+					? $feasibleSlotComposeFrom
+					: $feasibleSlotComposeIntoWithRedistribution;
+			const ourFeasibleAmount =
+				feasibleStore[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[targetSlotId] || 0;
+
+			if (ourFeasibleAmount > 0) {
+				const mutualFeasibleAmount = Math.min(ourFeasibleAmount, mutualDesire.theirDesiredAmount);
+				const feasibleViability = calculateSlotDesireAlignment(
+					mutualFeasibleAmount,
+					mutualDesire.theirDesiredAmount
+				);
+				const constraintRatio = mutualFeasibleAmount / mutualDesire.ourDesiredAmount;
+
+				// Check if redistribution enhanced this composition
+				const originalFeasible =
+					compositionType === 'into'
+						? $feasibleSlotComposeInto[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
+								targetSlotId
+							] || 0
+						: 0;
+				const redistributionEnhanced =
+					compositionType === 'into' && ourFeasibleAmount > originalFeasible;
+
+				mutualFeasible[compositionKey] = {
+					...mutualDesire,
+					ourFeasibleAmount: mutualFeasibleAmount,
+					feasibleViability,
+					constraintRatio,
+					redistributionEnhanced
+				};
+
+				console.log(
+					`[MUTUAL-FEASIBLE-SLOTS-ENHANCED] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(2)} → feasible ${mutualFeasibleAmount.toFixed(2)} (${(constraintRatio * 100).toFixed(1)}% achievable)${redistributionEnhanced ? ' [REDISTRIBUTED]' : ''}`
+				);
+			}
+		});
+
+		console.log(
+			`[MUTUAL-FEASIBLE-SLOTS-ENHANCED] Found ${Object.keys(mutualFeasible).length} feasible mutual slot compositions with redistribution`
+		);
+		return mutualFeasible;
+	}
+);
