@@ -5,7 +5,6 @@
 		GeoJSONSource,
 		CircleLayer,
 		Marker,
-		Popup,
 		QuerySourceFeatures,
 		QueryRenderedFeatures,
 		FillExtrusionLayer,
@@ -18,17 +17,13 @@
 		Projection
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { userCapacitiesWithShares, userCapacities } from '$lib/state/core.svelte';
+	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import {
-		getCapacitiesWithCoordinates,
-		formatCapacityPopupContent,
-		getAllCapacityMarkers,
-		type CapacityMarkerData
-	} from '$lib/utils/capacityMarkers';
+	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
 	import {
 		reverseGeocode,
 		parseAddressComponents,
+		geocodeCapacityAddress,
 		type ReverseGeocodeResult
 	} from '$lib/utils/geocoding';
 	import {
@@ -40,12 +35,13 @@
 		isLocationTracking
 	} from '$lib/state/location.svelte';
 	import { debounce } from '$lib/state/subscriptions.svelte';
+	import MapSidePanel from './MapSidePanel.svelte';
 
 	interface Props {
-		onCapacityUpdate?: (id: string, lnglat: { lng: number; lat: number }) => void;
+		// Map now shows read-only share slots, no update functionality needed
 	}
 
-	let { onCapacityUpdate }: Props = $props();
+	let {}: Props = $props();
 
 	let features: maplibregl.MapGeoJSONFeature[] = $state.raw([]);
 	let mode: 'source' = $state('source');
@@ -55,118 +51,466 @@
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(false);
 
-	// Capacity markers state (includes both coordinate and geocoded markers)
-	let capacitiesWithCoords = $state<CapacityMarkerData[]>([]);
+	// Grouped slot marker data structure - one marker per unique (capacity, location) combination
+	export interface GroupedSlotMarkerData {
+		id: string; // unique marker ID based on capacityId + locationKey
+		capacityId: string;
+		capacity: any;
+		slots: any[]; // array of slots at this location
+		lnglat: { lat: number; lng: number };
+		source: 'coordinates' | 'geocoded';
+		providerId?: string;
+		providerName?: string;
+		locationKey: string; // unique identifier for this location
+	}
+
+	// Grouped slot markers state (from shared capacities only)
+	let shareSlotMarkers = $state<GroupedSlotMarkerData[]>([]);
 	let isLoadingGeocode = $state(false);
 
-	// Async function to load markers
-	async function loadCapacityMarkers(capacities: typeof $userCapacitiesWithShares) {
-		if (!capacities) {
-			console.log('[Map] No userCapacitiesWithShares available');
-			capacitiesWithCoords = [];
+	// Selected marker state for side panel
+	let selectedMarker = $state<GroupedSlotMarkerData | null>(null);
+
+	// Handle marker click
+	function handleMarkerClick(markerData: GroupedSlotMarkerData) {
+		selectedMarker = markerData;
+	}
+
+	// Handle side panel close
+	function handleSidePanelClose() {
+		selectedMarker = null;
+	}
+
+	// Debug selected marker changes (better pattern)
+	$inspect('Selected marker:', selectedMarker?.id);
+
+	// Async function to load grouped slot markers from shared capacities
+	async function loadShareSlotMarkers(sharedCapacities: typeof $userNetworkCapacitiesWithShares) {
+		if (!sharedCapacities) {
+			console.log('[Map] No userNetworkCapacitiesWithShares available');
+			shareSlotMarkers = [];
 			return;
 		}
 
-		console.log('[Map] userCapacitiesWithShares:', capacities);
-		console.log('[Map] Total capacities:', Object.keys(capacities).length);
+		console.log('[Map] userNetworkCapacitiesWithShares:', sharedCapacities);
+		console.log('[Map] Total shared capacities:', Object.keys(sharedCapacities).length);
 
-		// Check each capacity for coordinates and addresses
-		Object.entries(capacities).forEach(([id, capacity]) => {
-			console.log(`[Map] Capacity ${id}:`, {
-				name: capacity.name,
-				location_type: capacity.location_type,
-				latitude: capacity.latitude,
-				longitude: capacity.longitude,
-				hasValidCoords: capacity.latitude !== undefined && capacity.longitude !== undefined,
-				hasAddress: !!(
-					capacity.street_address ||
-					capacity.city ||
-					capacity.state_province ||
-					capacity.postal_code ||
-					capacity.country
-				)
-			});
-		});
+		// Prevent multiple simultaneous calls by checking loading state
+		if (isLoadingGeocode) {
+			console.log('[Map] Geocoding already in progress, skipping...');
+			return;
+		}
+
+		// Group slots by (capacityId, locationKey) combination
+		const slotGroups = new Map<
+			string,
+			{
+				capacityId: string;
+				capacity: any;
+				slots: any[];
+				lnglat: { lat: number; lng: number };
+				source: 'coordinates' | 'geocoded';
+				providerId?: string;
+				providerName?: string;
+				locationKey: string;
+			}
+		>();
 
 		try {
 			isLoadingGeocode = true;
-			const markers = await getAllCapacityMarkers(capacities);
-			capacitiesWithCoords = markers;
+
+			for (const [capacityId, capacity] of Object.entries(sharedCapacities)) {
+				const providerId = (capacity as any).provider_id;
+				let providerName = 'Unknown Provider';
+
+				// Try to get provider name
+				if (providerId) {
+					try {
+						const cachedName = $userNamesOrAliasesCache[providerId];
+						if (cachedName) {
+							providerName = cachedName;
+						} else {
+							const fetchedName = await getUserName(providerId);
+							if (fetchedName) {
+								providerName =
+									fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
+							}
+						}
+					} catch (error) {
+						console.warn(`[Map] Could not get provider name for ${providerId}:`, error);
+					}
+				}
+
+				// Process slots in this capacity
+				if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+					for (const slot of capacity.availability_slots) {
+						// Check location type first - only show "Specific" locations on map
+						if (slot.location_type !== 'Specific') {
+							console.log(
+								`[Map] Skipping slot ${slot.id} - location_type is ${slot.location_type || 'undefined'}, not 'Specific'`
+							);
+							continue;
+						}
+
+						let slotLnglat: { lat: number; lng: number } | null = null;
+						let source: 'coordinates' | 'geocoded' = 'coordinates';
+
+						// Priority 1: Geocode address if we have address components
+						if (
+							slot.street_address ||
+							slot.city ||
+							slot.state_province ||
+							slot.postal_code ||
+							slot.country
+						) {
+							try {
+								console.log(`[Map] Attempting to geocode slot ${slot.id} address`);
+
+								const geocodeResults = await geocodeCapacityAddress({
+									street_address: slot.street_address,
+									city: slot.city,
+									state_province: slot.state_province,
+									postal_code: slot.postal_code,
+									country: slot.country
+								});
+
+								if (geocodeResults.length > 0) {
+									const result = geocodeResults[0]; // Use the first (best) result
+									slotLnglat = { lat: result.latitude, lng: result.longitude };
+									source = 'geocoded';
+									console.log(
+										`[Map] Successfully geocoded slot ${slot.id}: ${result.latitude}, ${result.longitude}`
+									);
+								} else {
+									console.warn(`[Map] No geocoding results for slot ${slot.id}`);
+								}
+							} catch (geocodeError) {
+								console.warn(`[Map] Geocoding failed for slot ${slot.id}:`, geocodeError);
+							}
+						}
+
+						// Priority 2: Use direct coordinates only if no address was available or geocoding failed
+						if (!slotLnglat && slot.latitude !== undefined && slot.longitude !== undefined) {
+							slotLnglat = { lat: slot.latitude, lng: slot.longitude };
+							source = 'coordinates';
+							console.log(
+								`[Map] Using direct coordinates for slot ${slot.id}: ${slot.latitude}, ${slot.longitude}`
+							);
+						}
+
+						// Priority 3: Fall back to capacity coordinates if slot has no location but capacity does
+						if (!slotLnglat && capacity.location_type === 'Specific') {
+							// Try capacity address first
+							if (
+								capacity.street_address ||
+								capacity.city ||
+								capacity.state_province ||
+								capacity.postal_code ||
+								capacity.country
+							) {
+								try {
+									console.log(
+										`[Map] Attempting to geocode capacity ${capacityId} address for slot ${slot.id}`
+									);
+
+									const geocodeResults = await geocodeCapacityAddress({
+										street_address: capacity.street_address,
+										city: capacity.city,
+										state_province: capacity.state_province,
+										postal_code: capacity.postal_code,
+										country: capacity.country
+									});
+
+									if (geocodeResults.length > 0) {
+										const result = geocodeResults[0];
+										slotLnglat = { lat: result.latitude, lng: result.longitude };
+										source = 'geocoded';
+										console.log(
+											`[Map] Successfully geocoded capacity ${capacityId} for slot ${slot.id}: ${result.latitude}, ${result.longitude}`
+										);
+									}
+								} catch (geocodeError) {
+									console.warn(
+										`[Map] Capacity geocoding failed for slot ${slot.id}:`,
+										geocodeError
+									);
+								}
+							}
+
+							// Final fallback to capacity coordinates
+							if (
+								!slotLnglat &&
+								capacity.latitude !== undefined &&
+								capacity.longitude !== undefined
+							) {
+								slotLnglat = { lat: capacity.latitude, lng: capacity.longitude };
+								source = 'coordinates';
+								console.log(
+									`[Map] Using capacity coordinates for slot ${slot.id}: ${capacity.latitude}, ${capacity.longitude}`
+								);
+							}
+						}
+
+						// If we have coordinates, group this slot by location and capacity
+						if (slotLnglat) {
+							// Create location key based on rounded coordinates (to group nearby locations)
+							const locationKey = `${Math.round(slotLnglat.lat * 100000) / 100000},${Math.round(slotLnglat.lng * 100000) / 100000}`;
+							const groupKey = `${capacityId}:${locationKey}`;
+
+							if (slotGroups.has(groupKey)) {
+								// Add slot to existing group
+								slotGroups.get(groupKey)!.slots.push(slot);
+							} else {
+								// Create new group
+								slotGroups.set(groupKey, {
+									capacityId: capacityId,
+									capacity: capacity,
+									slots: [slot],
+									lnglat: slotLnglat,
+									source: source,
+									providerId: providerId,
+									providerName: providerName,
+									locationKey: locationKey
+								});
+							}
+
+							console.log(
+								`[Map] Added slot to group ${groupKey}: ${capacity.name} - slot ${slot.id} at ${slotLnglat.lat}, ${slotLnglat.lng} (${source})`
+							);
+						} else {
+							console.log(`[Map] No location data available for slot ${slot.id}`);
+						}
+					}
+				}
+			}
+
+			// Convert groups to markers array
+			const markers: GroupedSlotMarkerData[] = [];
+			for (const [groupKey, group] of slotGroups.entries()) {
+				markers.push({
+					id: groupKey,
+					capacityId: group.capacityId,
+					capacity: group.capacity,
+					slots: group.slots,
+					lnglat: group.lnglat,
+					source: group.source,
+					providerId: group.providerId,
+					providerName: group.providerName,
+					locationKey: group.locationKey
+				});
+			}
+
 			console.log(
-				`[Map] Found ${markers.length} total markers (coordinate + geocoded):`,
-				markers
+				'[Map] About to set markers:',
+				markers.map((m) => ({ id: m.id, capacity: m.capacity.name, slots: m.slots.length }))
+			);
+			shareSlotMarkers = markers;
+			console.log(`[Map] Created ${markers.length} grouped markers from shared capacities`);
+			console.log(
+				`[Map] Total slots represented: ${markers.reduce((sum, m) => sum + m.slots.length, 0)}`
 			);
 		} catch (error) {
-			console.error('[Map] Error getting capacity markers:', error);
-			// Fallback to just coordinate-based markers
-			capacitiesWithCoords = getCapacitiesWithCoordinates(capacities);
+			console.error('[Map] Error loading share slot markers:', error);
+			shareSlotMarkers = [];
 		} finally {
 			isLoadingGeocode = false;
 		}
 	}
 
-	// Create a debounced version of loadCapacityMarkers to prevent excessive geocoding
-	// when userCapacitiesWithShares updates frequently as new capacities and shares stream in
-	const debouncedLoadCapacityMarkers = debounce(loadCapacityMarkers, 500);
+	// Reactive Svelte 5 approach using $derived.by for side effects
+	let currentCapacities = $derived($userNetworkCapacitiesWithShares);
+	let capacitiesCount = $derived(Object.keys(currentCapacities || {}).length);
 
-	// Reactively update markers when userCapacitiesWithShares changes
-	$effect(() => {
-		debouncedLoadCapacityMarkers($userCapacitiesWithShares);
+	// Debounced loading function to prevent excessive API calls
+	const debouncedLoadMarkers = debounce(async (capacities: typeof currentCapacities) => {
+		if (capacities && Object.keys(capacities).length > 0) {
+			console.log('[Map] Loading markers for', Object.keys(capacities).length, 'capacities');
+			await loadShareSlotMarkers(capacities);
+		}
+	}, 300);
+
+	// Use $derived.by to reactively load markers when capacities change
+	let markersLoader = $derived.by(() => {
+		if (currentCapacities && Object.keys(currentCapacities).length > 0) {
+			debouncedLoadMarkers(currentCapacities);
+			return 'loaded';
+		} else {
+			console.log('[Map] No capacities available, clearing markers');
+			shareSlotMarkers = [];
+			return 'empty';
+		}
 	});
 
-	// Update capacity coordinates in the store
-	async function handleCapacityCoordinateChange(id: string, lnglat: { lng: number; lat: number }) {
-		try {
-			// Call the optional callback first
-		if (onCapacityUpdate) {
-			onCapacityUpdate(id, lnglat);
-			}
-
-			// Update the capacity in the store
-			if ($userCapacities && $userCapacities[id]) {
-				// Create a deep clone of current capacities
-				const newCapacities = structuredClone($userCapacities);
-
-				// Update the specific capacity's coordinates
-				newCapacities[id] = {
-					...newCapacities[id],
-					longitude: lnglat.lng,
-					latitude: lnglat.lat
-				};
-
-				// Try to reverse geocode to get address (optional, don't fail if it doesn't work)
-				try {
-					console.log(`[Map] Reverse geocoding coordinates: ${lnglat.lat}, ${lnglat.lng}`);
-					const reverseResult = await reverseGeocode(lnglat.lat, lnglat.lng);
-					const addressComponents = parseAddressComponents(reverseResult.address);
-
-					// Update address fields if reverse geocoding succeeded
-					newCapacities[id] = {
-						...newCapacities[id],
-						...addressComponents
-					};
-
-					console.log(`[Map] Reverse geocoded address:`, addressComponents);
-				} catch (geocodeError) {
-					// Don't fail the coordinate update if geocoding fails
-					console.warn(
-						'[Map] Reverse geocoding failed, coordinates updated without address:',
-						geocodeError
-					);
-				}
-
-				// Set the store with the new value
-				userCapacities.set(newCapacities);
-
-				console.log(`[Map] Updated capacity ${id} coordinates:`, lnglat);
-				globalState.showToast(`Updated location for ${newCapacities[id].name}`, 'success');
-		} else {
-				console.warn(`[Map] Capacity ${id} not found in user capacities`);
-			}
-		} catch (error) {
-			console.error('[Map] Error updating capacity coordinates:', error);
-			globalState.showToast('Error updating location', 'error');
+	// Expose manual refresh method
+	async function refreshMarkers() {
+		if (currentCapacities && Object.keys(currentCapacities).length > 0) {
+			await loadShareSlotMarkers(currentCapacities);
 		}
+	}
+
+	// Debug logging
+	$inspect('Map state:', { capacitiesCount, markersLoader });
+
+	// Helper function to safely extract time from potentially malformed time strings
+	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
+		if (!timeValue) return undefined;
+		if (/^\d{2}:\d{2}$/.test(timeValue)) {
+			return timeValue;
+		}
+		if (timeValue.includes('T')) {
+			try {
+				const date = new Date(timeValue);
+				return date.toTimeString().substring(0, 5);
+			} catch (e) {
+				console.warn('Failed to parse time:', timeValue);
+				return undefined;
+			}
+		}
+		console.warn('Unknown time format:', timeValue);
+		return undefined;
+	}
+
+	// Helper function to format time without leading zeros (08:30 → 8:30)
+	function formatTimeClean(timeStr: string): string {
+		if (!timeStr) return timeStr;
+		const [hours, minutes] = timeStr.split(':');
+		const cleanHours = parseInt(hours).toString();
+		return `${cleanHours}:${minutes}`;
+	}
+
+	// Helper function to format date for display with smart labels
+	function formatDateForDisplay(date: Date): string {
+		const today = new Date();
+		const tomorrow = new Date(today);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		if (date.toDateString() === today.toDateString()) {
+			return 'Today';
+		} else if (date.toDateString() === tomorrow.toDateString()) {
+			return 'Tomorrow';
+		} else {
+			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		}
+	}
+
+	// Format slot time display - clean and comprehensive (matches Share.svelte)
+	function formatSlotTimeDisplay(slot: any): string {
+		const rawStartTime = safeExtractTime(slot.start_time);
+		const rawEndTime = safeExtractTime(slot.end_time);
+		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
+		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
+
+		if (slot.all_day) {
+			const startDate = slot.start_date ? new Date(slot.start_date) : null;
+			const endDate = slot.end_date ? new Date(slot.end_date) : null;
+			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+				const startStr = formatDateForDisplay(startDate);
+				const endStr = formatDateForDisplay(endDate);
+				return `${startStr} - ${endStr}, All day`;
+			} else if (startDate) {
+				const dateStr = formatDateForDisplay(startDate);
+				return `${dateStr}, All day`;
+			}
+			return 'All day';
+		}
+
+		const startDate = slot.start_date ? new Date(slot.start_date) : null;
+		const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+		if (startDate) {
+			const startDateStr = formatDateForDisplay(startDate);
+			if (endDate && startDate.getTime() !== endDate.getTime()) {
+				const endDateStr = formatDateForDisplay(endDate);
+				const startTimeStr = cleanStartTime || '';
+				const endTimeStr = cleanEndTime || '';
+				if (startTimeStr && endTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+				} else if (startTimeStr) {
+					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+				} else {
+					return `${startDateStr} - ${endDateStr}`;
+				}
+			} else {
+				if (cleanStartTime) {
+					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+					return `${startDateStr}, ${timeRange}`;
+				}
+				return startDateStr;
+			}
+		}
+		if (cleanStartTime) {
+			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+		}
+		return 'No time set';
+	}
+
+	// Helper function to format slot location display
+	function formatSlotLocationDisplay(slot: any): string {
+		if (slot.location_type === 'Specific') {
+			const addressParts = [];
+
+			if (slot.street_address) addressParts.push(slot.street_address);
+			if (slot.city) addressParts.push(slot.city);
+			if (slot.state_province) addressParts.push(slot.state_province);
+			if (slot.postal_code) addressParts.push(slot.postal_code);
+			if (slot.country) addressParts.push(slot.country);
+
+			if (addressParts.length > 0) {
+				return addressParts.join(', ');
+			}
+
+			if (slot.latitude && slot.longitude) {
+				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+			}
+		}
+
+		return slot.location_type || 'No location';
+	}
+
+	// Helper function to check if a slot is recurring (matches Share.svelte)
+	function isSlotRecurring(slot: any): boolean {
+		return slot.recurrence && slot.recurrence !== 'Does not repeat';
+	}
+
+	// Helper function to check if a slot is in the past (matches Share.svelte)
+	function isSlotInPast(slot: any): boolean {
+		if (isSlotRecurring(slot)) return false;
+
+		const now = new Date();
+		let slotEndDate = slot.end_date ? new Date(slot.end_date) : null;
+		let slotStartDate = slot.start_date ? new Date(slot.start_date) : null;
+
+		// Use end date if available, otherwise use start date
+		const relevantDate = slotEndDate || slotStartDate;
+		if (!relevantDate) return false;
+
+		// Set time to end of day for comparison
+		const slotDate = new Date(relevantDate);
+		slotDate.setHours(23, 59, 59, 999);
+
+		return slotDate < now;
+	}
+
+	// Categorize slots like in Share.svelte
+	function categorizeSlots(slots: any[]): {
+		recurring: any[];
+		currentFuture: any[];
+		past: any[];
+	} {
+		const recurring: any[] = [];
+		const currentFuture: any[] = [];
+		const past: any[] = [];
+
+		slots.forEach((slot) => {
+			if (isSlotRecurring(slot)) {
+				recurring.push(slot);
+			} else if (isSlotInPast(slot)) {
+				past.push(slot);
+			} else {
+				currentFuture.push(slot);
+			}
+		});
+
+		return { recurring, currentFuture, past };
 	}
 
 	// Geolocation event handlers
@@ -206,228 +550,217 @@
 	}
 </script>
 
-<div class="flex h-[400px] max-h-[50vh] min-h-[300px] overflow-hidden rounded-md">
-	<MapLibre
-		bind:map
-		bind:pitch
-		class="map-container flex-1"
-		style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-		zoom={3}
-		center={{ lng: 120, lat: 20 }}
-		minZoom={1}
-		maxPitch={85}
-		attributionControl={false}
-		touchZoomRotate={true}
-		touchPitch={true}
-		dragPan={true}
-		scrollZoom={true}
-	>
-		<Projection type={isGlobeMode ? 'globe' : undefined} />
-		<Light anchor="map" />
-		<Sky
-			sky-color="#001560"
-			horizon-color="#0090c0"
-			fog-color="#ffffff"
-			sky-horizon-blend={0.9}
-			horizon-fog-blend={0.8}
-			fog-ground-blend={0.7}
-			atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
-		/>
-		<GeolocateControl
-			position="top-left"
-			positionOptions={{ enableHighAccuracy: true }}
-			trackUserLocation={true}
-			showAccuracyCircle={true}
-			autoTrigger={true}
-			ontrackuserlocationstart={handleTrackUserLocationStart}
-			ontrackuserlocationend={handleTrackUserLocationEnd}
-			ongeolocate={handleGeolocate}
-			onerror={handleGeolocateError}
-		/>
-		<CustomControl position="top-right">
-			<button
-				onclick={() => {
-					isGlobeMode = !isGlobeMode;
-				}}
-				title="Toggle globe mode"
-			>
-				<span>🌐</span>
-			</button>
-		</CustomControl>
-		<CustomControl position="top-right">
-			<button
-				onclick={() => {
-					show3DBuildings = !show3DBuildings;
-					if (map) map.setPitch(show3DBuildings ? 70 : 0);
-				}}
-				title="Toggle 3D buildings"
-			>
-				<span>🏢</span>
-			</button>
-		</CustomControl>
-		<CustomControl position="top-right">
-			<button
-				onclick={() => {
-					isTerrainVisible = !isTerrainVisible;
-					if (map) map.setPitch(isTerrainVisible ? 70 : 0);
-				}}
-				title="Toggle terrain"
-			>
-				<span>🏔️</span>
-			</button>
-		</CustomControl>
+<div class="map-wrapper relative h-[400px] max-h-[50vh] min-h-[300px] overflow-hidden rounded-md">
+	<!-- Side Panel (positioned absolute within this container) -->
+	<MapSidePanel markerData={selectedMarker} onClose={handleSidePanelClose} />
 
-		<!-- Location status display -->
-		<CustomControl position="bottom-left">
-			<div class="location-status">
-				<div class="status-indicator {$isLocationTracking ? 'tracking' : 'not-tracking'}">
-					{$isLocationTracking ? '📍' : '📍'}
-				</div>
-				<div class="location-text">
-					{$currentLocationText}
-				</div>
-			</div>
-		</CustomControl>
-
-		<RasterDEMTileSource
-			id="terrain"
-			tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
-			minzoom={2}
-			maxzoom={15}
-			encoding="terrarium"
-			attribution="<a href='https://github.com/tilezen/joerd/blob/master/docs/attribution.md'>Mapzen (Terrain)</a>"
+	<!-- Map Container (takes remaining space) -->
+	<div class="map-content {selectedMarker ? 'with-panel' : 'full-width'}">
+		<MapLibre
+			bind:map
+			bind:pitch
+			class="map-container h-full w-full"
+			style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+			zoom={3}
+			center={{ lng: 120, lat: 20 }}
+			minZoom={1}
+			maxPitch={85}
+			attributionControl={false}
+			touchZoomRotate={true}
+			touchPitch={true}
+			dragPan={true}
+			scrollZoom={true}
 		>
-			{#if isTerrainVisible}
-				<Terrain exaggeration={1.0} />
-				<HillshadeLayer
+			<Projection type={isGlobeMode ? 'globe' : undefined} />
+			<Light anchor="map" />
+			<Sky
+				sky-color="#001560"
+				horizon-color="#0090c0"
+				fog-color="#ffffff"
+				sky-horizon-blend={0.9}
+				horizon-fog-blend={0.8}
+				fog-ground-blend={0.7}
+				atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
+			/>
+			<GeolocateControl
+				position="top-left"
+				positionOptions={{ enableHighAccuracy: true }}
+				trackUserLocation={true}
+				showAccuracyCircle={true}
+				autoTrigger={true}
+				ontrackuserlocationstart={handleTrackUserLocationStart}
+				ontrackuserlocationend={handleTrackUserLocationEnd}
+				ongeolocate={handleGeolocate}
+				onerror={handleGeolocateError}
+			/>
+			<CustomControl position="top-right">
+				<button
+					onclick={() => {
+						isGlobeMode = !isGlobeMode;
+					}}
+					title="Toggle globe mode"
+				>
+					<span>🌐</span>
+				</button>
+			</CustomControl>
+			<CustomControl position="top-right">
+				<button
+					onclick={() => {
+						show3DBuildings = !show3DBuildings;
+						if (map) map.setPitch(show3DBuildings ? 70 : 0);
+					}}
+					title="Toggle 3D buildings"
+				>
+					<span>🏢</span>
+				</button>
+			</CustomControl>
+			<CustomControl position="top-right">
+				<button
+					onclick={() => {
+						isTerrainVisible = !isTerrainVisible;
+						if (map) map.setPitch(isTerrainVisible ? 70 : 0);
+					}}
+					title="Toggle terrain"
+				>
+					<span>🏔️</span>
+				</button>
+			</CustomControl>
+
+			<!-- Location status display -->
+			<CustomControl position="bottom-left">
+				<div class="location-status">
+					<div class="status-indicator {$isLocationTracking ? 'tracking' : 'not-tracking'}">
+						{$isLocationTracking ? '📍' : '📍'}
+					</div>
+					<div class="location-text">
+						{$currentLocationText}
+					</div>
+				</div>
+			</CustomControl>
+
+			<RasterDEMTileSource
+				id="terrain"
+				tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
+				minzoom={2}
+				maxzoom={15}
+				encoding="terrarium"
+				attribution="<a href='https://github.com/tilezen/joerd/blob/master/docs/attribution.md'>Mapzen (Terrain)</a>"
+			>
+				{#if isTerrainVisible}
+					<Terrain exaggeration={1.0} />
+					<HillshadeLayer
+						paint={{
+							'hillshade-exaggeration': 0.5,
+							'hillshade-illumination-anchor': 'map',
+							'hillshade-shadow-color': '#473B24',
+							'hillshade-accent-color': '#aaff00',
+							'hillshade-highlight-color': '#ffffff'
+						}}
+					/>
+				{/if}
+			</RasterDEMTileSource>
+
+			<GeoJSONSource
+				id="capacities"
+				data={'https://maplibre.org/maplibre-gl-js/docs/assets/significant-earthquakes-2015.geojson'}
+				promoteId="ids"
+			>
+				{#if mode === 'source'}
+					<QuerySourceFeatures bind:features>
+						{#snippet children(feature: maplibregl.MapGeoJSONFeature)}
+							{#if feature.geometry.type === 'Point'}
+								<Marker
+									lnglat={feature.geometry.coordinates as [number, number]}
+									color="#ef4444"
+									scale={0.8}
+								/>
+							{/if}
+						{/snippet}
+					</QuerySourceFeatures>
+				{/if}
+			</GeoJSONSource>
+
+			<!-- Grouped share slot markers - from shared capacities only -->
+			{#each shareSlotMarkers as markerData (markerData.id)}
+				{@const { id, capacityId, capacity, slots, lnglat, source, providerName } = markerData}
+				{@const isSelected = selectedMarker?.id === markerData.id}
+				{@const isGeocoded = source === 'geocoded'}
+				{@const totalSlots = slots.length}
+				{@const debugInfo = `Marker ${markerData.id}: ${capacity.name} (${totalSlots} slots)`}
+
+				<Marker
+					lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
+					draggable={false}
+					color={isSelected ? '#f59e0b' : isGeocoded ? '#10b981' : '#6366f1'}
+					scale={isSelected ? 1.2 : 1.0}
+				>
+					{#snippet content()}
+						<div
+							class="slot-marker {isSelected ? 'selected' : ''}"
+							onclick={() => handleMarkerClick(markerData)}
+							role="button"
+							tabindex="0"
+						>
+							<div class="marker-icon">{capacity.emoji || '🏠'}</div>
+							<div class="marker-label">{capacity.name}</div>
+							{#if totalSlots > 1}
+								<div class="slot-count">{totalSlots}</div>
+							{/if}
+							{#if isSelected}
+								<div class="selection-ring"></div>
+							{/if}
+						</div>
+					{/snippet}
+				</Marker>
+			{/each}
+
+			<!-- Loading indicator for geocoding -->
+			{#if isLoadingGeocode}
+				<CustomControl position="bottom-right">
+					<div class="geocoding-loading">
+						<span>🗺️ Geocoding slot addresses...</span>
+					</div>
+				</CustomControl>
+			{/if}
+
+			{#if show3DBuildings}
+				<FillExtrusionLayer
+					source="carto"
+					sourceLayer="building"
+					minzoom={14}
+					filter={['!=', ['get', 'hide_3d'], true]}
 					paint={{
-						'hillshade-exaggeration': 0.5,
-						'hillshade-illumination-anchor': 'map',
-						'hillshade-shadow-color': '#473B24',
-						'hillshade-accent-color': '#aaff00',
-						'hillshade-highlight-color': '#ffffff'
+						'fill-extrusion-color': [
+							'interpolate',
+							['linear'],
+							['get', 'render_height'],
+							0,
+							'#aaccbb',
+							200,
+							'royalblue',
+							400,
+							'purple'
+						],
+						'fill-extrusion-height': [
+							'interpolate',
+							['linear'],
+							['zoom'],
+							14,
+							0,
+							15,
+							['get', 'render_height']
+						],
+						'fill-extrusion-base': [
+							'case',
+							['>=', ['get', 'zoom'], 14],
+							['get', 'render_min_height'],
+							0
+						]
 					}}
 				/>
 			{/if}
-		</RasterDEMTileSource>
-
-		<GeoJSONSource
-			id="capacities"
-			data={'https://maplibre.org/maplibre-gl-js/docs/assets/significant-earthquakes-2015.geojson'}
-			promoteId="ids"
-		>
-			{#if mode === 'source'}
-				<QuerySourceFeatures bind:features>
-					{#snippet children(feature: maplibregl.MapGeoJSONFeature)}
-						{#if feature.geometry.type === 'Point'}
-							<Marker
-								lnglat={feature.geometry.coordinates as [number, number]}
-								color="#ef4444"
-								scale={0.8}
-							/>
-						{/if}
-					{/snippet}
-				</QuerySourceFeatures>
-			{/if}
-		</GeoJSONSource>
-
-		<!-- User capacity markers - both coordinate and geocoded from addresses -->
-		{#each capacitiesWithCoords as markerData (markerData.id)}
-			{@const { id, capacity, lnglat, source } = markerData}
-			{@const popupContent = formatCapacityPopupContent(capacity)}
-			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
-			{@const isGeocoded = source === 'geocoded'}
-
-			<Marker
-				lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
-				draggable={!isGeocoded}
-				color={isGeocoded ? '#f59e0b' : '#3b82f6'}
-				scale={1.2}
-				ondragend={(event) => {
-					const newLnglat = event.target.getLngLat();
-					handleCapacityCoordinateChange(id, { lng: newLnglat.lng, lat: newLnglat.lat });
-				}}
-			>
-				{#snippet content()}
-					<div class="capacity-marker">
-						<div class="marker-icon">{capacity.emoji || '🏠'}</div>
-						<div class="marker-label">{capacity.name}</div>
-						{#if isGeocoded}
-							<div class="geocoded-badge">📍</div>
-						{/if}
-					</div>
-				{/snippet}
-
-				<Popup anchor="bottom" offset={[0, -10]} closeButton={true}>
-					<div class="capacity-popup">
-						<h3 class="popup-title">{popupContent.title}</h3>
-						{#if isGeocoded}
-							<div class="geocoded-notice">
-								<small>📍 Location from address geocoding</small>
-							</div>
-						{/if}
-						<div class="popup-details">
-							{#each popupContent.details as detail}
-								<div class="detail-row">
-									<span class="detail-label">{detail.label}:</span>
-									<span class="detail-value">{detail.value}</span>
-								</div>
-							{/each}
-						</div>
-						<div class="coordinates">
-							<small class="coordinate-text">{lngLatText}</small>
-						</div>
-					</div>
-				</Popup>
-			</Marker>
-		{/each}
-
-		<!-- Loading indicator for geocoding -->
-		{#if isLoadingGeocode}
-			<CustomControl position="bottom-right">
-				<div class="geocoding-loading">
-					<span>🌍 Finding addresses...</span>
-				</div>
-			</CustomControl>
-		{/if}
-
-		{#if show3DBuildings}
-			<FillExtrusionLayer
-				source="carto"
-				sourceLayer="building"
-				minzoom={14}
-				filter={['!=', ['get', 'hide_3d'], true]}
-				paint={{
-					'fill-extrusion-color': [
-						'interpolate',
-						['linear'],
-						['get', 'render_height'],
-						0,
-						'#aaccbb',
-						200,
-						'royalblue',
-						400,
-						'purple'
-					],
-					'fill-extrusion-height': [
-						'interpolate',
-						['linear'],
-						['zoom'],
-						14,
-						0,
-						15,
-						['get', 'render_height']
-					],
-					'fill-extrusion-base': [
-						'case',
-						['>=', ['get', 'zoom'], 14],
-						['get', 'render_min_height'],
-						0
-					]
-				}}
-			/>
-		{/if}
-	</MapLibre>
+		</MapLibre>
+	</div>
 </div>
 
 <style>
@@ -447,16 +780,47 @@
 		transform: scale(1.05);
 	}
 
-	.capacity-marker {
+	.slot-marker {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		cursor: pointer;
 		transition: transform 0.2s ease;
+		position: relative;
 	}
 
-	.capacity-marker:hover {
+	.slot-marker:hover {
 		transform: scale(1.1);
+	}
+
+	.slot-marker.selected {
+		transform: scale(1.15);
+	}
+
+	.selection-ring {
+		position: absolute;
+		top: -6px;
+		left: -6px;
+		right: -6px;
+		bottom: -6px;
+		border: 3px solid #f59e0b;
+		border-radius: 50%;
+		animation: pulse-ring 2s infinite;
+	}
+
+	@keyframes pulse-ring {
+		0% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		50% {
+			transform: scale(1.1);
+			opacity: 0.7;
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
 	}
 
 	.marker-icon {
@@ -479,78 +843,21 @@
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 
-	.capacity-popup {
-		min-width: 200px;
-		max-width: 300px;
-	}
-
-	.popup-title {
-		font-size: 16px;
-		font-weight: 600;
-		color: #111827;
-		margin: 0 0 12px 0;
-	}
-
-	.popup-details {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.detail-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		font-size: 14px;
-	}
-
-	.detail-label {
-		font-weight: 500;
-		color: #6b7280;
-	}
-
-	.detail-value {
-		color: #111827;
-		text-align: right;
-	}
-
-	.coordinates {
-		margin-top: 8px;
-		padding-top: 8px;
-		border-top: 1px solid #e5e7eb;
-		text-align: center;
-	}
-
-	.coordinate-text {
-		color: #9ca3af;
-		font-family: monospace;
-	}
-
-	.geocoded-badge {
+	.slot-count {
 		position: absolute;
 		top: -8px;
 		right: -8px;
-		background: #f59e0b;
+		background: #ef4444;
 		color: white;
 		border-radius: 50%;
-		width: 16px;
-		height: 16px;
+		width: 20px;
+		height: 20px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 8px;
+		font-size: 10px;
 		font-weight: bold;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-	}
-
-	.geocoded-notice {
-		background: #fef3c7;
-		border: 1px solid #f59e0b;
-		border-radius: 4px;
-		padding: 4px 8px;
-		margin-bottom: 8px;
-		color: #92400e;
-		text-align: center;
 	}
 
 	.geocoding-loading {
@@ -594,6 +901,38 @@
 		font-size: 11px;
 		color: #4b5563;
 		line-height: 1.2;
+	}
+
+	/* Map wrapper and content layout styles */
+	.map-wrapper {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.map-content {
+		height: 100%;
+		transition: margin-left 0.3s ease-out;
+	}
+
+	.map-content.full-width {
+		margin-left: 0;
+	}
+
+	.map-content.with-panel {
+		margin-left: 400px; /* Width of side panel */
+	}
+
+	/* Responsive margins for map content */
+	@media (max-width: 768px) {
+		.map-content.with-panel {
+			margin-left: 320px;
+		}
+	}
+
+	@media (max-width: 500px) {
+		.map-content.with-panel {
+			margin-left: 280px;
+		}
 	}
 
 	/* Ensure map doesn't interfere with page scrolling */
