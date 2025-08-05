@@ -86,13 +86,23 @@
 
 	// Async function to load grouped slot markers from shared capacities
 	async function loadShareSlotMarkers(sharedCapacities: typeof $userNetworkCapacitiesWithShares) {
+		console.log('[Map] 🚀 loadShareSlotMarkers called with:', {
+			sharedCapacities: !!sharedCapacities,
+			type: typeof sharedCapacities,
+			keysCount: sharedCapacities ? Object.keys(sharedCapacities).length : 'N/A',
+			environment: {
+				hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+				protocol: typeof window !== 'undefined' ? window.location.protocol : 'SSR'
+			}
+		});
+
 		if (!sharedCapacities) {
-			console.log('[Map] No userNetworkCapacitiesWithShares available');
+			console.log('[Map] ❌ No userNetworkCapacitiesWithShares available');
 			shareSlotMarkers = [];
 			return;
 		}
 
-		console.log('[Map] userNetworkCapacitiesWithShares:', sharedCapacities);
+		console.log('[Map] ✅ userNetworkCapacitiesWithShares:', sharedCapacities);
 		console.log('[Map] Total shared capacities:', Object.keys(sharedCapacities).length);
 
 		// Prevent multiple simultaneous calls by checking loading state
@@ -117,9 +127,11 @@
 		>();
 
 		try {
+			console.log('[Map] ⏳ Starting geocoding process...');
 			isLoadingGeocode = true;
 
 			for (const [capacityId, capacity] of Object.entries(sharedCapacities)) {
+				console.log(`[Map] Processing capacity ${capacityId}:`, capacity.name);
 				const providerId = (capacity as any).provider_id;
 				let providerName = 'Unknown Provider';
 
@@ -145,9 +157,9 @@
 				if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
 					for (const slot of capacity.availability_slots) {
 						// Check location type first - only show "Specific" locations on map
-						if (slot.location_type !== 'Specific') {
+						if ((slot as any).location_type !== 'Specific') {
 							console.log(
-								`[Map] Skipping slot ${slot.id} - location_type is ${slot.location_type || 'undefined'}, not 'Specific'`
+								`[Map] Skipping slot ${slot.id} - location_type is ${(slot as any).location_type || 'undefined'}, not 'Specific'`
 							);
 							continue;
 						}
@@ -164,28 +176,56 @@
 							slot.country
 						) {
 							try {
-								console.log(`[Map] Attempting to geocode slot ${slot.id} address`);
+								const addressStr = [
+									(slot as any).street_address,
+									(slot as any).city,
+									(slot as any).state_province,
+									(slot as any).postal_code,
+									(slot as any).country
+								]
+									.filter(Boolean)
+									.join(', ');
+								console.log(
+									`[Map] 🌐 Attempting to geocode slot ${slot.id} address: "${addressStr}"`
+								);
 
 								const geocodeResults = await geocodeCapacityAddress({
-									street_address: slot.street_address,
-									city: slot.city,
-									state_province: slot.state_province,
-									postal_code: slot.postal_code,
-									country: slot.country
+									street_address: (slot as any).street_address,
+									city: (slot as any).city,
+									state_province: (slot as any).state_province,
+									postal_code: (slot as any).postal_code,
+									country: (slot as any).country
 								});
+
+								console.log(`[Map] Geocoding API response for slot ${slot.id}:`, geocodeResults);
 
 								if (geocodeResults.length > 0) {
 									const result = geocodeResults[0]; // Use the first (best) result
 									slotLnglat = { lat: result.latitude, lng: result.longitude };
 									source = 'geocoded';
 									console.log(
-										`[Map] Successfully geocoded slot ${slot.id}: ${result.latitude}, ${result.longitude}`
+										`[Map] ✅ Successfully geocoded slot ${slot.id}: ${result.latitude}, ${result.longitude}`
 									);
 								} else {
-									console.warn(`[Map] No geocoding results for slot ${slot.id}`);
+									console.warn(
+										`[Map] ⚠️ No geocoding results for slot ${slot.id} (address: "${addressStr}")`
+									);
 								}
 							} catch (geocodeError) {
-								console.warn(`[Map] Geocoding failed for slot ${slot.id}:`, geocodeError);
+								console.error(`[Map] ❌ Geocoding failed for slot ${slot.id}:`, {
+									error: geocodeError,
+									message: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+									stack: geocodeError instanceof Error ? geocodeError.stack : undefined,
+									address: [
+										slot.street_address,
+										slot.city,
+										slot.state_province,
+										slot.postal_code,
+										slot.country
+									]
+										.filter(Boolean)
+										.join(', ')
+								});
 							}
 						}
 
@@ -199,14 +239,14 @@
 						}
 
 						// Priority 3: Fall back to capacity coordinates if slot has no location but capacity does
-						if (!slotLnglat && capacity.location_type === 'Specific') {
+						if (!slotLnglat && (capacity as any).location_type === 'Specific') {
 							// Try capacity address first
 							if (
-								capacity.street_address ||
-								capacity.city ||
-								capacity.state_province ||
-								capacity.postal_code ||
-								capacity.country
+								(capacity as any).street_address ||
+								(capacity as any).city ||
+								(capacity as any).state_province ||
+								(capacity as any).postal_code ||
+								(capacity as any).country
 							) {
 								try {
 									console.log(
@@ -214,11 +254,11 @@
 									);
 
 									const geocodeResults = await geocodeCapacityAddress({
-										street_address: capacity.street_address,
-										city: capacity.city,
-										state_province: capacity.state_province,
-										postal_code: capacity.postal_code,
-										country: capacity.country
+										street_address: (capacity as any).street_address,
+										city: (capacity as any).city,
+										state_province: (capacity as any).state_province,
+										postal_code: (capacity as any).postal_code,
+										country: (capacity as any).country
 									});
 
 									if (geocodeResults.length > 0) {
@@ -240,13 +280,13 @@
 							// Final fallback to capacity coordinates
 							if (
 								!slotLnglat &&
-								capacity.latitude !== undefined &&
-								capacity.longitude !== undefined
+								(capacity as any).latitude !== undefined &&
+								(capacity as any).longitude !== undefined
 							) {
-								slotLnglat = { lat: capacity.latitude, lng: capacity.longitude };
+								slotLnglat = { lat: (capacity as any).latitude, lng: (capacity as any).longitude };
 								source = 'coordinates';
 								console.log(
-									`[Map] Using capacity coordinates for slot ${slot.id}: ${capacity.latitude}, ${capacity.longitude}`
+									`[Map] Using capacity coordinates for slot ${slot.id}: ${(capacity as any).latitude}, ${(capacity as any).longitude}`
 								);
 							}
 						}
@@ -329,14 +369,23 @@
 		}
 	}, 300);
 
-	// Use $derived.by to reactively load markers when capacities change
+	// Reactive loading with $derived.by
 	let markersLoader = $derived.by(() => {
+		console.log('[Map] markersLoader triggered');
+		console.log('[Map] currentCapacities:', currentCapacities);
+		console.log('[Map] currentCapacities type:', typeof currentCapacities);
+		console.log(
+			'[Map] currentCapacities keys:',
+			currentCapacities ? Object.keys(currentCapacities) : 'null/undefined'
+		);
+
 		if (currentCapacities && Object.keys(currentCapacities).length > 0) {
+			console.log('[Map] ✅ Data available, calling debouncedLoadMarkers');
 			debouncedLoadMarkers(currentCapacities);
 			return 'loaded';
 		} else {
-			console.log('[Map] No capacities available, clearing markers');
-			shareSlotMarkers = [];
+			console.log('[Map] ❌ No data available');
+			console.log('[Map] userNetworkCapacitiesWithShares raw:', $userNetworkCapacitiesWithShares);
 			return 'empty';
 		}
 	});
@@ -548,6 +597,16 @@
 
 		setLocationError(errorMessage);
 	}
+
+	// Debug info
+	$inspect('[Map] shareSlotMarkers count:', shareSlotMarkers.length);
+	$inspect('[Map] isLoadingGeocode:', isLoadingGeocode);
+	$inspect('[Map] selectedMarker:', selectedMarker);
+	$inspect('[Map] Environment check:', {
+		hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+		protocol: typeof window !== 'undefined' ? window.location.protocol : 'SSR',
+		userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'SSR'
+	});
 </script>
 
 <div class="map-wrapper relative h-[400px] max-h-[50vh] min-h-[300px] overflow-hidden rounded-md">
