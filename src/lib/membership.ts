@@ -2,9 +2,9 @@ import { writable } from 'svelte/store';
 import { mutualFulfillment } from '$lib/protocol';
 import type { Node } from '$lib/schema';
 
-const players = writable([]);
+const players = writable<any[]>([]);
 
-const currentMembers = writable([]);
+const currentMembers = writable<Node[]>([]);
 
 // Membership qualification function
 export function qualifiesForMembership(

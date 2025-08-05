@@ -142,54 +142,27 @@ export function ruleToFilter(rule: JsonLogicRule): ShareFilter {
 	};
 }
 
-// Helper to filter capacity shares using the capacity's filter rule
+/**
+ * Apply capacity-level filter rules to a share map.
+ *
+ * IMPORTANT: This function ONLY handles logical filtering (e.g., include/exclude nodes, thresholds).
+ * For slot-based divisibility constraints (e.g., max_percentage_div, max_natural_div),
+ * use applySlotConstraints() in slots.svelte.ts instead.
+ *
+ * This separation ensures:
+ * 1. Logical filters work at capacity level (who can participate)
+ * 2. Divisibility constraints work at slot level (how resources are divided)
+ */
 export function applyCapacityFilter(
 	capacity: BaseCapacity,
 	shareMap: ShareMap,
 	context?: FilterContext
 ): ShareMap {
 	if (!capacity.filter_rule) {
-		const normalized = normalizeShareMap({ ...shareMap });
-		// Apply percentage divisibility constraints
-		return applyPercentageConstraints(capacity, normalized);
+		return normalizeShareMap({ ...shareMap });
 	}
 
-	const filtered = filter(shareMap, ruleToFilter(capacity.filter_rule), context);
-	// Apply percentage divisibility constraints to filtered results
-	return applyPercentageConstraints(capacity, filtered);
-}
-
-// Apply percentage divisibility constraints to a share map
-function applyPercentageConstraints(capacity: BaseCapacity, shareMap: ShareMap): ShareMap {
-	const maxPercent = capacity.max_percentage_div || 1;
-	const maxNatural = capacity.max_natural_div || 1;
-	const quantity = capacity.quantity || 0;
-
-	// If no constraints to apply or quantity is 0, return as-is
-	if ((maxPercent >= 1 && maxNatural <= 1) || quantity === 0) {
-		return shareMap;
-	}
-
-	const constrainedMap: ShareMap = {};
-
-	// Calculate effective step size based on both constraints
-	const naturalStep = maxNatural / quantity;
-	const percentStep = maxPercent;
-	const effectiveStep = Math.min(naturalStep, percentStep);
-
-	// Apply constraints to each share
-	for (const [recipientId, share] of Object.entries(shareMap)) {
-		// Round to the nearest valid step
-		const constrainedShare = Math.round(share / effectiveStep) * effectiveStep;
-
-		if (constrainedShare > 0) {
-			// Only include non-zero shares
-			constrainedMap[recipientId] = Math.min(constrainedShare, 1.0);
-		}
-	}
-
-	// Normalize to ensure they still sum to 1.0
-	return normalizeShareMap(constrainedMap);
+	return filter(shareMap, ruleToFilter(capacity.filter_rule), context);
 }
 
 // Normalize a ShareMap so values sum to 1

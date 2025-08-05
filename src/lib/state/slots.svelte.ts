@@ -25,6 +25,40 @@ function getTotalComputedQuantity(capacity: any): number {
 	return 0;
 }
 
+// Apply divisibility constraints to a specific slot's available quantity
+function applySlotConstraints(
+	capacity: any,
+	slot: any,
+	rawQuantity: number
+): { constrainedQuantity: number; constraintApplied: boolean; constraintReason?: string } {
+	const maxPercent = capacity.max_percentage_div || 1;
+	const maxNatural = capacity.max_natural_div || 1;
+
+	// Apply percentage constraint (max % of this specific slot)
+	const percentConstrained = Math.min(rawQuantity, slot.quantity * maxPercent);
+
+	// Apply natural divisibility constraint (round to valid increments)
+	const naturalConstrained = Math.round(percentConstrained / maxNatural) * maxNatural;
+
+	const finalQuantity = Math.max(0, naturalConstrained);
+	const constraintApplied = finalQuantity !== rawQuantity;
+
+	let constraintReason: string | undefined;
+	if (constraintApplied) {
+		if (percentConstrained < rawQuantity) {
+			constraintReason = `Limited to ${(maxPercent * 100).toFixed(1)}% of slot (${(slot.quantity * maxPercent).toFixed(1)} max units)`;
+		} else if (naturalConstrained !== percentConstrained) {
+			constraintReason = `Rounded to ${maxNatural} unit increments (${finalQuantity} units)`;
+		}
+	}
+
+	return {
+		constrainedQuantity: finalQuantity,
+		constraintApplied,
+		constraintReason
+	};
+}
+
 // SLOT DESIRES MODEL:
 // Structure: capacityId → slotId → desiredQuantity
 // Example: "john-consulting" → "morning-slots" → 4 means:
@@ -56,7 +90,14 @@ export const feasibleSlotClaims = derived(
 				// Direct calculation: slot.quantity × our_share_percentage
 				const ourSharePercentage =
 					'share_percentage' in capacity ? (capacity as any).share_percentage : 0;
-				const maxAvailableUnits = slot.quantity * ourSharePercentage;
+				const rawAvailableUnits = slot.quantity * ourSharePercentage;
+
+				// Apply slot-specific divisibility constraints
+				const {
+					constrainedQuantity: maxAvailableUnits,
+					constraintApplied,
+					constraintReason
+				} = applySlotConstraints(capacity, slot, rawAvailableUnits);
 
 				// Apply share limit constraint
 				const finalFeasibleQuantity = Math.min(desiredQuantity, maxAvailableUnits);
@@ -67,10 +108,14 @@ export const feasibleSlotClaims = derived(
 					}
 					finalFeasible[capacityId][slotId] = finalFeasibleQuantity;
 
-					// Log constraint reasons with clear share-based language
+					// Log constraint reasons with slot-level constraint details
 					if (finalFeasibleQuantity < desiredQuantity) {
+						let limitingFactor = `${(ourSharePercentage * 100).toFixed(1)}% share = ${rawAvailableUnits.toFixed(1)} raw units`;
+						if (constraintApplied && constraintReason) {
+							limitingFactor += ` → ${maxAvailableUnits.toFixed(1)} units (${constraintReason})`;
+						}
 						console.log(
-							`[FEASIBLE-SLOT-CLAIMS] Share-limited ${capacityId}:${slotId}: desired ${desiredQuantity} → ${finalFeasibleQuantity} (limited by ${(ourSharePercentage * 100).toFixed(1)}% share = ${maxAvailableUnits.toFixed(1)} max units)`
+							`[FEASIBLE-SLOT-CLAIMS] Constrained ${capacityId}:${slotId}: desired ${desiredQuantity} → ${finalFeasibleQuantity} (limited by ${limitingFactor})`
 						);
 					}
 				}
@@ -143,11 +188,18 @@ export const slotClaimMetadata = derived(
 				const slot = getSlotById(capacity, slotId);
 				if (!slot) return;
 
-				// Direct calculations for UI
+				// Direct calculations for UI with slot-level constraints
 				const ourSharePercentage =
 					'share_percentage' in capacity ? (capacity as any).share_percentage : 0;
 				const slotTotalQuantity = slot.quantity;
-				const maxAvailableUnits = slotTotalQuantity * ourSharePercentage;
+				const rawAvailableUnits = slotTotalQuantity * ourSharePercentage;
+
+				// Apply slot-specific divisibility constraints
+				const {
+					constrainedQuantity: maxAvailableUnits,
+					constraintApplied,
+					constraintReason
+				} = applySlotConstraints(capacity, slot, rawAvailableUnits);
 
 				// Apply share constraint
 				const finalFeasibleQuantity = Math.min(desiredQuantity, maxAvailableUnits);
@@ -158,7 +210,12 @@ export const slotClaimMetadata = derived(
 
 				if (finalFeasibleQuantity < desiredQuantity) {
 					constraintType = 'share_limit';
-					reasonLimited = `Limited by your ${(ourSharePercentage * 100).toFixed(1)}% share (${maxAvailableUnits.toFixed(1)} units available)`;
+					let baseReason = `Limited by your ${(ourSharePercentage * 100).toFixed(1)}% share`;
+					if (constraintApplied && constraintReason) {
+						reasonLimited = `${baseReason}. ${constraintReason} (${maxAvailableUnits.toFixed(1)} units available)`;
+					} else {
+						reasonLimited = `${baseReason} (${maxAvailableUnits.toFixed(1)} units available)`;
+					}
 				} else {
 					constraintType = 'no_constraint';
 				}

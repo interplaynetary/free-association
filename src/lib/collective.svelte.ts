@@ -55,10 +55,12 @@ function getCacheKey(a: EntityID, b: EntityID): string {
 	return `${a}<=>${b}`;
 }
 
-// Get node capacities (mock implementation - needs to be adapted to your actual capacity system)
+// Get node capacities from the node's capacities collection
 function getNodeCapacities(node: Node): CapacitiesCollection {
-	// This is a placeholder - you'll need to implement this based on your capacity storage system
-	// For now, return empty collection
+	// Return the capacities directly from the node if available
+	if ('capacities' in node && node.capacities) {
+		return node.capacities as CapacitiesCollection;
+	}
 	return {};
 }
 
@@ -224,10 +226,17 @@ function collectiveCapacity(ci: Forest, collective: Collective): number {
 			total += collectiveCapacity(ci, member) * phi;
 		} else {
 			const capacities = getNodeCapacities(member as Node);
-			const memberCap = Object.values(capacities).reduce(
-				(acc, cap) => acc + (cap.quantity || 0),
-				0
-			);
+			const memberCap = Object.values(capacities).reduce((acc, cap) => {
+				// Calculate total quantity from availability_slots
+				if (cap.availability_slots && Array.isArray(cap.availability_slots)) {
+					const slotTotal = cap.availability_slots.reduce(
+						(slotSum, slot) => slotSum + (slot.quantity || 0),
+						0
+					);
+					return acc + slotTotal;
+				}
+				return acc;
+			}, 0);
 			total += memberCap * phi;
 		}
 	}
