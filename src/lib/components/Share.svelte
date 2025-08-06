@@ -398,20 +398,20 @@
 				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
 			{/if}
 			<!-- Chat button -->
-			<button
-				type="button"
+				<button
+					type="button"
 				class="chat-btn relative"
-				onclick={(e) => {
-					e.stopPropagation();
+					onclick={(e) => {
+						e.stopPropagation();
 					toggleChat();
-				}}
+					}}
 				title="Chat about this capacity"
-			>
+				>
 				💬
 				{#if $unreadCount > 0 && !expanded}
 					<span class="unread-badge-btn">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
 				{/if}
-			</button>
+				</button>
 			<button
 				type="button"
 				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
@@ -478,10 +478,10 @@
 							{#if recurringSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().recurring as slot (slot.id)}
-										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
-										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
-											<!-- Slot header row -->
-											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+							{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+							<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+								<!-- Slot header row -->
+								<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
 												<!-- Your share quantity -->
 												<span
 													class="slot-quantity flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-sm font-medium text-purple-800"
@@ -495,7 +495,7 @@
 												<!-- Total slot quantity for context -->
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
 													of {slot.quantity} total
-												</span>
+									</span>
 
 												<!-- Recurrence indicator -->
 												<span
@@ -553,47 +553,47 @@
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-												<!-- Your share quantity -->
-												<span
-													class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
-												>
-													{Number.isInteger(computedQuantity)
-														? computedQuantity
-														: computedQuantity.toFixed(2)}
-													{share.unit}
-												</span>
+									<!-- Your share quantity -->
+									<span
+										class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+									>
+										{Number.isInteger(computedQuantity)
+											? computedQuantity
+											: computedQuantity.toFixed(2)}
+										{share.unit}
+									</span>
 
-												<!-- Total slot quantity for context -->
-												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-													of {slot.quantity} total
-												</span>
-											</div>
-
-											<!-- Slot summary row -->
-											<div class="slot-summary mb-2 text-xs text-gray-500">
-												<div class="flex flex-wrap gap-4">
-													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-													<span>📍 {formatSlotLocationDisplay(slot)}</span>
-													{#if slot.mutual_agreement_required}
-														<span>🤝 Mutual agreement required</span>
-													{/if}
-												</div>
-											</div>
-
-											<!-- Constraints info if present -->
-											{#if slot.advance_notice_hours || slot.booking_window_hours}
-												<div class="slot-constraints text-xs text-gray-500">
-													{#if slot.advance_notice_hours}
-														<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
-													{/if}
-													{#if slot.booking_window_hours}
-														<span>📅 Book within {slot.booking_window_hours}h window</span>
-													{/if}
-												</div>
-											{/if}
-										</div>
-									{/each}
+									<!-- Total slot quantity for context -->
+									<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+										of {slot.quantity} total
+									</span>
 								</div>
+
+								<!-- Slot summary row -->
+								<div class="slot-summary mb-2 text-xs text-gray-500">
+									<div class="flex flex-wrap gap-4">
+										<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+										<span>📍 {formatSlotLocationDisplay(slot)}</span>
+										{#if slot.mutual_agreement_required}
+											<span>🤝 Mutual agreement required</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Constraints info if present -->
+								{#if slot.advance_notice_hours || slot.booking_window_hours}
+									<div class="slot-constraints text-xs text-gray-500">
+										{#if slot.advance_notice_hours}
+											<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+										{/if}
+										{#if slot.booking_window_hours}
+											<span>📅 Book within {slot.booking_window_hours}h window</span>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
 							{/if}
 						</div>
 					{/if}

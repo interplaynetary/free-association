@@ -238,15 +238,15 @@ class StreamSubscriptionManager {
 		// Check if stream already exists and is active
 		const existingStream = this.activeStreams.get(streamKey);
 		if (existingStream && existingStream.active) {
-			console.log(
+			/*console.log(
 				`[STREAM-MANAGER] Stream ${streamKey} already exists and is active, skipping creation`
-			);
+			);*/
 			return;
 		}
 
 		// Only stop existing stream if it exists but is not active
 		if (existingStream) {
-			console.log(`[STREAM-MANAGER] Stopping inactive stream for ${streamKey}`);
+			//console.log(`[STREAM-MANAGER] Stopping inactive stream for ${streamKey}`);
 			existingStream.stop();
 			this.activeStreams.delete(streamKey);
 		}
@@ -263,9 +263,9 @@ class StreamSubscriptionManager {
 
 		try {
 			await stream.start();
-			console.log(`[STREAM-MANAGER] Created stream for ${streamKey}`);
+			//console.log(`[STREAM-MANAGER] Created stream for ${streamKey}`);
 		} catch (error) {
-			console.error(`[STREAM-MANAGER] Failed to create stream for ${streamKey}:`, error);
+			//console.error(`[STREAM-MANAGER] Failed to create stream for ${streamKey}:`, error);
 			this.activeStreams.delete(streamKey);
 			throw error;
 		}
@@ -279,7 +279,7 @@ class StreamSubscriptionManager {
 		const stream = this.activeStreams.get(streamKey);
 
 		if (stream) {
-			console.log(`[STREAM-MANAGER] Stopping stream for ${streamKey}`);
+			//console.log(`[STREAM-MANAGER] Stopping stream for ${streamKey}`);
 			stream.stop();
 			this.activeStreams.delete(streamKey);
 		}
@@ -293,7 +293,7 @@ class StreamSubscriptionManager {
 
 		for (const [streamKey, stream] of this.activeStreams.entries()) {
 			if (streamKey.startsWith(`${contributorId}_`)) {
-				console.log(`[STREAM-MANAGER] Stopping contributor stream: ${streamKey}`);
+				//console.log(`[STREAM-MANAGER] Stopping contributor stream: ${streamKey}`);
 				stream.stop();
 				keysToRemove.push(streamKey);
 			}
@@ -306,7 +306,7 @@ class StreamSubscriptionManager {
 	 * Stop all streams
 	 */
 	stopAllStreams(): void {
-		console.log(`[STREAM-MANAGER] Stopping all ${this.subscriptionType} streams`);
+		//console.log(`[STREAM-MANAGER] Stopping all ${this.subscriptionType} streams`);
 
 		for (const [streamKey, stream] of this.activeStreams.entries()) {
 			stream.stop();
@@ -335,15 +335,15 @@ class StreamSubscriptionManager {
 	): Promise<void> {
 		// Prevent concurrent updates
 		if (this.isUpdating) {
-			console.log(`[STREAM-MANAGER] ${this.subscriptionType} update already in progress, skipping`);
+			//console.log(`[STREAM-MANAGER] ${this.subscriptionType} update already in progress, skipping`);
 			return;
 		}
 
 		// Check if contributors list has actually changed
 		if (this.arraysEqual(newContributors, this.lastContributorsList)) {
-			console.log(
+			/*console.log(
 				`[STREAM-MANAGER] ${this.subscriptionType} contributors unchanged, skipping update`
-			);
+			);*/
 			return;
 		}
 
@@ -351,16 +351,16 @@ class StreamSubscriptionManager {
 
 		try {
 			if (!newContributors.length) {
-				console.log(
+				/*console.log(
 					`[STREAM-MANAGER] No ${this.subscriptionType} contributors, stopping all streams`
-				);
+				);*/
 				this.stopAllStreams();
 				return;
 			}
 
-			console.log(
+			/*console.log(
 				`[STREAM-MANAGER] Updating ${this.subscriptionType} subscriptions for ${newContributors.length} contributors`
-			);
+			);*/
 
 			// Calculate current contributors from active streams
 			const currentContributors = new Set<string>();
@@ -375,29 +375,29 @@ class StreamSubscriptionManager {
 
 			// Remove old streams for contributors no longer in the list
 			for (const contributorId of toRemove) {
-				console.log(`[STREAM-MANAGER] Removing streams for contributor: ${contributorId}`);
+				//console.log(`[STREAM-MANAGER] Removing streams for contributor: ${contributorId}`);
 				this.stopContributorStreams(contributorId);
 			}
 
 			// Add new streams for new contributors
 			for (const contributorId of toAdd) {
 				try {
-					console.log(`[STREAM-MANAGER] Adding streams for contributor: ${contributorId}`);
+					//console.log(`[STREAM-MANAGER] Adding streams for contributor: ${contributorId}`);
 					await createStreamFn(contributorId);
 				} catch (error) {
-					console.error(
+					/*console.error(
 						`[STREAM-MANAGER] Failed to create streams for contributor ${contributorId}:`,
 						error
-					);
+					);*/
 				}
 			}
 
 			// Update last contributors list
 			this.lastContributorsList = [...newContributors];
 
-			console.log(
+			/*console.log(
 				`[STREAM-MANAGER] ${this.subscriptionType} streams: +${toAdd.length} -${toRemove.length} (total: ${this.activeStreams.size})`
-			);
+			);*/
 		} finally {
 			this.isUpdating = false;
 		}
@@ -432,9 +432,9 @@ function cleanupNetworkStores(
 ) {
 	if (removedContributors.length === 0) return;
 
-	console.log(
+	/*console.log(
 		`[NETWORK] Cleaning up data for removed contributors: ${removedContributors.join(', ')}`
-	);
+	);*/
 
 	stores.forEach(({ store, name }) => {
 		store.update((current: Record<string, any>) => {
@@ -444,7 +444,7 @@ function cleanupNetworkStores(
 					cleaned[contributorId] = data;
 				}
 			});
-			console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
+			//console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
 			return cleaned;
 		});
 	});
@@ -461,11 +461,11 @@ function withAuthentication<T extends any[]>(
 		try {
 			ourId = get(userPub);
 			if (!ourId) {
-				console.log('[NETWORK] Cannot create stream - not authenticated');
+				//console.log('[NETWORK] Cannot create stream - not authenticated');
 				return;
 			}
 		} catch (error) {
-			console.log('[NETWORK] Cannot create stream - userPub not initialized');
+			//console.log('[NETWORK] Cannot create stream - userPub not initialized');
 			return;
 		}
 
@@ -490,7 +490,7 @@ function createDataProcessor<T>(config: {
 			config;
 
 		if (!rawData) {
-			console.log(`[NETWORK] No ${dataType} data found`);
+			//console.log(`[NETWORK] No ${dataType} data found`);
 			if (emptyValue !== undefined) {
 				updateStore(emptyValue);
 			}
@@ -498,7 +498,7 @@ function createDataProcessor<T>(config: {
 			return;
 		}
 
-		console.log(`[NETWORK] Received ${dataType} update from stream`);
+		//console.log(`[NETWORK] Received ${dataType} update from stream`);
 		loadingFlag?.set(true);
 
 		try {
@@ -517,16 +517,16 @@ function createDataProcessor<T>(config: {
 			// Check if data has changed
 			const currentData = getCurrentData();
 			if (currentData && JSON.stringify(currentData) === JSON.stringify(processedData)) {
-				console.log(`[NETWORK] Incoming ${dataType} matches current ${dataType}, ignoring update`);
+				//console.log(`[NETWORK] Incoming ${dataType} matches current ${dataType}, ignoring update`);
 				loadingFlag?.set(false);
 				return;
 			}
 
-			console.log(`[NETWORK] ${dataType} data changed, updating local store`);
+			//console.log(`[NETWORK] ${dataType} data changed, updating local store`);
 			updateStore(processedData);
 			onUpdate?.();
 		} catch (error) {
-			console.error(`[NETWORK] Error processing ${dataType}:`, error);
+			//console.error(`[NETWORK] Error processing ${dataType}:`, error);
 		} finally {
 			loadingFlag?.set(false);
 		}
@@ -555,7 +555,7 @@ async function createStream<T>(
 	const { type, streamManager, getGunPath, processor, errorHandler } = config;
 	const targetId = contributorId || userId;
 
-	console.log(`[NETWORK] Creating ${type} stream for: ${targetId}`);
+	//console.log(`[NETWORK] Creating ${type} stream for: ${targetId}`);
 
 	await streamManager.createStream(
 		targetId,
@@ -599,7 +599,7 @@ const ownDataStreamConfigs = {
 			loadingFlag: isLoadingCapacities
 		}),
 		errorHandler: (error: any) => {
-			console.error('[NETWORK] Error in own capacities stream:', error);
+			//console.error('[NETWORK] Error in own capacities stream:', error);
 			isLoadingCapacities.set(false);
 		}
 	},
@@ -613,7 +613,7 @@ const ownDataStreamConfigs = {
 			getCurrentData: () => get(userContacts),
 			updateStore: (data) => {
 				// Update the contacts store
-				console.log('[Network Contacts]', data);
+				//console.log('[Network Contacts]', data);
 				userContacts.set(data);
 			},
 			loadingFlag: isLoadingContacts,
@@ -720,7 +720,7 @@ const chatStreamConfigs = {
 							// Add message and keep sorted
 							const updatedMessages = [...currentMessages, message].sort((a, b) => a.when - b.when);
 							chatStore.set(updatedMessages);
-							console.log(`[NETWORK-CHAT] New message in ${chatId}:`, message.what);
+							//console.log(`[NETWORK-CHAT] New message in ${chatId}:`, message.what);
 						}
 					}
 				} catch (error) {
@@ -747,9 +747,9 @@ const contributorStreamConfigs = {
 		getGunPath: (userId: string, contributorId: string) => {
 			const pubKey = resolveToPublicKey(contributorId);
 			if (!pubKey) {
-				console.warn(
+				/*console.warn(
 					`[NETWORK] Cannot create SOGF stream for ${contributorId}: no public key available`
-				);
+				);*/
 				return null;
 			}
 			return gun.user(pubKey).get('sogf');
@@ -828,7 +828,7 @@ const mutualContributorStreamConfigs = {
 		},
 		processor: (contributorId: string) => (shares: any) => {
 			if (!shares) {
-				console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
+				//console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
 				networkCapacityShares.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -873,7 +873,7 @@ const mutualContributorStreamConfigs = {
 		},
 		processor: (contributorId: string) => (composeFromData: any) => {
 			if (!composeFromData) {
-				console.log(`[NETWORK] No desired slot compose-from from contributor ${contributorId}`);
+				//console.log(`[NETWORK] No desired slot compose-from from contributor ${contributorId}`);
 				networkDesiredSlotComposeFrom.update((current: NetworkSlotComposition) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -881,9 +881,9 @@ const mutualContributorStreamConfigs = {
 				return;
 			}
 
-			console.log(
+			/*console.log(
 				`[NETWORK] Received desired slot compose-from update from stream for ${contributorId}`
-			);
+			);*/
 
 			const validatedComposeFrom = parseUserSlotComposition(composeFromData);
 			const currentNetworkComposeFrom = get(networkDesiredSlotComposeFrom)[contributorId] || {};
@@ -914,7 +914,7 @@ const mutualContributorStreamConfigs = {
 		},
 		processor: (contributorId: string) => (composeIntoData: any) => {
 			if (!composeIntoData) {
-				console.log(`[NETWORK] No desired slot compose-into from contributor ${contributorId}`);
+				//console.log(`[NETWORK] No desired slot compose-into from contributor ${contributorId}`);
 				networkDesiredSlotComposeInto.update((current: NetworkSlotComposition) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -991,9 +991,9 @@ const createContributorSOGFStream = async (contributorId: string) => {
 	const config = contributorStreamConfigs.sogf;
 	const pubKey = resolveToPublicKey(contributorId);
 	if (!pubKey) {
-		console.warn(
+		/*console.warn(
 			`[NETWORK] Cannot create SOGF stream for ${contributorId}: no public key available`
-		);
+		);*/
 		return;
 	}
 
@@ -1008,7 +1008,7 @@ const createContributorSOGFStream = async (contributorId: string) => {
 		config.errorHandler(pubKey)
 	);
 
-	console.log(`[STREAM-DEBUG] Created SOGF stream with key: ${pubKey}`);
+	//console.log(`[STREAM-DEBUG] Created SOGF stream with key: ${pubKey}`);
 };
 
 const createMutualContributorStreams = withAuthentication(
@@ -1017,9 +1017,9 @@ const createMutualContributorStreams = withAuthentication(
 
 		const pubKey = resolveToPublicKey(contributorId);
 		if (!pubKey) {
-			console.warn(
+			/*console.warn(
 				`[NETWORK] Cannot create mutual contributor streams for ${contributorId}: no public key available`
-			);
+			);*/
 			return;
 		}
 
@@ -1100,22 +1100,22 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
 
 	if (resolvedContributorId !== contributorId) {
-		console.log(`[NETWORK] Resolved ${contributorId} to ${resolvedContributorId}`);
+		//console.log(`[NETWORK] Resolved ${contributorId} to ${resolvedContributorId}`);
 	}
 
-	console.log(`[NETWORK-DEBUG] Current recognition cache before update:`, get(recognitionCache));
+	//console.log(`[NETWORK-DEBUG] Current recognition cache before update:`, get(recognitionCache));
 
 	// Get current cache entry using the resolved ID (consistent with calculation layer)
 	const cache = get(recognitionCache);
 	const existing = cache[resolvedContributorId];
 
-	console.log(`[NETWORK] Existing cache entry for ${resolvedContributorId}:`, existing);
+	//console.log(`[NETWORK] Existing cache entry for ${resolvedContributorId}:`, existing);
 
 	// Update the cache immediately with new theirShare using resolved public key
 	recognitionCache.update((cache) => {
 		if (existing) {
 			// Update only theirShare in existing entry
-			console.log(`[NETWORK] Updating existing entry for ${resolvedContributorId}`);
+			//console.log(`[NETWORK] Updating existing entry for ${resolvedContributorId}`);
 			cache[resolvedContributorId] = {
 				...cache[resolvedContributorId],
 				theirShare,
@@ -1123,7 +1123,7 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 			};
 		} else {
 			// Create new entry with default ourShare of 0, using resolved public key
-			console.log(`[NETWORK] Creating new entry for ${resolvedContributorId} with ourShare=0`);
+			//console.log(`[NETWORK] Creating new entry for ${resolvedContributorId} with ourShare=0`);
 			cache[resolvedContributorId] = {
 				ourShare: 0, // We don't know our share yet
 				theirShare,
@@ -1131,27 +1131,27 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 			};
 		}
 
-		console.log(
+		/*console.log(
 			`[NETWORK] Updated cache entry for ${resolvedContributorId}:`,
 			cache[resolvedContributorId]
-		);
+		);*/
 		return cache;
 	});
 
 	// Log the updated cache and force reactivity check
 	const updatedCache = get(recognitionCache);
 
-	console.log(
+	/*console.log(
 		`[NETWORK-DEBUG] Cache after network update from ${resolvedContributorId}:`,
 		updatedCache
-	);
+	);*/
 }
 
 // Centralized reactive subscription to usersList
 function setupUsersListSubscription() {
 	if (typeof window === 'undefined') return; // Only run in browser
 
-	console.log('[USERS] Setting up centralized usersList subscription');
+	//console.log('[USERS] Setting up centralized usersList subscription');
 
 	// Track current users to detect additions/removals
 	const currentUsers = new Map<string, any>();
@@ -1236,15 +1236,15 @@ const debouncedUpdateChatSubscriptions = debounce((chatIds: string[]) => {
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
-			console.log('[NETWORK] Cannot subscribe to chats - not authenticated');
+			//console.log('[NETWORK] Cannot subscribe to chats - not authenticated');
 			return;
 		}
 	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to chats - userPub not initialized');
+		//console.log('[NETWORK] Cannot subscribe to chats - userPub not initialized');
 		return;
 	}
 
-	console.log(`[NETWORK] Updating chat subscriptions for ${chatIds.length} chats`);
+	//console.log(`[NETWORK] Updating chat subscriptions for ${chatIds.length} chats`);
 	chatStreamManager.updateSubscriptions(chatIds, createChatMessagesStream);
 }, 100);
 
@@ -1252,27 +1252,27 @@ chatIdsToSubscribe.subscribe(debouncedUpdateChatSubscriptions);
 
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
-	console.log(
+	/*console.log(
 		'[STREAM-DEBUG] debouncedUpdateSOGFSubscriptions called with contributors:',
 		allContributors
-	);
+	);*/
 
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
-			console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
+			//console.log('[NETWORK] Cannot subscribe to contributors - not authenticated');
 			return;
 		}
 	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to contributors - userPub not initialized');
+		//console.log('[NETWORK] Cannot subscribe to contributors - userPub not initialized');
 		return;
 	}
 
-	console.log(
+	/*console.log(
 		'[STREAM-DEBUG] About to update SOGF subscriptions for',
 		allContributors.length,
 		'contributors'
-	);
+	);*/
 	sogfStreamManager.updateSubscriptions(allContributors, createContributorSOGFStream);
 }, 100);
 
@@ -1283,11 +1283,11 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
-			console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
+			//console.log('[NETWORK] Cannot subscribe to mutual contributors - not authenticated');
 			return;
 		}
 	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to mutual contributors - userPub not initialized');
+		//console.log('[NETWORK] Cannot subscribe to mutual contributors - userPub not initialized');
 		return;
 	}
 
@@ -1316,19 +1316,3 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 }, 100);
 
 mutualContributors.subscribe(debouncedUpdateMutualSubscriptions);
-
-/**
- * Debug function to manually trigger subscriptions for all contributors
- */
-export function debugTriggerSubscriptions() {
-	console.log('[DEBUG] Manually triggering stream subscriptions for all contributors');
-	const allContributors = get(contributors);
-	const allChatIds = get(chatIdsToSubscribe);
-
-	console.log(`[DEBUG] Active SOGF streams: ${sogfStreamManager.streamCount}`);
-	console.log(`[DEBUG] Active mutual streams: ${mutualStreamManager.streamCount}`);
-	console.log(`[DEBUG] Active own data streams: ${ownDataStreamManager.streamCount}`);
-	console.log(`[DEBUG] Active chat streams: ${chatStreamManager.streamCount}`);
-	console.log(`[DEBUG] Total contributors: ${allContributors.length}`);
-	console.log(`[DEBUG] Total chat IDs: ${allChatIds.length}`);
-}

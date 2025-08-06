@@ -106,7 +106,7 @@ export function subscribeToChat(chatId: string) {
 		return chatSubscriptions.get(chatId)!;
 	}
 
-	console.log(`[Chat State] Creating chat subscription for: ${chatId}`);
+	////console.log(`[Chat State] Creating chat subscription for: ${chatId}`);
 
 	const subscription: ChatSubscription = {
 		chatId,
@@ -130,7 +130,7 @@ export function unsubscribeFromChat(chatId: string) {
 	if (subscription) {
 		subscription.unsubscribe?.();
 		chatSubscriptions.delete(chatId);
-		console.log(`[Chat State] Removed subscription for chat: ${chatId}`);
+		//console.log(`[Chat State] Removed subscription for chat: ${chatId}`);
 	}
 }
 
@@ -157,7 +157,7 @@ export async function sendMessage(chatId: string, messageText: string): Promise<
 	try {
 		const encryptionKey = '#foo';
 
-		console.log(`[Chat State] Sending message to ${chatId}:`, messageText);
+		//console.log(`[Chat State] Sending message to ${chatId}:`, messageText);
 
 		const secret = await SEA.encrypt(messageText.trim(), encryptionKey);
 		if (!secret) {
@@ -171,7 +171,7 @@ export async function sendMessage(chatId: string, messageText: string): Promise<
 		// Put the message reference in the chat
 		await gun.get(chatId).get(index).put(message);
 
-		console.log(`[Chat State] Message sent successfully to ${chatId}`);
+		//console.log(`[Chat State] Message sent successfully to ${chatId}`);
 	} catch (error) {
 		console.error(`[Chat State] Error sending message to ${chatId}:`, error);
 		throw error;
@@ -193,7 +193,7 @@ export function clearAllChatSubscriptions() {
 		subscription.unsubscribe?.();
 	});
 	chatSubscriptions.clear();
-	console.log('[Chat State] Cleared all chat subscriptions');
+	//console.log('[Chat State] Cleared all chat subscriptions');
 }
 
 /**
@@ -202,7 +202,7 @@ export function clearAllChatSubscriptions() {
 export function clearAllChatData() {
 	clearAllChatSubscriptions();
 	clearChatReadStates();
-	console.log('[Chat State] Cleared all chat data');
+	//console.log('[Chat State] Cleared all chat data');
 }
 
 /**
@@ -213,7 +213,7 @@ export function clearAllChatData() {
 export function markChatAsRead(chatId: string, timestamp?: number): void {
 	const readTimestamp = timestamp || Date.now();
 
-	console.log(`[Chat State] Marking chat ${chatId} as read up to timestamp: ${readTimestamp}`);
+	//console.log(`[Chat State] Marking chat ${chatId} as read up to timestamp: ${readTimestamp}`);
 
 	chatReadStates.update((states) => {
 		const existingState = states[chatId];
@@ -225,7 +225,7 @@ export function markChatAsRead(chatId: string, timestamp?: number): void {
 				lastReadTimestamp: readTimestamp,
 				updatedAt: Date.now()
 			};
-			console.log(`[Chat State] Updated read state for ${chatId}:`, states[chatId]);
+			//console.log(`[Chat State] Updated read state for ${chatId}:`, states[chatId]);
 		}
 
 		return states;
@@ -252,9 +252,9 @@ export function getUnreadMessageCount(chatId: string): number {
 
 	// Count messages newer than last read timestamp
 	const unreadCount = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
-	console.log(
-		`[Chat State] Unread count for ${chatId}: ${unreadCount} (last read: ${readState.lastReadTimestamp})`
-	);
+	//console.log(
+	//	`[Chat State] Unread count for ${chatId}: ${unreadCount} (last read: ${readState.lastReadTimestamp})`
+	//);
 
 	return unreadCount;
 }
@@ -341,7 +341,7 @@ export function getChatReadState(chatId: string): ChatReadState | null {
  * @param states The read states to set
  */
 export function setChatReadStates(states: ChatReadStates): void {
-	console.log('[Chat State] Setting read states from network:', states);
+	//console.log('[Chat State] Setting read states from network:', states);
 	chatReadStates.set(states);
 }
 
@@ -349,7 +349,7 @@ export function setChatReadStates(states: ChatReadStates): void {
  * Clear all read states (useful for logout)
  */
 export function clearChatReadStates(): void {
-	console.log('[Chat State] Clearing all read states');
+	//console.log('[Chat State] Clearing all read states');
 	chatReadStates.set({});
 }
 
