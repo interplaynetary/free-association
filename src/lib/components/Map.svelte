@@ -214,7 +214,8 @@
 							} catch (geocodeError) {
 								console.error(`[Map] ❌ Geocoding failed for slot ${slot.id}:`, {
 									error: geocodeError,
-									message: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+									message:
+										geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
 									stack: geocodeError instanceof Error ? geocodeError.stack : undefined,
 									address: [
 										slot.street_address,

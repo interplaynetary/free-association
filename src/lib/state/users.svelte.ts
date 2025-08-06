@@ -116,7 +116,7 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 	userContacts.update((contacts) => {
 		const existingContact = contacts[contact_id];
 		if (!existingContact) {
-			console.warn(`Contact with ID ${contact_id} not found`);
+			//console.warn(`Contact with ID ${contact_id} not found`);
 			return contacts;
 		}
 
@@ -196,12 +196,12 @@ export function getPublicKeyFromContactId(contactId: string): string | undefined
 	const contact = contacts[contactId];
 
 	if (!contact) {
-		console.warn(`[USERS] Contact not found for ID: ${contactId}`);
+		//console.warn(`[USERS] Contact not found for ID: ${contactId}`);
 		return undefined;
 	}
 
 	if (!contact.public_key) {
-		console.warn(`[USERS] Contact ${contactId} (${contact.name}) has no public key`);
+		//console.warn(`[USERS] Contact ${contactId} (${contact.name}) has no public key`);
 		return undefined;
 	}
 

@@ -48,7 +48,7 @@ async function rateLimitedFetch(url: string): Promise<Response> {
 
 	return fetch(url, {
 		headers: {
-			'User-Agent': 'Free-Association-App/1.0 (contact: your-email@domain.com)' // Replace with actual contact
+			'User-Agent': 'Free-Association-App/1.0 (contact: ruzgar@playnet.lol)' // Replace with actual contact
 		}
 	});
 }
