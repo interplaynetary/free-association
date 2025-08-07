@@ -18,6 +18,10 @@ import type { Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
 import { mutualFulfillment as originalMutualFulfillment } from '$lib/protocol';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
+import { contributors } from '$lib/state/core.svelte';
+import { gun, user } from '$lib/state/gun.svelte';
+import { resolveToPublicKey } from '$lib/state/users.svelte';
+import { parseTree } from '$lib/validators/validation';
 
 /**
  * Enhanced with Memoization & Caching
@@ -35,9 +39,13 @@ interface Collective {
 type Entity = Node | Collective;
 type Forest = Map<string, Node>; // Maps node IDs to nodes
 
-// we will subscribe to collectiveMembers trees to populate collectiveForest
+// Collective members store - manually populated with specific members we want in the collective
 export const collectiveMembers: Writable<Array<Entity>> = writable([]);
+// Collective forest - populated by subscribing to trees of collective members
 export const collectiveForest: Writable<Forest> = writable(new Map());
+
+// The collectiveMembers store will be populated by the application code
+// The collectiveForest store will be populated by network.svelte subscriptions
 
 // ideally using the same format as userTree (so not strings etc.)
 

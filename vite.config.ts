@@ -43,6 +43,11 @@ export default defineConfig({
 			]
 		}
 	},
+	// Service worker configuration
+	worker: {
+		format: 'es',
+		plugins: () => [tailwindcss(), moduleExclude('text-encoding')]
+	},
 	optimizeDeps: {
 		include: [
 			'gun',

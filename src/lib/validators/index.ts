@@ -8,10 +8,10 @@
 export * from '../schema';
 
 // Export all validation functions
-export * from '../validation';
+export * from './validation';
 
 // Export convenience functions for common validations
-import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from '../validation';
+import { parseTree, parseCapacities, parseShareMap, parseRecognitionCache } from './validation';
 
 /**
  * Validate and parse JSON data using the appropriate validator

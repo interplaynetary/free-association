@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getUserName } from '$lib/state/users.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
-	import Chat from './Chat.svelte';
+	import Chat from '$lib/components/Chat.svelte';
 	import type { RecipientCapacity } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 
@@ -368,7 +368,15 @@
 		style="background-color: {getShareColor(
 			share.share_percentage
 		)}; border: 1px solid #e5e7eb; border-left: 8px solid {getColorForUserId(share.provider_id)};"
+		role="button"
+		tabindex="0"
 		onclick={toggleSlots}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				toggleSlots();
+			}
+		}}
 	>
 		<div class="flex min-w-0 flex-1 flex-col pr-2">
 			<div class="share-main-info flex items-center gap-2 overflow-hidden">
@@ -398,20 +406,20 @@
 				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
 			{/if}
 			<!-- Chat button -->
-				<button
-					type="button"
+			<button
+				type="button"
 				class="chat-btn relative"
-					onclick={(e) => {
-						e.stopPropagation();
+				onclick={(e) => {
+					e.stopPropagation();
 					toggleChat();
-					}}
+				}}
 				title="Chat about this capacity"
-				>
+			>
 				💬
 				{#if $unreadCount > 0 && !expanded}
 					<span class="unread-badge-btn">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
 				{/if}
-				</button>
+			</button>
 			<button
 				type="button"
 				class="provider-btn rounded-md text-xs font-medium whitespace-nowrap"
@@ -478,10 +486,10 @@
 							{#if recurringSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().recurring as slot (slot.id)}
-							{@const computedQuantity = getSlotComputedQuantity(slot.id)}
-							<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
-								<!-- Slot header row -->
-								<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
+										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+											<!-- Slot header row -->
+											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
 												<!-- Your share quantity -->
 												<span
 													class="slot-quantity flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-sm font-medium text-purple-800"
@@ -495,7 +503,7 @@
 												<!-- Total slot quantity for context -->
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
 													of {slot.quantity} total
-									</span>
+												</span>
 
 												<!-- Recurrence indicator -->
 												<span
@@ -553,47 +561,47 @@
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-									<!-- Your share quantity -->
-									<span
-										class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
-									>
-										{Number.isInteger(computedQuantity)
-											? computedQuantity
-											: computedQuantity.toFixed(2)}
-										{share.unit}
-									</span>
+												<!-- Your share quantity -->
+												<span
+													class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+												>
+													{Number.isInteger(computedQuantity)
+														? computedQuantity
+														: computedQuantity.toFixed(2)}
+													{share.unit}
+												</span>
 
-									<!-- Total slot quantity for context -->
-									<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-										of {slot.quantity} total
-									</span>
+												<!-- Total slot quantity for context -->
+												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
+													of {slot.quantity} total
+												</span>
+											</div>
+
+											<!-- Slot summary row -->
+											<div class="slot-summary mb-2 text-xs text-gray-500">
+												<div class="flex flex-wrap gap-4">
+													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
+													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													{#if slot.mutual_agreement_required}
+														<span>🤝 Mutual agreement required</span>
+													{/if}
+												</div>
+											</div>
+
+											<!-- Constraints info if present -->
+											{#if slot.advance_notice_hours || slot.booking_window_hours}
+												<div class="slot-constraints text-xs text-gray-500">
+													{#if slot.advance_notice_hours}
+														<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
+													{/if}
+													{#if slot.booking_window_hours}
+														<span>📅 Book within {slot.booking_window_hours}h window</span>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									{/each}
 								</div>
-
-								<!-- Slot summary row -->
-								<div class="slot-summary mb-2 text-xs text-gray-500">
-									<div class="flex flex-wrap gap-4">
-										<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-										<span>📍 {formatSlotLocationDisplay(slot)}</span>
-										{#if slot.mutual_agreement_required}
-											<span>🤝 Mutual agreement required</span>
-										{/if}
-									</div>
-								</div>
-
-								<!-- Constraints info if present -->
-								{#if slot.advance_notice_hours || slot.booking_window_hours}
-									<div class="slot-constraints text-xs text-gray-500">
-										{#if slot.advance_notice_hours}
-											<span>⏳ {slot.advance_notice_hours}h advance notice required</span>
-										{/if}
-										{#if slot.booking_window_hours}
-											<span>📅 Book within {slot.booking_window_hours}h window</span>
-										{/if}
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
 							{/if}
 						</div>
 					{/if}
@@ -761,29 +769,6 @@
 		transform: scale(1.05);
 	}
 
-	.slots-btn {
-		background: none;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 2px 6px;
-		color: #6b7280;
-		font-size: 1em;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		width: 24px;
-		height: 24px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.slots-btn:hover {
-		background: #fdf4ff;
-		border-color: #a855f7;
-		color: #a855f7;
-		transform: scale(1.05);
-	}
-
 	.provider-btn {
 		transition:
 			opacity 0.2s,
@@ -855,17 +840,6 @@
 		z-index: 10;
 	}
 
-	.slots-preview {
-		display: flex;
-		align-items: center;
-	}
-
-	.slots-count {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-	}
-
 	.description-preview {
 		line-height: 1.3;
 	}
@@ -905,18 +879,8 @@
 		margin: 0;
 	}
 
-	.slots-list {
-		max-height: 500px;
-		overflow-y: auto;
-	}
-
 	.slot-item {
 		animation: slideDown 0.2s ease-out;
-	}
-
-	.slot-label {
-		font-weight: 500;
-		color: #374151;
 	}
 
 	.slot-quantity {

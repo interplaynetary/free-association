@@ -1,13 +1,70 @@
 <script lang="ts">
 	import Parent from '$lib/components/collective/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
-	import { userSogf, userTree, recalculateFromTree, providerShares } from '$lib/state.svelte';
+	import { userSogf, userTree, providerShares } from '$lib/state/core.svelte';
+	import { recalculateFromTree } from '$lib/state/calculations.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
+	import {
+		collectiveMembers,
+		collectiveForest,
+		mergeContributorTrees,
+		createSimpleMergeConfig
+	} from '$lib/collective.svelte';
+	import type { CollectiveTree, Node } from '$lib/schema';
 
 	// Reactive variable for mobile detection
 	let isMobile = $state(false);
 	let mediaQuery: MediaQueryList;
+
+	// Create collective tree from collective members and their trees
+	const collectiveTree = derived(
+		[collectiveMembers, collectiveForest, userTree],
+		([$collectiveMembers, $collectiveForest, $userTree]) => {
+			// If we don't have any collective members, show empty state
+			if (!$collectiveMembers || $collectiveMembers.length === 0) {
+				console.log('[COLLECTIVE] No collective members defined');
+				return null;
+			}
+
+			// Check if we have trees for collective members
+			const contributorTrees: Record<string, Node> = {};
+
+			// Add trees from collective forest for each member
+			for (const member of $collectiveMembers) {
+				const memberId = typeof member === 'string' ? member : member.id;
+				const memberTree = $collectiveForest.get(memberId);
+
+				if (memberTree) {
+					contributorTrees[memberId] = memberTree;
+					console.log(`[COLLECTIVE] Added tree for member: ${memberId}`);
+				} else {
+					console.log(`[COLLECTIVE] Waiting for tree from member: ${memberId}`);
+				}
+			}
+
+			// Only create collective tree if we have at least one tree from collective members
+			if (Object.keys(contributorTrees).length === 0) {
+				console.log('[COLLECTIVE] No trees available yet from collective members, waiting...');
+				return null;
+			}
+
+			try {
+				const config = createSimpleMergeConfig(contributorTrees);
+				const result = mergeContributorTrees(config);
+
+				console.log(
+					`[COLLECTIVE] Created collective tree with ${Object.keys(contributorTrees).length} of ${$collectiveMembers.length} member trees`
+				);
+				console.log('[COLLECTIVE] Collective tree stats:', result.merge_stats);
+
+				return result.collective_tree;
+			} catch (error) {
+				console.error('[COLLECTIVE] Error creating collective tree:', error);
+				return null;
+			}
+		}
+	);
 
 	// Create reactive derived store from userSogf
 	const barSegments = derived(userSogf, ($sogf) => {
@@ -79,7 +136,14 @@
 
 <div class="layout root-page">
 	<div class="parent">
-		<Parent />
+		{#if $collectiveTree}
+			<Parent collectiveTree={$collectiveTree} />
+		{:else}
+			<div class="empty-state">
+				<p>No collective members added yet.</p>
+				<p class="hint">Add members to the collective to see their merged tree visualization.</p>
+			</div>
+		{/if}
 	</div>
 	<div class="bars">
 		<div class="bar-group" class:vertical={!isMobile}>
@@ -253,6 +317,24 @@
 		padding: 1rem;
 		background: #f5f5f5;
 		border-radius: 4px;
+	}
+
+	.empty-state {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		color: #666;
+		font-size: 1em;
+		padding: 2rem;
+	}
+
+	.empty-state .hint {
+		font-size: 0.9em;
+		color: #999;
+		margin-top: 0.5rem;
 	}
 
 	/* Responsive layout for mobile */

@@ -1,4 +1,4 @@
-import { get, derived } from 'svelte/store';
+import { derived } from 'svelte/store';
 import {
 	userTree,
 	nodesMap,
@@ -10,11 +10,10 @@ import {
 	userPubKeys,
 	userNamesOrAliasesCache,
 	userContacts,
-	getContactByPublicKey,
 	getUserAlias
 } from '$lib/state/users.svelte';
 import { allocatedSlots } from '$lib/state/slots.svelte';
-import { getSubtreeContributorMap, findNodeById } from '$lib/protocol';
+import { findNodeById } from '$lib/protocol';
 import { userAliasesCache } from '$lib/state/users.svelte';
 
 // Helper function to get display name for a user

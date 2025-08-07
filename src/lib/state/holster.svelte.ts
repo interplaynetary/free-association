@@ -1,4 +1,4 @@
-import Holster from 'holster';
+import Holster from '@mblaney/holster/src/holster.js';
 import { writable, get } from 'svelte/store';
 import { initializeUserDataStreams } from './network.svelte';
 

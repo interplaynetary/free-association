@@ -50,7 +50,7 @@ export function startTour() {
 				popover: {
 					title: 'Your Canvas',
 					description:
-						'Here you build your recognition tree. Each node is a contributor. Set how much recognition each deserves.',
+						'Here you build your recognition tree. Each node is a contribution. Set how much recognition each deserves.',
 					side: 'top',
 					align: 'center'
 				}

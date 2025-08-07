@@ -711,7 +711,16 @@
 															<div
 																class="alias-item"
 																class:selected={index === selectedAliasIndex}
+																role="option"
+																tabindex="0"
+																aria-selected={index === selectedAliasIndex}
 																onclick={() => handleSelectAlias(aliasItem.alias, aliasItem.pubkey)}
+																onkeydown={(e) => {
+																	if (e.key === 'Enter' || e.key === ' ') {
+																		e.preventDefault();
+																		handleSelectAlias(aliasItem.alias, aliasItem.pubkey);
+																	}
+																}}
 															>
 																<span class="alias-name"
 																	>@{aliasItem.alias.length > 10
@@ -766,7 +775,15 @@
 							<!-- Normal display mode -->
 							<div
 								class="item-content"
+								role="button"
+								tabindex="0"
 								onclick={() => handleItemClick(item.id, item.name, item.metadata)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleItemClick(item.id, item.name, item.metadata);
+									}
+								}}
 							>
 								<div class="item-name">
 									{#if isItemSelected(item.id)}
@@ -1107,13 +1124,6 @@
 		color: #2196f3;
 		font-weight: bold;
 		font-size: 12px;
-		margin-right: 2px;
-	}
-
-	.child-contributor-icon {
-		font-size: 12px;
-		opacity: 0.8;
-		color: #2196f3;
 		margin-right: 2px;
 	}
 

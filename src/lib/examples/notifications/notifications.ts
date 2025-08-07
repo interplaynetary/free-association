@@ -47,8 +47,8 @@ const defaultSubscriptionConfigs: ServiceWorkerSubscriptionConfig[] = [
 		notification: {
 			title: 'New Message',
 			body: '{{senderAlias}}: {{decryptedMessage}}',
-			icon: '/favicon.png',
-			badge: '/favicon.png',
+			icon: './favicon.png',
+			badge: './favicon.png',
 			requireInteraction: true,
 			vibrate: [200, 100, 200],
 			actions: [
@@ -65,8 +65,8 @@ const defaultSubscriptionConfigs: ServiceWorkerSubscriptionConfig[] = [
 		notification: {
 			title: 'New Capacity Offered',
 			body: '{{senderAlias}} is offering: {{capacity}}',
-			icon: '/favicon.png',
-			badge: '/favicon.png',
+			icon: './favicon.png',
+			badge: './favicon.png',
 			requireInteraction: true,
 			actions: [
 				{ action: 'view', title: 'View Offer' },
@@ -82,8 +82,8 @@ const defaultSubscriptionConfigs: ServiceWorkerSubscriptionConfig[] = [
 		notification: {
 			title: 'Room Invitation',
 			body: '{{senderAlias}} invited you to "{{room}}"',
-			icon: '/favicon.png',
-			badge: '/favicon.png',
+			icon: './favicon.png',
+			badge: './favicon.png',
 			requireInteraction: true,
 			actions: [
 				{ action: 'join', title: 'Join Room' },
@@ -98,7 +98,7 @@ const defaultSubscriptionConfigs: ServiceWorkerSubscriptionConfig[] = [
 		notification: {
 			title: 'Tree Updated',
 			body: 'Your collaboration tree has been updated',
-			icon: '/favicon.png'
+			icon: './favicon.png'
 		}
 	},
 	{
@@ -108,7 +108,7 @@ const defaultSubscriptionConfigs: ServiceWorkerSubscriptionConfig[] = [
 		notification: {
 			title: 'Capacities Updated',
 			body: 'Your capacities have been updated',
-			icon: '/favicon.png'
+			icon: './favicon.png'
 		}
 	}
 ];
@@ -231,8 +231,8 @@ export function createSubscriptionConfig(
 		notification: {
 			title: 'New Update',
 			body: 'You have a new update',
-			icon: '/favicon.png',
-			badge: '/favicon.png',
+			icon: './favicon.png',
+			badge: './favicon.png',
 			...notificationConfig
 		},
 		dataProcessor

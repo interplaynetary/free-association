@@ -1,7 +1,8 @@
 <script lang="ts">
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
-	import { userSogf, userTree, recalculateFromTree, providerShares } from '$lib/state.svelte';
+	import { userSogf, userTree, providerShares } from '$lib/state/core.svelte';
+	import { recalculateFromTree } from '$lib/state/calculations.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
 

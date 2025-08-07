@@ -124,45 +124,187 @@ export function persistProviderShares() {
 }
 
 export function persistCapacities() {
-	// Check if user is initialized
 	if (!isUserInitialized()) {
-		console.log('[PERSIST] User not initialized, skipping capacities persistence');
+		console.log('[PERSIST] 🚨 DEBUG: User not initialized, skipping capacities persistence');
 		return;
 	}
 
-	// Don't persist while loading
+	// 🚨 CRITICAL: Check if we're still loading data from network
+	// If so, defer persistence to avoid overwriting incoming network data
 	if (get(isLoadingCapacities)) {
-		console.log('[PERSIST] Skipping capacities persistence because capacities are being loaded');
+		console.log(
+			'[PERSIST] 🚨 DEBUG: Still loading capacities from network, deferring persistence to avoid race condition'
+		);
+		// Schedule retry after loading completes
+		setTimeout(() => {
+			if (!get(isLoadingCapacities)) {
+				console.log('[PERSIST] 🚨 DEBUG: Loading completed, retrying deferred persistence');
+				persistCapacities();
+			}
+		}, 500);
 		return;
 	}
 
 	const userCapacitiesValue = get(userCapacities);
-	if (userCapacitiesValue) {
-		console.log('[PERSIST] Starting capacities persistence...');
-		console.log('[PERSIST] Capacities count:', Object.keys(userCapacitiesValue).length);
+	if (!userCapacitiesValue) {
+		console.log('[PERSIST] 🚨 DEBUG: No userCapacitiesValue, skipping persistence');
+		return;
+	}
+	if (Object.keys(userCapacitiesValue).length === 0) {
+		console.log(
+			'[PERSIST] 🚨 DEBUG: Skipping persistence of empty capacities (likely initialization)'
+		);
+		return;
+	}
 
-		try {
-			// Our core stores now contain public keys by design, so no filtering needed
-			// This prevents feedback loops between network and persistence layers
-			const capacitiesClone = structuredClone(userCapacitiesValue);
+	console.log('[PERSIST] Starting capacities persistence...');
+	console.log('[PERSIST] Capacities count:', Object.keys(userCapacitiesValue).length);
 
-			console.log('[PERSIST] Saving capacities (already contains public keys):', capacitiesClone);
+	// 🚨 DEBUG: Check what location data exists before persistence
+	console.log('[PERSIST] 🚨 DEBUG: Pre-persistence location data check:');
+	Object.entries(userCapacitiesValue).forEach(([capacityId, capacity]: [string, any]) => {
+		if (capacity.availability_slots && capacity.availability_slots.length > 0) {
+			capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
+				const hasLocationData =
+					slot.location_type === 'Specific' ||
+					slot.latitude !== undefined ||
+					slot.longitude !== undefined ||
+					slot.street_address ||
+					slot.city ||
+					slot.state_province ||
+					slot.postal_code ||
+					slot.country;
 
-			// Then serialize to JSON
-			const capacitiesJson = JSON.stringify(capacitiesClone);
-			console.log('[PERSIST] Serialized capacities length:', capacitiesJson.length);
-
-			// Store in Gun with ACK callback
-			user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
-				if (ack.err) {
-					console.error('[PERSIST] Error saving capacities to Gun:', ack.err);
+				if (hasLocationData) {
+					console.log(
+						`[PERSIST] 🚨 DEBUG: Capacity ${capacityId} (${capacity.name}) slot ${slotIndex} HAS location data:`,
+						{
+							slot_id: slot.id,
+							location_type: slot.location_type,
+							coordinates: { lat: slot.latitude, lng: slot.longitude },
+							address: {
+								street: slot.street_address,
+								city: slot.city,
+								state: slot.state_province,
+								postal: slot.postal_code,
+								country: slot.country
+							}
+						}
+					);
 				} else {
-					console.log('[PERSIST] Capacities successfully saved to Gun');
+					console.log(
+						`[PERSIST] 🚨 DEBUG: Capacity ${capacityId} (${capacity.name}) slot ${slotIndex} has NO location data`
+					);
 				}
 			});
-		} catch (error) {
-			console.error('[PERSIST] Error processing capacities:', error);
+		} else {
+			console.log(
+				`[PERSIST] 🚨 DEBUG: Capacity ${capacityId} (${capacity.name}) has no availability_slots`
+			);
 		}
+	});
+
+	try {
+		// Our core stores now contain public keys by design, so no filtering needed
+		// This prevents feedback loops between network and persistence layers
+		const capacitiesClone = structuredClone(userCapacitiesValue);
+
+		// 🚨 DEBUG: Check what location data exists after cloning
+		console.log('[PERSIST] 🚨 DEBUG: Post-clone location data check:');
+		Object.entries(capacitiesClone).forEach(([capacityId, capacity]: [string, any]) => {
+			if (capacity.availability_slots && capacity.availability_slots.length > 0) {
+				capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
+					const hasLocationData =
+						slot.location_type === 'Specific' ||
+						slot.latitude !== undefined ||
+						slot.longitude !== undefined ||
+						slot.street_address ||
+						slot.city ||
+						slot.state_province ||
+						slot.postal_code ||
+						slot.country;
+
+					if (hasLocationData) {
+						console.log(
+							`[PERSIST] 🚨 DEBUG: CLONE - Capacity ${capacityId} slot ${slotIndex} HAS location data:`,
+							{
+								slot_id: slot.id,
+								location_type: slot.location_type,
+								coordinates: { lat: slot.latitude, lng: slot.longitude },
+								address: {
+									street: slot.street_address,
+									city: slot.city,
+									state: slot.state_province,
+									postal: slot.postal_code,
+									country: slot.country
+								}
+							}
+						);
+					}
+				});
+			}
+		});
+
+		console.log('[PERSIST] Saving capacities (already contains public keys):', capacitiesClone);
+
+		// Then serialize to JSON
+		const capacitiesJson = JSON.stringify(capacitiesClone);
+		console.log('[PERSIST] Serialized capacities length:', capacitiesJson.length);
+
+		// 🚨 DEBUG: Check what's in the JSON
+		try {
+			const parsedBack = JSON.parse(capacitiesJson);
+			console.log('[PERSIST] 🚨 DEBUG: JSON serialization check - location data preserved?');
+			Object.entries(parsedBack).forEach(([capacityId, capacity]: [string, any]) => {
+				if (capacity.availability_slots && capacity.availability_slots.length > 0) {
+					capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
+						const hasLocationData =
+							slot.location_type === 'Specific' ||
+							slot.latitude !== undefined ||
+							slot.longitude !== undefined ||
+							slot.street_address ||
+							slot.city ||
+							slot.state_province ||
+							slot.postal_code ||
+							slot.country;
+
+						if (hasLocationData) {
+							console.log(
+								`[PERSIST] 🚨 DEBUG: JSON - Capacity ${capacityId} slot ${slotIndex} location data preserved:`,
+								{
+									slot_id: slot.id,
+									location_type: slot.location_type,
+									coordinates: { lat: slot.latitude, lng: slot.longitude },
+									address: {
+										street: slot.street_address,
+										city: slot.city,
+										state: slot.state_province,
+										postal: slot.postal_code,
+										country: slot.country
+									}
+								}
+							);
+						}
+					});
+				}
+			});
+		} catch (parseError) {
+			console.error('[PERSIST] 🚨 DEBUG: Error parsing JSON back:', parseError);
+		}
+
+		// Store in Gun with ACK callback
+		user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving capacities to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Capacities successfully saved to Gun');
+				console.log(
+					'[PERSIST] 🚨 DEBUG: Saved to Gun successfully - location data should be preserved'
+				);
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error processing capacities:', error);
 	}
 }
 
@@ -218,6 +360,23 @@ export function persistUserDesiredSlotComposeFrom() {
 		return;
 	}
 
+	// 🚨 RACE CONDITION PROTECTION: Check if capacities are still loading
+	// Slot compose data depends on capacities, so wait if they're still loading
+	if (get(isLoadingCapacities)) {
+		console.log(
+			'[PERSIST] 🚨 DEBUG: Capacities still loading, deferring slot compose-from persistence to avoid race condition'
+		);
+		setTimeout(() => {
+			if (!get(isLoadingCapacities)) {
+				console.log(
+					'[PERSIST] 🚨 DEBUG: Capacities loading completed, retrying deferred slot compose-from persistence'
+				);
+				persistUserDesiredSlotComposeFrom();
+			}
+		}, 500);
+		return;
+	}
+
 	const userDesiredComposeFromValue = get(userDesiredSlotComposeFrom);
 	if (!userDesiredComposeFromValue || Object.keys(userDesiredComposeFromValue).length === 0) {
 		console.log('[PERSIST] No user desired slot compose-from data to persist');
@@ -260,6 +419,23 @@ export function persistUserDesiredSlotComposeInto() {
 		console.log(
 			'[PERSIST] User not initialized, skipping user desired slot compose-into persistence'
 		);
+		return;
+	}
+
+	// 🚨 RACE CONDITION PROTECTION: Check if capacities are still loading
+	// Slot compose data depends on capacities, so wait if they're still loading
+	if (get(isLoadingCapacities)) {
+		console.log(
+			'[PERSIST] 🚨 DEBUG: Capacities still loading, deferring slot compose-into persistence to avoid race condition'
+		);
+		setTimeout(() => {
+			if (!get(isLoadingCapacities)) {
+				console.log(
+					'[PERSIST] 🚨 DEBUG: Capacities loading completed, retrying deferred slot compose-into persistence'
+				);
+				persistUserDesiredSlotComposeInto();
+			}
+		}, 500);
 		return;
 	}
 

@@ -3,11 +3,12 @@
 	 * NestedPieExample.svelte - Example usage of the NestedPie component
 	 * Shows two rings: SOGF (direct contributions) and Provider Shares (mutual recognition)
 	 */
-	import NestedPie from '../NestedPie.svelte';
+	import NestedPie from './NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { userAlias, userPub, userTree, userSogf, providerShares } from '$lib/state.svelte';
-	import type { PieSlice, PieChartData } from '../NestedPie.svelte';
+	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userTree, userSogf, providerShares } from '$lib/state/core.svelte';
+	import type { PieSlice, PieChartData } from './NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/schema';
 	import { normalizeShareMap } from '$lib/protocol';
 	import { get } from 'svelte/store';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
-	import Share from './Share.svelte';
+	import Share from '$lib/components/Share.svelte';
 	import type {
 		Node,
 		RootNode,

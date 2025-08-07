@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ChatMessage from './ChatMessage.svelte';
+	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { userAlias, userPub, user } from '$lib/state/gun.svelte';
 	import { globalState } from '$lib/global.svelte';
@@ -24,7 +24,7 @@
 	let newMessage = $state('');
 	let isSending = $state(false);
 
-	let scrollBottom: HTMLDivElement;
+	let scrollBottom = $state<HTMLDivElement>();
 	let lastScrollTop = $state(0);
 	let canAutoScroll = $state(true);
 	let unreadMessages = $state(false);

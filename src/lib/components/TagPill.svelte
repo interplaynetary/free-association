@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getColorForUserId } from '../utils/colorUtils';
+	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import { getUserName } from '$lib/state/users.svelte';
 
 	// Props using Svelte 5 runes
@@ -101,12 +101,41 @@
 	class="tag-pill"
 	data-user-id={userId}
 	style="background: {getColorForUserId(userId)}"
+	role="button"
+	tabindex="0"
 	onclick={handlePillClick}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			// Create a synthetic MouseEvent for consistency
+			const syntheticEvent = new MouseEvent('click', {
+				bubbles: true,
+				cancelable: true
+			});
+			handlePillClick(syntheticEvent);
+		}
+	}}
 >
 	<span>{getFormattedName(displayName)}</span>
 
 	{#if removable}
-		<span class="remove-tag" onclick={handleRemoveClick}>×</span>
+		<span 
+			class="remove-tag" 
+			role="button"
+			tabindex="0"
+			onclick={handleRemoveClick}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					// Create a synthetic MouseEvent for consistency
+					const syntheticEvent = new MouseEvent('click', {
+						bubbles: true,
+						cancelable: true
+					});
+					handleRemoveClick(syntheticEvent);
+				}
+			}}
+		>×</span>
 	{/if}
 </div>
 

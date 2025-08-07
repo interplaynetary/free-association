@@ -2,12 +2,9 @@
 	import type { AvailabilitySlot } from '$lib/schema';
 	import { AvailabilitySlotSchema } from '$lib/schema';
 	import { derived } from 'svelte/store';
-	import SlotCompositionItem from './SlotCompositionItem.svelte';
-	import DropDown from './DropDown.svelte';
-	import {
-		createSlotsDataProvider,
-		createAllocatedSlotsDataProvider
-	} from '$lib/utils/ui-providers.svelte';
+	import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
+	import DropDown from '$lib/components/DropDown.svelte';
+
 	import {
 		userDesiredSlotComposeFrom,
 		userDesiredSlotComposeInto,
@@ -368,8 +365,35 @@
 
 	// Helper to save only if value changed on blur
 	function handleBlurIfChanged(fieldName: string, currentValue: any) {
+		// 🚨 DEBUG: Log blur events for location fields
+		if (
+			[
+				'street_address',
+				'city',
+				'state_province',
+				'postal_code',
+				'country',
+				'latitude',
+				'longitude',
+				'location_type'
+			].includes(fieldName)
+		) {
+			console.log(
+				`[SLOT] 🚨 DEBUG: handleBlurIfChanged called for location field '${fieldName}':`,
+				{
+					originalValue: originalValues[fieldName],
+					currentValue: currentValue,
+					changed: originalValues[fieldName] !== currentValue,
+					slotId: slot.id
+				}
+			);
+		}
+
 		if (originalValues[fieldName] !== currentValue) {
+			console.log(`[SLOT] 🚨 DEBUG: Field '${fieldName}' changed, calling handleSlotUpdate`);
 			handleSlotUpdate();
+		} else {
+			console.log(`[SLOT] 🚨 DEBUG: Field '${fieldName}' unchanged, not calling handleSlotUpdate`);
 		}
 	}
 
@@ -407,6 +431,29 @@
 			country: slotCountry
 		};
 
+		// 🚨 DEBUG: Log the location data being sent in handleSlotUpdate
+		console.log(`[SLOT] 🚨 DEBUG: handleSlotUpdate called for slot ${slot.id}`);
+		console.log(`[SLOT] 🚨 DEBUG: Current location state variables:`, {
+			slotLocationType,
+			slotLatitude,
+			slotLongitude,
+			slotStreetAddress,
+			slotCity,
+			slotStateProvince,
+			slotPostalCode,
+			slotCountry
+		});
+		console.log(`[SLOT] 🚨 DEBUG: Location data in updatedSlot:`, {
+			location_type: updatedSlot.location_type,
+			latitude: updatedSlot.latitude,
+			longitude: updatedSlot.longitude,
+			street_address: updatedSlot.street_address,
+			city: updatedSlot.city,
+			state_province: updatedSlot.state_province,
+			postal_code: updatedSlot.postal_code,
+			country: updatedSlot.country
+		});
+
 		// Validate using schema
 		const validationResult = AvailabilitySlotSchema.safeParse(updatedSlot);
 
@@ -414,6 +461,18 @@
 			console.error('Slot validation failed:', validationResult.error);
 			return;
 		}
+
+		// 🚨 DEBUG: Log the validated data being passed to onupdate
+		console.log(`[SLOT] 🚨 DEBUG: Validation passed, calling onupdate with:`, {
+			location_type: validationResult.data.location_type,
+			latitude: validationResult.data.latitude,
+			longitude: validationResult.data.longitude,
+			street_address: validationResult.data.street_address,
+			city: validationResult.data.city,
+			state_province: validationResult.data.state_province,
+			postal_code: validationResult.data.postal_code,
+			country: validationResult.data.country
+		});
 
 		// Validation passed, proceed with update
 		onupdate?.(validationResult.data);
@@ -986,53 +1045,56 @@
 	</div>
 
 	<!-- Expanded slot details -->
-			<!-- Time section -->
+	<!-- Time section -->
 	{#if timeExpanded}
 		<div class="slot-details time-details mt-3 rounded bg-blue-50 p-4">
 			<h5 class="mb-3 text-sm font-medium text-gray-700">⏰ Time Settings</h5>
 
-				<div class="mb-4">
-					<label class="inline-flex items-center">
-						<input
-							type="checkbox"
-							bind:checked={slotAllDay}
-							class="mr-2"
-							onchange={handleSlotUpdate}
-						/>
-						<span class="text-sm text-gray-600">All day</span>
-					</label>
-				</div>
+			<div class="mb-4">
+				<label class="inline-flex items-center">
+					<input
+						type="checkbox"
+						bind:checked={slotAllDay}
+						class="mr-2"
+						onchange={handleSlotUpdate}
+					/>
+					<span class="text-sm text-gray-600">All day</span>
+				</label>
+			</div>
 
+			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div>
+					<label for="slot-start-date" class="mb-1 block text-xs text-gray-500">Start Date</label>
+					<input
+						id="slot-start-date"
+						type="date"
+						class="slot-input w-full"
+						bind:value={slotStartDate}
+						onfocus={() => handleFocus('startDate', slotStartDate)}
+						onblur={() => handleBlurIfChanged('startDate', slotStartDate)}
+					/>
+				</div>
+				<div>
+					<label for="slot-end-date" class="mb-1 block text-xs text-gray-500">End Date</label>
+					<input
+						id="slot-end-date"
+						type="date"
+						class="slot-input w-full"
+						bind:value={slotEndDate}
+						onfocus={() => handleFocus('endDate', slotEndDate)}
+						onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
+					/>
+				</div>
+			</div>
+
+			{#if !slotAllDay}
 				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
-						<label class="mb-1 block text-xs text-gray-500">Start Date</label>
+						<label for="slot-start-time" class="mb-1 block text-xs text-gray-500">Start Time</label>
 						<input
-							type="date"
+							id="slot-start-time"
+							type="time"
 							class="slot-input w-full"
-							bind:value={slotStartDate}
-							onfocus={() => handleFocus('startDate', slotStartDate)}
-							onblur={() => handleBlurIfChanged('startDate', slotStartDate)}
-						/>
-					</div>
-					<div>
-						<label class="mb-1 block text-xs text-gray-500">End Date</label>
-						<input
-							type="date"
-							class="slot-input w-full"
-							bind:value={slotEndDate}
-							onfocus={() => handleFocus('endDate', slotEndDate)}
-							onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
-						/>
-					</div>
-				</div>
-
-				{#if !slotAllDay}
-					<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-						<div>
-							<label class="mb-1 block text-xs text-gray-500">Start Time</label>
-							<input
-								type="time"
-								class="slot-input w-full"
 							value={displayStartTime()}
 							onfocus={() => handleFocus('startTime', displayStartTime())}
 							onchange={(e) => {
@@ -1040,13 +1102,14 @@
 								slotStartTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
-							/>
-						</div>
-						<div>
-							<label class="mb-1 block text-xs text-gray-500">End Time</label>
-							<input
-								type="time"
-								class="slot-input w-full"
+						/>
+					</div>
+					<div>
+						<label for="slot-end-time" class="mb-1 block text-xs text-gray-500">End Time</label>
+						<input
+							id="slot-end-time"
+							type="time"
+							class="slot-input w-full"
 							value={displayEndTime()}
 							onfocus={() => handleFocus('endTime', displayEndTime())}
 							onchange={(e) => {
@@ -1054,62 +1117,68 @@
 								slotEndTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
-							/>
-						</div>
-					</div>
-
-					<div class="mb-4">
-						<label class="mb-1 block text-xs text-gray-500">Time Zone</label>
-						<input
-							type="text"
-							class="slot-input w-full"
-							bind:value={slotTimeZone}
-							placeholder="e.g. America/New_York"
-							onfocus={() => handleFocus('timeZone', slotTimeZone)}
-							onblur={() => handleBlurIfChanged('timeZone', slotTimeZone)}
 						/>
 					</div>
-				{/if}
-
-				<!-- Recurrence -->
-				<div class="mb-4">
-					<label class="mb-1 block text-xs text-gray-500">Recurrence</label>
-				<select class="slot-select w-full" bind:value={slotRecurrence} onchange={handleSlotUpdate}>
-						{#each recurrenceOptions as option}
-							<option value={option}>{option}</option>
-						{/each}
-					</select>
 				</div>
 
-			<!-- Custom recurrence -->
-				{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
-					<div class="custom-recurrence rounded border bg-white p-3">
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-xs text-gray-500">Repeat every</span>
-							<input
-								type="number"
-								min="1"
-								class="slot-input w-16 text-center"
-								bind:value={slotCustomRecurrenceRepeatEvery}
-								onfocus={() =>
-									handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-								onblur={() =>
-								handleBlurIfChanged('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-							/>
-							<select
-								class="slot-select w-20"
-								bind:value={slotCustomRecurrenceRepeatUnit}
-								onchange={handleSlotUpdate}
-							>
-								<option value="days">days</option>
-								<option value="weeks">weeks</option>
-								<option value="months">months</option>
-								<option value="years">years</option>
-							</select>
-						</div>
-					</div>
-				{/if}
+				<div class="mb-4">
+					<label for="slot-timezone" class="mb-1 block text-xs text-gray-500">Time Zone</label>
+					<input
+						id="slot-timezone"
+						type="text"
+						class="slot-input w-full"
+						bind:value={slotTimeZone}
+						placeholder="e.g. America/New_York"
+						onfocus={() => handleFocus('timeZone', slotTimeZone)}
+						onblur={() => handleBlurIfChanged('timeZone', slotTimeZone)}
+					/>
+				</div>
+			{/if}
+
+			<!-- Recurrence -->
+			<div class="mb-4">
+				<label for="slot-recurrence" class="mb-1 block text-xs text-gray-500">Recurrence</label>
+				<select
+					id="slot-recurrence"
+					class="slot-select w-full"
+					bind:value={slotRecurrence}
+					onchange={handleSlotUpdate}
+				>
+					{#each recurrenceOptions as option}
+						<option value={option}>{option}</option>
+					{/each}
+				</select>
 			</div>
+
+			<!-- Custom recurrence -->
+			{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
+				<div class="custom-recurrence rounded border bg-white p-3">
+					<div class="mb-3 flex items-center gap-2">
+						<span class="text-xs text-gray-500">Repeat every</span>
+						<input
+							type="number"
+							min="1"
+							class="slot-input w-16 text-center"
+							bind:value={slotCustomRecurrenceRepeatEvery}
+							onfocus={() =>
+								handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
+							onblur={() =>
+								handleBlurIfChanged('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
+						/>
+						<select
+							class="slot-select w-20"
+							bind:value={slotCustomRecurrenceRepeatUnit}
+							onchange={handleSlotUpdate}
+						>
+							<option value="days">days</option>
+							<option value="weeks">weeks</option>
+							<option value="months">months</option>
+							<option value="years">years</option>
+						</select>
+					</div>
+				</div>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Constraints section -->
@@ -1118,8 +1187,11 @@
 			<h5 class="mb-3 text-sm font-medium text-gray-700">⚙️ Constraints</h5>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				<div>
-					<label class="mb-1 block text-xs text-gray-500">Advance notice (hours)</label>
+					<label for="slot-advance-notice" class="mb-1 block text-xs text-gray-500"
+						>Advance notice (hours)</label
+					>
 					<input
+						id="slot-advance-notice"
 						type="number"
 						class="slot-input w-full"
 						min="0"
@@ -1131,8 +1203,11 @@
 					/>
 				</div>
 				<div>
-					<label class="mb-1 block text-xs text-gray-500">Booking window (hours)</label>
+					<label for="slot-booking-window" class="mb-1 block text-xs text-gray-500"
+						>Booking window (hours)</label
+					>
 					<input
+						id="slot-booking-window"
 						type="number"
 						class="slot-input w-full"
 						min="0"
@@ -1159,163 +1234,165 @@
 		</div>
 	{/if}
 
-			<!-- Location section -->
+	<!-- Location section -->
 	{#if locationExpanded}
 		<div class="slot-details location-details mt-3 rounded bg-green-50 p-4">
-				<h5 class="mb-3 text-sm font-medium text-gray-700">📍 Location</h5>
+			<h5 class="mb-3 text-sm font-medium text-gray-700">📍 Location</h5>
 
+			<div class="mb-4">
+				<div class="flex flex-wrap gap-4">
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{slotId}"
+							value="Undefined"
+							bind:group={slotLocationType}
+							class="mr-2"
+							onchange={handleSlotUpdate}
+						/>
+						<span class="text-sm text-gray-600">Undefined</span>
+					</label>
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{slotId}"
+							value="LiveLocation"
+							bind:group={slotLocationType}
+							class="mr-2"
+							onchange={handleSlotUpdate}
+						/>
+						<span class="text-sm text-gray-600">Live location</span>
+					</label>
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{slotId}"
+							value="Specific"
+							bind:group={slotLocationType}
+							class="mr-2"
+							onchange={handleSlotUpdate}
+						/>
+						<span class="text-sm text-gray-600">Specific</span>
+					</label>
+				</div>
+			</div>
+
+			{#if slotLocationType === 'Specific'}
+				<!-- Location format toggle -->
 				<div class="mb-4">
 					<div class="flex flex-wrap gap-4">
 						<label class="inline-flex items-center">
 							<input
 								type="radio"
-								name="location-type-{slotId}"
-								value="Undefined"
-								bind:group={slotLocationType}
+								name="location-format-{slotId}"
+								value="address"
+								checked={locationFormat === 'address'}
 								class="mr-2"
-								onchange={handleSlotUpdate}
+								onchange={() => {
+									locationFormat = 'address';
+								}}
 							/>
-							<span class="text-sm text-gray-600">Undefined</span>
+							<span class="text-sm text-gray-600">Address</span>
 						</label>
 						<label class="inline-flex items-center">
 							<input
 								type="radio"
-								name="location-type-{slotId}"
-								value="LiveLocation"
-								bind:group={slotLocationType}
+								name="location-format-{slotId}"
+								value="coordinates"
+								checked={locationFormat === 'coordinates'}
 								class="mr-2"
-								onchange={handleSlotUpdate}
+								onchange={() => {
+									locationFormat = 'coordinates';
+								}}
 							/>
-							<span class="text-sm text-gray-600">Live location</span>
-						</label>
-						<label class="inline-flex items-center">
-							<input
-								type="radio"
-								name="location-type-{slotId}"
-								value="Specific"
-								bind:group={slotLocationType}
-								class="mr-2"
-								onchange={handleSlotUpdate}
-							/>
-							<span class="text-sm text-gray-600">Specific</span>
+							<span class="text-sm text-gray-600">Coordinates</span>
 						</label>
 					</div>
 				</div>
 
-				{#if slotLocationType === 'Specific'}
-					<!-- Location format toggle -->
-					<div class="mb-4">
-						<div class="flex flex-wrap gap-4">
-							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									name="location-format-{slotId}"
-									value="address"
-									checked={locationFormat === 'address'}
-									class="mr-2"
-									onchange={() => {
-										locationFormat = 'address';
-									}}
-								/>
-								<span class="text-sm text-gray-600">Address</span>
-							</label>
-							<label class="inline-flex items-center">
-								<input
-									type="radio"
-									name="location-format-{slotId}"
-									value="coordinates"
-									checked={locationFormat === 'coordinates'}
-									class="mr-2"
-									onchange={() => {
-										locationFormat = 'coordinates';
-									}}
-								/>
-								<span class="text-sm text-gray-600">Coordinates</span>
-							</label>
-						</div>
-					</div>
-
-					{#if locationFormat === 'address'}
-						<div class="address-fields space-y-3">
+				{#if locationFormat === 'address'}
+					<div class="address-fields space-y-3">
+						<input
+							type="text"
+							class="slot-input w-full"
+							bind:value={slotStreetAddress}
+							placeholder="Street address"
+							onfocus={() => handleFocus('streetAddress', slotStreetAddress)}
+							onblur={() => handleBlurIfChanged('streetAddress', slotStreetAddress)}
+						/>
+						<div class="grid grid-cols-2 gap-3">
 							<input
 								type="text"
 								class="slot-input w-full"
-								bind:value={slotStreetAddress}
-								placeholder="Street address"
-								onfocus={() => handleFocus('streetAddress', slotStreetAddress)}
-								onblur={() => handleBlurIfChanged('streetAddress', slotStreetAddress)}
+								bind:value={slotCity}
+								placeholder="City"
+								onfocus={() => handleFocus('city', slotCity)}
+								onblur={() => handleBlurIfChanged('city', slotCity)}
 							/>
-							<div class="grid grid-cols-2 gap-3">
-								<input
-									type="text"
-									class="slot-input w-full"
-									bind:value={slotCity}
-									placeholder="City"
-									onfocus={() => handleFocus('city', slotCity)}
-									onblur={() => handleBlurIfChanged('city', slotCity)}
-								/>
-								<input
-									type="text"
-									class="slot-input w-full"
-									bind:value={slotStateProvince}
-									placeholder="State/Province"
-									onfocus={() => handleFocus('stateProvince', slotStateProvince)}
-									onblur={() => handleBlurIfChanged('stateProvince', slotStateProvince)}
-								/>
-							</div>
-							<div class="grid grid-cols-2 gap-3">
-								<input
-									type="text"
-									class="slot-input w-full"
-									bind:value={slotPostalCode}
-									placeholder="Postal code"
-									onfocus={() => handleFocus('postalCode', slotPostalCode)}
-									onblur={() => handleBlurIfChanged('postalCode', slotPostalCode)}
-								/>
-								<input
-									type="text"
-									class="slot-input w-full"
-									bind:value={slotCountry}
-									placeholder="Country"
-									onfocus={() => handleFocus('country', slotCountry)}
-									onblur={() => handleBlurIfChanged('country', slotCountry)}
-								/>
-							</div>
+							<input
+								type="text"
+								class="slot-input w-full"
+								bind:value={slotStateProvince}
+								placeholder="State/Province"
+								onfocus={() => handleFocus('stateProvince', slotStateProvince)}
+								onblur={() => handleBlurIfChanged('stateProvince', slotStateProvince)}
+							/>
 						</div>
-					{:else}
-						<div class="coordinates-fields grid grid-cols-2 gap-3">
-							<div>
-								<label class="mb-1 block text-xs text-gray-500">Latitude</label>
-								<input
-									type="number"
-									class="slot-input w-full"
-									min="-90"
-									max="90"
-									step="0.000001"
-									bind:value={slotLatitude}
-									placeholder="37.7749"
-									onfocus={() => handleFocus('latitude', slotLatitude)}
-									onblur={() => handleBlurIfChanged('latitude', slotLatitude)}
-								/>
-							</div>
-							<div>
-								<label class="mb-1 block text-xs text-gray-500">Longitude</label>
-								<input
-									type="number"
-									class="slot-input w-full"
-									min="-180"
-									max="180"
-									step="0.000001"
-									bind:value={slotLongitude}
-									placeholder="-122.4194"
-									onfocus={() => handleFocus('longitude', slotLongitude)}
-									onblur={() => handleBlurIfChanged('longitude', slotLongitude)}
-								/>
-							</div>
+						<div class="grid grid-cols-2 gap-3">
+							<input
+								type="text"
+								class="slot-input w-full"
+								bind:value={slotPostalCode}
+								placeholder="Postal code"
+								onfocus={() => handleFocus('postalCode', slotPostalCode)}
+								onblur={() => handleBlurIfChanged('postalCode', slotPostalCode)}
+							/>
+							<input
+								type="text"
+								class="slot-input w-full"
+								bind:value={slotCountry}
+								placeholder="Country"
+								onfocus={() => handleFocus('country', slotCountry)}
+								onblur={() => handleBlurIfChanged('country', slotCountry)}
+							/>
 						</div>
-					{/if}
+					</div>
+				{:else}
+					<div class="coordinates-fields grid grid-cols-2 gap-3">
+						<div>
+							<label for="slot-latitude" class="mb-1 block text-xs text-gray-500">Latitude</label>
+							<input
+								id="slot-latitude"
+								type="number"
+								class="slot-input w-full"
+								min="-90"
+								max="90"
+								step="0.000001"
+								bind:value={slotLatitude}
+								placeholder="37.7749"
+								onfocus={() => handleFocus('latitude', slotLatitude)}
+								onblur={() => handleBlurIfChanged('latitude', slotLatitude)}
+							/>
+						</div>
+						<div>
+							<label for="slot-longitude" class="mb-1 block text-xs text-gray-500">Longitude</label>
+							<input
+								id="slot-longitude"
+								type="number"
+								class="slot-input w-full"
+								min="-180"
+								max="180"
+								step="0.000001"
+								bind:value={slotLongitude}
+								placeholder="-122.4194"
+								onfocus={() => handleFocus('longitude', slotLongitude)}
+								onblur={() => handleBlurIfChanged('longitude', slotLongitude)}
+							/>
+						</div>
+					</div>
 				{/if}
-			</div>
+			{/if}
+		</div>
 	{/if}
 
 	<!-- Compositions section -->
@@ -1483,28 +1560,6 @@
 		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
 	}
 
-	.expand-btn {
-		background: none;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 2px 6px;
-		color: #6b7280;
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		width: 24px;
-		height: 24px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.expand-btn:hover {
-		background: #f9fafb;
-		border-color: #3b82f6;
-		color: #3b82f6;
-	}
-
 	.delete-btn {
 		background: none;
 		border: 1px solid #e5e7eb;
@@ -1549,12 +1604,6 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
-	}
-
-	.slot-summary span {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
 	}
 
 	.section-btn {
@@ -1605,19 +1654,6 @@
 
 	.compositions-details {
 		background: #faf5ff;
-	}
-
-	.compositions-list {
-		max-height: 400px;
-		overflow-y: auto;
-	}
-
-	.empty-compositions {
-		text-align: center;
-		padding: 16px;
-		background: rgba(245, 245, 245, 0.3);
-		border: 1px dashed #d1d5db;
-		border-radius: 6px;
 	}
 
 	/* Composition columns styling */

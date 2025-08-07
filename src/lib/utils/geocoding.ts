@@ -39,25 +39,56 @@ async function rateLimitedFetch(url: string): Promise<Response> {
 	const now = Date.now();
 	const timeSinceLastRequest = now - lastRequestTime;
 
+	console.log(
+		'[Geocoding] 🚨 PRODUCTION DEBUG: rateLimitedFetch called, timeSinceLastRequest:',
+		timeSinceLastRequest
+	);
+
 	if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
 		const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+		console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Rate limiting, waiting', waitTime, 'ms');
 		await new Promise((resolve) => setTimeout(resolve, waitTime));
 	}
 
 	lastRequestTime = Date.now();
 
-	return fetch(url, {
-		headers: {
-			'User-Agent': 'Free-Association-App/1.0 (contact: ruzgar@playnet.lol)' // Replace with actual contact
-		}
+	console.log('[Geocoding] 🚨 PRODUCTION DEBUG: About to fetch URL:', url);
+	console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Environment check:', {
+		hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
+		protocol: typeof window !== 'undefined' ? window.location.protocol : 'SSR',
+		userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) : 'SSR'
 	});
+
+	try {
+		const response = await fetch(url, {
+			headers: {
+				'User-Agent':
+					'PlayNet Free Association Map (https://github.com/playnet-org/free-association)'
+			}
+		});
+		console.log(
+			'[Geocoding] 🚨 PRODUCTION DEBUG: Fetch completed, response status:',
+			response.status
+		);
+		return response;
+	} catch (fetchError) {
+		console.error('[Geocoding] 🚨 PRODUCTION DEBUG: Fetch failed:', fetchError);
+		console.error('[Geocoding] 🚨 PRODUCTION DEBUG: Fetch error details:', {
+			name: fetchError instanceof Error ? fetchError.name : 'Unknown',
+			message: fetchError instanceof Error ? fetchError.message : String(fetchError)
+		});
+		throw fetchError;
+	}
 }
 
 /**
  * Convert address to coordinates (forward geocoding)
  */
 export async function geocodeAddress(address: string): Promise<GeocodeResult[]> {
+	console.log('[Geocoding] 🚨 PRODUCTION DEBUG: geocodeAddress called with:', address);
+
 	if (!address.trim()) {
+		console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Empty address provided');
 		throw new Error('Address is required');
 	}
 
@@ -68,23 +99,47 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult[]> 
 		limit: '5'
 	});
 
+	const requestUrl = `${NOMINATIM_BASE_URL}/search?${params}`;
+	console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Request URL:', requestUrl);
+
 	try {
-		const response = await rateLimitedFetch(`${NOMINATIM_BASE_URL}/search?${params}`);
+		console.log('[Geocoding] 🚨 PRODUCTION DEBUG: About to call rateLimitedFetch');
+		const response = await rateLimitedFetch(requestUrl);
+		console.log(
+			'[Geocoding] 🚨 PRODUCTION DEBUG: Response received, status:',
+			response.status,
+			'ok:',
+			response.ok
+		);
 
 		if (!response.ok) {
+			console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Response not ok, throwing error');
 			throw new Error(`Nominatim API error: ${response.status}`);
 		}
 
+		console.log('[Geocoding] 🚨 PRODUCTION DEBUG: About to parse JSON response');
 		const data = await response.json();
+		console.log(
+			'[Geocoding] 🚨 PRODUCTION DEBUG: JSON parsed, result count:',
+			Array.isArray(data) ? data.length : 'not array'
+		);
 
-		return data.map((result: any) => ({
+		const results = data.map((result: any) => ({
 			latitude: parseFloat(result.lat),
 			longitude: parseFloat(result.lon),
 			display_name: result.display_name,
 			address: result.address
 		}));
+
+		console.log('[Geocoding] 🚨 PRODUCTION DEBUG: Returning', results.length, 'results');
+		return results;
 	} catch (error) {
-		console.error('Geocoding error:', error);
+		console.error('[Geocoding] 🚨 PRODUCTION DEBUG: Geocoding error:', error);
+		console.error('[Geocoding] 🚨 PRODUCTION DEBUG: Error details:', {
+			name: error instanceof Error ? error.name : 'Unknown',
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined
+		});
 		throw new Error('Failed to geocode address');
 	}
 }

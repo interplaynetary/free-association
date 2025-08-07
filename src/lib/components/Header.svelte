@@ -11,19 +11,16 @@
 		login,
 		signup,
 		signout,
-		userTree,
 		isAuthenticating,
 		changePassword
-	} from '$lib/state.svelte';
+	} from '$lib/state/gun.svelte';
+	import { userTree } from '$lib/state/core.svelte';
 	import { findNodeById, addChild, createNonRootNode, calculateNodePoints } from '$lib/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
 	import { startTour } from '$lib/utils/tour';
 	import { browser } from '$app/environment';
-
-	// Define type for path info
-	type PathInfo = Array<{ id: string; name: string }>;
 
 	// Helper function to truncate text
 	function truncateText(text: string, maxLength: number = 14): string {
@@ -1399,20 +1396,6 @@
 		border-color: #1976d2;
 	}
 
-	.avatar-inline {
-		display: inline-flex;
-		width: 24px;
-		height: 24px;
-		margin-left: 6px;
-		vertical-align: middle;
-	}
-
-	.avatar-inline img {
-		width: 100%;
-		height: 100%;
-		border-radius: 50%;
-	}
-
 	.breadcrumb-separator {
 		margin: 0 5px;
 		color: #888;
@@ -1662,7 +1645,6 @@
 		background: #388e3c;
 	}
 
-	.cancel-btn,
 	.close-btn {
 		background: #f5f5f5;
 		color: #333;
@@ -1673,14 +1655,8 @@
 		cursor: pointer;
 	}
 
-	.cancel-btn:hover,
 	.close-btn:hover {
 		background: #e0e0e0;
-	}
-
-	.cancel-btn:disabled {
-		color: #999;
-		cursor: not-allowed;
 	}
 
 	.avatar {
@@ -2163,11 +2139,5 @@
 		line-height: 1.4;
 	}
 
-	.security-info {
-		margin-top: 8px;
-		padding: 8px;
-		background: #f0f9ff;
-		border-left: 3px solid #0ea5e9;
-		border-radius: 4px;
-	}
+
 </style>

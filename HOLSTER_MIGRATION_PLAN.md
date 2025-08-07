@@ -34,7 +34,6 @@ npm install https://github.com/mblaney/holster.git
 Files to update:
 - `src/lib/state/holster.svelte.ts` → Replace Gun imports with Holster
 - `src/lib/state/gun.svelte.ts` → Deprecate this file
-- `src/lib/state/index.svelte.ts` → Update exports
 
 ### 2.2 Update Authentication System
 

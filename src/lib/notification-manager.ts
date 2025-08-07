@@ -39,8 +39,8 @@ export interface NotificationConfig {
 export const defaultConfig: NotificationConfig = {
 	dbName: 'playnet-notifications',
 	dbVersion: 1,
-	defaultIcon: '/favicon.png',
-	defaultBadge: '/favicon.png'
+	defaultIcon: './favicon.png',
+	defaultBadge: './favicon.png'
 };
 
 // Generic NotificationManager class

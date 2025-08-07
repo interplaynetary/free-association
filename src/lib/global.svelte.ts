@@ -1,29 +1,14 @@
 import { browser } from '$app/environment';
-import { get, writable, derived, type Writable, type Readable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
-import {
-	findNodeById,
-	getPathToNode,
-	getParentNode,
-	createRootNode,
-	createNonRootNode,
-	addChild,
-	updateNodeById,
-	updateName,
-	updatePoints,
-	updateManualFulfillment,
-	deleteSubtree,
-	addContributors,
-	validateManualFulfillment,
-	fulfilled,
-	desire,
-	updateNodeById as updateNode,
-	isContribution,
-	reorderNode,
-	wouldCreateCycle
-} from '$lib/protocol';
-import { type Node, type RootNode, type NonRootNode } from '$lib/schema';
-import { userAlias, userPub, userTree } from '$lib/state.svelte';
+import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
+import { userPub } from '$lib/state/gun.svelte';
+import { userTree } from '$lib/state/core.svelte';
+
+// 🚨 CRITICAL FIX: Import subscriptions to initialize store persistence
+// This sets up the userCapacities.subscribe() and other store subscriptions
+// that trigger persistence functions when data changes
+import '$lib/state/subscriptions.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)

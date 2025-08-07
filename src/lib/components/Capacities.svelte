@@ -10,14 +10,9 @@
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
-	import {
-		userAlias,
-		userPub,
-		userTree,
-		userCapacities,
-		userCapacitiesWithShares
-	} from '$lib/state.svelte';
-	import CapacityComponent from './Capacity.svelte';
+	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userTree, userCapacities, userCapacitiesWithShares } from '$lib/state/core.svelte';
+	import Capacity from './Capacity.svelte';
 	import {
 		userDesiredSlotComposeFrom,
 		userDesiredSlotComposeInto
@@ -35,14 +30,82 @@
 	function addCapacity(capacity: ProviderCapacity) {
 		if (!$userAlias || !$userPub) return false;
 
+		// 🚨 DEBUG: Log incoming new capacity with location data
+		console.log('[CAPACITIES] 🚨 DEBUG: addCapacity called with capacity:', capacity.id);
+		console.log(
+			'[CAPACITIES] 🚨 DEBUG: New capacity availability_slots:',
+			capacity.availability_slots
+		);
+		if (capacity.availability_slots) {
+			capacity.availability_slots.forEach((slot: any, index: number) => {
+				console.log(`[CAPACITIES] 🚨 DEBUG: New slot ${index} (${slot.id}) location data:`, {
+					location_type: slot.location_type,
+					latitude: slot.latitude,
+					longitude: slot.longitude,
+					street_address: slot.street_address,
+					city: slot.city,
+					state_province: slot.state_province,
+					postal_code: slot.postal_code,
+					country: slot.country
+				});
+			});
+		}
+
 		// Create a deep clone of current capacities
 		const newCapacities = structuredClone($userCapacities || {});
 
 		// Create a plain object copy of the capacity
 		const plainCapacity = { ...capacity };
 
+		// 🚨 DEBUG: Log capacity after shallow copy
+		console.log(
+			'[CAPACITIES] 🚨 DEBUG: After shallow copy, plainCapacity availability_slots:',
+			plainCapacity.availability_slots
+		);
+		if (plainCapacity.availability_slots) {
+			plainCapacity.availability_slots.forEach((slot: any, index: number) => {
+				console.log(
+					`[CAPACITIES] 🚨 DEBUG: After copy - New slot ${index} (${slot.id}) location data:`,
+					{
+						location_type: slot.location_type,
+						latitude: slot.latitude,
+						longitude: slot.longitude,
+						street_address: slot.street_address,
+						city: slot.city,
+						state_province: slot.state_province,
+						postal_code: slot.postal_code,
+						country: slot.country
+					}
+				);
+			});
+		}
+
 		// Add capacity to the collection
 		addCapacityToCollection(newCapacities, plainCapacity);
+
+		// 🚨 DEBUG: Log what's in the collection after addCapacityToCollection
+		const addedCapacity = newCapacities[plainCapacity.id];
+		console.log(
+			'[CAPACITIES] 🚨 DEBUG: After addCapacityToCollection, capacity in collection:',
+			addedCapacity
+		);
+		if (addedCapacity?.availability_slots) {
+			addedCapacity.availability_slots.forEach((slot: any, index: number) => {
+				console.log(
+					`[CAPACITIES] 🚨 DEBUG: Final collection - New slot ${index} (${slot.id}) location data:`,
+					{
+						location_type: slot.location_type,
+						latitude: slot.latitude,
+						longitude: slot.longitude,
+						street_address: slot.street_address,
+						city: slot.city,
+						state_province: slot.state_province,
+						postal_code: slot.postal_code,
+						country: slot.country
+					}
+				);
+			});
+		}
 
 		// Set the store with the new value
 		userCapacities.set(newCapacities);
@@ -56,14 +119,81 @@
 		try {
 			if (!$userAlias || !$userPub) return false;
 
+			// 🚨 DEBUG: Log incoming capacity with location data
+			console.log('[CAPACITIES] 🚨 DEBUG: updateCapacity called with capacity:', capacity.id);
+			console.log(
+				'[CAPACITIES] 🚨 DEBUG: Capacity availability_slots:',
+				capacity.availability_slots
+			);
+			if (capacity.availability_slots) {
+				capacity.availability_slots.forEach((slot: any, index: number) => {
+					console.log(`[CAPACITIES] 🚨 DEBUG: Slot ${index} (${slot.id}) location data:`, {
+						location_type: slot.location_type,
+						latitude: slot.latitude,
+						longitude: slot.longitude,
+						street_address: slot.street_address,
+						city: slot.city,
+						state_province: slot.state_province,
+						postal_code: slot.postal_code,
+						country: slot.country
+					});
+				});
+			}
+
 			// Create a deep clone of current capacities
 			const newCapacities = structuredClone($userCapacities || {});
 
 			// Create a deep copy of the capacity to ensure store updates
 			const plainCapacity = structuredClone(capacity);
 
+			// 🚨 DEBUG: Log capacity after structuredClone
+			console.log(
+				'[CAPACITIES] 🚨 DEBUG: After structuredClone, plainCapacity availability_slots:',
+				plainCapacity.availability_slots
+			);
+			if (plainCapacity.availability_slots) {
+				plainCapacity.availability_slots.forEach((slot: any, index: number) => {
+					console.log(
+						`[CAPACITIES] 🚨 DEBUG: After clone - Slot ${index} (${slot.id}) location data:`,
+						{
+							location_type: slot.location_type,
+							latitude: slot.latitude,
+							longitude: slot.longitude,
+							street_address: slot.street_address,
+							city: slot.city,
+							state_province: slot.state_province,
+							postal_code: slot.postal_code,
+							country: slot.country
+						}
+					);
+				});
+			}
+
 			// Add capacity to the collection
 			newCapacities[plainCapacity.id] = plainCapacity;
+
+			// 🚨 DEBUG: Log what's actually being set in the store
+			console.log(
+				'[CAPACITIES] 🚨 DEBUG: About to set userCapacities store with:',
+				newCapacities[plainCapacity.id]
+			);
+			if (newCapacities[plainCapacity.id]?.availability_slots) {
+				newCapacities[plainCapacity.id].availability_slots.forEach((slot: any, index: number) => {
+					console.log(
+						`[CAPACITIES] 🚨 DEBUG: Final store data - Slot ${index} (${slot.id}) location data:`,
+						{
+							location_type: slot.location_type,
+							latitude: slot.latitude,
+							longitude: slot.longitude,
+							street_address: slot.street_address,
+							city: slot.city,
+							state_province: slot.state_province,
+							postal_code: slot.postal_code,
+							country: slot.country
+						}
+					);
+				});
+			}
 
 			// Set the store with the new value
 			userCapacities.set(newCapacities);
@@ -271,7 +401,7 @@
 
 <div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
 	{#each capacityEntries as entry (entry.id)}
-		<CapacityComponent
+		<Capacity
 			capacity={entry as ProviderCapacity}
 			canDelete={true}
 			onupdate={handleCapacityUpdate}

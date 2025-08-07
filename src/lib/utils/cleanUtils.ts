@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
-import { usersList, userTree, userPub, userAlias } from '$lib/state.svelte';
+import { gun, usersList, userPub, userAlias } from '$lib/state/gun.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
-import { gun } from '$lib/state/gun.svelte';
+import { userTree } from '$lib/state/core.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/examples/example';
 import type { Node, NonRootNode } from '$lib/schema';
@@ -442,10 +442,10 @@ export function deduplicateContributors() {
 				const seenPublicKeys = new Set<string>();
 				const deduplicatedContributors: string[] = [];
 
-								// First pass: collect all contact IDs and their resolved public keys
+				// First pass: collect all contact IDs and their resolved public keys
 				const contactIdToPublicKey = new Map<string, string>();
 				const publicKeyToContactId = new Map<string, string>();
-				
+
 				originalContributors.forEach((contributorId) => {
 					if (contributorId.startsWith('contact_')) {
 						const resolvedPublicKey = resolveToPublicKey(contributorId);

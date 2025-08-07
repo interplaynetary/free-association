@@ -549,6 +549,8 @@
 					class="node-title"
 					style="font-size: {fontSize()}rem;"
 					title={node.name}
+					role="button"
+					tabindex="0"
 					onmousedown={handleTextEditStart}
 					ontouchstart={handleTextEditStart}
 					onpointerdown={handleTextEditStart}
@@ -556,6 +558,12 @@
 					ondragstart={preventAllInterference}
 					oncontextmenu={preventAllInterference}
 					ondblclick={preventAllInterference}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							handleTextEditStart(e);
+						}
+					}}
 				>
 					{#each segments as segment}
 						<span class="title-segment">{segment}</span>
@@ -578,10 +586,54 @@
 					z-index: 3;
 					opacity: {visibilityFactor};
 				"
+				role="slider"
+				tabindex="0"
+				aria-valuenow={currentSliderValue}
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-label="Manual fulfillment percentage"
 				onmousedown={(e) => e.stopPropagation()}
 				ontouchstart={(e) => e.stopPropagation()}
 				onpointerdown={(e) => e.stopPropagation()}
 				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => {
+					e.stopPropagation();
+					let newValue = currentSliderValue;
+
+					switch (e.key) {
+						case 'ArrowRight':
+						case 'ArrowUp':
+							e.preventDefault();
+							newValue = Math.min(100, currentSliderValue + 5);
+							break;
+						case 'ArrowLeft':
+						case 'ArrowDown':
+							e.preventDefault();
+							newValue = Math.max(0, currentSliderValue - 5);
+							break;
+						case 'Home':
+							e.preventDefault();
+							newValue = 0;
+							break;
+						case 'End':
+							e.preventDefault();
+							newValue = 100;
+							break;
+						case 'PageUp':
+							e.preventDefault();
+							newValue = Math.min(100, currentSliderValue + 10);
+							break;
+						case 'PageDown':
+							e.preventDefault();
+							newValue = Math.max(0, currentSliderValue - 10);
+							break;
+					}
+
+					if (newValue !== currentSliderValue) {
+						const protocolValue = newValue / 100;
+						onManualFulfillmentChange({ nodeId: node.id, value: protocolValue });
+					}
+				}}
 			>
 				<input
 					type="range"
@@ -627,11 +679,8 @@
 					justify-content: center;
 					align-items: center;
 					gap: {Math.max(2, buttonSizePercent * 0.1)}px;
+					pointer-events: none;
 				"
-				onmousedown={(e) => e.stopPropagation()}
-				ontouchstart={(e) => e.stopPropagation()}
-				onpointerdown={(e) => e.stopPropagation()}
-				onclick={(e) => e.stopPropagation()}
 			>
 				<!-- Contributor Button (always present) -->
 				{#if hasContributors}
@@ -643,15 +692,31 @@
 							height: {hasAnyContributors ? '45%' : '100%'};
 							cursor: pointer;
 							flex-shrink: 0;
+							pointer-events: auto;
 						"
 						viewBox="-25 -25 50 50"
+						role="button"
+						tabindex="0"
+						aria-label="Add contributor"
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								// Create a synthetic MouseEvent for consistency
+								const syntheticEvent = new MouseEvent('click', {
+									bubbles: true,
+									cancelable: true
+								});
+								handleAddContributorClick(syntheticEvent);
+							}
+						}}
 					>
 						{#each pieData() as segment, i}
 							<path
 								d={arcPath()(segment)}
 								fill={getColorForUserId(segment.data.id)}
+								role="presentation"
 								onmouseenter={() => (hoveredSegment = segment.data.id)}
 								onmouseleave={() => (hoveredSegment = null)}
 								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
@@ -707,15 +772,31 @@
 							height: 45%;
 							cursor: pointer;
 							flex-shrink: 0;
+							pointer-events: auto;
 						"
 						viewBox="-25 -25 50 50"
+						role="button"
+						tabindex="0"
+						aria-label="Add anti-contributor"
 						onclick={handleAddAntiContributorClick}
 						ontouchstart={handleAddAntiContributorClick}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								// Create a synthetic MouseEvent for consistency
+								const syntheticEvent = new MouseEvent('click', {
+									bubbles: true,
+									cancelable: true
+								});
+								handleAddAntiContributorClick(syntheticEvent);
+							}
+						}}
 					>
 						{#each antiPieData() as segment, i}
 							<path
 								d={arcPath()(segment)}
 								fill={getColorForUserId(segment.data.id)}
+								role="presentation"
 								onmouseenter={() => (hoveredSegment = segment.data.id)}
 								onmouseleave={() => (hoveredSegment = null)}
 								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
-	import SimpleNotificationTest from '$lib/components/extra/SimpleNotificationTest.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
@@ -15,21 +14,11 @@
 
 	// Set up global keyboard event listener and reliable viewport handling
 	onMount(() => {
-		// SvelteKit will automatically register the service worker
-		// We just need to check if it's working
-		if (browser && 'serviceWorker' in navigator) {
-			navigator.serviceWorker.ready
-				.then((registration) => {
-					console.log('Service worker registered successfully:', registration);
-
-					// Request notification permission if not already granted
-					if ('Notification' in window && Notification.permission === 'default') {
-						return Notification.requestPermission();
-					}
-				})
-				.catch((error) => {
-					console.error('Service worker registration failed:', error);
-				});
+		// Request notification permission if supported
+		if (browser && 'Notification' in window && Notification.permission === 'default') {
+			Notification.requestPermission().then((permission) => {
+				console.log('Notification permission:', permission);
+			});
 		}
 
 		function handleGlobalKeydown(event: KeyboardEvent) {

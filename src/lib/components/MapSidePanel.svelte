@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { GroupedSlotMarkerData } from './Map.svelte';
+	import type { GroupedSlotMarkerData } from '$lib/components/Map.svelte';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | null;
@@ -7,6 +7,15 @@
 	}
 
 	let { markerData, onClose }: Props = $props();
+
+	// Get computed quantity for a specific slot (your share)
+	function getSlotComputedQuantity(capacity: any, slotId: string): number {
+		if (!capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
+			return 0;
+		}
+		const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
+		return slotQuantity?.quantity || 0;
+	}
 
 	// Reactive visibility derived from markerData
 	let isVisible = $derived(!!markerData);
@@ -201,7 +210,7 @@
 						{/if}
 					</div>
 				</div>
-				<button class="close-btn" onclick={onClose} title="Close panel">
+				<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
 					<svg
 						width="20"
 						height="20"
@@ -222,15 +231,6 @@
 			<!-- Location Info -->
 			<div class="location-section">
 				<h3 class="section-title">📍 Location</h3>
-				{#if isGeocoded}
-					<div class="location-notice geocoded-notice">
-						<small>🗺️ Location from address (geocoded)</small>
-					</div>
-				{:else}
-					<div class="location-notice coordinates-notice">
-						<small>📍 Location from coordinates</small>
-					</div>
-				{/if}
 				<div class="location-details">
 					<div class="location-address">{locationDisplay}</div>
 					<div class="location-coords">{lngLatText}</div>
@@ -238,17 +238,24 @@
 			</div>
 
 			<!-- Slots Section -->
-			<div class="slots-section">
-				<h3 class="section-title">🕒 Available Slots</h3>
+			<div>
+				<h3 class="section-title">🕒 Your Share of Available Slots</h3>
 
 				{#if categorizedSlots.recurring.length > 0}
 					<div class="slot-category">
 						<h4 class="category-title">🔄 Recurring ({categorizedSlots.recurring.length})</h4>
 						<div class="slot-list">
 							{#each categorizedSlots.recurring as slot}
+								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
 								<div class="slot-item">
 									<div class="slot-main">
-										<span class="slot-quantity">{slot.quantity || 0} {capacity.unit || ''}</span>
+										<span class="slot-quantity">
+											{Number.isInteger(computedQuantity)
+												? computedQuantity
+												: computedQuantity.toFixed(2)}
+											{capacity.unit || ''}
+										</span>
+										<span class="slot-total">of {slot.quantity} total</span>
 										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 									</div>
 									{#if slot.advance_notice_hours}
@@ -269,9 +276,16 @@
 						</h4>
 						<div class="slot-list">
 							{#each categorizedSlots.currentFuture as slot}
+								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
 								<div class="slot-item">
 									<div class="slot-main">
-										<span class="slot-quantity">{slot.quantity || 0} {capacity.unit || ''}</span>
+										<span class="slot-quantity">
+											{Number.isInteger(computedQuantity)
+												? computedQuantity
+												: computedQuantity.toFixed(2)}
+											{capacity.unit || ''}
+										</span>
+										<span class="slot-total">of {slot.quantity} total</span>
 										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 									</div>
 									{#if slot.advance_notice_hours}
@@ -290,9 +304,16 @@
 						<h4 class="category-title">📜 Past ({categorizedSlots.past.length})</h4>
 						<div class="slot-list">
 							{#each categorizedSlots.past as slot}
+								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
 								<div class="slot-item past-slot">
 									<div class="slot-main">
-										<span class="slot-quantity">{slot.quantity || 0} {capacity.unit || ''}</span>
+										<span class="slot-quantity">
+											{Number.isInteger(computedQuantity)
+												? computedQuantity
+												: computedQuantity.toFixed(2)}
+											{capacity.unit || ''}
+										</span>
+										<span class="slot-total">of {slot.quantity} total</span>
 										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 									</div>
 								</div>
@@ -454,10 +475,6 @@
 		font-family: monospace;
 	}
 
-	.slots-section {
-		/* No specific styles needed here */
-	}
-
 	.slot-category {
 		margin-bottom: 20px;
 	}
@@ -506,6 +523,14 @@
 		font-weight: 600;
 		color: #111827;
 		font-size: 14px;
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+	}
+
+	.slot-total {
+		color: #6b7280;
+		font-size: 12px;
+		font-weight: 500;
+		margin-left: 8px;
 	}
 
 	.slot-time {

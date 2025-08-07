@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { ProviderCapacity, AvailabilitySlot } from '$lib/schema';
-	import Bar from './Bar.svelte';
-	import TagPill from './TagPill.svelte';
-	import DropDown from './DropDown.svelte';
-	import Chat from './Chat.svelte';
+	import Bar from '$lib/components/Bar.svelte';
+	import TagPill from '$lib/components/TagPill.svelte';
+	import DropDown from '$lib/components/DropDown.svelte';
+	import Chat from '$lib/components/Chat.svelte';
 
 	import Slot from './Slot.svelte';
 	import { Rules } from '$lib/filters';
@@ -433,14 +433,64 @@
 
 	// Handle slot updates
 	function handleSlotUpdate(updatedSlot: AvailabilitySlot) {
+		// 🚨 DEBUG: Log the incoming updated slot
+		console.log('[CAPACITY] 🚨 DEBUG: handleSlotUpdate called with slot:', updatedSlot.id);
+		console.log('[CAPACITY] 🚨 DEBUG: Updated slot location data:', {
+			location_type: updatedSlot.location_type,
+			latitude: updatedSlot.latitude,
+			longitude: updatedSlot.longitude,
+			street_address: updatedSlot.street_address,
+			city: updatedSlot.city,
+			state_province: updatedSlot.state_province,
+			postal_code: updatedSlot.postal_code,
+			country: updatedSlot.country
+		});
+
 		const updatedSlots = capacity.availability_slots.map((slot) =>
 			slot.id === updatedSlot.id ? updatedSlot : slot
 		);
+
+		// 🚨 DEBUG: Log the updated slots array
+		console.log('[CAPACITY] 🚨 DEBUG: Updated slots array:');
+		updatedSlots.forEach((slot, index) => {
+			if (slot.id === updatedSlot.id) {
+				console.log(`[CAPACITY] 🚨 DEBUG: Updated slot ${index} (${slot.id}) location data:`, {
+					location_type: slot.location_type,
+					latitude: slot.latitude,
+					longitude: slot.longitude,
+					street_address: slot.street_address,
+					city: slot.city,
+					state_province: slot.state_province,
+					postal_code: slot.postal_code,
+					country: slot.country
+				});
+			}
+		});
 
 		const updatedCapacity = {
 			...capacity,
 			availability_slots: updatedSlots
 		};
+
+		// 🚨 DEBUG: Log the final updated capacity
+		console.log('[CAPACITY] 🚨 DEBUG: Final updated capacity availability_slots:');
+		updatedCapacity.availability_slots.forEach((slot, index) => {
+			if (slot.id === updatedSlot.id) {
+				console.log(
+					`[CAPACITY] 🚨 DEBUG: Final capacity slot ${index} (${slot.id}) location data:`,
+					{
+						location_type: slot.location_type,
+						latitude: slot.latitude,
+						longitude: slot.longitude,
+						street_address: slot.street_address,
+						city: slot.city,
+						state_province: slot.state_province,
+						postal_code: slot.postal_code,
+						country: slot.country
+					}
+				);
+			}
+		});
 
 		onupdate?.(updatedCapacity);
 	}
@@ -870,27 +920,6 @@
 		box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.2);
 	}
 
-	.capacity-select {
-		font-size: 1rem;
-		padding: 6px 8px;
-		border: none;
-		border-bottom: 1.5px solid #e5e7eb;
-		background: transparent;
-		outline: none;
-		transition: all 0.2s ease;
-		appearance: none;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 6px center;
-		background-size: 16px;
-		padding-right: 28px;
-		border-radius: 0;
-	}
-	.capacity-select:focus {
-		border-bottom: 1.5px solid #3b82f6;
-		box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.2);
-	}
-
 	/* Icon buttons */
 	.remove-btn,
 	.settings-btn,
@@ -1080,12 +1109,6 @@
 		font-style: italic;
 	}
 
-	.empty-state {
-		background: rgba(243, 244, 246, 0.5);
-		border-radius: 6px;
-		border: 1px dashed #d1d5db;
-	}
-
 	/* Expanded settings styling */
 	.expanded-settings {
 		font-size: 0.875rem;
@@ -1100,10 +1123,6 @@
 		padding: 1.5rem;
 	}
 
-	.custom-recurrence {
-		border: 1px solid rgba(229, 231, 235, 0.7);
-	}
-
 	/* Animation for expanding the settings */
 	@keyframes slideDown {
 		from {
@@ -1114,13 +1133,6 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
-	}
-
-	/* Radio buttons */
-	input[type='radio'] {
-		appearance: auto;
-		margin-right: 0.5rem;
-		color: #3b82f6;
 	}
 
 	/* Chat container styling */
@@ -1228,11 +1240,6 @@
 	.add-slot-btn .add-icon {
 		font-size: 0.875rem;
 		font-weight: bold;
-	}
-
-	.slots-list {
-		max-height: 500px;
-		overflow-y: auto;
 	}
 
 	.empty-slots {

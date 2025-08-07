@@ -6,7 +6,6 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isRecalculatingTree,
-	isRecalculatingCapacities,
 	nodesMap,
 	contributorCapacityShares
 } from './core.svelte';
@@ -27,17 +26,7 @@ import {
 	persistUserDesiredSlotComposeInto
 } from '$lib/state/persistence.svelte';
 import { chatReadStates, isLoadingChatReadStates } from '$lib/state/chat.svelte';
-
-/**
- * Debounce helper for subscription persistence
- */
-export function debounce<T extends (...args: any[]) => void>(func: T, delay: number): T {
-	let timeoutId: any;
-	return ((...args: any[]) => {
-		clearTimeout(timeoutId);
-		timeoutId = setTimeout(() => func(...args), delay);
-	}) as T;
-}
+import { debounce } from '$lib/utils/debounce';
 
 // Debounced persistence functions
 const debouncedPersistSogf = debounce(() => {
@@ -51,14 +40,22 @@ const debouncedPersistSogf = debounce(() => {
 
 const debouncedPersistCapacities = debounce(() => {
 	console.log('[CAPACITIES-SUB] Executing debounced capacities persistence');
-	if (!get(isLoadingCapacities)) {
-		try {
-			persistCapacities();
-		} catch (error) {
-			console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
-		}
-	} else {
-		console.log('[CAPACITIES-SUB] Skipping persistence because capacities are being loaded');
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: debouncedPersistCapacities debounced function executing');
+
+	// 🚨 SMART RACE CONDITION PROTECTION: The persistCapacities function
+	// will check isLoadingCapacities and defer if needed, preventing
+	// local changes from overwriting incoming network data
+	try {
+		console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call persistCapacities()');
+		persistCapacities();
+		console.log('[CAPACITIES-SUB] 🚨 DEBUG: persistCapacities() completed');
+	} catch (error) {
+		console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
+		console.error('[CAPACITIES-SUB] 🚨 DEBUG: Error details:', {
+			name: error instanceof Error ? error.name : 'Unknown',
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined
+		});
 	}
 }, 200);
 
@@ -213,13 +210,23 @@ userTree.subscribe((tree) => {
  * Trigger persistence when capacities change
  */
 userCapacities.subscribe((capacities) => {
-	if (!capacities) return;
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: userCapacities subscription triggered');
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: capacities value:', capacities);
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: capacities type:', typeof capacities);
+
+	if (!capacities) {
+		console.log('[CAPACITIES-SUB] 🚨 DEBUG: capacities is null/undefined, returning');
+		return;
+	}
 
 	console.log('[CAPACITIES-SUB] Capacities updated');
 	console.log('[CAPACITIES-SUB] Capacities count:', Object.keys(capacities).length);
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call debouncedPersistCapacities');
 
 	// Debounced persistence function
 	debouncedPersistCapacities();
+
+	console.log('[CAPACITIES-SUB] 🚨 DEBUG: debouncedPersistCapacities called');
 });
 
 /**

@@ -129,7 +129,6 @@ name-resolution saving to UserList: remove UserList from getUserName
 
 select is working strange on some inputs (i.e. bottomsheet)
 
-
 Ideas:
 Joint request shares?
 Sharing time
@@ -186,7 +185,6 @@ Person B: 33% = 1 room for the 2-hour slot
 Person C: 33% = 1 room for the 2-hour slot
 All happen simultaneously in different spaces
 
-
 # providing capacitiy with specific-space and no specific-time:
 
 Example: "A workspace whenever, wherever I have available"
@@ -201,64 +199,57 @@ Person B: 35% = ~176 room-hours/week (flexible when/where)
 Person C: 25% = ~126 room-hours/week (flexible when/where)
 Maximum coordination flexibility but requires communication systems
 
-
-
-
 // given that capacities also have units, what are we dividing the units or the space-time coordinates?
 
 rename from coordinate capacities to : availability for distribution
 
 when the unit is time, then the coordinates are the available time-slots
 
-
 messages dont load for long
 messaging needs toast notifications
 
-
-not possible to scroll without using the sidebar. 
-
+not possible to scroll without using the sidebar.
 
 we need to be able to express desire/request
 so that we can properly also use % in our userNetworkCapacityShares To userCapacities Map (and we can express min/max in absolute quanitites of desire) and percent can be optimized accordingly.
 
-writeable store: userNetworkCapacitySharesToUserCapacitiesMap 
+writeable store: userNetworkCapacitySharesToUserCapacitiesMap
 this is what is persisted.
 
-writeable store: userRequests 
+writeable store: userRequests
 this is what is persisted.
 
-writeable store: userCommitments 
+writeable store: userCommitments
 this is what is persisted.
 
 Share = {
-    capacityID: string 
-    recieverId: pubkey string
-    providerOfferedPct: %
-    providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
-    desiredQty: fetched number (from reciever) (can exceed offeredQty)
-    undesiredQty: derived number (offeredQty - desiredQty) (can exceed offeredQty, but the offeredQty is the max undesired used for other computations)
-    committed: fetched number (from provider)
+capacityID: string
+recieverId: pubkey string
+providerOfferedPct: %
+providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
+desiredQty: fetched number (from reciever) (can exceed offeredQty)
+undesiredQty: derived number (offeredQty - desiredQty) (can exceed offeredQty, but the offeredQty is the max undesired used for other computations)
+committed: fetched number (from provider)
 }
 
-
-
 compositionShare extends Share = {
-    capacityID: string 
-    recieverId: pubkey string
-    providerOfferedPct: %
-    providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
-    desiredQty: fetched number (from reciever) (can exceed offeredQty)
+capacityID: string
+recieverId: pubkey string
+providerOfferedPct: %
+providerOfferedQty: derived number (prior to reallocation from player desire-expression: for more efficient allocation)
+desiredQty: fetched number (from reciever) (can exceed offeredQty)
 
     // this is at the level of recipientShares
     undesiredQty: derived number (offeredQty - desiredQty) (can exceed offeredQty, but the offeredQty is the max undesired used for other computations)
     committed: fetched number (from provider)
+
 }
 
 offered (share), desire/request, commmited
 
 there seems to be some bug with the providerShares
 I am not sure they are correctly being displayed or calculated.
-It seems  they show up differently on with different window sizes as well as the the bar that shows up on the Capacities is entirely different than what shows up in my Mutual-Reocgnition.
+It seems they show up differently on with different window sizes as well as the the bar that shows up on the Capacities is entirely different than what shows up in my Mutual-Reocgnition.
 
 Simple notifications system
 
@@ -272,16 +263,16 @@ Somehow the user was able to click the play button after having logged in and be
 
 I am unsure whether contacts successfully get mutual-recognition / shares of surplus, when initially added as contacts?
 
-
-
 collective.ts not taking into account fulfillment
 
 compose from seems to lose data sometimes
 compose into seems to lose data sometimes
 
-
 Common Language:
+
 - Node titles so that merging is good
 - Merge capacities with same titles
 
 Add ignore? to slotSchema! This would unessecarily update others! It is user side only
+
+Changes to the capacity field are not persisting properly!

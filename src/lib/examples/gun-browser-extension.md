@@ -1,3 +1,0 @@
-ok instead of immediaterly trying to code it, craft a master prompt outlining what we would need out of this browser extension, the goal is to either create a browser-extension that the user logs into, to subscribe in the background to certain paths, and notify the user using push.js or something similar. 
-
-If we did this, we would not necessarily have to make it periodically open up the PWA and have a service-worker based approach, we would just allow the user to log into the browser extension and provide a json of the paths they wish to subscribe to within the gun/user path

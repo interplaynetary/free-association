@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { userAlias, userPub, userTree } from '$lib/state.svelte';
+	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userTree } from '$lib/state/core.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode, type RootNode } from '$lib/schema';
+	import { type Node, type NonRootNode } from '$lib/schema';
 	import {
 		findNodeById,
 		getParentNode,
@@ -19,11 +20,10 @@
 		updateManualFulfillment
 	} from '$lib/protocol';
 	import { get } from 'svelte/store';
-	import { createContact } from '$lib/state/users.svelte';
-	import { updateContact, userContacts } from '$lib/state/users.svelte';
 	import {
+		createContact,
+		updateContact,
 		deleteContact,
-		getContactByPublicKey,
 		resolveToPublicKey
 	} from '$lib/state/users.svelte';
 	import { createNewTree } from '$lib/utils/cleanUtils';
@@ -1774,6 +1774,8 @@
 						class:growing={isGrowing && activeGrowthNodeId === child.data.id && !isShrinkingActive}
 						class:shrinking={isGrowing && activeGrowthNodeId === child.data.id && isShrinkingActive}
 						data-node-id={child.data.id}
+						role="button"
+						tabindex="0"
 						style="
 							position: absolute;
 							left: {child.x0 * 100}%;
@@ -1856,54 +1858,6 @@
 		display: flex;
 		flex-direction: column;
 		position: relative;
-	}
-
-	.path-navigation {
-		padding: 8px;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		border-bottom: 1px solid #eee;
-	}
-
-	.path {
-		display: flex;
-		align-items: center;
-		flex-wrap: nowrap;
-		overflow-x: auto;
-		scrollbar-width: none; /* Firefox */
-		-ms-overflow-style: none; /* IE and Edge */
-		max-width: 100%;
-		padding: 4px 0;
-	}
-
-	.path::-webkit-scrollbar {
-		display: none; /* Chrome, Safari, Opera */
-	}
-
-	.path-item {
-		white-space: nowrap;
-		padding: 2px 4px;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-		color: #666;
-		font-size: 14px;
-	}
-
-	.path-item:hover {
-		background-color: rgba(0, 0, 0, 0.05);
-		color: #333;
-	}
-
-	.path-item.current {
-		font-weight: bold;
-		color: #2196f3;
-	}
-
-	.path-separator {
-		margin: 0 4px;
-		color: #999;
 	}
 
 	.app-content {
@@ -2049,11 +2003,5 @@
 
 	.add-icon {
 		font-size: 20px;
-	}
-
-	.help-text {
-		margin-top: 12px;
-		color: #666;
-		font-size: 14px;
 	}
 </style>

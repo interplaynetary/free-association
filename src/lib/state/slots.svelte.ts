@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import type { UserSlotClaims, NetworkSlotClaims } from '$lib/schema';
-import { userNetworkCapacitiesWithShares, capacityShares } from './core.svelte';
+import { userNetworkCapacitiesWithShares } from './core.svelte';
 
 /**
  * Unified Slot Allocation System (Simplified - No Credits)

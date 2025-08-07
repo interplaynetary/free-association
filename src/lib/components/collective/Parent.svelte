@@ -4,7 +4,7 @@
 	import { currentPath } from '$lib/global.svelte';
 	import { type CollectiveNode, type CollectiveTree } from '$lib/schema';
 	import { findCollectiveNodeById } from '$lib/collective.svelte';
-	import Child from './Child.svelte';
+	import Child from '$lib/components/collective/Child.svelte';
 
 	// Props for the collective tree
 	let { collectiveTree, onNavigate = (nodeId: string) => {} } = $props<{
@@ -119,7 +119,15 @@
 							height: {(child.y1 - child.y0) * 100}%;
 						cursor: pointer;
 					"
+					role="button"
+					tabindex="0"
 					onclick={() => zoomInto(child.data.id)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							zoomInto(child.data.id);
+						}
+					}}
 				>
 					<Child
 						node={{

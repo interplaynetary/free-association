@@ -1,4 +1,4 @@
-<script context="module">
+<script module>
 	// Helper function to get a color based on index
 
 	// Helper function to calculate border radius for each segment
@@ -270,12 +270,19 @@
 				)}
 				data-id={segment.id}
 				data-value={segment.value}
-				on:mouseenter={(event) => handleSegmentEnter(segment.id, event)}
-				on:mouseleave={handleSegmentLeave}
-				on:click={(event) => handleSegmentClick(segment.id, event)}
-				on:touchstart={(event) => handleSegmentTouch(segment.id, event)}
-				role={showLabelsOnSelect || showLabelsAboveOnSelect ? 'button' : undefined}
-				tabindex={showLabelsOnSelect || showLabelsAboveOnSelect ? 0 : undefined}
+				onmouseenter={showLabelsOnSelect || showLabelsAboveOnSelect
+					? (event) => handleSegmentEnter(segment.id, event)
+					: undefined}
+				onmouseleave={showLabelsOnSelect || showLabelsAboveOnSelect
+					? handleSegmentLeave
+					: undefined}
+				onclick={showLabelsOnSelect || showLabelsAboveOnSelect
+					? (event) => handleSegmentClick(segment.id, event)
+					: undefined}
+				ontouchstart={showLabelsOnSelect || showLabelsAboveOnSelect
+					? (event) => handleSegmentTouch(segment.id, event)
+					: undefined}
+				{...showLabelsOnSelect || showLabelsAboveOnSelect ? { role: 'button', tabindex: 0 } : {}}
 			>
 				{#if shouldShowLabel(segment.id) && segment.label}
 					<span class="segment-label" class:small={segment.normalizedValue < 10}>

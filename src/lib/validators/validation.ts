@@ -132,8 +132,40 @@ export function parseTree(treeData: unknown) {
 function migrateCapacityToSlotBased(capacity: any): any {
 	// If it already has availability_slots, it's already in the new format
 	if (capacity.availability_slots) {
+		console.log(
+			`[MIGRATION] 🚨 DEBUG: Capacity ${capacity.id} already has availability_slots, checking existing slot location data:`,
+			{
+				slots: capacity.availability_slots.map((slot: any) => ({
+					id: slot.id,
+					location_type: slot.location_type,
+					coordinates: { lat: slot.latitude, lng: slot.longitude },
+					address: {
+						street: slot.street_address,
+						city: slot.city,
+						state: slot.state_province,
+						postal: slot.postal_code,
+						country: slot.country
+					}
+				}))
+			}
+		);
 		return capacity;
 	}
+
+	console.log(`[MIGRATION] 🚨 DEBUG: Starting migration for capacity ${capacity.id}:`, {
+		name: capacity.name,
+		old_location_type: capacity.location_type,
+		old_coordinates: { lat: capacity.latitude, lng: capacity.longitude },
+		old_address: {
+			street: capacity.street_address,
+			city: capacity.city,
+			state: capacity.state_province,
+			postal: capacity.postal_code,
+			country: capacity.country
+		},
+		has_quantity: typeof capacity.quantity !== 'undefined',
+		has_start_date: !!capacity.start_date
+	});
 
 	// If it has the old structure properties, migrate them to a slot
 	if (typeof capacity.quantity !== 'undefined' || capacity.location_type || capacity.start_date) {
@@ -154,6 +186,19 @@ function migrateCapacityToSlotBased(capacity: any): any {
 		if (capacity.state_province) migratedSlot.state_province = capacity.state_province;
 		if (capacity.postal_code) migratedSlot.postal_code = capacity.postal_code;
 		if (capacity.country) migratedSlot.country = capacity.country;
+
+		console.log(`[MIGRATION] 🚨 DEBUG: Created migrated slot for ${capacity.id}:`, {
+			slot_id: slotId,
+			migrated_location_type: migratedSlot.location_type,
+			migrated_coordinates: { lat: migratedSlot.latitude, lng: migratedSlot.longitude },
+			migrated_address: {
+				street: migratedSlot.street_address,
+				city: migratedSlot.city,
+				state: migratedSlot.state_province,
+				postal: migratedSlot.postal_code,
+				country: migratedSlot.country
+			}
+		});
 
 		// Migrate time properties
 		if (capacity.all_day !== undefined) migratedSlot.all_day = capacity.all_day;
@@ -205,10 +250,33 @@ function migrateCapacityToSlotBased(capacity: any): any {
 			}
 		}
 
+		console.log(`[MIGRATION] 🚨 DEBUG: Final migrated capacity ${capacity.id}:`, {
+			name: migratedCapacity.name,
+			slots_count: migratedCapacity.availability_slots.length,
+			first_slot: {
+				id: migratedCapacity.availability_slots[0].id,
+				location_type: migratedCapacity.availability_slots[0].location_type,
+				coordinates: {
+					lat: migratedCapacity.availability_slots[0].latitude,
+					lng: migratedCapacity.availability_slots[0].longitude
+				},
+				address: {
+					street: migratedCapacity.availability_slots[0].street_address,
+					city: migratedCapacity.availability_slots[0].city,
+					state: migratedCapacity.availability_slots[0].state_province,
+					postal: migratedCapacity.availability_slots[0].postal_code,
+					country: migratedCapacity.availability_slots[0].country
+				}
+			}
+		});
+
 		console.log(`[MIGRATION] Migrated old capacity ${capacity.id} to slot-based structure`);
 		return migratedCapacity;
 	}
 
+	console.log(
+		`[MIGRATION] 🚨 DEBUG: No migration needed for capacity ${capacity.id}, returning as-is`
+	);
 	// Return as-is if no migration is needed
 	return capacity;
 }

@@ -1,12 +1,6 @@
 import { get } from 'svelte/store';
 import { gun, user, userPub, usersList } from './gun.svelte';
-import {
-	userPubKeys,
-	userNamesOrAliasesCache,
-	userAliasesCache,
-	userNamesCache,
-	resolveToPublicKey
-} from '$lib/state/users.svelte';
+import { userPubKeys, userAliasesCache, resolveToPublicKey } from '$lib/state/users.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -27,29 +21,19 @@ import {
 } from '$lib/state/compose.svelte';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
 import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
-import type {
-	CapacitiesCollection,
-	RootNode,
-	UserSlotComposition,
-	NetworkSlotComposition,
-	ShareMap,
-	ContactsCollection
-} from '$lib/schema';
+import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
+import type { NetworkSlotComposition } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
 import {
 	parseCapacities,
 	parseTree,
-	parseUserComposition,
-	parseNetworkComposition,
 	parseUserSlotComposition,
-	parseNetworkSlotComposition,
 	parseShareMap,
-	parseRecognitionCache,
 	parseContacts,
 	parseCapacityShares,
 	parseChatReadStates
 } from '$lib/validators/validation';
-import { debounce } from './subscriptions.svelte';
+import { debounce } from '$lib/utils/debounce';
 import { derived } from 'svelte/store';
 
 /**
@@ -424,6 +408,74 @@ const mutualStreamManager = new StreamSubscriptionManager('MUTUAL');
 const ownDataStreamManager = new StreamSubscriptionManager('OWN_DATA');
 const chatStreamManager = new StreamSubscriptionManager('CHAT');
 
+// Stream manager for collective member trees
+const collectiveTreeStreamManager = new StreamSubscriptionManager('collective_tree');
+
+// Stream configurations for collective member data
+const collectiveMemberStreamConfigs = {
+	tree: {
+		type: 'tree',
+		streamManager: collectiveTreeStreamManager,
+		getGunPath: (userId: string, memberId?: string) => {
+			if (!memberId) return null;
+			const publicKey = resolveToPublicKey(memberId);
+			if (!publicKey) {
+				console.warn(
+					`[NETWORK] Cannot create tree stream for collective member ${memberId}: no public key available`
+				);
+				return null;
+			}
+			return gun.user(publicKey).get('tree');
+		},
+		processor: (memberId: string) => (treeData: any) => {
+			if (!treeData) {
+				console.log(`[NETWORK] No tree data received for collective member ${memberId}`);
+				return;
+			}
+
+			console.log(`[NETWORK] Received tree data for collective member ${memberId}`);
+
+			// Validate the tree data
+			const validatedTree = parseTree(treeData);
+			if (!validatedTree) {
+				console.warn(`[NETWORK] Invalid tree data from collective member ${memberId}`);
+				return;
+			}
+
+			// Update the collective forest
+			collectiveForest.update((forest) => {
+				const newForest = new Map(forest);
+				newForest.set(memberId, validatedTree);
+				console.log(
+					`[NETWORK] Updated forest with tree for member ${memberId}. Forest now has ${newForest.size} trees`
+				);
+				return newForest;
+			});
+		},
+		errorHandler: (memberId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in collective member tree stream for ${memberId}:`, error);
+		}
+	}
+};
+
+// Function to create streams for a collective member
+const createCollectiveMemberStreams = async (member: any) => {
+	try {
+		const userId = get(userPub);
+		if (!userId) {
+			console.warn('[NETWORK] Cannot create collective member streams - not authenticated');
+			return;
+		}
+
+		// Extract member ID from Entity object
+		const memberId = typeof member === 'string' ? member : member.id;
+		await createStream(collectiveMemberStreamConfigs.tree, userId, memberId);
+	} catch (error) {
+		const memberId = typeof member === 'string' ? member : member.id;
+		console.error(`[NETWORK] Error creating streams for collective member ${memberId}:`, error);
+	}
+};
+
 // Helper to clean up multiple stores by filtering out removed contributors
 function cleanupNetworkStores(
 	removedContributors: string[],
@@ -593,7 +645,99 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('capacities'),
 		processor: createDataProcessor({
 			dataType: 'capacities',
-			validator: parseCapacities,
+			validator: (rawData) => {
+				console.log('[NETWORK] 🚨 DEBUG: Raw capacities data received from Gun:', rawData);
+
+				// Check if we have any location data in the raw data
+				if (rawData && typeof rawData === 'object') {
+					let parsedData;
+					try {
+						parsedData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+					} catch (e) {
+						console.log('[NETWORK] 🚨 DEBUG: Failed to parse raw data');
+						return parseCapacities(rawData);
+					}
+
+					console.log('[NETWORK] 🚨 DEBUG: Parsed capacities data before validation:');
+					Object.entries(parsedData || {}).forEach(([capacityId, capacity]: [string, any]) => {
+						if (capacity && capacity.availability_slots) {
+							capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
+								const hasLocationData =
+									slot.location_type === 'Specific' ||
+									slot.latitude !== undefined ||
+									slot.longitude !== undefined ||
+									slot.street_address ||
+									slot.city ||
+									slot.state_province ||
+									slot.postal_code ||
+									slot.country;
+
+								if (hasLocationData) {
+									console.log(
+										`[NETWORK] 🚨 DEBUG: RAW - Capacity ${capacityId} slot ${slotIndex} HAS location data:`,
+										{
+											slot_id: slot.id,
+											location_type: slot.location_type,
+											coordinates: { lat: slot.latitude, lng: slot.longitude },
+											address: {
+												street: slot.street_address,
+												city: slot.city,
+												state: slot.state_province,
+												postal: slot.postal_code,
+												country: slot.country
+											}
+										}
+									);
+								}
+							});
+						}
+					});
+				}
+
+				const validatedData = parseCapacities(rawData);
+
+				// Check what happened after validation
+				console.log('[NETWORK] 🚨 DEBUG: Post-validation capacities data:');
+				Object.entries(validatedData || {}).forEach(([capacityId, capacity]: [string, any]) => {
+					if (capacity && capacity.availability_slots) {
+						capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
+							const hasLocationData =
+								slot.location_type === 'Specific' ||
+								slot.latitude !== undefined ||
+								slot.longitude !== undefined ||
+								slot.street_address ||
+								slot.city ||
+								slot.state_province ||
+								slot.postal_code ||
+								slot.country;
+
+							if (hasLocationData) {
+								console.log(
+									`[NETWORK] 🚨 DEBUG: VALIDATED - Capacity ${capacityId} slot ${slotIndex} HAS location data:`,
+									{
+										slot_id: slot.id,
+										location_type: slot.location_type,
+										coordinates: { lat: slot.latitude, lng: slot.longitude },
+										address: {
+											street: slot.street_address,
+											city: slot.city,
+											state: slot.state_province,
+											postal: slot.postal_code,
+											country: slot.country
+										}
+									}
+								);
+							} else {
+								console.log(
+									`[NETWORK] 🚨 DEBUG: VALIDATED - Capacity ${capacityId} slot ${slotIndex} has NO location data`
+								);
+							}
+						});
+					}
+				});
+
+				return validatedData;
+			},
 			getCurrentData: () => get(userCapacities),
 			updateStore: (data) => userCapacities.set(data),
 			loadingFlag: isLoadingCapacities
@@ -1069,6 +1213,7 @@ export async function initializeUserDataStreams(): Promise<void> {
 		// Stop existing streams first
 		ownDataStreamManager.stopAllStreams();
 		chatStreamManager.stopAllStreams();
+		collectiveTreeStreamManager.stopAllStreams(); // Stop collective tree streams
 
 		// Create new streams
 		await createOwnTreeStream();
@@ -1080,6 +1225,9 @@ export async function initializeUserDataStreams(): Promise<void> {
 
 		// Setup users list subscription (still using old approach for now)
 		setupUsersListSubscription();
+
+		// Initialize collective members and their tree streams
+		await Promise.all(Array.from(get(collectiveMembers)).map(createCollectiveMemberStreams));
 
 		console.log('[NETWORK] User data streams initialized successfully');
 	} catch (error) {
@@ -1316,3 +1464,33 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 }, 100);
 
 mutualContributors.subscribe(debouncedUpdateMutualSubscriptions);
+
+// Watch for changes to collective members and subscribe to their trees
+const debouncedUpdateCollectiveSubscriptions = debounce((members: Array<any>) => {
+	// Only run this if we're authenticated
+	try {
+		if (!userPub || !get(userPub)) {
+			console.log('[NETWORK] Cannot subscribe to collective members - not authenticated');
+			return;
+		}
+	} catch (error) {
+		console.log('[NETWORK] Cannot subscribe to collective members - userPub not initialized');
+		return;
+	}
+
+	if (!members.length) {
+		// Clear the forest and stop all streams
+		collectiveForest.set(new Map());
+		collectiveTreeStreamManager.stopAllStreams();
+		return;
+	}
+
+	// Update subscriptions using members directly (createCollectiveMemberStreams will extract IDs)
+	collectiveTreeStreamManager.updateSubscriptions(
+		members.map((m) => (typeof m === 'string' ? m : m.id)),
+		(memberId) => createCollectiveMemberStreams(memberId)
+	);
+}, 100);
+
+// Subscribe to collective members changes
+collectiveMembers.subscribe(debouncedUpdateCollectiveSubscriptions);

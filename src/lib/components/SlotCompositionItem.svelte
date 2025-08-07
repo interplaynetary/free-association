@@ -11,7 +11,7 @@
 		networkCapacities,
 		userCapacities
 	} from '$lib/state/core.svelte';
-	import Chat from './Chat.svelte';
+	import Chat from '$lib/components/Chat.svelte';
 
 	interface Props {
 		sourceCapacityId: string;
@@ -57,11 +57,15 @@
 
 	// Get source and target capacity/slot info
 	let sourceCapacity = $derived(() => {
-		return ($userCapacities?.[sourceCapacityId]) || $userNetworkCapacitiesWithShares[sourceCapacityId];
+		return (
+			$userCapacities?.[sourceCapacityId] || $userNetworkCapacitiesWithShares[sourceCapacityId]
+		);
 	});
 
 	let targetCapacity = $derived(() => {
-		return ($userCapacities?.[targetCapacityId]) || $userNetworkCapacitiesWithShares[targetCapacityId];
+		return (
+			$userCapacities?.[targetCapacityId] || $userNetworkCapacitiesWithShares[targetCapacityId]
+		);
 	});
 
 	let sourceSlot = $derived(() => {
@@ -170,7 +174,18 @@
 </script>
 
 <div class="slot-item" style="background: {getColor(desiredQuantityInput)}">
-	<div class="main" onclick={() => onToggle?.()}>
+	<div
+		class="main"
+		role="button"
+		tabindex="0"
+		onclick={() => onToggle?.()}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				onToggle?.();
+			}
+		}}
+	>
 		<!-- Line 1: Source and Target Slot Info -->
 		<div class="header-line">
 			<span class="slot-name">
@@ -189,9 +204,10 @@
 		<!-- Line 2: Our Desire and Their Desire -->
 		<div class="desire-line">
 			<div class="our-desire">
-				<label class="desire-label">Our desire:</label>
+				<label for="our-desire-input" class="desire-label">Our desire:</label>
 				<div class="input-group">
 					<input
+						id="our-desire-input"
 						type="number"
 						min="0"
 						step="0.1"
@@ -205,7 +221,7 @@
 				</div>
 			</div>
 			<div class="their-desire">
-				<label class="desire-label">Their desire:</label>
+				<span class="desire-label">Their desire:</span>
 				<span class="their-value">
 					{#if theirDesireAmount() > 0}
 						{theirDesireAmount().toFixed(1)} {compositionUnit()}

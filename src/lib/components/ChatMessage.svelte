@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gunAvatar } from 'gun-avatar';
-	import { getColorForUserId, getContrastTextColor } from '../utils/colorUtils';
+	import { getColorForUserId, getContrastTextColor } from '$lib/utils/colorUtils';
 
 	interface Message {
 		who: string;
@@ -32,6 +32,7 @@
 			try {
 				// @ts-ignore
 				return gunAvatar({
+					// @ts-ignore
 					pub: whopub, // @ts-ignore
 					size: 32,
 					round: true,

@@ -1,6 +1,6 @@
 import { addChild } from '$lib/protocol';
 import type { RootNode, Node } from '$lib/schema';
-import { userTree } from '$lib/state.svelte';
+import { userTree } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 
 // Export the initialization function that populates an existing root node
