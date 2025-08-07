@@ -142,13 +142,30 @@
 					}
 				}
 
+				// Helper function to count active slots (slots with computed quantity > 0)
+				// This matches the logic from Shares.svelte
+				function getActiveSlotCount(capacity: any): number {
+					// Type guard: only RecipientCapacity has computed_quantities
+					if (!('computed_quantities' in capacity) || !capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
+						return 0;
+					}
+					return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
+				}
+
+				// Helper function to get computed quantity for a specific slot
+				function getSlotComputedQuantity(capacity: any, slotId: string): number {
+					// Type guard: only RecipientCapacity has computed_quantities
+					if (!('computed_quantities' in capacity) || !capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
+						return 0;
+					}
+					const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
+					return slotQuantity?.quantity || 0;
+				}
+
 				// First check if this capacity has any active slots (with computed quantity > 0)
 				// This respects divisibility constraints like max_natural_div and max_percentage_div
-				const hasActiveSlots = capacity.computed_quantities && 
-					Array.isArray(capacity.computed_quantities) &&
-					capacity.computed_quantities.some((cq: any) => cq.quantity > 0);
-
-				if (!hasActiveSlots) {
+				const activeSlotCount = getActiveSlotCount(capacity);
+				if (activeSlotCount === 0) {
 					// Skip capacities with no active slots (respects divisibility constraints)
 					continue;
 				}
@@ -156,8 +173,8 @@
 				// Process slots in this capacity
 				for (const slot of capacity.availability_slots) {
 					// Check if this specific slot has a computed quantity > 0
-					const slotComputedQuantity = capacity.computed_quantities?.find((cq: any) => cq.slot_id === slot.id);
-					if (!slotComputedQuantity || slotComputedQuantity.quantity <= 0) {
+					const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
+					if (slotComputedQuantity <= 0) {
 						// Skip slots with no computed quantity (respects divisibility constraints)
 						continue;
 					}
