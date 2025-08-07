@@ -9,9 +9,8 @@ const config = {
 			fallback: 'index.html'
 		}),
 		paths: {
-			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || '',
-			assets: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
-		},
+			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
+		}
 	},
 	extensions: ['.svelte', '.svx']
 };
