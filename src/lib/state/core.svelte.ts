@@ -455,16 +455,6 @@ function getSlotById(capacity: any, slotId: string) {
 	return capacity.availability_slots?.find((slot: any) => slot.id === slotId);
 }
 
-function getTotalComputedQuantity(capacity: any): number {
-	if (capacity.computed_quantities && Array.isArray(capacity.computed_quantities)) {
-		return capacity.computed_quantities.reduce(
-			(sum: number, slot: any) => sum + (slot.quantity || 0),
-			0
-		);
-	}
-	return 0;
-}
-
 // UNIFIED SLOT ALLOCATION ANALYSIS (moved from slots.svelte.ts to avoid circular dependency)
 // Combines feasible claims calculation with rich metadata for UI
 export const slotAllocationAnalysis = derived(
