@@ -5,6 +5,7 @@ import {
 	getSubtreeContributorMap,
 	findNodeById,
 	calculateRecipientShares,
+	calculateRecipientSlotQuantities,
 	computeQuantityShares
 } from '$lib/protocol';
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
@@ -22,7 +23,7 @@ import type {
 	SlotAllocationAnalysis,
 	SlotAllocationMetadata
 } from '$lib/schema';
-import { persistContributorCapacitySlotQuantities } from './persistence.svelte';
+
 import { resolveToPublicKey } from './users.svelte';
 
 // Core reactive state - these form the main reactive chain
@@ -51,9 +52,17 @@ export const networkDesiredSlotComposeInto: Writable<NetworkSlotComposition> = w
 export const userNetworkCapacitiesWithSlotQuantities = derived(
 	[networkCapacitySlotQuantities, networkCapacities],
 	([$networkCapacitySlotQuantities, $networkCapacities]) => {
-		if (!$networkCapacitySlotQuantities || !$networkCapacities) {
+		// Don't return early if one store is empty - wait for both to have data
+		if (!$networkCapacitySlotQuantities) {
 			console.log(
 				'[NETWORK-CAPACITIES-SLOTS] No network slot quantity data available, returning empty'
+			);
+			return {};
+		}
+
+		if (!$networkCapacities) {
+			console.log(
+				'[NETWORK-CAPACITIES-SLOTS] No network capacities data available, returning empty'
 			);
 			return {};
 		}
@@ -68,7 +77,12 @@ export const userNetworkCapacitiesWithSlotQuantities = derived(
 		Object.entries($networkCapacitySlotQuantities).forEach(([contributorId, slotQuantities]) => {
 			// Get this contributor's capacities
 			const contributorCapacities = $networkCapacities[contributorId];
-			if (!contributorCapacities) return;
+			if (!contributorCapacities) {
+				console.log(
+					`[NETWORK-CAPACITIES-SLOTS] No capacities found for contributor ${contributorId} - stream timing issue, will process when available`
+				);
+				return;
+			}
 
 			// For each capacity we have slot quantities for
 			Object.entries(slotQuantities).forEach(([capacityId, slotQuantityMap]) => {
@@ -96,6 +110,10 @@ export const userNetworkCapacitiesWithSlotQuantities = derived(
 						computed_quantities: computedQuantities,
 						provider_id: contributorId
 					};
+				} else {
+					console.log(
+						`[NETWORK-CAPACITIES-SLOTS] No capacity definition found for ${capacityId} from contributor ${contributorId} - stream timing issue, will process when available`
+					);
 				}
 			});
 		});
@@ -110,7 +128,7 @@ export const userNetworkCapacitiesWithSlotQuantities = derived(
 
 // LEGACY STORE - DEPRECATED
 // This store uses the old percentage-based approach and should be replaced with
-// userNetworkCapacitiesWithSlotQuantities in all new code
+// userNetworkCapacitiesWithSlotQuantities in all new code - excpe th chat system?
 export const userNetworkCapacitiesWithShares = derived(
 	[networkCapacityShares, networkCapacities],
 	([$networkCapacityShares, $networkCapacities]) => {
@@ -283,14 +301,18 @@ export const capacityShares = derived(
 	}
 );
 
-// Derived store that calculates slot quantities and persists them
+// Derived store that calculates slot quantities using mutual recognition shares
 export const capacitySlotQuantities = derived(
-	[userCapacities, userTree, nodesMap, subtreeContributorMap],
-	([$userCapacities, $userTree, $nodesMap, $subtreeContributorMap]) => {
-		console.log('[CAPACITY-SLOT-QUANTITIES] Calculating slot quantities for all capacities');
+	[userCapacities, capacityShares],
+	([$userCapacities, $capacityShares]) => {
+		console.log(
+			'[CAPACITY-SLOT-QUANTITIES] Calculating slot quantities from mutual recognition shares'
+		);
 
-		if (!$userCapacities || !$userTree) {
-			console.log('[CAPACITY-SLOT-QUANTITIES] Missing capacities or tree, returning empty');
+		if (!$userCapacities || !$capacityShares) {
+			console.log(
+				'[CAPACITY-SLOT-QUANTITIES] Missing capacities or capacity shares, returning empty'
+			);
 			return {};
 		}
 
@@ -306,13 +328,13 @@ export const capacitySlotQuantities = derived(
 
 				const providerCapacity = capacity as ProviderCapacity;
 
-				// Calculate slot quantities for this capacity
-				const recipientSlotQuantities = calculateRecipientShares(
+				// Get the already-calculated mutual recognition shares for this capacity
+				const filteredShares = $capacityShares[capacityId] || {};
+
+				// Calculate actual slot quantities using the mutual recognition shares
+				const recipientSlotQuantities = calculateRecipientSlotQuantities(
 					providerCapacity,
-					$userTree,
-					$nodesMap,
-					$subtreeContributorMap,
-					resolveToPublicKey
+					filteredShares
 				);
 
 				// Merge the results
@@ -324,7 +346,7 @@ export const capacitySlotQuantities = derived(
 				});
 
 				console.log(
-					`[CAPACITY-SLOT-QUANTITIES] Calculated slot quantities for capacity ${capacityId} with ${Object.keys(recipientSlotQuantities).length} recipients`
+					`[CAPACITY-SLOT-QUANTITIES] Calculated slot quantities for capacity ${capacityId} with ${Object.keys(recipientSlotQuantities).length} recipients using mutual recognition shares`
 				);
 			} catch (error) {
 				console.error(
@@ -335,20 +357,12 @@ export const capacitySlotQuantities = derived(
 			}
 		});
 
-		// Persist the slot quantities to the network
-		if (Object.keys(allSlotQuantities).length > 0) {
-			console.log('[CAPACITY-SLOT-QUANTITIES] Persisting slot quantities to network');
-			try {
-				persistContributorCapacitySlotQuantities(allSlotQuantities);
-			} catch (error) {
-				console.error('[CAPACITY-SLOT-QUANTITIES] Error persisting slot quantities:', error);
-			}
-		}
+		// Note: Persistence is now handled in subscriptions.svelte.ts
 
 		console.log(
 			'[CAPACITY-SLOT-QUANTITIES] Generated slot quantities for',
 			Object.keys(allSlotQuantities).length,
-			'recipients'
+			'recipients using mutual recognition'
 		);
 		return allSlotQuantities;
 	}
@@ -559,7 +573,6 @@ export const slotClaimMetadata = derived(
 	[slotAllocationAnalysis],
 	([analysis]) => analysis.metadata
 );
-
 
 /**
  * Slot-Aware Composition System

@@ -1,6 +1,12 @@
 import { get } from 'svelte/store';
 import { gun, user, userPub, usersList } from './gun.svelte';
-import { userPubKeys, userAliasesCache, resolveToPublicKey } from '$lib/state/users.svelte';
+import {
+	userPubKeys,
+	userAliasesCache,
+	resolveToPublicKey,
+	userContacts,
+	isLoadingContacts
+} from '$lib/state/users.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -11,17 +17,14 @@ import {
 	userTree,
 	userCapacities,
 	isLoadingTree,
-	isLoadingCapacities
-} from './core.svelte';
-import { userContacts, isLoadingContacts } from './users.svelte';
-import {
+	isLoadingCapacities,
 	userDesiredSlotComposeFrom,
 	userDesiredSlotComposeInto,
 	networkDesiredSlotComposeFrom,
-	networkDesiredSlotComposeInto
-} from './core.svelte';
+	networkDesiredSlotComposeInto,
+	userNetworkCapacitiesWithShares
+} from '$lib/state/core.svelte';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
-import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
 import type { NetworkSlotComposition } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';

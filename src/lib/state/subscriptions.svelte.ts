@@ -17,6 +17,7 @@ import {
 	persistSogf,
 	persistCapacities,
 	persistContributorCapacityShares,
+	persistContributorCapacitySlotQuantities,
 	persistContacts,
 	persistChatReadStates
 } from './persistence.svelte';
@@ -88,6 +89,17 @@ const debouncedPersistUserDesiredSlotComposeInto = debounce(() => {
 		console.error('[USER-SLOT-COMPOSE-INTO-SUB] Error during debounced persistence:', error);
 	}
 }, 250);
+
+const debouncedPersistContributorCapacitySlotQuantities = debounce((slotQuantities) => {
+	console.log(
+		'[CAPACITY-SLOT-QUANTITIES-SUB] Executing debounced capacity slot quantities persistence'
+	);
+	try {
+		persistContributorCapacitySlotQuantities(slotQuantities);
+	} catch (error) {
+		console.error('[CAPACITY-SLOT-QUANTITIES-SUB] Error during debounced persistence:', error);
+	}
+}, 200);
 
 const debouncedPersistContacts = debounce(() => {
 	console.log('[CONTACTS-SUB] Executing debounced contacts persistence');
@@ -245,8 +257,7 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 });
 
 /**
- * Subscribe to capacity slot quantities to trigger their calculation and persistence
- * Note: The persistence is handled within the derived store itself
+ * Subscribe to capacity slot quantities to trigger their persistence
  */
 capacitySlotQuantities.subscribe((slotQuantities) => {
 	console.log('[CAPACITY-SLOT-QUANTITIES-SUB] Capacity slot quantities updated');
@@ -254,7 +265,17 @@ capacitySlotQuantities.subscribe((slotQuantities) => {
 		'[CAPACITY-SLOT-QUANTITIES-SUB] Slot quantities count:',
 		Object.keys(slotQuantities).length
 	);
-	// Persistence is handled within the derived store itself
+
+	// Don't persist empty slot quantities during initialization
+	if (Object.keys(slotQuantities).length === 0) {
+		console.log(
+			'[CAPACITY-SLOT-QUANTITIES-SUB] Skipping persistence of empty slot quantities (likely initialization)'
+		);
+		return;
+	}
+
+	// Debounced persistence function
+	debouncedPersistContributorCapacitySlotQuantities(slotQuantities);
 });
 
 /**
