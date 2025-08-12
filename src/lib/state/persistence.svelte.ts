@@ -1,4 +1,5 @@
 import { get } from 'svelte/store';
+import type { UserSlotQuantities } from '$lib/schema';
 import {
 	userTree,
 	userSogf,
@@ -10,7 +11,7 @@ import {
 	contributorCapacityShares
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
-import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './compose.svelte';
+import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 
@@ -343,6 +344,55 @@ export function persistContributorCapacityShares() {
 					/*console.log(
 						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
 					); */
+				}
+			});
+	});
+}
+
+/**
+ * Persist contributor capacity slot quantities to gun
+ * This stores the actual discrete unit allocations per slot for each contributor
+ */
+export function persistContributorCapacitySlotQuantities(
+	contributorSlotQuantities: Record<string, UserSlotQuantities>
+) {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log(
+			'[PERSIST] User not initialized, skipping contributor capacity slot quantities persistence'
+		);
+		return;
+	}
+
+	const ourId = get(userPub);
+	if (!ourId) {
+		console.log(
+			'[PERSIST] No user ID available, cannot persist contributor capacity slot quantities'
+		);
+		return;
+	}
+
+	console.log(
+		'[PERSIST] Persisting contributor capacity slot quantities:',
+		contributorSlotQuantities
+	);
+
+	// For each contributor, store their slot quantities under their path
+	Object.entries(contributorSlotQuantities).forEach(([contributorId, slotQuantities]) => {
+		// Store under capacitySlotQuantities/contributorId
+		user
+			.get('capacitySlotQuantities')
+			.get(contributorId)
+			.put(JSON.stringify(slotQuantities), (ack: any) => {
+				if (ack.err) {
+					console.error(
+						`[PERSIST] Error persisting capacity slot quantities for contributor ${contributorId}:`,
+						ack.err
+					);
+				} else {
+					console.log(
+						`[PERSIST] Successfully persisted capacity slot quantities for contributor ${contributorId}`
+					);
 				}
 			});
 	});

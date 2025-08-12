@@ -1,5 +1,5 @@
 import { derived } from 'svelte/store';
-import { userNetworkCapacitiesWithShares } from '../core.svelte';
+import { userNetworkCapacitiesWithSlotQuantities } from '../core.svelte';
 import type {
 	CapacitiesCollection,
 	RecipientCapacity,
@@ -231,30 +231,33 @@ export const findCapacitiesWithAnyCriteria = (
 // ===== REACTIVE STORES =====
 
 export const capacityLookups = derived(
-	[userNetworkCapacitiesWithShares],
-	([$userNetworkCapacitiesWithShares]) => {
+	[userNetworkCapacitiesWithSlotQuantities],
+	([$userNetworkCapacitiesWithSlotQuantities]) => {
 		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
+			!$userNetworkCapacitiesWithSlotQuantities ||
+			Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
 		) {
 			return createCapacityLookups({});
 		}
-		return createCapacityLookups($userNetworkCapacitiesWithShares);
+		return createCapacityLookups($userNetworkCapacitiesWithSlotQuantities);
 	}
 );
 
 export const createCapacityLookupsWithCustomRanges = (
 	customRanges: Partial<Record<NumericProperty, RangeDefinition[]>>
 ) =>
-	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
-		) {
-			return createCapacityLookups({}, customRanges);
+	derived(
+		[userNetworkCapacitiesWithSlotQuantities],
+		([$userNetworkCapacitiesWithSlotQuantities]) => {
+			if (
+				!$userNetworkCapacitiesWithSlotQuantities ||
+				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
+			) {
+				return createCapacityLookups({}, customRanges);
+			}
+			return createCapacityLookups($userNetworkCapacitiesWithSlotQuantities, customRanges);
 		}
-		return createCapacityLookups($userNetworkCapacitiesWithShares, customRanges);
-	});
+	);
 
 export const findCapacitiesWithAll = derived(
 	[capacityLookups],
@@ -276,57 +279,69 @@ export const findCapacitiesWithAny = derived(
  * Create reactive time index for capacities
  */
 export const createCapacityTimeIndex = (config: TimeIndexConfig = {}) =>
-	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
-		) {
-			return createTimeIndex({}, config);
+	derived(
+		[userNetworkCapacitiesWithSlotQuantities],
+		([$userNetworkCapacitiesWithSlotQuantities]) => {
+			if (
+				!$userNetworkCapacitiesWithSlotQuantities ||
+				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
+			) {
+				return createTimeIndex({}, config);
+			}
+			return createTimeIndex($userNetworkCapacitiesWithSlotQuantities, config);
 		}
-		return createTimeIndex($userNetworkCapacitiesWithShares, config);
-	});
+	);
 
 /**
  * Create reactive proximity-sorted capacities
  */
 export const createCapacityProximitySort = (config: LocationSortConfig) =>
-	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
-		) {
-			return [];
+	derived(
+		[userNetworkCapacitiesWithSlotQuantities],
+		([$userNetworkCapacitiesWithSlotQuantities]) => {
+			if (
+				!$userNetworkCapacitiesWithSlotQuantities ||
+				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
+			) {
+				return [];
+			}
+			return sortObjectsByProximity($userNetworkCapacitiesWithSlotQuantities, config);
 		}
-		return sortObjectsByProximity($userNetworkCapacitiesWithShares, config);
-	});
+	);
 
 /**
  * Create reactive time index for capacities (slot-aware)
  */
 export const createCapacitySlotTimeIndex = (config: TimeIndexConfig = {}) =>
-	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
-		) {
-			return createSlotAwareTimeIndex({}, config);
+	derived(
+		[userNetworkCapacitiesWithSlotQuantities],
+		([$userNetworkCapacitiesWithSlotQuantities]) => {
+			if (
+				!$userNetworkCapacitiesWithSlotQuantities ||
+				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
+			) {
+				return createSlotAwareTimeIndex({}, config);
+			}
+			return createSlotAwareTimeIndex($userNetworkCapacitiesWithSlotQuantities, config);
 		}
-		return createSlotAwareTimeIndex($userNetworkCapacitiesWithShares, config);
-	});
+	);
 
 /**
  * Create reactive proximity-sorted capacities (slot-aware)
  */
 export const createCapacitySlotProximitySort = (config: LocationSortConfig) =>
-	derived([userNetworkCapacitiesWithShares], ([$userNetworkCapacitiesWithShares]) => {
-		if (
-			!$userNetworkCapacitiesWithShares ||
-			Object.keys($userNetworkCapacitiesWithShares).length === 0
-		) {
-			return [];
+	derived(
+		[userNetworkCapacitiesWithSlotQuantities],
+		([$userNetworkCapacitiesWithSlotQuantities]) => {
+			if (
+				!$userNetworkCapacitiesWithSlotQuantities ||
+				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
+			) {
+				return [];
+			}
+			return sortCapacitiesByProximity($userNetworkCapacitiesWithSlotQuantities, config);
 		}
-		return sortCapacitiesByProximity($userNetworkCapacitiesWithShares, config);
-	});
+	);
 
 // ===== LEGACY ALIASES =====
 

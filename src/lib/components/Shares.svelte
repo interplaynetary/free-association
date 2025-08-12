@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
+	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
 	import Share from '$lib/components/Share.svelte';
 	import type {
@@ -42,16 +42,16 @@
 		if (!share.computed_quantities || !Array.isArray(share.computed_quantities)) {
 			return 0;
 		}
-		return share.computed_quantities.filter(slot => slot.quantity > 0).length;
+		return share.computed_quantities.filter((slot) => slot.quantity > 0).length;
 	}
 
 	// Base shares data - all valid shares
 	let allShares = $derived(() => {
-		if (!$userNetworkCapacitiesWithShares) {
+		if (!$userNetworkCapacitiesWithSlotQuantities) {
 			return [];
 		}
 
-		const sharesList = Object.entries($userNetworkCapacitiesWithShares).map(
+		const sharesList = Object.entries($userNetworkCapacitiesWithSlotQuantities).map(
 			([capacityId, capacity]) =>
 				({
 					...capacity,

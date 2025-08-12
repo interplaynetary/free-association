@@ -7,6 +7,7 @@ import {
 	recognitionCache,
 	networkCapacities,
 	networkCapacityShares,
+	networkCapacitySlotQuantities,
 	userTree,
 	userCapacities,
 	isLoadingTree,
@@ -18,7 +19,7 @@ import {
 	userDesiredSlotComposeInto,
 	networkDesiredSlotComposeFrom,
 	networkDesiredSlotComposeInto
-} from '$lib/state/compose.svelte';
+} from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
 import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
 import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
@@ -31,6 +32,7 @@ import {
 	parseShareMap,
 	parseContacts,
 	parseCapacityShares,
+	parseCapacitySlotQuantities,
 	parseChatReadStates
 } from '$lib/validators/validation';
 import { debounce } from '$lib/utils/debounce';
@@ -997,6 +999,7 @@ const mutualContributorStreamConfigs = {
 					`[NETWORK] Received new capacity shares from contributor ${contributorId}:`,
 					validatedShares
 				);
+
 				networkCapacityShares.update((current) => ({
 					...current,
 					[contributorId]: validatedShares
@@ -1005,6 +1008,58 @@ const mutualContributorStreamConfigs = {
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
 			console.error(`[NETWORK] Error in capacity shares stream for ${contributorId}:`, error);
+		}
+	},
+	capacitySlotQuantities: {
+		type: 'capacitySlotQuantities',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('capacitySlotQuantities').get(userId);
+		},
+		processor: (contributorId: string) => (slotQuantities: any) => {
+			if (!slotQuantities) {
+				console.log(`[NETWORK] No capacity slot quantities from contributor ${contributorId}`);
+				networkCapacitySlotQuantities.update((current) => {
+					const { [contributorId]: _, ...rest } = current;
+					return rest;
+				});
+				return;
+			}
+
+			console.log(
+				`[NETWORK] Received capacity slot quantities update from stream for ${contributorId}`
+			);
+
+			// Validate capacity slot quantities using parseCapacitySlotQuantities
+			const validatedQuantities = parseCapacitySlotQuantities(slotQuantities);
+			if (!validatedQuantities || Object.keys(validatedQuantities).length === 0) {
+				console.warn(`[NETWORK] Invalid capacity slot quantities from ${contributorId}`);
+				return;
+			}
+
+			const currentNetworkQuantities = get(networkCapacitySlotQuantities)[contributorId] || {};
+			const isUnchanged =
+				JSON.stringify(validatedQuantities) === JSON.stringify(currentNetworkQuantities);
+
+			if (!isUnchanged) {
+				console.log(
+					`[NETWORK] Received new capacity slot quantities from contributor ${contributorId}:`,
+					validatedQuantities
+				);
+
+				networkCapacitySlotQuantities.update((current) => ({
+					...current,
+					[contributorId]: validatedQuantities
+				}));
+			}
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(
+				`[NETWORK] Error in capacity slot quantities stream for ${contributorId}:`,
+				error
+			);
 		}
 	},
 	desiredSlotComposeFrom: {
@@ -1171,6 +1226,7 @@ const createMutualContributorStreams = withAuthentication(
 		const streamTypes = [
 			'capacities',
 			'capacityShares',
+			'capacitySlotQuantities',
 			'desiredSlotComposeFrom',
 			'desiredSlotComposeInto'
 		] as const;
@@ -1453,6 +1509,7 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 	const networkStores = [
 		{ store: networkCapacities, name: 'networkCapacities' },
 		{ store: networkCapacityShares, name: 'networkCapacityShares' },
+		{ store: networkCapacitySlotQuantities, name: 'networkCapacitySlotQuantities' },
 		{ store: networkDesiredSlotComposeFrom, name: 'networkDesiredComposeFrom' },
 		{ store: networkDesiredSlotComposeInto, name: 'networkDesiredComposeInto' }
 	];

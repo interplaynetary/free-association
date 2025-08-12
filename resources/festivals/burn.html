@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLAYNET BURN - The Space Between</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .cosmic-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(255, 69, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 140, 0, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+            z-index: -2;
+        }
+        
+        .desert-particles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+        
+        .particle {
+            position: absolute;
+            background: #ff8c00;
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .particle:nth-child(odd) {
+            animation-delay: -3s;
+            background: rgba(255, 69, 0, 0.3);
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .glitch {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(3rem, 8vw, 8rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: linear-gradient(45deg, #ff4500, #ff8c00, #ffd700, #ff4500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 69, 0, 0.5);
+            animation: flicker 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 1; text-shadow: 0 0 30px rgba(255, 69, 0, 0.5); }
+            50% { opacity: 0.8; text-shadow: 0 0 60px rgba(255, 140, 0, 0.8); }
+        }
+        
+        .subtitle {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            font-weight: 300;
+            margin: 2rem 0;
+            color: #ffd700;
+            opacity: 0.9;
+            text-transform: lowercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .tagline {
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            font-weight: 400;
+            max-width: 600px;
+            line-height: 1.6;
+            margin: 2rem 0 4rem 0;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #ff4500, #ff8c00);
+            color: white;
+            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #ffd700;
+            border: 2px solid #ffd700;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.5);
+        }
+        
+        .section {
+            padding: 6rem 0;
+            position: relative;
+        }
+        
+        .section-title {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(45deg, #ffd700, #ff8c00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .game-mechanics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .mechanic-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 140, 0, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .mechanic-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(255, 140, 0, 0.5);
+            box-shadow: 0 20px 40px rgba(255, 69, 0, 0.2);
+        }
+        
+        .mechanic-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .mechanic-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #ffd700;
+        }
+        
+        .manifesto {
+            background: rgba(255, 69, 0, 0.05);
+            border-left: 4px solid #ff4500;
+            padding: 3rem;
+            margin: 4rem 0;
+            border-radius: 0 20px 20px 0;
+        }
+        
+        .manifesto-text {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .network-visual {
+            position: relative;
+            height: 400px;
+            margin: 4rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, #ff4500, #ff8c00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .node:nth-child(2) { top: 10%; left: 20%; animation-delay: -0.5s; }
+        .node:nth-child(3) { top: 10%; right: 20%; animation-delay: -1s; }
+        .node:nth-child(4) { bottom: 10%; left: 20%; animation-delay: -1.5s; }
+        .node:nth-child(5) { bottom: 10%; right: 20%; animation-delay: -2s; }
+        
+        .central-node {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(45deg, #ffd700, #ff8c00);
+            position: relative;
+            z-index: 2;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff8c00, transparent);
+            animation: flow 3s ease-in-out infinite;
+        }
+        
+        @keyframes flow {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .join-section {
+            background: linear-gradient(135deg, rgba(255, 69, 0, 0.1), rgba(255, 140, 0, 0.05));
+            border-radius: 30px;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .status-update {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .footer {
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 140, 0, 0.2);
+            margin-top: 6rem;
+        }
+        
+        @media (max-width: 768px) {
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cosmic-bg"></div>
+    <div class="desert-particles"></div>
+    
+    <div class="container">
+        <section class="hero">
+            <h1 class="glitch">PLAYNET BURN</h1>
+            <p class="subtitle">the space between camps</p>
+            <p class="tagline">
+                A distributed burning man camp powered by free-association, mutual-aid, and post-capitalist gift economy. 
+                No centralized control. No planning committees. Just pure creative emergence.
+            </p>
+            
+            <div class="cta-buttons">
+                <a href="#join" class="btn btn-primary">Enter the Network</a>
+                <a href="#learn" class="btn btn-secondary">How It Works</a>
+            </div>
+        </section>
+        
+        <section id="learn" class="section">
+            <h2 class="section-title">The Game</h2>
+            
+            <div class="manifesto">
+                <p class="manifesto-text">
+                    "Traditional camps are centralized islands. Democracy creates hierarchies. Planning creates exclusion. 
+                    But what if we could create something that exists in the <strong>space between</strong> all camps? 
+                    Something that emerges from pure mutual recognition and gift-giving, with no center, no leaders, 
+                    no barriers to entry or exit?"
+                </p>
+            </div>
+            
+            <div class="game-mechanics">
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">🌐</div>
+                    <h3 class="mechanic-title">Distributed By Design</h3>
+                    <p>No single camp location. No central authority. Contributors create experiences that span the entire festival, connecting all camps through mutual recognition networks.</p>
+                </div>
+                
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">🤝</div>
+                    <h3 class="mechanic-title">Mutual Recognition Economy</h3>
+                    <p>Recognize others' contributions to your festival experience. Watch as surplus capacity flows automatically to those who enhance your self-actualization.</p>
+                </div>
+                
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">🎭</div>
+                    <h3 class="mechanic-title">Creative Emergence</h3>
+                    <p>Art installations, workshops, parties, and experiences emerge organically from the network. No planning committees, just pure creative response to mutual recognition.</p>
+                </div>
+                
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">🔄</div>
+                    <h3 class="mechanic-title">Dynamic Participation</h3>
+                    <p>Join from any camp. Leave any time. Contribute what feels authentic. Receive what serves your journey. The network adapts fluidly to who shows up.</p>
+                </div>
+                
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">✨</div>
+                    <h3 class="mechanic-title">Post-Capitalist Magic</h3>
+                    <p>Move beyond money, barter, and hierarchy. Experience true gift economy where surplus flows based on genuine contribution to each other's festival dreams.</p>
+                </div>
+                
+                <div class="mechanic-card">
+                    <div class="mechanic-icon">🌊</div>
+                    <h3 class="mechanic-title">Transitive Abundance</h3>
+                    <p>Your contributions ripple through the network. Someone you support supports someone who creates art that transforms your burn. Six degrees of creative separation.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">How Free-Association Works at the Burn</h2>
+            
+            <div class="network-visual">
+                <div class="node central-node">YOU</div>
+                <div class="node">ART</div>
+                <div class="node">MUSIC</div>
+                <div class="node">FOOD</div>
+                <div class="node">CAMP</div>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 2rem; border-radius: 15px; margin: 2rem 0;">
+                <h3 style="color: #ffd700; margin-bottom: 1rem;">Your Recognition Powers Everything:</h3>
+                <p style="margin: 1rem 0;"><strong>You have 100% recognition to distribute.</strong> You decide who contributes most to your burn experience.</p>
+                <p style="margin: 1rem 0;"><strong>Mutual recognition creates shares.</strong> If you recognize someone 30% and they recognize you 20%, your mutual recognition is 20% (the minimum).</p>
+                <p style="margin: 1rem 0;"><strong>Surplus flows to mutual contributors.</strong> Extra camping space, leftover supplies, artistic skills, and creative energy automatically flow to those in your mutual recognition network.</p>
+                <p style="margin: 1rem 0;"><strong>Effects cascade through the network.</strong> Your recognition of a DJ supports their ability to throw better parties, which enhances everyone's experience, including yours.</p>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">What Gets Created</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                <div style="background: rgba(255,69,0,0.1); padding: 1.5rem; border-radius: 15px;">
+                    <h4 style="color: #ff8c00; margin-bottom: 0.5rem;">🏕️ Distributed Experiences</h4>
+                    <p>Installations that span multiple camps. Workshops that pop up everywhere. Parties that move through the network.</p>
+                </div>
+                
+                <div style="background: rgba(255,140,0,0.1); padding: 1.5rem; border-radius: 15px;">
+                    <h4 style="color: #ff8c00; margin-bottom: 0.5rem;">🎨 Emergent Art</h4>
+                    <p>Collaborative pieces that emerge from mutual recognition. Art that responds to the living network of relationships.</p>
+                </div>
+                
+                <div style="background: rgba(255,215,0,0.1); padding: 1.5rem; border-radius: 15px;">
+                    <h4 style="color: #ff8c00; margin-bottom: 0.5rem;">🔄 Resource Flows</h4>
+                    <p>Food surplus flows to hungry artists. Extra shade goes to overheated camps. Tools migrate to where they're needed.</p>
+                </div>
+                
+                <div style="background: rgba(255,69,0,0.1); padding: 1.5rem; border-radius: 15px;">
+                    <h4 style="color: #ff8c00; margin-bottom: 0.5rem;">🌐 Network Effects</h4>
+                    <p>Connections that persist beyond the burn. A living economy of creativity and mutual support.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="join" class="section">
+            <div class="join-section">
+                <h2 style="font-family: 'Orbitron', monospace; font-size: 2.5rem; margin-bottom: 2rem; color: #ffd700;">
+                    Ready to Play?
+                </h2>
+                
+                <div class="status-update">
+                    <h3 style="color: #ffd700; margin-bottom: 1rem;">🚧 Currently in Development</h3>
+                    <p>The Playnet Burn interface is being built on free-association technology. We're seeking:</p>
+                    <ul style="list-style: none; padding: 1rem 0;">
+                        <li>💻 UI/UX developers for the festival interface</li>
+                        <li>🏠 Housing for core contributors</li>
+                        <li>🎨 Visual artists for network visualization</li>
+                        <li>🌐 Web developers familiar with P2P systems</li>
+                        <li>💰 Financial support for development</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 3rem 0;">
+                    <p style="font-size: 1.2rem; margin-bottom: 2rem;">
+                        Join the network forming around this emergence:
+                    </p>
+                    
+                    <div class="cta-buttons">
+                        <a href="https://t.me/+jS7u3ZcKLoxmYWU5" class="btn btn-primary" target="_blank">
+                            Join Telegram
+                        </a>
+                        <a href="https://interplaynetary.github.io/free-association/" class="btn btn-secondary" target="_blank">
+                            Try Free-Association
+                        </a>
+                        <a href="https://opencollective.com/playnet" class="btn btn-secondary" target="_blank">
+                            Contribute Resources
+                        </a>
+                    </div>
+                </div>
+                
+                <p style="font-style: italic; color: rgba(255,255,255,0.7);">
+                    "In contributing to Playnet Burn, you're not donating to charity or investing for return. 
+                    You're participating in a network where the free development of each is the condition for the free development of all."
+                </p>
+            </div>
+        </section>
+    </div>
+    
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Playnet Burn - A Free-Association Experiment</p>
+            <p style="margin-top: 1rem; color: rgba(255,255,255,0.6);">
+                Built with mutual recognition • Powered by gift economy • Emerging from the space between
+            </p>
+        </div>
+    </footer>
+    
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const container = document.querySelector('.desert-particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.width = (Math.random() * 4 + 1) + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                container.appendChild(particle);
+            }
+        }
+        
+        // Add connection lines to network visual
+        function createConnections() {
+            const visual = document.querySelector('.network-visual');
+            const nodes = visual.querySelectorAll('.node');
+            const central = visual.querySelector('.central-node');
+            
+            nodes.forEach((node, index) => {
+                if (!node.classList.contains('central-node')) {
+                    const line = document.createElement('div');
+                    line.className = 'connection-line';
+                    
+                    const centralRect = central.getBoundingClientRect();
+                    const nodeRect = node.getBoundingClientRect();
+                    
+                    const angle = Math.atan2(
+                        nodeRect.top - centralRect.top,
+                        nodeRect.left - centralRect.left
+                    ) * 180 / Math.PI;
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(nodeRect.left - centralRect.left, 2) +
+                        Math.pow(nodeRect.top - centralRect.top, 2)
+                    );
+                    
+                    line.style.width = distance + 'px';
+                    line.style.transform = `rotate(${angle}deg)`;
+                    line.style.transformOrigin = '0 50%';
+                    line.style.left = '50%';
+                    line.style.top = '50%';
+                    line.style.animationDelay = (index * 0.5) + 's';
+                    
+                    visual.appendChild(line);
+                }
+            });
+        }
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Initialize effects
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+            setTimeout(createConnections, 100); // Delay to ensure layout is complete
+        });
+        
+        // Add parallax effect to cosmic background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const bg = document.querySelector('.cosmic-bg');
+            bg.style.transform = `translateY(${scrolled * 0.5}px)`;
+        });
+    </script>
+</body>
+</html>

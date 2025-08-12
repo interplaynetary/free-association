@@ -10,9 +10,9 @@
 		userDesiredSlotComposeInto,
 		networkDesiredSlotComposeFrom,
 		networkDesiredSlotComposeInto
-	} from '$lib/state/compose.svelte';
+	} from '$lib/state/core.svelte';
 	import {
-		userNetworkCapacitiesWithShares,
+		userNetworkCapacitiesWithSlotQuantities,
 		networkCapacities,
 		userCapacities
 	} from '$lib/state/core.svelte';
@@ -46,8 +46,8 @@
 	// Data providers for slot selection
 	// FROM: Show slots from ALL capacities EXCEPT the current capacity
 	let composeFromDataProvider = derived(
-		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -130,8 +130,8 @@
 			}
 
 			// Add slots from network capacities (shares) - ALL of them since they're other people's
-			if ($userNetworkCapacitiesWithShares) {
-				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+			if ($userNetworkCapacitiesWithSlotQuantities) {
+				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
 					const providerId = (capacity as any).provider_id;
 					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
 
@@ -178,8 +178,8 @@
 
 	// INTO: Show allocated slots from ALL capacities except current slot
 	let composeIntoDataProvider = derived(
-		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -260,8 +260,8 @@
 			}
 
 			// Add slots from network capacities (shares)
-			if ($userNetworkCapacitiesWithShares) {
-				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+			if ($userNetworkCapacitiesWithSlotQuantities) {
+				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
 					const providerId = (capacity as any).provider_id;
 					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
 
@@ -684,7 +684,7 @@
 	// Load provider names asynchronously
 	$effect(() => {
 		void (async () => {
-			const capacities = Object.values($userNetworkCapacitiesWithShares || {});
+			const capacities = Object.values($userNetworkCapacitiesWithSlotQuantities || {});
 			const uniqueProviders = [
 				...new Set(capacities.map((cap: any) => cap.provider_id).filter(Boolean))
 			];

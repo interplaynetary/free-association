@@ -2,7 +2,7 @@ import { derived } from 'svelte/store';
 import {
 	userTree,
 	nodesMap,
-	userNetworkCapacitiesWithShares,
+	userNetworkCapacitiesWithSlotQuantities,
 	networkCapacities,
 	userCapacities
 } from '$lib/state/core.svelte';
@@ -12,7 +12,7 @@ import {
 	userContacts,
 	getUserAlias
 } from '$lib/state/users.svelte';
-import { allocatedSlots } from '$lib/state/slots.svelte';
+import { allocatedSlots } from '$lib/state/core.svelte';
 import { findNodeById } from '$lib/protocol';
 import { userAliasesCache } from '$lib/state/users.svelte';
 
@@ -156,14 +156,14 @@ export function createSubtreesDataProvider() {
 // Simple reactive capacities data provider
 export function createCapacitiesDataProvider(excludeCapacityId?: string) {
 	return derived(
-		[userNetworkCapacitiesWithShares, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithShares, $userNamesCache]) => {
-			if (!$userNetworkCapacitiesWithShares) {
+		[userNetworkCapacitiesWithSlotQuantities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithSlotQuantities, $userNamesCache]) => {
+			if (!$userNetworkCapacitiesWithSlotQuantities) {
 				return [];
 			}
 
 			// Convert to dropdown items
-			const items = Object.entries($userNetworkCapacitiesWithShares)
+			const items = Object.entries($userNetworkCapacitiesWithSlotQuantities)
 				.filter(([capacityId]) => capacityId !== excludeCapacityId)
 				.map(([capacityId, capacity]) => {
 					// Get provider name from capacity metadata
@@ -298,8 +298,8 @@ export function createChildContributorsDataProvider(
 // Simple reactive slots data provider for composition
 export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: string[] = []) {
 	return derived(
-		[userNetworkCapacitiesWithShares, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithShares, $userCapacities, $userNamesCache]) => {
+		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -379,8 +379,8 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 			}
 
 			// Add slots from network capacities (shares)
-			if ($userNetworkCapacitiesWithShares) {
-				Object.entries($userNetworkCapacitiesWithShares).forEach(([capId, capacity]) => {
+			if ($userNetworkCapacitiesWithSlotQuantities) {
+				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
 					if (capacityId && capId !== capacityId) return;
 
 					const providerId = (capacity as any).provider_id;

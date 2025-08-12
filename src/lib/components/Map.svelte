@@ -17,7 +17,7 @@
 		Projection
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { userNetworkCapacitiesWithShares } from '$lib/state/core.svelte';
+	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
@@ -52,6 +52,7 @@
 	let pitch = $state(0);
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(false);
+	let isMaximized = $state(false);
 
 	// Grouped slot marker data structure - one marker per unique (capacity, location) combination
 	export interface GroupedSlotMarkerData {
@@ -73,6 +74,22 @@
 	// Selected marker state for side panel
 	let selectedMarker = $state<GroupedSlotMarkerData | null>(null);
 
+	// All search state is now managed globally
+
+	// Listen for panel search events
+	$effect(() => {
+		const handlePanelSearch = (event: CustomEvent) => {
+			performSearch(event.detail.query);
+		};
+
+		if (typeof window !== 'undefined') {
+			window.addEventListener('panel-search', handlePanelSearch as EventListener);
+			return () => {
+				window.removeEventListener('panel-search', handlePanelSearch as EventListener);
+			};
+		}
+	});
+
 	// Handle marker click
 	function handleMarkerClick(markerData: GroupedSlotMarkerData) {
 		selectedMarker = markerData;
@@ -81,13 +98,268 @@
 	// Handle side panel close
 	function handleSidePanelClose() {
 		selectedMarker = null;
+		// If we were in search mode, clear search
+		if (globalState.isSearchMode) {
+			globalState.clearSearch();
+		}
+	}
+
+	// Search functionality
+	function performSearch(query: string) {
+		console.log('[Map Search] Performing search for:', query);
+
+		if (!query.trim() && globalState.timeFilterBy === 'any') {
+			globalState.clearSearch();
+			return;
+		}
+
+		globalState.updateSearchQuery(query);
+
+		console.log('[Map Search] Search mode activated, total markers:', shareSlotMarkers.length);
+
+		// Filter markers based on search query and time filters
+		const filtered = shareSlotMarkers.filter((marker) => {
+			// Text search filter
+			let matchesText = true;
+			if (query.trim()) {
+				const capacity = marker.capacity;
+				const searchTerm = query.toLowerCase();
+
+				// Search in capacity name, description, unit, and provider name
+				const matchesName = capacity.name?.toLowerCase().includes(searchTerm);
+				const matchesDescription = capacity.description?.toLowerCase().includes(searchTerm);
+				const matchesUnit = capacity.unit?.toLowerCase().includes(searchTerm);
+				const matchesProvider = marker.providerName?.toLowerCase().includes(searchTerm);
+
+				matchesText = matchesName || matchesDescription || matchesUnit || matchesProvider;
+			}
+
+			// Time filter
+			const matchesTime = passesTimeFilter(marker);
+
+			return matchesText && matchesTime;
+		});
+
+		// Sort results based on selected sort method
+		sortSearchResults(filtered);
+	}
+
+	function sortSearchResults(results: GroupedSlotMarkerData[]) {
+		if (globalState.searchSortBy === 'relevance') {
+			// Sort by relevance (name match first, then description, etc.)
+			results.sort((a, b) => {
+				const queryLower = globalState.searchQuery.toLowerCase();
+
+				// Priority scoring
+				const getRelevanceScore = (marker: GroupedSlotMarkerData) => {
+					let score = 0;
+					const capacity = marker.capacity;
+
+					// Exact name match gets highest score
+					if (capacity.name?.toLowerCase() === queryLower) score += 100;
+					else if (capacity.name?.toLowerCase().startsWith(queryLower)) score += 50;
+					else if (capacity.name?.toLowerCase().includes(queryLower)) score += 25;
+
+					// Description matches
+					if (capacity.description?.toLowerCase().includes(queryLower)) score += 10;
+
+					// Unit matches
+					if (capacity.unit?.toLowerCase().includes(queryLower)) score += 5;
+
+					// Provider name matches
+					if (marker.providerName?.toLowerCase().includes(queryLower)) score += 15;
+
+					return score;
+				};
+
+				return getRelevanceScore(b) - getRelevanceScore(a);
+			});
+		} else if (globalState.searchSortBy === 'distance' && $currentLocation) {
+			// Sort by distance from user's current location
+			results.sort((a, b) => {
+				const distanceA = calculateDistance(
+					$currentLocation!.latitude,
+					$currentLocation!.longitude,
+					a.lnglat.lat,
+					a.lnglat.lng
+				);
+				const distanceB = calculateDistance(
+					$currentLocation!.latitude,
+					$currentLocation!.longitude,
+					b.lnglat.lat,
+					b.lnglat.lng
+				);
+				return distanceA - distanceB;
+			});
+		}
+
+		globalState.updateSearchResults(results);
+	}
+
+	// Calculate distance between two coordinates (Haversine formula)
+	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+		const R = 6371; // Earth's radius in kilometers
+		const dLat = ((lat2 - lat1) * Math.PI) / 180;
+		const dLon = ((lon2 - lon1) * Math.PI) / 180;
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos((lat1 * Math.PI) / 180) *
+				Math.cos((lat2 * Math.PI) / 180) *
+				Math.sin(dLon / 2) *
+				Math.sin(dLon / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return R * c; // Distance in kilometers
+	}
+
+	function clearSearch() {
+		globalState.clearSearch();
+		selectedMarker = null;
+	}
+
+	// Time filtering logic
+	function passesTimeFilter(marker: GroupedSlotMarkerData): boolean {
+		if (globalState.timeFilterBy === 'any') return true;
+
+		const now = new Date();
+
+		// Check if any slot in this marker passes the time filter
+		return marker.slots.some((slot) => {
+			// Skip slots without dates for time-based filters
+			if (!slot.start_date && globalState.timeFilterBy !== 'any') return false;
+
+			const slotStart = slot.start_date ? new Date(slot.start_date) : null;
+			const slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart;
+
+			// Add time components if available
+			if (slotStart && slot.start_time) {
+				const [hours, minutes] = slot.start_time.split(':');
+				slotStart.setHours(parseInt(hours), parseInt(minutes));
+			}
+			if (slotEnd && slot.end_time) {
+				const [hours, minutes] = slot.end_time.split(':');
+				slotEnd.setHours(parseInt(hours), parseInt(minutes));
+			}
+
+			switch (globalState.timeFilterBy) {
+				case 'now': {
+					// Slot must be happening right now
+					if (!slotStart) return false;
+					const endTime = slotEnd || slotStart;
+					if (slot.all_day) {
+						// For all-day events, check if today falls within the date range
+						const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+						const slotStartDate = new Date(
+							slotStart.getFullYear(),
+							slotStart.getMonth(),
+							slotStart.getDate()
+						);
+						const slotEndDate = new Date(
+							endTime.getFullYear(),
+							endTime.getMonth(),
+							endTime.getDate()
+						);
+						return today >= slotStartDate && today <= slotEndDate;
+					}
+					return now >= slotStart && now <= endTime;
+				}
+				case 'next24h': {
+					// Slot must start within the next 24 hours
+					if (!slotStart) return false;
+					const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+					return slotStart >= now && slotStart <= next24h;
+				}
+				case 'between': {
+					// Custom date/time range
+					if (!globalState.timeFilterStartDate) return true; // No filter set
+
+					const filterStart = new Date(globalState.timeFilterStartDate);
+					if (globalState.timeFilterStartTime) {
+						const [hours, minutes] = globalState.timeFilterStartTime.split(':');
+						filterStart.setHours(parseInt(hours), parseInt(minutes));
+					} else {
+						filterStart.setHours(0, 0, 0, 0);
+					}
+
+					const filterEnd = globalState.timeFilterEndDate
+						? new Date(globalState.timeFilterEndDate)
+						: new Date(filterStart);
+					if (globalState.timeFilterEndTime) {
+						const [hours, minutes] = globalState.timeFilterEndTime.split(':');
+						filterEnd.setHours(parseInt(hours), parseInt(minutes));
+					} else {
+						filterEnd.setHours(23, 59, 59, 999);
+					}
+
+					if (!slotStart) return false;
+					const slotEndTime = slotEnd || slotStart;
+
+					// Check if slot overlaps with filter range
+					return slotStart <= filterEnd && slotEndTime >= filterStart;
+				}
+				default:
+					return true;
+			}
+		});
+	}
+
+	function handleSearchResultClick(marker: GroupedSlotMarkerData) {
+		selectedMarker = marker;
+		// Optionally pan map to the selected marker
+		if (map) {
+			map.flyTo({
+				center: [marker.lnglat.lng, marker.lnglat.lat],
+				zoom: 14,
+				duration: 1000
+			});
+		}
+	}
+
+	function handleSortChange() {
+		if (globalState.isSearchMode && globalState.searchResults.length > 0) {
+			sortSearchResults([...globalState.searchResults]);
+		}
+	}
+
+	// Time filter handlers
+	function handleTimeFilterChange() {
+		// Trigger search update if we're in search mode or have time filters active
+		if (globalState.isSearchMode || globalState.timeFilterBy !== 'any') {
+			performSearch(globalState.searchQuery);
+		}
+	}
+
+	function handleTimeFilterDetailsChange() {
+		// Re-run search when custom time details change
+		if (globalState.timeFilterBy === 'between') {
+			performSearch(globalState.searchQuery);
+		}
+	}
+
+	// Format date for input (helper function)
+	function formatDateForInput(date: Date | undefined): string {
+		if (!date) return '';
+		return date.toISOString().split('T')[0];
 	}
 
 	// Debug selected marker changes (better pattern)
 	$inspect('Selected marker:', selectedMarker?.id);
 
+	// Helper function to normalize coordinates for grouping
+	// This ensures coordinates from different sources (geocoded vs direct) are grouped together
+	function normalizeCoordinates(lat: number, lng: number): { lat: number; lng: number } {
+		// Round to 4 decimal places (~11m precision) to group very close locations
+		// This is more aggressive than the previous 5 decimal places to handle precision differences
+		const precision = 10000; // 4 decimal places
+		return {
+			lat: Math.round(lat * precision) / precision,
+			lng: Math.round(lng * precision) / precision
+		};
+	}
+
 	// Async function to load grouped slot markers from shared capacities
-	async function loadShareSlotMarkers(sharedCapacities: typeof $userNetworkCapacitiesWithShares) {
+	async function loadShareSlotMarkers(
+		sharedCapacities: typeof $userNetworkCapacitiesWithSlotQuantities
+	) {
 		if (!sharedCapacities) {
 			shareSlotMarkers = [];
 			return;
@@ -146,7 +418,11 @@
 				// This matches the logic from Shares.svelte
 				function getActiveSlotCount(capacity: any): number {
 					// Type guard: only RecipientCapacity has computed_quantities
-					if (!('computed_quantities' in capacity) || !capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
+					if (
+						!('computed_quantities' in capacity) ||
+						!capacity.computed_quantities ||
+						!Array.isArray(capacity.computed_quantities)
+					) {
 						return 0;
 					}
 					return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
@@ -155,10 +431,16 @@
 				// Helper function to get computed quantity for a specific slot
 				function getSlotComputedQuantity(capacity: any, slotId: string): number {
 					// Type guard: only RecipientCapacity has computed_quantities
-					if (!('computed_quantities' in capacity) || !capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
+					if (
+						!('computed_quantities' in capacity) ||
+						!capacity.computed_quantities ||
+						!Array.isArray(capacity.computed_quantities)
+					) {
 						return 0;
 					}
-					const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
+					const slotQuantity = capacity.computed_quantities.find(
+						(cq: any) => cq.slot_id === slotId
+					);
 					return slotQuantity?.quantity || 0;
 				}
 
@@ -311,20 +593,21 @@
 
 					// If we have coordinates, group this slot by location and capacity
 					if (slotLnglat) {
-						// Create location key based on rounded coordinates (to group nearby locations)
-						const locationKey = `${Math.round(slotLnglat.lat * 100000) / 100000},${Math.round(slotLnglat.lng * 100000) / 100000}`;
+						// Normalize coordinates to handle precision differences from different sources
+						const normalizedCoords = normalizeCoordinates(slotLnglat.lat, slotLnglat.lng);
+						const locationKey = `${normalizedCoords.lat},${normalizedCoords.lng}`;
 						const groupKey = `${capacityId}:${locationKey}`;
 
 						if (slotGroups.has(groupKey)) {
 							// Add slot to existing group
 							slotGroups.get(groupKey)!.slots.push(slot);
 						} else {
-							// Create new group
+							// Create new group using normalized coordinates for consistent positioning
 							slotGroups.set(groupKey, {
 								capacityId: capacityId,
 								capacity: capacity,
 								slots: [slot],
-								lnglat: slotLnglat,
+								lnglat: normalizedCoords,
 								source: source,
 								providerId: providerId,
 								providerName: providerName,
@@ -333,7 +616,7 @@
 						}
 
 						console.log(
-							`[Map] Added slot to group ${groupKey}: ${capacity.name} - slot ${slot.id} at ${slotLnglat.lat}, ${slotLnglat.lng} (${source})`
+							`[Map] Added slot to group ${groupKey}: ${capacity.name} - slot ${slot.id} at ${slotLnglat.lat}, ${slotLnglat.lng} -> normalized: ${normalizedCoords.lat}, ${normalizedCoords.lng} (${source})`
 						);
 					} else {
 						console.log(`[Map] No location data available for slot ${slot.id}`);
@@ -397,7 +680,7 @@
 	}
 
 	// Reactive Svelte 5 approach using $derived.by for side effects
-	let currentCapacities = $derived($userNetworkCapacitiesWithShares);
+	let currentCapacities = $derived($userNetworkCapacitiesWithSlotQuantities);
 	let capacitiesCount = $derived(Object.keys(currentCapacities || {}).length);
 
 	// 🚨 CRITICAL BREAKPOINT 8: Check debounce function
@@ -421,6 +704,22 @@
 			debouncedLoadMarkers(currentCapacities);
 		} else {
 			shareSlotMarkers = [];
+		}
+	});
+
+	// Handle escape key to minimize map
+	$effect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key === 'Escape' && isMaximized) {
+				isMaximized = false;
+			}
+		}
+
+		if (typeof window !== 'undefined') {
+			window.addEventListener('keydown', handleKeyDown);
+			return () => {
+				window.removeEventListener('keydown', handleKeyDown);
+			};
 		}
 	});
 
@@ -648,12 +947,40 @@
 	});
 </script>
 
-<div class="map-wrapper relative h-[400px] max-h-[50vh] min-h-[300px] overflow-hidden rounded-md">
+<div
+	class="map-wrapper relative overflow-hidden rounded-md {isMaximized
+		? 'fullscreen'
+		: 'normal-size'}"
+>
 	<!-- Side Panel (positioned absolute within this container) -->
-	<MapSidePanel markerData={selectedMarker} onClose={handleSidePanelClose} />
+	<MapSidePanel
+		markerData={selectedMarker}
+		onClose={handleSidePanelClose}
+		isSearchMode={globalState.isSearchMode}
+		searchQuery={globalState.searchQuery}
+		searchResults={globalState.searchResults}
+		searchSortBy={globalState.searchSortBy}
+		onSearchResultClick={handleSearchResultClick}
+		onSortChange={handleSortChange}
+		currentLocation={$currentLocation}
+		timeFilterBy={globalState.timeFilterBy}
+		timeFilterStartDate={globalState.timeFilterStartDate}
+		timeFilterEndDate={globalState.timeFilterEndDate}
+		timeFilterStartTime={globalState.timeFilterStartTime}
+		timeFilterEndTime={globalState.timeFilterEndTime}
+		showTimeFilterDetails={globalState.showTimeFilterDetails}
+		onTimeFilterChange={(filter) => {
+			globalState.updateTimeFilter(filter);
+			handleTimeFilterChange();
+		}}
+		onTimeFilterDetailsChange={(details) => {
+			globalState.updateTimeFilterDetails(details);
+			handleTimeFilterDetailsChange();
+		}}
+	/>
 
-	<!-- Map Container (takes remaining space) -->
-	<div class="map-content {selectedMarker ? 'with-panel' : 'full-width'}">
+	<!-- Map Container (takes full space - panel is positioned absolutely) -->
+	<div class="map-content full-width">
 		<MapLibre
 			bind:map
 			bind:pitch
@@ -681,7 +1008,7 @@
 				atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
 			/>
 			<GeolocateControl
-				position="top-left"
+				position="bottom-right"
 				positionOptions={{ enableHighAccuracy: true }}
 				trackUserLocation={true}
 				showAccuracyCircle={true}
@@ -691,7 +1018,20 @@
 				ongeolocate={handleGeolocate}
 				onerror={handleGeolocateError}
 			/>
+			<!-- Search is now always present in the panel -->
+
 			<CustomControl position="top-right">
+				<button
+					onclick={() => {
+						isMaximized = !isMaximized;
+					}}
+					title={isMaximized ? 'Minimize map' : 'Maximize map'}
+				>
+					<span>{isMaximized ? '🗗' : '🗖'}</span>
+				</button>
+			</CustomControl>
+
+			<CustomControl position="bottom-right">
 				<button
 					onclick={() => {
 						isGlobeMode = !isGlobeMode;
@@ -701,7 +1041,7 @@
 					<span>🌐</span>
 				</button>
 			</CustomControl>
-			<CustomControl position="top-right">
+			<CustomControl position="bottom-right">
 				<button
 					onclick={() => {
 						show3DBuildings = !show3DBuildings;
@@ -712,7 +1052,7 @@
 					<span>🏢</span>
 				</button>
 			</CustomControl>
-			<CustomControl position="top-right">
+			<CustomControl position="bottom-right">
 				<button
 					onclick={() => {
 						isTerrainVisible = !isTerrainVisible;
@@ -722,18 +1062,6 @@
 				>
 					<span>🏔️</span>
 				</button>
-			</CustomControl>
-
-			<!-- Location status display -->
-			<CustomControl position="bottom-left">
-				<div class="location-status">
-					<div class="status-indicator {$isLocationTracking ? 'tracking' : 'not-tracking'}">
-						{$isLocationTracking ? '📍' : '📍'}
-					</div>
-					<div class="location-text">
-						{$currentLocationText}
-					</div>
-				</div>
 			</CustomControl>
 
 			<RasterDEMTileSource
@@ -818,14 +1146,14 @@
 				</Marker>
 			{/each}
 
-			<!-- Loading indicator for geocoding -->
+			<!-- Loading indicator for geocoding 
 			{#if isLoadingGeocode}
 				<CustomControl position="bottom-right">
 					<div class="geocoding-loading">
 						<span>🗺️ Geocoding slot addresses...</span>
 					</div>
 				</CustomControl>
-			{/if}
+			{/if}-->
 
 			{#if show3DBuildings}
 				<FillExtrusionLayer
@@ -948,53 +1276,31 @@
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 	}
 
-	.geocoding-loading {
-		background: rgba(255, 255, 255, 0.95);
-		border-radius: 8px;
-		padding: 8px 12px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		border: 1px solid #e5e7eb;
-		font-size: 12px;
-		color: #6b7280;
-		font-weight: 500;
-	}
-
-	.location-status {
-		background: rgba(255, 255, 255, 0.95);
-		border-radius: 8px;
-		padding: 8px 12px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		border: 1px solid #e5e7eb;
-		font-size: 12px;
-		min-width: 200px;
-	}
-
-	.status-indicator {
-		display: flex;
-		align-items: center;
-		font-weight: 500;
-		margin-bottom: 4px;
-	}
-
-	.status-indicator.tracking {
-		color: #22c55e;
-	}
-
-	.status-indicator.not-tracking {
-		color: #6b7280;
-	}
-
-	.location-text {
-		font-family: monospace;
-		font-size: 11px;
-		color: #4b5563;
-		line-height: 1.2;
-	}
-
 	/* Map wrapper and content layout styles */
 	.map-wrapper {
 		position: relative;
 		overflow: hidden;
+		transition: all 0.3s ease-out;
+	}
+
+	.map-wrapper.normal-size {
+		height: 400px;
+		max-height: 50vh;
+		min-height: 300px;
+	}
+
+	.map-wrapper.fullscreen {
+		position: fixed;
+		top: 76px; /* Account for header height */
+		left: 16px; /* Match app-content padding */
+		right: 16px; /* Match app-content padding */
+		bottom: 16px; /* Match app-content padding */
+		z-index: 1000;
+		border-radius: 8px;
+		max-height: none;
+		min-height: none;
+		width: auto;
+		height: auto;
 	}
 
 	.map-content {
@@ -1034,5 +1340,27 @@
 	:global(.maplibregl-canvas) {
 		/* Ensure map canvas doesn't interfere with page scrolling */
 		touch-action: pan-x pan-y zoom-in zoom-out;
+	}
+
+	@keyframes fadeInFromLeft {
+		from {
+			opacity: 0;
+			transform: translateX(-20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0);
+		}
+	}
+
+	@keyframes fadeInDown {
+		from {
+			opacity: 0;
+			transform: translateY(-20px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 </style>

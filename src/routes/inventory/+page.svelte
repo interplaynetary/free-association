@@ -4,12 +4,11 @@
 	import Shares from '$lib/components/Shares.svelte';
 </script>
 
-<div>
-	<h2 class="mt-4 mb-4 text-center text-2xl font-bold">Your Capacities</h2>
+<div class="mt-8">
+	<Map />
+	<h2 class="text-center text-2xl font-bold">Your Capacities</h2>
 	<Capacities />
 
-	<h2 class="mt-4 mb-4 text-center text-2xl font-bold">Your Shares</h2>
+	<h2 class="text-center text-2xl font-bold">Your Shares</h2>
 	<Shares />
-	<div class="mt-4"></div>
-	<Map />
 </div>

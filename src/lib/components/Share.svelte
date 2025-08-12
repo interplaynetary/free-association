@@ -4,6 +4,7 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import type { RecipientCapacity } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
+	import { handleAddressClick } from '$lib/utils/mapUtils';
 
 	interface Props {
 		share: RecipientCapacity;
@@ -517,7 +518,16 @@
 											<div class="slot-summary mb-2 text-xs text-gray-500">
 												<div class="flex flex-wrap gap-4">
 													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													<button
+														class="location-link"
+														onclick={(e) => {
+															e.stopPropagation();
+															handleAddressClick(slot);
+														}}
+														title="Click to open in maps or copy address"
+													>
+														📍 {formatSlotLocationDisplay(slot)}
+													</button>
 													{#if slot.mutual_agreement_required}
 														<span>🤝 Mutual agreement required</span>
 													{/if}
@@ -581,7 +591,16 @@
 											<div class="slot-summary mb-2 text-xs text-gray-500">
 												<div class="flex flex-wrap gap-4">
 													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													<button
+														class="location-link"
+														onclick={(e) => {
+															e.stopPropagation();
+															handleAddressClick(slot);
+														}}
+														title="Click to open in maps or copy address"
+													>
+														📍 {formatSlotLocationDisplay(slot)}
+													</button>
 													{#if slot.mutual_agreement_required}
 														<span>🤝 Mutual agreement required</span>
 													{/if}
@@ -645,7 +664,16 @@
 											<div class="slot-summary mb-2 text-xs text-gray-500">
 												<div class="flex flex-wrap gap-4">
 													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
-													<span>📍 {formatSlotLocationDisplay(slot)}</span>
+													<button
+														class="location-link"
+														onclick={(e) => {
+															e.stopPropagation();
+															handleAddressClick(slot);
+														}}
+														title="Click to open in maps or copy address"
+													>
+														📍 {formatSlotLocationDisplay(slot)}
+													</button>
 													{#if slot.mutual_agreement_required}
 														<span>🤝 Mutual agreement required</span>
 													{/if}
@@ -1037,5 +1065,34 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	/* Location link styling */
+	.location-link {
+		background: none;
+		border: none;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+		padding: 2px 4px;
+		border-radius: 4px;
+		transition: all 0.2s ease;
+		text-decoration: underline;
+		text-decoration-color: transparent;
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.location-link:hover {
+		background: rgba(59, 130, 246, 0.1);
+		color: #3b82f6;
+		text-decoration-color: #3b82f6;
+		transform: translateY(-1px);
+	}
+
+	.location-link:active {
+		transform: translateY(0);
+		background: rgba(59, 130, 246, 0.15);
 	}
 </style>

@@ -137,6 +137,14 @@ export const UserSlotClaimsSchema = z.record(IdSchema, z.record(IdSchema, z.numb
 export const NetworkSlotClaimsSchema = z.record(IdSchema, UserSlotClaimsSchema);
 // Structure: userId → capacityId → slotId → desiredQuantity
 
+// User's actual allocated slot quantities (result of discrete allocation)
+export const UserSlotQuantitiesSchema = z.record(IdSchema, z.record(IdSchema, z.number().gte(0)));
+// Structure: capacityId → slotId → allocatedQuantity
+
+// Network slot quantities (all users' allocated quantities)
+export const NetworkSlotQuantitiesSchema = z.record(IdSchema, UserSlotQuantitiesSchema);
+// Structure: userId → capacityId → slotId → allocatedQuantity
+
 // Recipient perspective - includes our share info
 export const RecipientCapacitySchema = z.object({
 	...BaseCapacitySchema.shape,
@@ -172,6 +180,8 @@ export type SlotComputedQuantity = z.infer<typeof SlotComputedQuantitySchema>;
 export type SlotClaim = z.infer<typeof SlotClaimSchema>;
 export type UserSlotClaims = z.infer<typeof UserSlotClaimsSchema>;
 export type NetworkSlotClaims = z.infer<typeof NetworkSlotClaimsSchema>;
+export type UserSlotQuantities = z.infer<typeof UserSlotQuantitiesSchema>;
+export type NetworkSlotQuantities = z.infer<typeof NetworkSlotQuantitiesSchema>;
 export type BaseCapacity = z.infer<typeof BaseCapacitySchema>;
 export type ProviderCapacity = z.infer<typeof ProviderCapacitySchema>;
 export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
@@ -219,6 +229,26 @@ export const NetworkSlotCompositionSchema = z.record(IdSchema, UserSlotCompositi
 export type SlotCompositionDesire = z.infer<typeof SlotCompositionDesireSchema>;
 export type UserSlotComposition = z.infer<typeof UserSlotCompositionSchema>;
 export type NetworkSlotComposition = z.infer<typeof NetworkSlotCompositionSchema>;
+
+// Slot allocation metadata schema for UI
+export const SlotAllocationMetadataSchema = z.object({
+	feasibleQuantity: z.number().gte(0),
+	maxAvailableUnits: z.number().gte(0),
+	constraintType: z.enum(['share_limit', 'no_constraint']),
+	ourSharePercentage: z.number().gte(0).lte(1),
+	slotTotalQuantity: z.number().gte(0),
+	reasonLimited: z.optional(z.string())
+});
+
+// Unified slot allocation analysis schema
+export const SlotAllocationAnalysisSchema = z.object({
+	feasibleClaims: UserSlotClaimsSchema,
+	metadata: z.record(IdSchema, z.record(IdSchema, SlotAllocationMetadataSchema))
+});
+
+// Export slot allocation types
+export type SlotAllocationMetadata = z.infer<typeof SlotAllocationMetadataSchema>;
+export type SlotAllocationAnalysis = z.infer<typeof SlotAllocationAnalysisSchema>;
 
 // Contact schema - simplified to just essential fields
 export const ContactSchema = z.object({

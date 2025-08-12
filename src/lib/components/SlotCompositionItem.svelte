@@ -5,9 +5,9 @@
 		userDesiredSlotComposeInto,
 		networkDesiredSlotComposeFrom,
 		networkDesiredSlotComposeInto
-	} from '$lib/state/compose.svelte';
+	} from '$lib/state/core.svelte';
 	import {
-		userNetworkCapacitiesWithShares,
+		userNetworkCapacitiesWithSlotQuantities,
 		networkCapacities,
 		userCapacities
 	} from '$lib/state/core.svelte';
@@ -58,13 +58,15 @@
 	// Get source and target capacity/slot info
 	let sourceCapacity = $derived(() => {
 		return (
-			$userCapacities?.[sourceCapacityId] || $userNetworkCapacitiesWithShares[sourceCapacityId]
+			$userCapacities?.[sourceCapacityId] ||
+			$userNetworkCapacitiesWithSlotQuantities[sourceCapacityId]
 		);
 	});
 
 	let targetCapacity = $derived(() => {
 		return (
-			$userCapacities?.[targetCapacityId] || $userNetworkCapacitiesWithShares[targetCapacityId]
+			$userCapacities?.[targetCapacityId] ||
+			$userNetworkCapacitiesWithSlotQuantities[targetCapacityId]
 		);
 	});
 
@@ -96,7 +98,7 @@
 	let providerId = $derived(() => {
 		if (direction === 'from') {
 			// For FROM: the source is from another provider, target is ours
-			const sourceCap = $userNetworkCapacitiesWithShares[sourceCapacityId];
+			const sourceCap = $userNetworkCapacitiesWithSlotQuantities[sourceCapacityId];
 			return (sourceCap as any)?.provider_id;
 		} else {
 			// For INTO: the target is another provider, source is ours

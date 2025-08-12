@@ -8,6 +8,7 @@ import {
 	CapacitySchema,
 	CapacitiesCollectionSchema,
 	ShareMapSchema,
+	UserSlotQuantitiesSchema,
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
@@ -474,6 +475,20 @@ export function parseCapacityShares(sharesData: unknown) {
 		schema: ShareMapSchema,
 		defaultValue: {},
 		functionName: 'capacity shares',
+		enableLogging: true
+	});
+}
+
+/**
+ * Parse and validate capacity slot quantities data
+ * @param slotQuantitiesData Raw capacity slot quantities data
+ * @returns Validated UserSlotQuantities or empty object if validation fails
+ */
+export function parseCapacitySlotQuantities(slotQuantitiesData: unknown) {
+	return parseData(slotQuantitiesData, {
+		schema: UserSlotQuantitiesSchema,
+		defaultValue: {},
+		functionName: 'capacity slot quantities',
 		enableLogging: true
 	});
 }

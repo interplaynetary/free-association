@@ -7,7 +7,8 @@ import {
 	isLoadingCapacities,
 	isRecalculatingTree,
 	nodesMap,
-	contributorCapacityShares
+	contributorCapacityShares,
+	capacitySlotQuantities
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { recalculateFromTree } from './calculations.svelte';
@@ -20,7 +21,7 @@ import {
 	persistChatReadStates
 } from './persistence.svelte';
 import type { Node } from '$lib/schema';
-import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/compose.svelte';
+import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
 import {
 	persistUserDesiredSlotComposeFrom,
 	persistUserDesiredSlotComposeInto
@@ -241,6 +242,19 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 
 	// Debounced persistence function
 	debouncedPersistContributorCapacityShares();
+});
+
+/**
+ * Subscribe to capacity slot quantities to trigger their calculation and persistence
+ * Note: The persistence is handled within the derived store itself
+ */
+capacitySlotQuantities.subscribe((slotQuantities) => {
+	console.log('[CAPACITY-SLOT-QUANTITIES-SUB] Capacity slot quantities updated');
+	console.log(
+		'[CAPACITY-SLOT-QUANTITIES-SUB] Slot quantities count:',
+		Object.keys(slotQuantities).length
+	);
+	// Persistence is handled within the derived store itself
 });
 
 /**

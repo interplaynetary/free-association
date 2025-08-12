@@ -54,6 +54,18 @@ export const globalState = $state({
 	recomposing: false,
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
+
+	// Map search state
+	searchQuery: '',
+	searchResults: [] as any[],
+	isSearchMode: false,
+	searchSortBy: 'relevance' as 'relevance' | 'distance',
+	timeFilterBy: 'any' as 'any' | 'now' | 'next24h' | 'between',
+	timeFilterStartDate: '',
+	timeFilterEndDate: '',
+	timeFilterStartTime: '',
+	timeFilterEndTime: '',
+	showTimeFilterDetails: false,
 	// Drag state
 	isDragging: false,
 	draggedNodeId: '',
@@ -137,6 +149,18 @@ export const globalState = $state({
 		globalState.editingNodeId = '';
 		globalState.nodeToEdit = '';
 		globalState.deleteMode = false;
+
+		// Reset search state
+		globalState.searchQuery = '';
+		globalState.searchResults = [];
+		globalState.isSearchMode = false;
+		globalState.searchSortBy = 'relevance';
+		globalState.timeFilterBy = 'any';
+		globalState.timeFilterStartDate = '';
+		globalState.timeFilterEndDate = '';
+		globalState.timeFilterStartTime = '';
+		globalState.timeFilterEndTime = '';
+		globalState.showTimeFilterDetails = false;
 
 		// Clear chat subscriptions on logout
 		if (browser) {
@@ -355,5 +379,59 @@ export const globalState = $state({
 			globalState.showToast('Error reordering node', 'error');
 			return false;
 		}
+	},
+
+	/**
+	 * Map Search State Management
+	 */
+
+	// Update search query and trigger search mode
+	updateSearchQuery: (query: string) => {
+		globalState.searchQuery = query;
+		globalState.isSearchMode = !!query.trim() || globalState.timeFilterBy !== 'any';
+	},
+
+	// Update time filter
+	updateTimeFilter: (filter: 'any' | 'now' | 'next24h' | 'between') => {
+		globalState.timeFilterBy = filter;
+		globalState.showTimeFilterDetails = filter === 'between';
+		globalState.isSearchMode = !!globalState.searchQuery.trim() || filter !== 'any';
+	},
+
+	// Update time filter details
+	updateTimeFilterDetails: (details: {
+		startDate: string;
+		endDate: string;
+		startTime: string;
+		endTime: string;
+	}) => {
+		globalState.timeFilterStartDate = details.startDate;
+		globalState.timeFilterEndDate = details.endDate;
+		globalState.timeFilterStartTime = details.startTime;
+		globalState.timeFilterEndTime = details.endTime;
+	},
+
+	// Clear search state
+	clearSearch: () => {
+		globalState.searchQuery = '';
+		globalState.searchResults = [];
+		globalState.isSearchMode = false;
+		globalState.searchSortBy = 'relevance';
+		globalState.timeFilterBy = 'any';
+		globalState.timeFilterStartDate = '';
+		globalState.timeFilterEndDate = '';
+		globalState.timeFilterStartTime = '';
+		globalState.timeFilterEndTime = '';
+		globalState.showTimeFilterDetails = false;
+	},
+
+	// Update search results
+	updateSearchResults: (results: any[]) => {
+		globalState.searchResults = results;
+	},
+
+	// Update search sort
+	updateSearchSort: (sortBy: 'relevance' | 'distance') => {
+		globalState.searchSortBy = sortBy;
 	}
 });

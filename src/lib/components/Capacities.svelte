@@ -13,10 +13,7 @@
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
 	import { userTree, userCapacities, userCapacitiesWithShares } from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
-	import {
-		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto
-	} from '$lib/state/compose.svelte';
+	import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
 	import { userDesiredSlotClaims } from '$lib/state/slots.svelte';
 
 	// Reactive derived values

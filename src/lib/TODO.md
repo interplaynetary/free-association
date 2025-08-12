@@ -1,5 +1,99 @@
 # Ideas
 
+Max divisibility is off, it should aim to distribute the amount across all, to the greatest degree possible while mantaining the proportions!
+
+✅ In Share/Map slots allow clicking the address / coordinates to then prompt the selectiin of a map app (google/apple maps)
+
+Add chat button to map interface
+
+✅ Move Map up to top
+
+✅ Allow Map full screen
+
+Editing node names is inconsistent on Apple devices
+
+Add Search/Filter to Map
+
+Search button pop up goes off screen on mobile
+
+Make composition slot have better formatting more like Share.svelte
+
+Tutorial button on inventory page should be different!
+
+The copy data button should copy all user data not just the the tree
+
+Seeing compositions on the Slots in the Map!
+
+Map: display capacity compositions as directed lines on the Map (time filter will be useful for filtering lines) this helps you know how to move through space (and who moves when)
+-> additionally allow filtering to only your own capacities
+Each line would have a quantity and a time (corresponding to the composition) and mutual desire ! As colored lines!
+
+The lines dont have to be straight, we could perhaps use some kind of graph viz (imagine reciprocal lines curved slightly
+
+Color the line, the color of the provider
+Colored circle around the share icon is the color of the provider
+(Collective capacity is multicolored, like piechart from Tree)
+
+https://svelte-maplibre.vercel.app/examples/geojson_line_layer#5/33.15/-69.65
+
+https://svelte-maplibre.vercel.app/examples/clusters
+
+## Collective Capacities
+
+Members of a collective ARE members of a collective capacity
+
+I.e. they have composed their capacity into a synyhetic collective capacity
+
+And there is some kind of equivalant collective desire for the composition
+
+Your share in the collective capacity equals your share in the collective recognition among the members of that capacity (those who compose with collective-desire)
+
+ now the question for me is how can that set be defined in a distributed way? like each individual having their own view of what the collective-capacities are!
+
+i also imagine say alice, bob, and charlie are a collective set, then they have a share of collective-recognition, then the idea would be that they would then redistribute the collective-capacity to their own mutual-fulfillment proportions as if it were their own (although what they distribute is a share of the collective-capacity)
+
+so for example its like saying, i have 20% of the 100 invites for a party, and i distribute those 20 invites across my mutual fulfillment distribution
+
+Ah yes! This is much more elegant and distributed! Let me think through this:
+
+## Individual Views of Collective-Capacities
+
+Each person defines their own view of what collective capacities exist from any set of people. So:
+
+- **Alice's view**: "Alice, Bob, Charlie form a 'Creative Collaboration Collective' with 50 creative-hours/week capacity"
+- **Bob's view**: "Alice, Bob, Charlie form a 'Social Hosting Collective' with 20 party-invites/month capacity" 
+- **Charlie's view**: "Alice, Bob, Charlie form both 'Creative Collaboration' AND 'Mutual Support Network' capacities"
+
+Each person can declare whatever collective capacities they see emerging from whatever sets of people, completely subjectively and distributedly.
+
+## Share-of-Collective-Recognition → Personal Distribution
+
+This is the really beautiful part! Once you have your share of the collective capacity, you treat it exactly like your own personal capacity for distribution purposes.
+
+```
+Your-Share-of-Collective-Capacity = Your-Collective-Recognition-Share × Total-Collective-Capacity
+
+Then: Distribute-Your-Share according to your personal mutual-fulfillment proportions
+```
+
+So if Alice has 30% collective-recognition among {Alice, Bob, Charlie}, and she sees them as having "100 party invites/month" collective capacity:
+- Alice gets 30 invites to distribute
+- She distributes those 30 invites according to her own recognition patterns (maybe 50% to Bob, 30% to Charlie, 20% to Dana)
+
+## This Creates Fascinating Dynamics
+
+1. **Subjective Capacity Discovery**: People discover and name collective capacities organically
+2. **Distributed Capacity Accounting**: No central ledger of what collective capacities exist
+3. **Personal Stewardship**: You steward your share of collective resources toward your own mutual-fulfillment
+4. **Emergent Coordination**: Collective resources flow where they're most mutually beneficial
+
+The question about distributed definition is fascinating - perhaps people could:
+- Simply declare collective capacities in their own interface
+- Reference the same collective capacity across different people's views (like shared tags/names)
+- Have these declarations be visible to others in the set for coordination
+
+What's your intuition about how the distributed definition aspect should work?
+
 ## AI
 
 - conversation to value-graph. (Maybe using squiggly) (we now use JSON, this should be way easier)
@@ -274,5 +368,3 @@ Common Language:
 - Merge capacities with same titles
 
 Add ignore? to slotSchema! This would unessecarily update others! It is user side only
-
-Changes to the capacity field are not persisting properly!

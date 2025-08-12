@@ -1,12 +1,90 @@
 <script lang="ts">
 	import type { GroupedSlotMarkerData } from '$lib/components/Map.svelte';
+	import { handleAddressClick } from '$lib/utils/mapUtils';
+	import { globalState } from '$lib/global.svelte';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | null;
 		onClose: () => void;
+		isSearchMode?: boolean;
+		searchQuery?: string;
+		searchResults?: GroupedSlotMarkerData[];
+		searchSortBy?: 'relevance' | 'distance';
+		onSearchResultClick?: (marker: GroupedSlotMarkerData) => void;
+		onSortChange?: () => void;
+		currentLocation?: any;
+		timeFilterBy?: 'any' | 'now' | 'next24h' | 'between';
+		timeFilterStartDate?: string;
+		timeFilterEndDate?: string;
+		timeFilterStartTime?: string;
+		timeFilterEndTime?: string;
+		showTimeFilterDetails?: boolean;
+		onTimeFilterChange?: (filter: 'any' | 'now' | 'next24h' | 'between') => void;
+		onTimeFilterDetailsChange?: (details: {
+			startDate: string;
+			endDate: string;
+			startTime: string;
+			endTime: string;
+		}) => void;
 	}
 
-	let { markerData, onClose }: Props = $props();
+	let {
+		markerData,
+		onClose,
+		isSearchMode = false,
+		searchQuery = '',
+		searchResults = [],
+		searchSortBy = 'relevance',
+		onSearchResultClick,
+		onSortChange,
+		currentLocation,
+		timeFilterBy = 'any',
+		timeFilterStartDate = '',
+		timeFilterEndDate = '',
+		timeFilterStartTime = '',
+		timeFilterEndTime = '',
+		showTimeFilterDetails = false,
+		onTimeFilterChange,
+		onTimeFilterDetailsChange
+	}: Props = $props();
+
+	let searchInputElement: HTMLInputElement | undefined = $state();
+
+	// Determine panel state
+	let panelState = $derived(() => {
+		if (markerData) return 'marker'; // Showing marker details
+		if (globalState.isSearchMode) return 'search'; // Showing search results
+		return 'collapsed'; // Just search input visible
+	});
+
+	// Handle search input
+	function handleSearchInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const value = target.value;
+
+		globalState.updateSearchQuery(value);
+
+		// Trigger search
+		window.dispatchEvent(
+			new CustomEvent('panel-search', {
+				detail: { query: value }
+			})
+		);
+	}
+
+	// Handle search focus
+	function handleSearchFocus() {
+		if (globalState.searchQuery.trim()) {
+			globalState.isSearchMode = true;
+		}
+	}
+
+	// Clear search
+	function clearSearch() {
+		globalState.clearSearch();
+		searchInputElement?.focus();
+		// Search mode will automatically close since globalState.clearSearch() sets isSearchMode = false
+	}
 
 	// Get computed quantity for a specific slot (your share)
 	function getSlotComputedQuantity(capacity: any, slotId: string): number {
@@ -138,6 +216,17 @@
 		return slot.location_type || 'No location';
 	}
 
+	// Helper function to check if slot has actual address components (not just coordinates)
+	function hasAddressComponents(slot: any): boolean {
+		return !!(
+			slot.street_address ||
+			slot.city ||
+			slot.state_province ||
+			slot.postal_code ||
+			slot.country
+		);
+	}
+
 	// Helper function to check if a slot is recurring (matches Share.svelte)
 	function isSlotRecurring(slot: any): boolean {
 		return slot.recurrence && slot.recurrence !== 'Does not repeat';
@@ -184,20 +273,248 @@
 
 		return { recurring, currentFuture, past };
 	}
+
+	// Calculate distance between two coordinates (Haversine formula)
+	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+		const R = 6371; // Earth's radius in kilometers
+		const dLat = ((lat2 - lat1) * Math.PI) / 180;
+		const dLon = ((lon2 - lon1) * Math.PI) / 180;
+		const a =
+			Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+			Math.cos((lat1 * Math.PI) / 180) *
+				Math.cos((lat2 * Math.PI) / 180) *
+				Math.sin(dLon / 2) *
+				Math.sin(dLon / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return R * c; // Distance in kilometers
+	}
+
+	// Format distance for display
+	function formatDistance(distance: number): string {
+		if (distance < 1) {
+			return `${(distance * 1000).toFixed(0)}m`;
+		} else if (distance < 10) {
+			return `${distance.toFixed(1)}km`;
+		} else {
+			return `${distance.toFixed(0)}km`;
+		}
+	}
+
+	// Format time filter for display
+	function formatTimeFilterDisplay(filter: string): string {
+		switch (filter) {
+			case 'any':
+				return '';
+			case 'now':
+				return 'Available now';
+			case 'next24h':
+				return 'Next 24 hours';
+			case 'between':
+				return 'Custom time range';
+			default:
+				return '';
+		}
+	}
 </script>
 
-{#if markerData}
-	{@const { capacity, slots, lnglat, source, providerName } = markerData}
-	{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
-	{@const isGeocoded = source === 'geocoded'}
-	{@const locationDisplay = formatSlotLocationDisplay(slots[0])}
-	{@const categorizedSlots = categorizeSlots(slots)}
-	{@const totalSlots = slots.length}
+<!-- Fixed search input that never moves -->
+<div class="search-panel">
+	<!-- Always visible search input in fixed position -->
+	<div class="fixed-search-input">
+		<div class="search-input-wrapper">
+			<input
+				bind:this={searchInputElement}
+				type="text"
+				class="search-input"
+				placeholder="Search offers..."
+				bind:value={globalState.searchQuery}
+				oninput={handleSearchInput}
+				onfocus={handleSearchFocus}
+			/>
+			{#if globalState.searchQuery}
+				<button
+					class="clear-btn"
+					onclick={clearSearch}
+					title="Clear search"
+					aria-label="Clear search"
+				>
+					✕
+				</button>
+			{/if}
+		</div>
+	</div>
 
-	<div class="side-panel">
-		<!-- Header -->
-		<div class="panel-header">
-			<div class="header-content">
+	<!-- Panel content that appears/disappears below the search input -->
+	{#if globalState.isSearchMode}
+		<div class="panel-content">
+			<!-- Time Filter Controls -->
+			<div class="content-section">
+				<div class="time-filter-header">
+					<span class="time-filter-label">⏰ Availability:</span>
+					<select
+						class="time-filter-select"
+						bind:value={globalState.timeFilterBy}
+						onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
+					>
+						<option value="any">Any time</option>
+						<option value="now">Now</option>
+						<option value="next24h">Next 24 hours</option>
+						<option value="between">Between</option>
+					</select>
+				</div>
+
+				{#if globalState.showTimeFilterDetails}
+					<div class="time-filter-details">
+						<div class="time-range-row">
+							<div class="time-input-group">
+								<span class="time-input-label">From:</span>
+								<input
+									type="date"
+									class="time-filter-date"
+									bind:value={globalState.timeFilterStartDate}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+								<input
+									type="time"
+									class="time-filter-time"
+									bind:value={globalState.timeFilterStartTime}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+							</div>
+						</div>
+						<div class="time-range-row">
+							<div class="time-input-group">
+								<span class="time-input-label">To:</span>
+								<input
+									type="date"
+									class="time-filter-date"
+									bind:value={globalState.timeFilterEndDate}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+								<input
+									type="time"
+									class="time-filter-time"
+									bind:value={globalState.timeFilterEndTime}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Search Controls -->
+			<div class="content-section">
+				<div class="sort-controls">
+					<span class="sort-label">Sort by:</span>
+					<select class="sort-select" bind:value={searchSortBy} onchange={onSortChange}>
+						<option value="relevance">Relevance</option>
+						{#if currentLocation}
+							<option value="distance">Distance</option>
+						{/if}
+					</select>
+				</div>
+			</div>
+
+			<!-- Search Results -->
+			<div class="content-section">
+				{#if searchResults.length > 0}
+					<div class="search-results">
+						{#each searchResults as result (result.id)}
+							{@const distance = currentLocation
+								? calculateDistance(
+										currentLocation.latitude,
+										currentLocation.longitude,
+										result.lnglat.lat,
+										result.lnglat.lng
+									)
+								: null}
+
+							<div
+								class="search-result-item"
+								onclick={() => onSearchResultClick?.(result)}
+								role="button"
+								tabindex="0"
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										onSearchResultClick?.(result);
+									}
+								}}
+							>
+								<div class="result-header">
+									<div class="result-title">
+										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
+										<span class="result-name">{result.capacity.name}</span>
+									</div>
+									{#if distance !== null}
+										<span class="result-distance">{formatDistance(distance)}</span>
+									{/if}
+								</div>
+
+								<div class="result-details">
+									<div class="result-provider">👤 {result.providerName}</div>
+									{#if result.capacity.unit}
+										<div class="result-unit">{result.capacity.unit}</div>
+									{/if}
+									<div class="result-slots">{result.slots.length} slots</div>
+								</div>
+
+								{#if result.capacity.description}
+									<div class="result-description">
+										{result.capacity.description.length > 100
+											? result.capacity.description.substring(0, 100) + '...'
+											: result.capacity.description}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="no-results">
+						<div class="no-results-icon">🔍</div>
+						<h3>No results found</h3>
+						<p>Try different search terms or check your spelling.</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{:else if markerData}
+		<!-- Marker details content -->
+		{@const { capacity, slots, lnglat, source, providerName } = markerData}
+		{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
+		{@const isGeocoded = source === 'geocoded'}
+		{@const locationDisplay = formatSlotLocationDisplay(slots[0])}
+		{@const categorizedSlots = categorizeSlots(slots)}
+		{@const totalSlots = slots.length}
+
+		<div class="panel-content">
+			<!-- Header -->
+			<div class="content-section marker-header">
 				<div class="capacity-info">
 					<h2 class="capacity-title">
 						<span class="capacity-emoji">{capacity.emoji || '🏠'}</span>
@@ -211,34 +528,45 @@
 					</div>
 				</div>
 				<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
-					<svg
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<line x1="18" y1="6" x2="6" y2="18"></line>
-						<line x1="6" y1="6" x2="18" y2="18"></line>
-					</svg>
+					✕
 				</button>
 			</div>
-		</div>
 
-		<!-- Content -->
-		<div class="panel-content">
 			<!-- Location Info -->
-			<div class="location-section">
+			<div class="content-section location-section">
 				<h3 class="section-title">📍 Location</h3>
 				<div class="location-details">
-					<div class="location-address">{locationDisplay}</div>
-					<div class="location-coords">{lngLatText}</div>
+					{#if hasAddressComponents(slots[0])}
+						<!-- Show separate address and coordinates when we have actual address data -->
+						<button
+							class="location-address clickable-address"
+							onclick={() => handleAddressClick(slots[0])}
+							title="Click to open in maps or copy address"
+						>
+							📍 {locationDisplay}
+						</button>
+						<button
+							class="location-coords clickable-coords"
+							onclick={() => handleAddressClick(slots[0])}
+							title="Click to open in maps or copy coordinates"
+						>
+							📐 {lngLatText}
+						</button>
+					{:else}
+						<!-- Show single coordinates button when we only have coordinates -->
+						<button
+							class="location-coords clickable-coords single-location"
+							onclick={() => handleAddressClick(slots[0])}
+							title="Click to open in maps or copy coordinates"
+						>
+							📐 {lngLatText}
+						</button>
+					{/if}
 				</div>
 			</div>
 
 			<!-- Slots Section -->
-			<div>
+			<div class="content-section slots-section">
 				<h3 class="section-title">🕒 Your Share of Available Slots</h3>
 
 				{#if categorizedSlots.recurring.length > 0}
@@ -323,40 +651,398 @@
 				{/if}
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</div>
 
 <style>
-	.side-panel {
+	/* Ultra-simple fixed search panel - CONSTRAINED to map height */
+	.search-panel {
 		position: absolute;
-		top: 0;
-		left: 0;
-		width: 400px;
-		height: 100%;
-		background: white;
-		box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+		top: 16px;
+		left: 16px;
+		bottom: 16px; /* Constrain bottom to map boundary */
 		z-index: 1000;
+		width: 400px; /* Fixed width - never changes */
+		pointer-events: auto;
 		display: flex;
 		flex-direction: column;
-		animation: slideInFromLeft 0.3s ease-out;
+		/* Remove max-height since bottom constraint handles it */
 	}
 
-	@keyframes slideInFromLeft {
+	/* Fixed search input that never moves or changes size */
+	.fixed-search-input {
+		background: rgba(255, 255, 255, 0.98);
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e7eb;
+		backdrop-filter: blur(4px);
+		flex-shrink: 0; /* Never shrink */
+		height: 48px; /* Fixed height - never changes */
+	}
+
+	.search-input-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+		height: 100%; /* Fill the fixed height container */
+	}
+
+	.search-input {
+		border: none;
+		font-size: 14px;
+		background: transparent;
+		outline: none;
+		color: #374151;
+		width: 100%;
+		padding: 12px 16px;
+		padding-right: 40px;
+		border-radius: 8px;
+		min-width: 280px;
+	}
+
+	.search-input::placeholder {
+		color: #9ca3af;
+	}
+
+	.search-input:focus {
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+	}
+
+	.clear-btn {
+		position: absolute;
+		right: 8px;
+		top: 50%;
+		transform: translateY(-50%);
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: #9ca3af;
+		font-size: 14px;
+		padding: 4px;
+		border-radius: 4px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		transition: all 0.2s ease;
+	}
+
+	.clear-btn:hover {
+		background: #f3f4f6;
+		color: #374151;
+	}
+
+	/* Unified panel content - IDENTICAL sizing for ALL states */
+	.panel-content {
+		background: white;
+		border-radius: 8px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e7eb;
+		margin-top: 8px;
+		padding: 16px;
+		flex: 1; /* Take remaining space in flex container */
+		min-height: 0; /* Allow flexbox to shrink */
+		overflow-y: auto; /* Scroll when content exceeds container */
+		animation: slideDown 0.3s ease-out;
+	}
+
+	/* Content sections - uniform spacing and borders */
+	.content-section {
+		border-bottom: 1px solid #f3f4f6;
+		padding-bottom: 16px;
+		margin-bottom: 16px;
+	}
+
+	.content-section:last-child {
+		border-bottom: none;
+		margin-bottom: 0;
+		padding-bottom: 0;
+	}
+
+	@keyframes slideDown {
 		from {
-			transform: translateX(-100%);
+			opacity: 0;
+			transform: translateY(-10px);
 		}
 		to {
-			transform: translateX(0);
+			opacity: 1;
+			transform: translateY(0);
 		}
 	}
 
-	.panel-header {
-		padding: 20px;
-		border-bottom: 1px solid #e5e7eb;
-		background: #f9fafb;
+	/* Time filter styling - now uses panel-section-header */
+
+	.time-filter-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 8px;
 	}
 
-	.header-content {
+	.time-filter-label {
+		font-size: 13px;
+		font-weight: 500;
+		color: #374151;
+		white-space: nowrap;
+	}
+
+	.time-filter-select {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 13px;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+		min-width: 120px;
+	}
+
+	.time-filter-select:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+	}
+
+	.time-filter-details {
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		padding: 12px;
+		margin-top: 8px;
+	}
+
+	.time-range-row {
+		margin-bottom: 8px;
+	}
+
+	.time-range-row:last-child {
+		margin-bottom: 0;
+	}
+
+	.time-input-group {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.time-input-label {
+		font-size: 12px;
+		font-weight: 500;
+		color: #6b7280;
+		min-width: 35px;
+	}
+
+	.time-filter-date,
+	.time-filter-time {
+		padding: 4px 6px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 12px;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+	}
+
+	.time-filter-date:focus,
+	.time-filter-time:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+	}
+
+	.time-filter-date {
+		min-width: 130px;
+	}
+
+	.time-filter-time {
+		min-width: 80px;
+	}
+
+	/* Search results styling - now uses panel-section-header */
+
+	.search-meta {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	.search-query {
+		color: #3b82f6;
+		font-style: italic;
+		font-size: 14px;
+	}
+
+	.result-count {
+		color: #6b7280;
+		font-size: 12px;
+		background: #f3f4f6;
+		padding: 2px 8px;
+		border-radius: 12px;
+	}
+
+	.time-filter-badge {
+		color: #7c3aed;
+		font-size: 12px;
+		background: #f3e8ff;
+		padding: 2px 8px;
+		border-radius: 12px;
+		font-weight: 500;
+	}
+
+	/* Search controls styling - now uses panel-section-header */
+
+	.sort-controls {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.sort-label {
+		font-size: 13px;
+		color: #6b7280;
+		font-weight: 500;
+	}
+
+	.sort-select {
+		padding: 4px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 13px;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+	}
+
+	/* Results container - now uses panel-scrollable-content */
+
+	.search-results {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.search-result-item {
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		padding: 16px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.search-result-item:hover {
+		background: #f9fafb;
+		border-color: #3b82f6;
+		transform: translateY(-1px);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.result-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+	}
+
+	.result-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.result-emoji {
+		font-size: 16px;
+		flex-shrink: 0;
+	}
+
+	.result-name {
+		font-weight: 600;
+		color: #111827;
+		font-size: 14px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.result-distance {
+		color: #6b7280;
+		font-size: 12px;
+		font-weight: 500;
+		background: #f3f4f6;
+		padding: 2px 6px;
+		border-radius: 4px;
+		flex-shrink: 0;
+	}
+
+	.result-details {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 8px;
+		font-size: 12px;
+		color: #6b7280;
+		flex-wrap: wrap;
+	}
+
+	.result-provider {
+		font-style: italic;
+	}
+
+	.result-slots {
+		background: #dbeafe;
+		color: #1d4ed8;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-weight: 500;
+	}
+
+	.result-unit {
+		background: #f3e8ff;
+		color: #7c3aed;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-weight: 500;
+	}
+
+	.result-description {
+		color: #4b5563;
+		font-size: 13px;
+		line-height: 1.4;
+		margin-top: 4px;
+	}
+
+	.no-results {
+		text-align: center;
+		padding: 48px 24px;
+		color: #6b7280;
+	}
+
+	.no-results-icon {
+		font-size: 48px;
+		margin-bottom: 16px;
+		opacity: 0.5;
+	}
+
+	.no-results h3 {
+		margin: 0 0 8px 0;
+		font-size: 16px;
+		font-weight: 600;
+		color: #374151;
+	}
+
+	.no-results p {
+		margin: 0;
+		font-size: 14px;
+	}
+
+	/* Close section styles removed since close button was removed */
+
+	/* Marker header styling */
+	.marker-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
@@ -410,6 +1096,7 @@
 		padding: 4px;
 		border-radius: 4px;
 		transition: all 0.2s ease;
+		font-size: 18px;
 	}
 
 	.close-btn:hover {
@@ -417,11 +1104,7 @@
 		color: #374151;
 	}
 
-	.panel-content {
-		flex: 1;
-		overflow-y: auto;
-		padding: 20px;
-	}
+	/* Location and slot styling - now uses content-section */
 
 	.section-title {
 		font-size: 16px;
@@ -433,29 +1116,6 @@
 		gap: 6px;
 	}
 
-	.location-section {
-		margin-bottom: 24px;
-	}
-
-	.location-notice {
-		padding: 6px 12px;
-		border-radius: 6px;
-		margin-bottom: 12px;
-		text-align: center;
-	}
-
-	.geocoded-notice {
-		background: #d1fae5;
-		border: 1px solid #10b981;
-		color: #047857;
-	}
-
-	.coordinates-notice {
-		background: #e0e7ff;
-		border: 1px solid #6366f1;
-		color: #4338ca;
-	}
-
 	.location-details {
 		background: #f9fafb;
 		padding: 12px;
@@ -463,7 +1123,8 @@
 		border: 1px solid #e5e7eb;
 	}
 
-	.location-address {
+	.location-address,
+	.location-coords {
 		font-size: 14px;
 		color: #111827;
 		margin-bottom: 4px;
@@ -473,6 +1134,49 @@
 		font-size: 12px;
 		color: #6b7280;
 		font-family: monospace;
+	}
+
+	/* Clickable address and coordinates styling */
+	.clickable-address,
+	.clickable-coords {
+		background: none;
+		border: 1px solid transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+		padding: 8px 12px;
+		border-radius: 6px;
+		transition: all 0.2s ease;
+		text-align: left;
+		width: 100%;
+		margin-bottom: 4px;
+		display: block;
+	}
+
+	.clickable-address:hover,
+	.clickable-coords:hover {
+		background: #f0f9ff;
+		border-color: #3b82f6;
+		color: #3b82f6;
+		transform: translateY(-1px);
+		box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+	}
+
+	.clickable-address:active,
+	.clickable-coords:active {
+		transform: translateY(0);
+		background: #e0f2fe;
+		box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+	}
+
+	.clickable-coords {
+		margin-bottom: 0;
+	}
+
+	.single-location {
+		margin-bottom: 0 !important;
+		text-align: center;
+		font-weight: 500;
 	}
 
 	.slot-category {
@@ -547,16 +1251,44 @@
 		font-size: 11px;
 	}
 
-	/* Responsive design - within map container */
+	/* Responsive design - constrain to map width */
 	@media (max-width: 768px) {
-		.side-panel {
-			width: 320px; /* Smaller on mobile, but contained within map */
+		.search-panel {
+			width: calc(100% - 32px); /* Full map width minus margins */
+			max-width: none;
+		}
+
+		.search-input {
+			min-width: 240px;
+		}
+
+		.time-filter-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 4px;
+		}
+
+		.time-input-group {
+			flex-wrap: wrap;
+			gap: 4px;
+		}
+
+		.time-filter-date,
+		.time-filter-time {
+			min-width: auto;
+			flex: 1;
 		}
 	}
 
-	@media (max-width: 500px) {
-		.side-panel {
-			width: 280px; /* Even smaller for very small screens */
+	@media (max-width: 480px) {
+		.search-panel {
+			left: 8px;
+			top: 8px;
+			width: calc(100% - 16px); /* Constrain to map width */
+		}
+
+		.search-input {
+			min-width: 200px;
 		}
 	}
 </style>
