@@ -104,6 +104,12 @@
 		}
 	}
 
+	// Handle back to search (clear marker but keep search active)
+	function handleBackToSearch() {
+		selectedMarker = null;
+		// Don't clear search - keep it active so user returns to search results
+	}
+
 	// Search functionality
 	function performSearch(query: string) {
 		console.log('[Map Search] Performing search for:', query);
@@ -956,6 +962,7 @@
 	<MapSidePanel
 		markerData={selectedMarker}
 		onClose={handleSidePanelClose}
+		onBackToSearch={handleBackToSearch}
 		isSearchMode={globalState.isSearchMode}
 		searchQuery={globalState.searchQuery}
 		searchResults={globalState.searchResults}

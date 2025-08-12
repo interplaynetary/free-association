@@ -6,6 +6,7 @@
 	interface Props {
 		markerData: GroupedSlotMarkerData | null;
 		onClose: () => void;
+		onBackToSearch?: () => void; // New callback for going back to search
 		isSearchMode?: boolean;
 		searchQuery?: string;
 		searchResults?: GroupedSlotMarkerData[];
@@ -31,6 +32,7 @@
 	let {
 		markerData,
 		onClose,
+		onBackToSearch,
 		isSearchMode = false,
 		searchQuery = '',
 		searchResults = [],
@@ -50,9 +52,13 @@
 
 	let searchInputElement: HTMLInputElement | undefined = $state();
 
+	// Track if we came to marker details from search results
+	let viewingMarkerFromSearch = $state(false);
+
 	// Determine panel state
 	let panelState = $derived(() => {
-		if (markerData) return 'marker'; // Showing marker details
+		if (markerData && viewingMarkerFromSearch) return 'marker-from-search'; // Marker details with back to search
+		if (markerData) return 'marker'; // Showing marker details (direct click)
 		if (globalState.isSearchMode) return 'search'; // Showing search results
 		return 'collapsed'; // Just search input visible
 	});
@@ -82,9 +88,35 @@
 	// Clear search
 	function clearSearch() {
 		globalState.clearSearch();
+		viewingMarkerFromSearch = false; // Reset navigation state
 		searchInputElement?.focus();
 		// Search mode will automatically close since globalState.clearSearch() sets isSearchMode = false
 	}
+
+	// Handle search result click with navigation state
+	function handleSearchResultClick(marker: GroupedSlotMarkerData) {
+		viewingMarkerFromSearch = true; // Mark that we came from search
+		onSearchResultClick?.(marker); // Call parent handler
+	}
+
+	// Go back to search results from marker details
+	function goBackToSearch() {
+		viewingMarkerFromSearch = false;
+		// Use specific back-to-search callback if available, otherwise fall back to onClose
+		if (onBackToSearch) {
+			onBackToSearch(); // This should clear markerData but preserve search
+		} else {
+			onClose?.(); // Fallback to regular close
+		}
+	}
+
+	// Reset navigation state when marker changes or search is cleared
+	$effect(() => {
+		// If search is cleared while viewing marker from search, reset flag
+		if (!globalState.isSearchMode && viewingMarkerFromSearch) {
+			viewingMarkerFromSearch = false;
+		}
+	});
 
 	// Get computed quantity for a specific slot (your share)
 	function getSlotComputedQuantity(capacity: any, slotId: string): number {
@@ -318,7 +350,7 @@
 </script>
 
 <!-- Fixed search input that never moves -->
-<div class="search-panel">
+<div class="search-panel {panelState() === 'collapsed' ? 'collapsed' : 'expanded'}">
 	<!-- Always visible search input in fixed position -->
 	<div class="fixed-search-input">
 		<div class="search-input-wrapper">
@@ -345,166 +377,8 @@
 	</div>
 
 	<!-- Panel content that appears/disappears below the search input -->
-	{#if globalState.isSearchMode}
-		<div class="panel-content">
-			<!-- Time Filter Controls -->
-			<div class="content-section">
-				<div class="time-filter-header">
-					<span class="time-filter-label">⏰ Availability:</span>
-					<select
-						class="time-filter-select"
-						bind:value={globalState.timeFilterBy}
-						onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
-					>
-						<option value="any">Any time</option>
-						<option value="now">Now</option>
-						<option value="next24h">Next 24 hours</option>
-						<option value="between">Between</option>
-					</select>
-				</div>
-
-				{#if globalState.showTimeFilterDetails}
-					<div class="time-filter-details">
-						<div class="time-range-row">
-							<div class="time-input-group">
-								<span class="time-input-label">From:</span>
-								<input
-									type="date"
-									class="time-filter-date"
-									bind:value={globalState.timeFilterStartDate}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-								<input
-									type="time"
-									class="time-filter-time"
-									bind:value={globalState.timeFilterStartTime}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-							</div>
-						</div>
-						<div class="time-range-row">
-							<div class="time-input-group">
-								<span class="time-input-label">To:</span>
-								<input
-									type="date"
-									class="time-filter-date"
-									bind:value={globalState.timeFilterEndDate}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-								<input
-									type="time"
-									class="time-filter-time"
-									bind:value={globalState.timeFilterEndTime}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
-
-			<!-- Search Controls -->
-			<div class="content-section">
-				<div class="sort-controls">
-					<span class="sort-label">Sort by:</span>
-					<select class="sort-select" bind:value={searchSortBy} onchange={onSortChange}>
-						<option value="relevance">Relevance</option>
-						{#if currentLocation}
-							<option value="distance">Distance</option>
-						{/if}
-					</select>
-				</div>
-			</div>
-
-			<!-- Search Results -->
-			<div class="content-section">
-				{#if searchResults.length > 0}
-					<div class="search-results">
-						{#each searchResults as result (result.id)}
-							{@const distance = currentLocation
-								? calculateDistance(
-										currentLocation.latitude,
-										currentLocation.longitude,
-										result.lnglat.lat,
-										result.lnglat.lng
-									)
-								: null}
-
-							<div
-								class="search-result-item"
-								onclick={() => onSearchResultClick?.(result)}
-								role="button"
-								tabindex="0"
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										onSearchResultClick?.(result);
-									}
-								}}
-							>
-								<div class="result-header">
-									<div class="result-title">
-										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
-										<span class="result-name">{result.capacity.name}</span>
-									</div>
-									{#if distance !== null}
-										<span class="result-distance">{formatDistance(distance)}</span>
-									{/if}
-								</div>
-
-								<div class="result-details">
-									<div class="result-provider">👤 {result.providerName}</div>
-									{#if result.capacity.unit}
-										<div class="result-unit">{result.capacity.unit}</div>
-									{/if}
-									<div class="result-slots">{result.slots.length} slots</div>
-								</div>
-
-								{#if result.capacity.description}
-									<div class="result-description">
-										{result.capacity.description.length > 100
-											? result.capacity.description.substring(0, 100) + '...'
-											: result.capacity.description}
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{:else}
-					<div class="no-results">
-						<div class="no-results-icon">🔍</div>
-						<h3>No results found</h3>
-						<p>Try different search terms or check your spelling.</p>
-					</div>
-				{/if}
-			</div>
-		</div>
-	{:else if markerData}
-		<!-- Marker details content -->
+	{#if markerData}
+		<!-- Show marker details when markerData exists -->
 		{@const { capacity, slots, lnglat, source, providerName } = markerData}
 		{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
 		{@const isGeocoded = source === 'geocoded'}
@@ -513,8 +387,19 @@
 		{@const totalSlots = slots.length}
 
 		<div class="panel-content">
-			<!-- Header -->
+			<!-- Header with conditional back button -->
 			<div class="content-section marker-header">
+				{#if viewingMarkerFromSearch}
+					<!-- Back to search button -->
+					<button
+						class="back-btn"
+						onclick={goBackToSearch}
+						title="Back to search results"
+						aria-label="Back to search results"
+					>
+						<span>←</span>
+					</button>
+				{/if}
 				<div class="capacity-info">
 					<h2 class="capacity-title">
 						<span class="capacity-emoji">{capacity.emoji || '🏠'}</span>
@@ -527,9 +412,12 @@
 						{/if}
 					</div>
 				</div>
-				<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
-					✕
-				</button>
+				{#if !viewingMarkerFromSearch}
+					<!-- Only show close button when not from search -->
+					<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
+						✕
+					</button>
+				{/if}
 			</div>
 
 			<!-- Location Info -->
@@ -651,6 +539,165 @@
 				{/if}
 			</div>
 		</div>
+	{:else if globalState.isSearchMode}
+		<!-- Search results content -->
+		<div class="panel-content">
+			<!-- Time Filter Controls -->
+			<div class="content-section">
+				<div class="time-filter-header">
+					<span class="time-filter-label">⏰ Availability:</span>
+					<select
+						class="time-filter-select"
+						bind:value={globalState.timeFilterBy}
+						onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
+					>
+						<option value="any">Any time</option>
+						<option value="now">Now</option>
+						<option value="next24h">Next 24 hours</option>
+						<option value="between">Between</option>
+					</select>
+				</div>
+
+				{#if globalState.showTimeFilterDetails}
+					<div class="time-filter-details">
+						<div class="time-range-row">
+							<div class="time-input-group">
+								<span class="time-input-label">From:</span>
+								<input
+									type="date"
+									class="time-filter-date"
+									bind:value={globalState.timeFilterStartDate}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+								<input
+									type="time"
+									class="time-filter-time"
+									bind:value={globalState.timeFilterStartTime}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+							</div>
+						</div>
+						<div class="time-range-row">
+							<div class="time-input-group">
+								<span class="time-input-label">To:</span>
+								<input
+									type="date"
+									class="time-filter-date"
+									bind:value={globalState.timeFilterEndDate}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+								<input
+									type="time"
+									class="time-filter-time"
+									bind:value={globalState.timeFilterEndTime}
+									onchange={() =>
+										onTimeFilterDetailsChange?.({
+											startDate: globalState.timeFilterStartDate,
+											endDate: globalState.timeFilterEndDate,
+											startTime: globalState.timeFilterStartTime,
+											endTime: globalState.timeFilterEndTime
+										})}
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Search Controls -->
+			<div class="content-section">
+				<div class="sort-controls">
+					<span class="sort-label">Sort by:</span>
+					<select class="sort-select" bind:value={searchSortBy} onchange={onSortChange}>
+						<option value="relevance">Relevance</option>
+						{#if currentLocation}
+							<option value="distance">Distance</option>
+						{/if}
+					</select>
+				</div>
+			</div>
+
+			<!-- Search Results -->
+			<div class="content-section">
+				{#if searchResults.length > 0}
+					<div class="search-results">
+						{#each searchResults as result (result.id)}
+							{@const distance = currentLocation
+								? calculateDistance(
+										currentLocation.latitude,
+										currentLocation.longitude,
+										result.lnglat.lat,
+										result.lnglat.lng
+									)
+								: null}
+
+							<div
+								class="search-result-item"
+								onclick={() => handleSearchResultClick(result)}
+								role="button"
+								tabindex="0"
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleSearchResultClick(result);
+									}
+								}}
+							>
+								<div class="result-header">
+									<div class="result-title">
+										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
+										<span class="result-name">{result.capacity.name}</span>
+									</div>
+									{#if distance !== null}
+										<span class="result-distance">{formatDistance(distance)}</span>
+									{/if}
+								</div>
+
+								<div class="result-details">
+									<div class="result-provider">👤 {result.providerName}</div>
+									{#if result.capacity.unit}
+										<div class="result-unit">{result.capacity.unit}</div>
+									{/if}
+									<div class="result-slots">{result.slots.length} slots</div>
+								</div>
+
+								{#if result.capacity.description}
+									<div class="result-description">
+										{result.capacity.description.length > 100
+											? result.capacity.description.substring(0, 100) + '...'
+											: result.capacity.description}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="no-results">
+						<div class="no-results-icon">🔍</div>
+						<h3>No results found</h3>
+						<p>Try different search terms or check your spelling.</p>
+					</div>
+				{/if}
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -660,13 +707,22 @@
 		position: absolute;
 		top: 16px;
 		left: 16px;
-		bottom: 16px; /* Constrain bottom to map boundary */
 		z-index: 1000;
 		width: 400px; /* Fixed width - never changes */
-		pointer-events: auto;
 		display: flex;
 		flex-direction: column;
-		/* Remove max-height since bottom constraint handles it */
+	}
+
+	/* Collapsed state: only search input, no map interference */
+	.search-panel.collapsed {
+		pointer-events: none; /* Don't block map touch events */
+		/* No bottom constraint - only takes space needed for search input */
+	}
+
+	/* Expanded state: full panel with content, constrain to map height */
+	.search-panel.expanded {
+		bottom: 16px; /* Constrain bottom when content is visible */
+		pointer-events: auto; /* Allow all events when expanded */
 	}
 
 	/* Fixed search input that never moves or changes size */
@@ -678,6 +734,7 @@
 		backdrop-filter: blur(4px);
 		flex-shrink: 0; /* Never shrink */
 		height: 48px; /* Fixed height - never changes */
+		pointer-events: auto; /* Always allow events on search input */
 	}
 
 	.search-input-wrapper {
@@ -1100,6 +1157,28 @@
 	}
 
 	.close-btn:hover {
+		background: #f3f4f6;
+		color: #374151;
+	}
+
+	.back-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: #6b7280;
+		padding: 6px 8px;
+		border-radius: 4px;
+		transition: all 0.2s ease;
+		font-size: 13px;
+		font-weight: 500;
+		margin-bottom: 8px;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		text-align: left;
+	}
+
+	.back-btn:hover {
 		background: #f3f4f6;
 		color: #374151;
 	}
