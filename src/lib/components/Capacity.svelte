@@ -5,7 +5,7 @@
 	import DropDown from './DropDown.svelte';
 	import Chat from './Chat.svelte';
 	import CompositionItem from './CompositionItem.svelte';
-	import { Rules, type JsonLogicRule } from '$lib/filters';
+	import { Rules, type JsonLogicRule, extractSubtreeIdsFromRule, extractFiltersFromRule } from '$lib/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { get } from 'svelte/store';
@@ -25,66 +25,6 @@
 	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
-
-	// Helper function to extract subtree IDs from a rule (legacy compatibility)
-	function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
-		const result = extractFiltersFromRule(rule);
-		return result.subtrees;
-	}
-
-	function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
-		subtrees: string[];
-		capacities: string[];
-		mode: 'include' | 'exclude';
-	} {
-		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
-
-		let subtrees: string[] = [];
-		let capacities: string[] = [];
-		let mode: 'include' | 'exclude' = 'include';
-
-		// Handle NOT rules (exclude mode)
-		if ('!' in rule && rule['!']) {
-			mode = 'exclude';
-			rule = rule['!'] as JsonLogicRule;
-		}
-
-		// Handle AND rules (multiple filters)
-		if ('and' in rule && rule.and && Array.isArray(rule.and)) {
-			(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
-				const subResult = extractFiltersFromRule(subRule);
-				subtrees.push(...subResult.subtrees);
-				capacities.push(...subResult.capacities);
-			});
-			return { subtrees, capacities, mode };
-		}
-
-		// Handle single subtree rule
-		if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
-			const secondArg = rule.in[1];
-			if (
-				typeof secondArg === 'object' &&
-				secondArg !== null &&
-				'var' in secondArg &&
-				Array.isArray(secondArg.var) &&
-				secondArg.var[0] === 'subtreeContributors'
-			) {
-				subtrees.push(secondArg.var[1] as string);
-			} else if (Array.isArray(secondArg)) {
-				capacities.push(...(secondArg as string[]));
-			}
-		}
-
-		// Handle multiple subtree rule
-		if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
-			const subtreeIds = rule.some[0];
-			if (Array.isArray(subtreeIds)) {
-				subtrees.push(...(subtreeIds as string[]));
-			}
-		}
-
-		return { subtrees, capacities, mode };
-	}
 
 	// Format date for input
 	function formatDateForInput(date: Date | undefined): string {

@@ -199,3 +199,69 @@ export function normalizeShareMap(map: ShareMap): ShareMap {
 
 	return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / total]));
 }
+
+/**
+ * Extract subtree IDs from a JSON Logic rule (legacy compatibility)
+ */
+export function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
+	const result = extractFiltersFromRule(rule);
+	return result.subtrees;
+}
+
+/**
+ * Extract filter information from a JSON Logic rule
+ * Returns subtrees, capacities, and mode (include/exclude)
+ */
+export function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
+	subtrees: string[];
+	capacities: string[];
+	mode: 'include' | 'exclude';
+} {
+	if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
+
+	let subtrees: string[] = [];
+	let capacities: string[] = [];
+	let mode: 'include' | 'exclude' = 'include';
+
+	// Handle NOT rules (exclude mode)
+	if ('!' in rule && rule['!']) {
+		mode = 'exclude';
+		rule = rule['!'] as JsonLogicRule;
+	}
+
+	// Handle AND rules (multiple filters)
+	if ('and' in rule && rule.and && Array.isArray(rule.and)) {
+		(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
+			const subResult = extractFiltersFromRule(subRule);
+			subtrees.push(...subResult.subtrees);
+			capacities.push(...subResult.capacities);
+		});
+		return { subtrees, capacities, mode };
+	}
+
+	// Handle single subtree rule
+	if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+		const secondArg = rule.in[1];
+		if (
+			typeof secondArg === 'object' &&
+			secondArg !== null &&
+			'var' in secondArg &&
+			Array.isArray(secondArg.var) &&
+			secondArg.var[0] === 'subtreeContributors'
+		) {
+			subtrees.push(secondArg.var[1] as string);
+		} else if (Array.isArray(secondArg)) {
+			capacities.push(...(secondArg as string[]));
+		}
+	}
+
+	// Handle multiple subtree rule
+	if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+		const subtreeIds = rule.some[0];
+		if (Array.isArray(subtreeIds)) {
+			subtrees.push(...(subtreeIds as string[]));
+		}
+	}
+
+	return { subtrees, capacities, mode };
+}
