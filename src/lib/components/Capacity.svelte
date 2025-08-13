@@ -26,6 +26,72 @@
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
+	// Helper function to extract subtree IDs from a rule (legacy compatibility)
+	function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
+		const result = extractFiltersFromRule(rule);
+		return result.subtrees;
+	}
+
+	function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
+		subtrees: string[];
+		capacities: string[];
+		mode: 'include' | 'exclude';
+	} {
+		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
+
+		let subtrees: string[] = [];
+		let capacities: string[] = [];
+		let mode: 'include' | 'exclude' = 'include';
+
+		// Handle NOT rules (exclude mode)
+		if ('!' in rule && rule['!']) {
+			mode = 'exclude';
+			rule = rule['!'] as JsonLogicRule;
+		}
+
+		// Handle AND rules (multiple filters)
+		if ('and' in rule && rule.and && Array.isArray(rule.and)) {
+			(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
+				const subResult = extractFiltersFromRule(subRule);
+				subtrees.push(...subResult.subtrees);
+				capacities.push(...subResult.capacities);
+			});
+			return { subtrees, capacities, mode };
+		}
+
+		// Handle single subtree rule
+		if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
+			const secondArg = rule.in[1];
+			if (
+				typeof secondArg === 'object' &&
+				secondArg !== null &&
+				'var' in secondArg &&
+				Array.isArray(secondArg.var) &&
+				secondArg.var[0] === 'subtreeContributors'
+			) {
+				subtrees.push(secondArg.var[1] as string);
+			} else if (Array.isArray(secondArg)) {
+				capacities.push(...(secondArg as string[]));
+			}
+		}
+
+		// Handle multiple subtree rule
+		if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
+			const subtreeIds = rule.some[0];
+			if (Array.isArray(subtreeIds)) {
+				subtrees.push(...(subtreeIds as string[]));
+			}
+		}
+
+		return { subtrees, capacities, mode };
+	}
+
+	// Format date for input
+	function formatDateForInput(date: Date | undefined): string {
+		if (!date) return '';
+		return date.toISOString().split('T')[0];
+	}
+
 	interface Props {
 		capacity: ProviderCapacity;
 		canDelete: boolean;
@@ -498,66 +564,6 @@
 		}
 	}
 
-	// Helper function to extract subtree IDs from a rule (legacy compatibility)
-	function extractSubtreeIdsFromRule(rule: JsonLogicRule): string[] {
-		const result = extractFiltersFromRule(rule);
-		return result.subtrees;
-	}
-
-	function extractFiltersFromRule(rule: JsonLogicRule | null | undefined): {
-		subtrees: string[];
-		capacities: string[];
-		mode: 'include' | 'exclude';
-	} {
-		if (!rule) return { subtrees: [], capacities: [], mode: 'include' };
-
-		let subtrees: string[] = [];
-		let capacities: string[] = [];
-		let mode: 'include' | 'exclude' = 'include';
-
-		// Handle NOT rules (exclude mode)
-		if ('!' in rule && rule['!']) {
-			mode = 'exclude';
-			rule = rule['!'] as JsonLogicRule;
-		}
-
-		// Handle AND rules (multiple filters)
-		if ('and' in rule && rule.and && Array.isArray(rule.and)) {
-			(rule.and as JsonLogicRule[]).forEach((subRule: JsonLogicRule) => {
-				const subResult = extractFiltersFromRule(subRule);
-				subtrees.push(...subResult.subtrees);
-				capacities.push(...subResult.capacities);
-			});
-			return { subtrees, capacities, mode };
-		}
-
-		// Handle single subtree rule
-		if ('in' in rule && rule.in && Array.isArray(rule.in) && rule.in.length === 2) {
-			const secondArg = rule.in[1];
-			if (
-				typeof secondArg === 'object' &&
-				secondArg !== null &&
-				'var' in secondArg &&
-				Array.isArray(secondArg.var) &&
-				secondArg.var[0] === 'subtreeContributors'
-			) {
-				subtrees.push(secondArg.var[1] as string);
-			} else if (Array.isArray(secondArg)) {
-				capacities.push(...(secondArg as string[]));
-			}
-		}
-
-		// Handle multiple subtree rule
-		if ('some' in rule && rule.some && Array.isArray(rule.some) && rule.some.length === 2) {
-			const subtreeIds = rule.some[0];
-			if (Array.isArray(subtreeIds)) {
-				subtrees.push(...(subtreeIds as string[]));
-			}
-		}
-
-		return { subtrees, capacities, mode };
-	}
-
 	// Add click outside listener
 	$effect(() => {
 		if (showEmojiPicker) {
@@ -567,12 +573,6 @@
 			};
 		}
 	});
-
-	// Format date for input
-	function formatDateForInput(date: Date | undefined): string {
-		if (!date) return '';
-		return date.toISOString().split('T')[0];
-	}
 
 	// Helper functions for map marker integration
 	export function hasValidCoordinates(): boolean {
