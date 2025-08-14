@@ -327,31 +327,92 @@
 		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
 	}
 
+	// Helper function to safely extract time from potentially malformed time strings
+	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
+		if (!timeValue) return undefined;
+		if (/^\d{2}:\d{2}$/.test(timeValue)) {
+			return timeValue;
+		}
+		if (timeValue.includes('T')) {
+			try {
+				const date = new Date(timeValue);
+				return date.toTimeString().substring(0, 5);
+			} catch (e) {
+				console.warn('Failed to parse time:', timeValue);
+				return undefined;
+			}
+		}
+		console.warn('Unknown time format:', timeValue);
+		return undefined;
+	}
+
+	// Helper function to parse slot dates and times consistently
+	function parseSlotDateTime(slot: any): {
+		slotStart: Date | null;
+		slotEnd: Date | null;
+	} {
+		const slotStart = slot.start_date ? new Date(slot.start_date) : null;
+		let slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart ? new Date(slotStart) : null;
+
+		// For all-day events, don't add time components - work with dates only
+		if (slot.all_day) {
+			// For all-day events, set start to beginning of day and end to end of day
+			if (slotStart) {
+				slotStart.setHours(0, 0, 0, 0);
+			}
+			if (slotEnd) {
+				slotEnd.setHours(23, 59, 59, 999);
+			} else if (slotStart) {
+				// If no end date, all-day event ends at end of start day
+				slotEnd = new Date(slotStart);
+				slotEnd.setHours(23, 59, 59, 999);
+			}
+		} else {
+			// For timed events, add time components using safe extraction
+			if (slotStart && slot.start_time) {
+				const safeStartTime = safeExtractTime(slot.start_time);
+				if (safeStartTime) {
+					const [hours, minutes] = safeStartTime.split(':');
+					slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+				}
+			}
+
+			if (slotEnd && slot.end_time) {
+				const safeEndTime = safeExtractTime(slot.end_time);
+				if (safeEndTime) {
+					const [hours, minutes] = safeEndTime.split(':');
+					slotEnd.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+				}
+			}
+
+			// Handle missing end times for timed events (only when no end_date was specified)
+			if (slotStart && !slot.end_date) {
+				if (!slot.start_time && !slot.end_time) {
+					// No specific times - treat as all-day
+					slotEnd = new Date(slotStart);
+					slotEnd.setHours(23, 59, 59, 999);
+				} else if (slot.start_time && !slot.end_time) {
+					// Has start time but no end time - assume 1 hour duration
+					slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+				}
+			}
+		}
+
+		return { slotStart, slotEnd };
+	}
+
 	// Utility function to check if a slot is in the past
 	function isSlotInPast(slot: any): boolean {
-		if (!slot.start_date) return false;
+		if (isSlotRecurring(slot)) return false;
 
 		const now = new Date();
-		const slotDate = new Date(slot.start_date);
+		const { slotStart, slotEnd } = parseSlotDateTime(slot);
 
-		// If it's all day, compare dates only
-		if (slot.all_day) {
-			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			const slotDateOnly = new Date(
-				slotDate.getFullYear(),
-				slotDate.getMonth(),
-				slotDate.getDate()
-			);
-			return slotDateOnly < today;
-		}
+		if (!slotStart) return false;
 
-		// If it has time, create full datetime
-		if (slot.start_time) {
-			const [hours, minutes] = slot.start_time.split(':');
-			slotDate.setHours(parseInt(hours), parseInt(minutes));
-		}
-
-		return slotDate < now;
+		// Use the effective end time (parseSlotDateTime handles all-day vs timed logic)
+		const effectiveEndTime = slotEnd || slotStart;
+		return effectiveEndTime < now;
 	}
 
 	// Utility function to get slot priority for sorting

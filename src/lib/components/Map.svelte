@@ -71,6 +71,10 @@
 	let shareSlotMarkers = $state<GroupedSlotMarkerData[]>([]);
 	let isLoadingGeocode = $state(false);
 
+	// Filtered markers - we'll implement time filtering as a future enhancement
+	// For now, show all markers to ensure basic functionality works
+	// TODO: Add time filtering back once the basic display is working
+
 	// Selected marker state for side panel
 	let selectedMarker = $state<GroupedSlotMarkerData | null>(null);
 
@@ -233,24 +237,13 @@
 			// Skip slots without dates for time-based filters
 			if (!slot.start_date && globalState.timeFilterBy !== 'any') return false;
 
-			const slotStart = slot.start_date ? new Date(slot.start_date) : null;
-			const slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart;
-
-			// Add time components if available
-			if (slotStart && slot.start_time) {
-				const [hours, minutes] = slot.start_time.split(':');
-				slotStart.setHours(parseInt(hours), parseInt(minutes));
-			}
-			if (slotEnd && slot.end_time) {
-				const [hours, minutes] = slot.end_time.split(':');
-				slotEnd.setHours(parseInt(hours), parseInt(minutes));
-			}
+			const { slotStart, slotEnd } = parseSlotDateTime(slot);
 
 			switch (globalState.timeFilterBy) {
 				case 'now': {
 					// Slot must be happening right now
 					if (!slotStart) return false;
-					const endTime = slotEnd || slotStart;
+
 					if (slot.all_day) {
 						// For all-day events, check if today falls within the date range
 						const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -259,20 +252,64 @@
 							slotStart.getMonth(),
 							slotStart.getDate()
 						);
-						const slotEndDate = new Date(
-							endTime.getFullYear(),
-							endTime.getMonth(),
-							endTime.getDate()
-						);
-						return today >= slotStartDate && today <= slotEndDate;
+						const slotEndDate = slotEnd
+							? new Date(slotEnd.getFullYear(), slotEnd.getMonth(), slotEnd.getDate())
+							: slotStartDate;
+						const result = today >= slotStartDate && today <= slotEndDate;
+						console.log(`[Map Time Filter] All-day slot check:`, {
+							slotId: slot.id,
+							today: today.toDateString(),
+							slotStartDate: slotStartDate.toDateString(),
+							slotEndDate: slotEndDate.toDateString(),
+							result
+						});
+						return result;
 					}
-					return now >= slotStart && now <= endTime;
+
+					// For timed events, use the consistently parsed end time
+					const endTime = slotEnd || slotStart;
+					const result = now >= slotStart && now <= endTime;
+					console.log(`[Map Time Filter] Timed slot check:`, {
+						slotId: slot.id,
+						now: now.toISOString(),
+						slotStart: slotStart.toISOString(),
+						endTime: endTime.toISOString(),
+						slotStartTime: slot.start_time,
+						slotEndTime: slot.end_time,
+						result
+					});
+					return result;
 				}
 				case 'next24h': {
-					// Slot must start within the next 24 hours
+					// Slot must be available within the next 24 hours
 					if (!slotStart) return false;
 					const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-					return slotStart >= now && slotStart <= next24h;
+					const endTime = slotEnd || slotStart;
+
+					// Slot is available in next 24h if:
+					// 1. It starts within the next 24 hours, OR
+					// 2. It's already active and continues into the next 24 hours, OR
+					// 3. It starts before now but ends after now (currently active)
+					const startsWithinNext24h = slotStart >= now && slotStart <= next24h;
+					const isCurrentlyActive = now >= slotStart && now <= endTime;
+					const endsWithinNext24h = endTime >= now && endTime <= next24h;
+					const spansNext24h = slotStart <= now && endTime >= next24h;
+
+					const result =
+						startsWithinNext24h || isCurrentlyActive || endsWithinNext24h || spansNext24h;
+					console.log(`[Map Time Filter] Next 24h slot check:`, {
+						slotId: slot.id,
+						now: now.toISOString(),
+						next24h: next24h.toISOString(),
+						slotStart: slotStart.toISOString(),
+						endTime: endTime.toISOString(),
+						startsWithinNext24h,
+						isCurrentlyActive,
+						endsWithinNext24h,
+						spansNext24h,
+						result
+					});
+					return result;
 				}
 				case 'between': {
 					// Custom date/time range
@@ -328,16 +365,24 @@
 
 	// Time filter handlers
 	function handleTimeFilterChange() {
-		// Trigger search update if we're in search mode or have time filters active
-		if (globalState.isSearchMode || globalState.timeFilterBy !== 'any') {
+		// Always trigger search/filter update when time filter changes
+		if (globalState.isSearchMode) {
+			// If in search mode, re-run search with new time filter
 			performSearch(globalState.searchQuery);
+		} else {
+			// If not in search mode but time filter is active, filter all visible markers
+			// This will be handled by the marker filtering logic
+			console.log('[Map] Time filter changed to:', globalState.timeFilterBy);
 		}
 	}
 
 	function handleTimeFilterDetailsChange() {
-		// Re-run search when custom time details change
-		if (globalState.timeFilterBy === 'between') {
+		// Re-run search/filter when custom time details change
+		if (globalState.isSearchMode) {
 			performSearch(globalState.searchQuery);
+		} else if (globalState.timeFilterBy === 'between') {
+			// Time filter details changed while not searching - markers should be filtered
+			console.log('[Map] Time filter details changed');
 		}
 	}
 
@@ -864,23 +909,87 @@
 		return slot.recurrence && slot.recurrence !== 'Does not repeat';
 	}
 
+	// Helper function to parse slot dates and times consistently
+	function parseSlotDateTime(slot: any): {
+		slotStart: Date | null;
+		slotEnd: Date | null;
+	} {
+		const slotStart = slot.start_date ? new Date(slot.start_date) : null;
+		let slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart ? new Date(slotStart) : null;
+
+		// For all-day events, don't add time components - work with dates only
+		if (slot.all_day) {
+			// For all-day events, set start to beginning of day and end to end of day
+			if (slotStart) {
+				slotStart.setHours(0, 0, 0, 0);
+			}
+			if (slotEnd) {
+				slotEnd.setHours(23, 59, 59, 999);
+			} else if (slotStart) {
+				// If no end date, all-day event ends at end of start day
+				slotEnd = new Date(slotStart);
+				slotEnd.setHours(23, 59, 59, 999);
+			}
+		} else {
+			// For timed events, add time components using safe extraction
+			if (slotStart && slot.start_time) {
+				const safeStartTime = safeExtractTime(slot.start_time);
+				if (safeStartTime) {
+					const [hours, minutes] = safeStartTime.split(':');
+					slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+				}
+			}
+
+			if (slotEnd && slot.end_time) {
+				const safeEndTime = safeExtractTime(slot.end_time);
+				if (safeEndTime) {
+					const [hours, minutes] = safeEndTime.split(':');
+					slotEnd.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+				}
+			}
+
+			// Handle missing end times for timed events (only when no end_date was specified)
+			if (slotStart && !slot.end_date) {
+				if (!slot.start_time && !slot.end_time) {
+					// No specific times - treat as all-day
+					slotEnd = new Date(slotStart);
+					slotEnd.setHours(23, 59, 59, 999);
+				} else if (slot.start_time && !slot.end_time) {
+					// Has start time but no end time - assume 1 hour duration
+					slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+				}
+			}
+		}
+
+		return { slotStart, slotEnd };
+	}
+
 	// Helper function to check if a slot is in the past (matches Share.svelte)
 	function isSlotInPast(slot: any): boolean {
 		if (isSlotRecurring(slot)) return false;
 
 		const now = new Date();
-		let slotEndDate = slot.end_date ? new Date(slot.end_date) : null;
-		let slotStartDate = slot.start_date ? new Date(slot.start_date) : null;
+		const { slotStart, slotEnd } = parseSlotDateTime(slot);
 
-		// Use end date if available, otherwise use start date
-		const relevantDate = slotEndDate || slotStartDate;
-		if (!relevantDate) return false;
+		if (!slotStart) return false;
 
-		// Set time to end of day for comparison
-		const slotDate = new Date(relevantDate);
-		slotDate.setHours(23, 59, 59, 999);
+		// Use the effective end time (parseSlotDateTime handles all-day vs timed logic)
+		const effectiveEndTime = slotEnd || slotStart;
+		const result = effectiveEndTime < now;
 
-		return slotDate < now;
+		console.log(`[Map Slot Categorization] isSlotInPast check:`, {
+			slotId: slot.id,
+			startDate: slot.start_date,
+			endDate: slot.end_date,
+			startTime: slot.start_time,
+			endTime: slot.end_time,
+			allDay: slot.all_day,
+			now: now.toISOString(),
+			slotStart: slotStart.toISOString(),
+			effectiveEndTime: effectiveEndTime.toISOString(),
+			result
+		});
+		return result;
 	}
 
 	// Categorize slots like in Share.svelte
@@ -1113,7 +1222,7 @@
 				{/if}
 			</GeoJSONSource>
 
-			<!-- Grouped share slot markers - from shared capacities only -->
+			<!-- Grouped share slot markers - filtered by time if applicable -->
 			{#each shareSlotMarkers as markerData (markerData.id)}
 				{@const { id, capacityId, capacity, slots, lnglat, source, providerName } = markerData}
 				{@const isSelected = selectedMarker?.id === markerData.id}

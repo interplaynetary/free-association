@@ -1072,6 +1072,18 @@
 						bind:value={slotStartDate}
 						onfocus={() => handleFocus('startDate', slotStartDate)}
 						onblur={() => handleBlurIfChanged('startDate', slotStartDate)}
+						onchange={() => {
+							// If start date is after end date, clear the end date
+							if (slotStartDate && slotEndDate) {
+								const startDate = new Date(slotStartDate);
+								const endDate = new Date(slotEndDate);
+								if (startDate > endDate) {
+									slotEndDate = null;
+									console.log('[SLOT] Start date is after end date, clearing end date');
+								}
+							}
+							handleSlotUpdate();
+						}}
 					/>
 				</div>
 				<div>
@@ -1083,6 +1095,18 @@
 						bind:value={slotEndDate}
 						onfocus={() => handleFocus('endDate', slotEndDate)}
 						onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
+						onchange={() => {
+							// If end date is before start date, clear the end date
+							if (slotStartDate && slotEndDate) {
+								const startDate = new Date(slotStartDate);
+								const endDate = new Date(slotEndDate);
+								if (endDate < startDate) {
+									slotEndDate = null;
+									console.log('[SLOT] End date is before start date, clearing end date');
+								}
+							}
+							handleSlotUpdate();
+						}}
 					/>
 				</div>
 			</div>

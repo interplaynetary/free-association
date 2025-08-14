@@ -60,7 +60,7 @@
 		if (markerData && viewingMarkerFromSearch) return 'marker-from-search'; // Marker details with back to search
 		if (markerData) return 'marker'; // Showing marker details (direct click)
 		if (globalState.isSearchMode) return 'search'; // Showing search results
-		return 'collapsed'; // Just search input visible
+		return 'expanded'; // Always expanded now (search input + time filter always visible)
 	});
 
 	// Handle search input
@@ -264,23 +264,73 @@
 		return slot.recurrence && slot.recurrence !== 'Does not repeat';
 	}
 
+	// Helper function to parse slot dates and times consistently
+	function parseSlotDateTime(slot: any): {
+		slotStart: Date | null;
+		slotEnd: Date | null;
+	} {
+		const slotStart = slot.start_date ? new Date(slot.start_date) : null;
+		let slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart ? new Date(slotStart) : null;
+
+		// For all-day events, don't add time components - work with dates only
+		if (slot.all_day) {
+			// For all-day events, set start to beginning of day and end to end of day
+			if (slotStart) {
+				slotStart.setHours(0, 0, 0, 0);
+			}
+			if (slotEnd) {
+				slotEnd.setHours(23, 59, 59, 999);
+			} else if (slotStart) {
+				// If no end date, all-day event ends at end of start day
+				slotEnd = new Date(slotStart);
+				slotEnd.setHours(23, 59, 59, 999);
+			}
+		} else {
+			// For timed events, add time components using safe extraction
+			if (slotStart && slot.start_time) {
+				const safeStartTime = safeExtractTime(slot.start_time);
+				if (safeStartTime) {
+					const [hours, minutes] = safeStartTime.split(':');
+					slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+				}
+			}
+
+			if (slotEnd && slot.end_time) {
+				const safeEndTime = safeExtractTime(slot.end_time);
+				if (safeEndTime) {
+					const [hours, minutes] = safeEndTime.split(':');
+					slotEnd.setHours(parseInt(hours), parseInt(minutes), 59, 999);
+				}
+			}
+
+			// Handle missing end times for timed events (only when no end_date was specified)
+			if (slotStart && !slot.end_date) {
+				if (!slot.start_time && !slot.end_time) {
+					// No specific times - treat as all-day
+					slotEnd = new Date(slotStart);
+					slotEnd.setHours(23, 59, 59, 999);
+				} else if (slot.start_time && !slot.end_time) {
+					// Has start time but no end time - assume 1 hour duration
+					slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+				}
+			}
+		}
+
+		return { slotStart, slotEnd };
+	}
+
 	// Helper function to check if a slot is in the past (matches Share.svelte)
 	function isSlotInPast(slot: any): boolean {
 		if (isSlotRecurring(slot)) return false;
 
 		const now = new Date();
-		let slotEndDate = slot.end_date ? new Date(slot.end_date) : null;
-		let slotStartDate = slot.start_date ? new Date(slot.start_date) : null;
+		const { slotStart, slotEnd } = parseSlotDateTime(slot);
 
-		// Use end date if available, otherwise use start date
-		const relevantDate = slotEndDate || slotStartDate;
-		if (!relevantDate) return false;
+		if (!slotStart) return false;
 
-		// Set time to end of day for comparison
-		const slotDate = new Date(relevantDate);
-		slotDate.setHours(23, 59, 59, 999);
-
-		return slotDate < now;
+		// Use the effective end time (parseSlotDateTime handles all-day vs timed logic)
+		const effectiveEndTime = slotEnd || slotStart;
+		return effectiveEndTime < now;
 	}
 
 	// Categorize slots like in Share.svelte
@@ -350,7 +400,7 @@
 </script>
 
 <!-- Fixed search input that never moves -->
-<div class="search-panel {panelState() === 'collapsed' ? 'collapsed' : 'expanded'}">
+<div class="search-panel expanded">
 	<!-- Always visible search input in fixed position -->
 	<div class="fixed-search-input">
 		<div class="search-input-wrapper">
@@ -376,7 +426,91 @@
 		</div>
 	</div>
 
-	<!-- Panel content that appears/disappears below the search input -->
+	<!-- Always visible time filter controls -->
+	<div class="panel-content time-filter-only">
+		<!-- Time Filter Controls -->
+		<div class="content-section time-filter-compact">
+			<div class="time-filter-header">
+				<span class="time-filter-label">⏰ Availability:</span>
+				<select
+					class="time-filter-select"
+					bind:value={globalState.timeFilterBy}
+					onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
+				>
+					<option value="any">Any time</option>
+					<option value="now">Now</option>
+					<option value="next24h">Next 24 hours</option>
+					<option value="between">Between</option>
+				</select>
+			</div>
+
+			{#if globalState.showTimeFilterDetails}
+				<div class="time-filter-details">
+					<div class="time-range-row">
+						<div class="time-input-group">
+							<span class="time-input-label">From:</span>
+							<input
+								type="date"
+								class="time-filter-date"
+								bind:value={globalState.timeFilterStartDate}
+								onchange={() =>
+									onTimeFilterDetailsChange?.({
+										startDate: globalState.timeFilterStartDate,
+										endDate: globalState.timeFilterEndDate,
+										startTime: globalState.timeFilterStartTime,
+										endTime: globalState.timeFilterEndTime
+									})}
+							/>
+							<input
+								type="time"
+								class="time-filter-time"
+								bind:value={globalState.timeFilterStartTime}
+								onchange={() =>
+									onTimeFilterDetailsChange?.({
+										startDate: globalState.timeFilterStartDate,
+										endDate: globalState.timeFilterEndDate,
+										startTime: globalState.timeFilterStartTime,
+										endTime: globalState.timeFilterEndTime
+									})}
+							/>
+						</div>
+					</div>
+					<div class="time-range-row">
+						<div class="time-input-group">
+							<span class="time-input-label">To:</span>
+							<input
+								type="date"
+								class="time-filter-date"
+								bind:value={globalState.timeFilterEndDate}
+								onchange={() =>
+									onTimeFilterDetailsChange?.({
+										startDate: globalState.timeFilterStartDate,
+										endDate: globalState.timeFilterEndDate,
+										startTime: globalState.timeFilterStartTime,
+										endTime: globalState.timeFilterEndTime
+									})}
+							/>
+							<input
+								type="time"
+								class="time-filter-time"
+								bind:value={globalState.timeFilterEndTime}
+								onchange={() =>
+									onTimeFilterDetailsChange?.({
+										startDate: globalState.timeFilterStartDate,
+										endDate: globalState.timeFilterEndDate,
+										startTime: globalState.timeFilterStartTime,
+										endTime: globalState.timeFilterEndTime
+									})}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Panel content that appears/disappears below the time filter -->
+
 	{#if markerData}
 		<!-- Show marker details when markerData exists -->
 		{@const { capacity, slots, lnglat, source, providerName } = markerData}
@@ -542,86 +676,6 @@
 	{:else if globalState.isSearchMode}
 		<!-- Search results content -->
 		<div class="panel-content">
-			<!-- Time Filter Controls -->
-			<div class="content-section">
-				<div class="time-filter-header">
-					<span class="time-filter-label">⏰ Availability:</span>
-					<select
-						class="time-filter-select"
-						bind:value={globalState.timeFilterBy}
-						onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
-					>
-						<option value="any">Any time</option>
-						<option value="now">Now</option>
-						<option value="next24h">Next 24 hours</option>
-						<option value="between">Between</option>
-					</select>
-				</div>
-
-				{#if globalState.showTimeFilterDetails}
-					<div class="time-filter-details">
-						<div class="time-range-row">
-							<div class="time-input-group">
-								<span class="time-input-label">From:</span>
-								<input
-									type="date"
-									class="time-filter-date"
-									bind:value={globalState.timeFilterStartDate}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-								<input
-									type="time"
-									class="time-filter-time"
-									bind:value={globalState.timeFilterStartTime}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-							</div>
-						</div>
-						<div class="time-range-row">
-							<div class="time-input-group">
-								<span class="time-input-label">To:</span>
-								<input
-									type="date"
-									class="time-filter-date"
-									bind:value={globalState.timeFilterEndDate}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-								<input
-									type="time"
-									class="time-filter-time"
-									bind:value={globalState.timeFilterEndTime}
-									onchange={() =>
-										onTimeFilterDetailsChange?.({
-											startDate: globalState.timeFilterStartDate,
-											endDate: globalState.timeFilterEndDate,
-											startTime: globalState.timeFilterStartTime,
-											endTime: globalState.timeFilterEndTime
-										})}
-								/>
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
-
 			<!-- Search Controls -->
 			<div class="content-section">
 				<div class="sort-controls">
@@ -804,6 +858,15 @@
 		animation: slideDown 0.3s ease-out;
 	}
 
+	/* Time filter only panel - ultra-compact styling */
+	.panel-content.time-filter-only {
+		flex: 0 0 auto; /* Don't grow/shrink, take only needed space */
+		overflow: visible; /* No scrolling needed for just time filter */
+		margin-bottom: 0; /* Remove bottom margin to connect with next panel */
+		padding: 8px 12px; /* Much smaller padding */
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Lighter shadow */
+	}
+
 	/* Content sections - uniform spacing and borders */
 	.content-section {
 		border-bottom: 1px solid #f3f4f6;
@@ -815,6 +878,13 @@
 		border-bottom: none;
 		margin-bottom: 0;
 		padding-bottom: 0;
+	}
+
+	/* Compact time filter section */
+	.content-section.time-filter-compact {
+		border-bottom: none; /* No border for minimal look */
+		padding-bottom: 0; /* No padding */
+		margin-bottom: 0; /* No margin */
 	}
 
 	@keyframes slideDown {
@@ -833,26 +903,26 @@
 	.time-filter-header {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
+		gap: 6px;
+		margin-bottom: 4px; /* Reduced margin */
 	}
 
 	.time-filter-label {
-		font-size: 13px;
+		font-size: 11px; /* Smaller font */
 		font-weight: 500;
-		color: #374151;
+		color: #6b7280; /* Lighter color */
 		white-space: nowrap;
 	}
 
 	.time-filter-select {
-		padding: 4px 8px;
+		padding: 2px 6px; /* Much smaller padding */
 		border: 1px solid #d1d5db;
 		border-radius: 4px;
-		font-size: 13px;
+		font-size: 11px; /* Smaller font */
 		background: white;
 		color: #374151;
 		cursor: pointer;
-		min-width: 120px;
+		min-width: 100px; /* Smaller width */
 	}
 
 	.time-filter-select:focus {

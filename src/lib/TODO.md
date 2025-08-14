@@ -10,6 +10,8 @@ Add chat button to map interface
 
 ✅ Allow Map full screen
 
+Move fullscreen to bottom with location, and make layers expandable buttons. looks like noral button expand to display 3 other buttons
+
 Editing node names is inconsistent on Apple devices
 
 Add Search/Filter to Map
@@ -48,7 +50,7 @@ And there is some kind of equivalant collective desire for the composition
 
 Your share in the collective capacity equals your share in the collective recognition among the members of that capacity (those who compose with collective-desire)
 
- now the question for me is how can that set be defined in a distributed way? like each individual having their own view of what the collective-capacities are!
+now the question for me is how can that set be defined in a distributed way? like each individual having their own view of what the collective-capacities are!
 
 i also imagine say alice, bob, and charlie are a collective set, then they have a share of collective-recognition, then the idea would be that they would then redistribute the collective-capacity to their own mutual-fulfillment proportions as if it were their own (although what they distribute is a share of the collective-capacity)
 
@@ -61,7 +63,7 @@ Ah yes! This is much more elegant and distributed! Let me think through this:
 Each person defines their own view of what collective capacities exist from any set of people. So:
 
 - **Alice's view**: "Alice, Bob, Charlie form a 'Creative Collaboration Collective' with 50 creative-hours/week capacity"
-- **Bob's view**: "Alice, Bob, Charlie form a 'Social Hosting Collective' with 20 party-invites/month capacity" 
+- **Bob's view**: "Alice, Bob, Charlie form a 'Social Hosting Collective' with 20 party-invites/month capacity"
 - **Charlie's view**: "Alice, Bob, Charlie form both 'Creative Collaboration' AND 'Mutual Support Network' capacities"
 
 Each person can declare whatever collective capacities they see emerging from whatever sets of people, completely subjectively and distributedly.
@@ -77,6 +79,7 @@ Then: Distribute-Your-Share according to your personal mutual-fulfillment propor
 ```
 
 So if Alice has 30% collective-recognition among {Alice, Bob, Charlie}, and she sees them as having "100 party invites/month" collective capacity:
+
 - Alice gets 30 invites to distribute
 - She distributes those 30 invites according to her own recognition patterns (maybe 50% to Bob, 30% to Charlie, 20% to Dana)
 
@@ -88,6 +91,7 @@ So if Alice has 30% collective-recognition among {Alice, Bob, Charlie}, and she 
 4. **Emergent Coordination**: Collective resources flow where they're most mutually beneficial
 
 The question about distributed definition is fascinating - perhaps people could:
+
 - Simply declare collective capacities in their own interface
 - Reference the same collective capacity across different people's views (like shared tags/names)
 - Have these declarations be visible to others in the set for coordination

@@ -227,7 +227,10 @@
 			return;
 		}
 
+		event.preventDefault();
 		event.stopPropagation();
+		event.stopImmediatePropagation();
+
 		const nodeId = node.id;
 		if (nodeId) {
 			// Get coordinates from either mouse or touch event
@@ -272,7 +275,10 @@
 			return;
 		}
 
+		event.preventDefault();
 		event.stopPropagation();
+		event.stopImmediatePropagation();
+
 		const nodeId = node.id;
 		if (nodeId) {
 			// Get coordinates from either mouse or touch event
@@ -753,9 +759,20 @@
 							height: {hasAnyContributors ? '45%' : '100%'};
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
+							pointer-events: auto;
 						"
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						title="Add contributor"
 					>
 						+
@@ -833,9 +850,20 @@
 							height: 45%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
+							pointer-events: auto;
 						"
 						onclick={handleAddAntiContributorClick}
 						ontouchstart={handleAddAntiContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						title="Add anti-contributor"
 					>
 						−
