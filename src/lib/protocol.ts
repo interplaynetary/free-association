@@ -812,7 +812,9 @@ export function addChild(
 		throw new Error('Cannot add children to nodes with contributors or anti-contributors');
 	}
 
-	// Anti-contributors can only be placed on contribution nodes
+	// Anti-contributors can be placed on:
+	// 1. Contribution nodes (nodes with positive contributors)
+	// 2. Empty leaf nodes (no contributors and no children) - but this doesn't apply to addChild since we're creating a new node
 	if (antiContributorIds.length > 0 && contributorIds.length === 0) {
 		throw new Error(
 			'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors).'
@@ -841,10 +843,15 @@ export function addContributors(
 	antiContributorIds: string[] = []
 ): void {
 	if (node.type === 'NonRootNode') {
-		// Anti-contributors can only be placed on contribution nodes
-		if (antiContributorIds.length > 0 && contributorIds.length === 0) {
+		// Anti-contributors can be placed on:
+		// 1. Contribution nodes (nodes with positive contributors)
+		// 2. Empty leaf nodes (no contributors and no children)
+		const hasContributors = contributorIds.length > 0;
+		const isEmptyLeaf = node.children.length === 0 && (node as NonRootNode).contributor_ids.length === 0;
+		
+		if (antiContributorIds.length > 0 && !hasContributors && !isEmptyLeaf) {
 			throw new Error(
-				'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors).'
+				'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors) or empty leaf nodes.'
 			);
 		}
 

@@ -688,14 +688,15 @@
 					pointer-events: none;
 				"
 			>
-				<!-- Contributor Button (always present) -->
+				<!-- Contributor Button (always show for leaf nodes) -->
+				<!-- Contributor Button: Always show on leaf nodes -->
 				{#if hasContributors}
 					<!-- Pie Chart for Contributors -->
 					<svg
 						class="add-contributor-button pie-chart"
 						style="
 							width: 100%;
-							height: {hasAnyContributors ? '45%' : '100%'};
+							height: 45%;
 							cursor: pointer;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -706,6 +707,16 @@
 						aria-label="Add contributor"
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
@@ -756,7 +767,7 @@
 						class="add-contributor-button"
 						style="
 							width: 100%;
-							height: {hasAnyContributors ? '45%' : '100%'};
+							height: 45%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -779,7 +790,7 @@
 					</button>
 				{/if}
 
-				<!-- Anti-Contributor Button -->
+				<!-- Anti-Contributor Button: Always show on leaf nodes -->
 				{#if hasAntiContributors}
 					<!-- Pie Chart for Anti-Contributors -->
 					<svg
@@ -797,6 +808,16 @@
 						aria-label="Add anti-contributor"
 						onclick={handleAddAntiContributorClick}
 						ontouchstart={handleAddAntiContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();

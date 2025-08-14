@@ -301,9 +301,31 @@
 		};
 	});
 
+	// Helper function to check if a node has any contributors (positive or anti)
+	function nodeHasContributors(nodeId: string): boolean {
+		if (!tree) return false;
+
+		const node = findNodeById(tree, nodeId);
+		if (!node || node.type !== 'NonRootNode') return false;
+
+		const nonRootNode = node as NonRootNode;
+		const hasPositiveContributors = nonRootNode.contributor_ids.length > 0;
+		const hasAntiContributors = (nonRootNode.anti_contributors_ids || []).length > 0;
+
+		return hasPositiveContributors || hasAntiContributors;
+	}
+
 	// Navigation functions
 	function zoomInto(nodeId: string) {
 		console.log('[UI FLOW] zoomInto called for node:', nodeId);
+
+		// Don't allow navigation into nodes with contributors - they are leaf nodes
+		if (nodeHasContributors(nodeId)) {
+			console.log('[UI FLOW] Navigation blocked - node has contributors');
+			globalState.showToast('Cannot navigate into contribution nodes', 'info');
+			return;
+		}
+
 		globalState.zoomInto(nodeId);
 		console.log('[UI FLOW] Navigation handled');
 	}

@@ -776,7 +776,7 @@
 	/* Expanded state: full panel with content, constrain to map height */
 	.search-panel.expanded {
 		bottom: 16px; /* Constrain bottom when content is visible */
-		pointer-events: auto; /* Allow all events when expanded */
+		pointer-events: none; /* Don't block map events by default */
 	}
 
 	/* Fixed search input that never moves or changes size */
@@ -856,6 +856,7 @@
 		min-height: 0; /* Allow flexbox to shrink */
 		overflow-y: auto; /* Scroll when content exceeds container */
 		animation: slideDown 0.3s ease-out;
+		pointer-events: auto; /* Allow interaction with panel content */
 	}
 
 	/* Time filter only panel - ultra-compact styling */
@@ -865,6 +866,7 @@
 		margin-bottom: 0; /* Remove bottom margin to connect with next panel */
 		padding: 8px 12px; /* Much smaller padding */
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Lighter shadow */
+		pointer-events: auto; /* Allow interaction with time filter controls */
 	}
 
 	/* Content sections - uniform spacing and borders */
