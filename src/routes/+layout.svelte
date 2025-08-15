@@ -52,6 +52,21 @@
 		}
 
 		function handlePopState(event: PopStateEvent) {
+			// Don't interfere with iOS text editing focus events
+			const activeElement = document.activeElement;
+			const isEditingText =
+				activeElement &&
+				(activeElement.tagName === 'INPUT' ||
+					activeElement.tagName === 'TEXTAREA' ||
+					(activeElement as HTMLElement).isContentEditable ||
+					activeElement.closest('.node-edit-input'));
+
+			// If currently editing text, don't handle popstate to avoid iOS focus issues
+			if (isEditingText) {
+				console.log('[LAYOUT] Skipping popstate handling - text editing active');
+				return;
+			}
+
 			// Check if we're in edit mode or can zoom out
 			const canHandleBack = globalState.editMode || globalState.canZoomOut();
 
@@ -69,6 +84,15 @@
 
 		// Enhanced Visual Viewport API with better feature detection
 		function handleViewportChange() {
+			// Don't interfere during text editing focus events on iOS
+			const activeElement = document.activeElement;
+			const isEditingText =
+				activeElement &&
+				(activeElement.tagName === 'INPUT' ||
+					activeElement.tagName === 'TEXTAREA' ||
+					(activeElement as HTMLElement).isContentEditable ||
+					activeElement.closest('.node-edit-input'));
+
 			// Multiple levels of feature detection for better compatibility
 			if (!window.visualViewport && !window.innerHeight) return;
 
@@ -84,6 +108,7 @@
 			}
 
 			// Apply dynamic adjustment for virtual keyboard with vendor prefixes
+			// But be gentle during text editing to avoid focus disruption
 			if (keyboardHeight > 0) {
 				document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
 				// Also set with vendor prefixes for better compatibility
@@ -92,6 +117,10 @@
 					`${keyboardHeight}px`
 				);
 				document.documentElement.style.setProperty('-moz-keyboard-height', `${keyboardHeight}px`);
+
+				if (isEditingText) {
+					console.log('[LAYOUT] Keyboard detected while editing, height:', keyboardHeight);
+				}
 			} else {
 				document.documentElement.style.setProperty('--keyboard-height', '0px');
 				document.documentElement.style.setProperty('-webkit-keyboard-height', '0px');
@@ -137,7 +166,10 @@
 		window.addEventListener('popstate', handlePopState);
 
 		// Push initial state to ensure back button can be intercepted
-		history.pushState(null, '', window.location.href);
+		// Delay this to avoid interfering with initial focus events on iOS
+		setTimeout(() => {
+			history.pushState(null, '', window.location.href);
+		}, 500);
 
 		return () => {
 			document.removeEventListener('keydown', handleGlobalKeydown);
