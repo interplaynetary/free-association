@@ -91,9 +91,16 @@ self.addEventListener('fetch', (event) => {
 		const url = new URL(event.request.url);
 		const cache = await caches.open(CACHE);
 
+		// Handle base path for GitHub Pages deployment
+		let pathname = url.pathname;
+		const basePath = '/free-association';
+		if (pathname.startsWith(basePath)) {
+			pathname = pathname.substring(basePath.length) || '/';
+		}
+
 		// `build`/`files` can always be served from the cache
-		if (ASSETS.includes(url.pathname)) {
-			const response = await cache.match(url.pathname);
+		if (ASSETS.includes(pathname)) {
+			const response = await cache.match(pathname);
 			if (response) {
 				return response;
 			}
@@ -143,8 +150,9 @@ self.addEventListener('notificationclick', (event) => {
 			}
 			// @ts-ignore
 			const basePath = self.registration.scope.replace(self.location.origin, '').replace(/\/$/, '');
+			const targetUrl = basePath || '/free-association/';
 			// @ts-ignore
-			return clients.openWindow(basePath || '/');
+			return clients.openWindow(targetUrl);
 		})
 	);
 });
