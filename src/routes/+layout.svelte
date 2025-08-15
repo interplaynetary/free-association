@@ -9,10 +9,13 @@
 	import { base } from '$app/paths';
 	import { Toaster } from 'svelte-french-toast';
 
+	// Initialize global services (auto-initializes viewport and navigation handling)
+	import '$lib/services';
+
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Set up global keyboard event listener and reliable viewport handling
+	// Handle notification permission request (layout-appropriate functionality)
 	onMount(() => {
 		// Request notification permission if supported
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
@@ -20,165 +23,6 @@
 				console.log('Notification permission:', permission);
 			});
 		}
-
-		function handleGlobalKeydown(event: KeyboardEvent) {
-			// Handle escape key for zoom out navigation or exit edit mode
-			if (event.key === 'Escape') {
-				handleBackNavigation();
-			}
-		}
-
-		function handleBackNavigation() {
-			// If we're in edit mode, let the edit mode handle the escape
-			if (globalState.editMode) {
-				// The Child component will handle exiting edit mode
-				// Don't prevent default here to allow the input blur to work
-				return;
-			}
-
-			// Check if we're currently editing (input fields, etc.) - fallback check
-			const activeElement = document.activeElement;
-			const isEditing =
-				activeElement &&
-				(activeElement.tagName === 'INPUT' ||
-					activeElement.tagName === 'TEXTAREA' ||
-					(activeElement as HTMLElement).isContentEditable ||
-					activeElement.closest('.node-edit-input'));
-
-			// Only trigger navigation if we're not currently editing
-			if (!isEditing) {
-				globalState.zoomOut();
-			}
-		}
-
-		function handlePopState(event: PopStateEvent) {
-			// Don't interfere with iOS text editing focus events
-			const activeElement = document.activeElement;
-			const isEditingText =
-				activeElement &&
-				(activeElement.tagName === 'INPUT' ||
-					activeElement.tagName === 'TEXTAREA' ||
-					(activeElement as HTMLElement).isContentEditable ||
-					activeElement.closest('.node-edit-input'));
-
-			// If currently editing text, don't handle popstate to avoid iOS focus issues
-			if (isEditingText) {
-				console.log('[LAYOUT] Skipping popstate handling - text editing active');
-				return;
-			}
-
-			// Check if we're in edit mode or can zoom out
-			const canHandleBack = globalState.editMode || globalState.canZoomOut();
-
-			if (canHandleBack) {
-				// Handle back button same as escape key
-				event.preventDefault();
-				handleBackNavigation();
-
-				// Push a new state to maintain the current position
-				// This prevents the browser from actually going back
-				history.pushState(null, '', window.location.href);
-			}
-			// If we can't handle the back action, let the browser handle it normally
-		}
-
-		// Enhanced Visual Viewport API with better feature detection
-		function handleViewportChange() {
-			// Don't interfere during text editing focus events on iOS
-			const activeElement = document.activeElement;
-			const isEditingText =
-				activeElement &&
-				(activeElement.tagName === 'INPUT' ||
-					activeElement.tagName === 'TEXTAREA' ||
-					(activeElement as HTMLElement).isContentEditable ||
-					activeElement.closest('.node-edit-input'));
-
-			// Multiple levels of feature detection for better compatibility
-			if (!window.visualViewport && !window.innerHeight) return;
-
-			let keyboardHeight = 0;
-
-			// Primary method: Visual Viewport API (best support)
-			if (window.visualViewport) {
-				keyboardHeight = window.innerHeight - window.visualViewport.height;
-			}
-			// Fallback method: Screen height comparison
-			else if (window.screen && window.screen.height) {
-				keyboardHeight = Math.max(0, window.screen.height - window.innerHeight - 100);
-			}
-
-			// Apply dynamic adjustment for virtual keyboard with vendor prefixes
-			// But be gentle during text editing to avoid focus disruption
-			if (keyboardHeight > 0) {
-				document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
-				// Also set with vendor prefixes for better compatibility
-				document.documentElement.style.setProperty(
-					'-webkit-keyboard-height',
-					`${keyboardHeight}px`
-				);
-				document.documentElement.style.setProperty('-moz-keyboard-height', `${keyboardHeight}px`);
-
-				if (isEditingText) {
-					console.log('[LAYOUT] Keyboard detected while editing, height:', keyboardHeight);
-				}
-			} else {
-				document.documentElement.style.setProperty('--keyboard-height', '0px');
-				document.documentElement.style.setProperty('-webkit-keyboard-height', '0px');
-				document.documentElement.style.setProperty('-moz-keyboard-height', '0px');
-			}
-		}
-
-		// Enhanced browser support detection and setup
-		const hasVisualViewport = 'visualViewport' in window;
-
-		// Store the scroll handler reference for cleanup
-		const scrollHandler = (event: Event) => {
-			// Only handle if viewport height is significantly smaller (keyboard is open)
-			const keyboardHeight = window.innerHeight - (window?.visualViewport?.height || 0);
-			if (keyboardHeight > 100) {
-				// Only if keyboard is likely open
-				handleViewportChange();
-			}
-		};
-
-		// Set up Visual Viewport API listener with enhanced compatibility
-		if (hasVisualViewport && window.visualViewport) {
-			window.visualViewport.addEventListener('resize', handleViewportChange);
-			// Only listen to scroll events when virtual keyboard is active
-			// This prevents interference with normal page scrolling
-			window.visualViewport.addEventListener('scroll', scrollHandler);
-		}
-		// Fallback to window resize for older browsers
-		else {
-			window.addEventListener('resize', handleViewportChange);
-			// Additional orientation change listener for mobile
-			window.addEventListener('orientationchange', () => {
-				// Delay to ensure dimensions are updated
-				setTimeout(handleViewportChange, 100);
-			});
-		}
-
-		// Initial calculation
-		handleViewportChange();
-
-		// Add event listeners
-		document.addEventListener('keydown', handleGlobalKeydown);
-		window.addEventListener('popstate', handlePopState);
-
-		// Push initial state to ensure back button can be intercepted
-		// Delay this to avoid interfering with initial focus events on iOS
-		setTimeout(() => {
-			history.pushState(null, '', window.location.href);
-		}, 500);
-
-		return () => {
-			document.removeEventListener('keydown', handleGlobalKeydown);
-			window.removeEventListener('popstate', handlePopState);
-			if (hasVisualViewport && window.visualViewport) {
-				window.visualViewport.removeEventListener('resize', handleViewportChange);
-				window.visualViewport.removeEventListener('scroll', scrollHandler);
-			}
-		};
 	});
 </script>
 
@@ -189,8 +33,6 @@
 <main>
 	<div class="app-header">
 		<Header />
-		<!-- Temporary debug component -->
-		<!-- <SimpleNotificationTest /> -->
 	</div>
 	<div class="app-content">
 		{@render children()}
