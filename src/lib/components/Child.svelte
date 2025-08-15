@@ -699,35 +699,35 @@
 			</div>
 		{/if}
 
-		<!-- Contributor Buttons Container - centered and consistent -->
+		<!-- Contributor Buttons Container - positioned above title -->
 		{#if visibilityFactor > 0.1 && !node.hasChildren}
 			<div
 				class="contributor-buttons-container"
 				style="
 					position: absolute;
-					top: 50%;
-					left: {buttonCenterPercent}%;
+					top: 20%;
+					left: 50%;
 					transform: translate(-50%, -50%);
-					width: {buttonSizePercent}%;
-					height: {hasAnyContributors ? buttonSizePercent * 2.2 : buttonSizePercent}%;
+					width: 60%;
+					height: {buttonSizePercent}%;
 					opacity: {visibilityFactor};
 					display: flex;
-					flex-direction: column;
+					flex-direction: row;
 					justify-content: center;
 					align-items: center;
-					gap: {Math.max(2, buttonSizePercent * 0.1)}px;
+					gap: {Math.max(4, buttonSizePercent * 0.15)}px;
 					pointer-events: none;
 				"
 			>
 				<!-- Contributor Button (always show for leaf nodes) -->
-				<!-- Contributor Button: Always show on leaf nodes -->
+				<!-- Contributor Button: Always show on leaf nodes (left side) -->
 				{#if hasContributors}
 					<!-- Pie Chart for Contributors -->
 					<svg
 						class="add-contributor-button pie-chart"
 						style="
-							width: 100%;
-							height: 45%;
+							width: 45%;
+							height: 100%;
 							cursor: pointer;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -797,8 +797,8 @@
 					<button
 						class="add-contributor-button"
 						style="
-							width: 100%;
-							height: 45%;
+							width: 45%;
+							height: 100%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -821,14 +821,14 @@
 					</button>
 				{/if}
 
-				<!-- Anti-Contributor Button: Always show on leaf nodes -->
+				<!-- Anti-Contributor Button: Always show on leaf nodes (right side) -->
 				{#if hasAntiContributors}
 					<!-- Pie Chart for Anti-Contributors -->
 					<svg
 						class="add-anti-contributor-button pie-chart"
 						style="
-							width: 100%;
-							height: 45%;
+							width: 45%;
+							height: 100%;
 							cursor: pointer;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -898,8 +898,8 @@
 					<button
 						class="add-anti-contributor-button"
 						style="
-							width: 100%;
-							height: 45%;
+							width: 45%;
+							height: 100%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -929,8 +929,8 @@
 					class="contributor-tooltip"
 					style="
 						position: absolute;
-						top: {50 - (hasAnyContributors ? buttonSizePercent * 1.1 : buttonSizePercent / 2) - 5}%;
-						left: {buttonCenterPercent}%;
+						top: {20 - buttonSizePercent / 2 - 8}%;
+						left: 50%;
 						transform: translateX(-50%);
 						z-index: 1000;
 					"
