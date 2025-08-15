@@ -476,10 +476,16 @@
 	}
 
 	// Manual fulfillment change handler
-	function handleManualFulfillmentChange(detail: { nodeId: string; value: number }) {
-		const { nodeId, value } = detail;
+	function handleManualFulfillmentChange(detail: {
+		nodeId: string;
+		value: number;
+		showNotification?: boolean;
+	}) {
+		const { nodeId, value, showNotification = true } = detail;
 
-		console.log(`[MANUAL-FULFILLMENT-DEBUG] Handling change for node ${nodeId}, value=${value}`);
+		console.log(
+			`[MANUAL-FULFILLMENT-DEBUG] Handling change for node ${nodeId}, value=${value}, showNotification=${showNotification}`
+		);
 
 		try {
 			if (!tree) {
@@ -520,10 +526,15 @@
 			// Force update
 			triggerUpdate();
 
-			globalState.showToast(`Fulfillment set to ${Math.round(value * 100)}%`, 'success');
+			// Only show notification if requested (e.g., on drag end, not during drag)
+			if (showNotification) {
+				globalState.showToast(`Fulfillment set to ${Math.round(value * 100)}%`, 'success');
+			}
 		} catch (err) {
 			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
-			globalState.showToast('Error updating manual fulfillment', 'error');
+			if (showNotification) {
+				globalState.showToast('Error updating manual fulfillment', 'error');
+			}
 		}
 	}
 

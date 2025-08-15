@@ -32,7 +32,11 @@
 		addAntiContributor = (detail: { nodeId: string; clientX: number; clientY: number }) => {},
 		removeContributor = (detail: { nodeId: string; contributorId: string }) => {},
 		onTextEdit = (detail: { nodeId: string; newName: string }) => {},
-		onManualFulfillmentChange = (detail: { nodeId: string; value: number }) => {}, // Add callback for manual fulfillment
+		onManualFulfillmentChange = (detail: {
+			nodeId: string;
+			value: number;
+			showNotification?: boolean;
+		}) => {}, // Add callback for manual fulfillment
 		shouldEdit = false // Flag to indicate if this node should immediately be in edit mode
 	} = $props<{
 		node: NodeData;
@@ -41,7 +45,11 @@
 		addAntiContributor?: (detail: { nodeId: string; clientX: number; clientY: number }) => void;
 		removeContributor?: (detail: { nodeId: string; contributorId: string }) => void;
 		onTextEdit?: (detail: { nodeId: string; newName: string }) => void;
-		onManualFulfillmentChange?: (detail: { nodeId: string; value: number }) => void; // Add callback type
+		onManualFulfillmentChange?: (detail: {
+			nodeId: string;
+			value: number;
+			showNotification?: boolean;
+		}) => void; // Add callback type
 		shouldEdit?: boolean;
 	}>();
 
@@ -636,7 +644,7 @@
 		</div>
 
 		<!-- Manual Fulfillment Slider - positioned above title -->
-		{#if hasContributors && !node.hasChildren && visibilityFactor > 0.1}
+		{#if hasAnyContributors && !node.hasChildren && visibilityFactor > 0.1}
 			<div
 				class="manual-fulfillment-slider"
 				style="
@@ -697,7 +705,11 @@
 
 					if (newValue !== currentSliderValue) {
 						const protocolValue = newValue / 100;
-						onManualFulfillmentChange({ nodeId: node.id, value: protocolValue });
+						onManualFulfillmentChange({
+							nodeId: node.id,
+							value: protocolValue,
+							showNotification: true
+						});
 					}
 				}}
 			>
@@ -712,7 +724,25 @@
 						console.log(
 							`[SLIDER-INPUT] Moving slider to ${newValue}%, protocol value: ${protocolValue}`
 						);
-						onManualFulfillmentChange({ nodeId: node.id, value: protocolValue });
+						// Update value without showing notification (silent update during drag)
+						onManualFulfillmentChange({
+							nodeId: node.id,
+							value: protocolValue,
+							showNotification: false
+						});
+					}}
+					onchange={(event) => {
+						const newValue = parseFloat(event.currentTarget.value);
+						const protocolValue = newValue / 100; // Convert to 0-1 range for protocol
+						console.log(
+							`[SLIDER-CHANGE] Slider drag ended at ${newValue}%, protocol value: ${protocolValue}`
+						);
+						// Show notification when drag ends
+						onManualFulfillmentChange({
+							nodeId: node.id,
+							value: protocolValue,
+							showNotification: true
+						});
 					}}
 					class="fulfillment-slider"
 					style="flex: 3;"
