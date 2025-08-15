@@ -1134,9 +1134,8 @@
 				ongeolocate={handleGeolocate}
 				onerror={handleGeolocateError}
 			/>
-			<!-- Search is now always present in the panel -->
 
-			<CustomControl position="top-right">
+			<CustomControl position="bottom-right">
 				<button
 					onclick={() => {
 						isMaximized = !isMaximized;
