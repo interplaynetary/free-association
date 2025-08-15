@@ -55,6 +55,9 @@ export const globalState = $state({
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
 
+	// Map state
+	isMapFullscreen: false,
+
 	// Map search state
 	searchQuery: '',
 	searchResults: [] as any[],
@@ -433,5 +436,19 @@ export const globalState = $state({
 	// Update search sort
 	updateSearchSort: (sortBy: 'relevance' | 'distance') => {
 		globalState.searchSortBy = sortBy;
+	},
+
+	/**
+	 * Map Fullscreen State Management
+	 */
+
+	// Toggle map fullscreen mode
+	toggleMapFullscreen: () => {
+		globalState.isMapFullscreen = !globalState.isMapFullscreen;
+	},
+
+	// Set map fullscreen mode
+	setMapFullscreen: (isFullscreen: boolean) => {
+		globalState.isMapFullscreen = isFullscreen;
 	}
 });

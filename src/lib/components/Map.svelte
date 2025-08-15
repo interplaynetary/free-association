@@ -51,8 +51,9 @@
 	let map: maplibregl.Map | undefined = $state.raw();
 	let pitch = $state(0);
 	let isTerrainVisible = $state(false);
-	let isGlobeMode = $state(false);
-	let isMaximized = $state(false);
+	let isGlobeMode = $state(true);
+	// Use global fullscreen state instead of local state
+	let isMaximized = $derived(globalState.isMapFullscreen);
 	let isControlsExpanded = $state(false);
 
 	// Grouped slot marker data structure - one marker per unique (capacity, location) combination
@@ -763,7 +764,7 @@
 	$effect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Escape' && isMaximized) {
-				isMaximized = false;
+				globalState.setMapFullscreen(false);
 			}
 		}
 
@@ -1151,7 +1152,7 @@
 				<button
 					class="map-control-btn"
 					onclick={() => {
-						isMaximized = !isMaximized;
+						globalState.toggleMapFullscreen();
 					}}
 					title={isMaximized ? 'Minimize map' : 'Maximize map'}
 				>

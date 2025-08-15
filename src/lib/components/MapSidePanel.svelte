@@ -566,7 +566,7 @@
 
 			<!-- Location Info -->
 			<div class="content-section location-section">
-				<h3 class="section-title">📍 Location</h3>
+				<h3 class="section-title"><span style="font-size:8px;">📍</span> Location</h3>
 				<div class="location-details">
 					{#if hasAddressComponents(slots[0])}
 						<!-- Show separate address and coordinates when we have actual address data -->
@@ -574,15 +574,19 @@
 							class="location-address clickable-address"
 							onclick={() => handleAddressClick(slots[0])}
 							title="Click to open in maps or copy address"
+							style="font-size: 8px; line-height: 1;"
 						>
-							📍 {locationDisplay}
+							<span style="font-size:8px;">📍</span>
+							<span style="font-size: px;">{locationDisplay}</span>
 						</button>
 						<button
 							class="location-coords clickable-coords"
 							onclick={() => handleAddressClick(slots[0])}
 							title="Click to open in maps or copy coordinates"
+							style="font-size: px; line-height: 1;"
 						>
-							📐 {lngLatText}
+							<span style="font-size:8px;">📐</span>
+							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
 						</button>
 					{:else}
 						<!-- Show single coordinates button when we only have coordinates -->
@@ -590,8 +594,10 @@
 							class="location-coords clickable-coords single-location"
 							onclick={() => handleAddressClick(slots[0])}
 							title="Click to open in maps or copy coordinates"
+							style="font-size: 8px; line-height: 1;"
 						>
-							📐 {lngLatText}
+							<span style="font-size:8px;">📐</span>
+							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
 						</button>
 					{/if}
 				</div>
@@ -772,7 +778,7 @@
 		top: 16px;
 		left: 16px;
 		z-index: 1000;
-		width: 400px; /* Fixed width - never changes */
+		width: 240px; /* Reduced to 60% of original 400px */
 		display: flex;
 		flex-direction: column;
 	}
@@ -797,7 +803,7 @@
 		border: 1px solid #e5e7eb;
 		backdrop-filter: blur(4px);
 		flex-shrink: 0; /* Never shrink */
-		height: 48px; /* Fixed height - never changes */
+		height: 36px; /* Reduced height for more compact appearance */
 		pointer-events: auto; /* Always allow events on search input */
 	}
 
@@ -810,15 +816,15 @@
 
 	.search-input {
 		border: none;
-		font-size: 14px;
+		font-size: 10px;
 		background: transparent;
 		outline: none;
 		color: #374151;
 		width: 100%;
-		padding: 12px 16px;
+		padding: 8px 12px;
 		padding-right: 40px;
 		border-radius: 8px;
-		min-width: 280px;
+		min-width: 150px; /* Reduced to match the new panel width */
 	}
 
 	.search-input::placeholder {
@@ -838,7 +844,7 @@
 		border: none;
 		cursor: pointer;
 		color: #9ca3af;
-		font-size: 14px;
+		font-size: 10px;
 		padding: 4px;
 		border-radius: 4px;
 		display: flex;
@@ -860,8 +866,8 @@
 		border-radius: 8px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		border: 1px solid #e5e7eb;
-		margin-top: 8px;
-		padding: 16px;
+		margin-top: 4px;
+		padding: 10px;
 		flex: 1; /* Take remaining space in flex container */
 		min-height: 0; /* Allow flexbox to shrink */
 		overflow-y: auto; /* Scroll when content exceeds container */
@@ -884,8 +890,8 @@
 	/* Content sections - uniform spacing and borders */
 	.content-section {
 		border-bottom: 1px solid #f3f4f6;
-		padding-bottom: 16px;
-		margin-bottom: 16px;
+		padding-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.content-section:last-child {
@@ -918,11 +924,11 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.time-filter-label {
-		font-size: 14px;
+		font-size: 10px;
 		line-height: 1;
 	}
 
@@ -930,7 +936,7 @@
 		padding: 2px 6px; /* Much smaller padding */
 		border: 1px solid #d1d5db;
 		border-radius: 4px;
-		font-size: 11px; /* Smaller font */
+		font-size: 10px; /* Smaller font */
 		background: white;
 		color: #374151;
 		cursor: pointer;
@@ -946,13 +952,13 @@
 	.time-filter-details {
 		background: #f9fafb;
 		border: 1px solid #e5e7eb;
-		border-radius: 6px;
-		padding: 12px;
-		margin-top: 8px;
+		border-radius: 4px;
+		padding: 8px;
+		margin-top: 4px;
 	}
 
 	.time-range-row {
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.time-range-row:last-child {
@@ -962,11 +968,11 @@
 	.time-input-group {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 	}
 
 	.time-input-label {
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 500;
 		color: #6b7280;
 		min-width: 35px;
@@ -977,7 +983,7 @@
 		padding: 4px 6px;
 		border: 1px solid #d1d5db;
 		border-radius: 4px;
-		font-size: 12px;
+		font-size: 10px;
 		background: white;
 		color: #374151;
 		cursor: pointer;
@@ -1003,19 +1009,19 @@
 	.search-meta {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 6px;
 		flex-wrap: wrap;
 	}
 
 	.search-query {
 		color: #3b82f6;
 		font-style: italic;
-		font-size: 14px;
+		font-size: 10px;
 	}
 
 	.result-count {
 		color: #6b7280;
-		font-size: 12px;
+		font-size: 10px;
 		background: #f3f4f6;
 		padding: 2px 8px;
 		border-radius: 12px;
@@ -1023,7 +1029,7 @@
 
 	.time-filter-badge {
 		color: #7c3aed;
-		font-size: 12px;
+		font-size: 10px;
 		background: #f3e8ff;
 		padding: 2px 8px;
 		border-radius: 12px;
@@ -1035,11 +1041,11 @@
 	.sort-controls {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 	}
 
 	.sort-label {
-		font-size: 13px;
+		font-size: 10px;
 		color: #6b7280;
 		font-weight: 500;
 	}
@@ -1048,7 +1054,7 @@
 		padding: 4px 8px;
 		border: 1px solid #d1d5db;
 		border-radius: 4px;
-		font-size: 13px;
+		font-size: 10px;
 		background: white;
 		color: #374151;
 		cursor: pointer;
@@ -1059,14 +1065,14 @@
 	.search-results {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 6px;
 	}
 
 	.search-result-item {
 		background: white;
 		border: 1px solid #e5e7eb;
 		border-radius: 8px;
-		padding: 16px;
+		padding: 10px;
 		cursor: pointer;
 		transition: all 0.2s ease;
 	}
@@ -1082,26 +1088,26 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.result-title {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 		flex: 1;
 		min-width: 0;
 	}
 
 	.result-emoji {
-		font-size: 16px;
+		font-size: 14px;
 		flex-shrink: 0;
 	}
 
 	.result-name {
 		font-weight: 600;
 		color: #111827;
-		font-size: 14px;
+		font-size: 10px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1109,7 +1115,7 @@
 
 	.result-distance {
 		color: #6b7280;
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 500;
 		background: #f3f4f6;
 		padding: 2px 6px;
@@ -1120,9 +1126,9 @@
 	.result-details {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		margin-bottom: 8px;
-		font-size: 12px;
+		gap: 6px;
+		margin-bottom: 6px;
+		font-size: 10px;
 		color: #6b7280;
 		flex-wrap: wrap;
 	}
@@ -1149,8 +1155,8 @@
 
 	.result-description {
 		color: #4b5563;
-		font-size: 13px;
-		line-height: 1.4;
+		font-size: 10px;
+		line-height: 1.2;
 		margin-top: 4px;
 	}
 
@@ -1162,20 +1168,20 @@
 
 	.no-results-icon {
 		font-size: 48px;
-		margin-bottom: 16px;
+		margin-bottom: 6px;
 		opacity: 0.5;
 	}
 
 	.no-results h3 {
 		margin: 0 0 8px 0;
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 600;
 		color: #374151;
 	}
 
 	.no-results p {
 		margin: 0;
-		font-size: 14px;
+		font-size: 10px;
 	}
 
 	/* Close section styles removed since close button was removed */
@@ -1192,29 +1198,29 @@
 	}
 
 	.capacity-title {
-		font-size: 18px;
+		font-size: 15px;
 		font-weight: 600;
 		color: #111827;
-		margin: 0 0 8px 0;
+		margin: 0 0 4px 0;
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 4px;
 	}
 
 	.capacity-emoji {
-		font-size: 24px;
+		font-size: 18px;
 	}
 
 	.provider-info {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		gap: 6px;
 		flex-wrap: wrap;
 	}
 
 	.provider-label {
 		color: #6b7280;
-		font-size: 14px;
+		font-size: 10px;
 		font-style: italic;
 	}
 
@@ -1223,7 +1229,7 @@
 		color: white;
 		padding: 2px 8px;
 		border-radius: 12px;
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 500;
 	}
 
@@ -1235,7 +1241,7 @@
 		padding: 4px;
 		border-radius: 4px;
 		transition: all 0.2s ease;
-		font-size: 18px;
+		font-size: 15px;
 	}
 
 	.close-btn:hover {
@@ -1251,9 +1257,9 @@
 		padding: 6px 8px;
 		border-radius: 4px;
 		transition: all 0.2s ease;
-		font-size: 13px;
+		font-size: 10px;
 		font-weight: 500;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 		display: flex;
 		align-items: center;
 		gap: 6px;
@@ -1268,10 +1274,10 @@
 	/* Location and slot styling - now uses content-section */
 
 	.section-title {
-		font-size: 16px;
+		font-size: 14px;
 		font-weight: 600;
 		color: #374151;
-		margin: 0 0 12px 0;
+		margin: 0 0 6px 0;
 		display: flex;
 		align-items: center;
 		gap: 6px;
@@ -1279,20 +1285,21 @@
 
 	.location-details {
 		background: #f9fafb;
-		padding: 12px;
-		border-radius: 8px;
+		padding: 3px;
+		border-radius: 3px;
 		border: 1px solid #e5e7eb;
 	}
 
 	.location-address,
 	.location-coords {
-		font-size: 14px;
+		font-size: 6px;
 		color: #111827;
-		margin-bottom: 4px;
+		margin-bottom: 1px;
+		line-height: 1;
 	}
 
 	.location-coords {
-		font-size: 12px;
+		font-size: 5px;
 		color: #6b7280;
 		font-family: monospace;
 	}
@@ -1305,12 +1312,12 @@
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
-		padding: 8px 12px;
-		border-radius: 6px;
+		padding: 1px 3px;
+		border-radius: 2px;
 		transition: all 0.2s ease;
 		text-align: left;
 		width: 100%;
-		margin-bottom: 4px;
+		margin-bottom: 1px;
 		display: block;
 	}
 
@@ -1341,29 +1348,29 @@
 	}
 
 	.slot-category {
-		margin-bottom: 20px;
+		margin-bottom: 10px;
 	}
 
 	.category-title {
-		font-size: 14px;
+		font-size: 10px;
 		font-weight: 600;
 		color: #374151;
-		margin: 0 0 8px 0;
-		padding: 8px 0;
+		margin: 0 0 4px 0;
+		padding: 4px 0;
 		border-bottom: 1px solid #f3f4f6;
 	}
 
 	.slot-list {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 4px;
 	}
 
 	.slot-item {
 		background: #f9fafb;
 		border: 1px solid #e5e7eb;
-		border-radius: 8px;
-		padding: 12px;
+		border-radius: 4px;
+		padding: 6px;
 		transition: all 0.2s ease;
 	}
 
@@ -1381,26 +1388,26 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 4px;
+		margin-bottom: 2px;
 	}
 
 	.slot-quantity {
 		font-weight: 600;
 		color: #111827;
-		font-size: 14px;
+		font-size: 10px;
 		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 	}
 
 	.slot-total {
 		color: #6b7280;
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 500;
 		margin-left: 8px;
 	}
 
 	.slot-time {
 		color: #6b7280;
-		font-size: 13px;
+		font-size: 10px;
 	}
 
 	.slot-meta {
@@ -1409,18 +1416,18 @@
 
 	.notice-info {
 		color: #9ca3af;
-		font-size: 11px;
+		font-size: 10px;
 	}
 
 	/* Responsive design - constrain to map width */
 	@media (max-width: 768px) {
 		.search-panel {
 			width: calc(100% - 32px); /* Full map width minus margins */
-			max-width: none;
+			max-width: 240px; /* Match the new default width */
 		}
 
 		.search-input {
-			min-width: 240px;
+			min-width: 170px; /* Match the new default min-width */
 		}
 
 		.time-filter-header {
@@ -1446,10 +1453,11 @@
 			left: 8px;
 			top: 8px;
 			width: calc(100% - 16px); /* Constrain to map width */
+			max-width: 220px; /* Slightly smaller for very small screens */
 		}
 
 		.search-input {
-			min-width: 200px;
+			min-width: 150px;
 		}
 	}
 </style>

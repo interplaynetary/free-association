@@ -30,7 +30,7 @@
 	<link rel="manifest" href="{base}/manifest.json" />
 </svelte:head>
 
-<main>
+<main class:map-fullscreen={globalState.isMapFullscreen}>
 	<div class="app-header">
 		<Header />
 	</div>
@@ -107,5 +107,14 @@
 		min-height: 0; /* Important for flexbox overflow */
 		/* Enhanced mobile scrolling */
 		-webkit-overflow-scrolling: touch;
+		transition: padding-top 0.3s ease-out;
+	}
+
+	/* When map is fullscreen, add padding to push content below it */
+	main.map-fullscreen .app-content {
+		/* Use dynamic viewport height for better mobile support */
+		padding-top: calc(100dvh - 76px + 16px);
+		/* Fallback for browsers that don't support dvh */
+		padding-top: calc(100vh - 76px + 16px);
 	}
 </style>
