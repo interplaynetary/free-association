@@ -121,14 +121,40 @@
 	// Calculate visibility factor (0-1) for smooth fade-in
 	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
 
-	// Calculate button positioning - place it between title end and container edge
-	const titleWidthPercent = $derived(
-		((longestSegment.length * fontSize() * 0.6) / (nodeWidth * 100)) * 100
-	); // Title width as percentage
-	const titleEndPercent = $derived(50 + titleWidthPercent / 2); // Where title ends
-	const buttonCenterPercent = $derived(titleEndPercent + (100 - titleEndPercent) / 2); // Middle of remaining space
-	const availableSpacePercent = $derived(100 - titleEndPercent); // Space available for button
-	const buttonSizePercent = $derived(Math.min(availableSpacePercent * 0.6, 15)); // Button size as percentage, max 15%
+	// === BOUNDARY-AWARE RECTANGLE PACKING ===
+	// Ensures no overlap with text and proper scaling within bounds
+
+	// 1. TEXT BOUNDING BOX (accurate measurement)
+	const textSizeRatio = $derived(fontSize()); // Already normalized
+	const textLines = $derived(segments.length);
+	const textHeight = $derived(textSizeRatio * textLines * 1.15); // Actual text height
+	const textWidth = $derived(textSizeRatio * longestSegment.length * 0.55); // Actual text width
+
+	// === ELEGANT CSS-ALIGNED SOLUTION ===
+	// Work WITH CSS instead of fighting it. Use CSS positioning patterns.
+
+	// Simple element sizing based on node scale (like the title does)
+	const elementScale = $derived(Math.min(nodeWidth, nodeHeight)); // Same scale factor as title
+	const sliderHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
+	const buttonHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
+
+	// Element widths scale with text (like title does)
+	const sliderWidth = $derived(Math.max(0.4, Math.min(0.8, textWidth * 1.2))); // 120% of text width
+	const buttonContainerWidth = $derived(Math.max(0.3, Math.min(0.7, textWidth * 1.0))); // 100% of text width
+
+	// CSS-style positioning: Give title more breathing room
+	// Title is at 50%, so position elements further away for better spacing
+	const sliderTopPercent = 20; // Upper fifth (more space from title)
+	const buttonsTopPercent = 80; // Lower fifth (more space from title)
+
+	// Convert to percentages for CSS
+	const sliderHeightPercent = $derived(sliderHeight * 100);
+	const sliderWidthPercent = $derived(sliderWidth * 100);
+	const buttonHeightPercent = $derived(buttonHeight * 100);
+	const buttonContainerWidthPercent = $derived(buttonContainerWidth * 100);
+
+	// Legacy compatibility
+	const buttonSizePercent = $derived(buttonHeightPercent);
 
 	// Check if node has contributors or anti-contributors for styling
 	const hasContributors = $derived(node.contributors.length > 0);
@@ -609,19 +635,22 @@
 			{/if}
 		</div>
 
-		<!-- Manual Fulfillment Slider - only for contribution nodes -->
+		<!-- Manual Fulfillment Slider - positioned above title -->
 		{#if hasContributors && !node.hasChildren && visibilityFactor > 0.1}
 			<div
 				class="manual-fulfillment-slider"
 				style="
 					position: absolute;
-					top: 70%;
+					top: {sliderTopPercent}%;
 					left: 50%;
-					transform: translateX(-50%);
-					width: 70%;
-					max-width: 120px;
+					transform: translate(-50%, -50%);
+					width: {sliderWidthPercent}%;
+					height: {sliderHeightPercent}%;
 					z-index: 3;
 					opacity: {visibilityFactor};
+					display: flex;
+					align-items: center;
+					gap: 8px;
 				"
 				role="slider"
 				tabindex="0"
@@ -686,12 +715,18 @@
 						onManualFulfillmentChange({ nodeId: node.id, value: protocolValue });
 					}}
 					class="fulfillment-slider"
+					style="flex: 3;"
 				/>
 				<div
 					class="slider-value"
 					style="
-						font-size: {Math.max(8, Math.min(14, buttonSizePercent * 0.3))}px;
-						margin-top: {Math.max(2, buttonSizePercent * 0.15)}px;
+						font-size: {Math.max(8, Math.min(14, textSizeRatio * 16 * 0.7))}px;
+						white-space: nowrap;
+						flex: 1;
+						text-align: center;
+						display: flex;
+						align-items: center;
+						justify-content: center;
 					"
 				>
 					{currentSliderValue}%
@@ -699,23 +734,23 @@
 			</div>
 		{/if}
 
-		<!-- Contributor Buttons Container - positioned above title -->
+		<!-- Contributor Buttons Container - positioned below title -->
 		{#if visibilityFactor > 0.1 && !node.hasChildren}
 			<div
 				class="contributor-buttons-container"
 				style="
 					position: absolute;
-					top: 20%;
+					top: {buttonsTopPercent}%;
 					left: 50%;
 					transform: translate(-50%, -50%);
-					width: 60%;
-					height: {buttonSizePercent}%;
+					width: {buttonContainerWidthPercent}%;
+					height: {buttonHeightPercent}%;
 					opacity: {visibilityFactor};
 					display: flex;
 					flex-direction: row;
 					justify-content: center;
 					align-items: center;
-					gap: {Math.max(4, buttonSizePercent * 0.15)}px;
+					gap: {Math.max(4, buttonHeight * 100 * 0.2)}px;
 					pointer-events: none;
 				"
 			>
@@ -929,7 +964,7 @@
 					class="contributor-tooltip"
 					style="
 						position: absolute;
-						top: {20 - buttonSizePercent / 2 - 8}%;
+						top: {buttonsTopPercent + 8}%;
 						left: 50%;
 						transform: translateX(-50%);
 						z-index: 1000;
@@ -1135,10 +1170,8 @@
 	}
 
 	.manual-fulfillment-slider {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 4px;
+		box-sizing: border-box;
+		/* Flex layout and styling handled inline for dynamic sizing */
 	}
 
 	.fulfillment-slider {
