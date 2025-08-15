@@ -10,6 +10,10 @@ const config = {
 		}),
 		paths: {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
+		},
+		serviceWorker: {
+			register: true,
+			files: (filepath) => !/\.DS_Store/.test(filepath)
 		}
 	},
 	extensions: ['.svelte', '.svx']
