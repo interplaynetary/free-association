@@ -544,28 +544,38 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
+		// Get recurrence display
+		const recurrenceDisplay =
+			slotRecurrence && slotRecurrence !== 'Does not repeat' ? slotRecurrence : '';
+
 		// Handle "All day" case first
 		if (slotAllDay) {
 			const startDate = slotStartDate ? new Date(slotStartDate) : null;
 			const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
+			let timeStr = '';
 			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
 				// Multi-day all-day event
 				const startStr = formatDateForDisplay(startDate);
 				const endStr = formatDateForDisplay(endDate);
-				return `${startStr} - ${endStr}, All day`;
+				timeStr = `${startStr} - ${endStr}, All day`;
 			} else if (startDate) {
 				// Single day all-day event
 				const dateStr = formatDateForDisplay(startDate);
-				return `${dateStr}, All day`;
+				timeStr = `${dateStr}, All day`;
+			} else {
+				timeStr = 'All day';
 			}
-			return 'All day';
+
+			// Add recurrence if present
+			return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 		}
 
 		// Handle timed slots
 		const startDate = slotStartDate ? new Date(slotStartDate) : null;
 		const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
+		let timeStr = '';
 		if (startDate) {
 			const startDateStr = formatDateForDisplay(startDate);
 
@@ -577,28 +587,30 @@
 				const endTimeStr = cleanEndTime || '';
 
 				if (startTimeStr && endTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
 				} else if (startTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
 				} else {
-					return `${startDateStr} - ${endDateStr}`;
+					timeStr = `${startDateStr} - ${endDateStr}`;
 				}
 			} else {
 				// Single day or no end date
 				if (cleanStartTime) {
 					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					return `${startDateStr}, ${timeRange}`;
+					timeStr = `${startDateStr}, ${timeRange}`;
+				} else {
+					timeStr = startDateStr;
 				}
-				return startDateStr;
 			}
+		} else if (cleanStartTime) {
+			// Just time, no date
+			timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+		} else {
+			timeStr = 'No time set';
 		}
 
-		// Just time, no date
-		if (cleanStartTime) {
-			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-		}
-
-		return 'No time set';
+		// Add recurrence if present
+		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 	}
 
 	// Helper function to format date for display with smart labels
@@ -711,184 +723,96 @@
 	// COMPOSITION LOGIC - Following Original Capacity Pattern
 	// ============================================================================
 
-	// Slots we want to compose FROM (our desires)
-	let userComposeFromSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'from';
-		}> = [];
-
-		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapId, sourceSlots]) => {
-			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
-				Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
-					Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
-						if (desiredAmount > 0 && targetCapId === capacityId && targetSlotId === slot.id) {
-							result.push({
-								sourceCapacityId: sourceCapId,
-								sourceSlotId: sourceSlotId,
-								targetCapacityId: targetCapId,
-								targetSlotId: targetSlotId,
-								desiredAmount: desiredAmount,
-								direction: 'from'
-							});
-						}
-					});
-				});
-			});
-		});
-
-		return result;
-	});
-
-	// Slots that want to compose INTO our slot (their desires)
-	let networkComposeIntoSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'from';
-		}> = [];
-
-		Object.entries($networkDesiredSlotComposeFrom).forEach(([userId, userCompositions]) => {
-			Object.entries(userCompositions).forEach(([sourceCapId, sourceSlots]) => {
-				Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
-					Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
-						Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
-							if (desiredAmount > 0 && targetCapId === capacityId && targetSlotId === slot.id) {
-								result.push({
-									sourceCapacityId: sourceCapId,
-									sourceSlotId: sourceSlotId,
-									targetCapacityId: targetCapId,
-									targetSlotId: targetSlotId,
-									desiredAmount: desiredAmount,
-									direction: 'from'
-								});
-							}
-						});
-					});
-				});
-			});
-		});
-
-		return result;
-	});
-
-	// Slots we want to compose INTO (our desires)
-	let userComposeIntoSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'into';
-		}> = [];
-
-		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapId, sourceSlots]) => {
-			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
-				Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
-					Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
-						if (desiredAmount > 0 && sourceCapId === capacityId && sourceSlotId === slot.id) {
-							result.push({
-								sourceCapacityId: sourceCapId,
-								sourceSlotId: sourceSlotId,
-								targetCapacityId: targetCapId,
-								targetSlotId: targetSlotId,
-								desiredAmount: desiredAmount,
-								direction: 'into'
-							});
-						}
-					});
-				});
-			});
-		});
-
-		return result;
-	});
-
-	// Slots that want to compose FROM our slot (their desires)
-	let networkComposeFromSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'into';
-		}> = [];
-
-		Object.entries($networkDesiredSlotComposeInto).forEach(([userId, userCompositions]) => {
-			Object.entries(userCompositions).forEach(([sourceCapId, sourceSlots]) => {
-				Object.entries(sourceSlots).forEach(([sourceSlotId, targetCapacities]) => {
-					Object.entries(targetCapacities).forEach(([targetCapId, targetSlots]) => {
-						Object.entries(targetSlots).forEach(([targetSlotId, desiredAmount]) => {
-							if (desiredAmount > 0 && sourceCapId === capacityId && sourceSlotId === slot.id) {
-								result.push({
-									sourceCapacityId: sourceCapId,
-									sourceSlotId: sourceSlotId,
-									targetCapacityId: targetCapId,
-									targetSlotId: targetSlotId,
-									desiredAmount: desiredAmount,
-									direction: 'into'
-								});
-							}
-						});
-					});
-				});
-			});
-		});
-
-		return result;
-	});
-
 	// FROM other slots = compositions coming INTO this slot
 	let fromOtherSlots = $derived(() => {
-		const userCompositions = userComposeFromSlots();
-		const networkCompositions = networkComposeIntoSlots();
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'from';
+		}> = [];
 
-		// Create a set of user composition keys to avoid duplicates
-		const userCompositionKeys = new Set(
-			userCompositions.map(
-				(comp) =>
-					`${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`
-			)
-		);
+		// Get all available slots that could compose INTO this slot
+		const availableSlots = $composeIntoDataProvider;
 
-		// Filter network compositions to exclude ones already in user compositions
-		const filteredNetworkCompositions = networkCompositions.filter((comp) => {
-			const key = `${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`;
-			return !userCompositionKeys.has(key);
+		availableSlots.forEach((slotItem) => {
+			const sourceCapacityId = slotItem.metadata.capacityId;
+			const sourceSlotId = slotItem.metadata.slotId;
+
+			// Check if we have a user desire for this composition (we want FROM their slot INTO our slot)
+			const userDesire =
+				$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id] || 0;
+
+			// Check if there's a network desire for this composition (they want FROM their slot INTO our slot)
+			// From their perspective, this is a ComposeInto desire (INTO our slot)
+			let networkDesire = 0;
+			Object.values($networkDesiredSlotComposeInto).forEach((userCompositions) => {
+				const desire = userCompositions[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id];
+				if (desire > networkDesire) networkDesire = desire;
+			});
+
+			// Include slots where EITHER party has expressed desire (user OR network)
+			if (userDesire > 0 || networkDesire > 0) {
+				result.push({
+					sourceCapacityId,
+					sourceSlotId,
+					targetCapacityId: capacityId,
+					targetSlotId: slot.id,
+					desiredAmount: Math.max(userDesire, networkDesire),
+					direction: 'from'
+				});
+			}
 		});
 
-		return [...userCompositions, ...filteredNetworkCompositions];
+		return result;
 	});
 
 	// INTO other slots = compositions going FROM this slot
 	let intoOtherSlots = $derived(() => {
-		const userCompositions = userComposeIntoSlots();
-		const networkCompositions = networkComposeFromSlots();
+		const result: Array<{
+			sourceCapacityId: string;
+			sourceSlotId: string;
+			targetCapacityId: string;
+			targetSlotId: string;
+			desiredAmount: number;
+			direction: 'into';
+		}> = [];
 
-		// Create a set of user composition keys to avoid duplicates
-		const userCompositionKeys = new Set(
-			userCompositions.map(
-				(comp) =>
-					`${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`
-			)
-		);
+		// Get all available slots that this slot could compose INTO
+		const availableSlots = $composeFromDataProvider;
 
-		// Filter network compositions to exclude ones already in user compositions
-		const filteredNetworkCompositions = networkCompositions.filter((comp) => {
-			const key = `${comp.sourceCapacityId}:${comp.sourceSlotId}:${comp.targetCapacityId}:${comp.targetSlotId}`;
-			return !userCompositionKeys.has(key);
+		availableSlots.forEach((slotItem) => {
+			const targetCapacityId = slotItem.metadata.capacityId;
+			const targetSlotId = slotItem.metadata.slotId;
+
+			// Check if we have a user desire for this composition (we want FROM our slot INTO their slot)
+			const userDesire =
+				$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] || 0;
+
+			// Check if there's a network desire for this composition (they want FROM our slot INTO their slot)
+			// From their perspective, this is a ComposeFrom desire (FROM our slot)
+			let networkDesire = 0;
+			Object.values($networkDesiredSlotComposeFrom).forEach((userCompositions) => {
+				const desire = userCompositions[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId];
+				if (desire > networkDesire) networkDesire = desire;
+			});
+
+			// Include slots where EITHER party has expressed desire (user OR network)
+			if (userDesire > 0 || networkDesire > 0) {
+				result.push({
+					sourceCapacityId: capacityId,
+					sourceSlotId: slot.id,
+					targetCapacityId,
+					targetSlotId,
+					desiredAmount: Math.max(userDesire, networkDesire),
+					direction: 'into'
+				});
+			}
 		});
 
-		return [...userCompositions, ...filteredNetworkCompositions];
+		return result;
 	});
 
 	// Total compositions count for display in button
@@ -920,7 +844,7 @@
 		}
 	}
 
-	// Handle selecting a target slot for FROM composition
+	// Handle selecting a target slot for FROM composition (our slot → target slot)
 	function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
 		const targetCapacityId = data.metadata?.capacityId;
 		const targetSlotId = data.metadata?.slotId;
@@ -930,8 +854,9 @@
 			return;
 		}
 
-		// Initialize the composition desire
-		const currentDesires = $userDesiredSlotComposeFrom;
+		// Initialize the composition desire in userDesiredSlotComposeInto
+		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
+		const currentDesires = $userDesiredSlotComposeInto;
 		if (!currentDesires[capacityId]) currentDesires[capacityId] = {};
 		if (!currentDesires[capacityId][slot.id]) currentDesires[capacityId][slot.id] = {};
 		if (!currentDesires[capacityId][slot.id][targetCapacityId]) {
@@ -941,12 +866,19 @@
 		// Set initial desire of 1 unit
 		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
 
-		userDesiredSlotComposeFrom.set(currentDesires);
+		userDesiredSlotComposeInto.set(currentDesires);
+
+		console.log('[SLOT-COMPOSITION] Added INTO composition to user store, will sync via Gun:', {
+			sourceCapacity: capacityId,
+			sourceSlot: slot.id,
+			targetCapacity: targetCapacityId,
+			targetSlot: targetSlotId
+		});
 
 		showAddComposeFrom = false;
 	}
 
-	// Handle selecting a source slot for INTO composition
+	// Handle selecting a source slot for INTO composition (source slot → our slot)
 	function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
 		const sourceCapacityId = data.metadata?.capacityId;
 		const sourceSlotId = data.metadata?.slotId;
@@ -956,8 +888,9 @@
 			return;
 		}
 
-		// Initialize the composition desire
-		const currentDesires = $userDesiredSlotComposeInto;
+		// Initialize the composition desire in userDesiredSlotComposeFrom
+		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
+		const currentDesires = $userDesiredSlotComposeFrom;
 		if (!currentDesires[sourceCapacityId]) currentDesires[sourceCapacityId] = {};
 		if (!currentDesires[sourceCapacityId][sourceSlotId])
 			currentDesires[sourceCapacityId][sourceSlotId] = {};
@@ -968,7 +901,14 @@
 		// Set initial desire of 1 unit
 		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
 
-		userDesiredSlotComposeInto.set(currentDesires);
+		userDesiredSlotComposeFrom.set(currentDesires);
+
+		console.log('[SLOT-COMPOSITION] Added FROM composition to user store, will sync via Gun:', {
+			sourceCapacity: sourceCapacityId,
+			sourceSlot: sourceSlotId,
+			targetCapacity: capacityId,
+			targetSlot: slot.id
+		});
 
 		showAddComposeInto = false;
 	}
@@ -1476,7 +1416,7 @@
 							</div>
 						{:else}
 							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								No other slots composing into this slot
+								No compositions from other slots yet. Click "Add source slot" to start.
 							</div>
 						{/if}
 					</div>
@@ -1533,7 +1473,7 @@
 							</div>
 						{:else}
 							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								This slot not composing into other slots
+								No compositions to other slots yet. Click "Add target slot" to start.
 							</div>
 						{/if}
 					</div>

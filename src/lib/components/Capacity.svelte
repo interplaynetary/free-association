@@ -327,6 +327,11 @@
 		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
 	}
 
+	// Utility function to safely display recurrence value
+	function getRecurrenceDisplay(slot: any): string {
+		return slot.recurrence || 'Does not repeat';
+	}
+
 	// Helper function to safely extract time from potentially malformed time strings
 	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
 		if (!timeValue) return undefined;
@@ -573,7 +578,8 @@
 		const newSlot = {
 			id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 			quantity: 1,
-			location_type: 'Undefined'
+			location_type: 'Undefined',
+			recurrence: 'Does not repeat'
 		};
 
 		const updatedSlots = [...capacity.availability_slots, newSlot];
@@ -814,7 +820,7 @@
 										<div class="slot-wrapper">
 											<div class="slot-badges mb-2">
 												<span class="recurrence-badge bg-purple-100 text-purple-800">
-													{slot.recurrence}
+													{getRecurrenceDisplay(slot)}
 												</span>
 											</div>
 											<Slot

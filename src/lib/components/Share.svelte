@@ -165,28 +165,38 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
+		// Get recurrence display
+		const recurrenceDisplay =
+			slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
+
 		// Handle "All day" case first
 		if (slot.all_day) {
 			const startDate = slot.start_date ? new Date(slot.start_date) : null;
 			const endDate = slot.end_date ? new Date(slot.end_date) : null;
 
+			let timeStr = '';
 			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
 				// Multi-day all-day event
 				const startStr = formatDateForDisplay(startDate);
 				const endStr = formatDateForDisplay(endDate);
-				return `${startStr} - ${endStr}, All day`;
+				timeStr = `${startStr} - ${endStr}, All day`;
 			} else if (startDate) {
 				// Single day all-day event
 				const dateStr = formatDateForDisplay(startDate);
-				return `${dateStr}, All day`;
+				timeStr = `${dateStr}, All day`;
+			} else {
+				timeStr = 'All day';
 			}
-			return 'All day';
+
+			// Add recurrence if present
+			return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 		}
 
 		// Handle timed slots
 		const startDate = slot.start_date ? new Date(slot.start_date) : null;
 		const endDate = slot.end_date ? new Date(slot.end_date) : null;
 
+		let timeStr = '';
 		if (startDate) {
 			const startDateStr = formatDateForDisplay(startDate);
 
@@ -198,28 +208,30 @@
 				const endTimeStr = cleanEndTime || '';
 
 				if (startTimeStr && endTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
 				} else if (startTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
 				} else {
-					return `${startDateStr} - ${endDateStr}`;
+					timeStr = `${startDateStr} - ${endDateStr}`;
 				}
 			} else {
 				// Single day or no end date
 				if (cleanStartTime) {
 					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					return `${startDateStr}, ${timeRange}`;
+					timeStr = `${startDateStr}, ${timeRange}`;
+				} else {
+					timeStr = startDateStr;
 				}
-				return startDateStr;
 			}
+		} else if (cleanStartTime) {
+			// Just time, no date
+			timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+		} else {
+			timeStr = 'No time set';
 		}
 
-		// Just time, no date
-		if (cleanStartTime) {
-			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-		}
-
-		return 'No time set';
+		// Add recurrence if present
+		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 	}
 
 	// Format slot location display - show complete address
@@ -270,6 +282,11 @@
 	// Utility function to check if a slot is recurring
 	function isSlotRecurring(slot: any): boolean {
 		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
+	}
+
+	// Utility function to safely display recurrence value
+	function getRecurrenceDisplay(slot: any): string {
+		return slot.recurrence || 'Does not repeat';
 	}
 
 	// Utility function to check if a slot is in the past
@@ -507,7 +524,7 @@
 												<span
 													class="recurrence-badge flex-shrink-0 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800"
 												>
-													{slot.recurrence}
+													{getRecurrenceDisplay(slot)}
 												</span>
 											</div>
 

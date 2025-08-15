@@ -53,6 +53,7 @@
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(false);
 	let isMaximized = $state(false);
+	let isControlsExpanded = $state(false);
 
 	// Grouped slot marker data structure - one marker per unique (capacity, location) combination
 	export interface GroupedSlotMarkerData {
@@ -837,48 +838,58 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
+		// Get recurrence display
+		const recurrenceDisplay =
+			slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
+
+		let timeStr = '';
 		if (slot.all_day) {
 			const startDate = slot.start_date ? new Date(slot.start_date) : null;
 			const endDate = slot.end_date ? new Date(slot.end_date) : null;
 			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
 				const startStr = formatDateForDisplay(startDate);
 				const endStr = formatDateForDisplay(endDate);
-				return `${startStr} - ${endStr}, All day`;
+				timeStr = `${startStr} - ${endStr}, All day`;
 			} else if (startDate) {
 				const dateStr = formatDateForDisplay(startDate);
-				return `${dateStr}, All day`;
-			}
-			return 'All day';
-		}
-
-		const startDate = slot.start_date ? new Date(slot.start_date) : null;
-		const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-		if (startDate) {
-			const startDateStr = formatDateForDisplay(startDate);
-			if (endDate && startDate.getTime() !== endDate.getTime()) {
-				const endDateStr = formatDateForDisplay(endDate);
-				const startTimeStr = cleanStartTime || '';
-				const endTimeStr = cleanEndTime || '';
-				if (startTimeStr && endTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-				} else if (startTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
-				} else {
-					return `${startDateStr} - ${endDateStr}`;
-				}
+				timeStr = `${dateStr}, All day`;
 			} else {
-				if (cleanStartTime) {
-					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					return `${startDateStr}, ${timeRange}`;
+				timeStr = 'All day';
+			}
+		} else {
+			const startDate = slot.start_date ? new Date(slot.start_date) : null;
+			const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+			if (startDate) {
+				const startDateStr = formatDateForDisplay(startDate);
+				if (endDate && startDate.getTime() !== endDate.getTime()) {
+					const endDateStr = formatDateForDisplay(endDate);
+					const startTimeStr = cleanStartTime || '';
+					const endTimeStr = cleanEndTime || '';
+					if (startTimeStr && endTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+					} else if (startTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+					} else {
+						timeStr = `${startDateStr} - ${endDateStr}`;
+					}
+				} else {
+					if (cleanStartTime) {
+						const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+						timeStr = `${startDateStr}, ${timeRange}`;
+					} else {
+						timeStr = startDateStr;
+					}
 				}
-				return startDateStr;
+			} else if (cleanStartTime) {
+				timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+			} else {
+				timeStr = 'No time set';
 			}
 		}
-		if (cleanStartTime) {
-			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-		}
-		return 'No time set';
+
+		// Add recurrence if present
+		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 	}
 
 	// Helper function to format slot location display
@@ -1135,48 +1146,68 @@
 				onerror={handleGeolocateError}
 			/>
 
+			<!-- Maximize/Minimize Control -->
 			<CustomControl position="bottom-right">
 				<button
+					class="map-control-btn"
 					onclick={() => {
 						isMaximized = !isMaximized;
 					}}
 					title={isMaximized ? 'Minimize map' : 'Maximize map'}
 				>
-					<span>{isMaximized ? '🗗' : '🗖'}</span>
+					<span>{isMaximized ? '⊟' : '⊞'}</span>
 				</button>
 			</CustomControl>
 
+			<!-- Collapsible Controls Group -->
 			<CustomControl position="bottom-right">
-				<button
-					onclick={() => {
-						isGlobeMode = !isGlobeMode;
-					}}
-					title="Toggle globe mode"
-				>
-					<span>🌐</span>
-				</button>
-			</CustomControl>
-			<CustomControl position="bottom-right">
-				<button
-					onclick={() => {
-						show3DBuildings = !show3DBuildings;
-						if (map) map.setPitch(show3DBuildings ? 70 : 0);
-					}}
-					title="Toggle 3D buildings"
-				>
-					<span>🏢</span>
-				</button>
-			</CustomControl>
-			<CustomControl position="bottom-right">
-				<button
-					onclick={() => {
-						isTerrainVisible = !isTerrainVisible;
-						if (map) map.setPitch(isTerrainVisible ? 70 : 0);
-					}}
-					title="Toggle terrain"
-				>
-					<span>🏔️</span>
-				</button>
+				<div class="controls-group">
+					<!-- Main toggle button -->
+					<button
+						class="map-control-btn controls-toggle"
+						onclick={() => {
+							isControlsExpanded = !isControlsExpanded;
+						}}
+						title="Toggle map controls"
+					>
+						<span>{isControlsExpanded ? '✕' : '⚙️'}</span>
+					</button>
+
+					<!-- Expandable controls -->
+					{#if isControlsExpanded}
+						<div class="expanded-controls">
+							<button
+								class="map-control-btn"
+								onclick={() => {
+									isGlobeMode = !isGlobeMode;
+								}}
+								title="Toggle globe mode"
+							>
+								<span>🌐</span>
+							</button>
+							<button
+								class="map-control-btn"
+								onclick={() => {
+									show3DBuildings = !show3DBuildings;
+									if (map) map.setPitch(show3DBuildings ? 70 : 0);
+								}}
+								title="Toggle 3D buildings"
+							>
+								<span>🏢</span>
+							</button>
+							<button
+								class="map-control-btn"
+								onclick={() => {
+									isTerrainVisible = !isTerrainVisible;
+									if (map) map.setPitch(isTerrainVisible ? 70 : 0);
+								}}
+								title="Toggle terrain"
+							>
+								<span>🏔️</span>
+							</button>
+						</div>
+					{/if}
+				</div>
 			</CustomControl>
 
 			<RasterDEMTileSource
@@ -1477,5 +1508,70 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+
+	/* Map Control Styles */
+	:global(.map-control-btn) {
+		background: rgba(255, 255, 255, 0.9);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		border-radius: 4px;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		font-size: 14px;
+		transition: all 0.2s ease;
+		backdrop-filter: blur(2px);
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+
+	:global(.map-control-btn:hover) {
+		background: rgba(255, 255, 255, 1);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		transform: translateY(-1px);
+	}
+
+	:global(.map-control-btn:active) {
+		transform: translateY(0);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+
+	/* Controls Group Container */
+	:global(.controls-group) {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		align-items: flex-end;
+	}
+
+	/* Expanded Controls Animation */
+	:global(.expanded-controls) {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		animation: expandControls 0.3s ease-out;
+		transform-origin: bottom;
+	}
+
+	@keyframes expandControls {
+		from {
+			opacity: 0;
+			transform: scaleY(0) translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: scaleY(1) translateY(0);
+		}
+	}
+
+	/* Toggle Button Styling */
+	:global(.controls-toggle) {
+		position: relative;
+	}
+
+	:global(.controls-toggle span) {
+		transition: transform 0.2s ease;
 	}
 </style>

@@ -181,48 +181,58 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
+		// Get recurrence display
+		const recurrenceDisplay =
+			slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
+
+		let timeStr = '';
 		if (slot.all_day) {
 			const startDate = slot.start_date ? new Date(slot.start_date) : null;
 			const endDate = slot.end_date ? new Date(slot.end_date) : null;
 			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
 				const startStr = formatDateForDisplay(startDate);
 				const endStr = formatDateForDisplay(endDate);
-				return `${startStr} - ${endStr}, All day`;
+				timeStr = `${startStr} - ${endStr}, All day`;
 			} else if (startDate) {
 				const dateStr = formatDateForDisplay(startDate);
-				return `${dateStr}, All day`;
-			}
-			return 'All day';
-		}
-
-		const startDate = slot.start_date ? new Date(slot.start_date) : null;
-		const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-		if (startDate) {
-			const startDateStr = formatDateForDisplay(startDate);
-			if (endDate && startDate.getTime() !== endDate.getTime()) {
-				const endDateStr = formatDateForDisplay(endDate);
-				const startTimeStr = cleanStartTime || '';
-				const endTimeStr = cleanEndTime || '';
-				if (startTimeStr && endTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-				} else if (startTimeStr) {
-					return `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
-				} else {
-					return `${startDateStr} - ${endDateStr}`;
-				}
+				timeStr = `${dateStr}, All day`;
 			} else {
-				if (cleanStartTime) {
-					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					return `${startDateStr}, ${timeRange}`;
+				timeStr = 'All day';
+			}
+		} else {
+			const startDate = slot.start_date ? new Date(slot.start_date) : null;
+			const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+			if (startDate) {
+				const startDateStr = formatDateForDisplay(startDate);
+				if (endDate && startDate.getTime() !== endDate.getTime()) {
+					const endDateStr = formatDateForDisplay(endDate);
+					const startTimeStr = cleanStartTime || '';
+					const endTimeStr = cleanEndTime || '';
+					if (startTimeStr && endTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+					} else if (startTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+					} else {
+						timeStr = `${startDateStr} - ${endDateStr}`;
+					}
+				} else {
+					if (cleanStartTime) {
+						const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+						timeStr = `${startDateStr}, ${timeRange}`;
+					} else {
+						timeStr = startDateStr;
+					}
 				}
-				return startDateStr;
+			} else if (cleanStartTime) {
+				timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+			} else {
+				timeStr = 'No time set';
 			}
 		}
-		if (cleanStartTime) {
-			return cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-		}
-		return 'No time set';
+
+		// Add recurrence if present
+		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
 	}
 
 	// Helper function to format slot location display

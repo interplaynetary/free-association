@@ -108,12 +108,21 @@
 		}
 	});
 
-	// Update input when store changes
+	// Update input when store changes - use correct store based on direction
 	$effect(() => {
-		desiredQuantityInput =
-			$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
-				targetSlotId
-			] || 0;
+		if (direction === 'from') {
+			// FROM: We want to compose FROM sourceSlot INTO targetSlot
+			desiredQuantityInput =
+				$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
+					targetSlotId
+				] || 0;
+		} else {
+			// INTO: We want to compose FROM sourceSlot INTO targetSlot (sourceSlot is ours)
+			desiredQuantityInput =
+				$userDesiredSlotComposeInto[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
+					targetSlotId
+				] || 0;
+		}
 	});
 
 	// Get their desire amount directly from network desires
@@ -122,16 +131,20 @@
 		if (!actualProviderId) return 0;
 
 		if (direction === 'from') {
-			// They want to compose into our slot
+			// FROM: We want to compose FROM their sourceSlot INTO our targetSlot
+			// Their perspective: They want to compose FROM their sourceSlot INTO our targetSlot
+			// So we look at their ComposeInto desires (they want to compose INTO our slot)
 			return (
-				$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+				$networkDesiredSlotComposeInto[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
 					targetCapacityId
 				]?.[targetSlotId] || 0
 			);
 		} else {
-			// They want to compose from our slot
+			// INTO: We want to compose FROM our sourceSlot INTO their targetSlot
+			// Their perspective: They want to compose FROM our sourceSlot INTO their targetSlot
+			// So we look at their ComposeFrom desires (they want to compose FROM our slot)
 			return (
-				$networkDesiredSlotComposeInto[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+				$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
 					targetCapacityId
 				]?.[targetSlotId] || 0
 			);
@@ -145,7 +158,8 @@
 
 	// Handle quantity changes
 	function handleQuantityChange() {
-		const store = userDesiredSlotComposeFrom;
+		// Use the correct store based on direction
+		const store = direction === 'from' ? userDesiredSlotComposeFrom : userDesiredSlotComposeInto;
 		const current = get(store);
 
 		// Convert empty/null/undefined to 0

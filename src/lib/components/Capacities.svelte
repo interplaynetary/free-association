@@ -354,7 +354,7 @@
 					end_date: now,
 					end_time: now,
 					time_zone: getLocalTimeZone(),
-					recurrence: null,
+					recurrence: 'Does not repeat',
 					custom_recurrence_repeat_every: null,
 					custom_recurrence_repeat_unit: null,
 					custom_recurrence_end_type: null,

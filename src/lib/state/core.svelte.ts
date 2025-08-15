@@ -792,8 +792,8 @@ export const mutualSlotDesires = derived(
 		> = {};
 
 		// TYPE 1: FROM-compositions where both parties agree
-		// We want: FROM sourceSlot INTO targetSlot
-		// They want: FROM sourceSlot INTO targetSlot (same direction)
+		// We want: FROM their sourceSlot INTO our targetSlot
+		// They want: FROM their sourceSlot INTO our targetSlot (their perspective: INTO)
 		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
 				Object.entries(targetCompositions).forEach(([targetCapacityId, targetSlots]) => {
@@ -809,9 +809,9 @@ export const mutualSlotDesires = derived(
 
 						if (!sourceProviderId) return;
 
-						// Check if the source provider also wants this same composition
+						// Check if the source provider wants to compose INTO our slot (opposite direction)
 						const theirDesiredAmount =
-							$networkDesiredSlotComposeFrom[sourceProviderId]?.[sourceCapacityId]?.[
+							$networkDesiredSlotComposeInto[sourceProviderId]?.[sourceCapacityId]?.[
 								sourceSlotId
 							]?.[targetCapacityId]?.[targetSlotId];
 
@@ -844,8 +844,8 @@ export const mutualSlotDesires = derived(
 		});
 
 		// TYPE 2: INTO-compositions where both parties agree
-		// We want: FROM sourceSlot INTO targetSlot
-		// They want: FROM sourceSlot INTO targetSlot (same direction)
+		// We want: FROM our sourceSlot INTO their targetSlot
+		// They want: FROM our sourceSlot INTO their targetSlot (their perspective: FROM)
 		Object.entries($userDesiredSlotComposeInto).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
 				Object.entries(targetCompositions).forEach(([targetCapacityId, targetSlots]) => {
@@ -857,9 +857,9 @@ export const mutualSlotDesires = derived(
 
 						if (!targetProviderId) return;
 
-						// Check if the target provider also wants this same composition
+						// Check if the target provider wants to compose FROM our slot (opposite direction)
 						const theirDesiredAmount =
-							$networkDesiredSlotComposeInto[targetProviderId]?.[sourceCapacityId]?.[
+							$networkDesiredSlotComposeFrom[targetProviderId]?.[sourceCapacityId]?.[
 								sourceSlotId
 							]?.[targetCapacityId]?.[targetSlotId];
 

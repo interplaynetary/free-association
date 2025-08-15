@@ -784,109 +784,7 @@
 					pointer-events: none;
 				"
 			>
-				<!-- Contributor Button (always show for leaf nodes) -->
-				<!-- Contributor Button: Always show on leaf nodes (left side) -->
-				{#if hasContributors}
-					<!-- Pie Chart for Contributors -->
-					<svg
-						class="add-contributor-button pie-chart"
-						style="
-							width: 45%;
-							height: 100%;
-							cursor: pointer;
-							flex-shrink: 0;
-							pointer-events: auto;
-						"
-						viewBox="-25 -25 50 50"
-						role="button"
-						tabindex="0"
-						aria-label="Add contributor"
-						onclick={handleAddContributorClick}
-						ontouchstart={handleAddContributorClick}
-						onpointerdown={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							e.stopImmediatePropagation();
-						}}
-						onmousedown={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							e.stopImmediatePropagation();
-						}}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								// Create a synthetic MouseEvent for consistency
-								const syntheticEvent = new MouseEvent('click', {
-									bubbles: true,
-									cancelable: true
-								});
-								handleAddContributorClick(syntheticEvent);
-							}
-						}}
-					>
-						{#each pieData() as segment, i}
-							<path
-								d={arcPath()(segment)}
-								fill={getColorForUserId(segment.data.id)}
-								role="presentation"
-								onmouseenter={() => (hoveredSegment = segment.data.id)}
-								onmouseleave={() => (hoveredSegment = null)}
-								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
-							/>
-						{/each}
-
-						<!-- Plus sign in center for adding more contributors -->
-						<circle
-							cx={0}
-							cy={0}
-							r={6}
-							fill="rgba(255, 255, 255, 0.9)"
-							stroke="rgba(0, 0, 0, 0.3)"
-							stroke-width="1"
-						/>
-						<text
-							x={0}
-							y={0}
-							text-anchor="middle"
-							dominant-baseline="middle"
-							font-size="8"
-							fill="#333"
-							font-weight="bold"
-						>
-							+
-						</text>
-					</svg>
-				{:else}
-					<!-- Simple button when no contributors -->
-					<button
-						class="add-contributor-button"
-						style="
-							width: 45%;
-							height: 100%;
-							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
-							flex-shrink: 0;
-							pointer-events: auto;
-						"
-						onclick={handleAddContributorClick}
-						ontouchstart={handleAddContributorClick}
-						onpointerdown={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							e.stopImmediatePropagation();
-						}}
-						onmousedown={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							e.stopImmediatePropagation();
-						}}
-						title="Add contributor"
-					>
-						+
-					</button>
-				{/if}
-
-				<!-- Anti-Contributor Button: Always show on leaf nodes (right side) -->
+				<!-- Anti-Contributor Button: Always show on leaf nodes (left side) -->
 				{#if hasAntiContributors}
 					<!-- Pie Chart for Anti-Contributors -->
 					<svg
@@ -984,6 +882,107 @@
 						title="Add anti-contributor"
 					>
 						−
+					</button>
+				{/if}
+
+				<!-- Contributor Button: Always show on leaf nodes (right side) -->
+				{#if hasContributors}
+					<!-- Pie Chart for Contributors -->
+					<svg
+						class="add-contributor-button pie-chart"
+						style="
+							width: 45%;
+							height: 100%;
+							cursor: pointer;
+							flex-shrink: 0;
+							pointer-events: auto;
+						"
+						viewBox="-25 -25 50 50"
+						role="button"
+						tabindex="0"
+						aria-label="Add contributor"
+						onclick={handleAddContributorClick}
+						ontouchstart={handleAddContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								// Create a synthetic MouseEvent for consistency
+								const syntheticEvent = new MouseEvent('click', {
+									bubbles: true,
+									cancelable: true
+								});
+								handleAddContributorClick(syntheticEvent);
+							}
+						}}
+					>
+						{#each pieData() as segment, i}
+							<path
+								d={arcPath()(segment)}
+								fill={getColorForUserId(segment.data.id)}
+								role="presentation"
+								onmouseenter={() => (hoveredSegment = segment.data.id)}
+								onmouseleave={() => (hoveredSegment = null)}
+								style="opacity: {hoveredSegment === segment.data.id ? 0.8 : 1};"
+							/>
+						{/each}
+
+						<!-- Plus sign in center for adding more contributors -->
+						<circle
+							cx={0}
+							cy={0}
+							r={6}
+							fill="rgba(255, 255, 255, 0.9)"
+							stroke="rgba(0, 0, 0, 0.3)"
+							stroke-width="1"
+						/>
+						<text
+							x={0}
+							y={0}
+							text-anchor="middle"
+							dominant-baseline="middle"
+							font-size="8"
+							fill="#333"
+							font-weight="bold"
+						>
+							+
+						</text>
+					</svg>
+				{:else}
+					<!-- Simple button when no contributors -->
+					<button
+						class="add-contributor-button"
+						style="
+							width: 45%;
+							height: 100%;
+							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
+							flex-shrink: 0;
+							pointer-events: auto;
+						"
+						onclick={handleAddContributorClick}
+						ontouchstart={handleAddContributorClick}
+						onpointerdown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						title="Add contributor"
+					>
+						+
 					</button>
 				{/if}
 			</div>
