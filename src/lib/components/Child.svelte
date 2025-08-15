@@ -303,44 +303,23 @@
 		}
 	}
 
-	// Selective handler for text selection prevention - only for specific events
-	function preventAllInterference(event: Event) {
-		console.log('[DEBUG CHILD] preventAllInterference called, event type:', event.type);
+	// Unified text edit handler that works across all devices and interaction types
+	function handleTextEditActivation(event: Event) {
+		console.log('[DEBUG CHILD] Text edit activation:', {
+			type: event.type,
+			target: event.target,
+			nodeId: node.id,
+			nodeName: node.name,
+			editMode: globalState.editMode,
+			deleteMode: globalState.deleteMode,
+			recomposeMode: globalState.recomposeMode
+		});
 
-		// Only prevent drag start events, not scroll-related events
-		if (event.type === 'dragstart') {
-			// Clear selections first
-			document.getSelection()?.removeAllRanges();
-
-			// Only prevent drag events, allow other events to bubble
-			event.preventDefault();
-			event.stopPropagation();
-			return false;
-		}
-
-		// For other events, just clear selections but allow normal behavior
-		document.getSelection()?.removeAllRanges();
-		return true;
-	}
-
-	// Handle edit initiation with selective interference prevention
-	function handleTextEditStart(event: Event) {
-		console.log(
-			'[DEBUG CHILD] handleTextEditStart called, event type:',
-			event.type,
-			'target:',
-			event.target
-		);
-
-		// Prevent event propagation to parent but preserve user gesture
+		// Stop propagation to prevent parent node interactions
 		event.stopPropagation();
 
-		// Clear selections IMMEDIATELY before any other processing
-		document.getSelection()?.removeAllRanges();
-
-		// For pointer/mouse events, prevent default to stop text selection
-		// But allow touch events to preserve gesture for mobile keyboard and scrolling
-		if (event.type !== 'touchstart' && event.type !== 'touchmove') {
+		// For touch events, also prevent default to avoid iOS text selection conflicts
+		if (event.type === 'touchend') {
 			event.preventDefault();
 		}
 
@@ -353,12 +332,15 @@
 		// Try to enter edit mode through global state
 		const canEdit = globalState.enterEditMode(node.id);
 		if (!canEdit) {
-			// Global state prevented editing (e.g., in delete mode)
+			console.log('[DEBUG CHILD] Cannot edit - global state prevented, reason:', {
+				editMode: globalState.editMode,
+				deleteMode: globalState.deleteMode,
+				recomposeMode: globalState.recomposeMode
+			});
 			return;
 		}
 
-		// Set up edit state - this will be synced via the effect above
-		console.log('[DEBUG CHILD] Edit mode entered successfully');
+		console.log('[DEBUG CHILD] Edit mode activated successfully for node:', node.name);
 	}
 
 	// Handle text edit save
@@ -424,49 +406,29 @@
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
 
-			// Focus the input when it's available (works for both desktop and mobile)
-			if (editInput) {
-				console.log('[DEBUG CHILD] editInput exists, focusing immediately');
-				setTimeout(() => {
-					console.log('[DEBUG CHILD] Attempting to focus input, editInput:', editInput);
-					editInput?.focus();
-					// Select text only if not on mobile to avoid virtual keyboard issues
-					if (
-						!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-							navigator.userAgent
-						)
-					) {
-						editInput?.select();
-					}
-					console.log(
-						'[DEBUG CHILD] Focus/select called, document.activeElement:',
-						document.activeElement
-					);
-				}, 10);
-			} else {
-				console.log('[DEBUG CHILD] editInput not ready, setting up retry');
-				// Input not ready yet, try again with longer delay
-				setTimeout(() => {
-					console.log('[DEBUG CHILD] Retry - editInput:', editInput);
-					if (editInput) {
-						console.log('[DEBUG CHILD] Retry focusing input');
+			// Robust cross-device focus handling
+			const focusInput = () => {
+				if (editInput) {
+					console.log('[DEBUG CHILD] Focusing input');
+					try {
 						editInput.focus();
-						// Select text only if not on mobile to avoid virtual keyboard issues
-						if (
-							!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-								navigator.userAgent
-							)
-						) {
-							editInput.select();
-						}
-						console.log(
-							'[DEBUG CHILD] Retry focus/select called, document.activeElement:',
-							document.activeElement
-						);
-					} else {
-						console.log('[DEBUG CHILD] Input still not ready after retry');
+						// Use requestAnimationFrame for better iOS compatibility
+						requestAnimationFrame(() => {
+							editInput?.select();
+							console.log('[DEBUG CHILD] Input focused and selected');
+						});
+					} catch (error) {
+						console.warn('[DEBUG CHILD] Focus error:', error);
 					}
-				}, 100);
+				}
+			};
+
+			if (editInput) {
+				// Input is ready, focus immediately
+				focusInput();
+			} else {
+				// Input not ready, wait for next tick
+				setTimeout(focusInput, 10);
 			}
 		} else {
 			// Remove the event listeners when not editing
@@ -557,17 +519,12 @@
 					title={node.name}
 					role="button"
 					tabindex="0"
-					onmousedown={handleTextEditStart}
-					ontouchstart={handleTextEditStart}
-					onpointerdown={handleTextEditStart}
-					onselectstart={preventAllInterference}
-					ondragstart={preventAllInterference}
-					oncontextmenu={preventAllInterference}
-					ondblclick={preventAllInterference}
+					onclick={handleTextEditActivation}
+					ontouchend={handleTextEditActivation}
 					onkeydown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
-							handleTextEditStart(e);
+							handleTextEditActivation(e);
 						}
 					}}
 				>
@@ -921,7 +878,7 @@
 		transition:
 			background-color 0.2s ease,
 			border 0.2s ease;
-		border-radius: 2px;
+		border-radius: 6px;
 		position: relative;
 	}
 
@@ -930,17 +887,14 @@
 	}
 
 	.node-title-area {
-		/* Comprehensive text selection prevention */
-		user-select: none;
+		/* Cross-device text interaction */
+		user-select: none; /* Prevent text selection during normal interaction */
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
-		/* Touch interaction control */
-		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: transparent;
+		/* Clean touch feedback */
+		-webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 		touch-action: manipulation;
-		/* Prevent drag operations */
-		-webkit-user-drag: none;
 		pointer-events: auto;
 	}
 
@@ -950,7 +904,7 @@
 			0px 0px 3px rgba(255, 255, 255, 0.8),
 			0px 0px 2px rgba(255, 255, 255, 0.6);
 		font-weight: 500;
-		cursor: text;
+		cursor: pointer;
 		/* Advanced text fitting */
 		word-break: break-word;
 		hyphens: auto;
@@ -963,15 +917,23 @@
 		text-align: center;
 		/* Font size will be set via inline style */
 		line-height: 1.1;
-		/* Inherit all interference prevention from parent */
-		user-select: none;
+		/* Cross-device interaction */
+		user-select: none; /* Prevent accidental text selection */
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
-		-webkit-touch-callout: none;
-		-webkit-tap-highlight-color: transparent;
+		-webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 		touch-action: manipulation;
-		-webkit-user-drag: none;
+		/* Smooth interaction feedback */
+		transition: opacity 0.1s ease;
+	}
+
+	.node-title:hover {
+		opacity: 0.8;
+	}
+
+	.node-title:active {
+		opacity: 0.6;
 	}
 
 	.title-segment {
@@ -980,20 +942,27 @@
 	}
 
 	.node-edit-input {
-		background: rgba(255, 255, 255, 0.9);
-		border: 1px solid rgba(0, 0, 0, 0.2);
+		background: rgba(255, 255, 255, 0.95);
+		border: 2px solid rgba(33, 150, 243, 0.3);
 		border-radius: 4px;
-		padding: 4px 8px;
+		padding: 6px 10px;
 		text-align: center;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		color: #333;
 		outline: none;
-		/* Ensure proper touch interaction */
+		font-weight: 500;
+		/* Cross-device text editing */
 		touch-action: manipulation;
 		user-select: text;
 		-webkit-user-select: text;
 		-moz-user-select: text;
 		-ms-user-select: text;
+		/* iOS-specific improvements */
+		-webkit-appearance: none;
+		appearance: none;
+		-webkit-border-radius: 4px;
+		/* Smooth transitions */
+		transition: all 0.2s ease;
 	}
 
 	.node-edit-input:focus {
@@ -1096,6 +1065,7 @@
 		width: 100%;
 		height: 6px;
 		-webkit-appearance: none;
+		appearance: none;
 		background: rgba(255, 255, 255, 0.3);
 		outline: none;
 		border-radius: 3px;

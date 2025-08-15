@@ -45,7 +45,7 @@
 
 	// UI state
 	let labelIndex = $state(0);
-	const nodeLabels = ['Node', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution'];
+	const nodeLabels = ['Priority', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution', 'Node'];
 
 	// For tracking changes in d3 visualization
 	let updateCounter = $state(0);
@@ -246,7 +246,8 @@
 			.treemap<VisualizationNode>()
 			.tile(customTile)
 			.size([1, 1])
-			.padding(0.005)
+			.paddingInner(0.003)
+			.paddingOuter(0.002)
 			.round(false);
 
 		const result = treemap(hierarchy);
@@ -1325,8 +1326,21 @@
 		event: TouchEvent,
 		node: d3.HierarchyRectangularNode<VisualizationNode>
 	) {
-		// Prevent default touch behaviors that might interfere with our drag
-		event.preventDefault();
+		// Check if the touch target is a text element or input - don't prevent default for iOS text editing
+		const target = event.target as HTMLElement;
+		const isTextElement =
+			target &&
+			(target.closest('.node-text') ||
+				target.closest('.node-text-edit-container') ||
+				target.closest('.node-title') ||
+				target.closest('.node-title-area') ||
+				target.closest('.title-segment') ||
+				target.closest('.node-edit-input'));
+
+		// Only prevent default if not touching text elements (preserve iOS text editing)
+		if (!isTextElement) {
+			event.preventDefault();
+		}
 
 		// Detect multi-touch for shrinking
 		isMultiTouch = event.touches.length === 2;
@@ -1343,8 +1357,21 @@
 
 	// Handle touch end to reset multi-touch state
 	function handleTouchEnd(event: TouchEvent) {
-		// Prevent default touch behaviors
-		event.preventDefault();
+		// Check if the touch target is a text element - don't prevent default for iOS text editing
+		const target = event.target as HTMLElement;
+		const isTextElement =
+			target &&
+			(target.closest('.node-text') ||
+				target.closest('.node-text-edit-container') ||
+				target.closest('.node-title') ||
+				target.closest('.node-title-area') ||
+				target.closest('.title-segment') ||
+				target.closest('.node-edit-input'));
+
+		// Only prevent default if not touching text elements (preserve iOS text editing)
+		if (!isTextElement) {
+			event.preventDefault();
+		}
 
 		// Reset multi-touch state when fingers are lifted
 		if (event.touches.length < 2) {
@@ -1899,7 +1926,7 @@
 	.treemap-container :global(.clickable) {
 		cursor: pointer;
 		user-select: none;
-		touch-action: none; /* Disable browser touch behaviors */
+		touch-action: manipulation; /* Allow iOS text editing while preventing zoom */
 		transition:
 			left 0.12s linear,
 			top 0.12s linear,

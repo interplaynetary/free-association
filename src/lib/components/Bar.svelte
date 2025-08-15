@@ -3,22 +3,23 @@
 
 	// Helper function to calculate border radius for each segment
 	function getSegmentBorderRadius(index: any, total: number, isVertical = false, rounded = false) {
-		if (!rounded || total === 1) return rounded ? 'inherit' : '0';
+		// No rounding for individual segments
+		if (!rounded || total === 1) return '0';
 
 		if (isVertical) {
 			// Vertical layout: stack top to bottom
 			if (index === 0) {
-				return '999px 999px 0 0'; // Top rounded
+				return '0 0 0 0'; // No individual segment rounding
 			} else if (index === total - 1) {
-				return '0 0 999px 999px'; // Bottom rounded
+				return '0 0 0 0'; // No individual segment rounding
 			}
 			return '0';
 		} else {
 			// Horizontal layout: stack left to right
 			if (index === 0) {
-				return '999px 0 0 999px'; // Left side rounded
+				return '0 0 0 0'; // No individual segment rounding
 			} else if (index === total - 1) {
-				return '0 999px 999px 0'; // Right side rounded
+				return '0 0 0 0'; // No individual segment rounding
 			}
 			return '0';
 		}
@@ -316,6 +317,7 @@
 		width: 100%;
 		box-sizing: border-box;
 		position: relative; /* Enable absolute positioning for popup */
+		border-radius: 999px; /* Rounded ends for the entire bar */
 	}
 
 	.stacked-bar.vertical {

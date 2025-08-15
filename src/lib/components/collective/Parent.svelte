@@ -93,7 +93,12 @@
 		hierarchy.sort((a, b) => b.value! - a.value!);
 
 		// Apply treemap layout
-		const treemap = d3.treemap<VisualizationNode>().size([1, 1]).padding(0.005).round(false);
+		const treemap = d3
+			.treemap<VisualizationNode>()
+			.size([1, 1])
+			.paddingInner(0.003)
+			.paddingOuter(0.002)
+			.round(false);
 
 		return treemap(hierarchy);
 	});
