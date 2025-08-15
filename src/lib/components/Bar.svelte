@@ -66,6 +66,8 @@
 	// State for popup positioning
 	let popupPosition = $state<{ x: number; y: number; show: boolean }>({ x: 0, y: 0, show: false });
 	let barContainer: HTMLDivElement | undefined = $state();
+	// Timeout for auto-deselection
+	let autoDeselectTimeout: number | null = $state(null);
 
 	// Calculate total of all segment values
 	const totalValue = $derived(
@@ -125,33 +127,84 @@
 	}
 
 	function handleSegmentClick(segmentId: string, event?: MouseEvent) {
+		// Clear any existing timeout
+		clearAutoDeselectTimeout();
+
 		if (showLabelsOnSelect) {
-			selectedSegmentId = selectedSegmentId === segmentId ? null : segmentId;
+			if (selectedSegmentId === segmentId) {
+				selectedSegmentId = null;
+			} else {
+				selectedSegmentId = segmentId;
+				setAutoDeselectTimeout();
+			}
 		}
 
 		if (showLabelsAboveOnSelect && event) {
-			selectedSegmentId = selectedSegmentId === segmentId ? null : segmentId;
-			if (selectedSegmentId) {
-				updatePopupPosition(event);
-			} else {
+			if (selectedSegmentId === segmentId) {
+				selectedSegmentId = null;
 				popupPosition = { x: 0, y: 0, show: false };
+			} else {
+				selectedSegmentId = segmentId;
+				updatePopupPosition(event);
+				setAutoDeselectTimeout();
 			}
 		}
 	}
 
 	function handleSegmentTouch(segmentId: string, event: TouchEvent) {
-		if (showLabelsAboveOnSelect) {
-			selectedSegmentId = segmentId;
-			// Use the first touch point for positioning
-			const touch = event.touches[0];
-			if (touch) {
-				const syntheticEvent = {
-					clientX: touch.clientX,
-					clientY: touch.clientY,
-					target: event.target
-				} as MouseEvent;
-				updatePopupPosition(syntheticEvent);
+		// Prevent the mouse events from firing after touch
+		event.preventDefault();
+
+		// Clear any existing timeout
+		clearAutoDeselectTimeout();
+
+		if (showLabelsOnSelect) {
+			// If already selected, deselect, otherwise select and set timeout
+			if (selectedSegmentId === segmentId) {
+				selectedSegmentId = null;
+			} else {
+				selectedSegmentId = segmentId;
+				setAutoDeselectTimeout();
 			}
+		}
+
+		if (showLabelsAboveOnSelect) {
+			// If already selected, deselect, otherwise select and set timeout
+			if (selectedSegmentId === segmentId) {
+				selectedSegmentId = null;
+				popupPosition = { x: 0, y: 0, show: false };
+			} else {
+				selectedSegmentId = segmentId;
+				// Use changedTouches for touchend event
+				const touch = event.changedTouches[0];
+				if (touch) {
+					const syntheticEvent = {
+						clientX: touch.clientX,
+						clientY: touch.clientY,
+						target: event.target
+					} as MouseEvent;
+					updatePopupPosition(syntheticEvent);
+				}
+				setAutoDeselectTimeout();
+			}
+		}
+	}
+
+	// Set a timeout to automatically deselect after 3 seconds
+	function setAutoDeselectTimeout() {
+		clearAutoDeselectTimeout();
+		autoDeselectTimeout = window.setTimeout(() => {
+			selectedSegmentId = null;
+			popupPosition = { x: 0, y: 0, show: false };
+			autoDeselectTimeout = null;
+		}, 3000); // 3 seconds
+	}
+
+	// Clear the auto-deselect timeout
+	function clearAutoDeselectTimeout() {
+		if (autoDeselectTimeout !== null) {
+			window.clearTimeout(autoDeselectTimeout);
+			autoDeselectTimeout = null;
 		}
 	}
 
@@ -242,6 +295,13 @@
 		const cachedName = $userNamesOrAliasesCache[selectedSegmentId];
 		popupLabel = cachedName || selectedSegmentId.substring(0, 8) + '...';
 	});
+
+	// Clean up timeout when component is destroyed
+	$effect.root(() => {
+		return () => {
+			clearAutoDeselectTimeout();
+		};
+	});
 </script>
 
 <div
@@ -280,7 +340,7 @@
 				onclick={showLabelsOnSelect || showLabelsAboveOnSelect
 					? (event) => handleSegmentClick(segment.id, event)
 					: undefined}
-				ontouchstart={showLabelsOnSelect || showLabelsAboveOnSelect
+				ontouchend={showLabelsOnSelect || showLabelsAboveOnSelect
 					? (event) => handleSegmentTouch(segment.id, event)
 					: undefined}
 				{...showLabelsOnSelect || showLabelsAboveOnSelect ? { role: 'button', tabindex: 0 } : {}}
