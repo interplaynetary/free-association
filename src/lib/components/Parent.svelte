@@ -424,13 +424,20 @@
 			console.log('[UI FLOW] addNode successful');
 			globalState.showToast('New node created', 'success');
 
-			// Set node to edit mode
+			// Set node to edit mode directly
 			console.log('[UI FLOW] Setting node to edit mode:', newNodeId);
 			setTimeout(() => {
 				globalState.nodeToEdit = newNodeId;
-				console.log('[UI FLOW] Node edit mode set');
-				console.log('userTree Parent.275', $userTree);
-			}, 50);
+				console.log('[UI FLOW] Node edit mode set, nodeToEdit:', globalState.nodeToEdit);
+
+				// Clear it after a reasonable time to allow the Child component to process it
+				setTimeout(() => {
+					if (globalState.nodeToEdit === newNodeId) {
+						globalState.nodeToEdit = '';
+						console.log('[UI FLOW] Cleared nodeToEdit after processing');
+					}
+				}, 2000); // Give more time for processing
+			}, 100); // Slightly longer delay to ensure DOM is ready
 		} catch (err) {
 			console.error('[UI FLOW] Error in handleAddNode:', err);
 			globalState.showToast('Error creating node', 'error');

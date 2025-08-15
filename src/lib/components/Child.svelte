@@ -45,6 +45,13 @@
 		shouldEdit?: boolean;
 	}>();
 
+	// Debug logging for shouldEdit prop changes
+	$effect(() => {
+		if (shouldEdit) {
+			console.log('[DEBUG CHILD] shouldEdit became true for node:', node.name, 'id:', node.id);
+		}
+	});
+
 	// Editing state - now synced with global state
 	let isEditing = $state(false);
 	let editValue = $state('');
@@ -495,6 +502,14 @@
 
 	// Check if this node should enter edit mode (either from prop or from being newly created)
 	$effect(() => {
+		console.log('[DEBUG CHILD] Effect triggered for node:', node.name, {
+			shouldEdit,
+			isEditing,
+			nodeId: node.id,
+			globalNodeToEdit: globalState.nodeToEdit,
+			globalEditMode: globalState.editMode
+		});
+
 		if (shouldEdit && !isEditing && node.id) {
 			console.log('[DEBUG CHILD] Auto-edit requested for node:', node.name);
 
@@ -505,7 +520,10 @@
 				if (canEdit) {
 					console.log('[DEBUG CHILD] Auto-entering edit mode for new node:', node.name);
 				} else {
-					console.log('[DEBUG CHILD] Auto-edit failed for node:', node.name);
+					console.log('[DEBUG CHILD] Auto-edit failed for node:', node.name, {
+						editMode: globalState.editMode,
+						editingNodeId: globalState.editingNodeId
+					});
 				}
 			}, 50);
 		}
