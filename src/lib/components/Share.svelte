@@ -403,9 +403,6 @@
 			{/if}
 		</div>
 		<div class="flex items-center gap-2">
-			{#if $unreadCount > 0}
-				<span class="unread-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
-			{/if}
 			<!-- Chat button -->
 			<button
 				type="button"

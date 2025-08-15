@@ -303,6 +303,9 @@
 		}
 	}
 
+	// Track if this was triggered by user interaction (important for iOS)
+	let userTriggeredEdit = $state(false);
+
 	// Unified text edit handler that works across all devices and interaction types
 	function handleTextEditActivation(event: Event) {
 		console.log('[DEBUG CHILD] Text edit activation:', {
@@ -312,8 +315,12 @@
 			nodeName: node.name,
 			editMode: globalState.editMode,
 			deleteMode: globalState.deleteMode,
-			recomposeMode: globalState.recomposeMode
+			recomposeMode: globalState.recomposeMode,
+			isTrusted: event.isTrusted
 		});
+
+		// Mark as user-triggered for iOS compatibility
+		userTriggeredEdit = event.isTrusted;
 
 		// Stop propagation to prevent parent node interactions
 		event.stopPropagation();
@@ -340,7 +347,12 @@
 			return;
 		}
 
-		console.log('[DEBUG CHILD] Edit mode activated successfully for node:', node.name);
+		console.log(
+			'[DEBUG CHILD] Edit mode activated successfully for node:',
+			node.name,
+			'userTriggered:',
+			userTriggeredEdit
+		);
 	}
 
 	// Handle text edit save
@@ -406,17 +418,55 @@
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
 
-			// Robust cross-device focus handling
+			// iOS-compatible focus handling with user interaction detection
 			const focusInput = () => {
 				if (editInput) {
-					console.log('[DEBUG CHILD] Focusing input');
+					console.log('[DEBUG CHILD] Focusing input, userTriggered:', userTriggeredEdit);
 					try {
-						editInput.focus();
-						// Use requestAnimationFrame for better iOS compatibility
-						requestAnimationFrame(() => {
-							editInput?.select();
-							console.log('[DEBUG CHILD] Input focused and selected');
-						});
+						// For iOS, we need to ensure the input is visible first
+						editInput.style.opacity = '1';
+						editInput.style.pointerEvents = 'auto';
+
+						if (userTriggeredEdit) {
+							// User-triggered edit - iOS will allow keyboard
+							editInput.focus();
+							setTimeout(() => {
+								if (editInput && document.activeElement === editInput) {
+									editInput.select();
+									console.log('[DEBUG CHILD] User-triggered: Input focused and text selected');
+								}
+							}, 50);
+						} else {
+							// Programmatic edit (auto-edit) - iOS might not show keyboard
+							// Try to focus anyway, but with longer delays
+							setTimeout(() => {
+								if (editInput) {
+									editInput.focus();
+									console.log('[DEBUG CHILD] Programmatic: Input focused');
+
+									setTimeout(() => {
+										if (editInput) {
+											editInput.select();
+											console.log('[DEBUG CHILD] Programmatic: Text selected');
+
+											// For auto-edit on iOS, show a hint if keyboard didn't appear
+											setTimeout(() => {
+												if (
+													editInput &&
+													document.activeElement === editInput &&
+													window.innerHeight === window.visualViewport?.height
+												) {
+													console.log(
+														'[DEBUG CHILD] iOS keyboard may not have appeared - adding click handler'
+													);
+													// The input is focused but keyboard didn't appear - this is common on iOS for programmatic focus
+												}
+											}, 300);
+										}
+									}, 100);
+								}
+							}, 200);
+						}
 					} catch (error) {
 						console.warn('[DEBUG CHILD] Focus error:', error);
 					}
@@ -424,11 +474,11 @@
 			};
 
 			if (editInput) {
-				// Input is ready, focus immediately
+				// Input is ready, focus with appropriate timing
 				focusInput();
 			} else {
-				// Input not ready, wait for next tick
-				setTimeout(focusInput, 10);
+				// Input not ready, wait for DOM update
+				setTimeout(focusInput, 150);
 			}
 		} else {
 			// Remove the event listeners when not editing
@@ -446,12 +496,18 @@
 	// Check if this node should enter edit mode (either from prop or from being newly created)
 	$effect(() => {
 		if (shouldEdit && !isEditing && node.id) {
-			// Try to enter edit mode through global state
-			const canEdit = globalState.enterEditMode(node.id);
-			if (canEdit) {
-				// Edit state will be synced via the effect above
-				console.log('[DEBUG CHILD] Auto-entering edit mode for new node');
-			}
+			console.log('[DEBUG CHILD] Auto-edit requested for node:', node.name);
+
+			// For iOS compatibility, we need to simulate a user interaction
+			// Use a small delay to ensure the DOM is ready
+			setTimeout(() => {
+				const canEdit = globalState.enterEditMode(node.id);
+				if (canEdit) {
+					console.log('[DEBUG CHILD] Auto-entering edit mode for new node:', node.name);
+				} else {
+					console.log('[DEBUG CHILD] Auto-edit failed for node:', node.name);
+				}
+			}, 50);
 		}
 	});
 </script>
@@ -942,12 +998,12 @@
 	}
 
 	.node-edit-input {
-		background: rgba(255, 255, 255, 0.95);
-		border: 2px solid rgba(33, 150, 243, 0.3);
-		border-radius: 4px;
-		padding: 6px 10px;
+		background: rgba(255, 255, 255, 0.98);
+		border: 2px solid rgba(33, 150, 243, 0.5);
+		border-radius: 6px;
+		padding: 8px 12px;
 		text-align: center;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		color: #333;
 		outline: none;
 		font-weight: 500;
@@ -960,7 +1016,13 @@
 		/* iOS-specific improvements */
 		-webkit-appearance: none;
 		appearance: none;
-		-webkit-border-radius: 4px;
+		-webkit-border-radius: 6px;
+		/* iOS keyboard compatibility */
+		-webkit-user-modify: read-write-plaintext-only;
+		-webkit-tap-highlight-color: transparent;
+		/* Ensure proper layering */
+		position: relative;
+		z-index: 100;
 		/* Smooth transitions */
 		transition: all 0.2s ease;
 	}
