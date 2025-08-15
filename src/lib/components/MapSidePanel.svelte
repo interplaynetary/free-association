@@ -431,7 +431,7 @@
 		<!-- Time Filter Controls -->
 		<div class="content-section time-filter-compact">
 			<div class="time-filter-header">
-				<span class="time-filter-label">⏰ Availability:</span>
+				<span class="time-filter-label">⏰</span>
 				<select
 					class="time-filter-select"
 					bind:value={globalState.timeFilterBy}
@@ -864,8 +864,10 @@
 		flex: 0 0 auto; /* Don't grow/shrink, take only needed space */
 		overflow: visible; /* No scrolling needed for just time filter */
 		margin-bottom: 0; /* Remove bottom margin to connect with next panel */
-		padding: 8px 12px; /* Much smaller padding */
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Lighter shadow */
+		padding: 0; /* Remove padding */
+		background: transparent; /* Remove white background */
+		box-shadow: none; /* Remove shadow */
+		border: none; /* Remove border */
 		pointer-events: auto; /* Allow interaction with time filter controls */
 	}
 
@@ -903,17 +905,15 @@
 	/* Time filter styling - now uses panel-section-header */
 
 	.time-filter-header {
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		margin-bottom: 4px; /* Reduced margin */
+		gap: 4px;
+		margin-bottom: 8px;
 	}
 
 	.time-filter-label {
-		font-size: 11px; /* Smaller font */
-		font-weight: 500;
-		color: #6b7280; /* Lighter color */
-		white-space: nowrap;
+		font-size: 14px;
+		line-height: 1;
 	}
 
 	.time-filter-select {
