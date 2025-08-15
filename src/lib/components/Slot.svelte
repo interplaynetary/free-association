@@ -70,17 +70,62 @@
 			// Helper function to format slot display info
 			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
 				const timeParts = [];
+
+				// Handle start_date - this could be a string date or an ISO string
 				if (slotData.start_date) {
-					timeParts.push(new Date(slotData.start_date).toLocaleDateString());
+					try {
+						const date = new Date(slotData.start_date);
+						timeParts.push(date.toLocaleDateString());
+					} catch (e) {
+						// If parsing fails, use the raw string
+						timeParts.push(String(slotData.start_date));
+					}
 				}
+
+				// Handle start_time if not all day
 				if (!slotData.all_day && slotData.start_time) {
-					timeParts.push(slotData.start_time);
+					// Handle different time formats
+					if (typeof slotData.start_time === 'string') {
+						if (slotData.start_time.includes('T')) {
+							// Handle ISO format dates
+							try {
+								const date = new Date(slotData.start_time);
+								timeParts.push(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+							} catch (e) {
+								// If parsing fails, use the raw string but truncated
+								const timeStr = slotData.start_time;
+								timeParts.push(timeStr.split('T')[1]?.substring(0, 5) || timeStr);
+							}
+						} else if (/^\d{2}:\d{2}(:\d{2})?$/.test(slotData.start_time)) {
+							// Already in HH:MM or HH:MM:SS format
+							timeParts.push(slotData.start_time.substring(0, 5)); // Take just HH:MM
+						} else {
+							// Unknown format, use as is
+							timeParts.push(slotData.start_time);
+						}
+					}
 				}
+
+				// Handle all_day flag
 				if (slotData.all_day) {
 					timeParts.push('All day');
 				}
-				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
 
+				// Join time parts and clean up any duplicate information
+				let timeInfo = timeParts.join(' ');
+
+				// If we see the full ISO string in the output, remove it
+				if (
+					slotData.start_date &&
+					typeof slotData.start_date === 'string' &&
+					slotData.start_date.includes('T')
+				) {
+					timeInfo = timeInfo.replace(slotData.start_date, '').trim();
+				}
+
+				timeInfo = timeInfo || 'No time set';
+
+				// Location handling
 				let location = 'No location';
 				if (slotData.location_type === 'Specific') {
 					if (slotData.street_address) {
@@ -91,6 +136,7 @@
 				} else if (slotData.location_type) {
 					location = slotData.location_type;
 				}
+
 				return { timeInfo, location };
 			}
 
@@ -202,17 +248,62 @@
 			// Helper function to format slot display info
 			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
 				const timeParts = [];
+
+				// Handle start_date - this could be a string date or an ISO string
 				if (slotData.start_date) {
-					timeParts.push(new Date(slotData.start_date).toLocaleDateString());
+					try {
+						const date = new Date(slotData.start_date);
+						timeParts.push(date.toLocaleDateString());
+					} catch (e) {
+						// If parsing fails, use the raw string
+						timeParts.push(String(slotData.start_date));
+					}
 				}
+
+				// Handle start_time if not all day
 				if (!slotData.all_day && slotData.start_time) {
-					timeParts.push(slotData.start_time);
+					// Handle different time formats
+					if (typeof slotData.start_time === 'string') {
+						if (slotData.start_time.includes('T')) {
+							// Handle ISO format dates
+							try {
+								const date = new Date(slotData.start_time);
+								timeParts.push(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+							} catch (e) {
+								// If parsing fails, use the raw string but truncated
+								const timeStr = slotData.start_time;
+								timeParts.push(timeStr.split('T')[1]?.substring(0, 5) || timeStr);
+							}
+						} else if (/^\d{2}:\d{2}(:\d{2})?$/.test(slotData.start_time)) {
+							// Already in HH:MM or HH:MM:SS format
+							timeParts.push(slotData.start_time.substring(0, 5)); // Take just HH:MM
+						} else {
+							// Unknown format, use as is
+							timeParts.push(slotData.start_time);
+						}
+					}
 				}
+
+				// Handle all_day flag
 				if (slotData.all_day) {
 					timeParts.push('All day');
 				}
-				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
 
+				// Join time parts and clean up any duplicate information
+				let timeInfo = timeParts.join(' ');
+
+				// If we see the full ISO string in the output, remove it
+				if (
+					slotData.start_date &&
+					typeof slotData.start_date === 'string' &&
+					slotData.start_date.includes('T')
+				) {
+					timeInfo = timeInfo.replace(slotData.start_date, '').trim();
+				}
+
+				timeInfo = timeInfo || 'No time set';
+
+				// Location handling
 				let location = 'No location';
 				if (slotData.location_type === 'Specific') {
 					if (slotData.street_address) {
@@ -223,6 +314,7 @@
 				} else if (slotData.location_type) {
 					location = slotData.location_type;
 				}
+
 				return { timeInfo, location };
 			}
 

@@ -82,16 +82,56 @@
 	function formatSlotInfo(slot: any): string {
 		if (!slot) return 'Slot not found';
 		const parts = [];
+
+		// Handle start_date - this could be a string date or an ISO string
 		if (slot.start_date) {
-			parts.push(new Date(slot.start_date).toLocaleDateString());
+			try {
+				const date = new Date(slot.start_date);
+				parts.push(date.toLocaleDateString());
+			} catch (e) {
+				// If parsing fails, use the raw string
+				parts.push(String(slot.start_date));
+			}
 		}
+
+		// Handle start_time if not all day
 		if (!slot.all_day && slot.start_time) {
-			parts.push(slot.start_time);
+			// Handle different time formats
+			if (typeof slot.start_time === 'string') {
+				if (slot.start_time.includes('T')) {
+					// Handle ISO format dates
+					try {
+						const date = new Date(slot.start_time);
+						parts.push(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+					} catch (e) {
+						// If parsing fails, use the raw string but truncated
+						const timeStr = slot.start_time;
+						parts.push(timeStr.split('T')[1]?.substring(0, 5) || timeStr);
+					}
+				} else if (/^\d{2}:\d{2}(:\d{2})?$/.test(slot.start_time)) {
+					// Already in HH:MM or HH:MM:SS format
+					parts.push(slot.start_time.substring(0, 5)); // Take just HH:MM
+				} else {
+					// Unknown format, use as is
+					parts.push(slot.start_time);
+				}
+			}
 		}
+
+		// Handle all_day flag
 		if (slot.all_day) {
 			parts.push('All day');
 		}
-		return parts.length > 0 ? parts.join(' ') : 'No time set';
+
+		// Clean up any duplicate information
+		// If we see the full ISO string in the output, remove it
+		const result = parts.join(' ');
+		if (slot.start_date && typeof slot.start_date === 'string' && slot.start_date.includes('T')) {
+			// If the raw ISO string appears in the result, remove it
+			return result.replace(slot.start_date, '').trim();
+		}
+
+		return result || 'No time set';
 	}
 
 	// Determine provider ID
