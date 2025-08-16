@@ -164,6 +164,22 @@
 	// Legacy compatibility
 	const buttonSizePercent = $derived(buttonHeightPercent);
 
+	// Calculate font size for percentage indicator to fit neatly in its 25% container
+	const percentageIndicatorFontSize = $derived(() => {
+		// The indicator gets 25% of the slider container width
+		// Use a simple scaling approach based on the slider height for proportional sizing
+		const baseSize = sliderHeight * 0.6; // Scale with slider height for proportional look
+
+		// Also consider the width constraint - scale down if the container is very narrow
+		const widthConstraint = sliderWidth * 0.25 * 2; // 25% width * 2 for reasonable scaling
+
+		// Take the smaller of the two constraints
+		const scaledSize = Math.min(baseSize, widthConstraint);
+
+		// Convert to rem with reasonable bounds
+		return Math.max(0.35, Math.min(0.8, scaledSize));
+	});
+
 	// Check if node has contributors or anti-contributors for styling
 	const hasContributors = $derived(node.contributors.length > 0);
 	const hasAntiContributors = $derived((node.antiContributors || []).length > 0);
@@ -745,18 +761,19 @@
 						});
 					}}
 					class="fulfillment-slider"
-					style="flex: 3;"
+					style="width: 75%;"
 				/>
 				<div
 					class="slider-value"
 					style="
-						font-size: {Math.max(8, Math.min(14, textSizeRatio * 16 * 0.7))}px;
+						font-size: {percentageIndicatorFontSize()}rem;
 						white-space: nowrap;
-						flex: 1;
+						width: 25%;
 						text-align: center;
 						display: flex;
 						align-items: center;
 						justify-content: center;
+						overflow: hidden;
 					"
 				>
 					{currentSliderValue}%
