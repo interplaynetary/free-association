@@ -51,6 +51,74 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
+		element: '.treemap-container .clickable:first-child',
+		popover: {
+			title: 'Your First Node',
+			description:
+				'This is a node in your recognition tree. You can click on the text to edit its name.',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.treemap-container .clickable:first-child .node-title',
+		popover: {
+			title: 'Edit Node Name',
+			description:
+				'Click on this text to rename the node. Give it a meaningful name that represents what this contribution is about.',
+			side: 'bottom' as Side,
+			align: 'center',
+			onNextClick: () => {
+				// Wait for user to potentially interact with the text
+				setTimeout(() => {
+					driverObj.moveNext();
+				}, 1000);
+			}
+		}
+	},
+	{
+		element: '.treemap-container .clickable:first-child .add-contributor-button',
+		popover: {
+			title: 'Add a Contributor',
+			description:
+				'Try clicking this + button to add someone who contributes to this node. This turns it into a contribution that recognizes specific people.',
+			side: 'left' as Side,
+			align: 'center',
+			onNextClick: () => {
+				// Wait for user to potentially interact with the contributor button
+				setTimeout(() => {
+					driverObj.moveNext();
+				}, 1000);
+			}
+		}
+	},
+	{
+		element: '.treemap-container .clickable:first-child .manual-fulfillment-slider',
+		popover: {
+			title: 'Set Fulfillment Level',
+			description:
+				'If you see a slider like this, you can drag it to set how fulfilled you feel by this contribution. This affects how much you value it.',
+			side: 'top' as Side,
+			align: 'center',
+			onNextClick: () => {
+				// Wait for user to potentially interact with the slider
+				setTimeout(() => {
+					driverObj.moveNext();
+				}, 1000);
+			}
+		}
+	},
+	{
+		element: '.treemap-container .clickable:first-child',
+		popover: {
+			title: 'Navigate Deeper',
+			description:
+				'You can click on any node (not on buttons/sliders) to zoom into it and create sub-nodes. This lets you break down contributions into smaller parts.',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
 		popover: {
 			title: 'Mutual Recognition',
 			description:
@@ -102,6 +170,26 @@ const homeTourSteps: DriveStep[] = [
 			title: 'Navigate & Search',
 			description:
 				'Find anyone in your growing tree of recognition. As networks grow, navigation helps you stay connected.',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.delete-button',
+		popover: {
+			title: 'Delete Mode',
+			description:
+				'Click this to enter delete mode. Then click on any node to delete it and all its children. Be careful!',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.recompose-button',
+		popover: {
+			title: 'Recompose Mode',
+			description:
+				'This mode lets you drag nodes around to reorganize your tree. Click to enable, then drag nodes to move them.',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
@@ -280,8 +368,19 @@ function getCurrentPage(): string {
 }
 
 // Helper function to check if element exists
-function elementExists(selector: string): boolean {
-	return document.querySelector(selector) !== null;
+function elementExists(selector: string | Element | (() => Element)): boolean {
+	if (typeof selector === 'string') {
+		return document.querySelector(selector) !== null;
+	} else if (typeof selector === 'function') {
+		try {
+			const element = selector();
+			return element !== null;
+		} catch {
+			return false;
+		}
+	} else {
+		return selector !== null;
+	}
 }
 
 // Main tour function that detects page and starts appropriate tour
