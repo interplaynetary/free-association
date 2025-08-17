@@ -143,6 +143,8 @@
 	let showPassword = $state(false);
 	let showConfirmPassword = $state(false); // For registration confirm password
 	let agreedToTerms = $state(false); // Added for terms agreement
+	let loginPanelTimer = $state<NodeJS.Timeout | null>(null); // Timer for auto-closing login panel
+	let isPanelClosing = $state(false); // State for smooth fade-out transition
 
 	// Notification state
 	let showNotificationPanel = $state(false);
@@ -236,12 +238,14 @@
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
+				startLoginPanelTimer();
 			}, 100);
 		}
 
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('touchstart', handleClickOutside);
+			clearLoginPanelTimer();
 		};
 	});
 
@@ -250,6 +254,10 @@
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
 			resetForm();
+			clearLoginPanelTimer();
+			isPanelClosing = false;
+		} else {
+			startLoginPanelTimer();
 		}
 	}
 
@@ -284,6 +292,33 @@
 		// Also reset password change form when login panel closes
 		showPasswordChange = false;
 		resetPasswordChangeForm();
+	}
+
+	// Start timer to auto-close login panel
+	function startLoginPanelTimer() {
+		clearLoginPanelTimer();
+		loginPanelTimer = setTimeout(() => {
+			if (showLoginPanel && !isLoading) {
+				// Start fade-out transition
+				isPanelClosing = true;
+				// Wait for transition to complete before hiding
+				setTimeout(() => {
+					showLoginPanel = false;
+					isPanelClosing = false;
+					resetForm();
+				}, 300); // Match the CSS transition duration
+			}
+		}, 10000); // 10 seconds (10,000 ms)
+	}
+
+	// Clear the login panel timer
+	function clearLoginPanelTimer() {
+		if (loginPanelTimer) {
+			clearTimeout(loginPanelTimer);
+			loginPanelTimer = null;
+		}
+		// Reset closing state if timer is cleared
+		isPanelClosing = false;
 	}
 
 	// recompose handler
@@ -352,6 +387,12 @@
 		// and we're on the soul route, toggle the login panel instead of navigating
 		if (index === 0 && currentPathInfo.length === 1 && isSoulRoute) {
 			showLoginPanel = !showLoginPanel;
+			if (showLoginPanel) {
+				startLoginPanelTimer();
+			} else {
+				clearLoginPanelTimer();
+				isPanelClosing = false;
+			}
 			return;
 		}
 
@@ -368,6 +409,7 @@
 	function handleLoginClick(event: MouseEvent) {
 		event.preventDefault();
 		showLoginPanel = true;
+		startLoginPanelTimer();
 	}
 
 	// Toggle password visibility
@@ -470,6 +512,8 @@
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
 			resetForm();
+			clearLoginPanelTimer();
+			isPanelClosing = false;
 			// globalState.showToast('Signed in successfully', 'success');
 		} catch (error) {
 			console.error('Authentication error:', error);
@@ -484,6 +528,8 @@
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
 			resetForm();
+			clearLoginPanelTimer();
+			isPanelClosing = false;
 			globalState.showToast('Account created successfully!', 'success');
 		} catch (error) {
 			console.error('Registration error:', error);
@@ -496,6 +542,8 @@
 		try {
 			await signout();
 			globalState.resetState();
+			clearLoginPanelTimer();
+			isPanelClosing = false;
 			globalState.showToast('Signed out successfully', 'info');
 			goto(base + '/');
 		} catch (error) {
@@ -705,6 +753,14 @@
 		handleSearchInput();
 	});
 
+	// Reset timer when user interacts with login panel
+	$effect(() => {
+		if (showLoginPanel && (usernameInput || password || confirmPassword || isLoading)) {
+			// Reset timer when user is actively interacting with the form
+			startLoginPanelTimer();
+		}
+	});
+
 	// Toggle password change form
 	function togglePasswordChange() {
 		showPasswordChange = !showPasswordChange;
@@ -885,7 +941,7 @@
 
 	<!-- Login panel (dropdown) -->
 	{#if showLoginPanel}
-		<div class="login-panel" bind:this={loginPanelRef}>
+		<div class="login-panel" class:closing={isPanelClosing} bind:this={loginPanelRef}>
 			{#if isAuthenticatingState}
 				<div class="loading-state">
 					<div class="spinner"></div>
@@ -1277,6 +1333,14 @@
 		padding: 16px;
 		z-index: 10;
 		animation: dropDown 0.2s ease-out;
+		transition:
+			opacity 0.3s ease-out,
+			transform 0.3s ease-out;
+	}
+
+	.login-panel.closing {
+		opacity: 0;
+		transform: translateY(-10px);
 	}
 
 	.notification-panel {
@@ -2138,6 +2202,4 @@
 		font-size: 0.85em;
 		line-height: 1.4;
 	}
-
-
 </style>

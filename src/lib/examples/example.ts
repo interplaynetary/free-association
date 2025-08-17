@@ -11,6 +11,7 @@ export function populateWithExampleData(rootNode: RootNode): RootNode {
 	addChild(rootNode, 'art', '🎨', 13);
 	addChild(rootNode, 'love', '💖', 8);
 	addChild(rootNode, 'money', '💸', 5);
+	addChild(rootNode, 'playnet', 'playnet 🪼', 8);
 
 	console.log("Populated root node with Maslow's hierarchy of needs:", rootNode);
 	return rootNode;

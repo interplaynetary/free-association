@@ -164,18 +164,18 @@
 	// Legacy compatibility
 	const buttonSizePercent = $derived(buttonHeightPercent);
 
-		// Calculate font size for percentage indicator to fit neatly in its 10% container
+	// Calculate font size for percentage indicator to fit neatly in its 10% container
 	const percentageIndicatorFontSize = $derived(() => {
 		// The indicator gets 10% of the slider container width
 		// Use a simple scaling approach based on the slider height for proportional sizing
 		const baseSize = sliderHeight * 0.5; // Scale with slider height for proportional look
-		
+
 		// Also consider the width constraint - scale down if the container is very narrow
 		const widthConstraint = sliderWidth * 0.1 * 3; // 10% width * 3 for reasonable scaling
-		
+
 		// Take the smaller of the two constraints
 		const scaledSize = Math.min(baseSize, widthConstraint);
-		
+
 		// Convert to rem with reasonable bounds - smaller due to narrower container
 		return Math.max(0.3, Math.min(0.7, scaledSize));
 	});

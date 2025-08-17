@@ -6,15 +6,17 @@ Max divisibility is off, it should aim to distribute the amount across all, to t
 
 Add chat button to map interface
 
+PWA not working for ipad
+
 ✅ Move Map up to top
 
 ✅ Allow Map full screen
 
-Move fullscreen to bottom with location, and make layers expandable buttons. looks like noral button expand to display 3 other buttons
+✅Move fullscreen to bottom with location, and make layers expandable buttons. looks like noral button expand to display 3 other buttons
 
-Editing node names is inconsistent on Apple devices
+✅Editing node names is inconsistent on Apple devices
 
-Add Search/Filter to Map
+✅Add Search/Filter to Map
 
 Search button pop up goes off screen on mobile
 
