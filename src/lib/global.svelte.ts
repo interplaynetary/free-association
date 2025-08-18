@@ -55,8 +55,7 @@ export const globalState = $state({
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
 
-	// Map state
-	isMapFullscreen: false,
+	// Map state (fullscreen now handled by FullScreenControl)
 
 	// Map search state
 	searchQuery: '',
@@ -438,17 +437,12 @@ export const globalState = $state({
 		globalState.searchSortBy = sortBy;
 	},
 
-	/**
-	 * Map Fullscreen State Management
-	 */
-
-	// Toggle map fullscreen mode
-	toggleMapFullscreen: () => {
-		globalState.isMapFullscreen = !globalState.isMapFullscreen;
-	},
-
-	// Set map fullscreen mode
-	setMapFullscreen: (isFullscreen: boolean) => {
-		globalState.isMapFullscreen = isFullscreen;
+	// Toggle time filter details
+	toggleTimeFilterDetails: () => {
+		globalState.showTimeFilterDetails = !globalState.showTimeFilterDetails;
 	}
+
+	/**
+	 * Map fullscreen is now handled by FullScreenControl component
+	 */
 });

@@ -14,7 +14,8 @@
 		Terrain,
 		Light,
 		Sky,
-		Projection
+		Projection,
+		FullScreenControl
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
@@ -52,9 +53,13 @@
 	let pitch = $state(0);
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(true);
-	// Use global fullscreen state instead of local state
-	let isMaximized = $derived(globalState.isMapFullscreen);
+	// Fullscreen is now handled by FullScreenControl component
 	let isControlsExpanded = $state(false);
+
+	// Clustering controls
+	let enableClustering = $state(true);
+	let clusterMaxZoom = $state(16); // Increased to enable clustering at closer zoom levels
+	let clusterRadius = $state(50);
 
 	// Grouped slot marker data structure - one marker per unique (capacity, location) combination
 	export interface GroupedSlotMarkerData {
@@ -69,8 +74,19 @@
 		locationKey: string; // unique identifier for this location
 	}
 
+	// Cluster marker data structure for grouped capacities
+	export interface ClusterMarkerData {
+		id: string;
+		lnglat: { lat: number; lng: number };
+		markers: GroupedSlotMarkerData[]; // grouped markers in this cluster
+		totalSlots: number;
+		totalCapacities: number;
+		clusterLevel: number; // zoom level where this cluster appears
+	}
+
 	// Grouped slot markers state (from shared capacities only)
 	let shareSlotMarkers = $state<GroupedSlotMarkerData[]>([]);
+	// Clustered markers for display (now derived to prevent circular dependencies)
 	let isLoadingGeocode = $state(false);
 
 	// Filtered markers - we'll implement time filtering as a future enhancement
@@ -78,7 +94,10 @@
 	// TODO: Add time filtering back once the basic display is working
 
 	// Selected marker state for side panel
-	let selectedMarker = $state<GroupedSlotMarkerData | null>(null);
+	let selectedMarker = $state<GroupedSlotMarkerData | ClusterMarkerData | null>(null);
+	// Cluster view state - separate from search
+	let isClusterViewMode = $state(false);
+	let clusterViewResults = $state<GroupedSlotMarkerData[]>([]);
 
 	// All search state is now managed globally
 
@@ -97,13 +116,29 @@
 	});
 
 	// Handle marker click
-	function handleMarkerClick(markerData: GroupedSlotMarkerData) {
-		selectedMarker = markerData;
+	function handleMarkerClick(markerData: GroupedSlotMarkerData | ClusterMarkerData) {
+		console.log('[Map] Marker clicked:', markerData.id, 'isCluster:', isClusterMarker(markerData));
+
+		if (isClusterMarker(markerData)) {
+			// For cluster clicks, show cluster contents in separate cluster view
+			console.log('[Map] Setting cluster view mode, markers:', markerData.markers.length);
+			selectedMarker = markerData;
+			isClusterViewMode = true;
+			clusterViewResults = markerData.markers;
+		} else {
+			// For individual markers, show in side panel
+			console.log('[Map] Setting individual marker view');
+			selectedMarker = markerData;
+			isClusterViewMode = false;
+			clusterViewResults = [];
+		}
 	}
 
 	// Handle side panel close
 	function handleSidePanelClose() {
 		selectedMarker = null;
+		isClusterViewMode = false;
+		clusterViewResults = [];
 		// If we were in search mode, clear search
 		if (globalState.isSearchMode) {
 			globalState.clearSearch();
@@ -129,8 +164,8 @@
 
 		console.log('[Map Search] Search mode activated, total markers:', shareSlotMarkers.length);
 
-		// Filter markers based on search query and time filters
-		const filtered = shareSlotMarkers.filter((marker) => {
+		// Filter markers based on search query (time filter already applied to filteredMarkers)
+		const filtered = filteredMarkers.filter((marker) => {
 			// Text search filter
 			let matchesText = true;
 			if (query.trim()) {
@@ -146,10 +181,8 @@
 				matchesText = matchesName || matchesDescription || matchesUnit || matchesProvider;
 			}
 
-			// Time filter
-			const matchesTime = passesTimeFilter(marker);
-
-			return matchesText && matchesTime;
+			// Time filter is already applied at the filteredMarkers level
+			return matchesText;
 		});
 
 		// Sort results based on selected sort method
@@ -349,6 +382,49 @@
 
 	function handleSearchResultClick(marker: GroupedSlotMarkerData) {
 		selectedMarker = marker;
+		// Clear cluster view mode when selecting individual marker
+		isClusterViewMode = false;
+		clusterViewResults = [];
+		// If this was from regular search, clear search mode
+		if (globalState.isSearchMode && !globalState.searchQuery.startsWith('Cluster of')) {
+			globalState.clearSearch();
+		}
+		// Optionally pan map to the selected marker
+		if (map) {
+			map.flyTo({
+				center: [marker.lnglat.lng, marker.lnglat.lat],
+				zoom: 14,
+				duration: 1000
+			});
+		}
+	}
+
+	// Handle cluster result click (separate from search results)
+	function handleClusterResultClick(marker: GroupedSlotMarkerData) {
+		console.log('[Cluster] Clicking capacity from cluster:', marker.capacity.name);
+		console.log(
+			'[Cluster] Before - selectedMarker:',
+			selectedMarker?.id,
+			'isClusterViewMode:',
+			isClusterViewMode
+		);
+
+		selectedMarker = marker;
+		// Clear cluster view mode to show individual capacity details
+		isClusterViewMode = false;
+		clusterViewResults = [];
+
+		console.log(
+			'[Cluster] After - selectedMarker:',
+			selectedMarker?.id,
+			'isClusterViewMode:',
+			isClusterViewMode
+		);
+
+		// Make sure we're not in search mode
+		if (globalState.isSearchMode) {
+			globalState.clearSearch();
+		}
 		// Optionally pan map to the selected marker
 		if (map) {
 			map.flyTo({
@@ -395,7 +471,7 @@
 	}
 
 	// Debug selected marker changes (better pattern)
-	$inspect('Selected marker:', selectedMarker?.id);
+	// $inspect('Selected marker:', selectedMarker?.id);
 
 	// Helper function to normalize coordinates for grouping
 	// This ensures coordinates from different sources (geocoded vs direct) are grouped together
@@ -408,6 +484,136 @@
 			lng: Math.round(lng * precision) / precision
 		};
 	}
+
+	// Clustering logic for multi-scale marker grouping
+	function createClusters(
+		markers: GroupedSlotMarkerData[],
+		zoom: number
+	): (GroupedSlotMarkerData | ClusterMarkerData)[] {
+		if (!enableClustering || zoom > clusterMaxZoom || markers.length === 0) {
+			return markers;
+		}
+
+		// Calculate clustering distance based on zoom level and cluster radius
+		const clusterDistance = clusterRadius / Math.pow(2, zoom - 1);
+		const clusters: Map<string, GroupedSlotMarkerData[]> = new Map();
+
+		// Group markers by proximity
+		markers.forEach((marker) => {
+			const clusterKey = `${Math.round(marker.lnglat.lat / clusterDistance)}_${Math.round(marker.lnglat.lng / clusterDistance)}`;
+
+			if (!clusters.has(clusterKey)) {
+				clusters.set(clusterKey, []);
+			}
+			clusters.get(clusterKey)!.push(marker);
+		});
+
+		const result: (GroupedSlotMarkerData | ClusterMarkerData)[] = [];
+
+		clusters.forEach((clusterMarkers, clusterKey) => {
+			if (clusterMarkers.length === 1) {
+				// Single marker - no clustering needed
+				result.push(clusterMarkers[0]);
+			} else {
+				// Create cluster marker
+				const centerLat =
+					clusterMarkers.reduce((sum, m) => sum + m.lnglat.lat, 0) / clusterMarkers.length;
+				const centerLng =
+					clusterMarkers.reduce((sum, m) => sum + m.lnglat.lng, 0) / clusterMarkers.length;
+				const totalSlots = clusterMarkers.reduce((sum, m) => sum + m.slots.length, 0);
+				const totalCapacities = clusterMarkers.length;
+
+				const clusterMarker: ClusterMarkerData = {
+					id: `cluster_${clusterKey}`,
+					lnglat: { lat: centerLat, lng: centerLng },
+					markers: clusterMarkers,
+					totalSlots,
+					totalCapacities,
+					clusterLevel: Math.floor(zoom)
+				};
+
+				result.push(clusterMarker);
+			}
+		});
+
+		return result;
+	}
+
+	// Helper to check if marker is a cluster
+	function isClusterMarker(
+		marker: GroupedSlotMarkerData | ClusterMarkerData
+	): marker is ClusterMarkerData {
+		return 'markers' in marker && 'totalCapacities' in marker;
+	}
+
+	// Get unique emojis from cluster markers
+	function getUniqueEmojis(clusterMarkers: GroupedSlotMarkerData[]): string[] {
+		const emojiSet = new Set<string>();
+		clusterMarkers.forEach((marker) => {
+			const emoji = marker.capacity.emoji || '📦'; // Default emoji if none
+			emojiSet.add(emoji);
+		});
+		return Array.from(emojiSet);
+	}
+
+	// Track zoom level separately to avoid circular dependencies
+	let currentZoom = $state(3);
+
+	// Filter markers based on time filter (not search query)
+	const filteredMarkers = $derived.by(() => {
+		if (globalState.timeFilterBy === 'any') {
+			return shareSlotMarkers;
+		}
+
+		// Apply time filter to all markers
+		const filtered = shareSlotMarkers.filter((marker) => {
+			return passesTimeFilter(marker);
+		});
+
+		console.log(
+			`[Time Filter] Filtered ${shareSlotMarkers.length} markers to ${filtered.length} using filter: ${globalState.timeFilterBy}`
+		);
+
+		return filtered;
+	});
+
+	// Use derived instead of effect to prevent circular dependencies
+	const clusteredMarkers = $derived.by(() => {
+		const result = filteredMarkers.length > 0 ? createClusters(filteredMarkers, currentZoom) : [];
+
+		console.log(
+			`[Clustering] Computed ${result.length} display markers from ${filteredMarkers.length} filtered markers at zoom ${currentZoom}`
+		);
+
+		return result;
+	});
+
+	// Set up zoom event handler (separate from clustering update)
+	$effect(() => {
+		if (map) {
+			const mapInstance = map; // Capture map instance to avoid null checks in closures
+
+			// Initial zoom setup
+			currentZoom = mapInstance.getZoom();
+
+			const handleZoomEnd = () => {
+				const newZoom = mapInstance.getZoom();
+				currentZoom = newZoom;
+
+				// Close panel when zoom changes (if showing cluster results)
+				if (selectedMarker && isClusterMarker(selectedMarker)) {
+					selectedMarker = null;
+					isClusterViewMode = false;
+					clusterViewResults = [];
+				}
+			};
+
+			mapInstance.on('zoomend', handleZoomEnd);
+			return () => {
+				mapInstance.off('zoomend', handleZoomEnd);
+			};
+		}
+	});
 
 	// Async function to load grouped slot markers from shared capacities
 	async function loadShareSlotMarkers(
@@ -760,21 +966,7 @@
 		}
 	});
 
-	// Handle escape key to minimize map
-	$effect(() => {
-		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === 'Escape' && isMaximized) {
-				globalState.setMapFullscreen(false);
-			}
-		}
-
-		if (typeof window !== 'undefined') {
-			window.addEventListener('keydown', handleKeyDown);
-			return () => {
-				window.removeEventListener('keydown', handleKeyDown);
-			};
-		}
-	});
+	// Fullscreen escape handling is now managed by FullScreenControl
 
 	// Create a derived status for debugging
 	let markersLoader = $derived(
@@ -1074,40 +1266,8 @@
 	});
 </script>
 
-<div
-	class="map-wrapper relative overflow-hidden rounded-md {isMaximized
-		? 'fullscreen'
-		: 'normal-size'}"
->
-	<!-- Side Panel (positioned absolute within this container) -->
-	<MapSidePanel
-		markerData={selectedMarker}
-		onClose={handleSidePanelClose}
-		onBackToSearch={handleBackToSearch}
-		isSearchMode={globalState.isSearchMode}
-		searchQuery={globalState.searchQuery}
-		searchResults={globalState.searchResults}
-		searchSortBy={globalState.searchSortBy}
-		onSearchResultClick={handleSearchResultClick}
-		onSortChange={handleSortChange}
-		currentLocation={$currentLocation}
-		timeFilterBy={globalState.timeFilterBy}
-		timeFilterStartDate={globalState.timeFilterStartDate}
-		timeFilterEndDate={globalState.timeFilterEndDate}
-		timeFilterStartTime={globalState.timeFilterStartTime}
-		timeFilterEndTime={globalState.timeFilterEndTime}
-		showTimeFilterDetails={globalState.showTimeFilterDetails}
-		onTimeFilterChange={(filter) => {
-			globalState.updateTimeFilter(filter);
-			handleTimeFilterChange();
-		}}
-		onTimeFilterDetailsChange={(details) => {
-			globalState.updateTimeFilterDetails(details);
-			handleTimeFilterDetailsChange();
-		}}
-	/>
-
-	<!-- Map Container (takes full space - panel is positioned absolutely) -->
+<div class="map-wrapper normal-size relative overflow-hidden rounded-md">
+	<!-- Map Container -->
 	<div class="map-content full-width">
 		<MapLibre
 			bind:map
@@ -1147,17 +1307,26 @@
 				onerror={handleGeolocateError}
 			/>
 
-			<!-- Maximize/Minimize Control -->
-			<CustomControl position="bottom-right">
-				<button
-					class="map-control-btn"
-					onclick={() => {
-						globalState.toggleMapFullscreen();
-					}}
-					title={isMaximized ? 'Minimize map' : 'Maximize map'}
-				>
-					<span>{isMaximized ? '⊟' : '⊞'}</span>
-				</button>
+			<!-- Fullscreen Control -->
+			<FullScreenControl position="top-right" />
+
+			<!-- Full MapSidePanel as CustomControl (works in both normal and fullscreen) -->
+			<CustomControl position="top-left">
+				<MapSidePanel
+					markerData={selectedMarker}
+					onClose={handleSidePanelClose}
+					onBackToSearch={handleBackToSearch}
+					isSearchMode={globalState.isSearchMode}
+					searchQuery={globalState.searchQuery}
+					searchResults={globalState.searchResults}
+					searchSortBy={globalState.searchSortBy}
+					onSearchResultClick={handleSearchResultClick}
+					onSortChange={handleSortChange}
+					currentLocation={$currentLocation}
+					{isClusterViewMode}
+					{clusterViewResults}
+					onClusterResultClick={handleClusterResultClick}
+				/>
 			</CustomControl>
 
 			<!-- Collapsible Controls Group -->
@@ -1177,6 +1346,16 @@
 					<!-- Expandable controls -->
 					{#if isControlsExpanded}
 						<div class="expanded-controls">
+							<button
+								class="map-control-btn"
+								onclick={() => {
+									enableClustering = !enableClustering;
+								}}
+								title="Toggle clustering"
+								class:active={enableClustering}
+							>
+								<span>🗂️</span>
+							</button>
 							<button
 								class="map-control-btn"
 								onclick={() => {
@@ -1253,44 +1432,95 @@
 				{/if}
 			</GeoJSONSource>
 
-			<!-- Grouped share slot markers - filtered by time if applicable -->
-			{#each shareSlotMarkers as markerData (markerData.id)}
-				{@const { id, capacityId, capacity, slots, lnglat, source, providerName } = markerData}
-				{@const isSelected = selectedMarker?.id === markerData.id}
-				{@const isGeocoded = source === 'geocoded'}
-				{@const totalSlots = slots.length}
-				{@const debugInfo = `Marker ${markerData.id}: ${capacity.name} (${totalSlots} slots)`}
+			<!-- Clustered markers - includes both individual and cluster markers -->
+			{#each clusteredMarkers as markerData (markerData.id)}
+				{#if isClusterMarker(markerData)}
+					<!-- Cluster marker -->
+					{@const { id, lnglat, markers, totalSlots, totalCapacities } = markerData}
+					{@const isSelected = selectedMarker?.id === markerData.id}
+					{@const uniqueEmojis = getUniqueEmojis(markers)}
+					{@const showEmojiPack = uniqueEmojis.length <= 9}
 
-				<Marker
-					lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
-					draggable={false}
-					color={isSelected ? '#f59e0b' : isGeocoded ? '#10b981' : '#6366f1'}
-					scale={isSelected ? 1.2 : 1.0}
-				>
-					{#snippet content()}
-						<div
-							class="slot-marker {isSelected ? 'selected' : ''}"
-							onclick={() => handleMarkerClick(markerData)}
-							role="button"
-							tabindex="0"
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									handleMarkerClick(markerData);
-								}
-							}}
-						>
-							<div class="marker-icon">{capacity.emoji || '🏠'}</div>
-							<div class="marker-label">{capacity.name}</div>
-							{#if totalSlots > 1}
-								<div class="slot-count">{totalSlots}</div>
-							{/if}
-							{#if isSelected}
-								<div class="selection-ring"></div>
-							{/if}
-						</div>
-					{/snippet}
-				</Marker>
+					<Marker
+						lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
+						draggable={false}
+						color={isSelected ? '#f59e0b' : '#ff6b6b'}
+						scale={isSelected ? 1.3 : Math.min(1.5, 1.0 + totalCapacities * 0.1)}
+					>
+						{#snippet content()}
+							<div
+								class="cluster-marker {isSelected ? 'selected' : ''}"
+								onclick={() => handleMarkerClick(markerData)}
+								role="button"
+								tabindex="0"
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleMarkerClick(markerData);
+									}
+								}}
+							>
+								{#if showEmojiPack}
+									<!-- Show emoji pack for 5 or fewer unique emojis -->
+									<div class="emoji-pack" class:single-emoji={uniqueEmojis.length === 1}>
+										{#each uniqueEmojis as emoji, index}
+											<span
+												class="packed-emoji"
+												style="--emoji-index: {index}; --total-emojis: {uniqueEmojis.length};"
+											>
+												{emoji}
+											</span>
+										{/each}
+									</div>
+								{:else}
+									<!-- Show count for more than 5 unique emojis -->
+									<div class="cluster-count-display">
+										<div class="cluster-count-number">{totalCapacities}</div>
+										<div class="cluster-count-label">capacities</div>
+									</div>
+								{/if}
+								{#if isSelected}
+									<div class="selection-ring"></div>
+								{/if}
+							</div>
+						{/snippet}
+					</Marker>
+				{:else}
+					<!-- Individual marker -->
+					{@const { id, capacityId, capacity, slots, lnglat, source, providerName } = markerData}
+					{@const isSelected = selectedMarker?.id === markerData.id}
+					{@const isGeocoded = source === 'geocoded'}
+					{@const totalSlots = slots.length}
+					{@const debugInfo = `Marker ${markerData.id}: ${capacity.name} (${totalSlots} slots)`}
+
+					<Marker
+						lnglat={{ lng: lnglat.lng, lat: lnglat.lat }}
+						draggable={false}
+						color={isSelected ? '#f59e0b' : isGeocoded ? '#10b981' : '#6366f1'}
+						scale={isSelected ? 1.2 : 1.0}
+					>
+						{#snippet content()}
+							<div
+								class="slot-marker {isSelected ? 'selected' : ''}"
+								onclick={() => handleMarkerClick(markerData)}
+								role="button"
+								tabindex="0"
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										handleMarkerClick(markerData);
+									}
+								}}
+							>
+								<div class="marker-icon">{capacity.emoji || '🏠'}</div>
+								<div class="marker-label">{capacity.name}</div>
+								{#if isSelected}
+									<div class="selection-ring"></div>
+								{/if}
+							</div>
+						{/snippet}
+					</Marker>
+				{/if}
 			{/each}
 
 			<!-- Loading indicator for geocoding 
@@ -1406,21 +1636,238 @@
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 	}
 
-	.slot-count {
-		position: absolute;
-		top: -8px;
-		right: -8px;
-		background: #ef4444;
-		color: white;
+	/* Cluster marker styles */
+	.cluster-marker {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: transform 0.2s ease;
+		position: relative;
+		width: 40px;
+		height: 40px;
+		background: rgba(255, 107, 107, 0.1);
 		border-radius: 50%;
-		width: 20px;
-		height: 20px;
+		border: 2px solid #ff6b6b;
+	}
+
+	.cluster-marker:hover {
+		transform: scale(1.1);
+		background: rgba(255, 107, 107, 0.2);
+	}
+
+	.cluster-marker.selected {
+		transform: scale(1.15);
+		background: rgba(245, 158, 11, 0.2);
+		border-color: #f59e0b;
+	}
+
+	/* Emoji pack container */
+	.emoji-pack {
+		position: relative;
+		width: 32px;
+		height: 32px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	/* Single emoji takes full space - no additional styling needed for .emoji-pack.single-emoji */
+
+	/* Individual packed emojis with circular positioning */
+	.packed-emoji {
+		position: absolute;
+		font-size: 12px;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+		line-height: 1;
+		transition: all 0.2s ease;
+	}
+
+	/* Position emojis in a circle for multiple emojis */
+	.emoji-pack:not(.single-emoji) .packed-emoji {
 		font-size: 10px;
+		transform-origin: center;
+	}
+
+	/* Single emoji positioning */
+	.emoji-pack.single-emoji .packed-emoji {
+		position: relative;
+		font-size: 16px;
+	}
+
+	/* 2 emojis: side by side */
+	.packed-emoji[style*='--total-emojis: 2'][style*='--emoji-index: 0'] {
+		transform: translateX(-6px);
+	}
+	.packed-emoji[style*='--total-emojis: 2'][style*='--emoji-index: 1'] {
+		transform: translateX(6px);
+	}
+
+	/* 3 emojis: triangle */
+	.packed-emoji[style*='--total-emojis: 3'][style*='--emoji-index: 0'] {
+		transform: translateY(-6px);
+	}
+	.packed-emoji[style*='--total-emojis: 3'][style*='--emoji-index: 1'] {
+		transform: translate(-6px, 4px);
+	}
+	.packed-emoji[style*='--total-emojis: 3'][style*='--emoji-index: 2'] {
+		transform: translate(6px, 4px);
+	}
+
+	/* 4 emojis: square */
+	.packed-emoji[style*='--total-emojis: 4'][style*='--emoji-index: 0'] {
+		transform: translate(-5px, -5px);
+	}
+	.packed-emoji[style*='--total-emojis: 4'][style*='--emoji-index: 1'] {
+		transform: translate(5px, -5px);
+	}
+	.packed-emoji[style*='--total-emojis: 4'][style*='--emoji-index: 2'] {
+		transform: translate(-5px, 5px);
+	}
+	.packed-emoji[style*='--total-emojis: 4'][style*='--emoji-index: 3'] {
+		transform: translate(5px, 5px);
+	}
+
+	/* 5 emojis: pentagon-like */
+	.packed-emoji[style*='--total-emojis: 5'][style*='--emoji-index: 0'] {
+		transform: translateY(-8px);
+	}
+	.packed-emoji[style*='--total-emojis: 5'][style*='--emoji-index: 1'] {
+		transform: translate(7px, -3px);
+	}
+	.packed-emoji[style*='--total-emojis: 5'][style*='--emoji-index: 2'] {
+		transform: translate(4px, 6px);
+	}
+	.packed-emoji[style*='--total-emojis: 5'][style*='--emoji-index: 3'] {
+		transform: translate(-4px, 6px);
+	}
+	.packed-emoji[style*='--total-emojis: 5'][style*='--emoji-index: 4'] {
+		transform: translate(-7px, -3px);
+	}
+
+	/* 6 emojis: hexagon */
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 0'] {
+		transform: translateY(-9px);
+	}
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 1'] {
+		transform: translate(8px, -4px);
+	}
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 2'] {
+		transform: translate(8px, 4px);
+	}
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 3'] {
+		transform: translateY(9px);
+	}
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 4'] {
+		transform: translate(-8px, 4px);
+	}
+	.packed-emoji[style*='--total-emojis: 6'][style*='--emoji-index: 5'] {
+		transform: translate(-8px, -4px);
+	}
+
+	/* 7 emojis: center + hexagon */
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 0'] {
+		transform: translate(0, 0); /* center */
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 1'] {
+		transform: translateY(-10px);
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 2'] {
+		transform: translate(9px, -5px);
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 3'] {
+		transform: translate(9px, 5px);
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 4'] {
+		transform: translateY(10px);
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 5'] {
+		transform: translate(-9px, 5px);
+	}
+	.packed-emoji[style*='--total-emojis: 7'][style*='--emoji-index: 6'] {
+		transform: translate(-9px, -5px);
+	}
+
+	/* 8 emojis: octagon */
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 0'] {
+		transform: translateY(-10px);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 1'] {
+		transform: translate(7px, -7px);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 2'] {
+		transform: translate(10px, 0);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 3'] {
+		transform: translate(7px, 7px);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 4'] {
+		transform: translateY(10px);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 5'] {
+		transform: translate(-7px, 7px);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 6'] {
+		transform: translate(-10px, 0);
+	}
+	.packed-emoji[style*='--total-emojis: 8'][style*='--emoji-index: 7'] {
+		transform: translate(-7px, -7px);
+	}
+
+	/* 9 emojis: 3x3 grid */
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 0'] {
+		transform: translate(-6px, -6px);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 1'] {
+		transform: translate(0, -6px);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 2'] {
+		transform: translate(6px, -6px);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 3'] {
+		transform: translate(-6px, 0);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 4'] {
+		transform: translate(0, 0);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 5'] {
+		transform: translate(6px, 0);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 6'] {
+		transform: translate(-6px, 6px);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 7'] {
+		transform: translate(0, 6px);
+	}
+	.packed-emoji[style*='--total-emojis: 9'][style*='--emoji-index: 8'] {
+		transform: translate(6px, 6px);
+	}
+
+	/* Count display for >9 emojis */
+	.cluster-count-display {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+	}
+
+	.cluster-count-number {
+		font-size: 14px;
 		font-weight: bold;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+		color: #374151;
+		line-height: 1;
+		text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+	}
+
+	.cluster-count-label {
+		font-size: 8px;
+		font-weight: 500;
+		color: #6b7280;
+		line-height: 1;
+		margin-top: 1px;
+		text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 	}
 
 	/* Map wrapper and content layout styles */
@@ -1436,20 +1883,6 @@
 		min-height: 300px;
 	}
 
-	.map-wrapper.fullscreen {
-		position: fixed;
-		top: 76px; /* Account for header height */
-		left: 16px; /* Match app-content padding */
-		right: 16px; /* Match app-content padding */
-		bottom: 16px; /* Match app-content padding */
-		z-index: 1000;
-		border-radius: 8px;
-		max-height: none;
-		min-height: none;
-		width: auto;
-		height: auto;
-	}
-
 	.map-content {
 		height: 100%;
 		transition: margin-left 0.3s ease-out;
@@ -1457,23 +1890,6 @@
 
 	.map-content.full-width {
 		margin-left: 0;
-	}
-
-	.map-content.with-panel {
-		margin-left: 400px; /* Width of side panel */
-	}
-
-	/* Responsive margins for map content */
-	@media (max-width: 768px) {
-		.map-content.with-panel {
-			margin-left: 320px;
-		}
-	}
-
-	@media (max-width: 500px) {
-		.map-content.with-panel {
-			margin-left: 280px;
-		}
 	}
 
 	/* Ensure map doesn't interfere with page scrolling */
@@ -1539,6 +1955,12 @@
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
+	:global(.map-control-btn.active) {
+		background: rgba(59, 130, 246, 0.1);
+		border-color: #3b82f6;
+		color: #3b82f6;
+	}
+
 	/* Controls Group Container */
 	:global(.controls-group) {
 		display: flex;
@@ -1574,5 +1996,16 @@
 
 	:global(.controls-toggle span) {
 		transition: transform 0.2s ease;
+	}
+
+	/* Ensure CustomControl respects map dimensions */
+	:global(.maplibregl-ctrl-top-left) {
+		max-height: calc(100% - 20px);
+		max-width: calc(100% - 20px);
+	}
+
+	/* Ensure map container establishes proper sizing context */
+	:global(.maplibregl-map) {
+		position: relative;
 	}
 </style>

@@ -616,7 +616,7 @@
 				onclick={handleEmojiPickerToggle}
 				title="Select emoji"
 			>
-				{capacityEmoji || '📦'}
+				{capacityEmoji || '🎁'}
 			</button>
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}

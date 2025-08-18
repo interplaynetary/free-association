@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { GroupedSlotMarkerData } from '$lib/components/Map.svelte';
+	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
 	import { globalState } from '$lib/global.svelte';
 
 	interface Props {
-		markerData: GroupedSlotMarkerData | null;
+		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
 		onClose: () => void;
 		onBackToSearch?: () => void; // New callback for going back to search
 		isSearchMode?: boolean;
@@ -14,19 +14,10 @@
 		onSearchResultClick?: (marker: GroupedSlotMarkerData) => void;
 		onSortChange?: () => void;
 		currentLocation?: any;
-		timeFilterBy?: 'any' | 'now' | 'next24h' | 'between';
-		timeFilterStartDate?: string;
-		timeFilterEndDate?: string;
-		timeFilterStartTime?: string;
-		timeFilterEndTime?: string;
-		showTimeFilterDetails?: boolean;
-		onTimeFilterChange?: (filter: 'any' | 'now' | 'next24h' | 'between') => void;
-		onTimeFilterDetailsChange?: (details: {
-			startDate: string;
-			endDate: string;
-			startTime: string;
-			endTime: string;
-		}) => void;
+		// Cluster view props
+		isClusterViewMode?: boolean;
+		clusterViewResults?: GroupedSlotMarkerData[];
+		onClusterResultClick?: (marker: GroupedSlotMarkerData) => void;
 	}
 
 	let {
@@ -40,14 +31,9 @@
 		onSearchResultClick,
 		onSortChange,
 		currentLocation,
-		timeFilterBy = 'any',
-		timeFilterStartDate = '',
-		timeFilterEndDate = '',
-		timeFilterStartTime = '',
-		timeFilterEndTime = '',
-		showTimeFilterDetails = false,
-		onTimeFilterChange,
-		onTimeFilterDetailsChange
+		isClusterViewMode = false,
+		clusterViewResults = [],
+		onClusterResultClick
 	}: Props = $props();
 
 	let searchInputElement: HTMLInputElement | undefined = $state();
@@ -55,12 +41,80 @@
 	// Track if we came to marker details from search results
 	let viewingMarkerFromSearch = $state(false);
 
-	// Determine panel state
+	// Track fullscreen state for responsive panel sizing
+	let isFullscreen = $state(false);
+
+	// Listen for fullscreen changes
+	$effect(() => {
+		if (typeof document === 'undefined') return;
+
+		const handleFullscreenChange = () => {
+			isFullscreen = !!document.fullscreenElement;
+			console.log('[MapSidePanel] Fullscreen changed:', isFullscreen);
+		};
+
+		document.addEventListener('fullscreenchange', handleFullscreenChange);
+		return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+	});
+
+	// Prevent scroll events from bubbling to parent page
+	function handlePanelScroll(event: Event) {
+		// Stop propagation to prevent page scrolling
+		event.stopPropagation();
+	}
+
+	// Handle wheel events to prevent page scroll when panel is scrolling
+	function handlePanelWheel(event: WheelEvent) {
+		const target = event.currentTarget as HTMLElement;
+		const { scrollTop, scrollHeight, clientHeight } = target;
+
+		// If scrolling up and already at top, prevent default to avoid page scroll
+		if (event.deltaY < 0 && scrollTop === 0) {
+			event.preventDefault();
+			return;
+		}
+
+		// If scrolling down and already at bottom, prevent default to avoid page scroll
+		if (event.deltaY > 0 && scrollTop + clientHeight >= scrollHeight) {
+			event.preventDefault();
+			return;
+		}
+
+		// Otherwise, allow normal scrolling but stop propagation
+		event.stopPropagation();
+	}
+
+	// Determine panel state - using simple derived instead of derived.by
 	let panelState = $derived(() => {
-		if (markerData && viewingMarkerFromSearch) return 'marker-from-search'; // Marker details with back to search
-		if (markerData) return 'marker'; // Showing marker details (direct click)
-		if (globalState.isSearchMode) return 'search'; // Showing search results
-		return 'expanded'; // Always expanded now (search input + time filter always visible)
+		let state: string;
+
+		if (markerData && viewingMarkerFromSearch) {
+			console.log('[Panel State] -> marker-from-search');
+			state = 'marker-from-search'; // Marker details with back to search
+		} else if (markerData && !isClusterViewMode) {
+			console.log('[Panel State] -> marker (individual)');
+			state = 'marker'; // Showing individual marker details
+		} else if (isClusterViewMode) {
+			console.log('[Panel State] -> cluster');
+			state = 'cluster'; // Showing cluster contents
+		} else if (globalState.isSearchMode) {
+			console.log('[Panel State] -> search');
+			state = 'search'; // Showing search results
+		} else {
+			console.log('[Panel State] -> expanded');
+			state = 'expanded'; // Always expanded now (search input + time filter always visible)
+		}
+
+		console.log('[Panel State]', {
+			state,
+			markerData: markerData ? `${markerData.id}` : 'null',
+			markerType: markerData ? ('capacity' in markerData ? 'individual' : 'cluster') : 'none',
+			isClusterViewMode,
+			viewingMarkerFromSearch,
+			isSearchMode: globalState.isSearchMode
+		});
+		console.log('[Panel State] Final state:', state);
+		return state;
 	});
 
 	// Handle search input
@@ -74,6 +128,32 @@
 		window.dispatchEvent(
 			new CustomEvent('panel-search', {
 				detail: { query: value }
+			})
+		);
+	}
+
+	// Time filter handlers
+	function handleTimeFilterChange() {
+		globalState.updateTimeFilter(globalState.timeFilterBy);
+		// Trigger search to re-filter with new time filter
+		window.dispatchEvent(
+			new CustomEvent('panel-search', {
+				detail: { query: globalState.searchQuery }
+			})
+		);
+	}
+
+	function handleTimeFilterDetailsChange() {
+		globalState.updateTimeFilterDetails({
+			startDate: globalState.timeFilterStartDate,
+			endDate: globalState.timeFilterEndDate,
+			startTime: globalState.timeFilterStartTime,
+			endTime: globalState.timeFilterEndTime
+		});
+		// Trigger search to re-filter with new time filter details
+		window.dispatchEvent(
+			new CustomEvent('panel-search', {
+				detail: { query: globalState.searchQuery }
 			})
 		);
 	}
@@ -116,6 +196,10 @@
 		if (!globalState.isSearchMode && viewingMarkerFromSearch) {
 			viewingMarkerFromSearch = false;
 		}
+		// If cluster view mode is disabled, reset viewing from search flag
+		if (!isClusterViewMode && viewingMarkerFromSearch) {
+			viewingMarkerFromSearch = false;
+		}
 	});
 
 	// Get computed quantity for a specific slot (your share)
@@ -129,6 +213,13 @@
 
 	// Reactive visibility derived from markerData
 	let isVisible = $derived(!!markerData);
+
+	// Helper to check if marker is a cluster
+	function isClusterMarker(
+		marker: GroupedSlotMarkerData | ClusterMarkerData | null
+	): marker is ClusterMarkerData {
+		return marker !== null && 'markers' in marker && 'totalCapacities' in marker;
+	}
 
 	// Debug logging (better pattern than $effect)
 	$inspect('MapSidePanel markerData:', markerData?.id);
@@ -410,8 +501,13 @@
 </script>
 
 <!-- Fixed search input that never moves -->
-<div class="search-panel expanded">
-	<!-- Always visible search input in fixed position -->
+<div
+	class="search-panel expanded"
+	class:fullscreen={isFullscreen}
+	onscroll={handlePanelScroll}
+	onwheel={handlePanelWheel}
+>
+	<!-- Always visible search input with integrated time filter -->
 	<div class="fixed-search-input">
 		<div class="search-input-wrapper">
 			<input
@@ -433,265 +529,384 @@
 					✕
 				</button>
 			{/if}
-		</div>
-	</div>
-
-	<!-- Always visible time filter controls -->
-	<div class="panel-content time-filter-only">
-		<!-- Time Filter Controls -->
-		<div class="content-section time-filter-compact">
-			<div class="time-filter-header">
-				<span class="time-filter-label">⏰</span>
+			<div class="time-filter-inline">
+				<span class="time-filter-icon">🕒</span>
 				<select
 					class="time-filter-select"
 					bind:value={globalState.timeFilterBy}
-					onchange={() => onTimeFilterChange?.(globalState.timeFilterBy)}
+					onchange={handleTimeFilterChange}
 				>
-					<option value="any">Any time</option>
+					<option value="any">Any Time</option>
 					<option value="now">Now</option>
-					<option value="next24h">Next 24 hours</option>
-					<option value="between">Between</option>
+					<option value="next24h">Next 24h</option>
+					<option value="between">Custom</option>
 				</select>
 			</div>
-
-			{#if globalState.showTimeFilterDetails}
-				<div class="time-filter-details">
-					<div class="time-range-row">
-						<div class="time-input-group">
-							<span class="time-input-label">From:</span>
-							<input
-								type="date"
-								class="time-filter-date"
-								bind:value={globalState.timeFilterStartDate}
-								onchange={() =>
-									onTimeFilterDetailsChange?.({
-										startDate: globalState.timeFilterStartDate,
-										endDate: globalState.timeFilterEndDate,
-										startTime: globalState.timeFilterStartTime,
-										endTime: globalState.timeFilterEndTime
-									})}
-							/>
-							<input
-								type="time"
-								class="time-filter-time"
-								bind:value={globalState.timeFilterStartTime}
-								onchange={() =>
-									onTimeFilterDetailsChange?.({
-										startDate: globalState.timeFilterStartDate,
-										endDate: globalState.timeFilterEndDate,
-										startTime: globalState.timeFilterStartTime,
-										endTime: globalState.timeFilterEndTime
-									})}
-							/>
-						</div>
-					</div>
-					<div class="time-range-row">
-						<div class="time-input-group">
-							<span class="time-input-label">To:</span>
-							<input
-								type="date"
-								class="time-filter-date"
-								bind:value={globalState.timeFilterEndDate}
-								onchange={() =>
-									onTimeFilterDetailsChange?.({
-										startDate: globalState.timeFilterStartDate,
-										endDate: globalState.timeFilterEndDate,
-										startTime: globalState.timeFilterStartTime,
-										endTime: globalState.timeFilterEndTime
-									})}
-							/>
-							<input
-								type="time"
-								class="time-filter-time"
-								bind:value={globalState.timeFilterEndTime}
-								onchange={() =>
-									onTimeFilterDetailsChange?.({
-										startDate: globalState.timeFilterStartDate,
-										endDate: globalState.timeFilterEndDate,
-										startTime: globalState.timeFilterStartTime,
-										endTime: globalState.timeFilterEndTime
-									})}
-							/>
-						</div>
-					</div>
-				</div>
-			{/if}
 		</div>
+
+		<!-- Custom time range details (shown below search bar) -->
+		{#if globalState.timeFilterBy === 'between'}
+			<div class="time-filter-details">
+				<div class="time-row">
+					<input
+						type="date"
+						class="time-input"
+						bind:value={globalState.timeFilterStartDate}
+						onchange={handleTimeFilterDetailsChange}
+						placeholder="Start date"
+					/>
+					<input
+						type="time"
+						class="time-input"
+						bind:value={globalState.timeFilterStartTime}
+						onchange={handleTimeFilterDetailsChange}
+						placeholder="Start time"
+					/>
+				</div>
+				<div class="time-row">
+					<input
+						type="date"
+						class="time-input"
+						bind:value={globalState.timeFilterEndDate}
+						onchange={handleTimeFilterDetailsChange}
+						placeholder="End date"
+					/>
+					<input
+						type="time"
+						class="time-input"
+						bind:value={globalState.timeFilterEndTime}
+						onchange={handleTimeFilterDetailsChange}
+						placeholder="End time"
+					/>
+				</div>
+			</div>
+		{/if}
 	</div>
 
-	<!-- Panel content that appears/disappears below the time filter -->
+	<!-- Panel content that appears/disappears below the search/time filter -->
+	<!-- Debug: Current panel state = {panelState} -->
 
-	{#if markerData}
-		<!-- Show marker details when markerData exists -->
-		{@const { capacity, slots, lnglat, source, providerName } = markerData}
-		{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
-		{@const isGeocoded = source === 'geocoded'}
-		{@const locationDisplay = formatSlotLocationDisplay(slots[0])}
-		{@const categorizedSlots = categorizeSlots(slots)}
-		{@const totalSlots = slots.length}
-
-		<div class="panel-content">
-			<!-- Header with conditional back button -->
-			<div class="content-section marker-header">
-				{#if viewingMarkerFromSearch}
-					<!-- Back to search button -->
-					<button
-						class="back-btn"
-						onclick={goBackToSearch}
-						title="Back to search results"
-						aria-label="Back to search results"
-					>
-						<span>←</span>
-					</button>
-				{/if}
-				<div class="capacity-info">
-					<h2 class="capacity-title">
-						<span class="capacity-emoji">{capacity.emoji || '🏠'}</span>
-						{capacity.name}
-					</h2>
-					<div class="provider-info">
-						<span class="provider-label">👤 {providerName}</span>
-						{#if totalSlots > 1}
-							<span class="slot-count-badge">{totalSlots} slots</span>
-						{/if}
-					</div>
+	{#if isClusterViewMode}
+		<!-- Cluster view content (prioritize over cluster marker details) -->
+		<!-- Debug: clusterViewResults.length = {clusterViewResults.length} -->
+		<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
+			<!-- Cluster Header -->
+			<div class="content-section">
+				<div class="cluster-view-header">
+					<h3 class="cluster-view-title">
+						<span class="cluster-view-emoji">📦</span>
+						{clusterViewResults.length} Capacities at this Location
+					</h3>
 				</div>
-				{#if !viewingMarkerFromSearch}
-					<!-- Only show close button when not from search -->
+			</div>
+
+			<!-- Cluster Results -->
+			<div class="content-section">
+				{#if clusterViewResults.length > 0}
+					<div class="cluster-results">
+						{#each clusterViewResults as result (result.id)}
+							{@const distance = currentLocation
+								? calculateDistance(
+										currentLocation.latitude,
+										currentLocation.longitude,
+										result.lnglat.lat,
+										result.lnglat.lng
+									)
+								: null}
+
+							<div
+								class="cluster-result-item"
+								onclick={() => {
+									console.log('[Cluster View] Capacity clicked:', result.capacity.name);
+									onClusterResultClick?.(result);
+								}}
+								role="button"
+								tabindex="0"
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										onClusterResultClick?.(result);
+									}
+								}}
+							>
+								<div class="result-header">
+									<div class="result-title">
+										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
+										<span class="result-name">{result.capacity.name}</span>
+									</div>
+									{#if distance !== null}
+										<span class="result-distance">{formatDistance(distance)}</span>
+									{/if}
+								</div>
+
+								<div class="result-details">
+									<div class="result-provider">👤 {result.providerName}</div>
+									{#if result.capacity.unit}
+										<div class="result-unit">{result.capacity.unit}</div>
+									{/if}
+									<div class="result-slots">{result.slots.length} slots</div>
+								</div>
+
+								{#if result.capacity.description}
+									<div class="result-description">
+										{result.capacity.description.length > 100
+											? result.capacity.description.substring(0, 100) + '...'
+											: result.capacity.description}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="no-results">No capacities found in this cluster.</p>
+				{/if}
+			</div>
+		</div>
+	{:else if markerData}
+		{#if isClusterMarker(markerData)}
+			<!-- Show cluster details -->
+			{@const { lnglat, markers, totalSlots, totalCapacities } = markerData}
+			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
+
+			<div class="panel-content">
+				<!-- Cluster Header -->
+				<div class="content-section marker-header">
+					<div class="capacity-info">
+						<h2 class="capacity-title">
+							<span class="capacity-emoji">📍</span>
+							{totalCapacities} Capacities
+						</h2>
+						<div class="provider-info">
+							<span class="provider-label">Clustered at this location</span>
+						</div>
+					</div>
 					<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
 						✕
 					</button>
-				{/if}
-			</div>
+				</div>
 
-			<!-- Location Info -->
-			<div class="content-section location-section">
-				<h3 class="section-title"><span style="font-size:8px;">📍</span> Location</h3>
-				<div class="location-details">
-					{#if hasAddressComponents(slots[0])}
-						<!-- Show separate address and coordinates when we have actual address data -->
-						<button
-							class="location-address clickable-address"
-							onclick={() => handleAddressClick(slots[0])}
-							title="Click to open in maps or copy address"
-							style="font-size: 8px; line-height: 1;"
-						>
-							<span style="font-size:8px;">📍</span>
-							<span style="font-size: px;">{locationDisplay}</span>
-						</button>
-						<button
-							class="location-coords clickable-coords"
-							onclick={() => handleAddressClick(slots[0])}
-							title="Click to open in maps or copy coordinates"
-							style="font-size: px; line-height: 1;"
-						>
+				<!-- Cluster Location -->
+				<div class="content-section location-section">
+					<h3 class="section-title"><span style="font-size:8px;">📍</span> Cluster Center</h3>
+					<div class="location-details">
+						<div class="location-coords single-location" style="font-size: 8px; line-height: 1;">
 							<span style="font-size:8px;">📐</span>
 							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
-						</button>
-					{:else}
-						<!-- Show single coordinates button when we only have coordinates -->
+						</div>
+						<p style="font-size: 10px; color: #6b7280; margin-top: 6px;">
+							Click to zoom in and see individual capacities
+						</p>
+					</div>
+				</div>
+
+				<!-- Cluster Contents -->
+				<div class="content-section slots-section">
+					<h3 class="section-title">📦 {totalCapacities} Capacities</h3>
+					<div class="cluster-contents">
+						{#each markers as marker}
+							{@const { capacity, slots, providerName } = marker}
+							<div class="cluster-item">
+								<div class="cluster-item-header">
+									<span class="cluster-item-emoji">{capacity.emoji || '📦'}</span>
+									<span class="cluster-item-name">{capacity.name}</span>
+									{#if capacity.unit}
+										<span class="cluster-item-unit">{capacity.unit}</span>
+									{/if}
+									<span class="cluster-item-slots">{slots.length} slots</span>
+								</div>
+								<div class="cluster-item-provider">👤 {providerName}</div>
+								{#if capacity.description}
+									<div class="cluster-item-description">
+										{capacity.description.length > 60
+											? capacity.description.substring(0, 60) + '...'
+											: capacity.description}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{:else}
+			<!-- Show individual marker details -->
+			{@const { capacity, slots, lnglat, source, providerName } = markerData}
+			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
+			{@const isGeocoded = source === 'geocoded'}
+			{@const locationDisplay = formatSlotLocationDisplay(slots[0])}
+			{@const categorizedSlots = categorizeSlots(slots)}
+			{@const totalSlots = slots.length}
+
+			<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
+				<!-- Header with conditional back button -->
+				<div class="content-section marker-header">
+					{#if viewingMarkerFromSearch}
+						<!-- Back to search button -->
 						<button
-							class="location-coords clickable-coords single-location"
-							onclick={() => handleAddressClick(slots[0])}
-							title="Click to open in maps or copy coordinates"
-							style="font-size: 8px; line-height: 1;"
+							class="back-btn"
+							onclick={goBackToSearch}
+							title="Back to search results"
+							aria-label="Back to search results"
 						>
-							<span style="font-size:8px;">📐</span>
-							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
+							<span>←</span>
+						</button>
+					{/if}
+					<div class="capacity-info">
+						<h2 class="capacity-title">
+							<span class="capacity-emoji">{capacity.emoji || '🏠'}</span>
+							{capacity.name}
+						</h2>
+						<div class="provider-info">
+							<span class="provider-label">👤 {providerName}</span>
+							{#if capacity.unit}
+								<span class="capacity-unit-badge">{capacity.unit}</span>
+							{/if}
+							{#if totalSlots > 1}
+								<span class="slot-count-badge">{totalSlots} slots</span>
+							{/if}
+						</div>
+					</div>
+					{#if !viewingMarkerFromSearch}
+						<!-- Only show close button when not from search -->
+						<button
+							class="close-btn"
+							onclick={onClose}
+							title="Close panel"
+							aria-label="Close panel"
+						>
+							✕
 						</button>
 					{/if}
 				</div>
-			</div>
 
-			<!-- Slots Section -->
-			<div class="content-section slots-section">
-				<h3 class="section-title">🕒 Your Share of Available Slots</h3>
+				<!-- Location Info -->
+				<div class="content-section location-section">
+					<h3 class="section-title"><span style="font-size:8px;">📍</span> Location</h3>
+					<div class="location-details">
+						{#if hasAddressComponents(slots[0])}
+							<!-- Show separate address and coordinates when we have actual address data -->
+							<button
+								class="location-address clickable-address"
+								onclick={() => handleAddressClick(slots[0])}
+								title="Click to open in maps or copy address"
+								style="font-size: 8px; line-height: 1;"
+							>
+								<span style="font-size:8px;">📍</span>
+								<span style="font-size: px;">{locationDisplay}</span>
+							</button>
+							<button
+								class="location-coords clickable-coords"
+								onclick={() => handleAddressClick(slots[0])}
+								title="Click to open in maps or copy coordinates"
+								style="font-size: px; line-height: 1;"
+							>
+								<span style="font-size:8px;">📐</span>
+								<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
+							</button>
+						{:else}
+							<!-- Show single coordinates button when we only have coordinates -->
+							<button
+								class="location-coords clickable-coords single-location"
+								onclick={() => handleAddressClick(slots[0])}
+								title="Click to open in maps or copy coordinates"
+								style="font-size: 8px; line-height: 1;"
+							>
+								<span style="font-size:8px;">📐</span>
+								<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
+							</button>
+						{/if}
+					</div>
+				</div>
 
-				{#if categorizedSlots.recurring.length > 0}
-					<div class="slot-category">
-						<h4 class="category-title">🔄 Recurring ({categorizedSlots.recurring.length})</h4>
-						<div class="slot-list">
-							{#each categorizedSlots.recurring as slot}
-								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
-								<div class="slot-item">
-									<div class="slot-main">
-										<span class="slot-quantity">
-											{Number.isInteger(computedQuantity)
-												? computedQuantity
-												: computedQuantity.toFixed(2)}
-											{capacity.unit || ''}
-										</span>
-										<span class="slot-total">of {slot.quantity} total</span>
-										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
-									</div>
-									{#if slot.advance_notice_hours}
-										<div class="slot-meta">
-											<small class="notice-info">{slot.advance_notice_hours}h notice</small>
+				<!-- Slots Section -->
+				<div class="content-section slots-section">
+					<h3 class="section-title">🕒 Your Share of Available Slots</h3>
+
+					{#if categorizedSlots.recurring.length > 0}
+						<div class="slot-category">
+							<h4 class="category-title">🔄 Recurring ({categorizedSlots.recurring.length})</h4>
+							<div class="slot-list">
+								{#each categorizedSlots.recurring as slot}
+									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									<div class="slot-item">
+										<div class="slot-main">
+											<span class="slot-quantity">
+												{Number.isInteger(computedQuantity)
+													? computedQuantity
+													: computedQuantity.toFixed(2)}
+												{capacity.unit || ''}
+											</span>
+											<span class="slot-total">of {slot.quantity} total</span>
+											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				{#if categorizedSlots.currentFuture.length > 0}
-					<div class="slot-category">
-						<h4 class="category-title">
-							📅 Current & Upcoming ({categorizedSlots.currentFuture.length})
-						</h4>
-						<div class="slot-list">
-							{#each categorizedSlots.currentFuture as slot}
-								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
-								<div class="slot-item">
-									<div class="slot-main">
-										<span class="slot-quantity">
-											{Number.isInteger(computedQuantity)
-												? computedQuantity
-												: computedQuantity.toFixed(2)}
-											{capacity.unit || ''}
-										</span>
-										<span class="slot-total">of {slot.quantity} total</span>
-										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
+										{#if slot.advance_notice_hours}
+											<div class="slot-meta">
+												<small class="notice-info">{slot.advance_notice_hours}h notice</small>
+											</div>
+										{/if}
 									</div>
-									{#if slot.advance_notice_hours}
-										<div class="slot-meta">
-											<small class="notice-info">{slot.advance_notice_hours}h notice</small>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#if categorizedSlots.currentFuture.length > 0}
+						<div class="slot-category">
+							<h4 class="category-title">
+								📅 Current & Upcoming ({categorizedSlots.currentFuture.length})
+							</h4>
+							<div class="slot-list">
+								{#each categorizedSlots.currentFuture as slot}
+									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									<div class="slot-item">
+										<div class="slot-main">
+											<span class="slot-quantity">
+												{Number.isInteger(computedQuantity)
+													? computedQuantity
+													: computedQuantity.toFixed(2)}
+												{capacity.unit || ''}
+											</span>
+											<span class="slot-total">of {slot.quantity} total</span>
+											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
-
-				{#if categorizedSlots.past.length > 0}
-					<div class="slot-category">
-						<h4 class="category-title">📜 Past ({categorizedSlots.past.length})</h4>
-						<div class="slot-list">
-							{#each categorizedSlots.past as slot}
-								{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
-								<div class="slot-item past-slot">
-									<div class="slot-main">
-										<span class="slot-quantity">
-											{Number.isInteger(computedQuantity)
-												? computedQuantity
-												: computedQuantity.toFixed(2)}
-											{capacity.unit || ''}
-										</span>
-										<span class="slot-total">of {slot.quantity} total</span>
-										<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
+										{#if slot.advance_notice_hours}
+											<div class="slot-meta">
+												<small class="notice-info">{slot.advance_notice_hours}h notice</small>
+											</div>
+										{/if}
 									</div>
-								</div>
-							{/each}
+								{/each}
+							</div>
 						</div>
-					</div>
-				{/if}
+					{/if}
+
+					{#if categorizedSlots.past.length > 0}
+						<div class="slot-category">
+							<h4 class="category-title">📜 Past ({categorizedSlots.past.length})</h4>
+							<div class="slot-list">
+								{#each categorizedSlots.past as slot}
+									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									<div class="slot-item past-slot">
+										<div class="slot-main">
+											<span class="slot-quantity">
+												{Number.isInteger(computedQuantity)
+													? computedQuantity
+													: computedQuantity.toFixed(2)}
+												{capacity.unit || ''}
+											</span>
+											<span class="slot-total">of {slot.quantity} total</span>
+											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 	{:else if globalState.isSearchMode}
 		<!-- Search results content -->
-		<div class="panel-content">
+		<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
 			<!-- Search Controls -->
 			<div class="content-section">
 				<div class="sort-controls">
@@ -772,27 +987,26 @@
 </div>
 
 <style>
-	/* Ultra-simple fixed search panel - CONSTRAINED to map height */
+	/* Panel as CustomControl - responsive to fullscreen */
 	.search-panel {
-		position: absolute;
-		top: 16px;
-		left: 16px;
-		z-index: 1000;
-		width: 240px; /* Reduced to 60% of original 400px */
+		width: 320px;
+		max-width: calc(100vw - 32px);
+		/* Direct constraint matching map dimensions */
+		max-height: min(380px, calc(50vh - 20px)); /* Match map: min(400px, 50vh) minus margin */
 		display: flex;
 		flex-direction: column;
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 8px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		backdrop-filter: blur(8px);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		overscroll-behavior: contain;
+		touch-action: auto;
 	}
 
-	/* Collapsed state: only search input, no map interference */
-	.search-panel.collapsed {
-		pointer-events: none; /* Don't block map touch events */
-		/* No bottom constraint - only takes space needed for search input */
-	}
-
-	/* Expanded state: full panel with content, constrain to map height */
-	.search-panel.expanded {
-		bottom: 16px; /* Constrain bottom when content is visible */
-		pointer-events: none; /* Don't block map events by default */
+	/* Fullscreen mode - use full viewport height */
+	.search-panel.fullscreen {
+		max-height: calc(100vh - 40px); /* Full viewport minus margin */
 	}
 
 	/* Fixed search input that never moves or changes size */
@@ -803,7 +1017,7 @@
 		border: 1px solid #e5e7eb;
 		backdrop-filter: blur(4px);
 		flex-shrink: 0; /* Never shrink */
-		height: 36px; /* Reduced height for more compact appearance */
+		min-height: 36px; /* Changed to min-height to accommodate time filter details */
 		pointer-events: auto; /* Always allow events on search input */
 	}
 
@@ -811,7 +1025,8 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		height: 100%; /* Fill the fixed height container */
+		min-height: 36px; /* Changed to min-height */
+		gap: 8px; /* Add gap between search input and time filter */
 	}
 
 	.search-input {
@@ -820,11 +1035,11 @@
 		background: transparent;
 		outline: none;
 		color: #374151;
-		width: 100%;
+		flex: 1; /* Take remaining space */
 		padding: 8px 12px;
 		padding-right: 40px;
 		border-radius: 8px;
-		min-width: 150px; /* Reduced to match the new panel width */
+		min-width: 120px; /* Reduced to leave space for time filter */
 	}
 
 	.search-input::placeholder {
@@ -860,6 +1075,98 @@
 		color: #374151;
 	}
 
+	/* Inline time filter - improved styling */
+	.time-filter-inline {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
+		background: rgba(255, 255, 255, 0.8);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		border-radius: 6px;
+		padding: 4px 8px;
+		margin-left: 8px; /* Add margin from search input */
+		transition: all 0.2s ease;
+		backdrop-filter: blur(4px);
+	}
+
+	.time-filter-inline:hover {
+		background: rgba(255, 255, 255, 0.95);
+		border-color: rgba(59, 130, 246, 0.3);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.time-filter-icon {
+		font-size: 13px;
+		color: #6b7280;
+	}
+
+	.time-filter-select {
+		border: none;
+		background: transparent;
+		font-size: 11px;
+		color: #374151;
+		outline: none;
+		cursor: pointer;
+		min-width: 70px;
+		padding: 2px 4px;
+		font-weight: 500;
+		border-radius: 4px;
+		transition: background-color 0.2s ease;
+	}
+
+	.time-filter-select:hover {
+		background: rgba(59, 130, 246, 0.1);
+	}
+
+	.time-filter-select:focus {
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+		background: rgba(59, 130, 246, 0.05);
+	}
+
+	/* Time filter details (shown below search bar) - improved styling */
+	.time-filter-details {
+		margin-top: 8px;
+		padding: 12px;
+		background: rgba(255, 255, 255, 0.9);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		backdrop-filter: blur(8px);
+	}
+
+	.time-row {
+		display: flex;
+		gap: 8px;
+		margin-bottom: 4px;
+	}
+
+	.time-row:last-child {
+		margin-bottom: 0;
+	}
+
+	.time-input {
+		flex: 1;
+		border: 1px solid rgba(0, 0, 0, 0.15);
+		border-radius: 6px;
+		padding: 6px 8px;
+		font-size: 11px;
+		background: rgba(255, 255, 255, 0.95);
+		outline: none;
+		transition: all 0.2s ease;
+	}
+
+	.time-input:hover {
+		border-color: rgba(59, 130, 246, 0.4);
+		background: white;
+	}
+
+	.time-input:focus {
+		border-color: rgba(59, 130, 246, 0.6);
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+		background: white;
+	}
+
 	/* Unified panel content - IDENTICAL sizing for ALL states */
 	.panel-content {
 		background: white;
@@ -872,19 +1179,12 @@
 		min-height: 0; /* Allow flexbox to shrink */
 		overflow-y: auto; /* Scroll when content exceeds container */
 		animation: slideDown 0.3s ease-out;
-		pointer-events: auto; /* Allow interaction with panel content */
-	}
-
-	/* Time filter only panel - ultra-compact styling */
-	.panel-content.time-filter-only {
-		flex: 0 0 auto; /* Don't grow/shrink, take only needed space */
-		overflow: visible; /* No scrolling needed for just time filter */
-		margin-bottom: 0; /* Remove bottom margin to connect with next panel */
-		padding: 0; /* Remove padding */
-		background: transparent; /* Remove white background */
-		box-shadow: none; /* Remove shadow */
-		border: none; /* Remove border */
-		pointer-events: auto; /* Allow interaction with time filter controls */
+		/* Ensure scrollable content is interactive inside CustomControl */
+		pointer-events: auto;
+		/* Prevent scroll events from bubbling to parent page */
+		overscroll-behavior: contain;
+		/* Improve mobile scrolling */
+		-webkit-overflow-scrolling: touch;
 	}
 
 	/* Content sections - uniform spacing and borders */
@@ -900,13 +1200,6 @@
 		padding-bottom: 0;
 	}
 
-	/* Compact time filter section */
-	.content-section.time-filter-compact {
-		border-bottom: none; /* No border for minimal look */
-		padding-bottom: 0; /* No padding */
-		margin-bottom: 0; /* No margin */
-	}
-
 	@keyframes slideDown {
 		from {
 			opacity: 0;
@@ -918,123 +1211,7 @@
 		}
 	}
 
-	/* Time filter styling - now uses panel-section-header */
-
-	.time-filter-header {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		margin-bottom: 6px;
-	}
-
-	.time-filter-label {
-		font-size: 10px;
-		line-height: 1;
-	}
-
-	.time-filter-select {
-		padding: 2px 6px; /* Much smaller padding */
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 10px; /* Smaller font */
-		background: white;
-		color: #374151;
-		cursor: pointer;
-		min-width: 100px; /* Smaller width */
-	}
-
-	.time-filter-select:focus {
-		outline: none;
-		border-color: #3b82f6;
-		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-	}
-
-	.time-filter-details {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 8px;
-		margin-top: 4px;
-	}
-
-	.time-range-row {
-		margin-bottom: 6px;
-	}
-
-	.time-range-row:last-child {
-		margin-bottom: 0;
-	}
-
-	.time-input-group {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-	}
-
-	.time-input-label {
-		font-size: 10px;
-		font-weight: 500;
-		color: #6b7280;
-		min-width: 35px;
-	}
-
-	.time-filter-date,
-	.time-filter-time {
-		padding: 4px 6px;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 10px;
-		background: white;
-		color: #374151;
-		cursor: pointer;
-	}
-
-	.time-filter-date:focus,
-	.time-filter-time:focus {
-		outline: none;
-		border-color: #3b82f6;
-		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
-	}
-
-	.time-filter-date {
-		min-width: 130px;
-	}
-
-	.time-filter-time {
-		min-width: 80px;
-	}
-
 	/* Search results styling - now uses panel-section-header */
-
-	.search-meta {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		flex-wrap: wrap;
-	}
-
-	.search-query {
-		color: #3b82f6;
-		font-style: italic;
-		font-size: 10px;
-	}
-
-	.result-count {
-		color: #6b7280;
-		font-size: 10px;
-		background: #f3f4f6;
-		padding: 2px 8px;
-		border-radius: 12px;
-	}
-
-	.time-filter-badge {
-		color: #7c3aed;
-		font-size: 10px;
-		background: #f3e8ff;
-		padding: 2px 8px;
-		border-radius: 12px;
-		font-weight: 500;
-	}
 
 	/* Search controls styling - now uses panel-section-header */
 
@@ -1233,6 +1410,15 @@
 		font-weight: 500;
 	}
 
+	.capacity-unit-badge {
+		background: #f3e8ff;
+		color: #7c3aed;
+		padding: 2px 8px;
+		border-radius: 12px;
+		font-size: 10px;
+		font-weight: 500;
+	}
+
 	.close-btn {
 		background: none;
 		border: none;
@@ -1419,45 +1605,158 @@
 		font-size: 10px;
 	}
 
-	/* Responsive design - constrain to map width */
+	/* Cluster display styles */
+	.cluster-contents {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.cluster-item {
+		background: #f9fafb;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		padding: 8px;
+		transition: all 0.2s ease;
+	}
+
+	.cluster-item:hover {
+		background: #f3f4f6;
+		border-color: #d1d5db;
+	}
+
+	.cluster-item-header {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-bottom: 4px;
+	}
+
+	.cluster-item-emoji {
+		font-size: 14px;
+		flex-shrink: 0;
+	}
+
+	.cluster-item-name {
+		font-weight: 600;
+		color: #111827;
+		font-size: 10px;
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.cluster-item-slots {
+		background: #dbeafe;
+		color: #1d4ed8;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-size: 8px;
+		font-weight: 500;
+		flex-shrink: 0;
+	}
+
+	.cluster-item-unit {
+		background: #f3e8ff;
+		color: #7c3aed;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-size: 8px;
+		font-weight: 500;
+		flex-shrink: 0;
+	}
+
+	.cluster-item-provider {
+		color: #6b7280;
+		font-size: 8px;
+		font-style: italic;
+		margin-bottom: 4px;
+	}
+
+	.cluster-item-description {
+		color: #4b5563;
+		font-size: 8px;
+		line-height: 1.2;
+	}
+
+	/* Cluster view header styles */
+	.cluster-view-header {
+		text-align: center;
+		padding: 8px 0;
+	}
+
+	.cluster-view-title {
+		font-size: 14px;
+		font-weight: 600;
+		color: #111827;
+		margin: 0 0 6px 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+	}
+
+	.cluster-view-emoji {
+		font-size: 16px;
+	}
+
+	/* Cluster results styling */
+	.cluster-results {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.cluster-result-item {
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 8px;
+		padding: 10px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.cluster-result-item:hover {
+		background: #f9fafb;
+		border-color: #3b82f6;
+		transform: translateY(-1px);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	/* Responsive design - maintain map height constraints */
 	@media (max-width: 768px) {
 		.search-panel {
-			width: calc(100% - 32px); /* Full map width minus margins */
-			max-width: 240px; /* Match the new default width */
+			width: 280px;
+			max-width: calc(100vw - 32px);
+			/* Keep the same height constraint */
+			max-height: min(380px, calc(50vh - 20px));
+		}
+
+		.search-panel.fullscreen {
+			max-height: calc(100vh - 40px);
 		}
 
 		.search-input {
-			min-width: 170px; /* Match the new default min-width */
-		}
-
-		.time-filter-header {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 4px;
-		}
-
-		.time-input-group {
-			flex-wrap: wrap;
-			gap: 4px;
-		}
-
-		.time-filter-date,
-		.time-filter-time {
-			min-width: auto;
-			flex: 1;
+			min-width: 120px;
 		}
 	}
 
 	@media (max-width: 480px) {
 		.search-panel {
-			left: 8px;
-			top: 8px;
-			width: calc(100% - 16px); /* Constrain to map width */
-			max-width: 220px; /* Slightly smaller for very small screens */
+			width: 260px;
+			max-width: calc(100vw - 16px);
+			/* Keep the same height constraint */
+			max-height: min(380px, calc(50vh - 20px));
+		}
+
+		.search-panel.fullscreen {
+			max-height: calc(100vh - 40px);
 		}
 
 		.search-input {
-			min-width: 150px;
+			min-width: 100px;
 		}
 	}
 </style>

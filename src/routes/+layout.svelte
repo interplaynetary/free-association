@@ -30,7 +30,7 @@
 	<link rel="manifest" href="{base}/manifest.json" />
 </svelte:head>
 
-<main class:map-fullscreen={globalState.isMapFullscreen}>
+<main>
 	<div class="app-header">
 		<Header />
 	</div>
@@ -110,11 +110,5 @@
 		transition: padding-top 0.3s ease-out;
 	}
 
-	/* When map is fullscreen, add padding to push content below it */
-	main.map-fullscreen .app-content {
-		/* Use dynamic viewport height for better mobile support */
-		padding-top: calc(100dvh - 76px + 16px);
-		/* Fallback for browsers that don't support dvh */
-		padding-top: calc(100vh - 76px + 16px);
-	}
+	/* Fullscreen styling is now handled by FullScreenControl */
 </style>
