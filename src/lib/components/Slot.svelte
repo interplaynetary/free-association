@@ -577,21 +577,45 @@
 		ondelete?.(slot.id);
 	}
 
-	// Toggle expanded sections
+	// Toggle expanded sections - ensure only one is open at a time
 	function toggleTime() {
 		timeExpanded = !timeExpanded;
+		// Close other sections when opening this one
+		if (timeExpanded) {
+			constraintsExpanded = false;
+			locationExpanded = false;
+			compositionsExpanded = false;
+		}
 	}
 
 	function toggleConstraints() {
 		constraintsExpanded = !constraintsExpanded;
+		// Close other sections when opening this one
+		if (constraintsExpanded) {
+			timeExpanded = false;
+			locationExpanded = false;
+			compositionsExpanded = false;
+		}
 	}
 
 	function toggleLocation() {
 		locationExpanded = !locationExpanded;
+		// Close other sections when opening this one
+		if (locationExpanded) {
+			timeExpanded = false;
+			constraintsExpanded = false;
+			compositionsExpanded = false;
+		}
 	}
 
 	function toggleCompositions() {
 		compositionsExpanded = !compositionsExpanded;
+		// Close other sections when opening this one
+		if (compositionsExpanded) {
+			timeExpanded = false;
+			constraintsExpanded = false;
+			locationExpanded = false;
+		}
 	}
 
 	// Helper function to safely extract time from potentially malformed time strings
