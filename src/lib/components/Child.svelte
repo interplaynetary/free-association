@@ -36,8 +36,7 @@
 			nodeId: string;
 			value: number;
 			showNotification?: boolean;
-		}) => {}, // Add callback for manual fulfillment
-		shouldEdit = false // Flag to indicate if this node should immediately be in edit mode
+		}) => {}
 	} = $props<{
 		node: NodeData;
 		dimensions: Dimensions;
@@ -49,32 +48,12 @@
 			nodeId: string;
 			value: number;
 			showNotification?: boolean;
-		}) => void; // Add callback type
-		shouldEdit?: boolean;
+		}) => void;
 	}>();
 
-	// Debug logging for shouldEdit prop changes
-	$effect(() => {
-		if (shouldEdit) {
-			console.log('[DEBUG CHILD] shouldEdit became true for node:', node.name, 'id:', node.id);
-		}
-	});
-
-	// Editing state - now synced with global state
+	// Simple editing state
 	let isEditing = $state(false);
-	let editValue = $state('');
-	let editInput: HTMLInputElement | null = $state(null);
-
-	// Sync local editing state with global state
-	$effect(() => {
-		const isThisNodeBeingEdited = globalState.editMode && globalState.editingNodeId === node.id;
-		if (isThisNodeBeingEdited !== isEditing) {
-			isEditing = isThisNodeBeingEdited;
-			if (isEditing) {
-				editValue = node.name || '';
-			}
-		}
-	});
+	let editValue = $state(node.name || '');
 
 	// Calculate relative size for text scaling
 	const nodeWidth = $derived(dimensions.x1 - dimensions.x0);
@@ -361,78 +340,46 @@
 	}
 
 	// Simple click handler
-	function handleTextEditActivation(event: Event) {
-		event.stopPropagation();
-		globalState.enterEditMode(node.id);
+	function handleTextEditActivation() {
+		isEditing = true;
+		editValue = node.name || '';
 	}
 
-	// Handle text edit save
-	function saveTextEdit(newName: string) {
-		const nodeId = node.id;
-		if (!nodeId) return;
-
-		onTextEdit({ nodeId, newName });
-	}
-
-	// Handle keyboard events for the input field
-	function handleEditKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			finishEditing();
-		} else if (event.key === 'Escape') {
-			event.preventDefault();
-			finishEditing();
-		}
-	}
-
-	// Finish editing and save the result
+	// Finish editing
 	function finishEditing() {
 		const newName = editValue.trim();
 		if (newName && newName !== node.name) {
-			saveTextEdit(newName);
+			onTextEdit({ nodeId: node.id, newName });
 		}
-
-		// Exit edit mode through global state
-		globalState.exitEditMode();
+		isEditing = false;
 	}
 
-	// Handle click/touch outside to finish editing
-	function handleOutsideInteraction(event: MouseEvent | TouchEvent) {
-		// Only if we're editing this specific node
-		if (isEditing && globalState.editingNodeId === node.id) {
-			// Check if the interaction is outside the input field
-			if (editInput && !editInput.contains(event.target as Node)) {
-				// For mouse events, check for scrollbar clicks
-				if (event.type === 'mousedown') {
-					const mouseEvent = event as MouseEvent;
-					const clickedElement = mouseEvent.target as Element;
-					const isScrollbarClick =
-						mouseEvent.offsetX > clickedElement.clientWidth ||
-						mouseEvent.offsetY > clickedElement.clientHeight;
-
-					if (isScrollbarClick) {
-						return;
-					}
-				}
-
-				finishEditing();
-			}
+	// Handle click outside to finish editing
+	function handleOutsideClick(event: MouseEvent) {
+		if (isEditing && !(event.target as Element)?.closest('.node-title-area')) {
+			finishEditing();
 		}
 	}
 
-	// Set up event listeners for editing state
+	// Set up click outside listener and auto-focus
 	$effect(() => {
 		if (isEditing) {
-			document.addEventListener('mousedown', handleOutsideInteraction);
-			document.addEventListener('touchstart', handleOutsideInteraction);
+			document.addEventListener('mousedown', handleOutsideClick);
+
+			// Auto-focus the input when it appears
+			setTimeout(() => {
+				const input = document.querySelector('.node-edit-input') as HTMLInputElement;
+				if (input) {
+					input.focus();
+					input.select();
+				}
+			}, 10);
 		} else {
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
+			document.removeEventListener('mousedown', handleOutsideClick);
 		}
 
 		return () => {
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
+			document.removeEventListener('mousedown', handleOutsideClick);
 		};
 	});
 </script>
@@ -480,11 +427,15 @@
 				<input
 					type="text"
 					class="node-edit-input"
-					bind:this={editInput}
 					bind:value={editValue}
-					onkeydown={handleEditKeydown}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === 'Escape') {
+							e.preventDefault();
+							finishEditing();
+						}
+					}}
 					onblur={finishEditing}
-					onfocus={() => editInput?.select()}
+					onfocus={(e) => (e.target as HTMLInputElement)?.select()}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
@@ -502,11 +453,10 @@
 					role="button"
 					tabindex="0"
 					onclick={handleTextEditActivation}
-					ontouchend={handleTextEditActivation}
 					onkeydown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
-							handleTextEditActivation(e);
+							handleTextEditActivation();
 						}
 					}}
 				>
