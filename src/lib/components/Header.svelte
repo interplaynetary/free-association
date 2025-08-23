@@ -134,6 +134,7 @@
 	// Login state
 	let showLoginPanel = $state(false);
 	let isLoading = $state(false);
+	// Global state for form values that persist when panel is closed/reopened
 	let usernameInput = $state('');
 	let password = $state('');
 	let confirmPassword = $state(''); // Added for registration
@@ -143,8 +144,9 @@
 	let showPassword = $state(false);
 	let showConfirmPassword = $state(false); // For registration confirm password
 	let agreedToTerms = $state(false); // Added for terms agreement
-	let loginPanelTimer = $state<NodeJS.Timeout | null>(null); // Timer for auto-closing login panel
+	let loginPanelTimer = $state<number | null>(null); // Timer for auto-closing login panel
 	let isPanelClosing = $state(false); // State for smooth fade-out transition
+	let shouldPreserveFormValues = $state(true); // Flag to control whether form values should be preserved
 
 	// Notification state
 	let showNotificationPanel = $state(false);
@@ -203,6 +205,8 @@
 				// Don't close the login panel if clicking on header control buttons
 				if (!isHeaderControlButton) {
 					showLoginPanel = false;
+					// Form values are preserved when panel is closed by clicking outside
+					// because shouldPreserveFormValues is true by default
 				}
 			}
 
@@ -253,6 +257,7 @@
 	function toggleLoginPanel() {
 		showLoginPanel = !showLoginPanel;
 		if (!showLoginPanel) {
+			// Keep form values when panel is closed accidentally
 			resetForm();
 			clearLoginPanelTimer();
 			isPanelClosing = false;
@@ -280,15 +285,21 @@
 
 	// Reset form state
 	function resetForm() {
-		usernameInput = '';
-		password = '';
-		confirmPassword = '';
+		// Only clear form values if we don't want to preserve them
+		if (!shouldPreserveFormValues) {
+			usernameInput = '';
+			password = '';
+			confirmPassword = '';
+			isRegisterMode = false;
+			agreedToTerms = false;
+		}
+
+		// Always reset these UI state values
 		errorMessage = '';
 		authMessage = '';
 		showPassword = false;
 		showConfirmPassword = false;
-		isRegisterMode = false;
-		agreedToTerms = false;
+
 		// Also reset password change form when login panel closes
 		showPasswordChange = false;
 		resetPasswordChangeForm();
@@ -297,6 +308,7 @@
 	// Start timer to auto-close login panel
 	function startLoginPanelTimer() {
 		clearLoginPanelTimer();
+		// Cast to any to avoid type conflicts between browser and Node.js timer types
 		loginPanelTimer = setTimeout(() => {
 			if (showLoginPanel && !isLoading) {
 				// Start fade-out transition
@@ -305,10 +317,11 @@
 				setTimeout(() => {
 					showLoginPanel = false;
 					isPanelClosing = false;
+					// Preserve form values when auto-closing
 					resetForm();
 				}, 300); // Match the CSS transition duration
 			}
-		}, 10000); // 10 seconds (10,000 ms)
+		}, 10000) as any; // 10 seconds (10,000 ms)
 	}
 
 	// Clear the login panel timer
@@ -511,7 +524,10 @@
 			await login(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
+			// On successful login, we can clear the form values
+			shouldPreserveFormValues = false;
 			resetForm();
+			shouldPreserveFormValues = true; // Reset flag for future use
 			clearLoginPanelTimer();
 			isPanelClosing = false;
 			// globalState.showToast('Signed in successfully', 'success');
@@ -527,7 +543,10 @@
 			await signup(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
 			showLoginPanel = false;
+			// On successful signup, we can clear the form values
+			shouldPreserveFormValues = false;
 			resetForm();
+			shouldPreserveFormValues = true; // Reset flag for future use
 			clearLoginPanelTimer();
 			isPanelClosing = false;
 			globalState.showToast('Account created successfully!', 'success');
@@ -544,6 +563,10 @@
 			globalState.resetState();
 			clearLoginPanelTimer();
 			isPanelClosing = false;
+			// Clear form values on logout
+			shouldPreserveFormValues = false;
+			resetForm();
+			shouldPreserveFormValues = true; // Reset flag for future use
 			globalState.showToast('Signed out successfully', 'info');
 			goto(base + '/');
 		} catch (error) {
@@ -1109,7 +1132,7 @@
 						<div class="auth-message">{authMessage}</div>
 					{/if}
 
-					<form onsubmit={handleSubmit}>
+					<form method="post" onsubmit={handleSubmit}>
 						<div class="form-group">
 							<label for="username">Username</label>
 							<input
