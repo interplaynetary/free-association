@@ -366,12 +366,17 @@
 		if (isEditing) {
 			document.addEventListener('mousedown', handleOutsideClick);
 
-			// Auto-focus the input when it appears
+			// Auto-focus the contenteditable when it appears
 			setTimeout(() => {
-				const input = document.querySelector('.node-edit-input') as HTMLInputElement;
-				if (input) {
-					input.focus();
-					input.select();
+				const editable = document.querySelector('.node-edit-input') as HTMLElement;
+				if (editable) {
+					editable.focus();
+					// Select all text
+					const range = document.createRange();
+					range.selectNodeContents(editable);
+					const selection = window.getSelection();
+					selection?.removeAllRanges();
+					selection?.addRange(range);
 				}
 			}, 10);
 		} else {
@@ -424,10 +429,10 @@
       "
 		>
 			{#if isEditing}
-				<input
-					type="text"
+				<div
 					class="node-edit-input"
-					bind:value={editValue}
+					contenteditable="true"
+					bind:innerHTML={editValue}
 					onkeydown={(e) => {
 						if (e.key === 'Enter' || e.key === 'Escape') {
 							e.preventDefault();
@@ -435,15 +440,19 @@
 						}
 					}}
 					onblur={finishEditing}
-					onfocus={(e) => (e.target as HTMLInputElement)?.select()}
+					onfocus={(e) => {
+						// Select all text when focused
+						const range = document.createRange();
+						range.selectNodeContents(e.target as Element);
+						const selection = window.getSelection();
+						selection?.removeAllRanges();
+						selection?.addRange(range);
+					}}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
 						max-width: {Math.min(200, nodeSizeRatio * 3)}px;
 					"
-					autocomplete="off"
-					autocorrect="off"
-					spellcheck="false"
 				/>
 			{:else}
 				<div
