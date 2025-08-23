@@ -370,6 +370,7 @@
 
 		if (!node.id) return;
 
+		// Enter edit mode and focus immediately
 		globalState.enterEditMode(node.id);
 	}
 
@@ -432,6 +433,14 @@
 		if (isEditing) {
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
+
+			// Auto-focus when entering edit mode
+			setTimeout(() => {
+				if (editInput) {
+					editInput.focus();
+					editInput.select();
+				}
+			}, 50);
 		} else {
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
@@ -441,13 +450,6 @@
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
 		};
-	});
-
-	// Auto-enter edit mode for new nodes (no auto-focus)
-	$effect(() => {
-		if (shouldEdit && !isEditing && node.id) {
-			globalState.enterEditMode(node.id);
-		}
 	});
 </script>
 
@@ -498,14 +500,6 @@
 					bind:value={editValue}
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
-					onfocus={() => {
-						// When user manually focuses, select all text
-						setTimeout(() => {
-							if (editInput) {
-								editInput.select();
-							}
-						}, 10);
-					}}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
