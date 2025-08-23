@@ -466,80 +466,19 @@
 		}
 	}
 
-	// Cross-platform input focus with iOS keyboard detection
-	let keyboardDetectionTimeout: number | null = $state(null);
-	let showKeyboardHint = $state(false);
-
-	// Detect if keyboard appeared (for iOS feedback)
-	function detectKeyboardAppearance() {
-		if (typeof window === 'undefined') return false;
-
-		// Use visualViewport if available (modern browsers)
-		if (window.visualViewport) {
-			return window.visualViewport.height < window.innerHeight * 0.75;
-		}
-
-		// Fallback: check if window height changed significantly
-		return window.innerHeight < screen.height * 0.75;
-	}
-
-	// Enhanced focus function with better iOS compatibility
+	// Simple focus function that works on iOS
 	function focusAndSelectInput() {
 		if (!editInput) return;
 
-		try {
-			// Ensure input is visible and interactive
-			editInput.style.opacity = '1';
-			editInput.style.pointerEvents = 'auto';
+		// Simple focus and select
+		editInput.focus();
 
-			// Focus the input
-			editInput.focus();
-
-			// Use setSelectionRange instead of select() for better iOS compatibility
-			const textLength = editInput.value.length;
-			if (textLength > 0) {
-				// Use requestAnimationFrame to ensure DOM is ready
-				requestAnimationFrame(() => {
-					if (editInput) {
-						editInput.setSelectionRange(0, textLength);
-						console.log('[DEBUG CHILD] Text selected using setSelectionRange');
-					}
-				});
+		// Select all text
+		setTimeout(() => {
+			if (editInput) {
+				editInput.select();
 			}
-
-			// For programmatic edits on iOS, detect if keyboard appeared
-			if (!userTriggeredEdit) {
-				// Clear any existing timeout
-				if (keyboardDetectionTimeout) {
-					clearTimeout(keyboardDetectionTimeout);
-				}
-
-				// Check for keyboard after a delay
-				keyboardDetectionTimeout = setTimeout(() => {
-					const keyboardVisible = detectKeyboardAppearance();
-					const inputFocused = document.activeElement === editInput;
-
-					console.log('[DEBUG CHILD] Keyboard detection:', {
-						keyboardVisible,
-						inputFocused,
-						userTriggered: userTriggeredEdit
-					});
-
-					// If input is focused but keyboard didn't appear, show hint
-					if (inputFocused && !keyboardVisible && !userTriggeredEdit) {
-						showKeyboardHint = true;
-						console.log('[DEBUG CHILD] Showing keyboard hint for iOS');
-
-						// Hide hint after 3 seconds
-						setTimeout(() => {
-							showKeyboardHint = false;
-						}, 3000);
-					}
-				}, 500) as any; // Give iOS time to show keyboard
-			}
-		} catch (error) {
-			console.warn('[DEBUG CHILD] Focus error:', error);
-		}
+		}, 50);
 	}
 
 	// Set up and clean up event listeners when editing state changes
@@ -551,12 +490,10 @@
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
 
-			// Focus input with improved cross-platform handling
+			// Focus input
 			if (editInput) {
-				// Input is ready, focus immediately
 				focusAndSelectInput();
 			} else {
-				// Input not ready, wait for DOM update
 				setTimeout(() => {
 					focusAndSelectInput();
 				}, 100);
@@ -565,51 +502,24 @@
 			// Remove the event listeners when not editing
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
-
-			// Clear keyboard detection timeout and hint
-			if (keyboardDetectionTimeout) {
-				clearTimeout(keyboardDetectionTimeout);
-				keyboardDetectionTimeout = null;
-			}
-			showKeyboardHint = false;
 		}
 
 		// Clean up function
 		return () => {
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
-			if (keyboardDetectionTimeout) {
-				clearTimeout(keyboardDetectionTimeout);
-			}
 		};
 	});
 
 	// Check if this node should enter edit mode (either from prop or from being newly created)
 	$effect(() => {
-		console.log('[DEBUG CHILD] Effect triggered for node:', node.name, {
-			shouldEdit,
-			isEditing,
-			nodeId: node.id,
-			globalNodeToEdit: globalState.nodeToEdit,
-			globalEditMode: globalState.editMode
-		});
-
 		if (shouldEdit && !isEditing && node.id) {
 			console.log('[DEBUG CHILD] Auto-edit requested for node:', node.name);
 
-			// For iOS compatibility, we need to simulate a user interaction
-			// Use a small delay to ensure the DOM is ready
+			// Simple delay to ensure DOM is ready
 			setTimeout(() => {
-				const canEdit = globalState.enterEditMode(node.id);
-				if (canEdit) {
-					console.log('[DEBUG CHILD] Auto-entering edit mode for new node:', node.name);
-				} else {
-					console.log('[DEBUG CHILD] Auto-edit failed for node:', node.name, {
-						editMode: globalState.editMode,
-						editingNodeId: globalState.editingNodeId
-					});
-				}
-			}, 50);
+				globalState.enterEditMode(node.id);
+			}, 100);
 		}
 	});
 </script>
@@ -654,56 +564,22 @@
       "
 		>
 			{#if isEditing}
-				<div class="edit-input-container" style="position: relative;">
-					<input
-						type="text"
-						class="node-edit-input"
-						class:has-keyboard-hint={showKeyboardHint}
-						bind:this={editInput}
-						bind:value={editValue}
-						onkeydown={handleEditKeydown}
-						onblur={finishEditing}
-						onclick={() => {
-							// Handle manual click - this should trigger keyboard on iOS
-							if (showKeyboardHint) {
-								showKeyboardHint = false;
-								// Clear any pending timeout
-								if (keyboardDetectionTimeout) {
-									clearTimeout(keyboardDetectionTimeout);
-									keyboardDetectionTimeout = null;
-								}
-							}
-						}}
-						style="
-							font-size: {fontSize()}rem;
-							width: 100%;
-							max-width: {Math.min(200, nodeSizeRatio * 3)}px;
-						"
-						autocomplete="off"
-						autocorrect="off"
-						spellcheck="false"
-						inputmode="text"
-					/>
-
-					{#if showKeyboardHint}
-						<div
-							class="keyboard-hint"
-							onclick={() => {
-								// When user taps the hint, focus the input (this creates a trusted user event)
-								if (editInput) {
-									editInput.focus();
-									editInput.click(); // Trigger click to ensure keyboard appears
-								}
-								showKeyboardHint = false;
-							}}
-						>
-							<div class="hint-content">
-								<span class="hint-icon">⌨️</span>
-								<span class="hint-text">Tap here to open keyboard</span>
-							</div>
-						</div>
-					{/if}
-				</div>
+				<input
+					type="text"
+					class="node-edit-input"
+					bind:this={editInput}
+					bind:value={editValue}
+					onkeydown={handleEditKeydown}
+					onblur={finishEditing}
+					style="
+						font-size: {fontSize()}rem;
+						width: 100%;
+						max-width: {Math.min(200, nodeSizeRatio * 3)}px;
+					"
+					autocomplete="off"
+					autocorrect="off"
+					spellcheck="false"
+				/>
 			{:else}
 				<div
 					class="node-title"
@@ -1201,85 +1077,6 @@
 	.node-edit-input:focus {
 		border-color: #2196f3;
 		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
-	}
-
-	.node-edit-input.has-keyboard-hint {
-		border-color: #ff9800;
-		box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
-		animation: gentle-pulse 2s ease-in-out infinite;
-	}
-
-	@keyframes gentle-pulse {
-		0%,
-		100% {
-			box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
-		}
-		50% {
-			box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.5);
-		}
-	}
-
-	.edit-input-container {
-		display: inline-block;
-		position: relative;
-	}
-
-	.keyboard-hint {
-		position: absolute;
-		top: 100%;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 1000;
-		margin-top: 8px;
-		cursor: pointer;
-		animation: fade-in-up 0.3s ease-out;
-	}
-
-	.hint-content {
-		background: rgba(255, 152, 0, 0.95);
-		color: white;
-		padding: 8px 12px;
-		border-radius: 8px;
-		font-size: 0.8rem;
-		font-weight: 500;
-		white-space: nowrap;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		border: 2px solid rgba(255, 255, 255, 0.3);
-		backdrop-filter: blur(4px);
-		-webkit-backdrop-filter: blur(4px);
-	}
-
-	.hint-icon {
-		font-size: 1rem;
-		filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-	}
-
-	.hint-text {
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-	}
-
-	.keyboard-hint::after {
-		content: '';
-		position: absolute;
-		bottom: 100%;
-		left: 50%;
-		transform: translateX(-50%);
-		border: 6px solid transparent;
-		border-bottom-color: rgba(255, 152, 0, 0.95);
-	}
-
-	@keyframes fade-in-up {
-		from {
-			opacity: 0;
-			transform: translateX(-50%) translateY(10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateX(-50%) translateY(0);
-		}
 	}
 
 	.add-contributor-button {
