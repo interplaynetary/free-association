@@ -9,32 +9,44 @@ const isDev = process.argv.includes('--dev');
 
 // Base manifest configuration
 const manifest = {
-	name: "Playnet",
-	short_name: "Playnet",
-	description: "Free association network platform",
-	start_url: isDev ? "/" : `${basePath}/`,
-	scope: isDev ? "/" : `${basePath}/`,
-	display: "standalone",
-	orientation: "portrait-primary",
-	background_color: "#ffffff",
-	theme_color: "#000000",
-	lang: "en",
-	dir: "ltr",
+	name: 'Playnet',
+	short_name: 'Playnet',
+	description: 'Free association network platform',
+	start_url: isDev ? '/' : `${basePath}/`,
+	scope: isDev ? '/' : `${basePath}/`,
+	display: 'standalone',
+	orientation: 'any',
+	background_color: '#ffffff',
+	theme_color: '#000000',
+	lang: 'en',
+	dir: 'ltr',
 	icons: [
 		{
-			src: isDev ? "/favicon.png" : `${basePath}/favicon.png`,
-			sizes: "192x192",
-			type: "image/png",
-			purpose: "any maskable"
+			src: isDev ? '/favicon.png' : `${basePath}/favicon.png`,
+			sizes: '192x192',
+			type: 'image/png',
+			purpose: 'any maskable'
 		},
 		{
-			src: isDev ? "/favicon.png" : `${basePath}/favicon.png`,
-			sizes: "512x512",
-			type: "image/png",
-			purpose: "any maskable"
+			src: isDev ? '/favicon.png' : `${basePath}/favicon.png`,
+			sizes: '512x512',
+			type: 'image/png',
+			purpose: 'any maskable'
+		},
+		{
+			src: isDev ? '/favicon.png' : `${basePath}/favicon.png`,
+			sizes: '180x180',
+			type: 'image/png',
+			purpose: 'any'
+		},
+		{
+			src: isDev ? '/favicon.png' : `${basePath}/favicon.png`,
+			sizes: '167x167',
+			type: 'image/png',
+			purpose: 'any'
 		}
 	],
-	categories: ["productivity", "social", "collaboration"],
+	categories: ['productivity', 'social', 'collaboration'],
 	screenshots: []
 };
 
