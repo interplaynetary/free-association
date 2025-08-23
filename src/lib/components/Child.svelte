@@ -360,15 +360,13 @@
 		}
 	}
 
-	// Text edit handler
+	// Direct text edit handler
 	function handleTextEditActivation(event: Event) {
 		event.stopPropagation();
 
 		if (event.type === 'touchend') {
 			event.preventDefault();
 		}
-
-		if (!node.id) return;
 
 		// Enter edit mode and focus immediately
 		globalState.enterEditMode(node.id);
@@ -438,7 +436,6 @@
 			setTimeout(() => {
 				if (editInput) {
 					editInput.focus();
-					editInput.select();
 				}
 			}, 50);
 		} else {
@@ -500,6 +497,14 @@
 					bind:value={editValue}
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
+					onfocus={() => {
+						// Select all text when focused
+						setTimeout(() => {
+							if (editInput) {
+								editInput.select();
+							}
+						}, 10);
+					}}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
