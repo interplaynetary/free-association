@@ -434,6 +434,10 @@
 					if (slot.latitude && slot.longitude) {
 						return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
 					}
+				} else if (slot.location_type === 'Online') {
+					if (slot.online_link) {
+						return slot.online_link.toLowerCase();
+					}
 				}
 				return (slot.location_type || 'No location').toLowerCase();
 			case 'quantity':
@@ -575,11 +579,17 @@
 
 	// Add new slot
 	function handleAddSlot() {
+		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
 		const newSlot = {
 			id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 			quantity: 1,
 			location_type: 'Undefined',
-			recurrence: 'Does not repeat'
+			all_day: true,
+			start_date: todayString,
+			start_time: null,
+			end_date: null,
+			end_time: null,
+			recurrence: 'Daily'
 		};
 
 		const updatedSlots = [...capacity.availability_slots, newSlot];

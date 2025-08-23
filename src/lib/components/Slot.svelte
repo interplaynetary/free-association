@@ -431,6 +431,7 @@
 	let slotStateProvince = $state(slot.state_province);
 	let slotPostalCode = $state(slot.postal_code);
 	let slotCountry = $state(slot.country);
+	let slotOnlineLink = $state(slot.online_link);
 
 	// Location format state ('coordinates' or 'address')
 	let locationFormat = $state<'coordinates' | 'address'>('address');
@@ -520,7 +521,8 @@
 			city: slotCity,
 			state_province: slotStateProvince,
 			postal_code: slotPostalCode,
-			country: slotCountry
+			country: slotCountry,
+			online_link: slotOnlineLink
 		};
 
 		// 🚨 DEBUG: Log the location data being sent in handleSlotUpdate
@@ -1330,6 +1332,17 @@
 						/>
 						<span class="text-sm text-gray-600">Specific</span>
 					</label>
+					<label class="inline-flex items-center">
+						<input
+							type="radio"
+							name="location-type-{slotId}"
+							value="Online"
+							bind:group={slotLocationType}
+							class="mr-2"
+							onchange={handleSlotUpdate}
+						/>
+						<span class="text-sm text-gray-600">Online</span>
+					</label>
 				</div>
 			</div>
 
@@ -1447,6 +1460,22 @@
 						</div>
 					</div>
 				{/if}
+			{/if}
+
+			{#if slotLocationType === 'Online'}
+				<div class="online-fields space-y-3">
+					<input
+						type="url"
+						class="slot-input w-full"
+						bind:value={slotOnlineLink}
+						placeholder="https://example.com/meeting-link or meeting room details"
+						onfocus={() => handleFocus('onlineLink', slotOnlineLink)}
+						onblur={() => handleBlurIfChanged('onlineLink', slotOnlineLink)}
+					/>
+					<div class="text-xs text-gray-500">
+						Enter a meeting link (Zoom, Teams, etc.) or text describing how to join online
+					</div>
+				</div>
 			{/if}
 		</div>
 	{/if}

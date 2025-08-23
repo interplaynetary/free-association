@@ -269,6 +269,22 @@
 			if (slot.latitude && slot.longitude) {
 				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
 			}
+		} else if (slot.location_type === 'Online') {
+			// Show online link or generic "Online" text
+			if (slot.online_link) {
+				// If it looks like a URL, show a shortened version
+				if (slot.online_link.startsWith('http')) {
+					try {
+						const url = new URL(slot.online_link);
+						return `Online (${url.hostname})`;
+					} catch {
+						return 'Online (link provided)';
+					}
+				}
+				// If it's text, show truncated version
+				return `Online (${slot.online_link.length > 30 ? slot.online_link.substring(0, 30) + '...' : slot.online_link})`;
+			}
+			return 'Online';
 		}
 
 		return slot.location_type || 'No location';
@@ -277,6 +293,36 @@
 	function getChatId(share: RecipientCapacity): string {
 		// Use capacity ID as the chat ID for all conversations about this capacity
 		return share.id;
+	}
+
+	// Handle online link clicks
+	function handleOnlineLinkClick(slot: any) {
+		if (slot.online_link) {
+			if (slot.online_link.startsWith('http')) {
+				// It's a URL - open in new tab
+				window.open(slot.online_link, '_blank', 'noopener,noreferrer');
+			} else {
+				// It's text - copy to clipboard
+				navigator.clipboard
+					.writeText(slot.online_link)
+					.then(() => {
+						// Could show a toast here if needed
+						console.log('Online meeting details copied to clipboard');
+					})
+					.catch(() => {
+						console.log('Failed to copy to clipboard');
+					});
+			}
+		}
+	}
+
+	// Handle location click (combines address and online link handling)
+	function handleLocationClick(slot: any) {
+		if (slot.location_type === 'Online') {
+			handleOnlineLinkClick(slot);
+		} else {
+			handleAddressClick(slot);
+		}
 	}
 
 	// Utility function to check if a slot is recurring
@@ -536,9 +582,11 @@
 														class="location-link"
 														onclick={(e) => {
 															e.stopPropagation();
-															handleAddressClick(slot);
+															handleLocationClick(slot);
 														}}
-														title="Click to open in maps or copy address"
+														title={slot.location_type === 'Online'
+															? 'Click to open link or copy details'
+															: 'Click to open in maps or copy address'}
 													>
 														📍 {formatSlotLocationDisplay(slot)}
 													</button>
@@ -609,9 +657,11 @@
 														class="location-link"
 														onclick={(e) => {
 															e.stopPropagation();
-															handleAddressClick(slot);
+															handleLocationClick(slot);
 														}}
-														title="Click to open in maps or copy address"
+														title={slot.location_type === 'Online'
+															? 'Click to open link or copy details'
+															: 'Click to open in maps or copy address'}
 													>
 														📍 {formatSlotLocationDisplay(slot)}
 													</button>
@@ -682,9 +732,11 @@
 														class="location-link"
 														onclick={(e) => {
 															e.stopPropagation();
-															handleAddressClick(slot);
+															handleLocationClick(slot);
 														}}
-														title="Click to open in maps or copy address"
+														title={slot.location_type === 'Online'
+															? 'Click to open link or copy details'
+															: 'Click to open in maps or copy address'}
 													>
 														📍 {formatSlotLocationDisplay(slot)}
 													</button>

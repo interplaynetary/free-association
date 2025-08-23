@@ -68,6 +68,7 @@ export const AvailabilitySlotSchema = z.object({
 	state_province: z.optional(z.string()),
 	postal_code: z.optional(z.string()),
 	country: z.optional(z.string()),
+	online_link: z.optional(z.string().url().or(z.string().length(0))), // URL for online meetings/events
 
 	// Hierarchical relationship for subset allocation
 	parent_slot_id: z.optional(IdSchema), // If this is a subset of another slot

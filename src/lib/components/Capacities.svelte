@@ -334,7 +334,7 @@
 	function createDefaultCapacity(): ProviderCapacity {
 		if (!$userAlias || !$userPub) throw new Error('No user logged in');
 
-		const now = new Date().toISOString();
+		const todayString = today(getLocalTimeZone()).toString();
 		return {
 			id: crypto.randomUUID(),
 			name: '',
@@ -352,13 +352,13 @@
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: 1,
 					location_type: 'Undefined',
-					all_day: false,
-					start_date: now,
-					start_time: now,
-					end_date: now,
-					end_time: now,
+					all_day: true,
+					start_date: todayString,
+					start_time: null,
+					end_date: null,
+					end_time: null,
 					time_zone: getLocalTimeZone(),
-					recurrence: 'Does not repeat',
+					recurrence: 'Daily',
 					custom_recurrence_repeat_every: null,
 					custom_recurrence_repeat_unit: null,
 					custom_recurrence_end_type: null,
