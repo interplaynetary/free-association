@@ -432,10 +432,11 @@
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
 
-			// Auto-focus when entering edit mode
+			// Auto-focus and select when entering edit mode
 			setTimeout(() => {
 				if (editInput) {
 					editInput.focus();
+					editInput.select();
 				}
 			}, 50);
 		} else {
@@ -497,14 +498,7 @@
 					bind:value={editValue}
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
-					onfocus={() => {
-						// Select all text when focused
-						setTimeout(() => {
-							if (editInput) {
-								editInput.select();
-							}
-						}, 10);
-					}}
+
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
