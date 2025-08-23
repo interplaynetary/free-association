@@ -1879,7 +1879,6 @@
 							removeContributor={handleRemoveContributor}
 							onTextEdit={handleTextEdit}
 							onManualFulfillmentChange={handleManualFulfillmentChange}
-							shouldEdit={globalState.nodeToEdit === child.data.id}
 						/>
 					</div>
 				{/each}

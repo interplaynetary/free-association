@@ -155,7 +155,7 @@
 							seenSlots.add(slotKey);
 
 							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
 
 							items.push({
 								id: slotKey, // Use unique key combining capacity and slot ID
@@ -189,7 +189,7 @@
 							seenSlots.add(slotKey);
 
 							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
 
 							items.push({
 								id: slotKey, // Use unique key combining capacity and slot ID
@@ -331,7 +331,7 @@
 							seenSlots.add(slotKey);
 
 							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
 
 							items.push({
 								id: slotKey,
@@ -365,7 +365,7 @@
 							seenSlots.add(slotKey);
 
 							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
 
 							items.push({
 								id: slotKey,

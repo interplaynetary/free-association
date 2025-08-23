@@ -36,7 +36,7 @@
 			nodeId: string;
 			value: number;
 			showNotification?: boolean;
-		}) => {}
+		}) => {} // Add callback for manual fulfillment
 	} = $props<{
 		node: NodeData;
 		dimensions: Dimensions;
@@ -48,12 +48,26 @@
 			nodeId: string;
 			value: number;
 			showNotification?: boolean;
-		}) => void;
+		}) => void; // Add callback type
 	}>();
 
-	// Simple editing state
+	// shouldEdit prop is no longer used for auto-edit functionality
+
+	// Editing state - now synced with global state
 	let isEditing = $state(false);
-	let editValue = $state(node.name || '');
+	let editValue = $state('');
+	let editInput: HTMLInputElement | null = $state(null);
+
+	// Sync local editing state with global state
+	$effect(() => {
+		const isThisNodeBeingEdited = globalState.editMode && globalState.editingNodeId === node.id;
+		if (isThisNodeBeingEdited !== isEditing) {
+			isEditing = isThisNodeBeingEdited;
+			if (isEditing) {
+				editValue = node.name || '';
+			}
+		}
+	});
 
 	// Calculate relative size for text scaling
 	const nodeWidth = $derived(dimensions.x1 - dimensions.x0);
@@ -339,54 +353,197 @@
 		}
 	}
 
-	// Simple click handler
-	function handleTextEditActivation() {
-		isEditing = true;
-		editValue = node.name || '';
-	}
+	// Track if this was triggered by user interaction (important for iOS)
+	let userTriggeredEdit = $state(false);
 
-	// Finish editing
-	function finishEditing() {
-		const newName = editValue.trim();
-		if (newName && newName !== node.name) {
-			onTextEdit({ nodeId: node.id, newName });
+	// Unified text edit handler that works across all devices and interaction types
+	function handleTextEditActivation(event: Event) {
+		console.log('[DEBUG CHILD] Text edit activation:', {
+			type: event.type,
+			target: event.target,
+			nodeId: node.id,
+			nodeName: node.name,
+			editMode: globalState.editMode,
+			deleteMode: globalState.deleteMode,
+			recomposeMode: globalState.recomposeMode,
+			isTrusted: event.isTrusted
+		});
+
+		// Mark as user-triggered for iOS compatibility
+		userTriggeredEdit = event.isTrusted;
+
+		// Stop propagation to prevent parent node interactions
+		event.stopPropagation();
+
+		// For touch events, also prevent default to avoid iOS text selection conflicts
+		if (event.type === 'touchend') {
+			event.preventDefault();
 		}
-		isEditing = false;
+
+		// Only allow editing if we have a valid node ID
+		if (!node.id) {
+			console.log('[DEBUG CHILD] No node ID, cannot edit');
+			return;
+		}
+
+		// Try to enter edit mode through global state
+		const canEdit = globalState.enterEditMode(node.id);
+		if (!canEdit) {
+			console.log('[DEBUG CHILD] Cannot edit - global state prevented, reason:', {
+				editMode: globalState.editMode,
+				deleteMode: globalState.deleteMode,
+				recomposeMode: globalState.recomposeMode
+			});
+			return;
+		}
+
+		console.log(
+			'[DEBUG CHILD] Edit mode activated successfully for node:',
+			node.name,
+			'userTriggered:',
+			userTriggeredEdit
+		);
 	}
 
-	// Handle click outside to finish editing
-	function handleOutsideClick(event: MouseEvent) {
-		if (isEditing && !(event.target as Element)?.closest('.node-title-area')) {
+	// Handle text edit save
+	function saveTextEdit(newName: string) {
+		const nodeId = node.id;
+		if (!nodeId) return;
+
+		onTextEdit({ nodeId, newName });
+	}
+
+	// Handle keyboard events for the input field
+	function handleEditKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			finishEditing();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
 			finishEditing();
 		}
 	}
 
-	// Set up click outside listener and auto-focus
-	$effect(() => {
-		if (isEditing) {
-			document.addEventListener('mousedown', handleOutsideClick);
-
-			// Auto-focus the contenteditable when it appears
-			setTimeout(() => {
-				const editable = document.querySelector('.node-edit-input') as HTMLElement;
-				if (editable) {
-					editable.focus();
-					// Select all text
-					const range = document.createRange();
-					range.selectNodeContents(editable);
-					const selection = window.getSelection();
-					selection?.removeAllRanges();
-					selection?.addRange(range);
-				}
-			}, 10);
-		} else {
-			document.removeEventListener('mousedown', handleOutsideClick);
+	// Finish editing and save the result
+	function finishEditing() {
+		const newName = editValue.trim();
+		if (newName && newName !== node.name) {
+			saveTextEdit(newName);
 		}
 
+		// Exit edit mode through global state
+		globalState.exitEditMode();
+	}
+
+	// Handle click/touch outside to finish editing
+	function handleOutsideInteraction(event: MouseEvent | TouchEvent) {
+		// Only if we're editing this specific node
+		if (isEditing && globalState.editingNodeId === node.id) {
+			// Check if the interaction is outside the input field
+			if (editInput && !editInput.contains(event.target as Node)) {
+				// For mouse events, check for scrollbar clicks
+				if (event.type === 'mousedown') {
+					const mouseEvent = event as MouseEvent;
+					const clickedElement = mouseEvent.target as Element;
+					const isScrollbarClick =
+						mouseEvent.offsetX > clickedElement.clientWidth ||
+						mouseEvent.offsetY > clickedElement.clientHeight;
+
+					if (isScrollbarClick) {
+						return;
+					}
+				}
+
+				finishEditing();
+			}
+		}
+	}
+
+	// Set up and clean up event listeners when editing state changes
+	$effect(() => {
+		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
+
+		if (isEditing) {
+			// Add global event listeners for both mouse and touch interactions outside
+			document.addEventListener('mousedown', handleOutsideInteraction);
+			document.addEventListener('touchstart', handleOutsideInteraction);
+
+			// iOS-compatible focus handling with user interaction detection
+			const focusInput = () => {
+				if (editInput) {
+					console.log('[DEBUG CHILD] Focusing input, userTriggered:', userTriggeredEdit);
+					try {
+						// For iOS, we need to ensure the input is visible first
+						editInput.style.opacity = '1';
+						editInput.style.pointerEvents = 'auto';
+
+						if (userTriggeredEdit) {
+							// User-triggered edit - iOS will allow keyboard
+							editInput.focus();
+							setTimeout(() => {
+								if (editInput && document.activeElement === editInput) {
+									editInput.select();
+									console.log('[DEBUG CHILD] User-triggered: Input focused and text selected');
+								}
+							}, 50);
+						} else {
+							// Programmatic edit (auto-edit) - iOS might not show keyboard
+							// Try to focus anyway, but with longer delays
+							setTimeout(() => {
+								if (editInput) {
+									editInput.focus();
+									console.log('[DEBUG CHILD] Programmatic: Input focused');
+
+									setTimeout(() => {
+										if (editInput) {
+											editInput.select();
+											console.log('[DEBUG CHILD] Programmatic: Text selected');
+
+											// For auto-edit on iOS, show a hint if keyboard didn't appear
+											setTimeout(() => {
+												if (
+													editInput &&
+													document.activeElement === editInput &&
+													window.innerHeight === window.visualViewport?.height
+												) {
+													console.log(
+														'[DEBUG CHILD] iOS keyboard may not have appeared - adding click handler'
+													);
+													// The input is focused but keyboard didn't appear - this is common on iOS for programmatic focus
+												}
+											}, 300);
+										}
+									}, 100);
+								}
+							}, 200);
+						}
+					} catch (error) {
+						console.warn('[DEBUG CHILD] Focus error:', error);
+					}
+				}
+			};
+
+			if (editInput) {
+				// Input is ready, focus with appropriate timing
+				focusInput();
+			} else {
+				// Input not ready, wait for DOM update
+				setTimeout(focusInput, 150);
+			}
+		} else {
+			// Remove the event listeners when not editing
+			document.removeEventListener('mousedown', handleOutsideInteraction);
+			document.removeEventListener('touchstart', handleOutsideInteraction);
+		}
+
+		// Clean up function
 		return () => {
-			document.removeEventListener('mousedown', handleOutsideClick);
+			document.removeEventListener('mousedown', handleOutsideInteraction);
+			document.removeEventListener('touchstart', handleOutsideInteraction);
 		};
 	});
+
+	// Auto-edit functionality removed - users must manually tap to edit
 </script>
 
 <div
@@ -429,30 +586,21 @@
       "
 		>
 			{#if isEditing}
-				<div
+				<input
+					type="text"
 					class="node-edit-input"
-					contenteditable="true"
-					bind:innerHTML={editValue}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === 'Escape') {
-							e.preventDefault();
-							finishEditing();
-						}
-					}}
+					bind:this={editInput}
+					bind:value={editValue}
+					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
-					onfocus={(e) => {
-						// Select all text when focused
-						const range = document.createRange();
-						range.selectNodeContents(e.target as Element);
-						const selection = window.getSelection();
-						selection?.removeAllRanges();
-						selection?.addRange(range);
-					}}
 					style="
-						font-size: {fontSize()}rem;
-						width: 100%;
-						max-width: {Math.min(200, nodeSizeRatio * 3)}px;
-					"
+          font-size: {fontSize()}rem;
+          width: 100%;
+          max-width: {Math.min(200, nodeSizeRatio * 3)}px;
+        "
+					autocomplete="off"
+					autocorrect="off"
+					spellcheck="false"
 				/>
 			{:else}
 				<div
@@ -462,10 +610,11 @@
 					role="button"
 					tabindex="0"
 					onclick={handleTextEditActivation}
+					ontouchend={handleTextEditActivation}
 					onkeydown={(e) => {
 						if (e.key === 'Enter' || e.key === ' ') {
 							e.preventDefault();
-							handleTextEditActivation();
+							handleTextEditActivation(e);
 						}
 					}}
 				>
@@ -936,10 +1085,6 @@
 		/* iOS keyboard compatibility */
 		-webkit-user-modify: read-write-plaintext-only;
 		-webkit-tap-highlight-color: transparent;
-		/* Ensure text selection works on iOS */
-		-webkit-user-select: text !important;
-		-moz-user-select: text !important;
-		user-select: text !important;
 		/* Ensure proper layering */
 		position: relative;
 		z-index: 100;

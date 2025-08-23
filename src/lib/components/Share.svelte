@@ -445,7 +445,7 @@
 		<div class="flex min-w-0 flex-1 flex-col pr-2">
 			<div class="share-main-info flex items-center gap-2 overflow-hidden">
 				<span class="share-value name flex-shrink-0 font-medium text-ellipsis whitespace-nowrap">
-					<span class="capacity-emoji">{share.emoji || '📦'}</span>
+					<span class="capacity-emoji">{share.emoji || '🎁'}</span>
 					{share.name}
 				</span>
 				<span class="share-value slot-count flex-shrink-0 text-sm">

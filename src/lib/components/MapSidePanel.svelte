@@ -594,7 +594,7 @@
 			<div class="content-section">
 				<div class="cluster-view-header">
 					<h3 class="cluster-view-title">
-						<span class="cluster-view-emoji">📦</span>
+						<span class="cluster-view-emoji">🎁</span>
 						{clusterViewResults.length} Capacities at this Location
 					</h3>
 				</div>
@@ -631,7 +631,7 @@
 							>
 								<div class="result-header">
 									<div class="result-title">
-										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
+										<span class="result-emoji">{result.capacity.emoji || '🎁'}</span>
 										<span class="result-name">{result.capacity.name}</span>
 									</div>
 									{#if distance !== null}
@@ -701,13 +701,13 @@
 
 				<!-- Cluster Contents -->
 				<div class="content-section slots-section">
-					<h3 class="section-title">📦 {totalCapacities} Capacities</h3>
+					<h3 class="section-title">🎁 {totalCapacities} Capacities</h3>
 					<div class="cluster-contents">
 						{#each markers as marker}
 							{@const { capacity, slots, providerName } = marker}
 							<div class="cluster-item">
 								<div class="cluster-item-header">
-									<span class="cluster-item-emoji">{capacity.emoji || '📦'}</span>
+									<span class="cluster-item-emoji">{capacity.emoji || '🎁'}</span>
 									<span class="cluster-item-name">{capacity.name}</span>
 									{#if capacity.unit}
 										<span class="cluster-item-unit">{capacity.unit}</span>
@@ -948,7 +948,7 @@
 							>
 								<div class="result-header">
 									<div class="result-title">
-										<span class="result-emoji">{result.capacity.emoji || '📦'}</span>
+										<span class="result-emoji">{result.capacity.emoji || '🎁'}</span>
 										<span class="result-name">{result.capacity.name}</span>
 									</div>
 									{#if distance !== null}

@@ -550,7 +550,7 @@
 	function getUniqueEmojis(clusterMarkers: GroupedSlotMarkerData[]): string[] {
 		const emojiSet = new Set<string>();
 		clusterMarkers.forEach((marker) => {
-			const emoji = marker.capacity.emoji || '📦'; // Default emoji if none
+			const emoji = marker.capacity.emoji || '🎁'; // Default emoji if none
 			emojiSet.add(emoji);
 		});
 		return Array.from(emojiSet);

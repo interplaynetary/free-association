@@ -172,7 +172,7 @@ export function createCapacitiesDataProvider(excludeCapacityId?: string) {
 
 					return {
 						id: capacityId,
-						name: `${capacity.emoji || '📦'} ${capacity.name} (${providerName})`,
+						name: `${capacity.emoji || '🎁'} ${capacity.name} (${providerName})`,
 						metadata: capacity
 					};
 				});
@@ -203,7 +203,7 @@ export function createAllNetworkCapacitiesDataProvider(excludeCapacityId?: strin
 
 					items.push({
 						id: capacityId,
-						name: `${capacity.emoji || '📦'} ${capacity.name} (${providerName})`,
+						name: `${capacity.emoji || '🎁'} ${capacity.name} (${providerName})`,
 						metadata: {
 							...capacity,
 							owner_id: userId,
@@ -358,7 +358,7 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 							if (excludeSlotIds.includes(slot.id)) return;
 
 							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
 
 							items.push({
 								id: slot.id,
@@ -391,7 +391,7 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 							if (excludeSlotIds.includes(slot.id)) return;
 
 							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `${capacity.emoji || '📦'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
 
 							items.push({
 								id: slot.id,
@@ -489,7 +489,7 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 						if (allocatedAmount <= 0) return;
 
 						const { timeInfo, location } = formatSlotInfo(slot);
-						const displayName = `${capacity.emoji || '📦'} ${capacity.name} - ${timeInfo} (${allocatedAmount} available)`;
+						const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo} (${allocatedAmount} available)`;
 
 						items.push({
 							id: slot.id,

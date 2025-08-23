@@ -764,7 +764,7 @@
 		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
-					💬 Chat about {capacity.emoji || '📦'}
+					💬 Chat about {capacity.emoji || '🎁'}
 					{capacity.name}
 				</h4>
 				<p class="mt-1 text-xs text-gray-500">

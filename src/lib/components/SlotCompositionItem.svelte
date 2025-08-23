@@ -245,13 +245,13 @@
 		<!-- Line 1: Source and Target Slot Info -->
 		<div class="header-line">
 			<span class="slot-name">
-				{sourceCapacity()?.emoji || '📦'}
+				{sourceCapacity()?.emoji || '🎁'}
 				{sourceCapacity()?.name || 'Unknown'}
 				<span class="slot-info">({formatSlotInfo(sourceSlot())})</span>
 			</span>
 			<span class="direction-arrow">→</span>
 			<span class="slot-name">
-				{targetCapacity()?.emoji || '📦'}
+				{targetCapacity()?.emoji || '🎁'}
 				{targetCapacity()?.name || 'Unknown'}
 				<span class="slot-info">({formatSlotInfo(targetSlot())})</span>
 			</span>

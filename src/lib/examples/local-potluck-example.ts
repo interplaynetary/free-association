@@ -34,7 +34,7 @@ export function demonstrateLocalComposition() {
 	console.log('Available network capacities:');
 	Object.entries(networkCapacities).forEach(([capacityId, capacity]) => {
 		console.log(
-			`  ${capacity.emoji || '📦'} ${capacity.name}: ${getTotalComputedQuantity(capacity)} ${capacity.unit} (from ${capacity.provider_id})`
+			`  ${capacity.emoji || '🎁'} ${capacity.name}: ${getTotalComputedQuantity(capacity)} ${capacity.unit} (from ${capacity.provider_id})`
 		);
 	});
 
@@ -47,7 +47,7 @@ export function demonstrateLocalComposition() {
 			capacityId,
 			providerId: capacity.provider_id,
 			quantity: Math.min(getTotalComputedQuantity(capacity), 2), // Use up to 2 units of each
-			displayName: `${capacity.emoji || '📦'} ${capacity.name}`
+			displayName: `${capacity.emoji || '🎁'} ${capacity.name}`
 		}));
 
 	if (potluckComponents.length === 0) {
