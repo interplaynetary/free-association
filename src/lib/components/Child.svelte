@@ -360,15 +360,9 @@
 		}
 	}
 
-	// Direct text edit handler
+	// Simple click handler
 	function handleTextEditActivation(event: Event) {
 		event.stopPropagation();
-
-		if (event.type === 'touchend') {
-			event.preventDefault();
-		}
-
-		// Enter edit mode and focus immediately
 		globalState.enterEditMode(node.id);
 	}
 
@@ -431,14 +425,6 @@
 		if (isEditing) {
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
-
-			// Auto-focus and select when entering edit mode
-			setTimeout(() => {
-				if (editInput) {
-					editInput.focus();
-					editInput.select();
-				}
-			}, 50);
 		} else {
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
@@ -498,7 +484,7 @@
 					bind:value={editValue}
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
-
+					onfocus={() => editInput?.select()}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
