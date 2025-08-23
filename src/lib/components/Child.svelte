@@ -360,56 +360,17 @@
 		}
 	}
 
-	// Track if this was triggered by user interaction (important for iOS)
-	let userTriggeredEdit = $state(false);
-
-	// Unified text edit handler that works across all devices and interaction types
+	// Text edit handler
 	function handleTextEditActivation(event: Event) {
-		console.log('[DEBUG CHILD] Text edit activation:', {
-			type: event.type,
-			target: event.target,
-			nodeId: node.id,
-			nodeName: node.name,
-			editMode: globalState.editMode,
-			deleteMode: globalState.deleteMode,
-			recomposeMode: globalState.recomposeMode,
-			isTrusted: event.isTrusted
-		});
-
-		// Mark as user-triggered for iOS compatibility
-		userTriggeredEdit = event.isTrusted;
-
-		// Stop propagation to prevent parent node interactions
 		event.stopPropagation();
 
-		// For touch events, also prevent default to avoid iOS text selection conflicts
 		if (event.type === 'touchend') {
 			event.preventDefault();
 		}
 
-		// Only allow editing if we have a valid node ID
-		if (!node.id) {
-			console.log('[DEBUG CHILD] No node ID, cannot edit');
-			return;
-		}
+		if (!node.id) return;
 
-		// Try to enter edit mode through global state
-		const canEdit = globalState.enterEditMode(node.id);
-		if (!canEdit) {
-			console.log('[DEBUG CHILD] Cannot edit - global state prevented, reason:', {
-				editMode: globalState.editMode,
-				deleteMode: globalState.deleteMode,
-				recomposeMode: globalState.recomposeMode
-			});
-			return;
-		}
-
-		console.log(
-			'[DEBUG CHILD] Edit mode activated successfully for node:',
-			node.name,
-			'userTriggered:',
-			userTriggeredEdit
-		);
+		globalState.enterEditMode(node.id);
 	}
 
 	// Handle text edit save
@@ -466,60 +427,26 @@
 		}
 	}
 
-	// Simple focus function that works on iOS
-	function focusAndSelectInput() {
-		if (!editInput) return;
-
-		// Simple focus and select
-		editInput.focus();
-
-		// Select all text
-		setTimeout(() => {
-			if (editInput) {
-				editInput.select();
-			}
-		}, 50);
-	}
-
-	// Set up and clean up event listeners when editing state changes
+	// Set up event listeners for editing state
 	$effect(() => {
-		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
-
 		if (isEditing) {
-			// Add global event listeners for both mouse and touch interactions outside
 			document.addEventListener('mousedown', handleOutsideInteraction);
 			document.addEventListener('touchstart', handleOutsideInteraction);
-
-			// Focus input
-			if (editInput) {
-				focusAndSelectInput();
-			} else {
-				setTimeout(() => {
-					focusAndSelectInput();
-				}, 100);
-			}
 		} else {
-			// Remove the event listeners when not editing
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
 		}
 
-		// Clean up function
 		return () => {
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
 		};
 	});
 
-	// Check if this node should enter edit mode (either from prop or from being newly created)
+	// Auto-enter edit mode for new nodes (no auto-focus)
 	$effect(() => {
 		if (shouldEdit && !isEditing && node.id) {
-			console.log('[DEBUG CHILD] Auto-edit requested for node:', node.name);
-
-			// Simple delay to ensure DOM is ready
-			setTimeout(() => {
-				globalState.enterEditMode(node.id);
-			}, 100);
+			globalState.enterEditMode(node.id);
 		}
 	});
 </script>
@@ -571,6 +498,14 @@
 					bind:value={editValue}
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
+					onfocus={() => {
+						// When user manually focuses, select all text
+						setTimeout(() => {
+							if (editInput) {
+								editInput.select();
+							}
+						}, 10);
+					}}
 					style="
 						font-size: {fontSize()}rem;
 						width: 100%;
