@@ -154,15 +154,18 @@
 	// Search state
 	let showSearchPanel = $state(false);
 	let searchQuery = $state('');
-	let searchResults = $state<
-		Array<{
-			node: Node;
-			navigationPath: string[];
-			displayPath: string;
-			score: number;
-		}>
-	>([]);
-	let selectedResultIndex = $state(0);
+	// Derived search results
+	const searchResults = $derived(
+		searchQuery.trim() && tree ? searchTreeForNavigation(tree, searchQuery) : []
+	);
+
+	// Mutable state for selected index
+	let selectedResultIndex = $state(-1);
+
+	// Reactive update of selected index when search results change
+	$effect(() => {
+		selectedResultIndex = searchResults.length > 0 ? 0 : -1;
+	});
 
 	// Password change state
 	let showPasswordChange = $state(false);
@@ -174,6 +177,10 @@
 	let showCurrentPassword = $state(false); // For password change current password
 	let showNewPassword = $state(false); // For password change new password
 	let showConfirmNewPassword = $state(false); // For password change confirm new password
+
+	// Add a flag to prevent recursive navigation
+	let isPreviewingSearchResult = $state(false);
+	let recursionCounter = $state(0);
 
 	// Initialize error state with URL error message if present
 	$effect(() => {
@@ -228,8 +235,7 @@
 				if (!isHeaderControlButton) {
 					showSearchPanel = false;
 					searchQuery = '';
-					searchResults = [];
-					selectedResultIndex = 0;
+					selectedResultIndex = -1;
 				}
 			}
 		}
@@ -683,40 +689,8 @@
 		} else {
 			// Clear search when closing
 			searchQuery = '';
-			searchResults = [];
-			selectedResultIndex = 0;
+			selectedResultIndex = -1;
 		}
-	}
-
-	// Handle search input changes
-	function handleSearchInput() {
-		if (!searchQuery.trim() || !tree) {
-			searchResults = [];
-			selectedResultIndex = 0;
-			return;
-		}
-
-		const results = searchTreeForNavigation(tree, searchQuery);
-		searchResults = results;
-		selectedResultIndex = 0;
-
-		// Navigate to first result if available
-		if (results.length > 0) {
-			previewSearchResult(results[0]);
-		}
-	}
-
-	// Preview a search result by navigating to it
-	function previewSearchResult(result: {
-		node: Node;
-		navigationPath: string[];
-		displayPath: string;
-		score: number;
-	}) {
-		if (!user) return;
-
-		// Navigate to the result's navigation path
-		globalState.navigateToPath(result.navigationPath);
 	}
 
 	// Navigate to selected search result
@@ -731,7 +705,7 @@
 			return;
 		}
 
-		// Navigate to the result
+		// Directly navigate to the result
 		globalState.navigateToPath(result.navigationPath);
 
 		// Close search panel
@@ -748,13 +722,11 @@
 			case 'ArrowDown':
 				event.preventDefault();
 				selectedResultIndex = Math.min(selectedResultIndex + 1, searchResults.length - 1);
-				previewSearchResult(searchResults[selectedResultIndex]);
 				break;
 
 			case 'ArrowUp':
 				event.preventDefault();
 				selectedResultIndex = Math.max(selectedResultIndex - 1, 0);
-				previewSearchResult(searchResults[selectedResultIndex]);
 				break;
 
 			case 'Enter':
@@ -770,11 +742,6 @@
 				break;
 		}
 	}
-
-	// Reactive effect for search
-	$effect(() => {
-		handleSearchInput();
-	});
 
 	// Reset timer when user interacts with login panel
 	$effect(() => {
@@ -2001,6 +1968,26 @@
 		z-index: 10;
 		animation: dropDown 0.2s ease-out;
 		overflow-y: auto;
+	}
+
+	/* Add mobile-friendly media query */
+	@media (max-width: 480px) {
+		.search-panel {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: calc(100% - 32px);
+			max-width: 350px;
+			max-height: 80vh;
+			margin: 0 auto;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+			z-index: 100;
+		}
+
+		.search-panel::before {
+			display: none; /* Remove the arrow on mobile */
+		}
 	}
 
 	.search-panel::before {
