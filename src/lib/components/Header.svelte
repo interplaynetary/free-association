@@ -188,6 +188,7 @@
 		if (urlError) {
 			errorMessage = 'Login failed. Please check your credentials.';
 			showLoginPanel = true;
+			startLoginPanelTimer();
 		}
 	});
 
@@ -399,12 +400,13 @@
 		// If user is not authenticated, show login panel
 		if (!user) {
 			showLoginPanel = true;
+			startLoginPanelTimer();
 			return;
 		}
 
-		// If we're already at the root (only one breadcrumb item) and clicking the first item,
+		// If we're already at the root (no path items) and clicking the first item,
 		// and we're on the soul route, toggle the login panel instead of navigating
-		if (index === 0 && currentPathInfo.length === 1 && isSoulRoute) {
+		if (index === 0 && currentPathInfo.length === 0 && isSoulRoute) {
 			showLoginPanel = !showLoginPanel;
 			if (showLoginPanel) {
 				startLoginPanelTimer();
@@ -702,6 +704,7 @@
 	}) {
 		if (!user) {
 			showLoginPanel = true;
+			startLoginPanelTimer();
 			return;
 		}
 
@@ -743,13 +746,7 @@
 		}
 	}
 
-	// Reset timer when user interacts with login panel
-	$effect(() => {
-		if (showLoginPanel && (usernameInput || password || confirmPassword || isLoading)) {
-			// Reset timer when user is actively interacting with the form
-			startLoginPanelTimer();
-		}
-	});
+	// Timer reset is handled directly in form interaction handlers
 
 	// Toggle password change form
 	function togglePasswordChange() {
@@ -1111,6 +1108,7 @@
 								disabled={isLoading}
 								autocomplete="username"
 								required
+								oninput={() => showLoginPanel && startLoginPanelTimer()}
 							/>
 							{#if isRegisterMode}
 								<div class="form-info">
@@ -1131,6 +1129,7 @@
 									disabled={isLoading}
 									autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
 									required
+									oninput={() => showLoginPanel && startLoginPanelTimer()}
 								/>
 								<button
 									type="button"
@@ -1156,6 +1155,7 @@
 										disabled={isLoading}
 										autocomplete="new-password"
 										required
+										oninput={() => showLoginPanel && startLoginPanelTimer()}
 									/>
 									<button
 										type="button"
