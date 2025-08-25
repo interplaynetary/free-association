@@ -293,16 +293,16 @@ export async function getUserName(identifier: string): Promise<string> {
 		if (contact) {
 			displayName = contact.name;
 		} else {
-		// If contactId not found, return the identifier itself as fallback
+			// If contactId not found, return the identifier itself as fallback
 			displayName = identifier;
-	}
+		}
 	} else {
 		// For pubKey-based lookup, check if we have a contact with this public key
-	const contact = getContactByPublicKey(identifier);
-	if (contact) {
+		const contact = getContactByPublicKey(identifier);
+		if (contact) {
 			displayName = contact.name;
 		} else {
-	// If no contact found, fall back to Gun alias
+			// If no contact found, fall back to Gun alias
 			displayName = await getUserAlias(identifier);
 		}
 	}

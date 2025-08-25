@@ -1363,16 +1363,28 @@ function setupUsersListSubscription() {
 	// Track current users to detect additions/removals
 	const currentUsers = new Map<string, any>();
 
+	// Helper function to update userPubKeys store whenever currentUsers changes
+	function updateUserPubKeysStore() {
+		const allUserIds = Array.from(currentUsers.keys());
+		// console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
+		userPubKeys.set(allUserIds);
+	}
+
 	// Subscribe to all changes in the usersList
 	usersList.map().on((userData: any, pubKey: string) => {
 		//console.log(`[USERS] User update: ${userId}`, userData);
 
 		if (!pubKey || pubKey === '_') return; // Skip invalid keys
 
+		let collectionChanged = false;
+
 		if (userData === null || userData === undefined) {
 			// User was removed from usersList (they went offline or left the shared space)
 			//console.log(`[USERS] User removed from usersList: ${userId}`);
-			currentUsers.delete(pubKey);
+			if (currentUsers.has(pubKey)) {
+				currentUsers.delete(pubKey);
+				collectionChanged = true;
+			}
 
 			// Note: We intentionally don't remove from userNamesCache here
 			// because the cache serves a different purpose (performance optimization)
@@ -1380,7 +1392,11 @@ function setupUsersListSubscription() {
 		} else {
 			// User was added or updated
 			// console.log(`[USERS] User added/updated: ${userId}`, userData);
+			const wasNew = !currentUsers.has(pubKey);
 			currentUsers.set(pubKey, userData);
+			if (wasNew) {
+				collectionChanged = true;
+			}
 
 			// Get the user's alias and update cache
 			const userName = userData.name;
@@ -1407,10 +1423,11 @@ function setupUsersListSubscription() {
 			}
 		}
 
-		// Update userIds store with current user list
-		const allUserIds = Array.from(currentUsers.keys());
-		// console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
-		userPubKeys.set(allUserIds);
+		// Only update userPubKeys store if the collection actually changed
+		// This prevents unnecessary updates when just user data changes
+		if (collectionChanged) {
+			updateUserPubKeysStore();
+		}
 	});
 }
 

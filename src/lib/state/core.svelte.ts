@@ -4,7 +4,6 @@ import {
 	normalizeShareMap,
 	getSubtreeContributorMap,
 	findNodeById,
-	calculateRecipientShares,
 	calculateRecipientSlotQuantities,
 	computeQuantityShares
 } from '$lib/protocol';
@@ -23,8 +22,6 @@ import type {
 	SlotAllocationAnalysis,
 	SlotAllocationMetadata
 } from '$lib/schema';
-
-import { resolveToPublicKey } from './users.svelte';
 
 // Core reactive state - these form the main reactive chain
 export const userTree: Writable<RootNode | null> = writable(null);

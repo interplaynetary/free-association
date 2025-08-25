@@ -847,8 +847,9 @@ export function addContributors(
 		// 1. Contribution nodes (nodes with positive contributors)
 		// 2. Empty leaf nodes (no contributors and no children)
 		const hasContributors = contributorIds.length > 0;
-		const isEmptyLeaf = node.children.length === 0 && (node as NonRootNode).contributor_ids.length === 0;
-		
+		const isEmptyLeaf =
+			node.children.length === 0 && (node as NonRootNode).contributor_ids.length === 0;
+
 		if (antiContributorIds.length > 0 && !hasContributors && !isEmptyLeaf) {
 			throw new Error(
 				'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors) or empty leaf nodes.'
