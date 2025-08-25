@@ -259,21 +259,16 @@
 
 	// Function to handle add contributor button click (mouse or touch)
 	function handleAddContributorClick(event: MouseEvent | TouchEvent) {
-		// Don't allow adding contributors in delete mode
-		if (globalState.deleteMode) {
-			globalState.showToast('Cannot add contributors in delete mode', 'warning');
-			return;
+		// In recompose mode, don't handle contributor actions - let event bubble up
+		if (globalState.recomposeMode) {
+			return; // Let parent handle recompose
 		}
+
+		// In delete mode, buttons are hidden so this shouldn't be called
 
 		// Don't allow adding contributors when editing
 		if (globalState.editMode) {
 			globalState.showToast('Cannot add contributors while editing', 'warning');
-			return;
-		}
-
-		// Don't allow adding contributors in recompose mode
-		if (globalState.recomposeMode) {
-			globalState.showToast('Cannot add contributors in recompose mode', 'warning');
 			return;
 		}
 
@@ -307,21 +302,16 @@
 
 	// Function to handle add anti-contributor button click (mouse or touch)
 	function handleAddAntiContributorClick(event: MouseEvent | TouchEvent) {
-		// Don't allow adding anti-contributors in delete mode
-		if (globalState.deleteMode) {
-			globalState.showToast('Cannot add anti-contributors in delete mode', 'warning');
-			return;
+		// In recompose mode, don't handle anti-contributor actions - let event bubble up
+		if (globalState.recomposeMode) {
+			return; // Let parent handle recompose
 		}
+
+		// In delete mode, buttons are hidden so this shouldn't be called
 
 		// Don't allow adding anti-contributors when editing
 		if (globalState.editMode) {
 			globalState.showToast('Cannot add anti-contributors while editing', 'warning');
-			return;
-		}
-
-		// Don't allow adding anti-contributors in recompose mode
-		if (globalState.recomposeMode) {
-			globalState.showToast('Cannot add anti-contributors in recompose mode', 'warning');
 			return;
 		}
 
@@ -368,6 +358,13 @@
 			recomposeMode: globalState.recomposeMode,
 			isTrusted: event.isTrusted
 		});
+
+		// In delete or recompose mode, don't handle text editing - let the event bubble up to parent
+		if (globalState.deleteMode || globalState.recomposeMode) {
+			console.log('[DEBUG CHILD] In delete/recompose mode - allowing event to bubble to parent');
+			// Don't call preventDefault or stopPropagation - let the event bubble up naturally
+			return;
+		}
 
 		// Mark as user-triggered for iOS compatibility
 		userTriggeredEdit = event.isTrusted;
@@ -626,7 +623,7 @@
 		</div>
 
 		<!-- Manual Fulfillment Slider - positioned above title -->
-		{#if hasAnyContributors && !node.hasChildren && visibilityFactor > 0.1}
+		{#if hasAnyContributors && !node.hasChildren && visibilityFactor > 0.1 && !globalState.deleteMode && !globalState.recomposeMode}
 			<div
 				class="manual-fulfillment-slider"
 				style="
@@ -748,7 +745,7 @@
 		{/if}
 
 		<!-- Contributor Buttons Container - positioned below title -->
-		{#if visibilityFactor > 0.1 && !node.hasChildren}
+		{#if visibilityFactor > 0.1 && !node.hasChildren && !globalState.deleteMode}
 			<div
 				class="contributor-buttons-container"
 				style="
@@ -971,7 +968,7 @@
 			</div>
 
 			<!-- Tooltips for hovered segments -->
-			{#if hoveredSegment}
+			{#if hoveredSegment && !globalState.deleteMode}
 				<div
 					class="contributor-tooltip"
 					style="
@@ -1017,6 +1014,11 @@
 		-webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 		touch-action: manipulation;
 		pointer-events: auto;
+	}
+
+	/* In delete mode, allow events to pass through to parent */
+	:global(.deleting) .node-title-area {
+		pointer-events: none;
 	}
 
 	.node-title {

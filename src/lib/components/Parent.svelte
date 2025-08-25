@@ -1431,9 +1431,12 @@
 		}
 
 		// Check if the pointer target is a text edit field, node-text element, or contributor element
+		// But allow handling when in delete or recompose mode
 		const target = event.target as HTMLElement;
 		if (
 			target &&
+			!globalState.deleteMode &&
+			!globalState.recomposeMode &&
 			(target.closest('.node-text') ||
 				target.closest('.node-text-edit-container') ||
 				target.closest('.add-contributor-button') ||
