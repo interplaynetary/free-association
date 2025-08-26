@@ -589,7 +589,7 @@
 			start_time: null,
 			end_date: null,
 			end_time: null,
-			recurrence: 'Daily'
+			recurrence: 'Does not repeat' // Start with no recurrence for clarity
 		};
 
 		const updatedSlots = [...capacity.availability_slots, newSlot];

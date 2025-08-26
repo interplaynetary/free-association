@@ -456,6 +456,88 @@
 		originalValues[fieldName] = currentValue;
 	}
 
+	// Calculate total occurrences and quantity over the pattern window
+	function calculateTotalOccurrences(): {
+		occurrences: number;
+		totalQuantity: number;
+		isInfinite: boolean;
+	} | null {
+		if (!slotStartDate || !slotRecurrence || slotRecurrence === 'Does not repeat') {
+			return null;
+		}
+
+		const startDate = new Date(slotStartDate);
+		const endDate = slotEndDate ? new Date(slotEndDate) : null;
+		const isInfinite = !endDate;
+
+		// For infinite patterns, calculate for one year from start date
+		const calculationEndDate = endDate || new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+		let occurrences = 0;
+		const msPerDay = 24 * 60 * 60 * 1000;
+
+		switch (slotRecurrence) {
+			case 'Daily':
+				occurrences =
+					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) + 1;
+				break;
+			case 'Weekly':
+				occurrences =
+					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (7 * msPerDay)) + 1;
+				break;
+			case 'Monthly':
+				// Approximate - 30.44 days per month on average
+				occurrences =
+					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (30.44 * msPerDay)) + 1;
+				break;
+			case 'Annually':
+				occurrences =
+					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (365.25 * msPerDay)) +
+					1;
+				break;
+			case 'Every weekday (Monday to Friday)':
+				// Approximate - 5/7 of total days
+				occurrences =
+					Math.floor(((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) * (5 / 7)) +
+					1;
+				break;
+			case 'Every 4 days':
+				occurrences =
+					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (4 * msPerDay)) + 1;
+				break;
+			case 'Custom...':
+				if (slotCustomRecurrenceRepeatEvery && slotCustomRecurrenceRepeatUnit) {
+					let intervalMs = 0;
+					switch (slotCustomRecurrenceRepeatUnit) {
+						case 'days':
+							intervalMs = slotCustomRecurrenceRepeatEvery * msPerDay;
+							break;
+						case 'weeks':
+							intervalMs = slotCustomRecurrenceRepeatEvery * 7 * msPerDay;
+							break;
+						case 'months':
+							intervalMs = slotCustomRecurrenceRepeatEvery * 30.44 * msPerDay;
+							break;
+						case 'years':
+							intervalMs = slotCustomRecurrenceRepeatEvery * 365.25 * msPerDay;
+							break;
+					}
+					if (intervalMs > 0) {
+						occurrences =
+							Math.floor((calculationEndDate.getTime() - startDate.getTime()) / intervalMs) + 1;
+					}
+				}
+				break;
+			default:
+				occurrences = 1;
+		}
+
+		occurrences = Math.max(1, occurrences); // At least 1 occurrence
+		const totalQuantity = occurrences * (slotQuantity || 0);
+
+		return { occurrences, totalQuantity, isInfinite };
+	}
+
 	// Helper to save only if value changed on blur
 	function handleBlurIfChanged(fieldName: string, currentValue: any) {
 		// 🚨 DEBUG: Log blur events for location fields
@@ -662,9 +744,10 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
-		// Get recurrence display
+		// Get recurrence display and total calculation
 		const recurrenceDisplay =
 			slotRecurrence && slotRecurrence !== 'Does not repeat' ? slotRecurrence : '';
+		const totalCalc = calculateTotalOccurrences();
 
 		// Handle "All day" case first
 		if (slotAllDay) {
@@ -672,21 +755,39 @@
 			const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
 			let timeStr = '';
-			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
-				// Multi-day all-day event
-				const startStr = formatDateForDisplay(startDate);
-				const endStr = formatDateForDisplay(endDate);
-				timeStr = `${startStr} - ${endStr}, All day`;
-			} else if (startDate) {
-				// Single day all-day event
-				const dateStr = formatDateForDisplay(startDate);
-				timeStr = `${dateStr}, All day`;
+			if (recurrenceDisplay) {
+				// Recurring all-day pattern
+				if (startDate) {
+					const startStr = formatDateForDisplay(startDate);
+					if (endDate) {
+						const endStr = formatDateForDisplay(endDate);
+						timeStr = `${recurrenceDisplay}, ${startStr} - ${endStr}, All day`;
+					} else {
+						timeStr = `${recurrenceDisplay}, from ${startStr}, All day`;
+					}
+				} else {
+					timeStr = `${recurrenceDisplay}, All day`;
+				}
 			} else {
-				timeStr = 'All day';
+				// One-time all-day event
+				if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+					const startStr = formatDateForDisplay(startDate);
+					const endStr = formatDateForDisplay(endDate);
+					timeStr = `${startStr} - ${endStr}, All day`;
+				} else if (startDate) {
+					const dateStr = formatDateForDisplay(startDate);
+					timeStr = `${dateStr}, All day`;
+				} else {
+					timeStr = 'All day';
+				}
 			}
 
-			// Add recurrence if present
-			return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
+			// Add total quantity if available
+			if (totalCalc && recurrenceDisplay) {
+				timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
+			}
+
+			return timeStr;
 		}
 
 		// Handle timed slots
@@ -694,41 +795,65 @@
 		const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
 		let timeStr = '';
-		if (startDate) {
-			const startDateStr = formatDateForDisplay(startDate);
+		if (recurrenceDisplay) {
+			// Recurring timed pattern
+			const timeRange = cleanEndTime
+				? `${cleanStartTime || '?'}-${cleanEndTime}`
+				: cleanStartTime || 'No time';
 
-			// Check if we have an end date and it's different from start date
-			if (endDate && startDate.getTime() !== endDate.getTime()) {
-				// Multi-day timed event
-				const endDateStr = formatDateForDisplay(endDate);
-				const startTimeStr = cleanStartTime || '';
-				const endTimeStr = cleanEndTime || '';
-
-				if (startTimeStr && endTimeStr) {
-					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-				} else if (startTimeStr) {
-					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+			if (startDate) {
+				const startStr = formatDateForDisplay(startDate);
+				if (endDate) {
+					const endStr = formatDateForDisplay(endDate);
+					timeStr = `${recurrenceDisplay}, ${timeRange}, ${startStr} - ${endStr}`;
 				} else {
-					timeStr = `${startDateStr} - ${endDateStr}`;
+					timeStr = `${recurrenceDisplay}, ${timeRange}, from ${startStr}`;
 				}
 			} else {
-				// Single day or no end date
-				if (cleanStartTime) {
-					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					timeStr = `${startDateStr}, ${timeRange}`;
-				} else {
-					timeStr = startDateStr;
-				}
+				timeStr = `${recurrenceDisplay}, ${timeRange}`;
 			}
-		} else if (cleanStartTime) {
-			// Just time, no date
-			timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
 		} else {
-			timeStr = 'No time set';
+			// One-time timed event
+			if (startDate) {
+				const startDateStr = formatDateForDisplay(startDate);
+
+				// Check if we have an end date and it's different from start date
+				if (endDate && startDate.getTime() !== endDate.getTime()) {
+					// Multi-day timed event
+					const endDateStr = formatDateForDisplay(endDate);
+					const startTimeStr = cleanStartTime || '';
+					const endTimeStr = cleanEndTime || '';
+
+					if (startTimeStr && endTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+					} else if (startTimeStr) {
+						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+					} else {
+						timeStr = `${startDateStr} - ${endDateStr}`;
+					}
+				} else {
+					// Single day or no end date
+					if (cleanStartTime) {
+						const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+						timeStr = `${startDateStr}, ${timeRange}`;
+					} else {
+						timeStr = startDateStr;
+					}
+				}
+			} else if (cleanStartTime) {
+				// Just time, no date
+				timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+			} else {
+				timeStr = 'No time set';
+			}
 		}
 
-		// Add recurrence if present
-		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
+		// Add total quantity if available
+		if (totalCalc && recurrenceDisplay) {
+			timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
+		}
+
+		return timeStr;
 	}
 
 	// Helper function to format date for display with smart labels
@@ -1108,6 +1233,153 @@
 		<div class="slot-details time-details mt-3 rounded bg-blue-50 p-4">
 			<h5 class="mb-3 text-sm font-medium text-gray-700">⏰ Time Settings</h5>
 
+			<!-- Recurrence - PRIMARY SETTING -->
+			<div class="recurrence-section mb-6">
+				<label for="slot-recurrence" class="mb-2 block text-sm font-medium text-gray-700"
+					>Recurrence Pattern</label
+				>
+				<select
+					id="slot-recurrence"
+					class="slot-select w-full"
+					bind:value={slotRecurrence}
+					onchange={handleSlotUpdate}
+				>
+					{#each recurrenceOptions as option}
+						<option value={option}>{option}</option>
+					{/each}
+				</select>
+				<div class="mt-2 text-xs text-gray-500">
+					This determines how often the slot repeats within the date range below
+				</div>
+
+				<!-- Custom recurrence -->
+				{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
+					<div class="custom-recurrence mt-3">
+						<div class="mb-3 flex items-center gap-2">
+							<span class="text-xs text-gray-500">Repeat every</span>
+							<input
+								type="number"
+								min="1"
+								class="slot-input w-16 text-center"
+								bind:value={slotCustomRecurrenceRepeatEvery}
+								onfocus={() =>
+									handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
+								onblur={() =>
+									handleBlurIfChanged(
+										'customRecurrenceRepeatEvery',
+										slotCustomRecurrenceRepeatEvery
+									)}
+							/>
+							<select
+								class="slot-select w-20"
+								bind:value={slotCustomRecurrenceRepeatUnit}
+								onchange={handleSlotUpdate}
+							>
+								<option value="days">days</option>
+								<option value="weeks">weeks</option>
+								<option value="months">months</option>
+								<option value="years">years</option>
+							</select>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Pattern Window (Start/End Dates) -->
+			<div class="pattern-window-section mb-6">
+				<h6 class="mb-3 text-sm font-medium text-gray-700">Pattern Window</h6>
+				<div class="mb-2 text-xs text-gray-500">
+					{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+						Define when this recurrence pattern starts and ends
+					{:else}
+						Define the specific date(s) for this one-time availability
+					{/if}
+				</div>
+
+				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div>
+						<label for="slot-start-date" class="mb-1 block text-xs text-gray-500">
+							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+								Pattern Start Date
+							{:else}
+								Start Date
+							{/if}
+						</label>
+						<input
+							id="slot-start-date"
+							type="date"
+							class="slot-input w-full"
+							bind:value={slotStartDate}
+							onfocus={() => handleFocus('startDate', slotStartDate)}
+							onblur={() => handleBlurIfChanged('startDate', slotStartDate)}
+							onchange={() => {
+								// If start date is after end date, clear the end date
+								if (slotStartDate && slotEndDate) {
+									const startDate = new Date(slotStartDate);
+									const endDate = new Date(slotEndDate);
+									if (startDate > endDate) {
+										slotEndDate = null;
+										console.log('[SLOT] Start date is after end date, clearing end date');
+									}
+								}
+								handleSlotUpdate();
+							}}
+						/>
+					</div>
+					<div>
+						<label for="slot-end-date" class="mb-1 block text-xs text-gray-500">
+							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+								Pattern End Date (optional)
+							{:else}
+								End Date (optional)
+							{/if}
+						</label>
+						<input
+							id="slot-end-date"
+							type="date"
+							class="slot-input w-full"
+							bind:value={slotEndDate}
+							placeholder={slotRecurrence && slotRecurrence !== 'Does not repeat'
+								? 'Infinite if empty'
+								: 'Same day if empty'}
+							onfocus={() => handleFocus('endDate', slotEndDate)}
+							onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
+							onchange={() => {
+								// If end date is before start date, clear the end date
+								if (slotStartDate && slotEndDate) {
+									const startDate = new Date(slotStartDate);
+									const endDate = new Date(slotEndDate);
+									if (endDate < startDate) {
+										slotEndDate = null;
+										console.log('[SLOT] End date is before start date, clearing end date');
+									}
+								}
+								handleSlotUpdate();
+							}}
+						/>
+					</div>
+				</div>
+
+				<!-- Total calculation display -->
+				{#if calculateTotalOccurrences()}
+					{@const totalCalculation = calculateTotalOccurrences()}
+					<div class="total-calculation mt-3 rounded p-3">
+						<div class="text-sm font-medium">
+							Total Availability: {totalCalculation.totalQuantity}
+							{unit || 'units'}
+						</div>
+						<div class="text-xs">
+							{totalCalculation.occurrences} occurrences × {slotQuantity}
+							{unit || 'units'} each
+							{#if totalCalculation.isInfinite}
+								(infinite pattern - showing first year)
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Time of Day Settings -->
 			<div class="mb-4">
 				<label class="inline-flex items-center">
 					<input
@@ -1118,55 +1390,6 @@
 					/>
 					<span class="text-sm text-gray-600">All day</span>
 				</label>
-			</div>
-
-			<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-				<div>
-					<label for="slot-start-date" class="mb-1 block text-xs text-gray-500">Start Date</label>
-					<input
-						id="slot-start-date"
-						type="date"
-						class="slot-input w-full"
-						bind:value={slotStartDate}
-						onfocus={() => handleFocus('startDate', slotStartDate)}
-						onblur={() => handleBlurIfChanged('startDate', slotStartDate)}
-						onchange={() => {
-							// If start date is after end date, clear the end date
-							if (slotStartDate && slotEndDate) {
-								const startDate = new Date(slotStartDate);
-								const endDate = new Date(slotEndDate);
-								if (startDate > endDate) {
-									slotEndDate = null;
-									console.log('[SLOT] Start date is after end date, clearing end date');
-								}
-							}
-							handleSlotUpdate();
-						}}
-					/>
-				</div>
-				<div>
-					<label for="slot-end-date" class="mb-1 block text-xs text-gray-500">End Date</label>
-					<input
-						id="slot-end-date"
-						type="date"
-						class="slot-input w-full"
-						bind:value={slotEndDate}
-						onfocus={() => handleFocus('endDate', slotEndDate)}
-						onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
-						onchange={() => {
-							// If end date is before start date, clear the end date
-							if (slotStartDate && slotEndDate) {
-								const startDate = new Date(slotStartDate);
-								const endDate = new Date(slotEndDate);
-								if (endDate < startDate) {
-									slotEndDate = null;
-									console.log('[SLOT] End date is before start date, clearing end date');
-								}
-							}
-							handleSlotUpdate();
-						}}
-					/>
-				</div>
 			</div>
 
 			{#if !slotAllDay}
@@ -1214,50 +1437,6 @@
 						onfocus={() => handleFocus('timeZone', slotTimeZone)}
 						onblur={() => handleBlurIfChanged('timeZone', slotTimeZone)}
 					/>
-				</div>
-			{/if}
-
-			<!-- Recurrence -->
-			<div class="mb-4">
-				<label for="slot-recurrence" class="mb-1 block text-xs text-gray-500">Recurrence</label>
-				<select
-					id="slot-recurrence"
-					class="slot-select w-full"
-					bind:value={slotRecurrence}
-					onchange={handleSlotUpdate}
-				>
-					{#each recurrenceOptions as option}
-						<option value={option}>{option}</option>
-					{/each}
-				</select>
-			</div>
-
-			<!-- Custom recurrence -->
-			{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
-				<div class="custom-recurrence rounded border bg-white p-3">
-					<div class="mb-3 flex items-center gap-2">
-						<span class="text-xs text-gray-500">Repeat every</span>
-						<input
-							type="number"
-							min="1"
-							class="slot-input w-16 text-center"
-							bind:value={slotCustomRecurrenceRepeatEvery}
-							onfocus={() =>
-								handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-							onblur={() =>
-								handleBlurIfChanged('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-						/>
-						<select
-							class="slot-select w-20"
-							bind:value={slotCustomRecurrenceRepeatUnit}
-							onchange={handleSlotUpdate}
-						>
-							<option value="days">days</option>
-							<option value="weeks">weeks</option>
-							<option value="months">months</option>
-							<option value="years">years</option>
-						</select>
-					</div>
 				</div>
 			{/if}
 		</div>
@@ -1702,6 +1881,43 @@
 
 	.slot-details {
 		animation: slideDown 0.2s ease-out;
+	}
+
+	/* Section styling - matches existing pattern */
+	.recurrence-section {
+		background: rgba(255, 255, 255, 0.8);
+		border: 1px solid rgba(229, 231, 235, 0.6);
+		border-radius: 6px;
+		padding: 12px;
+	}
+
+	.pattern-window-section {
+		background: rgba(255, 255, 255, 0.8);
+		border: 1px solid rgba(229, 231, 235, 0.6);
+		border-radius: 6px;
+		padding: 12px;
+	}
+
+	.custom-recurrence {
+		background: rgba(249, 250, 251, 0.8);
+		border: 1px solid rgba(209, 213, 219, 0.6);
+		border-radius: 4px;
+		padding: 8px;
+	}
+
+	/* Total calculation styling - matches existing info pattern */
+	.total-calculation {
+		background: rgba(239, 246, 255, 0.8);
+		border: 1px solid rgba(219, 234, 254, 0.8);
+		color: #1e40af;
+	}
+
+	.total-calculation .text-sm {
+		color: #1d4ed8;
+	}
+
+	.total-calculation .text-xs {
+		color: #3730a3;
 	}
 
 	@keyframes slideDown {

@@ -1,12 +1,15 @@
 # Ideas
 
-Max divisibility is off, it should aim to distribute the amount across all, to the greatest degree possible while mantaining the proportions!
+Network.svelte UsersList .map.on is inconsistent with our string based approaches!
+Dragging Nodes via touch is not working well (with mouse works perfectly)
+
+✅ Max divisibility is off, it should aim to distribute the amount across all, to the greatest degree possible while mantaining the proportions!
 
 ✅ In Share/Map slots allow clicking the address / coordinates to then prompt the selectiin of a map app (google/apple maps)
 
 Add chat button to map interface
 
-PWA not working for ipad
+✅ PWA not working for ipad
 
 ✅ Move Map up to top
 
@@ -22,7 +25,7 @@ Search button pop up goes off screen on mobile
 
 Make composition slot have better formatting more like Share.svelte
 
-Tutorial button on inventory page should be different!
+✅ Tutorial button on inventory page should be different!
 
 The copy data button should copy all user data not just the the tree
 
