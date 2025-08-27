@@ -1337,65 +1337,6 @@
 	// Track active interaction to prevent duplicate events
 	let activePointerId: number | null = $state(null);
 	let interactionHandled = $state(false);
-	let isMultiTouch = $state(false);
-
-	// Handle touch start to detect multi-touch gestures
-	function handleTouchStart(
-		event: TouchEvent,
-		node: d3.HierarchyRectangularNode<VisualizationNode>
-	) {
-		// Check if the touch target is a text element or input - don't prevent default for iOS text editing
-		const target = event.target as HTMLElement;
-		const isTextElement =
-			target &&
-			(target.closest('.node-text') ||
-				target.closest('.node-text-edit-container') ||
-				target.closest('.node-title') ||
-				target.closest('.node-title-area') ||
-				target.closest('.title-segment') ||
-				target.closest('.node-edit-input'));
-
-		// Only prevent default if not touching text elements (preserve iOS text editing)
-		if (!isTextElement) {
-			event.preventDefault();
-		}
-
-		// Detect multi-touch for shrinking
-		isMultiTouch = event.touches.length === 2;
-		console.log(
-			'[DEBUG] TouchStart - touches:',
-			event.touches.length,
-			'isMultiTouch:',
-			isMultiTouch
-		);
-
-		// Let the pointer event handle the main logic
-		// This is just for multi-touch detection
-	}
-
-	// Handle touch end to reset multi-touch state
-	function handleTouchEnd(event: TouchEvent) {
-		// Check if the touch target is a text element - don't prevent default for iOS text editing
-		const target = event.target as HTMLElement;
-		const isTextElement =
-			target &&
-			(target.closest('.node-text') ||
-				target.closest('.node-text-edit-container') ||
-				target.closest('.node-title') ||
-				target.closest('.node-title-area') ||
-				target.closest('.title-segment') ||
-				target.closest('.node-edit-input'));
-
-		// Only prevent default if not touching text elements (preserve iOS text editing)
-		if (!isTextElement) {
-			event.preventDefault();
-		}
-
-		// Reset multi-touch state when fingers are lifted
-		if (event.touches.length < 2) {
-			isMultiTouch = false;
-		}
-	}
 
 	function handleGrowthStart(
 		event: PointerEvent,
@@ -1406,8 +1347,8 @@
 			event.isPrimary,
 			'button:',
 			event.button,
-			'isMultiTouch:',
-			isMultiTouch
+			'pointerType:',
+			event.pointerType
 		);
 
 		// Only handle primary pointer to prevent duplicates
@@ -1460,7 +1401,7 @@
 		activePointerId = event.pointerId;
 		interactionHandled = true;
 
-		// Set touch state
+		// Set interaction state
 		isTouching = true;
 		touchStartTime = Date.now();
 		activeGrowthNodeId = node.data.id;
@@ -1475,46 +1416,19 @@
 			document.addEventListener('pointermove', handleRecomposeMovement, { capture: true });
 		}
 
-		// For touch events, delay processing to allow multi-touch detection
-		if (event.pointerType === 'touch') {
-			// Small delay to let touch events fire and detect multi-touch
-			setTimeout(() => {
-				if (!interactionHandled) return; // Check if interaction was cancelled
+		// Unified processing for all pointer types - treat touch exactly like mouse
+		const isShrinking = event.button === 2; // Only right-click, no multi-touch complexity
+		console.log(
+			'[DEBUG] Processing interaction - isShrinking:',
+			isShrinking,
+			'button:',
+			event.button
+		);
 
-				// Determine if shrinking (right-click or multi-touch)
-				const isShrinking = event.button === 2 || isMultiTouch;
-				console.log(
-					'[DEBUG] Delayed processing - isShrinking:',
-					isShrinking,
-					'button:',
-					event.button,
-					'isMultiTouch:',
-					isMultiTouch
-				);
-
-				// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
-				if (!globalState.recomposeMode) {
-					// Start growth with delay
-					startGrowth(node, isShrinking);
-				}
-			}, 50); // 50ms delay to allow touch events to fire
-		} else {
-			// For mouse events, process immediately
-			const isShrinking = event.button === 2 || isMultiTouch;
-			console.log(
-				'[DEBUG] Immediate processing - isShrinking:',
-				isShrinking,
-				'button:',
-				event.button,
-				'isMultiTouch:',
-				isMultiTouch
-			);
-
-			// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
-			if (!globalState.recomposeMode) {
-				// Start growth with delay
-				startGrowth(node, isShrinking);
-			}
+		// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+		if (!globalState.recomposeMode) {
+			// Start growth immediately for all pointer types
+			startGrowth(node, isShrinking);
 		}
 	}
 
@@ -1585,7 +1499,6 @@
 	function resetInteractionState() {
 		activePointerId = null;
 		interactionHandled = false;
-		isMultiTouch = false;
 		hasMovedSignificantly = false;
 
 		// Remove recompose movement listener if it exists
@@ -1752,10 +1665,11 @@
 	function handleDragMove(event: PointerEvent) {
 		if (!globalState.isDragging) return;
 
-		// Update drag position for both mouse and touch events when actively dragging
-		if (event.isPrimary) {
-			globalState.updateDragPosition(event.clientX, event.clientY);
-		}
+		// Only handle primary pointer to avoid conflicts
+		if (!event.isPrimary) return;
+
+		// Update drag position - treat all pointer types identically
+		globalState.updateDragPosition(event.clientX, event.clientY);
 	}
 
 	function handleDragEnd(event: PointerEvent) {
@@ -1856,8 +1770,6 @@
 						"
 						onpointerdown={(e) => handleGrowthStart(e, child)}
 						onpointerup={(e) => handleGrowthEnd(e)}
-						ontouchstart={(e) => handleTouchStart(e, child)}
-						ontouchend={(e) => handleTouchEnd(e)}
 						oncontextmenu={(e) => e.preventDefault()}
 					>
 						<Child
@@ -1946,12 +1858,15 @@
 	.treemap-container :global(.clickable) {
 		cursor: pointer;
 		user-select: none;
-		touch-action: manipulation; /* Allow iOS text editing while preventing zoom */
+		touch-action: none; /* Prevent all default touch behaviors for smooth dragging */
 		transition:
 			left 0.12s linear,
 			top 0.12s linear,
 			width 0.12s linear,
 			height 0.12s linear;
+		/* Ensure smooth touch interactions */
+		-webkit-touch-callout: none;
+		-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 	}
 
 	:global(.clickable.deleting) {

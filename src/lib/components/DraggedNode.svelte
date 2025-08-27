@@ -47,9 +47,14 @@
 			0 4px 12px rgba(0, 0, 0, 0.3),
 			0 0 0 2px rgba(255, 255, 255, 0.5);
 		transform: translate(-50%, -50%) scale(1.1);
-		transition: transform 0.1s ease;
 		opacity: 0.9;
 		border: 1px solid rgba(255, 255, 255, 0.3);
+		/* Optimize for smooth dragging performance */
+		will-change: transform;
+		backface-visibility: hidden;
+		-webkit-backface-visibility: hidden;
+		/* Remove transition during dragging for smoother touch response */
+		transition: none;
 	}
 
 	.dragged-node-content {

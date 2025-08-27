@@ -196,6 +196,19 @@ When you contribute surplus to Free Association:
 
 5. ⚖️ **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
 
+Self-actualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
+
+Let:
+True is not False, False is not True
+
+(Recognition does not need to be true/false in a binary sense but the question is what % of this recognition is true. This % does not take the form of a reified proposition.)
+
+True-Recognition(You): Recognition that, when acted upon, reliably leads to the enhancement of your self-actualization (as defined by you) by connecting you with capacities that genuinely contribute to it. It is validated by positive material and social outcomes.
+
+False-Recognition(You): Recognition that, when acted upon, fails to connect you with the necessary capacities or connects you with harmful ones, thereby undermining your self-actualization. It is invalidated by negative material and social outcomes (like hunger, in the example).
+
+In essence, the truth or falsity is a function of the recognition's practical efficacy in the real world, as experienced by the individual in pursuit of their goals. It is not about correspondence with a statement but about successful navigation of the material-social environment.
+
 ```
 For any participant:
 Total Recognition = 100%
