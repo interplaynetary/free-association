@@ -54,6 +54,10 @@
 		"vite-plugin-devtools-json": "^0.1.1"
 	},
 	"dependencies": {
+		"@automerge/automerge": "^3.1.1",
+		"@automerge/automerge-repo": "^2.2.0",
+		"@automerge/automerge-repo-network-websocket": "^2.2.0",
+		"@automerge/automerge-repo-storage-indexeddb": "^2.2.0",
 		"@capacitor/android": "^7.4.0",
 		"@capacitor/core": "^7.4.0",
 		"@capacitor/ios": "^7.4.0",
@@ -75,6 +79,7 @@
 		"gun": "^0.2020.1241",
 		"gun-avatar": "^2.2.4",
 		"idb": "^8.0.3",
+		"jsog": "^1.0.7",
 		"json-logic-js": "^2.0.5",
 		"lodash.debounce": "^4.0.8",
 		"maplibre-gl": "^5.4.0",
