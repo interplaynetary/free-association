@@ -128,7 +128,9 @@
 	let isSoulRoute = $derived(
 		routeWithoutBase === '/' ||
 			routeWithoutBase === '' ||
-			(!routeWithoutBase.startsWith('/inventory') && !routeWithoutBase.startsWith('/contacts'))
+			(!routeWithoutBase.startsWith('/inventory') && 
+			 !routeWithoutBase.startsWith('/contacts') &&
+			 !routeWithoutBase.startsWith('/unconference'))
 	);
 
 	// Login state
@@ -244,8 +246,8 @@
 		document.addEventListener('mousedown', handleClickOutside);
 		document.addEventListener('touchstart', handleClickOutside);
 
-		// If not authenticated, automatically show login panel
-		if (!user) {
+		// If not authenticated, automatically show login panel (only on soul routes)
+		if (!user && isSoulRoute) {
 			// A small delay to ensure the component is fully mounted
 			setTimeout(() => {
 				showLoginPanel = true;
@@ -824,7 +826,7 @@
 					>
 						{truncateText($userAlias)}
 					</a>
-				{:else if currentPathInfo.length === 0}
+				{:else if currentPathInfo.length === 0 && isSoulRoute}
 					<button
 						class="breadcrumb-item loading-path"
 						onclick={handleLoginClick}
@@ -833,6 +835,18 @@
 					>
 						Login
 					</button>
+				{:else if currentPathInfo.length === 0 && !isSoulRoute}
+					<span class="breadcrumb-item">
+						{#if routeWithoutBase.startsWith('/unconference')}
+							Unconference
+						{:else if routeWithoutBase.startsWith('/inventory')}
+							Inventory
+						{:else if routeWithoutBase.startsWith('/contacts')}
+							Contacts
+						{:else}
+							{routeWithoutBase}
+						{/if}
+					</span>
 				{:else}
 					{#each currentPathInfo as segment, index}
 						{#if index > 0}
@@ -908,6 +922,10 @@
 
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
+			</a>
+
+			<a href="{base}/unconference" class="icon-button unconference-button" title="Unconference Schedule">
+				<span>📅</span>
 			</a>
 
 			<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
