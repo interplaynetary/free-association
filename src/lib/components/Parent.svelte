@@ -266,11 +266,50 @@
 		return result;
 	});
 
+	// Track active interaction to prevent duplicate events
+	let activePointerId: number | null = $state(null);
+	let interactionHandled = $state(false);
+	let isMultiTouch = $state(false);
+
+	// Global touch tracking for multi-touch shrinking
+	function handleGlobalTouchStart(event: TouchEvent) {
+		// Update global multi-touch state
+		const wasMultiTouch = isMultiTouch;
+		isMultiTouch = event.touches.length === 2;
+		console.log(
+			'[DEBUG] Global TouchStart - touches:',
+			event.touches.length,
+			'Multi-touch detected:',
+			isMultiTouch,
+			'was:',
+			wasMultiTouch
+		);
+
+		// If we're currently growing and multi-touch is detected, switch to shrinking
+		if (isMultiTouch && !wasMultiTouch && isGrowing && !isShrinkingActive) {
+			console.log('[DEBUG] Switching from growing to shrinking due to multi-touch');
+			isShrinkingActive = true;
+		}
+	}
+
+	function handleGlobalMultiTouchEnd(event: TouchEvent) {
+		// Reset multi-touch state when fingers are lifted globally
+		if (event.touches.length < 2) {
+			const wasMultiTouch = isMultiTouch;
+			isMultiTouch = false;
+			console.log('[DEBUG] Global TouchEnd - Multi-touch ended, was:', wasMultiTouch);
+		}
+	}
+
 	onMount(() => {
 		// Set up event listeners
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
 		document.addEventListener('touchcancel', handleGlobalTouchEnd);
+
+		// Global touch tracking for multi-touch shrinking
+		document.addEventListener('touchstart', handleGlobalTouchStart);
+		document.addEventListener('touchend', handleGlobalMultiTouchEnd);
 
 		// Start label cycling interval
 		const interval = setInterval(() => {
@@ -293,6 +332,9 @@
 			document.removeEventListener('mouseup', handleGlobalTouchEnd);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
 			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
+			// Clean up global multi-touch listeners
+			document.removeEventListener('touchstart', handleGlobalTouchStart);
+			document.removeEventListener('touchend', handleGlobalMultiTouchEnd);
 			// Clean up drag listeners
 			document.removeEventListener('pointermove', handleDragMove);
 			document.removeEventListener('pointerup', handleDragEnd);
@@ -1334,9 +1376,37 @@
 		}
 	}
 
-	// Track active interaction to prevent duplicate events
-	let activePointerId: number | null = $state(null);
-	let interactionHandled = $state(false);
+	// Handle touch start to detect multi-touch gestures
+	function handleTouchStart(
+		event: TouchEvent,
+		node: d3.HierarchyRectangularNode<VisualizationNode>
+	) {
+		// Detect multi-touch for shrinking
+		const wasMultiTouch = isMultiTouch;
+		isMultiTouch = event.touches.length === 2;
+
+		console.log(
+			'[DEBUG] TouchStart - touches:',
+			event.touches.length,
+			'isMultiTouch:',
+			isMultiTouch,
+			'wasMultiTouch:',
+			wasMultiTouch
+		);
+
+		// If we just detected multi-touch, make sure we're in shrinking mode
+		if (isMultiTouch && !wasMultiTouch) {
+			console.log('[DEBUG] Multi-touch detected - will trigger shrinking');
+		}
+	}
+
+	// Handle touch end to reset multi-touch state
+	function handleTouchEnd(event: TouchEvent) {
+		// Reset multi-touch state when fingers are lifted
+		if (event.touches.length < 2) {
+			isMultiTouch = false;
+		}
+	}
 
 	function handleGrowthStart(
 		event: PointerEvent,
@@ -1348,7 +1418,9 @@
 			'button:',
 			event.button,
 			'pointerType:',
-			event.pointerType
+			event.pointerType,
+			'isMultiTouch:',
+			isMultiTouch
 		);
 
 		// Only handle primary pointer to prevent duplicates
@@ -1416,19 +1488,46 @@
 			document.addEventListener('pointermove', handleRecomposeMovement, { capture: true });
 		}
 
-		// Unified processing for all pointer types - treat touch exactly like mouse
-		const isShrinking = event.button === 2; // Only right-click, no multi-touch complexity
-		console.log(
-			'[DEBUG] Processing interaction - isShrinking:',
-			isShrinking,
-			'button:',
-			event.button
-		);
+		// For touch events, add a small delay to allow multi-touch detection to complete
+		if (event.pointerType === 'touch') {
+			// Small delay to let multi-touch detection complete
+			setTimeout(() => {
+				if (!interactionHandled) return; // Interaction was cancelled
 
-		// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
-		if (!globalState.recomposeMode) {
-			// Start growth immediately for all pointer types
-			startGrowth(node, isShrinking);
+				// Unified processing - support both right-click and multi-touch for shrinking
+				const isShrinking = event.button === 2 || isMultiTouch;
+				console.log(
+					'[DEBUG] Touch processing (delayed) - isShrinking:',
+					isShrinking,
+					'button:',
+					event.button,
+					'isMultiTouch:',
+					isMultiTouch
+				);
+
+				// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+				if (!globalState.recomposeMode) {
+					// Start growth with proper shrinking detection
+					startGrowth(node, isShrinking);
+				}
+			}, 50); // 50ms delay to allow touch events to complete
+		} else {
+			// For mouse events, process immediately
+			const isShrinking = event.button === 2 || isMultiTouch;
+			console.log(
+				'[DEBUG] Mouse processing (immediate) - isShrinking:',
+				isShrinking,
+				'button:',
+				event.button,
+				'isMultiTouch:',
+				isMultiTouch
+			);
+
+			// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+			if (!globalState.recomposeMode) {
+				// Start growth immediately for mouse
+				startGrowth(node, isShrinking);
+			}
 		}
 	}
 
@@ -1499,6 +1598,7 @@
 	function resetInteractionState() {
 		activePointerId = null;
 		interactionHandled = false;
+		isMultiTouch = false;
 		hasMovedSignificantly = false;
 
 		// Remove recompose movement listener if it exists
@@ -1770,6 +1870,8 @@
 						"
 						onpointerdown={(e) => handleGrowthStart(e, child)}
 						onpointerup={(e) => handleGrowthEnd(e)}
+						ontouchstart={(e) => handleTouchStart(e, child)}
+						ontouchend={(e) => handleTouchEnd(e)}
 						oncontextmenu={(e) => e.preventDefault()}
 					>
 						<Child
