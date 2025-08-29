@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { gun } from './gun.svelte';
+import { gun } from '../gun.svelte';
 import JSOG from 'jsog';
 import { v4 as uuidv4 } from 'uuid';
 import {

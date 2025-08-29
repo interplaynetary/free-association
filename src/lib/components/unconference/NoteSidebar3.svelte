@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { unconferenceState } from '$lib/state/unconference-reactive.svelte';
+	import { unconferenceState } from '$lib/state/unconference/unconference-reactive.svelte';
 	import StickyNote3 from './StickyNote3.svelte';
 	import NoteEditor from './NoteEditor.svelte';
 

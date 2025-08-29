@@ -5,7 +5,7 @@
 		allNotes,
 		allPlacements,
 		createNote
-	} from '$lib/state/unconference-protocol.svelte';
+	} from '$lib/state/unconference/unconference-protocol.svelte';
 	import StickyNote2 from './StickyNote2.svelte';
 	import NoteEditor from './NoteEditor.svelte';
 

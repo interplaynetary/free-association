@@ -8,7 +8,7 @@
 		timeSlots,
 		formatTime,
 		getPlacementAt
-	} from '$lib/state/unconference-protocol.svelte';
+	} from '$lib/state/unconference/unconference-protocol.svelte';
 	import GridCell2 from './GridCell2.svelte';
 
 	let { boardId } = $props<{ boardId: string }>();

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { unconferenceState } from '$lib/state/unconference-reactive.svelte';
+	import { unconferenceState } from '$lib/state/unconference/unconference-reactive.svelte';
 	import GridCell3 from './GridCell3.svelte';
 
 	let { boardId } = $props<{ boardId: string }>();

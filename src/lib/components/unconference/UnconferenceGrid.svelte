@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { unconferenceState } from '$lib/state/unconference.svelte';
+	import { unconferenceState } from '$lib/state/unconference/unconference.svelte';
 	import GridCell from './GridCell.svelte';
 	import StickyNote from './StickyNote.svelte';
 

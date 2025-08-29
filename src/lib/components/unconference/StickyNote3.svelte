@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { unconferenceState } from '$lib/state/unconference-reactive.svelte';
+	import { unconferenceState } from '$lib/state/unconference/unconference-reactive.svelte';
 	import type { Note, Placement } from '$lib/schema/unconference';
 
 	let { 

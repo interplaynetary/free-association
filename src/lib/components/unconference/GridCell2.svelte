@@ -4,7 +4,7 @@
 		removePlacement,
 		hasConflict,
 		allNotes
-	} from '$lib/state/unconference-protocol.svelte';
+	} from '$lib/state/unconference/unconference-protocol.svelte';
 	import type { Room, Placement } from '$lib/schema/unconference';
 	import StickyNote2 from './StickyNote2.svelte';
 
