@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { updateNote, deleteNote } from '$lib/state/unconference/unconference-protocol.svelte';
-	import type { Note, Placement } from '$lib/schema/unconference';
+	import type { Note, Placement } from '$lib/state/unconference/unconference';
 
 	let { 
 		note, 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import UnconferenceGrid3 from '$lib/components/unconference/UnconferenceGrid3.svelte';
 	import NoteSidebar3 from '$lib/components/unconference/NoteSidebar3.svelte';
-	import { unconferenceState } from '$lib/state/unconference-reactive.svelte';
+	import { unconferenceState } from '$lib/state/unconference/unconference-reactive.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 

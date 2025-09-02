@@ -91,7 +91,7 @@ class NavigationService {
 				activeElement.tagName === 'TEXTAREA' ||
 				(activeElement as HTMLElement).isContentEditable ||
 				activeElement.closest('.node-edit-input') !== null)
-		);
+		) || false
 	}
 
 	private setupKeyboardListeners() {
