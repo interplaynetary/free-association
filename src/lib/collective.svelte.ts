@@ -21,7 +21,7 @@ import type { Writable } from 'svelte/store';
 import { contributors } from '$lib/state/core.svelte';
 import { gun, user } from '$lib/state/gun.svelte';
 import { resolveToPublicKey } from '$lib/state/users.svelte';
-import { parseTree } from '$lib/validators/validation';
+import { parseTree } from '$lib/validation';
 
 /**
  * Enhanced with Memoization & Caching
