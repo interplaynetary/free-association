@@ -26,6 +26,12 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
 		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache],
 		([$userContacts, $userIds, $userNamesCache, $userAliasesCache]) => {
+			console.log('[UI-PROVIDER] Data update:', {
+				contactsCount: $userContacts ? Object.keys($userContacts).length : 0,
+				userIdsCount: $userIds ? $userIds.length : 0,
+				namesCacheCount: $userNamesCache ? Object.keys($userNamesCache).length : 0,
+				aliasesCacheCount: $userAliasesCache ? Object.keys($userAliasesCache).length : 0
+			});
 			const items: Array<{
 				id: string;
 				name: string;
@@ -90,7 +96,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 			}
 
 			// Sort so contacts appear first, then alphabetically
-			return items.sort((a, b) => {
+			const sortedItems = items.sort((a, b) => {
 				// Contacts first
 				if (a.metadata.isContact && !b.metadata.isContact) return -1;
 				if (!a.metadata.isContact && b.metadata.isContact) return 1;
@@ -98,6 +104,17 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				// Then alphabetically by name
 				return a.name.localeCompare(b.name);
 			});
+
+			console.log(
+				'[UI-PROVIDER] Generated items:',
+				sortedItems.map((item) => ({
+					id: item.id.substring(0, 12) + '...',
+					name: item.name,
+					isContact: item.metadata.isContact
+				}))
+			);
+
+			return sortedItems;
 		}
 	);
 }

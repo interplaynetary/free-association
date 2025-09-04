@@ -47,6 +47,15 @@ export const userPub = writable('');
 
 export const usersList = gun.get('freely-associating-players');
 
+// Initialize usersList subscription immediately when module loads
+if (typeof window !== 'undefined') {
+	// Import and setup usersList subscription FIRST, before any auth checks
+	import('./network.svelte').then(({ setupUsersListSubscription }) => {
+		setupUsersListSubscription();
+		console.log('[USERS] Early usersList subscription initialized');
+	});
+}
+
 // Check if user is already authenticated after recall
 if (typeof window !== 'undefined') {
 	const checkAuth = async () => {

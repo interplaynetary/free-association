@@ -1282,8 +1282,8 @@ export async function initializeUserDataStreams(): Promise<void> {
 		await createOwnDesiredSlotComposeIntoStream();
 		await createOwnChatReadStatesStream();
 
-		// Setup users list subscription (still using old approach for now)
-		setupUsersListSubscription();
+		// Note: setupUsersListSubscription is now called early in gun.svelte.ts
+		// No need to call it again here
 
 		// Initialize collective members and their tree streams
 		await Promise.all(Array.from(get(collectiveMembers)).map(createCollectiveMemberStreams));
@@ -1354,11 +1354,19 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	);*/
 }
 
-// Centralized reactive subscription to usersList
-function setupUsersListSubscription() {
-	if (typeof window === 'undefined') return; // Only run in browser
+// Track if usersList subscription is active
+let usersListSubscriptionActive = false;
 
-	//console.log('[USERS] Setting up centralized usersList subscription');
+// Centralized reactive subscription to usersList
+export function setupUsersListSubscription() {
+	if (typeof window === 'undefined') return; // Only run in browser
+	if (usersListSubscriptionActive) {
+		console.log('[USERS] usersList subscription already active, skipping setup');
+		return;
+	}
+
+	console.log('[USERS] Setting up centralized usersList subscription');
+	usersListSubscriptionActive = true;
 
 	// Track current users to detect additions/removals
 	const currentUsers = new Map<string, any>();
@@ -1372,7 +1380,7 @@ function setupUsersListSubscription() {
 
 	// Subscribe to all changes in the usersList
 	usersList.map().on((userData: any, pubKey: string) => {
-		//console.log(`[USERS] User update: ${userId}`, userData);
+		console.log(`[USERS] User update received: ${pubKey}`, userData);
 
 		if (!pubKey || pubKey === '_') return; // Skip invalid keys
 
@@ -1391,23 +1399,25 @@ function setupUsersListSubscription() {
 			// and this user might still be referenced in our tree as a contributor
 		} else {
 			// User was added or updated
-			// console.log(`[USERS] User added/updated: ${userId}`, userData);
 			const wasNew = !currentUsers.has(pubKey);
+			console.log(`[USERS] User ${wasNew ? 'added' : 'updated'}: ${pubKey}`, userData);
 			currentUsers.set(pubKey, userData);
 			if (wasNew) {
 				collectionChanged = true;
 			}
 
-			// Get the user's alias and update cache
-			const userName = userData.name;
-			if (userName && typeof userName === 'string') {
-				// Update userNamesCache with the name from usersList
+			// Get the user's alias from usersList (stored as 'alias' field, not 'name')
+			const userAlias = userData.alias || userData.name; // Try alias first, fallback to name for compatibility
+			if (userAlias && typeof userAlias === 'string') {
+				// Update userAliasesCache with the alias from usersList
+				console.log(`[USERS] Updating alias cache for ${pubKey}: ${userAlias}`);
 				userAliasesCache.update((cache) => ({
 					...cache,
-					[pubKey]: userName
+					[pubKey]: userAlias
 				}));
 			} else {
 				// Try to get alias from user's protected space using Gun's user system
+				console.log(`[USERS] No alias in usersList for ${pubKey}, trying protected space...`);
 				gun
 					.user(pubKey) // Use Gun's user system
 					.get('alias')
@@ -1418,6 +1428,14 @@ function setupUsersListSubscription() {
 								...cache,
 								[pubKey]: alias
 							}));
+						} else {
+							console.log(`[USERS] No alias found anywhere for ${pubKey}, using truncated pubkey`);
+							// Fallback to truncated pubkey
+							const fallbackName = pubKey.substring(0, 8) + '...';
+							userAliasesCache.update((cache) => ({
+								...cache,
+								[pubKey]: fallbackName
+							}));
 						}
 					});
 			}
@@ -1426,6 +1444,9 @@ function setupUsersListSubscription() {
 		// Only update userPubKeys store if the collection actually changed
 		// This prevents unnecessary updates when just user data changes
 		if (collectionChanged) {
+			console.log(
+				`[USERS] Collection changed, updating userPubKeys store. Total users: ${currentUsers.size}`
+			);
 			updateUserPubKeysStore();
 		}
 	});

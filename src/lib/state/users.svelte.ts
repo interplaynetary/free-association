@@ -275,16 +275,17 @@ export async function getUserAlias(pubkey: string) {
 /**
  * Get display name for a user by either pubKey or contactId
  * Prioritizes contact names over Gun aliases
- * Always caches results for reactive components
+ * Uses the combined cache for reactive components
  */
 export async function getUserName(identifier: string): Promise<string> {
-	// First check if we already have this cached
-	const cache = get(userNamesCache);
-	if (cache[identifier]) {
-		return cache[identifier];
+	// First check the combined cache (contacts take priority over aliases)
+	const combinedCache = get(userNamesOrAliasesCache);
+	if (combinedCache[identifier]) {
+		return combinedCache[identifier];
 	}
 
 	let displayName: string;
+	let shouldCacheInNamesCache = false;
 
 	// Check if this is a contactId
 	if (getIdentifierType(identifier) === 'contactId') {
@@ -292,26 +293,32 @@ export async function getUserName(identifier: string): Promise<string> {
 		const contact = contacts[identifier];
 		if (contact) {
 			displayName = contact.name;
+			shouldCacheInNamesCache = true; // Contact names go in userNamesCache
 		} else {
 			// If contactId not found, return the identifier itself as fallback
 			displayName = identifier;
+			shouldCacheInNamesCache = true; // Cache the fallback too
 		}
 	} else {
 		// For pubKey-based lookup, check if we have a contact with this public key
 		const contact = getContactByPublicKey(identifier);
 		if (contact) {
 			displayName = contact.name;
+			shouldCacheInNamesCache = true; // Contact names go in userNamesCache
 		} else {
 			// If no contact found, fall back to Gun alias
 			displayName = await getUserAlias(identifier);
+			// Don't cache here - getUserAlias already handles userAliasesCache
 		}
 	}
 
-	// Always cache the result for reactive components
-	userNamesCache.update((cache) => ({
-		...cache,
-		[identifier]: displayName
-	}));
+	// Cache in the appropriate store based on the type of name
+	if (shouldCacheInNamesCache) {
+		userNamesCache.update((cache) => ({
+			...cache,
+			[identifier]: displayName
+		}));
+	}
 
 	return displayName;
 }
