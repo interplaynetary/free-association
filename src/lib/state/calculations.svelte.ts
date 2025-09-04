@@ -171,29 +171,40 @@ export function recalculateFromTree() {
 					get(recognitionCache)
 				);
 
-				// Update recognition cache with our share values 
-				// CRITICAL: Always use resolved public keys as cache keys to ensure consistency
+				// Update recognition cache with our share values
+				// Handle both public keys and contact IDs in the cache
 				allKnownContributorsList.forEach((contributorId) => {
-					// Ensure we're using the resolved public key as the cache key
+					// Try to resolve to public key, but use original ID if resolution fails
 					const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
+
+					// The SOGF map now contains the actual keys used in calculation
+					// (either resolved public keys or preserved contact IDs)
 					const ourShare = sogf[resolvedContributorId] || 0;
-					
-					// Get existing cache entry using resolved key
-					const existing = get(recognitionCache)[resolvedContributorId];
+
+					// Get existing cache entry - check both resolved and original IDs
+					const existing =
+						get(recognitionCache)[resolvedContributorId] || get(recognitionCache)[contributorId];
 					const theirShare = existing?.theirShare || 0;
 
 					console.log(
-						`[RECALC] Updating recognition for ${resolvedContributorId}: ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
+						`[RECALC] Updating recognition for ${contributorId} (resolved: ${resolvedContributorId}): ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
 					);
-					
+
 					recognitionCache.update((cache) => {
 						const oldEntry = cache[resolvedContributorId];
-						// Always store using resolved public key
+
+						// Store using the resolved ID (public key if available, contact ID if not)
 						cache[resolvedContributorId] = {
 							ourShare,
 							theirShare,
 							timestamp: Date.now()
 						};
+
+						// Clean up any duplicate entry under the original ID if different
+						if (contributorId !== resolvedContributorId && cache[contributorId]) {
+							console.log(`[RECALC] Cleaning up duplicate cache entry for ${contributorId}`);
+							delete cache[contributorId];
+						}
 
 						console.log(`[MUTUAL] Cache entry for ${resolvedContributorId}:`, {
 							old: oldEntry,

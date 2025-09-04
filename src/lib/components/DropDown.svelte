@@ -514,33 +514,64 @@
 		}
 	}
 
-	// Adjust position to stay in viewport
+	// Adjust position to stay within app content boundaries
 	function adjustPosition() {
 		if (!dropdownContainer || !browser) return;
 
 		const rect = dropdownContainer.getBoundingClientRect();
-		const viewportWidth = browser ? window.innerWidth : 1024;
-		const viewportHeight = browser ? window.innerHeight : 768;
+		
+		// Get app content container bounds
+		const appContent = document.querySelector('.app-content');
+		const headerHeight = 76; // Approximate header height
+		const contentPadding = 16; // App content padding
+		
+		const contentRect = appContent ? appContent.getBoundingClientRect() : {
+			left: contentPadding,
+			top: headerHeight,
+			right: window.innerWidth - contentPadding,
+			bottom: window.innerHeight - contentPadding,
+			width: window.innerWidth - (contentPadding * 2),
+			height: window.innerHeight - headerHeight - contentPadding
+		};
 
-		// Check right edge
-		if (position.x + rect.width > viewportWidth - 10) {
-			position.x = Math.max(10, viewportWidth - rect.width - 10);
+		const padding = 10; // Padding from container edges
+		const originalX = position.x;
+		const originalY = position.y;
+
+		// Check right edge - keep within app content
+		if (position.x + rect.width > contentRect.right - padding) {
+			position.x = Math.max(contentRect.left + padding, contentRect.right - rect.width - padding);
 		}
 
-		// Check left edge
-		if (position.x < 10) {
-			position.x = 10;
+		// Check left edge - keep within app content
+		if (position.x < contentRect.left + padding) {
+			position.x = contentRect.left + padding;
 		}
 
-		// Check bottom edge
-		if (position.y + rect.height > viewportHeight - 10) {
-			// If dropdown would go above the top, position it at the top with padding
-			if (position.y - rect.height < 10) {
-				position.y = 10;
+		// Check bottom edge - keep within app content
+		if (position.y + rect.height > contentRect.bottom - padding) {
+			// If dropdown would go above the app content top, position it at the top with padding
+			if (position.y - rect.height < contentRect.top + padding) {
+				position.y = contentRect.top + padding;
 			} else {
 				// Otherwise, position above the click
 				position.y = position.y - rect.height - 10;
 			}
+		}
+
+		// Check top edge - ensure it's not above app content
+		if (position.y < contentRect.top + padding) {
+			position.y = contentRect.top + padding;
+		}
+
+		// Debug logging for position adjustments
+		if (originalX !== position.x || originalY !== position.y) {
+			console.log('[DROPDOWN] Position adjusted:', {
+				original: { x: originalX, y: originalY },
+				adjusted: { x: position.x, y: position.y },
+				contentBounds: contentRect,
+				dropdownSize: { width: rect.width, height: rect.height }
+			});
 		}
 	}
 
@@ -855,6 +886,28 @@
 			0 3px 6px rgba(0, 0, 0, 0.08);
 		opacity: 0;
 		animation: fadeIn 150ms forwards;
+		/* Ensure dropdown never exceeds viewport bounds */
+		max-width: calc(100vw - 32px);
+		max-height: calc(100vh - 120px);
+	}
+
+	/* Mobile-specific dropdown adjustments */
+	@media (max-width: 768px) {
+		.dropdown-container {
+			max-width: calc(100vw - 16px);
+			max-height: calc(100vh - 100px);
+			/* On mobile, use slightly smaller width if needed */
+			min-width: 260px;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.dropdown-container {
+			/* On very small screens, take most of the width */
+			width: calc(100vw - 20px);
+			max-width: calc(100vw - 20px);
+			left: 10px !important; /* Override position for very small screens */
+		}
 	}
 
 	@keyframes fadeIn {
@@ -1008,7 +1061,7 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		flex: 1;
-		max-height: calc(var(--max-height, 320px) - 56px);
+		max-height: calc(min(var(--max-height, 320px), 50vh) - 56px);
 		scrollbar-width: thin;
 		scrollbar-color: #d0d0d0 #f5f5f5;
 		-webkit-overflow-scrolling: touch;

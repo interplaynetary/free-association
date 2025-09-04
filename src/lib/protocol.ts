@@ -397,32 +397,45 @@ export function sharesOfGeneralFulfillmentMap(
 	const contributorIds =
 		specificContributors || getAllContributorsFromTree(rootNode, resolveToPublicKey);
 
-	// If specificContributors were provided, resolve them and filter out unresolvable ones
+	// Resolve contributors to public keys when possible, but preserve contact IDs without public keys
 	const resolvedContributorIds = contributorIds
-		.map((id) => (resolveToPublicKey ? resolveToPublicKey(id) || id : id))
-		.filter((id) => {
-			// Filter out contact IDs that couldn't be resolved to public keys
-			// This prevents meaningless contact IDs from being included in network data
-			if (id.startsWith('contact_') && resolveToPublicKey) {
+		.map((id) => {
+			if (resolveToPublicKey) {
 				const resolved = resolveToPublicKey(id);
-				if (!resolved || resolved === id) {
-					console.warn(`[SOGF] Excluding unresolvable contact ID ${id} from SOGF calculation`);
-					return false;
+				// If we got a valid resolution (not null and not the same ID), use it
+				if (resolved && resolved !== id) {
+					console.log(`[SOGF] Resolved ${id} → ${resolved}`);
+					return resolved;
+				}
+				// If it's a contact ID that couldn't be resolved, keep the contact ID
+				if (id.startsWith('contact_')) {
+					console.log(`[SOGF] Preserving unresolvable contact ID ${id} (no public key available)`);
+					return id;
 				}
 			}
-			return true;
-		});
+			// For public keys or when no resolver provided, return as-is
+			return id;
+		})
+		// Only filter out truly invalid IDs (empty strings, null, undefined)
+		.filter((id) => id && id.trim() !== '');
 
 	// Remove duplicates after resolution and filtering
 	const uniqueContributorIds = [...new Set(resolvedContributorIds)];
 
-	console.log(`[SOGF] Calculating shares for ${uniqueContributorIds.length} valid contributors`);
+	console.log(
+		`[SOGF] Calculating shares for ${uniqueContributorIds.length} valid contributors:`,
+		uniqueContributorIds
+	);
 
 	for (const contributorId of uniqueContributorIds) {
 		const share = shareOfGeneralFulfillment(rootNode, contributorId, nodesMap, resolveToPublicKey);
 		// FIXED: Include all contributors, even those with 0 shares
 		// This ensures Gun properly updates network data when contributors are removed
 		sharesMap[contributorId] = share;
+
+		// Log each contributor's share for debugging
+		const contributorType = contributorId.startsWith('contact_') ? 'contact' : 'pubkey';
+		console.log(`[SOGF] ${contributorType} ${contributorId}: ${share.toFixed(4)} share`);
 	}
 
 	// Normalize the shares (this will handle the case where all shares are 0)
