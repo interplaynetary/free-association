@@ -100,7 +100,9 @@
 		width: 100%;
 		overflow-y: auto;
 		overflow-x: hidden; /* Prevent horizontal scrolling */
-		padding: 16px;
+		padding-bottom: 16px;
+		padding-left: 16px;
+		padding-right: 16px;
 		position: relative;
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */
