@@ -4,7 +4,7 @@ _Free-Association_ is literally an actual alternative to capitalism that allows 
 
 This requires more than mere abstract agreement or forced cooperation - it demands real contribution to each other's self-actualization (tangible and intangible contributions towards needs, values, goals, social and/or material dependencies etc.).
 
-**_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **capacity-distribution\_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
+**_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **capacity-composition\_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
 
 You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
 
@@ -164,7 +164,7 @@ This computational advantage could make organizational-level Free-Association mo
 
 ## Why does any of that matter?
 
-With your **capacity-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
+With **capacity-composition**, you aren't just giving away surplus randomly, you coordinate _precisely_ with your own direct/transitive **_mutual_** fulfillment.
 
 Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms surplus-capacity.
 
@@ -178,19 +178,19 @@ And that is **_exactly_** who is attributed _shares_ of your surplus-capacity!
 
 ---
 
-To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, _freeing their time_ to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — is shared with those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+To illustrate with another example: Imagine a potluck where your baking capacity composes with a neighbor's capacity, _freeing their time_ to fix their oven — the same oven that later enables bread-baking capacity for your community garden party. That's mutual-fulfillment: Your capacity doesn't vanish — it composes with those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
 
 This effectively moves us from _time as money_ to _time as mutual-fulfillment_!
 
 ## How Your Contributions Flow Through the Network 🌊
 
-When you contribute surplus to Free Association:
+When your capacities compose through Free Association:
 
-1. 🤝 **Your surplus flows to direct contributors** - Those you recognize as contributing to your self-actualization receive proportional shares of your surplus
+1. 🤝 **Your capacities compose with direct contributors** - Those you recognize as contributing to your self-actualization can compose with your capacities through mutual recognition proportions
 
-2. 🌐 **Your surplus flows to transitive contributors** - Those who support your direct contributors also benefit, creating ripple effects through the network
+2. 🌐 **Composition effects flow through the network** - Those who support your direct contributors also benefit from compositional relationships, creating ripple effects through the network
 
-3. 🔄 **Effects return to you in unexpected ways** - As others you've supported gain capacity, they can contribute to your self-actualization in ways you couldn't predict.
+3. 🔄 **Effects return to you in unexpected ways** - As others' capacities compose with yours, they can contribute to your self-actualization in ways you couldn't predict.
 
 4. 🌍 **Your values shape broader society** - Recognition can be given to those working on causes you value (climate action, community spaces, education) regardless of whether you directly benefit, allowing your influence to flow toward your social values.
 
@@ -251,7 +251,7 @@ A basic interface for free association is almost complete but we are seeking sup
 
 Remember: In contributing to Free Association, you're not donating to charity or investing for return. You're participating in a network where **the free development of each is the condition for the free development of all**. Your contributions help build a system where "individuals freely contribute to each other's self-actualization, where surplus flows according to mutual-recognition of real contributions towards each other's self-actualization, where relations activate only through mutual desire and participation."
 
-Your surplus becomes part of a living network of mutual-fulfillment that transcends both charity and investment—it becomes a concrete expression of truly free association.
+Your capacities become part of a living network of mutual-fulfillment that transcends both charity and investment—they become a concrete expression of truly free association.
 
 ## Appendix
 
@@ -259,9 +259,9 @@ Your surplus becomes part of a living network of mutual-fulfillment that transce
 
 When you contribute surplus to Free Association, you are not engaging in charity. In charity, resources flow one-way from giver to receiver, creating dependency and hierarchical relations. The giver likely receives nothing material in return, only perhaps some moral satisfaction or tax benefits.
 
-In Free Association, your contributions become integrated into a network of mutual recognition. Your surplus (whether money, housing, skills, or time) helps others who **directly or transitively contribute to your own self-actualization**.
+In Free Association, your capacities become integrated into a network of mutual recognition. Your capacities (whether financial, spatial, skill-based, or temporal) compose with others who **directly or transitively contribute to your own self-actualization**.
 
-This transcends both traditional charity and market exchange by creating organic flows of surplus based on real contributions to each other's self-actualization. Your surplus becomes part of a living network that strengthens the social fabric while returning to you in unexpected ways.
+This transcends both traditional charity and market exchange by creating organic composition of capacities based on real contributions to each other's self-actualization. Your capacities become part of a living network that strengthens the social fabric while composing with you in unexpected ways.
 
 ### This Is Not Traditional Investment 💡
 

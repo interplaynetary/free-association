@@ -104,6 +104,15 @@ export const BaseCapacitySchema = z.object({
 	// use-conditions: effects (possibly triggers)
 });
 
+// Collective Capacity Schema - just a regular capacity with a contributor set
+export const CollectiveCapacitySchema = z.object({
+	...BaseCapacitySchema.shape,
+	collective_contributors: z.array(IdSchema) // Set of people declared to be part of this collective
+});
+
+// Collective Recognition Weights - maps contributor IDs to their recognition weights
+export const CollectiveRecognitionWeightsSchema = z.record(IdSchema, PercentageSchema);
+
 // Provider perspective - includes recipient shares
 export const ProviderCapacitySchema = z.object({
 	...BaseCapacitySchema.shape,
@@ -184,6 +193,8 @@ export type NetworkSlotClaims = z.infer<typeof NetworkSlotClaimsSchema>;
 export type UserSlotQuantities = z.infer<typeof UserSlotQuantitiesSchema>;
 export type NetworkSlotQuantities = z.infer<typeof NetworkSlotQuantitiesSchema>;
 export type BaseCapacity = z.infer<typeof BaseCapacitySchema>;
+export type CollectiveCapacity = z.infer<typeof CollectiveCapacitySchema>;
+export type CollectiveRecognitionWeights = z.infer<typeof CollectiveRecognitionWeightsSchema>;
 export type ProviderCapacity = z.infer<typeof ProviderCapacitySchema>;
 export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
 export type Capacity = z.infer<typeof CapacitySchema>;
@@ -375,3 +386,57 @@ export const TreeMergeResultSchema = z.object({
 });
 
 export type TreeMergeResult = z.infer<typeof TreeMergeResultSchema>;
+
+// =============================================================================
+// COMMONS COMPOSITION SCHEMAS
+// =============================================================================
+
+// Commons composition schema - represents a mutual slot-to-slot composition in the commons
+export const CommonsCompositionSchema = z.object({
+	id: IdSchema, // Unique composition ID
+	source_capacity_id: IdSchema,
+	source_slot_id: IdSchema,
+	target_capacity_id: IdSchema,
+	target_slot_id: IdSchema,
+	source_provider_id: IdSchema,
+	target_provider_id: IdSchema,
+	mutual_feasible_quantity: z.number().gte(0), // The actual coordinated amount
+	composition_type: z.enum(['from', 'into']),
+	// Coordination metadata
+	desire_viability: z.number().gte(0).lte(1), // How well desires align
+	feasible_viability: z.number().gte(0).lte(1), // How feasible the coordination is
+	constraint_ratio: z.number().gte(0).lte(1), // Constraint impact
+	created_at: z.string(),
+	updated_at: z.string()
+});
+
+// Commons capacity schema - represents shared coordination around a capacity type
+export const CommonsCapacitySchema = z.object({
+	id: IdSchema,
+	name: z.string(), // The common capacity name (e.g., "Web Development")
+	unit: z.optional(z.string()),
+	description: z.optional(z.string()),
+	emoji: z.optional(z.string()),
+
+	// Core commons data - the actual mutual compositions happening
+	mutual_compositions: z.array(CommonsCompositionSchema),
+	total_commons_quantity: z.number().gte(0), // Sum of all mutual compositions
+
+	// Network effects metadata
+	participating_providers: z.array(IdSchema), // All providers involved in compositions
+	coordination_density: z.number().gte(0), // How interconnected the compositions are
+	average_viability: z.number().gte(0).lte(1), // Average feasible viability
+
+	// Matching criteria
+	match_key: z.string(), // The key used to group compositions (name|unit|description)
+	created_at: z.string(),
+	updated_at: z.string()
+});
+
+// Commons collection schema
+export const CommonsCollectionSchema = z.record(IdSchema, CommonsCapacitySchema);
+
+// Export commons types
+export type CommonsComposition = z.infer<typeof CommonsCompositionSchema>;
+export type CommonsCapacity = z.infer<typeof CommonsCapacitySchema>;
+export type CommonsCollection = z.infer<typeof CommonsCollectionSchema>;

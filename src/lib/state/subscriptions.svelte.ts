@@ -19,7 +19,8 @@ import {
 	persistContributorCapacityShares,
 	persistContributorCapacitySlotQuantities,
 	persistContacts,
-	persistChatReadStates
+	persistChatReadStates,
+	persistCollectiveCapacities
 } from './persistence.svelte';
 import type { Node } from '$lib/schema';
 import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
@@ -28,6 +29,7 @@ import {
 	persistUserDesiredSlotComposeInto
 } from '$lib/state/persistence.svelte';
 import { chatReadStates, isLoadingChatReadStates } from '$lib/state/chat.svelte';
+import { collectiveCapacities } from '$lib/new-collective.svelte';
 import { debounce } from '$lib/utils/debounce';
 
 // Debounced persistence functions
@@ -124,6 +126,15 @@ const debouncedPersistChatReadStates = debounce(() => {
 		}
 	} else {
 		console.log('[CHAT-READ-STATES-SUB] Skipping persistence because read states are being loaded');
+	}
+}, 200);
+
+const debouncedPersistCollectiveCapacities = debounce(() => {
+	console.log('[COLLECTIVE-CAPACITIES-SUB] Executing debounced collective capacities persistence');
+	try {
+		persistCollectiveCapacities();
+	} catch (error) {
+		console.error('[COLLECTIVE-CAPACITIES-SUB] Error during debounced persistence:', error);
 	}
 }, 200);
 
@@ -391,6 +402,30 @@ userContacts.subscribe((contacts) => {
 		}
 		contactsRecalcTimer = null;
 	}, 100); // Short delay to allow reactive updates
+});
+
+/**
+ * Trigger persistence when collective capacities change
+ */
+collectiveCapacities.subscribe((capacities) => {
+	if (!capacities) return;
+
+	console.log('[COLLECTIVE-CAPACITIES-SUB] Collective capacities updated');
+	console.log(
+		'[COLLECTIVE-CAPACITIES-SUB] Collective capacities count:',
+		Object.keys(capacities).length
+	);
+
+	// Don't persist empty collective capacities during initialization
+	if (Object.keys(capacities).length === 0) {
+		console.log(
+			'[COLLECTIVE-CAPACITIES-SUB] Skipping persistence of empty collective capacities (likely initialization)'
+		);
+		return;
+	}
+
+	// Debounced persistence function
+	debouncedPersistCollectiveCapacities();
 });
 
 /**

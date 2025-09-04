@@ -20,7 +20,9 @@ import type {
 	NetworkSlotClaims,
 	RecipientCapacity,
 	SlotAllocationAnalysis,
-	SlotAllocationMetadata
+	SlotAllocationMetadata,
+	BaseCapacity,
+	AvailabilitySlot
 } from '$lib/schema';
 
 // Core reactive state - these form the main reactive chain

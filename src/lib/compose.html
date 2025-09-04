@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { margin: 0; background: #222; font-family: Arial, sans-serif; }
+        .container { fill: none; stroke-width: 2; }
+        .portion { stroke-width: 1; stroke: #fff; opacity: 0.85; cursor: grab; }
+        .label { font-size: 12px; fill: white; text-anchor: middle; }
+        .tooltip { position: absolute; background: rgba(0,0,0,0.8); color: white; 
+                   padding: 8px; border-radius: 4px; pointer-events: none; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div id="tooltip" class="tooltip" style="opacity: 0;"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script>
+        const data = [
+            { id: 'A', x: 150, y: 120, color: '#ff6b6b', receives: [
+                { from: 'B', portion: 0.3 }, { from: 'C', portion: 0.25 }, { from: 'D', portion: 0.2 }
+            ]},
+            { id: 'B', x: 350, y: 100, color: '#4ecdc4', receives: [
+                { from: 'A', portion: 0.4 }, { from: 'E', portion: 0.3 }, { from: 'C', portion: 0.15 }
+            ]},
+            { id: 'C', x: 250, y: 250, color: '#45b7d1', receives: [
+                { from: 'A', portion: 0.35 }, { from: 'B', portion: 0.2 }, { from: 'D', portion: 0.25 }
+            ]},
+            { id: 'D', x: 450, y: 150, color: '#f7b731', receives: [
+                { from: 'B', portion: 0.5 }, { from: 'E', portion: 0.2 }, { from: 'A', portion: 0.15 }
+            ]},
+            { id: 'E', x: 400, y: 300, color: '#a55eea', receives: [
+                { from: 'B', portion: 0.25 }, { from: 'C', portion: 0.2 }, { from: 'A', portion: 0.15 }
+            ]}
+        ];
+
+        const svg = d3.select('body').append('svg')
+            .attr('width', 600).attr('height', 400);
+        
+        const tooltip = d3.select('#tooltip');
+        const baseRadius = 50;
+        const nodeMap = new Map(data.map(d => [d.id, d]));
+
+        // Generate portion circles
+        data.forEach(node => {
+            node.portions = node.receives.map(r => {
+                const giver = nodeMap.get(r.from);
+                const radius = baseRadius * r.portion;
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = Math.random() * (baseRadius - radius - 5);
+                return {
+                    x: node.x + Math.cos(angle) * distance,
+                    y: node.y + Math.sin(angle) * distance,
+                    radius: radius,
+                    color: giver.color,
+                    from: r.from,
+                    portion: r.portion,
+                    container: node.id,
+                    animOffset: Math.random() * Math.PI * 2
+                };
+            });
+        });
+
+        // Draw containers
+        svg.selectAll('.container')
+            .data(data)
+            .enter().append('circle')
+            .attr('class', 'container')
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('r', baseRadius)
+            .attr('stroke', d => d.color)
+            .attr('fill', d => d.color + '10');
+
+        // Draw labels
+        svg.selectAll('.label')
+            .data(data)
+            .enter().append('text')
+            .attr('class', 'label')
+            .attr('x', d => d.x)
+            .attr('y', d => d.y - baseRadius - 10)
+            .text(d => d.id);
+
+        let portions = svg.selectAll('.portion')
+            .data(data.flatMap(d => d.portions))
+            .enter().append('circle')
+            .attr('class', 'portion')
+            .attr('r', d => d.radius)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('fill', d => d.color)
+            .attr('stroke', d => d.color);
+
+        function animate() {
+            const t = Date.now() * 0.001;
+            portions
+                .attr('cx', d => d.x + Math.sin(t + d.animOffset) * 2)
+                .attr('cy', d => d.y + Math.cos(t + d.animOffset) * 1.5);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Tooltip
+        portions
+            .on('mouseover', function(e, d) {
+                tooltip.style('opacity', 1)
+                    .style('left', (e.pageX + 10) + 'px')
+                    .style('top', (e.pageY - 10) + 'px')
+                    .html(`${Math.round(d.portion * 100)}% of ${d.from}<br>in container ${d.container}`);
+            })
+            .on('mouseout', () => tooltip.style('opacity', 0));
+
+        // Drag + Hold Grow/Shrink
+        let growInterval = null, holdTimeout = null, isDragging = false;
+
+        const drag = d3.drag()
+            .on("start", function (e, d) {
+                isDragging = false;
+                holdTimeout = setTimeout(() => {
+                    const sameFrom = portions.data().filter(p => p.from === d.from);
+                    growInterval = setInterval(() => {
+                        d.portion = Math.min(d.portion + 0.01, 1);
+                        const remaining = 1 - d.portion;
+                        const others = sameFrom.filter(p => p !== d);
+                        const totalOthers = d3.sum(others, o => o.portion);
+                        if (totalOthers > 0) {
+                            const scale = remaining / totalOthers;
+                            others.forEach(o => o.portion *= scale);
+                        }
+                        sameFrom.forEach(s => s.radius = baseRadius * s.portion);
+                        portions
+                            .filter(p => p.from === d.from)
+                            .attr("r", p => p.radius);
+                    }, 120);
+                }, 200);
+            })
+            .on("drag", function(e, d) {
+                if (growInterval) return;
+                isDragging = true;
+                clearTimeout(holdTimeout);
+                d.x = e.x; d.y = e.y;
+                d3.select(this).attr("cx", d.x).attr("cy", d.y);
+            })
+            .on("end", function(e, d) {
+                clearTimeout(holdTimeout);
+                clearInterval(growInterval);
+                growInterval = null;
+                d3.select(this).attr("stroke", d.color);
+
+                if (!isDragging) return;
+
+                const target = data.find(c => Math.hypot(e.x - c.x, e.y - c.y) < baseRadius);
+                if (!target) return;
+
+                // Merge if same "from" exists
+                const existing = target.portions.find(p => p.from === d.from);
+                if (existing && existing !== d) {
+    existing.portion += d.portion;
+    existing.radius = baseRadius * existing.portion;
+
+    // Remove the dragged circle from old container
+    const oldContainer = data.find(c => c.id === d.container);
+    oldContainer.portions = oldContainer.portions.filter(p => p !== d);
+
+    // Immediately update the merged circle's radius in SVG
+    portions
+        .filter(p => p === existing)
+        .attr('r', existing.radius);
+
+    // Remove the dragged circle visually
+    d3.select(this).remove();
+
+    // Rebind data for consistency
+    updatePortions();
+}
+ else {
+                    d.container = target.id;
+                    d.x = target.x; d.y = target.y;
+                    if (!target.portions.includes(d)) target.portions.push(d);
+                }
+            });
+
+        function updatePortions() {
+            const allPortions = data.flatMap(d => d.portions);
+            const sel = svg.selectAll('.portion')
+                .data(allPortions, d => d.container + "-" + d.from);
+
+            sel.exit().remove();
+
+            sel.enter().append('circle')
+                .attr('class', 'portion')
+                .attr('r', d => d.radius)
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('fill', d => d.color)
+                .attr('stroke', d => d.color)
+                .call(drag)
+                .on('mouseover', function(e, d) {
+                    tooltip.style('opacity', 1)
+                        .style('left', (e.pageX + 10) + 'px')
+                        .style('top', (e.pageY - 10) + 'px')
+                        .html(`${Math.round(d.portion * 100)}% of ${d.from}<br>in container ${d.container}`);
+                })
+                .on('mouseout', () => tooltip.style('opacity', 0));
+
+            portions = svg.selectAll('.portion');
+        }
+
+        portions.call(drag);
+    </script>
+</body>
+</html>

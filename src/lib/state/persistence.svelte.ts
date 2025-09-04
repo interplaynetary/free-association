@@ -13,6 +13,7 @@ import {
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
+import { collectiveCapacities } from '$lib/new-collective.svelte';
 import { user, userPub } from './gun.svelte';
 
 /**
@@ -574,6 +575,61 @@ export function persistContacts() {
 		});
 	} catch (error) {
 		console.error('[PERSIST] Error serializing contacts:', error);
+	}
+}
+
+/**
+ * Persist collective capacities to Gun
+ */
+export function persistCollectiveCapacities() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping collective capacities persistence');
+		return;
+	}
+
+	const collectiveCapacitiesValue = get(collectiveCapacities);
+
+	if (!collectiveCapacitiesValue) {
+		console.log('[PERSIST] No collective capacities data to persist');
+		return;
+	}
+
+	// Additional safety check: don't persist empty collective capacities during initialization
+	if (Object.keys(collectiveCapacitiesValue).length === 0) {
+		console.log(
+			'[PERSIST] Skipping persistence of empty collective capacities (likely initialization)'
+		);
+		return;
+	}
+
+	console.log('[PERSIST] Starting collective capacities persistence...');
+	console.log(
+		'[PERSIST] Collective capacities count:',
+		Object.keys(collectiveCapacitiesValue).length
+	);
+
+	try {
+		// Create a deep clone to avoid reactivity issues
+		const collectiveCapacitiesClone = structuredClone(collectiveCapacitiesValue);
+
+		// Serialize to JSON
+		const collectiveCapacitiesJson = JSON.stringify(collectiveCapacitiesClone);
+		console.log(
+			'[PERSIST] Serialized collective capacities length:',
+			collectiveCapacitiesJson.length
+		);
+
+		// Store in Gun under 'collectiveCapacities' path
+		user.get('collectiveCapacities').put(collectiveCapacitiesJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving collective capacities to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Collective capacities successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing collective capacities:', error);
 	}
 }
 
