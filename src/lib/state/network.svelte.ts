@@ -37,7 +37,7 @@ import {
 	parseCapacityShares,
 	parseCapacitySlotQuantities,
 	parseChatReadStates
-} from '$lib/validators/validation';
+} from '$lib/validation';
 import { debounce } from '$lib/utils/debounce';
 import { derived } from 'svelte/store';
 
