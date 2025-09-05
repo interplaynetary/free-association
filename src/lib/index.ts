@@ -4,6 +4,7 @@ export { default as Parent } from './components/Parent.svelte';
 export { default as Child } from './components/Child.svelte';
 export { default as Bar } from './components/Bar.svelte';
 export { default as DraggedNode } from './components/DraggedNode.svelte';
+export { default as ToolBar } from './components/ToolBar.svelte'
 
 export { default as Capacities } from './components/Capacities.svelte';
 export { default as Capacity } from './components/Capacity.svelte';

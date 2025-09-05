@@ -13,7 +13,7 @@
         "@capacitor/ios": "^7.4.0",
         "@gun-vue/relay": "^0.6.1",
         "@jsonquerylang/jsonquery": "^5.0.4",
-        "@mblaney/holster": "^1.0.6",
+        "@mblaney/holster": "^1.0.10",
         "@peerbit/document": "^9.6.2",
         "@tailwindcss/postcss": "^4.1.4",
         "@types/bcryptjs": "^3.0.0",
@@ -481,7 +481,7 @@
 
     "@math.gl/web-mercator": ["@math.gl/web-mercator@4.1.0", "", { "dependencies": { "@math.gl/core": "4.1.0" } }, "sha512-HZo3vO5GCMkXJThxRJ5/QYUYRr3XumfT8CzNNCwoJfinxy5NtKUd7dusNTXn7yJ40UoB8FMIwkVwNlqaiRZZAw=="],
 
-    "@mblaney/holster": ["@mblaney/holster@1.0.6", "", { "dependencies": { "express": "^5.1.0", "fs": "^0.0.1-security", "ws": "^8.18.0" } }, "sha512-4Bzfztoxkov8pA+nn96/E7tK54XDGv9why6uGW24rGJimTwMRm8cpsnqyORmzVYZe8wQgqB/SvGOLhn8xZMigQ=="],
+    "@mblaney/holster": ["@mblaney/holster@1.0.10", "", { "dependencies": { "express": "^5.1.0", "fs": "^0.0.1-security", "ws": "^8.18.0" } }, "sha512-F+aIY4vOPuF5vIaIcq8rTvZ4p5+ID8W71i5AogJ+bfwbd9T+F5RXXePXYxyil6S549rHTurN5BLWKxgF3ml3Xw=="],
 
     "@multiformats/dns": ["@multiformats/dns@1.0.6", "", { "dependencies": { "@types/dns-packet": "^5.6.5", "buffer": "^6.0.3", "dns-packet": "^5.6.1", "hashlru": "^2.3.0", "p-queue": "^8.0.1", "progress-events": "^1.0.0", "uint8arrays": "^5.0.2" } }, "sha512-nt/5UqjMPtyvkG9BQYdJ4GfLK3nMqGpFZOzf4hAmIa0sJh2LlS9YKXZ4FgwBDsaHvzZqR/rUFIywIc7pkHNNuw=="],
 

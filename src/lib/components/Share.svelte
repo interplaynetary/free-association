@@ -894,25 +894,6 @@
 		margin: 0;
 	}
 
-	/* Unread message badge */
-	.unread-badge {
-		background: #ef4444;
-		color: white;
-		font-size: 0.65rem;
-		font-weight: 600;
-		line-height: 1;
-		min-width: 16px;
-		height: 16px;
-		border-radius: 8px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0 4px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-		border: 1px solid white;
-		flex-shrink: 0;
-	}
-
 	.unread-badge-btn {
 		position: absolute;
 		top: -2px;

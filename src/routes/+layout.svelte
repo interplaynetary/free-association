@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
+	import ToolBar from '$lib/components/ToolBar.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
@@ -37,10 +38,13 @@
 	<div class="app-content">
 		{@render children()}
 	</div>
+	<div class="app-footer">
+		<ToolBar />
+	</div>
 </main>
 
-<!-- Toaster component for svelte-french-toast - positioned at the bottom -->
-<Toaster position="bottom-center" />
+<!-- Toaster component for svelte-french-toast - positioned within content area -->
+<Toaster position="top-center" />
 
 <!-- DraggedNode component that appears on top of everything -->
 <DraggedNode
@@ -110,6 +114,14 @@
 		/* Enhanced mobile scrolling */
 		-webkit-overflow-scrolling: touch;
 		transition: padding-top 0.3s ease-out;
+	}
+
+	.app-footer {
+		position: relative;
+		width: 100%;
+		z-index: 100;
+		background: white;
+		flex-shrink: 0;
 	}
 
 	/* Fullscreen styling is now handled by FullScreenControl */

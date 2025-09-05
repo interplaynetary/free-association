@@ -603,7 +603,7 @@
 	}
 </script>
 
-<div class="capacity-item" class:chat-expanded={chatExpanded}>
+<div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
 	<!-- Recipient shares bar -->
 	{#if recipientSegments.length > 0}
 		<div class="recipient-shares-bar mb-1">

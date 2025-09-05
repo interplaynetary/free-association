@@ -63,7 +63,7 @@
 		"@capacitor/ios": "^7.4.0",
 		"@gun-vue/relay": "^0.6.1",
 		"@jsonquerylang/jsonquery": "^5.0.4",
-		"@mblaney/holster": "^1.0.6",
+		"@mblaney/holster": "^1.0.10",
 		"@peerbit/document": "^9.6.2",
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/bcryptjs": "^3.0.0",

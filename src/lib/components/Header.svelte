@@ -15,7 +15,7 @@
 		changePassword
 	} from '$lib/state/gun.svelte';
 	import { userTree } from '$lib/state/core.svelte';
-	import { findNodeById, addChild, createNonRootNode, calculateNodePoints } from '$lib/protocol';
+	import { findNodeById } from '$lib/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/schema';
 	import { gunAvatar } from 'gun-avatar';
@@ -66,10 +66,6 @@
 	const pub = $derived($userPub);
 	const user = $derived($userAlias);
 	const isAuthenticatingState = $derived($isAuthenticating);
-	// Add reactive state for delete mode
-	const isDeleteMode = $derived(globalState.deleteMode);
-	// Add reactive state for recompose mode
-	const isRecomposeMode = $derived(globalState.recomposeMode);
 
 	// Derived path info based on current path and tree
 	const currentPathInfo = $derived.by(() => {
@@ -339,57 +335,6 @@
 		}
 		// Reset closing state if timer is cleared
 		isPanelClosing = false;
-	}
-
-	// recompose handler
-	function handleRecompose() {
-		globalState.toggleRecomposeMode();
-	}
-
-	// Add new node handler
-	function handleAddNode() {
-		if (!tree || path.length === 0) return;
-
-		// Get current node ID (last in path)
-		const currentNodeId = path[path.length - 1];
-
-		// Create a deep clone of the tree to ensure reactivity
-		const updatedTree = structuredClone(tree);
-
-		// Find the current node in the cloned tree
-		const currentNode = findNodeById(updatedTree, currentNodeId);
-		if (!currentNode) {
-			globalState.showToast('Error creating node: Current node not found', 'error');
-			return;
-		}
-
-		// Calculate initial points for new node using the protocol function
-		const newPoints = calculateNodePoints(currentNode);
-		console.log('[UI FLOW] Calculated points based on siblings:', newPoints);
-
-		// Create a unique ID for the new node
-		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-		const newNodeName = 'New Node';
-
-		try {
-			// Add child to the current node in the cloned tree
-			addChild(currentNode, newNodeId, newNodeName, newPoints);
-
-			// Update the store with the new tree to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
-
-			// Show success message
-			globalState.showToast('New node created', 'success');
-
-			// Set node to edit mode
-			setTimeout(() => globalState.setNodeToEditMode(newNodeId), 50);
-		} catch (err) {
-			console.error('Error in handleAddNode:', err);
-			globalState.showToast('Error creating node', 'error');
-		}
 	}
 
 	// Simplified breadcrumb click handler
@@ -880,32 +825,6 @@
 		</div>
 
 		<div class="header-controls">
-			{#if isSoulRoute}
-				<button
-					class="icon-button search-button"
-					class:search-active={showSearchPanel}
-					title="Search tree"
-					onclick={toggleSearchPanel}
-				>
-					<span>🔍</span>
-				</button>
-				<button class="icon-button add-button" title="Add new node" onclick={handleAddNode}
-					><span>➕</span></button
-				>
-				<button
-					class="icon-button recompose-button"
-					class:recompose-active={isRecomposeMode}
-					title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
-					onclick={handleRecompose}><span>↕️</span></button
-				>
-				<button
-					class="icon-button delete-button"
-					class:delete-active={isDeleteMode}
-					title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
-					onclick={globalState.toggleDeleteMode}><span>🗑️</span></button
-				>
-			{/if}
-
 			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
 				<span>📊</span>
 			</a>
@@ -1494,38 +1413,6 @@
 
 	.icon-button:hover {
 		transform: scale(1.1);
-	}
-
-	/* Delete button active state with animation */
-	.delete-button.delete-active {
-		background-color: #ffebee;
-		border: 2px solid #f44336;
-		border-radius: 6px;
-		color: #d32f2f;
-		animation: pulse 2s ease-in-out infinite;
-		box-shadow: 0 0 8px rgba(244, 67, 54, 0.3);
-	}
-
-	.delete-button.delete-active:hover {
-		background-color: #ffcdd2;
-		border-color: #d32f2f;
-		transform: scale(1.05); /* Slightly less scale when active */
-	}
-
-	/* Recompose button active state with animation */
-	.recompose-button.recompose-active {
-		background-color: #e3f2fd;
-		border: 2px solid #2196f3;
-		border-radius: 6px;
-		color: #1976d2;
-		animation: pulse-blue 2s ease-in-out infinite;
-		box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
-	}
-
-	.recompose-button.recompose-active:hover {
-		background-color: #bbdefb;
-		border-color: #1976d2;
-		transform: scale(1.05); /* Slightly less scale when active */
 	}
 
 	/* Pulse animation for additional emphasis */
@@ -2126,21 +2013,6 @@
 		padding: 2px 6px;
 		font-size: 0.8em;
 		margin: 0 2px;
-	}
-
-	/* Search button active state */
-	.search-button.search-active {
-		background-color: #e3f2fd;
-		border: 2px solid #2196f3;
-		border-radius: 6px;
-		color: #1976d2;
-		box-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
-	}
-
-	.search-button.search-active:hover {
-		background-color: #bbdefb;
-		border-color: #1976d2;
-		transform: scale(1.05);
 	}
 
 	/* Password change form styles */
