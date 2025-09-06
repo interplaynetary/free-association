@@ -86,8 +86,14 @@
 
 	// Grouped slot markers state (from shared capacities only)
 	let shareSlotMarkers = $state<GroupedSlotMarkerData[]>([]);
-	// Clustered markers for display (now derived to prevent circular dependencies)
-	let isLoadingGeocode = $state(false);
+	// Ultra-efficient streaming state
+	let processedCapacityIds = $state<Set<string>>(new Set());
+	let geocodingQueue = $state<string[]>([]);
+	let isProcessingGeocode = $state(false);
+
+	// Separate immediate and geocoding queues for better performance
+	let immediateQueue = $state<string[]>([]);
+	let isProcessingImmediate = $state(false);
 
 	// Filtered markers - we'll implement time filtering as a future enhancement
 	// For now, show all markers to ensure basic functionality works
@@ -615,281 +621,124 @@
 		}
 	});
 
-	// Async function to load grouped slot markers from shared capacities
-	async function loadShareSlotMarkers(
-		sharedCapacities: typeof $userNetworkCapacitiesWithSlotQuantities
-	) {
-		if (!sharedCapacities) {
-			shareSlotMarkers = [];
-			return;
-		}
-
-		if (isLoadingGeocode) {
-			return;
-		}
-
-		// Group slots by (capacityId, locationKey) combination
-		const slotGroups = new Map<
-			string,
-			{
-				capacityId: string;
-				capacity: any;
-				slots: any[];
-				lnglat: { lat: number; lng: number };
-				source: 'coordinates' | 'geocoded';
-				providerId?: string;
-				providerName?: string;
-				locationKey: string;
-			}
-		>();
+	// Ultra-fast immediate processing for capacities with direct coordinates
+	function processCapacityImmediate(
+		capacityId: string,
+		capacity: any,
+		providerId?: string,
+		providerName?: string
+	): GroupedSlotMarkerData[] {
+		console.log(`[Map Stream] Immediate processing ${capacityId}...`);
 
 		try {
-			isLoadingGeocode = true;
-			const capacityEntries = Object.entries(sharedCapacities);
+			// Helper function to count active slots
+			function getActiveSlotCount(capacity: any): number {
+				if (
+					!('computed_quantities' in capacity) ||
+					!capacity.computed_quantities ||
+					!Array.isArray(capacity.computed_quantities)
+				) {
+					return 0;
+				}
+				return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
+			}
 
-			for (const [capacityId, capacity] of capacityEntries) {
-				if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+			// Helper function to get computed quantity for a specific slot
+			function getSlotComputedQuantity(capacity: any, slotId: string): number {
+				if (
+					!('computed_quantities' in capacity) ||
+					!capacity.computed_quantities ||
+					!Array.isArray(capacity.computed_quantities)
+				) {
+					return 0;
+				}
+				const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
+				return slotQuantity?.quantity || 0;
+			}
+
+			// Check if this capacity has any active slots
+			const activeSlotCount = getActiveSlotCount(capacity);
+			if (activeSlotCount === 0) {
+				return [];
+			}
+
+			// Group slots by location for this capacity (immediate processing - coordinates only)
+			const slotGroups = new Map<
+				string,
+				{
+					capacityId: string;
+					capacity: any;
+					slots: any[];
+					lnglat: { lat: number; lng: number };
+					source: 'coordinates' | 'geocoded';
+					providerId?: string;
+					providerName?: string;
+					locationKey: string;
+				}
+			>();
+
+			// Process slots in this capacity - IMMEDIATE ONLY (no geocoding)
+			for (const slot of capacity.availability_slots || []) {
+				// Check if this specific slot has a computed quantity > 0
+				const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
+				if (slotComputedQuantity <= 0) {
 					continue;
 				}
 
-				const providerId = (capacity as any).provider_id;
-				let providerName = 'Unknown Provider';
+				// Check location type
+				const locationTypeOk =
+					(slot as any).location_type === 'Specific' ||
+					((slot as any).location_type === 'Undefined' &&
+						slot.latitude !== undefined &&
+						slot.longitude !== undefined);
 
-				// Try to get provider name
-				if (providerId) {
-					try {
-						const cachedName = $userNamesOrAliasesCache[providerId];
-						if (cachedName) {
-							providerName = cachedName;
-						} else {
-							const fetchedName = await getUserName(providerId);
-							if (fetchedName) {
-								providerName =
-									fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
-							}
-						}
-					} catch (error) {
-						console.warn(`[Map] Could not get provider name for ${providerId}:`, error);
-					}
-				}
-
-				// Helper function to count active slots (slots with computed quantity > 0)
-				// This matches the logic from Shares.svelte
-				function getActiveSlotCount(capacity: any): number {
-					// Type guard: only RecipientCapacity has computed_quantities
-					if (
-						!('computed_quantities' in capacity) ||
-						!capacity.computed_quantities ||
-						!Array.isArray(capacity.computed_quantities)
-					) {
-						return 0;
-					}
-					return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
-				}
-
-				// Helper function to get computed quantity for a specific slot
-				function getSlotComputedQuantity(capacity: any, slotId: string): number {
-					// Type guard: only RecipientCapacity has computed_quantities
-					if (
-						!('computed_quantities' in capacity) ||
-						!capacity.computed_quantities ||
-						!Array.isArray(capacity.computed_quantities)
-					) {
-						return 0;
-					}
-					const slotQuantity = capacity.computed_quantities.find(
-						(cq: any) => cq.slot_id === slotId
-					);
-					return slotQuantity?.quantity || 0;
-				}
-
-				// First check if this capacity has any active slots (with computed quantity > 0)
-				// This respects divisibility constraints like max_natural_div and max_percentage_div
-				const activeSlotCount = getActiveSlotCount(capacity);
-				if (activeSlotCount === 0) {
-					// Skip capacities with no active slots (respects divisibility constraints)
+				if (!locationTypeOk) {
 					continue;
 				}
 
-				// Process slots in this capacity
-				for (const slot of capacity.availability_slots) {
-					// Check if this specific slot has a computed quantity > 0
-					const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
-					if (slotComputedQuantity <= 0) {
-						// Skip slots with no computed quantity (respects divisibility constraints)
-						continue;
-					}
+				let slotLnglat: { lat: number; lng: number } | null = null;
+				const source: 'coordinates' | 'geocoded' = 'coordinates';
 
-					// Check location type - only show "Specific" locations on map
-					// Also allow Undefined if it has actual location data
-					const locationTypeOk =
-						(slot as any).location_type === 'Specific' ||
-						((slot as any).location_type === 'Undefined' &&
-							// Has coordinates
-							((slot.latitude !== undefined && slot.longitude !== undefined) ||
-								// Has address components
-								slot.street_address ||
-								slot.city ||
-								slot.state_province ||
-								slot.postal_code ||
-								slot.country));
+				// IMMEDIATE: Only use direct coordinates (no geocoding)
+				if (slot.latitude !== undefined && slot.longitude !== undefined) {
+					slotLnglat = { lat: slot.latitude, lng: slot.longitude };
+				}
+				// Fallback to capacity coordinates
+				else if (
+					(capacity as any).location_type === 'Specific' &&
+					(capacity as any).latitude !== undefined &&
+					(capacity as any).longitude !== undefined
+				) {
+					slotLnglat = { lat: (capacity as any).latitude, lng: (capacity as any).longitude };
+				}
 
-					if (!locationTypeOk) {
-						continue;
-					}
+				// If we have immediate coordinates, group this slot by location
+				if (slotLnglat) {
+					const normalizedCoords = normalizeCoordinates(slotLnglat.lat, slotLnglat.lng);
+					const locationKey = `${normalizedCoords.lat},${normalizedCoords.lng}`;
+					const groupKey = `${capacityId}:${locationKey}`;
 
-					let slotLnglat: { lat: number; lng: number } | null = null;
-					let source: 'coordinates' | 'geocoded' = 'coordinates';
-
-					// Priority 1: Geocode address if we have address components
-					if (
-						slot.street_address ||
-						slot.city ||
-						slot.state_province ||
-						slot.postal_code ||
-						slot.country
-					) {
-						try {
-							const addressStr = [
-								(slot as any).street_address,
-								(slot as any).city,
-								(slot as any).state_province,
-								(slot as any).postal_code,
-								(slot as any).country
-							]
-								.filter(Boolean)
-								.join(', ');
-							const geocodeResults = await geocodeCapacityAddress({
-								street_address: (slot as any).street_address,
-								city: (slot as any).city,
-								state_province: (slot as any).state_province,
-								postal_code: (slot as any).postal_code,
-								country: (slot as any).country
-							});
-
-							if (geocodeResults.length > 0) {
-								const result = geocodeResults[0]; // Use the first (best) result
-								slotLnglat = { lat: result.latitude, lng: result.longitude };
-								source = 'geocoded';
-							}
-						} catch (geocodeError) {
-							console.error(`[Map] ❌ Geocoding failed for slot ${slot.id}:`, {
-								error: geocodeError,
-								message:
-									geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
-								stack: geocodeError instanceof Error ? geocodeError.stack : undefined,
-								address: [
-									slot.street_address,
-									slot.city,
-									slot.state_province,
-									slot.postal_code,
-									slot.country
-								]
-									.filter(Boolean)
-									.join(', ')
-							});
-						}
-					}
-
-					// Priority 2: Use direct coordinates only if no address was available or geocoding failed
-					if (!slotLnglat && slot.latitude !== undefined && slot.longitude !== undefined) {
-						slotLnglat = { lat: slot.latitude, lng: slot.longitude };
-						source = 'coordinates';
-						console.log(
-							`[Map] Using direct coordinates for slot ${slot.id}: ${slot.latitude}, ${slot.longitude}`
-						);
-					}
-
-					// Priority 3: Fall back to capacity coordinates if slot has no location but capacity does
-					if (!slotLnglat && (capacity as any).location_type === 'Specific') {
-						// Try capacity address first
-						if (
-							(capacity as any).street_address ||
-							(capacity as any).city ||
-							(capacity as any).state_province ||
-							(capacity as any).postal_code ||
-							(capacity as any).country
-						) {
-							try {
-								console.log(
-									`[Map] Attempting to geocode capacity ${capacityId} address for slot ${slot.id}`
-								);
-
-								const geocodeResults = await geocodeCapacityAddress({
-									street_address: (capacity as any).street_address,
-									city: (capacity as any).city,
-									state_province: (capacity as any).state_province,
-									postal_code: (capacity as any).postal_code,
-									country: (capacity as any).country
-								});
-
-								if (geocodeResults.length > 0) {
-									const result = geocodeResults[0];
-									slotLnglat = { lat: result.latitude, lng: result.longitude };
-									source = 'geocoded';
-									console.log(
-										`[Map] Successfully geocoded capacity ${capacityId} for slot ${slot.id}: ${result.latitude}, ${result.longitude}`
-									);
-								}
-							} catch (geocodeError) {
-								console.warn(`[Map] Capacity geocoding failed for slot ${slot.id}:`, geocodeError);
-							}
-						}
-
-						// Final fallback to capacity coordinates
-						if (
-							!slotLnglat &&
-							(capacity as any).latitude !== undefined &&
-							(capacity as any).longitude !== undefined
-						) {
-							slotLnglat = { lat: (capacity as any).latitude, lng: (capacity as any).longitude };
-							source = 'coordinates';
-							console.log(
-								`[Map] Using capacity coordinates for slot ${slot.id}: ${(capacity as any).latitude}, ${(capacity as any).longitude}`
-							);
-						}
-					}
-
-					// If we have coordinates, group this slot by location and capacity
-					if (slotLnglat) {
-						// Normalize coordinates to handle precision differences from different sources
-						const normalizedCoords = normalizeCoordinates(slotLnglat.lat, slotLnglat.lng);
-						const locationKey = `${normalizedCoords.lat},${normalizedCoords.lng}`;
-						const groupKey = `${capacityId}:${locationKey}`;
-
-						if (slotGroups.has(groupKey)) {
-							// Add slot to existing group
-							slotGroups.get(groupKey)!.slots.push(slot);
-						} else {
-							// Create new group using normalized coordinates for consistent positioning
-							slotGroups.set(groupKey, {
-								capacityId: capacityId,
-								capacity: capacity,
-								slots: [slot],
-								lnglat: normalizedCoords,
-								source: source,
-								providerId: providerId,
-								providerName: providerName,
-								locationKey: locationKey
-							});
-						}
-
-						console.log(
-							`[Map] Added slot to group ${groupKey}: ${capacity.name} - slot ${slot.id} at ${slotLnglat.lat}, ${slotLnglat.lng} -> normalized: ${normalizedCoords.lat}, ${normalizedCoords.lng} (${source})`
-						);
+					if (slotGroups.has(groupKey)) {
+						slotGroups.get(groupKey)!.slots.push(slot);
 					} else {
-						console.log(`[Map] No location data available for slot ${slot.id}`);
+						slotGroups.set(groupKey, {
+							capacityId: capacityId,
+							capacity: capacity,
+							slots: [slot],
+							lnglat: normalizedCoords,
+							source: source,
+							providerId: providerId,
+							providerName: providerName,
+							locationKey: locationKey
+						});
 					}
 				}
 			}
 
-			// 🚨 CRITICAL BREAKPOINT 6: Check final markers creation
-			console.log('[Map] 🚨 PRODUCTION DEBUG: Converting', slotGroups.size, 'groups to markers');
-
-			// Convert groups to markers array
-			const markers: GroupedSlotMarkerData[] = [];
+			// Convert groups to markers
+			const newMarkers: GroupedSlotMarkerData[] = [];
 			for (const [groupKey, group] of slotGroups.entries()) {
-				markers.push({
+				newMarkers.push({
 					id: groupKey,
 					capacityId: group.capacityId,
 					capacity: group.capacity,
@@ -902,39 +751,389 @@
 				});
 			}
 
-			console.log(
-				'[Map] About to set markers:',
-				markers.map((m) => ({ id: m.id, capacity: m.capacity.name, slots: m.slots.length }))
-			);
-
-			// 🚨 CRITICAL BREAKPOINT 7: Final marker assignment
-			console.log(
-				'[Map] 🚨 PRODUCTION DEBUG: Setting shareSlotMarkers to',
-				markers.length,
-				'markers'
-			);
-			shareSlotMarkers = markers;
-			console.log(
-				'[Map] 🚨 PRODUCTION DEBUG: shareSlotMarkers.length is now:',
-				shareSlotMarkers.length
-			);
-
-			console.log(`[Map] Created ${markers.length} grouped markers from shared capacities`);
-			console.log(
-				`[Map] Total slots represented: ${markers.reduce((sum, m) => sum + m.slots.length, 0)}`
-			);
+			console.log(`[Map Stream] Immediate completed ${capacityId}: ${newMarkers.length} markers`);
+			return newMarkers;
 		} catch (error) {
-			console.error('[Map] ❌ Error loading share slot markers:', error);
-			console.error('[Map] 🚨 PRODUCTION DEBUG: Full error details:', {
-				name: error instanceof Error ? error.name : 'Unknown',
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined
-			});
-			shareSlotMarkers = [];
-		} finally {
-			console.log('[Map] 🚨 PRODUCTION DEBUG: Setting isLoadingGeocode = false');
-			isLoadingGeocode = false;
-			console.log('[Map] 🚨 PRODUCTION DEBUG: isLoadingGeocode is now:', isLoadingGeocode);
+			console.error(`[Map Stream] Immediate error ${capacityId}:`, error);
+			return [];
+		}
+	}
+
+	// Separate geocoding processing for addresses that need API calls
+	async function processCapacityGeocode(
+		capacityId: string,
+		capacity: any,
+		providerId?: string,
+		providerName?: string
+	): Promise<GroupedSlotMarkerData[]> {
+		console.log(`[Map Geocode] Processing ${capacityId}...`);
+
+		try {
+			// Helper functions (same as immediate)
+			function getActiveSlotCount(capacity: any): number {
+				if (
+					!('computed_quantities' in capacity) ||
+					!capacity.computed_quantities ||
+					!Array.isArray(capacity.computed_quantities)
+				) {
+					return 0;
+				}
+				return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
+			}
+
+			function getSlotComputedQuantity(capacity: any, slotId: string): number {
+				if (
+					!('computed_quantities' in capacity) ||
+					!capacity.computed_quantities ||
+					!Array.isArray(capacity.computed_quantities)
+				) {
+					return 0;
+				}
+				const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
+				return slotQuantity?.quantity || 0;
+			}
+
+			// Check if this capacity has any active slots
+			const activeSlotCount = getActiveSlotCount(capacity);
+			if (activeSlotCount === 0) {
+				return [];
+			}
+
+			// Group slots by location for this capacity (geocoding processing)
+			const slotGroups = new Map<
+				string,
+				{
+					capacityId: string;
+					capacity: any;
+					slots: any[];
+					lnglat: { lat: number; lng: number };
+					source: 'coordinates' | 'geocoded';
+					providerId?: string;
+					providerName?: string;
+					locationKey: string;
+				}
+			>();
+
+			// Process slots that need geocoding
+			for (const slot of capacity.availability_slots || []) {
+				// Check if this specific slot has a computed quantity > 0
+				const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
+				if (slotComputedQuantity <= 0) {
+					continue;
+				}
+
+				// Check location type
+				const locationTypeOk =
+					(slot as any).location_type === 'Specific' ||
+					((slot as any).location_type === 'Undefined' &&
+						(slot.street_address ||
+							slot.city ||
+							slot.state_province ||
+							slot.postal_code ||
+							slot.country));
+
+				if (!locationTypeOk) {
+					continue;
+				}
+
+				// Skip if already has direct coordinates (handled by immediate processing)
+				if (slot.latitude !== undefined && slot.longitude !== undefined) {
+					continue;
+				}
+
+				let slotLnglat: { lat: number; lng: number } | null = null;
+				let source: 'coordinates' | 'geocoded' = 'geocoded';
+
+				// Geocode slot address
+				if (
+					slot.street_address ||
+					slot.city ||
+					slot.state_province ||
+					slot.postal_code ||
+					slot.country
+				) {
+					try {
+						const geocodeResults = await geocodeCapacityAddress({
+							street_address: (slot as any).street_address,
+							city: (slot as any).city,
+							state_province: (slot as any).state_province,
+							postal_code: (slot as any).postal_code,
+							country: (slot as any).country
+						});
+
+						if (geocodeResults.length > 0) {
+							const result = geocodeResults[0];
+							slotLnglat = { lat: result.latitude, lng: result.longitude };
+						}
+					} catch (geocodeError) {
+						console.error(`[Map Geocode] Slot ${slot.id} failed:`, geocodeError);
+					}
+				}
+
+				// Fall back to capacity geocoding
+				if (
+					!slotLnglat &&
+					(capacity as any).location_type === 'Specific' &&
+					((capacity as any).street_address ||
+						(capacity as any).city ||
+						(capacity as any).state_province ||
+						(capacity as any).postal_code ||
+						(capacity as any).country)
+				) {
+					try {
+						const geocodeResults = await geocodeCapacityAddress({
+							street_address: (capacity as any).street_address,
+							city: (capacity as any).city,
+							state_province: (capacity as any).state_province,
+							postal_code: (capacity as any).postal_code,
+							country: (capacity as any).country
+						});
+
+						if (geocodeResults.length > 0) {
+							const result = geocodeResults[0];
+							slotLnglat = { lat: result.latitude, lng: result.longitude };
+						}
+					} catch (geocodeError) {
+						console.warn(`[Map Geocode] Capacity ${capacityId} failed:`, geocodeError);
+					}
+				}
+
+				// If we have geocoded coordinates, group this slot
+				if (slotLnglat) {
+					const normalizedCoords = normalizeCoordinates(slotLnglat.lat, slotLnglat.lng);
+					const locationKey = `${normalizedCoords.lat},${normalizedCoords.lng}`;
+					const groupKey = `${capacityId}:${locationKey}`;
+
+					if (slotGroups.has(groupKey)) {
+						slotGroups.get(groupKey)!.slots.push(slot);
+					} else {
+						slotGroups.set(groupKey, {
+							capacityId: capacityId,
+							capacity: capacity,
+							slots: [slot],
+							lnglat: normalizedCoords,
+							source: source,
+							providerId: providerId,
+							providerName: providerName,
+							locationKey: locationKey
+						});
+					}
+				}
+			}
+
+			// Convert groups to markers
+			const newMarkers: GroupedSlotMarkerData[] = [];
+			for (const [groupKey, group] of slotGroups.entries()) {
+				newMarkers.push({
+					id: groupKey,
+					capacityId: group.capacityId,
+					capacity: group.capacity,
+					slots: group.slots,
+					lnglat: group.lnglat,
+					source: group.source,
+					providerId: group.providerId,
+					providerName: group.providerName,
+					locationKey: group.locationKey
+				});
+			}
+
+			console.log(`[Map Geocode] Completed ${capacityId}: ${newMarkers.length} markers`);
+			return newMarkers;
+		} catch (error) {
+			console.error(`[Map Geocode] Error ${capacityId}:`, error);
+			return [];
+		}
+	}
+
+	// Ultra-fast immediate processing queue (no delays)
+	async function processImmediateQueue() {
+		if (isProcessingImmediate || immediateQueue.length === 0) {
+			return;
+		}
+
+		isProcessingImmediate = true;
+		console.log(`[Map Stream] Processing ${immediateQueue.length} immediate capacities`);
+
+		// Process all immediate capacities in parallel (they don't need API calls)
+		const promises = immediateQueue.map(async (capacityId) => {
+			const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
+			if (!sharedCapacities || !sharedCapacities[capacityId]) {
+				return [];
+			}
+
+			const capacity = sharedCapacities[capacityId];
+			const providerId = (capacity as any).provider_id;
+			let providerName = 'Unknown Provider';
+
+			// Try to get provider name (quick cache lookup)
+			if (providerId) {
+				const cachedName = $userNamesOrAliasesCache[providerId];
+				if (cachedName) {
+					providerName = cachedName;
+				} else {
+					// Don't await - just use fallback for immediate processing
+					getUserName(providerId)
+						.then((fetchedName) => {
+							if (fetchedName) {
+								providerName =
+									fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
+							}
+						})
+						.catch(() => {});
+				}
+			}
+
+			return processCapacityImmediate(capacityId, capacity, providerId, providerName);
+		});
+
+		// Wait for all immediate processing to complete
+		const results = await Promise.all(promises);
+		const allNewMarkers = results.flat();
+
+		if (allNewMarkers.length > 0) {
+			shareSlotMarkers = [...shareSlotMarkers, ...allNewMarkers];
+			console.log(
+				`[Map Stream] Added ${allNewMarkers.length} immediate markers, total: ${shareSlotMarkers.length}`
+			);
+		}
+
+		immediateQueue = [];
+		isProcessingImmediate = false;
+	}
+
+	// Geocoding queue processor (with rate limiting)
+	async function processGeocodingQueue() {
+		if (isProcessingGeocode || geocodingQueue.length === 0) {
+			return;
+		}
+
+		isProcessingGeocode = true;
+		console.log(`[Map Geocode] Processing ${geocodingQueue.length} geocoding capacities`);
+
+		while (geocodingQueue.length > 0) {
+			const capacityId = geocodingQueue.shift()!;
+			const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
+
+			if (!sharedCapacities || !sharedCapacities[capacityId]) {
+				continue;
+			}
+
+			const capacity = sharedCapacities[capacityId];
+			const providerId = (capacity as any).provider_id;
+			let providerName = 'Unknown Provider';
+
+			// Try to get provider name
+			if (providerId) {
+				try {
+					const cachedName = $userNamesOrAliasesCache[providerId];
+					if (cachedName) {
+						providerName = cachedName;
+					} else {
+						const fetchedName = await getUserName(providerId);
+						if (fetchedName) {
+							providerName =
+								fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
+						}
+					}
+				} catch (error) {
+					console.warn(`[Map Geocode] Could not get provider name for ${providerId}:`, error);
+				}
+			}
+
+			// Process this capacity with geocoding and immediately add its markers
+			const newMarkers = await processCapacityGeocode(
+				capacityId,
+				capacity,
+				providerId,
+				providerName
+			);
+
+			if (newMarkers.length > 0) {
+				shareSlotMarkers = [...shareSlotMarkers, ...newMarkers];
+				console.log(
+					`[Map Geocode] Added ${newMarkers.length} geocoded markers, total: ${shareSlotMarkers.length}`
+				);
+			}
+		}
+
+		isProcessingGeocode = false;
+		console.log(`[Map Geocode] Queue processing completed`);
+	}
+
+	// Smart capacity classification and queuing
+	function classifyAndQueueCapacities(capacityIds: string[]) {
+		const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
+		if (!sharedCapacities) return;
+
+		const immediateCapacities: string[] = [];
+		const geocodingCapacities: string[] = [];
+
+		// Classify capacities based on whether they need geocoding
+		capacityIds.forEach((capacityId) => {
+			const capacity = sharedCapacities[capacityId];
+			if (!capacity || !capacity.availability_slots) return;
+
+			let hasDirectCoordinates = false;
+			let hasAddresses = false;
+
+			// Check if any slots have direct coordinates or addresses
+			for (const slot of capacity.availability_slots) {
+				if (slot.latitude !== undefined && slot.longitude !== undefined) {
+					hasDirectCoordinates = true;
+				}
+				if (
+					slot.street_address ||
+					slot.city ||
+					slot.state_province ||
+					slot.postal_code ||
+					slot.country
+				) {
+					hasAddresses = true;
+				}
+			}
+
+			// Also check capacity-level coordinates/addresses
+			if ((capacity as any).latitude !== undefined && (capacity as any).longitude !== undefined) {
+				hasDirectCoordinates = true;
+			}
+			if (
+				(capacity as any).street_address ||
+				(capacity as any).city ||
+				(capacity as any).state_province ||
+				(capacity as any).postal_code ||
+				(capacity as any).country
+			) {
+				hasAddresses = true;
+			}
+
+			// Prioritize immediate processing for capacities with direct coordinates
+			if (hasDirectCoordinates) {
+				immediateCapacities.push(capacityId);
+			}
+
+			// Queue for geocoding if it has addresses (even if it also has coordinates)
+			if (hasAddresses) {
+				geocodingCapacities.push(capacityId);
+			}
+		});
+
+		console.log(
+			`[Map Stream] Classified ${immediateCapacities.length} immediate, ${geocodingCapacities.length} geocoding`
+		);
+
+		// Add to queues
+		if (immediateCapacities.length > 0) {
+			immediateQueue = [...immediateQueue, ...immediateCapacities];
+			// Start immediate processing (no delays)
+			processImmediateQueue();
+		}
+
+		if (geocodingCapacities.length > 0) {
+			geocodingQueue = [...geocodingQueue, ...geocodingCapacities];
+			// Start geocoding processing (with rate limiting)
+			if (!isProcessingGeocode) {
+				processGeocodingQueue();
+			}
 		}
 	}
 
@@ -942,27 +1141,45 @@
 	let currentCapacities = $derived($userNetworkCapacitiesWithSlotQuantities);
 	let capacitiesCount = $derived(Object.keys(currentCapacities || {}).length);
 
-	// 🚨 CRITICAL BREAKPOINT 8: Check debounce function
-	console.log('[Map] 🚨 PRODUCTION DEBUG: Creating debounced function');
-
-	// Debounced loading function to prevent excessive API calls
-	const debouncedLoadMarkers = debounce(async (capacities: typeof currentCapacities) => {
-		console.log(
-			'[Map] 🚨 PRODUCTION DEBUG: debouncedLoadMarkers called with',
-			capacities ? Object.keys(capacities).length : 'null',
-			'capacities'
-		);
-		if (capacities && Object.keys(capacities).length > 0) {
-			console.log('[Map] Loading markers for', Object.keys(capacities).length, 'capacities');
-			await loadShareSlotMarkers(capacities);
-		}
-	}, 300);
-
+	// Ultra-efficient streaming: Handle capacity additions with smart classification
 	$effect(() => {
-		if (currentCapacities && Object.keys(currentCapacities).length > 0) {
-			debouncedLoadMarkers(currentCapacities);
-		} else {
+		if (!currentCapacities) {
 			shareSlotMarkers = [];
+			processedCapacityIds = new Set();
+			return;
+		}
+
+		const newCapacityIds = Object.keys(currentCapacities);
+		const newCapacities = newCapacityIds.filter((id) => !processedCapacityIds.has(id));
+
+		if (newCapacities.length > 0) {
+			console.log(`[Map Stream] Found ${newCapacities.length} new capacities to process`);
+
+			// Mark as processed immediately to avoid duplicate processing
+			processedCapacityIds = new Set([...processedCapacityIds, ...newCapacities]);
+
+			// Smart classification and immediate processing
+			classifyAndQueueCapacities(newCapacities);
+		}
+
+		// Handle capacity removals
+		const removedCapacityIds = Array.from(processedCapacityIds).filter(
+			(id) => !newCapacityIds.includes(id)
+		);
+		if (removedCapacityIds.length > 0) {
+			console.log(`[Map Stream] Removing ${removedCapacityIds.length} capacities`);
+
+			// Remove markers for deleted capacities
+			shareSlotMarkers = shareSlotMarkers.filter(
+				(marker) => !removedCapacityIds.includes(marker.capacityId)
+			);
+
+			// Remove from queues
+			immediateQueue = immediateQueue.filter((id) => !removedCapacityIds.includes(id));
+			geocodingQueue = geocodingQueue.filter((id) => !removedCapacityIds.includes(id));
+
+			// Update processed set
+			processedCapacityIds = new Set(newCapacityIds);
 		}
 	});
 
@@ -973,15 +1190,17 @@
 		currentCapacities && Object.keys(currentCapacities).length > 0 ? 'loaded' : 'empty'
 	);
 
-	// Expose manual refresh method
-	async function refreshMarkers() {
-		if (currentCapacities && Object.keys(currentCapacities).length > 0) {
-			await loadShareSlotMarkers(currentCapacities);
-		}
-	}
-
-	// Debug logging
-	$inspect('Map state:', { capacitiesCount, markersLoader });
+	// Debug logging for ultra-efficient streaming
+	$inspect('Map ultra-stream state:', {
+		capacitiesCount,
+		markersLoader,
+		totalMarkers: shareSlotMarkers.length,
+		processedCapacities: processedCapacityIds.size,
+		immediateQueueLength: immediateQueue.length,
+		geocodingQueueLength: geocodingQueue.length,
+		isProcessingImmediate,
+		isProcessingGeocode
+	});
 
 	// Helper function to safely extract time from potentially malformed time strings
 	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
@@ -1257,7 +1476,7 @@
 
 	// Debug info
 	$inspect('[Map] shareSlotMarkers count:', shareSlotMarkers.length);
-	$inspect('[Map] isLoadingGeocode:', isLoadingGeocode);
+	$inspect('[Map] processedCapacityIds:', processedCapacityIds.size);
 	$inspect('[Map] selectedMarker:', selectedMarker);
 	$inspect('[Map] Environment check:', {
 		hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
@@ -1522,15 +1741,6 @@
 					</Marker>
 				{/if}
 			{/each}
-
-			<!-- Loading indicator for geocoding 
-			{#if isLoadingGeocode}
-				<CustomControl position="bottom-right">
-					<div class="geocoding-loading">
-						<span>🗺️ Geocoding slot addresses...</span>
-					</div>
-				</CustomControl>
-			{/if}-->
 
 			{#if show3DBuildings}
 				<FillExtrusionLayer
