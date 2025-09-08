@@ -55,6 +55,10 @@ export const globalState = $state({
 	editingNodeId: '', // ID of the node currently being edited
 	initializationStarted: false,
 
+	// Unified highlighting state for newly created items
+	highlightedCapacities: new Set<string>(),
+	highlightedSlots: new Set<string>(),
+
 	// Map state (fullscreen now handled by FullScreenControl)
 
 	// Map search state
@@ -440,6 +444,112 @@ export const globalState = $state({
 	// Toggle time filter details
 	toggleTimeFilterDetails: () => {
 		globalState.showTimeFilterDetails = !globalState.showTimeFilterDetails;
+	},
+
+	/**
+	 * Unified Highlighting System
+	 */
+
+	// Generic scroll function for any element with data attribute
+	scrollToElement: (selector: string, elementType: string) => {
+		if (!browser) return;
+
+		// Function to attempt scrolling with retry logic
+		const attemptScroll = (retries = 5) => {
+			const element = document.querySelector(selector) as HTMLElement;
+
+			if (element) {
+				// Element found, scroll to it
+				element.scrollIntoView({
+					behavior: 'smooth',
+					block: 'center',
+					inline: 'nearest'
+				});
+
+				console.log(`[GLOBAL STATE] Successfully scrolled to ${elementType}:`, selector);
+			} else if (retries > 0) {
+				// Element not found yet, retry after a short delay
+				setTimeout(() => attemptScroll(retries - 1), 200);
+			} else {
+				console.warn(
+					`[GLOBAL STATE] Could not find ${elementType} element to scroll to:`,
+					selector
+				);
+			}
+		};
+
+		// Start the scroll attempt
+		setTimeout(() => attemptScroll(), 100);
+	},
+
+	// Scroll to a specific capacity element
+	scrollToCapacity: (capacityId: string) => {
+		globalState.scrollToElement(`[data-capacity-id="${capacityId}"]`, 'capacity');
+	},
+
+	// Scroll to a specific slot element
+	scrollToSlot: (slotId: string) => {
+		globalState.scrollToElement(`[data-slot-id="${slotId}"]`, 'slot');
+	},
+
+	// Add a capacity to the highlight list and scroll to it
+	highlightCapacity: (capacityId: string) => {
+		globalState.highlightedCapacities = new Set([...globalState.highlightedCapacities, capacityId]);
+
+		// Scroll to the newly highlighted capacity
+		globalState.scrollToCapacity(capacityId);
+
+		// Auto-remove highlight after 3 seconds
+		if (browser) {
+			setTimeout(() => {
+				globalState.removeCapacityHighlight(capacityId);
+			}, 3000);
+		}
+	},
+
+	// Add a slot to the highlight list and scroll to it
+	highlightSlot: (slotId: string) => {
+		globalState.highlightedSlots = new Set([...globalState.highlightedSlots, slotId]);
+
+		// Scroll to the newly highlighted slot
+		globalState.scrollToSlot(slotId);
+
+		// Auto-remove highlight after 3 seconds
+		if (browser) {
+			setTimeout(() => {
+				globalState.removeSlotHighlight(slotId);
+			}, 3000);
+		}
+	},
+
+	// Remove a specific capacity from the highlight list
+	removeCapacityHighlight: (capacityId: string) => {
+		const newSet = new Set(globalState.highlightedCapacities);
+		newSet.delete(capacityId);
+		globalState.highlightedCapacities = newSet;
+	},
+
+	// Remove a specific slot from the highlight list
+	removeSlotHighlight: (slotId: string) => {
+		const newSet = new Set(globalState.highlightedSlots);
+		newSet.delete(slotId);
+		globalState.highlightedSlots = newSet;
+	},
+
+	// Clear all capacity highlights
+	clearAllCapacityHighlights: () => {
+		globalState.highlightedCapacities = new Set();
+	},
+
+	// Clear all slot highlights
+	clearAllSlotHighlights: () => {
+		globalState.highlightedSlots = new Set();
+	},
+
+	// Clear all highlights (both capacities and slots)
+	clearAllHighlights: () => {
+		globalState.highlightedCapacities = new Set();
+		globalState.highlightedSlots = new Set();
 	}
 
 	/**

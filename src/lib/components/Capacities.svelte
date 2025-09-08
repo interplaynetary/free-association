@@ -110,6 +110,9 @@
 		// Set the store with the new value
 		userCapacities.set(newCapacities);
 
+		// Add to highlighted capacities using global state
+		globalState.highlightCapacity(capacity.id);
+
 		globalState.showToast(`Capacity "${capacity.name}" created`, 'success');
 		return true;
 	}
@@ -401,12 +404,17 @@
 
 <div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
 	{#each capacityEntries as entry (entry.id)}
-		<Capacity
-			capacity={entry as ProviderCapacity}
-			canDelete={true}
-			onupdate={handleCapacityUpdate}
-			ondelete={handleCapacityDelete}
-		/>
+		<div
+			class="capacity-wrapper"
+			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}
+		>
+			<Capacity
+				capacity={entry as ProviderCapacity}
+				canDelete={true}
+				onupdate={handleCapacityUpdate}
+				ondelete={handleCapacityDelete}
+			/>
+		</div>
 	{/each}
 	<button type="button" class="add-btn mx-auto my-2 h-10 w-10" onclick={addCapacityRow}>+</button>
 </div>
@@ -437,5 +445,62 @@
 		color: #15803d;
 		transform: scale(1.05);
 		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Newly created capacity highlight animation */
+	@keyframes capacityHighlightPulse {
+		0% {
+			background-color: rgba(59, 130, 246, 0.15);
+			box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+		}
+		50% {
+			background-color: rgba(59, 130, 246, 0.1);
+			box-shadow: 0 0 0 12px rgba(59, 130, 246, 0.1);
+		}
+		100% {
+			background-color: rgba(59, 130, 246, 0.05);
+			box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+		}
+	}
+
+	@keyframes capacityHighlightFadeOut {
+		0% {
+			background-color: rgba(59, 130, 246, 0.05);
+		}
+		100% {
+			background-color: transparent;
+		}
+	}
+
+	/* Apply highlight styling to newly created capacities */
+	.capacity-wrapper.newly-created-capacity {
+		animation:
+			capacityHighlightPulse 2.5s ease-in-out,
+			capacityHighlightFadeOut 1s ease-out 2.5s;
+		background: rgba(239, 246, 255, 0.6);
+		border: 2px solid rgba(59, 130, 246, 0.3);
+		border-radius: 12px;
+		padding: 8px;
+		margin: -8px;
+		transition: all 0.3s ease;
+	}
+
+	.capacity-wrapper.newly-created-capacity :global(.capacity-item) {
+		background: rgba(248, 250, 252, 0.9) !important;
+		border-color: rgba(59, 130, 246, 0.2) !important;
+	}
+
+	.capacity-wrapper.newly-created-capacity :global(.capacity-row) {
+		background: rgba(255, 255, 255, 0.95) !important;
+		border-color: rgba(59, 130, 246, 0.15) !important;
+	}
+
+	/* Ensure grid layout isn't affected by the wrapper */
+	.capacity-wrapper {
+		display: contents;
+	}
+
+	.capacity-wrapper.newly-created-capacity {
+		display: block;
 	}
 </style>

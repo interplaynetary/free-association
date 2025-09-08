@@ -187,50 +187,15 @@
 			// Set the store with the new value
 			userCapacities.set(newCapacities);
 
+			// Add to highlighted capacities using global state
+			globalState.highlightCapacity(capacity.id);
+
 			console.log('[TOOLBAR] Successfully added new capacity:', capacity.id);
 			return true;
 		} catch (error) {
 			console.error('[TOOLBAR] Error adding capacity:', error);
 			return false;
 		}
-	}
-
-	// Scroll to a specific capacity element
-	function scrollToCapacity(capacityId: string) {
-		// Function to attempt scrolling with retry logic
-		const attemptScroll = (retries = 5) => {
-			const capacityElement = document.querySelector(
-				`[data-capacity-id="${capacityId}"]`
-			) as HTMLElement;
-
-			if (capacityElement) {
-				// Element found, scroll to it
-				capacityElement.scrollIntoView({
-					behavior: 'smooth',
-					block: 'center',
-					inline: 'nearest'
-				});
-
-				// Add a subtle highlight animation
-				capacityElement.style.transition = 'background-color 0.5s ease';
-				capacityElement.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
-
-				// Remove highlight after animation
-				setTimeout(() => {
-					capacityElement.style.backgroundColor = '';
-				}, 2000);
-
-				console.log('[TOOLBAR] Successfully scrolled to capacity:', capacityId);
-			} else if (retries > 0) {
-				// Element not found yet, retry after a short delay
-				setTimeout(() => attemptScroll(retries - 1), 200);
-			} else {
-				console.warn('[TOOLBAR] Could not find capacity element to scroll to:', capacityId);
-			}
-		};
-
-		// Start the scroll attempt
-		setTimeout(() => attemptScroll(), 100);
 	}
 
 	// Create new capacity handler (for inventory route)
@@ -244,20 +209,18 @@
 
 		try {
 			const newCapacity = createDefaultCapacity();
+
+			// Navigate to inventory first if not already there
+			if (!isInventoryRoute) {
+				await goto(`${base}/inventory`);
+				// Wait for navigation to complete
+				await tick();
+			}
+
 			const success = addCapacity(newCapacity);
 
 			if (success) {
 				globalState.showToast('New capacity created successfully', 'success');
-
-				// Navigate to inventory if not already there
-				if (!isInventoryRoute) {
-					await goto(`${base}/inventory`);
-					// Wait for navigation to complete
-					await tick();
-				}
-
-				// Scroll to the new capacity
-				scrollToCapacity(newCapacity.id);
 			} else {
 				globalState.showToast('Failed to create capacity', 'error');
 			}

@@ -577,11 +577,15 @@
 		onupdate?.(updatedCapacity);
 	}
 
+	// Track the ID of the most recently added slot for scrolling and highlighting
+	let recentlyAddedSlotId = $state<string | null>(null);
+
 	// Add new slot
 	function handleAddSlot() {
 		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
+		const newSlotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		const newSlot = {
-			id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+			id: newSlotId,
 			quantity: 1,
 			location_type: 'Undefined',
 			all_day: true,
@@ -599,8 +603,32 @@
 			availability_slots: updatedSlots
 		};
 
+		// Ensure slots section is expanded so user can see the new slot
+		if (!slotsExpanded) {
+			slotsExpanded = true;
+		}
+
+		// Ensure the current/future slots section is expanded (where new slots appear)
+		currentFutureSlotsExpanded = true;
+
+		// Track the new slot ID for scrolling and highlighting
+		recentlyAddedSlotId = newSlotId;
+
+		// Add to highlighted slots using global state
+		globalState.highlightSlot(newSlotId);
+
 		onupdate?.(updatedCapacity);
 	}
+
+	// Clean up tracking ID after highlighting (the global state handles scrolling now)
+	$effect(() => {
+		if (recentlyAddedSlotId) {
+			// Clear the tracking ID after a short delay
+			setTimeout(() => {
+				recentlyAddedSlotId = null;
+			}, 100);
+		}
+	});
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
@@ -827,7 +855,11 @@
 							{#if recurringSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().recurring as slot (slot.id)}
-										<div class="slot-wrapper">
+										<div
+											class="slot-wrapper"
+											data-slot-id={slot.id}
+											class:newly-created={globalState.highlightedSlots.has(slot.id)}
+										>
 											<div class="slot-badges mb-2">
 												<span class="recurrence-badge bg-purple-100 text-purple-800">
 													{getRecurrenceDisplay(slot)}
@@ -864,14 +896,19 @@
 							{#if currentFutureSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().currentFuture as slot (slot.id)}
-										<Slot
-											{slot}
-											capacityId={capacity.id}
-											unit={capacity.unit}
-											canDelete={capacity.availability_slots.length > 1}
-											onupdate={handleSlotUpdate}
-											ondelete={handleSlotDelete}
-										/>
+										<div
+											data-slot-id={slot.id}
+											class:newly-created={globalState.highlightedSlots.has(slot.id)}
+										>
+											<Slot
+												{slot}
+												capacityId={capacity.id}
+												unit={capacity.unit}
+												canDelete={capacity.availability_slots.length > 1}
+												onupdate={handleSlotUpdate}
+												ondelete={handleSlotDelete}
+											/>
+										</div>
 									{/each}
 								</div>
 							{/if}
@@ -893,7 +930,11 @@
 							{#if pastSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().past as slot (slot.id)}
-										<div class="slot-wrapper past-slot">
+										<div
+											class="slot-wrapper past-slot"
+											data-slot-id={slot.id}
+											class:newly-created={globalState.highlightedSlots.has(slot.id)}
+										>
 											<Slot
 												{slot}
 												capacityId={capacity.id}
@@ -1453,5 +1494,47 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+
+	/* Newly created slot highlight animation */
+	@keyframes highlightPulse {
+		0% {
+			background-color: rgba(34, 197, 94, 0.2);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+		}
+		50% {
+			background-color: rgba(34, 197, 94, 0.15);
+			box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.1);
+		}
+		100% {
+			background-color: rgba(34, 197, 94, 0.1);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+		}
+	}
+
+	@keyframes highlightFadeOut {
+		0% {
+			background-color: rgba(34, 197, 94, 0.1);
+		}
+		100% {
+			background-color: transparent;
+		}
+	}
+
+	/* Apply highlight styling to newly created slots */
+	.slot-wrapper.newly-created,
+	div[data-slot-id].newly-created {
+		animation:
+			highlightPulse 2s ease-in-out,
+			highlightFadeOut 1s ease-out 2s;
+		border: 2px solid rgba(34, 197, 94, 0.3) !important;
+		border-radius: 8px;
+		transition: all 0.3s ease;
+	}
+
+	.slot-wrapper.newly-created :global(.slot-item),
+	div[data-slot-id].newly-created :global(.slot-item) {
+		background: rgba(240, 253, 244, 0.8) !important;
+		border-color: rgba(34, 197, 94, 0.2) !important;
 	}
 </style>
