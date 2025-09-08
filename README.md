@@ -310,7 +310,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 - **Inteface Overview (Older Version)**
 
-[![Interface Overview (Old)](https://img.youtube.com/vi/ro-y4MnOgNo/hqdefault.jpg)](https://youtu.be/ro-y4MnOgNo?si=ae1nC7-uIwQ0t-YN)
+[![Interface Overview (Old)](https://img.youtube.com/vi/gapy9mBpP5w/hqdefault.jpg)](https://youtu.be/gapy9mBpP5w?si=B2sbZpoaXStg4eKL)
 
 ## For Devs 📚
 
@@ -320,7 +320,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 In one console:
 
-```
+```V
 bun install
 bun run dev
 ```
