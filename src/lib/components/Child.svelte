@@ -74,40 +74,196 @@
 	const nodeHeight = $derived(dimensions.y1 - dimensions.y0);
 	const nodeSizeRatio = $derived(Math.min(nodeWidth, nodeHeight) * 100); // Size as percentage of parent
 
-	// Prepare text segments first
+	// Prepare text segments for multi-line display using natural word breaks
 	const segments = $derived(
-		node.name === 'Unnamed' ? [node.name] : node.name.split(/(?=[A-Z][^A-Z])/g)
+		(() => {
+			if (node.name === 'Unnamed') return [node.name];
+
+			// First try natural word breaks (spaces)
+			const words = node.name.split(/\s+/);
+			if (words.length > 1) {
+				return words;
+			}
+
+			// For single words, only split on capital letters if the word is very long
+			if (node.name.length > 12) {
+				return node.name.split(/(?=[A-Z][^A-Z])/g);
+			}
+
+			// Keep short single words intact
+			return [node.name];
+		})()
 	);
 
-	// Calculate font size based on actual text content and container constraints
-	const longestSegment = $derived(
-		segments.reduce(
-			(longest: string, segment: string) => (segment.length > longest.length ? segment : longest),
-			''
-		)
-	);
+	// Simple approach: measure and fit text to span dimensions
+	let titleElement: HTMLElement | null = $state(null);
+	let currentFontSize = $state(16); // Start with a reasonable default
+	let resizeObserver: ResizeObserver | null = null;
 
-	const fontSize = $derived(() => {
-		// More aggressive approach - use most of the available space
-		const availableWidth = nodeWidth * 0.9 * 400; // 90% of node width
-		const availableHeight = nodeHeight * 0.9 * 400; // 90% of node height
+	// Function to fit text to maximum available container dimensions
+	function fitTextToSpan() {
+		if (!titleElement) return;
 
-		// More realistic character width
-		const charWidth = 0.55; // Closer to typical character width
+		// Find the actual full container (unified-node-content)
+		const fullContainer = titleElement.closest('.unified-node-content') as HTMLElement;
+		if (!fullContainer) return;
 
-		// Calculate max font size using most of available space
-		const maxFontSizeForWidth = (availableWidth * 0.95) / (longestSegment.length * charWidth * 16); // 95% of available width
+		// Temporarily remove constraints to allow maximum expansion
+		const titleArea = titleElement.parentElement as HTMLElement;
+		const originalMaxWidth = titleArea.style.maxWidth;
+		titleArea.style.maxWidth = '100%';
 
-		// Calculate height with tighter line spacing
-		const lineHeight = 1.15; // Tighter spacing
-		const maxFontSizeForHeight = (availableHeight * 0.95) / (segments.length * lineHeight * 16); // 95% of available height
+		// Calculate available space, accounting for UI elements in contribution nodes
+		// Reduce from 0.95 to 0.85 to provide more breathing room around text
+		const maxWidth = fullContainer.clientWidth * 0.85;
 
-		// Take the more restrictive constraint
-		const calculatedSize = Math.min(maxFontSizeForWidth, maxFontSizeForHeight);
+		// Simple two-mode approach based purely on node structure
+		let maxHeight;
+		if (node.hasChildren) {
+			// Parent nodes have children and never have buttons - can use generous space
+			maxHeight = fullContainer.clientHeight * 0.8;
+		} else {
+			// Leaf nodes (no children) always have potential buttons - must be conservative
+			// Buttons are positioned at 80% from top, so use 50% to ensure no overlap
+			maxHeight = fullContainer.clientHeight * 0.5;
+		}
 
-		// Apply minimal safety margin
-		const safeSize = calculatedSize * 0.95; // Only 5% safety margin
-		return Math.max(0.4, Math.min(3.5, safeSize));
+		// Detect content type for smarter initial sizing
+		const allText = segments.join('');
+		const isEmojiOnly = /^[\p{Emoji}\s]*$/u.test(allText.trim());
+		const isShortText = allText.length <= 3;
+		const isSingleSegment = segments.length === 1;
+
+		// Much more aggressive initial sizing for emojis and short content
+		let fontSize;
+		if (isEmojiOnly || isShortText) {
+			// For emojis and very short text, start with container-based sizing
+			fontSize = Math.min(maxWidth * 0.8, maxHeight * 0.8); // Use 80% of container
+		} else if (isSingleSegment && allText.length <= 8) {
+			// For short single words
+			fontSize = Math.min(maxWidth * 0.6, maxHeight * 0.6); // Use 60% of container
+		} else {
+			// For multiline text, calculate based on the longest line and available height
+			const longestLineLength = Math.max(...segments.map((s: string) => s.length));
+			const widthBasedSize = maxWidth / (longestLineLength * 0.6);
+			// Account for line-height (1.2) and conservative height allocation
+			// Use 1.4 multiplier for extra safety margin to prevent button overlap
+			const heightBasedSize = maxHeight / (segments.length * 1.4);
+
+			// Use the smaller of the two constraints (more restrictive)
+			// This ensures text fits within both width AND height limits
+			fontSize = Math.min(widthBasedSize, heightBasedSize);
+		}
+
+		fontSize = Math.min(300, Math.max(4, fontSize)); // Much higher upper bound for emojis
+
+		// Binary search for optimal font size
+		let minSize = 4;
+		let maxSize = fontSize;
+		let iterations = 0;
+		const maxIterations = 25; // More iterations for higher precision
+
+		while (maxSize - minSize > 0.25 && iterations < maxIterations) {
+			// Higher precision
+			fontSize = (minSize + maxSize) / 2;
+			titleElement.style.fontSize = fontSize + 'px';
+
+			// Force layout recalculation
+			titleElement.offsetHeight;
+
+			// Check if text fits in the maximum available space
+			const titleRect = titleElement.getBoundingClientRect();
+
+			const fitsWidth = titleRect.width <= maxWidth;
+			const fitsHeight = titleRect.height <= maxHeight;
+
+			if (fitsWidth && fitsHeight) {
+				minSize = fontSize; // This size works, try larger
+			} else {
+				maxSize = fontSize; // This size is too big, try smaller
+			}
+
+			iterations++;
+		}
+
+		// Use the largest size that fits
+		titleElement.style.fontSize = minSize + 'px';
+		currentFontSize = minSize;
+
+		// Enhanced debug logging for all content types
+		if (isEmojiOnly || isShortText || segments.length > 1) {
+			console.log(
+				`[FONT-FITTING] Content: "${allText}", segments: ${segments.length}, longestLine: ${Math.max(...segments.map((s: string) => s.length))}, isEmoji: ${isEmojiOnly}, isShort: ${isShortText}, finalSize: ${minSize}px, container: ${maxWidth}x${maxHeight}, hasChildren: ${node.hasChildren}`
+			);
+		}
+
+		// Restore original max-width constraint
+		titleArea.style.maxWidth = originalMaxWidth;
+	}
+
+	// Robust text fitting with proper timing
+	function scheduleTextFitting() {
+		if (!titleElement || isEditing) return;
+
+		// Multiple timing strategies to ensure proper measurement
+
+		// Strategy 1: RequestAnimationFrame for next paint cycle
+		requestAnimationFrame(() => {
+			if (!titleElement || isEditing) return;
+
+			// Strategy 2: Additional frame to ensure layout is complete
+			requestAnimationFrame(() => {
+				if (!titleElement || isEditing) return;
+
+				// Strategy 3: Small timeout as final fallback
+				setTimeout(() => {
+					if (!titleElement || isEditing) return;
+					fitTextToSpan();
+				}, 50);
+			});
+		});
+	}
+
+	// Effect to fit text when content or dimensions change
+	$effect(() => {
+		scheduleTextFitting();
+	});
+
+	// Also fit text when container dimensions might have changed
+	$effect(() => {
+		// Watch for dimension changes
+		const deps = [nodeWidth, nodeHeight, segments.length, node.name];
+		scheduleTextFitting();
+	});
+
+	// Set up ResizeObserver when titleElement is available
+	$effect(() => {
+		if (!titleElement) return;
+
+		const container = titleElement.closest('.unified-node-content') as HTMLElement;
+		if (!container) return;
+
+		// Clean up previous observer
+		if (resizeObserver) {
+			resizeObserver.disconnect();
+		}
+
+		// Create new ResizeObserver
+		resizeObserver = new ResizeObserver((entries) => {
+			// Debounce resize events
+			scheduleTextFitting();
+		});
+
+		// Observe the container for size changes
+		resizeObserver.observe(container);
+
+		// Cleanup function
+		return () => {
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+				resizeObserver = null;
+			}
+		};
 	});
 
 	// Determine if this is the only child (occupies 100% of the space)
@@ -122,26 +278,17 @@
 	// Calculate visibility factor (0-1) for smooth fade-in
 	const visibilityFactor = $derived(Math.min(1, Math.max(0, (nodeSizeRatio - 5) / 7)));
 
-	// === BOUNDARY-AWARE RECTANGLE PACKING ===
-	// Ensures no overlap with text and proper scaling within bounds
+	// === SIMPLIFIED ELEMENT SIZING ===
+	// Use container-relative sizing for all elements
 
-	// 1. TEXT BOUNDING BOX (accurate measurement)
-	const textSizeRatio = $derived(fontSize()); // Already normalized
-	const textLines = $derived(segments.length);
-	const textHeight = $derived(textSizeRatio * textLines * 1.15); // Actual text height
-	const textWidth = $derived(textSizeRatio * longestSegment.length * 0.55); // Actual text width
-
-	// === ELEGANT CSS-ALIGNED SOLUTION ===
-	// Work WITH CSS instead of fighting it. Use CSS positioning patterns.
-
-	// Simple element sizing based on node scale (like the title does)
-	const elementScale = $derived(Math.min(nodeWidth, nodeHeight)); // Same scale factor as title
+	// Simple element sizing based on node scale
+	const elementScale = $derived(Math.min(nodeWidth, nodeHeight));
 	const sliderHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
 	const buttonHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
 
-	// Element widths scale with text (like title does)
-	const sliderWidth = $derived(Math.max(0.4, Math.min(0.8, textWidth * 1.2))); // 120% of text width
-	const buttonContainerWidth = $derived(Math.max(0.3, Math.min(0.7, textWidth * 1.0))); // 100% of text width
+	// Use fixed proportional widths instead of text-based calculations
+	const sliderWidth = $derived(Math.max(0.4, Math.min(0.8, elementScale * 0.7))); // 70% of container scale
+	const buttonContainerWidth = $derived(Math.max(0.3, Math.min(0.7, elementScale * 0.6))); // 60% of container scale
 
 	// CSS-style positioning: Give title more breathing room
 	// Title is at 50%, so position elements further away for better spacing
@@ -157,20 +304,10 @@
 	// Legacy compatibility
 	const buttonSizePercent = $derived(buttonHeightPercent);
 
-	// Calculate font size for percentage indicator to fit neatly in its 10% container
+	// Simplified percentage indicator font size
 	const percentageIndicatorFontSize = $derived(() => {
-		// The indicator gets 10% of the slider container width
-		// Use a simple scaling approach based on the slider height for proportional sizing
-		const baseSize = sliderHeight * 0.5; // Scale with slider height for proportional look
-
-		// Also consider the width constraint - scale down if the container is very narrow
-		const widthConstraint = sliderWidth * 0.1 * 3; // 10% width * 3 for reasonable scaling
-
-		// Take the smaller of the two constraints
-		const scaledSize = Math.min(baseSize, widthConstraint);
-
-		// Convert to rem with reasonable bounds - smaller due to narrower container
-		return Math.max(0.3, Math.min(0.7, scaledSize));
+		// Scale with slider height for proportional look
+		return Math.max(0.3, Math.min(0.7, sliderHeight * 0.5));
 	});
 
 	// Check if node has contributors or anti-contributors for styling
@@ -578,7 +715,7 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        max-width: 90%;
+        max-width: 95%;
         z-index: 2;
       "
 		>
@@ -591,9 +728,9 @@
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
 					style="
-          font-size: {fontSize()}rem;
           width: 100%;
           max-width: {Math.min(200, nodeSizeRatio * 3)}px;
+						font-size: {currentFontSize}px;
         "
 					autocomplete="off"
 					autocorrect="off"
@@ -601,8 +738,8 @@
 				/>
 			{:else}
 				<div
+					bind:this={titleElement}
 					class="node-title"
-					style="font-size: {fontSize()}rem;"
 					title={node.name}
 					role="button"
 					tabindex="0"
@@ -998,6 +1135,8 @@
 			border 0.2s ease;
 		border-radius: 6px;
 		position: relative;
+		/* Enable container queries for responsive text */
+		container-type: size;
 	}
 
 	.unified-node-content {
@@ -1028,20 +1167,17 @@
 			0px 0px 2px rgba(255, 255, 255, 0.6);
 		font-weight: 500;
 		cursor: pointer;
-		/* Advanced text fitting */
-		word-break: break-word;
-		hyphens: auto;
-		overflow-wrap: break-word;
-		word-wrap: break-word;
 		/* Constrain to container */
 		width: 100%;
 		max-width: 100%;
-		overflow: hidden;
+		overflow: visible; /* Changed from hidden to prevent clipping */
 		text-align: center;
-		/* Font size will be set via inline style */
+		padding: 2px; /* Add small padding to prevent edge clipping */
 		line-height: 1.1;
+		/* Base font size - will be overridden by JavaScript fitting */
+		font-size: 16px;
 		/* Cross-device interaction */
-		user-select: none; /* Prevent accidental text selection */
+		user-select: none;
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
@@ -1060,7 +1196,7 @@
 	}
 
 	.title-segment {
-		line-height: 1.1;
+		line-height: 1.2; /* Balanced: prevents clipping but not too much spacing */
 		display: block;
 	}
 
@@ -1074,6 +1210,8 @@
 		color: #333;
 		outline: none;
 		font-weight: 500;
+		/* Base font size - will match the fitted title size */
+		font-size: 16px;
 		/* Cross-device text editing */
 		touch-action: manipulation;
 		user-select: text;

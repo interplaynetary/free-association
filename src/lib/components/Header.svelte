@@ -109,9 +109,21 @@
 			scrollBreadcrumbsToEnd();
 		});
 
+		// Add mouse wheel scrolling to breadcrumbs
+		const handleBreadcrumbScroll = (event: WheelEvent) => {
+			const target = event.target;
+			if (breadcrumbsRef && target && breadcrumbsRef.contains(target as HTMLElement)) {
+				event.preventDefault();
+				breadcrumbsRef.scrollLeft += event.deltaY;
+			}
+		};
+
+		document.addEventListener('wheel', handleBreadcrumbScroll, { passive: false });
+
 		return () => {
 			unsubscribe();
 			unsubscribePath();
+			document.removeEventListener('wheel', handleBreadcrumbScroll);
 		};
 	});
 
