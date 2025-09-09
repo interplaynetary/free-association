@@ -19,6 +19,7 @@
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
+	const isTextEditMode = $derived(globalState.textEditMode);
 
 	// Route detection - properly reactive to page store changes
 	const currentRoute = $derived.by(() => {
@@ -57,6 +58,11 @@
 	// Recompose handler
 	function handleRecompose() {
 		globalState.toggleRecomposeMode();
+	}
+
+	// Text edit mode handler
+	function handleTextEditMode() {
+		globalState.toggleTextEditMode();
 	}
 
 	// Add new node handler
@@ -250,14 +256,17 @@
 					</button>
 					<span class="button-caption">Add</span>
 				</div>
-				<!--
 				<div class="toolbar-item">
-					<button class="toolbar-button edit-button" title="Edit mode" onclick={handleEdit}>
+					<button
+						class="toolbar-button edit-button"
+						class:edit-active={isTextEditMode}
+						title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
+						onclick={handleTextEditMode}
+					>
 						✏️
 					</button>
 					<span class="button-caption">Edit</span>
 				</div>
-            -->
 				<div class="toolbar-item">
 					<button
 						class="toolbar-button recompose-button"
@@ -411,6 +420,13 @@
 	}
 
 	/* Active states with animations */
+	.edit-button.edit-active {
+		color: #4caf50;
+		background: rgba(76, 175, 80, 0.1);
+		border-radius: 4px;
+		animation: pulse-green 2s ease-in-out infinite;
+	}
+
 	.recompose-button.recompose-active {
 		color: #1976d2;
 		animation: pulse-blue 2s ease-in-out infinite;
@@ -449,6 +465,18 @@
 			box-shadow:
 				0 0 16px rgba(33, 150, 243, 0.6),
 				0 0 24px rgba(33, 150, 243, 0.3);
+		}
+	}
+
+	@keyframes pulse-green {
+		0%,
+		100% {
+			box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+		}
+		50% {
+			box-shadow:
+				0 0 16px rgba(76, 175, 80, 0.6),
+				0 0 24px rgba(76, 175, 80, 0.3);
 		}
 	}
 

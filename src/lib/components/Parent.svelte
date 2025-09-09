@@ -1551,11 +1551,13 @@
 				target.closest('.add-contributor-button') ||
 				target.closest('.tag-container') ||
 				target.closest('.contributor-container') ||
-				target.closest('.node-title') ||
-				target.closest('.node-title-area') ||
-				target.closest('.title-segment') ||
 				target.closest('.node-edit-input') ||
-				target.closest('.contributors-area'))
+				target.closest('.contributors-area') ||
+				// Only exclude title elements if text edit mode is enabled
+				(globalState.textEditMode &&
+					(target.closest('.node-title') ||
+						target.closest('.node-title-area') ||
+						target.closest('.title-segment'))))
 		) {
 			// Click originated from text or contributor elements, don't navigate
 			resetInteractionState();

@@ -49,6 +49,7 @@ export const globalState = $state({
 	// UI state
 	deleteMode: false,
 	recomposeMode: false,
+	textEditMode: false, // Controls whether clicking node titles enters edit mode
 	nodeToEdit: '',
 	editMode: false, // Global edit mode flag
 	recomposing: false,
@@ -155,6 +156,7 @@ export const globalState = $state({
 		globalState.editingNodeId = '';
 		globalState.nodeToEdit = '';
 		globalState.deleteMode = false;
+		globalState.textEditMode = false;
 
 		// Reset search state
 		globalState.searchQuery = '';
@@ -226,8 +228,43 @@ export const globalState = $state({
 		);
 	},
 
-	// Set a node to edit mode (temporary state)
+	// Toggle text edit mode
+	toggleTextEditMode: () => {
+		// Don't allow toggling text edit mode when actively editing a node
+		if (globalState.editMode) {
+			globalState.showToast('Cannot toggle text edit mode while editing a node', 'warning');
+			return;
+		}
+
+		// Don't allow toggling text edit mode when in delete mode
+		if (globalState.deleteMode) {
+			globalState.showToast('Cannot toggle text edit mode while in delete mode', 'warning');
+			return;
+		}
+
+		// Don't allow toggling text edit mode when in recompose mode
+		if (globalState.recomposeMode) {
+			globalState.showToast('Cannot toggle text edit mode while in recompose mode', 'warning');
+			return;
+		}
+
+		globalState.textEditMode = !globalState.textEditMode;
+		globalState.showToast(
+			globalState.textEditMode
+				? 'Text edit mode activated. Click node titles to edit them.'
+				: 'Text edit mode deactivated. Node titles are no longer editable.',
+			globalState.textEditMode ? 'info' : 'info'
+		);
+	},
+
+	// Set a node to edit mode (temporary state) and ensure text edit mode is enabled
 	setNodeToEditMode: (nodeId: string) => {
+		// Enable text edit mode if it's not already enabled
+		if (!globalState.textEditMode) {
+			globalState.textEditMode = true;
+			globalState.showToast('Text edit mode enabled for editing', 'info');
+		}
+
 		globalState.nodeToEdit = nodeId;
 		if (browser) {
 			setTimeout(() => {
@@ -250,6 +287,11 @@ export const globalState = $state({
 		if (globalState.recomposeMode) {
 			globalState.showToast('Cannot edit nodes in recompose mode', 'warning');
 			return false;
+		}
+
+		// Enable text edit mode if it's not already enabled
+		if (!globalState.textEditMode) {
+			globalState.textEditMode = true;
 		}
 
 		// If already editing a different node, exit that first

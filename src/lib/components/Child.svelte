@@ -69,6 +69,20 @@
 		}
 	});
 
+	// Handle auto-edit signal from globalState.nodeToEdit
+	$effect(() => {
+		if (globalState.nodeToEdit === node.id) {
+			console.log('[DEBUG CHILD] Auto-edit signal received for node:', node.id);
+			// Try to enter edit mode (this will also enable textEditMode if needed)
+			const canEdit = globalState.enterEditMode(node.id);
+			if (canEdit) {
+				console.log('[DEBUG CHILD] Auto-edit successful for node:', node.name);
+			} else {
+				console.log('[DEBUG CHILD] Auto-edit failed for node:', node.name);
+			}
+		}
+	});
+
 	// Calculate relative size for text scaling
 	const nodeWidth = $derived(dimensions.x1 - dimensions.x0);
 	const nodeHeight = $derived(dimensions.y1 - dimensions.y0);
@@ -365,12 +379,20 @@
 			editMode: globalState.editMode,
 			deleteMode: globalState.deleteMode,
 			recomposeMode: globalState.recomposeMode,
+			textEditMode: globalState.textEditMode,
 			isTrusted: event.isTrusted
 		});
 
 		// In delete or recompose mode, don't handle text editing - let the event bubble up to parent
 		if (globalState.deleteMode || globalState.recomposeMode) {
 			console.log('[DEBUG CHILD] In delete/recompose mode - allowing event to bubble to parent');
+			// Don't call preventDefault or stopPropagation - let the event bubble up naturally
+			return;
+		}
+
+		// If text edit mode is disabled, don't handle text editing - let the event bubble up to parent
+		if (!globalState.textEditMode) {
+			console.log('[DEBUG CHILD] Text edit mode disabled - allowing event to bubble to parent');
 			// Don't call preventDefault or stopPropagation - let the event bubble up naturally
 			return;
 		}
@@ -589,6 +611,7 @@
         transform: translate(-50%, -50%);
         max-width: 95%;
         z-index: 2;
+        pointer-events: {globalState.textEditMode ? 'auto' : 'none'};
       "
 		>
 			{#if isEditing}
@@ -608,12 +631,12 @@
 					autocorrect="off"
 					spellcheck="false"
 				/>
-			{:else}
+			{:else if globalState.textEditMode}
 				<div
 					class="node-title"
 					title={node.name}
 					role="button"
-					tabindex="0"
+					tabindex={0}
 					style="font-size: {fontSize()}px;"
 					onclick={handleTextEditActivation}
 					ontouchend={handleTextEditActivation}
@@ -623,6 +646,16 @@
 							handleTextEditActivation(e);
 						}
 					}}
+				>
+					{#each segments as segment}
+						<span class="title-segment">{segment}</span>
+					{/each}
+				</div>
+			{:else}
+				<div
+					class="node-title non-interactive"
+					title={node.name}
+					style="font-size: {fontSize()}px;"
 				>
 					{#each segments as segment}
 						<span class="title-segment">{segment}</span>
@@ -1024,7 +1057,7 @@
 		/* Clean touch feedback */
 		-webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
 		touch-action: manipulation;
-		pointer-events: auto;
+		/* pointer-events is set dynamically via inline style based on textEditMode */
 	}
 
 	/* In delete mode, allow events to pass through to parent */
@@ -1064,6 +1097,20 @@
 
 	.node-title:active {
 		opacity: 0.6;
+	}
+
+	/* Non-interactive title styling - no visual feedback */
+	.node-title.non-interactive {
+		cursor: default;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.node-title.non-interactive:hover {
+		opacity: 1; /* No hover effect */
+	}
+
+	.node-title.non-interactive:active {
+		opacity: 1; /* No active effect */
 	}
 
 	.title-segment {
