@@ -95,175 +95,47 @@
 		})()
 	);
 
-	// Simple approach: measure and fit text to span dimensions
-	let titleElement: HTMLElement | null = $state(null);
-	let currentFontSize = $state(16); // Start with a reasonable default
-	let resizeObserver: ResizeObserver | null = null;
+	// Clean Svelte 5 reactive font sizing - no DOM manipulation needed!
+	const fontSize = $derived(() => {
+		// Calculate available space based on container dimensions
+		const containerWidth = nodeWidth * 400; // Convert to pixels (assuming 400px base)
+		const containerHeight = nodeHeight * 400;
 
-	// Function to fit text to maximum available container dimensions
-	function fitTextToSpan() {
-		if (!titleElement) return;
+		// Account for UI elements in contribution nodes
+		const maxWidth = containerWidth * 0.85; // Breathing room
 
-		// Find the actual full container (unified-node-content)
-		const fullContainer = titleElement.closest('.unified-node-content') as HTMLElement;
-		if (!fullContainer) return;
-
-		// Temporarily remove constraints to allow maximum expansion
-		const titleArea = titleElement.parentElement as HTMLElement;
-		const originalMaxWidth = titleArea.style.maxWidth;
-		titleArea.style.maxWidth = '100%';
-
-		// Calculate available space, accounting for UI elements in contribution nodes
-		// Reduce from 0.95 to 0.85 to provide more breathing room around text
-		const maxWidth = fullContainer.clientWidth * 0.85;
-
-		// Simple two-mode approach based purely on node structure
 		let maxHeight;
 		if (node.hasChildren) {
-			// Parent nodes have children and never have buttons - can use generous space
-			maxHeight = fullContainer.clientHeight * 0.8;
+			// Parent nodes can use generous space (no buttons)
+			maxHeight = containerHeight * 0.8;
 		} else {
-			// Leaf nodes (no children) always have potential buttons - must be conservative
-			// Buttons are positioned at 80% from top, so use 50% to ensure no overlap
-			maxHeight = fullContainer.clientHeight * 0.5;
+			// Leaf nodes must be conservative (buttons at 80%)
+			maxHeight = containerHeight * 0.5;
 		}
 
-		// Detect content type for smarter initial sizing
+		// Detect content type
 		const allText = segments.join('');
 		const isEmojiOnly = /^[\p{Emoji}\s]*$/u.test(allText.trim());
 		const isShortText = allText.length <= 3;
 		const isSingleSegment = segments.length === 1;
 
-		// Much more aggressive initial sizing for emojis and short content
-		let fontSize;
+		let calculatedSize;
 		if (isEmojiOnly || isShortText) {
-			// For emojis and very short text, start with container-based sizing
-			fontSize = Math.min(maxWidth * 0.8, maxHeight * 0.8); // Use 80% of container
+			// Emojis and short text: use container-based sizing
+			calculatedSize = Math.min(maxWidth * 0.8, maxHeight * 0.8);
 		} else if (isSingleSegment && allText.length <= 8) {
-			// For short single words
-			fontSize = Math.min(maxWidth * 0.6, maxHeight * 0.6); // Use 60% of container
+			// Short single words
+			calculatedSize = Math.min(maxWidth * 0.6, maxHeight * 0.6);
 		} else {
-			// For multiline text, calculate based on the longest line and available height
+			// Multi-line text: calculate based on content
 			const longestLineLength = Math.max(...segments.map((s: string) => s.length));
 			const widthBasedSize = maxWidth / (longestLineLength * 0.6);
-			// Account for line-height (1.2) and conservative height allocation
-			// Use 1.4 multiplier for extra safety margin to prevent button overlap
 			const heightBasedSize = maxHeight / (segments.length * 1.4);
-
-			// Use the smaller of the two constraints (more restrictive)
-			// This ensures text fits within both width AND height limits
-			fontSize = Math.min(widthBasedSize, heightBasedSize);
+			calculatedSize = Math.min(widthBasedSize, heightBasedSize);
 		}
 
-		fontSize = Math.min(300, Math.max(4, fontSize)); // Much higher upper bound for emojis
-
-		// Binary search for optimal font size
-		let minSize = 4;
-		let maxSize = fontSize;
-		let iterations = 0;
-		const maxIterations = 25; // More iterations for higher precision
-
-		while (maxSize - minSize > 0.25 && iterations < maxIterations) {
-			// Higher precision
-			fontSize = (minSize + maxSize) / 2;
-			titleElement.style.fontSize = fontSize + 'px';
-
-			// Force layout recalculation
-			titleElement.offsetHeight;
-
-			// Check if text fits in the maximum available space
-			const titleRect = titleElement.getBoundingClientRect();
-
-			const fitsWidth = titleRect.width <= maxWidth;
-			const fitsHeight = titleRect.height <= maxHeight;
-
-			if (fitsWidth && fitsHeight) {
-				minSize = fontSize; // This size works, try larger
-			} else {
-				maxSize = fontSize; // This size is too big, try smaller
-			}
-
-			iterations++;
-		}
-
-		// Use the largest size that fits
-		titleElement.style.fontSize = minSize + 'px';
-		currentFontSize = minSize;
-
-		// Enhanced debug logging for all content types
-		if (isEmojiOnly || isShortText || segments.length > 1) {
-			console.log(
-				`[FONT-FITTING] Content: "${allText}", segments: ${segments.length}, longestLine: ${Math.max(...segments.map((s: string) => s.length))}, isEmoji: ${isEmojiOnly}, isShort: ${isShortText}, finalSize: ${minSize}px, container: ${maxWidth}x${maxHeight}, hasChildren: ${node.hasChildren}`
-			);
-		}
-
-		// Restore original max-width constraint
-		titleArea.style.maxWidth = originalMaxWidth;
-	}
-
-	// Robust text fitting with proper timing
-	function scheduleTextFitting() {
-		if (!titleElement || isEditing) return;
-
-		// Multiple timing strategies to ensure proper measurement
-
-		// Strategy 1: RequestAnimationFrame for next paint cycle
-		requestAnimationFrame(() => {
-			if (!titleElement || isEditing) return;
-
-			// Strategy 2: Additional frame to ensure layout is complete
-			requestAnimationFrame(() => {
-				if (!titleElement || isEditing) return;
-
-				// Strategy 3: Small timeout as final fallback
-				setTimeout(() => {
-					if (!titleElement || isEditing) return;
-					fitTextToSpan();
-				}, 50);
-			});
-		});
-	}
-
-	// Effect to fit text when content or dimensions change
-	$effect(() => {
-		scheduleTextFitting();
-	});
-
-	// Also fit text when container dimensions might have changed
-	$effect(() => {
-		// Watch for dimension changes
-		const deps = [nodeWidth, nodeHeight, segments.length, node.name];
-		scheduleTextFitting();
-	});
-
-	// Set up ResizeObserver when titleElement is available
-	$effect(() => {
-		if (!titleElement) return;
-
-		const container = titleElement.closest('.unified-node-content') as HTMLElement;
-		if (!container) return;
-
-		// Clean up previous observer
-		if (resizeObserver) {
-			resizeObserver.disconnect();
-		}
-
-		// Create new ResizeObserver
-		resizeObserver = new ResizeObserver((entries) => {
-			// Debounce resize events
-			scheduleTextFitting();
-		});
-
-		// Observe the container for size changes
-		resizeObserver.observe(container);
-
-		// Cleanup function
-		return () => {
-			if (resizeObserver) {
-				resizeObserver.disconnect();
-				resizeObserver = null;
-			}
-		};
+		// Clamp to reasonable bounds
+		return Math.max(4, Math.min(300, calculatedSize));
 	});
 
 	// Determine if this is the only child (occupies 100% of the space)
@@ -728,21 +600,21 @@
 					onkeydown={handleEditKeydown}
 					onblur={finishEditing}
 					style="
-          width: 100%;
-          max-width: {Math.min(200, nodeSizeRatio * 3)}px;
-						font-size: {currentFontSize}px;
-        "
+						width: 100%;
+						max-width: {Math.min(200, nodeSizeRatio * 3)}px;
+						font-size: {fontSize()}px;
+					"
 					autocomplete="off"
 					autocorrect="off"
 					spellcheck="false"
 				/>
 			{:else}
 				<div
-					bind:this={titleElement}
 					class="node-title"
 					title={node.name}
 					role="button"
 					tabindex="0"
+					style="font-size: {fontSize()}px;"
 					onclick={handleTextEditActivation}
 					ontouchend={handleTextEditActivation}
 					onkeydown={(e) => {
@@ -1174,8 +1046,7 @@
 		text-align: center;
 		padding: 2px; /* Add small padding to prevent edge clipping */
 		line-height: 1.1;
-		/* Base font size - will be overridden by JavaScript fitting */
-		font-size: 16px;
+		/* Font size set dynamically via inline style */
 		/* Cross-device interaction */
 		user-select: none;
 		-webkit-user-select: none;
@@ -1210,8 +1081,7 @@
 		color: #333;
 		outline: none;
 		font-weight: 500;
-		/* Base font size - will match the fitted title size */
-		font-size: 16px;
+		/* Font size set dynamically via inline style to match title */
 		/* Cross-device text editing */
 		touch-action: manipulation;
 		user-select: text;
