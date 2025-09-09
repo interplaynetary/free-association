@@ -14,6 +14,7 @@ import { userContacts, isLoadingContacts } from './users.svelte';
 import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
+import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
 
 /**
  * Check if the user object is properly initialized and has the necessary methods
@@ -124,7 +125,7 @@ export function persistProviderShares() {
 	}
 }
 
-export function persistCapacities() {
+export async function persistCapacities() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] 🚨 DEBUG: User not initialized, skipping capacities persistence');
 		return;
@@ -206,9 +207,14 @@ export function persistCapacities() {
 	});
 
 	try {
+		// GEOCODING STEP: Process addresses and add coordinates before persistence
+		console.log('[PERSIST] 🌍 Processing addresses for geocoding...');
+		const capacitiesWithCoordinates = await processCapacitiesLocations(userCapacitiesValue);
+		console.log('[PERSIST] 🌍 Geocoding processing completed');
+
 		// Our core stores now contain public keys by design, so no filtering needed
 		// This prevents feedback loops between network and persistence layers
-		const capacitiesClone = structuredClone(userCapacitiesValue);
+		const capacitiesClone = structuredClone(capacitiesWithCoordinates);
 
 		// 🚨 DEBUG: Check what location data exists after cloning
 		console.log('[PERSIST] 🚨 DEBUG: Post-clone location data check:');

@@ -37,7 +37,6 @@
 		currentLocationText,
 		isLocationTracking
 	} from '$lib/state/location.svelte';
-	import { debounce } from '$lib/utils/debounce';
 	import MapSidePanel from './MapSidePanel.svelte';
 
 	interface Props {

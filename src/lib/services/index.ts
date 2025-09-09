@@ -7,9 +7,13 @@
 
 import { viewportService } from './viewport.svelte';
 import { navigationService } from './navigation.svelte';
+import { initializeGeocodingCache } from '$lib/utils/geocodingCache';
 
 // Services are auto-initialized when imported
 console.log('[SERVICES] Global services initialized');
+
+// Initialize geocoding cache system
+initializeGeocodingCache();
 
 // Export services for direct access if needed
 export { viewportService, navigationService };

@@ -1365,13 +1365,13 @@
 					{@const totalCalculation = calculateTotalOccurrences()}
 					<div class="total-calculation mt-3 rounded p-3">
 						<div class="text-sm font-medium">
-							Total Availability: {totalCalculation.totalQuantity}
+							Total Availability: {totalCalculation?.totalQuantity}
 							{unit || 'units'}
 						</div>
 						<div class="text-xs">
-							{totalCalculation.occurrences} occurrences × {slotQuantity}
+							{totalCalculation?.occurrences} occurrences × {slotQuantity}
 							{unit || 'units'} each
-							{#if totalCalculation.isInfinite}
+							{#if totalCalculation?.isInfinite}
 								(infinite pattern - showing first year)
 							{/if}
 						</div>
