@@ -158,6 +158,7 @@
 		height: 100%;
 		max-height: 100%;
 		overflow: hidden;
+		user-select: none;
 	}
 
 	/* Root page specific: ensure it doesn't scroll */

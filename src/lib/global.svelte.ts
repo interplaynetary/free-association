@@ -54,6 +54,7 @@ export const globalState = $state({
 	editMode: false, // Global edit mode flag
 	recomposing: false,
 	editingNodeId: '', // ID of the node currently being edited
+	newlyCreatedNodeId: '', // Track newly created nodes for auto-disable behavior
 	initializationStarted: false,
 
 	// Unified highlighting state for newly created items
@@ -155,6 +156,7 @@ export const globalState = $state({
 		globalState.editMode = false;
 		globalState.editingNodeId = '';
 		globalState.nodeToEdit = '';
+		globalState.newlyCreatedNodeId = '';
 		globalState.deleteMode = false;
 		globalState.textEditMode = false;
 
@@ -259,13 +261,20 @@ export const globalState = $state({
 
 	// Set a node to edit mode (temporary state) and ensure text edit mode is enabled
 	setNodeToEditMode: (nodeId: string) => {
+		console.log('[GLOBAL STATE] Setting node to edit mode:', nodeId);
+
 		// Enable text edit mode if it's not already enabled
 		if (!globalState.textEditMode) {
 			globalState.textEditMode = true;
 			globalState.showToast('Text edit mode enabled for editing', 'info');
 		}
 
+		// Track this as a newly created node for auto-disable behavior
+		globalState.newlyCreatedNodeId = nodeId;
 		globalState.nodeToEdit = nodeId;
+
+		console.log('[GLOBAL STATE] Set newlyCreatedNodeId to:', globalState.newlyCreatedNodeId);
+
 		if (browser) {
 			setTimeout(() => {
 				if (globalState.nodeToEdit === nodeId) {
@@ -307,9 +316,31 @@ export const globalState = $state({
 
 	// Exit edit mode
 	exitEditMode: () => {
+		console.log('[GLOBAL STATE] Exiting edit mode:', {
+			editingNodeId: globalState.editingNodeId,
+			newlyCreatedNodeId: globalState.newlyCreatedNodeId,
+			textEditMode: globalState.textEditMode
+		});
+
+		// If we were editing a newly created node, auto-disable text edit mode
+		if (
+			globalState.newlyCreatedNodeId &&
+			globalState.editingNodeId === globalState.newlyCreatedNodeId
+		) {
+			globalState.textEditMode = false;
+			globalState.showToast('Text edit mode disabled', 'info');
+			console.log('[GLOBAL STATE] Auto-disabled text edit mode after editing newly created node');
+		} else {
+			console.log('[GLOBAL STATE] Not auto-disabling text edit mode:', {
+				hasNewlyCreatedNodeId: !!globalState.newlyCreatedNodeId,
+				idsMatch: globalState.editingNodeId === globalState.newlyCreatedNodeId
+			});
+		}
+
 		globalState.editMode = false;
 		globalState.editingNodeId = '';
 		globalState.nodeToEdit = '';
+		globalState.newlyCreatedNodeId = ''; // Clear the newly created node tracking
 		console.log('[GLOBAL STATE] Exited edit mode');
 	},
 

@@ -114,7 +114,9 @@
 			const target = event.target;
 			if (breadcrumbsRef && target && breadcrumbsRef.contains(target as HTMLElement)) {
 				event.preventDefault();
-				breadcrumbsRef.scrollLeft += event.deltaY;
+				// Smooth scrolling for two-finger mousepad gestures
+				const scrollAmount = event.deltaY * 0.5; // Reduce sensitivity for smoother scrolling
+				breadcrumbsRef.scrollLeft += scrollAmount;
 			}
 		};
 
