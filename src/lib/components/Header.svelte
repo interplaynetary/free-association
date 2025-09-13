@@ -356,6 +356,17 @@
 		// Prevent default navigation behavior
 		event.preventDefault();
 
+		console.log('[DEBUG] Breadcrumb click:', {
+			index,
+			currentPathInfoLength: currentPathInfo.length,
+			currentPathInfo,
+			path,
+			isSoulRoute,
+			user: !!user,
+			routeWithoutBase,
+			currentRoute
+		});
+
 		// If user is not authenticated, show login panel
 		if (!user) {
 			showLoginPanel = true;
@@ -363,19 +374,30 @@
 			return;
 		}
 
-		// If we're already at the root (no path items) and clicking the first item,
-		// and we're on the soul route, toggle the login panel instead of navigating
-		if (index === 0 && currentPathInfo.length === 0 && isSoulRoute) {
-			showLoginPanel = !showLoginPanel;
-			if (showLoginPanel) {
-				startLoginPanelTimer();
+		// If we're clicking on the root node (index 0) and we're on the soul route:
+		// - If we're already at the root (path length 1), toggle the login panel
+		// - If we're deeper in the tree (path length > 1), navigate back to root
+		if (index === 0 && isSoulRoute) {
+			if (currentPathInfo.length === 1) {
+				// We're at the root node, toggle login panel
+				console.log('[DEBUG] At root, toggling login panel');
+				showLoginPanel = !showLoginPanel;
+				if (showLoginPanel) {
+					startLoginPanelTimer();
+				} else {
+					clearLoginPanelTimer();
+					isPanelClosing = false;
+				}
+				return;
 			} else {
-				clearLoginPanelTimer();
-				isPanelClosing = false;
+				// We're deeper in the tree, navigate to root
+				console.log('[DEBUG] Navigating to root from deeper level');
+				globalState.navigateToPathIndex(index);
+				return;
 			}
-			return;
 		}
 
+		console.log('[DEBUG] Navigating to path index:', index);
 		// Simply update the path using the globalState function
 		globalState.navigateToPathIndex(index);
 
