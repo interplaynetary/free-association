@@ -1,19 +1,50 @@
-import { addChild } from '$lib/protocol';
+import { addChild, findNodeById } from '$lib/protocol';
 import type { RootNode, Node } from '$lib/schema';
 import { userTree } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 
 // Export the initialization function that populates an existing root node
 export function populateWithExampleData(rootNode: RootNode): RootNode {
-	// Maslow's Hierarchy of Needs - simplified root level structure
-	addChild(rootNode, 'housing', '🏠', 34);
-	addChild(rootNode, 'food', '🍝', 21);
-	addChild(rootNode, 'art', '🎨', 13);
-	addChild(rootNode, 'love', '💖', 8);
-	addChild(rootNode, 'money', '💸', 5);
-	addChild(rootNode, 'playnet', 'playnet 🪼', 8);
+	// Create the main Playnet node
+	addChild(rootNode, 'playnet', 'Playnet 🐟', 100);
 
-	console.log("Populated root node with Maslow's hierarchy of needs:", rootNode);
+	// Find the playnet node to add children to it
+	const playnetNode = findNodeById(rootNode, 'playnet');
+	if (playnetNode) {
+		// Add main Playnet categories
+		addChild(playnetNode, 'development', 'Development', 25);
+		addChild(playnetNode, 'communications', 'Communications', 20);
+		addChild(playnetNode, 'playlabs', 'Playlabs', 35);
+		addChild(playnetNode, 'free-association', 'Free-Association', 20);
+
+		// Find and populate Playlabs subcategories
+		const playlabsNode = findNodeById(rootNode, 'playlabs');
+		if (playlabsNode) {
+			addChild(playlabsNode, 'facilitation', 'Facilitation', 20);
+			addChild(playlabsNode, 'music', 'Music', 15);
+			addChild(playlabsNode, 'food', 'Food', 15);
+			addChild(playlabsNode, 'documentation', 'Documentation', 10);
+			addChild(playlabsNode, 'invitation', 'Invitation', 10);
+			addChild(playlabsNode, 'materials', 'Materials', 30);
+
+			// Find and populate Materials subcategories
+			const materialsNode = findNodeById(rootNode, 'materials');
+			if (materialsNode) {
+				addChild(materialsNode, 'masking-tape', 'Masking Tape', 10);
+				addChild(materialsNode, 'cards', 'Cards', 35);
+				addChild(materialsNode, 'markers', 'Markers', 25);
+			}
+		}
+
+		// Find and populate Free-Association subcategories
+		const freeAssocNode = findNodeById(rootNode, 'free-association');
+		if (freeAssocNode) {
+			addChild(freeAssocNode, 'fa-development', 'Development', 60);
+			addChild(freeAssocNode, 'fa-communications', 'Communications', 40);
+		}
+	}
+
+	console.log("Populated root node with nested Playnet structure:", rootNode);
 	return rootNode;
 }
 

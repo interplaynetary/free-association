@@ -40,372 +40,7 @@ import {
 } from '$lib/validation';
 import { debounce } from '$lib/utils/debounce';
 import { derived } from 'svelte/store';
-
-/**
- * Enhanced Gun subscription wrapper using ReadableStream for proper lifecycle management
- */
-class GunSubscriptionStream<T> {
-	private reader: ReadableStreamDefaultReader<T> | null = null;
-	private stream: ReadableStream<T> | null = null;
-	private isActive = false;
-	private gunRef: any;
-	private streamId: string;
-	private hasReceivedData = false;
-
-	constructor(
-		private gunPath: () => any,
-		private streamType: string,
-		private onData: (data: T) => void,
-		private onError?: (error: any) => void
-	) {
-		this.streamId = `${streamType}_${Math.random().toString(36).substr(2, 9)}`;
-	}
-
-	/**
-	 * Start the subscription stream
-	 */
-	async start(): Promise<void> {
-		if (this.isActive) {
-			console.warn(`[STREAM] ${this.streamType} stream already active`);
-			return;
-		}
-
-		try {
-			this.isActive = true;
-			console.log(`[STREAM] Starting ${this.streamType} stream ${this.streamId}`);
-
-			this.stream = new ReadableStream<T>({
-				start: (controller) => {
-					try {
-						// Get the Gun reference
-						this.gunRef = this.gunPath();
-
-						if (!this.gunRef) {
-							console.warn(
-								`[STREAM] No Gun reference for ${this.streamType} stream ${this.streamId}`
-							);
-							// Don't complete the stream - keep it open to retry later
-							return;
-						}
-
-						// Set up the Gun subscription
-						this.gunRef.on((data: T) => {
-							if (this.isActive) {
-								this.hasReceivedData = true;
-								if (data !== null && data !== undefined) {
-									controller.enqueue(data);
-								}
-							}
-						});
-
-						console.log(`[STREAM] ${this.streamType} stream ${this.streamId} started successfully`);
-					} catch (error) {
-						console.error(`[STREAM] Error starting ${this.streamType} stream:`, error);
-						controller.error(error);
-						this.onError?.(error);
-					}
-				},
-				cancel: () => {
-					console.log(`[STREAM] Cancelling ${this.streamType} stream ${this.streamId}`);
-					this.cleanup();
-				}
-			});
-
-			// Get the reader and start processing
-			this.reader = this.stream.getReader();
-			this.processStream();
-		} catch (error) {
-			console.error(`[STREAM] Failed to start ${this.streamType} stream:`, error);
-			this.cleanup();
-			this.onError?.(error);
-		}
-	}
-
-	/**
-	 * Process the stream data
-	 */
-	private async processStream(): Promise<void> {
-		if (!this.reader) return;
-
-		try {
-			while (this.isActive) {
-				const { value, done } = await this.reader.read();
-
-				if (done) {
-					console.log(`[STREAM] ${this.streamType} stream ${this.streamId} completed`);
-					break;
-				}
-
-				if (value && this.isActive) {
-					this.onData(value);
-				}
-			}
-		} catch (error) {
-			if (this.isActive) {
-				console.error(`[STREAM] Error in ${this.streamType} stream:`, error);
-				this.onError?.(error);
-			}
-		} finally {
-			// Only cleanup if we're not active anymore (manual stop) or if we had an error
-			// Don't cleanup just because no data was received
-			if (!this.isActive) {
-				this.cleanup();
-			}
-		}
-	}
-
-	/**
-	 * Stop the subscription stream
-	 */
-	stop(): void {
-		if (!this.isActive) return;
-
-		console.log(`[STREAM] Stopping ${this.streamType} stream ${this.streamId}`);
-		this.isActive = false;
-		this.cleanup();
-	}
-
-	/**
-	 * Clean up resources
-	 */
-	private cleanup(): void {
-		this.isActive = false;
-
-		try {
-			// Cancel the reader
-			if (this.reader) {
-				this.reader.cancel();
-				this.reader = null;
-			}
-
-			// Clean up Gun subscription
-			if (this.gunRef && typeof this.gunRef.off === 'function') {
-				this.gunRef.off();
-				this.gunRef = null;
-			}
-
-			this.stream = null;
-			console.log(`[STREAM] Cleaned up ${this.streamType} stream ${this.streamId}`);
-		} catch (error) {
-			console.error(`[STREAM] Error during cleanup of ${this.streamType} stream:`, error);
-		}
-	}
-
-	/**
-	 * Check if stream is active
-	 */
-	get active(): boolean {
-		return this.isActive;
-	}
-}
-
-/**
- * Enhanced subscription manager with ReadableStream support and memoization
- */
-class StreamSubscriptionManager {
-	private activeStreams = new Map<string, GunSubscriptionStream<any>>();
-	private subscriptionType: string;
-	private lastContributorsList: string[] = [];
-	private isUpdating = false;
-
-	constructor(subscriptionType: string) {
-		this.subscriptionType = subscriptionType;
-	}
-
-	/**
-	 * Create a new subscription stream only if it doesn't already exist
-	 */
-	async createStream<T>(
-		contributorId: string,
-		gunPath: () => any,
-		streamType: string,
-		onData: (data: T) => void,
-		onError?: (error: any) => void
-	): Promise<void> {
-		const streamKey = `${contributorId}_${streamType}`;
-
-		// Check if stream already exists and is active
-		const existingStream = this.activeStreams.get(streamKey);
-		if (existingStream && existingStream.active) {
-			/*console.log(
-				`[STREAM-MANAGER] Stream ${streamKey} already exists and is active, skipping creation`
-			);*/
-			return;
-		}
-
-		// Only stop existing stream if it exists but is not active
-		if (existingStream) {
-			//console.log(`[STREAM-MANAGER] Stopping inactive stream for ${streamKey}`);
-			existingStream.stop();
-			this.activeStreams.delete(streamKey);
-		}
-
-		// Create new stream
-		const stream = new GunSubscriptionStream(
-			gunPath,
-			`${this.subscriptionType}_${streamType}`,
-			onData,
-			onError
-		);
-
-		this.activeStreams.set(streamKey, stream);
-
-		try {
-			await stream.start();
-			//console.log(`[STREAM-MANAGER] Created stream for ${streamKey}`);
-		} catch (error) {
-			//console.error(`[STREAM-MANAGER] Failed to create stream for ${streamKey}:`, error);
-			this.activeStreams.delete(streamKey);
-			throw error;
-		}
-	}
-
-	/**
-	 * Stop a specific stream
-	 */
-	stopStream(contributorId: string, streamType: string): void {
-		const streamKey = `${contributorId}_${streamType}`;
-		const stream = this.activeStreams.get(streamKey);
-
-		if (stream) {
-			//console.log(`[STREAM-MANAGER] Stopping stream for ${streamKey}`);
-			stream.stop();
-			this.activeStreams.delete(streamKey);
-		}
-	}
-
-	/**
-	 * Stop all streams for a contributor
-	 */
-	stopContributorStreams(contributorId: string): void {
-		const keysToRemove: string[] = [];
-
-		for (const [streamKey, stream] of this.activeStreams.entries()) {
-			if (streamKey.startsWith(`${contributorId}_`)) {
-				//console.log(`[STREAM-MANAGER] Stopping contributor stream: ${streamKey}`);
-				stream.stop();
-				keysToRemove.push(streamKey);
-			}
-		}
-
-		keysToRemove.forEach((key) => this.activeStreams.delete(key));
-	}
-
-	/**
-	 * Stop all streams
-	 */
-	stopAllStreams(): void {
-		//console.log(`[STREAM-MANAGER] Stopping all ${this.subscriptionType} streams`);
-
-		for (const [streamKey, stream] of this.activeStreams.entries()) {
-			stream.stop();
-		}
-
-		this.activeStreams.clear();
-		this.lastContributorsList = [];
-	}
-
-	/**
-	 * Check if contributor lists are equal
-	 */
-	private arraysEqual(a: string[], b: string[]): boolean {
-		if (a.length !== b.length) return false;
-		const sortedA = [...a].sort();
-		const sortedB = [...b].sort();
-		return sortedA.every((val, i) => val === sortedB[i]);
-	}
-
-	/**
-	 * Update subscriptions using delta-based approach with memoization
-	 */
-	async updateSubscriptions(
-		newContributors: string[],
-		createStreamFn: (contributorId: string) => Promise<void>
-	): Promise<void> {
-		// Prevent concurrent updates
-		if (this.isUpdating) {
-			//console.log(`[STREAM-MANAGER] ${this.subscriptionType} update already in progress, skipping`);
-			return;
-		}
-
-		// Check if contributors list has actually changed
-		if (this.arraysEqual(newContributors, this.lastContributorsList)) {
-			/*console.log(
-				`[STREAM-MANAGER] ${this.subscriptionType} contributors unchanged, skipping update`
-			);*/
-			return;
-		}
-
-		this.isUpdating = true;
-
-		try {
-			if (!newContributors.length) {
-				/*console.log(
-					`[STREAM-MANAGER] No ${this.subscriptionType} contributors, stopping all streams`
-				);*/
-				this.stopAllStreams();
-				return;
-			}
-
-			/*console.log(
-				`[STREAM-MANAGER] Updating ${this.subscriptionType} subscriptions for ${newContributors.length} contributors`
-			);*/
-
-			// Calculate current contributors from active streams
-			const currentContributors = new Set<string>();
-			for (const streamKey of this.activeStreams.keys()) {
-				const contributorId = streamKey.split('_')[0];
-				currentContributors.add(contributorId);
-			}
-
-			const newContributorSet = new Set(newContributors);
-			const toAdd = newContributors.filter((id) => !currentContributors.has(id));
-			const toRemove = Array.from(currentContributors).filter((id) => !newContributorSet.has(id));
-
-			// Remove old streams for contributors no longer in the list
-			for (const contributorId of toRemove) {
-				//console.log(`[STREAM-MANAGER] Removing streams for contributor: ${contributorId}`);
-				this.stopContributorStreams(contributorId);
-			}
-
-			// Add new streams for new contributors
-			for (const contributorId of toAdd) {
-				try {
-					//console.log(`[STREAM-MANAGER] Adding streams for contributor: ${contributorId}`);
-					await createStreamFn(contributorId);
-				} catch (error) {
-					/*console.error(
-						`[STREAM-MANAGER] Failed to create streams for contributor ${contributorId}:`,
-						error
-					);*/
-				}
-			}
-
-			// Update last contributors list
-			this.lastContributorsList = [...newContributors];
-
-			/*console.log(
-				`[STREAM-MANAGER] ${this.subscriptionType} streams: +${toAdd.length} -${toRemove.length} (total: ${this.activeStreams.size})`
-			);*/
-		} finally {
-			this.isUpdating = false;
-		}
-	}
-
-	/**
-	 * Get stream count for debugging
-	 */
-	get streamCount(): number {
-		return this.activeStreams.size;
-	}
-
-	/**
-	 * Get active stream keys for debugging
-	 */
-	get activeStreamKeys(): string[] {
-		return Array.from(this.activeStreams.keys());
-	}
-}
+import { GunSubscriptionStream, StreamSubscriptionManager } from './streams';
 
 // Create stream managers
 const sogfStreamManager = new StreamSubscriptionManager('SOGF');
@@ -413,99 +48,8 @@ const mutualStreamManager = new StreamSubscriptionManager('MUTUAL');
 const ownDataStreamManager = new StreamSubscriptionManager('OWN_DATA');
 const chatStreamManager = new StreamSubscriptionManager('CHAT');
 
-// Stream manager for collective member trees
-const collectiveTreeStreamManager = new StreamSubscriptionManager('collective_tree');
-
-// Stream configurations for collective member data
-const collectiveMemberStreamConfigs = {
-	tree: {
-		type: 'tree',
-		streamManager: collectiveTreeStreamManager,
-		getGunPath: (userId: string, memberId?: string) => {
-			if (!memberId) return null;
-			const publicKey = resolveToPublicKey(memberId);
-			if (!publicKey) {
-				console.warn(
-					`[NETWORK] Cannot create tree stream for collective member ${memberId}: no public key available`
-				);
-				return null;
-			}
-			return gun.user(publicKey).get('tree');
-		},
-		processor: (memberId: string) => (treeData: any) => {
-			if (!treeData) {
-				console.log(`[NETWORK] No tree data received for collective member ${memberId}`);
-				return;
-			}
-
-			console.log(`[NETWORK] Received tree data for collective member ${memberId}`);
-
-			// Validate the tree data
-			const validatedTree = parseTree(treeData);
-			if (!validatedTree) {
-				console.warn(`[NETWORK] Invalid tree data from collective member ${memberId}`);
-				return;
-			}
-
-			// Update the collective forest
-			collectiveForest.update((forest) => {
-				const newForest = new Map(forest);
-				newForest.set(memberId, validatedTree);
-				console.log(
-					`[NETWORK] Updated forest with tree for member ${memberId}. Forest now has ${newForest.size} trees`
-				);
-				return newForest;
-			});
-		},
-		errorHandler: (memberId: string) => (error: any) => {
-			console.error(`[NETWORK] Error in collective member tree stream for ${memberId}:`, error);
-		}
-	}
-};
-
-// Function to create streams for a collective member
-const createCollectiveMemberStreams = async (member: any) => {
-	try {
-		const userId = get(userPub);
-		if (!userId) {
-			console.warn('[NETWORK] Cannot create collective member streams - not authenticated');
-			return;
-		}
-
-		// Extract member ID from Entity object
-		const memberId = typeof member === 'string' ? member : member.id;
-		await createStream(collectiveMemberStreamConfigs.tree, userId, memberId);
-	} catch (error) {
-		const memberId = typeof member === 'string' ? member : member.id;
-		console.error(`[NETWORK] Error creating streams for collective member ${memberId}:`, error);
-	}
-};
-
-// Helper to clean up multiple stores by filtering out removed contributors
-function cleanupNetworkStores(
-	removedContributors: string[],
-	currentContributors: string[],
-	stores: Array<{ store: any; name: string }>
-) {
-	if (removedContributors.length === 0) return;
-
-	/*console.log(
-		`[NETWORK] Cleaning up data for removed contributors: ${removedContributors.join(', ')}`
-	);*/
-
-	stores.forEach(({ store, name }) => {
-		store.update((current: Record<string, any>) => {
-			const cleaned: Record<string, any> = {};
-			Object.entries(current).forEach(([contributorId, data]) => {
-				if (currentContributors.includes(contributorId)) {
-					cleaned[contributorId] = data;
-				}
-			});
-			//console.log(`[NETWORK] Cleaned ${name}: kept ${Object.keys(cleaned).length} contributors`);
-			return cleaned;
-		});
-	});
-}
+// Note: Tree subscriptions are now handled via mutualContributorStreamConfigs
+// No separate collective stream system needed
 
 /**
  * Higher-order function that wraps stream creation with authentication
@@ -1146,6 +690,63 @@ const mutualContributorStreamConfigs = {
 				error
 			);
 		}
+	},
+	tree: {
+		type: 'tree',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) {
+				console.log(
+					`[NETWORK] Could not resolve ${contributorId} for tree stream, assuming it's already a public key`
+				);
+				return gun.user(contributorId).get('tree');
+			}
+			console.log(
+				`[NETWORK] Creating tree stream for mutual contributor ${contributorId} with public key ${pubKey.substring(0, 20)}...`
+			);
+			return gun.user(pubKey).get('tree');
+		},
+		processor: (contributorId: string) => (treeData: any) => {
+			if (!treeData) {
+				console.log(`[NETWORK] No tree data received for mutual contributor ${contributorId}`);
+				// Remove from collective forest
+				collectiveForest.update((forest) => {
+					const newForest = new Map(forest);
+					newForest.delete(contributorId);
+					console.log(
+						`[NETWORK] Removed tree for contributor ${contributorId}. Forest now has ${newForest.size} trees`
+					);
+					return newForest;
+				});
+				return;
+			}
+
+			console.log(`[NETWORK] Received tree data for mutual contributor ${contributorId}`);
+
+			// Validate the tree data
+			const validatedTree = parseTree(treeData);
+			if (!validatedTree) {
+				console.warn(`[NETWORK] Invalid tree data from mutual contributor ${contributorId}`);
+				return;
+			}
+
+			// Update the collective forest
+			collectiveForest.update((forest) => {
+				const newForest = new Map(forest);
+				newForest.set(contributorId, validatedTree);
+				console.log(
+					`[NETWORK] Updated forest with tree for mutual contributor ${contributorId}. Forest now has ${newForest.size} trees`
+				);
+				return newForest;
+			});
+		},
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(
+				`[NETWORK] Error in tree stream for mutual contributor ${contributorId}:`,
+				error
+			);
+		}
 	}
 };
 
@@ -1231,7 +832,8 @@ const createMutualContributorStreams = withAuthentication(
 			'capacityShares',
 			'capacitySlotQuantities',
 			'desiredSlotComposeFrom',
-			'desiredSlotComposeInto'
+			'desiredSlotComposeInto',
+			'tree'
 		] as const;
 
 		for (const streamType of streamTypes) {
@@ -1272,7 +874,6 @@ export async function initializeUserDataStreams(): Promise<void> {
 		// Stop existing streams first
 		ownDataStreamManager.stopAllStreams();
 		chatStreamManager.stopAllStreams();
-		collectiveTreeStreamManager.stopAllStreams(); // Stop collective tree streams
 
 		// Create new streams
 		await createOwnTreeStream();
@@ -1285,8 +886,8 @@ export async function initializeUserDataStreams(): Promise<void> {
 		// Note: setupUsersListSubscription is now called early in gun.svelte.ts
 		// No need to call it again here
 
-		// Initialize collective members and their tree streams
-		await Promise.all(Array.from(get(collectiveMembers)).map(createCollectiveMemberStreams));
+		// Note: Tree subscriptions are now handled automatically via mutual contributor streams
+		// No separate initialization needed
 
 		console.log('[NETWORK] User data streams initialized successfully');
 	} catch (error) {
@@ -1563,32 +1164,25 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 
 mutualContributors.subscribe(debouncedUpdateMutualSubscriptions);
 
-// Watch for changes to collective members and subscribe to their trees
-const debouncedUpdateCollectiveSubscriptions = debounce((members: Array<any>) => {
-	// Only run this if we're authenticated
-	try {
-		if (!userPub || !get(userPub)) {
-			console.log('[NETWORK] Cannot subscribe to collective members - not authenticated');
-			return;
-		}
-	} catch (error) {
-		console.log('[NETWORK] Cannot subscribe to collective members - userPub not initialized');
-		return;
-	}
+// Note: Tree subscriptions are now handled via the mutual contributor stream system
+// No separate collective subscription needed
 
-	if (!members.length) {
-		// Clear the forest and stop all streams
-		collectiveForest.set(new Map());
-		collectiveTreeStreamManager.stopAllStreams();
-		return;
-	}
-
-	// Update subscriptions using members directly (createCollectiveMemberStreams will extract IDs)
-	collectiveTreeStreamManager.updateSubscriptions(
-		members.map((m) => (typeof m === 'string' ? m : m.id)),
-		(memberId) => createCollectiveMemberStreams(memberId)
+// Debug: Check if tree subscriptions are working via mutual contributor streams
+mutualContributors.subscribe((currentMutualContributors) => {
+	console.log(
+		`[NETWORK] Mutual contributors updated: ${currentMutualContributors.length} contributors`,
+		currentMutualContributors.map((id) => id.substring(0, 20) + '...')
 	);
-}, 100);
 
-// Subscribe to collective members changes
-collectiveMembers.subscribe(debouncedUpdateCollectiveSubscriptions);
+	// Debug: Check if tree subscriptions are working after delay
+	setTimeout(() => {
+		const currentForest = get(collectiveForest);
+		console.log(
+			`[NETWORK] Forest check after 3 seconds: size=${currentForest.size}, keys=[${Array.from(
+				currentForest.keys()
+			)
+				.map((k) => k.substring(0, 20) + '...')
+				.join(', ')}]`
+		);
+	}, 3000);
+});

@@ -322,3 +322,73 @@ export async function getUserName(identifier: string): Promise<string> {
 
 	return displayName;
 }
+
+// ================================
+// TREE CONTACT RESOLUTION
+// ================================
+
+/**
+ * Resolve contact IDs to public keys in a tree structure
+ * This ensures the tree is persisted with the most useful identifier format
+ * while preserving contact IDs that don't have public keys
+ */
+export function resolveContactIdsInTree(
+	node: import('$lib/schema').Node
+): import('$lib/schema').Node {
+	// Create a deep clone to avoid modifying the original
+	const resolvedNode = structuredClone(node);
+
+	// Helper function to resolve contributor arrays
+	function resolveContributorArray(contributorIds: string[]): string[] {
+		return contributorIds.map((contributorId) => {
+			// Try to resolve contact IDs to public keys
+			const resolvedPublicKey = resolveToPublicKey(contributorId);
+			if (resolvedPublicKey && resolvedPublicKey !== contributorId) {
+				console.log(
+					`[PERSIST-RESOLVE] Resolved contact ID '${contributorId}' to public key '${resolvedPublicKey.substring(0, 20)}...'`
+				);
+				return resolvedPublicKey;
+			}
+			// Keep the original ID if it's already a public key or has no resolution
+			return contributorId;
+		});
+	}
+
+	// Recursive function to process the tree
+	function processNode(currentNode: import('$lib/schema').Node): void {
+		// Only NonRootNodes have contributor arrays
+		if (currentNode.type === 'NonRootNode') {
+			const nonRootNode = currentNode as import('$lib/schema').NonRootNode;
+
+			// Resolve contributor IDs
+			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+				const originalCount = nonRootNode.contributor_ids.length;
+				nonRootNode.contributor_ids = resolveContributorArray(nonRootNode.contributor_ids);
+				console.log(
+					`[PERSIST-RESOLVE] Processed ${originalCount} contributor IDs for node '${currentNode.name}' (${currentNode.id})`
+				);
+			}
+
+			// Resolve anti-contributor IDs
+			if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+				const originalCount = nonRootNode.anti_contributors_ids.length;
+				nonRootNode.anti_contributors_ids = resolveContributorArray(
+					nonRootNode.anti_contributors_ids
+				);
+				console.log(
+					`[PERSIST-RESOLVE] Processed ${originalCount} anti-contributor IDs for node '${currentNode.name}' (${currentNode.id})`
+				);
+			}
+		}
+
+		// Recursively process all child nodes
+		if (currentNode.children && currentNode.children.length > 0) {
+			currentNode.children.forEach(processNode);
+		}
+	}
+
+	// Start processing from the root
+	processNode(resolvedNode);
+
+	return resolvedNode;
+}

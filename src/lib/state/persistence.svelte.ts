@@ -10,11 +10,17 @@ import {
 	providerShares,
 	contributorCapacityShares
 } from './core.svelte';
-import { userContacts, isLoadingContacts } from './users.svelte';
+import {
+	userContacts,
+	isLoadingContacts,
+	resolveToPublicKey,
+	resolveContactIdsInTree
+} from './users.svelte';
 import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
+import type { Node, NonRootNode } from '$lib/schema';
 
 /**
  * Check if the user object is properly initialized and has the necessary methods
@@ -39,13 +45,23 @@ export function persistTree() {
 	const treeValue = get(userTree);
 	if (treeValue) {
 		console.log('[PERSIST] Starting tree persistence...');
-		console.log('[PERSIST] Tree structure before serialization:', {
+		console.log('[PERSIST] Tree structure before resolution:', {
 			id: treeValue.id,
 			childCount: treeValue.children.length
 		});
 
-		// Serialize tree for storage
-		const treeJson = JSON.stringify(structuredClone(treeValue));
+		// Resolve contact IDs to public keys before persistence
+		console.log('[PERSIST] Resolving contact IDs to public keys...');
+		const resolvedTree = resolveContactIdsInTree(treeValue);
+		console.log('[PERSIST] Contact ID resolution completed');
+
+		console.log('[PERSIST] Tree structure after resolution:', {
+			id: resolvedTree.id,
+			childCount: resolvedTree.children.length
+		});
+
+		// Serialize resolved tree for storage
+		const treeJson = JSON.stringify(resolvedTree);
 		console.log('[PERSIST] Serialized tree length:', treeJson.length);
 		console.log('[PERSIST] Tree JSON preview:', treeJson.substring(0, 100) + '...');
 
@@ -54,7 +70,7 @@ export function persistTree() {
 			if (ack.err) {
 				console.error('[PERSIST] Error saving tree to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] Tree successfully saved to Gun');
+				console.log('[PERSIST] Tree successfully saved to Gun with resolved contact IDs');
 			}
 		});
 	}

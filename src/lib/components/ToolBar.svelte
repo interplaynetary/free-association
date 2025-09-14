@@ -9,10 +9,18 @@
 	import { tick } from 'svelte';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
-	import { userCapacities } from '$lib/state/core.svelte';
+	import { userCapacities, mutualContributors } from '$lib/state/core.svelte';
 	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import type { ProviderCapacity } from '$lib/schema';
+	import type { ProviderCapacity, Node, NonRootNode } from '$lib/schema';
+	import { collectiveForest } from '$lib/collective.svelte';
+	import { userNamesOrAliasesCache, resolveToPublicKey } from '$lib/state/users.svelte';
+	import { derived } from 'svelte/store';
+	import {
+		getColorForUserId,
+		getColorForNameHash,
+		getContrastTextColor
+	} from '$lib/utils/colorUtils';
 
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
@@ -50,10 +58,111 @@
 	let searchPanelRef = $state<HTMLDivElement>();
 	let selectedResultIndex = $state(-1);
 
+	// Network subtrees state (for main route)
+	let showNetworkPanel = $state(false);
+	let selectedContributorId = $state<string | null>(null);
+
 	// Derived search results
 	const searchResults = $derived(
 		searchQuery.trim() && tree ? searchTreeForNavigation(tree, searchQuery) : []
 	);
+
+	// Helper function to get the sequence of node names from our current path
+	function getPathNodeNames(ourTree: Node | null, path: string[]): string[] {
+		if (!ourTree || path.length <= 1) return [];
+
+		const nodeNames: string[] = [];
+		let currentNode = ourTree;
+
+		// Skip the first element (root user ID) and traverse by IDs to get names
+		for (let i = 1; i < path.length; i++) {
+			const nodeId = path[i];
+			const found = findNodeById(currentNode, nodeId);
+			if (!found) return []; // Path doesn't exist in our tree
+			nodeNames.push(found.name);
+			currentNode = found;
+		}
+
+		return nodeNames;
+	}
+
+	// Helper function to find node by following a sequence of node names
+	function findNodeByNamePath(tree: Node, nameSequence: string[]): Node | null {
+		if (nameSequence.length === 0) return tree;
+
+		let currentNode = tree;
+		for (const nodeName of nameSequence) {
+			// Find child with matching name
+			const found = currentNode.children.find((child) => child.name === nodeName);
+			if (!found) return null;
+			currentNode = found;
+		}
+		return currentNode;
+	}
+
+	// Helper function to get subtrees (children) of a node, preserving contributor info
+	function getSubtreesWithContributors(node: Node): Array<{
+		id: string;
+		name: string;
+		points: number;
+		contributors: string[];
+		antiContributors: string[];
+		subtree: Node;
+	}> {
+		return node.children.map((child) => ({
+			id: child.id,
+			name: child.name,
+			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
+			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
+			antiContributors:
+				child.type === 'NonRootNode' ? (child as NonRootNode).anti_contributors_ids : [],
+			subtree: child
+		}));
+	}
+
+	// Derived store: Contributors who have trees available at the current path
+	const availableContributors = $derived.by(() => {
+		const pathNodeNames = getPathNodeNames(tree, path);
+		const contributors: Array<{
+			id: string;
+			name: string;
+			hasSubtreesAtPath: boolean;
+			nodeAtPath: Node | null;
+		}> = [];
+
+		for (const contributorId of $mutualContributors) {
+			const contributorTree = $collectiveForest.get(contributorId);
+			let nodeAtPath: Node | null = null;
+			let hasSubtreesAtPath = false;
+
+			if (contributorTree) {
+				// Find the node using the sequence of names
+				nodeAtPath = findNodeByNamePath(contributorTree, pathNodeNames);
+				// Check if this node has children (subtrees)
+				hasSubtreesAtPath = nodeAtPath ? nodeAtPath.children.length > 0 : false;
+			}
+
+			contributors.push({
+				id: contributorId,
+				name: get(userNamesOrAliasesCache)[contributorId] || contributorId.substring(0, 8) + '...',
+				hasSubtreesAtPath,
+				nodeAtPath
+			});
+		}
+
+		// Filter to only show contributors who have subtrees at this path
+		return contributors.filter((c) => c.hasSubtreesAtPath);
+	});
+
+	// Derived store: Subtrees for the selected contributor
+	const selectedContributorSubtrees = $derived.by(() => {
+		if (!selectedContributorId) return [];
+
+		const contributor = availableContributors.find((c) => c.id === selectedContributorId);
+		if (!contributor || !contributor.nodeAtPath) return [];
+
+		return getSubtreesWithContributors(contributor.nodeAtPath);
+	});
 
 	// Recompose handler
 	function handleRecompose() {
@@ -124,6 +233,154 @@
 		if (!showSearchPanel) {
 			searchQuery = '';
 			selectedResultIndex = -1;
+		}
+	}
+
+	// Network panel toggle
+	function toggleNetworkPanel() {
+		showNetworkPanel = !showNetworkPanel;
+		if (!showNetworkPanel) {
+			selectedContributorId = null;
+		}
+	}
+
+	// Handle contributor selection
+	function selectContributor(contributorId: string | null) {
+		if (contributorId === null) {
+			selectedContributorId = null;
+		} else {
+			selectedContributorId = selectedContributorId === contributorId ? null : contributorId;
+		}
+	}
+
+	// Helper function to resolve contact IDs to public keys for network subtrees
+	// This ensures we only store public keys when adding subtrees from other users
+	function resolveContactIdsForNetworkSubtree(node: Node): Node {
+		// Create a deep clone to avoid modifying the original
+		const resolvedNode = structuredClone(node);
+
+		// Helper function to resolve contributor arrays - only keep public keys
+		function resolveContributorArray(contributorIds: string[]): string[] {
+			return contributorIds
+				.map((contributorId) => {
+					// If it's already a public key (not a contact_id), keep it
+					if (!contributorId.startsWith('contact_')) {
+						return contributorId;
+					}
+
+					// For contact IDs, try to resolve to public key
+					const resolvedPublicKey = resolveToPublicKey(contributorId);
+					if (resolvedPublicKey && resolvedPublicKey !== contributorId) {
+						console.log(
+							`[NETWORK-SUBTREE] Resolved contact ID '${contributorId}' to public key '${resolvedPublicKey.substring(0, 20)}...'`
+						);
+						return resolvedPublicKey;
+					}
+
+					// If contact ID can't be resolved, exclude it from network subtree
+					// This ensures we only store public keys for network collaboration
+					console.log(
+						`[NETWORK-SUBTREE] Excluding contact ID '${contributorId}' - no public key available`
+					);
+					return null;
+				})
+				.filter((id): id is string => id !== null); // Remove null entries
+		}
+
+		// Recursive function to process the tree
+		function processNode(currentNode: Node): void {
+			// Only NonRootNodes have contributor arrays
+			if (currentNode.type === 'NonRootNode') {
+				const nonRootNode = currentNode as NonRootNode;
+
+				// Resolve contributor IDs
+				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+					const originalCount = nonRootNode.contributor_ids.length;
+					nonRootNode.contributor_ids = resolveContributorArray(nonRootNode.contributor_ids);
+					console.log(
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.contributor_ids.length} contributor IDs for node '${currentNode.name}'`
+					);
+				}
+
+				// Resolve anti-contributor IDs
+				if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+					const originalCount = nonRootNode.anti_contributors_ids.length;
+					nonRootNode.anti_contributors_ids = resolveContributorArray(
+						nonRootNode.anti_contributors_ids
+					);
+					console.log(
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.anti_contributors_ids.length} anti-contributor IDs for node '${currentNode.name}'`
+					);
+				}
+			}
+
+			// Recursively process all child nodes
+			if (currentNode.children && currentNode.children.length > 0) {
+				currentNode.children.forEach(processNode);
+			}
+		}
+
+		// Start processing from the root
+		processNode(resolvedNode);
+
+		return resolvedNode;
+	}
+
+	// Handle adding a subtree to the current location
+	function handleAddSubtree(subtreeToAdd: Node) {
+		if (!tree || path.length === 0) return;
+
+		// Get current node ID (last in path)
+		const currentNodeId = path[path.length - 1];
+
+		// Create a deep clone of the tree to ensure reactivity
+		const updatedTree = structuredClone(tree);
+
+		// Find the current node in the cloned tree
+		const currentNode = findNodeById(updatedTree, currentNodeId);
+		if (!currentNode) {
+			globalState.showToast('Error adding subtree: Current node not found', 'error');
+			return;
+		}
+
+		// Calculate initial points for new subtree using the same protocol as addNode
+		const newPoints = calculateNodePoints(currentNode);
+
+		// Create a unique ID for the new subtree root
+		const newSubtreeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+		try {
+			// Clone the subtree to add, preserving all structure and contributor info
+			const clonedSubtree = structuredClone(subtreeToAdd);
+
+			// IMPORTANT: Resolve any contact IDs to public keys for network subtrees
+			// This ensures we only store public keys when adding subtrees from other users
+			// TODO: In the future, we might resolve contact_ids of others by subscribing
+			// to their stored contact_id lists to get better name resolution
+			const resolvedSubtree = resolveContactIdsForNetworkSubtree(clonedSubtree);
+
+			// Update the root node of the resolved subtree
+			resolvedSubtree.id = newSubtreeId;
+			if (resolvedSubtree.type === 'NonRootNode') {
+				(resolvedSubtree as NonRootNode).points = newPoints;
+			}
+
+			// Add the resolved subtree as a child to the current node
+			currentNode.children.push(resolvedSubtree);
+
+			// Update the tree in the store
+			userTree.set(updatedTree);
+
+			// Show success message
+			globalState.showToast(`Added subtree "${subtreeToAdd.name}" successfully`, 'success');
+
+			// Close the network panel
+			toggleNetworkPanel();
+
+			console.log('[TOOLBAR] Successfully added subtree with ID:', newSubtreeId);
+		} catch (error) {
+			console.error('[TOOLBAR] Error adding subtree:', error);
+			globalState.showToast('Error adding subtree', 'error');
 		}
 	}
 
@@ -246,75 +503,169 @@
 </script>
 
 {#if shouldShowToolbar}
-	<div class="toolbar">
-		{#if isMainRoute}
-			<!-- Main route buttons -->
-			<div class="toolbar-actions">
-				<div class="toolbar-item">
-					<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
-						➕
-					</button>
-					<span class="button-caption">Add</span>
-				</div>
-				<div class="toolbar-item">
-					<button
-						class="toolbar-button edit-button"
-						class:edit-active={isTextEditMode}
-						title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
-						onclick={handleTextEditMode}
-					>
-						✏️
-					</button>
-					<span class="button-caption">Edit</span>
-				</div>
-				<div class="toolbar-item">
-					<button
-						class="toolbar-button recompose-button"
-						class:recompose-active={isRecomposeMode}
-						title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
-						onclick={handleRecompose}
-					>
-						↕️
-					</button>
-					<span class="button-caption">Recompose</span>
-				</div>
+	<div class="toolbar-container">
+		<div class="toolbar">
+			{#if isMainRoute}
+				<!-- Main route buttons -->
+				<div class="toolbar-actions">
+					<div class="toolbar-item">
+						<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
+							➕
+						</button>
+						<span class="button-caption">Add</span>
+					</div>
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button edit-button"
+							class:edit-active={isTextEditMode}
+							title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
+							onclick={handleTextEditMode}
+						>
+							✏️
+						</button>
+						<span class="button-caption">Edit</span>
+					</div>
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button recompose-button"
+							class:recompose-active={isRecomposeMode}
+							title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+							onclick={handleRecompose}
+						>
+							↕️
+						</button>
+						<span class="button-caption">Recompose</span>
+					</div>
 
-				<div class="toolbar-item">
-					<button
-						class="toolbar-button delete-button"
-						class:delete-active={isDeleteMode}
-						title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
-						onclick={globalState.toggleDeleteMode}
-					>
-						🗑️
-					</button>
-					<span class="button-caption">Delete</span>
-				</div>
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button delete-button"
+							class:delete-active={isDeleteMode}
+							title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
+							onclick={globalState.toggleDeleteMode}
+						>
+							🗑️
+						</button>
+						<span class="button-caption">Delete</span>
+					</div>
 
-				<div class="toolbar-item">
-					<button
-						class="toolbar-button search-button"
-						class:search-active={showSearchPanel}
-						title="Search tree"
-						onclick={toggleSearchPanel}
-					>
-						🔍
-					</button>
-					<span class="button-caption">Search</span>
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button search-button"
+							class:search-active={showSearchPanel}
+							title="Search tree"
+							onclick={toggleSearchPanel}
+						>
+							🔍
+						</button>
+						<span class="button-caption">Search</span>
+					</div>
+
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button network-button"
+							class:network-active={showNetworkPanel}
+							title="Network subtrees"
+							onclick={toggleNetworkPanel}
+						>
+							🌳
+						</button>
+						<span class="button-caption">Network</span>
+					</div>
 				</div>
-			</div>
-		{:else if isInventoryRoute}
-			<!-- Inventory route buttons -->
-			<div class="toolbar-actions">
-				<div class="toolbar-item">
-					<button
-						class="toolbar-button big-button create-capacity-button"
-						title="Create new capacity"
-						onclick={handleCreateCapacity}
-					>
-						➕
-					</button>
-					<span class="button-caption">New Capacity</span>
+			{:else if isInventoryRoute}
+				<!-- Inventory route buttons -->
+				<div class="toolbar-actions">
+					<div class="toolbar-item">
+						<button
+							class="toolbar-button big-button create-capacity-button"
+							title="Create new capacity"
+							onclick={handleCreateCapacity}
+						>
+							➕
+						</button>
+						<span class="button-caption">New Capacity</span>
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Network subtrees panel for main route -->
+		{#if isMainRoute && showNetworkPanel}
+			<div class="network-panel">
+				<div class="network-content">
+					<div class="network-body">
+						{#if selectedContributorId}
+							<!-- Selected contributor mode: show selected contributor on left, subtrees on right -->
+							<div class="selected-contributor-section">
+								{#if selectedContributorId}
+									{@const selectedContributor = availableContributors.find(
+										(c) => c.id === selectedContributorId
+									)}
+									{@const contributorColor = getColorForUserId(selectedContributorId)}
+									{@const textColor = getContrastTextColor(contributorColor)}
+									<button
+										class="selected-contributor-item"
+										style="background-color: {contributorColor}; color: {textColor}; border-color: {contributorColor};"
+										onclick={() => selectContributor(null)}
+										title="Click to go back to contributor selection"
+									>
+										<div class="contributor-name">{selectedContributor?.name}</div>
+										<div class="back-hint" style="color: {textColor}; opacity: 0.8;">← Back</div>
+									</button>
+								{/if}
+							</div>
+
+							<div class="subtrees-section">
+								<div
+									class="subtrees-container"
+									onwheel={(e) => {
+										e.preventDefault();
+										e.currentTarget.scrollLeft += e.deltaY;
+									}}
+								>
+									{#each selectedContributorSubtrees as subtree (subtree.id)}
+										{@const subtreeColor = getColorForNameHash(subtree.name)}
+										{@const textColor = getContrastTextColor(subtreeColor)}
+										<button
+											class="subtree-item"
+											style="background-color: {subtreeColor}; color: {textColor}; border-color: {subtreeColor};"
+											onclick={() => handleAddSubtree(subtree.subtree)}
+										>
+											<div class="subtree-name">{subtree.name}</div>
+										</button>
+									{:else}
+										<div class="no-subtrees">No subtrees available.</div>
+									{/each}
+								</div>
+							</div>
+						{:else}
+							<!-- Contributor selection mode: horizontal scrolling contributors -->
+							<div class="contributors-selection">
+								<div
+									class="contributors-container"
+									onwheel={(e) => {
+										e.preventDefault();
+										e.currentTarget.scrollLeft += e.deltaY;
+									}}
+								>
+									{#each availableContributors as contributor (contributor.id)}
+										{@const contributorColor = getColorForUserId(contributor.id)}
+										{@const textColor = getContrastTextColor(contributorColor)}
+										<button
+											class="contributor-item"
+											style="background-color: {contributorColor}; color: {textColor}; border-color: {contributorColor};"
+											onclick={() => selectContributor(contributor.id)}
+										>
+											<div class="contributor-name">{contributor.name}</div>
+										</button>
+									{:else}
+										<div class="no-contributors">No contributors have subtrees at this path.</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}
@@ -359,16 +710,23 @@
 	{/if}
 {/if}
 
+<!-- Dragged subtree visual -->
+
 <style>
+	.toolbar-container {
+		background: white;
+		border-top: 1px solid #e0e0e0;
+		position: relative;
+		z-index: 50;
+	}
+
 	.toolbar {
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		padding: 8px 16px;
 		background: white;
-		border-top: 1px solid #e0e0e0;
 		position: relative;
-		z-index: 50;
 		min-height: 46px;
 	}
 
@@ -438,6 +796,12 @@
 		border-radius: 4px;
 	}
 
+	.network-button.network-active {
+		color: #4caf50;
+		background: rgba(76, 175, 80, 0.1);
+		border-radius: 4px;
+	}
+
 	.delete-button.delete-active {
 		color: #d32f2f;
 		animation: pulse 2s ease-in-out infinite;
@@ -482,8 +846,8 @@
 
 	/* Search panel */
 	.search-panel {
-		position: absolute;
-		bottom: 100%;
+		position: fixed;
+		bottom: 60px; /* Above toolbar */
 		left: 50%;
 		transform: translateX(-50%);
 		background: white;
@@ -493,7 +857,6 @@
 		width: 320px;
 		max-width: 90vw;
 		z-index: 1000;
-		margin-bottom: 8px;
 	}
 
 	.search-content {
@@ -570,6 +933,194 @@
 
 	.close-btn:hover {
 		background: #f5f5f5;
+	}
+
+	/* Network panel */
+	.network-panel {
+		background: white;
+		border-top: 1px solid #e0e0e0;
+		box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+		height: 40px; /* Slightly smaller for better fit */
+		overflow: hidden;
+	}
+
+	.network-content {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.network-body {
+		display: flex;
+		flex: 1;
+		min-height: 0; /* Allow shrinking */
+		padding: 2px;
+	}
+
+	/* Contributors selection mode - horizontal scrolling */
+	.contributors-selection {
+		flex: 1;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+
+	.contributors-container {
+		display: flex;
+		gap: 4px;
+		padding: 4px;
+		min-height: 30px;
+		align-items: center;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+	}
+
+	/* Selected contributor mode - left side fixed, right side scrolling */
+	.selected-contributor-section {
+		flex-shrink: 0;
+		width: 100px; /* Smaller fixed width */
+		margin-right: 4px;
+		padding: 4px;
+	}
+
+	.selected-contributor-item {
+		width: 100%;
+		height: 26px; /* Match other items */
+		padding: 2px 4px;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: center;
+		font-size: 8px;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.selected-contributor-item:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		opacity: 0.9;
+	}
+
+	.subtrees-section {
+		flex: 1;
+		overflow-x: auto;
+		overflow-y: hidden;
+	}
+
+	.contributor-item {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 auto;
+		width: auto;
+		min-width: 0; /* Allow shrinking */
+		height: 26px; /* Smaller since only showing name */
+		padding: 4px 8px;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		cursor: pointer;
+		transition: all 0.2s;
+		text-align: center;
+		font-size: 8px;
+		overflow: hidden;
+	}
+
+	.contributor-item:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		opacity: 0.9;
+	}
+
+	.contributor-name {
+		font-weight: 500;
+		font-size: 8px;
+		line-height: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.back-hint {
+		font-size: 6px;
+		font-weight: 600;
+		margin-top: 2px;
+		line-height: 1;
+	}
+
+	.subtrees-container {
+		display: flex;
+		gap: 4px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		padding: 4px;
+		height: 100%;
+		align-items: center;
+		flex-wrap: nowrap;
+	}
+
+	.subtree-item {
+		flex: 0 0 auto;
+		width: auto;
+		min-width: 0; /* Allow shrinking */
+		height: 26px; /* Match other items */
+		padding: 4px 8px;
+		border: 1px solid transparent;
+		border-radius: 3px;
+		cursor: pointer;
+		transition: all 0.2s;
+		user-select: none;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+	}
+
+	.subtree-item:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		opacity: 0.9;
+	}
+
+	.subtree-item:active {
+		transform: scale(0.95);
+	}
+
+	.subtree-name {
+		font-weight: 600;
+		font-size: 8px;
+		line-height: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.no-contributors {
+		color: #666;
+		font-style: italic;
+		text-align: center;
+		padding: 16px 8px;
+		font-size: 10px;
+		min-width: 200px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.no-subtrees {
+		color: #666;
+		font-style: italic;
+		text-align: center;
+		padding: 16px 8px;
+		font-size: 10px;
+		min-width: 120px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	/* Mobile responsive */

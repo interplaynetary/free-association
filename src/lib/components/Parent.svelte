@@ -1934,6 +1934,8 @@
 		deleteContact={handleDeleteContact}
 		close={handleDropdownClose}
 	/>
+
+	<!-- Network SubTrees component -->
 </div>
 
 <style>
