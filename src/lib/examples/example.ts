@@ -6,7 +6,7 @@ import { get } from 'svelte/store';
 // Export the initialization function that populates an existing root node
 export function populateWithExampleData(rootNode: RootNode): RootNode {
 	// Create the main Playnet node
-	addChild(rootNode, 'playnet', 'Playnet 🐟', 100);
+	addChild(rootNode, 'playnet', 'Playnet 🐟', 34);
 
 	// Find the playnet node to add children to it
 	const playnetNode = findNodeById(rootNode, 'playnet');
@@ -43,8 +43,12 @@ export function populateWithExampleData(rootNode: RootNode): RootNode {
 			addChild(freeAssocNode, 'fa-communications', 'Communications', 40);
 		}
 	}
+	addChild(rootNode, 'art', 'Art 🎨', 21);
+	addChild(rootNode, 'food', '🥗', 13);
+	addChild(rootNode, 'housing', '🏠', 8);
+	addChild(rootNode, 'money', '💸', 5);
 
-	console.log("Populated root node with nested Playnet structure:", rootNode);
+	console.log('Populated root node with nested Playnet structure:', rootNode);
 	return rootNode;
 }
 
