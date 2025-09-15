@@ -84,6 +84,7 @@ export const globalState = $state({
 
 	// Ephemeral fulfillment state (used by slider for visual feedback during drag)
 	ephemeralFulfillmentValues: new Map<string, number>(), // nodeId -> ephemeral percentage (0-100)
+	ephemeralFulfillmentCounter: 0, // Counter to trigger reactivity when ephemeral values change
 	navigateToPath: async (newPath: string[]) => {
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
@@ -399,10 +400,14 @@ export const globalState = $state({
 	updateEphemeralFulfillment: (nodeId: string, percentage: number) => {
 		// Store ephemeral percentage (0-100) for visual updates during slider drag
 		globalState.ephemeralFulfillmentValues.set(nodeId, Math.max(0, Math.min(100, percentage)));
+		// Increment counter to trigger reactivity
+		globalState.ephemeralFulfillmentCounter++;
 	},
 
 	clearEphemeralFulfillment: (nodeId: string) => {
 		globalState.ephemeralFulfillmentValues.delete(nodeId);
+		// Increment counter to trigger reactivity
+		globalState.ephemeralFulfillmentCounter++;
 	},
 
 	getEffectiveFulfillmentPercentage: (

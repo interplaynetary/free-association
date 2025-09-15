@@ -281,19 +281,57 @@
 
 	// Note: Fulfillment is now controlled by the full-width slider
 
-	// Get current slider value from node data
-	const currentSliderValue = $derived(
-		node.manualFulfillment !== undefined ? Math.round(node.manualFulfillment * 100) : 100
-	);
+	// Get current slider value from node data (including ephemeral values during drag)
+	const currentSliderValue = $derived(() => {
+		// Access counter to ensure reactivity when ephemeral values change
+		globalState.ephemeralFulfillmentCounter;
+
+		// Use ephemeral value during drag for slider position
+		const ephemeralValue = globalState.ephemeralFulfillmentValues.get(node.id);
+		if (ephemeralValue !== undefined) {
+			return Math.round(ephemeralValue);
+		}
+
+		// Fall back to actual values
+		return node.manualFulfillment !== undefined ? Math.round(node.manualFulfillment * 100) : 100;
+	});
 
 	// Calculate fulfillment percentage for the visual rectangle
-	// Use ephemeral value during drag, otherwise use actual data
 	const fulfillmentPercentage = $derived(() => {
-		return globalState.getEffectiveFulfillmentPercentage(
-			node.id,
-			node.manualFulfillment,
-			node.fulfillment
-		);
+		if (node.hasChildren) {
+			// Parent nodes: Show calculated fulfillment only (no manual override)
+			const result = Math.max(0, Math.min(100, (node.fulfillment || 0) * 100));
+			console.log(`[FULFILLMENT-RECT] Parent node ${node.id}: ${result}%`);
+			return result;
+		} else {
+			// Child nodes with slider: Track slider position in real-time (including during drag)
+			// Access counter to ensure reactivity when ephemeral values change
+			const counter = globalState.ephemeralFulfillmentCounter;
+
+			// Check for ephemeral value first (during slider drag)
+			const ephemeralValue = globalState.ephemeralFulfillmentValues.get(node.id);
+			if (ephemeralValue !== undefined) {
+				console.log(
+					`[FULFILLMENT-RECT] Child node ${node.id}: Using ephemeral ${ephemeralValue}% (counter: ${counter})`
+				);
+				return ephemeralValue;
+			}
+
+			// Otherwise use manual fulfillment or fall back to calculated fulfillment
+			let result;
+			if (node.manualFulfillment !== undefined) {
+				result = Math.max(0, Math.min(100, node.manualFulfillment * 100));
+				console.log(
+					`[FULFILLMENT-RECT] Child node ${node.id}: Using manual ${result}% (counter: ${counter})`
+				);
+			} else {
+				result = Math.max(0, Math.min(100, (node.fulfillment || 0) * 100));
+				console.log(
+					`[FULFILLMENT-RECT] Child node ${node.id}: Using calculated ${result}% (counter: ${counter})`
+				);
+			}
+			return result;
+		}
 	});
 
 	// Function to handle add contributor button click (mouse or touch)
@@ -718,7 +756,7 @@
 				"
 				role="slider"
 				tabindex="0"
-				aria-valuenow={currentSliderValue}
+				aria-valuenow={currentSliderValue()}
 				aria-valuemin="0"
 				aria-valuemax="100"
 				aria-label="Manual fulfillment percentage"
@@ -728,18 +766,18 @@
 				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => {
 					e.stopPropagation();
-					let newValue = currentSliderValue;
+					let newValue = currentSliderValue();
 
 					switch (e.key) {
 						case 'ArrowRight':
 						case 'ArrowUp':
 							e.preventDefault();
-							newValue = Math.min(100, currentSliderValue + 5);
+							newValue = Math.min(100, currentSliderValue() + 5);
 							break;
 						case 'ArrowLeft':
 						case 'ArrowDown':
 							e.preventDefault();
-							newValue = Math.max(0, currentSliderValue - 5);
+							newValue = Math.max(0, currentSliderValue() - 5);
 							break;
 						case 'Home':
 							e.preventDefault();
@@ -751,15 +789,15 @@
 							break;
 						case 'PageUp':
 							e.preventDefault();
-							newValue = Math.min(100, currentSliderValue + 10);
+							newValue = Math.min(100, currentSliderValue() + 10);
 							break;
 						case 'PageDown':
 							e.preventDefault();
-							newValue = Math.max(0, currentSliderValue - 10);
+							newValue = Math.max(0, currentSliderValue() - 10);
 							break;
 					}
 
-					if (newValue !== currentSliderValue) {
+					if (newValue !== currentSliderValue()) {
 						const protocolValue = newValue / 100;
 						onManualFulfillmentChange({
 							nodeId: node.id,
@@ -773,12 +811,17 @@
 					type="range"
 					min="0"
 					max="100"
-					value={currentSliderValue}
+					value={currentSliderValue()}
 					oninput={(event) => {
 						const newValue = parseFloat(event.currentTarget.value);
 						console.log(`[SLIDER-INPUT] Moving slider to ${newValue}% (ephemeral during drag)`);
+						console.log(
+							`[SLIDER-INPUT] Counter before: ${globalState.ephemeralFulfillmentCounter}`
+						);
 						// Update ephemeral value for visual feedback during drag - don't persist yet
 						globalState.updateEphemeralFulfillment(node.id, newValue);
+						console.log(`[SLIDER-INPUT] Counter after: ${globalState.ephemeralFulfillmentCounter}`);
+						console.log(`[SLIDER-INPUT] Rectangle should now be: ${newValue}%`);
 					}}
 					onchange={(event) => {
 						const newValue = parseFloat(event.currentTarget.value);
