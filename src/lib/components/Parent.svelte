@@ -1366,8 +1366,9 @@
 	}
 
 	function handleGlobalTouchEnd(event: Event) {
-		// Only handle if the touch event is within our treemap container
 		const target = event.target as HTMLElement;
+
+		// Only handle if the touch event is within our treemap container
 		const isInTreemap = target?.closest('.treemap-container') !== null;
 
 		if (isTouching && isInTreemap) {
@@ -1423,7 +1424,9 @@
 			isMultiTouch
 		);
 
-		// Only handle primary pointer to prevent duplicates
+		const target = event.target as HTMLElement;
+
+		// Only handle primary pointer to prevent duplicates (for non-fulfillment events)
 		if (!event.isPrimary) return;
 
 		// Don't handle growth interactions when in edit mode
@@ -1445,7 +1448,6 @@
 
 		// Check if the pointer target is a text edit field, node-text element, or contributor element
 		// But allow handling when in delete or recompose mode
-		const target = event.target as HTMLElement;
 		if (
 			target &&
 			!globalState.deleteMode &&
@@ -1839,7 +1841,7 @@
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
-			{#if !tree}
+			{#if !tree || (tree.children && tree.children.length === 0)}
 				<div class="empty-state">
 					<div class="add-node-prompt">
 						<button class="play-button" onclick={handleCreateNewTree}>

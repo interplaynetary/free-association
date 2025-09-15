@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { getColorForNameHash, getColorForUserId } from '$lib/utils/colorUtils';
+	import {
+		getColorForNameHash,
+		getColorForUserId,
+		getDarkerColorForNameHash
+	} from '$lib/utils/colorUtils';
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { pie, arc } from 'd3-shape';
@@ -275,10 +279,22 @@
 	// State for tracking hovered segment
 	let hoveredSegment = $state<string | null>(null);
 
+	// Note: Fulfillment is now controlled by the full-width slider
+
 	// Get current slider value from node data
 	const currentSliderValue = $derived(
 		node.manualFulfillment !== undefined ? Math.round(node.manualFulfillment * 100) : 100
 	);
+
+	// Calculate fulfillment percentage for the visual rectangle
+	// Use ephemeral value during drag, otherwise use actual data
+	const fulfillmentPercentage = $derived(() => {
+		return globalState.getEffectiveFulfillmentPercentage(
+			node.id,
+			node.manualFulfillment,
+			node.fulfillment
+		);
+	});
 
 	// Function to handle add contributor button click (mouse or touch)
 	function handleAddContributorClick(event: MouseEvent | TouchEvent) {
@@ -585,6 +601,23 @@
     box-sizing: border-box;
   "
 >
+	<!-- Fulfillment Rectangle - positioned behind content but above background -->
+	<div
+		class="fulfillment-rectangle"
+		style="
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: {fulfillmentPercentage()}%;
+			height: 100%;
+			background-color: {getDarkerColorForNameHash(node.name)};
+			z-index: 1;
+			pointer-events: none;
+		"
+	>
+		<!-- Note: Fulfillment is now controlled by the full-width slider positioned above the title -->
+	</div>
+
 	<div
 		class="unified-node-content"
 		style="
@@ -596,6 +629,7 @@
       padding: {adaptivePadding}px;
       box-sizing: border-box;
       position: relative;
+      z-index: 2;
     "
 	>
 		<!-- Title - always centered in the container -->
@@ -664,22 +698,23 @@
 			{/if}
 		</div>
 
-		<!-- Manual Fulfillment Slider - positioned above title -->
+		<!-- Manual Fulfillment Slider - full width, positioned above title -->
 		{#if hasAnyContributors && !node.hasChildren && visibilityFactor > 0.1 && !globalState.deleteMode && !globalState.recomposeMode}
 			<div
 				class="manual-fulfillment-slider"
 				style="
 					position: absolute;
 					top: {sliderTopPercent}%;
-					left: 50%;
-					transform: translate(-50%, -50%);
-					width: {sliderWidthPercent}%;
+					left: 0;
+					width: 100%;
 					height: {sliderHeightPercent}%;
 					z-index: 3;
 					opacity: {visibilityFactor};
 					display: flex;
 					align-items: center;
-					gap: 8px;
+					padding: 0;
+					margin: 0;
+					box-sizing: border-box;
 				"
 				role="slider"
 				tabindex="0"
@@ -741,24 +776,19 @@
 					value={currentSliderValue}
 					oninput={(event) => {
 						const newValue = parseFloat(event.currentTarget.value);
-						const protocolValue = newValue / 100; // Convert to 0-1 range for protocol
-						console.log(
-							`[SLIDER-INPUT] Moving slider to ${newValue}%, protocol value: ${protocolValue}`
-						);
-						// Update value without showing notification (silent update during drag)
-						onManualFulfillmentChange({
-							nodeId: node.id,
-							value: protocolValue,
-							showNotification: false
-						});
+						console.log(`[SLIDER-INPUT] Moving slider to ${newValue}% (ephemeral during drag)`);
+						// Update ephemeral value for visual feedback during drag - don't persist yet
+						globalState.updateEphemeralFulfillment(node.id, newValue);
 					}}
 					onchange={(event) => {
 						const newValue = parseFloat(event.currentTarget.value);
 						const protocolValue = newValue / 100; // Convert to 0-1 range for protocol
 						console.log(
-							`[SLIDER-CHANGE] Slider drag ended at ${newValue}%, protocol value: ${protocolValue}`
+							`[SLIDER-CHANGE] Slider drag ended at ${newValue}%, persisting value: ${protocolValue}`
 						);
-						// Show notification when drag ends
+						// Clear ephemeral value and persist the final result
+						globalState.clearEphemeralFulfillment(node.id);
+						// Now persist the actual value with notification
 						onManualFulfillmentChange({
 							nodeId: node.id,
 							value: protocolValue,
@@ -766,23 +796,8 @@
 						});
 					}}
 					class="fulfillment-slider"
-					style="width: 90%;"
+					style="width: 100%;"
 				/>
-				<div
-					class="slider-value"
-					style="
-						font-size: {percentageIndicatorFontSize()}rem;
-						white-space: nowrap;
-						width: 10%;
-						text-align: center;
-						display: flex;
-						align-items: center;
-						justify-content: center;
-						overflow: hidden;
-					"
-				>
-					{currentSliderValue}%
-				</div>
 			</div>
 		{/if}
 
@@ -1245,63 +1260,81 @@
 
 	.fulfillment-slider {
 		width: 100%;
-		height: 6px;
+		height: 20px;
 		-webkit-appearance: none;
 		appearance: none;
-		background: rgba(255, 255, 255, 0.3);
+		background: transparent;
 		outline: none;
-		border-radius: 3px;
-		cursor: pointer;
+		cursor: ew-resize;
 		transition: all 0.2s ease;
 		pointer-events: auto;
 		z-index: 10;
 		position: relative;
+		margin: 0;
+		padding: 0;
 	}
 
-	.fulfillment-slider:hover {
-		background: rgba(255, 255, 255, 0.5);
+	/* Hide the track completely */
+	.fulfillment-slider::-webkit-slider-track {
+		background: transparent;
+		border: none;
+		height: 0;
+	}
+
+	.fulfillment-slider::-moz-range-track {
+		background: transparent;
+		border: none;
+		height: 0;
 	}
 
 	.fulfillment-slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 16px;
-		height: 16px;
-		background: #2196f3;
-		cursor: pointer;
-		border-radius: 50%;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		width: 20px;
+		height: 20px;
+		background: rgba(0, 0, 0, 0.6);
+		cursor: ew-resize;
+		border-radius: 2px;
+		box-shadow:
+			0 2px 6px rgba(0, 0, 0, 0.3),
+			0 0 0 2px rgba(255, 255, 255, 0.8);
 		transition: all 0.2s ease;
+		position: relative;
 	}
 
 	.fulfillment-slider::-webkit-slider-thumb:hover {
-		background: #1976d2;
-		transform: scale(1.1);
+		background: rgba(0, 0, 0, 0.8);
+		transform: scaleY(1.2);
+		box-shadow:
+			0 3px 8px rgba(0, 0, 0, 0.4),
+			0 0 0 2px rgba(255, 255, 255, 1);
 	}
 
 	.fulfillment-slider::-moz-range-thumb {
-		width: 16px;
-		height: 16px;
-		background: #2196f3;
-		cursor: pointer;
-		border-radius: 50%;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		width: 20px;
+		height: 20px;
+		background: rgba(0, 0, 0, 0.6);
+		cursor: ew-resize;
+		border-radius: 2px;
+		box-shadow:
+			0 2px 6px rgba(0, 0, 0, 0.3),
+			0 0 0 2px rgba(255, 255, 255, 0.8);
 		border: none;
 		transition: all 0.2s ease;
 	}
 
 	.fulfillment-slider::-moz-range-thumb:hover {
-		background: #1976d2;
-		transform: scale(1.1);
+		background: rgba(0, 0, 0, 0.8);
+		transform: scaleY(1.2);
+		box-shadow:
+			0 3px 8px rgba(0, 0, 0, 0.4),
+			0 0 0 2px rgba(255, 255, 255, 1);
 	}
 
-	.slider-value {
-		background: rgba(0, 0, 0, 0.8);
-		color: white;
-		padding: 2px 6px;
-		border-radius: 3px;
-		font-weight: 500;
-		white-space: nowrap;
-		text-shadow: none;
+	.fulfillment-rectangle {
+		/* Container for the fulfillment visualization */
+		position: relative;
 	}
+
+	/* Note: Old fulfillment lip styles removed - now using full-width slider approach */
 </style>

@@ -81,6 +81,9 @@ export const globalState = $state({
 	draggedNodeColor: '',
 	dragX: 0,
 	dragY: 0,
+
+	// Ephemeral fulfillment state (used by slider for visual feedback during drag)
+	ephemeralFulfillmentValues: new Map<string, number>(), // nodeId -> ephemeral percentage (0-100)
 	navigateToPath: async (newPath: string[]) => {
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
@@ -390,6 +393,35 @@ export const globalState = $state({
 		globalState.draggedNodeColor = '';
 		globalState.dragX = 0;
 		globalState.dragY = 0;
+	},
+
+	// Ephemeral fulfillment functions (used by slider)
+	updateEphemeralFulfillment: (nodeId: string, percentage: number) => {
+		// Store ephemeral percentage (0-100) for visual updates during slider drag
+		globalState.ephemeralFulfillmentValues.set(nodeId, Math.max(0, Math.min(100, percentage)));
+	},
+
+	clearEphemeralFulfillment: (nodeId: string) => {
+		globalState.ephemeralFulfillmentValues.delete(nodeId);
+	},
+
+	getEffectiveFulfillmentPercentage: (
+		nodeId: string,
+		manualFulfillment?: number,
+		fulfillment?: number
+	) => {
+		// Check for ephemeral value first (during drag)
+		if (globalState.ephemeralFulfillmentValues.has(nodeId)) {
+			return globalState.ephemeralFulfillmentValues.get(nodeId)!;
+		}
+
+		// Fall back to actual values
+		if (manualFulfillment !== undefined) {
+			return Math.max(0, Math.min(100, manualFulfillment * 100));
+		} else if (fulfillment !== undefined) {
+			return Math.max(0, Math.min(100, fulfillment * 100));
+		}
+		return 100; // Default to 100%
 	},
 
 	// Node reordering function

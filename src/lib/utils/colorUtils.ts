@@ -146,3 +146,25 @@ export function getColorForNameHash(name: string): string {
 
 	return `hsl(${h}, ${s}%, ${l}%)`;
 }
+
+/**
+ * Get a darker variant of the node color for fulfillment visualization
+ * @param name Node name to get base color from
+ * @returns Darker HSL color string
+ */
+export function getDarkerColorForNameHash(name: string): string {
+	if (!name) return '#4a5568'; // Default darker slate color
+
+	// Simple hash function for consistent colors (same as base function)
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = name.charCodeAt(i) + ((hash << 5) - hash);
+	}
+
+	// Generate colors in the same hue but darker
+	const h = Math.abs(hash) % 360;
+	const s = 55 + (Math.abs(hash) % 15); // Same saturation as base
+	const l = Math.max(20, 70 + (Math.abs(hash) % 10) - 25); // 25% darker than base, minimum 20%
+
+	return `hsl(${h}, ${s}%, ${l}%)`;
+}
