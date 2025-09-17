@@ -25,14 +25,80 @@ import type {
 
 // Core reactive state - these form the main reactive chain
 export const userTree: Writable<RootNode | null> = writable(null);
-export const userSogf: Writable<ShareMap | null> = writable(null);
-export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
+export const userSogf: Writable<ShareMapData | null> = writable(null);
+export const userCapacities: Writable<CapacitiesCollectionData | null> = writable(null);
 
-export const networkCapacities: Writable<Record<string, CapacitiesCollection>> = writable({});
+// Parallel timestamp tracking stores (for network/persistence coordination)
+// These track metadata separately from the main data stores
+export const userCapacitiesTimestamp = writable<string | null>(null);
+export const userSogfTimestamp = writable<string | null>(null);
+export const userDesiredSlotComposeFromTimestamp = writable<string | null>(null);
+export const userDesiredSlotComposeIntoTimestamp = writable<string | null>(null);
+export const userContactsTimestamp = writable<string | null>(null);
+export const chatReadStatesTimestamp = writable<string | null>(null);
+
+/**
+ * Helper functions to coordinate between flat data stores and timestamp metadata
+ */
+
+// Update a data store and its corresponding timestamp atomically
+export function updateStoreWithTimestamp<T>(
+	dataStore: Writable<T>,
+	timestampStore: Writable<string | null>,
+	timestampedData: { metadata: { updated_at: string }; data: T }
+) {
+	// 🚨 CRITICAL: Atomic update to prevent divergence
+	// Extract both values first to ensure consistency
+	const newData = timestampedData.data;
+	const newTimestamp = timestampedData.metadata.updated_at;
+
+	// Update both stores in the same tick to ensure atomicity
+	dataStore.set(newData);
+	timestampStore.set(newTimestamp);
+
+	console.log(`[ATOMIC-UPDATE] Updated store with timestamp: ${newTimestamp}`);
+}
+
+// Get the current timestamp for a data store (for persistence validation)
+export function getCurrentTimestamp(timestampStore: Writable<string | null>): string | null {
+	return get(timestampStore);
+}
+
+// Create timestamped structure from flat data + timestamp (for persistence)
+export function createTimestampedForPersistence<T>(
+	data: T,
+	timestamp: string | null
+): { metadata: { created_at: string; updated_at: string }; data: T } {
+	const now = new Date().toISOString();
+	return {
+		metadata: {
+			created_at: timestamp || now, // Use existing timestamp or now
+			updated_at: timestamp || now
+		},
+		data
+	};
+}
+
+// Update a data store with new local data and generate fresh timestamp atomically
+export function updateStoreWithFreshTimestamp<T>(
+	dataStore: Writable<T>,
+	timestampStore: Writable<string | null>,
+	newData: T
+) {
+	// 🚨 CRITICAL: Atomic update with fresh timestamp for local changes
+	const newTimestamp = new Date().toISOString();
+
+	// Update both stores in the same tick to ensure atomicity
+	dataStore.set(newData);
+	timestampStore.set(newTimestamp);
+
+	console.log(`[ATOMIC-UPDATE] Updated store with fresh timestamp: ${newTimestamp}`);
+}
+
+export const networkCapacities: Writable<Record<string, CapacitiesCollectionData>> = writable({});
 export const networkCapacityShares: Writable<Record<string, Record<string, number>>> = writable({});
-export const networkCapacitySlotQuantities: Writable<Record<string, UserSlotQuantities>> = writable(
-	{}
-);
+export const networkCapacitySlotQuantities: Writable<Record<string, UserSlotQuantitiesData>> =
+	writable({});
 
 // SLOT CLAIMS STORES (moved from slots.svelte.ts to avoid circular dependency)
 export const userDesiredSlotClaims: Writable<UserSlotClaims> = writable({});
@@ -40,10 +106,21 @@ export const networkDesiredSlotClaims: Writable<NetworkSlotClaims> = writable({}
 
 // SLOT COMPOSITION DESIRE STORES (moved from compose.svelte.ts to avoid circular dependency)
 import type { UserSlotComposition, NetworkSlotComposition } from '$lib/schema';
-export const userDesiredSlotComposeFrom: Writable<UserSlotComposition> = writable({});
-export const userDesiredSlotComposeInto: Writable<UserSlotComposition> = writable({});
-export const networkDesiredSlotComposeFrom: Writable<NetworkSlotComposition> = writable({});
-export const networkDesiredSlotComposeInto: Writable<NetworkSlotComposition> = writable({});
+// Import the raw data types for flat stores
+import type {
+	UserSlotCompositionData,
+	CapacitiesCollectionData,
+	ShareMapData,
+	UserSlotQuantitiesData
+} from '$lib/schema';
+
+export const userDesiredSlotComposeFrom: Writable<UserSlotCompositionData> = writable({});
+export const userDesiredSlotComposeInto: Writable<UserSlotCompositionData> = writable({});
+// Network stores hold flat data (extracted from timestamped network data)
+export const networkDesiredSlotComposeFrom: Writable<Record<string, UserSlotCompositionData>> =
+	writable({});
+export const networkDesiredSlotComposeInto: Writable<Record<string, UserSlotCompositionData>> =
+	writable({});
 
 // New derived store that uses actual slot quantities instead of percentage calculations
 export const userNetworkCapacitiesWithSlotQuantities = derived(
@@ -68,7 +145,7 @@ export const userNetworkCapacitiesWithSlotQuantities = derived(
 		console.log('networkCapacities', $networkCapacities);
 
 		// Filter capacities where we have slot quantities
-		const filteredCapacities: CapacitiesCollection = {};
+		const filteredCapacities: CapacitiesCollectionData = {};
 
 		// For each contributor's slot quantities
 		Object.entries($networkCapacitySlotQuantities).forEach(([contributorId, slotQuantities]) => {
@@ -138,7 +215,7 @@ export const userNetworkCapacitiesWithShares = derived(
 		console.log('networkCapacities', $networkCapacities);
 
 		// Filter capacities where we have shares
-		const filteredCapacities: CapacitiesCollection = {};
+		const filteredCapacities: CapacitiesCollectionData = {};
 
 		// For each contributor's shares
 		Object.entries($networkCapacityShares).forEach(([contributorId, shares]) => {
@@ -188,10 +265,10 @@ export const recognitionCache = writable<RecognitionCache>({});
 
 // Derived store for mutual recognition values (min of ourShare and theirShare)
 export const mutualRecognition = derived(recognitionCache, ($recognitionCache) => {
-	/*console.log(
+	console.log(
 		`[MUTUAL-RECOGNITION] ${new Date().toISOString()} Recalculating from cache:`,
 		$recognitionCache
-	);*/
+	);
 
 	const mutualValues: Record<string, number> = {};
 
@@ -199,10 +276,12 @@ export const mutualRecognition = derived(recognitionCache, ($recognitionCache) =
 		// Mutual recognition is the minimum of our share and their share
 		const mutualValue = Math.min(recognition.ourShare, recognition.theirShare);
 		mutualValues[contributorId] = mutualValue;
-		/*
-		console.log(
-			`[MUTUAL-RECOGNITION] ${contributorId}: our=${recognition.ourShare.toFixed(4)}, their=${recognition.theirShare.toFixed(4)}, mutual=${mutualValue.toFixed(4)}`
-		);*/
+
+		if (mutualValue > 0) {
+			console.log(
+				`[MUTUAL-RECOGNITION] ✅ ${contributorId}: our=${recognition.ourShare.toFixed(4)}, their=${recognition.theirShare.toFixed(4)}, mutual=${mutualValue.toFixed(4)}`
+			);
+		}
 	}
 
 	console.log('[MUTUAL-RECOGNITION] Final mutual values:', mutualValues);
@@ -269,7 +348,7 @@ export const capacityShares = derived(
 		}
 
 		// Calculate filtered shares for each capacity
-		const shares: Record<string, ShareMap> = {};
+		const shares: Record<string, ShareMapData> = {};
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
 			try {
 				// Create the context object for filtering
@@ -313,7 +392,7 @@ export const capacitySlotQuantities = derived(
 			return {};
 		}
 
-		const allSlotQuantities: Record<string, UserSlotQuantities> = {};
+		const allSlotQuantities: Record<string, UserSlotQuantitiesData> = {};
 
 		// Process each capacity
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
@@ -403,7 +482,7 @@ export const userCapacitiesWithShares = derived(
 		}
 
 		// Create a new capacities collection with shares included
-		const capacitiesWithShares: CapacitiesCollection = {};
+		const capacitiesWithShares: CapacitiesCollectionData = {};
 
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
 			// Get the shares for this capacity
@@ -610,7 +689,7 @@ export const feasibleSlotComposeFrom = derived(
 			'[FEASIBLE-SLOT-COMPOSE-FROM] Calculating allocation-based feasible slot compositions...'
 		);
 
-		const finalFeasible: UserSlotComposition = {};
+		const finalFeasible: UserSlotCompositionData = {};
 
 		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
@@ -671,7 +750,7 @@ export const feasibleSlotComposeInto = derived(
 			'[FEASIBLE-SLOT-COMPOSE-INTO] Calculating allocation-based feasible slot compositions...'
 		);
 
-		const finalFeasible: UserSlotComposition = {};
+		const finalFeasible: UserSlotCompositionData = {};
 
 		Object.entries($userDesiredSlotComposeInto).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
@@ -1291,7 +1370,7 @@ export const feasibleSlotComposeIntoWithRedistribution = derived(
 		if (!$userCapacities) return $feasibleSlotComposeInto;
 
 		// Start with existing feasible compositions
-		const enhanced: UserSlotComposition = JSON.parse(JSON.stringify($feasibleSlotComposeInto));
+		const enhanced: UserSlotCompositionData = JSON.parse(JSON.stringify($feasibleSlotComposeInto));
 
 		// Process each slot with redistributable capacity
 		Object.entries($redistributableSlotCapacity).forEach(([ourCapacityId, ourSlots]) => {

@@ -9,7 +9,10 @@
 		userDesiredSlotComposeFrom,
 		userDesiredSlotComposeInto,
 		networkDesiredSlotComposeFrom,
-		networkDesiredSlotComposeInto
+		networkDesiredSlotComposeInto,
+		updateStoreWithFreshTimestamp,
+		userDesiredSlotComposeFromTimestamp,
+		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
 	import {
 		userNetworkCapacitiesWithSlotQuantities,
@@ -1109,7 +1112,12 @@
 		// Set initial desire of 1 unit
 		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
 
-		userDesiredSlotComposeInto.set(currentDesires);
+		// Use atomic update to ensure timestamp consistency
+		updateStoreWithFreshTimestamp(
+			userDesiredSlotComposeInto,
+			userDesiredSlotComposeIntoTimestamp,
+			currentDesires
+		);
 
 		console.log('[SLOT-COMPOSITION] Added INTO composition to user store, will sync via Gun:', {
 			sourceCapacity: capacityId,
@@ -1144,7 +1152,12 @@
 		// Set initial desire of 1 unit
 		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
 
-		userDesiredSlotComposeFrom.set(currentDesires);
+		// Use atomic update to ensure timestamp consistency
+		updateStoreWithFreshTimestamp(
+			userDesiredSlotComposeFrom,
+			userDesiredSlotComposeFromTimestamp,
+			currentDesires
+		);
 
 		console.log('[SLOT-COMPOSITION] Added FROM composition to user store, will sync via Gun:', {
 			sourceCapacity: sourceCapacityId,

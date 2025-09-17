@@ -9,8 +9,28 @@ export const NameSchema = z.string().min(1);
 export const PointsSchema = z.number().gte(0);
 export const PercentageSchema = z.number().gte(0).lte(1);
 
-// ShareMap - a record of node IDs to percentage values
-export const ShareMapSchema = z.record(IdSchema, PercentageSchema);
+// Generic timestamped wrapper - can wrap any data type
+export const TimestampedSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+	z.object({
+		metadata: z.object({
+			created_at: z.string(),
+			updated_at: z.string()
+		}),
+		data: dataSchema.default({} as z.infer<T>)
+	});
+
+// Helper type to infer timestamped types
+export type Timestamped<T> = {
+	metadata: {
+		created_at: string;
+		updated_at: string;
+	};
+	data: T;
+};
+
+// ShareMap - a record of node IDs to percentage values (raw data)
+export const ShareMapDataSchema = z.record(IdSchema, PercentageSchema);
+export const ShareMapSchema = TimestampedSchema(ShareMapDataSchema);
 
 export const NonRootNodeSchema = z.object({
 	id: IdSchema,
@@ -138,8 +158,12 @@ export const UserSlotClaimsSchema = z.record(IdSchema, z.record(IdSchema, z.numb
 export const NetworkSlotClaimsSchema = z.record(IdSchema, UserSlotClaimsSchema);
 // Structure: userId → capacityId → slotId → desiredQuantity
 
-// User's actual allocated slot quantities (result of discrete allocation)
-export const UserSlotQuantitiesSchema = z.record(IdSchema, z.record(IdSchema, z.number().gte(0)));
+// User's actual allocated slot quantities (result of discrete allocation) with timestamps
+export const UserSlotQuantitiesDataSchema = z.record(
+	IdSchema,
+	z.record(IdSchema, z.number().gte(0))
+);
+export const UserSlotQuantitiesSchema = TimestampedSchema(UserSlotQuantitiesDataSchema);
 // Structure: capacityId → slotId → allocatedQuantity
 
 // Network slot quantities (all users' allocated quantities)
@@ -159,8 +183,14 @@ export const RecipientCapacitySchema = z.object({
 // Union type for Capacity (either provider or recipient perspective)
 export const CapacitySchema = z.union([ProviderCapacitySchema, RecipientCapacitySchema]);
 
-// CapacitiesCollection schema
-export const CapacitiesCollectionSchema = z.record(IdSchema, CapacitySchema);
+// CapacitiesCollection schema with timestamps
+export const CapacitiesCollectionDataSchema = z.record(IdSchema, CapacitySchema);
+export const CapacitiesCollectionSchema = TimestampedSchema(CapacitiesCollectionDataSchema);
+
+// Capacity shares schema with timestamps - maps capacity IDs to share percentages
+export const CapacitySharesDataSchema = z.record(IdSchema, PercentageSchema);
+export const CapacitySharesSchema = TimestampedSchema(CapacitySharesDataSchema);
+// Structure: capacityId → sharePercentage
 
 // Recognition cache entry schema
 export const RecognitionCacheEntrySchema = z.object({
@@ -189,6 +219,16 @@ export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
 export type Capacity = z.infer<typeof CapacitySchema>;
 export type CapacitiesCollection = z.infer<typeof CapacitiesCollectionSchema>;
 export type ShareMap = z.infer<typeof ShareMapSchema>;
+export type CapacityShares = z.infer<typeof CapacitySharesSchema>;
+
+// Raw data types (without timestamps)
+export type ShareMapData = z.infer<typeof ShareMapDataSchema>;
+export type CapacitiesCollectionData = z.infer<typeof CapacitiesCollectionDataSchema>;
+export type CapacitySharesData = z.infer<typeof CapacitySharesDataSchema>;
+export type UserSlotQuantitiesData = z.infer<typeof UserSlotQuantitiesDataSchema>;
+export type UserSlotCompositionData = z.infer<typeof UserSlotCompositionDataSchema>;
+export type ContactsCollectionData = z.infer<typeof ContactsCollectionDataSchema>;
+export type ChatReadStatesData = z.infer<typeof ChatReadStatesDataSchema>;
 export type RecognitionCacheEntry = z.infer<typeof RecognitionCacheEntrySchema>;
 export type RecognitionCache = z.infer<typeof RecognitionCacheSchema>;
 
@@ -215,12 +255,13 @@ export const SlotCompositionDesireSchema = z.record(
 	z.record(IdSchema, z.number().gte(0))
 );
 
-// User slot composition schema - maps source slots to target slots
+// User slot composition schema with timestamps - maps source slots to target slots
 // Structure: sourceCapacityId → sourceSlotId → targetCapacityId → targetSlotId → absoluteUnits
-export const UserSlotCompositionSchema = z.record(
+export const UserSlotCompositionDataSchema = z.record(
 	IdSchema,
 	z.record(IdSchema, SlotCompositionDesireSchema)
 );
+export const UserSlotCompositionSchema = TimestampedSchema(UserSlotCompositionDataSchema);
 
 // Network slot composition schema - maps user ID to their slot composition data
 // Structure: userId → sourceCapacityId → sourceSlotId → targetCapacityId → targetSlotId → absoluteUnits
@@ -260,8 +301,9 @@ export const ContactSchema = z.object({
 	updated_at: z.string()
 });
 
-// ContactsCollection schema - indexed by contact_id
-export const ContactsCollectionSchema = z.record(IdSchema, ContactSchema);
+// ContactsCollection schema with timestamps - indexed by contact_id
+export const ContactsCollectionDataSchema = z.record(IdSchema, ContactSchema);
+export const ContactsCollectionSchema = TimestampedSchema(ContactsCollectionDataSchema);
 
 // Export contact types
 export type Contact = z.infer<typeof ContactSchema>;
@@ -274,8 +316,9 @@ export const ChatReadStateSchema = z.object({
 	updatedAt: z.number()
 });
 
-// Chat read states collection schema - indexed by chatId
-export const ChatReadStatesSchema = z.record(IdSchema, ChatReadStateSchema);
+// Chat read states collection schema with timestamps - indexed by chatId
+export const ChatReadStatesDataSchema = z.record(IdSchema, ChatReadStateSchema);
+export const ChatReadStatesSchema = TimestampedSchema(ChatReadStatesDataSchema);
 
 // Export chat read state types
 export type ChatReadState = z.infer<typeof ChatReadStateSchema>;
@@ -375,3 +418,37 @@ export const TreeMergeResultSchema = z.object({
 });
 
 export type TreeMergeResult = z.infer<typeof TreeMergeResultSchema>;
+
+// Generic function to create empty timestamped objects
+export function createEmptyTimestamped(): Timestamped<any> {
+	const now = new Date().toISOString();
+	return {
+		metadata: {
+			created_at: now,
+			updated_at: now
+		},
+		data: {}
+	};
+}
+
+// Generic utility to extract data from timestamped objects
+export function getTimestampedData<T>(timestamped: Timestamped<T>): T {
+	return timestamped.data!;
+}
+
+// Generic utility to get metadata from timestamped objects
+export function getTimestampedMetadata<T>(timestamped: Timestamped<T>) {
+	return timestamped.metadata;
+}
+
+// Generic utility to create timestamped object from data and metadata
+export function createTimestamped<T>(
+	data: T,
+	metadata?: { created_at: string; updated_at: string }
+): Timestamped<T> {
+	const now = new Date().toISOString();
+	return {
+		metadata: metadata || { created_at: now, updated_at: now },
+		data
+	};
+}

@@ -22,11 +22,27 @@ import {
 	userDesiredSlotComposeInto,
 	networkDesiredSlotComposeFrom,
 	networkDesiredSlotComposeInto,
-	userNetworkCapacitiesWithShares
+	userNetworkCapacitiesWithShares,
+	updateStoreWithTimestamp,
+	updateStoreWithFreshTimestamp,
+	userCapacitiesTimestamp,
+	userSogfTimestamp,
+	userDesiredSlotComposeFromTimestamp,
+	userDesiredSlotComposeIntoTimestamp,
+	userContactsTimestamp,
+	chatReadStatesTimestamp
 } from '$lib/state/core.svelte';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
 import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
-import type { NetworkSlotComposition } from '$lib/schema';
+import type {
+	NetworkSlotComposition,
+	CapacitiesCollection,
+	ContactsCollection,
+	UserSlotComposition,
+	ChatReadStates,
+	CapacityShares,
+	UserSlotQuantities
+} from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
 import {
 	parseCapacities,
@@ -75,26 +91,34 @@ function withAuthentication<T extends any[]>(
 }
 
 /**
- * Generic data processor that handles validation, comparison, and store updates
+ * Generic data processor that handles validation, comparison, and store updates with timestamp-based freshness detection
  */
 function createDataProcessor<T>(config: {
 	dataType: string;
 	validator?: (data: any) => T | null;
-	getCurrentData: () => T | null;
+	getCurrentData: () => T | null | unknown; // Allow unknown to handle validator default types
 	updateStore: (data: T) => void;
 	loadingFlag?: { set: (value: boolean) => void };
 	onUpdate?: () => void;
 	emptyValue?: T;
+	enableTimestampComparison?: boolean;
 }) {
 	return (rawData: any) => {
-		const { dataType, validator, getCurrentData, updateStore, loadingFlag, onUpdate, emptyValue } =
-			config;
+		const {
+			dataType,
+			validator,
+			getCurrentData,
+			updateStore,
+			loadingFlag,
+			onUpdate,
+			emptyValue,
+			enableTimestampComparison
+		} = config;
 
 		if (!rawData) {
 			//console.log(`[NETWORK] No ${dataType} data found`);
-			if (emptyValue !== undefined) {
-				updateStore(emptyValue);
-			}
+			// Don't update store with empty values for timestamped data
+			// Let the validators handle empty cases with their defaultValue
 			loadingFlag?.set(false);
 			return;
 		}
@@ -113,10 +137,62 @@ function createDataProcessor<T>(config: {
 					loadingFlag?.set(false);
 					return;
 				}
+
+				// Validators now return proper empty timestamped objects on failure
+				// No need to check for null since we always get valid schema-compliant data
 			}
 
-			// Check if data has changed
+			// Get current data for comparison
 			const currentData = getCurrentData();
+
+			// Timestamp-based freshness check (for timestamped collections)
+			if (enableTimestampComparison && processedData && currentData) {
+				try {
+					// Type-safe timestamp extraction from new metadata structure
+					const hasIncomingMetadata =
+						processedData &&
+						typeof processedData === 'object' &&
+						'metadata' in processedData &&
+						processedData.metadata &&
+						typeof processedData.metadata === 'object' &&
+						'updated_at' in processedData.metadata;
+
+					const hasCurrentMetadata =
+						currentData &&
+						typeof currentData === 'object' &&
+						'metadata' in currentData &&
+						currentData.metadata &&
+						typeof currentData.metadata === 'object' &&
+						'updated_at' in currentData.metadata;
+
+					if (hasIncomingMetadata && hasCurrentMetadata) {
+						const incomingTimestamp = (processedData as { metadata: { updated_at: string } })
+							.metadata.updated_at;
+						const currentTimestamp = (currentData as { metadata: { updated_at: string } }).metadata
+							.updated_at;
+
+						const incomingTime = new Date(incomingTimestamp).getTime();
+						const currentTime = new Date(currentTimestamp).getTime();
+
+						if (incomingTime <= currentTime) {
+							console.log(
+								`[NETWORK] Incoming ${dataType} is older/same (${incomingTimestamp}) than current (${currentTimestamp}), ignoring update`
+							);
+							loadingFlag?.set(false);
+							return;
+						}
+
+						console.log(
+							`[NETWORK] Incoming ${dataType} is newer (${incomingTimestamp}) than current (${currentTimestamp}), accepting update`
+						);
+					}
+				} catch (timestampError) {
+					console.warn(`[NETWORK] Error comparing timestamps for ${dataType}:`, timestampError);
+					// Fall through to regular comparison if timestamp comparison fails
+				}
+			}
+
+			// Fallback: JSON-based change detection
 			if (currentData && JSON.stringify(currentData) === JSON.stringify(processedData)) {
 				//console.log(`[NETWORK] Incoming ${dataType} matches current ${dataType}, ignoring update`);
 				loadingFlag?.set(false);
@@ -124,10 +200,17 @@ function createDataProcessor<T>(config: {
 			}
 
 			//console.log(`[NETWORK] ${dataType} data changed, updating local store`);
-			updateStore(processedData);
-			onUpdate?.();
+			// Final type safety check before updating store
+			if (processedData && typeof processedData === 'object') {
+				// At this point, processedData has been validated by the validator and passed timestamp checks
+				// The type assertion is safe because the validator guarantees the correct type
+				updateStore(processedData as T);
+				onUpdate?.();
+			} else {
+				console.warn(`[NETWORK] Invalid processed data for ${dataType}, skipping store update`);
+			}
 		} catch (error) {
-			//console.error(`[NETWORK] Error processing ${dataType}:`, error);
+			console.error(`[NETWORK] Error processing ${dataType}:`, error);
 		} finally {
 			loadingFlag?.set(false);
 		}
@@ -194,6 +277,7 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('capacities'),
 		processor: createDataProcessor({
 			dataType: 'capacities',
+			enableTimestampComparison: true,
 			validator: (rawData) => {
 				console.log('[NETWORK] 🚨 DEBUG: Raw capacities data received from Gun:', rawData);
 
@@ -287,8 +371,23 @@ const ownDataStreamConfigs = {
 
 				return validatedData;
 			},
-			getCurrentData: () => get(userCapacities),
-			updateStore: (data) => userCapacities.set(data),
+			getCurrentData: () => {
+				// Create timestamped structure for comparison
+				const flatData = get(userCapacities);
+				const timestamp = get(userCapacitiesTimestamp);
+				if (!flatData || !timestamp) return null;
+				return {
+					metadata: {
+						created_at: timestamp,
+						updated_at: timestamp
+					},
+					data: flatData
+				};
+			},
+			updateStore: (timestampedData) => {
+				// Use helper to update both flat data and timestamp
+				updateStoreWithTimestamp(userCapacities, userCapacitiesTimestamp, timestampedData);
+			},
 			loadingFlag: isLoadingCapacities
 		}),
 		errorHandler: (error: any) => {
@@ -302,15 +401,26 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('contacts'),
 		processor: createDataProcessor({
 			dataType: 'contacts',
+			enableTimestampComparison: true,
 			validator: parseContacts,
-			getCurrentData: () => get(userContacts),
-			updateStore: (data) => {
-				// Update the contacts store
-				//console.log('[Network Contacts]', data);
-				userContacts.set(data);
+			getCurrentData: () => {
+				// Create timestamped structure for comparison
+				const flatData = get(userContacts);
+				const timestamp = get(userContactsTimestamp);
+				if (!flatData || !timestamp) return null;
+				return {
+					metadata: {
+						created_at: timestamp,
+						updated_at: timestamp
+					},
+					data: flatData
+				};
 			},
-			loadingFlag: isLoadingContacts,
-			emptyValue: {}
+			updateStore: (timestampedData) => {
+				// Use helper to update both flat data and timestamp
+				updateStoreWithTimestamp(userContacts, userContactsTimestamp, timestampedData);
+			},
+			loadingFlag: isLoadingContacts
 		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own contacts stream:', error);
@@ -323,10 +433,27 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('desiredSlotComposeFrom'),
 		processor: createDataProcessor({
 			dataType: 'desiredSlotComposeFrom',
+			enableTimestampComparison: true,
 			validator: parseUserSlotComposition,
-			getCurrentData: () => get(userDesiredSlotComposeFrom),
-			updateStore: (data) => userDesiredSlotComposeFrom.set(data),
-			emptyValue: {}
+			getCurrentData: () => {
+				const flatData = get(userDesiredSlotComposeFrom);
+				const timestamp = get(userDesiredSlotComposeFromTimestamp);
+				if (!flatData || !timestamp) return null;
+				return {
+					metadata: {
+						created_at: timestamp,
+						updated_at: timestamp
+					},
+					data: flatData
+				};
+			},
+			updateStore: (timestampedData) => {
+				updateStoreWithTimestamp(
+					userDesiredSlotComposeFrom,
+					userDesiredSlotComposeFromTimestamp,
+					timestampedData
+				);
+			}
 		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeFrom stream:', error);
@@ -338,10 +465,27 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('desiredSlotComposeInto'),
 		processor: createDataProcessor({
 			dataType: 'desiredSlotComposeInto',
+			enableTimestampComparison: true,
 			validator: parseUserSlotComposition,
-			getCurrentData: () => get(userDesiredSlotComposeInto),
-			updateStore: (data) => userDesiredSlotComposeInto.set(data),
-			emptyValue: {}
+			getCurrentData: () => {
+				const flatData = get(userDesiredSlotComposeInto);
+				const timestamp = get(userDesiredSlotComposeIntoTimestamp);
+				if (!flatData || !timestamp) return null;
+				return {
+					metadata: {
+						created_at: timestamp,
+						updated_at: timestamp
+					},
+					data: flatData
+				};
+			},
+			updateStore: (timestampedData) => {
+				updateStoreWithTimestamp(
+					userDesiredSlotComposeInto,
+					userDesiredSlotComposeIntoTimestamp,
+					timestampedData
+				);
+			}
 		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeInto stream:', error);
@@ -353,11 +497,26 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('chatReadStates'),
 		processor: createDataProcessor({
 			dataType: 'chatReadStates',
+			enableTimestampComparison: true,
 			validator: parseChatReadStates,
-			getCurrentData: () => get(chatReadStates),
-			updateStore: (data) => setChatReadStates(data),
-			loadingFlag: isLoadingChatReadStates,
-			emptyValue: {}
+			getCurrentData: () => {
+				// Create timestamped structure for comparison
+				const flatData = get(chatReadStates);
+				const timestamp = get(chatReadStatesTimestamp);
+				if (!flatData || !timestamp) return null;
+				return {
+					metadata: {
+						created_at: timestamp,
+						updated_at: timestamp
+					},
+					data: flatData
+				};
+			},
+			updateStore: (timestampedData) => {
+				// Use helper to update both flat data and timestamp
+				updateStoreWithTimestamp(chatReadStates, chatReadStatesTimestamp, timestampedData);
+			},
+			loadingFlag: isLoadingChatReadStates
 		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own chatReadStates stream:', error);
@@ -450,13 +609,55 @@ const contributorStreamConfigs = {
 		processor: (contributorId: string) => (sogfData: any) => {
 			if (!sogfData) return;
 
-			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`);
+			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`, sogfData);
 
 			// Validate SOGF data using parseShareMap
 			const validatedSogfData = parseShareMap(sogfData);
-			if (!validatedSogfData || Object.keys(validatedSogfData).length === 0) {
-				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`);
+			console.log(`[NETWORK] Validated SOGF data for ${contributorId}:`, validatedSogfData);
+
+			if (
+				!validatedSogfData ||
+				!validatedSogfData.data ||
+				Object.keys(validatedSogfData.data).length === 0
+			) {
+				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`, {
+					hasValidatedData: !!validatedSogfData,
+					hasDataProperty: !!validatedSogfData?.data,
+					dataKeys: validatedSogfData?.data ? Object.keys(validatedSogfData.data) : 'N/A'
+				});
 				return;
+			}
+
+			// Smart timestamp comparison with fallback to value-based deduplication
+			const currentRecognitionCache = get(recognitionCache);
+			const existingRecognitionEntry = currentRecognitionCache[contributorId];
+
+			// First, try timestamp-based comparison if we have reliable timestamps
+			if (
+				validatedSogfData.metadata?.updated_at &&
+				existingRecognitionEntry &&
+				existingRecognitionEntry.timestamp
+			) {
+				const incomingTime = new Date(validatedSogfData.metadata.updated_at).getTime();
+				const currentTime = existingRecognitionEntry.timestamp;
+
+				// Only use timestamp comparison if incoming timestamp is not the default epoch time
+				if (incomingTime > 0 && incomingTime !== new Date('1970-01-01T00:00:00.000Z').getTime()) {
+					if (incomingTime <= currentTime) {
+						console.log(
+							`[NETWORK] SOGF from ${contributorId} is older/same (${new Date(incomingTime).toISOString()}) than current (${new Date(currentTime).toISOString()}), ignoring update`
+						);
+						return;
+					} else {
+						console.log(
+							`[NETWORK] SOGF from ${contributorId} is newer (${new Date(incomingTime).toISOString()}) than current (${new Date(currentTime).toISOString()}), accepting update`
+						);
+					}
+				} else {
+					console.log(
+						`[NETWORK] SOGF from ${contributorId} has unreliable timestamp, falling back to value comparison`
+					);
+				}
 			}
 
 			let ourId: string;
@@ -468,13 +669,24 @@ const contributorStreamConfigs = {
 				return;
 			}
 
-			const theirShare = validatedSogfData[ourId] || 0;
-			const currentCache = get(recognitionCache);
-			const existingEntry = currentCache[contributorId];
-			const isUnchanged = existingEntry && existingEntry.theirShare === theirShare;
+			// Extract the share data from the data property
+			const shareData: Record<string, number> = validatedSogfData.data || {};
+			const theirShare = shareData[ourId] || 0;
+
+			// Fallback to value-based deduplication: only update if the share value has actually changed
+			// This provides reliability when timestamp comparison isn't available or reliable
+			const isUnchanged =
+				existingRecognitionEntry && existingRecognitionEntry.theirShare === theirShare;
 
 			if (!isUnchanged) {
+				console.log(
+					`[NETWORK] Updating recognition cache for ${contributorId} with share ${theirShare.toFixed(4)}`
+				);
 				updateTheirShareFromNetwork(contributorId, theirShare);
+			} else {
+				console.log(
+					`[NETWORK] SOGF from ${contributorId} unchanged (${theirShare.toFixed(4)}), skipping update`
+				);
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
@@ -498,13 +710,23 @@ const mutualContributorStreamConfigs = {
 		processor: (contributorId: string) =>
 			createDataProcessor({
 				dataType: 'capacities',
+				enableTimestampComparison: true,
 				validator: parseCapacities,
-				getCurrentData: () => get(networkCapacities)[contributorId] || {},
+				getCurrentData: () => get(networkCapacities)[contributorId] || null,
 				updateStore: (data) => {
-					networkCapacities.update((current) => ({
-						...current,
-						[contributorId]: data
-					}));
+					if (data) {
+						// Extract flat data from timestamped structure for network store
+						const flatData = data.data || {};
+						networkCapacities.update((current) => ({
+							...current,
+							[contributorId]: flatData
+						}));
+					} else {
+						networkCapacities.update((current) => {
+							const { [contributorId]: _, ...rest } = current;
+							return rest;
+						});
+					}
 				}
 			}),
 		errorHandler: (contributorId: string) => (error: any) => {
@@ -549,7 +771,7 @@ const mutualContributorStreamConfigs = {
 
 				networkCapacityShares.update((current) => ({
 					...current,
-					[contributorId]: validatedShares
+					[contributorId]: validatedShares.data || {}
 				}));
 			}
 		},
@@ -596,9 +818,11 @@ const mutualContributorStreamConfigs = {
 					validatedQuantities
 				);
 
+				// Extract flat data from timestamped structure for network store
+				const flatQuantities = validatedQuantities.data || {};
 				networkCapacitySlotQuantities.update((current) => ({
 					...current,
-					[contributorId]: validatedQuantities
+					[contributorId]: flatQuantities
 				}));
 			}
 		},
@@ -620,7 +844,7 @@ const mutualContributorStreamConfigs = {
 		processor: (contributorId: string) => (composeFromData: any) => {
 			if (!composeFromData) {
 				//console.log(`[NETWORK] No desired slot compose-from from contributor ${contributorId}`);
-				networkDesiredSlotComposeFrom.update((current: NetworkSlotComposition) => {
+				networkDesiredSlotComposeFrom.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
 				});
@@ -637,9 +861,11 @@ const mutualContributorStreamConfigs = {
 				JSON.stringify(validatedComposeFrom) === JSON.stringify(currentNetworkComposeFrom);
 
 			if (!isUnchanged) {
-				networkDesiredSlotComposeFrom.update((current: NetworkSlotComposition) => ({
+				// Extract flat data from timestamped structure for network store
+				const flatComposeFrom = validatedComposeFrom.data || {};
+				networkDesiredSlotComposeFrom.update((current) => ({
 					...current,
-					[contributorId]: validatedComposeFrom
+					[contributorId]: flatComposeFrom
 				}));
 			}
 		},
@@ -661,7 +887,7 @@ const mutualContributorStreamConfigs = {
 		processor: (contributorId: string) => (composeIntoData: any) => {
 			if (!composeIntoData) {
 				//console.log(`[NETWORK] No desired slot compose-into from contributor ${contributorId}`);
-				networkDesiredSlotComposeInto.update((current: NetworkSlotComposition) => {
+				networkDesiredSlotComposeInto.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
 				});
@@ -678,9 +904,11 @@ const mutualContributorStreamConfigs = {
 				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
 
 			if (!isUnchanged) {
-				networkDesiredSlotComposeInto.update((current: NetworkSlotComposition) => ({
+				// Extract flat data from timestamped structure for network store
+				const flatComposeInto = validatedComposeInto.data || {};
+				networkDesiredSlotComposeInto.update((current) => ({
 					...current,
-					[contributorId]: validatedComposeInto
+					[contributorId]: flatComposeInto
 				}));
 			}
 		},
@@ -897,6 +1125,7 @@ export async function initializeUserDataStreams(): Promise<void> {
 
 /**
  * Update the recognition cache with a contributor's share for us from network
+ * Uses smart timestamp comparison with fallback to value-based deduplication
  * @param contributorId The ID of the contributor (could be contact ID or public key)
  * @param theirShare Share they assign to us in their SOGF
  */
@@ -908,22 +1137,20 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
 
 	if (resolvedContributorId !== contributorId) {
-		//console.log(`[NETWORK] Resolved ${contributorId} to ${resolvedContributorId}`);
+		console.log(`[NETWORK] Resolved ${contributorId} to ${resolvedContributorId}`);
 	}
-
-	//console.log(`[NETWORK-DEBUG] Current recognition cache before update:`, get(recognitionCache));
 
 	// Get current cache entry using the resolved ID (consistent with calculation layer)
 	const cache = get(recognitionCache);
 	const existing = cache[resolvedContributorId];
 
-	//console.log(`[NETWORK] Existing cache entry for ${resolvedContributorId}:`, existing);
-
 	// Update the cache immediately with new theirShare using resolved public key
 	recognitionCache.update((cache) => {
 		if (existing) {
 			// Update only theirShare in existing entry
-			//console.log(`[NETWORK] Updating existing entry for ${resolvedContributorId}`);
+			console.log(
+				`[NETWORK] ✅ Updating existing entry for ${resolvedContributorId}: theirShare=${theirShare.toFixed(4)}`
+			);
 			cache[resolvedContributorId] = {
 				...cache[resolvedContributorId],
 				theirShare,
@@ -931,7 +1158,9 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 			};
 		} else {
 			// Create new entry with default ourShare of 0, using resolved public key
-			//console.log(`[NETWORK] Creating new entry for ${resolvedContributorId} with ourShare=0`);
+			console.log(
+				`[NETWORK] ✅ Creating new entry for ${resolvedContributorId}: ourShare=0, theirShare=${theirShare.toFixed(4)}`
+			);
 			cache[resolvedContributorId] = {
 				ourShare: 0, // We don't know our share yet
 				theirShare,
@@ -939,20 +1168,8 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 			};
 		}
 
-		/*console.log(
-			`[NETWORK] Updated cache entry for ${resolvedContributorId}:`,
-			cache[resolvedContributorId]
-		);*/
 		return cache;
 	});
-
-	// Log the updated cache and force reactivity check
-	const updatedCache = get(recognitionCache);
-
-	/*console.log(
-		`[NETWORK-DEBUG] Cache after network update from ${resolvedContributorId}:`,
-		updatedCache
-	);*/
 }
 
 // Track if usersList subscription is active

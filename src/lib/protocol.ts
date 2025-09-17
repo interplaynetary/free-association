@@ -23,11 +23,14 @@ import type {
 	NonRootNode,
 	Capacity,
 	CapacitiesCollection,
+	CapacitiesCollectionData,
 	ShareMap,
+	ShareMapData,
 	ProviderCapacity,
 	RecipientCapacity,
 	BaseCapacity,
-	UserSlotQuantities
+	UserSlotQuantities,
+	UserSlotQuantitiesData
 } from '$lib/schema';
 import {
 	filter,
@@ -389,9 +392,9 @@ export function sharesOfGeneralFulfillmentMap(
 	nodesMap: Record<string, Node>,
 	specificContributors?: string[],
 	resolveToPublicKey?: (id: string) => string | undefined
-): ShareMap {
+): ShareMapData {
 	// Calculate all contributor shares
-	const sharesMap: ShareMap = {};
+	const sharesMap: ShareMapData = {};
 
 	// Use specific contributors if provided, otherwise get contributors from tree
 	const contributorIds =
@@ -480,9 +483,9 @@ export function providerShares(
 	nodesMap: Record<string, Node>,
 	specificContributors?: string[],
 	resolveToPublicKey?: (id: string) => string | undefined
-): ShareMap {
+): ShareMapData {
 	// Calculate direct contributor shares based on mutual fulfillment
-	const contributorShares: ShareMap = {};
+	const contributorShares: ShareMapData = {};
 
 	// Use specific contributors if provided, otherwise find all contributors in the tree
 	const contributorIds =
@@ -535,7 +538,7 @@ export function constrainSharePercentage(capacity: BaseCapacity, percentage: num
 }
 
 // Simple discrete allocation: distribute integer units proportionally
-export function allocateDiscreteUnits(shareMap: ShareMap, totalUnits: number): ShareMap {
+export function allocateDiscreteUnits(shareMap: ShareMapData, totalUnits: number): ShareMapData {
 	if (totalUnits === 0) return {};
 
 	// Filter recipients with positive shares
@@ -574,7 +577,7 @@ export function allocateDiscreteUnits(shareMap: ShareMap, totalUnits: number): S
 	}
 
 	// Convert back to percentages
-	const result: ShareMap = {};
+	const result: ShareMapData = {};
 	for (const [recipientId, units] of Object.entries(allocation)) {
 		if (units > 0) {
 			result[recipientId] = units / totalUnits;
@@ -586,7 +589,7 @@ export function allocateDiscreteUnits(shareMap: ShareMap, totalUnits: number): S
 
 // Apply capacity-level filtering only (no artificial percentage constraints)
 // Real constraints are applied at the slot level where they belong
-export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMap): ShareMap {
+export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMapData): ShareMapData {
 	// Only apply logical filtering here - no artificial percentage constraints
 	// The real constraints (max_natural_div, max_percentage_div) are applied
 	// at the slot level where quantities actually exist
@@ -596,7 +599,7 @@ export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMap): S
 // Allocate discrete units for a specific slot using mutual fulfillment proportions
 export function allocateSlotDiscreteUnits(
 	slot: { id: string; quantity: number },
-	shareMap: ShareMap
+	shareMap: ShareMapData
 ): Record<string, number> {
 	// Use the discrete allocation algorithm for this specific slot
 	const slotShareMap = allocateDiscreteUnits(shareMap, slot.quantity);
@@ -636,7 +639,7 @@ export function computeSlotQuantityShare(
 // This is the main function that should be used for proper discrete allocation
 export function computeSlotQuantitySharesForRecipients(
 	slot: { id: string; quantity: number },
-	shareMap: ShareMap,
+	shareMap: ShareMapData,
 	capacity: BaseCapacity
 ): Record<string, { slot_id: string; quantity: number }> {
 	const maxNatural = capacity.max_natural_div || 1;
@@ -678,7 +681,7 @@ export function computeQuantityShares(
 // This is the main function for calculating recipient shares across all slots
 export function computeAllSlotQuantityShares(
 	capacity: BaseCapacity,
-	shareMap: ShareMap
+	shareMap: ShareMapData
 ): Record<string, Array<{ slot_id: string; quantity: number }>> {
 	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
 		console.log('[COMPUTE-ALL-SLOT-QUANTITIES] No availability_slots found, returning empty');
@@ -729,12 +732,15 @@ export function createRecipientCapacity(
 }
 
 // Add a capacity to a collection
-export function addCapacity(capacities: CapacitiesCollection, capacity: Capacity): void {
+export function addCapacity(capacities: CapacitiesCollectionData, capacity: Capacity): void {
 	capacities[capacity.id] = capacity;
 }
 
 // Add a capacity share to a capacity in a collection
-export function addCapacityShare(capacities: CapacitiesCollection, share: RecipientCapacity): void {
+export function addCapacityShare(
+	capacities: CapacitiesCollectionData,
+	share: RecipientCapacity
+): void {
 	// Find the matching capacity if it exists
 	const capacity = capacities[share.id];
 
@@ -924,7 +930,7 @@ export function calculateRecipientShares(
 	nodesMap: Record<string, Node>,
 	subtreeContributorMap?: Record<string, Record<string, boolean>>,
 	resolveToPublicKey?: (id: string) => string | undefined
-): Record<string, UserSlotQuantities> {
+): Record<string, UserSlotQuantitiesData> {
 	// Get raw shares based on provider
 	const rawShares = providerShares(provider, nodesMap, undefined, resolveToPublicKey);
 
@@ -949,7 +955,10 @@ export function calculateRecipientShares(
 // DEPRECATED: This function is no longer used in the new architecture
 // Discrete allocation is now handled per-slot and actual quantities are stored,
 // eliminating the need to average percentages across slots
-function calculateDiscreteRecipientShares(capacity: BaseCapacity, shareMap: ShareMap): ShareMap {
+function calculateDiscreteRecipientShares(
+	capacity: BaseCapacity,
+	shareMap: ShareMapData
+): ShareMapData {
 	console.warn(
 		'[DEPRECATED] calculateDiscreteRecipientShares is deprecated. Use calculateRecipientSlotQuantities instead.'
 	);
@@ -968,7 +977,7 @@ function calculateDiscreteRecipientShares(capacity: BaseCapacity, shareMap: Shar
 	}
 
 	// For each recipient, calculate their average share across all slots
-	const discreteShares: ShareMap = {};
+	const discreteShares: ShareMapData = {};
 
 	for (const recipientId of recipientIds) {
 		let totalRecipientUnits = 0;
@@ -997,8 +1006,8 @@ function calculateDiscreteRecipientShares(capacity: BaseCapacity, shareMap: Shar
 // This is the new approach that stores actual units per slot, not averaged percentages
 export function calculateRecipientSlotQuantities(
 	capacity: BaseCapacity,
-	shareMap: ShareMap
-): Record<string, UserSlotQuantities> {
+	shareMap: ShareMapData
+): Record<string, UserSlotQuantitiesData> {
 	if (!capacity.availability_slots || capacity.availability_slots.length === 0) {
 		return {};
 	}
@@ -1006,7 +1015,7 @@ export function calculateRecipientSlotQuantities(
 	const maxNatural = capacity.max_natural_div || 1;
 	const maxPercent = capacity.max_percentage_div || 1;
 
-	const recipientSlotQuantities: Record<string, UserSlotQuantities> = {};
+	const recipientSlotQuantities: Record<string, UserSlotQuantitiesData> = {};
 
 	// Get all recipients with shares
 	const recipientIds = Object.keys(shareMap).filter((id) => shareMap[id] > 0);
@@ -1041,7 +1050,7 @@ export function calculateRecipientSlotQuantities(
 export function getReceiverCapacities(
 	receiver: Node,
 	provider: Node,
-	capacities: CapacitiesCollection,
+	capacities: CapacitiesCollectionData,
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): ProviderCapacity[] {
@@ -1068,7 +1077,7 @@ export function getReceiverCapacities(
 export function getReceiverShares(
 	receiver: Node,
 	provider: Node,
-	capacities: CapacitiesCollection,
+	capacities: CapacitiesCollectionData,
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> {

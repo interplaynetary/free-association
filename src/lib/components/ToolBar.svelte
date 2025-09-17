@@ -9,10 +9,15 @@
 	import { tick } from 'svelte';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
-	import { userCapacities, mutualContributors } from '$lib/state/core.svelte';
+	import {
+		userCapacities,
+		mutualContributors,
+		updateStoreWithFreshTimestamp,
+		userCapacitiesTimestamp
+	} from '$lib/state/core.svelte';
 	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import type { ProviderCapacity, Node, NonRootNode } from '$lib/schema';
+	import type { ProviderCapacity, Node, NonRootNode, CapacitiesCollectionData } from '$lib/schema';
 	import { collectiveForest } from '$lib/collective.svelte';
 	import { userNamesOrAliasesCache, resolveToPublicKey } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
@@ -439,7 +444,7 @@
 
 		try {
 			// Create a deep clone of current capacities
-			const newCapacities = structuredClone($userCapacities || {});
+			const newCapacities: CapacitiesCollectionData = structuredClone($userCapacities || {});
 
 			// Create a plain object copy of the capacity
 			const plainCapacity = { ...capacity };
@@ -447,8 +452,8 @@
 			// Add capacity to the collection using the protocol function
 			addCapacityToCollection(newCapacities, plainCapacity);
 
-			// Set the store with the new value
-			userCapacities.set(newCapacities);
+			// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
+			updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCapacities);
 
 			// Add to highlighted capacities using global state
 			globalState.highlightCapacity(capacity.id);

@@ -8,7 +8,16 @@ import {
 	isLoadingCapacities,
 	isLoadingSogf,
 	providerShares,
-	contributorCapacityShares
+	contributorCapacityShares,
+	createTimestampedForPersistence,
+	getCurrentTimestamp,
+	updateStoreWithFreshTimestamp,
+	userCapacitiesTimestamp,
+	userSogfTimestamp,
+	userDesiredSlotComposeFromTimestamp,
+	userDesiredSlotComposeIntoTimestamp,
+	userContactsTimestamp,
+	chatReadStatesTimestamp
 } from './core.svelte';
 import {
 	userContacts,
@@ -20,7 +29,51 @@ import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.s
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
-import type { Node, NonRootNode } from '$lib/schema';
+import type { Node, NonRootNode, Timestamped } from '$lib/schema';
+
+/**
+ * Track last persisted timestamps to prevent stale overwrites in critical stores
+ */
+const lastPersistedTimestamps = new Map<string, string>();
+
+/**
+ * Check if timestamped data is fresh enough to persist
+ * Only used for critical stores that need race condition protection
+ */
+function shouldPersistTimestampedData<T>(
+	dataType: string,
+	timestampedData: Timestamped<T>
+): boolean {
+	if (!timestampedData.metadata?.updated_at) {
+		console.log(`[PERSIST] ${dataType}: No timestamp metadata, allowing persistence`);
+		return true;
+	}
+
+	const currentTimestamp = timestampedData.metadata.updated_at;
+	const lastPersisted = lastPersistedTimestamps.get(dataType);
+
+	if (!lastPersisted) {
+		console.log(`[PERSIST] ${dataType}: First persistence, allowing`);
+		lastPersistedTimestamps.set(dataType, currentTimestamp);
+		return true;
+	}
+
+	const currentTime = new Date(currentTimestamp).getTime();
+	const lastTime = new Date(lastPersisted).getTime();
+
+	if (currentTime <= lastTime) {
+		console.log(
+			`[PERSIST] ${dataType}: Skipping stale data (${currentTimestamp} <= ${lastPersisted})`
+		);
+		return false;
+	}
+
+	console.log(
+		`[PERSIST] ${dataType}: Fresh data detected (${currentTimestamp} > ${lastPersisted})`
+	);
+	lastPersistedTimestamps.set(dataType, currentTimestamp);
+	return true;
+}
 
 /**
  * Check if the user object is properly initialized and has the necessary methods
@@ -91,28 +144,37 @@ export function persistSogf() {
 
 	const sogfValue = get(userSogf);
 	if (sogfValue) {
+		// 🚨 NEW: Create timestamped structure for validation
+		const currentTimestamp = getCurrentTimestamp(userSogfTimestamp);
+		const timestampedData = createTimestampedForPersistence(sogfValue, currentTimestamp);
+
+		// Timestamp freshness validation for race condition protection
+		if (!shouldPersistTimestampedData('sogf', timestampedData)) {
+			return; // Skip persisting stale data
+		}
+
 		console.log('[PERSIST] Starting SOGF persistence...');
 		console.log('[PERSIST] SOGF data (already contains public keys):', sogfValue);
 
 		try {
-			// Our core stores now contain public keys by design, so no filtering needed
-			// This prevents feedback loops between network and persistence layers
-			const sogfClone = structuredClone(sogfValue);
+			// Store the complete timestamped structure to Gun for proper timestamp tracking
+			const timestampedClone = structuredClone(timestampedData);
 
-			// Serialize to JSON to preserve number types
-			const sogfJson = JSON.stringify(sogfClone);
-			console.log('[PERSIST] Serialized SOGF length:', sogfJson.length);
+			// Serialize to JSON to preserve number types and timestamp metadata
+			const timestampedJson = JSON.stringify(timestampedClone);
+			console.log('[PERSIST] Serialized timestamped SOGF length:', timestampedJson.length);
+			console.log('[PERSIST] SOGF timestamp:', timestampedData.metadata.updated_at);
 
 			// Store in Gun with ACK callback
-			user.get('sogf').put(sogfJson, (ack: { err?: any }) => {
+			user.get('sogf').put(timestampedJson, (ack: { err?: any }) => {
 				if (ack.err) {
-					console.error('[PERSIST] Error saving SOGF to Gun:', ack.err);
+					console.error('[PERSIST] Error saving timestamped SOGF to Gun:', ack.err);
 				} else {
-					console.log('[PERSIST] SOGF successfully saved to Gun');
+					console.log('[PERSIST] Timestamped SOGF successfully saved to Gun');
 				}
 			});
 		} catch (error) {
-			console.error('[PERSIST] Error processing SOGF:', error);
+			console.error('[PERSIST] Error processing timestamped SOGF:', error);
 		}
 	}
 }
@@ -168,11 +230,21 @@ export async function persistCapacities() {
 		console.log('[PERSIST] 🚨 DEBUG: No userCapacitiesValue, skipping persistence');
 		return;
 	}
+
 	if (Object.keys(userCapacitiesValue).length === 0) {
 		console.log(
 			'[PERSIST] 🚨 DEBUG: Skipping persistence of empty capacities (likely initialization)'
 		);
 		return;
+	}
+
+	// 🚨 NEW: Create timestamped structure for validation
+	const currentTimestamp = getCurrentTimestamp(userCapacitiesTimestamp);
+	const timestampedData = createTimestampedForPersistence(userCapacitiesValue, currentTimestamp);
+
+	// Timestamp freshness validation for race condition protection
+	if (!shouldPersistTimestampedData('capacities', timestampedData)) {
+		return; // Skip persisting stale data
 	}
 
 	console.log('[PERSIST] Starting capacities persistence...');
@@ -450,35 +522,63 @@ export function persistUserDesiredSlotComposeFrom() {
 	}
 
 	const userDesiredComposeFromValue = get(userDesiredSlotComposeFrom);
-	if (!userDesiredComposeFromValue || Object.keys(userDesiredComposeFromValue).length === 0) {
+	if (!userDesiredComposeFromValue) {
+		console.log('[PERSIST] No user desired slot compose-from data to persist');
+		return;
+	}
+
+	// 🚨 NEW: Create timestamped structure for validation
+	const currentTimestamp = getCurrentTimestamp(userDesiredSlotComposeFromTimestamp);
+	const timestampedData = createTimestampedForPersistence(
+		userDesiredComposeFromValue,
+		currentTimestamp
+	);
+
+	// Timestamp freshness validation for race condition protection
+	if (!shouldPersistTimestampedData('userDesiredSlotComposeFrom', timestampedData)) {
+		return; // Skip persisting stale data
+	}
+
+	// Extract data from flat structure
+	const composeFromData = userDesiredComposeFromValue;
+	if (Object.keys(composeFromData).length === 0) {
 		console.log('[PERSIST] No user desired slot compose-from data to persist');
 		return;
 	}
 
 	console.log('[PERSIST] Starting user desired slot compose-from persistence...');
-	console.log('[PERSIST] User desired slot compose-from:', userDesiredComposeFromValue);
+	console.log('[PERSIST] User desired slot compose-from:', composeFromData);
 
 	try {
-		// Create a deep clone to avoid reactivity issues
-		const composeFromClone = structuredClone(userDesiredComposeFromValue);
+		// Store the complete timestamped structure to Gun for proper timestamp tracking
+		const timestampedClone = structuredClone(timestampedData);
 
-		// Serialize to JSON
-		const composeFromJson = JSON.stringify(composeFromClone);
+		// Serialize to JSON to preserve number types and timestamp metadata
+		const timestampedJson = JSON.stringify(timestampedClone);
 		console.log(
-			'[PERSIST] Serialized user desired slot compose-from length:',
-			composeFromJson.length
+			'[PERSIST] Serialized timestamped user desired slot compose-from length:',
+			timestampedJson.length
+		);
+		console.log(
+			'[PERSIST] User desired slot compose-from timestamp:',
+			timestampedData.metadata.updated_at
 		);
 
 		// Store in Gun under the expected path that network subscribers use
-		user.get('desiredSlotComposeFrom').put(composeFromJson, (ack: { err?: any }) => {
+		user.get('desiredSlotComposeFrom').put(timestampedJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving user desired slot compose-from to Gun:', ack.err);
+				console.error(
+					'[PERSIST] Error saving timestamped user desired slot compose-from to Gun:',
+					ack.err
+				);
 			} else {
-				console.log('[PERSIST] User desired slot compose-from successfully saved to Gun');
+				console.log(
+					'[PERSIST] Timestamped user desired slot compose-from successfully saved to Gun'
+				);
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing user desired slot compose-from:', error);
+		console.error('[PERSIST] Error serializing timestamped user desired slot compose-from:', error);
 	}
 }
 
@@ -512,35 +612,63 @@ export function persistUserDesiredSlotComposeInto() {
 	}
 
 	const userDesiredComposeIntoValue = get(userDesiredSlotComposeInto);
-	if (!userDesiredComposeIntoValue || Object.keys(userDesiredComposeIntoValue).length === 0) {
+	if (!userDesiredComposeIntoValue) {
+		console.log('[PERSIST] No user desired slot compose-into data to persist');
+		return;
+	}
+
+	// 🚨 NEW: Create timestamped structure for validation
+	const currentTimestamp = getCurrentTimestamp(userDesiredSlotComposeIntoTimestamp);
+	const timestampedData = createTimestampedForPersistence(
+		userDesiredComposeIntoValue,
+		currentTimestamp
+	);
+
+	// Timestamp freshness validation for race condition protection
+	if (!shouldPersistTimestampedData('userDesiredSlotComposeInto', timestampedData)) {
+		return; // Skip persisting stale data
+	}
+
+	// Extract data from flat structure
+	const composeIntoData = userDesiredComposeIntoValue;
+	if (Object.keys(composeIntoData).length === 0) {
 		console.log('[PERSIST] No user desired slot compose-into data to persist');
 		return;
 	}
 
 	console.log('[PERSIST] Starting user desired slot compose-into persistence...');
-	console.log('[PERSIST] User desired slot compose-into:', userDesiredComposeIntoValue);
+	console.log('[PERSIST] User desired slot compose-into:', composeIntoData);
 
 	try {
-		// Create a deep clone to avoid reactivity issues
-		const composeIntoClone = structuredClone(userDesiredComposeIntoValue);
+		// Store the complete timestamped structure to Gun for proper timestamp tracking
+		const timestampedClone = structuredClone(timestampedData);
 
-		// Serialize to JSON
-		const composeIntoJson = JSON.stringify(composeIntoClone);
+		// Serialize to JSON to preserve number types and timestamp metadata
+		const timestampedJson = JSON.stringify(timestampedClone);
 		console.log(
-			'[PERSIST] Serialized user desired slot compose-into length:',
-			composeIntoJson.length
+			'[PERSIST] Serialized timestamped user desired slot compose-into length:',
+			timestampedJson.length
+		);
+		console.log(
+			'[PERSIST] User desired slot compose-into timestamp:',
+			timestampedData.metadata.updated_at
 		);
 
 		// Store in Gun under the expected path that network subscribers use
-		user.get('desiredSlotComposeInto').put(composeIntoJson, (ack: { err?: any }) => {
+		user.get('desiredSlotComposeInto').put(timestampedJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving user desired slot compose-into to Gun:', ack.err);
+				console.error(
+					'[PERSIST] Error saving timestamped user desired slot compose-into to Gun:',
+					ack.err
+				);
 			} else {
-				console.log('[PERSIST] User desired slot compose-into successfully saved to Gun');
+				console.log(
+					'[PERSIST] Timestamped user desired slot compose-into successfully saved to Gun'
+				);
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing user desired slot compose-into:', error);
+		console.error('[PERSIST] Error serializing timestamped user desired slot compose-into:', error);
 	}
 }
 
@@ -567,35 +695,48 @@ export function persistContacts() {
 		return;
 	}
 
+	// 🚨 NEW: Create timestamped structure for validation
+	const currentTimestamp = getCurrentTimestamp(userContactsTimestamp);
+	const timestampedData = createTimestampedForPersistence(contactsValue, currentTimestamp);
+
+	// Timestamp freshness validation for race condition protection
+	if (!shouldPersistTimestampedData('contacts', timestampedData)) {
+		return; // Skip persisting stale data
+	}
+
+	// Extract data from flat structure
+	const contactsData = contactsValue;
+
 	// Additional safety check: don't persist empty contacts during initialization
 	// to avoid race condition where empty store overwrites loaded data from network
-	if (Object.keys(contactsValue).length === 0) {
+	if (Object.keys(contactsData).length === 0) {
 		console.log('[PERSIST] Skipping persistence of empty contacts (likely initialization)');
 		return;
 	}
 
 	console.log('[PERSIST] Starting contacts persistence...');
-	console.log('[PERSIST] Contacts count:', Object.keys(contactsValue).length);
-	console.log('[PERSIST] Contacts:', contactsValue);
+	console.log('[PERSIST] Contacts count:', Object.keys(contactsData).length);
+	console.log('[PERSIST] Contacts:', contactsData);
 
 	try {
-		// Create a deep clone to avoid reactivity issues
-		const contactsClone = structuredClone(contactsValue);
+		// Store the complete timestamped structure to Gun for proper timestamp tracking
+		const timestampedClone = structuredClone(timestampedData);
 
-		// Serialize to JSON
-		const contactsJson = JSON.stringify(contactsClone);
-		console.log('[PERSIST] Serialized contacts length:', contactsJson.length);
+		// Serialize to JSON to preserve number types and timestamp metadata
+		const timestampedJson = JSON.stringify(timestampedClone);
+		console.log('[PERSIST] Serialized timestamped contacts length:', timestampedJson.length);
+		console.log('[PERSIST] Contacts timestamp:', timestampedData.metadata.updated_at);
 
 		// Store in Gun under the expected path that network subscribers use
-		user.get('contacts').put(contactsJson, (ack: { err?: any }) => {
+		user.get('contacts').put(timestampedJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving contacts to Gun:', ack.err);
+				console.error('[PERSIST] Error saving timestamped contacts to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] Contacts successfully saved to Gun', contactsJson);
+				console.log('[PERSIST] Timestamped contacts successfully saved to Gun');
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing contacts:', error);
+		console.error('[PERSIST] Error serializing timestamped contacts:', error);
 	}
 }
 
@@ -624,6 +765,15 @@ export function persistChatReadStates() {
 		return;
 	}
 
+	// 🚨 NEW: Create timestamped structure for validation
+	const currentTimestamp = getCurrentTimestamp(chatReadStatesTimestamp);
+	const timestampedData = createTimestampedForPersistence(chatReadStatesValue, currentTimestamp);
+
+	// Timestamp freshness validation for race condition protection
+	if (!shouldPersistTimestampedData('chatReadStates', timestampedData)) {
+		return; // Skip persisting stale data
+	}
+
 	// Additional safety check: don't persist empty read states during initialization
 	if (Object.keys(chatReadStatesValue).length === 0) {
 		console.log('[PERSIST] Skipping persistence of empty chat read states (likely initialization)');
@@ -634,22 +784,26 @@ export function persistChatReadStates() {
 	console.log('[PERSIST] Chat read states count:', Object.keys(chatReadStatesValue).length);
 
 	try {
-		// Create a deep clone to avoid reactivity issues
-		const readStatesClone = structuredClone(chatReadStatesValue);
+		// Store the complete timestamped structure to Gun for proper timestamp tracking
+		const timestampedClone = structuredClone(timestampedData);
 
-		// Serialize to JSON
-		const readStatesJson = JSON.stringify(readStatesClone);
-		console.log('[PERSIST] Serialized chat read states length:', readStatesJson.length);
+		// Serialize to JSON to preserve number types and timestamp metadata
+		const timestampedJson = JSON.stringify(timestampedClone);
+		console.log(
+			'[PERSIST] Serialized timestamped chat read states length:',
+			timestampedJson.length
+		);
+		console.log('[PERSIST] Chat read states timestamp:', timestampedData.metadata.updated_at);
 
 		// Store in Gun with ACK callback
-		user.get('chatReadStates').put(readStatesJson, (ack: { err?: any }) => {
+		user.get('chatReadStates').put(timestampedJson, (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving chat read states to Gun:', ack.err);
+				console.error('[PERSIST] Error saving timestamped chat read states to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] Chat read states successfully saved to Gun');
+				console.log('[PERSIST] Timestamped chat read states successfully saved to Gun');
 			}
 		});
 	} catch (error) {
-		console.error('[PERSIST] Error serializing chat read states:', error);
+		console.error('[PERSIST] Error serializing timestamped chat read states:', error);
 	}
 }

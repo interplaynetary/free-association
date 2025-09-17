@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { ProviderCapacity, CapacitiesCollection } from '$lib/schema';
+	import type {
+		ProviderCapacity,
+		CapacitiesCollection,
+		CapacitiesCollectionData
+	} from '$lib/schema';
 	import {
 		findNodeById,
 		addCapacity as addCapacityToCollection,
@@ -11,13 +15,19 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
-	import { userTree, userCapacities, userCapacitiesWithShares } from '$lib/state/core.svelte';
-	import Capacity from './Capacity.svelte';
 	import {
-		userDesiredSlotClaims,
+		userTree,
+		userCapacities,
+		userCapacitiesWithShares,
+		updateStoreWithFreshTimestamp,
+		userCapacitiesTimestamp,
 		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto
+		userDesiredSlotComposeInto,
+		userDesiredSlotComposeFromTimestamp,
+		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
+	import Capacity from './Capacity.svelte';
+	import { userDesiredSlotClaims } from '$lib/state/core.svelte';
 
 	// Reactive derived values
 	const capacityEntries = $derived(
@@ -52,7 +62,7 @@
 		}
 
 		// Create a deep clone of current capacities
-		const newCapacities = structuredClone($userCapacities || {});
+		const newCapacities: CapacitiesCollectionData = structuredClone($userCapacities || {});
 
 		// Create a plain object copy of the capacity
 		const plainCapacity = { ...capacity };
@@ -107,8 +117,8 @@
 			});
 		}
 
-		// Set the store with the new value
-		userCapacities.set(newCapacities);
+		// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
+		updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCapacities);
 
 		// Add to highlighted capacities using global state
 		globalState.highlightCapacity(capacity.id);
@@ -144,7 +154,7 @@
 			}
 
 			// Create a deep clone of current capacities
-			const newCapacities = structuredClone($userCapacities || {});
+			const newCapacities: CapacitiesCollectionData = structuredClone($userCapacities || {});
 
 			// Create a deep copy of the capacity to ensure store updates
 			const plainCapacity = structuredClone(capacity);
@@ -198,8 +208,8 @@
 				});
 			}
 
-			// Set the store with the new value
-			userCapacities.set(newCapacities);
+			// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
+			updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCapacities);
 
 			globalState.showToast(`Capacity "${plainCapacity.name}" updated`, 'success');
 			return true;
@@ -225,70 +235,80 @@
 		console.log(`[CLEANUP] Found ${slotIds.length} slots to clean up:`, slotIds);
 
 		// 1. Clean up userDesiredSlotComposeFrom (where deleted capacity is SOURCE)
-		userDesiredSlotComposeFrom.update((current) => {
-			const updated = { ...current };
-			let changes = 0;
+		const currentComposeFrom = get(userDesiredSlotComposeFrom);
+		const updatedComposeFrom = { ...currentComposeFrom };
+		let changes = 0;
 
-			// Remove entries where deleted capacity is the source
-			if (updated[capacityId]) {
-				changes += Object.keys(updated[capacityId]).length;
-				delete updated[capacityId];
-			}
+		// Remove entries where deleted capacity is the source
+		if (updatedComposeFrom[capacityId]) {
+			changes += Object.keys(updatedComposeFrom[capacityId]).length;
+			delete updatedComposeFrom[capacityId];
+		}
 
-			// Remove entries where deleted capacity is the target
-			Object.keys(updated).forEach((sourceCapId) => {
-				Object.keys(updated[sourceCapId]).forEach((sourceSlotId) => {
-					if (updated[sourceCapId][sourceSlotId][capacityId]) {
-						changes += Object.keys(updated[sourceCapId][sourceSlotId][capacityId]).length;
-						delete updated[sourceCapId][sourceSlotId][capacityId];
+		// Remove entries where deleted capacity is the target
+		Object.keys(updatedComposeFrom).forEach((sourceCapId) => {
+			Object.keys(updatedComposeFrom[sourceCapId]).forEach((sourceSlotId) => {
+				if (updatedComposeFrom[sourceCapId][sourceSlotId][capacityId]) {
+					changes += Object.keys(updatedComposeFrom[sourceCapId][sourceSlotId][capacityId]).length;
+					delete updatedComposeFrom[sourceCapId][sourceSlotId][capacityId];
 
-						// Clean up empty objects
-						if (Object.keys(updated[sourceCapId][sourceSlotId]).length === 0) {
-							delete updated[sourceCapId][sourceSlotId];
-						}
-						if (Object.keys(updated[sourceCapId]).length === 0) {
-							delete updated[sourceCapId];
-						}
+					// Clean up empty objects
+					if (Object.keys(updatedComposeFrom[sourceCapId][sourceSlotId]).length === 0) {
+						delete updatedComposeFrom[sourceCapId][sourceSlotId];
 					}
-				});
+					if (Object.keys(updatedComposeFrom[sourceCapId]).length === 0) {
+						delete updatedComposeFrom[sourceCapId];
+					}
+				}
 			});
-
-			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeFrom entries`);
-			return updated;
 		});
+
+		console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeFrom entries`);
+		// Use atomic update to ensure timestamp consistency
+		updateStoreWithFreshTimestamp(
+			userDesiredSlotComposeFrom,
+			userDesiredSlotComposeFromTimestamp,
+			updatedComposeFrom
+		);
 
 		// 2. Clean up userDesiredSlotComposeInto (where deleted capacity is SOURCE or TARGET)
-		userDesiredSlotComposeInto.update((current) => {
-			const updated = { ...current };
-			let changes = 0;
+		const currentComposeInto = get(userDesiredSlotComposeInto);
+		const updatedComposeInto = { ...currentComposeInto };
+		let changesInto = 0;
 
-			// Remove entries where deleted capacity is the source
-			if (updated[capacityId]) {
-				changes += Object.keys(updated[capacityId]).length;
-				delete updated[capacityId];
-			}
+		// Remove entries where deleted capacity is the source
+		if (updatedComposeInto[capacityId]) {
+			changesInto += Object.keys(updatedComposeInto[capacityId]).length;
+			delete updatedComposeInto[capacityId];
+		}
 
-			// Remove entries where deleted capacity is the target
-			Object.keys(updated).forEach((sourceCapId) => {
-				Object.keys(updated[sourceCapId]).forEach((sourceSlotId) => {
-					if (updated[sourceCapId][sourceSlotId][capacityId]) {
-						changes += Object.keys(updated[sourceCapId][sourceSlotId][capacityId]).length;
-						delete updated[sourceCapId][sourceSlotId][capacityId];
+		// Remove entries where deleted capacity is the target
+		Object.keys(updatedComposeInto).forEach((sourceCapId) => {
+			Object.keys(updatedComposeInto[sourceCapId]).forEach((sourceSlotId) => {
+				if (updatedComposeInto[sourceCapId][sourceSlotId][capacityId]) {
+					changesInto += Object.keys(
+						updatedComposeInto[sourceCapId][sourceSlotId][capacityId]
+					).length;
+					delete updatedComposeInto[sourceCapId][sourceSlotId][capacityId];
 
-						// Clean up empty objects
-						if (Object.keys(updated[sourceCapId][sourceSlotId]).length === 0) {
-							delete updated[sourceCapId][sourceSlotId];
-						}
-						if (Object.keys(updated[sourceCapId]).length === 0) {
-							delete updated[sourceCapId];
-						}
+					// Clean up empty objects
+					if (Object.keys(updatedComposeInto[sourceCapId][sourceSlotId]).length === 0) {
+						delete updatedComposeInto[sourceCapId][sourceSlotId];
 					}
-				});
+					if (Object.keys(updatedComposeInto[sourceCapId]).length === 0) {
+						delete updatedComposeInto[sourceCapId];
+					}
+				}
 			});
-
-			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeInto entries`);
-			return updated;
 		});
+
+		console.log(`[CLEANUP] Cleaned ${changesInto} userDesiredSlotComposeInto entries`);
+		// Use atomic update to ensure timestamp consistency
+		updateStoreWithFreshTimestamp(
+			userDesiredSlotComposeInto,
+			userDesiredSlotComposeIntoTimestamp,
+			updatedComposeInto
+		);
 
 		// 3. Clean up userDesiredSlotClaims (remove all slot claims for deleted capacity)
 		userDesiredSlotClaims.update((current) => {
@@ -316,13 +336,14 @@
 			cleanupCapacitySlotData(capacityId);
 
 			// STEP 2: Remove the capacity itself
-			userCapacities.update((caps) => {
-				const newCaps = { ...(caps || {}) };
-				if (newCaps[capacityId]) {
-					delete newCaps[capacityId];
-				}
-				return newCaps;
-			});
+			const currentCaps = get(userCapacities) || {};
+			const newCaps: CapacitiesCollectionData = { ...currentCaps };
+			if (newCaps[capacityId]) {
+				delete newCaps[capacityId];
+			}
+
+			// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
+			updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCaps);
 
 			globalState.showToast('Capacity and all related slot data deleted', 'success');
 			return true;

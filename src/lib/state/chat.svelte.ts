@@ -2,6 +2,8 @@ import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
 import { browser } from '$app/environment';
 import { writable, get, type Writable, derived } from 'svelte/store';
 import SEA from 'gun/sea';
+import type { ChatReadStatesData } from '$lib/schema';
+import { updateStoreWithFreshTimestamp, chatReadStatesTimestamp } from './core.svelte';
 
 interface Message {
 	who: string;
@@ -31,8 +33,8 @@ const chatSubscriptions = new Map<string, ChatSubscription>();
 let notificationManager: any = null;
 const isWindowFocused = writable(true);
 
-// Store for chat read states - persisted across sessions
-export const chatReadStates = writable<ChatReadStates>({});
+// Store for chat read states - persisted across sessions (flat data)
+export const chatReadStates = writable<ChatReadStatesData>({});
 
 // Loading state for read states
 export const isLoadingChatReadStates = writable(false);
@@ -215,21 +217,25 @@ export function markChatAsRead(chatId: string, timestamp?: number): void {
 
 	//console.log(`[Chat State] Marking chat ${chatId} as read up to timestamp: ${readTimestamp}`);
 
-	chatReadStates.update((states) => {
-		const existingState = states[chatId];
+	// Get current states for comparison
+	const currentStates = get(chatReadStates);
+	const existingState = currentStates[chatId];
 
-		// Only update if the new timestamp is newer than the existing one
-		if (!existingState || readTimestamp > existingState.lastReadTimestamp) {
-			states[chatId] = {
+	// Only update if the new timestamp is newer than the existing one
+	if (!existingState || readTimestamp > existingState.lastReadTimestamp) {
+		const updatedStates = {
+			...currentStates,
+			[chatId]: {
 				chatId,
 				lastReadTimestamp: readTimestamp,
 				updatedAt: Date.now()
-			};
-			//console.log(`[Chat State] Updated read state for ${chatId}:`, states[chatId]);
-		}
+			}
+		};
 
-		return states;
-	});
+		// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
+		updateStoreWithFreshTimestamp(chatReadStates, chatReadStatesTimestamp, updatedStates);
+		//console.log(`[Chat State] Updated read state for ${chatId}:`, updatedStates[chatId]);
+	}
 }
 
 /**
@@ -340,7 +346,7 @@ export function getChatReadState(chatId: string): ChatReadState | null {
  * Set read states (used for loading from network)
  * @param states The read states to set
  */
-export function setChatReadStates(states: ChatReadStates): void {
+export function setChatReadStates(states: ChatReadStatesData): void {
 	//console.log('[Chat State] Setting read states from network:', states);
 	chatReadStates.set(states);
 }

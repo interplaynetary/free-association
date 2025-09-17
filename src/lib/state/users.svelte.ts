@@ -1,8 +1,9 @@
 import { get, writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { gun } from '$lib/state/gun.svelte';
-import type { Contact, ContactsCollection } from '$lib/schema';
+import type { Contact, ContactsCollectionData } from '$lib/schema';
 import { ContactSchema } from '$lib/schema';
+import { updateStoreWithFreshTimestamp, userContactsTimestamp } from './core.svelte';
 
 // ================================
 // CORE USER & CONTACT STORES
@@ -12,7 +13,7 @@ import { ContactSchema } from '$lib/schema';
 export const userPubKeys = writable<string[]>([]);
 
 // Contact management stores
-export const userContacts: Writable<ContactsCollection> = writable({});
+export const userContacts: Writable<ContactsCollectionData> = writable({});
 export const isLoadingContacts = writable(false);
 export const contactSearchQuery = writable('');
 
@@ -92,11 +93,12 @@ export function createContact(
 	// Validate the contact data
 	const validatedContact = ContactSchema.parse(newContact);
 
-	// Add to contacts collection
-	userContacts.update((contacts) => ({
-		...contacts,
+	// Add to contacts collection with atomic timestamp update
+	const updatedContacts = {
+		...get(userContacts),
 		[contact_id]: validatedContact
-	}));
+	};
+	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, updatedContacts);
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -113,45 +115,46 @@ export function createContact(
  * Update an existing contact
  */
 export function updateContact(contact_id: string, updates: Partial<Contact>): void {
-	userContacts.update((contacts) => {
-		const existingContact = contacts[contact_id];
-		if (!existingContact) {
-			//console.warn(`Contact with ID ${contact_id} not found`);
-			return contacts;
-		}
+	const currentContacts = get(userContacts);
+	const existingContact = currentContacts[contact_id];
 
-		const updatedContact = {
-			...existingContact,
-			...updates,
-			updated_at: new Date().toISOString()
-		};
+	if (!existingContact) {
+		//console.warn(`Contact with ID ${contact_id} not found`);
+		return;
+	}
 
-		// Validate the updated contact
-		const validatedContact = ContactSchema.parse(updatedContact);
+	const updatedContact = {
+		...existingContact,
+		...updates,
+		updated_at: new Date().toISOString()
+	};
 
-		// Force update the names cache immediately if name changed and has public key
-		if (updates.name && validatedContact.public_key) {
-			userNamesCache.update((cache) => ({
-				...cache,
-				[validatedContact.public_key!]: validatedContact.name
-			}));
-		}
+	// Validate the updated contact
+	const validatedContact = ContactSchema.parse(updatedContact);
 
-		return {
-			...contacts,
-			[contact_id]: validatedContact
-		};
-	});
+	// Force update the names cache immediately if name changed and has public key
+	if (updates.name && validatedContact.public_key) {
+		userNamesCache.update((cache) => ({
+			...cache,
+			[validatedContact.public_key!]: validatedContact.name
+		}));
+	}
+
+	// Update contacts with atomic timestamp update
+	const updatedContacts = {
+		...currentContacts,
+		[contact_id]: validatedContact
+	};
+	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, updatedContacts);
 }
 
 /**
  * Delete a contact
  */
 export function deleteContact(contact_id: string): void {
-	userContacts.update((contacts) => {
-		const { [contact_id]: deleted, ...remaining } = contacts;
-		return remaining;
-	});
+	const currentContacts = get(userContacts);
+	const { [contact_id]: deleted, ...remaining } = currentContacts;
+	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, remaining);
 }
 
 /**

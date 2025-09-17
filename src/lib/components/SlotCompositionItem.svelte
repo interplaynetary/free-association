@@ -4,7 +4,10 @@
 		userDesiredSlotComposeFrom,
 		userDesiredSlotComposeInto,
 		networkDesiredSlotComposeFrom,
-		networkDesiredSlotComposeInto
+		networkDesiredSlotComposeInto,
+		updateStoreWithFreshTimestamp,
+		userDesiredSlotComposeFromTimestamp,
+		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
 	import {
 		userNetworkCapacitiesWithSlotQuantities,
@@ -198,9 +201,14 @@
 
 	// Handle quantity changes
 	function handleQuantityChange() {
-		// Use the correct store based on direction
-		const store = direction === 'from' ? userDesiredSlotComposeFrom : userDesiredSlotComposeInto;
-		const current = get(store);
+		// Get the correct stores based on direction
+		const dataStore =
+			direction === 'from' ? userDesiredSlotComposeFrom : userDesiredSlotComposeInto;
+		const timestampStore =
+			direction === 'from'
+				? userDesiredSlotComposeFromTimestamp
+				: userDesiredSlotComposeIntoTimestamp;
+		const current = get(dataStore);
 
 		// Convert empty/null/undefined to 0
 		const desiredAmount =
@@ -219,7 +227,8 @@
 
 		updated[sourceCapacityId][sourceSlotId][targetCapacityId][targetSlotId] = desiredAmount;
 
-		store.set(updated);
+		// Use atomic update to ensure timestamp consistency
+		updateStoreWithFreshTimestamp(dataStore, timestampStore, updated);
 	}
 
 	// Get color based on desire

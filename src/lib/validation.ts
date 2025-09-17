@@ -7,15 +7,24 @@ import {
 	NodeSchema,
 	CapacitySchema,
 	CapacitiesCollectionSchema,
+	CapacitiesCollectionDataSchema,
 	ShareMapSchema,
+	ShareMapDataSchema,
+	CapacitySharesSchema,
+	CapacitySharesDataSchema,
 	UserSlotQuantitiesSchema,
+	UserSlotQuantitiesDataSchema,
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
 	UserSlotCompositionSchema,
+	UserSlotCompositionDataSchema,
 	NetworkSlotCompositionSchema,
 	ContactsCollectionSchema,
-	ChatReadStatesSchema
+	ContactsCollectionDataSchema,
+	ChatReadStatesSchema,
+	ChatReadStatesDataSchema,
+	createEmptyTimestamped
 } from '$lib/schema';
 
 /**
@@ -52,6 +61,54 @@ function filterGunMetadata(data: unknown): unknown {
 		}
 	}
 	return filteredData;
+}
+
+// Legacy data gets very old timestamps to ensure it never overwrites newer data
+const LEGACY_TIMESTAMP = '1970-01-01T00:00:00.000Z';
+
+/**
+ * Generic function to parse timestamped data with automatic migration
+ * @param rawData Raw data to parse
+ * @param timestampedSchema The complete timestamped schema
+ * @param functionName Name for logging
+ * @param enableLogging Whether to enable logging
+ * @returns Validated timestamped data
+ */
+function parseTimestampedData<T>(
+	rawData: unknown,
+	timestampedSchema: z.ZodType<T>,
+	functionName: string,
+	enableLogging = false
+): T {
+	return parseData(rawData, {
+		schema: timestampedSchema,
+		defaultValue: createEmptyTimestamped() as T,
+		functionName,
+		enableLogging,
+		preprocess: (data: unknown) => {
+			if (!data || typeof data !== 'object') {
+				return data;
+			}
+
+			const dataObj = data as Record<string, any>;
+
+			// Check if it's already in new format
+			if (dataObj.metadata && dataObj.data) {
+				return dataObj;
+			}
+
+			// Handle legacy flat format - migrate to new structure
+			const { created_at, updated_at, ...actualData } = dataObj;
+
+			return {
+				metadata: {
+					created_at: created_at || LEGACY_TIMESTAMP,
+					updated_at: updated_at || LEGACY_TIMESTAMP
+				},
+				data: actualData
+			};
+		}
+	});
 }
 
 /**
@@ -288,31 +345,7 @@ function migrateCapacityToSlotBased(capacity: any): any {
  * @returns Validated CapacitiesCollection or empty object if validation fails
  */
 export function parseCapacities(capacitiesData: unknown) {
-	return parseData(capacitiesData, {
-		schema: CapacitiesCollectionSchema,
-		defaultValue: {},
-		functionName: 'capacities',
-		enableLogging: true,
-		preprocess: (data: unknown) => {
-			if (!data || typeof data !== 'object') {
-				return data;
-			}
-
-			// If it's a capacities collection, migrate each capacity
-			const capacitiesObj = data as Record<string, any>;
-			const migratedCapacities: Record<string, any> = {};
-
-			Object.entries(capacitiesObj).forEach(([id, capacity]) => {
-				if (capacity && typeof capacity === 'object') {
-					migratedCapacities[id] = migrateCapacityToSlotBased(capacity);
-				} else {
-					migratedCapacities[id] = capacity;
-				}
-			});
-
-			return migratedCapacities;
-		}
-	});
+	return parseTimestampedData(capacitiesData, CapacitiesCollectionSchema, 'capacities', true);
 }
 
 /**
@@ -321,31 +354,7 @@ export function parseCapacities(capacitiesData: unknown) {
  * @returns Validated ShareMap or empty object if validation fails
  */
 export function parseShareMap(shareMapData: unknown) {
-	return parseData(shareMapData, {
-		schema: ShareMapSchema,
-		defaultValue: {},
-		functionName: 'share map',
-		enableLogging: true,
-		preprocess: (data) => {
-			// Convert string values to numbers (common Gun.js issue)
-			if (data && typeof data === 'object' && !Array.isArray(data)) {
-				const convertedData: Record<string, number> = {};
-				Object.entries(data).forEach(([key, value]) => {
-					// Convert string numbers to actual numbers
-					if (typeof value === 'string') {
-						const numValue = parseFloat(value);
-						if (!isNaN(numValue)) {
-							convertedData[key] = numValue;
-						}
-					} else if (typeof value === 'number') {
-						convertedData[key] = value;
-					}
-				});
-				return convertedData;
-			}
-			return data;
-		}
-	});
+	return parseTimestampedData(shareMapData, ShareMapSchema, 'share map', true);
 }
 
 /**
@@ -429,12 +438,12 @@ export function parseNetworkComposition(compositionData: unknown) {
  * @returns Validated UserSlotComposition or empty object if validation fails
  */
 export function parseUserSlotComposition(slotCompositionData: unknown) {
-	return parseData(slotCompositionData, {
-		schema: UserSlotCompositionSchema,
-		defaultValue: {},
-		functionName: 'user slot composition',
-		enableLogging: true
-	});
+	return parseTimestampedData(
+		slotCompositionData,
+		UserSlotCompositionSchema,
+		'user slot composition',
+		true
+	);
 }
 
 /**
@@ -457,12 +466,7 @@ export function parseNetworkSlotComposition(slotCompositionData: unknown) {
  * @returns Validated ContactsCollection or empty object if validation fails
  */
 export function parseContacts(contactsData: unknown) {
-	return parseData(contactsData, {
-		schema: ContactsCollectionSchema,
-		defaultValue: {},
-		functionName: 'contacts',
-		enableLogging: true
-	});
+	return parseTimestampedData(contactsData, ContactsCollectionSchema, 'contacts', true);
 }
 
 /**
@@ -471,12 +475,7 @@ export function parseContacts(contactsData: unknown) {
  * @returns Validated capacity shares or empty object if validation fails
  */
 export function parseCapacityShares(sharesData: unknown) {
-	return parseData(sharesData, {
-		schema: ShareMapSchema,
-		defaultValue: {},
-		functionName: 'capacity shares',
-		enableLogging: true
-	});
+	return parseTimestampedData(sharesData, CapacitySharesSchema, 'capacity shares', true);
 }
 
 /**
@@ -485,12 +484,12 @@ export function parseCapacityShares(sharesData: unknown) {
  * @returns Validated UserSlotQuantities or empty object if validation fails
  */
 export function parseCapacitySlotQuantities(slotQuantitiesData: unknown) {
-	return parseData(slotQuantitiesData, {
-		schema: UserSlotQuantitiesSchema,
-		defaultValue: {},
-		functionName: 'capacity slot quantities',
-		enableLogging: true
-	});
+	return parseTimestampedData(
+		slotQuantitiesData,
+		UserSlotQuantitiesSchema,
+		'capacity slot quantities',
+		true
+	);
 }
 
 /**
@@ -499,10 +498,5 @@ export function parseCapacitySlotQuantities(slotQuantitiesData: unknown) {
  * @returns Validated ChatReadStates or empty object if validation fails
  */
 export function parseChatReadStates(readStatesData: unknown) {
-	return parseData(readStatesData, {
-		schema: ChatReadStatesSchema,
-		defaultValue: {},
-		functionName: 'chat read states',
-		enableLogging: true
-	});
+	return parseTimestampedData(readStatesData, ChatReadStatesSchema, 'chat read states', true);
 }
