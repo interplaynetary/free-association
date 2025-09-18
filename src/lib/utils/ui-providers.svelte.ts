@@ -12,7 +12,7 @@ import {
 	userContacts,
 	getUserAlias
 } from '$lib/state/users.svelte';
-import { allocatedSlots } from '$lib/state/core.svelte';
+import { allocatedSlotAmounts } from '$lib/state/core.svelte';
 import { findNodeById } from '$lib/protocol';
 import { userAliasesCache } from '$lib/state/users.svelte';
 
@@ -445,8 +445,8 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 // Get all allocated slots for a user (for compose-from scenarios)
 export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) {
 	return derived(
-		[userCapacities, allocatedSlots, userNamesOrAliasesCache],
-		([$userCapacities, $allocatedSlots, $userNamesCache]) => {
+		[userNetworkCapacitiesWithSlotQuantities, userNamesOrAliasesCache],
+		([$userNetworkCapacitiesWithSlotQuantities, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -461,7 +461,7 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 				};
 			}> = [];
 
-			if (!$userCapacities || !$allocatedSlots) return items;
+			if (!$userNetworkCapacitiesWithSlotQuantities) return items;
 
 			// Helper function to format slot display info (same as above)
 			function formatSlotInfo(slot: any): { timeInfo: string; location: string } {
@@ -495,18 +495,21 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 				return { timeInfo, location };
 			}
 
-			// Only include slots that are allocated (we have claimed amounts)
-			Object.entries($userCapacities).forEach(([capId, capacity]) => {
+			// Only include slots that are allocated (we have claimed amounts from efficient algorithm)
+			Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
 				if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+					const providerId = (capacity as any).provider_id;
+					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
+
 					capacity.availability_slots.forEach((slot: any) => {
 						if (excludeSlotIds.includes(slot.id)) return;
 
-						// Check if this slot is allocated (we have some amount claimed)
-						const allocatedAmount = $allocatedSlots[capId]?.[slot.id] || 0;
+						// Check if this slot is allocated (we have some amount from efficient algorithm)
+						const allocatedAmount = slot.allocated_quantity || 0;
 						if (allocatedAmount <= 0) return;
 
 						const { timeInfo, location } = formatSlotInfo(slot);
-						const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo} (${allocatedAmount} available)`;
+						const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo} (${allocatedAmount} available)`;
 
 						items.push({
 							id: slot.id,
@@ -515,7 +518,7 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 								capacityId: capId,
 								slotId: slot.id,
 								capacityName: capacity.name,
-								quantity: slot.quantity || 0,
+								quantity: slot.available_quantity || slot.quantity || 0,
 								allocatedAmount,
 								location,
 								timeInfo

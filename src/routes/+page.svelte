@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
-	import { userSogf, userTree, providerShares } from '$lib/state/core.svelte';
+	import { userSogf, userTree, generalShares } from '$lib/state/core.svelte';
 	import { recalculateFromTree } from '$lib/state/calculations.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
@@ -26,17 +26,17 @@
 			.sort((a, b) => b.value - a.value); // Sort by value descending
 	});
 
-	// Create reactive derived store from providerShares
-	const providerSegments = derived(providerShares, ($providerShares) => {
-		console.log('[UI] providerShares changed:', $providerShares);
+	// Create reactive derived store from generalShares
+	const providerSegments = derived(generalShares, ($generalShares) => {
+		console.log('[UI] generalShares changed:', $generalShares);
 
-		if (!$providerShares || Object.keys($providerShares).length === 0) {
+		if (!$generalShares || Object.keys($generalShares).length === 0) {
 			console.log('[UI] No provider shares data for segments');
 			return [];
 		}
 
 		// Transform provider shares data into segments for Bar
-		const segments = Object.entries($providerShares)
+		const segments = Object.entries($generalShares)
 			.filter(([_, value]) => value > 0) // Only include non-zero values
 			.map(([id, value]) => ({
 				id,

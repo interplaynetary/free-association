@@ -12,8 +12,6 @@ import {
 	mutualContributors,
 	recognitionCache,
 	networkCapacities,
-	networkCapacityShares,
-	networkCapacitySlotQuantities,
 	userTree,
 	userCapacities,
 	isLoadingTree,
@@ -22,7 +20,7 @@ import {
 	userDesiredSlotComposeInto,
 	networkDesiredSlotComposeFrom,
 	networkDesiredSlotComposeInto,
-	userNetworkCapacitiesWithShares,
+	networkAllocationStates,
 	updateStoreWithTimestamp,
 	updateStoreWithFreshTimestamp,
 	userCapacitiesTimestamp,
@@ -40,8 +38,7 @@ import type {
 	ContactsCollection,
 	UserSlotComposition,
 	ChatReadStates,
-	CapacityShares,
-	UserSlotQuantities
+	NetworkAllocationStates
 } from '$lib/schema';
 import { recalculateFromTree } from './calculations.svelte';
 import {
@@ -50,9 +47,8 @@ import {
 	parseUserSlotComposition,
 	parseShareMap,
 	parseContacts,
-	parseCapacityShares,
-	parseCapacitySlotQuantities,
-	parseChatReadStates
+	parseChatReadStates,
+	parseProviderAllocationStateData
 } from '$lib/validation';
 import { debounce } from '$lib/utils/debounce';
 import { derived } from 'svelte/store';
@@ -491,6 +487,8 @@ const ownDataStreamConfigs = {
 			console.error('[NETWORK] Error in own desiredSlotComposeInto stream:', error);
 		}
 	},
+	// DELETED: desiredSlotClaims stream - Replaced by unified compose-from model
+	// Slot claims are now handled as compose-from-self in the composition streams
 	chatReadStates: {
 		type: 'chatReadStates',
 		streamManager: ownDataStreamManager,
@@ -733,104 +731,58 @@ const mutualContributorStreamConfigs = {
 			console.error(`[NETWORK] Error in capacities stream for ${contributorId}:`, error);
 		}
 	},
-	capacityShares: {
-		type: 'capacityShares',
+	// DELETED: capacityShares stream - Replaced by efficient provider-centric algorithm
+	// DELETED: capacitySlotQuantities stream - Replaced by efficient provider-centric algorithm
+	// DELETED: desiredSlotClaims stream - Replaced by unified compose-from model
+	// Slot claims are now handled as compose-from-self in the composition streams
+	allocationStates: {
+		type: 'allocationStates',
 		streamManager: mutualStreamManager,
 		getGunPath: (userId: string, contributorId: string) => {
 			const pubKey = resolveToPublicKey(contributorId);
 			if (!pubKey) return null;
-			return gun.user(pubKey).get('capacityShares').get(userId);
+			return gun.user(pubKey).get('allocationStates');
 		},
-		processor: (contributorId: string) => (shares: any) => {
-			if (!shares) {
-				//console.log(`[NETWORK] No capacity shares from contributor ${contributorId}`);
-				networkCapacityShares.update((current) => {
+		processor: (contributorId: string) => (allocationData: any) => {
+			if (!allocationData) {
+				//console.log(`[NETWORK] No allocation states from provider ${contributorId}`);
+				networkAllocationStates.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
 				});
 				return;
 			}
 
-			console.log(`[NETWORK] Received capacity shares update from stream for ${contributorId}`);
+			console.log(`[NETWORK] Received allocation states update from provider ${contributorId}`);
 
-			// Validate capacity shares using parseCapacityShares
-			const validatedShares = parseCapacityShares(shares);
-			if (!validatedShares || Object.keys(validatedShares).length === 0) {
-				console.warn(`[NETWORK] Invalid capacity shares from ${contributorId}`);
+			// Validate the allocation states data using proper schema validation
+			const validatedAllocationStates = parseProviderAllocationStateData(allocationData);
+
+			if (!validatedAllocationStates) {
+				console.warn(`[NETWORK] Invalid allocation states data from provider ${contributorId}`);
 				return;
 			}
 
-			const currentNetworkShares = get(networkCapacityShares)[contributorId] || {};
-			const isUnchanged = JSON.stringify(validatedShares) === JSON.stringify(currentNetworkShares);
-
-			if (!isUnchanged) {
-				console.log(
-					`[NETWORK] Received new capacity shares from contributor ${contributorId}:`,
-					validatedShares
-				);
-
-				networkCapacityShares.update((current) => ({
-					...current,
-					[contributorId]: validatedShares.data || {}
-				}));
-			}
-		},
-		errorHandler: (contributorId: string) => (error: any) => {
-			console.error(`[NETWORK] Error in capacity shares stream for ${contributorId}:`, error);
-		}
-	},
-	capacitySlotQuantities: {
-		type: 'capacitySlotQuantities',
-		streamManager: mutualStreamManager,
-		getGunPath: (userId: string, contributorId: string) => {
-			const pubKey = resolveToPublicKey(contributorId);
-			if (!pubKey) return null;
-			return gun.user(pubKey).get('capacitySlotQuantities').get(userId);
-		},
-		processor: (contributorId: string) => (slotQuantities: any) => {
-			if (!slotQuantities) {
-				console.log(`[NETWORK] No capacity slot quantities from contributor ${contributorId}`);
-				networkCapacitySlotQuantities.update((current) => {
-					const { [contributorId]: _, ...rest } = current;
-					return rest;
-				});
-				return;
-			}
-
-			console.log(
-				`[NETWORK] Received capacity slot quantities update from stream for ${contributorId}`
-			);
-
-			// Validate capacity slot quantities using parseCapacitySlotQuantities
-			const validatedQuantities = parseCapacitySlotQuantities(slotQuantities);
-			if (!validatedQuantities || Object.keys(validatedQuantities).length === 0) {
-				console.warn(`[NETWORK] Invalid capacity slot quantities from ${contributorId}`);
-				return;
-			}
-
-			const currentNetworkQuantities = get(networkCapacitySlotQuantities)[contributorId] || {};
+			const currentNetworkAllocations = get(networkAllocationStates)[contributorId] || {};
 			const isUnchanged =
-				JSON.stringify(validatedQuantities) === JSON.stringify(currentNetworkQuantities);
+				JSON.stringify(validatedAllocationStates) === JSON.stringify(currentNetworkAllocations);
 
 			if (!isUnchanged) {
 				console.log(
-					`[NETWORK] Received new capacity slot quantities from contributor ${contributorId}:`,
-					validatedQuantities
+					`[NETWORK] Received new allocation states from provider ${contributorId}:`,
+					Object.keys(validatedAllocationStates || {}).length,
+					'capacities'
 				);
 
-				// Extract flat data from timestamped structure for network store
-				const flatQuantities = validatedQuantities.data || {};
-				networkCapacitySlotQuantities.update((current) => ({
+				// Store the validated allocation states for this provider
+				networkAllocationStates.update((current) => ({
 					...current,
-					[contributorId]: flatQuantities
+					[contributorId]: (validatedAllocationStates as any) || {}
 				}));
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
-			console.error(
-				`[NETWORK] Error in capacity slot quantities stream for ${contributorId}:`,
-				error
-			);
+			console.error(`[NETWORK] Error in allocation states stream for ${contributorId}:`, error);
 		}
 	},
 	desiredSlotComposeFrom: {
@@ -997,6 +949,8 @@ const createOwnDesiredSlotComposeIntoStream = withAuthentication(async (userId: 
 	await createStream(ownDataStreamConfigs.desiredComposeInto, userId);
 });
 
+// DELETED: createOwnDesiredSlotClaimsStream - Replaced by unified compose-from model
+
 const createOwnContactsStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.contacts, userId);
 });
@@ -1057,8 +1011,7 @@ const createMutualContributorStreams = withAuthentication(
 		// Create all mutual contributor streams
 		const streamTypes = [
 			'capacities',
-			'capacityShares',
-			'capacitySlotQuantities',
+			'allocationStates',
 			'desiredSlotComposeFrom',
 			'desiredSlotComposeInto',
 			'tree'
@@ -1272,8 +1225,8 @@ export function setupUsersListSubscription() {
 
 // Derived store for all chat IDs we need to subscribe to
 const chatIdsToSubscribe = derived(
-	[userCapacities, userNetworkCapacitiesWithShares],
-	([$userCapacities, $userNetworkCapacitiesWithShares]) => {
+	[userCapacities, networkCapacities],
+	([$userCapacities, $networkCapacities]) => {
 		const chatIds = new Set<string>();
 
 		// Add all user capacity IDs (these are used as chat IDs)
@@ -1283,10 +1236,14 @@ const chatIdsToSubscribe = derived(
 			});
 		}
 
-		// Add all network capacity IDs that we have shares in
-		if ($userNetworkCapacitiesWithShares) {
-			Object.keys($userNetworkCapacitiesWithShares).forEach((capacityId) => {
-				chatIds.add(capacityId);
+		// Add all network capacity IDs from mutual contributors
+		if ($networkCapacities) {
+			Object.values($networkCapacities).forEach((contributorCapacities) => {
+				if (contributorCapacities) {
+					Object.keys(contributorCapacities).forEach((capacityId) => {
+						chatIds.add(capacityId);
+					});
+				}
 			});
 		}
 
@@ -1357,7 +1314,7 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 	if (!currentMutualContributors.length) {
 		// Clear all network stores
 		networkCapacities.set({});
-		networkCapacityShares.set({});
+		networkAllocationStates.set({});
 		networkDesiredSlotComposeFrom.set({});
 		networkDesiredSlotComposeInto.set({});
 		mutualStreamManager.stopAllStreams();
@@ -1367,8 +1324,7 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 	// Define network stores for cleanup
 	const networkStores = [
 		{ store: networkCapacities, name: 'networkCapacities' },
-		{ store: networkCapacityShares, name: 'networkCapacityShares' },
-		{ store: networkCapacitySlotQuantities, name: 'networkCapacitySlotQuantities' },
+		{ store: networkAllocationStates, name: 'networkAllocationStates' },
 		{ store: networkDesiredSlotComposeFrom, name: 'networkDesiredComposeFrom' },
 		{ store: networkDesiredSlotComposeInto, name: 'networkDesiredComposeInto' }
 	];

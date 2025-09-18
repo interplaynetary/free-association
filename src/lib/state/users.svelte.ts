@@ -395,3 +395,73 @@ export function resolveContactIdsInTree(
 
 	return resolvedNode;
 }
+
+// ================================
+// COMPOSITION TARGET USER FUNCTIONS
+// ================================
+
+/**
+ * Create a collective target identifier from multiple pubkeys or contact IDs
+ * Resolves contact IDs to pubkeys when possible
+ */
+export function createCollectiveTarget(identifiers: string[]): string {
+	// Resolve all identifiers to pubkeys
+	const pubkeys = resolveToPublicKeys(identifiers);
+
+	if (pubkeys.length === 0) {
+		throw new Error('No valid pubkeys found for collective target');
+	}
+
+	return `collective:${pubkeys.join(',')}`;
+}
+
+/**
+ * Check if a target identifier represents self-consumption
+ * Works with both pubkeys and contact IDs
+ */
+export function isSelfConsumption(targetId: string, userPubkey: string): boolean {
+	// If targetId is a contact ID, resolve it first
+	const resolvedTarget = resolveToPublicKey(targetId) || targetId;
+
+	// Check if the resolved target matches our pubkey
+	return resolvedTarget === userPubkey;
+}
+
+/**
+ * Get display names for all recipients in a composition target
+ */
+export async function getCompositionTargetDisplayNames(targetId: string): Promise<string[]> {
+	const { parseCompositionTarget } = await import('$lib/validation');
+	const parsed = parseCompositionTarget(targetId);
+
+	switch (parsed.type) {
+		case 'individual':
+			return [await getUserName(parsed.recipients[0])];
+		case 'collective':
+			return Promise.all(parsed.recipients.map((pubkey) => getUserName(pubkey)));
+		case 'capacity':
+			return [targetId]; // Return capacity ID as-is
+		default:
+			return [targetId];
+	}
+}
+
+/**
+ * Format a composition target for display
+ */
+export async function formatCompositionTargetDisplay(targetId: string): Promise<string> {
+	const { parseCompositionTarget } = await import('$lib/validation');
+	const parsed = parseCompositionTarget(targetId);
+
+	switch (parsed.type) {
+		case 'individual':
+			return await getUserName(parsed.recipients[0]);
+		case 'collective':
+			const names = await Promise.all(parsed.recipients.map((pubkey) => getUserName(pubkey)));
+			return `Group: ${names.join(', ')}`;
+		case 'capacity':
+			return targetId; // Return capacity ID as-is
+		default:
+			return targetId;
+	}
+}

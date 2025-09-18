@@ -10,16 +10,14 @@ import {
 	CapacitiesCollectionDataSchema,
 	ShareMapSchema,
 	ShareMapDataSchema,
-	CapacitySharesSchema,
-	CapacitySharesDataSchema,
-	UserSlotQuantitiesSchema,
-	UserSlotQuantitiesDataSchema,
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
 	UserSlotCompositionSchema,
 	UserSlotCompositionDataSchema,
 	NetworkSlotCompositionSchema,
+	ProviderAllocationStateDataSchema,
+	NetworkAllocationStatesSchema,
 	ContactsCollectionSchema,
 	ContactsCollectionDataSchema,
 	ChatReadStatesSchema,
@@ -461,6 +459,34 @@ export function parseNetworkSlotComposition(slotCompositionData: unknown) {
 }
 
 /**
+ * Parse and validate provider allocation state data
+ * @param allocationData Raw provider allocation state data
+ * @returns Validated ProviderAllocationStateData or empty object if validation fails
+ */
+export function parseProviderAllocationStateData(allocationData: unknown) {
+	return parseData(allocationData, {
+		schema: ProviderAllocationStateDataSchema,
+		defaultValue: {},
+		functionName: 'provider allocation state data',
+		enableLogging: true
+	});
+}
+
+/**
+ * Parse and validate network allocation states data
+ * @param networkAllocationData Raw network allocation states data
+ * @returns Validated NetworkAllocationStates or empty object if validation fails
+ */
+export function parseNetworkAllocationStates(networkAllocationData: unknown) {
+	return parseData(networkAllocationData, {
+		schema: NetworkAllocationStatesSchema,
+		defaultValue: {},
+		functionName: 'network allocation states',
+		enableLogging: true
+	});
+}
+
+/**
  * Parse and validate contacts data
  * @param contactsData Raw contacts data
  * @returns Validated ContactsCollection or empty object if validation fails
@@ -469,28 +495,8 @@ export function parseContacts(contactsData: unknown) {
 	return parseTimestampedData(contactsData, ContactsCollectionSchema, 'contacts', true);
 }
 
-/**
- * Parse and validate capacity shares data (percentage shares for capacities)
- * @param sharesData Raw capacity shares data
- * @returns Validated capacity shares or empty object if validation fails
- */
-export function parseCapacityShares(sharesData: unknown) {
-	return parseTimestampedData(sharesData, CapacitySharesSchema, 'capacity shares', true);
-}
-
-/**
- * Parse and validate capacity slot quantities data
- * @param slotQuantitiesData Raw capacity slot quantities data
- * @returns Validated UserSlotQuantities or empty object if validation fails
- */
-export function parseCapacitySlotQuantities(slotQuantitiesData: unknown) {
-	return parseTimestampedData(
-		slotQuantitiesData,
-		UserSlotQuantitiesSchema,
-		'capacity slot quantities',
-		true
-	);
-}
+// DELETED: parseCapacityShares - Replaced by efficient provider-centric algorithm
+// DELETED: parseCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
 
 /**
  * Parse and validate chat read states data
@@ -499,4 +505,59 @@ export function parseCapacitySlotQuantities(slotQuantitiesData: unknown) {
  */
 export function parseChatReadStates(readStatesData: unknown) {
 	return parseTimestampedData(readStatesData, ChatReadStatesSchema, 'chat read states', true);
+}
+
+// ===== COMPOSITION TARGET VALIDATION =====
+
+/**
+ * Validate if a string is a valid pubkey format (64 hex characters)
+ */
+export function isValidPubkey(pubkey: string): boolean {
+	return /^[0-9a-fA-F]{64}$/.test(pubkey);
+}
+
+/**
+ * Validate if a string is a valid collective target format
+ */
+export function isValidCollectiveTarget(target: string): boolean {
+	if (!target.startsWith('collective:')) return false;
+	const pubkeysStr = target.slice(11);
+	const pubkeys = pubkeysStr.split(',');
+	return pubkeys.length > 0 && pubkeys.every((pk) => isValidPubkey(pk));
+}
+
+/**
+ * Parse and analyze a composition target identifier
+ */
+export function parseCompositionTarget(targetId: string): {
+	type: 'capacity' | 'individual' | 'collective';
+	recipients: string[];
+	originalId: string;
+} {
+	// Check for collective format first
+	if (targetId.startsWith('collective:')) {
+		const pubkeysStr = targetId.slice(11); // Remove "collective:" prefix
+		const pubkeys = pubkeysStr.split(',').filter((pk) => isValidPubkey(pk));
+		return {
+			type: 'collective',
+			recipients: pubkeys,
+			originalId: targetId
+		};
+	}
+
+	// Check for individual pubkey
+	if (isValidPubkey(targetId)) {
+		return {
+			type: 'individual',
+			recipients: [targetId],
+			originalId: targetId
+		};
+	}
+
+	// Default to capacity ID
+	return {
+		type: 'capacity',
+		recipients: [],
+		originalId: targetId
+	};
 }

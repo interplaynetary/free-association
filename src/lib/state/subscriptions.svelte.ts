@@ -8,7 +8,8 @@ import {
 	isRecalculatingTree,
 	nodesMap,
 	contributorCapacityShares,
-	capacitySlotQuantities
+	computedProviderAllocations,
+	providerAllocationStates
 } from './core.svelte';
 import { userContacts, isLoadingContacts } from './users.svelte';
 import { recalculateFromTree } from './calculations.svelte';
@@ -17,7 +18,7 @@ import {
 	persistSogf,
 	persistCapacities,
 	persistContributorCapacityShares,
-	persistContributorCapacitySlotQuantities,
+	persistProviderAllocationStates,
 	persistContacts,
 	persistChatReadStates
 } from './persistence.svelte';
@@ -90,14 +91,17 @@ const debouncedPersistUserDesiredSlotComposeInto = debounce(() => {
 	}
 }, 250);
 
-const debouncedPersistContributorCapacitySlotQuantities = debounce((slotQuantities) => {
+// DELETED: debouncedPersistContributorCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
+// Old recipient-computed slot quantities no longer needed
+
+const debouncedPersistProviderAllocationStates = debounce(() => {
 	console.log(
-		'[CAPACITY-SLOT-QUANTITIES-SUB] Executing debounced capacity slot quantities persistence'
+		'[PROVIDER-ALLOCATION-STATES-SUB] Executing debounced provider allocation states persistence'
 	);
 	try {
-		persistContributorCapacitySlotQuantities(slotQuantities);
+		persistProviderAllocationStates();
 	} catch (error) {
-		console.error('[CAPACITY-SLOT-QUANTITIES-SUB] Error during debounced persistence:', error);
+		console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during debounced persistence:', error);
 	}
 }, 200);
 
@@ -256,26 +260,52 @@ contributorCapacityShares.subscribe((contributorCapacityShares) => {
 	debouncedPersistContributorCapacityShares();
 });
 
+// DELETED: capacitySlotQuantities subscription - Replaced by efficient provider-centric algorithm
+// Old recipient-computed slot quantities no longer needed, providers compute allocations directly
+
 /**
- * Subscribe to capacity slot quantities to trigger their persistence
+ * Update provider allocation states when computed allocations change
+ * This bridges the computed (derived) allocations to the persisted state
  */
-capacitySlotQuantities.subscribe((slotQuantities) => {
-	console.log('[CAPACITY-SLOT-QUANTITIES-SUB] Capacity slot quantities updated');
+computedProviderAllocations.subscribe((computedAllocations) => {
+	console.log('[PROVIDER-ALLOCATIONS-SUB] Computed provider allocations updated');
 	console.log(
-		'[CAPACITY-SLOT-QUANTITIES-SUB] Slot quantities count:',
-		Object.keys(slotQuantities).length
+		'[PROVIDER-ALLOCATIONS-SUB] Computed allocations for',
+		Object.keys(computedAllocations).length,
+		'capacities'
 	);
 
-	// Don't persist empty slot quantities during initialization
-	if (Object.keys(slotQuantities).length === 0) {
+	// Update the provider allocation states store with computed results
+	// This makes the computed allocations available for network publishing
+	if (Object.keys(computedAllocations).length > 0) {
+		providerAllocationStates.set(computedAllocations);
+		console.log('[PROVIDER-ALLOCATIONS-SUB] Updated provider allocation states store');
+	}
+});
+
+/**
+ * Trigger network publishing when provider allocation states change
+ */
+providerAllocationStates.subscribe((allocationStates) => {
+	if (!allocationStates) return;
+
+	console.log('[PROVIDER-ALLOCATION-STATES-SUB] Provider allocation states updated');
+	console.log(
+		'[PROVIDER-ALLOCATION-STATES-SUB] Allocation states for',
+		Object.keys(allocationStates).length,
+		'capacities'
+	);
+
+	// Don't persist empty allocation states during initialization
+	if (Object.keys(allocationStates).length === 0) {
 		console.log(
-			'[CAPACITY-SLOT-QUANTITIES-SUB] Skipping persistence of empty slot quantities (likely initialization)'
+			'[PROVIDER-ALLOCATION-STATES-SUB] Skipping persistence of empty allocation states (likely initialization)'
 		);
 		return;
 	}
 
-	// Debounced persistence function
-	debouncedPersistContributorCapacitySlotQuantities(slotQuantities);
+	// Debounced persistence/publishing function
+	debouncedPersistProviderAllocationStates();
 });
 
 /**

@@ -7,7 +7,7 @@
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
-	import { userTree, userSogf, providerShares } from '$lib/state/core.svelte';
+	import { userTree, userSogf, generalShares } from '$lib/state/core.svelte';
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/schema';
 	import { normalizeShareMap } from '$lib/protocol';
@@ -24,7 +24,7 @@
 	$effect(() => {
 		const tree = get(userTree);
 		const sogf = get(userSogf);
-		const shares = get(providerShares);
+		const shares = get(generalShares);
 		const path = get(currentPath);
 
 		if ($userAlias && $userPub && tree) {
@@ -40,7 +40,7 @@
 	function updateChartData() {
 		const tree = get(userTree) as RootNode;
 		const sogf = get(userSogf);
-		const mutualRecognition = get(providerShares);
+		const mutualRecognition = get(generalShares);
 
 		if (!$userAlias || !$userPub || !tree) return;
 

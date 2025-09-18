@@ -4,7 +4,7 @@ import {
 	getAllContributorsFromTree,
 	getDescendants
 } from '$lib/protocol';
-import type { RootNode, Node, NonRootNode, ShareMapData, RecognitionCache } from '$lib/schema';
+import type { NonRootNode, ShareMapData } from '$lib/schema';
 import {
 	userTree,
 	userSogf,
@@ -12,8 +12,7 @@ import {
 	contributors,
 	allKnownContributors,
 	recognitionCache,
-	isRecalculatingTree,
-	capacityShares
+	isRecalculatingTree
 } from './core.svelte';
 import { resolveToPublicKey } from './users.svelte';
 

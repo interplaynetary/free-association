@@ -2,12 +2,25 @@
 	import { getUserName } from '$lib/state/users.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import Chat from '$lib/components/Chat.svelte';
-	import type { RecipientCapacity } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
+	import {
+		getSlotAllocatedQuantity,
+		getSlotAvailableQuantity,
+		getAllocatedSlotCount,
+		getTotalSlotCount,
+		getTotalAllocated,
+		getTotalAvailable,
+		isSlotRecurring,
+		getRecurrenceDisplay,
+		isSlotInPast,
+		formatSlotTimeDisplay,
+		formatSlotLocationDisplay,
+		getSlotSortValue
+	} from '$lib/protocol';
 
 	interface Props {
-		share: RecipientCapacity;
+		share: any; // Using any since we're now working with inventory data, not RecipientCapacity
 		expanded?: boolean;
 		onToggle?: () => void;
 		onProviderClick?: (provider: string) => void;
@@ -87,210 +100,11 @@
 		}
 	}
 
-	// Get computed quantity for a specific slot
-	function getSlotComputedQuantity(slotId: string): number {
-		const slotQuantity = share.computed_quantities?.find((cq) => cq.slot_id === slotId);
-		return slotQuantity?.quantity || 0;
-	}
+	// Direct use of protocol functions - no wrappers needed!
 
-	// Get count of slots with non-zero quantities
-	function getActiveSlotCount(): number {
-		if (!share.computed_quantities || !Array.isArray(share.computed_quantities)) {
-			return 0;
-		}
-		return share.computed_quantities.filter((slot) => slot.quantity > 0).length;
-	}
+	// Note: Time and location formatting functions moved to protocol.ts for reusability
 
-	// Get total number of slots available
-	function getTotalSlotCount(): number {
-		return share.availability_slots?.length || 0;
-	}
-
-	// Helper function to safely extract time from potentially malformed time strings
-	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
-		if (!timeValue) return undefined;
-
-		// If it's already in HH:MM format, return as-is
-		if (/^\d{2}:\d{2}$/.test(timeValue)) {
-			return timeValue;
-		}
-
-		// If it's an ISO datetime string, extract just the time part
-		if (timeValue.includes('T')) {
-			try {
-				const date = new Date(timeValue);
-				return date.toTimeString().substring(0, 5); // Get HH:MM from "HH:MM:SS GMT..."
-			} catch (e) {
-				console.warn('Failed to parse time:', timeValue);
-				return undefined;
-			}
-		}
-
-		// If it's some other format, try to extract time
-		console.warn('Unknown time format:', timeValue);
-		return undefined;
-	}
-
-	// Helper function to format time without leading zeros (08:30 → 8:30)
-	function formatTimeClean(timeStr: string): string {
-		if (!timeStr) return timeStr;
-
-		const [hours, minutes] = timeStr.split(':');
-		const cleanHours = parseInt(hours).toString(); // Remove leading zero
-		return `${cleanHours}:${minutes}`;
-	}
-
-	// Helper function to format date for display with smart labels
-	function formatDateForDisplay(date: Date): string {
-		const today = new Date();
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
-
-		if (date.toDateString() === today.toDateString()) {
-			return 'Today';
-		} else if (date.toDateString() === tomorrow.toDateString()) {
-			return 'Tomorrow';
-		} else {
-			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-		}
-	}
-
-	// Format slot time display - clean and comprehensive
-	function formatSlotTimeDisplay(slot: any): string {
-		// Clean the time values
-		const rawStartTime = safeExtractTime(slot.start_time);
-		const rawEndTime = safeExtractTime(slot.end_time);
-
-		// Format times without leading zeros
-		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
-		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
-
-		// Get recurrence display
-		const recurrenceDisplay =
-			slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
-
-		// Handle "All day" case first
-		if (slot.all_day) {
-			const startDate = slot.start_date ? new Date(slot.start_date) : null;
-			const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-			let timeStr = '';
-			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
-				// Multi-day all-day event
-				const startStr = formatDateForDisplay(startDate);
-				const endStr = formatDateForDisplay(endDate);
-				timeStr = `${startStr} - ${endStr}, All day`;
-			} else if (startDate) {
-				// Single day all-day event
-				const dateStr = formatDateForDisplay(startDate);
-				timeStr = `${dateStr}, All day`;
-			} else {
-				timeStr = 'All day';
-			}
-
-			// Add recurrence if present
-			return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
-		}
-
-		// Handle timed slots
-		const startDate = slot.start_date ? new Date(slot.start_date) : null;
-		const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-		let timeStr = '';
-		if (startDate) {
-			const startDateStr = formatDateForDisplay(startDate);
-
-			// Check if we have an end date and it's different from start date
-			if (endDate && startDate.getTime() !== endDate.getTime()) {
-				// Multi-day timed event
-				const endDateStr = formatDateForDisplay(endDate);
-				const startTimeStr = cleanStartTime || '';
-				const endTimeStr = cleanEndTime || '';
-
-				if (startTimeStr && endTimeStr) {
-					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-				} else if (startTimeStr) {
-					timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
-				} else {
-					timeStr = `${startDateStr} - ${endDateStr}`;
-				}
-			} else {
-				// Single day or no end date
-				if (cleanStartTime) {
-					const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-					timeStr = `${startDateStr}, ${timeRange}`;
-				} else {
-					timeStr = startDateStr;
-				}
-			}
-		} else if (cleanStartTime) {
-			// Just time, no date
-			timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-		} else {
-			timeStr = 'No time set';
-		}
-
-		// Add recurrence if present
-		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
-	}
-
-	// Format slot location display - show complete address
-	function formatSlotLocationDisplay(slot: any): string {
-		if (slot.location_type === 'Specific') {
-			// Build complete address from components
-			const addressParts = [];
-
-			if (slot.street_address) {
-				addressParts.push(slot.street_address);
-			}
-
-			if (slot.city) {
-				addressParts.push(slot.city);
-			}
-
-			if (slot.state_province) {
-				addressParts.push(slot.state_province);
-			}
-
-			if (slot.postal_code) {
-				addressParts.push(slot.postal_code);
-			}
-
-			if (slot.country) {
-				addressParts.push(slot.country);
-			}
-
-			// If we have address components, join them with commas
-			if (addressParts.length > 0) {
-				return addressParts.join(', ');
-			}
-
-			// Fall back to coordinates if no address components
-			if (slot.latitude && slot.longitude) {
-				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
-			}
-		} else if (slot.location_type === 'Online') {
-			// Show online link or generic "Online" text
-			if (slot.online_link) {
-				// If it looks like a URL, show a shortened version
-				if (slot.online_link.startsWith('http')) {
-					try {
-						const url = new URL(slot.online_link);
-						return `Online (${url.hostname})`;
-					} catch {
-						return 'Online (link provided)';
-					}
-				}
-				// If it's text, show truncated version
-				return `Online (${slot.online_link.length > 30 ? slot.online_link.substring(0, 30) + '...' : slot.online_link})`;
-			}
-			return 'Online';
-		}
-
-		return slot.location_type || 'No location';
-	}
-
-	function getChatId(share: RecipientCapacity): string {
+	function getChatId(share: any): string {
 		// Use capacity ID as the chat ID for all conversations about this capacity
 		return share.id;
 	}
@@ -325,57 +139,7 @@
 		}
 	}
 
-	// Utility function to check if a slot is recurring
-	function isSlotRecurring(slot: any): boolean {
-		return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
-	}
-
-	// Utility function to safely display recurrence value
-	function getRecurrenceDisplay(slot: any): string {
-		return slot.recurrence || 'Does not repeat';
-	}
-
-	// Utility function to check if a slot is in the past
-	function isSlotInPast(slot: any): boolean {
-		if (!slot.start_date) return false;
-
-		const now = new Date();
-		const slotDate = new Date(slot.start_date);
-
-		// If it's all day, compare dates only
-		if (slot.all_day) {
-			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			const slotDateOnly = new Date(
-				slotDate.getFullYear(),
-				slotDate.getMonth(),
-				slotDate.getDate()
-			);
-			return slotDateOnly < today;
-		}
-
-		// If it has time, create full datetime
-		if (slot.start_time) {
-			const [hours, minutes] = slot.start_time.split(':');
-			slotDate.setHours(parseInt(hours), parseInt(minutes));
-		}
-
-		return slotDate < now;
-	}
-
-	// Utility function to get slot priority for sorting
-	function getSlotSortValue(slot: any, sortBy: string): number | string {
-		switch (sortBy) {
-			case 'time':
-				if (!slot.start_date) return '9999-12-31';
-				return slot.start_date;
-			case 'location':
-				return formatSlotLocationDisplay(slot).toLowerCase();
-			case 'quantity':
-				return getSlotComputedQuantity(slot.id);
-			default:
-				return 0;
-		}
-	}
+	// Note: Slot utility functions moved to protocol.ts for reusability
 
 	// Categorize and sort slots
 	let categorizedSlots = $derived(() => {
@@ -388,7 +152,7 @@
 		const currentFuture: any[] = [];
 
 		// Categorize slots
-		share.availability_slots.forEach((slot) => {
+		share.availability_slots.forEach((slot: any) => {
 			if (isSlotRecurring(slot)) {
 				recurring.push(slot);
 			} else if (isSlotInPast(slot)) {
@@ -430,7 +194,7 @@
 	<div
 		class="capacity-share flex cursor-pointer items-center justify-between rounded p-2 shadow-sm"
 		style="background-color: {getShareColor(
-			share.share_percentage
+			getTotalAllocated(share) / Math.max(getTotalAvailable(share), 1)
 		)}; border: 1px solid #e5e7eb; border-left: 8px solid {getColorForUserId(share.provider_id)};"
 		role="button"
 		tabindex="0"
@@ -448,10 +212,16 @@
 					<span class="capacity-emoji">{share.emoji || '🎁'}</span>
 					{share.name}
 				</span>
-				<span class="share-value slot-count flex-shrink-0 text-sm">
-					<span class="ml-1 text-xs text-gray-600"
-						>({(share.share_percentage * 100).toFixed(1)}%)</span
-					>
+				<span class="share-value allocation-info flex-shrink-0 text-sm">
+					{#if getTotalAllocated(share) > 0}
+						<span class="ml-1 text-xs font-medium text-green-700">
+							{getTotalAllocated(share)}{share.unit ? ' ' + share.unit : ''} allocated
+						</span>
+					{:else}
+						<span class="ml-1 text-xs text-gray-600">
+							{getTotalAvailable(share)}{share.unit ? ' ' + share.unit : ''} available
+						</span>
+					{/if}
 				</span>
 			</div>
 			<!-- Show description preview if available -->
@@ -504,10 +274,19 @@
 	{#if slotsExpanded}
 		<div class="slots-section mt-2 rounded border border-gray-200 bg-purple-50 p-3">
 			<div class="slots-header mb-3">
-				<h4 class="text-sm font-medium text-gray-700">🕒 Your Share Allocation</h4>
+				<h4 class="text-sm font-medium text-gray-700">🕒 Available Capacity Slots</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					Your {(share.share_percentage * 100).toFixed(1)}% share of each availability slot ({totalSlotCount()}
-					total)
+					{#if getTotalAllocated(share) > 0}
+						Your current allocation: {getTotalAllocated(share)}{share.unit ? ' ' + share.unit : ''} of
+						{getTotalAvailable(share)}{share.unit ? ' ' + share.unit : ''} total ({getTotalSlotCount(
+							share
+						)}
+						slots)
+					{:else}
+						Available for allocation: {getTotalAvailable(share)}{share.unit ? ' ' + share.unit : ''}
+						({getTotalSlotCount(share)}
+						slots) - express desire to get some!
+					{/if}
 				</p>
 			</div>
 
@@ -547,23 +326,36 @@
 							{#if recurringSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().recurring as slot (slot.id)}
-										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
+										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-												<!-- Your share quantity -->
-												<span
-													class="slot-quantity flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-sm font-medium text-purple-800"
-												>
-													{Number.isInteger(computedQuantity)
-														? computedQuantity
-														: computedQuantity.toFixed(2)}
-													{share.unit}
-												</span>
+												{#if allocatedQuantity > 0}
+													<!-- Your allocated quantity -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+													>
+														{Number.isInteger(allocatedQuantity)
+															? allocatedQuantity
+															: allocatedQuantity.toFixed(2)}
+														{share.unit} allocated
+													</span>
+												{:else}
+													<!-- Available for allocation -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-gray-100 px-2 py-1 text-sm font-medium text-gray-700"
+													>
+														{Number.isInteger(availableQuantity)
+															? availableQuantity
+															: availableQuantity.toFixed(2)}
+														{share.unit} available
+													</span>
+												{/if}
 
 												<!-- Total slot quantity for context -->
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-													of {slot.quantity} total
+													of {availableQuantity} total
 												</span>
 
 												<!-- Recurrence indicator -->
@@ -629,23 +421,36 @@
 							{#if currentFutureSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().currentFuture as slot (slot.id)}
-										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
+										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-												<!-- Your share quantity -->
-												<span
-													class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
-												>
-													{Number.isInteger(computedQuantity)
-														? computedQuantity
-														: computedQuantity.toFixed(2)}
-													{share.unit}
-												</span>
+												{#if allocatedQuantity > 0}
+													<!-- Your allocated quantity -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-green-100 px-2 py-1 text-sm font-medium text-green-800"
+													>
+														{Number.isInteger(allocatedQuantity)
+															? allocatedQuantity
+															: allocatedQuantity.toFixed(2)}
+														{share.unit} allocated
+													</span>
+												{:else}
+													<!-- Available for allocation -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-blue-100 px-2 py-1 text-sm font-medium text-blue-800"
+													>
+														{Number.isInteger(availableQuantity)
+															? availableQuantity
+															: availableQuantity.toFixed(2)}
+														{share.unit} available
+													</span>
+												{/if}
 
 												<!-- Total slot quantity for context -->
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-													of {slot.quantity} total
+													of {availableQuantity} total
 												</span>
 											</div>
 
@@ -702,25 +507,38 @@
 							{#if pastSlotsExpanded}
 								<div class="category-content">
 									{#each categorizedSlots().past as slot (slot.id)}
-										{@const computedQuantity = getSlotComputedQuantity(slot.id)}
+										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
+										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
 										<div
 											class="slot-item rounded border border-gray-200 bg-gray-50 p-3 opacity-75 shadow-sm"
 										>
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
-												<!-- Your share quantity -->
-												<span
-													class="slot-quantity flex-shrink-0 rounded bg-gray-200 px-2 py-1 text-sm font-medium text-gray-700"
-												>
-													{Number.isInteger(computedQuantity)
-														? computedQuantity
-														: computedQuantity.toFixed(2)}
-													{share.unit}
-												</span>
+												{#if allocatedQuantity > 0}
+													<!-- Your allocated quantity (past) -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-gray-200 px-2 py-1 text-sm font-medium text-gray-700"
+													>
+														{Number.isInteger(allocatedQuantity)
+															? allocatedQuantity
+															: allocatedQuantity.toFixed(2)}
+														{share.unit} was allocated
+													</span>
+												{:else}
+													<!-- Was available (past) -->
+													<span
+														class="slot-quantity flex-shrink-0 rounded bg-gray-100 px-2 py-1 text-sm font-medium text-gray-600"
+													>
+														{Number.isInteger(availableQuantity)
+															? availableQuantity
+															: availableQuantity.toFixed(2)}
+														{share.unit} was available
+													</span>
+												{/if}
 
 												<!-- Total slot quantity for context -->
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
-													of {slot.quantity} total
+													of {availableQuantity} total
 												</span>
 											</div>
 

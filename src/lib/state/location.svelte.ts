@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { userCapacitiesWithShares } from './core.svelte';
+import { userCapacities, computedProviderAllocations } from './core.svelte';
 
 // Live location data interface
 export interface LiveLocationData {
@@ -67,29 +67,37 @@ export const currentLocationText = derived(currentLocation, ($location) => {
 });
 
 // Derived store of those who have access to our live-location:
-// those who have a share in a capacity that has a live-location rule.
+// those who have allocations in our provider capacities from the efficient algorithm.
 export const liveLocationAccessList = derived(
-	userCapacitiesWithShares,
-	($userCapacitiesWithShares) => {
-		if (!$userCapacitiesWithShares) {
+	[userCapacities, computedProviderAllocations],
+	([$userCapacities, $computedProviderAllocations]) => {
+		if (!$userCapacities || !$computedProviderAllocations) {
 			return [];
 		}
 
 		const accessList: string[] = [];
 
-		// Iterate through all capacities
-		Object.entries($userCapacitiesWithShares).forEach(([capacityId, capacity]) => {
-			// If this is a provider capacity (our capacity), get recipients from recipient_shares
+		// Iterate through all our provider capacities
+		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
+			// If this is a provider capacity (our capacity), check allocations
 			if ('recipient_shares' in capacity) {
-				Object.keys(capacity.recipient_shares).forEach((contributorId) => {
-					if (!accessList.includes(contributorId)) {
-						accessList.push(contributorId);
-					}
-				});
+				// Get allocation results for this capacity from the efficient algorithm
+				const capacityAllocations = $computedProviderAllocations[capacityId];
+				if (capacityAllocations) {
+					// Check all slots for recipients with final allocations
+					Object.values(capacityAllocations).forEach((slotAllocation) => {
+						Object.keys(slotAllocation.final_allocations || {}).forEach((recipientId) => {
+							const allocation = slotAllocation.final_allocations[recipientId] || 0;
+							if (allocation > 0 && !accessList.includes(recipientId)) {
+								accessList.push(recipientId);
+							}
+						});
+					});
+				}
 			}
 		});
 
-		console.log('[LIVE-LOCATION-ACCESS] Contributors with live-location access:', accessList);
+		console.log('[LIVE-LOCATION-ACCESS] Recipients with live-location access:', accessList);
 		return accessList;
 	}
 );

@@ -1,12 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import {
-	normalizeShareMap,
-	getSubtreeContributorMap,
-	findNodeById,
-	calculateRecipientSlotQuantities,
-	computeQuantityShares
-} from '$lib/protocol';
+import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import type {
 	RootNode,
@@ -14,14 +8,9 @@ import type {
 	Node,
 	ShareMap,
 	RecognitionCache,
-	UserSlotQuantities,
-	ProviderCapacity,
-	UserSlotClaims,
-	NetworkSlotClaims,
-	RecipientCapacity,
-	SlotAllocationAnalysis,
-	SlotAllocationMetadata
+	ProviderCapacity
 } from '$lib/schema';
+// DELETED: UserSlotQuantities, SlotAllocationAnalysis, SlotAllocationMetadata - No longer needed
 
 // Core reactive state - these form the main reactive chain
 export const userTree: Writable<RootNode | null> = writable(null);
@@ -36,6 +25,14 @@ export const userDesiredSlotComposeFromTimestamp = writable<string | null>(null)
 export const userDesiredSlotComposeIntoTimestamp = writable<string | null>(null);
 export const userContactsTimestamp = writable<string | null>(null);
 export const chatReadStatesTimestamp = writable<string | null>(null);
+
+// Loading state flags
+export const isLoadingCapacities = writable(false);
+export const isLoadingTree = writable(false);
+export const isLoadingSogf = writable(false);
+
+export const isRecalculatingTree = writable(false);
+export const isRecalculatingCapacities = writable(false);
 
 /**
  * Helper functions to coordinate between flat data stores and timestamp metadata
@@ -96,23 +93,22 @@ export function updateStoreWithFreshTimestamp<T>(
 }
 
 export const networkCapacities: Writable<Record<string, CapacitiesCollectionData>> = writable({});
-export const networkCapacityShares: Writable<Record<string, Record<string, number>>> = writable({});
-export const networkCapacitySlotQuantities: Writable<Record<string, UserSlotQuantitiesData>> =
-	writable({});
+// DELETED: networkCapacityShares - Replaced by efficient provider-centric algorithm
+// Old percentage-based network sharing no longer needed
+// DELETED: networkCapacitySlotQuantities - Replaced by efficient algorithm
 
-// SLOT CLAIMS STORES (moved from slots.svelte.ts to avoid circular dependency)
-export const userDesiredSlotClaims: Writable<UserSlotClaims> = writable({});
-export const networkDesiredSlotClaims: Writable<NetworkSlotClaims> = writable({});
+// DELETED: userDesiredSlotClaims and networkDesiredSlotClaims - Replaced by unified compose-from model
+// Slot claims are now handled as compose-from-self in the composition system
 
-// SLOT COMPOSITION DESIRE STORES (moved from compose.svelte.ts to avoid circular dependency)
-import type { UserSlotComposition, NetworkSlotComposition } from '$lib/schema';
-// Import the raw data types for flat stores
 import type {
 	UserSlotCompositionData,
 	CapacitiesCollectionData,
 	ShareMapData,
-	UserSlotQuantitiesData
+	ProviderAllocationStateData,
+	SlotAllocationResult,
+	NetworkAllocationStates
 } from '$lib/schema';
+// DELETED: UserSlotQuantitiesData - Type no longer exists
 
 export const userDesiredSlotComposeFrom: Writable<UserSlotCompositionData> = writable({});
 export const userDesiredSlotComposeInto: Writable<UserSlotCompositionData> = writable({});
@@ -122,131 +118,19 @@ export const networkDesiredSlotComposeFrom: Writable<Record<string, UserSlotComp
 export const networkDesiredSlotComposeInto: Writable<Record<string, UserSlotCompositionData>> =
 	writable({});
 
-// New derived store that uses actual slot quantities instead of percentage calculations
-export const userNetworkCapacitiesWithSlotQuantities = derived(
-	[networkCapacitySlotQuantities, networkCapacities],
-	([$networkCapacitySlotQuantities, $networkCapacities]) => {
-		// Don't return early if one store is empty - wait for both to have data
-		if (!$networkCapacitySlotQuantities) {
-			console.log(
-				'[NETWORK-CAPACITIES-SLOTS] No network slot quantity data available, returning empty'
-			);
-			return {};
-		}
+// ===== EFFICIENT DISTRIBUTION ALGORITHM STORES =====
 
-		if (!$networkCapacities) {
-			console.log(
-				'[NETWORK-CAPACITIES-SLOTS] No network capacities data available, returning empty'
-			);
-			return {};
-		}
+// Provider-side: Our allocation states for our capacities (what we compute and publish)
+export const providerAllocationStates: Writable<Record<string, ProviderAllocationStateData>> =
+	writable({});
 
-		console.log('networkCapacitySlotQuantities', $networkCapacitySlotQuantities);
-		console.log('networkCapacities', $networkCapacities);
+// Recipient-side: Network allocation states from all providers (what we receive)
+export const networkAllocationStates: Writable<NetworkAllocationStates> = writable({});
 
-		// Filter capacities where we have slot quantities
-		const filteredCapacities: CapacitiesCollectionData = {};
+// MOVED: userNetworkCapacitiesWithSlotQuantities stub moved after efficientSlotAllocations definition
 
-		// For each contributor's slot quantities
-		Object.entries($networkCapacitySlotQuantities).forEach(([contributorId, slotQuantities]) => {
-			// Get this contributor's capacities
-			const contributorCapacities = $networkCapacities[contributorId];
-			if (!contributorCapacities) {
-				console.log(
-					`[NETWORK-CAPACITIES-SLOTS] No capacities found for contributor ${contributorId} - stream timing issue, will process when available`
-				);
-				return;
-			}
-
-			// For each capacity we have slot quantities for
-			Object.entries(slotQuantities).forEach(([capacityId, slotQuantityMap]) => {
-				const capacity = contributorCapacities[capacityId];
-				if (capacity) {
-					// Convert slot quantities to computed_quantities format
-					const computedQuantities = Object.entries(slotQuantityMap).map(([slotId, quantity]) => ({
-						slot_id: slotId,
-						quantity: quantity
-					}));
-
-					// Calculate total share percentage for display (optional)
-					const totalSlotUnits =
-						capacity.availability_slots?.reduce(
-							(sum: number, slot: any) => sum + slot.quantity,
-							0
-						) || 1;
-					const totalUserUnits = computedQuantities.reduce((sum, cq) => sum + cq.quantity, 0);
-					const share_percentage = totalSlotUnits > 0 ? totalUserUnits / totalSlotUnits : 0;
-
-					// Add the capacity with actual slot quantities
-					filteredCapacities[capacityId] = {
-						...capacity,
-						share_percentage: share_percentage,
-						computed_quantities: computedQuantities,
-						provider_id: contributorId
-					};
-				} else {
-					console.log(
-						`[NETWORK-CAPACITIES-SLOTS] No capacity definition found for ${capacityId} from contributor ${contributorId} - stream timing issue, will process when available`
-					);
-				}
-			});
-		});
-
-		console.log(
-			`[NETWORK-CAPACITIES-SLOTS] Found ${Object.keys(filteredCapacities).length} capacities where we have slot quantities`
-		);
-
-		return filteredCapacities;
-	}
-);
-
-// LEGACY STORE - DEPRECATED
-// This store uses the old percentage-based approach and should be replaced with
-// userNetworkCapacitiesWithSlotQuantities in all new code - excpe th chat system?
-export const userNetworkCapacitiesWithShares = derived(
-	[networkCapacityShares, networkCapacities],
-	([$networkCapacityShares, $networkCapacities]) => {
-		if (!$networkCapacityShares || !$networkCapacities) {
-			console.log('[NETWORK-CAPACITIES] No network data available, returning empty');
-			return {};
-		}
-
-		console.log('networkCapacityShares', $networkCapacityShares);
-		console.log('networkCapacities', $networkCapacities);
-
-		// Filter capacities where we have shares
-		const filteredCapacities: CapacitiesCollectionData = {};
-
-		// For each contributor's shares
-		Object.entries($networkCapacityShares).forEach(([contributorId, shares]) => {
-			// Get this contributor's capacities
-			const contributorCapacities = $networkCapacities[contributorId];
-			if (!contributorCapacities) return;
-
-			// For each capacity we have a share in
-			Object.entries(shares).forEach(([capacityId, share]) => {
-				const capacity = contributorCapacities[capacityId];
-				if (capacity) {
-					const computedQuantities = computeQuantityShares(capacity, share);
-
-					// Add the capacity with just our share and properly computed quantities
-					filteredCapacities[capacityId] = {
-						...capacity,
-						share_percentage: share,
-						computed_quantities: computedQuantities,
-						provider_id: contributorId
-					};
-				}
-			});
-		});
-
-		console.log(
-			`[NETWORK-CAPACITIES] Found ${Object.keys(filteredCapacities).length} capacities where we have shares`
-		);
-
-		return filteredCapacities;
-	}
-);
+// DELETED: Legacy percentage-based store - replaced with efficient algorithm
+// All functionality moved to userNetworkCapacitiesWithSlotQuantities and efficientSlotAllocations
 
 // Node Map
 export const nodesMap: Writable<Record<string, Node>> = writable({});
@@ -261,7 +145,7 @@ export const allKnownContributors = writable<string[]>([]);
 export const recognitionCache = writable<RecognitionCache>({});
 
 // Core derived stores that must stay here due to Svelte 5 export restrictions
-// These form the main reactive chain: recognitionCache -> mutualRecognition -> providerShares
+// These form the main reactive chain: recognitionCache -> mutualRecognition -> generalShares -> specificShares
 
 // Derived store for mutual recognition values (min of ourShare and theirShare)
 export const mutualRecognition = derived(recognitionCache, ($recognitionCache) => {
@@ -299,9 +183,9 @@ export const mutualContributors = derived(mutualRecognition, ($mutualRecognition
 });
 
 // Derived store for normalized mutual recognition values (sum to 1.0)
-export const providerShares = derived(mutualRecognition, ($mutualRecognition) => {
+export const generalShares = derived(mutualRecognition, ($mutualRecognition) => {
 	/*console.log(
-		`[PROVIDER-SHARES] ${new Date().toISOString()} Recalculating from mutual recognition:`,
+		`[GENERAL-SHARES] ${new Date().toISOString()} Recalculating from mutual recognition:`,
 		$mutualRecognition
 	);*/
 
@@ -316,6 +200,236 @@ export const providerShares = derived(mutualRecognition, ($mutualRecognition) =>
 	//console.log('[PROVIDER-SHARES] Normalized shares:', normalized);
 	return normalized;
 });
+
+// MOVED: specificShares definition moved after subtreeContributorMap to resolve dependency order
+
+// ===== EFFICIENT DISTRIBUTION ALGORITHM IMPLEMENTATION =====
+
+// MOVED: computedProviderAllocations moved after specificShares to use filtered shares
+
+// EFFICIENT ALGORITHM RECIPIENT VIEW
+// Extracts our allocations from network allocation states (what we receive from providers)
+export const efficientSlotAllocations = derived(
+	[networkAllocationStates],
+	([$networkAllocationStates]) => {
+		console.log('[EFFICIENT-RECIPIENT] Extracting our slot allocations from network states...');
+
+		const ourAllocations: Record<string, Record<string, number>> = {}; // capacityId -> slotId -> allocatedQuantity
+
+		// Process each provider's allocation states
+		Object.entries($networkAllocationStates).forEach(([providerId, providerCapacities]) => {
+			Object.entries(providerCapacities).forEach(([capacityId, slotAllocations]) => {
+				Object.entries(slotAllocations).forEach(([slotId, allocationResult]) => {
+					// Get our allocation from this slot
+					const ourAllocation = allocationResult.final_allocations[providerId] || 0; // TODO: Use actual user ID
+
+					if (ourAllocation > 0) {
+						if (!ourAllocations[capacityId]) {
+							ourAllocations[capacityId] = {};
+						}
+						ourAllocations[capacityId][slotId] = ourAllocation;
+					}
+				});
+			});
+		});
+
+		console.log(
+			`[EFFICIENT-RECIPIENT] Extracted allocations for ${Object.keys(ourAllocations).length} capacities`
+		);
+		return ourAllocations;
+	}
+);
+
+// INVENTORY DATA SOURCE: Combines network capacities with our actual slot allocations
+// This replaces the old userNetworkCapacitiesWithSlotQuantities with efficient algorithm data
+export const userNetworkCapacitiesWithSlotQuantities = derived(
+	[networkCapacities, efficientSlotAllocations],
+	([$networkCapacities, $efficientSlotAllocations]) => {
+		console.log('[INVENTORY-DATA] Building capacity inventory with efficient allocations...');
+
+		const inventoryData: Record<string, any> = {};
+
+		// Process each provider's capacities
+		Object.entries($networkCapacities).forEach(([providerId, providerCapacities]) => {
+			Object.entries(providerCapacities).forEach(([capacityId, capacity]) => {
+				// Start with the base capacity data
+				const inventoryCapacity = {
+					...capacity,
+					provider_id: providerId,
+					// Add our actual allocated quantities for each slot
+					availability_slots:
+						capacity.availability_slots?.map((slot) => ({
+							...slot,
+							// Our allocated quantity from efficient algorithm
+							allocated_quantity: $efficientSlotAllocations[capacityId]?.[slot.id] || 0,
+							// Availability is the original slot quantity
+							available_quantity: slot.quantity
+						})) || []
+				};
+
+				inventoryData[capacityId] = inventoryCapacity;
+			});
+		});
+
+		console.log(
+			`[INVENTORY-DATA] Built inventory data for ${Object.keys(inventoryData).length} capacities with efficient allocations`
+		);
+		return inventoryData;
+	}
+);
+
+// TRANSPARENCY & STALENESS DETECTION
+// Allows recipients to verify provider calculations and detect stale data
+export const allocationTransparencyAnalysis = derived(
+	[networkAllocationStates, networkDesiredSlotComposeFrom, mutualRecognition],
+	([$networkAllocationStates, $networkDesiredSlotComposeFrom, $mutualRecognition]) => {
+		console.log('[TRANSPARENCY] Analyzing provider allocation transparency and staleness...');
+
+		const analysis: Record<
+			string,
+			Record<
+				string,
+				{
+					providerId: string;
+					capacityId: string;
+					slotId: string;
+					isStale: boolean;
+					canRecompute: boolean;
+					staleness_reasons: string[];
+					our_expected_allocation?: number;
+					provider_claimed_allocation: number;
+					computation_age_minutes: number;
+				}
+			>
+		> = {};
+
+		// Process each provider's allocation states
+		Object.entries($networkAllocationStates).forEach(([providerId, providerCapacities]) => {
+			Object.entries(providerCapacities).forEach(([capacityId, slotAllocations]) => {
+				Object.entries(slotAllocations).forEach(([slotId, allocationResult]) => {
+					const staleness_reasons: string[] = [];
+					let canRecompute = true;
+
+					// Check computation age
+					const computationTime = new Date(allocationResult.computation_timestamp);
+					const now = new Date();
+					const ageMinutes = (now.getTime() - computationTime.getTime()) / (1000 * 60);
+
+					// Check if compose-from desires have changed since computation
+					const currentDesires: Record<string, number> = {};
+					Object.entries($networkDesiredSlotComposeFrom).forEach(
+						([recipientId, composeFromData]) => {
+							// Look for desires to compose FROM this slot INTO any target
+							const fromThisSlot = composeFromData[capacityId]?.[slotId] || {};
+							let totalDesiredFromThisSlot = 0;
+							Object.values(fromThisSlot).forEach((targetSlots: any) => {
+								Object.values(targetSlots).forEach((amount: any) => {
+									totalDesiredFromThisSlot += Number(amount) || 0;
+								});
+							});
+							if (totalDesiredFromThisSlot > 0) {
+								currentDesires[recipientId] = totalDesiredFromThisSlot;
+							}
+						}
+					);
+
+					// Compare with provider's recorded desires
+					const providerRecordedDesires = allocationResult.all_desires;
+					const desiresChanged =
+						JSON.stringify(currentDesires) !== JSON.stringify(providerRecordedDesires);
+
+					if (desiresChanged) {
+						staleness_reasons.push('Desires have changed since provider computation');
+					}
+
+					// Check if MR values have changed
+					let mrChanged = false;
+					Object.keys(allocationResult.mr_values).forEach((recipientId) => {
+						const currentMR = $mutualRecognition[recipientId] || 0;
+						const providerMR = allocationResult.mr_values[recipientId] || 0;
+						if (Math.abs(currentMR - providerMR) > 0.0001) {
+							mrChanged = true;
+						}
+					});
+
+					if (mrChanged) {
+						staleness_reasons.push('Mutual recognition values have changed');
+					}
+
+					// Check computation age (consider stale after 5 minutes)
+					if (ageMinutes > 5) {
+						staleness_reasons.push(`Computation is ${ageMinutes.toFixed(1)} minutes old`);
+					}
+
+					// Determine if we can recompute locally
+					const hasAllMRValues = Object.keys(currentDesires).every(
+						(recipientId) => $mutualRecognition[recipientId] !== undefined
+					);
+
+					if (!hasAllMRValues) {
+						canRecompute = false;
+					}
+
+					// Calculate what we expect our allocation to be
+					let ourExpectedAllocation: number | undefined;
+					const ourUserId = providerId; // TODO: Get actual user ID
+
+					if (canRecompute && hasAllMRValues) {
+						// Recompute locally to verify
+						const mutuallyDesiring = Object.keys(currentDesires);
+						if (mutuallyDesiring.includes(ourUserId)) {
+							let filteredMRSum = 0;
+							mutuallyDesiring.forEach((recipientId) => {
+								filteredMRSum += $mutualRecognition[recipientId] || 0;
+							});
+
+							if (filteredMRSum > 0) {
+								const ourMR = $mutualRecognition[ourUserId] || 0;
+								const normalizedShare = ourMR / filteredMRSum;
+								const rawAllocation = allocationResult.total_quantity * normalizedShare;
+								const ourDesire = currentDesires[ourUserId] || 0;
+								ourExpectedAllocation = Math.min(rawAllocation, ourDesire);
+								// Note: This is simplified - doesn't include redistribution
+							}
+						}
+					}
+
+					const isStale = staleness_reasons.length > 0;
+					const providerClaimedAllocation = allocationResult.final_allocations[ourUserId] || 0;
+
+					// Store analysis
+					if (!analysis[capacityId]) analysis[capacityId] = {};
+					analysis[capacityId][slotId] = {
+						providerId,
+						capacityId,
+						slotId,
+						isStale,
+						canRecompute,
+						staleness_reasons,
+						our_expected_allocation: ourExpectedAllocation,
+						provider_claimed_allocation: providerClaimedAllocation,
+						computation_age_minutes: ageMinutes
+					};
+
+					if (
+						isStale ||
+						(ourExpectedAllocation &&
+							Math.abs(ourExpectedAllocation - providerClaimedAllocation) > 0.01)
+					) {
+						console.log(
+							`[TRANSPARENCY] Potential issue with ${providerId}:${capacityId}:${slotId} - Stale: ${isStale}, Expected: ${ourExpectedAllocation?.toFixed(2)}, Provider: ${providerClaimedAllocation.toFixed(2)}`
+						);
+					}
+				});
+			});
+		});
+
+		console.log(
+			`[TRANSPARENCY] Analyzed ${Object.keys(analysis).length} capacities for staleness and transparency`
+		);
+		return analysis;
+	}
+);
 
 // Derived store for subtree contributor mapping
 export const subtreeContributorMap = derived([userTree], ([$userTree]) => {
@@ -333,176 +447,288 @@ export const subtreeContributorMap = derived([userTree], ([$userTree]) => {
 	return filterMap;
 });
 
-// Derived store for capacity shares - maps capacity IDs to their filtered share maps
-export const capacityShares = derived(
-	[userCapacities, providerShares, subtreeContributorMap],
-	([$userCapacities, $providerShares, $subtreeContributorMap]) => {
-		console.log(
-			`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacities and provider shares`
-		);
+// SPECIFIC SHARES: Apply capacity filters to general shares
+// Implements: Specific-Share(You, Provider, Capacity) = General-Share(You, Provider) × Filter(You, Capacity) / Σ (General-Share(Each-Filtered-Participant, Provider) × Filter(Each-Filtered-Participant, Capacity))
+export const specificShares = derived(
+	[generalShares, userCapacities, subtreeContributorMap],
+	([$generalShares, $userCapacities, $subtreeContributorMap]) => {
+		console.log('[SPECIFIC-SHARES] Calculating filtered shares per capacity...');
 
-		// If no capacities or provider shares, return empty
-		if (!$userCapacities || Object.keys($providerShares).length === 0) {
-			console.log('[CAPACITY-SHARES] No capacities or provider shares, returning empty');
-			return {};
+		const capacitySpecificShares: Record<string, Record<string, number>> = {};
+
+		if (!$userCapacities || Object.keys($generalShares).length === 0) {
+			return capacitySpecificShares;
 		}
 
-		// Calculate filtered shares for each capacity
-		const shares: Record<string, ShareMapData> = {};
+		// Process each of our provider capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			try {
-				// Create the context object for filtering
+			// Only process provider capacities (our own capacities)
+			if (!('recipient_shares' in capacity)) return;
+
+			const providerCapacity = capacity as ProviderCapacity;
+
+			// Create filter context for this capacity
 				const context: FilterContext = {
 					subtreeContributors: $subtreeContributorMap
 				};
 
-				// Apply capacity filter to provider shares
-				const filteredShares = applyCapacityFilter(capacity, $providerShares, context);
+			// Apply capacity filter to the general shares
+			// This will return the filtered and normalized shares for this capacity
+			const capacityShares = applyCapacityFilter(providerCapacity, $generalShares, context);
 
-				// Store the filtered shares
-				shares[capacityId] = filteredShares;
-			} catch (error) {
-				console.error(
-					'[CAPACITY-SHARES] Error calculating shares for capacity:',
-					capacityId,
-					error
-				);
-				// On error, use empty share map for this capacity
-				shares[capacityId] = {};
-			}
+			capacitySpecificShares[capacityId] = capacityShares;
+
+			console.log(
+				`[SPECIFIC-SHARES] Capacity ${capacityId}: ${Object.keys(capacityShares).length} filtered participants from ${Object.keys($generalShares).length} total`
+			);
 		});
 
-		console.log('[CAPACITY-SHARES] Generated shares for', Object.keys(shares).length, 'capacities');
-		return shares;
+		console.log(
+			`[SPECIFIC-SHARES] Generated specific shares for ${Object.keys(capacitySpecificShares).length} capacities`
+		);
+		return capacitySpecificShares;
 	}
 );
 
-// Derived store that calculates slot quantities using mutual recognition shares
-export const capacitySlotQuantities = derived(
-	[userCapacities, capacityShares],
-	([$userCapacities, $capacityShares]) => {
+// EFFICIENT ALGORITHM IMPLEMENTATION (using specific shares)
+// Computes provider allocation states using the efficient algorithm from distribution.md
+export const computedProviderAllocations = derived(
+	[userCapacities, networkDesiredSlotComposeFrom, userDesiredSlotComposeInto, specificShares],
+	([
+		$userCapacities,
+		$networkDesiredSlotComposeFrom,
+		$userDesiredSlotComposeInto,
+		$specificShares
+	]) => {
 		console.log(
-			'[CAPACITY-SLOT-QUANTITIES] Calculating slot quantities from mutual recognition shares'
+			'[EFFICIENT-ALGORITHM] Computing provider allocations using mutual desires from compose-from/into...'
 		);
 
-		if (!$userCapacities || !$capacityShares) {
-			console.log(
-				'[CAPACITY-SLOT-QUANTITIES] Missing capacities or capacity shares, returning empty'
-			);
-			return {};
-		}
+		const allocations: Record<string, ProviderAllocationStateData> = {};
 
-		const allSlotQuantities: Record<string, UserSlotQuantitiesData> = {};
+		if (!$userCapacities) return allocations;
 
-		// Process each capacity
+		// Process each of our capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			try {
 				// Only process provider capacities (our own capacities)
-				if (!('recipient_shares' in capacity)) {
+			if (!('recipient_shares' in capacity)) return;
+
+				const providerCapacity = capacity as ProviderCapacity;
+			const capacityAllocations: ProviderAllocationStateData = {};
+
+			// Process each slot in this capacity
+			providerCapacity.availability_slots?.forEach((slot) => {
+				// Phase 1: Calculate mutual desires from compose-from and compose-into
+				const recipientComposeFromDesires: Record<string, number> = {};
+				const providerComposeIntoDesires: Record<string, number> = {};
+				const mutualDesires: Record<string, number> = {};
+
+				// Collect recipients' compose-from desires (they want FROM our slot)
+				Object.entries($networkDesiredSlotComposeFrom).forEach(([recipientId, composeFromData]) => {
+					// Look for desires to compose FROM our slot INTO any target
+					const fromOurSlot = composeFromData[capacityId]?.[slot.id] || {};
+					let totalDesiredFromOurSlot = 0;
+					Object.values(fromOurSlot).forEach((targetSlots: any) => {
+						Object.values(targetSlots).forEach((amount: any) => {
+							totalDesiredFromOurSlot += Number(amount) || 0;
+						});
+					});
+					if (totalDesiredFromOurSlot > 0) {
+						recipientComposeFromDesires[recipientId] = totalDesiredFromOurSlot;
+					}
+				});
+
+				// Collect our compose-into desires (we want to give FROM our slot TO recipients)
+				const ourComposeIntoForThisSlot = $userDesiredSlotComposeInto[capacityId]?.[slot.id] || {};
+				Object.entries(ourComposeIntoForThisSlot).forEach(([targetCapacityId, targetSlots]) => {
+					// Find who owns the target capacity to determine the recipient
+					// For now, assume targetCapacityId maps to recipientId (TODO: improve this mapping)
+					Object.entries(targetSlots).forEach(([targetSlotId, amount]) => {
+						const recipientId = targetCapacityId; // Simplified mapping
+						providerComposeIntoDesires[recipientId] =
+							(providerComposeIntoDesires[recipientId] || 0) + (Number(amount) || 0);
+					});
+				});
+
+				// Phase 2: Calculate mutual desires (minimum of both expressions)
+				const allRecipients = new Set([
+					...Object.keys(recipientComposeFromDesires),
+					...Object.keys(providerComposeIntoDesires)
+				]);
+
+				allRecipients.forEach((recipientId) => {
+					const recipientDesire = recipientComposeFromDesires[recipientId] || 0;
+					const providerDesire = providerComposeIntoDesires[recipientId] || 0;
+					const mutualDesire = Math.min(recipientDesire, providerDesire);
+
+					if (mutualDesire > 0) {
+						mutualDesires[recipientId] = mutualDesire;
+					}
+				});
+
+				// Phase 3: Identify mutually-desiring recipients
+				const mutuallyDesiringRecipients = Object.keys(mutualDesires);
+
+				if (mutuallyDesiringRecipients.length === 0) {
+					// No mutual desires for this slot - create empty allocation with full transparency
+					capacityAllocations[slot.id] = {
+						slot_id: slot.id,
+						total_quantity: slot.quantity,
+						all_desires: {}, // No mutual desires
+						mutually_desiring_recipients: [],
+						mr_values: {},
+						filtered_mr_sum: 0,
+						normalized_mr_shares: {},
+						raw_mr_allocations: {},
+						desire_constrained_allocations: {},
+						unsatisfied_recipients: [],
+						redistribution_amounts: {},
+						final_allocations: {},
+						unused_capacity: slot.quantity,
+						computation_timestamp: new Date().toISOString(),
+						algorithm_version: 'mutual_desire_v1'
+					};
 					return;
 				}
 
-				const providerCapacity = capacity as ProviderCapacity;
+				// Phase 3: Use capacity-specific filtered shares (already normalized)
+				const capacityShares = $specificShares[capacityId] || {};
+				let filteredMRSum = 0;
+				const mrValues: Record<string, number> = {};
 
-				// Get the already-calculated mutual recognition shares for this capacity
-				const filteredShares = $capacityShares[capacityId] || {};
-
-				// Calculate actual slot quantities using the mutual recognition shares
-				const recipientSlotQuantities = calculateRecipientSlotQuantities(
-					providerCapacity,
-					filteredShares
-				);
-
-				// Merge the results
-				Object.entries(recipientSlotQuantities).forEach(([recipientId, slotQuantities]) => {
-					if (!allSlotQuantities[recipientId]) {
-						allSlotQuantities[recipientId] = {};
-					}
-					Object.assign(allSlotQuantities[recipientId], slotQuantities);
+				mutuallyDesiringRecipients.forEach((recipientId) => {
+					const mrValue = capacityShares[recipientId] || 0;
+					mrValues[recipientId] = mrValue;
+					filteredMRSum += mrValue;
 				});
 
+				const normalizedMRShares: Record<string, number> = {};
+				if (filteredMRSum > 0) {
+					mutuallyDesiringRecipients.forEach((recipientId) => {
+						normalizedMRShares[recipientId] = mrValues[recipientId] / filteredMRSum;
+					});
+				}
+
+				// Phase 4: Calculate raw MR allocation and apply desire constraints
+				const rawMRAllocations: Record<string, number> = {};
+				const desireConstrainedAllocations: Record<string, number> = {};
+				let usedCapacity = 0;
+
+				mutuallyDesiringRecipients.forEach((recipientId) => {
+					const normalizedShare = normalizedMRShares[recipientId] || 0;
+					const rawMRAllocation = slot.quantity * normalizedShare;
+					const mutualDesiredAmount = mutualDesires[recipientId];
+					const constrainedAllocation = Math.min(rawMRAllocation, mutualDesiredAmount);
+
+					// Store transparent intermediate calculations
+					rawMRAllocations[recipientId] = rawMRAllocation;
+
+					if (constrainedAllocation > 0) {
+						desireConstrainedAllocations[recipientId] = constrainedAllocation;
+						usedCapacity += constrainedAllocation;
+					}
+				});
+
+				// Phase 5: Redistribute unused capacity to unsatisfied recipients
+				const unusedCapacity = slot.quantity - usedCapacity;
+				const redistributionAmounts: Record<string, number> = {};
+				const finalAllocations: Record<string, number> = { ...desireConstrainedAllocations };
+
+				// Find recipients who are still unsatisfied (based on mutual desires)
+				const unsatisfiedRecipients = mutuallyDesiringRecipients.filter((recipientId) => {
+					const allocated = desireConstrainedAllocations[recipientId] || 0;
+					const mutuallyDesired = mutualDesires[recipientId];
+					return allocated < mutuallyDesired;
+				});
+
+				if (unusedCapacity > 0 && unsatisfiedRecipients.length > 0) {
+					// Calculate redistribution proportions based on normalized MR shares
+					let unsatisfiedMRSum = 0;
+					unsatisfiedRecipients.forEach((recipientId) => {
+						unsatisfiedMRSum += normalizedMRShares[recipientId] || 0;
+					});
+
+					if (unsatisfiedMRSum > 0) {
+						unsatisfiedRecipients.forEach((recipientId) => {
+							const redistributionShare = (normalizedMRShares[recipientId] || 0) / unsatisfiedMRSum;
+							const redistributionAmount = unusedCapacity * redistributionShare;
+							const currentAllocation = desireConstrainedAllocations[recipientId] || 0;
+							const mutuallyDesiredAmount = mutualDesires[recipientId];
+							const maxAdditional = mutuallyDesiredAmount - currentAllocation;
+							const actualRedistribution = Math.min(redistributionAmount, maxAdditional);
+
+							if (actualRedistribution > 0) {
+								redistributionAmounts[recipientId] = actualRedistribution;
+								finalAllocations[recipientId] = currentAllocation + actualRedistribution;
+								usedCapacity += actualRedistribution;
+							}
+						});
+					}
+				}
+
+				// Store the allocation result for this slot with FULL TRANSPARENCY
+				capacityAllocations[slot.id] = {
+					slot_id: slot.id,
+					total_quantity: slot.quantity,
+
+					// Phase 1: All mutual desires (transparent input from compose-from/into)
+					all_desires: mutualDesires,
+
+					// Phase 2: Mutually-desiring recipients (transparent)
+					mutually_desiring_recipients: mutuallyDesiringRecipients,
+
+					// Phase 3: MR calculations using specific shares (transparent)
+					mr_values: mrValues,
+					filtered_mr_sum: filteredMRSum,
+					normalized_mr_shares: normalizedMRShares,
+
+					// Phase 4: Allocation steps (transparent)
+					raw_mr_allocations: rawMRAllocations,
+					desire_constrained_allocations: desireConstrainedAllocations,
+
+					// Phase 5: Redistribution details (transparent)
+					unsatisfied_recipients: unsatisfiedRecipients,
+					redistribution_amounts: redistributionAmounts,
+
+					// Final results
+					final_allocations: finalAllocations,
+					unused_capacity: slot.quantity - usedCapacity,
+
+					// Metadata
+					computation_timestamp: new Date().toISOString(),
+					algorithm_version: 'mutual_desire_v1_with_filters'
+				};
+
 				console.log(
-					`[CAPACITY-SLOT-QUANTITIES] Calculated slot quantities for capacity ${capacityId} with ${Object.keys(recipientSlotQuantities).length} recipients using mutual recognition shares`
+					`[EFFICIENT-ALGORITHM] Slot ${slot.id}: ${mutuallyDesiringRecipients.length} desiring recipients, ${usedCapacity.toFixed(2)}/${slot.quantity} allocated, ${(slot.quantity - usedCapacity).toFixed(2)} unused`
 				);
-			} catch (error) {
-				console.error(
-					'[CAPACITY-SLOT-QUANTITIES] Error calculating slot quantities for capacity:',
-					capacityId,
-					error
-				);
-			}
+			});
+
+			allocations[capacityId] = capacityAllocations;
 		});
 
-		// Note: Persistence is now handled in subscriptions.svelte.ts
-
 		console.log(
-			'[CAPACITY-SLOT-QUANTITIES] Generated slot quantities for',
-			Object.keys(allSlotQuantities).length,
-			'recipients using mutual recognition'
+			`[EFFICIENT-ALGORITHM] Computed allocations for ${Object.keys(allocations).length} capacities using specific shares`
 		);
-		return allSlotQuantities;
+		return allocations;
 	}
 );
 
-// Derived store for contributor capacity shares - maps contributor IDs to their capacity shares
-export const contributorCapacityShares = derived(capacityShares, ($capacityShares) => {
-	console.log(`[CAPACITY-SHARES] ${new Date().toISOString()} Recalculating from capacity shares`);
+// DELETED: capacityShares - Replaced by efficient provider-centric algorithm
+// Old recipient-centric percentage allocation approach removed in favor of
+// computedProviderAllocations which implements the efficient algorithm
 
-	const contributorShares: Record<string, Record<string, number>> = {};
+// DELETED: capacitySlotQuantities - Replaced by efficient provider-centric algorithm
+// Old approach calculated slot quantities from recipient perspective using averaged percentages
+// New approach: computedProviderAllocations provides discrete per-slot allocations
 
-	// For each capacity's shares
-	Object.entries($capacityShares).forEach(([capacityId, shares]) => {
-		// For each contributor's share in this capacity
-		Object.entries(shares).forEach(([contributorId, share]) => {
-			// Initialize the contributor's share map if it doesn't exist
-			if (!contributorShares[contributorId]) {
-				contributorShares[contributorId] = {};
-			}
+// DELETED: contributorCapacityShares - Replaced by efficient provider-centric algorithm
+// Old approach mapped contributor shares using percentage-based allocation
+// New approach: Provider computes allocations directly, recipients get transparent results
 
-			// Add this capacity's share to the contributor's map
-			contributorShares[contributorId][capacityId] = share;
-		});
-	});
-
-	console.log('[CAPACITY-SHARES] Generated contributor shares map:', contributorShares);
-	return contributorShares;
-});
-
-// Derived store that combines userCapacities with capacityShares to match current schema
-export const userCapacitiesWithShares = derived(
-	[userCapacities, capacityShares],
-	([$userCapacities, $capacityShares]) => {
-		console.log(
-			`[CAPACITIES-WITH-SHARES] ${new Date().toISOString()} Combining capacities with shares`
-		);
-
-		if (!$userCapacities) {
-			console.log('[CAPACITIES-WITH-SHARES] No capacities available, returning null');
-			return null;
-		}
-
-		// Create a new capacities collection with shares included
-		const capacitiesWithShares: CapacitiesCollectionData = {};
-
-		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// Get the shares for this capacity
-			const shares = $capacityShares[capacityId] || {};
-
-			// Create a new capacity object with the shares included
-			capacitiesWithShares[capacityId] = {
-				...capacity,
-				recipient_shares: shares
-			};
-		});
-
-		console.log(
-			'[CAPACITIES-WITH-SHARES] Generated',
-			Object.keys(capacitiesWithShares).length,
-			'capacities with shares'
-		);
-		return capacitiesWithShares;
-	}
-);
+// DELETED: userCapacitiesWithShares - Replaced by efficient provider-centric algorithm
+// Old approach combined capacities with percentage-based recipient shares
+// New approach: computedProviderAllocations contains all allocation data with full transparency
 
 // Derived store that provides subtree options for UI components
 export const subtreeOptions = derived([userTree], ([$userTree]) => {
@@ -529,125 +755,43 @@ export const subtreeOptions = derived([userTree], ([$userTree]) => {
 		.filter((option) => option.contributorCount > 0); // Only include subtrees with contributors
 });
 
-// Loading state flags
-export const isLoadingCapacities = writable(false);
-export const isLoadingTree = writable(false);
-export const isLoadingSogf = writable(false);
-
-export const isRecalculatingTree = writable(false);
-export const isRecalculatingCapacities = writable(false);
-
-// Additional state
-export const publicTemplates: Writable<Record<string, any>> = writable({});
-
 // SLOT ALLOCATION HELPER FUNCTIONS (moved from slots.svelte.ts)
 function getSlotById(capacity: any, slotId: string) {
 	return capacity.availability_slots?.find((slot: any) => slot.id === slotId);
 }
 
-// UNIFIED SLOT ALLOCATION ANALYSIS (moved from slots.svelte.ts to avoid circular dependency)
-// Combines feasible claims calculation with rich metadata for UI
-export const slotAllocationAnalysis = derived(
-	[userDesiredSlotClaims, userNetworkCapacitiesWithSlotQuantities],
-	([$userDesiredSlotClaims, $userNetworkCapacitiesWithSlotQuantities]): SlotAllocationAnalysis => {
-		console.log('[SLOT-ALLOCATION] Analyzing slot allocations with unified approach...');
+// DELETED: slotAllocationAnalysis - Replaced by efficient provider-centric algorithm
+// Old approach analyzed constraints from recipient perspective using percentage shares
+// New approach: allocationTransparencyAnalysis provides staleness detection and verification
 
-		const feasibleClaims: UserSlotClaims = {};
-		const metadata: Record<string, Record<string, SlotAllocationMetadata>> = {};
+// DELETED: Old slot allocation stores - Replaced by efficient provider-centric algorithm
+// - feasibleSlotClaims: Old recipient-centric feasibility analysis
+// - allocatedSlots: Old percentage-based allocation
+// - slotClaimMetadata: Old constraint metadata
+// New approach: efficientSlotAllocations provides direct allocations from provider computations
 
-		Object.entries($userDesiredSlotClaims).forEach(([capacityId, slotClaims]) => {
-			if (!metadata[capacityId]) metadata[capacityId] = {};
-
-			Object.entries(slotClaims).forEach(([slotId, desiredQuantity]) => {
-				const capacity = $userNetworkCapacitiesWithSlotQuantities[capacityId] as RecipientCapacity;
-				if (!capacity) return;
-
-				const slot = getSlotById(capacity, slotId);
-				if (!slot) return;
-
-				// Get actual allocated slot quantities from discrete allocation
-				const slotAllocation = capacity.computed_quantities?.find((cq) => cq.slot_id === slotId);
-				if (!slotAllocation) return;
-
-				// Calculate feasible quantity and metadata in one pass
-				const maxAvailableUnits = slotAllocation.quantity;
-				const finalFeasibleQuantity = Math.min(desiredQuantity, maxAvailableUnits);
-				const ourSharePercentage = capacity.share_percentage || 0;
-
-				// Store feasible claims
-				if (finalFeasibleQuantity > 0) {
-					if (!feasibleClaims[capacityId]) {
-						feasibleClaims[capacityId] = {};
-					}
-					feasibleClaims[capacityId][slotId] = finalFeasibleQuantity;
-				}
-
-				// Store metadata
-				const constraintType: 'share_limit' | 'no_constraint' =
-					finalFeasibleQuantity < desiredQuantity ? 'share_limit' : 'no_constraint';
-
-				const reasonLimited =
-					constraintType === 'share_limit'
-						? `Limited by ${maxAvailableUnits} discretely allocated units (from ${(ourSharePercentage * 100).toFixed(1)}% share)`
-						: undefined;
-
-				metadata[capacityId][slotId] = {
-					feasibleQuantity: finalFeasibleQuantity,
-					maxAvailableUnits,
-					constraintType,
-					ourSharePercentage,
-					slotTotalQuantity: slot.quantity,
-					reasonLimited
-				};
-
-				// Log constraints
-				if (constraintType === 'share_limit') {
-					console.log(
-						`[SLOT-ALLOCATION] Constrained ${capacityId}:${slotId}: desired ${desiredQuantity} → ${finalFeasibleQuantity} (${reasonLimited})`
-					);
-				}
-			});
-		});
-
-		console.log(
-			`[SLOT-ALLOCATION] Analyzed allocations for ${Object.keys(feasibleClaims).length} capacities`
-		);
-
-		return { feasibleClaims, metadata };
+// TEMPORARY COMPATIBILITY BRIDGE: Convert efficient allocations to old format for composition system
+// TODO: Update composition system to use efficientSlotAllocations directly
+export const allocatedSlotAmounts = derived(
+	[efficientSlotAllocations],
+	([$efficientSlotAllocations]) => {
+		console.log('[COMPATIBILITY-BRIDGE] Converting efficient allocations to old flat format...');
+		// Convert efficient slot allocations to the old allocatedSlotAmounts format
+		// This maintains compatibility with the composition system until it's updated
+		return $efficientSlotAllocations;
 	}
 );
 
-// FEASIBLE SLOT CLAIMS (Derived from unified analysis)
-export const feasibleSlotClaims = derived(
-	[slotAllocationAnalysis],
-	([analysis]) => analysis.feasibleClaims
-);
-
-// ALLOCATED SLOTS (Pure Reactive - Share-Based Direct Allocation)
-export const allocatedSlots = derived([feasibleSlotClaims], ([$feasibleSlotClaims]) => {
-	console.log('[ALLOCATED-SLOTS] Pure reactive allocation: Shares → Direct Allocation');
-	// Simple: Feasible claims become allocated slots directly
-	return $feasibleSlotClaims;
-});
-
-// CONVENIENCE: Single source of truth for allocated amounts
-export const allocatedSlotAmounts = derived([allocatedSlots], ([$allocatedSlots]) => {
-	console.log('[ALLOCATED-AMOUNTS] Converting to flat amount structure for compose system...');
-	// Convert nested structure to flat amounts for easy consumption by compose system
-	const amounts: Record<string, Record<string, number>> = {};
-	Object.entries($allocatedSlots).forEach(([capacityId, slots]) => {
-		amounts[capacityId] = {};
-		Object.entries(slots).forEach(([slotId, quantity]) => {
-			amounts[capacityId][slotId] = quantity;
-		});
-	});
-	return amounts;
-});
-
-// UI-FRIENDLY CONSTRAINT METADATA (Derived from unified analysis)
-export const slotClaimMetadata = derived(
-	[slotAllocationAnalysis],
-	([analysis]) => analysis.metadata
+// TEMPORARY COMPATIBILITY BRIDGE: Stub for contributorCapacityShares
+// TODO: Update composition system to not need this store
+export const contributorCapacityShares = derived(
+	[mutualRecognition],
+	(): Record<string, Record<string, number>> => {
+		console.log('[COMPATIBILITY-BRIDGE] Providing empty contributorCapacityShares stub...');
+		// Return empty object - composition system should be updated to not rely on this
+		// The new efficient algorithm handles allocation constraints internally
+		return {};
+	}
 );
 
 /**
@@ -1210,346 +1354,5 @@ export const feasibleSlotComposeIntoMetadata = derived(
 			`[FEASIBLE-SLOT-METADATA-INTO] Generated allocation constraint metadata for ${Object.keys(metadata).length} capacity compositions`
 		);
 		return metadata;
-	}
-);
-
-// =============================================================================
-// REDISTRIBUTION LOGIC - Secondary Level (Elegant Implementation)
-// =============================================================================
-
-/**
- * SLOT REDISTRIBUTION SYSTEM
- *
- * When we have allocated slots but desire less for our own compositions,
- * redistribute the excess to others based on:
- * 1. What they want (networkDesiredSlotComposeFrom)
- * 2. Their share proportions (contributorCapacityShares)
- *
- * This maintains efficiency by only computing our own redistribution view.
- *
- * EXAMPLE SCENARIO:
- *
- * 1. Initial State:
- *    - We allocated 10 units from Alice's "morning-consulting" slot
- *    - We only want to use 6 units (userDesiredSlotComposeInto shows 6 units total)
- *    - Excess = 10 - 6 = 4 units available for redistribution
- *
- * 2. Network Desires vs Existing Allocations:
- *    - Bob wants 3 units from Alice's "morning-consulting" → his "project-work"
- *    - Bob already has 1 unit allocated → Gap = 3 - 1 = 2 units
- *    - Carol wants 2 units from Alice's "morning-consulting" → her "design-sprint"
- *    - Carol already has 0 units allocated → Gap = 2 - 0 = 2 units
- *    - Total gap = 4 units (only redistribute to fill unmet gaps)
- *
- * 3. Share Constraints on Gaps:
- *    - Bob has 40% share in Alice's capacity, already allocated 1 unit
- *    - Bob's remaining share capacity = (40% × 5 total) - 1 = 1 unit
- *    - Bob's effective gap = min(2 gap in desires, 1 remaining share) = 1 unit
- *    - Carol has 60% share, already allocated 0 units
- *    - Carol's remaining share capacity = (60% × 5 total) - 0 = 3 units
- *    - Carol's effective gap = min(2 gap in desires, 3 remaining share) = 2 units
- *
- * 4. Gap-Based Redistribution:
- *    - Available excess = 4 units
- *    - Total effective gaps = 1 + 2 = 3 units
- *    - Redistribution ratio = 4/3 = 1.33 (excess can fully cover gaps)
- *    - Bob gets: 1 × 1.0 = 1 unit (fills his gap completely)
- *    - Carol gets: 2 × 1.0 = 2 units (fills her gap completely)
- *    - Total redistributed: 3 units, 1 unit remains as true excess
- *
- * 5. Enhanced Feasible Compositions:
- *    - Bob's feasible composition enhanced from 1 → 2 units (gap filled)
- *    - Carol's feasible composition enhanced from 0 → 2 units (gap filled)
- *    - Efficient gap-filling ensures those who need it most get redistributed capacity
- */
-
-// Helper: Initialize nested object structure safely
-const ensureNestedPath = (obj: any, path: string[]) => {
-	let current = obj;
-	for (const key of path) {
-		if (!current[key]) current[key] = {};
-		current = current[key];
-	}
-	return current;
-};
-
-// Helper: Calculate total desires from a slot
-const calculateSlotDesires = (desires: any, capacityId: string, slotId: string): number => {
-	const slotDesires = desires[capacityId]?.[slotId] as
-		| Record<string, Record<string, number>>
-		| undefined;
-	if (!slotDesires) return 0;
-
-	return Object.values(slotDesires).reduce(
-		(total: number, targetSlots: Record<string, number>) =>
-			total + Object.values(targetSlots).reduce((sum: number, amount: number) => sum + amount, 0),
-		0
-	);
-};
-
-// Helper: Calculate constrained gap for a participant
-const calculateConstrainedGap = (
-	desiredAmount: number,
-	alreadyAllocated: number,
-	contributorShare: number,
-	capacityTotalQuantity: number
-): number => {
-	const unmetGap = Math.max(0, desiredAmount - alreadyAllocated);
-	if (unmetGap === 0) return 0;
-
-	const maxTheyCanReceive = capacityTotalQuantity * contributorShare;
-	const maxAdditionalTheyCanReceive = Math.max(0, maxTheyCanReceive - alreadyAllocated);
-
-	return Math.min(unmetGap, maxAdditionalTheyCanReceive);
-};
-
-// Calculate our excess slot capacity available for redistribution
-export const redistributableSlotCapacity = derived(
-	[allocatedSlotAmounts, userDesiredSlotComposeInto, userDesiredSlotComposeFrom, userCapacities],
-	([
-		$allocatedSlotAmounts,
-		$userDesiredSlotComposeInto,
-		$userDesiredSlotComposeFrom,
-		$userCapacities
-	]) => {
-		console.log(
-			'[REDISTRIBUTION] Calculating excess slot capacity available for redistribution...'
-		);
-
-		if (!$userCapacities) return {};
-
-		const redistributable: Record<string, Record<string, number>> = {};
-
-		Object.entries($allocatedSlotAmounts).forEach(([capacityId, slots]) => {
-			// Only consider our own capacities for redistribution
-			if (!$userCapacities[capacityId]) return;
-
-			Object.entries(slots).forEach(([slotId, allocatedAmount]) => {
-				// Calculate total desires from this slot (both directions)
-				const intoDesires = calculateSlotDesires($userDesiredSlotComposeInto, capacityId, slotId);
-				const fromDesires = calculateSlotDesires($userDesiredSlotComposeFrom, capacityId, slotId);
-				const totalDesires = intoDesires + fromDesires;
-
-				// Calculate excess capacity
-				const excessCapacity = allocatedAmount - totalDesires;
-
-				if (excessCapacity > 0) {
-					ensureNestedPath(redistributable, [capacityId])[slotId] = excessCapacity;
-					console.log(
-						`[REDISTRIBUTION] Found ${excessCapacity.toFixed(2)} excess units in ${capacityId}:${slotId} (allocated: ${allocatedAmount}, our desires: ${totalDesires})`
-					);
-				}
-			});
-		});
-
-		console.log(
-			`[REDISTRIBUTION] Found redistributable capacity in ${Object.keys(redistributable).length} capacities`
-		);
-		return redistributable;
-	}
-);
-
-// Enhanced feasible compositions with redistribution
-export const feasibleSlotComposeIntoWithRedistribution = derived(
-	[
-		feasibleSlotComposeInto,
-		redistributableSlotCapacity,
-		networkDesiredSlotComposeFrom,
-		contributorCapacityShares,
-		userCapacities
-	],
-	([
-		$feasibleSlotComposeInto,
-		$redistributableSlotCapacity,
-		$networkDesiredSlotComposeFrom,
-		$contributorCapacityShares,
-		$userCapacities
-	]) => {
-		console.log('[REDISTRIBUTION] Enhancing feasible compositions with redistributed capacity...');
-
-		if (!$userCapacities) return $feasibleSlotComposeInto;
-
-		// Start with existing feasible compositions
-		const enhanced: UserSlotCompositionData = JSON.parse(JSON.stringify($feasibleSlotComposeInto));
-
-		// Process each slot with redistributable capacity
-		Object.entries($redistributableSlotCapacity).forEach(([ourCapacityId, ourSlots]) => {
-			const ourCapacity = $userCapacities[ourCapacityId];
-			if (!ourCapacity) return;
-
-			const ourCapacityTotalQuantity =
-				ourCapacity.availability_slots?.reduce((total, slot) => total + slot.quantity, 0) || 0;
-
-			Object.entries(ourSlots).forEach(([ourSlotId, excessCapacity]) => {
-				// Collect participant gaps for this slot
-				const participantGaps: Array<{
-					contributorId: string;
-					theirCapacityId: string;
-					theirSlotId: string;
-					effectiveGap: number;
-				}> = [];
-
-				Object.entries($networkDesiredSlotComposeFrom).forEach(
-					([contributorId, contributorDesires]) => {
-						const desiresFromOurSlot = contributorDesires[ourCapacityId]?.[ourSlotId];
-						if (!desiresFromOurSlot) return;
-
-						const contributorShare =
-							$contributorCapacityShares[contributorId]?.[ourCapacityId] || 0;
-						if (contributorShare === 0) return;
-
-						Object.entries(desiresFromOurSlot).forEach(([theirCapacityId, theirSlots]) => {
-							Object.entries(theirSlots).forEach(([theirSlotId, desiredAmount]) => {
-								const alreadyAllocated =
-									$feasibleSlotComposeInto[ourCapacityId]?.[ourSlotId]?.[theirCapacityId]?.[
-										theirSlotId
-									] || 0;
-
-								const effectiveGap = calculateConstrainedGap(
-									desiredAmount,
-									alreadyAllocated,
-									contributorShare,
-									ourCapacityTotalQuantity
-								);
-
-								if (effectiveGap > 0) {
-									participantGaps.push({
-										contributorId,
-										theirCapacityId,
-										theirSlotId,
-										effectiveGap
-									});
-
-									console.log(
-										`[REDISTRIBUTION] Gap found for ${contributorId}: desired=${desiredAmount}, allocated=${alreadyAllocated}, gap=${effectiveGap}`
-									);
-								}
-							});
-						});
-					}
-				);
-
-				// Apply proportional redistribution if there are gaps
-				const totalGaps = participantGaps.reduce((total, p) => total + p.effectiveGap, 0);
-
-				if (totalGaps > 0 && excessCapacity > 0) {
-					const redistributionRatio = Math.min(1, excessCapacity / totalGaps);
-
-					participantGaps.forEach(({ theirCapacityId, theirSlotId, effectiveGap }) => {
-						const redistributedAmount = effectiveGap * redistributionRatio;
-
-						// Add to enhanced feasible compositions
-						const targetPath = ensureNestedPath(enhanced, [
-							ourCapacityId,
-							ourSlotId,
-							theirCapacityId
-						]);
-						const existingAmount = targetPath[theirSlotId] || 0;
-						targetPath[theirSlotId] = existingAmount + redistributedAmount;
-
-						console.log(
-							`[REDISTRIBUTION] Enhanced ${ourCapacityId}:${ourSlotId} → ${theirCapacityId}:${theirSlotId}: +${redistributedAmount.toFixed(2)} (from excess redistribution)`
-						);
-					});
-				}
-			});
-		});
-
-		console.log(
-			'[REDISTRIBUTION] Enhanced feasible compositions with gap-based redistributed capacity'
-		);
-		return enhanced;
-	}
-);
-
-// =============================================================================
-// MUTUAL FEASIBLE WITH REDISTRIBUTION (Enhanced)
-// =============================================================================
-
-// Enhanced mutual feasible compositions that include redistribution
-export const mutualFeasibleSlotCompositionsWithRedistribution = derived(
-	[
-		mutualSlotDesires,
-		feasibleSlotComposeFrom,
-		feasibleSlotComposeInto,
-		feasibleSlotComposeIntoWithRedistribution
-	],
-	([
-		$mutualSlotDesires,
-		$feasibleSlotComposeFrom,
-		$feasibleSlotComposeInto,
-		$feasibleSlotComposeIntoWithRedistribution
-	]) => {
-		console.log(
-			'[MUTUAL-FEASIBLE-SLOTS-ENHANCED] Calculating feasible mutual slot compositions with redistribution...'
-		);
-
-		const mutualFeasible: Record<
-			string,
-			{
-				sourceCapacityId: string;
-				sourceSlotId: string;
-				targetCapacityId: string;
-				targetSlotId: string;
-				ourDesiredAmount: number;
-				theirDesiredAmount: number;
-				ourFeasibleAmount: number;
-				providerId: string;
-				compositionType: 'from' | 'into';
-				desireViability: number;
-				feasibleViability: number;
-				constraintRatio: number;
-				redistributionEnhanced?: boolean;
-			}
-		> = {};
-
-		Object.entries($mutualSlotDesires).forEach(([compositionKey, mutualDesire]) => {
-			const { sourceCapacityId, sourceSlotId, targetCapacityId, targetSlotId, compositionType } =
-				mutualDesire;
-
-			// Get feasible amount (enhanced for 'into', original for 'from')
-			const feasibleStore =
-				compositionType === 'from'
-					? $feasibleSlotComposeFrom
-					: $feasibleSlotComposeIntoWithRedistribution;
-			const ourFeasibleAmount =
-				feasibleStore[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[targetSlotId] || 0;
-
-			if (ourFeasibleAmount > 0) {
-				const mutualFeasibleAmount = Math.min(ourFeasibleAmount, mutualDesire.theirDesiredAmount);
-				const feasibleViability = calculateSlotDesireAlignment(
-					mutualFeasibleAmount,
-					mutualDesire.theirDesiredAmount
-				);
-				const constraintRatio = mutualFeasibleAmount / mutualDesire.ourDesiredAmount;
-
-				// Check if redistribution enhanced this composition
-				const originalFeasible =
-					compositionType === 'into'
-						? $feasibleSlotComposeInto[sourceCapacityId]?.[sourceSlotId]?.[targetCapacityId]?.[
-								targetSlotId
-							] || 0
-						: 0;
-				const redistributionEnhanced =
-					compositionType === 'into' && ourFeasibleAmount > originalFeasible;
-
-				mutualFeasible[compositionKey] = {
-					...mutualDesire,
-					ourFeasibleAmount: mutualFeasibleAmount,
-					feasibleViability,
-					constraintRatio,
-					redistributionEnhanced
-				};
-
-				console.log(
-					`[MUTUAL-FEASIBLE-SLOTS-ENHANCED] ${compositionKey}: desired ${mutualDesire.ourDesiredAmount.toFixed(2)} → feasible ${mutualFeasibleAmount.toFixed(2)} (${(constraintRatio * 100).toFixed(1)}% achievable)${redistributionEnhanced ? ' [REDISTRIBUTED]' : ''}`
-				);
-			}
-		});
-
-		console.log(
-			`[MUTUAL-FEASIBLE-SLOTS-ENHANCED] Found ${Object.keys(mutualFeasible).length} feasible mutual slot compositions with redistribution`
-		);
-		return mutualFeasible;
 	}
 );

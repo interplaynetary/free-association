@@ -2,6 +2,7 @@
 	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
 	import Share from '$lib/components/Share.svelte';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol';
 	import type {
 		Node,
 		RootNode,
@@ -22,7 +23,7 @@
 	// Search and filter state
 	let searchQuery = $state('');
 	let selectedProvider = $state('all');
-	let sortBy = $state<'name' | 'active_slots' | 'percentage' | 'provider'>('name');
+	let sortBy = $state<'name' | 'allocated_slots' | 'total_slots' | 'provider'>('name');
 	let sortDirection = $state<'asc' | 'desc'>('asc');
 
 	let expandedShares = $state<Set<string>>(new Set());
@@ -37,15 +38,9 @@
 		expandedShares = newExpanded;
 	}
 
-	// Helper function to count active slots (slots with quantity > 0)
-	function getActiveSlotCount(share: RecipientCapacity): number {
-		if (!share.computed_quantities || !Array.isArray(share.computed_quantities)) {
-			return 0;
-		}
-		return share.computed_quantities.filter((slot) => slot.quantity > 0).length;
-	}
+	// Direct use of protocol functions - no wrappers needed!
 
-	// Base shares data - all valid shares
+	// Base shares data - ALL available network capacities (for discovery and desire expression)
 	let allShares = $derived(() => {
 		if (!$userNetworkCapacitiesWithSlotQuantities) {
 			return [];
@@ -56,13 +51,12 @@
 				({
 					...capacity,
 					id: capacityId
-				}) as RecipientCapacity
+				}) as any // Use any since we're now working with inventory data, not RecipientCapacity
 		);
 
-		// Filter out shares with no name or no active slots
-		return sharesList.filter(
-			(share) => share.name && share.name.trim() !== '' && getActiveSlotCount(share) > 0
-		);
+		// Show ALL capacities with names - don't filter by allocation status
+		// This allows users to discover and express desire for unallocated capacities
+		return sharesList.filter((share) => share.name && share.name.trim() !== '');
 	});
 
 	// Cache for provider names
@@ -135,11 +129,11 @@
 				case 'name':
 					comparison = a.name.localeCompare(b.name);
 					break;
-				case 'active_slots':
-					comparison = getActiveSlotCount(a) - getActiveSlotCount(b);
+				case 'allocated_slots':
+					comparison = getAllocatedSlotCount(a) - getAllocatedSlotCount(b);
 					break;
-				case 'percentage':
-					comparison = a.share_percentage - b.share_percentage;
+				case 'total_slots':
+					comparison = getTotalSlotCount(a) - getTotalSlotCount(b);
 					break;
 				case 'provider':
 					comparison = (a.provider_id || '').localeCompare(b.provider_id || '');
@@ -190,8 +184,8 @@
 			<div class="sort-controls">
 				<select class="sort-select" bind:value={sortBy}>
 					<option value="name">Sort by name</option>
-					<option value="active_slots">Sort by active slots</option>
-					<option value="percentage">Sort by percentage</option>
+					<option value="allocated_slots">Sort by allocated slots</option>
+					<option value="total_slots">Sort by total slots</option>
 					<option value="provider">Sort by provider</option>
 				</select>
 

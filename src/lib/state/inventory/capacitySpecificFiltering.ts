@@ -1,11 +1,6 @@
 import { derived } from 'svelte/store';
 import { userNetworkCapacitiesWithSlotQuantities } from '../core.svelte';
-import type {
-	CapacitiesCollection,
-	RecipientCapacity,
-	ProviderCapacity,
-	BaseCapacity
-} from '$lib/schema';
+import type { CapacitiesCollection, ProviderCapacity, BaseCapacity } from '$lib/schema';
 
 // Import from the three modular systems
 import {
@@ -60,9 +55,9 @@ const BASE_PROPERTIES = ['name', 'unit', 'description', 'emoji', 'owner_id'] as 
 
 const RECIPIENT_PROPERTIES = ['provider_id'] as const;
 const INDEXABLE_PROPERTIES = [...BASE_PROPERTIES, ...RECIPIENT_PROPERTIES] as const;
-// Note: With slot-based structure, 'quantity' is now per-slot, 'computed_quantity' is now 'computed_quantities'
-// For filtering purposes, we may need to aggregate or handle these differently
-const NUMERIC_PROPERTIES = ['share_percentage'] as const;
+// Numeric properties for efficient algorithm (slot-level quantities)
+// We now work with allocated_quantity and available_quantity per slot, aggregated at capacity level
+const NUMERIC_PROPERTIES = ['total_allocated_quantity', 'total_available_quantity'] as const;
 
 export type BaseProperty = (typeof BASE_PROPERTIES)[number];
 export type RecipientProperty = (typeof RECIPIENT_PROPERTIES)[number];
@@ -70,20 +65,20 @@ export type IndexableProperty = (typeof INDEXABLE_PROPERTIES)[number];
 export type NumericProperty = (typeof NUMERIC_PROPERTIES)[number];
 
 // Default ranges
-export const DEFAULT_QUANTITY_RANGES: RangeDefinition[] = [
-	{ label: '0-10', min: 0, max: 10, inclusive: true },
-	{ label: '10-50', min: 10, max: 50, inclusive: false },
-	{ label: '50-100', min: 50, max: 100, inclusive: false },
-	{ label: '100-500', min: 100, max: 500, inclusive: false },
-	{ label: '500+', min: 500, inclusive: false }
+export const DEFAULT_ALLOCATED_QUANTITY_RANGES: RangeDefinition[] = [
+	{ label: '0 (None)', min: 0, max: 0, inclusive: true },
+	{ label: '1-5', min: 1, max: 5, inclusive: true },
+	{ label: '6-20', min: 6, max: 20, inclusive: false },
+	{ label: '21-50', min: 21, max: 50, inclusive: false },
+	{ label: '51+', min: 51, inclusive: false }
 ];
 
-export const DEFAULT_PERCENTAGE_RANGES: RangeDefinition[] = [
-	{ label: '0-10%', min: 0, max: 0.1, inclusive: true },
-	{ label: '10-25%', min: 0.1, max: 0.25, inclusive: false },
-	{ label: '25-50%', min: 0.25, max: 0.5, inclusive: false },
-	{ label: '50-75%', min: 0.5, max: 0.75, inclusive: false },
-	{ label: '75-100%', min: 0.75, max: 1.0, inclusive: false }
+export const DEFAULT_AVAILABLE_QUANTITY_RANGES: RangeDefinition[] = [
+	{ label: '1-10', min: 1, max: 10, inclusive: true },
+	{ label: '11-50', min: 11, max: 50, inclusive: false },
+	{ label: '51-100', min: 51, max: 100, inclusive: false },
+	{ label: '101-500', min: 101, max: 500, inclusive: false },
+	{ label: '500+', min: 500, inclusive: false }
 ];
 
 // Legacy types for backward compatibility
@@ -92,7 +87,10 @@ export type NumericRangeLookup = Record<string, string[]>;
 
 export interface CapacityLookups {
 	properties: PropertyLookupTables;
-	numericRanges: { share_percentage: NumericRangeLookup }; // Simplified for slot-based structure
+	numericRanges: {
+		total_allocated_quantity: NumericRangeLookup;
+		total_available_quantity: NumericRangeLookup;
+	};
 	hasLocation: string[];
 	hasSchedule: string[];
 	hasRecurrence: string[];
@@ -101,7 +99,10 @@ export interface CapacityLookups {
 
 export interface CapacityCriteria {
 	properties?: Partial<Record<IndexableProperty, string[]>>;
-	numericRanges?: { share_percentage?: string[] }; // Simplified for slot-based structure
+	numericRanges?: {
+		total_allocated_quantity?: string[];
+		total_available_quantity?: string[];
+	};
 	hasLocation?: boolean;
 	hasSchedule?: boolean;
 	hasRecurrence?: boolean;
@@ -144,9 +145,34 @@ export function createCapacityLookups(
 	capacities: CapacitiesCollection,
 	customRanges?: Partial<Record<NumericProperty, RangeDefinition[]>>
 ): CapacityLookups {
+	// First, augment capacities with aggregated quantities for filtering
+	const augmentedCapacities: Record<string, any> = {};
+
+	Object.entries(capacities).forEach(([capacityId, capacity]) => {
+		// Handle both timestamped and direct capacity data
+		const actualCapacity = (capacity as any)?.data || capacity;
+
+		// Calculate total allocated and available quantities across all slots
+		let totalAllocated = 0;
+		let totalAvailable = 0;
+
+		actualCapacity.availability_slots?.forEach((slot: any) => {
+			totalAllocated += slot.allocated_quantity || 0;
+			totalAvailable += slot.available_quantity || slot.quantity || 0;
+		});
+
+		augmentedCapacities[capacityId] = {
+			...actualCapacity,
+			total_allocated_quantity: totalAllocated,
+			total_available_quantity: totalAvailable
+		};
+	});
+
 	const ranges = {
-		share_percentage: customRanges?.share_percentage || DEFAULT_PERCENTAGE_RANGES
-		// Note: quantity and computed_quantity are now slot-based and need different handling
+		total_allocated_quantity:
+			customRanges?.total_allocated_quantity || DEFAULT_ALLOCATED_QUANTITY_RANGES,
+		total_available_quantity:
+			customRanges?.total_available_quantity || DEFAULT_AVAILABLE_QUANTITY_RANGES
 	};
 
 	const config: ObjectLookupConfig = {
@@ -160,7 +186,7 @@ export function createCapacityLookups(
 		}
 	};
 
-	const genericLookups = createObjectLookups(capacities, config);
+	const genericLookups = createObjectLookups(augmentedCapacities, config);
 
 	// Transform to legacy format
 	const properties = {} as PropertyLookupTables;
@@ -171,8 +197,8 @@ export function createCapacityLookups(
 	return {
 		properties,
 		numericRanges: {
-			share_percentage: genericLookups.ranges.share_percentage || {}
-			// Note: quantity and computed_quantity ranges removed due to slot-based structure
+			total_allocated_quantity: genericLookups.ranges.total_allocated_quantity || {},
+			total_available_quantity: genericLookups.ranges.total_available_quantity || {}
 		},
 		hasLocation: genericLookups.custom.hasLocation || [],
 		hasSchedule: genericLookups.custom.hasSchedule || [],
@@ -199,7 +225,10 @@ const convertCapacityCriteria = (
 
 	const genericLookups: ObjectLookups = {
 		properties: lookups.properties,
-		ranges: { share_percentage: lookups.numericRanges.share_percentage },
+		ranges: {
+			total_allocated_quantity: lookups.numericRanges.total_allocated_quantity,
+			total_available_quantity: lookups.numericRanges.total_available_quantity
+		},
 		arrays: {},
 		custom: {
 			hasLocation: lookups.hasLocation,
@@ -237,9 +266,9 @@ export const capacityLookups = derived(
 			!$userNetworkCapacitiesWithSlotQuantities ||
 			Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
 		) {
-			return createCapacityLookups({});
+			return createCapacityLookups({} as CapacitiesCollection);
 		}
-		return createCapacityLookups($userNetworkCapacitiesWithSlotQuantities);
+		return createCapacityLookups($userNetworkCapacitiesWithSlotQuantities as CapacitiesCollection);
 	}
 );
 
@@ -253,9 +282,12 @@ export const createCapacityLookupsWithCustomRanges = (
 				!$userNetworkCapacitiesWithSlotQuantities ||
 				Object.keys($userNetworkCapacitiesWithSlotQuantities).length === 0
 			) {
-				return createCapacityLookups({}, customRanges);
+				return createCapacityLookups({} as CapacitiesCollection, customRanges);
 			}
-			return createCapacityLookups($userNetworkCapacitiesWithSlotQuantities, customRanges);
+			return createCapacityLookups(
+				$userNetworkCapacitiesWithSlotQuantities as CapacitiesCollection,
+				customRanges
+			);
 		}
 	);
 

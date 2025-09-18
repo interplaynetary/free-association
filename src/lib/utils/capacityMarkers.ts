@@ -1,5 +1,8 @@
 /**
  * Utility functions for displaying capacities as map markers
+ *
+ * Shows ALL available capacities on the map, regardless of current allocation status.
+ * This allows users to discover new capacities and express desires for unallocated ones.
  */
 import type { Capacity, CapacitiesCollection } from '$lib/schema';
 import { geocodeCapacityAddress, formatAddress } from './geocoding';
@@ -20,14 +23,17 @@ export function getCapacitiesWithCoordinates(
 	const markers: CapacityMarkerData[] = [];
 
 	Object.entries(capacities).forEach(([id, capacity]) => {
+		// Handle both timestamped and direct capacity data
+		const actualCapacity = (capacity as any)?.data || capacity;
+
 		// Safety check: ensure availability_slots exists and is an array
-		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
 			return; // Skip this capacity if it doesn't have properly initialized slots
 		}
 
 		// Find the first slot with valid coordinates
-		const slotWithCoords = capacity.availability_slots.find(
-			(slot) =>
+		const slotWithCoords = actualCapacity.availability_slots.find(
+			(slot: any) =>
 				typeof slot.latitude === 'number' &&
 				typeof slot.longitude === 'number' &&
 				slot.latitude >= -90 &&
@@ -39,7 +45,7 @@ export function getCapacitiesWithCoordinates(
 		if (slotWithCoords) {
 			markers.push({
 				id,
-				capacity,
+				capacity: actualCapacity,
 				lnglat: { lng: slotWithCoords.longitude!, lat: slotWithCoords.latitude! },
 				source: 'coordinates'
 			});
@@ -58,16 +64,19 @@ export function getCapacitiesWithAddresses(
 	const addressCapacities: Array<{ id: string; capacity: Capacity; address: string }> = [];
 
 	Object.entries(capacities).forEach(([id, capacity]) => {
+		// Handle both timestamped and direct capacity data
+		const actualCapacity = (capacity as any)?.data || capacity;
+
 		// Safety check: ensure availability_slots exists and is an array
-		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
 			return; // Skip this capacity if it doesn't have properly initialized slots
 		}
 
 		// Only include if has address but no valid coordinates
-		if (!hasValidCoordinates(capacity) && hasValidAddress(capacity)) {
+		if (!hasValidCoordinates(actualCapacity) && hasValidAddress(actualCapacity)) {
 			// Find the first slot with address information
-			const slotWithAddress = capacity.availability_slots.find(
-				(slot) =>
+			const slotWithAddress = actualCapacity.availability_slots.find(
+				(slot: any) =>
 					!!(
 						slot.street_address ||
 						slot.city ||
@@ -89,7 +98,7 @@ export function getCapacitiesWithAddresses(
 				if (address.trim()) {
 					addressCapacities.push({
 						id,
-						capacity,
+						capacity: actualCapacity,
 						address
 					});
 				}
@@ -184,13 +193,16 @@ export async function getAllCapacityMarkers(
  * Checks if a capacity has valid geographic coordinates (from any slot)
  */
 export function hasValidCoordinates(capacity: Capacity): boolean {
+	// Handle both timestamped and direct capacity data
+	const actualCapacity = (capacity as any)?.data || capacity;
+
 	// Safety check: ensure availability_slots exists and is an array
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
 		return false; // No valid coordinates if slots aren't properly initialized
 	}
 
-	return capacity.availability_slots.some(
-		(slot) =>
+	return actualCapacity.availability_slots.some(
+		(slot: any) =>
 			typeof slot.latitude === 'number' &&
 			typeof slot.longitude === 'number' &&
 			slot.latitude >= -90 &&
@@ -204,13 +216,16 @@ export function hasValidCoordinates(capacity: Capacity): boolean {
  * Checks if a capacity has a valid address (from any slot)
  */
 export function hasValidAddress(capacity: Capacity): boolean {
+	// Handle both timestamped and direct capacity data
+	const actualCapacity = (capacity as any)?.data || capacity;
+
 	// Safety check: ensure availability_slots exists and is an array
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
 		return false; // No valid address if slots aren't properly initialized
 	}
 
-	return capacity.availability_slots.some(
-		(slot) =>
+	return actualCapacity.availability_slots.some(
+		(slot: any) =>
 			!!(
 				slot.street_address ||
 				slot.city ||
@@ -274,11 +289,14 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 } {
 	const details: Array<{ label: string; value: string }> = [];
 
+	// Handle both timestamped and direct capacity data
+	const actualCapacity = (capacity as any)?.data || capacity;
+
 	// Safety check: ensure availability_slots exists and is an array
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
 		// Return basic info if no slots are initialized
 		return {
-			title: capacity.name || 'Capacity',
+			title: actualCapacity.name || 'Capacity',
 			details: [
 				{
 					label: 'Status',
@@ -289,16 +307,21 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	}
 
 	// Show total quantity across all slots
-	const totalQuantity = capacity.availability_slots.reduce((sum, slot) => sum + slot.quantity, 0);
+	const totalQuantity = actualCapacity.availability_slots.reduce(
+		(sum: number, slot: any) => sum + slot.quantity,
+		0
+	);
 	if (totalQuantity > 0) {
 		details.push({
 			label: 'Total Quantity',
-			value: `${totalQuantity}${capacity.unit ? ' ' + capacity.unit : ''}`
+			value: `${totalQuantity}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
 		});
 	}
 
 	// Show location information from first slot with location data
-	const slotWithLocation = capacity.availability_slots.find((slot) => slot.location_type);
+	const slotWithLocation = actualCapacity.availability_slots.find(
+		(slot: any) => slot.location_type
+	);
 	if (slotWithLocation?.location_type) {
 		details.push({
 			label: 'Location Type',
@@ -334,8 +357,8 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	}
 
 	// Show time information from slots (aggregate or show multiple if different)
-	const slotsWithTime = capacity.availability_slots.filter(
-		(slot) => slot.start_date || slot.start_time || slot.end_date || slot.end_time
+	const slotsWithTime = actualCapacity.availability_slots.filter(
+		(slot: any) => slot.start_date || slot.start_time || slot.end_date || slot.end_time
 	);
 
 	if (slotsWithTime.length > 0) {
@@ -370,7 +393,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 		}
 	}
 
-	// Handle both ProviderCapacity and RecipientCapacity types
+	// Handle both ProviderCapacity and capacity with allocation data
 	if (
 		'recipient_shares' in capacity &&
 		capacity.recipient_shares &&
@@ -381,25 +404,59 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 			label: 'Recipients',
 			value: `${shareCount} share${shareCount === 1 ? '' : 's'}`
 		});
-	} else if ('share_percentage' in capacity) {
+	}
+
+	// Show allocation status from efficient algorithm
+	const slotsWithAllocations =
+		actualCapacity.availability_slots?.filter(
+			(slot: any) => slot.allocated_quantity && slot.allocated_quantity > 0
+		) || [];
+
+	// Calculate total allocated vs total available
+	const totalAllocated = slotsWithAllocations.reduce(
+		(sum: number, slot: any) => sum + (slot.allocated_quantity || 0),
+		0
+	);
+
+	const totalAvailable =
+		actualCapacity.availability_slots?.reduce(
+			(sum: number, slot: any) => sum + (slot.available_quantity || slot.quantity || 0),
+			0
+		) || 0;
+
+	// Always show total available capacity
+	if (totalAvailable > 0) {
 		details.push({
-			label: 'Your Share',
-			value: `${(capacity.share_percentage * 100).toFixed(1)}%`
+			label: 'Total Available',
+			value: `${totalAvailable}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
 		});
-		if (capacity.computed_quantities && capacity.computed_quantities.length > 0) {
-			const totalQuantity = capacity.computed_quantities.reduce(
-				(sum, slot) => sum + slot.quantity,
-				0
-			);
+	}
+
+	// Show your current allocation if you have any
+	if (totalAllocated > 0) {
+		details.push({
+			label: 'Your Current Allocation',
+			value: `${totalAllocated}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
+		});
+
+		// Show remaining available
+		const remaining = totalAvailable - totalAllocated;
+		if (remaining > 0) {
 			details.push({
-				label: 'Your Quantity',
-				value: `${totalQuantity}${capacity.unit ? ' ' + capacity.unit : ''}`
+				label: 'Still Available',
+				value: `${remaining}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
 			});
 		}
+	} else {
+		// No current allocation - show as fully available for desire expression
+		details.push({
+			label: 'Status',
+			value: 'Available for allocation (express desire to get some!)'
+		});
 	}
 
 	return {
-		title: `${capacity.emoji || '📍'} ${capacity.name}`,
+		title: `${actualCapacity.emoji || '📍'} ${actualCapacity.name}`,
 		details
 	};
 }

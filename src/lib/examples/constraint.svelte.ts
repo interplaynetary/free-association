@@ -14,7 +14,7 @@ import {
 	userCapacities,
 	networkCapacities,
 	networkCapacityShares,
-	providerShares
+	generalShares
 } from '../state/core.svelte';
 
 // ============================================================================
@@ -45,9 +45,9 @@ export const availableShares = $derived(() => {
 	const currentMutualRecognition = get(mutualRecognition);
 	const currentUserCapacities = get(userCapacities);
 	const currentNetworkCapacities = get(networkCapacities);
-	const currentProviderShares = get(providerShares);
+	const currentGeneralShares = get(generalShares);
 
-	if (!currentMutualRecognition || !currentProviderShares) {
+	if (!currentMutualRecognition || !currentGeneralShares) {
 		return {};
 	}
 
@@ -74,7 +74,7 @@ export const availableShares = $derived(() => {
 	// Process network capacities based on mutual recognition
 	if (currentNetworkCapacities) {
 		Object.entries(currentNetworkCapacities).forEach(([providerId, providerCapacities]) => {
-			const recognition = currentProviderShares[providerId] || 0;
+			const recognition = currentGeneralShares[providerId] || 0;
 			if (recognition <= 0) return;
 
 			if (!shares[providerId]) shares[providerId] = {};
@@ -264,8 +264,8 @@ export class ReactiveCompositeCapacity {
 
 	private calculateOurShare(capacityId: string, providerId: string): number {
 		if (providerId === 'self') return 1.0;
-		const currentProviderShares = get(providerShares);
-		return currentProviderShares[providerId] || 0;
+		const currentGeneralShares = get(generalShares);
+		return currentGeneralShares[providerId] || 0;
 	}
 
 	private calculateProgress(): number {
@@ -310,12 +310,12 @@ export class ReactiveCompositeCapacity {
 		}> = [];
 
 		const currentFeasibility = this.feasibility();
-		const currentProviderShares = get(providerShares);
+		const currentGeneralShares = get(generalShares);
 		const currentNetworkCapacities = get(networkCapacities);
 
 		currentFeasibility.results.forEach((result: any) => {
 			if (!result.feasible && result.shortfall > 0) {
-				const currentRecognition = currentProviderShares[result.providerId] || 0;
+				const currentRecognition = currentGeneralShares[result.providerId] || 0;
 				const totalCapacity = this.getCapacityTotal(result.capacityId, result.providerId);
 
 				if (totalCapacity > 0) {
@@ -554,7 +554,7 @@ export function createReactiveCompositeCapacity(
 // Helper to get current resolution context
 export function getCurrentResolutionContext(): CapacityResolutionContext {
 	return {
-		providerShares: get(providerShares) || {},
+		generalShares: get(generalShares) || {},
 		capacities: get(userCapacities) || {},
 		networkCapacities: get(networkCapacities) || {},
 		networkShares: get(networkCapacityShares) || {}

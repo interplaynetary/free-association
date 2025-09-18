@@ -18,7 +18,6 @@
 	import {
 		userTree,
 		userCapacities,
-		userCapacitiesWithShares,
 		updateStoreWithFreshTimestamp,
 		userCapacitiesTimestamp,
 		userDesiredSlotComposeFrom,
@@ -27,11 +26,10 @@
 		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
-	import { userDesiredSlotClaims } from '$lib/state/core.svelte';
 
 	// Reactive derived values
 	const capacityEntries = $derived(
-		Object.entries($userCapacitiesWithShares || {})
+		Object.entries($userCapacities || {})
 			.filter(([id, capacity]) => id && capacity)
 			.map(([id, capacity]) => ({ ...capacity, id }))
 	);
@@ -310,19 +308,7 @@
 			updatedComposeInto
 		);
 
-		// 3. Clean up userDesiredSlotClaims (remove all slot claims for deleted capacity)
-		userDesiredSlotClaims.update((current) => {
-			const updated = { ...current };
-			let changes = 0;
-
-			if (updated[capacityId]) {
-				changes = Object.keys(updated[capacityId]).length;
-				delete updated[capacityId];
-			}
-
-			console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotClaims entries`);
-			return updated;
-		});
+		// 3. Cleanup complete - slot claims are now handled via compose-from-self
 
 		console.log(`✅ [CLEANUP] Completed comprehensive cleanup for capacity: ${capacityId}`);
 	}
@@ -370,7 +356,6 @@
 			hidden_until_request_accepted: false,
 			owner_id: $userPub,
 			filter_rule: null,
-			recipient_shares: {},
 			availability_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

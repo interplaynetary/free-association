@@ -202,13 +202,11 @@
 		}
 	});
 
-	// Get computed quantity for a specific slot (your share)
-	function getSlotComputedQuantity(capacity: any, slotId: string): number {
-		if (!capacity.computed_quantities || !Array.isArray(capacity.computed_quantities)) {
-			return 0;
-		}
-		const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
-		return slotQuantity?.quantity || 0;
+	// Get allocated quantity for a specific slot (your share from efficient algorithm)
+	function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
+		// Use the new efficient allocation data structure
+		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		return slot?.allocated_quantity || 0;
 	}
 
 	// Reactive visibility derived from markerData
@@ -819,23 +817,31 @@
 
 				<!-- Slots Section -->
 				<div class="content-section slots-section">
-					<h3 class="section-title">🕒 Your Share of Available Slots</h3>
+					<h3 class="section-title">🕒 Available Slots</h3>
 
 					{#if categorizedSlots.recurring.length > 0}
 						<div class="slot-category">
 							<h4 class="category-title">🔄 Recurring ({categorizedSlots.recurring.length})</h4>
 							<div class="slot-list">
 								{#each categorizedSlots.recurring as slot}
-									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
 									<div class="slot-item">
 										<div class="slot-main">
-											<span class="slot-quantity">
-												{Number.isInteger(computedQuantity)
-													? computedQuantity
-													: computedQuantity.toFixed(2)}
-												{capacity.unit || ''}
-											</span>
-											<span class="slot-total">of {slot.quantity} total</span>
+											{#if allocatedQuantity > 0}
+												<span class="slot-quantity allocated">
+													{Number.isInteger(allocatedQuantity)
+														? allocatedQuantity
+														: allocatedQuantity.toFixed(2)}
+													{capacity.unit || ''} allocated
+												</span>
+												<span class="slot-total">of {slot.quantity} total</span>
+											{:else}
+												<span class="slot-quantity available">
+													{slot.quantity}
+													{capacity.unit || ''} available
+												</span>
+												<span class="slot-total">(express desire to get some!)</span>
+											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 										{#if slot.advance_notice_hours}
@@ -856,16 +862,24 @@
 							</h4>
 							<div class="slot-list">
 								{#each categorizedSlots.currentFuture as slot}
-									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
 									<div class="slot-item">
 										<div class="slot-main">
-											<span class="slot-quantity">
-												{Number.isInteger(computedQuantity)
-													? computedQuantity
-													: computedQuantity.toFixed(2)}
-												{capacity.unit || ''}
-											</span>
-											<span class="slot-total">of {slot.quantity} total</span>
+											{#if allocatedQuantity > 0}
+												<span class="slot-quantity allocated">
+													{Number.isInteger(allocatedQuantity)
+														? allocatedQuantity
+														: allocatedQuantity.toFixed(2)}
+													{capacity.unit || ''} allocated
+												</span>
+												<span class="slot-total">of {slot.quantity} total</span>
+											{:else}
+												<span class="slot-quantity available">
+													{slot.quantity}
+													{capacity.unit || ''} available
+												</span>
+												<span class="slot-total">(express desire to get some!)</span>
+											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 										{#if slot.advance_notice_hours}
@@ -884,16 +898,24 @@
 							<h4 class="category-title">📜 Past ({categorizedSlots.past.length})</h4>
 							<div class="slot-list">
 								{#each categorizedSlots.past as slot}
-									{@const computedQuantity = getSlotComputedQuantity(capacity, slot.id)}
+									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
 									<div class="slot-item past-slot">
 										<div class="slot-main">
-											<span class="slot-quantity">
-												{Number.isInteger(computedQuantity)
-													? computedQuantity
-													: computedQuantity.toFixed(2)}
-												{capacity.unit || ''}
-											</span>
-											<span class="slot-total">of {slot.quantity} total</span>
+											{#if allocatedQuantity > 0}
+												<span class="slot-quantity allocated">
+													{Number.isInteger(allocatedQuantity)
+														? allocatedQuantity
+														: allocatedQuantity.toFixed(2)}
+													{capacity.unit || ''} allocated
+												</span>
+												<span class="slot-total">of {slot.quantity} total</span>
+											{:else}
+												<span class="slot-quantity available">
+													{slot.quantity}
+													{capacity.unit || ''} was available
+												</span>
+												<span class="slot-total">(past slot)</span>
+											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 									</div>
@@ -1582,6 +1604,22 @@
 		color: #111827;
 		font-size: 10px;
 		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+	}
+
+	.slot-quantity.allocated {
+		color: #10b981;
+		background: #d1fae5;
+		padding: 2px 4px;
+		border-radius: 3px;
+		border: 1px solid #a7f3d0;
+	}
+
+	.slot-quantity.available {
+		color: #3b82f6;
+		background: #dbeafe;
+		padding: 2px 4px;
+		border-radius: 3px;
+		border: 1px solid #93c5fd;
 	}
 
 	.slot-total {

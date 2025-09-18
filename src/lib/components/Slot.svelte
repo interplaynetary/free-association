@@ -4,6 +4,8 @@
 	import { derived } from 'svelte/store';
 	import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
+	import CountrySelector from '$lib/components/CountrySelector.svelte';
+	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 
 	import {
 		userDesiredSlotComposeFrom,
@@ -438,6 +440,9 @@
 
 	// Location format state ('coordinates' or 'address')
 	let locationFormat = $state<'coordinates' | 'address'>('address');
+
+	// Autofill state
+	let selectedCountryId = $state('');
 
 	// Track original values for change detection
 	let originalValues = $state<Record<string, any>>({});
@@ -1168,6 +1173,31 @@
 
 		showAddComposeInto = false;
 	}
+
+	// Handle country selection from CountrySelector
+	function handleCountrySelect(country: { id: string; name: string; timezones: string[] }) {
+		if (country.name) {
+			slotCountry = country.name;
+			selectedCountryId = country.id;
+			// Optionally set timezone based on country's first timezone
+			if (country.timezones && country.timezones.length > 0 && !slotTimeZone) {
+				slotTimeZone = country.timezones[0];
+			}
+			handleSlotUpdate();
+		}
+	}
+
+	// Handle timezone selection from TimezoneSelector
+	function handleTimezoneSelect(timezone: {
+		name: string;
+		utcOffsetStr: string;
+		countries: string[];
+	}) {
+		if (timezone.name) {
+			slotTimeZone = timezone.name;
+			handleSlotUpdate();
+		}
+	}
 </script>
 
 <div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
@@ -1441,15 +1471,15 @@
 
 				<div class="mb-4">
 					<label for="slot-timezone" class="mb-1 block text-xs text-gray-500">Time Zone</label>
-					<input
-						id="slot-timezone"
-						type="text"
-						class="slot-input w-full"
-						bind:value={slotTimeZone}
-						placeholder="e.g. America/New_York"
-						onfocus={() => handleFocus('timeZone', slotTimeZone)}
-						onblur={() => handleBlurIfChanged('timeZone', slotTimeZone)}
-					/>
+					<!-- Timezone Selector integrated directly -->
+					<div class="timezone-field">
+						<TimezoneSelector
+							value={slotTimeZone}
+							placeholder="Select timezone..."
+							onselect={handleTimezoneSelect}
+							countryFilter={selectedCountryId}
+						/>
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -1632,14 +1662,14 @@
 								onfocus={() => handleFocus('postalCode', slotPostalCode)}
 								onblur={() => handleBlurIfChanged('postalCode', slotPostalCode)}
 							/>
-							<input
-								type="text"
-								class="slot-input w-full"
-								bind:value={slotCountry}
-								placeholder="Country"
-								onfocus={() => handleFocus('country', slotCountry)}
-								onblur={() => handleBlurIfChanged('country', slotCountry)}
-							/>
+							<!-- Country Selector integrated directly -->
+							<div class="country-field">
+								<CountrySelector
+									value={slotCountry}
+									placeholder="Select country..."
+									onselect={handleCountrySelect}
+								/>
+							</div>
 						</div>
 					</div>
 				{:else}
@@ -2070,5 +2100,71 @@
 	.composition-items {
 		max-height: 300px;
 		overflow-y: auto;
+	}
+
+	/* Country field styling */
+	.country-field {
+		width: 100%;
+	}
+
+	/* Override CountrySelector styles to match form inputs */
+	.country-field :global(.country-select .sv-control) {
+		font-size: 0.875rem !important;
+		padding: 6px 8px !important;
+		border: 1px solid #e5e7eb !important;
+		border-radius: 4px !important;
+		background: white !important;
+		min-height: 34px !important;
+		transition: all 0.2s ease !important;
+	}
+
+	.country-field :global(.country-select .sv-control:focus-within) {
+		border-color: #3b82f6 !important;
+		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+	}
+
+	.country-field :global(.country-select .sv-item) {
+		padding: 6px 8px !important;
+		font-size: 0.875rem !important;
+	}
+
+	.country-field :global(.country-select .sv-dropdown) {
+		border: 1px solid #e5e7eb !important;
+		border-radius: 4px !important;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+		max-height: 200px !important;
+	}
+
+	/* Timezone field styling */
+	.timezone-field {
+		width: 100%;
+	}
+
+	/* Override TimezoneSelector styles to match form inputs */
+	.timezone-field :global(.timezone-select .sv-control) {
+		font-size: 0.875rem !important;
+		padding: 6px 8px !important;
+		border: 1px solid #e5e7eb !important;
+		border-radius: 4px !important;
+		background: white !important;
+		min-height: 34px !important;
+		transition: all 0.2s ease !important;
+	}
+
+	.timezone-field :global(.timezone-select .sv-control:focus-within) {
+		border-color: #3b82f6 !important;
+		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+	}
+
+	.timezone-field :global(.timezone-select .sv-item) {
+		padding: 6px 8px !important;
+		font-size: 0.875rem !important;
+	}
+
+	.timezone-field :global(.timezone-select .sv-dropdown) {
+		border: 1px solid #e5e7eb !important;
+		border-radius: 4px !important;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+		max-height: 200px !important;
 	}
 </style>

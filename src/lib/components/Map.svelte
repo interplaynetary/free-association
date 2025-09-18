@@ -630,36 +630,8 @@
 		console.log(`[Map Stream] Immediate processing ${capacityId}...`);
 
 		try {
-			// Helper function to count active slots
-			function getActiveSlotCount(capacity: any): number {
-				if (
-					!('computed_quantities' in capacity) ||
-					!capacity.computed_quantities ||
-					!Array.isArray(capacity.computed_quantities)
-				) {
-					return 0;
-				}
-				return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
-			}
-
-			// Helper function to get computed quantity for a specific slot
-			function getSlotComputedQuantity(capacity: any, slotId: string): number {
-				if (
-					!('computed_quantities' in capacity) ||
-					!capacity.computed_quantities ||
-					!Array.isArray(capacity.computed_quantities)
-				) {
-					return 0;
-				}
-				const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
-				return slotQuantity?.quantity || 0;
-			}
-
-			// Check if this capacity has any active slots
-			const activeSlotCount = getActiveSlotCount(capacity);
-			if (activeSlotCount === 0) {
-				return [];
-			}
+			// Show ALL capacities for discovery and desire expression (like capacityMarkers.ts)
+			// No need to filter by allocation status - users should see all available capacities
 
 			// Group slots by location for this capacity (immediate processing - coordinates only)
 			const slotGroups = new Map<
@@ -678,11 +650,7 @@
 
 			// Process slots in this capacity - IMMEDIATE ONLY (no geocoding)
 			for (const slot of capacity.availability_slots || []) {
-				// Check if this specific slot has a computed quantity > 0
-				const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
-				if (slotComputedQuantity <= 0) {
-					continue;
-				}
+				// Show ALL slots for discovery and desire expression (no allocation filtering)
 
 				// Check location type
 				const locationTypeOk =
@@ -768,35 +736,8 @@
 		console.log(`[Map Geocode] Processing ${capacityId}...`);
 
 		try {
-			// Helper functions (same as immediate)
-			function getActiveSlotCount(capacity: any): number {
-				if (
-					!('computed_quantities' in capacity) ||
-					!capacity.computed_quantities ||
-					!Array.isArray(capacity.computed_quantities)
-				) {
-					return 0;
-				}
-				return capacity.computed_quantities.filter((slot: any) => slot.quantity > 0).length;
-			}
-
-			function getSlotComputedQuantity(capacity: any, slotId: string): number {
-				if (
-					!('computed_quantities' in capacity) ||
-					!capacity.computed_quantities ||
-					!Array.isArray(capacity.computed_quantities)
-				) {
-					return 0;
-				}
-				const slotQuantity = capacity.computed_quantities.find((cq: any) => cq.slot_id === slotId);
-				return slotQuantity?.quantity || 0;
-			}
-
-			// Check if this capacity has any active slots
-			const activeSlotCount = getActiveSlotCount(capacity);
-			if (activeSlotCount === 0) {
-				return [];
-			}
+			// Show ALL capacities for discovery and desire expression (like capacityMarkers.ts)
+			// No need to filter by allocation status - users should see all available capacities
 
 			// Group slots by location for this capacity (geocoding processing)
 			const slotGroups = new Map<
@@ -815,11 +756,7 @@
 
 			// Process slots that need geocoding
 			for (const slot of capacity.availability_slots || []) {
-				// Check if this specific slot has a computed quantity > 0
-				const slotComputedQuantity = getSlotComputedQuantity(capacity, slot.id);
-				if (slotComputedQuantity <= 0) {
-					continue;
-				}
+				// Show ALL slots for discovery and desire expression (no allocation filtering)
 
 				// Check location type
 				const locationTypeOk =

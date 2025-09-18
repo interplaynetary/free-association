@@ -124,60 +124,33 @@ export const BaseCapacitySchema = z.object({
 	// use-conditions: effects (possibly triggers)
 });
 
-// Provider perspective - includes recipient shares
+// Provider perspective - efficient algorithm handles allocation internally
 export const ProviderCapacitySchema = z.object({
-	...BaseCapacitySchema.shape,
-	recipient_shares: z.record(IdSchema, PercentageSchema)
+	...BaseCapacitySchema.shape
+	// DELETED: recipient_shares - Replaced by computedProviderAllocations
 });
 
-// Slot-specific computed quantity
-export const SlotComputedQuantitySchema = z.object({
-	slot_id: IdSchema,
-	quantity: z.number().gte(0)
-});
+// DELETED: SlotComputedQuantitySchema - Replaced by efficient algorithm
+// Old computed quantities replaced by direct slot allocations
 
-// Slot claim tracking
-export const SlotClaimSchema = z.object({
-	id: IdSchema, // Unique claim ID
-	capacity_id: IdSchema,
-	slot_id: IdSchema,
-	claimer_id: IdSchema,
-	desired_quantity: z.number().gte(0),
-	feasible_quantity: z.number().gte(0), // After credit and competition constraints
-	allocated_quantity: z.number().gte(0), // Actually allocated amount
-	status: z.enum(['pending', 'confirmed', 'cancelled']),
-	claim_timestamp: z.string(),
-	fulfillment_timestamp: z.optional(z.string())
-});
+// DELETED: SlotClaimSchema - Replaced by efficient algorithm
+// Old individual claim tracking replaced by provider-computed allocations
 
-// User's desired slot claims (mirrors userDesiredComposeFrom structure)
-export const UserSlotClaimsSchema = z.record(IdSchema, z.record(IdSchema, z.number().gte(0)));
-// Structure: capacityId → slotId → desiredQuantity
+// DELETED: UserSlotClaimsSchema - Replaced by unified compose-from model
+// DELETED: NetworkSlotClaimsSchema - Slot claims are now handled as compose-from-self
 
-// Network slot claims (all users' claims)
-export const NetworkSlotClaimsSchema = z.record(IdSchema, UserSlotClaimsSchema);
-// Structure: userId → capacityId → slotId → desiredQuantity
+// DELETED: UserSlotQuantitiesSchema - Replaced by efficient algorithm
+// Old user slot quantities replaced by efficientSlotAllocations
 
-// User's actual allocated slot quantities (result of discrete allocation) with timestamps
-export const UserSlotQuantitiesDataSchema = z.record(
-	IdSchema,
-	z.record(IdSchema, z.number().gte(0))
-);
-export const UserSlotQuantitiesSchema = TimestampedSchema(UserSlotQuantitiesDataSchema);
-// Structure: capacityId → slotId → allocatedQuantity
+// DELETED: NetworkSlotQuantitiesSchema - Replaced by efficient algorithm
+// Old network slot quantities replaced by networkAllocationStates
 
-// Network slot quantities (all users' allocated quantities)
-export const NetworkSlotQuantitiesSchema = z.record(IdSchema, UserSlotQuantitiesSchema);
-// Structure: userId → capacityId → slotId → allocatedQuantity
-
-// Recipient perspective - includes our share info
+// Recipient perspective - simplified for efficient algorithm
 export const RecipientCapacitySchema = z.object({
 	...BaseCapacitySchema.shape,
-	// share_id: IdSchema
-	share_percentage: PercentageSchema,
-	computed_quantities: z.array(SlotComputedQuantitySchema), // Per-slot computed quantities
 	provider_id: IdSchema
-	// reciever_id: IdSchema
+	// DELETED: share_percentage - Overall percentages meaningless with discrete allocation
+	// DELETED: computed_quantities - Replaced by efficientSlotAllocations
 });
 
 // Union type for Capacity (either provider or recipient perspective)
@@ -187,10 +160,8 @@ export const CapacitySchema = z.union([ProviderCapacitySchema, RecipientCapacity
 export const CapacitiesCollectionDataSchema = z.record(IdSchema, CapacitySchema);
 export const CapacitiesCollectionSchema = TimestampedSchema(CapacitiesCollectionDataSchema);
 
-// Capacity shares schema with timestamps - maps capacity IDs to share percentages
-export const CapacitySharesDataSchema = z.record(IdSchema, PercentageSchema);
-export const CapacitySharesSchema = TimestampedSchema(CapacitySharesDataSchema);
-// Structure: capacityId → sharePercentage
+// DELETED: CapacitySharesSchema - Replaced by efficient provider-centric algorithm
+// Old capacity-level percentage shares no longer needed
 
 // Recognition cache entry schema
 export const RecognitionCacheEntrySchema = z.object({
@@ -207,25 +178,20 @@ export type RootNode = z.infer<typeof RootNodeSchema>;
 export type NonRootNode = z.infer<typeof NonRootNodeSchema>;
 export type Node = z.infer<typeof NodeSchema>;
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
-export type SlotComputedQuantity = z.infer<typeof SlotComputedQuantitySchema>;
-export type SlotClaim = z.infer<typeof SlotClaimSchema>;
-export type UserSlotClaims = z.infer<typeof UserSlotClaimsSchema>;
-export type NetworkSlotClaims = z.infer<typeof NetworkSlotClaimsSchema>;
-export type UserSlotQuantities = z.infer<typeof UserSlotQuantitiesSchema>;
-export type NetworkSlotQuantities = z.infer<typeof NetworkSlotQuantitiesSchema>;
+// DELETED: SlotComputedQuantity and SlotClaim types - No longer needed
+// DELETED: UserSlotClaims and NetworkSlotClaims types - Replaced by unified compose-from model
+// DELETED: UserSlotQuantities and NetworkSlotQuantities types - No longer needed
 export type BaseCapacity = z.infer<typeof BaseCapacitySchema>;
 export type ProviderCapacity = z.infer<typeof ProviderCapacitySchema>;
 export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
 export type Capacity = z.infer<typeof CapacitySchema>;
 export type CapacitiesCollection = z.infer<typeof CapacitiesCollectionSchema>;
 export type ShareMap = z.infer<typeof ShareMapSchema>;
-export type CapacityShares = z.infer<typeof CapacitySharesSchema>;
 
 // Raw data types (without timestamps)
 export type ShareMapData = z.infer<typeof ShareMapDataSchema>;
 export type CapacitiesCollectionData = z.infer<typeof CapacitiesCollectionDataSchema>;
-export type CapacitySharesData = z.infer<typeof CapacitySharesDataSchema>;
-export type UserSlotQuantitiesData = z.infer<typeof UserSlotQuantitiesDataSchema>;
+// DELETED: ShareMapData, CapacitySharesData, UserSlotQuantitiesData - No longer needed
 export type UserSlotCompositionData = z.infer<typeof UserSlotCompositionDataSchema>;
 export type ContactsCollectionData = z.infer<typeof ContactsCollectionDataSchema>;
 export type ChatReadStatesData = z.infer<typeof ChatReadStatesDataSchema>;
@@ -248,10 +214,18 @@ export type CompositionDesire = z.infer<typeof CompositionDesireSchema>;
 export type UserComposition = z.infer<typeof UserCompositionSchema>;
 export type NetworkComposition = z.infer<typeof NetworkCompositionSchema>;
 
-// Slot-aware composition schemas - enables slot-to-slot composition
-// Structure: targetCapacityId → targetSlotId → desiredAbsoluteUnits
+// Enhanced target identifier for slot composition - supports capacity IDs, pubkeys, and collectives
+export const CompositionTargetSchema = z.union([
+	IdSchema, // Existing capacity ID (backward compatible)
+	z.string().regex(/^[0-9a-fA-F]{64}$/, 'Invalid pubkey format'), // Individual pubkey (64 hex chars)
+	z.string().regex(/^collective:[0-9a-fA-F,]{64,}$/, 'Invalid collective format') // collective:pubkey1,pubkey2,...
+]);
+
+// Slot-aware composition schemas - enables slot-to-slot composition with enhanced targets
+// Structure: targetIdentifier → targetSlotId → desiredAbsoluteUnits
+// targetIdentifier can be: capacityId | pubkey | "collective:pubkey1,pubkey2,..."
 export const SlotCompositionDesireSchema = z.record(
-	IdSchema,
+	CompositionTargetSchema,
 	z.record(IdSchema, z.number().gte(0))
 );
 
@@ -268,29 +242,81 @@ export const UserSlotCompositionSchema = TimestampedSchema(UserSlotCompositionDa
 export const NetworkSlotCompositionSchema = z.record(IdSchema, UserSlotCompositionSchema);
 
 // Export slot composition types
+export type CompositionTarget = z.infer<typeof CompositionTargetSchema>;
 export type SlotCompositionDesire = z.infer<typeof SlotCompositionDesireSchema>;
 export type UserSlotComposition = z.infer<typeof UserSlotCompositionSchema>;
 export type NetworkSlotComposition = z.infer<typeof NetworkSlotCompositionSchema>;
 
-// Slot allocation metadata schema for UI
-export const SlotAllocationMetadataSchema = z.object({
-	feasibleQuantity: z.number().gte(0),
-	maxAvailableUnits: z.number().gte(0),
-	constraintType: z.enum(['share_limit', 'no_constraint']),
-	ourSharePercentage: z.number().gte(0).lte(1),
-	slotTotalQuantity: z.number().gte(0),
-	reasonLimited: z.optional(z.string())
+// ===== EFFICIENT DISTRIBUTION ALGORITHM SCHEMAS =====
+
+// What recipients send to provider: their desires for specific slots
+export const SlotDesireSchema = z.object({
+	recipient_id: IdSchema,
+	slot_id: IdSchema,
+	desired_quantity: z.number().gte(0),
+	updated_at: z.string()
 });
 
-// Unified slot allocation analysis schema
-export const SlotAllocationAnalysisSchema = z.object({
-	feasibleClaims: UserSlotClaimsSchema,
-	metadata: z.record(IdSchema, z.record(IdSchema, SlotAllocationMetadataSchema))
+// What provider computes and stores per slot after running the efficient algorithm
+// FULLY TRANSPARENT: Contains all input data and intermediate calculations
+export const SlotAllocationResultSchema = z.object({
+	slot_id: IdSchema,
+	total_quantity: z.number().gte(0),
+
+	// Phase 1: MUTUAL desires (transparent input from compose-from/into intersection)
+	all_desires: z.record(IdSchema, z.number().gte(0)), // recipient_id -> mutual_desired_amount
+
+	// Phase 2: Mutually desiring recipients (those with mutual desires > 0)
+	mutually_desiring_recipients: z.array(IdSchema),
+
+	// Phase 3: MR normalization among mutually desiring recipients only (transparent calculations)
+	mr_values: z.record(IdSchema, z.number().gte(0)), // recipient_id -> raw MR value (after capacity filtering)
+	filtered_mr_sum: z.number().gte(0), // Sum of MR values for mutually desiring recipients only
+	normalized_mr_shares: z.record(IdSchema, z.number().gte(0).lte(1)), // recipient_id -> normalized share
+
+	// Phase 4: Raw MR allocations before mutual desire constraints (transparent intermediate step)
+	raw_mr_allocations: z.record(IdSchema, z.number().gte(0)), // recipient_id -> raw_allocation
+
+	// Phase 4: Mutual-desire-constrained allocations (transparent constraint application)
+	desire_constrained_allocations: z.record(IdSchema, z.number().gte(0)), // recipient_id -> constrained_allocation
+
+	// Phase 5: Redistribution details (transparent redistribution logic)
+	unsatisfied_recipients: z.array(IdSchema), // Who still wants more after initial allocation (based on mutual desires)
+	redistribution_amounts: z.record(IdSchema, z.number().gte(0)), // recipient_id -> redistribution_amount
+
+	// Phase 5: Final allocations (after mutual desire constraints and redistribution)
+	final_allocations: z.record(IdSchema, z.number().gte(0)), // recipient_id -> final_allocated_quantity
+	unused_capacity: z.number().gte(0), // Remaining after all allocations and redistribution
+
+	// Metadata for transparency and debugging
+	computation_timestamp: z.string(),
+	algorithm_version: z.string().default('mutual_desire_v1') // Updated to reflect new algorithm
 });
 
-// Export slot allocation types
-export type SlotAllocationMetadata = z.infer<typeof SlotAllocationMetadataSchema>;
-export type SlotAllocationAnalysis = z.infer<typeof SlotAllocationAnalysisSchema>;
+// Provider's complete allocation state per capacity
+export const ProviderAllocationStateDataSchema = z.record(
+	IdSchema, // slot_id
+	SlotAllocationResultSchema
+);
+
+// Timestamped version for persistence
+export const ProviderAllocationStateSchema = TimestampedSchema(ProviderAllocationStateDataSchema);
+
+// Collection of all providers' allocation states (what recipients receive)
+export const NetworkAllocationStatesSchema = z.record(
+	IdSchema, // provider_id -> capacity_id
+	z.record(IdSchema, ProviderAllocationStateDataSchema) // capacity_id -> slot allocations
+);
+
+// Types
+export type SlotDesire = z.infer<typeof SlotDesireSchema>;
+export type SlotAllocationResult = z.infer<typeof SlotAllocationResultSchema>;
+export type ProviderAllocationStateData = z.infer<typeof ProviderAllocationStateDataSchema>;
+export type ProviderAllocationState = z.infer<typeof ProviderAllocationStateSchema>;
+export type NetworkAllocationStates = z.infer<typeof NetworkAllocationStatesSchema>;
+
+// DELETED: SlotAllocationMetadata/Analysis schemas - Replaced by efficient algorithm
+// Old recipient-centric allocation analysis replaced by allocationTransparencyAnalysis
 
 // Contact schema - simplified to just essential fields
 export const ContactSchema = z.object({

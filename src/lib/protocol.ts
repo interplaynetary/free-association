@@ -16,6 +16,11 @@
  * - Cannot have anti-contributors (people don't hamper abstract structure)
  *
  * This clean separation preserves both semantic clarity and mathematical elegance.
+ *
+ * NOTE: This file contains core protocol functions for tree manipulation, mutual recognition,
+ * and share calculation. Many recipient-centric allocation functions have been removed
+ * in favor of the efficient provider-centric mutual desire algorithm implemented in
+ * core.svelte.ts. Some deprecated functions remain for backward compatibility.
  */
 import type {
 	Node,
@@ -28,9 +33,7 @@ import type {
 	ShareMapData,
 	ProviderCapacity,
 	RecipientCapacity,
-	BaseCapacity,
-	UserSlotQuantities,
-	UserSlotQuantitiesData
+	BaseCapacity
 } from '$lib/schema';
 import {
 	filter,
@@ -513,241 +516,32 @@ export function providerShares(
 	return normalizeShareMap(contributorShares);
 }
 
-// Get a receiver's share from a specific capacity provider
-export function receiverGeneralShareFrom(
-	receiver: Node,
-	provider: Node,
-	capacity: Capacity,
-	nodesMap: Record<string, Node>,
-	resolveToPublicKey?: (id: string) => string | undefined
-): number {
-	// Get shares from the provider
-	const providerShareMap = providerShares(provider, nodesMap, undefined, resolveToPublicKey);
-	return providerShareMap[receiver.id] ?? 0;
-}
-
 /**
  * Capacity Utilities
  */
 
-// Legacy function - kept for backward compatibility but no longer applies artificial constraints
-// Real constraints are now applied at the slot level where quantities actually exist
-export function constrainSharePercentage(capacity: BaseCapacity, percentage: number): number {
-	// Simply return the percentage - no artificial constraints at share level
-	return Math.min(percentage, 1.0);
-}
-
-// Simple discrete allocation: distribute integer units proportionally
-export function allocateDiscreteUnits(shareMap: ShareMapData, totalUnits: number): ShareMapData {
-	if (totalUnits === 0) return {};
-
-	// Filter recipients with positive shares
-	const recipients = Object.entries(shareMap).filter(([_, share]) => share > 0);
-	if (recipients.length === 0) return {};
-
-	// Phase 1: Allocate integer units proportionally (round down)
-	const allocation: Record<string, number> = {};
-	let totalAllocated = 0;
-
-	for (const [recipientId, share] of recipients) {
-		const allocatedUnits = Math.floor(share * totalUnits);
-		if (allocatedUnits > 0) {
-			allocation[recipientId] = allocatedUnits;
-			totalAllocated += allocatedUnits;
-		}
-	}
-
-	// Phase 2: Distribute remainder units to highest fractional parts
-	const remainderUnits = totalUnits - totalAllocated;
-	if (remainderUnits > 0) {
-		// Calculate fractional parts for each recipient
-		const fractionalParts = recipients
-			.map(([recipientId, share]) => ({
-				recipientId,
-				fractionalPart: (share * totalUnits) % 1
-			}))
-			.filter(({ fractionalPart }) => fractionalPart > 0)
-			.sort((a, b) => b.fractionalPart - a.fractionalPart);
-
-		// Give 1 unit each to recipients with highest fractional parts
-		for (let i = 0; i < Math.min(remainderUnits, fractionalParts.length); i++) {
-			const { recipientId } = fractionalParts[i];
-			allocation[recipientId] = (allocation[recipientId] || 0) + 1;
-		}
-	}
-
-	// Convert back to percentages
-	const result: ShareMapData = {};
-	for (const [recipientId, units] of Object.entries(allocation)) {
-		if (units > 0) {
-			result[recipientId] = units / totalUnits;
-		}
-	}
-
-	return result;
-}
-
-// Apply capacity-level filtering only (no artificial percentage constraints)
-// Real constraints are applied at the slot level where they belong
-export function constrainShareMap(capacity: BaseCapacity, shareMap: ShareMapData): ShareMapData {
-	// Only apply logical filtering here - no artificial percentage constraints
-	// The real constraints (max_natural_div, max_percentage_div) are applied
-	// at the slot level where quantities actually exist
-	return normalizeShareMap(shareMap);
-}
-
-// Allocate discrete units for a specific slot using mutual fulfillment proportions
-export function allocateSlotDiscreteUnits(
-	slot: { id: string; quantity: number },
-	shareMap: ShareMapData
-): Record<string, number> {
-	// Use the discrete allocation algorithm for this specific slot
-	const slotShareMap = allocateDiscreteUnits(shareMap, slot.quantity);
-
-	// Convert back to actual quantities for this slot
-	const result: Record<string, number> = {};
-	for (const [recipientId, share] of Object.entries(slotShareMap)) {
-		result[recipientId] = Math.round(share * slot.quantity);
-	}
-
-	return result;
-}
-
-// Compute quantity share for a single availability slot
-// The percentage parameter is already discretely allocated at the capacity level,
-// so we just apply it proportionally with natural divisibility constraints
-export function computeSlotQuantityShare(
-	slot: { id: string; quantity: number },
-	capacity: BaseCapacity,
-	percentage: number
-): { slot_id: string; quantity: number } {
-	const maxNatural = capacity.max_natural_div || 1;
-
-	// Apply the pre-calculated discrete share percentage directly to this slot
-	const rawQuantity = percentage * slot.quantity;
-
-	// Apply natural divisibility constraint (round down to valid increments)
-	const constrainedQuantity = Math.floor(rawQuantity / maxNatural) * maxNatural;
-
-	return {
-		slot_id: slot.id,
-		quantity: constrainedQuantity
-	};
-}
-
-// Compute quantity shares for a single slot distributed among multiple recipients
-// This is the main function that should be used for proper discrete allocation
-export function computeSlotQuantitySharesForRecipients(
-	slot: { id: string; quantity: number },
-	shareMap: ShareMapData,
-	capacity: BaseCapacity
-): Record<string, { slot_id: string; quantity: number }> {
-	const maxNatural = capacity.max_natural_div || 1;
-	const maxPercent = capacity.max_percentage_div || 1;
-
-	// Use slot-level discrete allocation
-	const allocation = allocateSlotDiscreteUnits(slot, shareMap);
-
-	// Convert to the expected format
-	const result: Record<string, { slot_id: string; quantity: number }> = {};
-	for (const [recipientId, quantity] of Object.entries(allocation)) {
-		if (quantity > 0) {
-			result[recipientId] = {
-				slot_id: slot.id,
-				quantity: quantity
-			};
-		}
-	}
-
-	return result;
-}
-
-// Compute quantity shares for all availability slots in a capacity (single recipient)
-export function computeQuantityShares(
-	capacity: BaseCapacity,
-	percentage: number
-): Array<{ slot_id: string; quantity: number }> {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
-		console.log('[COMPUTE-QUANTITIES] No availability_slots found, returning empty array');
-		return [];
-	}
-
-	return capacity.availability_slots.map((slot) =>
-		computeSlotQuantityShare(slot, capacity, percentage)
-	);
-}
-
-// Compute quantity shares for all slots distributed among multiple recipients
-// This is the main function for calculating recipient shares across all slots
-export function computeAllSlotQuantityShares(
-	capacity: BaseCapacity,
-	shareMap: ShareMapData
-): Record<string, Array<{ slot_id: string; quantity: number }>> {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
-		console.log('[COMPUTE-ALL-SLOT-QUANTITIES] No availability_slots found, returning empty');
-		return {};
-	}
-
-	const result: Record<string, Array<{ slot_id: string; quantity: number }>> = {};
-
-	// Initialize result structure for all recipients
-	for (const recipientId of Object.keys(shareMap)) {
-		result[recipientId] = [];
-	}
-
-	// Process each slot independently with discrete allocation
-	for (const slot of capacity.availability_slots) {
-		const slotAllocations = computeSlotQuantitySharesForRecipients(slot, shareMap, capacity);
-
-		// Add each recipient's allocation for this slot
-		for (const [recipientId, allocation] of Object.entries(slotAllocations)) {
-			if (!result[recipientId]) {
-				result[recipientId] = [];
-			}
-			result[recipientId].push(allocation);
-		}
-	}
-
-	return result;
-}
-
-// Legacy function for backward compatibility - returns total across all slots
-export function computeQuantityShare(capacity: BaseCapacity, percentage: number): number {
-	const slotShares = computeQuantityShares(capacity, percentage);
-	return slotShares.reduce((total, slot) => total + slot.quantity, 0);
-}
-
-// Create a new capacity share
-export function createRecipientCapacity(
-	baseCapacity: BaseCapacity,
-	providerId: string,
-	percentage: number
-): RecipientCapacity {
-	return {
-		...baseCapacity,
-		share_percentage: percentage,
-		computed_quantities: computeQuantityShares(baseCapacity, percentage),
-		provider_id: providerId
-	};
-}
+// DELETED FUNCTIONS (part of old recipient-centric allocation system):
+// Capacity Management:
+// - createRecipientCapacity: Created recipient capacity shares
+// - addCapacityShare: Added capacity shares to collections
+// - receiverGeneralShareFrom: Got receiver's share from specific provider
+// Constraint Functions:
+// - constrainSharePercentage: Applied artificial percentage constraints
+// - constrainShareMap: Applied capacity-level filtering constraints
+// Allocation Functions:
+// - allocateDiscreteUnits: Core discrete allocation algorithm
+// - allocateSlotDiscreteUnits: Slot-level discrete allocation
+// Quantity Calculation Functions:
+// - computeSlotQuantityShare: Single slot quantity calculation
+// - computeSlotQuantitySharesForRecipients: Multi-recipient slot allocation
+// - computeQuantityShares: All slots for single recipient calculation
+// - computeAllSlotQuantityShares: All slots for multiple recipients calculation
+// - computeQuantityShare: Legacy total quantity calculation
+// New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
 
 // Add a capacity to a collection
 export function addCapacity(capacities: CapacitiesCollectionData, capacity: Capacity): void {
 	capacities[capacity.id] = capacity;
-}
-
-// Add a capacity share to a capacity in a collection
-export function addCapacityShare(
-	capacities: CapacitiesCollectionData,
-	share: RecipientCapacity
-): void {
-	// Find the matching capacity if it exists
-	const capacity = capacities[share.id];
-
-	if (capacity && 'recipient_shares' in capacity) {
-		// Add the share to the capacity's recipient_shares map
-		capacity.recipient_shares[share.provider_id] = share.share_percentage;
-	}
 }
 
 /**
@@ -923,130 +717,14 @@ export function updateName(node: Node, name: string): void {
 	node.name = name;
 }
 
-// Calculate recipient shares for a provider capacity
-export function calculateRecipientShares(
-	capacity: ProviderCapacity,
-	provider: Node,
-	nodesMap: Record<string, Node>,
-	subtreeContributorMap?: Record<string, Record<string, boolean>>,
-	resolveToPublicKey?: (id: string) => string | undefined
-): Record<string, UserSlotQuantitiesData> {
-	// Get raw shares based on provider
-	const rawShares = providerShares(provider, nodesMap, undefined, resolveToPublicKey);
+// DELETED FUNCTIONS (part of old recipient-centric system):
+// - calculateRecipientShares: Calculated recipient shares for provider capacity
+// - calculateDiscreteRecipientShares: Internal discrete allocation function
+// - calculateRecipientSlotQuantities: Calculated slot quantities for recipients
+// New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
 
-	// Apply capacity filter if one exists
-	const context: FilterContext = {
-		subtreeContributors: subtreeContributorMap || {}
-	};
-	const filteredShares = applyCapacityFilter(capacity, rawShares, context);
-
-	// Apply discrete allocation constraints per slot to get actual recipient shares
-	const discreteShares = calculateDiscreteRecipientShares(capacity, filteredShares);
-
-	// Store the discrete shares in the capacity (for backward compatibility)
-	capacity.recipient_shares = discreteShares;
-
-	// Calculate actual slot quantities for each recipient
-	const recipientSlotQuantities = calculateRecipientSlotQuantities(capacity, filteredShares);
-
-	return recipientSlotQuantities;
-}
-
-// DEPRECATED: This function is no longer used in the new architecture
-// Discrete allocation is now handled per-slot and actual quantities are stored,
-// eliminating the need to average percentages across slots
-function calculateDiscreteRecipientShares(
-	capacity: BaseCapacity,
-	shareMap: ShareMapData
-): ShareMapData {
-	console.warn(
-		'[DEPRECATED] calculateDiscreteRecipientShares is deprecated. Use calculateRecipientSlotQuantities instead.'
-	);
-
-	if (!capacity.availability_slots || capacity.availability_slots.length === 0) {
-		return {};
-	}
-
-	const maxNatural = capacity.max_natural_div || 1;
-	const maxPercent = capacity.max_percentage_div || 1;
-
-	// Calculate what each recipient would get across all slots using discrete allocation
-	const recipientIds = Object.keys(shareMap).filter((id) => shareMap[id] > 0);
-	if (recipientIds.length === 0) {
-		return {};
-	}
-
-	// For each recipient, calculate their average share across all slots
-	const discreteShares: ShareMapData = {};
-
-	for (const recipientId of recipientIds) {
-		let totalRecipientUnits = 0;
-		let totalSlotUnits = 0;
-
-		// Calculate discrete allocation for each slot
-		for (const slot of capacity.availability_slots) {
-			const slotAllocation = allocateDiscreteUnits(shareMap, slot.quantity);
-			const recipientShare = slotAllocation[recipientId] || 0;
-			const recipientUnits = Math.round(recipientShare * slot.quantity);
-
-			totalRecipientUnits += recipientUnits;
-			totalSlotUnits += slot.quantity;
-		}
-
-		// Calculate average share percentage across all slots
-		if (totalSlotUnits > 0) {
-			discreteShares[recipientId] = totalRecipientUnits / totalSlotUnits;
-		}
-	}
-
-	return discreteShares;
-}
-
-// Calculate actual slot quantities for each recipient using discrete allocation
-// This is the new approach that stores actual units per slot, not averaged percentages
-export function calculateRecipientSlotQuantities(
-	capacity: BaseCapacity,
-	shareMap: ShareMapData
-): Record<string, UserSlotQuantitiesData> {
-	if (!capacity.availability_slots || capacity.availability_slots.length === 0) {
-		return {};
-	}
-
-	const maxNatural = capacity.max_natural_div || 1;
-	const maxPercent = capacity.max_percentage_div || 1;
-
-	const recipientSlotQuantities: Record<string, UserSlotQuantitiesData> = {};
-
-	// Get all recipients with shares
-	const recipientIds = Object.keys(shareMap).filter((id) => shareMap[id] > 0);
-
-	// Initialize result structure
-	for (const recipientId of recipientIds) {
-		recipientSlotQuantities[recipientId] = {};
-	}
-
-	// For each slot, do discrete allocation and store actual quantities
-	for (const slot of capacity.availability_slots) {
-		// Do discrete allocation for this slot
-		const slotAllocation = allocateDiscreteUnits(shareMap, slot.quantity);
-
-		// Convert percentages to actual quantities for each recipient
-		for (const [recipientId, sharePercent] of Object.entries(slotAllocation)) {
-			const actualQuantity = Math.round(sharePercent * slot.quantity);
-
-			if (actualQuantity > 0) {
-				if (!recipientSlotQuantities[recipientId][capacity.id]) {
-					recipientSlotQuantities[recipientId][capacity.id] = {};
-				}
-				recipientSlotQuantities[recipientId][capacity.id][slot.id] = actualQuantity;
-			}
-		}
-	}
-
-	return recipientSlotQuantities;
-}
-
-// Get all capacities where the receiver has shares from a provider
+// DEPRECATED: Get all capacities where the receiver has shares from a provider (part of old system)
+// New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
 export function getReceiverCapacities(
 	receiver: Node,
 	provider: Node,
@@ -1054,26 +732,14 @@ export function getReceiverCapacities(
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): ProviderCapacity[] {
-	// Filter capacities owned by the provider and ensure they are provider capacities
-	const providerCapacities = Object.values(capacities).filter(
-		(capacity): capacity is ProviderCapacity =>
-			capacity.owner_id === provider.id && 'recipient_shares' in capacity
-	);
-
-	// Ensure all capacities have calculated recipient shares
-	providerCapacities.forEach((capacity) => {
-		calculateRecipientShares(capacity, provider, nodesMap, undefined, resolveToPublicKey);
-	});
-
-	// Return capacities where the receiver has a share
-	return providerCapacities.filter(
-		(capacity) =>
-			capacity.recipient_shares[receiver.id] !== undefined &&
-			capacity.recipient_shares[receiver.id] > 0
-	);
+	// DEPRECATED: Old recipient share calculation removed
+	// New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
+	// Returning empty array for backward compatibility
+	return [];
 }
 
-// Get a receiver's shares across all capacities of a provider
+// DEPRECATED: Get a receiver's shares across all capacities of a provider (part of old system)
+// New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
 export function getReceiverShares(
 	receiver: Node,
 	provider: Node,
@@ -1081,29 +747,9 @@ export function getReceiverShares(
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> {
-	// Get all capacities where receiver has shares
-	const receiverCapacities = getReceiverCapacities(
-		receiver,
-		provider,
-		capacities,
-		nodesMap,
-		resolveToPublicKey
-	);
-
-	// Create a map of capacity ID to share information
-	const sharesMap: Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> =
-		{};
-
-	receiverCapacities.forEach((capacity) => {
-		const share = capacity.recipient_shares[receiver.id] || 0;
-		sharesMap[capacity.id] = {
-			capacity,
-			share,
-			quantity: computeQuantityShare(capacity, share)
-		};
-	});
-
-	return sharesMap;
+	// DEPRECATED: Returning empty result - old share calculation removed
+	// New system uses efficient provider-centric mutual desire algorithm
+	return {};
 }
 
 // Get a map of subtree names to their contributor lists
@@ -1317,3 +963,330 @@ export function calculateNodePoints(parentNode: Node): number {
 
 // Re-export filter-related functions
 export { filter, normalizeShareMap, applyCapacityFilter, Rules };
+
+/**
+ * CAPACITY ANALYSIS UTILITIES
+ *
+ * Functions for analyzing capacity allocations, slot quantities, and availability.
+ * These utilities work with the efficient allocation algorithm data.
+ */
+
+/**
+ * Get allocated quantity for a specific slot from the efficient algorithm
+ */
+export function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
+	const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+	return slot?.allocated_quantity || 0;
+}
+
+/**
+ * Get available quantity for a specific slot
+ */
+export function getSlotAvailableQuantity(capacity: any, slotId: string): number {
+	const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+	return slot?.available_quantity || slot?.quantity || 0;
+}
+
+/**
+ * Get count of slots with allocated quantities
+ */
+export function getAllocatedSlotCount(capacity: any): number {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return 0;
+	}
+	return capacity.availability_slots.filter((slot: any) => (slot.allocated_quantity || 0) > 0)
+		.length;
+}
+
+/**
+ * Get total number of slots available
+ */
+export function getTotalSlotCount(capacity: any): number {
+	return capacity.availability_slots?.length || 0;
+}
+
+/**
+ * Calculate total allocated quantity across all slots
+ */
+export function getTotalAllocated(capacity: any): number {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return 0;
+	}
+	return capacity.availability_slots.reduce((total: number, slot: any) => {
+		return total + (slot.allocated_quantity || 0);
+	}, 0);
+}
+
+/**
+ * Calculate total available quantity across all slots
+ */
+export function getTotalAvailable(capacity: any): number {
+	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		return 0;
+	}
+	return capacity.availability_slots.reduce((total: number, slot: any) => {
+		return total + (slot.available_quantity || slot.quantity || 0);
+	}, 0);
+}
+
+/**
+ * SLOT UTILITY FUNCTIONS
+ *
+ * General utilities for working with availability slots.
+ */
+
+/**
+ * Check if a slot is recurring
+ */
+export function isSlotRecurring(slot: any): boolean {
+	return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
+}
+
+/**
+ * Get display string for slot recurrence
+ */
+export function getRecurrenceDisplay(slot: any): string {
+	return slot.recurrence || 'Does not repeat';
+}
+
+/**
+ * Check if a slot is in the past
+ */
+export function isSlotInPast(slot: any): boolean {
+	if (!slot.start_date) return false;
+
+	const now = new Date();
+	const slotDate = new Date(slot.start_date);
+
+	// If it's all day, compare dates only
+	if (slot.all_day) {
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const slotDateOnly = new Date(slotDate.getFullYear(), slotDate.getMonth(), slotDate.getDate());
+		return slotDateOnly < today;
+	}
+
+	// If it has time, create full datetime
+	if (slot.start_time) {
+		const [hours, minutes] = slot.start_time.split(':');
+		slotDate.setHours(parseInt(hours), parseInt(minutes));
+	}
+
+	return slotDate < now;
+}
+
+/**
+ * TIME AND DATE FORMATTING UTILITIES
+ *
+ * Functions for formatting time and date displays in slot information.
+ */
+
+/**
+ * Safely extract time from potentially malformed time strings
+ */
+export function safeExtractTime(timeValue: string | null | undefined): string | undefined {
+	if (!timeValue) return undefined;
+
+	// If it's already in HH:MM format, return as-is
+	if (/^\d{2}:\d{2}$/.test(timeValue)) {
+		return timeValue;
+	}
+
+	// If it's an ISO datetime string, extract just the time part
+	if (timeValue.includes('T')) {
+		try {
+			const date = new Date(timeValue);
+			return date.toTimeString().substring(0, 5); // Get HH:MM from "HH:MM:SS GMT..."
+		} catch (e) {
+			console.warn('Failed to parse time:', timeValue);
+			return undefined;
+		}
+	}
+
+	// If it's some other format, try to extract time
+	console.warn('Unknown time format:', timeValue);
+	return undefined;
+}
+
+/**
+ * Format time without leading zeros (08:30 → 8:30)
+ */
+export function formatTimeClean(timeStr: string): string {
+	if (!timeStr) return timeStr;
+
+	const [hours, minutes] = timeStr.split(':');
+	const cleanHours = parseInt(hours).toString(); // Remove leading zero
+	return `${cleanHours}:${minutes}`;
+}
+
+/**
+ * Format date for display with smart labels
+ */
+export function formatDateForDisplay(date: Date): string {
+	const today = new Date();
+	const tomorrow = new Date(today);
+	tomorrow.setDate(tomorrow.getDate() + 1);
+
+	if (date.toDateString() === today.toDateString()) {
+		return 'Today';
+	} else if (date.toDateString() === tomorrow.toDateString()) {
+		return 'Tomorrow';
+	} else {
+		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+	}
+}
+
+/**
+ * Format slot time display - comprehensive time formatting for slots
+ */
+export function formatSlotTimeDisplay(slot: any): string {
+	// Clean the time values
+	const rawStartTime = safeExtractTime(slot.start_time);
+	const rawEndTime = safeExtractTime(slot.end_time);
+
+	// Format times without leading zeros
+	const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
+	const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
+
+	// Get recurrence display
+	const recurrenceDisplay =
+		slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
+
+	// Handle "All day" case first
+	if (slot.all_day) {
+		const startDate = slot.start_date ? new Date(slot.start_date) : null;
+		const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+		let timeStr = '';
+		if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
+			// Multi-day all-day event
+			const startStr = formatDateForDisplay(startDate);
+			const endStr = formatDateForDisplay(endDate);
+			timeStr = `${startStr} - ${endStr}, All day`;
+		} else if (startDate) {
+			// Single day all-day event
+			const dateStr = formatDateForDisplay(startDate);
+			timeStr = `${dateStr}, All day`;
+		} else {
+			timeStr = 'All day';
+		}
+
+		// Add recurrence if present
+		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
+	}
+
+	// Handle timed slots
+	const startDate = slot.start_date ? new Date(slot.start_date) : null;
+	const endDate = slot.end_date ? new Date(slot.end_date) : null;
+
+	let timeStr = '';
+	if (startDate) {
+		const startDateStr = formatDateForDisplay(startDate);
+
+		// Check if we have an end date and it's different from start date
+		if (endDate && startDate.getTime() !== endDate.getTime()) {
+			// Multi-day timed event
+			const endDateStr = formatDateForDisplay(endDate);
+			const startTimeStr = cleanStartTime || '';
+			const endTimeStr = cleanEndTime || '';
+
+			if (startTimeStr && endTimeStr) {
+				timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+			} else if (startTimeStr) {
+				timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
+			} else {
+				timeStr = `${startDateStr} - ${endDateStr}`;
+			}
+		} else {
+			// Single day or no end date
+			if (cleanStartTime) {
+				const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+				timeStr = `${startDateStr}, ${timeRange}`;
+			} else {
+				timeStr = startDateStr;
+			}
+		}
+	} else if (cleanStartTime) {
+		// Just time, no date
+		timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
+	} else {
+		timeStr = 'No time set';
+	}
+
+	// Add recurrence if present
+	return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
+}
+
+/**
+ * Format slot location display - show complete address
+ */
+export function formatSlotLocationDisplay(slot: any): string {
+	if (slot.location_type === 'Specific') {
+		// Build complete address from components
+		const addressParts = [];
+
+		if (slot.street_address) {
+			addressParts.push(slot.street_address);
+		}
+
+		if (slot.city) {
+			addressParts.push(slot.city);
+		}
+
+		if (slot.state_province) {
+			addressParts.push(slot.state_province);
+		}
+
+		if (slot.postal_code) {
+			addressParts.push(slot.postal_code);
+		}
+
+		if (slot.country) {
+			addressParts.push(slot.country);
+		}
+
+		// If we have address components, join them with commas
+		if (addressParts.length > 0) {
+			return addressParts.join(', ');
+		}
+
+		// Fall back to coordinates if no address components
+		if (slot.latitude && slot.longitude) {
+			return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+		}
+	} else if (slot.location_type === 'Online') {
+		// Show online link or generic "Online" text
+		if (slot.online_link) {
+			// If it looks like a URL, show a shortened version
+			if (slot.online_link.startsWith('http')) {
+				try {
+					const url = new URL(slot.online_link);
+					return `Online (${url.hostname})`;
+				} catch {
+					return 'Online (link provided)';
+				}
+			}
+			// If it's text, show truncated version
+			return `Online (${slot.online_link.length > 30 ? slot.online_link.substring(0, 30) + '...' : slot.online_link})`;
+		}
+		return 'Online';
+	}
+
+	return slot.location_type || 'No location';
+}
+
+/**
+ * Get slot sort value for different sort criteria
+ */
+export function getSlotSortValue(slot: any, sortBy: string): number | string {
+	switch (sortBy) {
+		case 'time':
+			if (!slot.start_date) return '9999-12-31';
+			return slot.start_date;
+		case 'location':
+			return formatSlotLocationDisplay(slot).toLowerCase();
+		case 'quantity':
+			return slot.allocated_quantity || 0;
+		default:
+			return 0;
+	}
+}

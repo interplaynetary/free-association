@@ -1,5 +1,4 @@
 import { get } from 'svelte/store';
-import type { UserSlotQuantities } from '$lib/schema';
 import {
 	userTree,
 	userSogf,
@@ -7,7 +6,7 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isLoadingSogf,
-	providerShares,
+	generalShares,
 	contributorCapacityShares,
 	createTimestampedForPersistence,
 	getCurrentTimestamp,
@@ -25,7 +24,11 @@ import {
 	resolveToPublicKey,
 	resolveContactIdsInTree
 } from './users.svelte';
-import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from './core.svelte';
+import {
+	userDesiredSlotComposeFrom,
+	userDesiredSlotComposeInto,
+	providerAllocationStates
+} from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
 import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
@@ -179,25 +182,25 @@ export function persistSogf() {
 	}
 }
 
-export function persistProviderShares() {
+export function persistGeneralShares() {
 	// Check if user is initialized
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping provider shares persistence');
 		return;
 	}
 
-	// Store provider shares
-	const shares = get(providerShares);
+	// Store general shares
+	const shares = get(generalShares);
 	if (shares && Object.keys(shares).length > 0) {
-		console.log('[PERSIST] Starting provider shares persistence...');
-		console.log('[PERSIST] Provider shares (already contains public keys):', shares);
+		console.log('[PERSIST] Starting general shares persistence...');
+		console.log('[PERSIST] General shares (already contains public keys):', shares);
 
 		// Our core stores now contain public keys by design, so no filtering needed
-		user.get('providerShares').put(structuredClone(shares), (ack: { err?: any }) => {
+		user.get('generalShares').put(structuredClone(shares), (ack: { err?: any }) => {
 			if (ack.err) {
-				console.error('[PERSIST] Error saving provider shares to Gun:', ack.err);
+				console.error('[PERSIST] Error saving general shares to Gun:', ack.err);
 			} else {
-				console.log('[PERSIST] Provider shares successfully saved to Gun');
+				console.log('[PERSIST] General shares successfully saved to Gun');
 			}
 		});
 	}
@@ -443,54 +446,9 @@ export function persistContributorCapacityShares() {
 	});
 }
 
-/**
- * Persist contributor capacity slot quantities to gun
- * This stores the actual discrete unit allocations per slot for each contributor
- */
-export function persistContributorCapacitySlotQuantities(
-	contributorSlotQuantities: Record<string, UserSlotQuantities>
-) {
-	// Check if user is initialized
-	if (!isUserInitialized()) {
-		console.log(
-			'[PERSIST] User not initialized, skipping contributor capacity slot quantities persistence'
-		);
-		return;
-	}
-
-	const ourId = get(userPub);
-	if (!ourId) {
-		console.log(
-			'[PERSIST] No user ID available, cannot persist contributor capacity slot quantities'
-		);
-		return;
-	}
-
-	console.log(
-		'[PERSIST] Persisting contributor capacity slot quantities:',
-		contributorSlotQuantities
-	);
-
-	// For each contributor, store their slot quantities under their path
-	Object.entries(contributorSlotQuantities).forEach(([contributorId, slotQuantities]) => {
-		// Store under capacitySlotQuantities/contributorId
-		user
-			.get('capacitySlotQuantities')
-			.get(contributorId)
-			.put(JSON.stringify(slotQuantities), (ack: any) => {
-				if (ack.err) {
-					console.error(
-						`[PERSIST] Error persisting capacity slot quantities for contributor ${contributorId}:`,
-						ack.err
-					);
-				} else {
-					console.log(
-						`[PERSIST] Successfully persisted capacity slot quantities for contributor ${contributorId}`
-					);
-				}
-			});
-	});
-}
+// DELETED: persistContributorCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
+// Old approach persisted recipient-computed slot quantities
+// New approach: Providers compute and publish allocations directly via computedProviderAllocations
 
 /**
  * Persist user's desired slot compose-from to Gun
@@ -669,6 +627,65 @@ export function persistUserDesiredSlotComposeInto() {
 		});
 	} catch (error) {
 		console.error('[PERSIST] Error serializing timestamped user desired slot compose-into:', error);
+	}
+}
+
+// DELETED: persistUserDesiredSlotClaims - Replaced by unified compose-from model
+// Slot claims are now persisted as compose-from-self via persistUserDesiredSlotComposeFrom
+
+/**
+ * Persist provider allocation states to Gun (for network publishing)
+ */
+export function persistProviderAllocationStates() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping provider allocation states persistence');
+		return;
+	}
+
+	const allocationStatesValue = get(providerAllocationStates);
+	if (!allocationStatesValue) {
+		console.log('[PERSIST] No provider allocation states data to persist');
+		return;
+	}
+
+	// Don't persist empty allocation states during initialization
+	if (Object.keys(allocationStatesValue).length === 0) {
+		console.log(
+			'[PERSIST] Skipping persistence of empty allocation states (likely initialization)'
+		);
+		return;
+	}
+
+	console.log('[PERSIST] Starting provider allocation states persistence...');
+	console.log(
+		'[PERSIST] Allocation states for',
+		Object.keys(allocationStatesValue).length,
+		'capacities'
+	);
+
+	try {
+		// Provider allocation states don't need timestamps since they're computed fresh each time
+		// They represent the current state of the provider's allocation decisions
+		const allocationStatesClone = structuredClone(allocationStatesValue);
+
+		// Serialize to JSON to preserve number types
+		const allocationStatesJson = JSON.stringify(allocationStatesClone);
+		console.log(
+			'[PERSIST] Serialized provider allocation states length:',
+			allocationStatesJson.length
+		);
+
+		// Store in Gun under the expected path that network subscribers use
+		user.get('allocationStates').put(allocationStatesJson, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error saving provider allocation states to Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Provider allocation states successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing provider allocation states:', error);
 	}
 }
 

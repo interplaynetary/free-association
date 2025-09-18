@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { ProviderCapacity, AvailabilitySlot } from '$lib/schema';
-	import Bar from '$lib/components/Bar.svelte';
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
@@ -141,13 +140,8 @@
 		}
 	});
 
-	// Convert recipient_shares to bar segments
-	const recipientSegments = $derived(
-		Object.entries(capacity.recipient_shares || {}).map(([userId, share]) => ({
-			id: userId,
-			value: share * 100 // Convert from 0-1 to 0-100 percentage
-		}))
-	);
+	// Note: Recipient shares are no longer displayed as bars in the new efficient allocation system
+	// Recipients can see their allocations directly in the shares view
 
 	// Recurrence options
 	const recurrenceOptions = [
@@ -632,18 +626,7 @@
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
-	<!-- Recipient shares bar -->
-	{#if recipientSegments.length > 0}
-		<div class="recipient-shares-bar mb-1">
-			<Bar
-				segments={recipientSegments}
-				height="8px"
-				rounded={true}
-				backgroundColor="#f3f4f6"
-				showLabelsAboveOnSelect={true}
-			/>
-		</div>
-	{/if}
+	<!-- Note: Recipient shares bars removed - recipients see allocations in shares view via efficient algorithm -->
 
 	<div class="capacity-row flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow-sm">
 		<!-- Emoji picker button -->
