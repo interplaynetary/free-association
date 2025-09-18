@@ -4,7 +4,9 @@
 	import {
 		resolveToPublicKey,
 		userAliasesCache,
-		updateContact as updateContactInStore
+		updateContact as updateContactInStore,
+		createCollectiveTarget,
+		getUserName
 	} from '$lib/state/users.svelte';
 	import { browser } from '$app/environment';
 	import type { Readable } from 'svelte/store';
@@ -20,10 +22,13 @@
 		filterText = '',
 		show = false,
 		allowCreateContact = false,
+		allowCreateCollective = false,
+		collectiveMode = false,
 		selectedIds = [],
 		select = (detail: { id: string; name: string; metadata?: any }) => {},
 		removeItem = (detail: { id: string; name: string; metadata?: any }) => {},
 		createContact = (detail: { name: string; publicKey?: string }) => {},
+		createCollective = (detail: { name: string; memberIds: string[] }) => {},
 		updateContact = (detail: { contactId: string; name: string }) => {},
 		deleteContact = (detail: { contactId: string; name: string; publicKey?: string }) => {},
 		close = () => {}
@@ -37,10 +42,13 @@
 		filterText?: string;
 		show?: boolean;
 		allowCreateContact?: boolean;
+		allowCreateCollective?: boolean;
+		collectiveMode?: boolean;
 		selectedIds?: string[];
 		select?: (detail: { id: string; name: string; metadata?: any }) => void;
 		removeItem?: (detail: { id: string; name: string; metadata?: any }) => void;
 		createContact?: (detail: { name: string; publicKey?: string }) => void;
+		createCollective?: (detail: { name: string; memberIds: string[] }) => void;
 		updateContact?: (detail: { contactId: string; name: string }) => void;
 		deleteContact?: (detail: { contactId: string; name: string; publicKey?: string }) => void;
 		close?: () => void;
@@ -60,6 +68,14 @@
 		name: ''
 	});
 	let isCreating = $state(false);
+
+	// Collective creation state
+	let showCreateCollectiveForm = $state(false);
+	let createCollectiveForm = $state({
+		name: '',
+		selectedMembers: [] as string[]
+	});
+	let isCreatingCollective = $state(false);
 
 	// Inline naming state for converting entries to contacts
 	let editingEntryId = $state<string | null>(null);
@@ -203,7 +219,9 @@
 	// Event handlers
 	function handleClose() {
 		showCreateForm = false;
+		showCreateCollectiveForm = false;
 		resetCreateForm();
+		resetCreateCollectiveForm();
 		handleCancelNaming();
 		initialized = false; // Reset so dropdown initializes fresh next time
 		close();
@@ -215,7 +233,18 @@
 	}
 
 	function handleItemClick(id: string, name: string, metadata?: any) {
-		// If the item is already selected, remove it; otherwise, select it
+		// In collective mode, allow multi-selection without closing
+		if (collectiveMode) {
+			if (isItemSelected(id)) {
+				removeItem({ id, name, metadata });
+			} else {
+				select({ id, name, metadata });
+			}
+			// Don't close dropdown in collective mode
+			return;
+		}
+
+		// Original single-selection behavior
 		if (isItemSelected(id)) {
 			removeItem({ id, name, metadata });
 		} else {
@@ -288,6 +317,94 @@
 			event.preventDefault();
 			handleHideCreateForm();
 		}
+	}
+
+	// Collective creation handlers
+	function handleShowCreateCollectiveForm() {
+		showCreateCollectiveForm = true;
+		// Pre-populate with currently selected items
+		const currentlySelected = Array.isArray(selectedIds)
+			? selectedIds
+			: typeof selectedIds === 'function'
+				? selectedIds()
+				: [];
+
+		createCollectiveForm.selectedMembers = [...currentlySelected];
+
+		// Pre-fill name with current search if it looks like a name
+		if (searchFilter && searchFilter.trim() && !searchFilter.includes('@')) {
+			createCollectiveForm.name = searchFilter.trim();
+		}
+
+		// Focus the name input after a short delay
+		setTimeout(() => {
+			nameInput?.focus();
+		}, 50);
+	}
+
+	function handleHideCreateCollectiveForm() {
+		showCreateCollectiveForm = false;
+		resetCreateCollectiveForm();
+	}
+
+	function resetCreateCollectiveForm() {
+		createCollectiveForm = {
+			name: '',
+			selectedMembers: []
+		};
+		isCreatingCollective = false;
+	}
+
+	async function handleCreateCollective() {
+		if (!createCollectiveForm.name.trim() || createCollectiveForm.selectedMembers.length < 2) {
+			return;
+		}
+
+		isCreatingCollective = true;
+
+		try {
+			await createCollective({
+				name: createCollectiveForm.name.trim(),
+				memberIds: createCollectiveForm.selectedMembers
+			});
+
+			// Reset and close
+			resetCreateCollectiveForm();
+			showCreateCollectiveForm = false;
+
+			// Close the dropdown to show the updated list
+			handleClose();
+		} catch (error) {
+			console.error('Error creating collective:', error);
+			// Keep form open so user can fix any issues
+		} finally {
+			isCreatingCollective = false;
+		}
+	}
+
+	function handleCreateCollectiveFormKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			handleCreateCollective();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			handleHideCreateCollectiveForm();
+		}
+	}
+
+	function handleToggleMemberInCollective(memberId: string) {
+		const index = createCollectiveForm.selectedMembers.indexOf(memberId);
+		if (index > -1) {
+			createCollectiveForm.selectedMembers = createCollectiveForm.selectedMembers.filter(
+				(id) => id !== memberId
+			);
+		} else {
+			createCollectiveForm.selectedMembers = [...createCollectiveForm.selectedMembers, memberId];
+		}
+	}
+
+	function isMemberInCollective(memberId: string): boolean {
+		return createCollectiveForm.selectedMembers.includes(memberId);
 	}
 
 	// Inline naming handlers
@@ -519,20 +636,22 @@
 		if (!dropdownContainer || !browser) return;
 
 		const rect = dropdownContainer.getBoundingClientRect();
-		
+
 		// Get app content container bounds
 		const appContent = document.querySelector('.app-content');
 		const headerHeight = 76; // Approximate header height
 		const contentPadding = 16; // App content padding
-		
-		const contentRect = appContent ? appContent.getBoundingClientRect() : {
-			left: contentPadding,
-			top: headerHeight,
-			right: window.innerWidth - contentPadding,
-			bottom: window.innerHeight - contentPadding,
-			width: window.innerWidth - (contentPadding * 2),
-			height: window.innerHeight - headerHeight - contentPadding
-		};
+
+		const contentRect = appContent
+			? appContent.getBoundingClientRect()
+			: {
+					left: contentPadding,
+					top: headerHeight,
+					right: window.innerWidth - contentPadding,
+					bottom: window.innerHeight - contentPadding,
+					width: window.innerWidth - contentPadding * 2,
+					height: window.innerHeight - headerHeight - contentPadding
+				};
 
 		const padding = 10; // Padding from container edges
 		const originalX = position.x;
@@ -655,10 +774,25 @@
 					class="create-button"
 					onclick={handleShowCreateForm}
 					title="Create new contact"
-					disabled={showCreateForm}
+					disabled={showCreateForm || showCreateCollectiveForm}
 				>
-					+
+					👤+
 				</button>
+			{/if}
+			{#if allowCreateCollective}
+				<button
+					class="create-button collective-button"
+					onclick={handleShowCreateCollectiveForm}
+					title="Create new collective"
+					disabled={showCreateForm || showCreateCollectiveForm}
+				>
+					👥+
+				</button>
+			{/if}
+			{#if collectiveMode}
+				<div class="mode-indicator" title="Collective mode - select multiple people">
+					👥 Multi-select
+				</div>
 			{/if}
 			<button class="close-button" onclick={handleClose}>×</button>
 		</div>
@@ -684,6 +818,66 @@
 						disabled={isCreating || !createForm.name.trim()}
 					>
 						{isCreating ? 'Creating...' : 'Create'}
+					</button>
+				</div>
+			</div>
+		{/if}
+
+		{#if showCreateCollectiveForm}
+			<div class="create-form collective-form">
+				<div class="form-field">
+					<input
+						type="text"
+						placeholder="Collective name"
+						bind:this={nameInput}
+						bind:value={createCollectiveForm.name}
+						onkeydown={handleCreateCollectiveFormKeydown}
+					/>
+				</div>
+				<div class="collective-members">
+					<div class="members-header">
+						<span>Members ({createCollectiveForm.selectedMembers.length})</span>
+						<span class="members-hint">Select at least 2 people</span>
+					</div>
+					<div class="members-list">
+						{#each $dataProvider || [] as item (item.id)}
+							{#if !item.metadata?.isContact || item.metadata?.userId}
+								<div
+									class="member-item"
+									class:selected={isMemberInCollective(item.id)}
+									onclick={() => handleToggleMemberInCollective(item.id)}
+								>
+									<div
+										class="color-dot"
+										style="background-color: {getColorForUserId(item.id)}"
+									></div>
+									<span class="member-name">{item.name}</span>
+									{#if isMemberInCollective(item.id)}
+										<span class="member-selected">✓</span>
+									{/if}
+								</div>
+							{/if}
+						{/each}
+					</div>
+				</div>
+				<div class="form-actions">
+					<button
+						class="cancel-button"
+						onclick={handleHideCreateCollectiveForm}
+						disabled={isCreatingCollective}
+					>
+						Cancel
+					</button>
+					<button
+						class="save-button"
+						onclick={handleCreateCollective}
+						disabled={isCreatingCollective ||
+							!createCollectiveForm.name.trim() ||
+							createCollectiveForm.selectedMembers.length < 2}
+					>
+						{isCreatingCollective
+							? 'Creating...'
+							: `Create Collective (${createCollectiveForm.selectedMembers.length})`}
 					</button>
 				</div>
 			</div>
@@ -1442,5 +1636,105 @@
 	.delete-entry-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* COLLECTIVE CREATION STYLES */
+
+	.collective-button {
+		background: linear-gradient(135deg, #6a5acd, #483d8b);
+		color: white;
+		border-color: #6a5acd;
+	}
+
+	.collective-button:hover:not(:disabled) {
+		background: linear-gradient(135deg, #5a4fcf, #3a2d7b);
+		border-color: #5a4fcf;
+	}
+
+	.mode-indicator {
+		font-size: 11px;
+		color: #6a5acd;
+		font-weight: 500;
+		padding: 4px 8px;
+		background: rgba(106, 90, 205, 0.1);
+		border-radius: 12px;
+		white-space: nowrap;
+		margin-left: 8px;
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.collective-form {
+		background: linear-gradient(135deg, #f8f7ff, #f0f0ff);
+		border: 1px solid #e0d9ff;
+	}
+
+	.collective-members {
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px solid #e0d9ff;
+	}
+
+	.members-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 8px;
+		font-size: 13px;
+	}
+
+	.members-header span:first-child {
+		font-weight: 500;
+		color: #6a5acd;
+	}
+
+	.members-hint {
+		color: #888;
+		font-size: 11px;
+	}
+
+	.members-list {
+		max-height: 150px;
+		overflow-y: auto;
+		border: 1px solid #e0d9ff;
+		border-radius: 4px;
+		background: white;
+	}
+
+	.member-item {
+		display: flex;
+		align-items: center;
+		padding: 6px 8px;
+		cursor: pointer;
+		transition: all 0.2s;
+		border-bottom: 1px solid #f5f5f5;
+		gap: 8px;
+	}
+
+	.member-item:hover {
+		background-color: #f8f7ff;
+	}
+
+	.member-item.selected {
+		background-color: #e8e4ff;
+		border-left: 3px solid #6a5acd;
+		font-weight: 500;
+	}
+
+	.member-item:last-child {
+		border-bottom: none;
+	}
+
+	.member-name {
+		flex: 1;
+		font-size: 12px;
+		color: #333;
+	}
+
+	.member-selected {
+		color: #6a5acd;
+		font-weight: bold;
+		font-size: 12px;
 	}
 </style>

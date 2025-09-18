@@ -465,3 +465,114 @@ export async function formatCompositionTargetDisplay(targetId: string): Promise<
 			return targetId;
 	}
 }
+
+// ================================
+// COMPOSITION TARGET RESOLUTION FOR PERSISTENCE
+// ================================
+
+/**
+ * Resolve contact IDs to public keys in composition targets
+ * This ensures composition data is persisted with pubkeys that other users can understand
+ */
+export function resolveCompositionTarget(targetId: string): string {
+	// Import parseCompositionTarget dynamically to avoid circular dependencies
+	const { parseCompositionTarget } = require('$lib/validation');
+	const parsed = parseCompositionTarget(targetId);
+
+	switch (parsed.type) {
+		case 'individual':
+			// Single contact ID or pubkey - resolve if it's a contact ID
+			const resolvedPubkey = resolveToPublicKey(targetId);
+			if (resolvedPubkey && resolvedPubkey !== targetId) {
+				console.log(
+					`[PERSIST-RESOLVE] Resolved contact ID '${targetId}' to pubkey '${resolvedPubkey.substring(0, 20)}...'`
+				);
+				return resolvedPubkey;
+			}
+			return targetId; // Already a pubkey or no resolution available
+
+		case 'collective':
+			// Collective target - resolve each contact ID to pubkey
+			const resolvedPubkeys = parsed.recipients
+				.map((pubkey: string) => {
+					const resolved = resolveToPublicKey(pubkey);
+					if (resolved && resolved !== pubkey) {
+						console.log(
+							`[PERSIST-RESOLVE] Resolved collective member '${pubkey}' to pubkey '${resolved.substring(0, 20)}...'`
+						);
+						return resolved;
+					}
+					return pubkey; // Already a pubkey or no resolution available
+				})
+				.filter((pk: string) => pk); // Remove any failed resolutions
+
+			if (resolvedPubkeys.length === 0) {
+				console.warn(`[PERSIST-RESOLVE] No valid pubkeys found for collective target: ${targetId}`);
+				return targetId; // Return original if no resolutions worked
+			}
+
+			const resolvedCollective = `collective:${resolvedPubkeys.join(',')}`;
+			if (resolvedCollective !== targetId) {
+				console.log(
+					`[PERSIST-RESOLVE] Resolved collective target '${targetId}' to '${resolvedCollective}'`
+				);
+			}
+			return resolvedCollective;
+
+		case 'capacity':
+			// Capacity ID - no resolution needed
+			return targetId;
+
+		default:
+			console.warn(`[PERSIST-RESOLVE] Unknown composition target type: ${targetId}`);
+			return targetId;
+	}
+}
+
+/**
+ * Resolve contact IDs to public keys in slot composition data
+ * This ensures the composition data is persisted with pubkeys that other users can understand
+ */
+export function resolveContactIdsInSlotComposition(
+	compositionData: import('$lib/schema').UserSlotCompositionData
+): import('$lib/schema').UserSlotCompositionData {
+	console.log('[PERSIST-RESOLVE] Starting slot composition contact ID resolution...');
+
+	// Create a deep clone to avoid modifying the original
+	const resolvedData = structuredClone(compositionData);
+	let resolutionCount = 0;
+
+	// Process each source capacity
+	Object.entries(resolvedData).forEach(([sourceCapacityId, sourceSlots]) => {
+		// Process each source slot
+		Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
+			// Process each target - this is where we need to resolve contact IDs
+			const resolvedTargetCompositions: Record<string, Record<string, number>> = {};
+
+			Object.entries(targetCompositions).forEach(([targetId, targetSlots]) => {
+				// Resolve the target ID (could be contact ID, pubkey, collective with contact IDs, or capacity ID)
+				const resolvedTargetId = resolveCompositionTarget(targetId);
+
+				if (resolvedTargetId !== targetId) {
+					resolutionCount++;
+				}
+
+				// Use the resolved target ID
+				resolvedTargetCompositions[resolvedTargetId] = targetSlots;
+			});
+
+			// Replace the target compositions with resolved ones
+			resolvedData[sourceCapacityId][sourceSlotId] = resolvedTargetCompositions;
+		});
+	});
+
+	if (resolutionCount > 0) {
+		console.log(
+			`[PERSIST-RESOLVE] Resolved ${resolutionCount} composition targets in slot composition data`
+		);
+	} else {
+		console.log('[PERSIST-RESOLVE] No composition target resolutions needed');
+	}
+
+	return resolvedData;
+}

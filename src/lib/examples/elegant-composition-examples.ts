@@ -103,6 +103,98 @@ export function demonstrateBackwardCompatibility() {
 	console.log(JSON.stringify(traditionalComposition, null, 2));
 }
 
+/**
+ * Example 7: Enhanced DropDown with Collective Creation
+ * Demonstrates how to use the enhanced dropdown for creating collectives
+ */
+export function example7_EnhancedDropdownUsage() {
+	// Example of how to use the enhanced dropdown component
+	const dropdownProps = {
+		title: 'Select Contributors',
+		searchPlaceholder: 'Search people...',
+		position: { x: 100, y: 100 },
+		width: 320,
+		maxHeight: 400,
+		allowCreateContact: true,
+		allowCreateCollective: true, // 🎯 NEW: Enable collective creation
+		collectiveMode: false, // Can be toggled to enable multi-select
+
+		// Handlers for collective creation
+		createCollective: async (detail: { name: string; memberIds: string[] }) => {
+			console.log('Creating collective:', detail.name);
+			console.log('Members:', detail.memberIds);
+
+			// Create the collective target identifier
+			const collectiveTargetId = createCollectiveTarget(detail.memberIds);
+			console.log('Generated collective target:', collectiveTargetId);
+
+			// Example: collective:04c63b1a...,05d74c2b...,06e85d3c...
+			return {
+				id: collectiveTargetId,
+				name: detail.name,
+				metadata: {
+					type: 'collective',
+					memberCount: detail.memberIds.length,
+					members: detail.memberIds
+				}
+			};
+		}
+	};
+
+	return dropdownProps;
+}
+
+/**
+ * Example 8: Collective Target in Composition
+ * Shows how collective targets work in slot composition
+ */
+export function example8_CollectiveComposition(): UserSlotCompositionData {
+	// Three people working together
+	const alice = '04c63b1a2f8e9d7a3b5c8e1f2a4d6b9c8e5f7a2d4b6c9e8f1a3d5b7c9e2f4a6d8b';
+	const bob = '05d74c2b3f9e8d6a4b7c9e2f3a5d7b9c8e6f8a3d5b7c9e1f4a6d8b0c2e5f7a9d';
+	const charlie = '06e85d3c4f0e9d7a5b8c0e3f4a6d8b0c9e7f9a4d6b8c0e2f5a7d9b1c3e6f8a0d';
+
+	// Create collective target
+	const teamCollective = createCollectiveTarget([alice, bob, charlie]);
+
+	return {
+		project_workspace_456: {
+			slot_friday_2pm: {
+				[teamCollective]: {
+					// Compose workspace time into the team collective
+					meeting_room_789: 3 // 3 hours for the team meeting
+				}
+			}
+		}
+	};
+}
+
+/**
+ * Example 9: Mixed Individual and Collective Composition
+ * Shows complex composition with both individual and collective targets
+ */
+export function example9_MixedComposition(): UserSlotCompositionData {
+	const alice = '04c63b1a2f8e9d7a3b5c8e1f2a4d6b9c8e5f7a2d4b6c9e8f1a3d5b7c9e2f4a6d8b';
+	const bob = '05d74c2b3f9e8d6a4b7c9e2f3a5d7b9c8e6f8a3d5b7c9e1f4a6d8b0c2e5f7a9d';
+	const designTeam = createCollectiveTarget([alice, bob]);
+
+	return {
+		mentorship_capacity_789: {
+			slot_wednesday_10am: {
+				// Individual mentoring for Alice (combined targets)
+				[alice]: {
+					personal_development_slot: 1,
+					reflection_time_slot: 0.5 // Self-consumption
+				},
+				// Team mentoring for the design collective
+				[designTeam]: {
+					team_workshop_slot: 2
+				}
+			}
+		}
+	};
+}
+
 // Run all demonstrations
 if (typeof window === 'undefined') {
 	// Only run in Node.js context

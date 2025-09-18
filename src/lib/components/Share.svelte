@@ -4,6 +4,9 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
+	import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
+	import { userPub } from '$lib/state/gun.svelte';
+	import { get } from 'svelte/store';
 	import {
 		getSlotAllocatedQuantity,
 		getSlotAvailableQuantity,
@@ -188,6 +191,66 @@
 		const { past, recurring, currentFuture } = categorizedSlots();
 		return past.length + recurring.length + currentFuture.length;
 	});
+
+	// Get current desired amount for a slot (self-consumption)
+	function getCurrentDesiredAmount(capacityId: string, slotId: string): number {
+		const currentComposeFrom = get(userDesiredSlotComposeFrom);
+		const ourPubkey = get(userPub);
+
+		if (!ourPubkey) {
+			console.warn('[DESIRE] No user pubkey available for self-consumption');
+			return 0;
+		}
+
+		// Look for self-consumption: FROM this slot TO self (our own pubkey)
+		return currentComposeFrom[capacityId]?.[slotId]?.[ourPubkey]?.[slotId] || 0;
+	}
+
+	// Handle desire input change
+	function handleDesireChange(capacityId: string, slotId: string, newAmount: number) {
+		const currentComposeFrom = get(userDesiredSlotComposeFrom);
+		const ourPubkey = get(userPub);
+
+		if (!ourPubkey) {
+			console.warn('[DESIRE] No user pubkey available for self-consumption desire');
+			return;
+		}
+
+		// Create new compose-from structure
+		const newComposeFrom = { ...currentComposeFrom };
+
+		if (newAmount > 0) {
+			// Set the desire for self-consumption: FROM this slot TO our pubkey
+			if (!newComposeFrom[capacityId]) newComposeFrom[capacityId] = {};
+			if (!newComposeFrom[capacityId][slotId]) newComposeFrom[capacityId][slotId] = {};
+			if (!newComposeFrom[capacityId][slotId][ourPubkey])
+				newComposeFrom[capacityId][slotId][ourPubkey] = {};
+
+			newComposeFrom[capacityId][slotId][ourPubkey][slotId] = newAmount;
+		} else {
+			// Remove the desire (clean up empty structures)
+			if (newComposeFrom[capacityId]?.[slotId]?.[ourPubkey]) {
+				delete newComposeFrom[capacityId][slotId][ourPubkey][slotId];
+
+				// Clean up empty nested objects
+				if (Object.keys(newComposeFrom[capacityId][slotId][ourPubkey]).length === 0) {
+					delete newComposeFrom[capacityId][slotId][ourPubkey];
+				}
+				if (Object.keys(newComposeFrom[capacityId][slotId]).length === 0) {
+					delete newComposeFrom[capacityId][slotId];
+				}
+				if (Object.keys(newComposeFrom[capacityId]).length === 0) {
+					delete newComposeFrom[capacityId];
+				}
+			}
+		}
+
+		// Update the store
+		userDesiredSlotComposeFrom.set(newComposeFrom);
+		console.log(
+			`[DESIRE] Updated self-consumption desire for ${capacityId}:${slotId} to ${newAmount} (pubkey: ${ourPubkey.substring(0, 8)}...)`
+		);
+	}
 </script>
 
 <div class="capacity-share-container">
@@ -364,6 +427,27 @@
 												>
 													{getRecurrenceDisplay(slot)}
 												</span>
+
+												<!-- Simple desire input -->
+												<div class="desire-input-wrapper flex-shrink-0">
+													<label class="desire-label text-xs text-gray-600">I want:</label>
+													<input
+														type="number"
+														class="desire-input"
+														min="0"
+														max={availableQuantity}
+														step="0.1"
+														value={getCurrentDesiredAmount(share.id, slot.id)}
+														oninput={(e) => {
+															const value = parseFloat(e.target.value) || 0;
+															handleDesireChange(share.id, slot.id, value);
+														}}
+														placeholder="0"
+													/>
+													{#if share.unit}
+														<span class="desire-unit text-xs text-gray-500">{share.unit}</span>
+													{/if}
+												</div>
 											</div>
 
 											<!-- Slot summary row -->
@@ -452,6 +536,27 @@
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
 													of {availableQuantity} total
 												</span>
+
+												<!-- Simple desire input -->
+												<div class="desire-input-wrapper flex-shrink-0">
+													<label class="desire-label text-xs text-gray-600">I want:</label>
+													<input
+														type="number"
+														class="desire-input"
+														min="0"
+														max={availableQuantity}
+														step="0.1"
+														value={getCurrentDesiredAmount(share.id, slot.id)}
+														oninput={(e) => {
+															const value = parseFloat(e.target.value) || 0;
+															handleDesireChange(share.id, slot.id, value);
+														}}
+														placeholder="0"
+													/>
+													{#if share.unit}
+														<span class="desire-unit text-xs text-gray-500">{share.unit}</span>
+													{/if}
+												</div>
 											</div>
 
 											<!-- Slot summary row -->
@@ -540,6 +645,18 @@
 												<span class="slot-total flex-shrink-0 text-xs text-gray-500">
 													of {availableQuantity} total
 												</span>
+
+												<!-- Past slot - no desire input (disabled) -->
+												<div class="desire-input-wrapper flex-shrink-0 opacity-50">
+													<label class="desire-label text-xs text-gray-400">Past slot</label>
+													<input
+														type="number"
+														class="desire-input"
+														disabled
+														value={0}
+														placeholder="N/A"
+													/>
+												</div>
 											</div>
 
 											<!-- Slot summary row -->
@@ -959,5 +1076,72 @@
 	.location-link:active {
 		transform: translateY(0);
 		background: rgba(59, 130, 246, 0.15);
+	}
+
+	/* Desire input styling */
+	.desire-input-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 8px;
+		background: rgba(59, 130, 246, 0.05);
+		border: 1px solid rgba(59, 130, 246, 0.2);
+		border-radius: 6px;
+		transition: all 0.2s ease;
+	}
+
+	.desire-input-wrapper:hover {
+		background: rgba(59, 130, 246, 0.08);
+		border-color: rgba(59, 130, 246, 0.3);
+	}
+
+	.desire-label {
+		font-weight: 500;
+		white-space: nowrap;
+		color: #6b7280;
+	}
+
+	.desire-input {
+		width: 60px;
+		padding: 2px 6px;
+		border: 1px solid rgba(59, 130, 246, 0.3);
+		border-radius: 4px;
+		background: white;
+		font-size: 11px;
+		font-weight: 600;
+		text-align: center;
+		color: #374151;
+		transition: all 0.2s ease;
+	}
+
+	.desire-input:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+		background: #fefefe;
+	}
+
+	.desire-input:disabled {
+		background: #f3f4f6;
+		color: #9ca3af;
+		border-color: #e5e7eb;
+		cursor: not-allowed;
+	}
+
+	.desire-unit {
+		font-weight: 500;
+		color: #6b7280;
+		white-space: nowrap;
+	}
+
+	/* Remove spinner arrows from number input */
+	.desire-input::-webkit-outer-spin-button,
+	.desire-input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	.desire-input[type='number'] {
+		-moz-appearance: textfield;
 	}
 </style>

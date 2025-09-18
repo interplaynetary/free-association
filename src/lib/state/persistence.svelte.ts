@@ -22,7 +22,8 @@ import {
 	userContacts,
 	isLoadingContacts,
 	resolveToPublicKey,
-	resolveContactIdsInTree
+	resolveContactIdsInTree,
+	resolveContactIdsInSlotComposition
 } from './users.svelte';
 import {
 	userDesiredSlotComposeFrom,
@@ -485,27 +486,29 @@ export function persistUserDesiredSlotComposeFrom() {
 		return;
 	}
 
-	// 🚨 NEW: Create timestamped structure for validation
+	// Extract data from flat structure and resolve contact IDs to pubkeys
+	const rawComposeFromData = userDesiredComposeFromValue;
+	if (Object.keys(rawComposeFromData).length === 0) {
+		console.log('[PERSIST] No user desired slot compose-from data to persist');
+		return;
+	}
+
+	// Resolve contact IDs to public keys before persistence
+	console.log('[PERSIST] Resolving contact IDs in slot compose-from data...');
+	const composeFromData = resolveContactIdsInSlotComposition(rawComposeFromData);
+	console.log('[PERSIST] Contact ID resolution completed for compose-from data');
+
+	// 🚨 NEW: Create timestamped structure for validation using RESOLVED data
 	const currentTimestamp = getCurrentTimestamp(userDesiredSlotComposeFromTimestamp);
-	const timestampedData = createTimestampedForPersistence(
-		userDesiredComposeFromValue,
-		currentTimestamp
-	);
+	const timestampedData = createTimestampedForPersistence(composeFromData, currentTimestamp);
 
 	// Timestamp freshness validation for race condition protection
 	if (!shouldPersistTimestampedData('userDesiredSlotComposeFrom', timestampedData)) {
 		return; // Skip persisting stale data
 	}
 
-	// Extract data from flat structure
-	const composeFromData = userDesiredComposeFromValue;
-	if (Object.keys(composeFromData).length === 0) {
-		console.log('[PERSIST] No user desired slot compose-from data to persist');
-		return;
-	}
-
 	console.log('[PERSIST] Starting user desired slot compose-from persistence...');
-	console.log('[PERSIST] User desired slot compose-from:', composeFromData);
+	console.log('[PERSIST] User desired slot compose-from (resolved):', composeFromData);
 
 	try {
 		// Store the complete timestamped structure to Gun for proper timestamp tracking
@@ -575,27 +578,29 @@ export function persistUserDesiredSlotComposeInto() {
 		return;
 	}
 
-	// 🚨 NEW: Create timestamped structure for validation
+	// Extract data from flat structure and resolve contact IDs to pubkeys
+	const rawComposeIntoData = userDesiredComposeIntoValue;
+	if (Object.keys(rawComposeIntoData).length === 0) {
+		console.log('[PERSIST] No user desired slot compose-into data to persist');
+		return;
+	}
+
+	// Resolve contact IDs to public keys before persistence
+	console.log('[PERSIST] Resolving contact IDs in slot compose-into data...');
+	const composeIntoData = resolveContactIdsInSlotComposition(rawComposeIntoData);
+	console.log('[PERSIST] Contact ID resolution completed for compose-into data');
+
+	// 🚨 NEW: Create timestamped structure for validation using RESOLVED data
 	const currentTimestamp = getCurrentTimestamp(userDesiredSlotComposeIntoTimestamp);
-	const timestampedData = createTimestampedForPersistence(
-		userDesiredComposeIntoValue,
-		currentTimestamp
-	);
+	const timestampedData = createTimestampedForPersistence(composeIntoData, currentTimestamp);
 
 	// Timestamp freshness validation for race condition protection
 	if (!shouldPersistTimestampedData('userDesiredSlotComposeInto', timestampedData)) {
 		return; // Skip persisting stale data
 	}
 
-	// Extract data from flat structure
-	const composeIntoData = userDesiredComposeIntoValue;
-	if (Object.keys(composeIntoData).length === 0) {
-		console.log('[PERSIST] No user desired slot compose-into data to persist');
-		return;
-	}
-
 	console.log('[PERSIST] Starting user desired slot compose-into persistence...');
-	console.log('[PERSIST] User desired slot compose-into:', composeIntoData);
+	console.log('[PERSIST] User desired slot compose-into (resolved):', composeIntoData);
 
 	try {
 		// Store the complete timestamped structure to Gun for proper timestamp tracking

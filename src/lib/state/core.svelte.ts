@@ -2,6 +2,8 @@ import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/protocol';
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
+import { parseCompositionTarget } from '$lib/validation';
+import { resolveToPublicKey } from './users.svelte';
 import type {
 	RootNode,
 	CapacitiesCollection,
@@ -468,9 +470,9 @@ export const specificShares = derived(
 			const providerCapacity = capacity as ProviderCapacity;
 
 			// Create filter context for this capacity
-				const context: FilterContext = {
-					subtreeContributors: $subtreeContributorMap
-				};
+			const context: FilterContext = {
+				subtreeContributors: $subtreeContributorMap
+			};
 
 			// Apply capacity filter to the general shares
 			// This will return the filtered and normalized shares for this capacity
@@ -490,15 +492,64 @@ export const specificShares = derived(
 	}
 );
 
+// ===== COMPOSITION TARGET RESOLUTION HELPERS =====
+
+/**
+ * Resolve a composition target to recipient IDs for the allocation algorithm
+ * Handles capacity IDs, individual pubkeys, and collective targets
+ */
+function resolveCompositionTargetToRecipients(
+	targetId: string,
+	networkCapacities: Record<string, any>
+): string[] {
+	const parsed = parseCompositionTarget(targetId);
+
+	switch (parsed.type) {
+		case 'individual':
+			// Direct pubkey - return as recipient
+			return parsed.recipients;
+
+		case 'collective':
+			// Multiple pubkeys - return all as recipients
+			return parsed.recipients;
+
+		case 'capacity':
+			// Traditional capacity ID - find who owns this capacity
+			const providerId = Object.keys(networkCapacities).find(
+				(id) => networkCapacities[id] && networkCapacities[id][targetId]
+			);
+			return providerId ? [providerId] : [];
+
+		default:
+			console.warn(`[COMPOSITION-TARGET] Unknown target type for: ${targetId}`);
+			return [];
+	}
+}
+
+/**
+ * Check if a composition target represents self-consumption for a given user
+ */
+function isTargetSelfConsumption(targetId: string, userPubkey: string): boolean {
+	const parsed = parseCompositionTarget(targetId);
+	return parsed.type === 'individual' && parsed.recipients.includes(userPubkey);
+}
+
 // EFFICIENT ALGORITHM IMPLEMENTATION (using specific shares)
 // Computes provider allocation states using the efficient algorithm from distribution.md
 export const computedProviderAllocations = derived(
-	[userCapacities, networkDesiredSlotComposeFrom, userDesiredSlotComposeInto, specificShares],
+	[
+		userCapacities,
+		networkDesiredSlotComposeFrom,
+		userDesiredSlotComposeInto,
+		specificShares,
+		networkCapacities
+	],
 	([
 		$userCapacities,
 		$networkDesiredSlotComposeFrom,
 		$userDesiredSlotComposeInto,
-		$specificShares
+		$specificShares,
+		$networkCapacities
 	]) => {
 		console.log(
 			'[EFFICIENT-ALGORITHM] Computing provider allocations using mutual desires from compose-from/into...'
@@ -510,10 +561,10 @@ export const computedProviderAllocations = derived(
 
 		// Process each of our capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-				// Only process provider capacities (our own capacities)
+			// Only process provider capacities (our own capacities)
 			if (!('recipient_shares' in capacity)) return;
 
-				const providerCapacity = capacity as ProviderCapacity;
+			const providerCapacity = capacity as ProviderCapacity;
 			const capacityAllocations: ProviderAllocationStateData = {};
 
 			// Process each slot in this capacity
@@ -540,13 +591,28 @@ export const computedProviderAllocations = derived(
 
 				// Collect our compose-into desires (we want to give FROM our slot TO recipients)
 				const ourComposeIntoForThisSlot = $userDesiredSlotComposeInto[capacityId]?.[slot.id] || {};
-				Object.entries(ourComposeIntoForThisSlot).forEach(([targetCapacityId, targetSlots]) => {
-					// Find who owns the target capacity to determine the recipient
-					// For now, assume targetCapacityId maps to recipientId (TODO: improve this mapping)
+				Object.entries(ourComposeIntoForThisSlot).forEach(([targetId, targetSlots]) => {
+					// 🎯 ELEGANT: Resolve composition target to actual recipient IDs
+					const recipientIds = resolveCompositionTargetToRecipients(targetId, $networkCapacities);
+
 					Object.entries(targetSlots).forEach(([targetSlotId, amount]) => {
-						const recipientId = targetCapacityId; // Simplified mapping
-						providerComposeIntoDesires[recipientId] =
-							(providerComposeIntoDesires[recipientId] || 0) + (Number(amount) || 0);
+						const amountPerRecipient = Number(amount) || 0;
+
+						// For collectives, split the amount equally among recipients
+						// TODO (in future): replace with collective recognition distributions! collective.svelte.ts
+						const splitAmount =
+							recipientIds.length > 0 ? amountPerRecipient / recipientIds.length : 0;
+
+						recipientIds.forEach((recipientId) => {
+							providerComposeIntoDesires[recipientId] =
+								(providerComposeIntoDesires[recipientId] || 0) + splitAmount;
+						});
+
+						if (recipientIds.length > 1) {
+							console.log(
+								`[ELEGANT-COMPOSITION] Split ${amountPerRecipient} units among ${recipientIds.length} collective recipients (${splitAmount} each)`
+							);
+						}
 					});
 				});
 
