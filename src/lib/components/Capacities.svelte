@@ -340,6 +340,283 @@
 		}
 	}
 
+	// Random capacity generation data
+	const CAPACITY_VERBS = [
+		'planting',
+		'housing',
+		'cuddling',
+		'washing',
+		'teaching',
+		'cooking',
+		'healing',
+		'building',
+		'painting',
+		'singing',
+		'dancing',
+		'writing',
+		'listening',
+		'hugging',
+		'feeding',
+		'cleaning',
+		'organizing',
+		'mentoring',
+		'debugging',
+		'designing',
+		'crafting',
+		'gardening',
+		'storytelling',
+		'massaging',
+		'translating',
+		'editing',
+		'photographing',
+		'composing',
+		'sculpting',
+		'knitting',
+		'baking',
+		'brewing',
+		'fixing',
+		'tuning',
+		'polishing',
+		'assembling',
+		'delivering',
+		'packaging',
+		'sorting',
+		'folding',
+		'watering',
+		'harvesting',
+		'pruning',
+		'weeding',
+		'composting',
+		'recycling',
+		'walking',
+		'running',
+		'cycling',
+		'swimming',
+		'stretching',
+		'meditating',
+		'breathing',
+		'smiling',
+		'laughing',
+		'cheering',
+		'encouraging',
+		'inspiring',
+		'motivating',
+		'celebrating',
+		'welcoming',
+		'connecting',
+		'bridging',
+		'linking',
+		'sharing',
+		'gifting',
+		'donating',
+		'volunteering',
+		'helping'
+	];
+
+	const CAPACITY_UNITS = [
+		'trees',
+		'people',
+		'hours',
+		'hugs',
+		'meals',
+		'songs',
+		'stories',
+		'smiles',
+		'laughs',
+		'tears',
+		'words',
+		'pages',
+		'chapters',
+		'verses',
+		'notes',
+		'beats',
+		'steps',
+		'breaths',
+		'moments',
+		'memories',
+		'dreams',
+		'wishes',
+		'hopes',
+		'ideas',
+		'thoughts',
+		'feelings',
+		'emotions',
+		'cups',
+		'bowls',
+		'plates',
+		'loaves',
+		'batches',
+		'servings',
+		'portions',
+		'sips',
+		'bites',
+		'patches',
+		'stitches',
+		'rows',
+		'loops',
+		'knots',
+		'folds',
+		'layers',
+		'coats',
+		'strokes',
+		'seeds',
+		'sprouts',
+		'blooms',
+		'fruits',
+		'leaves',
+		'branches',
+		'roots',
+		'drops',
+		'streams',
+		'waves',
+		'ripples',
+		'bubbles',
+		'sparks',
+		'flames',
+		'glows',
+		'rays',
+		'beams',
+		'shadows',
+		'bridges',
+		'paths',
+		'doors',
+		'windows',
+		'keys',
+		'locks',
+		'boxes',
+		'gifts',
+		'surprises',
+		'adventures',
+		'journeys',
+		'discoveries',
+		'explorations',
+		'experiments',
+		'creations',
+		'innovations',
+		'connections',
+		'conversations',
+		'exchanges',
+		'meetings',
+		'gatherings',
+		'celebrations',
+		'dances'
+	];
+
+	const CAPACITY_EMOJIS = [
+		'🌱',
+		'🏠',
+		'🤗',
+		'🧼',
+		'📚',
+		'🍳',
+		'💚',
+		'🔨',
+		'🎨',
+		'🎵',
+		'💃',
+		'✍️',
+		'👂',
+		'🫂',
+		'🍽️',
+		'🧹',
+		'📋',
+		'🎯',
+		'🐛',
+		'✨',
+		'🛠️',
+		'🌿',
+		'📖',
+		'💆',
+		'🌍',
+		'📝',
+		'📸',
+		'🎼',
+		'🗿',
+		'🧶',
+		'🥧',
+		'☕',
+		'🔧',
+		'🎹',
+		'✨',
+		'🔩',
+		'📦',
+		'📮',
+		'📂',
+		'👔',
+		'💧',
+		'🌾',
+		'✂️',
+		'🌿',
+		'♻️',
+		'🚶',
+		'🏃',
+		'🚴',
+		'🏊',
+		'🧘',
+		'😊',
+		'😄',
+		'📣',
+		'💪',
+		'🎉',
+		'👋',
+		'🤝',
+		'🌉',
+		'🔗',
+		'🎁',
+		'❤️',
+		'🙋',
+		'🤲'
+	];
+
+	// Generate a random capacity with interesting verb + unit combination
+	function generateRandomCapacity(): ProviderCapacity {
+		if (!$userAlias || !$userPub) throw new Error('No user logged in');
+
+		const verb = CAPACITY_VERBS[Math.floor(Math.random() * CAPACITY_VERBS.length)];
+		const unit = CAPACITY_UNITS[Math.floor(Math.random() * CAPACITY_UNITS.length)];
+		const emoji = CAPACITY_EMOJIS[Math.floor(Math.random() * CAPACITY_EMOJIS.length)];
+
+		// Generate a random quantity between 1-10
+		const quantity = Math.floor(Math.random() * 10) + 1;
+
+		// Generate some variety in divisibility
+		const maxNaturalDiv = Math.floor(Math.random() * 5) + 1;
+		const maxPercentageDiv = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
+
+		const todayString = today(getLocalTimeZone()).toString();
+
+		return {
+			id: crypto.randomUUID(),
+			name: verb,
+			emoji: emoji,
+			unit: unit,
+			description: `Randomly generated capacity for ${verb} ${unit}`,
+			max_natural_div: maxNaturalDiv,
+			max_percentage_div: maxPercentageDiv,
+			hidden_until_request_accepted: false,
+			owner_id: $userPub,
+			filter_rule: null,
+			availability_slots: [
+				{
+					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					quantity: quantity,
+					location_type: 'Undefined',
+					all_day: true,
+					start_date: todayString,
+					start_time: null,
+					end_date: null,
+					end_time: null,
+					time_zone: getLocalTimeZone(),
+					recurrence: 'Daily',
+					custom_recurrence_repeat_every: null,
+					custom_recurrence_repeat_unit: null,
+					custom_recurrence_end_type: null,
+					custom_recurrence_end_value: null
+				}
+			]
+		};
+	}
+
 	// Create a new capacity
 	function createDefaultCapacity(): ProviderCapacity {
 		if (!$userAlias || !$userPub) throw new Error('No user logged in');
@@ -391,6 +668,25 @@
 		}
 	}
 
+	// Add a random capacity with interesting verb + unit combination
+	function addRandomCapacity() {
+		if (!$userAlias || !$userPub) return;
+
+		const newCapacity = generateRandomCapacity();
+
+		// Use the addCapacity function to properly add the capacity
+		const success = addCapacity(newCapacity);
+		if (!success) {
+			globalState.showToast('Failed to add random capacity', 'error');
+			return;
+		}
+
+		globalState.showToast(
+			`Generated "${newCapacity.name} ${newCapacity.unit}" capacity!`,
+			'success'
+		);
+	}
+
 	// Handle capacity update from child component
 	function handleCapacityUpdate(capacity: ProviderCapacity) {
 		const success = updateCapacity(capacity);
@@ -422,7 +718,20 @@
 			/>
 		</div>
 	{/each}
-	<button type="button" class="add-btn mx-auto my-2 h-10 w-10" onclick={addCapacityRow}>+</button>
+	<div class="button-container my-2 flex justify-center gap-2">
+		<button
+			type="button"
+			class="add-btn h-10 w-10"
+			onclick={addCapacityRow}
+			title="Add blank capacity">+</button
+		>
+		<button
+			type="button"
+			class="dice-btn h-10 w-10"
+			onclick={addRandomCapacity}
+			title="Generate random capacity">🎲</button
+		>
+	</div>
 </div>
 
 <style>
@@ -451,6 +760,33 @@
 		color: #15803d;
 		transform: scale(1.05);
 		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Dice button styles - similar to add button but with different colors */
+	.dice-btn {
+		background: #fef7ff;
+		color: #9333ea;
+		border: none;
+		border-radius: 50%;
+		font-size: 1.2em;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.dice-btn:hover {
+		background: #f3e8ff;
+		color: #7c3aed;
+		transform: scale(1.05) rotate(20deg);
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+	}
+
+	/* Button container styles */
+	.button-container {
+		grid-column: 1 / -1; /* Span all grid columns */
 	}
 
 	/* Newly created capacity highlight animation */
