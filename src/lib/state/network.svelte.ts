@@ -141,7 +141,7 @@ function createDataProcessor<T>(config: {
 			// Get current data for comparison
 			const currentData = getCurrentData();
 
-			// Timestamp-based freshness check (for timestamped collections)
+			// SMART TIMESTAMP-BASED FRESHNESS CHECK (for timestamped collections)
 			if (enableTimestampComparison && processedData && currentData) {
 				try {
 					// Type-safe timestamp extraction from new metadata structure
@@ -170,7 +170,11 @@ function createDataProcessor<T>(config: {
 						const incomingTime = new Date(incomingTimestamp).getTime();
 						const currentTime = new Date(currentTimestamp).getTime();
 
-						if (incomingTime <= currentTime) {
+						// SMART TIMESTAMPING: Only apply timestamp validation if incoming timestamp is reliable
+						const isReliableTimestamp =
+							incomingTime > new Date('1970-01-02T00:00:00.000Z').getTime();
+
+						if (isReliableTimestamp && incomingTime <= currentTime) {
 							console.log(
 								`[NETWORK] Incoming ${dataType} is older/same (${incomingTimestamp}) than current (${currentTimestamp}), ignoring update`
 							);
@@ -178,9 +182,15 @@ function createDataProcessor<T>(config: {
 							return;
 						}
 
-						console.log(
-							`[NETWORK] Incoming ${dataType} is newer (${incomingTimestamp}) than current (${currentTimestamp}), accepting update`
-						);
+						if (isReliableTimestamp) {
+							console.log(
+								`[NETWORK] Incoming ${dataType} is newer (${incomingTimestamp}) than current (${currentTimestamp}), accepting update`
+							);
+						} else {
+							console.log(
+								`[NETWORK] Incoming ${dataType} has unreliable timestamp (${incomingTimestamp}), falling back to value comparison`
+							);
+						}
 					}
 				} catch (timestampError) {
 					console.warn(`[NETWORK] Error comparing timestamps for ${dataType}:`, timestampError);
@@ -607,55 +617,16 @@ const contributorStreamConfigs = {
 		processor: (contributorId: string) => (sogfData: any) => {
 			if (!sogfData) return;
 
-			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`, sogfData);
+			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`);
 
 			// Validate SOGF data using parseShareMap
 			const validatedSogfData = parseShareMap(sogfData);
-			console.log(`[NETWORK] Validated SOGF data for ${contributorId}:`, validatedSogfData);
-
 			if (
 				!validatedSogfData ||
-				!validatedSogfData.data ||
-				Object.keys(validatedSogfData.data).length === 0
+				Object.keys(validatedSogfData.data || validatedSogfData).length === 0
 			) {
-				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`, {
-					hasValidatedData: !!validatedSogfData,
-					hasDataProperty: !!validatedSogfData?.data,
-					dataKeys: validatedSogfData?.data ? Object.keys(validatedSogfData.data) : 'N/A'
-				});
+				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`);
 				return;
-			}
-
-			// Smart timestamp comparison with fallback to value-based deduplication
-			const currentRecognitionCache = get(recognitionCache);
-			const existingRecognitionEntry = currentRecognitionCache[contributorId];
-
-			// First, try timestamp-based comparison if we have reliable timestamps
-			if (
-				validatedSogfData.metadata?.updated_at &&
-				existingRecognitionEntry &&
-				existingRecognitionEntry.timestamp
-			) {
-				const incomingTime = new Date(validatedSogfData.metadata.updated_at).getTime();
-				const currentTime = existingRecognitionEntry.timestamp;
-
-				// Only use timestamp comparison if incoming timestamp is not the default epoch time
-				if (incomingTime > 0 && incomingTime !== new Date('1970-01-01T00:00:00.000Z').getTime()) {
-					if (incomingTime <= currentTime) {
-						console.log(
-							`[NETWORK] SOGF from ${contributorId} is older/same (${new Date(incomingTime).toISOString()}) than current (${new Date(currentTime).toISOString()}), ignoring update`
-						);
-						return;
-					} else {
-						console.log(
-							`[NETWORK] SOGF from ${contributorId} is newer (${new Date(incomingTime).toISOString()}) than current (${new Date(currentTime).toISOString()}), accepting update`
-						);
-					}
-				} else {
-					console.log(
-						`[NETWORK] SOGF from ${contributorId} has unreliable timestamp, falling back to value comparison`
-					);
-				}
 			}
 
 			let ourId: string;
@@ -667,31 +638,29 @@ const contributorStreamConfigs = {
 				return;
 			}
 
-			// Extract the share data from the data property
-			const shareData: Record<string, number> = validatedSogfData.data || {};
+			// Extract the share - handle both flat and timestamped formats
+			const shareData = validatedSogfData.data || validatedSogfData;
 			const theirShare = shareData[ourId] || 0;
 
-			console.log(`[NETWORK-DEBUG] Processing SOGF from ${contributorId}:`, {
-				ourId,
-				shareDataKeys: Object.keys(shareData),
-				shareDataValues: shareData,
-				theirShareForUs: theirShare,
-				existingCacheEntry: existingRecognitionEntry
-			});
+			// Get current recognition cache entry
+			const currentCache = get(recognitionCache);
+			const existingEntry = currentCache[contributorId];
 
-			// Fallback to value-based deduplication: only update if the share value has actually changed
-			// This provides reliability when timestamp comparison isn't available or reliable
-			const isUnchanged =
-				existingRecognitionEntry && existingRecognitionEntry.theirShare === theirShare;
+			// SMART TIMESTAMPING: Apply timestamp validation intelligently
+			const shouldUpdate = shouldAcceptSOGFUpdate(
+				existingEntry,
+				theirShare,
+				validatedSogfData.metadata?.updated_at
+			);
 
-			if (!isUnchanged) {
+			if (shouldUpdate) {
 				console.log(
-					`[NETWORK] Updating recognition cache for ${contributorId} with share ${theirShare.toFixed(4)}`
+					`[NETWORK] Accepting SOGF update from ${contributorId}: ${theirShare.toFixed(4)}`
 				);
 				updateTheirShareFromNetwork(contributorId, theirShare);
 			} else {
 				console.log(
-					`[NETWORK] SOGF from ${contributorId} unchanged (${theirShare.toFixed(4)}), skipping update`
+					`[NETWORK] Rejecting SOGF update from ${contributorId} (timestamp/value check failed)`
 				);
 			}
 		},
@@ -1082,6 +1051,60 @@ export async function initializeUserDataStreams(): Promise<void> {
 	} catch (error) {
 		console.error('[NETWORK] Error initializing user data streams:', error);
 	}
+}
+
+/**
+ * Smart SOGF update validation that prevents conflicts while allowing offline operation
+ * @param existingEntry Current recognition cache entry (if any)
+ * @param newTheirShare New share value from network
+ * @param incomingTimestamp Timestamp from incoming SOGF data (if available)
+ * @returns true if update should be accepted
+ */
+function shouldAcceptSOGFUpdate(
+	existingEntry: any,
+	newTheirShare: number,
+	incomingTimestamp?: string
+): boolean {
+	// RULE 1: Always accept if no existing entry (initial load from Gun)
+	if (!existingEntry) {
+		console.log('[NETWORK] No existing entry - accepting initial SOGF data');
+		return true;
+	}
+
+	// RULE 2: Accept if value has changed (regardless of timestamp)
+	if (existingEntry.theirShare !== newTheirShare) {
+		console.log(
+			`[NETWORK] Value changed (${existingEntry.theirShare} → ${newTheirShare}) - accepting update`
+		);
+		return true;
+	}
+
+	// RULE 3: If value is unchanged, use timestamp validation (if reliable)
+	if (incomingTimestamp && existingEntry.timestamp) {
+		const incomingTime = new Date(incomingTimestamp).getTime();
+		const existingTime = existingEntry.timestamp;
+
+		// Only apply timestamp validation if incoming timestamp is reliable (not epoch)
+		const isReliableTimestamp = incomingTime > new Date('1970-01-02T00:00:00.000Z').getTime();
+
+		if (isReliableTimestamp) {
+			if (incomingTime > existingTime) {
+				console.log(
+					`[NETWORK] Newer timestamp (${new Date(incomingTime).toISOString()}) - accepting update`
+				);
+				return true;
+			} else {
+				console.log(
+					`[NETWORK] Older/same timestamp (${new Date(incomingTime).toISOString()}) - rejecting update`
+				);
+				return false;
+			}
+		}
+	}
+
+	// RULE 4: If no reliable timestamp comparison possible, reject duplicates
+	console.log('[NETWORK] Same value, no reliable timestamp - rejecting duplicate');
+	return false;
 }
 
 /**
