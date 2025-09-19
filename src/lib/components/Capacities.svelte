@@ -25,6 +25,7 @@
 		userDesiredSlotComposeFromTimestamp,
 		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
+	import { getColorForNameHash, hexToRgba } from '$lib/utils/colorUtils';
 	import Capacity from './Capacity.svelte';
 
 	// Reactive derived values
@@ -33,6 +34,12 @@
 			.filter(([id, capacity]) => id && capacity)
 			.map(([id, capacity]) => ({ ...capacity, id }))
 	);
+
+	// Helper function to get capacity color based on name and unit
+	function getCapacityColor(capacity: any): string {
+		const colorString = capacity.unit ? `${capacity.name} ${capacity.unit}` : capacity.name;
+		return getColorForNameHash(colorString);
+	}
 
 	// Add a new capacity to the userCapacities store
 	function addCapacity(capacity: ProviderCapacity) {
@@ -568,6 +575,129 @@
 		'🤲'
 	];
 
+	const INTERESTING_CITIES = [
+		// Magical/Mystical
+		{ name: 'Reykjavik', country: 'Iceland' },
+		{ name: 'Kyoto', country: 'Japan' },
+		{ name: 'Prague', country: 'Czech Republic' },
+		{ name: 'Edinburgh', country: 'Scotland' },
+		{ name: 'Marrakech', country: 'Morocco' },
+		{ name: 'Bruges', country: 'Belgium' },
+		{ name: 'Santorini', country: 'Greece' },
+		{ name: 'Ubud', country: 'Bali' },
+
+		// Creative/Artistic
+		{ name: 'Florence', country: 'Italy' },
+		{ name: 'Barcelona', country: 'Spain' },
+		{ name: 'Vienna', country: 'Austria' },
+		{ name: 'Copenhagen', country: 'Denmark' },
+		{ name: 'Amsterdam', country: 'Netherlands' },
+		{ name: 'Portland', country: 'USA' },
+		{ name: 'Montreal', country: 'Canada' },
+		{ name: 'Berlin', country: 'Germany' },
+
+		// Nature/Adventure
+		{ name: 'Queenstown', country: 'New Zealand' },
+		{ name: 'Whistler', country: 'Canada' },
+		{ name: 'Banff', country: 'Canada' },
+		{ name: 'Interlaken', country: 'Switzerland' },
+		{ name: 'Tromso', country: 'Norway' },
+		{ name: 'Patagonia', country: 'Chile' },
+		{ name: 'Zermatt', country: 'Switzerland' },
+		{ name: 'Lofoten', country: 'Norway' },
+
+		// Cozy/Community
+		{ name: 'Salzburg', country: 'Austria' },
+		{ name: 'Ghent', country: 'Belgium' },
+		{ name: 'Ljubljana', country: 'Slovenia' },
+		{ name: 'Tallinn', country: 'Estonia' },
+		{ name: 'Heidelberg', country: 'Germany' },
+		{ name: 'Colmar', country: 'France' },
+		{ name: 'Sintra', country: 'Portugal' },
+		{ name: 'Hallstatt', country: 'Austria' },
+
+		// Vibrant/Energetic
+		{ name: 'Lisbon', country: 'Portugal' },
+		{ name: 'Buenos Aires', country: 'Argentina' },
+		{ name: 'Melbourne', country: 'Australia' },
+		{ name: 'Cape Town', country: 'South Africa' },
+		{ name: 'Istanbul', country: 'Turkey' },
+		{ name: 'Havana', country: 'Cuba' },
+		{ name: 'Mumbai', country: 'India' },
+		{ name: 'Rio de Janeiro', country: 'Brazil' }
+	];
+
+	const RECURRENCE_PATTERNS = [
+		'Daily',
+		'Weekly',
+		'Monthly',
+		'Bi-weekly',
+		'Weekdays',
+		'Weekends',
+		'Custom'
+	];
+
+	const LOCATION_TYPES = [
+		'In-Person',
+		'Online',
+		'Hybrid',
+		'Mobile',
+		'Outdoor',
+		'Home-based',
+		'Community Center',
+		'Undefined'
+	];
+
+	// Helper function to generate playful quantities
+	function generatePlayfulQuantity(): number {
+		const patterns = [
+			// Small precise numbers
+			() => Math.floor(Math.random() * 5) + 1, // 1-5
+			// Medium round numbers
+			() => (Math.floor(Math.random() * 8) + 1) * 5, // 5, 10, 15, 20, 25, 30, 35, 40
+			// Fun specific numbers
+			() => [7, 11, 13, 17, 21, 42, 69, 99, 108, 144][Math.floor(Math.random() * 10)],
+			// Powers and doubles
+			() => Math.pow(2, Math.floor(Math.random() * 6) + 1), // 2, 4, 8, 16, 32, 64
+			// Dozens
+			() => (Math.floor(Math.random() * 10) + 1) * 12 // 12, 24, 36... up to 120
+		];
+
+		const selectedPattern = patterns[Math.floor(Math.random() * patterns.length)];
+		return selectedPattern();
+	}
+
+	// Helper function to generate random time patterns
+	function generateTimePattern() {
+		const allDay = Math.random() < 0.6; // 60% chance of all-day
+		const recurrence = RECURRENCE_PATTERNS[Math.floor(Math.random() * RECURRENCE_PATTERNS.length)];
+
+		let startTime = null;
+		let endTime = null;
+
+		if (!allDay) {
+			// Generate interesting time slots
+			const timeSlots = [
+				{ start: '06:00', end: '08:00' }, // Early morning
+				{ start: '08:00', end: '10:00' }, // Morning
+				{ start: '10:00', end: '12:00' }, // Late morning
+				{ start: '12:00', end: '14:00' }, // Lunch
+				{ start: '14:00', end: '16:00' }, // Afternoon
+				{ start: '16:00', end: '18:00' }, // Late afternoon
+				{ start: '18:00', end: '20:00' }, // Evening
+				{ start: '20:00', end: '22:00' }, // Night
+				{ start: '09:00', end: '17:00' }, // Full work day
+				{ start: '19:00', end: '21:00' } // Dinner time
+			];
+
+			const slot = timeSlots[Math.floor(Math.random() * timeSlots.length)];
+			startTime = slot.start;
+			endTime = slot.end;
+		}
+
+		return { allDay, recurrence, startTime, endTime };
+	}
+
 	// Generate a random capacity with interesting verb + unit combination
 	function generateRandomCapacity(): ProviderCapacity {
 		if (!$userAlias || !$userPub) throw new Error('No user logged in');
@@ -575,22 +705,25 @@
 		const verb = CAPACITY_VERBS[Math.floor(Math.random() * CAPACITY_VERBS.length)];
 		const unit = CAPACITY_UNITS[Math.floor(Math.random() * CAPACITY_UNITS.length)];
 		const emoji = CAPACITY_EMOJIS[Math.floor(Math.random() * CAPACITY_EMOJIS.length)];
+		const city = INTERESTING_CITIES[Math.floor(Math.random() * INTERESTING_CITIES.length)];
+		const locationType = LOCATION_TYPES[Math.floor(Math.random() * LOCATION_TYPES.length)];
 
-		// Generate a random quantity between 1-10
-		const quantity = Math.floor(Math.random() * 10) + 1;
+		// Generate playful quantity
+		const quantity = generatePlayfulQuantity();
 
-		// Generate some variety in divisibility
-		const maxNaturalDiv = Math.floor(Math.random() * 5) + 1;
+		// Generate some variety in divisibility - make it more interesting
+		const maxNaturalDiv = Math.floor(Math.random() * Math.min(quantity, 10)) + 1;
 		const maxPercentageDiv = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
 
 		const todayString = today(getLocalTimeZone()).toString();
+		const timePattern = generateTimePattern();
 
 		return {
 			id: crypto.randomUUID(),
 			name: verb,
 			emoji: emoji,
 			unit: unit,
-			description: `Randomly generated capacity for ${verb} ${unit}`,
+			description: '', // Leave blank for auto-generated capacities
 			max_natural_div: maxNaturalDiv,
 			max_percentage_div: maxPercentageDiv,
 			hidden_until_request_accepted: false,
@@ -600,14 +733,16 @@
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: quantity,
-					location_type: 'Undefined',
-					all_day: true,
+					location_type: locationType,
+					city: city.name,
+					country: city.country,
+					all_day: timePattern.allDay,
 					start_date: todayString,
-					start_time: null,
+					start_time: timePattern.startTime,
 					end_date: null,
-					end_time: null,
+					end_time: timePattern.endTime,
 					time_zone: getLocalTimeZone(),
-					recurrence: 'Daily',
+					recurrence: timePattern.recurrence,
 					custom_recurrence_repeat_every: null,
 					custom_recurrence_repeat_unit: null,
 					custom_recurrence_end_type: null,
@@ -681,8 +816,13 @@
 			return;
 		}
 
+		// Extract location info for toast
+		const slot = newCapacity.availability_slots[0];
+		const locationInfo = slot.location_type === 'Online' ? 'online' : `in ${slot.city}`;
+		const quantityInfo = `${slot.quantity} ${newCapacity.unit}`;
+
 		globalState.showToast(
-			`Generated "${newCapacity.name} ${newCapacity.unit}" capacity!`,
+			`🎲 Generated "${newCapacity.name} ${quantityInfo}" ${locationInfo}!`,
 			'success'
 		);
 	}
@@ -709,6 +849,10 @@
 		<div
 			class="capacity-wrapper"
 			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}
+			style="--capacity-color: {getCapacityColor(entry)}; --capacity-color-light: {hexToRgba(
+				getCapacityColor(entry),
+				0.1
+			)}; --capacity-color-medium: {hexToRgba(getCapacityColor(entry), 0.3)};"
 		>
 			<Capacity
 				capacity={entry as ProviderCapacity}
@@ -844,5 +988,29 @@
 
 	.capacity-wrapper.newly-created-capacity {
 		display: block;
+	}
+
+	/* Capacity color styling */
+	.capacity-wrapper :global(.capacity-item) {
+		border-left: 4px solid var(--capacity-color) !important;
+		background: linear-gradient(
+			135deg,
+			var(--capacity-color-light),
+			rgba(255, 255, 255, 0.8)
+		) !important;
+	}
+
+	.capacity-wrapper :global(.capacity-header) {
+		background: var(--capacity-color-light) !important;
+		border-bottom: 1px solid var(--capacity-color-medium) !important;
+	}
+
+	.capacity-wrapper :global(.capacity-name) {
+		color: var(--capacity-color) !important;
+		font-weight: 600 !important;
+	}
+
+	.capacity-wrapper :global(.capacity-emoji) {
+		filter: drop-shadow(0 0 2px var(--capacity-color-medium));
 	}
 </style>
