@@ -161,6 +161,14 @@ export function recalculateFromTree() {
 			const currentSogf = get(userSogf);
 			const hasChanged = !currentSogf || !sogfEqual(currentSogf, sogf);
 
+			console.log('[RECALC-DEBUG] SOGF change check:', {
+				currentSogfExists: !!currentSogf,
+				currentSogf: currentSogf,
+				newSogf: sogf,
+				sogfEqual: currentSogf ? sogfEqual(currentSogf, sogf) : 'N/A',
+				hasChanged: hasChanged
+			});
+
 			if (hasChanged) {
 				console.log('[RECALC] SOGF has changed, updating stores and recognition cache');
 				userSogf.set(sogf);
@@ -170,8 +178,20 @@ export function recalculateFromTree() {
 					get(recognitionCache)
 				);
 
+				// Add debugging to check if we're getting network SOGF data
+				const currentCache = get(recognitionCache);
+				console.log('[RECALC-DEBUG] Recognition cache entries:', Object.keys(currentCache).length);
+				Object.entries(currentCache).forEach(([id, entry]) => {
+					console.log(
+						`[RECALC-DEBUG] Cache entry ${id}: our=${entry.ourShare.toFixed(4)}, their=${entry.theirShare.toFixed(4)}, timestamp=${entry.timestamp}`
+					);
+				});
+
 				// Update recognition cache with our share values
 				// Handle both public keys and contact IDs in the cache
+				console.log('[RECALC-DEBUG] SOGF result keys:', Object.keys(sogf));
+				console.log('[RECALC-DEBUG] All known contributors:', allKnownContributorsList);
+
 				allKnownContributorsList.forEach((contributorId) => {
 					// Try to resolve to public key, but use original ID if resolution fails
 					const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
@@ -184,6 +204,15 @@ export function recalculateFromTree() {
 					const existing =
 						get(recognitionCache)[resolvedContributorId] || get(recognitionCache)[contributorId];
 					const theirShare = existing?.theirShare || 0;
+
+					console.log(`[RECALC-DEBUG] Processing contributor:`, {
+						originalId: contributorId,
+						resolvedId: resolvedContributorId,
+						sogfKeys: Object.keys(sogf),
+						ourShareFromSOGF: ourShare,
+						theirShareFromCache: theirShare,
+						existingCacheEntry: existing
+					});
 
 					console.log(
 						`[RECALC] Updating recognition for ${contributorId} (resolved: ${resolvedContributorId}): ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
@@ -223,6 +252,47 @@ export function recalculateFromTree() {
 				);
 			} else {
 				console.log('[RECALC] SOGF unchanged, skipping update');
+
+				// 🚨 DEBUGGING: Even if SOGF unchanged, let's check if we need to initialize recognition cache entries
+				const currentCache = get(recognitionCache);
+				const allKnownContributorsList = get(allKnownContributors);
+
+				console.log('[RECALC-DEBUG] Checking if recognition cache needs initialization...');
+				console.log('[RECALC-DEBUG] Known contributors:', allKnownContributorsList);
+				console.log('[RECALC-DEBUG] Cache entries:', Object.keys(currentCache));
+
+				// Check if any known contributors are missing from cache
+				const missingFromCache = allKnownContributorsList.filter((contributorId) => {
+					const resolvedId = resolveToPublicKey(contributorId) || contributorId;
+					return !currentCache[resolvedId] && !currentCache[contributorId];
+				});
+
+				if (missingFromCache.length > 0) {
+					console.log(
+						'[RECALC-DEBUG] Found contributors missing from cache, initializing:',
+						missingFromCache
+					);
+
+					missingFromCache.forEach((contributorId) => {
+						const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
+						const ourShare = sogf[resolvedContributorId] || 0;
+
+						if (ourShare > 0) {
+							console.log(
+								`[RECALC-DEBUG] Initializing cache entry for ${contributorId} -> ${resolvedContributorId} with ourShare=${ourShare.toFixed(4)}`
+							);
+
+							recognitionCache.update((cache) => {
+								cache[resolvedContributorId] = {
+									ourShare,
+									theirShare: 0, // Will be updated when network data comes in
+									timestamp: Date.now()
+								};
+								return cache;
+							});
+						}
+					});
+				}
 			}
 		} catch (error) {
 			console.error('[RECALC] Error calculating SOGF:', error);

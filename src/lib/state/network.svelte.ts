@@ -671,6 +671,14 @@ const contributorStreamConfigs = {
 			const shareData: Record<string, number> = validatedSogfData.data || {};
 			const theirShare = shareData[ourId] || 0;
 
+			console.log(`[NETWORK-DEBUG] Processing SOGF from ${contributorId}:`, {
+				ourId,
+				shareDataKeys: Object.keys(shareData),
+				shareDataValues: shareData,
+				theirShareForUs: theirShare,
+				existingCacheEntry: existingRecognitionEntry
+			});
+
 			// Fallback to value-based deduplication: only update if the share value has actually changed
 			// This provides reliability when timestamp comparison isn't available or reliable
 			const isUnchanged =
@@ -1083,7 +1091,11 @@ export async function initializeUserDataStreams(): Promise<void> {
  * @param theirShare Share they assign to us in their SOGF
  */
 export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
-	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
+	console.log(`[NETWORK] 🚨 Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
+	console.log(
+		`[NETWORK] 🚨 Current recognition cache before network update:`,
+		get(recognitionCache)
+	);
 
 	// CRITICAL: Always resolve to public key for unified cache storage
 	// This ensures consistency with our calculation layer and prevents feedback loops
@@ -1096,6 +1108,14 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	// Get current cache entry using the resolved ID (consistent with calculation layer)
 	const cache = get(recognitionCache);
 	const existing = cache[resolvedContributorId];
+
+	console.log(`[NETWORK-DEBUG] Updating their share:`, {
+		contributorId,
+		resolvedContributorId,
+		theirShare,
+		existingEntry: existing,
+		fullCache: cache
+	});
 
 	// Update the cache immediately with new theirShare using resolved public key
 	recognitionCache.update((cache) => {
