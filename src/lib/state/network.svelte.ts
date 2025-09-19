@@ -1091,11 +1091,7 @@ export async function initializeUserDataStreams(): Promise<void> {
  * @param theirShare Share they assign to us in their SOGF
  */
 export function updateTheirShareFromNetwork(contributorId: string, theirShare: number) {
-	console.log(`[NETWORK] 🚨 Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
-	console.log(
-		`[NETWORK] 🚨 Current recognition cache before network update:`,
-		get(recognitionCache)
-	);
+	console.log(`[NETWORK] Received share from ${contributorId}: ${theirShare.toFixed(4)}`);
 
 	// CRITICAL: Always resolve to public key for unified cache storage
 	// This ensures consistency with our calculation layer and prevents feedback loops
@@ -1108,14 +1104,6 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 	// Get current cache entry using the resolved ID (consistent with calculation layer)
 	const cache = get(recognitionCache);
 	const existing = cache[resolvedContributorId];
-
-	console.log(`[NETWORK-DEBUG] Updating their share:`, {
-		contributorId,
-		resolvedContributorId,
-		theirShare,
-		existingEntry: existing,
-		fullCache: cache
-	});
 
 	// Update the cache immediately with new theirShare using resolved public key
 	recognitionCache.update((cache) => {

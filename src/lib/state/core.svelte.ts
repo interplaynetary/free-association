@@ -152,16 +152,8 @@ export const recognitionCache = writable<RecognitionCache>({});
 // Derived store for mutual recognition values (min of ourShare and theirShare)
 export const mutualRecognition = derived(recognitionCache, ($recognitionCache) => {
 	console.log(
-		`[MUTUAL-RECOGNITION] ${new Date().toISOString()} Recalculating from cache (${Object.keys($recognitionCache).length} entries):`,
-		$recognitionCache
+		`[MUTUAL-RECOGNITION] Recalculating from cache with ${Object.keys($recognitionCache).length} entries`
 	);
-
-	// Debug each cache entry
-	Object.entries($recognitionCache).forEach(([id, entry]) => {
-		console.log(
-			`[MUTUAL-RECOGNITION-DEBUG] ${id}: our=${entry.ourShare.toFixed(4)}, their=${entry.theirShare.toFixed(4)}, min=${Math.min(entry.ourShare, entry.theirShare).toFixed(4)}`
-		);
-	});
 
 	const mutualValues: Record<string, number> = {};
 

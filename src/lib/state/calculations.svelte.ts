@@ -251,49 +251,46 @@ export function recalculateFromTree() {
 					'known contributors'
 				);
 			} else {
-				console.log('[RECALC] SOGF unchanged, skipping update');
-
-				// 🚨 DEBUGGING: Even if SOGF unchanged, let's check if we need to initialize recognition cache entries
-				const currentCache = get(recognitionCache);
-				const allKnownContributorsList = get(allKnownContributors);
-
-				console.log('[RECALC-DEBUG] Checking if recognition cache needs initialization...');
-				console.log('[RECALC-DEBUG] Known contributors:', allKnownContributorsList);
-				console.log('[RECALC-DEBUG] Cache entries:', Object.keys(currentCache));
-
-				// Check if any known contributors are missing from cache
-				const missingFromCache = allKnownContributorsList.filter((contributorId) => {
-					const resolvedId = resolveToPublicKey(contributorId) || contributorId;
-					return !currentCache[resolvedId] && !currentCache[contributorId];
-				});
-
-				if (missingFromCache.length > 0) {
-					console.log(
-						'[RECALC-DEBUG] Found contributors missing from cache, initializing:',
-						missingFromCache
-					);
-
-					missingFromCache.forEach((contributorId) => {
-						const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
-						const ourShare = sogf[resolvedContributorId] || 0;
-
-						if (ourShare > 0) {
-							console.log(
-								`[RECALC-DEBUG] Initializing cache entry for ${contributorId} -> ${resolvedContributorId} with ourShare=${ourShare.toFixed(4)}`
-							);
-
-							recognitionCache.update((cache) => {
-								cache[resolvedContributorId] = {
-									ourShare,
-									theirShare: 0, // Will be updated when network data comes in
-									timestamp: Date.now()
-								};
-								return cache;
-							});
-						}
-					});
-				}
+				console.log('[RECALC] SOGF unchanged, but still updating recognition cache entries');
 			}
+
+			// 🚨 CRITICAL FIX: Always update recognition cache entries, even if SOGF unchanged
+			// This ensures mutual recognition works offline by initializing cache entries immediately
+			console.log('[RECALC] Updating recognition cache with current SOGF values...');
+			const currentCache = get(recognitionCache);
+
+			allKnownContributorsList.forEach((contributorId) => {
+				// Try to resolve to public key, but use original ID if resolution fails
+				const resolvedContributorId = resolveToPublicKey(contributorId) || contributorId;
+
+				// The SOGF map contains the actual keys used in calculation
+				const ourShare = sogf[resolvedContributorId] || 0;
+
+				// Get existing cache entry - check both resolved and original IDs
+				const existing = currentCache[resolvedContributorId] || currentCache[contributorId];
+				const theirShare = existing?.theirShare || 0;
+
+				console.log(
+					`[RECALC] Ensuring cache entry for ${contributorId} (resolved: ${resolvedContributorId}): ourShare=${ourShare.toFixed(4)}, theirShare=${theirShare.toFixed(4)}`
+				);
+
+				recognitionCache.update((cache) => {
+					// Store using the resolved ID (public key if available, contact ID if not)
+					cache[resolvedContributorId] = {
+						ourShare,
+						theirShare, // Preserve existing theirShare from network updates
+						timestamp: Date.now()
+					};
+
+					// Clean up any duplicate entry under the original ID if different
+					if (contributorId !== resolvedContributorId && cache[contributorId]) {
+						console.log(`[RECALC] Cleaning up duplicate cache entry for ${contributorId}`);
+						delete cache[contributorId];
+					}
+
+					return cache;
+				});
+			});
 		} catch (error) {
 			console.error('[RECALC] Error calculating SOGF:', error);
 		}
