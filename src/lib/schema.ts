@@ -160,6 +160,100 @@ export const CapacitySchema = z.union([ProviderCapacitySchema, RecipientCapacity
 export const CapacitiesCollectionDataSchema = z.record(IdSchema, CapacitySchema);
 export const CapacitiesCollectionSchema = TimestampedSchema(CapacitiesCollectionDataSchema);
 
+// ===== NEED SCHEMAS (Mirror of Capacity Schemas for UX) =====
+
+// Need slot schema - mirror of AvailabilitySlot but represents when/where something is needed
+export const NeedSlotSchema = z.object({
+	id: IdSchema,
+	quantity: z.number().gte(0),
+	priority: z.optional(z.number().min(0).max(1)), // 0-1 priority weight for need importance
+
+	// Time fields (same as AvailabilitySlot)
+	all_day: z.optional(z.boolean()),
+	start_date: z.optional(z.string().nullable()),
+	end_date: z.optional(z.string().nullable()),
+	start_time: z.optional(z.string().nullable()),
+	end_time: z.optional(z.string().nullable()),
+	time_zone: z.optional(z.string().nullable()),
+	recurrence: z.optional(z.string().nullable()),
+	custom_recurrence_repeat_every: z.optional(z.number().nullable()),
+	custom_recurrence_repeat_unit: z.optional(z.string().nullable()),
+	custom_recurrence_end_type: z.optional(z.string().nullable()),
+	custom_recurrence_end_value: z.optional(z.string().nullable()),
+
+	// Location fields (same as AvailabilitySlot)
+	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().nullable()),
+	latitude: z.optional(z.number().nullable()),
+	street_address: z.optional(z.string().nullable()),
+	city: z.optional(z.string().nullable()),
+	state_province: z.optional(z.string().nullable()),
+	postal_code: z.optional(z.string().nullable()),
+	country: z.optional(z.string().nullable()),
+	online_link: z.optional(z.string().nullable()),
+
+	// Constraint fields (same as AvailabilitySlot)
+	advance_notice_hours: z.optional(z.number().nullable()),
+	booking_window_hours: z.optional(z.number().nullable()),
+	mutual_agreement_required: z.optional(z.boolean()),
+
+	// Need-specific metadata
+	urgency: z.optional(z.enum(['low', 'medium', 'high', 'critical'])),
+	flexibility: z.optional(z.enum(['rigid', 'somewhat_flexible', 'very_flexible'])),
+	resource_type: z.optional(z.string()), // What type of resource is needed
+	notes: z.optional(z.string()), // Additional context about the need
+
+	// Need fulfillment type - how to handle excess/shortage
+	need_type: z.optional(
+		z.enum(['minimum_requirement', 'upper_limit', 'optimal_target']).default('minimum_requirement')
+	)
+});
+
+// Base need schema - mirror of BaseCapacity but for needs
+export const BaseNeedSchema = z.object({
+	id: IdSchema,
+	name: z.string(),
+	emoji: z.optional(z.string()),
+	unit: z.optional(
+		z.string().regex(/^$|^(?!\s*\d+\.?\d*\s*$).+$/, {
+			message: 'Unit must be text, not a number (e.g., "hours", "kg", "items")'
+		})
+	),
+	description: z.optional(z.string()),
+
+	// Need-specific fields
+	category: z.optional(z.string()), // e.g., "food", "transportation", "skills"
+	importance: z.optional(z.enum(['low', 'medium', 'high', 'critical'])),
+	recurring: z.optional(z.boolean()),
+
+	// Filter for potential providers (mirror of capacity filter_rule)
+	provider_filter: z.optional(z.nullable(z.any())),
+
+	// Need slots - when/where/how much is needed
+	need_slots: z.array(NeedSlotSchema)
+});
+
+// User need schema (what the user needs)
+export const UserNeedSchema = z.object({
+	...BaseNeedSchema.shape,
+	user_id: IdSchema // The person who has this need
+});
+
+// Discovered provider need schema (needs we've learned about from others)
+export const ProviderNeedSchema = z.object({
+	...BaseNeedSchema.shape,
+	provider_id: IdSchema, // The person who has this need
+	discovered_at: z.string(), // When we learned about this need
+	confidence: z.optional(z.number().min(0).max(1)) // How confident we are about this need
+});
+
+// Union type for Need (either user's own needs or discovered provider needs)
+export const NeedSchema = z.union([UserNeedSchema, ProviderNeedSchema]);
+
+// NeedsCollection schema with timestamps
+export const NeedsCollectionDataSchema = z.record(IdSchema, NeedSchema);
+export const NeedsCollectionSchema = TimestampedSchema(NeedsCollectionDataSchema);
+
 // DELETED: CapacitySharesSchema - Replaced by efficient provider-centric algorithm
 // Old capacity-level percentage shares no longer needed
 
@@ -186,11 +280,27 @@ export type ProviderCapacity = z.infer<typeof ProviderCapacitySchema>;
 export type RecipientCapacity = z.infer<typeof RecipientCapacitySchema>;
 export type Capacity = z.infer<typeof CapacitySchema>;
 export type CapacitiesCollection = z.infer<typeof CapacitiesCollectionSchema>;
+
+// Need types
+export type NeedSlot = z.infer<typeof NeedSlotSchema>;
+export type BaseNeed = z.infer<typeof BaseNeedSchema>;
+export type UserNeed = z.infer<typeof UserNeedSchema>;
+export type ProviderNeed = z.infer<typeof ProviderNeedSchema>;
+export type Need = z.infer<typeof NeedSchema>;
+export type NeedsCollection = z.infer<typeof NeedsCollectionSchema>;
+
+// Need allocation types (mirror of provider allocation types)
+export type NeedAllocationResult = z.infer<typeof NeedAllocationResultSchema>;
+export type RecipientAllocationStateData = z.infer<typeof RecipientAllocationStateDataSchema>;
+export type RecipientAllocationState = z.infer<typeof RecipientAllocationStateSchema>;
+export type NetworkNeedAllocationStates = z.infer<typeof NetworkNeedAllocationStatesSchema>;
+
 export type ShareMap = z.infer<typeof ShareMapSchema>;
 
 // Raw data types (without timestamps)
 export type ShareMapData = z.infer<typeof ShareMapDataSchema>;
 export type CapacitiesCollectionData = z.infer<typeof CapacitiesCollectionDataSchema>;
+export type NeedsCollectionData = z.infer<typeof NeedsCollectionDataSchema>;
 // DELETED: ShareMapData, CapacitySharesData, UserSlotQuantitiesData - No longer needed
 export type UserSlotCompositionData = z.infer<typeof UserSlotCompositionDataSchema>;
 export type ContactsCollectionData = z.infer<typeof ContactsCollectionDataSchema>;
@@ -314,6 +424,79 @@ export type SlotAllocationResult = z.infer<typeof SlotAllocationResultSchema>;
 export type ProviderAllocationStateData = z.infer<typeof ProviderAllocationStateDataSchema>;
 export type ProviderAllocationState = z.infer<typeof ProviderAllocationStateSchema>;
 export type NetworkAllocationStates = z.infer<typeof NetworkAllocationStatesSchema>;
+
+// ===== MIRROR IMAGE: NEED ALLOCATION SCHEMAS =====
+// These mirror the Provider Allocation schemas but from the recipient's perspective
+// Recipients allocate their needs across multiple potential providers
+
+// What recipient computes and stores per need slot after running the mirror algorithm
+// FULLY TRANSPARENT: Shows how recipient distributes their need across providers
+export const NeedAllocationResultSchema = z.object({
+	need_slot_id: IdSchema,
+	total_need_quantity: z.number().gte(0),
+	need_type: z
+		.enum(['minimum_requirement', 'upper_limit', 'optimal_target'])
+		.default('minimum_requirement'),
+
+	// Phase 1: MUTUAL desires (transparent input from compose-from/into intersection)
+	// provider_id -> mutual_desired_amount (how much this provider wants to fulfill our need)
+	all_provider_desires: z.record(IdSchema, z.number().gte(0)),
+
+	// Phase 2: Mutually desiring providers (those with mutual desires > 0)
+	mutually_desiring_providers: z.array(IdSchema),
+
+	// Phase 3: Provider capacity feasibility check (NEW: mutual feasibility constraints)
+	provider_capacity_limits: z.record(IdSchema, z.number().gte(0)), // provider_id -> max_they_can_actually_provide
+	provider_competing_allocations: z.record(IdSchema, z.number().gte(0)), // provider_id -> already_allocated_to_others
+
+	// Phase 4: MR normalization among mutually desiring providers only (transparent calculations)
+	mr_values: z.record(IdSchema, z.number().gte(0)), // provider_id -> raw MR value (after need filtering)
+	filtered_mr_sum: z.number().gte(0), // Sum of MR values for mutually desiring providers only
+	normalized_mr_shares: z.record(IdSchema, z.number().gte(0).lte(1)), // provider_id -> normalized share
+
+	// Phase 5: Raw MR allocations before mutual desire constraints (transparent intermediate step)
+	raw_mr_allocations: z.record(IdSchema, z.number().gte(0)), // provider_id -> raw_allocation
+
+	// Phase 6: Mutual-desire-constrained allocations (transparent constraint application)
+	desire_constrained_allocations: z.record(IdSchema, z.number().gte(0)), // provider_id -> constrained_allocation
+
+	// Phase 7: Excess fulfillment handling (NEW: for upper_limit needs)
+	excess_fulfillment_available: z.number().gte(0), // Total potential fulfillment > need
+	excess_allocation_strategy: z
+		.enum(['reject_excess', 'accept_highest_mr', 'proportional_acceptance'])
+		.default('accept_highest_mr'),
+
+	// Phase 8: Redistribution details (transparent redistribution logic)
+	// For minimum_requirement: distribute unfulfilled need to willing providers
+	// For upper_limit: distribute excess capacity based on mutual fulfillment priorities
+	unsatisfied_providers: z.array(IdSchema), // Who still wants to provide more after initial allocation
+	redistribution_amounts: z.record(IdSchema, z.number().gte(0)), // provider_id -> redistribution_amount
+
+	// Phase 9: Final allocations (after mutual desire constraints and redistribution)
+	final_provider_allocations: z.record(IdSchema, z.number().gte(0)), // provider_id -> final_allocated_need_quantity
+	unfulfilled_need: z.number().gte(0), // Remaining need after all provider allocations (for minimum_requirement)
+	excess_fulfillment_accepted: z.number().gte(0), // Extra fulfillment accepted beyond need (for upper_limit)
+
+	// Metadata for transparency and debugging
+	computation_timestamp: z.string(),
+	algorithm_version: z.string().default('mutual_need_v1') // Mirror of mutual_desire_v1
+});
+
+// Recipient's complete allocation state per need (mirrors ProviderAllocationStateData)
+export const RecipientAllocationStateDataSchema = z.record(
+	IdSchema, // need_slot_id
+	NeedAllocationResultSchema
+);
+
+// Timestamped version for persistence
+export const RecipientAllocationStateSchema = TimestampedSchema(RecipientAllocationStateDataSchema);
+
+// Collection of all recipients' allocation states (what providers receive)
+// This shows providers how their potential recipients are allocating their needs
+export const NetworkNeedAllocationStatesSchema = z.record(
+	IdSchema, // recipient_id -> need_id
+	z.record(IdSchema, RecipientAllocationStateDataSchema) // need_id -> need slot allocations
+);
 
 // DELETED: SlotAllocationMetadata/Analysis schemas - Replaced by efficient algorithm
 // Old recipient-centric allocation analysis replaced by allocationTransparencyAnalysis
