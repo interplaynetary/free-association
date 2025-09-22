@@ -437,64 +437,88 @@ const ownDataStreamConfigs = {
 		type: 'desiredSlotComposeFrom',
 		streamManager: ownDataStreamManager,
 		getGunPath: (userId: string) => user.get('desiredSlotComposeFrom'),
-		processor: createDataProcessor({
-			dataType: 'desiredSlotComposeFrom',
-			enableTimestampComparison: true,
-			validator: parseUserSlotComposition,
-			getCurrentData: () => {
-				const flatData = get(userDesiredSlotComposeFrom);
-				const timestamp = get(userDesiredSlotComposeFromTimestamp);
-				if (!flatData || !timestamp) return null;
-				return {
-					metadata: {
-						created_at: timestamp,
-						updated_at: timestamp
-					},
-					data: flatData
-				};
-			},
-			updateStore: (timestampedData) => {
-				updateStoreWithTimestamp(
-					userDesiredSlotComposeFrom,
-					userDesiredSlotComposeFromTimestamp,
-					timestampedData
-				);
-			}
-		}),
+		processor: (rawData: any) => {
+			console.log('[COMPOSE] [NETWORK-OWN] Loading own compose-from data from Gun...');
+			console.log('[COMPOSE] [NETWORK-OWN] Raw own compose-from data:', rawData);
+
+			const dataProcessor = createDataProcessor({
+				dataType: 'desiredSlotComposeFrom',
+				enableTimestampComparison: true,
+				validator: parseUserSlotComposition,
+				getCurrentData: () => {
+					const flatData = get(userDesiredSlotComposeFrom);
+					const timestamp = get(userDesiredSlotComposeFromTimestamp);
+					if (!flatData || !timestamp) return null;
+					return {
+						metadata: {
+							created_at: timestamp,
+							updated_at: timestamp
+						},
+						data: flatData
+					};
+				},
+				updateStore: (timestampedData) => {
+					console.log(
+						'[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-from store:',
+						timestampedData
+					);
+					updateStoreWithTimestamp(
+						userDesiredSlotComposeFrom,
+						userDesiredSlotComposeFromTimestamp,
+						timestampedData
+					);
+				}
+			});
+
+			return dataProcessor(rawData);
+		},
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeFrom stream:', error);
+			console.error('[COMPOSE] [NETWORK-OWN] ❌ Error loading own compose-from:', error);
 		}
 	},
 	desiredComposeInto: {
 		type: 'desiredSlotComposeInto',
 		streamManager: ownDataStreamManager,
 		getGunPath: (userId: string) => user.get('desiredSlotComposeInto'),
-		processor: createDataProcessor({
-			dataType: 'desiredSlotComposeInto',
-			enableTimestampComparison: true,
-			validator: parseUserSlotComposition,
-			getCurrentData: () => {
-				const flatData = get(userDesiredSlotComposeInto);
-				const timestamp = get(userDesiredSlotComposeIntoTimestamp);
-				if (!flatData || !timestamp) return null;
-				return {
-					metadata: {
-						created_at: timestamp,
-						updated_at: timestamp
-					},
-					data: flatData
-				};
-			},
-			updateStore: (timestampedData) => {
-				updateStoreWithTimestamp(
-					userDesiredSlotComposeInto,
-					userDesiredSlotComposeIntoTimestamp,
-					timestampedData
-				);
-			}
-		}),
+		processor: (rawData: any) => {
+			console.log('[COMPOSE] [NETWORK-OWN] Loading own compose-into data from Gun...');
+			console.log('[COMPOSE] [NETWORK-OWN] Raw own compose-into data:', rawData);
+
+			const dataProcessor = createDataProcessor({
+				dataType: 'desiredSlotComposeInto',
+				enableTimestampComparison: true,
+				validator: parseUserSlotComposition,
+				getCurrentData: () => {
+					const flatData = get(userDesiredSlotComposeInto);
+					const timestamp = get(userDesiredSlotComposeIntoTimestamp);
+					if (!flatData || !timestamp) return null;
+					return {
+						metadata: {
+							created_at: timestamp,
+							updated_at: timestamp
+						},
+						data: flatData
+					};
+				},
+				updateStore: (timestampedData) => {
+					console.log(
+						'[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-into store:',
+						timestampedData
+					);
+					updateStoreWithTimestamp(
+						userDesiredSlotComposeInto,
+						userDesiredSlotComposeIntoTimestamp,
+						timestampedData
+					);
+				}
+			});
+
+			return dataProcessor(rawData);
+		},
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeInto stream:', error);
+			console.error('[COMPOSE] [NETWORK-OWN] ❌ Error loading own compose-into:', error);
 		}
 	},
 	// DELETED: desiredSlotClaims stream - Replaced by unified compose-from model
@@ -771,8 +795,13 @@ const mutualContributorStreamConfigs = {
 			return gun.user(pubKey).get('desiredSlotComposeFrom');
 		},
 		processor: (contributorId: string) => (composeFromData: any) => {
+			console.log(`[COMPOSE] [NETWORK] Processing compose-from data from ${contributorId}...`);
+			console.log(`[COMPOSE] [NETWORK] Raw compose-from data:`, composeFromData);
+
 			if (!composeFromData) {
-				//console.log(`[NETWORK] No desired slot compose-from from contributor ${contributorId}`);
+				console.log(
+					`[COMPOSE] [NETWORK] No desired slot compose-from from contributor ${contributorId}`
+				);
 				networkDesiredSlotComposeFrom.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -780,11 +809,13 @@ const mutualContributorStreamConfigs = {
 				return;
 			}
 
-			/*console.log(
-				`[NETWORK] Received desired slot compose-from update from stream for ${contributorId}`
-			);*/
+			console.log(
+				`[COMPOSE] [NETWORK] Received desired slot compose-from update from stream for ${contributorId}`
+			);
 
 			const validatedComposeFrom = parseUserSlotComposition(composeFromData);
+			console.log(`[COMPOSE] [NETWORK] Validated compose-from:`, validatedComposeFrom);
+
 			const currentNetworkComposeFrom = get(networkDesiredSlotComposeFrom)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeFrom) === JSON.stringify(currentNetworkComposeFrom);
@@ -792,10 +823,16 @@ const mutualContributorStreamConfigs = {
 			if (!isUnchanged) {
 				// Extract flat data from timestamped structure for network store
 				const flatComposeFrom = validatedComposeFrom.data || {};
+				console.log(
+					`[COMPOSE] [NETWORK] ✅ Updating network compose-from for ${contributorId}:`,
+					flatComposeFrom
+				);
 				networkDesiredSlotComposeFrom.update((current) => ({
 					...current,
 					[contributorId]: flatComposeFrom
 				}));
+			} else {
+				console.log(`[COMPOSE] [NETWORK] No changes in compose-from data for ${contributorId}`);
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {
@@ -814,8 +851,13 @@ const mutualContributorStreamConfigs = {
 			return gun.user(pubKey).get('desiredSlotComposeInto');
 		},
 		processor: (contributorId: string) => (composeIntoData: any) => {
+			console.log(`[COMPOSE] [NETWORK] Processing compose-into data from ${contributorId}...`);
+			console.log(`[COMPOSE] [NETWORK] Raw compose-into data:`, composeIntoData);
+
 			if (!composeIntoData) {
-				//console.log(`[NETWORK] No desired slot compose-into from contributor ${contributorId}`);
+				console.log(
+					`[COMPOSE] [NETWORK] No desired slot compose-into from contributor ${contributorId}`
+				);
 				networkDesiredSlotComposeInto.update((current) => {
 					const { [contributorId]: _, ...rest } = current;
 					return rest;
@@ -824,10 +866,12 @@ const mutualContributorStreamConfigs = {
 			}
 
 			console.log(
-				`[NETWORK] Received desired slot compose-into update from stream for ${contributorId}`
+				`[COMPOSE] [NETWORK] Received desired slot compose-into update from stream for ${contributorId}`
 			);
 
 			const validatedComposeInto = parseUserSlotComposition(composeIntoData);
+			console.log(`[COMPOSE] [NETWORK] Validated compose-into:`, validatedComposeInto);
+
 			const currentNetworkComposeInto = get(networkDesiredSlotComposeInto)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
@@ -835,10 +879,16 @@ const mutualContributorStreamConfigs = {
 			if (!isUnchanged) {
 				// Extract flat data from timestamped structure for network store
 				const flatComposeInto = validatedComposeInto.data || {};
+				console.log(
+					`[COMPOSE] [NETWORK] ✅ Updating network compose-into for ${contributorId}:`,
+					flatComposeInto
+				);
 				networkDesiredSlotComposeInto.update((current) => ({
 					...current,
 					[contributorId]: flatComposeInto
 				}));
+			} else {
+				console.log(`[COMPOSE] [NETWORK] No changes in compose-into data for ${contributorId}`);
 			}
 		},
 		errorHandler: (contributorId: string) => (error: any) => {

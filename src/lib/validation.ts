@@ -22,6 +22,7 @@ import {
 	ContactsCollectionDataSchema,
 	ChatReadStatesSchema,
 	ChatReadStatesDataSchema,
+	CompositionTargetSchema,
 	createEmptyTimestamped
 } from '$lib/schema';
 
@@ -436,12 +437,51 @@ export function parseNetworkComposition(compositionData: unknown) {
  * @returns Validated UserSlotComposition or empty object if validation fails
  */
 export function parseUserSlotComposition(slotCompositionData: unknown) {
-	return parseTimestampedData(
+	console.log('[COMPOSE] [VALIDATION] Parsing user slot composition data...');
+	console.log('[COMPOSE] [VALIDATION] Raw data:', slotCompositionData);
+
+	const result = parseTimestampedData(
 		slotCompositionData,
 		UserSlotCompositionSchema,
 		'user slot composition',
 		true
 	);
+
+	console.log('[COMPOSE] [VALIDATION] Parsed result:', result);
+
+	// Additional validation for composition targets (post-parsing validation)
+	if (result && result.data) {
+		try {
+			validateCompositionTargets(result.data);
+			console.log('[COMPOSE] [VALIDATION] ✅ Composition targets validated successfully');
+		} catch (error) {
+			console.warn('[VALIDATION] Invalid composition targets in slot composition data:', error);
+			console.warn('[COMPOSE] [VALIDATION] ❌ Composition target validation failed:', error);
+			// Return empty timestamped object instead of failing completely
+			return createEmptyTimestamped();
+		}
+	}
+
+	console.log('[COMPOSE] [VALIDATION] Final validated result:', result);
+	return result;
+}
+
+/**
+ * Validate composition targets in slot composition data
+ * @param data Slot composition data to validate
+ */
+function validateCompositionTargets(data: any): void {
+	Object.values(data).forEach((sourceSlots: any) => {
+		Object.values(sourceSlots).forEach((targetCompositions: any) => {
+			Object.keys(targetCompositions).forEach((targetId) => {
+				// Validate each composition target
+				const validation = CompositionTargetSchema.safeParse(targetId);
+				if (!validation.success) {
+					throw new Error(`Invalid composition target: ${targetId}`);
+				}
+			});
+		});
+	});
 }
 
 /**

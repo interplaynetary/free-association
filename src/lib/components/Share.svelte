@@ -4,7 +4,7 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
-	import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
+	import { userDesiredSlotComposeFrom, mutualRecognition } from '$lib/state/core.svelte';
 	import { userPub } from '$lib/state/gun.svelte';
 	import { get } from 'svelte/store';
 	import {
@@ -74,6 +74,24 @@
 		} else {
 			console.log(`Navigating to provider: ${provider}`);
 		}
+	}
+
+	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
+	function getSlotMutualRecognitionShare(share: any, slotId: string): number {
+		const slot = share.availability_slots?.find((s: any) => s.id === slotId);
+		if (!slot) return 0;
+
+		const providerId = share.provider_id;
+		if (!providerId) return 0;
+
+		// Get the user's mutual recognition share with this provider
+		const userMutualRecShare = $mutualRecognition[providerId] || 0;
+
+		// Calculate: slot total quantity * mutual recognition share
+		const totalQuantity = slot.quantity || 0;
+		const mutualRecShare = totalQuantity * userMutualRecShare;
+
+		return mutualRecShare;
 	}
 
 	// Toggle expanded state
@@ -391,6 +409,7 @@
 									{#each categorizedSlots().recurring as slot (slot.id)}
 										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
 										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
+										{@const mutualRecShare = getSlotMutualRecognitionShare(share, slot.id)}
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
@@ -421,6 +440,18 @@
 													of {availableQuantity} total
 												</span>
 
+												{#if mutualRecShare > 0}
+													<!-- Mutual recognition share -->
+													<span
+														class="slot-share flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800"
+													>
+														Share: {Number.isInteger(mutualRecShare)
+															? mutualRecShare
+															: mutualRecShare.toFixed(2)}
+														{share.unit}
+													</span>
+												{/if}
+
 												<!-- Recurrence indicator -->
 												<span
 													class="recurrence-badge flex-shrink-0 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800"
@@ -430,8 +461,12 @@
 
 												<!-- Simple desire input -->
 												<div class="desire-input-wrapper flex-shrink-0">
-													<label class="desire-label text-xs text-gray-600">I want:</label>
+													<label
+														for="desire-input-{share.id}-{slot.id}"
+														class="desire-label text-xs text-gray-600">I want:</label
+													>
 													<input
+														id="desire-input-{share.id}-{slot.id}"
 														type="number"
 														class="desire-input"
 														min="0"
@@ -439,7 +474,8 @@
 														step="0.1"
 														value={getCurrentDesiredAmount(share.id, slot.id)}
 														oninput={(e) => {
-															const value = parseFloat(e.target.value) || 0;
+															const target = e.target as HTMLInputElement;
+															const value = parseFloat(target?.value || '0') || 0;
 															handleDesireChange(share.id, slot.id, value);
 														}}
 														placeholder="0"
@@ -507,6 +543,7 @@
 									{#each categorizedSlots().currentFuture as slot (slot.id)}
 										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
 										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
+										{@const mutualRecShare = getSlotMutualRecognitionShare(share, slot.id)}
 										<div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
 											<!-- Slot header row -->
 											<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
@@ -537,10 +574,26 @@
 													of {availableQuantity} total
 												</span>
 
+												{#if mutualRecShare > 0}
+													<!-- Mutual recognition share -->
+													<span
+														class="slot-share flex-shrink-0 rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800"
+													>
+														Share: {Number.isInteger(mutualRecShare)
+															? mutualRecShare
+															: mutualRecShare.toFixed(2)}
+														{share.unit}
+													</span>
+												{/if}
+
 												<!-- Simple desire input -->
 												<div class="desire-input-wrapper flex-shrink-0">
-													<label class="desire-label text-xs text-gray-600">I want:</label>
+													<label
+														for="desire-input-{share.id}-{slot.id}"
+														class="desire-label text-xs text-gray-600">I want:</label
+													>
 													<input
+														id="desire-input-{share.id}-{slot.id}"
 														type="number"
 														class="desire-input"
 														min="0"
@@ -548,7 +601,8 @@
 														step="0.1"
 														value={getCurrentDesiredAmount(share.id, slot.id)}
 														oninput={(e) => {
-															const value = parseFloat(e.target.value) || 0;
+															const target = e.target as HTMLInputElement;
+															const value = parseFloat(target?.value || '0') || 0;
 															handleDesireChange(share.id, slot.id, value);
 														}}
 														placeholder="0"
@@ -614,6 +668,7 @@
 									{#each categorizedSlots().past as slot (slot.id)}
 										{@const allocatedQuantity = getSlotAllocatedQuantity(share, slot.id)}
 										{@const availableQuantity = getSlotAvailableQuantity(share, slot.id)}
+										{@const mutualRecShare = getSlotMutualRecognitionShare(share, slot.id)}
 										<div
 											class="slot-item rounded border border-gray-200 bg-gray-50 p-3 opacity-75 shadow-sm"
 										>
@@ -646,10 +701,26 @@
 													of {availableQuantity} total
 												</span>
 
+												{#if mutualRecShare > 0}
+													<!-- Mutual recognition share -->
+													<span
+														class="slot-share flex-shrink-0 rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700"
+													>
+														Share: {Number.isInteger(mutualRecShare)
+															? mutualRecShare
+															: mutualRecShare.toFixed(2)}
+														{share.unit}
+													</span>
+												{/if}
+
 												<!-- Past slot - no desire input (disabled) -->
 												<div class="desire-input-wrapper flex-shrink-0 opacity-50">
-													<label class="desire-label text-xs text-gray-400">Past slot</label>
+													<label
+														for="past-slot-{share.id}-{slot.id}"
+														class="desire-label text-xs text-gray-400">Past slot</label
+													>
 													<input
+														id="past-slot-{share.id}-{slot.id}"
 														type="number"
 														class="desire-input"
 														disabled
@@ -1138,10 +1209,12 @@
 	.desire-input::-webkit-outer-spin-button,
 	.desire-input::-webkit-inner-spin-button {
 		-webkit-appearance: none;
+		appearance: none;
 		margin: 0;
 	}
 
 	.desire-input[type='number'] {
 		-moz-appearance: textfield;
+		appearance: textfield;
 	}
 </style>

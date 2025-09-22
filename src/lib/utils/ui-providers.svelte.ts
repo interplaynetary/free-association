@@ -539,3 +539,182 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 		}
 	);
 }
+
+// Create composition targets data provider (slots + pubkeys + collectives)
+export function createCompositionTargetsDataProvider(excludeTargets: string[] = []) {
+	return derived(
+		[
+			userNetworkCapacitiesWithSlotQuantities,
+			userCapacities,
+			userNamesOrAliasesCache,
+			userAliasesCache,
+			userPubKeys
+		],
+		([
+			$userNetworkCapacitiesWithSlotQuantities,
+			$userCapacities,
+			$userNamesCache,
+			$userAliasesCache,
+			$userPubKeys
+		]) => {
+			const items: Array<{
+				id: string;
+				name: string;
+				metadata: {
+					type: 'slot' | 'pubkey' | 'collective';
+					capacityId?: string;
+					slotId?: string;
+					capacityName?: string;
+					providerId?: string;
+					providerName?: string;
+					quantity?: number;
+					location?: string;
+					timeInfo?: string;
+					isOwned?: boolean;
+					userId?: string;
+				};
+			}> = [];
+
+			// Track seen items to avoid duplicates
+			const seenItems = new Set<string>();
+
+			// Helper function to format slot display info
+			function formatSlotInfo(slot: any): { timeInfo: string; location: string } {
+				const timeParts = [];
+
+				if (slot.start_date) {
+					timeParts.push(new Date(slot.start_date).toLocaleDateString());
+				}
+
+				if (!slot.all_day && slot.start_time) {
+					timeParts.push(slot.start_time);
+				}
+
+				if (slot.all_day) {
+					timeParts.push('All day');
+				}
+
+				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
+
+				let location = 'No location';
+				if (slot.location_type === 'Specific') {
+					if (slot.street_address) {
+						location = slot.street_address;
+					} else if (slot.latitude && slot.longitude) {
+						location = `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
+					}
+				} else if (slot.location_type) {
+					location = slot.location_type;
+				}
+
+				return { timeInfo, location };
+			}
+
+			// Add slots from user's own capacities
+			if ($userCapacities) {
+				Object.entries($userCapacities).forEach(([capId, capacity]) => {
+					if (excludeTargets.includes(capId)) return;
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slot: any) => {
+							const slotKey = `${capId}:${slot.id}`;
+							if (excludeTargets.includes(slotKey) || seenItems.has(slotKey)) return;
+
+							seenItems.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slot);
+							const displayName = `🕒 ${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
+
+							items.push({
+								id: slotKey,
+								name: displayName,
+								metadata: {
+									type: 'slot',
+									capacityId: capId,
+									slotId: slot.id,
+									capacityName: capacity.name,
+									quantity: slot.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: true
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Add slots from network capacities (shares)
+			if ($userNetworkCapacitiesWithSlotQuantities) {
+				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
+					if (excludeTargets.includes(capId)) return;
+
+					const providerId = (capacity as any).provider_id;
+					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
+
+					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
+						capacity.availability_slots.forEach((slot: any) => {
+							const slotKey = `${capId}:${slot.id}`;
+							if (excludeTargets.includes(slotKey) || seenItems.has(slotKey)) return;
+
+							seenItems.add(slotKey);
+
+							const { timeInfo, location } = formatSlotInfo(slot);
+							const displayName = `🕒 ${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
+
+							items.push({
+								id: slotKey,
+								name: displayName,
+								metadata: {
+									type: 'slot',
+									capacityId: capId,
+									slotId: slot.id,
+									capacityName: capacity.name,
+									providerId,
+									providerName,
+									quantity: slot.quantity || 0,
+									location,
+									timeInfo,
+									isOwned: false
+								}
+							});
+						});
+					}
+				});
+			}
+
+			// Add pubkey targets (users/people)
+			if ($userPubKeys) {
+				$userPubKeys.forEach((userId) => {
+					if (excludeTargets.includes(userId) || seenItems.has(userId)) return;
+
+					seenItems.add(userId);
+
+					const userName =
+						$userAliasesCache[userId] || $userNamesCache[userId] || `${userId.substring(0, 8)}...`;
+					const displayName = `👤 ${userName}`;
+
+					items.push({
+						id: userId,
+						name: displayName,
+						metadata: {
+							type: 'pubkey',
+							userId,
+							providerName: userName
+						}
+					});
+				});
+			}
+
+			// Sort: slots first, then pubkeys, then alphabetically
+			return items.sort((a, b) => {
+				// Type priority: slots first, then pubkeys
+				if (a.metadata.type === 'slot' && b.metadata.type !== 'slot') return -1;
+				if (a.metadata.type !== 'slot' && b.metadata.type === 'slot') return 1;
+
+				// Within same type, sort alphabetically
+				return a.name.localeCompare(b.name);
+			});
+		}
+	);
+}

@@ -508,7 +508,11 @@ export function persistUserDesiredSlotComposeFrom() {
 	}
 
 	console.log('[PERSIST] Starting user desired slot compose-from persistence...');
-	console.log('[PERSIST] User desired slot compose-from (resolved):', composeFromData);
+	console.log('[COMPOSE] [PERSIST] User desired slot compose-from (resolved):', composeFromData);
+	console.log(
+		'[COMPOSE] [PERSIST] Compose-from data structure:',
+		JSON.stringify(composeFromData, null, 2)
+	);
 
 	try {
 		// Store the complete timestamped structure to Gun for proper timestamp tracking
@@ -532,10 +536,12 @@ export function persistUserDesiredSlotComposeFrom() {
 					'[PERSIST] Error saving timestamped user desired slot compose-from to Gun:',
 					ack.err
 				);
+				console.error('[COMPOSE] [PERSIST] Failed to save compose-from to Gun:', ack.err);
 			} else {
 				console.log(
 					'[PERSIST] Timestamped user desired slot compose-from successfully saved to Gun'
 				);
+				console.log('[COMPOSE] [PERSIST] ✅ Successfully saved compose-from to Gun');
 			}
 		});
 	} catch (error) {
@@ -600,7 +606,11 @@ export function persistUserDesiredSlotComposeInto() {
 	}
 
 	console.log('[PERSIST] Starting user desired slot compose-into persistence...');
-	console.log('[PERSIST] User desired slot compose-into (resolved):', composeIntoData);
+	console.log('[COMPOSE] [PERSIST] User desired slot compose-into (resolved):', composeIntoData);
+	console.log(
+		'[COMPOSE] [PERSIST] Compose-into data structure:',
+		JSON.stringify(composeIntoData, null, 2)
+	);
 
 	try {
 		// Store the complete timestamped structure to Gun for proper timestamp tracking
@@ -624,10 +634,12 @@ export function persistUserDesiredSlotComposeInto() {
 					'[PERSIST] Error saving timestamped user desired slot compose-into to Gun:',
 					ack.err
 				);
+				console.error('[COMPOSE] [PERSIST] Failed to save compose-into to Gun:', ack.err);
 			} else {
 				console.log(
 					'[PERSIST] Timestamped user desired slot compose-into successfully saved to Gun'
 				);
+				console.log('[COMPOSE] [PERSIST] ✅ Successfully saved compose-into to Gun');
 			}
 		});
 	} catch (error) {

@@ -2,6 +2,7 @@
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
 	import { globalState } from '$lib/global.svelte';
+	import { mutualRecognition } from '$lib/state/core.svelte';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -207,6 +208,24 @@
 		// Use the new efficient allocation data structure
 		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
 		return slot?.allocated_quantity || 0;
+	}
+
+	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
+	function getSlotMutualRecognitionShare(capacity: any, slotId: string): number {
+		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		if (!slot) return 0;
+
+		const providerId = capacity.provider_id;
+		if (!providerId) return 0;
+
+		// Get the user's mutual recognition share with this provider
+		const userMutualRecShare = $mutualRecognition[providerId] || 0;
+
+		// Calculate: slot total quantity * mutual recognition share
+		const totalQuantity = slot.quantity || 0;
+		const mutualRecShare = totalQuantity * userMutualRecShare;
+
+		return mutualRecShare;
 	}
 
 	// Reactive visibility derived from markerData
@@ -588,14 +607,17 @@
 		<!-- Cluster view content (prioritize over cluster marker details) -->
 		<!-- Debug: clusterViewResults.length = {clusterViewResults.length} -->
 		<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
-			<!-- Cluster Header -->
-			<div class="content-section">
+			<!-- Cluster Header with close button -->
+			<div class="content-section marker-header">
 				<div class="cluster-view-header">
 					<h3 class="cluster-view-title">
 						<span class="cluster-view-emoji">🎁</span>
 						{clusterViewResults.length} Capacities at this Location
 					</h3>
 				</div>
+				<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
+					✕
+				</button>
 			</div>
 
 			<!-- Cluster Results -->
@@ -735,7 +757,7 @@
 			{@const totalSlots = slots.length}
 
 			<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
-				<!-- Header with conditional back button -->
+				<!-- Header with conditional back button and always-visible close button -->
 				<div class="content-section marker-header">
 					{#if viewingMarkerFromSearch}
 						<!-- Back to search button -->
@@ -763,17 +785,10 @@
 							{/if}
 						</div>
 					</div>
-					{#if !viewingMarkerFromSearch}
-						<!-- Only show close button when not from search -->
-						<button
-							class="close-btn"
-							onclick={onClose}
-							title="Close panel"
-							aria-label="Close panel"
-						>
-							✕
-						</button>
-					{/if}
+					<!-- Always show close button -->
+					<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
+						✕
+					</button>
 				</div>
 
 				<!-- Location Info -->
@@ -825,6 +840,7 @@
 							<div class="slot-list">
 								{#each categorizedSlots.recurring as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
+									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
 									<div class="slot-item">
 										<div class="slot-main">
 											{#if allocatedQuantity > 0}
@@ -841,6 +857,14 @@
 													{capacity.unit || ''} available
 												</span>
 												<span class="slot-total">(express desire to get some!)</span>
+											{/if}
+											{#if mutualRecShare > 0}
+												<span class="slot-share">
+													Share: {Number.isInteger(mutualRecShare)
+														? mutualRecShare
+														: mutualRecShare.toFixed(2)}
+													{capacity.unit || ''}
+												</span>
 											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
@@ -863,6 +887,7 @@
 							<div class="slot-list">
 								{#each categorizedSlots.currentFuture as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
+									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
 									<div class="slot-item">
 										<div class="slot-main">
 											{#if allocatedQuantity > 0}
@@ -879,6 +904,14 @@
 													{capacity.unit || ''} available
 												</span>
 												<span class="slot-total">(express desire to get some!)</span>
+											{/if}
+											{#if mutualRecShare > 0}
+												<span class="slot-share">
+													Share: {Number.isInteger(mutualRecShare)
+														? mutualRecShare
+														: mutualRecShare.toFixed(2)}
+													{capacity.unit || ''}
+												</span>
 											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
@@ -899,6 +932,7 @@
 							<div class="slot-list">
 								{#each categorizedSlots.past as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
+									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
 									<div class="slot-item past-slot">
 										<div class="slot-main">
 											{#if allocatedQuantity > 0}
@@ -915,6 +949,14 @@
 													{capacity.unit || ''} was available
 												</span>
 												<span class="slot-total">(past slot)</span>
+											{/if}
+											{#if mutualRecShare > 0}
+												<span class="slot-share">
+													Share: {Number.isInteger(mutualRecShare)
+														? mutualRecShare
+														: mutualRecShare.toFixed(2)}
+													{capacity.unit || ''}
+												</span>
 											{/if}
 											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
@@ -1626,6 +1668,18 @@
 		color: #6b7280;
 		font-size: 10px;
 		font-weight: 500;
+		margin-left: 8px;
+	}
+
+	.slot-share {
+		color: #7c3aed;
+		background: #f3e8ff;
+		padding: 2px 4px;
+		border-radius: 3px;
+		border: 1px solid #c4b5fd;
+		font-size: 10px;
+		font-weight: 600;
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
 		margin-left: 8px;
 	}
 

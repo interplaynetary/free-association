@@ -25,7 +25,6 @@
 		userDesiredSlotComposeFromTimestamp,
 		userDesiredSlotComposeIntoTimestamp
 	} from '$lib/state/core.svelte';
-	import { getColorForNameHash, hexToRgba } from '$lib/utils/colorUtils';
 	import Capacity from './Capacity.svelte';
 
 	// Reactive derived values
@@ -34,12 +33,6 @@
 			.filter(([id, capacity]) => id && capacity)
 			.map(([id, capacity]) => ({ ...capacity, id }))
 	);
-
-	// Helper function to get capacity color based on name and unit
-	function getCapacityColor(capacity: any): string {
-		const colorString = capacity.unit ? `${capacity.name} ${capacity.unit}` : capacity.name;
-		return getColorForNameHash(colorString);
-	}
 
 	// Add a new capacity to the userCapacities store
 	function addCapacity(capacity: ProviderCapacity) {
@@ -849,10 +842,6 @@
 		<div
 			class="capacity-wrapper"
 			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}
-			style="--capacity-color: {getCapacityColor(entry)}; --capacity-color-light: {hexToRgba(
-				getCapacityColor(entry),
-				0.1
-			)}; --capacity-color-medium: {hexToRgba(getCapacityColor(entry), 0.3)};"
 		>
 			<Capacity
 				capacity={entry as ProviderCapacity}
@@ -988,29 +977,5 @@
 
 	.capacity-wrapper.newly-created-capacity {
 		display: block;
-	}
-
-	/* Capacity color styling */
-	.capacity-wrapper :global(.capacity-item) {
-		border-left: 4px solid var(--capacity-color) !important;
-		background: linear-gradient(
-			135deg,
-			var(--capacity-color-light),
-			rgba(255, 255, 255, 0.8)
-		) !important;
-	}
-
-	.capacity-wrapper :global(.capacity-header) {
-		background: var(--capacity-color-light) !important;
-		border-bottom: 1px solid var(--capacity-color-medium) !important;
-	}
-
-	.capacity-wrapper :global(.capacity-name) {
-		color: var(--capacity-color) !important;
-		font-weight: 600 !important;
-	}
-
-	.capacity-wrapper :global(.capacity-emoji) {
-		filter: drop-shadow(0 0 2px var(--capacity-color-medium));
 	}
 </style>

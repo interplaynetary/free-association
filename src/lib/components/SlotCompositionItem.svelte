@@ -14,6 +14,7 @@
 		networkCapacities,
 		userCapacities
 	} from '$lib/state/core.svelte';
+	import { userAliasesCache } from '$lib/state/users.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 
 	interface Props {
@@ -58,6 +59,20 @@
 		}
 	}
 
+	// Determine target type (capacity, pubkey, or collective)
+	let targetType = $derived(() => {
+		// Check if target is a pubkey (64 hex characters)
+		if (/^[0-9a-fA-F]{64}$/.test(targetCapacityId)) {
+			return 'pubkey';
+		}
+		// Check if target is a collective
+		if (targetCapacityId.startsWith('collective:')) {
+			return 'collective';
+		}
+		// Default to capacity
+		return 'capacity';
+	});
+
 	// Get source and target capacity/slot info
 	let sourceCapacity = $derived(() => {
 		return (
@@ -67,10 +82,14 @@
 	});
 
 	let targetCapacity = $derived(() => {
-		return (
-			$userCapacities?.[targetCapacityId] ||
-			$userNetworkCapacitiesWithSlotQuantities[targetCapacityId]
-		);
+		// Only lookup capacity if target is actually a capacity ID
+		if (targetType() === 'capacity') {
+			return (
+				$userCapacities?.[targetCapacityId] ||
+				$userNetworkCapacitiesWithSlotQuantities[targetCapacityId]
+			);
+		}
+		return null;
 	});
 
 	let sourceSlot = $derived(() => {
@@ -78,7 +97,11 @@
 	});
 
 	let targetSlot = $derived(() => {
-		return targetCapacity()?.availability_slots?.find((s: any) => s.id === targetSlotId);
+		// Only lookup slot if target is a capacity
+		if (targetType() === 'capacity' && targetCapacity()) {
+			return targetCapacity()?.availability_slots?.find((s: any) => s.id === targetSlotId);
+		}
+		return null;
 	});
 
 	// Format slot display info
@@ -137,6 +160,33 @@
 		return result || 'No time set';
 	}
 
+	// Format target display based on target type
+	function formatTargetDisplay(): string {
+		const type = targetType();
+
+		if (type === 'pubkey') {
+			// For pubkey targets, show user-friendly name
+			const userName =
+				$userAliasesCache[targetCapacityId] || `${targetCapacityId.substring(0, 8)}...`;
+			return `👤 ${userName}`;
+		} else if (type === 'collective') {
+			// For collective targets, show member count
+			const members = targetCapacityId.slice(11).split(','); // Remove "collective:" prefix
+			return `👥 Collective (${members.length} members)`;
+		} else {
+			// For capacity targets, show capacity name and slot info
+			const capacity = targetCapacity();
+			const slot = targetSlot();
+			if (capacity && slot) {
+				return `${capacity.emoji || '🎁'} ${capacity.name} (${formatSlotInfo(slot)})`;
+			} else if (capacity) {
+				return `${capacity.emoji || '🎁'} ${capacity.name}`;
+			} else {
+				return `🎁 ${targetCapacityId} (capacity not found)`;
+			}
+		}
+	}
+
 	// Determine provider ID
 	let providerId = $derived(() => {
 		if (direction === 'from') {
@@ -144,10 +194,22 @@
 			const sourceCap = $userNetworkCapacitiesWithSlotQuantities[sourceCapacityId];
 			return (sourceCap as any)?.provider_id;
 		} else {
-			// For INTO: the target is another provider, source is ours
-			return Object.keys($networkCapacities).find(
-				(id) => $networkCapacities[id] && $networkCapacities[id][targetCapacityId]
-			);
+			// For INTO: determine provider based on target type
+			const type = targetType();
+
+			if (type === 'pubkey') {
+				// For pubkey targets, the target IS the provider
+				return targetCapacityId;
+			} else if (type === 'collective') {
+				// For collective targets, we need to handle multiple recipients
+				// For now, return the collective identifier
+				return targetCapacityId;
+			} else {
+				// For capacity targets, find the provider who owns this capacity
+				return Object.keys($networkCapacities).find(
+					(id) => $networkCapacities[id] && $networkCapacities[id][targetCapacityId]
+				);
+			}
 		}
 	});
 
@@ -172,6 +234,7 @@
 	let theirDesireAmount = $derived(() => {
 		const actualProviderId = providerId();
 		if (!actualProviderId) return 0;
+		const type = targetType();
 
 		if (direction === 'from') {
 			// FROM: We want to compose FROM their sourceSlot INTO our targetSlot
@@ -183,15 +246,42 @@
 				]?.[targetSlotId] || 0
 			);
 		} else {
-			// INTO: We want to compose FROM our sourceSlot INTO their targetSlot
-			// Their perspective: They want to compose FROM our sourceSlot INTO their targetSlot
-			// So we look at their ComposeFrom desires (they want to compose FROM our slot)
-			return (
-				$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
-					targetCapacityId
-				]?.[targetSlotId] || 0
-			);
+			// INTO: We want to compose FROM our sourceSlot INTO their target
+			if (type === 'pubkey') {
+				// For pubkey targets, they express desire via Share.svelte (compose-from pattern)
+				// Look for their desire: FROM our slot TO themselves
+				// The targetSlotId for pubkey targets should be the same as sourceSlotId for self-consumption
+				return (
+					$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+						actualProviderId
+					]?.[sourceSlotId] || 0
+				);
+			} else {
+				// For capacity/collective targets, use the normal pattern
+				// Their perspective: They want to compose FROM our sourceSlot INTO their targetSlot
+				// So we look at their ComposeFrom desires (they want to compose FROM our slot)
+				return (
+					$networkDesiredSlotComposeFrom[actualProviderId]?.[sourceCapacityId]?.[sourceSlotId]?.[
+						targetCapacityId
+					]?.[targetSlotId] || 0
+				);
+			}
 		}
+	});
+
+	// Calculate mutual desire (minimum of both parties' desires)
+	let mutualDesireAmount = $derived(() => {
+		const ourDesire = desiredQuantityInput || 0;
+		const theirDesire = theirDesireAmount() || 0;
+		return Math.min(ourDesire, theirDesire);
+	});
+
+	// Calculate desire alignment (how well desires match)
+	let desireAlignment = $derived(() => {
+		const ourDesire = desiredQuantityInput || 0;
+		const theirDesire = theirDesireAmount() || 0;
+		if (ourDesire === 0 || theirDesire === 0) return 0;
+		return Math.min(ourDesire, theirDesire) / Math.max(ourDesire, theirDesire);
 	});
 
 	// Get unit for composition
@@ -201,6 +291,12 @@
 
 	// Handle quantity changes
 	function handleQuantityChange() {
+		console.log(`[COMPOSE] [UI] Handling quantity change for ${direction} composition...`);
+		console.log(
+			`[COMPOSE] [UI] Source: ${sourceCapacityId}:${sourceSlotId} -> Target: ${targetCapacityId}:${targetSlotId}`
+		);
+		console.log(`[COMPOSE] [UI] New desired quantity: ${desiredQuantityInput}`);
+
 		// Get the correct stores based on direction
 		const dataStore =
 			direction === 'from' ? userDesiredSlotComposeFrom : userDesiredSlotComposeInto;
@@ -209,6 +305,8 @@
 				? userDesiredSlotComposeFromTimestamp
 				: userDesiredSlotComposeIntoTimestamp;
 		const current = get(dataStore);
+
+		console.log(`[COMPOSE] [UI] Current ${direction} store data:`, current);
 
 		// Convert empty/null/undefined to 0
 		const desiredAmount =
@@ -227,8 +325,12 @@
 
 		updated[sourceCapacityId][sourceSlotId][targetCapacityId][targetSlotId] = desiredAmount;
 
+		console.log(`[COMPOSE] [UI] Updated ${direction} data:`, updated);
+
 		// Use atomic update to ensure timestamp consistency
 		updateStoreWithFreshTimestamp(dataStore, timestampStore, updated);
+
+		console.log(`[COMPOSE] [UI] ✅ Store updated for ${direction} composition`);
 	}
 
 	// Get color based on desire
@@ -251,19 +353,21 @@
 			}
 		}}
 	>
-		<!-- Line 1: Source and Target Slot Info -->
+		<!-- Line 1: Source and Target Info -->
 		<div class="header-line">
-			<span class="slot-name">
-				{sourceCapacity()?.emoji || '🎁'}
-				{sourceCapacity()?.name || 'Unknown'}
-				<span class="slot-info">({formatSlotInfo(sourceSlot())})</span>
-			</span>
-			<span class="direction-arrow">→</span>
-			<span class="slot-name">
-				{targetCapacity()?.emoji || '🎁'}
-				{targetCapacity()?.name || 'Unknown'}
-				<span class="slot-info">({formatSlotInfo(targetSlot())})</span>
-			</span>
+			{#if direction === 'from'}
+				<!-- FROM: Show what we're getting FROM -->
+				<span class="slot-name">
+					{sourceCapacity()?.emoji || '🎁'}
+					{sourceCapacity()?.name || 'Unknown'}
+					<span class="slot-info">({formatSlotInfo(sourceSlot())})</span>
+				</span>
+			{:else}
+				<!-- INTO: Show what we're giving INTO -->
+				<span class="slot-name">
+					{formatTargetDisplay()}
+				</span>
+			{/if}
 		</div>
 
 		<!-- Line 2: Our Desire and Their Desire -->
@@ -297,12 +401,35 @@
 			</div>
 		</div>
 
-		<!-- Line 3: Status -->
+		<!-- Line 3: Status with Mutual Desire -->
 		<div class="status-line">
-			{#if theirDesireAmount() > 0 && desiredQuantityInput > 0}
-				<span class="status-good">✅ Mutual interest</span>
+			{#if mutualDesireAmount() > 0}
+				<span class="status-good">
+					✅ Mutual desire: {mutualDesireAmount().toFixed(1)}
+					{compositionUnit()}
+					{#if desireAlignment() < 1}
+						<span
+							class="alignment-indicator"
+							title="Desire alignment: {(desireAlignment() * 100).toFixed(0)}%"
+						>
+							({(desireAlignment() * 100).toFixed(0)}% aligned)
+						</span>
+					{/if}
+				</span>
+			{:else if desiredQuantityInput > 0 && theirDesireAmount() > 0}
+				<span class="status-mismatch"
+					>⚠️ No mutual desire (our: {desiredQuantityInput}, their: {theirDesireAmount().toFixed(
+						1
+					)})</span
+				>
 			{:else if desiredQuantityInput > 0}
-				<span class="status-waiting">⏳ Waiting for their interest</span>
+				<span class="status-waiting"
+					>⏳ Waiting for their interest ({desiredQuantityInput} {compositionUnit()} desired)</span
+				>
+			{:else if theirDesireAmount() > 0}
+				<span class="status-available"
+					>💡 They want {theirDesireAmount().toFixed(1)} {compositionUnit()}</span
+				>
 			{:else}
 				<span class="status-none">💭 Express desire to activate</span>
 			{/if}
@@ -325,7 +452,11 @@
 				</div>
 				<div>
 					<strong>Target:</strong>
-					{targetCapacity()?.name} - {formatSlotInfo(targetSlot())}
+					{formatTargetDisplay()}
+				</div>
+				<div>
+					<strong>Target Type:</strong>
+					{targetType()}
 				</div>
 				<div><strong>Our desire:</strong> {desiredQuantityInput} {compositionUnit()}</div>
 				<div>
@@ -334,8 +465,18 @@
 					{compositionUnit()}
 				</div>
 				<div>
+					<strong>Mutual desire:</strong>
+					{mutualDesireAmount().toFixed(1)}
+					{compositionUnit()}
+					{#if mutualDesireAmount() > 0}
+						<span class="mutual-info">
+							({(desireAlignment() * 100).toFixed(0)}% aligned)
+						</span>
+					{/if}
+				</div>
+				<div>
 					<strong>Direction:</strong>
-					{direction === 'from' ? 'FROM other slot' : 'INTO other slot'}
+					{direction === 'from' ? 'FROM other slot/target' : 'INTO other slot/target'}
 				</div>
 				{#if !providerId()}
 					<div class="warning">⚠️ Provider not found - slot composition may not work</div>
@@ -393,13 +534,6 @@
 		font-size: 12px;
 		font-weight: 400;
 		color: #6b7280;
-	}
-
-	.direction-arrow {
-		font-size: 16px;
-		color: #7c3aed;
-		font-weight: 700;
-		flex-shrink: 0;
 	}
 
 	.desire-line {
@@ -475,10 +609,29 @@
 		font-weight: 500;
 	}
 
+	.status-available {
+		font-size: 11px;
+		color: #3b82f6;
+		font-weight: 500;
+	}
+
+	.status-mismatch {
+		font-size: 11px;
+		color: #ef4444;
+		font-weight: 500;
+	}
+
 	.status-none {
 		font-size: 11px;
 		color: #6b7280;
 		font-weight: 500;
+	}
+
+	.alignment-indicator {
+		font-size: 10px;
+		color: #6b7280;
+		font-weight: 400;
+		margin-left: 4px;
 	}
 
 	.warning-line {
@@ -510,5 +663,12 @@
 
 	.analysis > div {
 		margin-bottom: 2px;
+	}
+
+	.mutual-info {
+		font-size: 10px;
+		color: #6b7280;
+		font-weight: 400;
+		margin-left: 4px;
 	}
 </style>

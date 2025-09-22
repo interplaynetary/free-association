@@ -650,8 +650,28 @@ export const computedProviderAllocations = derived(
 						redistribution_amounts: {},
 						final_allocations: {},
 						unused_capacity: slot.quantity,
+
+						// MR-BASED ALLOCATION RESULTS (empty when no mutual desires)
+						mr_based_final_allocations: {},
+						mr_based_unused_capacity: slot.quantity,
+
+						// DESIRE-SCALED ALLOCATION (empty when no mutual desires)
+						desire_scaled_provider_desires: {},
+						desire_scaled_provider_sum: 0,
+						desire_scaled_normalized_shares: {},
+						desire_scaled_raw_allocations: {},
+						desire_scaled_constrained_allocations: {},
+						desire_scaled_final_allocations: {},
+						desire_scaled_unused_capacity: slot.quantity,
+
+						// ALLOCATION DEVIATION ANALYSIS (no deviations when no allocations)
+						mr_vs_desire_deviation: {},
+						total_absolute_deviation: 0,
+						max_recipient_deviation: 0,
+						deviation_recipients: [],
+
 						computation_timestamp: new Date().toISOString(),
-						algorithm_version: 'mutual_desire_v1'
+						algorithm_version: 'dual_allocation_v1'
 					};
 					return;
 				}
@@ -731,7 +751,111 @@ export const computedProviderAllocations = derived(
 					}
 				}
 
-				// Store the allocation result for this slot with FULL TRANSPARENCY
+				// DESIRE-SCALED ALLOCATION COMPUTATION (Sense-Drive approach - Desire Sovereignty)
+				const desireScaledProviderDesires: Record<string, number> = {};
+				let desireScaledProviderSum = 0;
+
+				// Extract provider desires for mutually desiring recipients
+				mutuallyDesiringRecipients.forEach((recipientId) => {
+					const providerDesire = providerComposeIntoDesires[recipientId] || 0;
+					desireScaledProviderDesires[recipientId] = providerDesire;
+					desireScaledProviderSum += providerDesire;
+				});
+
+				// Normalize provider desires among mutually desiring recipients
+				const desireScaledNormalizedShares: Record<string, number> = {};
+				if (desireScaledProviderSum > 0) {
+					mutuallyDesiringRecipients.forEach((recipientId) => {
+						desireScaledNormalizedShares[recipientId] =
+							desireScaledProviderDesires[recipientId] / desireScaledProviderSum;
+					});
+				}
+
+				// Calculate raw desire-scaled allocations
+				const desireScaledRawAllocations: Record<string, number> = {};
+				const desireScaledConstrainedAllocations: Record<string, number> = {};
+				let desireScaledUsedCapacity = 0;
+
+				mutuallyDesiringRecipients.forEach((recipientId) => {
+					const normalizedShare = desireScaledNormalizedShares[recipientId] || 0;
+					const rawDesireAllocation = slot.quantity * normalizedShare;
+					const mutualDesiredAmount = mutualDesires[recipientId];
+					const constrainedAllocation = Math.min(rawDesireAllocation, mutualDesiredAmount);
+
+					desireScaledRawAllocations[recipientId] = rawDesireAllocation;
+					if (constrainedAllocation > 0) {
+						desireScaledConstrainedAllocations[recipientId] = constrainedAllocation;
+						desireScaledUsedCapacity += constrainedAllocation;
+					}
+				});
+
+				// Redistribute unused capacity in desire-scaled approach
+				const desireScaledUnusedCapacity = slot.quantity - desireScaledUsedCapacity;
+				const desireScaledFinalAllocations: Record<string, number> = {
+					...desireScaledConstrainedAllocations
+				};
+
+				// Find unsatisfied recipients in desire-scaled approach
+				const desireScaledUnsatisfiedRecipients = mutuallyDesiringRecipients.filter(
+					(recipientId) => {
+						const allocated = desireScaledConstrainedAllocations[recipientId] || 0;
+						const mutuallyDesired = mutualDesires[recipientId];
+						return allocated < mutuallyDesired;
+					}
+				);
+
+				if (desireScaledUnusedCapacity > 0 && desireScaledUnsatisfiedRecipients.length > 0) {
+					// Redistribute by desire preference proportions among unsatisfied
+					let unsatisfiedDesireSum = 0;
+					desireScaledUnsatisfiedRecipients.forEach((recipientId) => {
+						unsatisfiedDesireSum += desireScaledNormalizedShares[recipientId] || 0;
+					});
+
+					if (unsatisfiedDesireSum > 0) {
+						desireScaledUnsatisfiedRecipients.forEach((recipientId) => {
+							const redistributionShare =
+								(desireScaledNormalizedShares[recipientId] || 0) / unsatisfiedDesireSum;
+							const redistributionAmount = desireScaledUnusedCapacity * redistributionShare;
+							const currentAllocation = desireScaledConstrainedAllocations[recipientId] || 0;
+							const mutuallyDesiredAmount = mutualDesires[recipientId];
+							const maxAdditional = mutuallyDesiredAmount - currentAllocation;
+							const actualRedistribution = Math.min(redistributionAmount, maxAdditional);
+
+							if (actualRedistribution > 0) {
+								desireScaledFinalAllocations[recipientId] =
+									currentAllocation + actualRedistribution;
+								desireScaledUsedCapacity += actualRedistribution;
+							}
+						});
+					}
+				}
+
+				// Calculate allocation deviations (MR-Based vs Desire-Scaled approaches)
+				const mrVsDesireDeviation: Record<string, number> = {};
+				let totalAbsoluteDeviation = 0;
+				let maxRecipientDeviation = 0;
+				const deviationRecipients: string[] = [];
+
+				mutuallyDesiringRecipients.forEach((recipientId) => {
+					const mrBasedAllocation = finalAllocations[recipientId] || 0;
+					const desireScaledAllocation = desireScaledFinalAllocations[recipientId] || 0;
+					const deviation = mrBasedAllocation - desireScaledAllocation;
+					const absDeviation = Math.abs(deviation);
+
+					mrVsDesireDeviation[recipientId] = deviation;
+					totalAbsoluteDeviation += absDeviation;
+
+					if (absDeviation > maxRecipientDeviation) {
+						maxRecipientDeviation = absDeviation;
+					}
+
+					// Flag recipients with significant deviation (>0.1 units)
+					if (absDeviation > 0.1) {
+						deviationRecipients.push(recipientId);
+					}
+				});
+
+				// Store the allocation result for this slot with DUAL ALLOCATION TRANSPARENCY
 				capacityAllocations[slot.id] = {
 					slot_id: slot.id,
 					total_quantity: slot.quantity,
@@ -755,13 +879,30 @@ export const computedProviderAllocations = derived(
 					unsatisfied_recipients: unsatisfiedRecipients,
 					redistribution_amounts: redistributionAmounts,
 
-					// Final results
-					final_allocations: finalAllocations,
-					unused_capacity: slot.quantity - usedCapacity,
+					// MR-BASED ALLOCATION RESULTS (Form-Drive approach - Priority Sovereignty)
+					final_allocations: finalAllocations, // LEGACY: backward compatibility
+					unused_capacity: slot.quantity - usedCapacity, // LEGACY: backward compatibility
+					mr_based_final_allocations: finalAllocations,
+					mr_based_unused_capacity: slot.quantity - usedCapacity,
+
+					// DESIRE-SCALED ALLOCATION (Sense-Drive approach - Desire Sovereignty)
+					desire_scaled_provider_desires: desireScaledProviderDesires,
+					desire_scaled_provider_sum: desireScaledProviderSum,
+					desire_scaled_normalized_shares: desireScaledNormalizedShares,
+					desire_scaled_raw_allocations: desireScaledRawAllocations,
+					desire_scaled_constrained_allocations: desireScaledConstrainedAllocations,
+					desire_scaled_final_allocations: desireScaledFinalAllocations,
+					desire_scaled_unused_capacity: slot.quantity - desireScaledUsedCapacity,
+
+					// ALLOCATION DEVIATION ANALYSIS (Play-Drive insights)
+					mr_vs_desire_deviation: mrVsDesireDeviation,
+					total_absolute_deviation: totalAbsoluteDeviation,
+					max_recipient_deviation: maxRecipientDeviation,
+					deviation_recipients: deviationRecipients,
 
 					// Metadata
 					computation_timestamp: new Date().toISOString(),
-					algorithm_version: 'mutual_desire_v1_with_filters'
+					algorithm_version: 'dual_allocation_v1'
 				};
 
 				console.log(
@@ -776,6 +917,117 @@ export const computedProviderAllocations = derived(
 			`[EFFICIENT-ALGORITHM] Computed allocations for ${Object.keys(allocations).length} capacities using specific shares`
 		);
 		return allocations;
+	}
+);
+
+// ALLOCATION DEVIATION ANALYSIS: Compare MR-based vs Desire-scaled allocations (Play-Drive insights)
+export const allocationDeviationAnalysis = derived(
+	[computedProviderAllocations],
+	([$computedProviderAllocations]) => {
+		console.log('[DEVIATION-ANALYSIS] Analyzing MR vs Provider allocation deviations...');
+
+		const analysis: Record<
+			string, // capacityId
+			{
+				capacity_total_deviation: number;
+				capacity_max_deviation: number;
+				capacity_deviation_count: number;
+				slots: Record<
+					string, // slotId
+					{
+						total_absolute_deviation: number;
+						max_recipient_deviation: number;
+						deviation_recipients: string[];
+						significant_deviations: Array<{
+							recipient_id: string;
+							mr_allocation: number;
+							provider_allocation: number;
+							deviation: number;
+							deviation_percentage: number;
+						}>;
+						approach_preference: 'mr_based_favored' | 'desire_scaled_favored' | 'balanced';
+					}
+				>;
+			}
+		> = {};
+
+		Object.entries($computedProviderAllocations).forEach(([capacityId, slotAllocations]) => {
+			let capacityTotalDeviation = 0;
+			let capacityMaxDeviation = 0;
+			let capacityDeviationCount = 0;
+			const slotAnalysis: Record<string, any> = {};
+
+			Object.entries(slotAllocations).forEach(([slotId, allocation]) => {
+				const slotDeviation = allocation.total_absolute_deviation;
+				const slotMaxDeviation = allocation.max_recipient_deviation;
+
+				capacityTotalDeviation += slotDeviation;
+				if (slotMaxDeviation > capacityMaxDeviation) {
+					capacityMaxDeviation = slotMaxDeviation;
+				}
+				if (allocation.deviation_recipients.length > 0) {
+					capacityDeviationCount++;
+				}
+
+				// Analyze significant deviations
+				const significantDeviations: Array<{
+					recipient_id: string;
+					mr_allocation: number;
+					provider_allocation: number;
+					deviation: number;
+					deviation_percentage: number;
+				}> = [];
+
+				allocation.deviation_recipients.forEach((recipientId) => {
+					const mrBasedAllocation = allocation.mr_based_final_allocations[recipientId] || 0;
+					const desireScaledAllocation =
+						allocation.desire_scaled_final_allocations[recipientId] || 0;
+					const deviation = allocation.mr_vs_desire_deviation[recipientId] || 0;
+					const totalAllocation = Math.max(mrBasedAllocation, desireScaledAllocation);
+					const deviationPercentage =
+						totalAllocation > 0 ? (Math.abs(deviation) / totalAllocation) * 100 : 0;
+
+					significantDeviations.push({
+						recipient_id: recipientId,
+						mr_allocation: mrBasedAllocation,
+						provider_allocation: desireScaledAllocation,
+						deviation: deviation,
+						deviation_percentage: deviationPercentage
+					});
+				});
+
+				// Determine which approach is favored for this slot
+				let approachPreference: 'mr_based_favored' | 'desire_scaled_favored' | 'balanced' =
+					'balanced';
+				if (significantDeviations.length > 0) {
+					const avgDeviation =
+						significantDeviations.reduce((sum, dev) => sum + dev.deviation, 0) /
+						significantDeviations.length;
+					if (avgDeviation > 0.5) {
+						approachPreference = 'mr_based_favored'; // MR-based gives more on average
+					} else if (avgDeviation < -0.5) {
+						approachPreference = 'desire_scaled_favored'; // Desire-scaled gives more on average
+					}
+				}
+
+				slotAnalysis[slotId] = {
+					total_absolute_deviation: slotDeviation,
+					max_recipient_deviation: slotMaxDeviation,
+					deviation_recipients: allocation.deviation_recipients,
+					significant_deviations: significantDeviations,
+					approach_preference: approachPreference
+				};
+			});
+
+			analysis[capacityId] = {
+				capacity_total_deviation: capacityTotalDeviation,
+				capacity_max_deviation: capacityMaxDeviation,
+				capacity_deviation_count: capacityDeviationCount,
+				slots: slotAnalysis
+			};
+		});
+
+		return analysis;
 	}
 );
 

@@ -471,13 +471,50 @@ export async function formatCompositionTargetDisplay(targetId: string): Promise<
 // ================================
 
 /**
+ * Local implementation of parseCompositionTarget to avoid circular dependencies
+ * This duplicates the logic from validation.ts but avoids require() issues
+ */
+function parseCompositionTargetLocal(targetId: string): {
+	type: 'capacity' | 'individual' | 'collective';
+	recipients: string[];
+	originalId: string;
+} {
+	// Check for collective format first
+	if (targetId.startsWith('collective:')) {
+		const pubkeysStr = targetId.slice(11); // Remove "collective:" prefix
+		const pubkeys = pubkeysStr.split(',').filter((pk) => /^[0-9a-fA-F]{64}$/.test(pk));
+		return {
+			type: 'collective',
+			recipients: pubkeys,
+			originalId: targetId
+		};
+	}
+
+	// Check for individual pubkey (64 hex characters)
+	if (/^[0-9a-fA-F]{64}$/.test(targetId)) {
+		return {
+			type: 'individual',
+			recipients: [targetId],
+			originalId: targetId
+		};
+	}
+
+	// Default to capacity ID
+	return {
+		type: 'capacity',
+		recipients: [],
+		originalId: targetId
+	};
+}
+
+/**
  * Resolve contact IDs to public keys in composition targets
  * This ensures composition data is persisted with pubkeys that other users can understand
  */
 export function resolveCompositionTarget(targetId: string): string {
-	// Import parseCompositionTarget dynamically to avoid circular dependencies
-	const { parseCompositionTarget } = require('$lib/validation');
-	const parsed = parseCompositionTarget(targetId);
+	// Import parseCompositionTarget from validation module
+	// Note: We import this at the top level to avoid require() issues
+	const parsed = parseCompositionTargetLocal(targetId);
 
 	switch (parsed.type) {
 		case 'individual':

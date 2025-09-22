@@ -174,11 +174,11 @@
 	// Simple element sizing based on node scale
 	const elementScale = $derived(Math.min(nodeWidth, nodeHeight));
 	const sliderHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
-	const buttonHeight = $derived(Math.max(0.05, Math.min(0.15, elementScale * 0.12))); // 12% of node scale
+	const buttonHeight = $derived(Math.max(0.08, Math.min(0.22, elementScale * 0.18))); // 18% of node scale
 
 	// Use fixed proportional widths instead of text-based calculations
 	const sliderWidth = $derived(Math.max(0.4, Math.min(0.8, elementScale * 0.7))); // 70% of container scale
-	const buttonContainerWidth = $derived(Math.max(0.3, Math.min(0.7, elementScale * 0.6))); // 60% of container scale
+	const buttonContainerWidth = $derived(Math.max(0.85, Math.min(0.95, nodeWidth * 0.9))); // 90% of node width, capped at 95%
 
 	// CSS-style positioning: Give title more breathing room
 	// Title is at 50%, so position elements further away for better spacing
@@ -860,7 +860,7 @@
 					flex-direction: row;
 					justify-content: center;
 					align-items: center;
-					gap: {Math.max(4, buttonHeight * 100 * 0.2)}px;
+					gap: {Math.max(2, buttonHeight * 100 * 0.1)}px;
 					pointer-events: none;
 				"
 			>
@@ -870,7 +870,7 @@
 					<svg
 						class="add-anti-contributor-button pie-chart"
 						style="
-							width: 45%;
+							width: 47.5%;
 							height: 100%;
 							cursor: pointer;
 							flex-shrink: 0;
@@ -941,7 +941,7 @@
 					<button
 						class="add-anti-contributor-button"
 						style="
-							width: 45%;
+							width: 47.5%;
 							height: 100%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
@@ -971,7 +971,7 @@
 					<svg
 						class="add-contributor-button pie-chart"
 						style="
-							width: 45%;
+							width: 47.5%;
 							height: 100%;
 							cursor: pointer;
 							flex-shrink: 0;
@@ -1042,7 +1042,7 @@
 					<button
 						class="add-contributor-button"
 						style="
-							width: 45%;
+							width: 47.5%;
 							height: 100%;
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;

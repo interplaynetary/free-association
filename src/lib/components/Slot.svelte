@@ -6,6 +6,7 @@
 	import DropDown from '$lib/components/DropDown.svelte';
 	import CountrySelector from '$lib/components/CountrySelector.svelte';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
+	import { createCompositionTargetsDataProvider } from '$lib/utils/ui-providers.svelte';
 
 	import {
 		userDesiredSlotComposeFrom,
@@ -48,9 +49,12 @@
 	let showAddComposeFrom = $state(false);
 	let showAddComposeInto = $state(false);
 
-	// Data providers for slot selection
-	// FROM: Show slots from ALL capacities EXCEPT the current capacity
-	let composeFromDataProvider = derived(
+	// Data providers for slot selection - now includes pubkey targets
+	// FROM: Show targets from ALL sources EXCEPT the current slot
+	let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+
+	// Legacy derived provider for backward compatibility during transition
+	let legacyComposeFromDataProvider = derived(
 		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
 		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
 			const items: Array<{
@@ -227,8 +231,11 @@
 		}
 	);
 
-	// INTO: Show allocated slots from ALL capacities except current slot
-	let composeIntoDataProvider = derived(
+	// INTO: Show targets from ALL sources EXCEPT the current slot
+	let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+
+	// Legacy INTO: Show allocated slots from ALL capacities except current slot
+	let legacyComposeIntoDataProvider = derived(
 		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
 		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
 			const items: Array<{
@@ -989,8 +996,14 @@
 		const availableSlots = $composeIntoDataProvider;
 
 		availableSlots.forEach((slotItem) => {
+			// Only process slot-type targets for FROM compositions
+			if (slotItem.metadata.type !== 'slot') return;
+
 			const sourceCapacityId = slotItem.metadata.capacityId;
 			const sourceSlotId = slotItem.metadata.slotId;
+
+			// Skip if we don't have valid slot metadata
+			if (!sourceCapacityId || !sourceSlotId) return;
 
 			// Check if we have a user desire for this composition (we want FROM their slot INTO our slot)
 			const userDesire =
@@ -1001,7 +1014,7 @@
 			let networkDesire = 0;
 			Object.values($networkDesiredSlotComposeInto).forEach((userCompositions) => {
 				const desire = userCompositions[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id];
-				if (desire > networkDesire) networkDesire = desire;
+				if (desire && desire > networkDesire) networkDesire = desire;
 			});
 
 			// Include slots where EITHER party has expressed desire (user OR network)
@@ -1020,7 +1033,7 @@
 		return result;
 	});
 
-	// INTO other slots = compositions going FROM this slot
+	// INTO other targets = compositions going FROM this slot (slots + pubkeys)
 	let intoOtherSlots = $derived(() => {
 		const result: Array<{
 			sourceCapacityId: string;
@@ -1031,27 +1044,53 @@
 			direction: 'into';
 		}> = [];
 
-		// Get all available slots that this slot could compose INTO
-		const availableSlots = $composeFromDataProvider;
+		// Get all available targets that this slot could compose INTO
+		const availableTargets = $composeFromDataProvider;
 
-		availableSlots.forEach((slotItem) => {
-			const targetCapacityId = slotItem.metadata.capacityId;
-			const targetSlotId = slotItem.metadata.slotId;
-
-			// Check if we have a user desire for this composition (we want FROM our slot INTO their slot)
-			const userDesire =
-				$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] || 0;
-
-			// Check if there's a network desire for this composition (they want FROM our slot INTO their slot)
-			// From their perspective, this is a ComposeFrom desire (FROM our slot)
+		availableTargets.forEach((targetItem) => {
+			let targetCapacityId: string | undefined;
+			let targetSlotId: string | undefined;
+			let userDesire = 0;
 			let networkDesire = 0;
-			Object.values($networkDesiredSlotComposeFrom).forEach((userCompositions) => {
-				const desire = userCompositions[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId];
-				if (desire > networkDesire) networkDesire = desire;
-			});
 
-			// Include slots where EITHER party has expressed desire (user OR network)
-			if (userDesire > 0 || networkDesire > 0) {
+			if (targetItem.metadata.type === 'slot') {
+				// Handle slot targets (traditional slot-to-slot composition)
+				targetCapacityId = targetItem.metadata.capacityId;
+				targetSlotId = targetItem.metadata.slotId;
+
+				if (!targetCapacityId || !targetSlotId) return; // Skip invalid slot targets
+
+				// Check if we have a user desire for this composition
+				userDesire =
+					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
+					0;
+
+				// Check if there's a network desire for this composition
+				Object.values($networkDesiredSlotComposeFrom).forEach((userCompositions) => {
+					const desire =
+						userCompositions[capacityId]?.[slot.id]?.[targetCapacityId!]?.[targetSlotId!];
+					if (desire && desire > networkDesire) networkDesire = desire;
+				});
+			} else if (targetItem.metadata.type === 'pubkey') {
+				// Handle pubkey targets (slot-to-person composition)
+				targetCapacityId = targetItem.id; // pubkey becomes the target "capacity"
+				targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
+
+				// Check if we have a user desire for this pubkey composition
+				userDesire =
+					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
+					0;
+
+				// Check if the pubkey user wants our slot (they express this via Share.svelte -> compose-from pattern)
+				const pubkeyUserId = targetItem.id;
+				networkDesire =
+					$networkDesiredSlotComposeFrom[pubkeyUserId]?.[capacityId]?.[slot.id]?.[pubkeyUserId]?.[
+						slot.id
+					] || 0;
+			}
+
+			// Include targets where EITHER party has expressed desire (user OR network) and we have valid target IDs
+			if ((userDesire > 0 || networkDesire > 0) && targetCapacityId && targetSlotId) {
 				result.push({
 					sourceCapacityId: capacityId,
 					sourceSlotId: slot.id,
@@ -1097,11 +1136,26 @@
 
 	// Handle selecting a target slot for FROM composition (our slot → target slot)
 	function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
-		const targetCapacityId = data.metadata?.capacityId;
-		const targetSlotId = data.metadata?.slotId;
+		console.log('[SLOT-COMPOSITION] Adding INTO composition:', data);
 
-		if (!targetCapacityId || !targetSlotId) {
-			console.error('Invalid slot data for FROM composition:', data);
+		let targetCapacityId: string;
+		let targetSlotId: string;
+
+		if (data.metadata?.type === 'slot') {
+			// Handle slot targets (traditional slot-to-slot)
+			targetCapacityId = data.metadata.capacityId;
+			targetSlotId = data.metadata.slotId;
+
+			if (!targetCapacityId || !targetSlotId) {
+				console.error('Invalid slot data for INTO composition:', data);
+				return;
+			}
+		} else if (data.metadata?.type === 'pubkey') {
+			// Handle pubkey targets (slot-to-person composition)
+			targetCapacityId = data.id; // pubkey becomes the target "capacity"
+			targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
+		} else {
+			console.error('Unknown target type for INTO composition:', data);
 			return;
 		}
 
@@ -1128,7 +1182,8 @@
 			sourceCapacity: capacityId,
 			sourceSlot: slot.id,
 			targetCapacity: targetCapacityId,
-			targetSlot: targetSlotId
+			targetSlot: targetSlotId,
+			targetType: data.metadata?.type || 'unknown'
 		});
 
 		showAddComposeFrom = false;
@@ -1745,7 +1800,7 @@
 						<!-- Add slot button -->
 						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeInto}>
 							<span class="add-icon">+</span>
-							<span class="add-text">Add source slot</span>
+							<span class="add-text">Add source</span>
 						</button>
 
 						<!-- Add slot dropdown -->
@@ -1802,7 +1857,7 @@
 						<!-- Add slot button -->
 						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeFrom}>
 							<span class="add-icon">+</span>
-							<span class="add-text">Add target slot</span>
+							<span class="add-text">Add target</span>
 						</button>
 
 						<!-- Add slot dropdown -->
