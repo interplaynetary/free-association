@@ -31,6 +31,7 @@
 		createCollective = (detail: { name: string; memberIds: string[] }) => {},
 		updateContact = (detail: { contactId: string; name: string }) => {},
 		deleteContact = (detail: { contactId: string; name: string; publicKey?: string }) => {},
+		updatePosition = (newPosition: { x: number; y: number }) => {},
 		close = () => {}
 	} = $props<{
 		title?: string;
@@ -51,6 +52,7 @@
 		createCollective?: (detail: { name: string; memberIds: string[] }) => void;
 		updateContact?: (detail: { contactId: string; name: string }) => void;
 		deleteContact?: (detail: { contactId: string; name: string; publicKey?: string }) => void;
+		updatePosition?: (newPosition: { x: number; y: number }) => void;
 		close?: () => void;
 	}>();
 
@@ -111,6 +113,15 @@
 	// Get filtered items based on search
 	let filteredItems = $derived(() => {
 		const items = $dataProvider || [];
+		console.log('[DROPDOWN-DEBUG] filteredItems derived called:', {
+			itemsCount: items.length,
+			items: items.map((item: { id: string; name: string; metadata?: any }) => ({
+				id: item.id.slice(0, 20) + '...',
+				name: item.name,
+				isContact: item.metadata?.isContact
+			})),
+			searchFilter
+		});
 		let filtered = items;
 
 		// Apply search filter if there's a search query
@@ -656,41 +667,46 @@
 		const padding = 10; // Padding from container edges
 		const originalX = position.x;
 		const originalY = position.y;
+		let newX = position.x;
+		let newY = position.y;
 
 		// Check right edge - keep within app content
-		if (position.x + rect.width > contentRect.right - padding) {
-			position.x = Math.max(contentRect.left + padding, contentRect.right - rect.width - padding);
+		if (newX + rect.width > contentRect.right - padding) {
+			newX = Math.max(contentRect.left + padding, contentRect.right - rect.width - padding);
 		}
 
 		// Check left edge - keep within app content
-		if (position.x < contentRect.left + padding) {
-			position.x = contentRect.left + padding;
+		if (newX < contentRect.left + padding) {
+			newX = contentRect.left + padding;
 		}
 
 		// Check bottom edge - keep within app content
-		if (position.y + rect.height > contentRect.bottom - padding) {
+		if (newY + rect.height > contentRect.bottom - padding) {
 			// If dropdown would go above the app content top, position it at the top with padding
-			if (position.y - rect.height < contentRect.top + padding) {
-				position.y = contentRect.top + padding;
+			if (newY - rect.height < contentRect.top + padding) {
+				newY = contentRect.top + padding;
 			} else {
 				// Otherwise, position above the click
-				position.y = position.y - rect.height - 10;
+				newY = newY - rect.height - 10;
 			}
 		}
 
 		// Check top edge - ensure it's not above app content
-		if (position.y < contentRect.top + padding) {
-			position.y = contentRect.top + padding;
+		if (newY < contentRect.top + padding) {
+			newY = contentRect.top + padding;
 		}
 
-		// Debug logging for position adjustments
-		if (originalX !== position.x || originalY !== position.y) {
+		// Update position if it changed
+		if (originalX !== newX || originalY !== newY) {
 			console.log('[DROPDOWN] Position adjusted:', {
 				original: { x: originalX, y: originalY },
-				adjusted: { x: position.x, y: position.y },
+				adjusted: { x: newX, y: newY },
 				contentBounds: contentRect,
 				dropdownSize: { width: rect.width, height: rect.height }
 			});
+			
+			// Use callback to update position in parent
+			updatePosition({ x: newX, y: newY });
 		}
 	}
 

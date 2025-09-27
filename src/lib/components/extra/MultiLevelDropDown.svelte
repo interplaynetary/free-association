@@ -15,6 +15,7 @@
 		filterText = '',
 		show = false,
 		select = (detail: { id: string; name: string; metadata?: any }) => {},
+		updatePosition = (newPosition: { x: number; y: number }) => {},
 		close = () => {}
 	} = $props<{
 		title?: string;
@@ -26,6 +27,7 @@
 		filterText?: string;
 		show?: boolean;
 		select?: (detail: { id: string; name: string; metadata?: any }) => void;
+		updatePosition?: (newPosition: { x: number; y: number }) => void;
 		close?: () => void;
 	}>();
 
@@ -84,25 +86,35 @@
 		const viewportWidth = browser ? window.innerWidth : 1024;
 		const viewportHeight = browser ? window.innerHeight : 768;
 
+		const originalX = position.x;
+		const originalY = position.y;
+		let newX = position.x;
+		let newY = position.y;
+
 		// Check right edge
-		if (position.x + rect.width > viewportWidth - 10) {
-			position.x = Math.max(10, viewportWidth - rect.width - 10);
+		if (newX + rect.width > viewportWidth - 10) {
+			newX = Math.max(10, viewportWidth - rect.width - 10);
 		}
 
 		// Check left edge
-		if (position.x < 10) {
-			position.x = 10;
+		if (newX < 10) {
+			newX = 10;
 		}
 
 		// Check bottom edge
-		if (position.y + rect.height > viewportHeight - 10) {
+		if (newY + rect.height > viewportHeight - 10) {
 			// If dropdown would go above the top, position it at the top with padding
-			if (position.y - rect.height < 10) {
-				position.y = 10;
+			if (newY - rect.height < 10) {
+				newY = 10;
 			} else {
 				// Otherwise, position above the click
-				position.y = position.y - rect.height - 10;
+				newY = newY - rect.height - 10;
 			}
+		}
+
+		// Update position if it changed
+		if (originalX !== newX || originalY !== newY) {
+			updatePosition({ x: newX, y: newY });
 		}
 	}
 

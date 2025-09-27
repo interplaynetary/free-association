@@ -991,6 +991,7 @@
 		searchPlaceholder="Search subtrees..."
 		dataProvider={subtreesDataProvider}
 		select={handleSubtreeSelect}
+		updatePosition={(newPosition) => (dropdownPosition = newPosition)}
 		close={handleDropdownClose}
 	/>
 {/if}

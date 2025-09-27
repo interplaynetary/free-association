@@ -1211,13 +1211,17 @@ let usersListSubscriptionActive = false;
 
 // Centralized reactive subscription to usersList
 export function setupUsersListSubscription() {
-	if (typeof window === 'undefined') return; // Only run in browser
+	if (typeof window === 'undefined') {
+		console.log('[USERS-DEBUG] Skipping usersList subscription - not in browser');
+		return; // Only run in browser
+	}
 	if (usersListSubscriptionActive) {
 		console.log('[USERS] usersList subscription already active, skipping setup');
 		return;
 	}
 
 	console.log('[USERS] Setting up centralized usersList subscription');
+	console.log('[USERS-DEBUG] usersList reference:', usersList);
 	usersListSubscriptionActive = true;
 
 	// Track current users to detect additions/removals
@@ -1226,24 +1230,50 @@ export function setupUsersListSubscription() {
 	// Helper function to update userPubKeys store whenever currentUsers changes
 	function updateUserPubKeysStore() {
 		const allUserIds = Array.from(currentUsers.keys());
-		// console.log(`[USERS] Updating userIds store with ${allUserIds.length} users`);
+		console.log(`[USERS-DEBUG] Updating userPubKeys store with ${allUserIds.length} users:`, 
+			allUserIds.map(id => id.slice(0, 20) + '...'));
 		userPubKeys.set(allUserIds);
 	}
 
 	// Subscribe to all changes in the usersList
-	usersList.map().on((userData: any, pubKey: string) => {
-		console.log(`[USERS] User update received: ${pubKey}`, userData);
+	console.log('[USERS-DEBUG] Setting up usersList.map().on subscription');
+	
+	// Debug: Try to read current usersList data
+	setTimeout(() => {
+		console.log('[USERS-DEBUG] Attempting to read current usersList data...');
+		usersList.map().once((userData: any, pubKey: string) => {
+			if (pubKey && pubKey !== '_' && userData) {
+				console.log('[USERS-DEBUG] Found existing user in usersList:', {
+					pubKey: pubKey.slice(0, 20) + '...',
+					userData
+				});
+			}
+		});
+	}, 2000);
 
-		if (!pubKey || pubKey === '_') return; // Skip invalid keys
+	usersList.map().on((userData: any, pubKey: string) => {
+		console.log(`[USERS-DEBUG] Raw usersList update:`, {
+			pubKey: pubKey?.slice(0, 20) + '...',
+			userData,
+			isNull: userData === null,
+			isUndefined: userData === undefined,
+			currentUsersSize: currentUsers.size
+		});
+
+		if (!pubKey || pubKey === '_') {
+			console.log(`[USERS-DEBUG] Skipping invalid pubKey: ${pubKey}`);
+			return; // Skip invalid keys
+		}
 
 		let collectionChanged = false;
 
 		if (userData === null || userData === undefined) {
 			// User was removed from usersList (they went offline or left the shared space)
-			//console.log(`[USERS] User removed from usersList: ${userId}`);
+			console.log(`[USERS-DEBUG] User removed from usersList: ${pubKey?.slice(0, 20) + '...'}`);
 			if (currentUsers.has(pubKey)) {
 				currentUsers.delete(pubKey);
 				collectionChanged = true;
+				console.log(`[USERS-DEBUG] Removed user from currentUsers map. New size: ${currentUsers.size}`);
 			}
 
 			// Note: We intentionally don't remove from userNamesCache here
@@ -1252,36 +1282,37 @@ export function setupUsersListSubscription() {
 		} else {
 			// User was added or updated
 			const wasNew = !currentUsers.has(pubKey);
-			console.log(`[USERS] User ${wasNew ? 'added' : 'updated'}: ${pubKey}`, userData);
+			console.log(`[USERS-DEBUG] User ${wasNew ? 'added' : 'updated'}: ${pubKey?.slice(0, 20) + '...'}`, userData);
 			currentUsers.set(pubKey, userData);
 			if (wasNew) {
 				collectionChanged = true;
+				console.log(`[USERS-DEBUG] New user added to currentUsers map. New size: ${currentUsers.size}`);
 			}
 
 			// Get the user's alias from usersList (stored as 'alias' field, not 'name')
 			const userAlias = userData.alias || userData.name; // Try alias first, fallback to name for compatibility
 			if (userAlias && typeof userAlias === 'string') {
 				// Update userAliasesCache with the alias from usersList
-				console.log(`[USERS] Updating alias cache for ${pubKey}: ${userAlias}`);
+				console.log(`[USERS-DEBUG] Updating alias cache for ${pubKey?.slice(0, 20) + '...'}: ${userAlias}`);
 				userAliasesCache.update((cache) => ({
 					...cache,
 					[pubKey]: userAlias
 				}));
 			} else {
 				// Try to get alias from user's protected space using Gun's user system
-				console.log(`[USERS] No alias in usersList for ${pubKey}, trying protected space...`);
+				console.log(`[USERS-DEBUG] No alias in usersList for ${pubKey?.slice(0, 20) + '...'}, trying protected space...`);
 				gun
 					.user(pubKey) // Use Gun's user system
 					.get('alias')
 					.once((alias: any) => {
 						if (alias && typeof alias === 'string') {
-							console.log(`[USERS] Got alias from protected space for ${pubKey}: ${alias}`);
+							console.log(`[USERS-DEBUG] Got alias from protected space for ${pubKey?.slice(0, 20) + '...'}: ${alias}`);
 							userAliasesCache.update((cache) => ({
 								...cache,
 								[pubKey]: alias
 							}));
 						} else {
-							console.log(`[USERS] No alias found anywhere for ${pubKey}, using truncated pubkey`);
+							console.log(`[USERS-DEBUG] No alias found anywhere for ${pubKey?.slice(0, 20) + '...'}, using truncated pubkey`);
 							// Fallback to truncated pubkey
 							const fallbackName = pubKey.substring(0, 8) + '...';
 							userAliasesCache.update((cache) => ({
@@ -1297,10 +1328,20 @@ export function setupUsersListSubscription() {
 		// This prevents unnecessary updates when just user data changes
 		if (collectionChanged) {
 			console.log(
-				`[USERS] Collection changed, updating userPubKeys store. Total users: ${currentUsers.size}`
+				`[USERS-DEBUG] Collection changed, updating userPubKeys store. Total users: ${currentUsers.size}`
 			);
 			updateUserPubKeysStore();
+		} else {
+			console.log(`[USERS-DEBUG] No collection change, skipping userPubKeys store update`);
 		}
+	});
+
+	// Debug: Log userPubKeys store changes
+	userPubKeys.subscribe((pubKeys) => {
+		console.log('[USERS-DEBUG] userPubKeys store updated:', {
+			count: pubKeys.length,
+			pubKeys: pubKeys.map(pk => pk.slice(0, 20) + '...')
+		});
 	});
 }
 

@@ -1934,6 +1934,7 @@
 		createContact={handleCreateContact}
 		updateContact={handleUpdateContact}
 		deleteContact={handleDeleteContact}
+		updatePosition={(newPosition) => (dropdownPosition = newPosition)}
 		close={handleDropdownClose}
 	/>
 

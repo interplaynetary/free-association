@@ -47,10 +47,15 @@ export const userPub = writable('');
 
 export const usersList = gun.get('freely-associating-players');
 
+// Add debugging to usersList reference
+console.log('[USERS-DEBUG] usersList initialized:', usersList);
+
 // Initialize usersList subscription immediately when module loads
 if (typeof window !== 'undefined') {
+	console.log('[USERS-DEBUG] Setting up usersList subscription in browser environment');
 	// Import and setup usersList subscription FIRST, before any auth checks
 	import('./network.svelte').then(({ setupUsersListSubscription }) => {
+		console.log('[USERS-DEBUG] About to call setupUsersListSubscription');
 		setupUsersListSubscription();
 		console.log('[USERS] Early usersList subscription initialized');
 	});
@@ -75,14 +80,19 @@ if (typeof window !== 'undefined') {
 					user.get('pub').once((actualPub: any) => {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
-						console.log('[RECALL] Using alias from storage:', aliasToUse);
-						console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-						userAlias.set(aliasToUse);
-						userPub.set(pubToUse);
-						usersList.get(pubToUse).put({
-							alias: aliasToUse,
-							lastSeen: Date.now()
-						});
+				console.log('[RECALL] Using alias from storage:', aliasToUse);
+				console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+				userAlias.set(aliasToUse);
+				userPub.set(pubToUse);
+				console.log('[USERS-DEBUG] [RECALL] Adding user to usersList:', {
+					pubKey: pubToUse?.slice(0, 20) + '...',
+					alias: aliasToUse,
+					timestamp: Date.now()
+				});
+				usersList.get(pubToUse).put({
+					alias: aliasToUse,
+					lastSeen: Date.now()
+				});
 					});
 				});
 
@@ -100,17 +110,22 @@ if (typeof window !== 'undefined') {
 					user.get('pub').once((actualPub: any) => {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
-						console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
-						console.log(
-							'[RECALL] Using pub from storage (pub fallback):',
-							pubToUse?.slice(0, 20) + '...'
-						);
-						userAlias.set(aliasToUse);
-						userPub.set(pubToUse);
-						usersList.get(pubToUse).put({
-							alias: aliasToUse,
-							lastSeen: Date.now()
-						});
+				console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
+				console.log(
+					'[RECALL] Using pub from storage (pub fallback):',
+					pubToUse?.slice(0, 20) + '...'
+				);
+				userAlias.set(aliasToUse);
+				userPub.set(pubToUse);
+				console.log('[USERS-DEBUG] [RECALL-FALLBACK] Adding user to usersList:', {
+					pubKey: pubToUse?.slice(0, 20) + '...',
+					alias: aliasToUse,
+					timestamp: Date.now()
+				});
+				usersList.get(pubToUse).put({
+					alias: aliasToUse,
+					lastSeen: Date.now()
+				});
 					});
 				});
 
@@ -151,14 +166,19 @@ gun.on('auth', async () => {
 				user.get('pub').once((actualPub: any) => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
-					console.log('[AUTH] Using alias from storage:', aliasToUse);
-					console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-					userAlias.set(aliasToUse);
-					userPub.set(pubToUse);
-					usersList.get(pubToUse).put({
-						alias: aliasToUse,
-						lastSeen: Date.now()
-					});
+			console.log('[AUTH] Using alias from storage:', aliasToUse);
+			console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+			userAlias.set(aliasToUse);
+			userPub.set(pubToUse);
+			console.log('[USERS-DEBUG] [AUTH] Adding user to usersList:', {
+				pubKey: pubToUse?.slice(0, 20) + '...',
+				alias: aliasToUse,
+				timestamp: Date.now()
+			});
+			usersList.get(pubToUse).put({
+				alias: aliasToUse,
+				lastSeen: Date.now()
+			});
 
 					console.log(`signed in as ${aliasToUse}`);
 					console.log(`userPub: ${pubToUse}`);
@@ -184,14 +204,19 @@ gun.on('auth', async () => {
 				user.get('pub').once((actualPub: any) => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
-					console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
-					console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
-					userAlias.set(aliasToUse);
-					userPub.set(pubToUse);
-					usersList.get(pubToUse).put({
-						alias: aliasToUse,
-						lastSeen: Date.now()
-					});
+			console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
+			console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
+			userAlias.set(aliasToUse);
+			userPub.set(pubToUse);
+			console.log('[USERS-DEBUG] [AUTH-FALLBACK] Adding user to usersList:', {
+				pubKey: pubToUse?.slice(0, 20) + '...',
+				alias: aliasToUse,
+				timestamp: Date.now()
+			});
+			usersList.get(pubToUse).put({
+				alias: aliasToUse,
+				lastSeen: Date.now()
+			});
 
 					console.log(`signed in as ${aliasToUse} (fallback)`);
 					console.log(`userPub: ${pubToUse} (fallback)`);

@@ -26,11 +26,15 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
 		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache],
 		([$userContacts, $userIds, $userNamesCache, $userAliasesCache]) => {
-			console.log('[UI-PROVIDER] Data update:', {
+			console.log('[UI-PROVIDER-DEBUG] createContactsAndUsersDataProvider called:', {
 				contactsCount: $userContacts ? Object.keys($userContacts).length : 0,
 				userIdsCount: $userIds ? $userIds.length : 0,
+				userIds: $userIds?.map(id => id.slice(0, 20) + '...') || [],
 				namesCacheCount: $userNamesCache ? Object.keys($userNamesCache).length : 0,
-				aliasesCacheCount: $userAliasesCache ? Object.keys($userAliasesCache).length : 0
+				namesCacheKeys: Object.keys($userNamesCache || {}).map(id => id.slice(0, 20) + '...'),
+				aliasesCacheCount: $userAliasesCache ? Object.keys($userAliasesCache).length : 0,
+				aliasesCacheKeys: Object.keys($userAliasesCache || {}).map(id => id.slice(0, 20) + '...'),
+				excludeIds: excludeIds.map(id => id.slice(0, 20) + '...')
 			});
 			const items: Array<{
 				id: string;
@@ -106,7 +110,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 			});
 
 			console.log(
-				'[UI-PROVIDER] Generated items:',
+				'[UI-PROVIDER-DEBUG] Generated items:',
 				sortedItems.map((item) => ({
 					id: item.id.substring(0, 12) + '...',
 					name: item.name,
@@ -122,20 +126,43 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 // Simple reactive users data provider (backward compatibility)
 export function createUsersDataProvider(excludeIds: string[] = []) {
 	return derived([userPubKeys, userNamesOrAliasesCache], ([$userIds, $userNamesCache]) => {
+		console.log('[UI-PROVIDER-DEBUG] createUsersDataProvider called:', {
+			userIdsCount: $userIds?.length || 0,
+			userIds: $userIds?.map(id => id.slice(0, 20) + '...') || [],
+			namesCacheCount: Object.keys($userNamesCache || {}).length,
+			namesCacheKeys: Object.keys($userNamesCache || {}).map(id => id.slice(0, 20) + '...'),
+			excludeIds: excludeIds.map(id => id.slice(0, 20) + '...')
+		});
+
 		if (!$userIds) {
+			console.log('[UI-PROVIDER-DEBUG] No userIds, returning empty array');
 			return [];
 		}
 
 		// Show all users we have cached names for (both online and offline)
 		const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
+		console.log('[UI-PROVIDER-DEBUG] Combined user IDs:', {
+			allUserIdsCount: allUserIds.length,
+			allUserIds: allUserIds.map(id => id.slice(0, 20) + '...')
+		});
 
-		return allUserIds
+		const result = allUserIds
 			.filter((userId) => !excludeIds.includes(userId))
 			.map((userId) => ({
 				id: userId,
 				name: $userNamesCache[userId] || userId,
 				metadata: { userId }
 			}));
+
+		console.log('[UI-PROVIDER-DEBUG] Final users result:', {
+			resultCount: result.length,
+			results: result.map(r => ({
+				id: r.id.slice(0, 20) + '...',
+				name: r.name
+			}))
+		});
+
+		return result;
 	});
 }
 
