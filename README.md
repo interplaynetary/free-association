@@ -38,6 +38,11 @@ You can interact with an interface implementing this logic at [interplaynetary.g
    - This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
      For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
 
+7. Your **allocation** from another's _capacity_ is your **specific-share** with **mutual fulfillment** applied.
+   - Only recipients with mutual desires (both parties express interest) receive allocations
+   - MR proportions are normalized among mutually interested recipients only
+   - Unused capacity from non-mutual interests is redistributed to mutual interests
+
 **Mathematically defined:**
 
 ```
@@ -51,6 +56,16 @@ General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those
 Specific-Share(You, Provider, Capacity) = General-Share(You, Provider) × Filter(You, Capacity) / Σ (General-Share(Each-Filtered-Participant, Provider) × Filter(Each-Filtered-Participant, Capacity))
 
 where Filter(Participant, Capacity) = 1 if Participant satisfies Capacity's filter criteria, 0 otherwise
+
+Allocation(You, Provider, Capacity) = Mutual-Fulfillment-Allocation(You, Provider, Capacity)
+
+where Mutual-Fulfillment-Allocation is calculated as:
+1. Mutual-Desire(Provider-Capacity, You) = minimum(Your-Desire-From-Provider, Provider-Desire-Into-You)
+2. Mutually-Desiring-Recipients = {Recipient | Mutual-Desire(Provider-Capacity, Recipient) > 0}
+3. Normalized-MR-Share(You, Provider) = MR(Provider, You) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
+4. Raw-Allocation(You, Provider, Capacity) = Capacity.quantity × Normalized-MR-Share(You, Provider)
+5. Final-Allocation(You, Provider, Capacity) = minimum(Raw-Allocation(You, Provider, Capacity), Mutual-Desire(Provider-Capacity, You))
+6. Redistribute any unused capacity among unsatisfied mutually-desiring recipients
 
 
 ```
@@ -66,51 +81,48 @@ The network effects are particularly powerful because slot composition preserves
 
 ### How Slot-to-Slot Composition Works:
 
-1. **Slot Claiming First**: Before composition, you claim specific slots using your shares
-   - Direct calculation: `slot.quantity × your_share_percentage = max_available_units`
-   - Example: Your 30% share of Bob's "morning consulting" (8 units) = 2.4 units available
+1. **Manual Desire Expression**: Recipients express desires for specific provider slots
+   - In Shares.svelte: "I want X units FROM provider-slot INTO my-target"
+   - Targets can be: self-consumption, own-capacity, or collective sharing
 
-2. **Slot Compose-From**: You compose FROM your claimed slots INTO others' claimed slots
-   - Example: You compose 2 units FROM your claimed "Tuesday cooking" slot INTO Alice's claimed "Tuesday dinner service" slot
-   - Constrained by your allocated amounts from step 1
+2. **Provider Counter-Desires**: Providers see receiver desires and express their own preferences
+   - In Capacities.svelte: "I want Y units FROM my-slot INTO recipient-targets"
+   - Providers can express different amounts for different recipients
 
-3. **Slot Compose-Into**: You compose FROM others' claimed slots INTO your claimed slots
-   - Example: Alice composes 1.5 units FROM her claimed "ingredient supply" slot INTO your claimed "cooking preparation" slot
-   - Constrained by both her allocated amounts AND your recipient share limits
+3. **Mutual Desire Calculation**: System finds intersections of both parties' desires
+   - Mutual-Desire = minimum(receiver-desire, provider-desire)
+   - Only mutual interests get fulfilled (zero allocation for non-mutual interests)
 
-4. **Direct Constraint Application**: No proportional scaling - direct limits only
-   - Source constraint: Limited by your allocated slot amounts
-   - Recipient constraint: Limited by their share percentage in your capacity
+4. **MR Normalization Among Mutual**: MR proportions apply only among mutually interested parties
+   - Normalized-MR-Share = MR(Provider, Recipient) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
+   - Ensures proportional fairness within interested parties
 
-5. **Mutual Slot Composition**: Most fulfilling when desires align bidirectionally
-   - Both parties desire the same specific slot-to-slot composition
+5. **Zero-Waste Distribution**: Unused capacity redistributed to mutual interests
+   - Non-mutual interests get zero allocation regardless of MR
+   - Remaining capacity goes to mutual interests up to their desires
    - Preserves temporal and spatial context (time, location, quantity)
 
 **Mathematically defined:**
 
 ```
-**Phase 1: Slot Claiming (Direct Share-Based)**
-Max-Available-Units(You, Provider, Slot) = Slot.quantity × Your-Share-Percentage-in-Provider-Capacity
-Allocated-Slot-Units(You, Provider, Slot) = minimum(Your-Desired-Units, Max-Available-Units)
+**Phase 1: Manual Desire Expression**
+Compose-From-Desire(Recipient, Provider-Slot, Target) = recipient's desired amount to compose FROM provider-slot INTO target
+Compose-Into-Desire(Provider, Provider-Slot, Target) = provider's desired amount to compose FROM provider-slot INTO target
 
-**Phase 2: Slot-to-Slot Composition**
-Slot-Compose-From(You, Your-Slot, Provider, Their-Slot) = Your-Desired-Units-From-Their-Slot-Into-Your-Slot
-Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot) = Your-Desired-Units-From-Your-Slot-Into-Their-Slot
+**Phase 2: Mutual Desire Calculation**
+Mutual-Desire(Provider-Slot, Recipient) = minimum(
+    Compose-From-Desire(Recipient, Provider-Slot, Any-Target),
+    Compose-Into-Desire(Provider, Provider-Slot, Recipient-Targets)
+)
 
-**Direct Constraints (No Scaling):**
-Feasible-Slot-Compose-From(You, Your-Slot, Provider, Their-Slot) =
-    minimum(Slot-Compose-From(You, Your-Slot, Provider, Their-Slot),
-            Allocated-Slot-Units(You, Provider, Their-Slot))
+**Phase 3: MR Normalization Among Mutual**
+Mutually-Desiring-Recipients(Provider, Slot) = {Recipient | Mutual-Desire(Provider-Slot, Recipient) > 0}
+Normalized-MR-Share(Recipient, Provider, Slot) = MR(Provider, Recipient) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
 
-Feasible-Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot) =
-    minimum(Slot-Compose-Into(You, Your-Slot, Recipient, Their-Slot),
-            Allocated-Slot-Units(You, You, Your-Slot),
-            Recipient-Share-in-Your-Capacity × Your-Capacity-Total-Quantity)
-
-**Mutual Slot Composition:**
-Mutual-Feasible-Slot-Composition(You, Your-Slot, Provider, Their-Slot) =
-    minimum(Feasible-Slot-Compose-From(You, Your-Slot, Provider, Their-Slot),
-            Slot-Compose-Into(Provider, Their-Slot, You, Your-Slot))
+**Phase 4: Zero-Waste Distribution**
+Raw-Allocation(Recipient, Provider, Slot) = Slot.quantity × Normalized-MR-Share(Recipient, Provider, Slot)
+Final-Allocation(Recipient, Provider, Slot) = minimum(Raw-Allocation(Recipient, Provider, Slot), Mutual-Desire(Provider-Slot, Recipient))
+Redistribute unused capacity among unsatisfied mutually-desiring recipients
 
 **Context Preservation:**
 Each composition maintains:
@@ -120,15 +132,16 @@ Each composition maintains:
 - Constraint context: advance_notice_hours, booking_window_hours
 ```
 
-**Key Advantages of Slot-Aware Composition:**
+**Key Advantages of Manual Mutual Fulfillment:**
 
 - **Time Coordination**: "Tuesday 2pm cooking" + "Tuesday 1pm ingredients" = coordinated meal preparation
 - **Location Awareness**: Compose slots based on proximity and travel time
 - **Context Preservation**: Each composition retains when, where, and how much
-- **Direct Constraints**: No complex scaling - clear UI showing "2.4 units available (30% of 8 total)"
-- **Mutual Timing**: Both parties can see exactly when and where composition would occur
+- **Mutual Fulfillment**: Only mutual interests get fulfilled - no wasted capacity
+- **Transparent Desires**: Both parties see each other's desires and mutual status
+- **Zero Waste**: Unused capacity redistributed to mutual interests
 
-This enables supply chains that coordinate in **space and time**, not just economically!
+This enables supply chains that coordinate in **space and time** through **mutual fulfillment**, not just economically!
 
 </details>
 
