@@ -699,7 +699,6 @@
 		const unit = CAPACITY_UNITS[Math.floor(Math.random() * CAPACITY_UNITS.length)];
 		const emoji = CAPACITY_EMOJIS[Math.floor(Math.random() * CAPACITY_EMOJIS.length)];
 		const city = INTERESTING_CITIES[Math.floor(Math.random() * INTERESTING_CITIES.length)];
-		const locationType = LOCATION_TYPES[Math.floor(Math.random() * LOCATION_TYPES.length)];
 
 		// Generate playful quantity
 		const quantity = generatePlayfulQuantity();
@@ -726,7 +725,7 @@
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: quantity,
-					location_type: locationType,
+					location_type: 'Specific',
 					city: city.name,
 					country: city.country,
 					all_day: timePattern.allDay,
