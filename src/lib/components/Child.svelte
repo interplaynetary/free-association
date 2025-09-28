@@ -760,10 +760,6 @@
 				aria-valuemin="0"
 				aria-valuemax="100"
 				aria-label="Manual fulfillment percentage"
-				onmousedown={(e) => e.stopPropagation()}
-				ontouchstart={(e) => e.stopPropagation()}
-				onpointerdown={(e) => e.stopPropagation()}
-				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => {
 					e.stopPropagation();
 					let newValue = currentSliderValue();
@@ -837,6 +833,42 @@
 							value: protocolValue,
 							showNotification: true
 						});
+					}}
+					onmousedown={(event) => {
+						// Only allow dragging from the thumb, not track clicks
+						// This prevents track clicks from changing the value
+						const target = event.currentTarget;
+						const rect = target.getBoundingClientRect();
+						const clickX = event.clientX - rect.left;
+						const thumbPosition = (currentSliderValue() / 100) * rect.width;
+						const thumbSize = 20; // Match CSS thumb width
+						
+						// If click is not near the thumb, prevent the default behavior
+						if (Math.abs(clickX - thumbPosition) > thumbSize / 2) {
+							event.preventDefault();
+							event.stopPropagation();
+							return false;
+						}
+						// Otherwise allow normal thumb dragging
+						event.stopPropagation(); // Still prevent bubbling to parent during drag
+					}}
+					ontouchstart={(event) => {
+						// Only allow dragging from the thumb, not track touches
+						const target = event.currentTarget;
+						const rect = target.getBoundingClientRect();
+						const touch = event.touches[0];
+						const touchX = touch.clientX - rect.left;
+						const thumbPosition = (currentSliderValue() / 100) * rect.width;
+						const thumbSize = 20; // Match CSS thumb width
+						
+						// If touch is not near the thumb, prevent the default behavior
+						if (Math.abs(touchX - thumbPosition) > thumbSize / 2) {
+							event.preventDefault();
+							event.stopPropagation();
+							return false;
+						}
+						// Otherwise allow normal thumb dragging
+						event.stopPropagation(); // Still prevent bubbling to parent during drag
 					}}
 					class="fulfillment-slider"
 					style="width: 100%;"
@@ -1308,7 +1340,7 @@
 		appearance: none;
 		background: transparent;
 		outline: none;
-		cursor: ew-resize;
+		cursor: default; /* Changed from ew-resize to default for track area */
 		transition: all 0.2s ease;
 		pointer-events: auto;
 		z-index: 10;
@@ -1336,7 +1368,7 @@
 		width: 20px;
 		height: 20px;
 		background: rgba(0, 0, 0, 0.6);
-		cursor: ew-resize;
+		cursor: ew-resize; /* Keep resize cursor on thumb */
 		border-radius: 2px;
 		box-shadow:
 			0 2px 6px rgba(0, 0, 0, 0.3),
@@ -1357,7 +1389,7 @@
 		width: 20px;
 		height: 20px;
 		background: rgba(0, 0, 0, 0.6);
-		cursor: ew-resize;
+		cursor: ew-resize; /* Keep resize cursor on thumb */
 		border-radius: 2px;
 		box-shadow:
 			0 2px 6px rgba(0, 0, 0, 0.3),
