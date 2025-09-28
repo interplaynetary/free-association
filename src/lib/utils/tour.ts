@@ -31,16 +31,6 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.add-button',
-		popover: {
-			title: 'Add Contributors',
-			description:
-				'Add people, projects, or things that contribute to your wellbeing. Each gets a portion of your recognition.',
-			side: 'bottom' as Side,
-			align: 'center'
-		}
-	},
-	{
 		element: '.parent',
 		popover: {
 			title: 'Your Canvas',
@@ -51,21 +41,31 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.treemap-container .clickable:first-child',
+		element: '.treemap-node',
 		popover: {
 			title: 'Your First Node',
 			description:
-				'This is a node in your recognition tree. You can click on the text to edit its name.',
+				'This is a node in your recognition tree. To edit its name, you first need to enable text editing mode.',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.treemap-container .clickable:first-child .node-title',
+		element: '.edit-button',
+		popover: {
+			title: 'Enable Text Editing',
+			description:
+				'Click this edit button first to enable text editing mode. When active, you can click on any node text to rename it.',
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.node-title',
 		popover: {
 			title: 'Edit Node Name',
 			description:
-				'Click on this text to rename the node. Give it a meaningful name that represents what this contribution is about.',
+				'Now with edit mode enabled, click on this text to rename the node. Give it a meaningful name that represents what this contribution is about.',
 			side: 'bottom' as Side,
 			align: 'center',
 			onNextClick: () => {
@@ -77,7 +77,7 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.treemap-container .clickable:first-child .add-contributor-button',
+		element: '.add-contributor-button',
 		popover: {
 			title: 'Add a Contributor',
 			description:
@@ -93,7 +93,7 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.treemap-container .clickable:first-child .manual-fulfillment-slider',
+		element: '.manual-fulfillment-slider',
 		popover: {
 			title: 'Set Fulfillment Level',
 			description:
@@ -109,7 +109,7 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.treemap-container .clickable:first-child',
+		element: '.treemap-node',
 		popover: {
 			title: 'Navigate Deeper',
 			description:
@@ -147,6 +147,26 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
+		element: '.toolbar',
+		popover: {
+			title: 'Your Toolbar',
+			description:
+				'This toolbar at the bottom contains all the tools you need to manage your recognition tree. You already learned about the edit button - let me show you the other tools.',
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.add-button',
+		popover: {
+			title: 'Add New Nodes',
+			description:
+				'Click this button to add new nodes to your current location in the tree. Each new node represents a contribution or area of recognition.',
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
 		popover: {
 			title: 'How Sharing Works',
 			description:
@@ -170,7 +190,7 @@ const homeTourSteps: DriveStep[] = [
 			title: 'Navigate & Search',
 			description:
 				'Find anyone in your growing tree of recognition. As networks grow, navigation helps you stay connected.',
-			side: 'bottom' as Side,
+			side: 'top' as Side,
 			align: 'center'
 		}
 	},
@@ -180,7 +200,7 @@ const homeTourSteps: DriveStep[] = [
 			title: 'Delete Mode',
 			description:
 				'Click this to enter delete mode. Then click on any node to delete it and all its children. Be careful!',
-			side: 'bottom' as Side,
+			side: 'top' as Side,
 			align: 'center'
 		}
 	},
@@ -190,7 +210,17 @@ const homeTourSteps: DriveStep[] = [
 			title: 'Recompose Mode',
 			description:
 				'This mode lets you drag nodes around to reorganize your tree. Click to enable, then drag nodes to move them.',
-			side: 'bottom' as Side,
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.network-button',
+		popover: {
+			title: 'Network Subtrees',
+			description:
+				'Access subtrees from your network contributors. You can add their recognition structures to your own tree.',
+			side: 'top' as Side,
 			align: 'center'
 		}
 	},
@@ -486,4 +516,96 @@ export function debugPageDetection() {
 			console.log(`[DEBUG] Step ${index + 1}: No element selector (generic popover) - ✅ OK`);
 		}
 	});
+}
+
+// Comprehensive verification function for tour elements
+export function verifyTourElements() {
+	console.log('[TOUR-VERIFY] Starting comprehensive tour element verification...');
+	
+	const currentPage = getCurrentPage();
+	const steps = currentPage === 'inventory' ? inventoryTourSteps : homeTourSteps;
+	
+	// Define expected elements for each page
+	const expectedElements: Record<string, string[]> = {
+		home: [
+			'.breadcrumbs',
+			'.parent', 
+			'.treemap-node',
+			'.node-title',
+			'.add-contributor-button',
+			'.manual-fulfillment-slider',
+			'.bars',
+			'.toolbar',
+			'.add-button',
+			'.edit-button',
+			'.search-button',
+			'.delete-button',
+			'.recompose-button',
+			'.network-button'
+		],
+		inventory: [
+			'.breadcrumbs',
+			'.inventory-button',
+			'.mt-8',
+			'.capacities-list',
+			'.add-btn',
+			'.filter-bar',
+			'.search-input',
+			'.shares-list'
+		]
+	};
+	
+	const elementsToCheck = expectedElements[currentPage] || expectedElements.home;
+	
+	console.log(`[TOUR-VERIFY] Checking ${elementsToCheck.length} expected elements for ${currentPage} page:`);
+	
+	const results = {
+		found: [] as string[],
+		missing: [] as string[],
+		total: elementsToCheck.length
+	};
+	
+	elementsToCheck.forEach((selector: string) => {
+		const exists = elementExists(selector);
+		if (exists) {
+			results.found.push(selector);
+			console.log(`[TOUR-VERIFY] ✅ ${selector}`);
+		} else {
+			results.missing.push(selector);
+			console.log(`[TOUR-VERIFY] ❌ ${selector}`);
+		}
+	});
+	
+	console.log(`[TOUR-VERIFY] Summary: ${results.found.length}/${results.total} elements found`);
+	
+	if (results.missing.length > 0) {
+		console.warn(`[TOUR-VERIFY] Missing elements:`, results.missing);
+		console.log(`[TOUR-VERIFY] Note: Some elements may not be visible until certain conditions are met (e.g., nodes exist, user is logged in, etc.)`);
+	}
+	
+	// Check tour steps specifically
+	console.log(`[TOUR-VERIFY] Checking ${steps.length} tour steps:`);
+	let stepsMissing = 0;
+	
+	steps.forEach((step, index) => {
+		if (step.element) {
+			const exists = elementExists(step.element);
+			if (!exists) {
+				stepsMissing++;
+				console.log(`[TOUR-VERIFY] Step ${index + 1} targets missing element: ${step.element}`);
+			}
+		}
+	});
+	
+	console.log(`[TOUR-VERIFY] Tour readiness: ${steps.length - stepsMissing}/${steps.length} steps have valid targets`);
+	
+	return {
+		page: currentPage,
+		elements: results,
+		tourSteps: {
+			total: steps.length,
+			valid: steps.length - stepsMissing,
+			missing: stepsMissing
+		}
+	};
 }
