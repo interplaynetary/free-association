@@ -423,6 +423,9 @@
 	// Track if this was triggered by user interaction (important for iOS)
 	let userTriggeredEdit = $state(false);
 
+	// Track if we're actually dragging the slider thumb (not just clicking the track)
+	let isDraggingSliderThumb = $state(false);
+
 	// Unified text edit handler that works across all devices and interaction types
 	function handleTextEditActivation(event: Event) {
 		console.log('[DEBUG CHILD] Text edit activation:', {
@@ -541,6 +544,21 @@
 		}
 	}
 
+	// Global event handlers for slider dragging state
+	function handleGlobalMouseUp() {
+		if (isDraggingSliderThumb) {
+			console.log('[SLIDER] Global mouse up - resetting drag state');
+			isDraggingSliderThumb = false;
+		}
+	}
+
+	function handleGlobalTouchEnd() {
+		if (isDraggingSliderThumb) {
+			console.log('[SLIDER] Global touch end - resetting drag state');
+			isDraggingSliderThumb = false;
+		}
+	}
+
 	// Set up and clean up event listeners when editing state changes
 	$effect(() => {
 		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
@@ -622,6 +640,21 @@
 		return () => {
 			document.removeEventListener('mousedown', handleOutsideInteraction);
 			document.removeEventListener('touchstart', handleOutsideInteraction);
+		};
+	});
+
+	// Set up global listeners for slider dragging state
+	$effect(() => {
+		// Always add these listeners to handle slider drag state cleanup
+		document.addEventListener('mouseup', handleGlobalMouseUp);
+		document.addEventListener('touchend', handleGlobalTouchEnd);
+		document.addEventListener('touchcancel', handleGlobalTouchEnd);
+
+		// Clean up function
+		return () => {
+			document.removeEventListener('mouseup', handleGlobalMouseUp);
+			document.removeEventListener('touchend', handleGlobalTouchEnd);
+			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
 		};
 	});
 
@@ -809,6 +842,14 @@
 					max="100"
 					value={currentSliderValue()}
 					oninput={(event) => {
+						// Only update fulfillment if we're actually dragging the thumb
+						if (!isDraggingSliderThumb) {
+							console.log(`[SLIDER-INPUT] Ignoring input - not dragging thumb, resetting value`);
+							// Reset the slider to its current value to prevent unwanted changes
+							event.currentTarget.value = currentSliderValue().toString();
+							return;
+						}
+
 						const newValue = parseFloat(event.currentTarget.value);
 						console.log(`[SLIDER-INPUT] Moving slider to ${newValue}% (ephemeral during drag)`);
 						console.log(
@@ -820,6 +861,14 @@
 						console.log(`[SLIDER-INPUT] Rectangle should now be: ${newValue}%`);
 					}}
 					onchange={(event) => {
+						// Only persist changes if we were actually dragging the thumb
+						if (!isDraggingSliderThumb) {
+							console.log(`[SLIDER-CHANGE] Ignoring change - not dragging thumb, resetting value`);
+							// Reset the slider to its current value to prevent unwanted changes
+							event.currentTarget.value = currentSliderValue().toString();
+							return;
+						}
+
 						const newValue = parseFloat(event.currentTarget.value);
 						const protocolValue = newValue / 100; // Convert to 0-1 range for protocol
 						console.log(
@@ -833,24 +882,55 @@
 							value: protocolValue,
 							showNotification: true
 						});
+
+						// Reset dragging state
+						isDraggingSliderThumb = false;
 					}}
 					onmousedown={(event) => {
 						// Only allow dragging from the thumb, not track clicks
-						// This prevents track clicks from changing the value
 						const target = event.currentTarget;
 						const rect = target.getBoundingClientRect();
 						const clickX = event.clientX - rect.left;
 						const thumbPosition = (currentSliderValue() / 100) * rect.width;
 						const thumbSize = 20; // Match CSS thumb width
-						
-						// If click is not near the thumb, prevent the default behavior
+
+						// If click is not near the thumb, prevent slider behavior and forward to parent
 						if (Math.abs(clickX - thumbPosition) > thumbSize / 2) {
+							// Prevent the slider from changing value
 							event.preventDefault();
 							event.stopPropagation();
-							return false;
+
+							// Manually forward the event to the parent clickable div for normal interactions
+							const parentClickable = target.closest('.clickable');
+							if (parentClickable) {
+								// Create a synthetic pointer event that bypasses our slider exclusions
+								const syntheticEvent = new PointerEvent('pointerdown', {
+									bubbles: true,
+									cancelable: true,
+									clientX: event.clientX,
+									clientY: event.clientY,
+									button: event.button,
+									buttons: event.buttons,
+									pointerId: 1,
+									isPrimary: true,
+									pointerType: 'mouse'
+								});
+
+								// Mark this as a forwarded event to bypass slider exclusions
+								(syntheticEvent as any).isForwardedFromSlider = true;
+
+								// Dispatch directly on the parent, bypassing slider exclusions
+								setTimeout(() => {
+									parentClickable.dispatchEvent(syntheticEvent);
+								}, 0);
+							}
+							return;
 						}
-						// Otherwise allow normal thumb dragging
-						event.stopPropagation(); // Still prevent bubbling to parent during drag
+						// Only when clicking the thumb, set dragging state and prevent parent interactions
+						isDraggingSliderThumb = true;
+						// Don't prevent default for thumb clicks - let slider work normally
+						event.stopPropagation();
+						event.stopImmediatePropagation();
 					}}
 					ontouchstart={(event) => {
 						// Only allow dragging from the thumb, not track touches
@@ -860,15 +940,72 @@
 						const touchX = touch.clientX - rect.left;
 						const thumbPosition = (currentSliderValue() / 100) * rect.width;
 						const thumbSize = 20; // Match CSS thumb width
-						
-						// If touch is not near the thumb, prevent the default behavior
+
+						// If touch is not near the thumb, prevent slider behavior and forward to parent
 						if (Math.abs(touchX - thumbPosition) > thumbSize / 2) {
+							// Prevent the slider from changing value
 							event.preventDefault();
 							event.stopPropagation();
-							return false;
+
+							// Manually forward the event to the parent clickable div for normal interactions
+							const parentClickable = target.closest('.clickable');
+							if (parentClickable) {
+								// Create a synthetic pointer event that bypasses our slider exclusions
+								const syntheticEvent = new PointerEvent('pointerdown', {
+									bubbles: true,
+									cancelable: true,
+									clientX: touch.clientX,
+									clientY: touch.clientY,
+									button: 0,
+									buttons: 1,
+									pointerId: 1,
+									isPrimary: true,
+									pointerType: 'touch'
+								});
+
+								// Mark this as a forwarded event to bypass slider exclusions
+								(syntheticEvent as any).isForwardedFromSlider = true;
+
+								// Dispatch directly on the parent, bypassing slider exclusions
+								setTimeout(() => {
+									parentClickable.dispatchEvent(syntheticEvent);
+								}, 0);
+							}
+							return;
 						}
-						// Otherwise allow normal thumb dragging
-						event.stopPropagation(); // Still prevent bubbling to parent during drag
+						// Only when touching the thumb, set dragging state and prevent parent interactions
+						isDraggingSliderThumb = true;
+						// Don't prevent default for thumb touches - let slider work normally
+						event.stopPropagation();
+						event.stopImmediatePropagation();
+					}}
+					onmousemove={(event) => {
+						// Prevent parent interactions during thumb dragging
+						if (isDraggingSliderThumb) {
+							event.stopPropagation();
+							event.stopImmediatePropagation();
+						}
+					}}
+					ontouchmove={(event) => {
+						// Prevent parent interactions during thumb dragging
+						if (isDraggingSliderThumb) {
+							event.stopPropagation();
+							event.stopImmediatePropagation();
+						}
+					}}
+					onmouseup={(event) => {
+						// Prevent parent interactions when releasing thumb
+						if (isDraggingSliderThumb) {
+							event.stopPropagation();
+							event.stopImmediatePropagation();
+						}
+					}}
+					ontouchend={(event) => {
+						// Prevent parent interactions when releasing thumb
+						if (isDraggingSliderThumb) {
+							event.stopPropagation();
+							event.stopImmediatePropagation();
+						}
 					}}
 					class="fulfillment-slider"
 					style="width: 100%;"

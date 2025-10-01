@@ -1446,12 +1446,14 @@
 			return;
 		}
 
-		// Check if the pointer target is a text edit field, node-text element, or contributor element
-		// But allow handling when in delete or recompose mode
+		// Check if the pointer target is a text edit field, node-text element, contributor element, or slider element
+		// But allow handling when in delete or recompose mode, or if this is a forwarded event from slider track
+		const isForwardedFromSlider = (event as any).isForwardedFromSlider;
 		if (
 			target &&
 			!globalState.deleteMode &&
 			!globalState.recomposeMode &&
+			!isForwardedFromSlider &&
 			(target.closest('.node-text') ||
 				target.closest('.node-text-edit-container') ||
 				target.closest('.add-contributor-button') ||
@@ -1461,10 +1463,12 @@
 				target.closest('.node-title-area') ||
 				target.closest('.title-segment') ||
 				target.closest('.node-edit-input') ||
-				target.closest('.contributors-area'))
+				target.closest('.contributors-area') ||
+				target.closest('.manual-fulfillment-slider') ||
+				target.closest('.fulfillment-slider'))
 		) {
-			// Click originated from text or contributor elements, don't handle here - let Child component handle it
-			console.log('[DEBUG] Ignoring pointer event on text/contributor element:', target.className);
+			// Click originated from interactive elements, don't handle here - let Child component handle it
+			console.log('[DEBUG] Ignoring pointer event on interactive element:', target.className);
 			return;
 		}
 
@@ -1544,10 +1548,12 @@
 			return;
 		}
 
-		// Check if the click target is a text edit field, node-text element, or contributor element
+		// Check if the click target is a text edit field, node-text element, contributor element, or slider element
 		const target = event.target as HTMLElement;
+		const isForwardedFromSlider = (event as any).isForwardedFromSlider;
 		if (
 			target &&
+			!isForwardedFromSlider &&
 			(target.closest('.node-text') ||
 				target.closest('.node-text-edit-container') ||
 				target.closest('.add-contributor-button') ||
@@ -1555,13 +1561,15 @@
 				target.closest('.contributor-container') ||
 				target.closest('.node-edit-input') ||
 				target.closest('.contributors-area') ||
+				target.closest('.manual-fulfillment-slider') ||
+				target.closest('.fulfillment-slider') ||
 				// Only exclude title elements if text edit mode is enabled
 				(globalState.textEditMode &&
 					(target.closest('.node-title') ||
 						target.closest('.node-title-area') ||
 						target.closest('.title-segment'))))
 		) {
-			// Click originated from text or contributor elements, don't navigate
+			// Click originated from interactive elements, don't navigate
 			resetInteractionState();
 			return;
 		}
