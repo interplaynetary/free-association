@@ -175,6 +175,7 @@ This computational advantage could make organizational-level Free-Association mo
 
 </details>
 
+
 ## Why does any of that matter?
 
 With your **capacity-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
@@ -228,14 +229,53 @@ Total Recognition = 100%
 Total Recognition = True-Recognition + False-Recognition
    ∴ ↑False-Recognition = ↓True-Recognition
       ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
-         ∴ ↓Shares of Actually-Beneficial-Capacities from Actually-Beneficial-Contributors
+         ∴ ↓Shares of Actually-Beneficial-Capacities 
+         from Actually-Beneficial-Contributors
             ∴ ↓Real-Social-Material-Basis for Self-Actualization
-               ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
+               ∴ Social-Material-Truth is processually realized in Free-Association 
+               by processual social-material negation of False-Recognition
 ```
 
 This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to actually-beneficial-contributors and their surplus-capacities.
 
 Systems built on falsehood eventually collapse, they can't sustain themselves because they starve the very thing that makes them thrive, genuine connection and collaboration.
+
+# Collective-Recognition
+We use free-association to apportion and distribute collective-capacities such as the funds in the playnet open collective!
+
+## How do we prioritize needs?
+0\) Players define the collective as a set of members
+
+* Playnet: { Alice, Bob, Charlie }
+
+1\) Players submit their needs (via free-association interface)
+
+* Alice: { needs $1000/month }
+* Bob: { needs $500/month }
+* Charlie: { needs $200/month }
+
+2\) Players (via free-association interface) recognize the contributions of others towards the satisfaction of their needs/realization of their priorities (in the widest sense - as they define them)
+
+* When players mutually-validate each others' contributions by recognizing eachother, they automatically apportion eachother a percentage % of their total-mutual-fulfillment&#x20;
+
+3\) Derive **total-collective-mutual-fulfillment** by *adding up* all the **total-mutual-fulfillment** percentages across **all members of the collective**.
+
+3\) Derive **each player's share of the total-collective-mutual-fulfillment.**
+
+This is now the **collective-priority-distribution** of needs
+
+We then take the needs of each member, and try to fulfill them as much as possible while respecting the collective-prioritization of needs
+
+## Advantages
+* **No centralized definition of what is a meaningful contribution**
+* **Distributed determination of value**
+* **No centralized registry of a capacities collective-membership**
+* No centralized registry of capacity availability space-time quantity
+* **Each player attributes their own membership-list to a their view of a collective-capacity and its availability  / space-time quantities (potentially subscribing to data sources to feed into their view).**
+
+## Remaining Issues to be Solved
+* For some of the collective-capacities of Playnet, how is its collective-membership determined/changed?
+* For Playnet Open Collective: What about people who are members but can not invoice themselves?
 
 ## Current Needs for Free Association Development 🚀
 
@@ -303,9 +343,11 @@ Total Recognition = 100%
 Total Recognition = True-Recognition + False-Recognition
    ∴ ↑False-Recognition = ↓True-Recognition
       ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
-         ∴ ↓Shares of Actually-Beneficial-Surplus from Actually-Beneficial-Contributors
+         ∴ ↓Shares of Actually-Beneficial-Surplus 
+         from Actually-Beneficial-Contributors
             ∴ ↓Real-Social-Material-Basis for Self-Actualization
-               ∴ Social-Material-Truth is processually realized in Free-Association by processual social-material negation of False-Recognition
+               ∴ Social-Material-Truth is processually realized in Free-Association 
+               by processual social-material negation of False-Recognition
 ```
 
 This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to real-contributors. You cannot accumulate power through ownership.
