@@ -9,7 +9,7 @@
  * contributor groups within tree structures.
  */
 
-import type { ShareMap, ShareMapData, BaseCapacity } from './schema';
+import type { ShareMap, BaseCapacity } from './schema';
 // @ts-ignore
 import jsonLogic from 'json-logic-js';
 
@@ -31,10 +31,10 @@ export type JsonLogicRule = {
  */
 
 export function filter(
-	shareMap: ShareMapData,
+	shareMap: ShareMap,
 	filterFn: ShareFilter,
 	context?: FilterContext
-): ShareMapData {
+): ShareMap {
 	const entries = Object.entries(shareMap).filter(([nodeId, share]) =>
 		filterFn(nodeId, share, context)
 	);
@@ -155,9 +155,9 @@ export function ruleToFilter(rule: JsonLogicRule): ShareFilter {
  */
 export function applyCapacityFilter(
 	capacity: BaseCapacity,
-	shareMap: ShareMapData,
+	shareMap: ShareMap,
 	context?: FilterContext
-): ShareMapData {
+): ShareMap {
 	if (!capacity.filter_rule) {
 		return normalizeShareMap({ ...shareMap });
 	}
@@ -166,7 +166,7 @@ export function applyCapacityFilter(
 }
 
 // Normalize a ShareMap so values sum to 1
-export function normalizeShareMap(map: ShareMapData): ShareMapData {
+export function normalizeShareMap(map: ShareMap): ShareMap {
 	const total = Object.values(map).reduce((sum, v) => sum + v, 0);
 	if (total === 0) return map;
 

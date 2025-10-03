@@ -28,9 +28,7 @@ import type {
 	NonRootNode,
 	Capacity,
 	CapacitiesCollection,
-	CapacitiesCollectionData,
 	ShareMap,
-	ShareMapData,
 	ProviderCapacity,
 	RecipientCapacity,
 	BaseCapacity
@@ -395,9 +393,9 @@ export function sharesOfGeneralFulfillmentMap(
 	nodesMap: Record<string, Node>,
 	specificContributors?: string[],
 	resolveToPublicKey?: (id: string) => string | undefined
-): ShareMapData {
+): ShareMap {
 	// Calculate all contributor shares
-	const sharesMap: ShareMapData = {};
+	const sharesMap: ShareMap = {};
 
 	// Use specific contributors if provided, otherwise get contributors from tree
 	const contributorIds =
@@ -486,9 +484,9 @@ export function providerShares(
 	nodesMap: Record<string, Node>,
 	specificContributors?: string[],
 	resolveToPublicKey?: (id: string) => string | undefined
-): ShareMapData {
+): ShareMap {
 	// Calculate direct contributor shares based on mutual fulfillment
-	const contributorShares: ShareMapData = {};
+	const contributorShares: ShareMap = {};
 
 	// Use specific contributors if provided, otherwise find all contributors in the tree
 	const contributorIds =
@@ -540,7 +538,7 @@ export function providerShares(
 // New system uses efficient provider-centric mutual desire algorithm in core.svelte.ts
 
 // Add a capacity to a collection
-export function addCapacity(capacities: CapacitiesCollectionData, capacity: Capacity): void {
+export function addCapacity(capacities: CapacitiesCollection, capacity: Capacity): void {
 	capacities[capacity.id] = capacity;
 }
 
@@ -728,7 +726,7 @@ export function updateName(node: Node, name: string): void {
 export function getReceiverCapacities(
 	receiver: Node,
 	provider: Node,
-	capacities: CapacitiesCollectionData,
+	capacities: CapacitiesCollection,
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): ProviderCapacity[] {
@@ -743,7 +741,7 @@ export function getReceiverCapacities(
 export function getReceiverShares(
 	receiver: Node,
 	provider: Node,
-	capacities: CapacitiesCollectionData,
+	capacities: CapacitiesCollection,
 	nodesMap: Record<string, Node>,
 	resolveToPublicKey?: (id: string) => string | undefined
 ): Record<string, { capacity: ProviderCapacity; share: number; quantity: number }> {

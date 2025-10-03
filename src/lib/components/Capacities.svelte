@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type {
-		ProviderCapacity,
-		CapacitiesCollection,
-		CapacitiesCollectionData
-	} from '$lib/schema';
+	import type { ProviderCapacity, CapacitiesCollection } from '$lib/schema';
 	import {
 		findNodeById,
 		addCapacity as addCapacityToCollection,
@@ -18,12 +14,8 @@
 	import {
 		userTree,
 		userCapacities,
-		updateStoreWithFreshTimestamp,
-		userCapacitiesTimestamp,
 		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto,
-		userDesiredSlotComposeFromTimestamp,
-		userDesiredSlotComposeIntoTimestamp
+		userDesiredSlotComposeInto
 	} from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
 
@@ -60,7 +52,7 @@
 		}
 
 		// Create a deep clone of current capacities
-		const newCapacities: CapacitiesCollectionData = structuredClone($userCapacities || {});
+		const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
 
 		// Create a plain object copy of the capacity
 		const plainCapacity = { ...capacity };
@@ -115,8 +107,8 @@
 			});
 		}
 
-		// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
-		updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCapacities);
+		// Update store (Gun handles timestamps natively now)
+		userCapacities.set(newCapacities);
 
 		// Add to highlighted capacities using global state
 		globalState.highlightCapacity(capacity.id);
@@ -152,7 +144,7 @@
 			}
 
 			// Create a deep clone of current capacities
-			const newCapacities: CapacitiesCollectionData = structuredClone($userCapacities || {});
+			const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
 
 			// Create a deep copy of the capacity to ensure store updates
 			const plainCapacity = structuredClone(capacity);
@@ -206,8 +198,8 @@
 				});
 			}
 
-			// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
-			updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCapacities);
+			// Update store (Gun handles timestamps natively now)
+			userCapacities.set(newCapacities);
 
 			globalState.showToast(`Capacity "${plainCapacity.name}" updated`, 'success');
 			return true;
@@ -262,12 +254,8 @@
 		});
 
 		console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeFrom entries`);
-		// Use atomic update to ensure timestamp consistency
-		updateStoreWithFreshTimestamp(
-			userDesiredSlotComposeFrom,
-			userDesiredSlotComposeFromTimestamp,
-			updatedComposeFrom
-		);
+		// Update store (Gun handles timestamps natively now)
+		userDesiredSlotComposeFrom.set(updatedComposeFrom);
 
 		// 2. Clean up userDesiredSlotComposeInto (where deleted capacity is SOURCE or TARGET)
 		const currentComposeInto = get(userDesiredSlotComposeInto);
@@ -301,12 +289,8 @@
 		});
 
 		console.log(`[CLEANUP] Cleaned ${changesInto} userDesiredSlotComposeInto entries`);
-		// Use atomic update to ensure timestamp consistency
-		updateStoreWithFreshTimestamp(
-			userDesiredSlotComposeInto,
-			userDesiredSlotComposeIntoTimestamp,
-			updatedComposeInto
-		);
+		// Update store (Gun handles timestamps natively now)
+		userDesiredSlotComposeInto.set(updatedComposeInto);
 
 		// 3. Cleanup complete - slot claims are now handled via compose-from-self
 
@@ -323,13 +307,13 @@
 
 			// STEP 2: Remove the capacity itself
 			const currentCaps = get(userCapacities) || {};
-			const newCaps: CapacitiesCollectionData = { ...currentCaps };
+			const newCaps: CapacitiesCollection = { ...currentCaps };
 			if (newCaps[capacityId]) {
 				delete newCaps[capacityId];
 			}
 
-			// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
-			updateStoreWithFreshTimestamp(userCapacities, userCapacitiesTimestamp, newCaps);
+			// Update store (Gun handles timestamps natively now)
+			userCapacities.set(newCaps);
 
 			globalState.showToast('Capacity and all related slot data deleted', 'success');
 			return true;

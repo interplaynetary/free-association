@@ -57,6 +57,20 @@ const chatStreamManager = new StreamSubscriptionManager('CHAT');
 // No separate collective stream system needed
 
 /**
+ * Track the most recent network timestamps for each data type
+ * Used by persistence layer to prevent overwriting newer network data
+ */
+export const lastNetworkTimestamps = $state({
+	tree: null as number | null,
+	capacities: null as number | null,
+	contacts: null as number | null,
+	desiredSlotComposeFrom: null as number | null,
+	desiredSlotComposeInto: null as number | null,
+	chatReadStates: null as number | null,
+	sogf: null as number | null
+});
+
+/**
  * Higher-order function that wraps stream creation with authentication
  */
 function withAuthentication<T extends any[]>(
@@ -92,6 +106,7 @@ function createDataProcessor<T>(config: {
 	emptyValue?: T;
 	enableTimestampComparison?: boolean;
 	gunTimestampField?: string; // Field name to extract Gun timestamp from (defaults to most recent)
+	timestampKey?: keyof typeof lastNetworkTimestamps; // Key to store timestamp in export object
 }) {
 	// Store the most recent Gun node reference for timestamp extraction
 	let lastGunNode: any = null;
@@ -107,7 +122,8 @@ function createDataProcessor<T>(config: {
 			onUpdate,
 			emptyValue,
 			enableTimestampComparison,
-			gunTimestampField
+			gunTimestampField,
+			timestampKey
 		} = config;
 
 		if (!rawData) {
@@ -173,6 +189,11 @@ function createDataProcessor<T>(config: {
 							// First timestamp - store it
 							lastTimestamp = incomingTimestamp;
 							console.log(`[NETWORK] First ${dataType} Gun timestamp recorded: ${incomingTimestamp}`);
+						}
+
+						// Export timestamp for persistence layer
+						if (timestampKey && isReliableGunTimestamp(incomingTimestamp)) {
+							lastNetworkTimestamps[timestampKey] = incomingTimestamp;
 						}
 					}
 				} catch (timestampError) {
@@ -249,6 +270,7 @@ const ownDataStreamConfigs = {
 		getGunPath: (userId: string) => user.get('tree'),
 		processor: createDataProcessor({
 			dataType: 'tree',
+			timestampKey: 'tree',
 			validator: parseTree,
 			getCurrentData: () => get(userTree),
 			updateStore: (data) => userTree.set(data),
@@ -268,6 +290,7 @@ const ownDataStreamConfigs = {
 			dataType: 'capacities',
 			enableTimestampComparison: true,
 			gunTimestampField: 'capacities', // Track timestamp of capacities field
+			timestampKey: 'capacities',
 			validator: parseCapacities,
 			getCurrentData: () => get(userCapacities),
 			updateStore: (data) => userCapacities.set(data),
@@ -285,6 +308,7 @@ const ownDataStreamConfigs = {
 			dataType: 'contacts',
 			enableTimestampComparison: true,
 			gunTimestampField: 'contacts',
+			timestampKey: 'contacts',
 			validator: parseContacts,
 			getCurrentData: () => get(userContacts),
 			updateStore: (data) => userContacts.set(data),
@@ -303,6 +327,7 @@ const ownDataStreamConfigs = {
 			dataType: 'desiredSlotComposeFrom',
 			enableTimestampComparison: true,
 			gunTimestampField: 'desiredSlotComposeFrom',
+			timestampKey: 'desiredSlotComposeFrom',
 			validator: parseUserSlotComposition,
 			getCurrentData: () => get(userDesiredSlotComposeFrom),
 			updateStore: (data) => {
@@ -323,6 +348,7 @@ const ownDataStreamConfigs = {
 			dataType: 'desiredSlotComposeInto',
 			enableTimestampComparison: true,
 			gunTimestampField: 'desiredSlotComposeInto',
+			timestampKey: 'desiredSlotComposeInto',
 			validator: parseUserSlotComposition,
 			getCurrentData: () => get(userDesiredSlotComposeInto),
 			updateStore: (data) => {
@@ -345,6 +371,7 @@ const ownDataStreamConfigs = {
 			dataType: 'chatReadStates',
 			enableTimestampComparison: true,
 			gunTimestampField: 'chatReadStates',
+			timestampKey: 'chatReadStates',
 			validator: parseChatReadStates,
 			getCurrentData: () => get(chatReadStates),
 			updateStore: (data) => chatReadStates.set(data),

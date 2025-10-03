@@ -4,7 +4,7 @@ import {
 	getAllContributorsFromTree,
 	getDescendants
 } from '$lib/protocol';
-import type { NonRootNode, ShareMapData } from '$lib/schema';
+import type { NonRootNode, ShareMap } from '$lib/schema';
 import {
 	userTree,
 	userSogf,
@@ -17,9 +17,9 @@ import {
 import { resolveToPublicKey } from './users.svelte';
 
 /**
- * Compare two ShareMapData objects for equality
+ * Compare two ShareMap objects for equality
  */
-function sogfEqual(a: ShareMapData, b: ShareMapData): boolean {
+function sogfEqual(a: ShareMap, b: ShareMap): boolean {
 	const keysA = Object.keys(a);
 	const keysB = Object.keys(b);
 

@@ -3,7 +3,6 @@ import type { Writable } from 'svelte/store';
 import { gun } from '$lib/state/gun.svelte';
 import type { Contact, ContactsCollectionData } from '$lib/schema';
 import { ContactSchema } from '$lib/schema';
-import { updateStoreWithFreshTimestamp, userContactsTimestamp } from './core.svelte';
 
 // ================================
 // CORE USER & CONTACT STORES
@@ -93,12 +92,12 @@ export function createContact(
 	// Validate the contact data
 	const validatedContact = ContactSchema.parse(newContact);
 
-	// Add to contacts collection with atomic timestamp update
+	// Add to contacts collection (Gun handles timestamps internally)
 	const updatedContacts = {
 		...get(userContacts),
 		[contact_id]: validatedContact
 	};
-	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, updatedContacts);
+	userContacts.set(updatedContacts);
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -140,12 +139,12 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 		}));
 	}
 
-	// Update contacts with atomic timestamp update
+	// Update contacts (Gun handles timestamps internally)
 	const updatedContacts = {
 		...currentContacts,
 		[contact_id]: validatedContact
 	};
-	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, updatedContacts);
+	userContacts.set(updatedContacts);
 }
 
 /**
@@ -154,7 +153,7 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 export function deleteContact(contact_id: string): void {
 	const currentContacts = get(userContacts);
 	const { [contact_id]: deleted, ...remaining } = currentContacts;
-	updateStoreWithFreshTimestamp(userContacts, userContactsTimestamp, remaining);
+	userContacts.set(remaining);
 }
 
 /**

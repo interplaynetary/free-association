@@ -23,11 +23,14 @@ import {
 } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
 import { user, userPub } from './gun.svelte';
+import { lastNetworkTimestamps } from './network.svelte';
 import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
 import type { Node, NonRootNode } from '$lib/schema';
+import { getGunTimestamp, compareGunTimestamps, isReliableGunTimestamp } from '$lib/utils/gunTimestamp';
 
 // DELETED: Timestamp tracking - Gun handles all timestamp tracking via GUN.state.is()
 // No need for application-level timestamp validation since Gun's CRDT handles conflicts
+// ADDED: Timestamp validation before persistence to prevent stale writes
 
 /**
  * Check if the user object is properly initialized and has the necessary methods
@@ -36,7 +39,78 @@ function isUserInitialized(): boolean {
 	return !!(user && typeof user.get === 'function');
 }
 
-export function persistTree() {
+/**
+ * Helper to safely persist data with timestamp validation
+ * Reads current Gun timestamp before writing to prevent overwriting newer network data
+ *
+ * @param path - Gun path to persist to (e.g., 'capacities')
+ * @param data - Data to persist (JSON string)
+ * @param localStoreTimestamp - The timestamp when we last loaded this data from network
+ * @param onComplete - Optional callback after persistence completes
+ */
+async function safelyPersist(
+	path: string,
+	data: string,
+	localStoreTimestamp: number | null,
+	onComplete?: (err?: any) => void
+): Promise<void> {
+	return new Promise((resolve) => {
+		// First, read current Gun data to check timestamp
+		user.get(path).once((currentData: any) => {
+			let shouldPersist = true;
+			let warningMessage = '';
+
+			if (currentData && typeof currentData === 'object') {
+				const currentNetworkTimestamp = getGunTimestamp(currentData, path);
+
+				if (currentNetworkTimestamp !== null && isReliableGunTimestamp(currentNetworkTimestamp)) {
+					// Compare network timestamp with our last known timestamp
+					if (localStoreTimestamp !== null) {
+						const comparison = compareGunTimestamps(currentNetworkTimestamp, localStoreTimestamp);
+
+						if (comparison > 0) {
+							// Network has newer data than what we loaded!
+							shouldPersist = false;
+							warningMessage =
+								`[PERSIST] BLOCKED: Network has newer data for ${path}. ` +
+								`Network timestamp: ${new Date(currentNetworkTimestamp).toISOString()}, ` +
+								`Our last load: ${new Date(localStoreTimestamp).toISOString()}. ` +
+								`Refusing to overwrite. User should reload to see latest data.`;
+						} else if (comparison === 0) {
+							// Timestamps match - data hasn't changed on network
+							// Check if data actually changed
+							const parsedCurrentData = typeof currentData === 'string' ? currentData : JSON.stringify(currentData);
+							if (parsedCurrentData === data) {
+								shouldPersist = false;
+								console.log(`[PERSIST] Skipping ${path}: data unchanged`);
+							}
+						}
+						// comparison < 0 means our data is newer, proceed with persist
+					}
+				}
+			}
+
+			if (!shouldPersist) {
+				console.error(warningMessage);
+				if (onComplete) {
+					onComplete(new Error('Stale data detected - refusing to overwrite'));
+				}
+				resolve();
+				return;
+			}
+
+			// Proceed with put - Gun's CRDT handles conflict resolution
+			user.get(path).put(data, (ack: { err?: any }) => {
+				if (onComplete) {
+					onComplete(ack.err);
+				}
+				resolve();
+			});
+		});
+	});
+}
+
+export async function persistTree() {
 	// Check if user is initialized
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping tree persistence');
@@ -72,10 +146,10 @@ export function persistTree() {
 		console.log('[PERSIST] Serialized tree length:', treeJson.length);
 		console.log('[PERSIST] Tree JSON preview:', treeJson.substring(0, 100) + '...');
 
-		// Store in Gun
-		user.get('tree').put(treeJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving tree to Gun:', ack.err);
+		// Store in Gun with timestamp validation
+		await safelyPersist('tree', treeJson, lastNetworkTimestamps.tree, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving tree to Gun:', err);
 			} else {
 				console.log('[PERSIST] Tree successfully saved to Gun with resolved contact IDs');
 			}
@@ -83,7 +157,7 @@ export function persistTree() {
 	}
 }
 
-export function persistSogf() {
+export async function persistSogf() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping SOGF persistence');
 		return;
@@ -104,9 +178,9 @@ export function persistSogf() {
 			const sogfJson = JSON.stringify(sogfClone);
 			console.log('[PERSIST] Serialized SOGF length:', sogfJson.length);
 
-			user.get('sogf').put(sogfJson, (ack: { err?: any }) => {
-				if (ack.err) {
-					console.error('[PERSIST] Error saving SOGF to Gun:', ack.err);
+			await safelyPersist('sogf', sogfJson, lastNetworkTimestamps.sogf, (err) => {
+				if (err) {
+					console.error('[PERSIST] Error saving SOGF to Gun:', err);
 				} else {
 					console.log('[PERSIST] SOGF successfully saved to Gun');
 				}
@@ -174,9 +248,9 @@ export async function persistCapacities() {
 		const capacitiesJson = JSON.stringify(capacitiesClone);
 		console.log('[PERSIST] Serialized capacities length:', capacitiesJson.length);
 
-		user.get('capacities').put(capacitiesJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving capacities to Gun:', ack.err);
+		await safelyPersist('capacities', capacitiesJson, lastNetworkTimestamps.capacities, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving capacities to Gun:', err);
 			} else {
 				console.log('[PERSIST] Capacities successfully saved to Gun');
 			}
@@ -233,7 +307,7 @@ export function persistContributorCapacityShares() {
 /**
  * Persist user's desired slot compose-from to Gun
  */
-export function persistUserDesiredSlotComposeFrom() {
+export async function persistUserDesiredSlotComposeFrom() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-from persistence');
 		return;
@@ -263,9 +337,9 @@ export function persistUserDesiredSlotComposeFrom() {
 		// Store unwrapped data directly - Gun tracks timestamps via GUN.state.is()
 		const composeFromJson = JSON.stringify(composeFromData);
 
-		user.get('desiredSlotComposeFrom').put(composeFromJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving slot compose-from to Gun:', ack.err);
+		await safelyPersist('desiredSlotComposeFrom', composeFromJson, lastNetworkTimestamps.desiredSlotComposeFrom, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving slot compose-from to Gun:', err);
 			} else {
 				console.log('[PERSIST] Slot compose-from successfully saved to Gun');
 			}
@@ -278,7 +352,7 @@ export function persistUserDesiredSlotComposeFrom() {
 /**
  * Persist user's desired slot compose-into to Gun
  */
-export function persistUserDesiredSlotComposeInto() {
+export async function persistUserDesiredSlotComposeInto() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-into persistence');
 		return;
@@ -308,9 +382,9 @@ export function persistUserDesiredSlotComposeInto() {
 		// Store unwrapped data directly - Gun tracks timestamps via GUN.state.is()
 		const composeIntoJson = JSON.stringify(composeIntoData);
 
-		user.get('desiredSlotComposeInto').put(composeIntoJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving slot compose-into to Gun:', ack.err);
+		await safelyPersist('desiredSlotComposeInto', composeIntoJson, lastNetworkTimestamps.desiredSlotComposeInto, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving slot compose-into to Gun:', err);
 			} else {
 				console.log('[PERSIST] Slot compose-into successfully saved to Gun');
 			}
@@ -382,7 +456,7 @@ export function persistProviderAllocationStates() {
 /**
  * Persist user's contacts to Gun
  */
-export function persistContacts() {
+export async function persistContacts() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping contacts persistence');
 		return;
@@ -406,9 +480,9 @@ export function persistContacts() {
 		// Store unwrapped data directly - Gun tracks timestamps via GUN.state.is()
 		const contactsJson = JSON.stringify(contactsValue);
 
-		user.get('contacts').put(contactsJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving contacts to Gun:', ack.err);
+		await safelyPersist('contacts', contactsJson, lastNetworkTimestamps.contacts, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving contacts to Gun:', err);
 			} else {
 				console.log('[PERSIST] Contacts successfully saved to Gun');
 			}
@@ -421,7 +495,7 @@ export function persistContacts() {
 /**
  * Persist chat read states to Gun
  */
-export function persistChatReadStates() {
+export async function persistChatReadStates() {
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping chat read states persistence');
 		return;
@@ -445,9 +519,9 @@ export function persistChatReadStates() {
 		// Store unwrapped data directly - Gun tracks timestamps via GUN.state.is()
 		const chatReadStatesJson = JSON.stringify(chatReadStatesValue);
 
-		user.get('chatReadStates').put(chatReadStatesJson, (ack: { err?: any }) => {
-			if (ack.err) {
-				console.error('[PERSIST] Error saving chat read states to Gun:', ack.err);
+		await safelyPersist('chatReadStates', chatReadStatesJson, lastNetworkTimestamps.chatReadStates, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving chat read states to Gun:', err);
 			} else {
 				console.log('[PERSIST] Chat read states successfully saved to Gun');
 			}

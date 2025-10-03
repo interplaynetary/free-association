@@ -65,33 +65,33 @@
 
 	// Watch for value prop changes (but only update if different from last processed)
 	$effect(() => {
+		// Explicitly track value and countries
+		value;
+		countries;
 		if (countries.length > 0) {
 			initializeSelectedValue();
 		}
 	});
 
-	// Only handle user interactions via Svelecte events
-	function handleSelect(event: any) {
-		const selected = event?.detail;
-		if (selected) {
-			selectedValue = selected.value;
-			const countryData = countries.find((c) => c.value === selected.value);
-			if (countryData && onselect) {
+	// Watch for selectedValue changes to notify parent
+	$effect(() => {
+		if (countries.length === 0) return;
+
+		const countryData = countries.find((c) => c.value === selectedValue);
+		if (countryData && onselect) {
+			// Only notify if this is a user-initiated change, not from prop sync
+			if (selectedValue !== lastProcessedValue) {
 				onselect({
 					id: countryData.value,
 					name: countryData.text,
 					timezones: countryData.timezones
 				});
 			}
-		}
-	}
-
-	function handleClear() {
-		selectedValue = '';
-		if (onselect) {
+		} else if (!selectedValue && onselect && lastProcessedValue) {
+			// Cleared
 			onselect({ id: '', name: '', timezones: [] });
 		}
-	}
+	});
 </script>
 
 <div class="country-selector">
@@ -102,8 +102,6 @@
 		{disabled}
 		clearable={true}
 		searchable={true}
-		on:change={handleSelect}
-		on:clear={handleClear}
 		class="country-select"
 	/>
 </div>

@@ -4,10 +4,7 @@
 		userDesiredSlotComposeFrom,
 		userDesiredSlotComposeInto,
 		networkDesiredSlotComposeFrom,
-		networkDesiredSlotComposeInto,
-		updateStoreWithFreshTimestamp,
-		userDesiredSlotComposeFromTimestamp,
-		userDesiredSlotComposeIntoTimestamp
+		networkDesiredSlotComposeInto
 	} from '$lib/state/core.svelte';
 	import {
 		userNetworkCapacitiesWithSlotQuantities,
@@ -300,10 +297,6 @@
 		// Get the correct stores based on direction
 		const dataStore =
 			direction === 'from' ? userDesiredSlotComposeFrom : userDesiredSlotComposeInto;
-		const timestampStore =
-			direction === 'from'
-				? userDesiredSlotComposeFromTimestamp
-				: userDesiredSlotComposeIntoTimestamp;
 		const current = get(dataStore);
 
 		console.log(`[COMPOSE] [UI] Current ${direction} store data:`, current);
@@ -327,8 +320,8 @@
 
 		console.log(`[COMPOSE] [UI] Updated ${direction} data:`, updated);
 
-		// Use atomic update to ensure timestamp consistency
-		updateStoreWithFreshTimestamp(dataStore, timestampStore, updated);
+		// Update store (Gun handles timestamps natively now)
+		dataStore.set(updated);
 
 		console.log(`[COMPOSE] [UI] ✅ Store updated for ${direction} composition`);
 	}
