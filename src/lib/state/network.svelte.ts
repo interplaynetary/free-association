@@ -20,16 +20,9 @@ import {
 	userDesiredSlotComposeInto,
 	networkDesiredSlotComposeFrom,
 	networkDesiredSlotComposeInto,
-	networkAllocationStates,
-	updateStoreWithTimestamp,
-	updateStoreWithFreshTimestamp,
-	userCapacitiesTimestamp,
-	userSogfTimestamp,
-	userDesiredSlotComposeFromTimestamp,
-	userDesiredSlotComposeIntoTimestamp,
-	userContactsTimestamp,
-	chatReadStatesTimestamp
+	networkAllocationStates
 } from '$lib/state/core.svelte';
+import { getGunTimestamp, compareGunTimestamps, isReliableGunTimestamp } from '$lib/utils/gunTimestamp';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
 import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
 import type {
@@ -87,18 +80,23 @@ function withAuthentication<T extends any[]>(
 }
 
 /**
- * Generic data processor that handles validation, comparison, and store updates with timestamp-based freshness detection
+ * Generic data processor that handles validation, comparison, and store updates using Gun's native timestamps
  */
 function createDataProcessor<T>(config: {
 	dataType: string;
 	validator?: (data: any) => T | null;
-	getCurrentData: () => T | null | unknown; // Allow unknown to handle validator default types
+	getCurrentData: () => T | null | unknown;
 	updateStore: (data: T) => void;
 	loadingFlag?: { set: (value: boolean) => void };
 	onUpdate?: () => void;
 	emptyValue?: T;
 	enableTimestampComparison?: boolean;
+	gunTimestampField?: string; // Field name to extract Gun timestamp from (defaults to most recent)
 }) {
+	// Store the most recent Gun node reference for timestamp extraction
+	let lastGunNode: any = null;
+	let lastTimestamp: number | null = null;
+
 	return (rawData: any) => {
 		const {
 			dataType,
@@ -108,13 +106,12 @@ function createDataProcessor<T>(config: {
 			loadingFlag,
 			onUpdate,
 			emptyValue,
-			enableTimestampComparison
+			enableTimestampComparison,
+			gunTimestampField
 		} = config;
 
 		if (!rawData) {
 			//console.log(`[NETWORK] No ${dataType} data found`);
-			// Don't update store with empty values for timestamped data
-			// Let the validators handle empty cases with their defaultValue
 			loadingFlag?.set(false);
 			return;
 		}
@@ -123,6 +120,9 @@ function createDataProcessor<T>(config: {
 		loadingFlag?.set(true);
 
 		try {
+			// Store raw Gun node for timestamp extraction
+			lastGunNode = rawData;
+
 			let processedData = rawData;
 
 			// Apply validator (which handles both parsing and validation)
@@ -133,68 +133,51 @@ function createDataProcessor<T>(config: {
 					loadingFlag?.set(false);
 					return;
 				}
-
-				// Validators now return proper empty timestamped objects on failure
-				// No need to check for null since we always get valid schema-compliant data
 			}
 
 			// Get current data for comparison
 			const currentData = getCurrentData();
 
-			// SMART TIMESTAMP-BASED FRESHNESS CHECK (for timestamped collections)
-			if (enableTimestampComparison && processedData && currentData) {
+			// SMART TIMESTAMP-BASED FRESHNESS CHECK using Gun's native timestamps
+			if (enableTimestampComparison) {
 				try {
-					// Type-safe timestamp extraction from new metadata structure
-					const hasIncomingMetadata =
-						processedData &&
-						typeof processedData === 'object' &&
-						'metadata' in processedData &&
-						processedData.metadata &&
-						typeof processedData.metadata === 'object' &&
-						'updated_at' in processedData.metadata;
+					// Extract Gun timestamp from raw node
+					const incomingTimestamp = gunTimestampField
+						? getGunTimestamp(lastGunNode, gunTimestampField)
+						: getGunTimestamp(lastGunNode, '_'); // Default to root node timestamp
 
-					const hasCurrentMetadata =
-						currentData &&
-						typeof currentData === 'object' &&
-						'metadata' in currentData &&
-						currentData.metadata &&
-						typeof currentData.metadata === 'object' &&
-						'updated_at' in currentData.metadata;
+					if (incomingTimestamp !== null) {
+						// Compare with last known timestamp
+						if (lastTimestamp !== null) {
+							const comparison = compareGunTimestamps(incomingTimestamp, lastTimestamp);
 
-					if (hasIncomingMetadata && hasCurrentMetadata) {
-						const incomingTimestamp = (processedData as { metadata: { updated_at: string } })
-							.metadata.updated_at;
-						const currentTimestamp = (currentData as { metadata: { updated_at: string } }).metadata
-							.updated_at;
+							if (comparison <= 0 && isReliableGunTimestamp(incomingTimestamp)) {
+								console.log(
+									`[NETWORK] Incoming ${dataType} is older/same (Gun ts: ${incomingTimestamp}) than current (${lastTimestamp}), ignoring update`
+								);
+								loadingFlag?.set(false);
+								return;
+							}
 
-						const incomingTime = new Date(incomingTimestamp).getTime();
-						const currentTime = new Date(currentTimestamp).getTime();
-
-						// SMART TIMESTAMPING: Only apply timestamp validation if incoming timestamp is reliable
-						const isReliableTimestamp =
-							incomingTime > new Date('1970-01-02T00:00:00.000Z').getTime();
-
-						if (isReliableTimestamp && incomingTime <= currentTime) {
-							console.log(
-								`[NETWORK] Incoming ${dataType} is older/same (${incomingTimestamp}) than current (${currentTimestamp}), ignoring update`
-							);
-							loadingFlag?.set(false);
-							return;
-						}
-
-						if (isReliableTimestamp) {
-							console.log(
-								`[NETWORK] Incoming ${dataType} is newer (${incomingTimestamp}) than current (${currentTimestamp}), accepting update`
-							);
+							if (isReliableGunTimestamp(incomingTimestamp)) {
+								console.log(
+									`[NETWORK] Incoming ${dataType} is newer (Gun ts: ${incomingTimestamp}) than current (${lastTimestamp}), accepting update`
+								);
+								lastTimestamp = incomingTimestamp;
+							} else {
+								console.log(
+									`[NETWORK] Incoming ${dataType} has unreliable Gun timestamp (${incomingTimestamp}), falling back to value comparison`
+								);
+							}
 						} else {
-							console.log(
-								`[NETWORK] Incoming ${dataType} has unreliable timestamp (${incomingTimestamp}), falling back to value comparison`
-							);
+							// First timestamp - store it
+							lastTimestamp = incomingTimestamp;
+							console.log(`[NETWORK] First ${dataType} Gun timestamp recorded: ${incomingTimestamp}`);
 						}
 					}
 				} catch (timestampError) {
-					console.warn(`[NETWORK] Error comparing timestamps for ${dataType}:`, timestampError);
-					// Fall through to regular comparison if timestamp comparison fails
+					console.warn(`[NETWORK] Error extracting Gun timestamps for ${dataType}:`, timestampError);
+					// Fall through to regular comparison if timestamp extraction fails
 				}
 			}
 
@@ -284,120 +267,13 @@ const ownDataStreamConfigs = {
 		processor: createDataProcessor({
 			dataType: 'capacities',
 			enableTimestampComparison: true,
-			validator: (rawData) => {
-				console.log('[NETWORK] 🚨 DEBUG: Raw capacities data received from Gun:', rawData);
-
-				// Check if we have any location data in the raw data
-				if (rawData && typeof rawData === 'object') {
-					let parsedData;
-					try {
-						parsedData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-					} catch (e) {
-						console.log('[NETWORK] 🚨 DEBUG: Failed to parse raw data');
-						return parseCapacities(rawData);
-					}
-
-					console.log('[NETWORK] 🚨 DEBUG: Parsed capacities data before validation:');
-					Object.entries(parsedData || {}).forEach(([capacityId, capacity]: [string, any]) => {
-						if (capacity && capacity.availability_slots) {
-							capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
-								const hasLocationData =
-									slot.location_type === 'Specific' ||
-									slot.latitude !== undefined ||
-									slot.longitude !== undefined ||
-									slot.street_address ||
-									slot.city ||
-									slot.state_province ||
-									slot.postal_code ||
-									slot.country;
-
-								if (hasLocationData) {
-									console.log(
-										`[NETWORK] 🚨 DEBUG: RAW - Capacity ${capacityId} slot ${slotIndex} HAS location data:`,
-										{
-											slot_id: slot.id,
-											location_type: slot.location_type,
-											coordinates: { lat: slot.latitude, lng: slot.longitude },
-											address: {
-												street: slot.street_address,
-												city: slot.city,
-												state: slot.state_province,
-												postal: slot.postal_code,
-												country: slot.country
-											}
-										}
-									);
-								}
-							});
-						}
-					});
-				}
-
-				const validatedData = parseCapacities(rawData);
-
-				// Check what happened after validation
-				console.log('[NETWORK] 🚨 DEBUG: Post-validation capacities data:');
-				Object.entries(validatedData || {}).forEach(([capacityId, capacity]: [string, any]) => {
-					if (capacity && capacity.availability_slots) {
-						capacity.availability_slots.forEach((slot: any, slotIndex: number) => {
-							const hasLocationData =
-								slot.location_type === 'Specific' ||
-								slot.latitude !== undefined ||
-								slot.longitude !== undefined ||
-								slot.street_address ||
-								slot.city ||
-								slot.state_province ||
-								slot.postal_code ||
-								slot.country;
-
-							if (hasLocationData) {
-								console.log(
-									`[NETWORK] 🚨 DEBUG: VALIDATED - Capacity ${capacityId} slot ${slotIndex} HAS location data:`,
-									{
-										slot_id: slot.id,
-										location_type: slot.location_type,
-										coordinates: { lat: slot.latitude, lng: slot.longitude },
-										address: {
-											street: slot.street_address,
-											city: slot.city,
-											state: slot.state_province,
-											postal: slot.postal_code,
-											country: slot.country
-										}
-									}
-								);
-							} else {
-								console.log(
-									`[NETWORK] 🚨 DEBUG: VALIDATED - Capacity ${capacityId} slot ${slotIndex} has NO location data`
-								);
-							}
-						});
-					}
-				});
-
-				return validatedData;
-			},
-			getCurrentData: () => {
-				// Create timestamped structure for comparison
-				const flatData = get(userCapacities);
-				const timestamp = get(userCapacitiesTimestamp);
-				if (!flatData || !timestamp) return null;
-				return {
-					metadata: {
-						created_at: timestamp,
-						updated_at: timestamp
-					},
-					data: flatData
-				};
-			},
-			updateStore: (timestampedData) => {
-				// Use helper to update both flat data and timestamp
-				updateStoreWithTimestamp(userCapacities, userCapacitiesTimestamp, timestampedData);
-			},
+			gunTimestampField: 'capacities', // Track timestamp of capacities field
+			validator: parseCapacities,
+			getCurrentData: () => get(userCapacities),
+			updateStore: (data) => userCapacities.set(data),
 			loadingFlag: isLoadingCapacities
 		}),
 		errorHandler: (error: any) => {
-			//console.error('[NETWORK] Error in own capacities stream:', error);
 			isLoadingCapacities.set(false);
 		}
 	},
@@ -408,24 +284,10 @@ const ownDataStreamConfigs = {
 		processor: createDataProcessor({
 			dataType: 'contacts',
 			enableTimestampComparison: true,
+			gunTimestampField: 'contacts',
 			validator: parseContacts,
-			getCurrentData: () => {
-				// Create timestamped structure for comparison
-				const flatData = get(userContacts);
-				const timestamp = get(userContactsTimestamp);
-				if (!flatData || !timestamp) return null;
-				return {
-					metadata: {
-						created_at: timestamp,
-						updated_at: timestamp
-					},
-					data: flatData
-				};
-			},
-			updateStore: (timestampedData) => {
-				// Use helper to update both flat data and timestamp
-				updateStoreWithTimestamp(userContacts, userContactsTimestamp, timestampedData);
-			},
+			getCurrentData: () => get(userContacts),
+			updateStore: (data) => userContacts.set(data),
 			loadingFlag: isLoadingContacts
 		}),
 		errorHandler: (error: any) => {
@@ -437,41 +299,17 @@ const ownDataStreamConfigs = {
 		type: 'desiredSlotComposeFrom',
 		streamManager: ownDataStreamManager,
 		getGunPath: (userId: string) => user.get('desiredSlotComposeFrom'),
-		processor: (rawData: any) => {
-			console.log('[COMPOSE] [NETWORK-OWN] Loading own compose-from data from Gun...');
-			console.log('[COMPOSE] [NETWORK-OWN] Raw own compose-from data:', rawData);
-
-			const dataProcessor = createDataProcessor({
-				dataType: 'desiredSlotComposeFrom',
-				enableTimestampComparison: true,
-				validator: parseUserSlotComposition,
-				getCurrentData: () => {
-					const flatData = get(userDesiredSlotComposeFrom);
-					const timestamp = get(userDesiredSlotComposeFromTimestamp);
-					if (!flatData || !timestamp) return null;
-					return {
-						metadata: {
-							created_at: timestamp,
-							updated_at: timestamp
-						},
-						data: flatData
-					};
-				},
-				updateStore: (timestampedData) => {
-					console.log(
-						'[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-from store:',
-						timestampedData
-					);
-					updateStoreWithTimestamp(
-						userDesiredSlotComposeFrom,
-						userDesiredSlotComposeFromTimestamp,
-						timestampedData
-					);
-				}
-			});
-
-			return dataProcessor(rawData);
-		},
+		processor: createDataProcessor({
+			dataType: 'desiredSlotComposeFrom',
+			enableTimestampComparison: true,
+			gunTimestampField: 'desiredSlotComposeFrom',
+			validator: parseUserSlotComposition,
+			getCurrentData: () => get(userDesiredSlotComposeFrom),
+			updateStore: (data) => {
+				console.log('[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-from store:', data);
+				userDesiredSlotComposeFrom.set(data);
+			}
+		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeFrom stream:', error);
 			console.error('[COMPOSE] [NETWORK-OWN] ❌ Error loading own compose-from:', error);
@@ -481,41 +319,17 @@ const ownDataStreamConfigs = {
 		type: 'desiredSlotComposeInto',
 		streamManager: ownDataStreamManager,
 		getGunPath: (userId: string) => user.get('desiredSlotComposeInto'),
-		processor: (rawData: any) => {
-			console.log('[COMPOSE] [NETWORK-OWN] Loading own compose-into data from Gun...');
-			console.log('[COMPOSE] [NETWORK-OWN] Raw own compose-into data:', rawData);
-
-			const dataProcessor = createDataProcessor({
-				dataType: 'desiredSlotComposeInto',
-				enableTimestampComparison: true,
-				validator: parseUserSlotComposition,
-				getCurrentData: () => {
-					const flatData = get(userDesiredSlotComposeInto);
-					const timestamp = get(userDesiredSlotComposeIntoTimestamp);
-					if (!flatData || !timestamp) return null;
-					return {
-						metadata: {
-							created_at: timestamp,
-							updated_at: timestamp
-						},
-						data: flatData
-					};
-				},
-				updateStore: (timestampedData) => {
-					console.log(
-						'[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-into store:',
-						timestampedData
-					);
-					updateStoreWithTimestamp(
-						userDesiredSlotComposeInto,
-						userDesiredSlotComposeIntoTimestamp,
-						timestampedData
-					);
-				}
-			});
-
-			return dataProcessor(rawData);
-		},
+		processor: createDataProcessor({
+			dataType: 'desiredSlotComposeInto',
+			enableTimestampComparison: true,
+			gunTimestampField: 'desiredSlotComposeInto',
+			validator: parseUserSlotComposition,
+			getCurrentData: () => get(userDesiredSlotComposeInto),
+			updateStore: (data) => {
+				console.log('[COMPOSE] [NETWORK-OWN] ✅ Updating own compose-into store:', data);
+				userDesiredSlotComposeInto.set(data);
+			}
+		}),
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own desiredSlotComposeInto stream:', error);
 			console.error('[COMPOSE] [NETWORK-OWN] ❌ Error loading own compose-into:', error);
@@ -530,24 +344,10 @@ const ownDataStreamConfigs = {
 		processor: createDataProcessor({
 			dataType: 'chatReadStates',
 			enableTimestampComparison: true,
+			gunTimestampField: 'chatReadStates',
 			validator: parseChatReadStates,
-			getCurrentData: () => {
-				// Create timestamped structure for comparison
-				const flatData = get(chatReadStates);
-				const timestamp = get(chatReadStatesTimestamp);
-				if (!flatData || !timestamp) return null;
-				return {
-					metadata: {
-						created_at: timestamp,
-						updated_at: timestamp
-					},
-					data: flatData
-				};
-			},
-			updateStore: (timestampedData) => {
-				// Use helper to update both flat data and timestamp
-				updateStoreWithTimestamp(chatReadStates, chatReadStatesTimestamp, timestampedData);
-			},
+			getCurrentData: () => get(chatReadStates),
+			updateStore: (data) => chatReadStates.set(data),
 			loadingFlag: isLoadingChatReadStates
 		}),
 		errorHandler: (error: any) => {
@@ -643,12 +443,9 @@ const contributorStreamConfigs = {
 
 			console.log(`[NETWORK] Received SOGF update from stream for ${contributorId}`);
 
-			// Validate SOGF data using parseShareMap
+			// Validate SOGF data using parseShareMap (now returns unwrapped data)
 			const validatedSogfData = parseShareMap(sogfData);
-			if (
-				!validatedSogfData ||
-				Object.keys(validatedSogfData.data || validatedSogfData).length === 0
-			) {
+			if (!validatedSogfData || Object.keys(validatedSogfData).length === 0) {
 				console.warn(`[NETWORK] Invalid SOGF data from ${contributorId}`);
 				return;
 			}
@@ -662,19 +459,21 @@ const contributorStreamConfigs = {
 				return;
 			}
 
-			// Extract the share - handle both flat and timestamped formats
-			const shareData = validatedSogfData.data || validatedSogfData;
-			const theirShare = shareData[ourId] || 0;
+			// Extract the share (now direct access - no .data wrapper)
+			const theirShare = validatedSogfData[ourId] || 0;
 
 			// Get current recognition cache entry
 			const currentCache = get(recognitionCache);
 			const existingEntry = currentCache[contributorId];
 
-			// SMART TIMESTAMPING: Apply timestamp validation intelligently
+			// Extract Gun timestamp for SOGF update
+			const gunTimestamp = getGunTimestamp(sogfData, 'sogf');
+
+			// SMART TIMESTAMPING: Apply timestamp validation using Gun timestamps
 			const shouldUpdate = shouldAcceptSOGFUpdate(
 				existingEntry,
 				theirShare,
-				validatedSogfData.metadata?.updated_at
+				gunTimestamp
 			);
 
 			if (shouldUpdate) {
@@ -710,15 +509,15 @@ const mutualContributorStreamConfigs = {
 			createDataProcessor({
 				dataType: 'capacities',
 				enableTimestampComparison: true,
+				gunTimestampField: 'capacities',
 				validator: parseCapacities,
 				getCurrentData: () => get(networkCapacities)[contributorId] || null,
 				updateStore: (data) => {
 					if (data) {
-						// Extract flat data from timestamped structure for network store
-						const flatData = data.data || {};
+						// Store unwrapped data directly
 						networkCapacities.update((current) => ({
 							...current,
-							[contributorId]: flatData
+							[contributorId]: data
 						}));
 					} else {
 						networkCapacities.update((current) => {
@@ -796,40 +595,33 @@ const mutualContributorStreamConfigs = {
 		},
 		processor: (contributorId: string) => (composeFromData: any) => {
 			console.log(`[COMPOSE] [NETWORK] Processing compose-from data from ${contributorId}...`);
-			console.log(`[COMPOSE] [NETWORK] Raw compose-from data:`, composeFromData);
 
 			if (!composeFromData) {
 				console.log(
 					`[COMPOSE] [NETWORK] No desired slot compose-from from contributor ${contributorId}`
 				);
 				networkDesiredSlotComposeFrom.update((current) => {
-					const { [contributorId]: _, ...rest } = current;
+					const { [contributorId]: _, ...rest} = current;
 					return rest;
 				});
 				return;
 			}
 
-			console.log(
-				`[COMPOSE] [NETWORK] Received desired slot compose-from update from stream for ${contributorId}`
-			);
-
 			const validatedComposeFrom = parseUserSlotComposition(composeFromData);
-			console.log(`[COMPOSE] [NETWORK] Validated compose-from:`, validatedComposeFrom);
+			console.log(`[COMPOSE] [NETWORK] Validated compose-from (unwrapped):`, validatedComposeFrom);
 
 			const currentNetworkComposeFrom = get(networkDesiredSlotComposeFrom)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeFrom) === JSON.stringify(currentNetworkComposeFrom);
 
 			if (!isUnchanged) {
-				// Extract flat data from timestamped structure for network store
-				const flatComposeFrom = validatedComposeFrom.data || {};
 				console.log(
 					`[COMPOSE] [NETWORK] ✅ Updating network compose-from for ${contributorId}:`,
-					flatComposeFrom
+					validatedComposeFrom
 				);
 				networkDesiredSlotComposeFrom.update((current) => ({
 					...current,
-					[contributorId]: flatComposeFrom
+					[contributorId]: validatedComposeFrom
 				}));
 			} else {
 				console.log(`[COMPOSE] [NETWORK] No changes in compose-from data for ${contributorId}`);
@@ -852,7 +644,6 @@ const mutualContributorStreamConfigs = {
 		},
 		processor: (contributorId: string) => (composeIntoData: any) => {
 			console.log(`[COMPOSE] [NETWORK] Processing compose-into data from ${contributorId}...`);
-			console.log(`[COMPOSE] [NETWORK] Raw compose-into data:`, composeIntoData);
 
 			if (!composeIntoData) {
 				console.log(
@@ -865,27 +656,21 @@ const mutualContributorStreamConfigs = {
 				return;
 			}
 
-			console.log(
-				`[COMPOSE] [NETWORK] Received desired slot compose-into update from stream for ${contributorId}`
-			);
-
 			const validatedComposeInto = parseUserSlotComposition(composeIntoData);
-			console.log(`[COMPOSE] [NETWORK] Validated compose-into:`, validatedComposeInto);
+			console.log(`[COMPOSE] [NETWORK] Validated compose-into (unwrapped):`, validatedComposeInto);
 
 			const currentNetworkComposeInto = get(networkDesiredSlotComposeInto)[contributorId] || {};
 			const isUnchanged =
 				JSON.stringify(validatedComposeInto) === JSON.stringify(currentNetworkComposeInto);
 
 			if (!isUnchanged) {
-				// Extract flat data from timestamped structure for network store
-				const flatComposeInto = validatedComposeInto.data || {};
 				console.log(
 					`[COMPOSE] [NETWORK] ✅ Updating network compose-into for ${contributorId}:`,
-					flatComposeInto
+					validatedComposeInto
 				);
 				networkDesiredSlotComposeInto.update((current) => ({
 					...current,
-					[contributorId]: flatComposeInto
+					[contributorId]: validatedComposeInto
 				}));
 			} else {
 				console.log(`[COMPOSE] [NETWORK] No changes in compose-into data for ${contributorId}`);
@@ -1104,16 +889,16 @@ export async function initializeUserDataStreams(): Promise<void> {
 }
 
 /**
- * Smart SOGF update validation that prevents conflicts while allowing offline operation
+ * Smart SOGF update validation using Gun's native timestamps
  * @param existingEntry Current recognition cache entry (if any)
  * @param newTheirShare New share value from network
- * @param incomingTimestamp Timestamp from incoming SOGF data (if available)
+ * @param gunTimestamp Gun timestamp from incoming SOGF data (milliseconds, if available)
  * @returns true if update should be accepted
  */
 function shouldAcceptSOGFUpdate(
 	existingEntry: any,
 	newTheirShare: number,
-	incomingTimestamp?: string
+	gunTimestamp: number | null
 ): boolean {
 	// RULE 1: Always accept if no existing entry (initial load from Gun)
 	if (!existingEntry) {
@@ -1129,23 +914,22 @@ function shouldAcceptSOGFUpdate(
 		return true;
 	}
 
-	// RULE 3: If value is unchanged, use timestamp validation (if reliable)
-	if (incomingTimestamp && existingEntry.timestamp) {
-		const incomingTime = new Date(incomingTimestamp).getTime();
+	// RULE 3: If value is unchanged, use Gun timestamp validation (if available and reliable)
+	if (gunTimestamp !== null && existingEntry.timestamp) {
 		const existingTime = existingEntry.timestamp;
 
-		// Only apply timestamp validation if incoming timestamp is reliable (not epoch)
-		const isReliableTimestamp = incomingTime > new Date('1970-01-02T00:00:00.000Z').getTime();
+		// Only apply timestamp validation if Gun timestamp is reliable
+		if (isReliableGunTimestamp(gunTimestamp)) {
+			const comparison = compareGunTimestamps(gunTimestamp, existingTime);
 
-		if (isReliableTimestamp) {
-			if (incomingTime > existingTime) {
+			if (comparison > 0) {
 				console.log(
-					`[NETWORK] Newer timestamp (${new Date(incomingTime).toISOString()}) - accepting update`
+					`[NETWORK] Newer Gun timestamp (${gunTimestamp}) - accepting update`
 				);
 				return true;
 			} else {
 				console.log(
-					`[NETWORK] Older/same timestamp (${new Date(incomingTime).toISOString()}) - rejecting update`
+					`[NETWORK] Older/same Gun timestamp (${gunTimestamp}) - rejecting update`
 				);
 				return false;
 			}

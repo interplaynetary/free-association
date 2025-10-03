@@ -2,8 +2,7 @@ import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
 import { browser } from '$app/environment';
 import { writable, get, type Writable, derived } from 'svelte/store';
 import SEA from 'gun/sea';
-import type { ChatReadStatesData } from '$lib/schema';
-import { updateStoreWithFreshTimestamp, chatReadStatesTimestamp } from './core.svelte';
+import type { ChatReadStates, ChatReadState } from '$lib/schema';
 
 interface Message {
 	who: string;
@@ -18,23 +17,13 @@ interface ChatSubscription {
 	unsubscribe?: () => void;
 }
 
-// Chat read state interface - tracks last read timestamp for each chat
-interface ChatReadState {
-	chatId: string;
-	lastReadTimestamp: number;
-	updatedAt: number;
-}
-
-// Map of chatId -> ChatReadState
-type ChatReadStates = Record<string, ChatReadState>;
-
 // Global chat state - using Map to track subscriptions, but stores for reactivity
 const chatSubscriptions = new Map<string, ChatSubscription>();
 let notificationManager: any = null;
 const isWindowFocused = writable(true);
 
-// Store for chat read states - persisted across sessions (flat data)
-export const chatReadStates = writable<ChatReadStatesData>({});
+// Store for chat read states - persisted across sessions (unwrapped)
+export const chatReadStates = writable<ChatReadStates>({});
 
 // Loading state for read states
 export const isLoadingChatReadStates = writable(false);
@@ -233,7 +222,8 @@ export function markChatAsRead(chatId: string, timestamp?: number): void {
 		};
 
 		// 🚨 CRITICAL: Use atomic update to ensure data and timestamp sync
-		updateStoreWithFreshTimestamp(chatReadStates, chatReadStatesTimestamp, updatedStates);
+		// Update chat read states directly (no timestamp wrapping - Gun tracks timestamps)
+		chatReadStates.set(updatedStates);
 		//console.log(`[Chat State] Updated read state for ${chatId}:`, updatedStates[chatId]);
 	}
 }
@@ -346,7 +336,7 @@ export function getChatReadState(chatId: string): ChatReadState | null {
  * Set read states (used for loading from network)
  * @param states The read states to set
  */
-export function setChatReadStates(states: ChatReadStatesData): void {
+export function setChatReadStates(states: ChatReadStates): void {
 	//console.log('[Chat State] Setting read states from network:', states);
 	chatReadStates.set(states);
 }

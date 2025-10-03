@@ -7,23 +7,17 @@ import {
 	NodeSchema,
 	CapacitySchema,
 	CapacitiesCollectionSchema,
-	CapacitiesCollectionDataSchema,
 	ShareMapSchema,
-	ShareMapDataSchema,
 	RecognitionCacheSchema,
 	UserCompositionSchema,
 	NetworkCompositionSchema,
 	UserSlotCompositionSchema,
-	UserSlotCompositionDataSchema,
 	NetworkSlotCompositionSchema,
 	ProviderAllocationStateDataSchema,
 	NetworkAllocationStatesSchema,
 	ContactsCollectionSchema,
-	ContactsCollectionDataSchema,
 	ChatReadStatesSchema,
-	ChatReadStatesDataSchema,
-	CompositionTargetSchema,
-	createEmptyTimestamped
+	CompositionTargetSchema
 } from '$lib/schema';
 
 /**
@@ -62,53 +56,8 @@ function filterGunMetadata(data: unknown): unknown {
 	return filteredData;
 }
 
-// Legacy data gets very old timestamps to ensure it never overwrites newer data
-const LEGACY_TIMESTAMP = '1970-01-01T00:00:00.000Z';
-
-/**
- * Generic function to parse timestamped data with automatic migration
- * @param rawData Raw data to parse
- * @param timestampedSchema The complete timestamped schema
- * @param functionName Name for logging
- * @param enableLogging Whether to enable logging
- * @returns Validated timestamped data
- */
-function parseTimestampedData<T>(
-	rawData: unknown,
-	timestampedSchema: z.ZodType<T>,
-	functionName: string,
-	enableLogging = false
-): T {
-	return parseData(rawData, {
-		schema: timestampedSchema,
-		defaultValue: createEmptyTimestamped() as T,
-		functionName,
-		enableLogging,
-		preprocess: (data: unknown) => {
-			if (!data || typeof data !== 'object') {
-				return data;
-			}
-
-			const dataObj = data as Record<string, any>;
-
-			// Check if it's already in new format
-			if (dataObj.metadata && dataObj.data) {
-				return dataObj;
-			}
-
-			// Handle legacy flat format - migrate to new structure
-			const { created_at, updated_at, ...actualData } = dataObj;
-
-			return {
-				metadata: {
-					created_at: created_at || LEGACY_TIMESTAMP,
-					updated_at: updated_at || LEGACY_TIMESTAMP
-				},
-				data: actualData
-			};
-		}
-	});
-}
+// DELETED: parseTimestampedData - No longer needed since we use Gun's native timestamps
+// All data is now stored unwrapped, and Gun tracks timestamps via GUN.state.is()
 
 /**
  * Generic data parser that handles the common validation pattern
@@ -344,7 +293,12 @@ function migrateCapacityToSlotBased(capacity: any): any {
  * @returns Validated CapacitiesCollection or empty object if validation fails
  */
 export function parseCapacities(capacitiesData: unknown) {
-	return parseTimestampedData(capacitiesData, CapacitiesCollectionSchema, 'capacities', true);
+	return parseData(capacitiesData, {
+		schema: CapacitiesCollectionSchema,
+		defaultValue: {},
+		functionName: 'capacities',
+		enableLogging: true
+	});
 }
 
 /**
@@ -353,7 +307,12 @@ export function parseCapacities(capacitiesData: unknown) {
  * @returns Validated ShareMap or empty object if validation fails
  */
 export function parseShareMap(shareMapData: unknown) {
-	return parseTimestampedData(shareMapData, ShareMapSchema, 'share map', true);
+	return parseData(shareMapData, {
+		schema: ShareMapSchema,
+		defaultValue: {},
+		functionName: 'share map',
+		enableLogging: true
+	});
 }
 
 /**
@@ -438,27 +397,26 @@ export function parseNetworkComposition(compositionData: unknown) {
  */
 export function parseUserSlotComposition(slotCompositionData: unknown) {
 	console.log('[COMPOSE] [VALIDATION] Parsing user slot composition data...');
-	console.log('[COMPOSE] [VALIDATION] Raw data:', slotCompositionData);
 
-	const result = parseTimestampedData(
-		slotCompositionData,
-		UserSlotCompositionSchema,
-		'user slot composition',
-		true
-	);
+	const result = parseData(slotCompositionData, {
+		schema: UserSlotCompositionSchema,
+		defaultValue: {},
+		functionName: 'user slot composition',
+		enableLogging: true
+	});
 
-	console.log('[COMPOSE] [VALIDATION] Parsed result:', result);
+	console.log('[COMPOSE] [VALIDATION] Parsed result (unwrapped):', result);
 
 	// Additional validation for composition targets (post-parsing validation)
-	if (result && result.data) {
+	if (result) {
 		try {
-			validateCompositionTargets(result.data);
+			validateCompositionTargets(result);
 			console.log('[COMPOSE] [VALIDATION] ✅ Composition targets validated successfully');
 		} catch (error) {
 			console.warn('[VALIDATION] Invalid composition targets in slot composition data:', error);
 			console.warn('[COMPOSE] [VALIDATION] ❌ Composition target validation failed:', error);
-			// Return empty timestamped object instead of failing completely
-			return createEmptyTimestamped();
+			// Return empty object instead of failing completely
+			return {};
 		}
 	}
 
@@ -532,7 +490,12 @@ export function parseNetworkAllocationStates(networkAllocationData: unknown) {
  * @returns Validated ContactsCollection or empty object if validation fails
  */
 export function parseContacts(contactsData: unknown) {
-	return parseTimestampedData(contactsData, ContactsCollectionSchema, 'contacts', true);
+	return parseData(contactsData, {
+		schema: ContactsCollectionSchema,
+		defaultValue: {},
+		functionName: 'contacts',
+		enableLogging: true
+	});
 }
 
 // DELETED: parseCapacityShares - Replaced by efficient provider-centric algorithm
@@ -544,7 +507,12 @@ export function parseContacts(contactsData: unknown) {
  * @returns Validated ChatReadStates or empty object if validation fails
  */
 export function parseChatReadStates(readStatesData: unknown) {
-	return parseTimestampedData(readStatesData, ChatReadStatesSchema, 'chat read states', true);
+	return parseData(readStatesData, {
+		schema: ChatReadStatesSchema,
+		defaultValue: {},
+		functionName: 'chat read states',
+		enableLogging: true
+	});
 }
 
 // ===== COMPOSITION TARGET VALIDATION =====

@@ -10,23 +10,20 @@ import type {
 	Node,
 	ShareMap,
 	RecognitionCache,
-	ProviderCapacity
+	ProviderCapacity,
+	UserSlotComposition,
+	ProviderAllocationStateData,
+	NetworkAllocationStates
 } from '$lib/schema';
-// DELETED: UserSlotQuantities, SlotAllocationAnalysis, SlotAllocationMetadata - No longer needed
 
 // Core reactive state - these form the main reactive chain
+// All timestamps are tracked by Gun internally via GUN.state.is()
 export const userTree: Writable<RootNode | null> = writable(null);
-export const userSogf: Writable<ShareMapData | null> = writable(null);
-export const userCapacities: Writable<CapacitiesCollectionData | null> = writable(null);
+export const userSogf: Writable<ShareMap | null> = writable(null);
+export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
 
-// Parallel timestamp tracking stores (for network/persistence coordination)
-// These track metadata separately from the main data stores
-export const userCapacitiesTimestamp = writable<string | null>(null);
-export const userSogfTimestamp = writable<string | null>(null);
-export const userDesiredSlotComposeFromTimestamp = writable<string | null>(null);
-export const userDesiredSlotComposeIntoTimestamp = writable<string | null>(null);
-export const userContactsTimestamp = writable<string | null>(null);
-export const chatReadStatesTimestamp = writable<string | null>(null);
+// DELETED: Timestamp tracking stores - Replaced by Gun's native timestamp tracking
+// Use getGunTimestamp() from $lib/utils/gunTimestamp.ts when timestamp comparison is needed
 
 // Loading state flags
 export const isLoadingCapacities = writable(false);
@@ -36,65 +33,11 @@ export const isLoadingSogf = writable(false);
 export const isRecalculatingTree = writable(false);
 export const isRecalculatingCapacities = writable(false);
 
-/**
- * Helper functions to coordinate between flat data stores and timestamp metadata
- */
+// DELETED: Timestamp coordination helper functions - No longer needed
+// Gun handles all timestamp tracking internally via GUN.state.is()
+// Use getGunTimestamp() from $lib/utils/gunTimestamp.ts when needed
 
-// Update a data store and its corresponding timestamp atomically
-export function updateStoreWithTimestamp<T>(
-	dataStore: Writable<T>,
-	timestampStore: Writable<string | null>,
-	timestampedData: { metadata: { updated_at: string }; data: T }
-) {
-	// 🚨 CRITICAL: Atomic update to prevent divergence
-	// Extract both values first to ensure consistency
-	const newData = timestampedData.data;
-	const newTimestamp = timestampedData.metadata.updated_at;
-
-	// Update both stores in the same tick to ensure atomicity
-	dataStore.set(newData);
-	timestampStore.set(newTimestamp);
-
-	console.log(`[ATOMIC-UPDATE] Updated store with timestamp: ${newTimestamp}`);
-}
-
-// Get the current timestamp for a data store (for persistence validation)
-export function getCurrentTimestamp(timestampStore: Writable<string | null>): string | null {
-	return get(timestampStore);
-}
-
-// Create timestamped structure from flat data + timestamp (for persistence)
-export function createTimestampedForPersistence<T>(
-	data: T,
-	timestamp: string | null
-): { metadata: { created_at: string; updated_at: string }; data: T } {
-	const now = new Date().toISOString();
-	return {
-		metadata: {
-			created_at: timestamp || now, // Use existing timestamp or now
-			updated_at: timestamp || now
-		},
-		data
-	};
-}
-
-// Update a data store with new local data and generate fresh timestamp atomically
-export function updateStoreWithFreshTimestamp<T>(
-	dataStore: Writable<T>,
-	timestampStore: Writable<string | null>,
-	newData: T
-) {
-	// 🚨 CRITICAL: Atomic update with fresh timestamp for local changes
-	const newTimestamp = new Date().toISOString();
-
-	// Update both stores in the same tick to ensure atomicity
-	dataStore.set(newData);
-	timestampStore.set(newTimestamp);
-
-	console.log(`[ATOMIC-UPDATE] Updated store with fresh timestamp: ${newTimestamp}`);
-}
-
-export const networkCapacities: Writable<Record<string, CapacitiesCollectionData>> = writable({});
+export const networkCapacities: Writable<Record<string, CapacitiesCollection>> = writable({});
 // DELETED: networkCapacityShares - Replaced by efficient provider-centric algorithm
 // Old percentage-based network sharing no longer needed
 // DELETED: networkCapacitySlotQuantities - Replaced by efficient algorithm
@@ -102,22 +45,12 @@ export const networkCapacities: Writable<Record<string, CapacitiesCollectionData
 // DELETED: userDesiredSlotClaims and networkDesiredSlotClaims - Replaced by unified compose-from model
 // Slot claims are now handled as compose-from-self in the composition system
 
-import type {
-	UserSlotCompositionData,
-	CapacitiesCollectionData,
-	ShareMapData,
-	ProviderAllocationStateData,
-	SlotAllocationResult,
-	NetworkAllocationStates
-} from '$lib/schema';
-// DELETED: UserSlotQuantitiesData - Type no longer exists
-
-export const userDesiredSlotComposeFrom: Writable<UserSlotCompositionData> = writable({});
-export const userDesiredSlotComposeInto: Writable<UserSlotCompositionData> = writable({});
-// Network stores hold flat data (extracted from timestamped network data)
-export const networkDesiredSlotComposeFrom: Writable<Record<string, UserSlotCompositionData>> =
+export const userDesiredSlotComposeFrom: Writable<UserSlotComposition> = writable({});
+export const userDesiredSlotComposeInto: Writable<UserSlotComposition> = writable({});
+// Network stores hold unwrapped data
+export const networkDesiredSlotComposeFrom: Writable<Record<string, UserSlotComposition>> =
 	writable({});
-export const networkDesiredSlotComposeInto: Writable<Record<string, UserSlotCompositionData>> =
+export const networkDesiredSlotComposeInto: Writable<Record<string, UserSlotComposition>> =
 	writable({});
 
 // ===== EFFICIENT DISTRIBUTION ALGORITHM STORES =====
@@ -464,9 +397,10 @@ export const specificShares = derived(
 		// Process each of our provider capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
 			// Only process provider capacities (our own capacities)
-			if (!('recipient_shares' in capacity)) return;
+			if (typeof capacity !== 'object' || capacity === null || !('recipient_shares' in capacity)) return;
 
-			const providerCapacity = capacity as ProviderCapacity;
+			// Type assertion: we've verified it has recipient_shares, so it's a ProviderCapacity
+			const providerCapacity = capacity as unknown as ProviderCapacity;
 
 			// Create filter context for this capacity
 			const context: FilterContext = {
@@ -1150,7 +1084,7 @@ export const feasibleSlotComposeFrom = derived(
 			'[FEASIBLE-SLOT-COMPOSE-FROM] Calculating allocation-based feasible slot compositions...'
 		);
 
-		const finalFeasible: UserSlotCompositionData = {};
+		const finalFeasible: UserSlotComposition = {};
 
 		Object.entries($userDesiredSlotComposeFrom).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
@@ -1211,7 +1145,7 @@ export const feasibleSlotComposeInto = derived(
 			'[FEASIBLE-SLOT-COMPOSE-INTO] Calculating allocation-based feasible slot compositions...'
 		);
 
-		const finalFeasible: UserSlotCompositionData = {};
+		const finalFeasible: UserSlotComposition = {};
 
 		Object.entries($userDesiredSlotComposeInto).forEach(([sourceCapacityId, sourceSlots]) => {
 			Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
