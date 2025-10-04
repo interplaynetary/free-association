@@ -107,9 +107,9 @@ export function validateUserStateImport(data: any): { valid: boolean; errors: st
 		if (!data.data.tree || typeof data.data.tree !== 'object') {
 			errors.push('Invalid tree data structure');
 		} else {
-			// Basic tree validation
-			if (!data.data.tree.id || !data.data.tree.name || !data.data.tree.user_id) {
-				errors.push('Tree missing required fields (id, name, user_id)');
+			// Basic tree validation - RootNode only needs id, name, type, children, created_at, updated_at
+			if (!data.data.tree.id || !data.data.tree.name) {
+				errors.push('Tree missing required fields (id, name)');
 			}
 			if (!Array.isArray(data.data.tree.children)) {
 				errors.push('Tree children must be an array');

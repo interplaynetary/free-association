@@ -1673,6 +1673,7 @@
 
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
 		margin-top: 16px;
 		margin-bottom: 16px;
@@ -1714,7 +1715,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		min-width: 90px;
+		min-width: 70px;
 	}
 
 	.login-btn:hover,
@@ -1878,7 +1879,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		min-width: 90px;
+		min-width: 70px;
 		flex: 1;
 	}
 
@@ -1912,7 +1913,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		min-width: 90px;
+		min-width: 70px;
 		flex: 1;
 	}
 
