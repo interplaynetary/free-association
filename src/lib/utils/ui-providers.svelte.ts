@@ -18,7 +18,13 @@ import { userAliasesCache } from '$lib/state/users.svelte';
 
 // Helper function to get display name for a user
 function getDisplayName(userId: string, namesCache: Record<string, string>): string {
-	return namesCache[userId] || `${userId.substring(0, 8)}...`;
+	if (namesCache[userId]) {
+		return namesCache[userId];
+	}
+	// Fallback: truncate the pubkey intelligently
+	// Gun pubkeys are in format: publicKey.signature
+	const parts = userId.split('.');
+	return (parts[0]?.substring(0, 12) || userId.substring(0, 12)) + '...';
 }
 
 // Simplified contacts and users data provider - no more complex merging logic
@@ -26,16 +32,6 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
 		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache],
 		([$userContacts, $userIds, $userNamesCache, $userAliasesCache]) => {
-			console.log('[UI-PROVIDER-DEBUG] createContactsAndUsersDataProvider called:', {
-				contactsCount: $userContacts ? Object.keys($userContacts).length : 0,
-				userIdsCount: $userIds ? $userIds.length : 0,
-				userIds: $userIds?.map(id => id.slice(0, 20) + '...') || [],
-				namesCacheCount: $userNamesCache ? Object.keys($userNamesCache).length : 0,
-				namesCacheKeys: Object.keys($userNamesCache || {}).map(id => id.slice(0, 20) + '...'),
-				aliasesCacheCount: $userAliasesCache ? Object.keys($userAliasesCache).length : 0,
-				aliasesCacheKeys: Object.keys($userAliasesCache || {}).map(id => id.slice(0, 20) + '...'),
-				excludeIds: excludeIds.map(id => id.slice(0, 20) + '...')
-			});
 			const items: Array<{
 				id: string;
 				name: string;
@@ -89,7 +85,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 
 					items.push({
 						id: userId,
-						name: $userNamesCache[userId] || userId,
+						name: getDisplayName(userId, $userNamesCache),
 						metadata: {
 							userId,
 							isContact: false,
@@ -150,7 +146,7 @@ export function createUsersDataProvider(excludeIds: string[] = []) {
 			.filter((userId) => !excludeIds.includes(userId))
 			.map((userId) => ({
 				id: userId,
-				name: $userNamesCache[userId] || userId,
+				name: getDisplayName(userId, $userNamesCache),
 				metadata: { userId }
 			}));
 

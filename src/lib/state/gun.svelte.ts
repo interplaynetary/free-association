@@ -92,6 +92,12 @@ if (typeof window !== 'undefined') {
 				usersList.get(pubToUse).put({
 					alias: aliasToUse,
 					lastSeen: Date.now()
+				}, (ack: any) => {
+					if (ack.err) {
+						console.error('[USERS-DEBUG] [RECALL] Error writing to usersList:', ack.err);
+					} else {
+						console.log('[USERS-DEBUG] [RECALL] Successfully wrote to usersList');
+					}
 				});
 					});
 				});
@@ -178,6 +184,12 @@ gun.on('auth', async () => {
 			usersList.get(pubToUse).put({
 				alias: aliasToUse,
 				lastSeen: Date.now()
+			}, (ack: any) => {
+				if (ack.err) {
+					console.error('[USERS-DEBUG] [AUTH] Error writing to usersList:', ack.err);
+				} else {
+					console.log('[USERS-DEBUG] [AUTH] Successfully wrote to usersList');
+				}
 			});
 
 					console.log(`signed in as ${aliasToUse}`);
