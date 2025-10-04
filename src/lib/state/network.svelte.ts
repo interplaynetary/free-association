@@ -1035,6 +1035,18 @@ export function setupUsersListSubscription() {
 	console.log('[USERS-DEBUG] usersList reference:', usersList);
 	usersListSubscriptionActive = true;
 
+	// Test: Expose a function to manually trigger a test update
+	if (typeof window !== 'undefined') {
+		(window as any).testUsersListUpdate = () => {
+			console.log('[USERS-TEST] Manually triggering test update...');
+			usersList.get('test-user-' + Date.now()).put({
+				alias: 'TestUser' + Date.now(),
+				lastSeen: Date.now()
+			});
+		};
+		console.log('[USERS-TEST] Run window.testUsersListUpdate() to test subscription');
+	}
+
 	// Track current users to detect additions/removals
 	const currentUsers = new Map<string, any>();
 

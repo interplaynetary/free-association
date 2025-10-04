@@ -300,8 +300,11 @@ export function createChildContributorsDataProvider(
 	childNodeId: string | null,
 	excludeIds: string[] = []
 ) {
+	// Create the base provider ONCE, outside the derived
+	const baseProvider = createContactsAndUsersDataProvider(excludeIds);
+
 	return derived(
-		[createContactsAndUsersDataProvider(excludeIds), userTree],
+		[baseProvider, userTree],
 		([$baseItems, $userTree]) => {
 			// Get the contributors of the specific child node
 			let childContributors: string[] = [];

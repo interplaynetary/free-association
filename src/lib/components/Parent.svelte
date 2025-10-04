@@ -62,14 +62,11 @@
 	let activeNodeId = $state<string | null>(null);
 	let contributorMode = $state<'contributor' | 'anti-contributor'>('contributor');
 
-	// Create users data provider for the dropdown - simplified single provider
-	let usersDataProvider = $derived.by(() => {
-		// Always use the child contributors provider for consistency
-		// It will handle cases where activeNodeId is null gracefully
-		const provider = createChildContributorsDataProvider(activeNodeId, []);
-
-		return provider;
-	});
+	// Create users data provider for the dropdown
+	// We need a stable store reference that updates when activeNodeId changes
+	// Use createContactsAndUsersDataProvider directly instead of the child-specific one
+	// since the child filtering is only used for sorting priority, not filtering
+	const usersDataProvider = createChildContributorsDataProvider(null, []);
 
 	// Get current node contributors for the dropdown (based on current mode)
 	let currentContributors = $derived.by(() => {
@@ -584,11 +581,31 @@
 	function handleAddContributor(detail: { nodeId: string; clientX: number; clientY: number }) {
 		const { nodeId, clientX, clientY } = detail;
 
-		// Show user dropdown in contributor mode
-		activeNodeId = nodeId;
-		contributorMode = 'contributor';
-		dropdownPosition = { x: clientX, y: clientY };
-		showUserDropdown = true;
+		console.log('[PARENT-DEBUG] handleAddContributor called:', {
+			nodeId,
+			clientX,
+			clientY,
+			currentShowState: showUserDropdown
+		});
+
+		// Force close then open to ensure clean state
+		showUserDropdown = false;
+
+		// Use requestAnimationFrame to ensure the close happens first
+		requestAnimationFrame(() => {
+			// Show user dropdown in contributor mode
+			activeNodeId = nodeId;
+			contributorMode = 'contributor';
+			dropdownPosition = { x: clientX, y: clientY };
+			showUserDropdown = true;
+
+			console.log('[PARENT-DEBUG] After setting showUserDropdown:', {
+				showUserDropdown,
+				activeNodeId,
+				dropdownPosition,
+				usersDataProvider
+			});
+		});
 	}
 
 	function handleAddAntiContributor(detail: { nodeId: string; clientX: number; clientY: number }) {

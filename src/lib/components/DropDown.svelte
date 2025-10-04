@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import {
 		resolveToPublicKey,
@@ -58,6 +58,37 @@
 
 	// State
 	let dropdownContainer = $state<HTMLDivElement | null>(null);
+
+	// Subscribe to dataProvider using proper lifecycle management
+	// Initialize empty - will populate on mount
+	let dataProviderItems = $state<Array<{ id: string; name: string; metadata?: any }>>([]);
+
+	// Subscribe on mount to avoid $effect infinite loops
+	let unsubscribe: (() => void) | undefined;
+
+	onMount(() => {
+		console.log('[DROPDOWN-DEBUG] onMount - subscribing to dataProvider');
+		let subscriptionCount = 0;
+		unsubscribe = dataProvider.subscribe((items: Array<{ id: string; name: string; metadata?: any }>) => {
+			subscriptionCount++;
+			console.log('[DROPDOWN-DEBUG] dataProvider subscription fired (count: ' + subscriptionCount + '):', {
+				itemsCount: items?.length || 0,
+				items: items?.slice(0, 5).map((i: { id: string; name: string; metadata?: any }) => ({
+					id: i.id.slice(0, 10),
+					name: i.name,
+					isContact: i.metadata?.isContact
+				}))
+			});
+			dataProviderItems = items || [];
+		});
+	});
+
+	onDestroy(() => {
+		console.log('[DROPDOWN-DEBUG] onDestroy - cleaning up');
+		if (unsubscribe) {
+			unsubscribe();
+		}
+	});
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let resultsContainer = $state<HTMLDivElement | null>(null);
 	let nameInput = $state<HTMLInputElement | null>(null);
@@ -93,7 +124,7 @@
 	let selectedAliasIndex = $state(0);
 
 	// Create a filtered aliases store that reactively filters available aliases
-	let filteredAliases = $derived(() => {
+	let filteredAliases = $derived.by(() => {
 		if (!editingContactAlias.trim() || editingMode !== 'edit') {
 			return [];
 		}
@@ -111,8 +142,8 @@
 	});
 
 	// Get filtered items based on search
-	let filteredItems = $derived(() => {
-		const items = $dataProvider || [];
+	let filteredItems = $derived.by(() => {
+		const items = dataProviderItems;
 		console.log('[DROPDOWN-DEBUG] filteredItems derived called:', {
 			itemsCount: items.length,
 			items: items.map((item: { id: string; name: string; metadata?: any }) => ({
@@ -135,7 +166,8 @@
 		}
 
 		// Sort to show selected items first, then by selection status and name
-		return filtered.sort(
+		// Use slice() to create a copy before sorting to avoid mutating state
+		return filtered.slice().sort(
 			(
 				a: { id: string; name: string; metadata?: any },
 				b: { id: string; name: string; metadata?: any }
@@ -172,7 +204,7 @@
 		}
 
 		// Get the current item's metadata to understand its type
-		const items = $dataProvider || [];
+		const items = dataProviderItems;
 		const currentItem = items.find((item: { id: string; metadata?: any }) => item.id === itemId);
 		if (!currentItem) return false;
 
@@ -564,7 +596,7 @@
 	}
 
 	function handleAliasKeydown(event: KeyboardEvent) {
-		const aliases = filteredAliases();
+		const aliases = filteredAliases;
 
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
@@ -603,7 +635,7 @@
 
 		try {
 			// Find the contact metadata to get the public key
-			const items = filteredItems();
+			const items = filteredItems;
 			const contactItem = items.find(
 				(item: { id: string; metadata?: any }) => item.id === contactId && item.metadata?.isContact
 			);
@@ -856,7 +888,7 @@
 						<span class="members-hint">Select at least 2 people</span>
 					</div>
 					<div class="members-list">
-						{#each $dataProvider || [] as item (item.id)}
+						{#each dataProviderItems as item (item.id)}
 							{#if !item.metadata?.isContact || item.metadata?.userId}
 								<div
 									class="member-item"
@@ -900,12 +932,12 @@
 		{/if}
 
 		<div class="results" bind:this={resultsContainer}>
-			{#if !filteredItems() || filteredItems().length === 0}
+			{#if !filteredItems || filteredItems.length === 0}
 				<div class="message">
 					{searchFilter ? 'No matching items found' : 'No items available'}
 				</div>
 			{:else}
-				{#each filteredItems() as item (item.id)}
+				{#each filteredItems as item (item.id)}
 					<div
 						class="item"
 						class:is-contact={item.metadata?.isContact}
