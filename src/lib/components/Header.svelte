@@ -21,6 +21,11 @@
 	import { gunAvatar } from 'gun-avatar';
 	import { startTour } from '$lib/utils/tour';
 	import { browser } from '$app/environment';
+	import {
+		exportUserStateAsJSON,
+		importUserStateFromJSON,
+		type UserStateExport
+	} from '$lib/utils/userStateExport';
 
 	// Helper function to truncate text
 	function truncateText(text: string, maxLength: number = 14): string {
@@ -161,6 +166,12 @@
 	// Notification state
 	let showNotificationPanel = $state(false);
 
+	// Import/Export state
+	let showImportPanel = $state(false);
+	let importJsonInput = $state('');
+	let importError = $state('');
+	let isImporting = $state(false);
+
 	// Search state
 	let showSearchPanel = $state(false);
 	let searchQuery = $state('');
@@ -207,6 +218,7 @@
 	let loginPanelRef = $state<HTMLElement | null>(null);
 	let notificationPanelRef = $state<HTMLElement | null>(null);
 	let searchPanelRef = $state<HTMLElement | null>(null);
+	let importPanelRef = $state<HTMLElement | null>(null);
 	let searchInputRef = $state<HTMLInputElement | null>(null);
 	let breadcrumbsRef = $state<HTMLElement | null>(null);
 
@@ -247,6 +259,18 @@
 					showSearchPanel = false;
 					searchQuery = '';
 					selectedResultIndex = -1;
+				}
+			}
+
+			if (showImportPanel && importPanelRef && !importPanelRef.contains(target)) {
+				// Check if the click is on any header control buttons
+				const isHeaderControlButton = target.closest('.header-controls');
+
+				// Don't close the import panel if clicking on header control buttons
+				if (!isHeaderControlButton) {
+					showImportPanel = false;
+					importJsonInput = '';
+					importError = '';
 				}
 			}
 		}
@@ -635,20 +659,65 @@
 		}
 	}
 
-	// Replace handleDownloadTree with handleCopyTree
-	async function handleCopyTree() {
-		if (!tree) {
-			globalState.showToast('No tree data available to copy', 'error');
+	// Export complete user state to clipboard
+	async function handleExportData() {
+		try {
+			const jsonData = exportUserStateAsJSON(true);
+			await navigator.clipboard.writeText(jsonData);
+			globalState.showToast('User data exported to clipboard', 'success');
+		} catch (error) {
+			console.error('Error exporting user data:', error);
+			globalState.showToast('Failed to export user data', 'error');
+		}
+	}
+
+	// Toggle import panel
+	function toggleImportPanel() {
+		showImportPanel = !showImportPanel;
+		if (!showImportPanel) {
+			// Reset import state when closing
+			importJsonInput = '';
+			importError = '';
+		} else {
+			// Close other panels
+			showLoginPanel = false;
+			showNotificationPanel = false;
+			showSearchPanel = false;
+		}
+	}
+
+	// Handle importing user data
+	async function handleImportData() {
+		if (!importJsonInput.trim()) {
+			importError = 'Please paste JSON data to import';
 			return;
 		}
 
+		importError = '';
+		isImporting = true;
+
 		try {
-			const jsonData = JSON.stringify(tree, null, 2);
-			await navigator.clipboard.writeText(jsonData);
-			globalState.showToast('Tree data copied to clipboard', 'success');
+			const result = await importUserStateFromJSON(importJsonInput.trim());
+
+			if (result.success) {
+				globalState.showToast('User data imported successfully!', 'success');
+				showImportPanel = false;
+				importJsonInput = '';
+
+				// Reload the page to ensure all derived state is recalculated
+				setTimeout(() => {
+					window.location.reload();
+				}, 1000);
+			} else {
+				importError = result.errors.join('; ');
+				globalState.showToast('Import failed: ' + result.errors[0], 'error');
+			}
 		} catch (error) {
-			console.error('Error copying tree:', error);
-			globalState.showToast('Failed to copy tree data', 'error');
+			console.error('Error importing user data:', error);
+			importError = error instanceof Error ? error.message : 'Unknown error during import';
+			globalState.showToast('Failed to import user data', 'error');
+		} finally {
+			isImporting = false;
 		}
 	}
 
@@ -1033,8 +1102,11 @@
 						<button class="key-btn" title="Change password" onclick={togglePasswordChange}>
 							<span>🔑</span>
 						</button>
-						<button class="copy-tree-btn" title="Copy tree" onclick={handleCopyTree}>
-							<span>🌲📋</span>
+						<button class="export-data-btn" title="Export user data" onclick={handleExportData}>
+							<span>💾</span>
+						</button>
+						<button class="import-data-btn" title="Import user data" onclick={toggleImportPanel}>
+							<span>📥</span>
 						</button>
 						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
 					</div>
@@ -1241,6 +1313,57 @@
 
 				<div class="actions">
 					<button class="close-btn" onclick={toggleSearchPanel}>Close</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Import data panel (dropdown) -->
+	{#if showImportPanel}
+		<div class="import-panel" bind:this={importPanelRef}>
+			<div class="import-content">
+				<h3>Import User Data</h3>
+				<p class="import-description">
+					Paste exported JSON data to restore your tree, capacities, contacts, and other data.
+				</p>
+
+				{#if importError}
+					<div class="error-message">{importError}</div>
+				{/if}
+
+				<div class="import-textarea-container">
+					<textarea
+						bind:value={importJsonInput}
+						placeholder="Paste JSON data here..."
+						class="import-textarea"
+						rows="12"
+						disabled={isImporting}
+					></textarea>
+				</div>
+
+				<div class="import-warning">
+					<p>
+						⚠️ <strong>Warning:</strong> This will replace your current data. Make sure to export your
+						current data first as a backup!
+					</p>
+				</div>
+
+				<div class="actions">
+					<button
+						class="import-btn"
+						onclick={handleImportData}
+						disabled={isImporting || !importJsonInput.trim()}
+					>
+						{#if isImporting}
+							<div class="spinner small"></div>
+							Importing...
+						{:else}
+							Import Data
+						{/if}
+					</button>
+					<button class="close-btn" onclick={toggleImportPanel} disabled={isImporting}>
+						Cancel
+					</button>
 				</div>
 			</div>
 		</div>
@@ -1742,7 +1865,8 @@
 		color: #666;
 	}
 
-	.copy-tree-btn {
+	.export-data-btn,
+	.import-data-btn {
 		background: #4caf50;
 		color: white;
 		border: none;
@@ -1758,12 +1882,22 @@
 		flex: 1;
 	}
 
-	.copy-tree-btn:hover {
+	.export-data-btn:hover,
+	.import-data-btn:hover {
 		background: #388e3c;
 	}
 
-	.copy-tree-btn:active {
+	.export-data-btn:active,
+	.import-data-btn:active {
 		transform: scale(0.98);
+	}
+
+	.import-data-btn {
+		background: #2196f3;
+	}
+
+	.import-data-btn:hover {
+		background: #1976d2;
 	}
 
 	.key-btn {
@@ -2049,6 +2183,142 @@
 		padding: 2px 6px;
 		font-size: 0.8em;
 		margin: 0 2px;
+	}
+
+	/* Import panel styles */
+	.import-panel {
+		position: absolute;
+		top: calc(100% - 8px);
+		right: 16px;
+		width: 500px;
+		max-width: calc(100vw - 32px);
+		max-height: 600px;
+		background-color: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		border-radius: 8px;
+		padding: 16px;
+		z-index: 10;
+		animation: dropDown 0.2s ease-out;
+		overflow-y: auto;
+	}
+
+	.import-panel::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		right: 24px;
+		width: 16px;
+		height: 16px;
+		background-color: white;
+		transform: rotate(45deg);
+		box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.05);
+	}
+
+	.import-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.import-content h3 {
+		margin-top: 0;
+		margin-bottom: 8px;
+		font-size: 1.2em;
+		color: #333;
+	}
+
+	.import-description {
+		margin: 0 0 16px 0;
+		font-size: 0.9em;
+		color: #666;
+		line-height: 1.4;
+	}
+
+	.import-textarea-container {
+		margin-bottom: 16px;
+	}
+
+	.import-textarea {
+		width: 100%;
+		padding: 10px;
+		border: 2px solid #e0e0e0;
+		border-radius: 6px;
+		font-family: 'Courier New', monospace;
+		font-size: 0.85em;
+		background: #fafafa;
+		resize: vertical;
+		transition: all 0.2s ease;
+	}
+
+	.import-textarea:focus {
+		outline: none;
+		border-color: #2196f3;
+		background: white;
+		box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+	}
+
+	.import-textarea:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.import-warning {
+		background: #fff3cd;
+		border: 1px solid #ffc107;
+		border-radius: 4px;
+		padding: 12px;
+		margin-bottom: 16px;
+	}
+
+	.import-warning p {
+		margin: 0;
+		font-size: 0.85em;
+		color: #856404;
+		line-height: 1.4;
+	}
+
+	.import-btn {
+		flex: 1;
+		background: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		padding: 8px 12px;
+		font-size: 0.95em;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-width: 90px;
+	}
+
+	.import-btn:hover {
+		background: #1976d2;
+	}
+
+	.import-btn:disabled {
+		background: #bbdefb;
+		cursor: not-allowed;
+	}
+
+	/* Add mobile-friendly media query for import panel */
+	@media (max-width: 768px) {
+		.import-panel {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: calc(100% - 32px);
+			max-width: 500px;
+			max-height: 80vh;
+			margin: 0 auto;
+			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+			z-index: 100;
+		}
+
+		.import-panel::before {
+			display: none;
+		}
 	}
 
 	/* Password change form styles */
