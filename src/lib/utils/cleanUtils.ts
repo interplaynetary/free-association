@@ -3,7 +3,7 @@ import { gun, usersList, userPub, userAlias } from '$lib/state/gun.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
 import { userTree } from '$lib/state/core.svelte';
 import { createRootNode } from '$lib/protocol';
-import { populateWithExampleData } from '$lib/examples/example';
+import { populateWithExampleData } from '$lib/utils/example';
 import type { Node, NonRootNode } from '$lib/schema';
 
 /**

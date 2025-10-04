@@ -22,7 +22,7 @@ export function populateWithExampleData(rootNode: RootNode): RootNode {
 		if (playlabsNode) {
 			addChild(playlabsNode, 'facilitation', 'Facilitation', 20);
 			addChild(playlabsNode, 'music', 'Music', 15);
-			addChild(playlabsNode, 'food', 'Food', 15);
+			addChild(playlabsNode, 'food-playlab', 'Food', 15);
 			addChild(playlabsNode, 'documentation', 'Documentation', 10);
 			addChild(playlabsNode, 'invitation', 'Invitation', 10);
 			addChild(playlabsNode, 'materials', 'Materials', 30);
