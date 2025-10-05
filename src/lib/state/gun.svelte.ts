@@ -22,9 +22,9 @@ export const gun = new Gun({
     peers: [
         // custom relayer with storage persistance
         'https://104.248.129.153/gun',
-        'https://gun-manhattan.herokuapp.com/gun',
-        'https://peer.wallie.io/gun',
-        'https://gun.defucc.me/gun'
+        //'https://gun-manhattan.herokuapp.com/gun',
+        //'https://peer.wallie.io/gun',
+        //'https://gun.defucc.me/gun'
     ],
     localStorage: false,
     radisk: true
