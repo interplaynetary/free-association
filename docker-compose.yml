@@ -66,9 +66,9 @@ services:
       - NODE_ENV=production
       - GUN_PEER_URL=http://gun-relay:8765/gun
       - HOLSTER_PEER_URL=ws://holster-relay:8766/holster
-      # Security - CHANGE THESE IN PRODUCTION!
-      - MASTER_API_KEY=${MASTER_API_KEY:-dev-key-12345-change-in-production}
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      # Security - MUST provide via .env file
+      - MASTER_API_KEY=${MASTER_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174}
       - DEBUG=false
     networks:

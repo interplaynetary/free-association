@@ -3,10 +3,15 @@ import helmet from 'helmet';
 
 /**
  * Rate limiter for general API endpoints
+ * Uses userId from JWT if available, otherwise falls back to IP
  */
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100, // Limit each user/IP to 100 requests per windowMs
+  keyGenerator: (req) => {
+    // Prefer userId from JWT token (set by auth middleware)
+    return req.user?.userId || req.ip;
+  },
   message: {
     error: 'Too many requests',
     message: 'You have exceeded the 100 requests in 15 minutes limit.',
@@ -18,10 +23,14 @@ export const generalLimiter = rateLimit({
 
 /**
  * Stricter rate limiter for AI endpoints (more expensive)
+ * Uses userId from JWT if available, otherwise falls back to IP
  */
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 AI requests per windowMs
+  max: 20, // Limit each user/IP to 20 AI requests per windowMs
+  keyGenerator: (req) => {
+    return req.user?.userId || req.ip;
+  },
   message: {
     error: 'Too many AI requests',
     message: 'You have exceeded the 20 AI requests in 15 minutes limit.',
@@ -33,10 +42,11 @@ export const aiLimiter = rateLimit({
 
 /**
  * Rate limiter for authentication endpoints
+ * Always uses IP address for auth attempts (no user context yet)
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // Limit auth attempts
+  max: 5, // Limit auth attempts per IP
   message: {
     error: 'Too many authentication attempts',
     message: 'Too many attempts. Please try again later.',

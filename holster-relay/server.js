@@ -8,7 +8,8 @@ const config = {
   host: process.env.HOLSTER_RELAY_HOST || '0.0.0.0',
   port: parseInt(process.env.HOLSTER_RELAY_PORT) || 8766,
   storageEnabled: process.env.HOLSTER_RELAY_STORAGE === 'true' || true,
-  storagePath: process.env.HOLSTER_RELAY_STORAGE_PATH || './holster-data'
+  storagePath: process.env.HOLSTER_RELAY_STORAGE_PATH || './holster-data',
+  maxConnections: parseInt(process.env.HOLSTER_MAX_CONNECTIONS) || 100
 };
 
 console.log('Starting Holster Relay Server with configuration:');
@@ -40,14 +41,24 @@ const holster = Holster({
 
 // Track connections
 let connectionCount = 0;
+let activeConnections = 0;
 
 wss.on('connection', (ws, req) => {
+  // Check connection limit
+  if (activeConnections >= config.maxConnections) {
+    console.warn(`Connection rejected: limit reached (${config.maxConnections})`);
+    ws.close(1008, 'Maximum connections reached');
+    return;
+  }
+
   connectionCount++;
+  activeConnections++;
   const clientId = connectionCount;
-  console.log(`Client ${clientId} connected from ${req.socket.remoteAddress}`);
+  console.log(`Client ${clientId} connected from ${req.socket.remoteAddress} (active: ${activeConnections}/${config.maxConnections})`);
 
   ws.on('close', () => {
-    console.log(`Client ${clientId} disconnected`);
+    activeConnections--;
+    console.log(`Client ${clientId} disconnected (active: ${activeConnections}/${config.maxConnections})`);
   });
 
   ws.on('error', (error) => {

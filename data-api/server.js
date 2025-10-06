@@ -44,6 +44,16 @@ if (isProduction) {
     console.error('Generate a secure secret: openssl rand -base64 32');
     process.exit(1);
   }
+
+  // Check entropy - must have at least 16 unique characters
+  const uniqueChars = new Set(jwtSecret).size;
+  if (uniqueChars < 16) {
+    console.error('🚨 FATAL: JWT_SECRET has insufficient entropy!');
+    console.error(`   Found only ${uniqueChars} unique characters (minimum: 16).`);
+    console.error('   Weak secrets like "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" are rejected.');
+    console.error('Generate a secure secret: openssl rand -base64 48');
+    process.exit(1);
+  }
 }
 
 // WARN: Development mode with default credentials
@@ -153,9 +163,10 @@ app.get('/', (req, res) => {
 
 /**
  * Health check endpoint (no auth required)
+ * Tests connectivity to Gun and Holster relays
  */
-app.get('/health', (req, res) => {
-  res.json({
+app.get('/health', async (req, res) => {
+  const health = {
     status: 'ok',
     service: 'data-api-gateway',
     timestamp: Date.now(),
@@ -164,8 +175,43 @@ app.get('/health', (req, res) => {
       gunPeer: config.gunPeer,
       holsterPeer: config.holsterPeer,
       environment: config.nodeEnv
+    },
+    relays: {
+      gun: 'unknown',
+      holster: 'unknown'
     }
-  });
+  };
+
+  // Test Gun relay connectivity
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('timeout')), 3000);
+      gun.get('_health_check').once(() => {
+        clearTimeout(timeout);
+        resolve();
+      });
+    });
+    health.relays.gun = 'connected';
+  } catch (err) {
+    health.relays.gun = 'unreachable';
+    health.status = 'degraded';
+  }
+
+  // Test Holster relay connectivity (check if holster instance is initialized)
+  try {
+    if (holster && typeof holster.get === 'function') {
+      health.relays.holster = 'connected';
+    } else {
+      health.relays.holster = 'not_initialized';
+      health.status = 'degraded';
+    }
+  } catch (err) {
+    health.relays.holster = 'unreachable';
+    health.status = 'degraded';
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 /**
