@@ -10,6 +10,7 @@ import 'gun/lib/webrtc.js';
 
 import { writable, get } from 'svelte/store';
 import { initializeUserDataStreams } from './network.svelte';
+import { config } from '../config';
 
 if (typeof Gun.SEA === 'undefined') {
 	Gun.SEA = SEA;
@@ -17,17 +18,11 @@ if (typeof Gun.SEA === 'undefined') {
 
 export const GUN = Gun;
 
-// Database
+// Database - now uses config from environment variables
 export const gun = new Gun({
-    peers: [
-        // custom relayer with storage persistance
-        'https://104.248.129.153/gun',
-        //'https://gun-manhattan.herokuapp.com/gun',
-        //'https://peer.wallie.io/gun',
-        //'https://gun.defucc.me/gun'
-    ],
-    localStorage: false,
-    radisk: true
+    peers: config.gun.peers,
+    localStorage: config.gun.localStorage,
+    radisk: config.gun.radisk
 });
 
 // Authentication state store

@@ -1,12 +1,13 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import { writable, get } from 'svelte/store';
 import { initializeUserDataStreams } from './network.svelte';
+import { config } from '../config';
 
-// Initialize Holster with similar configuration to Gun
+// Initialize Holster - now uses config from environment variables
 export const holster = Holster({
-	peers: ['wss://holster.haza.website'],
-	indexedDB: true,
-	secure: true // Enable security for signed updates
+	peers: config.holster.peers,
+	indexedDB: config.holster.indexedDB,
+	secure: config.holster.secure
 });
 
 // Authentication state store

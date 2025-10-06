@@ -1,0 +1,176 @@
+# Docker Quick Start Guide
+
+Quick reference for running the Free Association containerized services.
+
+## TL;DR
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+## The Three Services
+
+1. **gun-relay** (port 8765) - Gun database relay
+2. **holster-relay** (port 8766) - Holster database relay
+3. **data-api** (port 8767) - REST API for database population
+
+## Common Commands
+
+### Start/Stop
+
+```bash
+# Start all services in background
+docker-compose up -d
+
+# Start and view logs
+docker-compose up
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes data)
+docker-compose down -v
+
+# Restart a specific service
+docker-compose restart gun-relay
+```
+
+### Monitoring
+
+```bash
+# Check service health
+docker-compose ps
+
+# View all logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f gun-relay
+
+# Check resource usage
+docker stats
+```
+
+### Rebuilding
+
+```bash
+# Rebuild all services
+docker-compose build
+
+# Rebuild without cache
+docker-compose build --no-cache
+
+# Rebuild and restart
+docker-compose up -d --build
+```
+
+## Testing the Services
+
+```bash
+# Test Gun relay
+curl http://localhost:8765/gun
+
+# Test Holster relay
+curl http://localhost:8766/health
+
+# Test Data API
+curl http://localhost:8767/health
+
+# Seed databases
+curl -X POST http://localhost:8767/gun/seed
+curl -X POST http://localhost:8767/holster/seed
+```
+
+## Frontend Development
+
+```bash
+# 1. Start Docker services
+docker-compose up -d
+
+# 2. Copy environment config
+cp .env.development .env.local
+
+# 3. Run frontend
+bun install
+bun run dev
+```
+
+Frontend will connect to:
+- Gun: `http://localhost:8765/gun`
+- Holster: `ws://localhost:8766/holster`
+- API: `http://localhost:8767`
+
+## Troubleshooting
+
+### Services won't start
+```bash
+docker-compose logs
+docker-compose down
+docker-compose up -d
+```
+
+### Port already in use
+Edit `docker-compose.yml` and change port mappings:
+```yaml
+ports:
+  - "9765:8765"  # Use port 9765 instead
+```
+
+### Need clean slate
+```bash
+docker-compose down -v
+docker system prune -a
+docker-compose up -d
+```
+
+### Check what's running
+```bash
+docker ps
+docker-compose ps
+```
+
+## Data Persistence
+
+Data is stored in Docker volumes:
+- `gun-data` - Gun database
+- `holster-data` - Holster database
+
+To backup:
+```bash
+docker run --rm -v free-association_gun-data:/data -v $(pwd):/backup \
+  alpine tar czf /backup/gun-backup.tar.gz -C /data .
+```
+
+## Individual Services
+
+Run just one service:
+```bash
+docker-compose up -d gun-relay
+docker-compose up -d holster-relay
+docker-compose up -d data-api
+```
+
+## Production Notes
+
+For production deployment, see `DEPLOYMENT.md` for:
+- Environment configuration
+- SSL/TLS setup
+- Scaling strategies
+- Cloud deployment options
+- Security hardening
+
+## Need Help?
+
+- Full deployment guide: `DEPLOYMENT.md`
+- Service-specific docs: Check each service's `README.md`
+- Issues: https://github.com/playnet-org/free-association/issues

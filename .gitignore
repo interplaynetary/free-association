@@ -52,3 +52,13 @@ radata-*
 
 # Ignore the store directory
 /store/
+
+# Docker service data directories
+gun-relay/node_modules
+gun-relay/store
+holster-relay/node_modules
+holster-relay/holster-data
+data-api/node_modules
+
+# Docker environment
+.env.docker.local
