@@ -1,5 +1,6 @@
 import express from 'express';
 import Gun from 'gun';
+import { validatePathData, validatePathQuery } from '../utils/validate.js';
 
 const router = express.Router();
 
@@ -14,13 +15,9 @@ export function setGunInstance(gunInstance) {
  * POST /gun/put
  * Write data to Gun database
  */
-router.post('/put', async (req, res) => {
+router.post('/put', validatePathData, async (req, res) => {
   try {
     const { path, data } = req.body;
-
-    if (!path || !data) {
-      return res.status(400).json({ error: 'path and data are required' });
-    }
 
     const pathParts = path.split('/').filter(p => p);
     let ref = gun;
@@ -44,13 +41,9 @@ router.post('/put', async (req, res) => {
  * GET /gun/get
  * Read data from Gun database
  */
-router.get('/get', async (req, res) => {
+router.get('/get', validatePathQuery, async (req, res) => {
   try {
     const { path } = req.query;
-
-    if (!path) {
-      return res.status(400).json({ error: 'path query parameter is required' });
-    }
 
     const pathParts = path.split('/').filter(p => p);
     let ref = gun;

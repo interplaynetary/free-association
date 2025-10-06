@@ -21,6 +21,37 @@ import {
 import gunRoutes, { setGunInstance } from './routes/gun.js';
 import holsterRoutes, { setHolsterInstance } from './routes/holster.js';
 
+// ============ CRITICAL: VALIDATE CREDENTIALS ON STARTUP ============
+
+const DEFAULT_API_KEY = 'dev-key-12345-change-in-production';
+const DEFAULT_JWT_SECRET = 'your-secret-key-change-in-production';
+
+const apiKey = process.env.MASTER_API_KEY;
+const jwtSecret = process.env.JWT_SECRET;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// FAIL-FAST: Prevent startup with default credentials in production
+if (isProduction) {
+  if (!apiKey || apiKey === DEFAULT_API_KEY) {
+    console.error('🚨 FATAL: Cannot start in production with default or missing MASTER_API_KEY!');
+    console.error('Generate a secure key: openssl rand -hex 32');
+    process.exit(1);
+  }
+
+  if (!jwtSecret || jwtSecret === DEFAULT_JWT_SECRET || jwtSecret.length < 32) {
+    console.error('🚨 FATAL: Cannot start in production with default, missing, or weak JWT_SECRET!');
+    console.error('JWT_SECRET must be at least 32 characters.');
+    console.error('Generate a secure secret: openssl rand -base64 32');
+    process.exit(1);
+  }
+}
+
+// WARN: Development mode with default credentials
+if (!isProduction && (!apiKey || apiKey === DEFAULT_API_KEY)) {
+  console.warn('⚠️  WARNING: Using default API key in development mode!');
+  console.warn('   This is ONLY acceptable for local development.');
+}
+
 // Configuration from environment variables with defaults
 const config = {
   host: process.env.DATA_API_HOST || '0.0.0.0',
@@ -53,9 +84,9 @@ app.use(configureHelmet());
 // CORS configuration
 app.use(cors(configureCors()));
 
-// Body parsing
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing - limit to 1MB to prevent abuse
+app.use(bodyParser.json({ limit: '1mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
 
 // Request logging
 app.use(requestLogger);

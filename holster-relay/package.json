@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@mblaney/holster": "^1.0.10",
-    "express": "^5.1.0",
+    "express": "^4.21.2",
     "ws": "^8.18.0"
   }
 }
