@@ -1,6 +1,12 @@
 import jwt from 'jsonwebtoken';
 
-// In-memory API key store (in production, use a database)
+// In-memory API key store
+// NOTE: This is suitable for development and small deployments with a single master key.
+// For production with multiple users, implement:
+//   - Database-backed key storage (PostgreSQL, Redis)
+//   - Key rotation mechanism with expiry dates
+//   - Per-user API keys with scoped permissions
+//   - API key hashing (bcrypt/argon2) for secure storage
 const validApiKeys = new Set([
   process.env.MASTER_API_KEY || 'dev-key-12345-change-in-production'
 ]);
@@ -91,7 +97,7 @@ export function authenticateEither(req, res, next) {
 /**
  * Generate a JWT token (for testing/admin purposes)
  */
-export function generateToken(payload, expiresIn = '24h') {
+export function generateToken(payload, expiresIn = process.env.JWT_EXPIRY || '24h') {
   const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
   return jwt.sign(payload, secret, { expiresIn });
 }

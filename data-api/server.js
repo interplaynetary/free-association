@@ -182,16 +182,17 @@ app.get('/health', async (req, res) => {
     }
   };
 
-  // Test Gun relay connectivity
+  // Test Gun relay connectivity (check instance state, not database)
   try {
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('timeout')), 3000);
-      gun.get('_health_check').once(() => {
-        clearTimeout(timeout);
-        resolve();
-      });
-    });
-    health.relays.gun = 'connected';
+    if (gun && gun._.opt && gun._.opt.peers) {
+      // Check if Gun instance has peers configured
+      const peerCount = Object.keys(gun._.opt.peers).length;
+      health.relays.gun = peerCount > 0 ? 'connected' : 'no_peers';
+      if (peerCount === 0) health.status = 'degraded';
+    } else {
+      health.relays.gun = 'not_initialized';
+      health.status = 'degraded';
+    }
   } catch (err) {
     health.relays.gun = 'unreachable';
     health.status = 'degraded';
@@ -230,15 +231,16 @@ app.post('/auth/token', authLimiter, (req, res) => {
   }
 
   // Generate JWT
+  const expiresIn = process.env.JWT_EXPIRY || '24h';
   const token = generateToken({
     userId: userId || 'anonymous',
     role: 'user',
     issued: Date.now()
-  }, '24h');
+  }, expiresIn);
 
   res.json({
     token,
-    expiresIn: '24h',
+    expiresIn,
     type: 'Bearer'
   });
 });
@@ -274,7 +276,8 @@ app.listen(config.port, config.host, () => {
   console.log(`  - Health check: http://${config.host}:${config.port}/health`);
   console.log(`  - API Gateway: http://${config.host}:${config.port}/api/*`);
   console.log(`\nAuthentication:`);
-  console.log(`  - API Key: X-API-Key: ${process.env.MASTER_API_KEY || 'dev-key-12345-change-in-production'}`);
+  const maskedKey = apiKey ? apiKey.substring(0, 8) + '***' : 'not-set';
+  console.log(`  - API Key: ${maskedKey}`);
   console.log(`  - Generate JWT: POST /auth/token`);
   console.log(`\n======================\n`);
 });

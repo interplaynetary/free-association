@@ -52,7 +52,15 @@ router.get('/get', validatePathQuery, async (req, res) => {
       ref = ref.get(part);
     }
 
+    // Add timeout to prevent hanging on missing data
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        return res.status(504).json({ error: 'Request timeout - data not found or relay unreachable' });
+      }
+    }, 5000);
+
     ref.once((data) => {
+      clearTimeout(timeout);
       if (!data) {
         return res.status(404).json({ error: 'Data not found' });
       }

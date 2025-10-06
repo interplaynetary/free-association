@@ -8,9 +8,6 @@ export const config = {
       import.meta.env.VITE_GUN_PEER_URL || 'http://localhost:8765/gun',
       // Keep single external peer as fallback (matching current branch)
       'https://104.248.129.153/gun'
-      //'https://gun-manhattan.herokuapp.com/gun',
-      //'https://peer.wallie.io/gun',
-      //'https://gun.defucc.me/gun'
     ],
     localStorage: false,
     radisk: true
