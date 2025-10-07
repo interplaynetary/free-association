@@ -442,6 +442,31 @@ export const TreeMergeResultSchema = z.object({
 
 export type TreeMergeResult = z.infer<typeof TreeMergeResultSchema>;
 
+// ===== LIVE LOCATION SHARING SCHEMAS =====
+
+// Live location data schema - ephemeral location sharing for real-time coordination
+export const LiveLocationDataSchema = z.object({
+	latitude: z.number().min(-90).max(90),
+	longitude: z.number().min(-180).max(180),
+	accuracy: z.optional(z.number().gte(0)), // Accuracy in meters
+	altitude: z.optional(z.nullable(z.number())), // Altitude in meters
+	altitudeAccuracy: z.optional(z.nullable(z.number().gte(0))), // Altitude accuracy in meters
+	heading: z.optional(z.nullable(z.number().gte(0).lt(360))), // Direction of travel in degrees
+	speed: z.optional(z.nullable(z.number().gte(0))), // Speed in meters/second
+	timestamp: z.number() // Unix timestamp in milliseconds
+});
+
+// Network live locations schema - maps user ID to their live location
+export const NetworkLiveLocationsSchema = z.record(IdSchema, LiveLocationDataSchema);
+
+// Live location block list schema - array of user IDs to block from seeing our location
+export const LiveLocationBlockListSchema = z.array(IdSchema);
+
+// Export live location types
+export type LiveLocationData = z.infer<typeof LiveLocationDataSchema>;
+export type NetworkLiveLocations = z.infer<typeof NetworkLiveLocationsSchema>;
+export type LiveLocationBlockList = z.infer<typeof LiveLocationBlockListSchema>;
+
 // DELETED: Timestamped utility functions - No longer needed
 // Use getGunTimestamp() from $lib/utils/gunTimestamp.ts to work with Gun's native timestamps
 // Gun tracks all timestamps automatically via GUN.state.is()

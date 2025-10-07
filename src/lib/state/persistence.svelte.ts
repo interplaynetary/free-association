@@ -22,6 +22,14 @@ import {
 	providerAllocationStates
 } from './core.svelte';
 import { chatReadStates, isLoadingChatReadStates } from './chat.svelte';
+import {
+	currentLocation,
+	liveLocationBlockList,
+	isLoadingLiveLocation,
+	isLoadingBlockList,
+	filteredLiveLocationAccessList,
+	isLocationTracking
+} from './location.svelte';
 import { user, userPub } from './gun.svelte';
 import { lastNetworkTimestamps } from './network.svelte';
 import { processCapacitiesLocations } from '$lib/utils/geocodingCache';
@@ -528,5 +536,117 @@ export async function persistChatReadStates() {
 		});
 	} catch (error) {
 		console.error('[PERSIST] Error serializing chat read states:', error);
+	}
+}
+
+/**
+ * Persist live location block list to Gun
+ */
+export async function persistLiveLocationBlockList() {
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping live location block list persistence');
+		return;
+	}
+
+	if (get(isLoadingBlockList)) {
+		console.log(
+			'[PERSIST] Skipping live location block list persistence because block list is being loaded'
+		);
+		return;
+	}
+
+	const blockListValue = get(liveLocationBlockList);
+
+	if (!blockListValue || blockListValue.length === 0) {
+		console.log('[PERSIST] No live location block list to persist, storing empty array');
+	}
+
+	console.log('[PERSIST] Starting live location block list persistence...');
+
+	try {
+		const blockListJson = JSON.stringify(blockListValue || []);
+
+		await safelyPersist(
+			'liveLocationBlockList',
+			blockListJson,
+			lastNetworkTimestamps.liveLocationBlockList,
+			(err) => {
+				if (err) {
+					console.error('[PERSIST] Error saving live location block list to Gun:', err);
+				} else {
+					console.log('[PERSIST] Live location block list successfully saved to Gun');
+				}
+			}
+		);
+	} catch (error) {
+		console.error('[PERSIST] Error serializing live location block list:', error);
+	}
+}
+
+/**
+ * Persist live location to Gun
+ * Only persists if location tracking is enabled and we have a current location
+ * Also respects the filtered access list (only shares with those who have allocations and aren't blocked)
+ */
+export async function persistLiveLocation() {
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping live location persistence');
+		return;
+	}
+
+	const locationValue = get(currentLocation);
+	const trackingEnabled = get(isLocationTracking);
+
+	// Only persist if tracking is enabled
+	if (!trackingEnabled) {
+		console.log('[PERSIST] Location tracking disabled, clearing live location');
+		// Clear the live location on Gun
+		user.get('liveLocation').put(null, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error clearing live location from Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Live location cleared from Gun (tracking disabled)');
+			}
+		});
+		return;
+	}
+
+	if (!locationValue) {
+		console.log('[PERSIST] No live location data to persist');
+		return;
+	}
+
+	// Check if anyone has access to our location
+	const accessList = get(filteredLiveLocationAccessList);
+	if (accessList.length === 0) {
+		console.log(
+			'[PERSIST] No users have access to live location (no allocations or all blocked), clearing'
+		);
+		user.get('liveLocation').put(null, (ack: { err?: any }) => {
+			if (ack.err) {
+				console.error('[PERSIST] Error clearing live location from Gun:', ack.err);
+			} else {
+				console.log('[PERSIST] Live location cleared from Gun (no access)');
+			}
+		});
+		return;
+	}
+
+	console.log(
+		`[PERSIST] Starting live location persistence... (${accessList.length} users have access)`
+	);
+
+	try {
+		const locationJson = JSON.stringify(locationValue);
+
+		await safelyPersist('liveLocation', locationJson, lastNetworkTimestamps.liveLocation, (err) => {
+			if (err) {
+				console.error('[PERSIST] Error saving live location to Gun:', err);
+			} else {
+				console.log('[PERSIST] Live location successfully saved to Gun');
+			}
+		});
+	} catch (error) {
+		console.error('[PERSIST] Error serializing live location:', error);
 	}
 }

@@ -35,7 +35,8 @@
 		setLocationError,
 		currentLocation,
 		currentLocationText,
-		isLocationTracking
+		isLocationTracking,
+		networkLiveLocations
 	} from '$lib/state/location.svelte';
 	import MapSidePanel from './MapSidePanel.svelte';
 
@@ -1678,6 +1679,37 @@
 				{/if}
 			{/each}
 
+			<!-- Live location markers -->
+			{#each Object.entries($networkLiveLocations) as [userId, location] (userId)}
+				{@const userName = getUserName(userId) || userId.substring(0, 8) + '...'}
+				{@const isRecent = Date.now() - location.timestamp < 5 * 60 * 1000}
+				{@const minutesAgo = Math.floor((Date.now() - location.timestamp) / 60000)}
+
+				{#if isRecent}
+					<Marker
+						lnglat={{ lng: location.longitude, lat: location.latitude }}
+						draggable={false}
+						color="#ff1744"
+						scale={1.2}
+					>
+						{#snippet content()}
+							<div class="live-location-marker" title={`${userName} - ${minutesAgo}m ago`}>
+								<div class="live-pulse"></div>
+								<div class="live-icon">📍</div>
+								<div class="live-label">
+									{userName}
+									{#if minutesAgo < 1}
+										<span class="time-badge">now</span>
+									{:else}
+										<span class="time-badge">{minutesAgo}m</span>
+									{/if}
+								</div>
+							</div>
+						{/snippet}
+					</Marker>
+				{/if}
+			{/each}
+
 			{#if show3DBuildings}
 				<FillExtrusionLayer
 					source="carto"
@@ -2153,5 +2185,83 @@
 	/* Ensure map container establishes proper sizing context */
 	:global(.maplibregl-map) {
 		position: relative;
+	}
+
+	/* Live Location Marker Styles */
+	.live-location-marker {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		cursor: pointer;
+	}
+
+	.live-pulse {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 40px;
+		height: 40px;
+		background: rgba(255, 23, 68, 0.4);
+		border-radius: 50%;
+		animation: pulse 2s ease-out infinite;
+		pointer-events: none;
+	}
+
+	@keyframes pulse {
+		0% {
+			transform: translate(-50%, -50%) scale(0.5);
+			opacity: 1;
+		}
+		100% {
+			transform: translate(-50%, -50%) scale(2);
+			opacity: 0;
+		}
+	}
+
+	.live-icon {
+		font-size: 24px;
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+		z-index: 1;
+		animation: bounce 2s ease-in-out infinite;
+	}
+
+	@keyframes bounce {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-5px);
+		}
+	}
+
+	.live-label {
+		margin-top: 4px;
+		padding: 4px 8px;
+		background: rgba(255, 23, 68, 0.95);
+		color: white;
+		border-radius: 12px;
+		font-size: 12px;
+		font-weight: 600;
+		white-space: nowrap;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.time-badge {
+		background: rgba(255, 255, 255, 0.3);
+		padding: 2px 6px;
+		border-radius: 8px;
+		font-size: 10px;
+		font-weight: 500;
+	}
+
+	.live-location-marker:hover .live-label {
+		background: rgba(255, 23, 68, 1);
+		transform: scale(1.05);
 	}
 </style>

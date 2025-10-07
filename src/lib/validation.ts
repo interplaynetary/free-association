@@ -17,7 +17,10 @@ import {
 	NetworkAllocationStatesSchema,
 	ContactsCollectionSchema,
 	ChatReadStatesSchema,
-	CompositionTargetSchema
+	CompositionTargetSchema,
+	LiveLocationDataSchema,
+	NetworkLiveLocationsSchema,
+	LiveLocationBlockListSchema
 } from '$lib/schema';
 
 /**
@@ -568,4 +571,40 @@ export function parseCompositionTarget(targetId: string): {
 		recipients: [],
 		originalId: targetId
 	};
+}
+
+/**
+ * Parse and validate live location data
+ */
+export function parseLiveLocation(data: unknown): any {
+	return parseData(data, {
+		schema: LiveLocationDataSchema,
+		defaultValue: null,
+		functionName: 'parseLiveLocation',
+		enableLogging: false
+	});
+}
+
+/**
+ * Parse and validate network live locations
+ */
+export function parseNetworkLiveLocations(data: unknown): any {
+	return parseData(data, {
+		schema: NetworkLiveLocationsSchema,
+		defaultValue: {},
+		functionName: 'parseNetworkLiveLocations',
+		enableLogging: false
+	});
+}
+
+/**
+ * Parse and validate live location block list
+ */
+export function parseLiveLocationBlockList(data: unknown): string[] {
+	return parseData(data, {
+		schema: LiveLocationBlockListSchema,
+		defaultValue: [],
+		functionName: 'parseLiveLocationBlockList',
+		enableLogging: false
+	});
 }

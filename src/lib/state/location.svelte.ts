@@ -1,18 +1,10 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 import { userCapacities, computedProviderAllocations } from './core.svelte';
+import type { LiveLocationData as SchemaLiveLocationData, NetworkLiveLocations } from '$lib/schema';
 
-// Live location data interface
-export interface LiveLocationData {
-	latitude: number;
-	longitude: number;
-	accuracy?: number;
-	altitude?: number | null;
-	altitudeAccuracy?: number | null;
-	heading?: number | null;
-	speed?: number | null;
-	timestamp: number;
-}
+// Re-export type from schema for convenience
+export type LiveLocationData = SchemaLiveLocationData;
 
 // Location tracking state
 export const currentLocation: Writable<LiveLocationData | null> = writable(null);
@@ -21,6 +13,11 @@ export const locationError = writable<string | null>(null);
 
 // Block list for live location access
 export const liveLocationBlockList: Writable<string[]> = writable([]);
+
+// Network live locations from contributors
+export const networkLiveLocations: Writable<NetworkLiveLocations> = writable({});
+export const isLoadingLiveLocation = writable(false);
+export const isLoadingBlockList = writable(false);
 
 // Update location from geolocation events
 export function updateLocation(coords: GeolocationCoordinates, timestamp?: number) {
