@@ -451,6 +451,9 @@
 	// Track original values for change detection
 	let originalValues = $state<Record<string, any>>({});
 
+	// Track last state sent to parent to prevent infinite loops
+	let lastSentState = $state<string | null>(null);
+
 	// Recurrence options
 	const recurrenceOptions = [
 		'Does not repeat',
@@ -619,29 +622,6 @@
 			online_link: slotOnlineLink
 		};
 
-		// 🚨 DEBUG: Log the location data being sent in handleSlotUpdate
-		console.log(`[SLOT] 🚨 DEBUG: handleSlotUpdate called for slot ${slot.id}`);
-		console.log(`[SLOT] 🚨 DEBUG: Current location state variables:`, {
-			slotLocationType,
-			slotLatitude,
-			slotLongitude,
-			slotStreetAddress,
-			slotCity,
-			slotStateProvince,
-			slotPostalCode,
-			slotCountry
-		});
-		console.log(`[SLOT] 🚨 DEBUG: Location data in updatedSlot:`, {
-			location_type: updatedSlot.location_type,
-			latitude: updatedSlot.latitude,
-			longitude: updatedSlot.longitude,
-			street_address: updatedSlot.street_address,
-			city: updatedSlot.city,
-			state_province: updatedSlot.state_province,
-			postal_code: updatedSlot.postal_code,
-			country: updatedSlot.country
-		});
-
 		// Validate using schema
 		const validationResult = AvailabilitySlotSchema.safeParse(updatedSlot);
 
@@ -650,19 +630,15 @@
 			return;
 		}
 
-		// 🚨 DEBUG: Log the validated data being passed to onupdate
-		console.log(`[SLOT] 🚨 DEBUG: Validation passed, calling onupdate with:`, {
-			location_type: validationResult.data.location_type,
-			latitude: validationResult.data.latitude,
-			longitude: validationResult.data.longitude,
-			street_address: validationResult.data.street_address,
-			city: validationResult.data.city,
-			state_province: validationResult.data.state_province,
-			postal_code: validationResult.data.postal_code,
-			country: validationResult.data.country
-		});
+		// Compare with last sent state to prevent infinite loops
+		const currentState = JSON.stringify(validationResult.data);
+		if (currentState === lastSentState) {
+			console.log(`[SLOT] Slot data unchanged, skipping update for slot ${slot.id}`);
+			return;
+		}
 
-		// Validation passed, proceed with update
+		// Update last sent state and notify parent
+		lastSentState = currentState;
 		onupdate?.(validationResult.data);
 	}
 
@@ -947,6 +923,43 @@
 
 		return parts.length > 0 ? parts.join(', ') : 'No constraints';
 	}
+
+	// Sync local state when slot prop changes from parent
+	$effect(() => {
+		// Initialize or update lastSentState when slot prop changes
+		// This allows updates from parent while preventing our own circular updates
+		const incomingState = JSON.stringify(slot);
+		if (incomingState !== lastSentState) {
+			lastSentState = incomingState;
+
+			// Sync local state variables with incoming slot data
+			slotId = slot.id;
+			slotQuantity = slot.quantity;
+			slotAdvanceNoticeHours = slot.advance_notice_hours;
+			slotBookingWindowHours = slot.booking_window_hours;
+			slotMutualAgreementRequired = slot.mutual_agreement_required;
+			slotAllDay = slot.all_day;
+			slotStartDate = slot.start_date;
+			slotEndDate = slot.end_date;
+			slotStartTime = slot.start_time;
+			slotEndTime = slot.end_time;
+			slotTimeZone = slot.time_zone;
+			slotRecurrence = slot.recurrence;
+			slotCustomRecurrenceRepeatEvery = slot.custom_recurrence_repeat_every;
+			slotCustomRecurrenceRepeatUnit = slot.custom_recurrence_repeat_unit;
+			slotCustomRecurrenceEndType = slot.custom_recurrence_end_type;
+			slotCustomRecurrenceEndValue = slot.custom_recurrence_end_value;
+			slotLocationType = slot.location_type;
+			slotLongitude = slot.longitude;
+			slotLatitude = slot.latitude;
+			slotStreetAddress = slot.street_address;
+			slotCity = slot.city;
+			slotStateProvince = slot.state_province;
+			slotPostalCode = slot.postal_code;
+			slotCountry = slot.country;
+			slotOnlineLink = slot.online_link;
+		}
+	});
 
 	// Load provider names asynchronously
 	$effect(() => {
@@ -1518,10 +1531,10 @@
 					<!-- Timezone Selector integrated directly -->
 					<div class="timezone-field">
 						<TimezoneSelector
-							value={slotTimeZone}
+							value={slotTimeZone ?? ''}
 							placeholder="Select timezone..."
 							onselect={handleTimezoneSelect}
-							countryFilter={selectedCountryId}
+							countryFilter={selectedCountryId ?? ''}
 						/>
 					</div>
 				</div>
@@ -1709,7 +1722,7 @@
 							<!-- Country Selector integrated directly -->
 							<div class="country-field">
 								<CountrySelector
-									value={slotCountry}
+									value={slotCountry ?? ''}
 									placeholder="Select country..."
 									onselect={handleCountrySelect}
 								/>

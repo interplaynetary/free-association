@@ -124,10 +124,10 @@ export function createUsersDataProvider(excludeIds: string[] = []) {
 	return derived([userPubKeys, userNamesOrAliasesCache], ([$userIds, $userNamesCache]) => {
 		console.log('[UI-PROVIDER-DEBUG] createUsersDataProvider called:', {
 			userIdsCount: $userIds?.length || 0,
-			userIds: $userIds?.map(id => id.slice(0, 20) + '...') || [],
+			userIds: $userIds?.map((id) => id.slice(0, 20) + '...') || [],
 			namesCacheCount: Object.keys($userNamesCache || {}).length,
-			namesCacheKeys: Object.keys($userNamesCache || {}).map(id => id.slice(0, 20) + '...'),
-			excludeIds: excludeIds.map(id => id.slice(0, 20) + '...')
+			namesCacheKeys: Object.keys($userNamesCache || {}).map((id) => id.slice(0, 20) + '...'),
+			excludeIds: excludeIds.map((id) => id.slice(0, 20) + '...')
 		});
 
 		if (!$userIds) {
@@ -139,7 +139,7 @@ export function createUsersDataProvider(excludeIds: string[] = []) {
 		const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
 		console.log('[UI-PROVIDER-DEBUG] Combined user IDs:', {
 			allUserIdsCount: allUserIds.length,
-			allUserIds: allUserIds.map(id => id.slice(0, 20) + '...')
+			allUserIds: allUserIds.map((id) => id.slice(0, 20) + '...')
 		});
 
 		const result = allUserIds
@@ -152,7 +152,7 @@ export function createUsersDataProvider(excludeIds: string[] = []) {
 
 		console.log('[UI-PROVIDER-DEBUG] Final users result:', {
 			resultCount: result.length,
-			results: result.map(r => ({
+			results: result.map((r) => ({
 				id: r.id.slice(0, 20) + '...',
 				name: r.name
 			}))
@@ -299,43 +299,40 @@ export function createChildContributorsDataProvider(
 	// Create the base provider ONCE, outside the derived
 	const baseProvider = createContactsAndUsersDataProvider(excludeIds);
 
-	return derived(
-		[baseProvider, userTree],
-		([$baseItems, $userTree]) => {
-			// Get the contributors of the specific child node
-			let childContributors: string[] = [];
-			if ($userTree && childNodeId) {
-				const childNode = findNodeById($userTree, childNodeId);
-				if (childNode && childNode.type === 'NonRootNode') {
-					childContributors = (childNode as any).contributor_ids || [];
-				}
+	return derived([baseProvider, userTree], ([$baseItems, $userTree]) => {
+		// Get the contributors of the specific child node
+		let childContributors: string[] = [];
+		if ($userTree && childNodeId) {
+			const childNode = findNodeById($userTree, childNodeId);
+			if (childNode && childNode.type === 'NonRootNode') {
+				childContributors = (childNode as any).contributor_ids || [];
 			}
-
-			// Enhance base items with contributor metadata and prioritized sorting
-			return $baseItems
-				.map((item) => ({
-					...item,
-					metadata: {
-						...item.metadata,
-						isChildContributor: childContributors.includes(item.id)
-					}
-				}))
-				.sort((a, b) => {
-					// Priority: child contributors first, then contacts, then alphabetically
-					const aIsChildContributor = a.metadata?.isChildContributor || false;
-					const bIsChildContributor = b.metadata?.isChildContributor || false;
-					const aIsContact = a.metadata?.isContact || false;
-					const bIsContact = b.metadata?.isContact || false;
-
-					if (aIsChildContributor && !bIsChildContributor) return -1;
-					if (!aIsChildContributor && bIsChildContributor) return 1;
-					if (aIsContact && !bIsContact) return -1;
-					if (!aIsContact && bIsContact) return 1;
-
-					return a.name.localeCompare(b.name);
-				});
 		}
-	);
+
+		// Enhance base items with contributor metadata and prioritized sorting
+		return $baseItems
+			.map((item) => ({
+				...item,
+				metadata: {
+					...item.metadata,
+					isChildContributor: childContributors.includes(item.id)
+				}
+			}))
+			.sort((a, b) => {
+				// Priority: child contributors first, then contacts, then alphabetically
+				const aIsChildContributor = a.metadata?.isChildContributor || false;
+				const bIsChildContributor = b.metadata?.isChildContributor || false;
+				const aIsContact = a.metadata?.isContact || false;
+				const bIsContact = b.metadata?.isContact || false;
+
+				if (aIsChildContributor && !bIsChildContributor) return -1;
+				if (!aIsChildContributor && bIsChildContributor) return 1;
+				if (aIsContact && !bIsContact) return -1;
+				if (!aIsContact && bIsContact) return 1;
+
+				return a.name.localeCompare(b.name);
+			});
+	});
 }
 
 // Simple reactive slots data provider for composition

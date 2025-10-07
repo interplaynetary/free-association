@@ -75,25 +75,28 @@ if (typeof window !== 'undefined') {
 					user.get('pub').once((actualPub: any) => {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
-				console.log('[RECALL] Using alias from storage:', aliasToUse);
-				console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-				userAlias.set(aliasToUse);
-				userPub.set(pubToUse);
-				console.log('[USERS-DEBUG] [RECALL] Adding user to usersList:', {
-					pubKey: pubToUse?.slice(0, 20) + '...',
-					alias: aliasToUse,
-					timestamp: Date.now()
-				});
-				usersList.get(pubToUse).put({
-					alias: aliasToUse,
-					lastSeen: Date.now()
-				}, (ack: any) => {
-					if (ack.err) {
-						console.error('[USERS-DEBUG] [RECALL] Error writing to usersList:', ack.err);
-					} else {
-						console.log('[USERS-DEBUG] [RECALL] Successfully wrote to usersList');
-					}
-				});
+						console.log('[RECALL] Using alias from storage:', aliasToUse);
+						console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+						userAlias.set(aliasToUse);
+						userPub.set(pubToUse);
+						console.log('[USERS-DEBUG] [RECALL] Adding user to usersList:', {
+							pubKey: pubToUse?.slice(0, 20) + '...',
+							alias: aliasToUse,
+							timestamp: Date.now()
+						});
+						usersList.get(pubToUse).put(
+							{
+								alias: aliasToUse,
+								lastSeen: Date.now()
+							},
+							(ack: any) => {
+								if (ack.err) {
+									console.error('[USERS-DEBUG] [RECALL] Error writing to usersList:', ack.err);
+								} else {
+									console.log('[USERS-DEBUG] [RECALL] Successfully wrote to usersList');
+								}
+							}
+						);
 					});
 				});
 
@@ -111,22 +114,22 @@ if (typeof window !== 'undefined') {
 					user.get('pub').once((actualPub: any) => {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
-				console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
-				console.log(
-					'[RECALL] Using pub from storage (pub fallback):',
-					pubToUse?.slice(0, 20) + '...'
-				);
-				userAlias.set(aliasToUse);
-				userPub.set(pubToUse);
-				console.log('[USERS-DEBUG] [RECALL-FALLBACK] Adding user to usersList:', {
-					pubKey: pubToUse?.slice(0, 20) + '...',
-					alias: aliasToUse,
-					timestamp: Date.now()
-				});
-				usersList.get(pubToUse).put({
-					alias: aliasToUse,
-					lastSeen: Date.now()
-				});
+						console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
+						console.log(
+							'[RECALL] Using pub from storage (pub fallback):',
+							pubToUse?.slice(0, 20) + '...'
+						);
+						userAlias.set(aliasToUse);
+						userPub.set(pubToUse);
+						console.log('[USERS-DEBUG] [RECALL-FALLBACK] Adding user to usersList:', {
+							pubKey: pubToUse?.slice(0, 20) + '...',
+							alias: aliasToUse,
+							timestamp: Date.now()
+						});
+						usersList.get(pubToUse).put({
+							alias: aliasToUse,
+							lastSeen: Date.now()
+						});
 					});
 				});
 
@@ -167,25 +170,28 @@ gun.on('auth', async () => {
 				user.get('pub').once((actualPub: any) => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
-			console.log('[AUTH] Using alias from storage:', aliasToUse);
-			console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
-			userAlias.set(aliasToUse);
-			userPub.set(pubToUse);
-			console.log('[USERS-DEBUG] [AUTH] Adding user to usersList:', {
-				pubKey: pubToUse?.slice(0, 20) + '...',
-				alias: aliasToUse,
-				timestamp: Date.now()
-			});
-			usersList.get(pubToUse).put({
-				alias: aliasToUse,
-				lastSeen: Date.now()
-			}, (ack: any) => {
-				if (ack.err) {
-					console.error('[USERS-DEBUG] [AUTH] Error writing to usersList:', ack.err);
-				} else {
-					console.log('[USERS-DEBUG] [AUTH] Successfully wrote to usersList');
-				}
-			});
+					console.log('[AUTH] Using alias from storage:', aliasToUse);
+					console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
+					userAlias.set(aliasToUse);
+					userPub.set(pubToUse);
+					console.log('[USERS-DEBUG] [AUTH] Adding user to usersList:', {
+						pubKey: pubToUse?.slice(0, 20) + '...',
+						alias: aliasToUse,
+						timestamp: Date.now()
+					});
+					usersList.get(pubToUse).put(
+						{
+							alias: aliasToUse,
+							lastSeen: Date.now()
+						},
+						(ack: any) => {
+							if (ack.err) {
+								console.error('[USERS-DEBUG] [AUTH] Error writing to usersList:', ack.err);
+							} else {
+								console.log('[USERS-DEBUG] [AUTH] Successfully wrote to usersList');
+							}
+						}
+					);
 
 					console.log(`signed in as ${aliasToUse}`);
 					console.log(`userPub: ${pubToUse}`);
@@ -211,19 +217,19 @@ gun.on('auth', async () => {
 				user.get('pub').once((actualPub: any) => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
-			console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
-			console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
-			userAlias.set(aliasToUse);
-			userPub.set(pubToUse);
-			console.log('[USERS-DEBUG] [AUTH-FALLBACK] Adding user to usersList:', {
-				pubKey: pubToUse?.slice(0, 20) + '...',
-				alias: aliasToUse,
-				timestamp: Date.now()
-			});
-			usersList.get(pubToUse).put({
-				alias: aliasToUse,
-				lastSeen: Date.now()
-			});
+					console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
+					console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
+					userAlias.set(aliasToUse);
+					userPub.set(pubToUse);
+					console.log('[USERS-DEBUG] [AUTH-FALLBACK] Adding user to usersList:', {
+						pubKey: pubToUse?.slice(0, 20) + '...',
+						alias: aliasToUse,
+						timestamp: Date.now()
+					});
+					usersList.get(pubToUse).put({
+						alias: aliasToUse,
+						lastSeen: Date.now()
+					});
 
 					console.log(`signed in as ${aliasToUse} (fallback)`);
 					console.log(`userPub: ${pubToUse} (fallback)`);
@@ -422,3 +428,9 @@ export async function monitorWebRTC(pc: any) {
 	}
 }
 
+// Expose gun and user to window for debugging
+if (typeof window !== 'undefined') {
+	(window as any).gun = gun;
+	(window as any).user = user;
+	console.log('[DEBUG] gun and user exposed to window for debugging');
+}
