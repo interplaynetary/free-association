@@ -26,11 +26,11 @@ ENV NODE_ENV=production
 ENV GUN_PEER_URL=http://gun-relay:8765/gun
 ENV HOLSTER_PEER_URL=ws://holster-relay:8766/holster
 
-# Security defaults (CHANGE IN PRODUCTION!)
-ENV MASTER_API_KEY=CHANGE-ME-IN-PRODUCTION
-ENV JWT_SECRET=CHANGE-ME-IN-PRODUCTION-MIN-32-CHARS
-ENV ALLOWED_ORIGINS=http://localhost:5173
-ENV DEBUG=false
+# Security: No default credentials - MUST be set via docker-compose or .env
+# The server will fail-fast on startup if these are not provided in production
+# MASTER_API_KEY (required)
+# JWT_SECRET (required)
+# ALLOWED_ORIGINS (required)
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

@@ -14,7 +14,15 @@ console.log(JSON.stringify(config, null, 2));
 
 relay.init(config).then(() => {
   console.log('Gun Relay Server started successfully');
+  console.log(`Listening on: ${config.host}:${config.port}`);
+  console.log(`Storage: ${config.store ? 'enabled at ' + config.path : 'disabled'}`);
 }).catch((err) => {
-  console.error('Failed to start Gun Relay Server:', err);
+  console.error('Failed to start Gun Relay Server');
+  console.error('Error details:', {
+    message: err.message,
+    code: err.code,
+    stack: err.stack,
+    config: config
+  });
   process.exit(1);
 });
