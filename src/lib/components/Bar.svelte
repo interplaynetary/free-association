@@ -1,4 +1,4 @@
-<script module>
+<script module lang="ts">
 	// Helper function to get a color based on index
 
 	// Helper function to calculate border radius for each segment

@@ -8,6 +8,13 @@ import {
 	isLoadingContacts
 } from '$lib/state/users.svelte';
 import {
+	currentLocation,
+	networkLiveLocations,
+	liveLocationBlockList,
+	isLoadingLiveLocation,
+	isLoadingBlockList
+} from '$lib/state/location.svelte';
+import {
 	contributors,
 	mutualContributors,
 	recognitionCache,
@@ -41,7 +48,9 @@ import {
 	parseShareMap,
 	parseContacts,
 	parseChatReadStates,
-	parseProviderAllocationStateData
+	parseProviderAllocationStateData,
+	parseLiveLocation,
+	parseLiveLocationBlockList
 } from '$lib/validation';
 import { debounce } from '$lib/utils/debounce';
 import { derived } from 'svelte/store';
@@ -67,7 +76,9 @@ export const lastNetworkTimestamps = $state({
 	desiredSlotComposeFrom: null as number | null,
 	desiredSlotComposeInto: null as number | null,
 	chatReadStates: null as number | null,
-	sogf: null as number | null
+	sogf: null as number | null,
+	liveLocation: null as number | null,
+	liveLocationBlockList: null as number | null
 });
 
 /**
@@ -380,6 +391,25 @@ const ownDataStreamConfigs = {
 		errorHandler: (error: any) => {
 			console.error('[NETWORK] Error in own chatReadStates stream:', error);
 			isLoadingChatReadStates.set(false);
+		}
+	},
+	liveLocationBlockList: {
+		type: 'liveLocationBlockList',
+		streamManager: ownDataStreamManager,
+		getGunPath: (userId: string) => user.get('liveLocationBlockList'),
+		processor: createDataProcessor({
+			dataType: 'liveLocationBlockList',
+			enableTimestampComparison: true,
+			gunTimestampField: 'liveLocationBlockList',
+			timestampKey: 'liveLocationBlockList',
+			validator: parseLiveLocationBlockList,
+			getCurrentData: () => get(liveLocationBlockList),
+			updateStore: (data) => liveLocationBlockList.set(data),
+			loadingFlag: isLoadingBlockList
+		}),
+		errorHandler: (error: any) => {
+			console.error('[NETWORK] Error in own liveLocationBlockList stream:', error);
+			isLoadingBlockList.set(false);
 		}
 	}
 };
@@ -766,6 +796,43 @@ const mutualContributorStreamConfigs = {
 				error
 			);
 		}
+	},
+	liveLocation: {
+		type: 'liveLocation',
+		streamManager: mutualStreamManager,
+		getGunPath: (userId: string, contributorId: string) => {
+			const pubKey = resolveToPublicKey(contributorId);
+			if (!pubKey) return null;
+			return gun.user(pubKey).get('liveLocation');
+		},
+		processor: (contributorId: string) =>
+			createDataProcessor({
+				dataType: 'liveLocation',
+				enableTimestampComparison: true,
+				gunTimestampField: 'liveLocation',
+				validator: parseLiveLocation,
+				getCurrentData: () => get(networkLiveLocations)[contributorId] || null,
+				updateStore: (data) => {
+					if (data) {
+						// Store live location for this contributor
+						networkLiveLocations.update((current) => ({
+							...current,
+							[contributorId]: data
+						}));
+						console.log(`[LIVE-LOCATION] Updated location for ${contributorId}:`, data);
+					} else {
+						// Remove live location if data is null (user stopped sharing)
+						networkLiveLocations.update((current) => {
+							const { [contributorId]: _, ...rest } = current;
+							return rest;
+						});
+						console.log(`[LIVE-LOCATION] Removed location for ${contributorId}`);
+					}
+				}
+			}),
+		errorHandler: (contributorId: string) => (error: any) => {
+			console.error(`[NETWORK] Error in live location stream for ${contributorId}:`, error);
+		}
 	}
 };
 
@@ -796,6 +863,10 @@ const createOwnContactsStream = withAuthentication(async (userId: string) => {
 
 const createOwnChatReadStatesStream = withAuthentication(async (userId: string) => {
 	await createStream(ownDataStreamConfigs.chatReadStates, userId);
+});
+
+const createOwnLiveLocationBlockListStream = withAuthentication(async (userId: string) => {
+	await createStream(ownDataStreamConfigs.liveLocationBlockList, userId);
 });
 
 const createChatMessagesStream = async (chatId: string) => {
@@ -853,7 +924,8 @@ const createMutualContributorStreams = withAuthentication(
 			'allocationStates',
 			'desiredSlotComposeFrom',
 			'desiredSlotComposeInto',
-			'tree'
+			'tree',
+			'liveLocation'
 		] as const;
 
 		for (const streamType of streamTypes) {
@@ -902,6 +974,7 @@ export async function initializeUserDataStreams(): Promise<void> {
 		await createOwnDesiredSlotComposeFromStream();
 		await createOwnDesiredSlotComposeIntoStream();
 		await createOwnChatReadStatesStream();
+		await createOwnLiveLocationBlockListStream();
 
 		// Note: setupUsersListSubscription is now called early in gun.svelte.ts
 		// No need to call it again here
