@@ -295,8 +295,7 @@ app.listen(config.port, config.host, () => {
   console.log(`  - Health check: http://${config.host}:${config.port}/health`);
   console.log(`  - API Gateway: http://${config.host}:${config.port}/api/*`);
   console.log(`\nAuthentication:`);
-  const maskedKey = apiKey ? apiKey.substring(0, 8) + '***' : 'not-set';
-  console.log(`  - API Key: ${maskedKey}`);
+  console.log(`  - API Key: ${apiKey ? 'configured (value hidden)' : 'NOT SET'}`);
   console.log(`  - Generate JWT: POST /auth/token`);
   console.log(`\n======================\n`);
 });
