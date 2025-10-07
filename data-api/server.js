@@ -23,25 +23,21 @@ import holsterRoutes, { setHolsterInstance } from './routes/holster.js';
 
 // ============ CRITICAL: VALIDATE CREDENTIALS ON STARTUP ============
 
-const DEFAULT_API_KEY = 'dev-key-12345-change-in-production';
-const DEFAULT_JWT_SECRET = 'your-secret-key-change-in-production';
-
 const apiKey = process.env.MASTER_API_KEY;
 const jwtSecret = process.env.JWT_SECRET;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// FAIL-FAST: Prevent startup with default credentials in production
+// FAIL-FAST: Prevent startup with missing or weak credentials in production
 if (isProduction) {
-  if (!apiKey || apiKey === DEFAULT_API_KEY) {
-    console.error('🚨 FATAL: Cannot start in production with default or missing MASTER_API_KEY!');
+  if (!apiKey || apiKey.length < 32) {
+    console.error('🚨 FATAL: MASTER_API_KEY must be set and at least 32 characters in production!');
     console.error('Generate a secure key: openssl rand -hex 32');
     process.exit(1);
   }
 
-  if (!jwtSecret || jwtSecret === DEFAULT_JWT_SECRET || jwtSecret.length < 32) {
-    console.error('🚨 FATAL: Cannot start in production with default, missing, or weak JWT_SECRET!');
-    console.error('JWT_SECRET must be at least 32 characters.');
-    console.error('Generate a secure secret: openssl rand -base64 32');
+  if (!jwtSecret || jwtSecret.length < 32) {
+    console.error('🚨 FATAL: JWT_SECRET must be set and at least 32 characters in production!');
+    console.error('Generate a secure secret: openssl rand -base64 48');
     process.exit(1);
   }
 
@@ -54,12 +50,31 @@ if (isProduction) {
     console.error('Generate a secure secret: openssl rand -base64 48');
     process.exit(1);
   }
+
+  // Detect pattern repetition (e.g., "abcabcabcabcabcabcabcabcabcabcabcabc")
+  const detectRepeatingPattern = (str) => {
+    for (let patternLen = 2; patternLen <= Math.floor(str.length / 3); patternLen++) {
+      const pattern = str.substring(0, patternLen);
+      const repeated = pattern.repeat(Math.floor(str.length / patternLen));
+      if (str.startsWith(repeated)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (detectRepeatingPattern(jwtSecret)) {
+    console.error('🚨 FATAL: JWT_SECRET contains repeating patterns!');
+    console.error('   Detected pattern repetition - use a truly random secret.');
+    console.error('Generate a secure secret: openssl rand -base64 48');
+    process.exit(1);
+  }
 }
 
-// WARN: Development mode with default credentials
-if (!isProduction && (!apiKey || apiKey === DEFAULT_API_KEY)) {
-  console.warn('⚠️  WARNING: Using default API key in development mode!');
-  console.warn('   This is ONLY acceptable for local development.');
+// WARN: Development mode without credentials
+if (!isProduction && !apiKey) {
+  console.warn('⚠️  WARNING: MASTER_API_KEY not set in development mode!');
+  console.warn('   Set credentials in .env file or authentication will fail.');
 }
 
 // Configuration from environment variables with defaults
@@ -87,6 +102,9 @@ console.log('✓ Error handling\n');
 const app = express();
 
 // ============ SECURITY MIDDLEWARE ============
+
+// Trust proxy for Docker/proxy deployments (enables real IP from X-Forwarded-For)
+app.set('trust proxy', true);
 
 // Helmet for security headers
 app.use(configureHelmet());

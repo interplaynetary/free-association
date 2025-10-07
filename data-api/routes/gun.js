@@ -4,6 +4,9 @@ import { validatePathData, validatePathQuery } from '../utils/validate.js';
 
 const router = express.Router();
 
+// Request timeout (configurable via env var)
+const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT) || 5000;
+
 // Initialize Gun client (will be set by server.js)
 let gun;
 
@@ -57,14 +60,20 @@ router.get('/get', validatePathQuery, async (req, res) => {
       if (!res.headersSent) {
         return res.status(504).json({ error: 'Request timeout - data not found or relay unreachable' });
       }
-    }, 5000);
+    }, REQUEST_TIMEOUT);
 
     ref.once((data) => {
       clearTimeout(timeout);
-      if (!data) {
-        return res.status(404).json({ error: 'Data not found' });
+      try {
+        if (!data) {
+          return res.status(404).json({ error: 'Data not found' });
+        }
+        res.json({ success: true, path, data });
+      } catch (error) {
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error processing Gun data' });
+        }
       }
-      res.json({ success: true, path, data });
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

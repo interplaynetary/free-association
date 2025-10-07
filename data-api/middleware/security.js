@@ -93,9 +93,18 @@ export function configureHelmet() {
  * CORS configuration
  */
 export function configureCors() {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // In production, ALLOWED_ORIGINS must be explicitly set
+  if (isProduction && !process.env.ALLOWED_ORIGINS) {
+    console.error('🚨 FATAL: ALLOWED_ORIGINS must be set in production!');
+    console.error('   Set comma-separated origins in .env file.');
+    process.exit(1);
+  }
+
   return {
     origin: process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(',')
+      ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
       : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],

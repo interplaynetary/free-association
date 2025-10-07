@@ -7,9 +7,12 @@ import jwt from 'jsonwebtoken';
 //   - Key rotation mechanism with expiry dates
 //   - Per-user API keys with scoped permissions
 //   - API key hashing (bcrypt/argon2) for secure storage
-const validApiKeys = new Set([
-  process.env.MASTER_API_KEY || 'dev-key-12345-change-in-production'
-]);
+const validApiKeys = new Set();
+
+// Only add API key if provided (no hardcoded defaults)
+if (process.env.MASTER_API_KEY) {
+  validApiKeys.add(process.env.MASTER_API_KEY);
+}
 
 /**
  * Middleware to authenticate API key from header
@@ -49,14 +52,19 @@ export function authenticateJWT(req, res, next) {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET not configured');
+    }
     const decoded = jwt.verify(token, secret);
     req.user = decoded;
     next();
   } catch (error) {
     return res.status(403).json({
       error: 'Forbidden',
-      message: 'Invalid or expired token'
+      message: error.message === 'JWT_SECRET not configured'
+        ? 'Server configuration error'
+        : 'Invalid or expired token'
     });
   }
 }
@@ -78,10 +86,12 @@ export function authenticateEither(req, res, next) {
     const token = authHeader.split(' ')[1];
     if (token) {
       try {
-        const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-        const decoded = jwt.verify(token, secret);
-        req.user = decoded;
-        return next();
+        const secret = process.env.JWT_SECRET;
+        if (secret) {
+          const decoded = jwt.verify(token, secret);
+          req.user = decoded;
+          return next();
+        }
       } catch (error) {
         // JWT invalid, fall through to error
       }
@@ -98,7 +108,10 @@ export function authenticateEither(req, res, next) {
  * Generate a JWT token (for testing/admin purposes)
  */
 export function generateToken(payload, expiresIn = process.env.JWT_EXPIRY || '24h') {
-  const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET not configured - cannot generate tokens');
+  }
   return jwt.sign(payload, secret, { expiresIn });
 }
 
