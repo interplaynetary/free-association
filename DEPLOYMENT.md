@@ -50,6 +50,31 @@ free-association/
 
 ### Steps
 
+0. **CRITICAL: Configure security credentials first:**
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Generate secure credentials
+openssl rand -hex 32      # For MASTER_API_KEY
+openssl rand -base64 48   # For JWT_SECRET
+
+# Edit .env file and set:
+# - MASTER_API_KEY (required, 32+ characters)
+# - JWT_SECRET (required, 32+ characters)
+# - ALLOWED_ORIGINS (required in production)
+# - NODE_ENV=production (for production deployments)
+```
+
+**⚠️ Production Requirements:**
+- `MASTER_API_KEY`: Must be 32+ characters, high entropy
+- `JWT_SECRET`: Must be 32+ characters, no repeating patterns
+- `ALLOWED_ORIGINS`: MUST be set to your domain(s), comma-separated
+- `NODE_ENV`: Set to `production` to enable fail-fast validation
+
+The server will refuse to start in production without proper credentials.
+
 1. **Build and start all services:**
 
 ```bash

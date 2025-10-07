@@ -28,8 +28,31 @@ router.post('/put', validatePathData, async (req, res) => {
       ref = ref.get(part);
     }
 
-    ref.put(data);
-    res.json({ success: true, path, data });
+    // Add timeout for Holster writes
+    let hasResponded = false;
+    const timeout = setTimeout(() => {
+      if (!hasResponded) {
+        hasResponded = true;
+        return res.status(504).json({ error: 'Write timeout - relay may be unreachable' });
+      }
+    }, REQUEST_TIMEOUT);
+
+    // Holster.put doesn't have callback, so we send response immediately
+    // The timeout is for the entire operation
+    try {
+      ref.put(data);
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        res.json({ success: true, path, data });
+      }
+    } catch (putError) {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        throw putError;
+      }
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -51,21 +74,24 @@ router.get('/get', validatePathQuery, async (req, res) => {
     }
 
     // Add timeout to prevent hanging on missing data
+    let hasResponded = false;
     const timeout = setTimeout(() => {
-      if (!res.headersSent) {
+      if (!hasResponded) {
+        hasResponded = true;
         return res.status(504).json({ error: 'Request timeout - data not found or relay unreachable' });
       }
     }, REQUEST_TIMEOUT);
 
     ref.once((data) => {
-      clearTimeout(timeout);
-      try {
-        if (!data) {
-          return res.status(404).json({ error: 'Data not found' });
-        }
-        res.json({ success: true, path, data });
-      } catch (error) {
-        if (!res.headersSent) {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        try {
+          if (!data) {
+            return res.status(404).json({ error: 'Data not found' });
+          }
+          res.json({ success: true, path, data });
+        } catch (error) {
           res.status(500).json({ error: 'Error processing Holster data' });
         }
       }

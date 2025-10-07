@@ -112,9 +112,10 @@ app.use(configureHelmet());
 // CORS configuration
 app.use(cors(configureCors()));
 
-// Body parsing - limit to 1MB to prevent abuse
-app.use(bodyParser.json({ limit: '1mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
+// Body parsing - configurable limit to prevent abuse
+const bodyLimit = process.env.BODY_PARSER_LIMIT || '1mb';
+app.use(bodyParser.json({ limit: bodyLimit }));
+app.use(bodyParser.urlencoded({ extended: true, limit: bodyLimit }));
 
 // Request logging
 app.use(requestLogger);

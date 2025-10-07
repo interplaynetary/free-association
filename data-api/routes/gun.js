@@ -29,11 +29,24 @@ router.post('/put', validatePathData, async (req, res) => {
       ref = ref.get(part);
     }
 
-    ref.put(data, (ack) => {
-      if (ack.err) {
-        return res.status(500).json({ error: ack.err });
+    // Add timeout to prevent hanging writes
+    let hasResponded = false;
+    const timeout = setTimeout(() => {
+      if (!hasResponded) {
+        hasResponded = true;
+        return res.status(504).json({ error: 'Write timeout - relay may be unreachable' });
       }
-      res.json({ success: true, path, data });
+    }, REQUEST_TIMEOUT);
+
+    ref.put(data, (ack) => {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        if (ack.err) {
+          return res.status(500).json({ error: ack.err });
+        }
+        res.json({ success: true, path, data });
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -56,21 +69,24 @@ router.get('/get', validatePathQuery, async (req, res) => {
     }
 
     // Add timeout to prevent hanging on missing data
+    let hasResponded = false;
     const timeout = setTimeout(() => {
-      if (!res.headersSent) {
+      if (!hasResponded) {
+        hasResponded = true;
         return res.status(504).json({ error: 'Request timeout - data not found or relay unreachable' });
       }
     }, REQUEST_TIMEOUT);
 
     ref.once((data) => {
-      clearTimeout(timeout);
-      try {
-        if (!data) {
-          return res.status(404).json({ error: 'Data not found' });
-        }
-        res.json({ success: true, path, data });
-      } catch (error) {
-        if (!res.headersSent) {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        try {
+          if (!data) {
+            return res.status(404).json({ error: 'Data not found' });
+          }
+          res.json({ success: true, path, data });
+        } catch (error) {
           res.status(500).json({ error: 'Error processing Gun data' });
         }
       }

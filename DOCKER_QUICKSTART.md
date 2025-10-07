@@ -2,9 +2,33 @@
 
 Quick reference for running the Free Association containerized services.
 
+## ⚠️ CRITICAL: Security Setup First
+
+**Before running any services**, you MUST configure credentials:
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Generate secure credentials
+openssl rand -hex 32      # Copy output for MASTER_API_KEY
+openssl rand -base64 48   # Copy output for JWT_SECRET
+
+# 3. Edit .env file and paste the generated values
+nano .env  # or your preferred editor
+
+# Required variables:
+# MASTER_API_KEY=<paste first generated value>
+# JWT_SECRET=<paste second generated value>
+# ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174  # For production: your domains
+```
+
+**Production Note:** In production, you MUST also set `ALLOWED_ORIGINS` to your actual domain(s), otherwise the server will refuse to start.
+
 ## TL;DR
 
 ```bash
+# Setup credentials (see above) then:
 # Start all services
 docker-compose up -d
 
