@@ -9,6 +9,9 @@ import { viewportService } from './viewport.svelte';
 import { navigationService } from './navigation.svelte';
 import { initializeGeocodingCache } from '$lib/utils/geocodingCache';
 
+// Initialize state management (Gun, Holster, network subscriptions)
+import '../state/index.svelte';
+
 // Services are auto-initialized when imported
 console.log('[SERVICES] Global services initialized');
 

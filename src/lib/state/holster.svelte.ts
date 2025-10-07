@@ -3,11 +3,19 @@ import { writable, get } from 'svelte/store';
 import { initializeUserDataStreams } from './network.svelte';
 import { config } from '../config';
 
+<<<<<<< HEAD
 // Initialize Holster - now uses config from environment variables
 export const holster = Holster({
 	peers: config.holster.peers,
 	indexedDB: config.holster.indexedDB,
 	secure: config.holster.secure
+=======
+// Initialize Holster
+export const holster = Holster({
+	peers: ['wss://holster.haza.website'],
+	indexedDB: true,
+	file: 'holster-data'
+>>>>>>> Holster setup and testing
 });
 
 // Authentication state store
@@ -40,7 +48,7 @@ if (typeof window !== 'undefined') {
 					userPub.set(user.is.pub);
 
 					// Update users list
-					holster.get('freely-associating-players').get(user.is.pub).put({
+					holster.get('freely-associating-players').next(user.is.pub).put({
 						alias: user.is.username,
 						lastSeen: Date.now()
 					});
@@ -133,7 +141,7 @@ export async function login(alias: string, password: string): Promise<void> {
 						userPub.set(user.is.pub);
 
 						// Update users list
-						holster.get('freely-associating-players').get(user.is.pub).put({
+						holster.get('freely-associating-players').next(user.is.pub).put({
 							alias: user.is.username,
 							lastSeen: Date.now()
 						});
@@ -228,3 +236,27 @@ export const SEA = holster.SEA;
 
 // Export the Holster instance for direct access
 export { holster as HOLSTER };
+
+// Log initialization
+console.log('[HOLSTER] Initialized successfully');
+console.log('[HOLSTER] Peers:', ['wss://holster.haza.website']);
+console.log('[HOLSTER] IndexedDB:', true);
+
+// Expose for debugging (browser only)
+if (typeof window !== 'undefined') {
+	(window as any).holster = holster;
+	(window as any).holsterUser = user;
+	console.log('[HOLSTER] Exposed to window.holster and window.holsterUser for debugging');
+}
+
+// Initialize test utilities in development mode
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	console.log('[HOLSTER] Loading test utilities...');
+	import('./holster-tests')
+		.then((module) => {
+			module.initializeHolsterTests();
+		})
+		.catch((err) => {
+			console.error('[HOLSTER] Failed to load test utilities:', err);
+		});
+}

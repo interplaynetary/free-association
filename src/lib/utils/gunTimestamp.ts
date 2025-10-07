@@ -4,6 +4,10 @@
  * Provides generic timestamp extraction from Gun data using Gun's internal
  * state tracking system (GUN.state.is). This eliminates the need for
  * application-level timestamp wrapping.
+ *
+ * NOTE: This is Gun-specific and will be replaced by holsterTimestamp.ts
+ * during the Holster migration. Holster uses explicit application-level
+ * timestamps (_updatedAt fields) instead of internal metadata.
  */
 
 // Import Gun for type access

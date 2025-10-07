@@ -4,6 +4,9 @@ export * from './core.svelte';
 // Gun database and authentication
 export * from './gun.svelte';
 
+// Holster database (migration in progress)
+export * from './holster.svelte';
+
 // Calculation and recalculation logic
 export * from './calculations.svelte';
 
@@ -16,3 +19,4 @@ export * from '$lib/utils/ui-providers.svelte';
 // Import subscriptions to activate them
 import './subscriptions.svelte';
 import './network.svelte'; // This activates the network subscriptions
+import './holster.svelte'; // This initializes Holster (migration Phase 1)

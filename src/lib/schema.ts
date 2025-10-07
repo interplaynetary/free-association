@@ -9,9 +9,15 @@ export const NameSchema = z.string().min(1);
 export const PointsSchema = z.number().gte(0);
 export const PercentageSchema = z.number().gte(0).lte(1);
 
-// DELETED: TimestampedSchema and Timestamped<T> - Replaced by Gun's native timestamps
-// Gun internally tracks timestamps using GUN.state.is() - no application-level wrapping needed
-// Use getGunTimestamp() from $lib/utils/gunTimestamp.ts to extract timestamps when needed
+// Timestamp field for Holster
+// Holster strips internal metadata, so we use explicit application-level timestamps
+// Use holsterTimestamp utilities from $lib/utils/holsterTimestamp.ts
+export const TimestampFieldSchema = z.number().positive().optional();
+
+// Helper to add timestamp to any schema
+export function withTimestamp<T extends z.ZodTypeAny>(schema: T) {
+	return schema.and(z.object({ _updatedAt: TimestampFieldSchema }));
+}
 
 // ShareMap - a record of node IDs to percentage values
 export const ShareMapSchema = z.record(IdSchema, PercentageSchema);

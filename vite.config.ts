@@ -24,6 +24,13 @@ export default defineConfig({
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
 	},
+	// Support top-level await for Holster
+	build: {
+		target: 'esnext'
+	},
+	esbuild: {
+		target: 'esnext'
+	},
 	server: {
 		watch: {
 			ignored: [
@@ -62,6 +69,9 @@ export default defineConfig({
 			'gun/lib/store',
 			'gun/lib/rindexed',
 			'gun/lib/yson.js'
-		]
+		],
+		esbuildOptions: {
+			target: 'esnext'
+		}
 	}
 });
