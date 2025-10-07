@@ -102,7 +102,7 @@
 <div
 	class="collective-node"
 	style="
-    background-color: {getColorForNameHash(node.name)};
+    background-color: {getColorForNameHash(node.name, node.id)};
     border: {isOnlyChild ? 'none' : '1px solid #fff'};
     width: 100%;
     height: 100%;

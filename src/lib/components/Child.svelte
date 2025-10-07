@@ -664,7 +664,7 @@
 <div
 	class="treemap-node"
 	style="
-    background-color: {getColorForNameHash(node.name)};
+    background-color: {getColorForNameHash(node.name, node.id)};
     border: {isOnlyChild ? 'none' : '1px solid #fff'};
     width: 100%;
     height: 100%;
@@ -681,7 +681,7 @@
 			left: 0;
 			width: {fulfillmentPercentage()}%;
 			height: 100%;
-			background-color: {getDarkerColorForNameHash(node.name)};
+			background-color: {getDarkerColorForNameHash(node.name, node.id)};
 			z-index: 1;
 			pointer-events: none;
 		"
@@ -1293,11 +1293,9 @@
 	}
 
 	.node-title {
-		color: rgba(0, 0, 0, 0.8);
-		text-shadow:
-			0px 0px 3px rgba(255, 255, 255, 0.8),
-			0px 0px 2px rgba(255, 255, 255, 0.6);
-		font-weight: 500;
+		color: rgba(255, 255, 255, 1);
+		text-shadow: none;
+		font-weight: bold;
 		cursor: pointer;
 		/* Constrain to container */
 		width: 100%;

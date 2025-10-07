@@ -623,9 +623,9 @@
 										e.currentTarget.scrollLeft += e.deltaY;
 									}}
 								>
-									{#each selectedContributorSubtrees as subtree (subtree.id)}
-										{@const subtreeColor = getColorForNameHash(subtree.name)}
-										{@const textColor = getContrastTextColor(subtreeColor)}
+								{#each selectedContributorSubtrees as subtree (subtree.id)}
+									{@const subtreeColor = getColorForNameHash(subtree.name, subtree.id)}
+									{@const textColor = getContrastTextColor(subtreeColor)}
 										<button
 											class="subtree-item"
 											style="background-color: {subtreeColor}; color: {textColor}; border-color: {subtreeColor};"
