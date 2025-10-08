@@ -11,7 +11,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { holster, user, userPub } from './holster.svelte';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 

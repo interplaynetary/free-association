@@ -1,7 +1,7 @@
 /**
  * Schema definitions using zod
  */
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // Basic types
 export const IdSchema = z.string().min(1);

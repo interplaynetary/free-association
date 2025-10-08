@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // VSM Theoretical Foundations
 const RegulatoryAphorismsSchema = z.object({

@@ -1,7 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
-import devtoolsJson from 'vite-plugin-devtools-json';
 
 // GUN module exclusion function for text-encoding
 const moduleExclude = (match: string): Plugin => {
@@ -19,7 +18,7 @@ const moduleExclude = (match: string): Plugin => {
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding'), devtoolsJson()],
+	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
 	// Required for Gun in service worker
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
