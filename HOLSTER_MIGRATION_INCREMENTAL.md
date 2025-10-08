@@ -46,8 +46,8 @@
 
 | Gun | Holster |
 |-----|---------|
-| `GUN.state.is(node, field)` | **TBD** - needs research |
-| Well-documented | Needs investigation |
+| `GUN.state.is(node, field)` | **Application-level `_updatedAt` fields** |
+| Internal metadata (`_`) | Strips metadata - use explicit fields |
 
 ---
 
@@ -1199,10 +1199,10 @@ If critical issues after Gun removal:
 
 ## Current Status
 
-- [ ] Phase 1: Foundation Setup
-- [ ] Phase 2: Authentication Testing
-- [ ] Phase 3: Timestamp Research
-- [ ] Phase 4: Isolated Feature Test
+- [x] Phase 1: Foundation Setup ✅
+- [x] Phase 2: Authentication Testing ✅
+- [x] Phase 3: Timestamp Research ✅
+- [x] Phase 4: Isolated Feature Test ✅
 - [ ] Phase 5: Migrate Contacts
 - [ ] Phase 6: Migrate Capacities
 - [ ] Phase 7: Migrate Tree
@@ -1213,15 +1213,45 @@ If critical issues after Gun removal:
 
 ---
 
-## Next Immediate Steps
+## Completed Work Summary
 
-1. Start Phase 1: Enhance `src/lib/state/holster.svelte.ts`
-2. Add test utilities to window object
-3. Verify Holster initializes without errors
-4. Test basic put/get operations
-5. Verify Gun still works normally
+### Phases 1-4: Foundation & Proof of Concept ✅
+
+**Files Created:**
+- `src/lib/state/holster.svelte.ts` - Core Holster initialization with auth
+- `src/lib/state/holster-tests.ts` - Dev-mode test utilities
+- `src/lib/state/notes.svelte.ts` - Notes feature implementation
+- `src/lib/components/NotesTest.svelte` - Notes UI component
+- `src/lib/utils/holsterTimestamp.ts` - Timestamp utilities
+- `src/routes/notes-test/+page.svelte` - Test route
+
+**Key Findings:**
+1. ✅ Holster initializes alongside Gun without conflicts
+2. ✅ Authentication works with `user.create()`, `user.auth()`, `user.recall()`
+3. ✅ **Timestamp Solution**: Use application-level `_updatedAt` fields (Holster strips metadata)
+4. ✅ Notes POC validates full CRUD + real-time sync + conflict resolution
+
+**Validated Patterns:**
+- Explicit timestamp fields in data schemas
+- `addTimestamp()` / `getTimestamp()` / `shouldPersist()` utilities
+- Track `lastNetworkTimestamps` Map for conflict detection
+- `user.get(path, callback)` for read-once
+- `user.get(path).on(callback)` for subscriptions (NOT `.get(path, callback).on()`)
+- `user.get(path).next(id).put(data)` for nested writes
 
 ---
 
-*Last Updated: 2025-10-07*
-*Status: Planning Complete - Ready to Start Phase 1*
+## Next Immediate Steps
+
+**Phase 5: Migrate Contacts Module**
+
+1. Create `src/lib/state/contacts-holster.svelte.ts`
+2. Add `USE_HOLSTER_CONTACTS` feature flag to `src/lib/config.ts`
+3. Update `src/lib/state/users.svelte.ts` to support both implementations
+4. Test toggle between Gun/Holster implementations
+5. Validate no data loss during migration
+
+---
+
+*Last Updated: 2025-10-08*
+*Status: Phases 1-4 Complete - Starting Phase 5 (Contacts)*
