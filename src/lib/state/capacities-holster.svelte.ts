@@ -59,12 +59,16 @@ function subscribeToCapacities() {
 			return;
 		}
 
-		// Helper to check if a value is "deleted" (null or object with all null fields)
+		// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
 		const isDeleted = (value: any): boolean => {
-			if (value === null) return true;
+			if (value === null || value === undefined) return true;
 			if (typeof value === 'object' && value !== null) {
-				// Check if all fields are null (Holster deletion pattern)
-				return Object.values(value).every((v) => v === null);
+				// Check if required capacity fields are missing (indicates deletion)
+				if (!value.id || !value.name) {
+					return true;
+				}
+				// Check if all fields are null or undefined (Holster deletion pattern)
+				return Object.values(value).every((v) => v === null || v === undefined);
 			}
 			return false;
 		};
@@ -80,13 +84,17 @@ function subscribeToCapacities() {
 
 		// Convert availability_slots objects back to arrays
 		for (const [capacityId, capacity] of Object.entries(capacitiesOnly)) {
-			if ((capacity as any).availability_slots) {
+			if ((capacity as any).availability_slots && typeof (capacity as any).availability_slots === 'object') {
 				const slotsObj = (capacity as any).availability_slots;
 				const slotsArray: any[] = [];
 				for (const slotId of Object.keys(slotsObj)) {
-					slotsArray.push(slotsObj[slotId]);
+					if (slotsObj[slotId]) { // Only include non-null/undefined slots
+						slotsArray.push(slotsObj[slotId]);
+					}
 				}
 				(capacity as any).availability_slots = slotsArray;
+			} else {
+				(capacity as any).availability_slots = [];
 			}
 		}
 
@@ -136,12 +144,16 @@ export function initializeHolsterCapacities() {
 		console.log('[CAPACITIES-HOLSTER] Initial load:', data);
 
 		if (data) {
-			// Helper to check if a value is "deleted" (null or object with all null fields)
+			// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
 			const isDeleted = (value: any): boolean => {
-				if (value === null) return true;
+				if (value === null || value === undefined) return true;
 				if (typeof value === 'object' && value !== null) {
-					// Check if all fields are null (Holster deletion pattern)
-					return Object.values(value).every((v) => v === null);
+					// Check if required capacity fields are missing (indicates deletion)
+					if (!value.id || !value.name) {
+						return true;
+					}
+					// Check if all fields are null or undefined (Holster deletion pattern)
+					return Object.values(value).every((v) => v === null || v === undefined);
 				}
 				return false;
 			};
@@ -157,13 +169,17 @@ export function initializeHolsterCapacities() {
 
 			// Convert availability_slots objects back to arrays
 			for (const [capacityId, capacity] of Object.entries(capacitiesOnly)) {
-				if ((capacity as any).availability_slots) {
+				if ((capacity as any).availability_slots && typeof (capacity as any).availability_slots === 'object') {
 					const slotsObj = (capacity as any).availability_slots;
 					const slotsArray: any[] = [];
 					for (const slotId of Object.keys(slotsObj)) {
-						slotsArray.push(slotsObj[slotId]);
+						if (slotsObj[slotId]) { // Only include non-null/undefined slots
+							slotsArray.push(slotsObj[slotId]);
+						}
 					}
 					(capacity as any).availability_slots = slotsArray;
+				} else {
+					(capacity as any).availability_slots = [];
 				}
 			}
 
@@ -397,7 +413,7 @@ export async function persistHolsterCapacities(
 
 /**
  * Delete a capacity from Holster
- * Uses object graph traversal with .get(capacityId)
+ * Uses object graph traversal with .next(capacityId)
  */
 export async function deleteHolsterCapacity(capacityId: string): Promise<void> {
 	if (!holsterUser.is) {
@@ -414,9 +430,9 @@ export async function deleteHolsterCapacity(capacityId: string): Promise<void> {
 		return remaining;
 	});
 
-	// Remove from Holster by setting to null using .get() for object graph traversal
+	// Remove from Holster by setting to null using .next() for object graph traversal
 	return new Promise((resolve, reject) => {
-		holsterUser.get('capacities').get(capacityId).put(null, (err: any) => {
+		holsterUser.get('capacities').next(capacityId).put(null, (err: any) => {
 			if (err) {
 				console.error('[CAPACITIES-HOLSTER] Delete error:', err);
 				reject(err);
