@@ -3,19 +3,11 @@ import { writable, get } from 'svelte/store';
 import { initializeUserDataStreams } from './network.svelte';
 import { config } from '../config';
 
-<<<<<<< HEAD
 // Initialize Holster - now uses config from environment variables
 export const holster = Holster({
 	peers: config.holster.peers,
 	indexedDB: config.holster.indexedDB,
-	secure: config.holster.secure
-=======
-// Initialize Holster
-export const holster = Holster({
-	peers: ['wss://holster.haza.website'],
-	indexedDB: true,
-	file: 'holster-data'
->>>>>>> Holster setup and testing
+	file: config.holster.file
 });
 
 // Authentication state store
@@ -233,16 +225,11 @@ export function changePassword(currentPassword: string, newPassword: string) {
 	});
 }
 
-// Export SEA functionality
-export const SEA = holster.SEA;
-
-// Export the Holster instance for direct access
-export { holster as HOLSTER };
-
 // Log initialization
 console.log('[HOLSTER] Initialized successfully');
-console.log('[HOLSTER] Peers:', ['wss://holster.haza.website']);
-console.log('[HOLSTER] IndexedDB:', true);
+console.log('[HOLSTER] Peers:', config.holster.peers);
+console.log('[HOLSTER] IndexedDB:', config.holster.indexedDB);
+console.log('[HOLSTER] File:', config.holster.file);
 
 // Expose for debugging (browser only)
 if (typeof window !== 'undefined') {

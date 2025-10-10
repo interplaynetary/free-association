@@ -216,6 +216,14 @@ export function persistGeneralShares() {
 }
 
 export async function persistCapacities() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_CAPACITIES } = await import('$lib/config');
+
+	if (USE_HOLSTER_CAPACITIES) {
+		console.log('[PERSIST] Using Holster for capacities - skipping Gun persistence');
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping capacities persistence');
 		return;

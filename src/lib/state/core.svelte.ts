@@ -4,6 +4,11 @@ import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import { parseCompositionTarget } from '$lib/validation';
 import { resolveToPublicKey } from './users.svelte';
+import { USE_HOLSTER_CAPACITIES } from '$lib/config';
+import {
+	holsterCapacities,
+	isLoadingHolsterCapacities
+} from './capacities-holster.svelte';
 import type {
 	RootNode,
 	CapacitiesCollection,
@@ -20,13 +25,23 @@ import type {
 // All timestamps are tracked by Gun internally via GUN.state.is()
 export const userTree: Writable<RootNode | null> = writable(null);
 export const userSogf: Writable<ShareMap | null> = writable(null);
-export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
+
+// Gun-based capacities (internal)
+const gunUserCapacities: Writable<CapacitiesCollection | null> = writable(null);
+const gunIsLoadingCapacities = writable(false);
+
+// Conditional export: use Holster or Gun based on feature flag
+export const userCapacities: Writable<CapacitiesCollection | null> = USE_HOLSTER_CAPACITIES
+	? holsterCapacities
+	: gunUserCapacities;
+export const isLoadingCapacities = USE_HOLSTER_CAPACITIES
+	? isLoadingHolsterCapacities
+	: gunIsLoadingCapacities;
 
 // DELETED: Timestamp tracking stores - Replaced by Gun's native timestamp tracking
 // Use getGunTimestamp() from $lib/utils/gunTimestamp.ts when timestamp comparison is needed
 
 // Loading state flags
-export const isLoadingCapacities = writable(false);
 export const isLoadingTree = writable(false);
 export const isLoadingSogf = writable(false);
 

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Configuration for Gun and Holster peer connections
 // Uses environment variables from .env files
 
@@ -15,22 +14,22 @@ export const config = {
   },
   holster: {
     peers: [
-      // Use environment variable or fallback to defaults
-      import.meta.env.VITE_HOLSTER_PEER_URL || 'ws://localhost:8766/holster',
-      // Keep external peer as fallback
-      'wss://holster.haza.website'
+      // Use environment variable or fallback to default
+      import.meta.env.VITE_HOLSTER_PEER_URL || 'wss://holster.haza.website'
     ],
     indexedDB: true,
-    secure: true
+    file: 'holster-data'
   },
   dataApi: {
     url: import.meta.env.VITE_DATA_API_URL || 'http://localhost:8767'
   }
 };
-=======
+
+// ============================================================================
+// Feature Flags for Gradual Holster Migration
+// ============================================================================
+
 /**
- * Feature Flags for Gradual Holster Migration
- *
  * These flags enable toggling between Gun and Holster implementations
  * for each module during the migration process.
  *
@@ -52,7 +51,9 @@ export const USE_HOLSTER_CONTACTS =
 		localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true');
 
 /**
- * Use Holster for capacities management (not yet implemented)
+ * Use Holster for capacities management
+ * - When true: uses capacities-holster.svelte.ts
+ * - When false: uses Gun-based capacities in core.svelte.ts
  */
 export const USE_HOLSTER_CAPACITIES =
 	import.meta.env.VITE_USE_HOLSTER_CAPACITIES === 'true' ||
@@ -138,4 +139,3 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 	console.log('[CONFIG] Example: window.toggleHolster.contacts()');
 	console.log('[CONFIG] Check status: window.toggleHolster.status()');
 }
->>>>>>> Stable update - Holster 1.0.21 working with contacts

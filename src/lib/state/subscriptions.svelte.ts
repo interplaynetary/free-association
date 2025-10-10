@@ -41,24 +41,40 @@ const debouncedPersistSogf = debounce(() => {
 	}
 }, 300);
 
-const debouncedPersistCapacities = debounce(() => {
+const debouncedPersistCapacities = debounce(async () => {
 	console.log('[CAPACITIES-SUB] Executing debounced capacities persistence');
 	console.log('[CAPACITIES-SUB] 🚨 DEBUG: debouncedPersistCapacities debounced function executing');
 
-	// 🚨 SMART RACE CONDITION PROTECTION: The persistCapacities function
-	// will check isLoadingCapacities and defer if needed, preventing
-	// local changes from overwriting incoming network data
-	try {
-		console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call persistCapacities()');
-		persistCapacities();
-		console.log('[CAPACITIES-SUB] 🚨 DEBUG: persistCapacities() completed');
-	} catch (error) {
-		console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
-		console.error('[CAPACITIES-SUB] 🚨 DEBUG: Error details:', {
-			name: error instanceof Error ? error.name : 'Unknown',
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined
-		});
+	// Check if using Holster for capacities
+	const { USE_HOLSTER_CAPACITIES } = await import('$lib/config');
+
+	if (USE_HOLSTER_CAPACITIES) {
+		// Use Holster persistence
+		console.log('[CAPACITIES-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterCapacities } = await import('./capacities-holster.svelte');
+			await persistHolsterCapacities();
+			console.log('[CAPACITIES-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		// 🚨 SMART RACE CONDITION PROTECTION: The persistCapacities function
+		// will check isLoadingCapacities and defer if needed, preventing
+		// local changes from overwriting incoming network data
+		try {
+			console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call persistCapacities()');
+			persistCapacities();
+			console.log('[CAPACITIES-SUB] 🚨 DEBUG: persistCapacities() completed');
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
+			console.error('[CAPACITIES-SUB] 🚨 DEBUG: Error details:', {
+				name: error instanceof Error ? error.name : 'Unknown',
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
+		}
 	}
 }, 200);
 

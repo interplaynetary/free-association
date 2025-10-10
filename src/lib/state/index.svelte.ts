@@ -5,7 +5,19 @@ export * from './core.svelte';
 export * from './gun.svelte';
 
 // Holster database (migration in progress)
-export * from './holster.svelte';
+// Export selectively to avoid conflicts with Gun exports
+export {
+	holster,
+	holsterUser,
+	holsterUserAlias,
+	holsterUserPub,
+	holsterUsersList,
+	isHolsterAuthenticating,
+	login as holsterLogin,
+	signup as holsterSignup,
+	signout as holsterSignout,
+	changePassword as holsterChangePassword
+} from './holster.svelte';
 
 // Calculation and recalculation logic
 export * from './calculations.svelte';
