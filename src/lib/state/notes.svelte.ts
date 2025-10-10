@@ -12,7 +12,7 @@
 
 import { writable, derived, get } from 'svelte/store';
 import { z } from 'zod';
-import { holster, user, userPub } from './holster.svelte';
+import { holster, holsterUser, holsterUserPub } from './holster.svelte';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ============================================================================
@@ -54,12 +54,12 @@ let notesCallback: ((data: any) => void) | null = null;
  * Subscribe to user's notes from Holster
  */
 function subscribeToNotes() {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		console.log('[NOTES] Cannot subscribe: no authenticated user');
 		return;
 	}
 
-	console.log('[NOTES] Subscribing to notes for user:', user.is.username);
+	console.log('[NOTES] Subscribing to notes for user:', holsterUser.is.username);
 
 	// Create callback for updates
 	notesCallback = (data: any) => {
@@ -74,8 +74,26 @@ function subscribeToNotes() {
 			return;
 		}
 
+		// Helper to check if a value is "deleted" (null or object with all null fields)
+		const isDeleted = (value: any): boolean => {
+			if (value === null) return true;
+			if (typeof value === 'object' && value !== null) {
+				// Check if all fields are null (Gun/Holster deletion pattern)
+				return Object.values(value).every(v => v === null);
+			}
+			return false;
+		};
+
+		// Filter out null/deleted values and metadata
+		const filteredData: any = {};
+		for (const [key, value] of Object.entries(data)) {
+			if (!isDeleted(value) && !key.startsWith('_')) {
+				filteredData[key] = value;
+			}
+		}
+
 		// Parse and validate
-		const parseResult = NotesCollectionSchema.safeParse(data);
+		const parseResult = NotesCollectionSchema.safeParse(filteredData);
 		if (!parseResult.success) {
 			console.error('[NOTES] Invalid notes data:', parseResult.error);
 			return;
@@ -103,19 +121,28 @@ function subscribeToNotes() {
 				}
 			}
 
+			// Remove notes that are null in the network data (deletions)
+			for (const [key, value] of Object.entries(data)) {
+				if (value === null && !key.startsWith('_')) {
+					delete updatedNotes[key];
+					lastNetworkTimestamps.delete(key);
+					console.log('[NOTES] Removed deleted note:', key);
+				}
+			}
+
 			return updatedNotes;
 		});
 	};
 
 	// Subscribe with on()
-	user.get('notes', notesCallback);
+	holsterUser.get('notes').on(notesCallback);
 }
 
 /**
  * Initialize notes subscription when user logs in
  */
 export function initializeNotes() {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		console.log('[NOTES] Cannot initialize: no authenticated user');
 		return;
 	}
@@ -124,11 +151,29 @@ export function initializeNotes() {
 	isLoadingNotes.set(true);
 
 	// Load initial data with get()
-	user.get('notes', (data: any) => {
+	holsterUser.get('notes', (data: any) => {
 		console.log('[NOTES] Initial load:', data);
 
 		if (data) {
-			const parseResult = NotesCollectionSchema.safeParse(data);
+			// Helper to check if a value is "deleted" (null or object with all null fields)
+			const isDeleted = (value: any): boolean => {
+				if (value === null) return true;
+				if (typeof value === 'object' && value !== null) {
+					// Check if all fields are null (Gun/Holster deletion pattern)
+					return Object.values(value).every(v => v === null);
+				}
+				return false;
+			};
+
+			// Filter out null/deleted values
+			const filteredData: any = {};
+			for (const [key, value] of Object.entries(data)) {
+				if (!isDeleted(value) && !key.startsWith('_')) {
+					filteredData[key] = value;
+				}
+			}
+
+			const parseResult = NotesCollectionSchema.safeParse(filteredData);
 			if (parseResult.success) {
 				notes.set(parseResult.data);
 
@@ -159,7 +204,7 @@ export function initializeNotes() {
  */
 export function cleanupNotes() {
 	if (notesCallback) {
-		user.get('notes').off(notesCallback);
+		holsterUser.get('notes').off(notesCallback);
 		notesCallback = null;
 	}
 	notes.set({});
@@ -175,7 +220,7 @@ export function cleanupNotes() {
  * Create a new note
  */
 export async function createNote(title: string, content: string): Promise<string> {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		throw new Error('Not authenticated');
 	}
 
@@ -201,7 +246,7 @@ export async function createNote(title: string, content: string): Promise<string
  * Update an existing note
  */
 export async function updateNote(noteId: string, updates: Partial<Omit<Note, 'id' | '_updatedAt'>>): Promise<void> {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		throw new Error('Not authenticated');
 	}
 
@@ -230,7 +275,7 @@ export async function updateNote(noteId: string, updates: Partial<Omit<Note, 'id
  * Delete a note
  */
 export async function deleteNote(noteId: string): Promise<void> {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		throw new Error('Not authenticated');
 	}
 
@@ -245,7 +290,7 @@ export async function deleteNote(noteId: string): Promise<void> {
 
 	// Remove from Holster
 	return new Promise((resolve, reject) => {
-		user.get('notes').next(noteId).put(null, (err: any) => {
+		holsterUser.get('notes').next(noteId).put(null, (err: any) => {
 			if (err) {
 				console.error('[NOTES] Delete error:', err);
 				reject(err);
@@ -262,7 +307,7 @@ export async function deleteNote(noteId: string): Promise<void> {
  * Persist a single note to Holster with conflict detection
  */
 async function persistNote(note: Note): Promise<void> {
-	if (!user.is) {
+	if (!holsterUser.is) {
 		throw new Error('Not authenticated');
 	}
 
@@ -276,7 +321,7 @@ async function persistNote(note: Note): Promise<void> {
 	}
 
 	return new Promise((resolve, reject) => {
-		user.get('notes').next(note.id).put(note, (err: any) => {
+		holsterUser.get('notes').next(note.id).put(note, (err: any) => {
 			if (err) {
 				console.error('[NOTES] Persist error:', err);
 				reject(err);

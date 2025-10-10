@@ -1203,7 +1203,7 @@ If critical issues after Gun removal:
 - [x] Phase 2: Authentication Testing ✅
 - [x] Phase 3: Timestamp Research ✅
 - [x] Phase 4: Isolated Feature Test ✅
-- [ ] Phase 5: Migrate Contacts
+- [x] Phase 5: Migrate Contacts ✅
 - [ ] Phase 6: Migrate Capacities
 - [ ] Phase 7: Migrate Tree
 - [ ] Phase 8: Migrate Recognition
@@ -1239,19 +1239,69 @@ If critical issues after Gun removal:
 - `user.get(path).on(callback)` for subscriptions (NOT `.get(path, callback).on()`)
 - `user.get(path).next(id).put(data)` for nested writes
 
+**Critical Pattern: Collection-Level Timestamps**
+When storing collections (like contacts) with a single `_updatedAt` at the root level:
+
+1. **Schema stays clean** - Don't modify Zod schemas to accept `_updatedAt`
+2. **Filter before validation** - Strip metadata in the Holster layer:
+   ```typescript
+   const { _updatedAt, ...dataOnly } = networkData;
+   const parseResult = Schema.safeParse(dataOnly);
+   ```
+3. **Why?** Because `z.record()` expects homogeneous values, but `_updatedAt` creates heterogeneous values (data + number)
+4. **Separation of concerns** - Timestamp handling belongs in persistence layer, not data model
+5. **Type safety** - Schemas accurately represent actual data structure
+
+**Critical Pattern: Undefined Values**
+Holster/Gun cannot handle `undefined` values:
+
+1. **Clean data before persisting** - Explicitly build objects, omit undefined fields:
+   ```typescript
+   const cleaned = {
+     required_field: data.required_field,
+     // Only include optional fields if they have values
+     ...(data.optional_field && { optional_field: data.optional_field })
+   };
+   ```
+2. **Never pass undefined** - Use `null` or omit the field entirely
+
+### Phase 5: Contacts Migration ✅
+
+**Files Created:**
+- `src/lib/state/contacts-holster.svelte.ts` - Holster contacts implementation
+- `src/lib/config.ts` - Feature flags for migration
+
+**Files Modified:**
+- `src/lib/state/users.svelte.ts` - Conditional support for both implementations
+- `src/lib/state/network.svelte.ts` - Skip Gun streams when using Holster
+- `src/lib/state/persistence.svelte.ts` - Skip Gun persistence when using Holster
+
+**Key Learnings:**
+1. ✅ **Collection-level timestamps** require filtering before validation
+2. ✅ **Undefined values** must be cleaned before persisting to Holster
+3. ✅ **Feature flag pattern** allows safe incremental migration
+4. ✅ **Schema separation** - Keep schemas clean, filter in persistence layer
+
+**Testing Results:**
+- ✅ Contacts work with Holster enabled
+- ✅ Toggle between Gun/Holster works correctly
+- ✅ Real-time sync validated
+- ✅ Data persists correctly with timestamps
+
 ---
 
 ## Next Immediate Steps
 
-**Phase 5: Migrate Contacts Module**
+**Phase 6: Migrate Capacities Module**
 
-1. Create `src/lib/state/contacts-holster.svelte.ts`
-2. Add `USE_HOLSTER_CONTACTS` feature flag to `src/lib/config.ts`
-3. Update `src/lib/state/users.svelte.ts` to support both implementations
-4. Test toggle between Gun/Holster implementations
-5. Validate no data loss during migration
+Following the same pattern as Phase 5:
+1. Create `src/lib/state/capacities-holster.svelte.ts`
+2. Add `USE_HOLSTER_CAPACITIES` flag to config
+3. Handle collection-level timestamps (capacities is also a collection)
+4. Clean undefined values from capacity data
+5. Test toggle and real-time sync
 
 ---
 
-*Last Updated: 2025-10-08*
-*Status: Phases 1-4 Complete - Starting Phase 5 (Contacts)*
+*Last Updated: 2025-10-09*
+*Status: Phase 5 Complete - Ready for Phase 6 (Capacities)*

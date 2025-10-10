@@ -19,37 +19,39 @@ export const holster = Holster({
 });
 
 // Authentication state store
-export const isAuthenticating = writable(true);
+export const isHolsterAuthenticating = writable(true);
 
-// Initialize user immediately to avoid reference errors
-export const user = holster.user();
+// Initialize Holster user immediately to avoid reference errors
+// Named holsterUser to distinguish from Gun's user export
+export const holsterUser = holster.user();
 
-// Current User's alias and pub
-export const userAlias = writable('');
-export const userPub = writable('');
+// Current User's alias and pub for Holster
+export const holsterUserAlias = writable('');
+export const holsterUserPub = writable('');
 
 // Users list using Holster API
-export const usersList = holster.get('freely-associating-players');
+// Named holsterUsersList to distinguish from Gun's usersList export
+export const holsterUsersList = holster.get('freely-associating-players');
 
 // Check if user is already authenticated after recall
 if (typeof window !== 'undefined') {
 	const checkAuth = async () => {
 		try {
 			// Set authenticating state
-			isAuthenticating.set(true);
+			isHolsterAuthenticating.set(true);
 
 			// Use Holster's recall method
 			await new Promise((resolve) => {
-				user.recall();
+				holsterUser.recall();
 				// Check if user is authenticated
-				if (user.is && user.is.username) {
-					console.log('[HOLSTER RECALL] User authenticated:', user.is.username);
-					userAlias.set(user.is.username);
-					userPub.set(user.is.pub);
+				if (holsterUser.is && holsterUser.is.username) {
+					console.log('[HOLSTER RECALL] User authenticated:', holsterUser.is.username);
+					holsterUserAlias.set(holsterUser.is.username);
+					holsterUserPub.set(holsterUser.is.pub);
 
 					// Update users list
-					holster.get('freely-associating-players').next(user.is.pub).put({
-						alias: user.is.username,
+					holster.get('freely-associating-players').next(holsterUser.is.pub).put({
+						alias: holsterUser.is.username,
 						lastSeen: Date.now()
 					});
 
@@ -57,17 +59,17 @@ if (typeof window !== 'undefined') {
 					initializeUserDataStreams();
 				} else {
 					console.log('[HOLSTER RECALL] No authenticated user found');
-					userAlias.set('');
-					userPub.set('');
+					holsterUserAlias.set('');
+					holsterUserPub.set('');
 				}
 				resolve(null);
 			});
 		} catch (error) {
 			console.error('[HOLSTER RECALL] Error during authentication check:', error);
-			userAlias.set('');
-			userPub.set('');
+			holsterUserAlias.set('');
+			holsterUserPub.set('');
 		} finally {
-			isAuthenticating.set(false);
+			isHolsterAuthenticating.set(false);
 		}
 	};
 
@@ -124,7 +126,7 @@ export async function login(alias: string, password: string): Promise<void> {
 		try {
 			await new Promise<void>((resolve, reject) => {
 				console.log(`[HOLSTER LOGIN] Attempt ${attempt + 1} for alias: "${alias}"`);
-				user.auth(alias, password, (err: any) => {
+				holsterUser.auth(alias, password, (err: any) => {
 					if (err) {
 						console.log(`[HOLSTER LOGIN] Auth failed for "${alias}":`, err);
 						// Retry on network errors, fail immediately on auth errors
@@ -137,17 +139,17 @@ export async function login(alias: string, password: string): Promise<void> {
 						console.log(`[HOLSTER LOGIN] Auth succeeded for "${alias}"`);
 
 						// Update stores
-						userAlias.set(user.is.username);
-						userPub.set(user.is.pub);
+						holsterUserAlias.set(holsterUser.is.username);
+						holsterUserPub.set(holsterUser.is.pub);
 
 						// Update users list
-						holster.get('freely-associating-players').next(user.is.pub).put({
-							alias: user.is.username,
+						holster.get('freely-associating-players').next(holsterUser.is.pub).put({
+							alias: holsterUser.is.username,
 							lastSeen: Date.now()
 						});
 
-						// Store credentials
-						user.store(false); // Use sessionStorage by default
+						// Store credentials in localStorage for cross-tab access
+						holsterUser.store(true);
 
 						// Load existing user data
 						initializeUserDataStreams();
@@ -180,7 +182,7 @@ export async function signup(alias: string, password: string): Promise<void> {
 	for (let attempt = 0; attempt < 3; attempt++) {
 		try {
 			await new Promise<void>((resolve, reject) => {
-				user.create(alias, password, (err: any) => {
+				holsterUser.create(alias, password, (err: any) => {
 					if (err) {
 						// Retry on network errors, fail immediately on auth errors
 						if (isNetworkError(err)) {
@@ -213,18 +215,18 @@ export async function signup(alias: string, password: string): Promise<void> {
 }
 
 export async function signout() {
-	user.leave();
-	userAlias.set('');
-	userPub.set('');
+	holsterUser.leave();
+	holsterUserAlias.set('');
+	holsterUserPub.set('');
 }
 
 export function changePassword(currentPassword: string, newPassword: string) {
-	const currentAlias = get(userAlias);
+	const currentAlias = get(holsterUserAlias);
 	if (!currentAlias) {
 		throw new Error('No authenticated user');
 	}
 
-	user.change(currentAlias, currentPassword, newPassword, (err: any) => {
+	holsterUser.change(currentAlias, currentPassword, newPassword, (err: any) => {
 		if (err) {
 			throw new Error(err);
 		}
@@ -245,7 +247,7 @@ console.log('[HOLSTER] IndexedDB:', true);
 // Expose for debugging (browser only)
 if (typeof window !== 'undefined') {
 	(window as any).holster = holster;
-	(window as any).holsterUser = user;
+	(window as any).holsterUser = holsterUser;
 	console.log('[HOLSTER] Exposed to window.holster and window.holsterUser for debugging');
 }
 

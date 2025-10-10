@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { holster, user, userAlias, userPub } from './holster.svelte';
+import { holster, holsterUser, holsterUserAlias, holsterUserPub } from './holster.svelte';
 
 // Development-only test utilities
 export function initializeHolsterTests() {
@@ -33,33 +33,33 @@ export function initializeHolsterTests() {
 		checkStatus: () => {
 			console.log('[HOLSTER-TEST] === Holster Status ===');
 			console.log('[HOLSTER-TEST] Holster instance:', holster);
-			console.log('[HOLSTER-TEST] User instance:', user);
-			console.log('[HOLSTER-TEST] User authenticated:', !!user.is);
-			if (user.is) {
-				console.log('[HOLSTER-TEST] Username:', user.is.username);
-				console.log('[HOLSTER-TEST] Public key:', user.is.pub?.slice(0, 20) + '...');
+			console.log('[HOLSTER-TEST] User instance:', holsterUser);
+			console.log('[HOLSTER-TEST] User authenticated:', !!holsterUser.is);
+			if (holsterUser.is) {
+				console.log('[HOLSTER-TEST] Username:', holsterUser.is.holsterUsername);
+				console.log('[HOLSTER-TEST] Public key:', holsterUser.is.pub?.slice(0, 20) + '...');
 			}
 			console.log('[HOLSTER-TEST] User stores:', {
-				alias: get(userAlias),
-				pub: get(userPub)?.slice(0, 20) + '...'
+				alias: get(holsterUserAlias),
+				pub: get(holsterUserPub)?.slice(0, 20) + '...'
 			});
 		},
 
 		// Authentication tests
 		auth: {
-			// Generate unique test username
+			// Generate unique test holsterUsername
 			_generateUsername: () => {
-				return `test-user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+				return `test-holsterUser-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 			},
 
 			// Create and login to test account
 			createAndLogin: async () => {
-				const username = (window as any).testHolster.auth._generateUsername();
-				console.log(`[HOLSTER-AUTH] Creating and logging in: ${username}`);
+				const holsterUsername = (window as any).testHolster.auth._generateUsername();
+				console.log(`[HOLSTER-AUTH] Creating and logging in: ${holsterUsername}`);
 
 				// Create account first
 				await new Promise((resolve) => {
-					user.create(username, 'test-password-123', (err) => {
+					holsterUser.create(holsterUsername, 'test-password-123', (err) => {
 						if (err) {
 							console.error('[HOLSTER-AUTH] ❌ Create failed:', err);
 						} else {
@@ -71,15 +71,15 @@ export function initializeHolsterTests() {
 
 				// Then login
 				return new Promise((resolve) => {
-					user.auth(username, 'test-password-123', (err) => {
+					holsterUser.auth(holsterUsername, 'test-password-123', (err) => {
 						if (err) {
 							console.error('[HOLSTER-AUTH] ❌ Login failed:', err);
 						} else {
 							console.log('[HOLSTER-AUTH] ✅ Login successful');
-							console.log('[HOLSTER-AUTH] User:', user.is);
-							userAlias.set(user.is.username);
-							userPub.set(user.is.pub);
-							user.store();
+							console.log('[HOLSTER-AUTH] User:', holsterUser.is);
+							holsterUserAlias.set(holsterUser.is.username);
+							holsterUserPub.set(holsterUser.is.pub);
+							holsterUser.store(true);
 						}
 						resolve(err);
 					});
@@ -89,10 +89,10 @@ export function initializeHolsterTests() {
 			// Logout
 			logout: () => {
 				console.log('[HOLSTER-AUTH] Logging out...');
-				user.leave();
-				userAlias.set('');
-				userPub.set('');
-				console.log('[HOLSTER-AUTH] ✅ Logged out. User state:', user.is);
+				holsterUser.leave();
+				holsterUserAlias.set('');
+				holsterUserPub.set('');
+				console.log('[HOLSTER-AUTH] ✅ Logged out. User state:', holsterUser.is);
 			},
 
 			// Full auth flow test
@@ -111,17 +111,17 @@ export function initializeHolsterTests() {
 		},
 
 		// User data operations
-		userData: {
-			// Write user data
+		holsterUserData: {
+			// Write holsterUser data
 			write: async (key: string, value: any) => {
-				if (!user.is) {
+				if (!holsterUser.is) {
 					console.error('[HOLSTER-DATA] ❌ Not authenticated');
 					return;
 				}
 
 				console.log(`[HOLSTER-DATA] Writing "${key}":`, value);
 				return new Promise((resolve) => {
-					user.get(key).put(value, (err) => {
+					holsterUser.get(key).put(value, (err) => {
 						if (err) {
 							console.error('[HOLSTER-DATA] ❌ Write failed:', err);
 						} else {
@@ -132,26 +132,26 @@ export function initializeHolsterTests() {
 				});
 			},
 
-			// Read user data
+			// Read holsterUser data
 			read: (key: string) => {
-				if (!user.is) {
+				if (!holsterUser.is) {
 					console.error('[HOLSTER-DATA] ❌ Not authenticated');
 					return;
 				}
 
 				console.log(`[HOLSTER-DATA] Reading "${key}"...`);
-				user.get(key, (data) => {
+				holsterUser.get(key, (data) => {
 					console.log('[HOLSTER-DATA] Result:', data);
 				});
 			},
 
-			// Test write and read (creates user if needed)
+			// Test write and read (creates holsterUser if needed)
 			testUserData: async () => {
-				console.log('[HOLSTER-DATA] === Testing user data operations ===');
+				console.log('[HOLSTER-DATA] === Testing holsterUser data operations ===');
 
-				// Ensure user is logged in
-				if (!user.is) {
-					console.log('[HOLSTER-DATA] No user logged in, creating test user...');
+				// Ensure holsterUser is logged in
+				if (!holsterUser.is) {
+					console.log('[HOLSTER-DATA] No holsterUser logged in, creating test holsterUser...');
 					await (window as any).testHolster.auth.createAndLogin();
 					await new Promise((r) => setTimeout(r, 500));
 				}
@@ -161,9 +161,9 @@ export function initializeHolsterTests() {
 					timestamp: Date.now()
 				};
 
-				await (window as any).testHolster.userData.write('test-data', testData);
+				await (window as any).testHolster.holsterUserData.write('test-data', testData);
 				await new Promise((r) => setTimeout(r, 500));
-				(window as any).testHolster.userData.read('test-data');
+				(window as any).testHolster.holsterUserData.read('test-data');
 			}
 		}
 	};
@@ -172,5 +172,5 @@ export function initializeHolsterTests() {
 	console.log('[HOLSTER]   window.testHolster.testBasic() - Test basic put/get');
 	console.log('[HOLSTER]   window.testHolster.checkStatus() - Check Holster status');
 	console.log('[HOLSTER]   window.testHolster.auth.fullTest() - Test full auth flow');
-	console.log('[HOLSTER]   window.testHolster.userData.testUserData() - Test user data');
+	console.log('[HOLSTER]   window.testHolster.holsterUserData.testUserData() - Test holsterUser data');
 }

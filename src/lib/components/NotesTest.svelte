@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { user } from '$lib/state/holster.svelte';
+	import { holsterUser } from '$lib/state/holster.svelte';
 	import {
 		notes,
 		notesArray,
@@ -19,15 +19,15 @@
 	let editContent = '';
 
 	onMount(() => {
-		// Initialize if user is already logged in (via recall or active session)
-		if (user.is) {
+		// Initialize if holsterUser is already logged in (via recall or active session)
+		if (holsterUser.is) {
 			initializeNotes();
 		} else {
-			// Try to recall user from stored credentials
-			user.recall();
+			// Try to recall holsterUser from stored credentials
+			holsterUser.recall();
 			// Give recall a moment to complete, then check again
 			setTimeout(() => {
-				if (user.is) {
+				if (holsterUser.is) {
 					initializeNotes();
 				}
 			}, 100);
@@ -99,7 +99,7 @@
 <div class="notes-test">
 	<h2>Notes Test (Holster)</h2>
 
-	{#if !user.is}
+	{#if !holsterUser.is}
 		<p class="warning">Please log in to use notes</p>
 	{:else if $isLoadingNotes}
 		<p>Loading notes...</p>

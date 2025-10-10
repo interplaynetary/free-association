@@ -5,8 +5,10 @@ import {
 	userAliasesCache,
 	resolveToPublicKey,
 	userContacts,
-	isLoadingContacts
+	isLoadingContacts,
+	initializeContacts
 } from '$lib/state/users.svelte';
+import { USE_HOLSTER_CONTACTS } from '$lib/config';
 import {
 	contributors,
 	mutualContributors,
@@ -791,6 +793,14 @@ const createOwnDesiredSlotComposeIntoStream = withAuthentication(async (userId: 
 // DELETED: createOwnDesiredSlotClaimsStream - Replaced by unified compose-from model
 
 const createOwnContactsStream = withAuthentication(async (userId: string) => {
+	// When using Holster, initialize Holster contacts instead of Gun stream
+	if (USE_HOLSTER_CONTACTS) {
+		console.log('[NETWORK] Using Holster for contacts - skipping Gun stream');
+		initializeContacts();
+		return;
+	}
+
+	// Gun implementation
 	await createStream(ownDataStreamConfigs.contacts, userId);
 });
 

@@ -455,8 +455,17 @@ export function persistProviderAllocationStates() {
 
 /**
  * Persist user's contacts to Gun
+ * Note: When USE_HOLSTER_CONTACTS is true, persistence happens in users.svelte.ts
  */
 export async function persistContacts() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_CONTACTS } = await import('$lib/config');
+
+	if (USE_HOLSTER_CONTACTS) {
+		console.log('[PERSIST] Using Holster for contacts - skipping Gun persistence');
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping contacts persistence');
 		return;
