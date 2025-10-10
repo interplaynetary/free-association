@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # Gun Relay Server
+  gun-relay:
+    build:
+      context: ./gun-relay
+      dockerfile: Dockerfile
+    container_name: gun-relay
+    ports:
+      - "8765:8765"
+    volumes:
+      - gun-data:/app/store
+    environment:
+      - GUN_RELAY_HOST=0.0.0.0
+      - GUN_RELAY_PORT=8765
+      - GUN_RELAY_STORE=true
+      - GUN_RELAY_PATH=public
+      - GUN_RELAY_SHOW_QR=false
+    networks:
+      - free-association-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8765/gun', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Holster Relay Server
+  holster-relay:
+    build:
+      context: ./holster-relay
+      dockerfile: Dockerfile
+    container_name: holster-relay
+    ports:
+      - "8766:8766"
+    volumes:
+      - holster-data:/app/holster-data
+    environment:
+      - HOLSTER_RELAY_HOST=0.0.0.0
+      - HOLSTER_RELAY_PORT=8766
+      - HOLSTER_RELAY_STORAGE=true
+      - HOLSTER_RELAY_STORAGE_PATH=./holster-data
+    networks:
+      - free-association-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8766/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Secure API Gateway
+  data-api:
+    build:
+      context: ./data-api
+      dockerfile: Dockerfile
+    container_name: data-api
+    ports:
+      - "8767:8767"
+    environment:
+      - DATA_API_HOST=0.0.0.0
+      - DATA_API_PORT=8767
+      - NODE_ENV=${NODE_ENV:-development}
+      - GUN_PEER_URL=http://gun-relay:8765/gun
+      - HOLSTER_PEER_URL=ws://holster-relay:8766/holster
+      # Security - MUST provide via .env file
+      - MASTER_API_KEY=${MASTER_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174}
+      - DEBUG=false
+    networks:
+      - free-association-network
+    depends_on:
+      gun-relay:
+        condition: service_healthy
+      holster-relay:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8767/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  gun-data:
+    driver: local
+  holster-data:
+    driver: local
+
+networks:
+  free-association-network:
+    driver: bridge

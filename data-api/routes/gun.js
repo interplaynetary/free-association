@@ -1,0 +1,124 @@
+import express from 'express';
+import Gun from 'gun';
+import { validatePathData, validatePathQuery } from '../utils/validate.js';
+
+const router = express.Router();
+
+// Request timeout (configurable via env var)
+const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT) || 5000;
+
+// Initialize Gun client (will be set by server.js)
+let gun;
+
+export function setGunInstance(gunInstance) {
+  gun = gunInstance;
+}
+
+/**
+ * POST /gun/put
+ * Write data to Gun database
+ */
+router.post('/put', validatePathData, async (req, res) => {
+  try {
+    const { path, data } = req.body;
+
+    const pathParts = path.split('/').filter(p => p);
+    let ref = gun;
+
+    for (const part of pathParts) {
+      ref = ref.get(part);
+    }
+
+    // Add timeout to prevent hanging writes
+    let hasResponded = false;
+    const timeout = setTimeout(() => {
+      if (!hasResponded) {
+        hasResponded = true;
+        return res.status(504).json({ error: 'Write timeout - relay may be unreachable' });
+      }
+    }, REQUEST_TIMEOUT);
+
+    ref.put(data, (ack) => {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        if (ack.err) {
+          return res.status(500).json({ error: ack.err });
+        }
+        res.json({ success: true, path, data });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /gun/get
+ * Read data from Gun database
+ */
+router.get('/get', validatePathQuery, async (req, res) => {
+  try {
+    const { path } = req.query;
+
+    const pathParts = path.split('/').filter(p => p);
+    let ref = gun;
+
+    for (const part of pathParts) {
+      ref = ref.get(part);
+    }
+
+    // Add timeout to prevent hanging on missing data
+    let hasResponded = false;
+    const timeout = setTimeout(() => {
+      if (!hasResponded) {
+        hasResponded = true;
+        return res.status(504).json({ error: 'Request timeout - data not found or relay unreachable' });
+      }
+    }, REQUEST_TIMEOUT);
+
+    ref.once((data) => {
+      if (!hasResponded) {
+        hasResponded = true;
+        clearTimeout(timeout);
+        try {
+          if (!data) {
+            return res.status(404).json({ error: 'Data not found' });
+          }
+          res.json({ success: true, path, data });
+        } catch (error) {
+          res.status(500).json({ error: 'Error processing Gun data' });
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /gun/seed
+ * Seed Gun database with sample data
+ */
+router.post('/seed', async (req, res) => {
+  try {
+    const sampleData = req.body.data || {
+      players: {
+        alice: { name: 'Alice', lastSeen: Date.now() },
+        bob: { name: 'Bob', lastSeen: Date.now() },
+        charlie: { name: 'Charlie', lastSeen: Date.now() }
+      }
+    };
+
+    gun.get('freely-associating-players').put(sampleData, (ack) => {
+      if (ack.err) {
+        return res.status(500).json({ error: ack.err });
+      }
+      res.json({ success: true, message: 'Gun database seeded', data: sampleData });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;

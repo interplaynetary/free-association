@@ -1,0 +1,15 @@
+{
+  "name": "holster-relay",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone Holster relay server for free-association",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@mblaney/holster": "^1.0.10",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
