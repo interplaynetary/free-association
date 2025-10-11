@@ -147,33 +147,65 @@ const debouncedPersistChatReadStates = debounce(() => {
 	}
 }, 200);
 
+const debouncedPersistTree = debounce(async () => {
+	console.log('[TREE-SUB] Executing debounced tree persistence');
+
+	// Check if using Holster for tree
+	const { USE_HOLSTER_TREE } = await import('$lib/config');
+
+	if (USE_HOLSTER_TREE) {
+		// Use Holster persistence - it has its own loading and isPersisting checks
+		const { persistHolsterTree, isLoadingHolsterTree } = await import('./tree-holster.svelte');
+		if (!get(isLoadingHolsterTree)) {
+			try {
+				await persistHolsterTree();
+				console.log('[TREE-SUB] Holster tree persistence completed');
+			} catch (error) {
+				console.error('[TREE-SUB] Error during Holster tree persistence:', error);
+			}
+		} else {
+			console.log('[TREE-SUB] Skipping Holster persistence - tree is loading');
+		}
+	} else {
+		// Use Gun persistence
+		if (!get(isLoadingTree)) {
+			try {
+				await persistTree();
+			} catch (error) {
+				console.error('[TREE-SUB] Error during Gun tree persistence:', error);
+			}
+		} else {
+			console.log('[TREE-SUB] Skipping Gun persistence - tree is loading');
+		}
+	}
+}, 500); // Longer debounce for trees since they can be complex
+
 /**
- * Update nodes map whenever the tree changes
+ * Update nodes map and trigger persistence whenever the tree changes
  */
 userTree.subscribe((tree) => {
-	if (tree) {
-		console.log('[TREE-SUB] Tree updated in store, rebuilding nodes map');
-		console.log('[TREE-SUB] Tree has', tree.children.length, 'children');
+	if (!tree) return;
 
-		// Create a map of all nodes by ID for faster lookup
-		const newNodesMap: Record<string, Node> = {};
+	console.log('[TREE-SUB] Tree updated in store, rebuilding nodes map');
+	console.log('[TREE-SUB] Tree has', tree.children.length, 'children');
 
-		// Helper to traverse tree and add nodes to map
-		function addNodeToMap(node: Node) {
-			newNodesMap[node.id] = node;
-			node.children.forEach(addNodeToMap);
-		}
+	// Create a map of all nodes by ID for faster lookup
+	const newNodesMap: Record<string, Node> = {};
 
-		addNodeToMap(tree);
-		nodesMap.set(newNodesMap);
-
-		console.log('[TREE-SUB] Rebuilt nodes map with', Object.keys(newNodesMap).length, 'nodes');
-
-		// Force immediate tree persistence on every tree change
-		// This ensures tree changes are always saved, even if recalculation fails
-		console.log('[TREE-SUB] Forcing immediate tree persistence');
-		persistTree();
+	// Helper to traverse tree and add nodes to map
+	function addNodeToMap(node: Node) {
+		newNodesMap[node.id] = node;
+		node.children.forEach(addNodeToMap);
 	}
+
+	addNodeToMap(tree);
+	nodesMap.set(newNodesMap);
+
+	console.log('[TREE-SUB] Rebuilt nodes map with', Object.keys(newNodesMap).length, 'nodes');
+
+	// Trigger debounced persistence
+	// This will be blocked by isLoadingTree and isPersisting flags
+	debouncedPersistTree();
 });
 
 /**
@@ -232,7 +264,18 @@ userTree.subscribe((tree) => {
 
 			// Even if recalculation fails, ensure the tree is persisted
 			console.log('[TREE-RECALC-SUB] Forcing tree persistence after error');
-			persistTree();
+
+			import('$lib/config').then(({ USE_HOLSTER_TREE }) => {
+				if (USE_HOLSTER_TREE) {
+					import('./tree-holster.svelte').then(({ persistHolsterTree }) => {
+						persistHolsterTree(tree).catch(err => {
+							console.error('[TREE-RECALC-SUB] Error persisting tree to Holster:', err);
+						});
+					});
+				} else {
+					persistTree();
+				}
+			});
 		}
 
 		treeRecalcTimer = null;

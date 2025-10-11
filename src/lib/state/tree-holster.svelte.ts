@@ -1,0 +1,693 @@
+/**
+ * Tree Module - Holster Implementation
+ *
+ * Stores tree as a flat node collection to avoid 1MB string limits
+ * and enable partial tree updates.
+ *
+ * Storage structure:
+ * {
+ *   nodes: { [nodeId]: NodeData },
+ *   root_id: string,
+ *   _updatedAt: number
+ * }
+ */
+
+import { writable, get } from 'svelte/store';
+import { holsterUser } from './holster.svelte';
+import type { RootNode, Node, NonRootNode } from '$lib/schema';
+import { RootNodeSchema } from '$lib/schema';
+import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
+import { userTree } from './core.svelte';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/**
+ * Flat node representation for Holster storage
+ * Arrays converted to objects for Holster compatibility
+ * Empty arrays are omitted (not stored as empty objects)
+ */
+interface FlatNode {
+	id: string;
+	name: string;
+	type: 'RootNode' | 'NonRootNode';
+	manual_fulfillment: number | null;
+	children_ids?: Record<string, string>; // Optional - omitted if no children
+	// RootNode specific
+	created_at?: string;
+	updated_at?: string;
+	// NonRootNode specific
+	points?: number;
+	parent_id?: string;
+	contributor_ids?: Record<string, string>; // Optional - omitted if empty
+	anti_contributors_ids?: Record<string, string>; // Optional - omitted if empty
+}
+
+/**
+ * Tree storage format in Holster
+ */
+interface FlatTreeData {
+	nodes: Record<string, FlatNode>;
+	root_id: string;
+}
+
+// ============================================================================
+// State
+// ============================================================================
+
+export const holsterTree = writable<RootNode | null>(null);
+export const isLoadingHolsterTree = writable(false);
+
+let lastNetworkTimestamp: number | null = null;
+let treeCallback: ((data: any) => void) | null = null;
+let isPersisting: boolean = false; // Lock to prevent concurrent persistence
+let lastPersistedNodes: Record<string, FlatNode> = {}; // Track full node data from last persist (for incremental updates)
+let isInitialized: boolean = false; // Prevent duplicate initialization
+
+// Queue for network updates during persistence
+let queuedNetworkUpdate: any = null; // Store latest network update while persisting
+
+// Track if local changes are pending persistence
+let hasPendingLocalChanges: boolean = false;
+
+// ============================================================================
+// Queue Processing
+// ============================================================================
+
+/**
+ * Process any queued network update and pending local changes after persistence completes
+ */
+function processQueuedUpdate() {
+	// First, process any queued network updates
+	if (queuedNetworkUpdate) {
+		const queuedTimestamp = getTimestamp(queuedNetworkUpdate);
+		console.log('[TREE-HOLSTER] Processing queued network update, timestamp:', queuedTimestamp);
+
+		const data = queuedNetworkUpdate;
+		queuedNetworkUpdate = null; // Clear queue
+
+		// Process the update using the same logic as subscription callback
+		processNetworkUpdate(data);
+	}
+
+	// Second, retry persistence if local changes are pending
+	if (hasPendingLocalChanges) {
+		console.log('[TREE-HOLSTER] Retrying persistence for pending local changes');
+		hasPendingLocalChanges = false; // Clear flag before retrying
+		// Use setTimeout to avoid recursion and give queue a chance to settle
+		setTimeout(() => {
+			persistHolsterTree();
+		}, 50);
+	}
+}
+
+/**
+ * Process a network update (shared logic for subscription and queued updates)
+ */
+function processNetworkUpdate(data: any) {
+	if (!data) {
+		console.log('[TREE-HOLSTER] Skipping - no data');
+		return;
+	}
+
+	// Extract timestamp
+	const networkTimestamp = getTimestamp(data);
+	console.log('[TREE-HOLSTER] Network timestamp:', networkTimestamp, 'vs last:', lastNetworkTimestamp);
+
+	// Remove timestamp field
+	const { _updatedAt, ...treeData } = data;
+
+	// Extract nodes - filter out metadata fields and null values (deleted nodes)
+	const nodes: Record<string, FlatNode> = {};
+	if (treeData.nodes && typeof treeData.nodes === 'object') {
+		for (const [key, value] of Object.entries(treeData.nodes)) {
+			if (!key.startsWith('_') && value && typeof value === 'object') {
+				nodes[key] = value as FlatNode;
+			}
+		}
+	}
+
+	// Validate we have nodes and root_id
+	if (Object.keys(nodes).length === 0 || !treeData.root_id) {
+		console.error('[TREE-HOLSTER] Invalid tree structure - no nodes or root_id');
+		return;
+	}
+
+	// Only update if newer
+	if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {
+		console.log('[TREE-HOLSTER] Processing network update (newer than local)');
+		// Track loaded nodes for incremental updates
+		lastPersistedNodes = { ...nodes };
+
+		const flatTreeData: FlatTreeData = {
+			nodes,
+			root_id: treeData.root_id
+		};
+
+		// Reconstruct tree from flat format
+		const reconstructed = reconstructTree(flatTreeData);
+
+		if (reconstructed) {
+			// Validate reconstructed tree
+			const parseResult = RootNodeSchema.safeParse(reconstructed);
+			if (parseResult.success) {
+				holsterTree.set(parseResult.data);
+				// Sync to userTree for UI consumption
+				userTree.set(parseResult.data);
+				if (networkTimestamp) {
+					lastNetworkTimestamp = networkTimestamp;
+					// Cache the tree for faster future loads
+					setCachedTree(parseResult.data, networkTimestamp);
+				}
+				console.log('[TREE-HOLSTER] Tree updated successfully and synced to userTree');
+			} else {
+				console.error('[TREE-HOLSTER] Invalid reconstructed tree:', parseResult.error);
+			}
+		}
+	} else {
+		console.log('[TREE-HOLSTER] Skipping stale tree update');
+	}
+}
+
+// ============================================================================
+// Tree Conversion Utilities
+// ============================================================================
+
+/**
+ * Deep compare two FlatNode objects to detect changes
+ */
+function nodesEqual(node1: FlatNode, node2: FlatNode): boolean {
+	// Compare all primitive fields
+	if (
+		node1.id !== node2.id ||
+		node1.name !== node2.name ||
+		node1.type !== node2.type ||
+		node1.manual_fulfillment !== node2.manual_fulfillment ||
+		node1.points !== node2.points ||
+		node1.parent_id !== node2.parent_id ||
+		node1.created_at !== node2.created_at ||
+		node1.updated_at !== node2.updated_at
+	) {
+		return false;
+	}
+
+	// Compare children_ids
+	const keys1 = Object.keys(node1.children_ids || {}).sort();
+	const keys2 = Object.keys(node2.children_ids || {}).sort();
+	if (keys1.length !== keys2.length || !keys1.every((k, i) => k === keys2[i])) {
+		return false;
+	}
+
+	// Compare contributor_ids
+	const contrib1 = Object.keys(node1.contributor_ids || {}).sort();
+	const contrib2 = Object.keys(node2.contributor_ids || {}).sort();
+	if (contrib1.length !== contrib2.length || !contrib1.every((k, i) => k === contrib2[i])) {
+		return false;
+	}
+
+	// Compare anti_contributors_ids
+	const anti1 = Object.keys(node1.anti_contributors_ids || {}).sort();
+	const anti2 = Object.keys(node2.anti_contributors_ids || {}).sort();
+	if (anti1.length !== anti2.length || !anti1.every((k, i) => k === anti2[i])) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Convert array to object using IDs as keys
+ */
+function arrayToObject(arr: string[]): Record<string, string> {
+	const obj: Record<string, string> = {};
+	for (let i = 0; i < arr.length; i++) {
+		obj[arr[i]] = arr[i];
+	}
+	return obj;
+}
+
+/**
+ * Flatten a recursive tree into a flat node collection
+ */
+function flattenTree(rootNode: RootNode): FlatTreeData {
+	const nodes: Record<string, FlatNode> = {};
+
+	function flattenNode(node: Node): void {
+		// Convert children array to object (only if not empty)
+		const childrenIds = node.children.map((child: Node) => child.id);
+		const childrenIdsObj = arrayToObject(childrenIds);
+
+		const flatNode: any = {
+			id: node.id,
+			name: node.name,
+			type: node.type
+		};
+
+		// Only include manual_fulfillment if it has a value
+		if (node.manual_fulfillment !== undefined && node.manual_fulfillment !== null) {
+			flatNode.manual_fulfillment = node.manual_fulfillment;
+		}
+
+		// Only include children_ids if there are children
+		if (Object.keys(childrenIdsObj).length > 0) {
+			flatNode.children_ids = childrenIdsObj;
+		}
+
+		if (node.type === 'RootNode') {
+			if (node.created_at) flatNode.created_at = node.created_at;
+			if (node.updated_at) flatNode.updated_at = node.updated_at;
+		} else {
+			const nonRootNode = node as NonRootNode;
+
+			// Only include if defined
+			if (nonRootNode.points !== undefined) flatNode.points = nonRootNode.points;
+			if (nonRootNode.parent_id) flatNode.parent_id = nonRootNode.parent_id;
+
+			// Convert contributor arrays to objects (only if not empty)
+			const contributorIdsObj = arrayToObject(nonRootNode.contributor_ids);
+			if (Object.keys(contributorIdsObj).length > 0) {
+				flatNode.contributor_ids = contributorIdsObj;
+			}
+
+			const antiContributorIdsObj = arrayToObject(nonRootNode.anti_contributors_ids);
+			if (Object.keys(antiContributorIdsObj).length > 0) {
+				flatNode.anti_contributors_ids = antiContributorIdsObj;
+			}
+		}
+
+		nodes[node.id] = flatNode as FlatNode;
+
+		// Recursively flatten children
+		for (const child of node.children) {
+			flattenNode(child);
+		}
+	}
+
+	flattenNode(rootNode);
+
+	return {
+		nodes,
+		root_id: rootNode.id
+	};
+}
+
+/**
+ * Convert object back to array
+ */
+function objectToArray(obj: Record<string, string> | undefined): string[] {
+	if (!obj) return [];
+	const arr: string[] = [];
+	for (const key of Object.keys(obj)) {
+		if (obj[key]) { // Only include non-null/undefined values
+			arr.push(obj[key]);
+		}
+	}
+	return arr;
+}
+
+/**
+ * Reconstruct recursive tree from flat node collection
+ */
+function reconstructTree(flatData: FlatTreeData): RootNode | null {
+	const { nodes, root_id } = flatData;
+
+	if (!nodes[root_id]) {
+		console.error('[TREE-HOLSTER] Root node not found:', root_id);
+		return null;
+	}
+
+	function buildNode(nodeId: string): Node | null {
+		const flatNode = nodes[nodeId];
+		if (!flatNode) {
+			// Silently skip missing nodes - they may have been deleted
+			// but parent still has stale reference
+			return null;
+		}
+
+		// Convert children_ids object to array and recursively build
+		const childrenIdsArray = objectToArray(flatNode.children_ids);
+		const children: Node[] = [];
+		for (const childId of childrenIdsArray) {
+			const child = buildNode(childId);
+			if (child) {
+				children.push(child);
+			}
+		}
+
+		// Construct node based on type
+		if (flatNode.type === 'RootNode') {
+			return {
+				id: flatNode.id,
+				name: flatNode.name,
+				type: 'RootNode' as const,
+				manual_fulfillment: flatNode.manual_fulfillment ?? null,
+				children,
+				created_at: flatNode.created_at!,
+				updated_at: flatNode.updated_at!
+			};
+		} else {
+			return {
+				id: flatNode.id,
+				name: flatNode.name,
+				type: 'NonRootNode' as const,
+				manual_fulfillment: flatNode.manual_fulfillment ?? null,
+				children,
+				points: flatNode.points!,
+				parent_id: flatNode.parent_id!,
+				contributor_ids: objectToArray(flatNode.contributor_ids),
+				anti_contributors_ids: objectToArray(flatNode.anti_contributors_ids)
+			};
+		}
+	}
+
+	const rootNode = buildNode(root_id);
+	return rootNode as RootNode | null;
+}
+
+// ============================================================================
+// Subscription Management
+// ============================================================================
+
+function subscribeToTree() {
+	if (!holsterUser.is) {
+		console.log('[TREE-HOLSTER] Cannot subscribe: no authenticated user');
+		return;
+	}
+
+	console.log('[TREE-HOLSTER] Subscribing to tree for user:', holsterUser.is.username);
+
+	treeCallback = (data: any) => {
+		if (get(isLoadingHolsterTree)) {
+			return;
+		}
+
+		// QUEUE updates during persistence to prevent processing incomplete data
+		if (isPersisting) {
+			const networkTimestamp = getTimestamp(data);
+
+			// Only queue if this is NOT our own write (different timestamp)
+			if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
+				console.log('[TREE-HOLSTER] External update during persistence - queueing');
+				queuedNetworkUpdate = data; // Store latest update (overwrites previous)
+			}
+			return;
+		}
+
+		// Process update immediately if not persisting
+		processNetworkUpdate(data);
+	};
+
+	holsterUser.get('tree').on(treeCallback);
+}
+
+// ============================================================================
+// localStorage Cache
+// ============================================================================
+
+const TREE_CACHE_KEY = 'holster_tree_cache';
+const TREE_CACHE_TIMESTAMP_KEY = 'holster_tree_cache_timestamp';
+
+function getCachedTree(): RootNode | null {
+	if (typeof localStorage === 'undefined') return null;
+
+	try {
+		const cached = localStorage.getItem(TREE_CACHE_KEY);
+		if (!cached) return null;
+
+		const parsed = JSON.parse(cached);
+		const validation = RootNodeSchema.safeParse(parsed);
+
+		if (validation.success) {
+			const timestamp = localStorage.getItem(TREE_CACHE_TIMESTAMP_KEY);
+			console.log('[TREE-HOLSTER] Loaded tree from cache, timestamp:', timestamp);
+			return validation.data;
+		} else {
+			console.warn('[TREE-HOLSTER] Invalid cached tree, ignoring');
+			return null;
+		}
+	} catch (error) {
+		console.error('[TREE-HOLSTER] Error reading cached tree:', error);
+		return null;
+	}
+}
+
+function setCachedTree(tree: RootNode, timestamp: number): void {
+	if (typeof localStorage === 'undefined') return;
+
+	try {
+		localStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+		localStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, timestamp.toString());
+		console.log('[TREE-HOLSTER] Cached tree with timestamp:', timestamp);
+	} catch (error) {
+		console.error('[TREE-HOLSTER] Error caching tree:', error);
+	}
+}
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+export function initializeHolsterTree() {
+	if (!holsterUser.is) {
+		console.log('[TREE-HOLSTER] Cannot initialize: no authenticated user');
+		return;
+	}
+
+	if (isInitialized) {
+		console.log('[TREE-HOLSTER] Already initialized, skipping duplicate call');
+		return;
+	}
+
+	console.log('[TREE-HOLSTER] Initializing tree...');
+	isInitialized = true;
+	isLoadingHolsterTree.set(true);
+
+	// Try to load from cache first for instant UI
+	const cachedTree = getCachedTree();
+	const cachedTimestamp = cachedTree
+		? parseInt(localStorage.getItem(TREE_CACHE_TIMESTAMP_KEY) || '0', 10)
+		: 0;
+
+	if (cachedTree) {
+		console.log('[TREE-HOLSTER] Using cached tree for instant UI');
+		holsterTree.set(cachedTree);
+		userTree.set(cachedTree);
+		lastNetworkTimestamp = cachedTimestamp;
+
+		// Initialize lastPersistedNodes from cached tree for incremental updates
+		const flatCached = flattenTree(cachedTree);
+		lastPersistedNodes = { ...flatCached.nodes };
+
+		isLoadingHolsterTree.set(false);
+
+		// Continue loading from network in background to check for updates
+		console.log('[TREE-HOLSTER] Fetching from network to check for updates...');
+	}
+
+	holsterUser.get('tree', (data: any) => {
+		console.log('[TREE-HOLSTER] Initial network load:', data ? 'received' : 'empty');
+
+		if (data) {
+			// Use the same timestamp-aware processing as subscription
+			// This prevents stale network data from corrupting lastPersistedNodes
+			processNetworkUpdate(data);
+		} else {
+			holsterTree.set(null);
+			userTree.set(null);
+		}
+
+		isLoadingHolsterTree.set(false);
+		subscribeToTree();
+	});
+}
+
+// ============================================================================
+// Cleanup
+// ============================================================================
+
+export function cleanupHolsterTree() {
+	if (treeCallback) {
+		holsterUser.get('tree').off(treeCallback);
+		treeCallback = null;
+	}
+	holsterTree.set(null);
+	lastNetworkTimestamp = null;
+	isInitialized = false; // Reset initialization flag
+	console.log('[TREE-HOLSTER] Cleaned up');
+}
+
+// ============================================================================
+// Persistence
+// ============================================================================
+
+export async function persistHolsterTree(tree?: RootNode): Promise<void> {
+	if (!holsterUser.is) {
+		console.log('[TREE-HOLSTER] Not authenticated, skipping persistence');
+		return;
+	}
+
+	// Check if already persisting to prevent concurrent writes
+	if (isPersisting) {
+		// Mark that we have pending local changes that need to be persisted
+		hasPendingLocalChanges = true;
+		return;
+	}
+
+	if (get(isLoadingHolsterTree)) {
+		console.log('[TREE-HOLSTER] Still loading, deferring persistence');
+		setTimeout(() => {
+			if (!get(isLoadingHolsterTree)) {
+				persistHolsterTree(tree);
+			}
+		}, 500);
+		return;
+	}
+
+	const treeToSave = tree || get(userTree);
+
+	if (!treeToSave) {
+		console.log('[TREE-HOLSTER] No tree to persist');
+		return;
+	}
+
+	// Set lock
+	isPersisting = true;
+	hasPendingLocalChanges = false; // Clear pending flag since we're persisting now
+	console.log('[TREE-HOLSTER] Starting incremental tree persistence...');
+
+	try {
+		// Flatten tree to node collection
+		const flatTree = flattenTree(treeToSave);
+		console.log('[TREE-HOLSTER] Flattened tree:', Object.keys(flatTree.nodes).length, 'total nodes');
+
+		const localTimestamp = Date.now();
+
+		// Check if safe to persist
+		if (!shouldPersist(localTimestamp, lastNetworkTimestamp)) {
+			console.warn('[TREE-HOLSTER] Skipping persist - network has newer data');
+			isPersisting = false; // Clear lock
+			processQueuedUpdate(); // Process any queued updates
+			return;
+		}
+
+		// Update lastNetworkTimestamp NOW (before writing) so our own writes
+		// coming back via subscription won't be considered "newer"
+		lastNetworkTimestamp = localTimestamp;
+
+		// INCREMENTAL UPDATE: Only persist nodes that changed
+		return new Promise((resolve, reject) => {
+			const currentNodes = flatTree.nodes;
+			const previousNodes = lastPersistedNodes;
+
+			// Identify what changed
+			const deletedNodeIds: string[] = [];
+			const newOrModifiedNodeIds: string[] = [];
+
+			// Find deleted nodes (in previous, not in current)
+			for (const oldNodeId of Object.keys(previousNodes)) {
+				if (!currentNodes[oldNodeId]) {
+					deletedNodeIds.push(oldNodeId);
+				}
+			}
+
+			// Find new or modified nodes
+			for (const [nodeId, currentNode] of Object.entries(currentNodes)) {
+				const previousNode = previousNodes[nodeId];
+				if (!previousNode || !nodesEqual(currentNode, previousNode)) {
+					newOrModifiedNodeIds.push(nodeId);
+				}
+			}
+
+			// Early return if nothing changed
+			if (deletedNodeIds.length === 0 && newOrModifiedNodeIds.length === 0) {
+				isPersisting = false; // Clear lock
+				processQueuedUpdate(); // Process any queued updates
+				return resolve();
+			}
+
+			// 1. Delete removed nodes first, then store changed nodes
+			let currentIndex = 0;
+			const allOperations = [
+				...deletedNodeIds.map(id => ({ type: 'delete' as const, id })),
+				...newOrModifiedNodeIds.map(id => ({ type: 'write' as const, id }))
+			];
+
+			const persistNextOperation = () => {
+				if (currentIndex >= allOperations.length) {
+					// Update tracked nodes with current state
+					lastPersistedNodes = { ...currentNodes };
+
+					// Add delay before metadata to ensure all operations are fully committed
+					setTimeout(() => {
+						// 2. Store metadata LAST to trigger subscription with complete data
+						holsterUser.get('tree').put({ root_id: flatTree.root_id, _updatedAt: localTimestamp }, (err: any) => {
+							if (err) {
+								console.error('[TREE-HOLSTER] Error persisting tree metadata:', err);
+								isPersisting = false; // Clear lock on error
+								processQueuedUpdate(); // Process any queued updates even on error
+								return reject(err);
+							}
+
+							// Cache the tree for faster future loads
+							if (treeToSave) {
+								setCachedTree(treeToSave, localTimestamp);
+							}
+
+							isPersisting = false; // Clear lock on success
+
+							// Process any updates that came in during persistence
+							processQueuedUpdate();
+
+							resolve();
+						});
+					}, 50);
+					return;
+				}
+
+				const operation = allOperations[currentIndex];
+
+				if (operation.type === 'delete') {
+					// Delete node by setting to null
+					holsterUser.get('tree').next('nodes').next(operation.id).put(null, (err: any) => {
+						if (err) {
+							console.error('[TREE-HOLSTER] Error deleting node:', operation.id, err);
+							isPersisting = false; // Clear lock on error
+							processQueuedUpdate(); // Process any queued updates even on error
+							return reject(err);
+						}
+
+						currentIndex++;
+						// Add small delay to give Holster time to process the deletion
+						setTimeout(() => {
+							persistNextOperation();
+						}, 20);
+					});
+				} else {
+					// Write node data
+					holsterUser.get('tree').next('nodes').next(operation.id).put(currentNodes[operation.id], (err: any) => {
+						if (err) {
+							console.error('[TREE-HOLSTER] Error persisting node:', operation.id, err);
+							isPersisting = false; // Clear lock on error
+							processQueuedUpdate(); // Process any queued updates even on error
+							return reject(err);
+						}
+
+						currentIndex++;
+						// Add small delay to give Holster time to process the write
+						setTimeout(() => {
+							persistNextOperation();
+						}, 20);
+					});
+				}
+			};
+
+			persistNextOperation();
+		});
+	} catch (error) {
+		console.error('[TREE-HOLSTER] Error processing tree:', error);
+		isPersisting = false; // Clear lock on error
+		processQueuedUpdate(); // Process any queued updates even on error
+		throw error;
+	}
+}

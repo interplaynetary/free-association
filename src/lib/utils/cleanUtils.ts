@@ -261,15 +261,20 @@ export function createNewTree(includeExampleData: boolean = true) {
 	// Optionally populate with example data
 	if (includeExampleData) {
 		console.log('[TREE-CREATE] Populating new tree with example data');
-		populateWithExampleData(newTree);
+		const populatedTree = populateWithExampleData(newTree);
+
+		// Set the new tree
+		userTree.set(populatedTree);
+
+		console.log(`[TREE-CREATE] New tree created and set with ${populatedTree.children.length} child nodes`);
+		return populatedTree;
+	} else {
+		// Set the new tree
+		userTree.set(newTree);
+
+		console.log(`[TREE-CREATE] New tree created and set with ${newTree.children.length} child nodes`);
+		return newTree;
 	}
-
-	// Set the new tree
-	userTree.set(newTree);
-
-	console.log(`[TREE-CREATE] New tree created and set with ${newTree.children.length} child nodes`);
-
-	return newTree;
 }
 
 /**

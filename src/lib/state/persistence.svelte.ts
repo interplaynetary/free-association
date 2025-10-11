@@ -111,6 +111,14 @@ async function safelyPersist(
 }
 
 export async function persistTree() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_TREE } = await import('$lib/config');
+
+	if (USE_HOLSTER_TREE) {
+		console.log('[PERSIST] Using Holster for tree - skipping Gun persistence');
+		return;
+	}
+
 	// Check if user is initialized
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping tree persistence');

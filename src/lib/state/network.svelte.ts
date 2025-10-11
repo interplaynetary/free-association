@@ -8,8 +8,9 @@ import {
 	isLoadingContacts,
 	initializeContacts
 } from '$lib/state/users.svelte';
-import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES } from '$lib/config';
+import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE } from '$lib/config';
 import { initializeHolsterCapacities } from './capacities-holster.svelte';
+import { initializeHolsterTree } from './tree-holster.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -776,6 +777,14 @@ const mutualContributorStreamConfigs = {
  * Elegant stream creation functions using configurations
  */
 const createOwnTreeStream = withAuthentication(async (userId: string) => {
+	// When using Holster, initialize Holster tree instead of Gun stream
+	if (USE_HOLSTER_TREE) {
+		console.log('[NETWORK] Using Holster for tree - skipping Gun stream');
+		initializeHolsterTree();
+		return;
+	}
+
+	// Gun implementation
 	await createStream(ownDataStreamConfigs.tree, userId);
 });
 
