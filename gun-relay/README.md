@@ -15,8 +15,8 @@ Configure via environment variables:
 ## Running Locally
 
 ```bash
-npm install
-npm start
+bun install
+bun run server.js
 ```
 
 ## Running with Docker
@@ -25,6 +25,8 @@ npm start
 docker build -t gun-relay .
 docker run -p 8765:8765 -v $(pwd)/store:/app/store gun-relay
 ```
+
+> The Dockerfile now uses the Bun runtime (oven/bun:latest).
 
 ## Gun Endpoint
 

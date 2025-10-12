@@ -173,3 +173,53 @@ export function notFoundHandler(req, res) {
     timestamp: Date.now()
   });
 }
+
+const TOKEN_LIMIT = parseInt(process.env.AI_TOKEN_LIMIT || '10000', 10);
+const TOKEN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const tokenBuckets = new Map();
+
+/**
+ * AI Token limiter: blocks requests that would exceed the 10,000 token window per source.
+ * Order of keying: JWT userId, then X-API-Key, then IP.
+ */
+export function aiTokenLimiter(req, res, next) {
+  const now = Date.now();
+  const userId = req.user?.userId;
+  const apiKey = req.header('X-API-Key');
+  const ip = req.ip;
+  const source = userId || apiKey || ip;
+  // Defensive: ensure source is always something
+  if (!source) {
+    return res.status(400).json({ error: 'Unable to identify client for rate limiting.' });
+  }
+
+  const bucket = tokenBuckets.get(source) || { used: 0, windowStart: now };
+
+  // Reset window if expired
+  if (now - bucket.windowStart >= TOKEN_WINDOW_MS) {
+    bucket.used = 0;
+    bucket.windowStart = now;
+  }
+
+  // Determine tokens/req: use max_tokens from json body, fallback to default
+  let requestedTokens = 1024;
+  if (req.body && typeof req.body.max_tokens === 'number' && req.body.max_tokens > 0) {
+    requestedTokens = req.body.max_tokens;
+  }
+
+  if (bucket.used + requestedTokens > TOKEN_LIMIT) {
+    const retryAfterSec = Math.ceil((bucket.windowStart + TOKEN_WINDOW_MS - now)/1000);
+    return res.status(429).json({
+      error: 'Token rate limit exceeded',
+      message: `Limit is ${TOKEN_LIMIT} tokens per 15 minutes per user or source.`,
+      retryAfter: `${retryAfterSec} seconds`,
+      tokensUsed: bucket.used,
+      tokensRequested: requestedTokens
+    });
+  }
+
+  // Approve and update
+  bucket.used += requestedTokens;
+  tokenBuckets.set(source, bucket);
+  next();
+}

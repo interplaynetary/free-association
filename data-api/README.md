@@ -1,158 +1,90 @@
-# Secure API Gateway
+# AI Proxy Gateway
 
-**Critical Infrastructure** - Production-ready API gateway for Gun and Holster databases.
+Production-ready API gateway for securely proxying requests to an AI (LLM) backend such as OpenAI, local LLM, or other service.
 
 ## Overview
 
-Secure access to:
-1. **Gun Database** - Decentralized graph database
-2. **Holster Database** - Alternative decentralized database
+- Secure, authenticated REST API forwarding requests to the configured AI backend.
+- Designed to restrict/monitor AI usage by API key and/or JWT.
+- Rate limiting, CORS, security headers (Helmet), robust error handling.
 
-## Security Features
+## Features
 
-✅ API Key + JWT authentication
-✅ Rate limiting (100 requests / 15 minutes)
-✅ Helmet security headers
-✅ CORS protection
-✅ Error handling & logging
+- 🔐 API Key or JWT authentication for all endpoints
+- ⏳ General and stricter AI endpoint rate limits (100/15min and 20/15min)
+- 🦾 POST `/api/ai/completion`: Proxy to LLM/completion endpoint (configurable URL)
+- ⚠️ CORS and security headers (Helmet)
+- 🩺 `/health` endpoint
+- 🧾 `/` API self-documentation
+- 📗 Easily extensible for other AI functions (chat, images, etc)
 
 ## Quick Start
 
 ```bash
-npm install
-cp .env.example .env
-# Edit .env - CHANGE SECURITY CREDENTIALS!
-npm start
+bun install
+bun run server.js
 ```
 
-## Authentication
+## Configuration
 
-All `/api/*` endpoints require **either**:
-- API Key: `X-API-Key: your-key`
-- JWT: `Authorization: Bearer token`
-
-Get JWT:
-```bash
-curl -X POST http://localhost:8767/auth/token \
-  -H "Content-Type: application/json" \
-  -d '{"apiKey": "dev-key-12345-change-in-production"}'
-```
+Environment variables:
+- `DATA_API_HOST` - Bind host (default: 0.0.0.0)
+- `DATA_API_PORT` - Port (default: 8767)
+- `MASTER_API_KEY` - Required strong API key
+- `JWT_SECRET` - JWT signing secret
+- `AI_API_URL` - Your backend AI completion endpoint (e.g., https://api.openai.com/v1/completions or local Ollama endpoint)
+- `AI_API_KEY` - (Optional) Secret to authenticate to backend (sent as Bearer)
+- `ALLOWED_ORIGINS` - For CORS
+- `NODE_ENV` - Should be set to production in prod
 
 ## Endpoints
 
-### Gun Database
-- `POST /api/gun/put` - Write data
-- `GET /api/gun/get?path=...` - Read data
-- `POST /api/gun/seed` - Seed with sample data
-
-### Holster Database
-- `POST /api/holster/put` - Write data
-- `GET /api/holster/get?path=...` - Read data
-- `POST /api/holster/seed` - Seed with sample data
-
-### Public
-- `GET /` - API documentation
-- `GET /health` - Health check
-- `POST /auth/token` - Generate JWT
+- `GET /` - API self-documentation
+- `GET /health` - Service/health check
+- `POST /auth/token` - Issue JWT tokens (send `{apiKey}` in body)
+- `POST /api/ai/completion` - Proxy completions (send OpenAI-compatible JSON)
 
 ## Example Usage
 
-```bash
-# Write to Gun
-curl -X POST http://localhost:8767/api/gun/put \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "users/alice",
-    "data": {"name": "Alice", "age": 30}
-  }'
-
-# Read from Gun
-curl -H "X-API-Key: dev-key-12345-change-in-production" \
-  "http://localhost:8767/api/gun/get?path=users/alice"
-
-# Write to Holster
-curl -X POST http://localhost:8767/api/holster/put \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "users/bob",
-    "data": {"name": "Bob", "email": "bob@example.com"}
-  }'
-```
-
-## Production Setup
-
-### 1. Generate Secure Credentials
+Authenticate and query completions:
 
 ```bash
-# API Key
-openssl rand -hex 32
+# Get a JWT
+curl -X POST http://localhost:8767/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"apiKey": "your-master-key"}'
 
-# JWT Secret
-openssl rand -base64 32
+# Use JWT or API key for AI completion
+curl -X POST http://localhost:8767/api/ai/completion \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "model": "gpt-3.5-turbo", "prompt": "Once upon a time...", "max_tokens": 100 }'
+
+# Or with API key:
+curl -X POST http://localhost:8767/api/ai/completion \
+  -H "X-API-Key: your-master-key" \
+  -H "Content-Type: application/json" \
+  -d '{ "model": "gpt-3.5-turbo", "prompt": "Tell me a joke", "max_tokens": 32 }'
 ```
-
-### 2. Update .env
-
-```env
-NODE_ENV=production
-MASTER_API_KEY=your-secure-key-here
-JWT_SECRET=your-jwt-secret-minimum-32-chars
-GUN_PEER_URL=https://gun.yourdomain.com/gun
-HOLSTER_PEER_URL=wss://holster.yourdomain.com/holster
-ALLOWED_ORIGINS=https://yourdomain.com
-```
-
-### 3. Deploy Behind HTTPS
-
-Use Nginx reverse proxy:
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name api.yourdomain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:8767;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-## Troubleshooting
-
-**Auth fails**: Check API key matches `MASTER_API_KEY` in .env
-
-**Rate limit**: Wait 15 minutes or increase limits in `middleware/security.js`
-
-**CORS**: Add origin to `ALLOWED_ORIGINS` in .env
-
-**Cannot connect**: Verify Gun/Holster relays are running
 
 ## Security Best Practices
+- Use strong, unguessable `MASTER_API_KEY` (openssl rand -hex 32)
+- Use a unique, long `JWT_SECRET`
+- Restrict CORS origins appropriately
+- Monitor logs and rate limits
 
-- ✅ Use HTTPS in production
-- ✅ Rotate API keys regularly
-- ✅ Use strong, random JWT secrets (32+ chars)
-- ✅ Never commit .env files
-- ✅ Monitor rate limits and logs
-- ✅ Use different keys for dev/staging/prod
+## For Local/Private LLMs
+If targeting a local endpoint (e.g., Ollama, vLLM), set `AI_API_URL` in `.env` to your AI backend.
 
 ## Project Structure
 
 ```
 data-api/
 ├── server.js              # Main server
-├── middleware/
-│   ├── auth.js           # API key + JWT auth
-│   └── security.js       # Rate limiting, helmet, CORS
-└── routes/
-    ├── gun.js            # Gun database endpoints
-    └── holster.js        # Holster database endpoints
+├── middleware/            # Auth, rate-limiting, security
+├── utils/                 # (If used)
+├── package.json
+├── Dockerfile (uses Bun)
 ```
 
-For detailed API documentation, start the server and visit `http://localhost:8767/`
+For configuration or bug reports, see this repo's main tracker.

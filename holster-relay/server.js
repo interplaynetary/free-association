@@ -1,9 +1,7 @@
 import Holster from '@mblaney/holster';
 import express from 'express';
-import { WebSocketServer } from 'ws';
-import { createServer } from 'http';
 
-// Configuration from environment variables with defaults
+// Configuration from environment variables with sensible defaults
 const config = {
   host: process.env.HOLSTER_RELAY_HOST || '0.0.0.0',
   port: parseInt(process.env.HOLSTER_RELAY_PORT) || 8766,
@@ -15,78 +13,33 @@ const config = {
 console.log('Starting Holster Relay Server with configuration:');
 console.log(JSON.stringify(config, null, 2));
 
-// Create Express app
+// Minimal Express app for health check
 const app = express();
-
-// Basic health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'holster-relay', timestamp: Date.now() });
 });
-
-// Create HTTP server
-const server = createServer(app);
-
-// Create WebSocket server
-const wss = new WebSocketServer({
-  server,
-  path: '/holster'
+const server = app.listen(config.port, config.host, () => {
+  console.log(`Express health endpoint: http://${config.host}:${config.port}/health`);
 });
 
-// Initialize Holster with configuration
+// Initialize Holster Relay with built-in WebSocket server and connection management
 const holster = Holster({
-  wss,
-  storage: config.storageEnabled ? config.storagePath : undefined,
-  secure: true
-});
-
-// Track connections
-let connectionCount = 0;
-let activeConnections = 0;
-
-wss.on('connection', (ws, req) => {
-  // Check connection limit
-  if (activeConnections >= config.maxConnections) {
-    console.warn(`Connection rejected: limit reached (${config.maxConnections})`);
-    ws.close(1008, 'Maximum connections reached');
-    return;
-  }
-
-  connectionCount++;
-  activeConnections++;
-  const clientId = connectionCount;
-  console.log(`Client ${clientId} connected from ${req.socket.remoteAddress} (active: ${activeConnections}/${config.maxConnections})`);
-
-  ws.on('close', () => {
-    activeConnections--;
-    console.log(`Client ${clientId} disconnected (active: ${activeConnections}/${config.maxConnections})`);
-  });
-
-  ws.on('error', (error) => {
-    console.error(`Client ${clientId} error:`, error.message);
-  });
-});
-
-// Start the server
-server.listen(config.port, config.host, () => {
-  console.log(`Holster Relay Server listening on ${config.host}:${config.port}`);
-  console.log(`WebSocket endpoint: ws://${config.host}:${config.port}/holster`);
-  console.log(`Health check: http://${config.host}:${config.port}/health`);
-  console.log(`Storage: ${config.storageEnabled ? 'enabled at ' + config.storagePath : 'disabled'}`);
+  port: config.port,
+  secure: true,
+  peers: [], // No peers by default
+  maxConnections: config.maxConnections,
+  file: config.storageEnabled ? config.storagePath : undefined,
+  // Other Holster options can be placed here
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+const shutdown = () => {
+  console.log('Received shutdown signal, closing server...');
   server.close(() => {
-    console.log('Server closed');
+    console.log('Express server closed');
     process.exit(0);
   });
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
+  // Holster will close its WS server automatically on process exit
+};
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
