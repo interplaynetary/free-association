@@ -166,6 +166,15 @@ export async function persistTree() {
 }
 
 export async function persistSogf() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_RECOGNITION } = await import('$lib/config');
+
+	if (USE_HOLSTER_RECOGNITION) {
+		console.log('[PERSIST] Using Holster for SOGF - skipping Gun persistence');
+		// Holster persistence is triggered automatically via subscriptions
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping SOGF persistence');
 		return;

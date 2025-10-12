@@ -4,11 +4,15 @@ import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import { parseCompositionTarget } from '$lib/validation';
 import { resolveToPublicKey } from './users.svelte';
-import { USE_HOLSTER_CAPACITIES } from '$lib/config';
+import { USE_HOLSTER_CAPACITIES, USE_HOLSTER_RECOGNITION } from '$lib/config';
 import {
 	holsterCapacities,
 	isLoadingHolsterCapacities
 } from './capacities-holster.svelte';
+import {
+	holsterSogf,
+	isLoadingHolsterSogf
+} from './recognition-holster.svelte';
 import type {
 	RootNode,
 	CapacitiesCollection,
@@ -24,7 +28,18 @@ import type {
 // Core reactive state - these form the main reactive chain
 // All timestamps are tracked by Gun internally via GUN.state.is()
 export const userTree: Writable<RootNode | null> = writable(null);
-export const userSogf: Writable<ShareMap | null> = writable(null);
+
+// Gun-based SOGF (internal)
+const gunUserSogf: Writable<ShareMap | null> = writable(null);
+const gunIsLoadingSogf = writable(false);
+
+// Conditional export: use Holster or Gun based on feature flag
+export const userSogf: Writable<ShareMap | null> = USE_HOLSTER_RECOGNITION
+	? holsterSogf
+	: gunUserSogf;
+export const isLoadingSogf = USE_HOLSTER_RECOGNITION
+	? isLoadingHolsterSogf
+	: gunIsLoadingSogf;
 
 // Gun-based capacities (internal)
 const gunUserCapacities: Writable<CapacitiesCollection | null> = writable(null);
@@ -43,7 +58,6 @@ export const isLoadingCapacities = USE_HOLSTER_CAPACITIES
 
 // Loading state flags
 export const isLoadingTree = writable(false);
-export const isLoadingSogf = writable(false);
 
 export const isRecalculatingTree = writable(false);
 export const isRecalculatingCapacities = writable(false);

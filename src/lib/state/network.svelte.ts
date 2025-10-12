@@ -8,9 +8,10 @@ import {
 	isLoadingContacts,
 	initializeContacts
 } from '$lib/state/users.svelte';
-import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE } from '$lib/config';
+import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION } from '$lib/config';
 import { initializeHolsterCapacities } from './capacities-holster.svelte';
 import { initializeHolsterTree } from './tree-holster.svelte';
+import { initializeHolsterSogf } from './recognition-holster.svelte';
 import {
 	contributors,
 	mutualContributors,
@@ -851,6 +852,15 @@ const createContributorSOGFStream = async (contributorId: string) => {
 
 	console.log(`[STREAM-DEBUG] Resolved ${contributorId} to ${pubKey} for SOGF stream`);
 
+	// Skip Gun SOGF stream for ourselves if using Holster for our own SOGF
+	if (USE_HOLSTER_RECOGNITION) {
+		const ourPubKey = get(userPub);
+		if (pubKey === ourPubKey) {
+			console.log('[STREAM-DEBUG] Skipping Gun SOGF stream for self - using Holster');
+			return;
+		}
+	}
+
 	// Use resolved public key as stream key to prevent duplicates
 	await config.streamManager.createStream(
 		pubKey,
@@ -930,6 +940,14 @@ export async function initializeUserDataStreams(): Promise<void> {
 		await createOwnDesiredSlotComposeFromStream();
 		await createOwnDesiredSlotComposeIntoStream();
 		await createOwnChatReadStatesStream();
+
+		// Initialize Holster SOGF if enabled
+		// Note: SOGF is computed from our tree, so we only persist it
+		// We still subscribe to contributors' Gun SOGF streams regardless
+		if (USE_HOLSTER_RECOGNITION) {
+			console.log('[NETWORK] Using Holster for SOGF - initializing');
+			initializeHolsterSogf();
+		}
 
 		// Note: setupUsersListSubscription is now called early in gun.svelte.ts
 		// No need to call it again here
@@ -1243,6 +1261,9 @@ const debouncedUpdateChatSubscriptions = debounce((chatIds: string[]) => {
 
 chatIdsToSubscribe.subscribe(debouncedUpdateChatSubscriptions);
 
+// Track active Holster SOGF subscriptions
+const activeHolsterSogfSubs = new Set<string>();
+
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
 	/*console.log(
@@ -1250,6 +1271,55 @@ const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) =>
 		allContributors
 	);*/
 
+	// Use Holster SOGF streams when Holster recognition is enabled
+	if (USE_HOLSTER_RECOGNITION) {
+		console.log('[SOGF-STREAMS] Using Holster for recognition - setting up Holster SOGF streams');
+		sogfStreamManager.stopAllStreams(); // Stop any Gun streams
+
+		// Get contributors with resolved public keys
+		const contributorsWithPubKeys = allContributors
+			.map(id => resolveToPublicKey(id))
+			.filter(pubKey => pubKey !== null) as string[];
+
+		// Get our own pubkey to skip ourselves
+		const ourPubKey = get(userPub);
+
+		// Remove subscriptions for contributors no longer in the list
+		activeHolsterSogfSubs.forEach(pubKey => {
+			if (!contributorsWithPubKeys.includes(pubKey)) {
+				console.log(`[SOGF-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterSogfSubs.delete(pubKey);
+				// Note: Holster doesn't have a clean way to unsubscribe, but removing from tracking set is enough
+			}
+		});
+
+		// Add subscriptions for new contributors
+		contributorsWithPubKeys.forEach(pubKey => {
+			// Skip ourselves
+			if (pubKey === ourPubKey) {
+				console.log('[SOGF-HOLSTER] Skipping subscription to own SOGF');
+				return;
+			}
+
+			if (!activeHolsterSogfSubs.has(pubKey)) {
+				console.log(`[SOGF-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterSogfSubs.add(pubKey);
+
+				// Import the subscription function dynamically to avoid circular deps
+				import('./recognition-holster.svelte').then(({ subscribeToContributorHolsterSogf }) => {
+					subscribeToContributorHolsterSogf(pubKey, (theirShare, timestamp) => {
+						// Update recognition cache
+						updateTheirShareFromNetwork(pubKey, theirShare);
+					});
+				});
+			}
+		});
+
+		console.log(`[SOGF-HOLSTER] Active Holster SOGF subscriptions: ${activeHolsterSogfSubs.size}`);
+		return;
+	}
+
+	// Gun implementation (legacy)
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {

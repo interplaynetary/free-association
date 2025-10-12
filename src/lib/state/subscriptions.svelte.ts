@@ -32,12 +32,29 @@ import { chatReadStates, isLoadingChatReadStates } from '$lib/state/chat.svelte'
 import { debounce } from '$lib/utils/debounce';
 
 // Debounced persistence functions
-const debouncedPersistSogf = debounce(() => {
+const debouncedPersistSogf = debounce(async () => {
 	console.log('[SOGF-SUB] Executing debounced SOGF persistence');
-	try {
-		persistSogf();
-	} catch (error) {
-		console.error('[SOGF-SUB] Error during debounced persistence:', error);
+
+	// Check if using Holster for SOGF
+	const { USE_HOLSTER_RECOGNITION } = await import('$lib/config');
+
+	if (USE_HOLSTER_RECOGNITION) {
+		// Use Holster persistence
+		console.log('[SOGF-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterSogf } = await import('./recognition-holster.svelte');
+			await persistHolsterSogf();
+			console.log('[SOGF-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[SOGF-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		try {
+			persistSogf();
+		} catch (error) {
+			console.error('[SOGF-SUB] Error during Gun persistence:', error);
+		}
 	}
 }, 300);
 
