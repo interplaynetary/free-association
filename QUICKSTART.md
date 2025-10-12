@@ -1,18 +1,19 @@
 # Quick Start Guide
 
-Get the Free Association secure infrastructure running in 5 minutes.
+Get the Free Association secure infrastructure running in minutes.
 
 ## What You're Starting
 
 3 containerized services:
 1. **gun-relay** (port 8765) - Gun database relay
 2. **holster-relay** (port 8766) - Holster database relay
-3. **data-api** (port 8767) - Secure API Gateway with Gun, Holster, and AI endpoints
+3. **data-api** (port 8767) - Secure AI Proxy Gateway (LLM/AI completions only)
 
 ## Prerequisites
 
 - Docker 20.10+
 - Docker Compose 1.29+
+- [Bun](https://bun.sh/) if running locally outside Docker
 
 ## Start Services
 
@@ -46,7 +47,7 @@ curl http://localhost:8765/gun
 # Holster relay
 curl http://localhost:8766/health
 
-# Data API
+# Data API (AI Proxy)
 curl http://localhost:8767/health
 ```
 
@@ -59,169 +60,40 @@ curl http://localhost:8767/
 
 ## Authentication
 
-All `/api/*` endpoints require authentication via **either**:
+All `/api/ai/*` endpoints require authentication via **either**:
 - **API Key**: `X-API-Key: your-key`
 - **JWT Token**: `Authorization: Bearer token`
 
-### Default Development Credentials
+### Development Credentials
 
 ```
 API Key: dev-key-12345-change-in-production
 ```
 
-⚠️ **CHANGE THESE IN PRODUCTION!** See [SECURITY.md](SECURITY.md)
+⚠️ **CHANGE THESE IN PRODUCTION!**
 
-### Method 1: Using API Key
-
-```bash
-curl -H "X-API-Key: dev-key-12345-change-in-production" \
-  http://localhost:8767/api/gun/get?path=users
-```
-
-### Method 2: Using JWT Token
-
-**Step 1: Get JWT token**
+### Get a JWT token (for Authorization: Bearer ...)
 ```bash
 curl -X POST http://localhost:8767/auth/token \
   -H "Content-Type: application/json" \
   -d '{"apiKey": "dev-key-12345-change-in-production", "userId": "test-user"}'
 ```
 
-Response:
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": "24h",
-  "type": "Bearer"
-}
-```
+## AI Completion Example
 
-**Step 2: Use token**
 ```bash
-curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  http://localhost:8767/api/gun/get?path=users
+curl -X POST http://localhost:8767/api/ai/completion \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "model": "gpt-3.5-turbo", "prompt": "Hello, AI!", "max_tokens": 32 }'
 ```
-
-## Example Requests
-
-### Gun Database
-
-**Write data:**
+Or:
 ```bash
-curl -X POST http://localhost:8767/api/gun/put \
+curl -X POST http://localhost:8767/api/ai/completion \
   -H "X-API-Key: dev-key-12345-change-in-production" \
   -H "Content-Type: application/json" \
-  -d '{
-    "path": "users/alice",
-    "data": {"name": "Alice", "age": 30, "lastSeen": 1234567890}
-  }'
+  -d '{ "model": "gpt-3.5-turbo", "prompt": "Tell me a joke", "max_tokens": 32 }'
 ```
-
-**Read data:**
-```bash
-curl -H "X-API-Key: dev-key-12345-change-in-production" \
-  "http://localhost:8767/api/gun/get?path=users/alice"
-```
-
-**Seed with sample data:**
-```bash
-curl -X POST http://localhost:8767/api/gun/seed \
-  -H "X-API-Key: dev-key-12345-change-in-production"
-```
-
-### Holster Database
-
-**Write data:**
-```bash
-curl -X POST http://localhost:8767/api/holster/put \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "users/bob",
-    "data": {"name": "Bob", "email": "bob@example.com"}
-  }'
-```
-
-**Read data:**
-```bash
-curl -H "X-API-Key: dev-key-12345-change-in-production" \
-  "http://localhost:8767/api/holster/get?path=users/bob"
-```
-
-**Seed with sample data:**
-```bash
-curl -X POST http://localhost:8767/api/holster/seed \
-  -H "X-API-Key: dev-key-12345-change-in-production"
-```
-
-### AI Services (Mock)
-
-**Chat completions:**
-```bash
-curl -X POST http://localhost:8767/api/ai/chat/completions \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "mock-gpt-4",
-    "messages": [
-      {"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "What is free association?"}
-    ]
-  }'
-```
-
-**Generate embeddings:**
-```bash
-curl -X POST http://localhost:8767/api/ai/embeddings \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input": "Free association is a system of mutual recognition.",
-    "model": "mock-text-embedding-ada-002"
-  }'
-```
-
-**Analyze free-association data:**
-```bash
-curl -X POST http://localhost:8767/api/ai/analyze \
-  -H "X-API-Key: dev-key-12345-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "recognition",
-    "data": {
-      "players": ["alice", "bob", "charlie"]
-    }
-  }'
-```
-
-**List available models:**
-```bash
-curl -H "X-API-Key: dev-key-12345-change-in-production" \
-  http://localhost:8767/api/ai/models
-```
-
-## Frontend Development
-
-**Start Docker services:**
-```bash
-docker-compose up -d
-```
-
-**Copy environment config:**
-```bash
-cp .env.development .env.local
-```
-
-**Run frontend:**
-```bash
-bun install
-bun run dev
-```
-
-Frontend connects to:
-- Gun: `http://localhost:8765/gun`
-- Holster: `ws://localhost:8766/holster`
-- API: `http://localhost:8767`
 
 ## View Logs
 
@@ -249,9 +121,7 @@ docker-compose down -v
 
 ### Port already in use
 ```bash
-# Check what's using the port
 lsof -i :8767
-
 # Or change ports in docker-compose.yml
 ```
 
@@ -278,10 +148,11 @@ docker-compose up -d
 
 ## Rate Limits
 
-Default limits (per IP):
+Default limits (per source):
 - General endpoints: 100 requests / 15 minutes
 - AI endpoints: 20 requests / 15 minutes
 - Auth endpoint: 5 requests / 15 minutes
+- AI completions: 10,000 tokens / 15 minutes
 
 If you hit rate limits, wait 15 minutes or adjust in `data-api/middleware/security.js`.
 
@@ -292,29 +163,15 @@ If you hit rate limits, wait 15 minutes or adjust in `data-api/middleware/securi
 - `GET /health` - Health check
 - `POST /auth/token` - Generate JWT
 
-### Gun Database (Auth Required)
-- `POST /api/gun/put` - Write data
-- `GET /api/gun/get?path=...` - Read data
-- `POST /api/gun/seed` - Seed database
-
-### Holster Database (Auth Required)
-- `POST /api/holster/put` - Write data
-- `GET /api/holster/get?path=...` - Read data
-- `POST /api/holster/seed` - Seed database
-
-### AI Services (Auth Required, Mock)
-- `POST /api/ai/chat/completions` - Chat with AI
-- `POST /api/ai/embeddings` - Generate embeddings
-- `POST /api/ai/analyze` - Analyze data
-- `GET /api/ai/models` - List models
+### AI Services (Auth Required)
+- `POST /api/ai/completion` - Completion/LLM proxy endpoint (OpenAI-compatible)
 
 ## Next Steps
 
-1. **Explore the API** - Try different endpoints
+1. **Explore the API** - Try /api/ai/completion
 2. **Read the docs** - See [data-api/README.md](data-api/README.md)
-3. **Integrate real AI** - Replace mock with OpenAI/Claude
-4. **Production setup** - Follow [SECURITY.md](SECURITY.md)
-5. **Deploy** - See [DEPLOYMENT.md](DEPLOYMENT.md)
+3. **Production setup** - Follow [SECURITY.md](SECURITY.md)
+4. **Deploy** - See [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## Security Warning
 
@@ -329,7 +186,7 @@ Before production:
 
 ## Need Help?
 
-- Full deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md)
+- Deployment guide: [DEPLOYMENT.md](DEPLOYMENT.md)
 - Security setup: [SECURITY.md](SECURITY.md)
 - API documentation: [data-api/README.md](data-api/README.md)
 - Docker reference: [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)
@@ -340,9 +197,9 @@ Before production:
 You now have:
 - ✅ Gun relay running on port 8765
 - ✅ Holster relay running on port 8766
-- ✅ Secure API gateway on port 8767
+- ✅ AI proxy gateway on port 8767
 - ✅ Authentication (API key + JWT)
 - ✅ Rate limiting & security
-- ✅ Mock AI endpoints ready for integration
+- ✅ AI completion endpoint ready for integration
 
 **All three services are isolated, scalable, and production-ready!**
