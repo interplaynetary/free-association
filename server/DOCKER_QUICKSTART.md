@@ -30,16 +30,16 @@ nano .env  # or your preferred editor
 ```bash
 # Setup credentials (see above) then:
 # Start all services
-docker-compose up -d
+cd server && docker-compose up -d
 
 # Check status
-docker-compose ps
+cd server && docker-compose ps
 
 # View logs
-docker-compose logs -f
+cd server && docker-compose logs -f
 
 # Stop all services
-docker-compose down
+cd server && docker-compose down
 ```
 
 ## The Three Services
@@ -54,16 +54,16 @@ docker-compose down
 
 ```bash
 # Start all services in background
-docker-compose up -d
+cd server && docker-compose up -d
 
 # Start and view logs
-docker-compose up
+cd server && docker-compose up
 
 # Stop all services
-docker-compose down
+cd server && docker-compose down
 
 # Stop and remove volumes (WARNING: deletes data)
-docker-compose down -v
+cd server && docker-compose down -v
 
 # Restart a specific service
 docker-compose restart gun-relay
@@ -73,13 +73,13 @@ docker-compose restart gun-relay
 
 ```bash
 # Check service health
-docker-compose ps
+cd server && docker-compose ps
 
 # View all logs
-docker-compose logs -f
+cd server && docker-compose logs -f
 
 # View specific service logs
-docker-compose logs -f gun-relay
+cd server && docker-compose logs -f gun-relay
 
 # Check resource usage
 docker stats
@@ -89,13 +89,13 @@ docker stats
 
 ```bash
 # Rebuild all services
-docker-compose build
+cd server && docker-compose build
 
 # Rebuild without cache
-docker-compose build --no-cache
+cd server && docker-compose build --no-cache
 
 # Rebuild and restart
-docker-compose up -d --build
+cd server && docker-compose up -d --build
 ```
 
 ## Testing the Services
@@ -119,7 +119,7 @@ curl -X POST http://localhost:8767/holster/seed
 
 ```bash
 # 1. Start Docker services
-docker-compose up -d
+cd server && docker-compose up -d
 
 # 2. Copy environment config
 cp .env.development .env.local
@@ -138,13 +138,13 @@ Frontend will connect to:
 
 ### Services won't start
 ```bash
-docker-compose logs
-docker-compose down
-docker-compose up -d
+cd server && docker-compose logs
+cd server && docker-compose down
+cd server && docker-compose up -d
 ```
 
 ### Port already in use
-Edit `docker-compose.yml` and change port mappings:
+Edit `server/docker-compose.yml` and change port mappings:
 ```yaml
 ports:
   - "9765:8765"  # Use port 9765 instead
@@ -152,15 +152,15 @@ ports:
 
 ### Need clean slate
 ```bash
-docker-compose down -v
+cd server && docker-compose down -v
 docker system prune -a
-docker-compose up -d
+cd server && docker-compose up -d
 ```
 
 ### Check what's running
 ```bash
 docker ps
-docker-compose ps
+cd server && docker-compose ps
 ```
 
 ## Data Persistence
@@ -179,9 +179,9 @@ docker run --rm -v free-association_gun-data:/data -v $(pwd):/backup \
 
 Run just one service:
 ```bash
-docker-compose up -d gun-relay
-docker-compose up -d holster-relay
-docker-compose up -d data-api
+cd server && docker-compose up -d gun-relay
+cd server && docker-compose up -d holster-relay
+cd server && docker-compose up -d data-api
 ```
 
 ## Production Notes

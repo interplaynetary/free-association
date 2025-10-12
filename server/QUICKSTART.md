@@ -22,10 +22,10 @@ Get the Free Association secure infrastructure running in minutes.
 cd free-association
 
 # Start all 3 services
-docker-compose up -d
+cd server && docker-compose up -d
 
 # Check they're running
-docker-compose ps
+cd server && docker-compose ps
 ```
 
 Expected output:
@@ -99,22 +99,22 @@ curl -X POST http://localhost:8767/api/ai/completion \
 
 ```bash
 # All services
-docker-compose logs -f
+cd server && docker-compose logs -f
 
 # Specific service
-docker-compose logs -f gun-relay
-docker-compose logs -f holster-relay
-docker-compose logs -f data-api
+cd server && docker-compose logs -f gun-relay
+cd server && docker-compose logs -f holster-relay
+cd server && docker-compose logs -f data-api
 ```
 
 ## Stop Services
 
 ```bash
 # Stop all
-docker-compose down
+cd server && docker-compose down
 
 # Stop and remove volumes (⚠️ deletes data)
-docker-compose down -v
+cd server && docker-compose down -v
 ```
 
 ## Common Issues
@@ -122,7 +122,7 @@ docker-compose down -v
 ### Port already in use
 ```bash
 lsof -i :8767
-# Or change ports in docker-compose.yml
+# Or change ports in server/docker-compose.yml
 ```
 
 ### Authentication fails
@@ -133,18 +133,18 @@ lsof -i :8767
 ### Services won't start
 ```bash
 # Check logs
-docker-compose logs
+cd server && docker-compose logs
 
 # Rebuild
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+cd server && docker-compose down
+cd server && docker-compose build --no-cache
+cd server && docker-compose up -d
 ```
 
 ### Cannot connect to Gun/Holster
-- Verify services are healthy: `docker-compose ps`
+- Verify services are healthy: `cd server && docker-compose ps`
 - Check connectivity: `curl http://localhost:8765/gun`
-- Review logs: `docker-compose logs gun-relay`
+- Review logs: `cd server && docker-compose logs gun-relay`
 
 ## Rate Limits
 

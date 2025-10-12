@@ -28,8 +28,8 @@ bun run server.js
 ## Configuration
 
 Environment variables:
-- `DATA_API_HOST` - Bind host (default: 0.0.0.0)
-- `DATA_API_PORT` - Port (default: 8767)
+- `AI_PROXY_HOST` - Bind host (default: 0.0.0.0)
+- `AI_PROXY_PORT` - Port (default: 8767)
 - `MASTER_API_KEY` - Required strong API key
 - `JWT_SECRET` - JWT signing secret
 - `AI_API_URL` - Your backend AI completion endpoint (e.g., https://api.openai.com/v1/completions or local Ollama endpoint)
@@ -79,7 +79,7 @@ If targeting a local endpoint (e.g., Ollama, vLLM), set `AI_API_URL` in `.env` t
 ## Project Structure
 
 ```
-data-api/
+ai-proxy/
 ├── server.js              # Main server
 ├── middleware/            # Auth, rate-limiting, security
 ├── utils/                 # (If used)

@@ -47,16 +47,16 @@ services:
       retries: 3
       start_period: 15s
 
-  data-api:
+  ai-proxy:
     build:
-      context: ./data-api
+      context: ./ai-proxy
       dockerfile: Dockerfile
-    container_name: data-api
+    container_name: ai-proxy
     ports:
       - "8767:8767"
     environment:
-      - DATA_API_HOST=0.0.0.0
-      - DATA_API_PORT=8767
+      - AI_PROXY_HOST=0.0.0.0
+      - AI_PROXY_PORT=8767
       - NODE_ENV=${NODE_ENV:-development}
       - MASTER_API_KEY=${MASTER_API_KEY}
       - JWT_SECRET=${JWT_SECRET}

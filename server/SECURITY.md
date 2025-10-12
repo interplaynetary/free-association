@@ -299,7 +299,7 @@ Services are isolated in Docker network `free-association-network`:
 - Add additional networks for further isolation
 
 ```yaml
-# docker-compose.yml
+# server/docker-compose.yml
 networks:
   public-network:
     driver: bridge
@@ -327,13 +327,13 @@ services:
 ```bash
 # Load from file
 export $(cat .env | xargs)
-docker-compose up -d
+cd server && docker-compose up -d
 ```
 
 #### Option B: Docker Secrets
 
 ```yaml
-# docker-compose.yml
+# server/docker-compose.yml
 secrets:
   api_key:
     external: true

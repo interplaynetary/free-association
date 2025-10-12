@@ -383,7 +383,7 @@ docker run --rm \
 ### Development
 
 ```
-docker-compose up -d
+cd server && docker-compose up -d
 └─→ All three services on localhost
     └─→ Frontend connects to localhost:8765 & localhost:8766
 ```
@@ -456,7 +456,7 @@ Built into each service:
 
 Each service logs to stdout:
 ```bash
-docker-compose logs -f [service-name]
+cd server && docker-compose logs -f [service-name]
 ```
 
 ### Metrics
@@ -472,22 +472,22 @@ Can integrate:
 
 **Gun Relay:**
 ```bash
-docker-compose up -d --scale gun-relay=3
+cd server && docker-compose up -d --scale gun-relay=3
 ```
 
 **Holster Relay:**
 ```bash
-docker-compose up -d --scale holster-relay=3
+cd server && docker-compose up -d --scale holster-relay=3
 ```
 
 **Data API:**
 ```bash
-docker-compose up -d --scale data-api=3
+cd server && docker-compose up -d --scale data-api=3
 ```
 
 ### Vertical Scaling
 
-Adjust resource limits in `docker-compose.yml`:
+Adjust resource limits in `server/docker-compose.yml`:
 ```yaml
 services:
   gun-relay:

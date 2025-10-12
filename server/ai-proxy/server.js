@@ -18,8 +18,8 @@ import {
 } from './middleware/security.js';
 
 const config = {
-  host: process.env.DATA_API_HOST || '0.0.0.0',
-  port: parseInt(process.env.DATA_API_PORT) || 8767,
+  host: process.env.AI_PROXY_HOST || '0.0.0.0',
+  port: parseInt(process.env.AI_PROXY_PORT) || 8767,
   aiBackend: process.env.AI_API_URL || 'http://localhost:8000/v1/completions',
   nodeEnv: process.env.NODE_ENV || 'development',
 };

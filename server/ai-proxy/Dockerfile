@@ -15,8 +15,8 @@ COPY . .
 EXPOSE 8767
 
 # Environment variables
-ENV DATA_API_HOST=0.0.0.0
-ENV DATA_API_PORT=8767
+ENV AI_PROXY_HOST=0.0.0.0
+ENV AI_PROXY_PORT=8767
 
 # Healthcheck using Bun's HTTP
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

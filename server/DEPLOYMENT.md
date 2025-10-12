@@ -31,7 +31,7 @@ free-association/
 │   ├── server.js
 │   ├── package.json
 │   └── README.md
-├── docker-compose.yml   # Orchestrates all services
+├── server/docker-compose.yml   # Orchestrates all services
 ├── .env.docker          # Docker environment template
 └── src/                 # Frontend application
     └── lib/
@@ -78,13 +78,13 @@ The server will refuse to start in production without proper credentials.
 1. **Build and start all services:**
 
 ```bash
-docker-compose up -d
+cd server && docker-compose up -d
 ```
 
 2. **Check service health:**
 
 ```bash
-docker-compose ps
+cd server && docker-compose ps
 ```
 
 You should see all three services running:
@@ -96,12 +96,12 @@ You should see all three services running:
 
 ```bash
 # All services
-docker-compose logs -f
+cd server && docker-compose logs -f
 
 # Specific service
-docker-compose logs -f gun-relay
-docker-compose logs -f holster-relay
-docker-compose logs -f data-api
+cd server && docker-compose logs -f gun-relay
+cd server && docker-compose logs -f holster-relay
+cd server && docker-compose logs -f data-api
 ```
 
 4. **Test the services:**
@@ -120,13 +120,13 @@ curl http://localhost:8767/health
 5. **Stop services:**
 
 ```bash
-docker-compose down
+cd server && docker-compose down
 ```
 
 6. **Stop and remove volumes (wipes data):**
 
 ```bash
-docker-compose down -v
+cd server && docker-compose down -v
 ```
 
 ## Service Details
@@ -210,7 +210,7 @@ cp .env.development .env.local
 2. **Start the Docker services:**
 
 ```bash
-docker-compose up -d
+cd server && docker-compose up -d
 ```
 
 3. **Run the frontend:**
@@ -295,7 +295,7 @@ docker swarm init
 2. **Deploy stack:**
 
 ```bash
-docker stack deploy -c docker-compose.yml free-association
+docker stack deploy -c server/docker-compose.yml free-association
 ```
 
 3. **Check services:**
@@ -309,7 +309,7 @@ docker stack services free-association
 1. **Convert docker-compose to Kubernetes manifests using kompose:**
 
 ```bash
-kompose convert -f docker-compose.yml
+kompose convert -f server/docker-compose.yml
 ```
 
 2. **Apply to cluster:**
@@ -384,10 +384,10 @@ curl http://localhost:8767/health     # Data API
 
 ```bash
 # View logs
-docker-compose logs -f [service-name]
+cd server && docker-compose logs -f [service-name]
 
 # Export logs
-docker-compose logs > logs.txt
+cd server && docker-compose logs > logs.txt
 ```
 
 ### Metrics
@@ -395,7 +395,7 @@ docker-compose logs > logs.txt
 Add Prometheus/Grafana for metrics:
 
 ```yaml
-# Add to docker-compose.yml
+# Add to server/docker-compose.yml
 prometheus:
   image: prom/prometheus
   ports:
@@ -415,16 +415,16 @@ grafana:
 
 ```bash
 # Check logs
-docker-compose logs
+cd server && docker-compose logs
 
 # Rebuild images
-docker-compose build --no-cache
-docker-compose up -d
+cd server && docker-compose build --no-cache
+cd server && docker-compose up -d
 ```
 
 ### Port conflicts
 
-Change ports in `docker-compose.yml` or stop conflicting services.
+Change ports in `server/docker-compose.yml` or stop conflicting services.
 
 ### Data not persisting
 
@@ -436,7 +436,7 @@ docker volume inspect free-association_gun-data
 
 ### Cannot connect from frontend
 
-1. Check service health: `docker-compose ps`
+1. Check service health: `cd server && docker-compose ps`
 2. Verify environment variables in `.env.local`
 3. Check CORS if deployed remotely
 4. Ensure ports are exposed: `docker-compose port gun-relay 8765`
@@ -489,5 +489,5 @@ docker run --rm \
 
 For issues or questions:
 - Check individual service READMEs in each service directory
-- Review service logs: `docker-compose logs [service-name]`
+- Review service logs: `cd server && docker-compose logs [service-name]`
 - File issues at: https://github.com/playnet-org/free-association/issues
