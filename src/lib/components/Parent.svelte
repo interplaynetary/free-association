@@ -1982,11 +1982,11 @@
 	}
 
 	.treemap-container {
-		width: 100%;
-		height: 100%;
 		position: absolute;
 		top: 0;
-		left: 0;
+		bottom: 0;
+		left: 0.5rem; /* visual left padding for tree map */
+		right: 0.5rem; /* visual right padding for tree map */
 	}
 
 	.treemap-container :global(.clickable) {

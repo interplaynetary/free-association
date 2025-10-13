@@ -174,7 +174,6 @@
 	.layout {
 		display: grid;
 		grid-template-columns: 9fr 1fr;
-		gap: 0.5rem;
 		width: 100%;
 		height: 100%;
 		max-height: 100%;
@@ -206,6 +205,10 @@
 		display: flex;
 		flex-direction: row;
 		gap: 0.5rem;
+		padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
 	}
 
 	.bar-group {
@@ -307,7 +310,7 @@
 		.bars {
 			flex-direction: column;
 			height: auto;
-			gap: 1rem;
+			gap: 0.5rem;
 		}
 
 		.placeholder {

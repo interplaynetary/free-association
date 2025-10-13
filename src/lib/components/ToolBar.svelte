@@ -337,7 +337,7 @@
 
 	// View switcher helpers
 	const viewConfig = {
-		tree: { emoji: '🌲', name: 'Tree', next: 'map' as const },
+		tree: { emoji: '🌈', name: 'Values', next: 'map' as const },
 		map: { emoji: '🌍', name: 'Map', next: 'inventory' as const },
 		inventory: { emoji: '📊', name: 'Inventory', next: 'tree' as const }
 	};
@@ -674,8 +674,8 @@
 									class:active={globalState.currentView === 'tree'}
 									onclick={() => selectView('tree')}
 								>
-									<span class="menu-emoji">🌲</span>
-									<span class="menu-label">Tree</span>
+									<span class="menu-emoji">🌈</span>
+									<span class="menu-label">values</span>
 								</button>
 								<button
 									class="view-menu-item"
@@ -761,9 +761,9 @@
 									title="Forest subtrees"
 									onclick={toggleForestPanel}
 								>
-									🌳
+								💞
 								</button>
-								<span class="button-caption">Forest</span>
+								<span class="button-caption">Playnet</span>
 							</div>
 							</div>
 						</div>
