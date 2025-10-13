@@ -699,7 +699,8 @@
 
 					<!-- Tree View Controls -->
 					{#if globalState.currentView === 'tree'}
-						<div class="view-controls tree-controls">
+						<div class="action-controls">
+							<div class="view-controls tree-controls">
 							<div class="toolbar-item">
 								<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
 									➕
@@ -764,12 +765,14 @@
 								</button>
 								<span class="button-caption">Forest</span>
 							</div>
+							</div>
 						</div>
 					{/if}
 
 					<!-- Inventory View Controls -->
 					{#if globalState.currentView === 'inventory'}
-						<div class="view-controls inventory-controls">
+						<div class="action-controls">
+							<div class="view-controls inventory-controls">
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button create-capacity-button"
@@ -790,6 +793,7 @@
 									🔍
 								</button>
 								<span class="button-caption">Search</span>
+							</div>
 							</div>
 						</div>
 					{/if}
@@ -1022,6 +1026,7 @@
 		gap: 8px;
 		align-items: center;
 		height: 100%;
+		width: 100%;
 	}
 
 	/* View Switcher Container */
@@ -1151,7 +1156,15 @@
 		gap: 12px;
 		align-items: center;
 		padding: 4px 8px;
-		padding-left: 56px;
+		height: 100%;
+	}
+
+	/* Center the action controls between separator and right edge */
+	.action-controls {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 		height: 100%;
 	}
 
