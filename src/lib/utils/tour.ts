@@ -1,4 +1,5 @@
 import { driver, type DriveStep, type Side } from 'driver.js';
+import { globalState } from '$lib/global.svelte';
 
 // Home page tour steps
 const homeTourSteps: DriveStep[] = [
@@ -31,7 +32,7 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.parent',
+		element: '.view-content',
 		popover: {
 			title: 'Your Canvas',
 			description:
@@ -215,9 +216,9 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.network-button',
+		element: '.forest-button',
 		popover: {
-			title: 'Network Subtrees',
+			title: 'Forest Subtrees',
 			description:
 				'Access subtrees from your network contributors. You can add their recognition structures to your own tree.',
 			side: 'top' as Side,
@@ -235,7 +236,48 @@ const homeTourSteps: DriveStep[] = [
 	}
 ];
 
-// Inventory page tour steps
+// Map view tour steps
+const mapTourSteps: DriveStep[] = [
+	{
+		popover: {
+			title: 'Welcome to the Map View! 🌍',
+			description:
+				'This interactive map shows the geographical distribution of your mutual recognition network.',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.view-button',
+		popover: {
+			title: 'View Switchers',
+			description:
+				'Use these buttons to switch between Tree, Map, and Inventory views.',
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
+		popover: {
+			title: 'Network Visualization',
+			description:
+				'The map displays markers for network members and their shared capacities. You can see where your mutual recognition connections are located geographically.',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	},
+	{
+		popover: {
+			title: 'Ready to Explore!',
+			description:
+				'Zoom and pan the map to explore your network. As your mutual recognition grows, so does your geographical reach!',
+			side: 'bottom' as Side,
+			align: 'center'
+		}
+	}
+];
+
+// Inventory view tour steps
 const inventoryTourSteps: DriveStep[] = [
 	{
 		popover: {
@@ -247,41 +289,41 @@ const inventoryTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.breadcrumbs',
+		element: '.view-button',
 		popover: {
-			title: 'Navigation',
+			title: 'View Switchers',
 			description:
-				'You can always return to your recognition tree by clicking on your name in the breadcrumbs.',
-			side: 'bottom' as Side,
-			align: 'start'
-		}
-	},
-	{
-		element: '.inventory-button',
-		popover: {
-			title: 'Inventory Access',
-			description:
-				'Click this button anytime to return to your inventory from anywhere in the app.',
-			side: 'bottom' as Side,
+				'Use these buttons to switch between Tree, Map, and Inventory views. You can access your inventory anytime by clicking the 📊 button.',
+			side: 'top' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.mt-8',
+		element: '.create-capacity-button',
 		popover: {
-			title: 'Network Map',
+			title: 'Create New Capacity',
 			description:
-				'The map shows the geographical distribution of your network. You can see where your mutual recognition connections are located.',
-			side: 'bottom' as Side,
+				'Click this button to create a new capacity. Define what you can offer, set your availability schedule, and specify locations.',
+			side: 'top' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: 'h2',
+		element: '.search-button',
 		popover: {
-			title: 'Your Capacities Section',
+			title: 'Search & Filter',
 			description:
-				'This section shows all the capacities you offer to your network. Capacities are things you can provide - like time, skills, or resources.',
+				'Click here to search and filter your capacities and shares. You can search by keywords, filter by provider, and sort by various criteria.',
+			side: 'top' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.inventory-view',
+		popover: {
+			title: 'Your Inventory',
+			description:
+				'This area shows your capacities (what you offer) and shares (what others offer you based on mutual recognition).',
 			side: 'top' as Side,
 			align: 'center'
 		}
@@ -289,7 +331,7 @@ const inventoryTourSteps: DriveStep[] = [
 	{
 		element: '.capacities-list',
 		popover: {
-			title: 'Capacities List',
+			title: 'Your Capacities',
 			description:
 				"Here you can see all your current capacities. Each capacity card shows what you offer, when you're available, and where.",
 			side: 'top' as Side,
@@ -297,26 +339,16 @@ const inventoryTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		element: '.add-btn',
 		popover: {
-			title: 'Add New Capacity',
+			title: 'Shares Section',
 			description:
-				'Click this button to create a new capacity. Define what you can offer, set your availability schedule, and specify locations.',
-			side: 'left' as Side,
-			align: 'center'
-		}
-	},
-	{
-		popover: {
-			title: 'Your Shares Section',
-			description:
-				'This section shows what others are sharing with you based on your mutual recognition. The stronger your mutual recognition, the more they share.',
+				'Below your capacities, you\'ll find "Shares" - what others are sharing with you based on your mutual recognition.',
 			side: 'top' as Side,
 			align: 'center',
 			onNextClick: () => {
 				// Scroll to shares section
 				const sharesHeader = Array.from(document.querySelectorAll('h2')).find((h) =>
-					h.textContent?.includes('Your Shares')
+					h.textContent?.includes('Shares')
 				);
 				if (sharesHeader) {
 					sharesHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -325,26 +357,6 @@ const inventoryTourSteps: DriveStep[] = [
 					driverObj.moveNext();
 				}, 500);
 			}
-		}
-	},
-	{
-		element: '.filter-bar',
-		popover: {
-			title: 'Search and Filter',
-			description:
-				'Use these controls to search for specific shares, filter by provider, and sort by different criteria to find what you need.',
-			side: 'bottom' as Side,
-			align: 'center'
-		}
-	},
-	{
-		element: '.search-input',
-		popover: {
-			title: 'Search Shares',
-			description:
-				"Type here to search for specific capacities or providers. This helps you quickly find what you're looking for in your network.",
-			side: 'bottom' as Side,
-			align: 'center'
 		}
 	},
 	{
@@ -380,20 +392,81 @@ const inventoryTourSteps: DriveStep[] = [
 // Global reference to driver instance for async operations
 let driverObj: any;
 
-// Function to detect current page
-function getCurrentPage(): string {
-	if (typeof window === 'undefined') return 'home';
+// LocalStorage key for saving tour progress
+const TOUR_PROGRESS_KEY = 'free-association-tour-progress';
 
-	const pathname = window.location.pathname;
-	console.log('[TOUR DEBUG] Full pathname:', pathname);
+// Save tour progress to localStorage
+function saveTourProgress(view: string, stepIndex: number) {
+	if (typeof window === 'undefined') return;
+	
+	try {
+		const progress = {
+			view,
+			stepIndex,
+			timestamp: Date.now()
+		};
+		localStorage.setItem(TOUR_PROGRESS_KEY, JSON.stringify(progress));
+		console.log('[TOUR] Saved progress:', progress);
+	} catch (error) {
+		console.warn('[TOUR] Failed to save progress:', error);
+	}
+}
 
-	// Simple path detection - no base path manipulation needed
-	if (pathname.includes('/inventory')) {
-		return 'inventory';
-	} else if (pathname.includes('/contacts')) {
-		return 'contacts';
-	} else {
-		return 'home';
+// Load tour progress from localStorage
+function loadTourProgress(): { view: string; stepIndex: number } | null {
+	if (typeof window === 'undefined') return null;
+	
+	try {
+		const saved = localStorage.getItem(TOUR_PROGRESS_KEY);
+		if (!saved) return null;
+		
+		const progress = JSON.parse(saved);
+		console.log('[TOUR] Loaded progress:', progress);
+		
+		// Optional: Clear progress if it's older than 7 days
+		const weekInMs = 7 * 24 * 60 * 60 * 1000;
+		if (Date.now() - progress.timestamp > weekInMs) {
+			console.log('[TOUR] Progress expired, starting fresh');
+			clearTourProgress();
+			return null;
+		}
+		
+		return progress;
+	} catch (error) {
+		console.warn('[TOUR] Failed to load progress:', error);
+		return null;
+	}
+}
+
+// Clear tour progress from localStorage
+function clearTourProgress() {
+	if (typeof window === 'undefined') return;
+	
+	try {
+		localStorage.removeItem(TOUR_PROGRESS_KEY);
+		console.log('[TOUR] Cleared progress');
+	} catch (error) {
+		console.warn('[TOUR] Failed to clear progress:', error);
+	}
+}
+
+// Function to detect current view
+function getCurrentView(): string {
+	if (typeof window === 'undefined') return 'tree';
+
+	// Check the current view from globalState
+	const currentView = globalState.currentView;
+	console.log('[TOUR DEBUG] Current view:', currentView);
+
+	// Map view types to tour types
+	switch (currentView) {
+		case 'inventory':
+			return 'inventory';
+		case 'map':
+			return 'map';
+		case 'tree':
+		default:
+			return 'tree';
 	}
 }
 
@@ -413,18 +486,28 @@ function elementExists(selector: string | Element | (() => Element)): boolean {
 	}
 }
 
-// Main tour function that detects page and starts appropriate tour
+// Main tour function that detects view and starts appropriate tour
 export function startTour() {
-	const currentPage = getCurrentPage();
+	const currentView = getCurrentView();
 
 	// Debug logging
-	console.log('[TOUR] Current page detected:', currentPage);
-	console.log('[TOUR] Window location:', window.location.pathname);
+	console.log('[TOUR] Current view detected:', currentView);
+	console.log('[TOUR] Global state view:', globalState.currentView);
+
+	// Check for saved progress
+	const savedProgress = loadTourProgress();
+	let startIndex = 0;
+
+	// If we have saved progress for this view, resume from that step
+	if (savedProgress && savedProgress.view === currentView) {
+		startIndex = savedProgress.stepIndex;
+		console.log('[TOUR] Resuming from step:', startIndex);
+	}
 
 	let steps;
 	let doneBtnText;
 
-	switch (currentPage) {
+	switch (currentView) {
 		case 'inventory':
 			console.log('[TOUR] Starting inventory tour');
 			// Filter out steps for elements that don't exist
@@ -437,9 +520,21 @@ export function startTour() {
 			});
 			doneBtnText = 'Start Managing!';
 			break;
-		case 'home':
+		case 'map':
+			console.log('[TOUR] Starting map tour');
+			// Filter out steps for elements that don't exist
+			steps = mapTourSteps.filter((step) => {
+				if (step.element && !elementExists(step.element)) {
+					console.log('[TOUR] Skipping step for missing element:', step.element);
+					return false;
+				}
+				return true;
+			});
+			doneBtnText = 'Start Exploring!';
+			break;
+		case 'tree':
 		default:
-			console.log('[TOUR] Starting home tour');
+			console.log('[TOUR] Starting tree tour');
 			// Filter out steps for elements that don't exist
 			steps = homeTourSteps.filter((step) => {
 				if (step.element && !elementExists(step.element)) {
@@ -454,15 +549,55 @@ export function startTour() {
 
 	console.log('[TOUR] Final steps count:', steps.length);
 
+	// Ensure startIndex is within bounds
+	if (startIndex >= steps.length) {
+		startIndex = 0;
+	}
+
 	driverObj = driver({
 		showProgress: true,
 		nextBtnText: 'Next →',
 		prevBtnText: '← Back',
 		doneBtnText,
-		steps
+		steps,
+		onNextClick: (element, step, options) => {
+			// Save progress when moving to next step
+			const currentStepIndex = options.state.activeIndex || 0;
+			saveTourProgress(currentView, currentStepIndex + 1);
+			
+			// Call the default next behavior
+			driverObj.moveNext();
+		},
+		onPrevClick: (element, step, options) => {
+			// Save progress when moving to previous step
+			const currentStepIndex = options.state.activeIndex || 0;
+			saveTourProgress(currentView, Math.max(0, currentStepIndex - 1));
+			
+			// Call the default previous behavior
+			driverObj.movePrevious();
+		},
+		onDestroyStarted: (element, step, options) => {
+			// Check if tour was completed (at last step)
+			const currentStepIndex = options.state.activeIndex || 0;
+			if (currentStepIndex === steps.length - 1) {
+				// Tour completed, clear progress
+				console.log('[TOUR] Tour completed, clearing progress');
+				clearTourProgress();
+			} else {
+				// Tour exited early, save progress for resumption
+				console.log('[TOUR] Tour exited at step:', currentStepIndex);
+				saveTourProgress(currentView, currentStepIndex);
+			}
+			
+			// Destroy the driver instance
+			if (driverObj) {
+				driverObj.destroy();
+			}
+		}
 	});
 
-	driverObj.drive();
+	// Start from saved index or beginning
+	driverObj.drive(startIndex);
 }
 
 // Legacy function for backward compatibility
@@ -473,6 +608,19 @@ export function startHomeTour() {
 		prevBtnText: '← Back',
 		doneBtnText: 'Start Creating!',
 		steps: homeTourSteps
+	});
+
+	driverObj.drive();
+}
+
+// Specific function for map tour
+export function startMapTour() {
+	driverObj = driver({
+		showProgress: true,
+		nextBtnText: 'Next →',
+		prevBtnText: '← Back',
+		doneBtnText: 'Start Exploring!',
+		steps: mapTourSteps
 	});
 
 	driverObj.drive();
@@ -491,19 +639,33 @@ export function startInventoryTour() {
 	driverObj.drive();
 }
 
-// Debug function to test page detection and element availability
-export function debugPageDetection() {
-	console.log('[DEBUG] Window location:', window.location);
-	console.log('[DEBUG] Pathname:', window.location.pathname);
-	console.log('[DEBUG] Detected page:', getCurrentPage());
+// Export function to manually reset tour progress (useful for starting over)
+export function resetTourProgress() {
+	clearTourProgress();
+	console.log('[TOUR] Tour progress manually reset');
+}
 
-	// Test both tours
-	console.log('[DEBUG] Home tour steps:', homeTourSteps.length);
+// Debug function to test view detection and element availability
+export function debugViewDetection() {
+	console.log('[DEBUG] Window location:', window.location);
+	console.log('[DEBUG] Global state view:', globalState.currentView);
+	console.log('[DEBUG] Detected view:', getCurrentView());
+
+	// Test all tours
+	console.log('[DEBUG] Tree tour steps:', homeTourSteps.length);
+	console.log('[DEBUG] Map tour steps:', mapTourSteps.length);
 	console.log('[DEBUG] Inventory tour steps:', inventoryTourSteps.length);
 
-	// Check which elements exist on current page
-	const currentPage = getCurrentPage();
-	const steps = currentPage === 'inventory' ? inventoryTourSteps : homeTourSteps;
+	// Check which elements exist on current view
+	const currentView = getCurrentView();
+	let steps;
+	if (currentView === 'inventory') {
+		steps = inventoryTourSteps;
+	} else if (currentView === 'map') {
+		steps = mapTourSteps;
+	} else {
+		steps = homeTourSteps;
+	}
 
 	console.log('[DEBUG] Element availability check:');
 	steps.forEach((step, index) => {
@@ -522,14 +684,21 @@ export function debugPageDetection() {
 export function verifyTourElements() {
 	console.log('[TOUR-VERIFY] Starting comprehensive tour element verification...');
 	
-	const currentPage = getCurrentPage();
-	const steps = currentPage === 'inventory' ? inventoryTourSteps : homeTourSteps;
+	const currentView = getCurrentView();
+	let steps;
+	if (currentView === 'inventory') {
+		steps = inventoryTourSteps;
+	} else if (currentView === 'map') {
+		steps = mapTourSteps;
+	} else {
+		steps = homeTourSteps;
+	}
 	
-	// Define expected elements for each page
+	// Define expected elements for each view
 	const expectedElements: Record<string, string[]> = {
-		home: [
+		tree: [
 			'.breadcrumbs',
-			'.parent', 
+			'.view-content', 
 			'.treemap-node',
 			'.node-title',
 			'.add-contributor-button',
@@ -541,23 +710,29 @@ export function verifyTourElements() {
 			'.search-button',
 			'.delete-button',
 			'.recompose-button',
-			'.network-button'
+			'.forest-button',
+			'.view-button'
+		],
+		map: [
+			'.breadcrumbs',
+			'.view-button',
+			'.toolbar',
+			'.view-content'
 		],
 		inventory: [
 			'.breadcrumbs',
-			'.inventory-button',
-			'.mt-8',
+			'.view-button',
+			'.create-capacity-button',
+			'.search-button',
+			'.inventory-view',
 			'.capacities-list',
-			'.add-btn',
-			'.filter-bar',
-			'.search-input',
 			'.shares-list'
 		]
 	};
 	
-	const elementsToCheck = expectedElements[currentPage] || expectedElements.home;
+	const elementsToCheck = expectedElements[currentView] || expectedElements.tree;
 	
-	console.log(`[TOUR-VERIFY] Checking ${elementsToCheck.length} expected elements for ${currentPage} page:`);
+	console.log(`[TOUR-VERIFY] Checking ${elementsToCheck.length} expected elements for ${currentView} view:`);
 	
 	const results = {
 		found: [] as string[],
@@ -600,7 +775,7 @@ export function verifyTourElements() {
 	console.log(`[TOUR-VERIFY] Tour readiness: ${steps.length - stepsMissing}/${steps.length} steps have valid targets`);
 	
 	return {
-		page: currentPage,
+		view: currentView,
 		elements: results,
 		tourSteps: {
 			total: steps.length,
