@@ -1,22 +1,22 @@
-import { RequestSchema } from './schemas/requestTypes';
+import { ExtendedCompletionRequestSchema } from '../shared-schemas/completion';
 import { getFlow, listFlows } from './flows/flowRegistry';
 import type { FlowDefinition } from './flows/flowRegistry';
 
 const KEY_POOL_URL = process.env.KEY_POOL_URL || 'http://key-pool:8769';
 
 /**
- * Route a request using typed flows
+ * Route a request using typed flows (OpenRouter-only)
  */
 export async function routeRequest(requestBody: any) {
   // Step 1: Validate and parse request
-  const parseResult = RequestSchema.safeParse(requestBody);
+  const parseResult = ExtendedCompletionRequestSchema.safeParse(requestBody);
   
   if (!parseResult.success) {
     throw new Error(`Invalid request: ${parseResult.error.message}`);
   }
   
   const request = parseResult.data;
-  const requestType = 'requestType' in request ? request.requestType : 'chat';
+  const requestType = request.requestType || 'chat';
   
   // Step 2: Get flow definition for this request type
   const flow = getFlow(requestType);
@@ -27,7 +27,7 @@ export async function routeRequest(requestBody: any) {
   
   // Step 4: Try preferred models in order
   for (const modelName of flow.preferredModels) {
-    const key = await getKeyForModel(modelName);
+    const key = await getOpenRouterKey();
     
     if (key) {
       console.log(`Selected model: ${modelName}`);
@@ -39,30 +39,27 @@ export async function routeRequest(requestBody: any) {
           requestType: flow.requestType,
           description: flow.description
         },
-        model: modelName,
-        provider: getProviderFromModel(modelName),
+        model: modelName, // OpenRouter model name (provider/model)
+        provider: 'openrouter', // Always OpenRouter
         key,
         promptConfig,
         postProcess: flow.postProcess ? 'enabled' : 'disabled'
       };
     }
     
-    console.log(`No key available for ${modelName}, trying next...`);
+    console.log(`No OpenRouter key available, trying next model...`);
   }
   
-  // No models available
-  throw new Error(`No providers available for flow: ${flow.name}`);
+  // No keys available
+  throw new Error(`No OpenRouter keys available for flow: ${flow.name}`);
 }
 
 /**
- * Get key for a model from key pool
+ * Get OpenRouter key from key pool
  */
-async function getKeyForModel(modelName: string): Promise<string | null> {
+async function getOpenRouterKey(): Promise<string | null> {
   try {
-    // Extract pool name (openrouter for OpenRouter models, model name for direct)
-    const poolName = modelName.includes('/') ? 'openrouter' : modelName;
-    
-    const response = await fetch(`${KEY_POOL_URL}/keys/${poolName}`, {
+    const response = await fetch(`${KEY_POOL_URL}/keys/openrouter`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -74,32 +71,9 @@ async function getKeyForModel(modelName: string): Promise<string | null> {
     const data = await response.json();
     return data.key || null;
   } catch (error) {
-    console.error(`Error fetching key for ${modelName}:`, error);
+    console.error(`Error fetching OpenRouter key:`, error);
     return null;
   }
-}
-
-/**
- * Get provider from model name
- */
-function getProviderFromModel(modelName: string): string {
-  if (modelName.includes('/')) {
-    return 'openrouter';
-  }
-  
-  if (modelName.startsWith('gpt-')) {
-    return 'openai';
-  }
-  
-  if (modelName.startsWith('claude-')) {
-    return 'anthropic';
-  }
-  
-  if (modelName.startsWith('mistral-')) {
-    return 'mistral';
-  }
-  
-  return 'unknown';
 }
 
 /**
@@ -126,4 +100,3 @@ export function postProcessResponse(flowName: string, response: any) {
   
   return response;
 }
-

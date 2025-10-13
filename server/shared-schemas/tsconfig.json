@@ -10,14 +10,13 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowJs": true,
+    "declaration": true,
+    "declarationMap": true,
     "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "rootDir": ".",
+    "baseUrl": "."
   },
-  "include": ["**/*.ts", "**/*.js", "../shared-schemas/**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

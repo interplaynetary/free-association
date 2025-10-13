@@ -117,33 +117,9 @@ app.post('/auth/token', authLimiter, (req: Request, res: Response) => {
   }
 });
 
-// Provider endpoints configuration
-interface ProviderEndpoint {
-  baseUrl: string;
-  chatPath?: string;
-  completionPath?: string;
-  messagesPath?: string;
-}
-
-const PROVIDER_ENDPOINTS: Record<string, ProviderEndpoint> = {
-  'openrouter': {
-    baseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-    chatPath: '/chat/completions'
-  },
-  'openai': {
-    baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-    chatPath: '/chat/completions',
-    completionPath: '/completions'
-  },
-  'anthropic': {
-    baseUrl: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com/v1',
-    messagesPath: '/messages'
-  },
-  'mistral': {
-    baseUrl: process.env.MISTRAL_BASE_URL || 'https://api.mistral.ai/v1',
-    chatPath: '/chat/completions'
-  }
-};
+// OpenRouter configuration (single provider)
+const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+const OPENROUTER_ENDPOINT = `${OPENROUTER_BASE_URL}/chat/completions`;
 
 // Main AI completion endpoint
 app.post(
@@ -209,81 +185,39 @@ app.post(
         category: routing.selection?.category
       });
       
-      // Step 2: Build provider-specific request
-      const providerConfig = PROVIDER_ENDPOINTS[routing.provider];
-      if (!providerConfig) {
+      // Step 2: Build OpenRouter request (always OpenRouter)
+      if (routing.provider !== 'openrouter') {
         return res.status(500).json({
-          error: 'Unsupported provider',
+          error: 'Invalid provider',
+          message: 'Only OpenRouter is supported',
           provider: routing.provider
         });
       }
       
-      let endpoint: string;
-      let requestBody: any;
-      let headers: Record<string, string>;
+      const requestBody = {
+        model: routing.model, // OpenRouter model name (provider/model)
+        messages: messages || [{ role: 'user', content: prompt }],
+        max_tokens: normalizedMaxTokens,
+        temperature: temperature || 0.7
+      };
       
-      if (routing.provider === 'openrouter') {
-        endpoint = `${providerConfig.baseUrl}${providerConfig.chatPath}`;
-        requestBody = {
-          model: routing.model,
-          messages: messages || [{ role: 'user', content: prompt }],
-          max_tokens: normalizedMaxTokens,
-          temperature: temperature || 0.7
-        };
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${routing.key}`,
-          'HTTP-Referer': process.env.APP_URL || 'https://free-association.playnet.lol',
-          'X-Title': 'Free Association AI'
-        };
-      } else if (routing.provider === 'openai') {
-        endpoint = `${providerConfig.baseUrl}${messages ? providerConfig.chatPath : providerConfig.completionPath}`;
-        requestBody = messages
-          ? { model: routing.model, messages, max_tokens: normalizedMaxTokens, temperature }
-          : { model: routing.model, prompt, max_tokens: normalizedMaxTokens, temperature };
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${routing.key}`
-        };
-      } else if (routing.provider === 'anthropic') {
-        endpoint = `${providerConfig.baseUrl}${providerConfig.messagesPath}`;
-        requestBody = {
-          model: routing.model,
-          messages: messages || [{ role: 'user', content: prompt }],
-          max_tokens: normalizedMaxTokens,
-          temperature: temperature || 0.7
-        };
-        headers = {
-          'Content-Type': 'application/json',
-          'x-api-key': routing.key,
-          'anthropic-version': '2023-06-01'
-        };
-      } else if (routing.provider === 'mistral') {
-        endpoint = `${providerConfig.baseUrl}${providerConfig.chatPath}`;
-        requestBody = {
-          model: routing.model,
-          messages: messages || [{ role: 'user', content: prompt }],
-          max_tokens: normalizedMaxTokens,
-          temperature
-        };
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${routing.key}`
-        };
-      } else {
-        return res.status(500).json({ error: 'Provider configuration incomplete' });
-      }
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${routing.key}`,
+        'HTTP-Referer': process.env.APP_URL || 'https://free-association.playnet.lol',
+        'X-Title': 'Free Association AI'
+      };
       
-      // Step 3: Call LLM provider
+      // Step 3: Call OpenRouter
       const startTime = Date.now();
-      const providerResponse = await fetch(endpoint, {
+      const providerResponse = await fetch(OPENROUTER_ENDPOINT, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody)
       });
       
       const responseTime = Date.now() - startTime;
-      const result = await providerResponse.json();
+      const result: any = await providerResponse.json();
       
       // Step 4: Report key health back to key pool
       let healthStatus: 'healthy' | 'degraded' | 'failed' | 'rate_limited' | 'depleted' = 
@@ -301,7 +235,6 @@ app.post(
         : null;
       
       // Fire and forget health report
-      const poolName = routing.provider === 'openrouter' ? 'openrouter' : routing.model;
       const healthReport = HealthReportSchema.parse({
         key: routing.key,
         status: healthStatus,
@@ -309,7 +242,7 @@ app.post(
         cost
       });
       
-      fetch(`${config.llmRouterUrl.replace('llm-router', 'key-pool')}/health/${poolName}`, {
+      fetch(`${config.llmRouterUrl.replace('llm-router', 'key-pool')}/health/openrouter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(healthReport)
@@ -317,7 +250,7 @@ app.post(
       
       // Step 5: Return formatted response
       return res.status(providerResponse.status).json({
-        ...result,
+        ...(result as object),
         _routing: {
           model: routing.model,
           provider: routing.provider,
