@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
 	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol';
 	import type {
@@ -20,12 +21,7 @@
 		console.log(`Navigating to provider: ${provider}`);
 	}
 
-	// Search and filter state
-	let searchQuery = $state('');
-	let selectedProvider = $state('all');
-	let sortBy = $state<'name' | 'allocated_slots' | 'total_slots' | 'provider'>('name');
-	let sortDirection = $state<'asc' | 'desc'>('asc');
-
+	// All filter state comes from globalState
 	let expandedShares = $state<Set<string>>(new Set());
 
 	function toggleShare(shareId: string) {
@@ -105,9 +101,9 @@
 	let filteredShares = $derived(() => {
 		let filtered = allShares();
 
-		// Apply search filter
-		if (searchQuery.trim()) {
-			const query = searchQuery.toLowerCase().trim();
+		// Apply search filter from global state
+		if (globalState.inventorySearchQuery.trim()) {
+			const query = globalState.inventorySearchQuery.toLowerCase().trim();
 			filtered = filtered.filter(
 				(share) =>
 					share.name.toLowerCase().includes(query) ||
@@ -117,15 +113,15 @@
 		}
 
 		// Apply provider filter
-		if (selectedProvider !== 'all') {
-			filtered = filtered.filter((share) => share.provider_id === selectedProvider);
+		if (globalState.inventorySelectedProvider !== 'all') {
+			filtered = filtered.filter((share) => share.provider_id === globalState.inventorySelectedProvider);
 		}
 
 		// Apply sorting
 		filtered.sort((a, b) => {
 			let comparison = 0;
 
-			switch (sortBy) {
+			switch (globalState.inventorySortBy) {
 				case 'name':
 					comparison = a.name.localeCompare(b.name);
 					break;
@@ -140,7 +136,7 @@
 					break;
 			}
 
-			return sortDirection === 'asc' ? comparison : -comparison;
+			return globalState.inventorySortDirection === 'asc' ? comparison : -comparison;
 		});
 
 		return filtered;
@@ -154,56 +150,14 @@
 	}));
 
 	function clearFilters() {
-		searchQuery = '';
-		selectedProvider = 'all';
-		sortBy = 'name';
-		sortDirection = 'asc';
+		globalState.inventorySearchQuery = '';
+		globalState.inventorySelectedProvider = 'all';
+		globalState.inventorySortBy = 'name';
+		globalState.inventorySortDirection = 'asc';
 	}
 </script>
 
 <div class="shares-container">
-	<!-- Search and Filter Controls -->
-	<div class="filter-bar">
-		<div class="search-section">
-			<input
-				type="text"
-				class="search-input"
-				placeholder="Search shares..."
-				bind:value={searchQuery}
-			/>
-		</div>
-
-		<div class="filter-controls">
-			<select class="filter-select" bind:value={selectedProvider}>
-				<option value="all">All providers ({stats().providers})</option>
-				{#each providersWithNames() as provider}
-					<option value={provider.id}>{provider.name}</option>
-				{/each}
-			</select>
-
-			<div class="sort-controls">
-				<select class="sort-select" bind:value={sortBy}>
-					<option value="name">Sort by name</option>
-					<option value="allocated_slots">Sort by allocated slots</option>
-					<option value="total_slots">Sort by total slots</option>
-					<option value="provider">Sort by provider</option>
-				</select>
-
-				<button
-					class="sort-direction-btn"
-					onclick={() => (sortDirection = sortDirection === 'asc' ? 'desc' : 'asc')}
-					title="Toggle sort direction"
-				>
-					{sortDirection === 'asc' ? '↑' : '↓'}
-				</button>
-			</div>
-
-			{#if searchQuery || selectedProvider !== 'all' || sortBy !== 'name' || sortDirection !== 'asc'}
-				<button class="clear-btn" onclick={clearFilters}>Clear</button>
-			{/if}
-		</div>
-	</div>
-
 	<!-- Results Summary -->
 	{#if stats().filtered !== stats().total}
 		<div class="results-summary">
@@ -224,7 +178,7 @@
 			{/each}
 		{:else}
 			<div class="empty-state">
-				{#if searchQuery || selectedProvider !== 'all'}
+				{#if globalState.inventorySearchQuery || globalState.inventorySelectedProvider !== 'all'}
 					<p>No shares match your filters.</p>
 					<button class="clear-btn" onclick={clearFilters}>Clear filters</button>
 				{:else}
@@ -250,116 +204,6 @@
 		overflow: hidden;
 	}
 
-	/* Filter Bar */
-	.filter-bar {
-		background: white;
-		border-radius: 8px;
-		padding: 16px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-		border: 1px solid #e5e7eb;
-		width: 100%;
-		box-sizing: border-box;
-	}
-
-	.search-section {
-		width: 100%;
-		margin-bottom: 12px;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 10px 14px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		font-size: 14px;
-		background: #f9fafb;
-		transition: all 0.2s ease;
-		box-sizing: border-box;
-	}
-
-	.search-input:focus {
-		outline: none;
-		border-color: #3b82f6;
-		background: white;
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-	}
-
-	.search-input::placeholder {
-		color: #9ca3af;
-	}
-
-	.filter-controls {
-		display: grid;
-		grid-template-columns: 1fr auto auto;
-		gap: 8px;
-		align-items: center;
-		width: 100%;
-	}
-
-	.filter-select {
-		padding: 8px 12px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		font-size: 13px;
-		background: white;
-		color: #374151;
-		cursor: pointer;
-		transition: border-color 0.2s ease;
-		width: 100%;
-		box-sizing: border-box;
-		min-width: 0;
-	}
-
-	.sort-controls {
-		display: flex;
-		gap: 4px;
-		align-items: center;
-		flex-shrink: 0;
-	}
-
-	.sort-select {
-		padding: 8px 10px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		font-size: 13px;
-		background: white;
-		color: #374151;
-		cursor: pointer;
-		transition: border-color 0.2s ease;
-		box-sizing: border-box;
-		width: 130px;
-	}
-
-	.filter-select:focus,
-	.sort-select:focus {
-		outline: none;
-		border-color: #3b82f6;
-	}
-
-	.sort-direction-btn {
-		padding: 6px 8px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		background: white;
-		color: #6b7280;
-		cursor: pointer;
-		font-size: 14px;
-		font-weight: 600;
-		transition: all 0.2s ease;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 32px;
-		height: 32px;
-		flex-shrink: 0;
-	}
-
-	.sort-direction-btn:hover {
-		background: #f3f4f6;
-		border-color: #9ca3af;
-		color: #374151;
-	}
-
 	.clear-btn {
 		padding: 6px 12px;
 		border: 1px solid #fca5a5;
@@ -372,9 +216,6 @@
 		transition: all 0.2s ease;
 		flex-shrink: 0;
 		white-space: nowrap;
-		grid-column: 1 / -1;
-		justify-self: center;
-		margin-top: 8px;
 	}
 
 	.clear-btn:hover {
@@ -419,29 +260,6 @@
 	@media (max-width: 480px) {
 		.shares-container {
 			padding: 8px;
-		}
-
-		.filter-bar {
-			padding: 12px;
-		}
-
-		.filter-controls {
-			grid-template-columns: 1fr;
-			gap: 12px;
-		}
-
-		.sort-controls {
-			justify-self: stretch;
-			justify-content: space-between;
-		}
-
-		.sort-select {
-			flex: 1;
-			width: auto;
-		}
-
-		.clear-btn {
-			margin-top: 4px;
 		}
 	}
 </style>

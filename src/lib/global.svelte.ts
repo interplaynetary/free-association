@@ -60,6 +60,12 @@ export const globalState = $state({
 	// Main view state
 	currentView: 'tree' as 'tree' | 'map' | 'inventory',
 
+	// Inventory search and filter state (shared between toolbar and components)
+	inventorySearchQuery: '',
+	inventorySelectedProvider: 'all',
+	inventorySortBy: 'name' as 'name' | 'allocated_slots' | 'total_slots' | 'provider',
+	inventorySortDirection: 'asc' as 'asc' | 'desc',
+
 	// Unified highlighting state for newly created items
 	highlightedCapacities: new Set<string>(),
 	highlightedSlots: new Set<string>(),
@@ -167,6 +173,10 @@ export const globalState = $state({
 		globalState.deleteMode = false;
 		globalState.textEditMode = false;
 		globalState.currentView = 'tree';
+		globalState.inventorySearchQuery = '';
+		globalState.inventorySelectedProvider = 'all';
+		globalState.inventorySortBy = 'name';
+		globalState.inventorySortDirection = 'asc';
 
 		// Reset search state
 		globalState.searchQuery = '';

@@ -20,11 +20,25 @@
 	import Capacity from './Capacity.svelte';
 
 	// Reactive derived values
-	const capacityEntries = $derived(
-		Object.entries($userCapacities || {})
+	const capacityEntries = $derived(() => {
+		let entries = Object.entries($userCapacities || {})
 			.filter(([id, capacity]) => id && capacity)
-			.map(([id, capacity]) => ({ ...capacity, id }))
-	);
+			.map(([id, capacity]) => ({ ...capacity, id }));
+		
+		// Apply search filter from global state
+		if (globalState.inventorySearchQuery.trim()) {
+			const query = globalState.inventorySearchQuery.toLowerCase().trim();
+			entries = entries.filter(
+				(entry) =>
+					entry.name?.toLowerCase().includes(query) ||
+					entry.unit?.toLowerCase().includes(query) ||
+					entry.emoji?.includes(query) ||
+					entry.description?.toLowerCase().includes(query)
+			);
+		}
+		
+		return entries;
+	});
 
 	// Add a new capacity to the userCapacities store
 	function addCapacity(capacity: ProviderCapacity) {
@@ -821,7 +835,7 @@
 </script>
 
 <div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
-	{#each capacityEntries as entry (entry.id)}
+	{#each capacityEntries() as entry (entry.id)}
 		<div
 			class="capacity-wrapper"
 			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}

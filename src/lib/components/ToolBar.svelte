@@ -7,12 +7,12 @@
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
-	import { userCapacities, mutualContributors } from '$lib/state/core.svelte';
+	import { userCapacities, mutualContributors, userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import type { ProviderCapacity, Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
 	import { collectiveForest } from '$lib/collective.svelte';
-	import { userNamesOrAliasesCache, resolveToPublicKey } from '$lib/state/users.svelte';
+	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
 	import {
 		getColorForUserId,
@@ -50,11 +50,15 @@
 
 	const shouldShowToolbar = $derived(isMainRoute || isInventoryRoute);
 
-	// Search state (for main route)
+	// Search state (for main route and inventory)
 	let showSearchPanel = $state(false);
 	let searchQuery = $state('');
 	let searchPanelRef = $state<HTMLDivElement>();
 	let selectedResultIndex = $state(-1);
+	
+	// Inventory search state
+	let showInventorySearchPanel = $state(false);
+	let inventorySearchPanelRef = $state<HTMLDivElement>();
 
 	// Forest subtrees state (for main route)
 	let showForestPanel = $state(false);
@@ -64,6 +68,55 @@
 	const searchResults = $derived(
 		searchQuery.trim() && tree ? searchTreeForNavigation(tree, searchQuery) : []
 	);
+
+	// Provider names cache for inventory search
+	let providerNames = $state<Record<string, string>>({});
+
+	// Derived providers list for inventory filter
+	const inventoryProviders = $derived.by(() => {
+		const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
+		if (!networkCapacities) return [];
+
+		const providerMap = new Map<string, string>();
+		Object.values(networkCapacities).forEach((capacity: any) => {
+			if (capacity.provider_id && !providerMap.has(capacity.provider_id)) {
+				const displayName = providerNames[capacity.provider_id] || capacity.provider_id;
+				providerMap.set(capacity.provider_id, displayName);
+			}
+		});
+
+		return Array.from(providerMap.entries())
+			.map(([id, name]) => ({ id, name }))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	// Load provider names asynchronously
+	$effect(() => {
+		void (async () => {
+			const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
+			if (!networkCapacities) return;
+
+			const uniqueProviders = [...new Set(
+				Object.values(networkCapacities).map((cap: any) => cap.provider_id).filter(Boolean)
+			)];
+
+			for (const providerId of uniqueProviders) {
+				if (providerId && !providerNames[providerId]) {
+					try {
+						const name = await getUserName(providerId);
+						if (name) {
+							providerNames = {
+								...providerNames,
+								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
+							};
+						}
+					} catch (error) {
+						console.warn('Failed to get provider name:', providerId, error);
+					}
+				}
+			}
+		})();
+	});
 
 	// Helper function to get the sequence of node names from our current path
 	function getPathNodeNames(ourTree: Node | null, path: string[]): string[] {
@@ -225,13 +278,29 @@
 		}
 	}
 
-	// Search panel toggle
+	// Search panel toggle (tree search)
 	function toggleSearchPanel() {
 		showSearchPanel = !showSearchPanel;
 		if (!showSearchPanel) {
 			searchQuery = '';
 			selectedResultIndex = -1;
 		}
+	}
+
+	// Inventory search panel toggle
+	function toggleInventorySearchPanel() {
+		showInventorySearchPanel = !showInventorySearchPanel;
+		if (!showInventorySearchPanel) {
+			globalState.inventorySearchQuery = '';
+		}
+	}
+
+	// Clear all inventory filters
+	function clearInventoryFilters() {
+		globalState.inventorySearchQuery = '';
+		globalState.inventorySelectedProvider = 'all';
+		globalState.inventorySortBy = 'name';
+		globalState.inventorySortDirection = 'asc';
 	}
 
 	// Forest panel toggle
@@ -618,6 +687,17 @@
 								</button>
 								<span class="button-caption">New Capacity</span>
 							</div>
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button search-button"
+									class:search-active={showInventorySearchPanel}
+									title="Search capacities and shares"
+									onclick={toggleInventorySearchPanel}
+								>
+									🔍
+								</button>
+								<span class="button-caption">Search</span>
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -752,6 +832,71 @@
 
 				<div class="search-actions">
 					<button class="close-btn" onclick={toggleSearchPanel}>Close</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Inventory search panel for main route -->
+	{#if isMainRoute && showInventorySearchPanel}
+		<div class="inventory-search-panel" bind:this={inventorySearchPanelRef}>
+			<div class="search-content">
+				<h3>Search & Filter Inventory</h3>
+				
+				<!-- Search Input -->
+				<div class="search-input-container">
+					<input
+						type="text"
+						bind:value={globalState.inventorySearchQuery}
+						placeholder="Search capacities and shares..."
+						class="search-input"
+					/>
+				</div>
+
+				<!-- Filter Controls -->
+				<div class="inventory-filters">
+					<div class="filter-group">
+						<label for="provider-filter">Provider</label>
+						<select id="provider-filter" class="filter-select" bind:value={globalState.inventorySelectedProvider}>
+							<option value="all">All providers ({inventoryProviders.length})</option>
+							{#each inventoryProviders as provider}
+								<option value={provider.id}>{provider.name}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="filter-group">
+						<label for="sort-by">Sort by</label>
+						<select id="sort-by" class="filter-select" bind:value={globalState.inventorySortBy}>
+							<option value="name">Name</option>
+							<option value="allocated_slots">Allocated slots</option>
+							<option value="total_slots">Total slots</option>
+							<option value="provider">Provider</option>
+						</select>
+					</div>
+
+					<div class="filter-group">
+						<label for="sort-direction">Direction</label>
+						<button
+							id="sort-direction"
+							class="sort-direction-btn"
+							onclick={() => (globalState.inventorySortDirection = globalState.inventorySortDirection === 'asc' ? 'desc' : 'asc')}
+							title="Toggle sort direction"
+						>
+							{globalState.inventorySortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+						</button>
+					</div>
+				</div>
+
+				<!-- Clear Filters -->
+				{#if globalState.inventorySearchQuery || globalState.inventorySelectedProvider !== 'all' || globalState.inventorySortBy !== 'name' || globalState.inventorySortDirection !== 'asc'}
+					<button class="clear-filters-btn" onclick={clearInventoryFilters}>
+						Clear all filters
+					</button>
+				{/if}
+
+				<div class="search-actions">
+					<button class="close-btn" onclick={toggleInventorySearchPanel}>Close</button>
 				</div>
 			</div>
 		</div>
@@ -1201,6 +1346,103 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	/* Inventory search panel */
+	.inventory-search-panel {
+		position: fixed;
+		bottom: 60px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: white;
+		border: 1px solid #e0e0e0;
+		border-radius: 8px;
+		box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+		width: 400px;
+		max-width: 90vw;
+		max-height: 80vh;
+		overflow-y: auto;
+		z-index: 1000;
+	}
+
+	.inventory-filters {
+		display: grid;
+		grid-template-columns: 1fr 1fr auto;
+		gap: 12px;
+		margin-top: 16px;
+		padding: 12px;
+		background: #f9fafb;
+		border-radius: 6px;
+	}
+
+	.filter-group {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.filter-group label {
+		font-size: 11px;
+		font-weight: 500;
+		color: #6b7280;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.filter-select {
+		padding: 6px 8px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 13px;
+		background: white;
+		color: #374151;
+		cursor: pointer;
+		transition: border-color 0.2s ease;
+	}
+
+	.filter-select:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+
+	.sort-direction-btn {
+		padding: 6px 12px;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		background: white;
+		color: #6b7280;
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 600;
+		transition: all 0.2s ease;
+		white-space: nowrap;
+		height: fit-content;
+		align-self: flex-end;
+	}
+
+	.sort-direction-btn:hover {
+		background: #f3f4f6;
+		border-color: #9ca3af;
+		color: #374151;
+	}
+
+	.clear-filters-btn {
+		width: 100%;
+		padding: 8px 12px;
+		border: 1px solid #fca5a5;
+		border-radius: 4px;
+		background: #fef2f2;
+		color: #dc2626;
+		cursor: pointer;
+		font-size: 13px;
+		font-weight: 500;
+		transition: all 0.2s ease;
+		margin-top: 12px;
+	}
+
+	.clear-filters-btn:hover {
+		background: #fee2e2;
+		border-color: #f87171;
 	}
 
 	/* Mobile responsive */
