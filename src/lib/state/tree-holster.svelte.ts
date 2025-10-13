@@ -522,6 +522,14 @@ export function cleanupHolsterTree() {
 	console.log('[TREE-HOLSTER] Cleaned up');
 }
 
+/**
+ * Reset initialization state (for logout/re-login in same session)
+ */
+export function resetInitialization() {
+	console.log('[TREE-HOLSTER] Resetting initialization state');
+	cleanupHolsterTree();
+}
+
 // ============================================================================
 // Persistence
 // ============================================================================

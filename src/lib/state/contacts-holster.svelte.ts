@@ -174,6 +174,14 @@ export function cleanupHolsterContacts() {
 	console.log('[CONTACTS-HOLSTER] Cleaned up');
 }
 
+/**
+ * Reset initialization state (for logout/re-login in same session)
+ */
+export function resetInitialization() {
+	console.log('[CONTACTS-HOLSTER] Resetting initialization state');
+	cleanupHolsterContacts();
+}
+
 // ============================================================================
 // Persistence
 // ============================================================================

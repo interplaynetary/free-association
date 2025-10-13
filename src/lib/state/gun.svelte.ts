@@ -42,15 +42,10 @@ export const userPub = writable('');
 
 export const usersList = gun.get('freely-associating-players');
 
-// Add debugging to usersList reference
-console.log('[USERS-DEBUG] usersList initialized:', usersList);
-
 // Initialize usersList subscription immediately when module loads
 if (typeof window !== 'undefined') {
-	console.log('[USERS-DEBUG] Setting up usersList subscription in browser environment');
 	// Import and setup usersList subscription FIRST, before any auth checks
 	import('./network.svelte').then(({ setupUsersListSubscription }) => {
-		console.log('[USERS-DEBUG] About to call setupUsersListSubscription');
 		setupUsersListSubscription();
 		console.log('[USERS] Early usersList subscription initialized');
 	});
@@ -76,27 +71,12 @@ if (typeof window !== 'undefined') {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
 						console.log('[RECALL] Using alias from storage:', aliasToUse);
-						console.log('[RECALL] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
 						userAlias.set(aliasToUse);
 						userPub.set(pubToUse);
-						console.log('[USERS-DEBUG] [RECALL] Adding user to usersList:', {
-							pubKey: pubToUse?.slice(0, 20) + '...',
+						usersList.get(pubToUse).put({
 							alias: aliasToUse,
-							timestamp: Date.now()
+							lastSeen: Date.now()
 						});
-						usersList.get(pubToUse).put(
-							{
-								alias: aliasToUse,
-								lastSeen: Date.now()
-							},
-							(ack: any) => {
-								if (ack.err) {
-									console.error('[USERS-DEBUG] [RECALL] Error writing to usersList:', ack.err);
-								} else {
-									console.log('[USERS-DEBUG] [RECALL] Successfully wrote to usersList');
-								}
-							}
-						);
 					});
 				});
 
@@ -114,18 +94,9 @@ if (typeof window !== 'undefined') {
 					user.get('pub').once((actualPub: any) => {
 						const aliasToUse = actualAlias || user.is.alias;
 						const pubToUse = actualPub || user.is.pub;
-						console.log('[RECALL] Using alias from storage (pub fallback):', aliasToUse);
-						console.log(
-							'[RECALL] Using pub from storage (pub fallback):',
-							pubToUse?.slice(0, 20) + '...'
-						);
+						console.log('[RECALL] Using alias from storage (fallback):', aliasToUse);
 						userAlias.set(aliasToUse);
 						userPub.set(pubToUse);
-						console.log('[USERS-DEBUG] [RECALL-FALLBACK] Adding user to usersList:', {
-							pubKey: pubToUse?.slice(0, 20) + '...',
-							alias: aliasToUse,
-							timestamp: Date.now()
-						});
 						usersList.get(pubToUse).put({
 							alias: aliasToUse,
 							lastSeen: Date.now()
@@ -171,41 +142,20 @@ gun.on('auth', async () => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
 					console.log('[AUTH] Using alias from storage:', aliasToUse);
-					console.log('[AUTH] Using pub from storage:', pubToUse?.slice(0, 20) + '...');
 					userAlias.set(aliasToUse);
 					userPub.set(pubToUse);
-					console.log('[USERS-DEBUG] [AUTH] Adding user to usersList:', {
-						pubKey: pubToUse?.slice(0, 20) + '...',
+					usersList.get(pubToUse).put({
 						alias: aliasToUse,
-						timestamp: Date.now()
+						lastSeen: Date.now()
 					});
-					usersList.get(pubToUse).put(
-						{
-							alias: aliasToUse,
-							lastSeen: Date.now()
-						},
-						(ack: any) => {
-							if (ack.err) {
-								console.error('[USERS-DEBUG] [AUTH] Error writing to usersList:', ack.err);
-							} else {
-								console.log('[USERS-DEBUG] [AUTH] Successfully wrote to usersList');
-							}
-						}
-					);
 
 					console.log(`signed in as ${aliasToUse}`);
-					console.log(`userPub: ${pubToUse}`);
 
 					// Load existing user data
 					initializeUserDataStreams();
 				});
 			});
 
-			// Remove these unreliable console.log statements
-			// console.log(`signed in as ${user.is.alias}`);
-			// console.log(`userPub: ${user.is?.pub}`);
-
-			// Don't call manifest() here anymore - it's called inside the callback above
 			return;
 		}
 
@@ -218,32 +168,20 @@ gun.on('auth', async () => {
 					const aliasToUse = actualAlias || user.is.alias;
 					const pubToUse = actualPub || user.is.pub;
 					console.log('[AUTH] Using alias from storage (fallback):', aliasToUse);
-					console.log('[AUTH] Using pub from storage (fallback):', pubToUse?.slice(0, 20) + '...');
 					userAlias.set(aliasToUse);
 					userPub.set(pubToUse);
-					console.log('[USERS-DEBUG] [AUTH-FALLBACK] Adding user to usersList:', {
-						pubKey: pubToUse?.slice(0, 20) + '...',
-						alias: aliasToUse,
-						timestamp: Date.now()
-					});
 					usersList.get(pubToUse).put({
 						alias: aliasToUse,
 						lastSeen: Date.now()
 					});
 
 					console.log(`signed in as ${aliasToUse} (fallback)`);
-					console.log(`userPub: ${pubToUse} (fallback)`);
 
 					// Load existing user data
 					initializeUserDataStreams();
 				});
 			});
 
-			// Remove these unreliable console.log statements
-			// console.log(`signed in as ${user.is.alias}`);
-			// console.log(`userPub: ${user.is?.pub}`);
-
-			// Don't call initializeUserDataSubscriptions() here anymore - it's called inside the callback above
 			return;
 		} else {
 			throw new Error('Authentication failed - no alias found');
@@ -302,12 +240,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function login(alias: string, password: string): Promise<void> {
-	console.log(`[LOGIN] Attempting login for alias: "${alias}"`);
-
 	for (let attempt = 0; attempt < 3; attempt++) {
 		try {
 			await new Promise<void>((resolve, reject) => {
-				console.log(`[LOGIN] Attempt ${attempt + 1} for alias: "${alias}"`);
 				user.auth(alias, password, ({ err }: { err: any }) => {
 					if (err) {
 						console.log(`[LOGIN] Auth failed for "${alias}":`, err);
@@ -319,6 +254,24 @@ export async function login(alias: string, password: string): Promise<void> {
 						}
 					} else {
 						console.log(`[LOGIN] Auth succeeded for "${alias}"`);
+
+						// Set stores immediately after successful auth
+						const aliasToUse = user.is.alias;
+						const pubToUse = user.is.pub;
+						userAlias.set(aliasToUse);
+						userPub.set(pubToUse);
+
+						// Update usersList
+						usersList.get(pubToUse).put({
+							alias: aliasToUse,
+							lastSeen: Date.now()
+						});
+
+						// Initialize data streams (gun.on('auth') may not fire after recall)
+						initializeUserDataStreams().catch((err) => {
+							console.error('[LOGIN] Error initializing data streams:', err);
+						});
+
 						resolve();
 					}
 				});
@@ -398,8 +351,36 @@ export async function signout() {
 	while (user._.sea != null) {
 		await new Promise(requestAnimationFrame);
 	}
+
 	userAlias.set('');
 	userPub.set('');
+
+	// Reset Holster initialization flags
+	import('./tree-holster.svelte').then(({ resetInitialization: resetTree }) => {
+		if (resetTree) resetTree();
+	}).catch(() => {});
+
+	import('./capacities-holster.svelte').then(({ resetInitialization: resetCapacities }) => {
+		if (resetCapacities) resetCapacities();
+	}).catch(() => {});
+
+	import('./contacts-holster.svelte').then(({ resetInitialization: resetContacts }) => {
+		if (resetContacts) resetContacts();
+	}).catch(() => {});
+
+	import('./recognition-holster.svelte').then(({ resetInitialization: resetSogf }) => {
+		if (resetSogf) resetSogf();
+	}).catch(() => {});
+
+	import('./chat-holster.svelte').then(({ resetAllChatSubscriptions }) => {
+		if (resetAllChatSubscriptions) resetAllChatSubscriptions();
+	}).catch(() => {});
+
+	import('./compose-holster.svelte').then(({ resetInitialization: resetCompose }) => {
+		if (resetCompose) resetCompose();
+	}).catch(() => {});
+
+	console.log('[SIGNOUT] Logout complete');
 }
 
 export function changePassword(currentPassword: string, newPassword: string) {

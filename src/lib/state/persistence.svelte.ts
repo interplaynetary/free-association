@@ -333,6 +333,15 @@ export function persistContributorCapacityShares() {
  * Persist user's desired slot compose-from to Gun
  */
 export async function persistUserDesiredSlotComposeFrom() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[PERSIST] Using Holster for compose - skipping Gun persistence');
+		// Holster persistence happens in compose-holster.svelte.ts
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-from persistence');
 		return;
@@ -378,6 +387,15 @@ export async function persistUserDesiredSlotComposeFrom() {
  * Persist user's desired slot compose-into to Gun
  */
 export async function persistUserDesiredSlotComposeInto() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[PERSIST] Using Holster for compose - skipping Gun persistence');
+		// Holster persistence happens in compose-holster.svelte.ts
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-into persistence');
 		return;

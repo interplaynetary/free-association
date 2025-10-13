@@ -267,3 +267,11 @@ export function cleanupHolsterSogf() {
 
 	console.log('[SOGF-HOLSTER] Cleanup complete');
 }
+
+/**
+ * Reset initialization state (for logout/re-login in same session)
+ */
+export function resetInitialization() {
+	console.log('[SOGF-HOLSTER] Resetting initialization state');
+	cleanupHolsterSogf();
+}

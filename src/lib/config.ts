@@ -82,6 +82,16 @@ export const USE_HOLSTER_RECOGNITION =
 	(typeof localStorage !== 'undefined' &&
 		localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true');
 
+/**
+ * Use Holster for slot composition (compose-from/into)
+ * - When true: uses compose-holster.svelte.ts
+ * - When false: uses Gun-based compose in persistence.svelte.ts
+ */
+export const USE_HOLSTER_COMPOSE =
+	import.meta.env.VITE_USE_HOLSTER_COMPOSE === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true');
+
 // Log active flags in development
 if (import.meta.env.DEV && typeof window !== 'undefined') {
 	console.log('[CONFIG] Holster Migration Flags:', {
@@ -89,7 +99,8 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 		USE_HOLSTER_CAPACITIES,
 		USE_HOLSTER_TREE,
 		USE_HOLSTER_CHAT,
-		USE_HOLSTER_RECOGNITION
+		USE_HOLSTER_RECOGNITION,
+		USE_HOLSTER_COMPOSE
 	});
 
 	// Add toggle utilities to window
@@ -124,13 +135,20 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 			console.log(`[TOGGLE] Holster recognition: ${!current}`);
 			console.log('[TOGGLE] Reload page to apply changes');
 		},
+		compose: () => {
+			const current = localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true';
+			localStorage.setItem('USE_HOLSTER_COMPOSE', (!current).toString());
+			console.log(`[TOGGLE] Holster compose: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
 		status: () => {
 			console.log('[TOGGLE] Current Holster flags:', {
 				contacts: localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true',
 				capacities: localStorage.getItem('USE_HOLSTER_CAPACITIES') === 'true',
 				tree: localStorage.getItem('USE_HOLSTER_TREE') === 'true',
 				chat: localStorage.getItem('USE_HOLSTER_CHAT') === 'true',
-				recognition: localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true'
+				recognition: localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true',
+				compose: localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true'
 			});
 		}
 	};

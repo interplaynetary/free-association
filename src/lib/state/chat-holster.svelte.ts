@@ -286,6 +286,13 @@ export function clearAllHolsterChatSubscriptions(): void {
 }
 
 /**
+ * Reset all chat subscriptions (alias for logout/re-login)
+ */
+export function resetAllChatSubscriptions(): void {
+	clearAllHolsterChatSubscriptions();
+}
+
+/**
  * Get all active Holster chat subscription IDs
  */
 export function getActiveHolsterChatSubscriptions(): string[] {

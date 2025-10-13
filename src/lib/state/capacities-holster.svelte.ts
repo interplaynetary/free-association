@@ -324,6 +324,14 @@ export function cleanupHolsterCapacities() {
 	console.log('[CAPACITIES-HOLSTER] Cleaned up');
 }
 
+/**
+ * Reset initialization state (for logout/re-login in same session)
+ */
+export function resetInitialization() {
+	console.log('[CAPACITIES-HOLSTER] Resetting initialization state');
+	cleanupHolsterCapacities();
+}
+
 // ============================================================================
 // Persistence
 // ============================================================================

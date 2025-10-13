@@ -1002,32 +1002,42 @@
 			direction: 'from';
 		}> = [];
 
-		// Get all available slots that could compose INTO this slot
-		const availableSlots = $composeIntoDataProvider;
+		// Get all available sources that could compose INTO this slot
+		const availableSources = $composeIntoDataProvider;
 
-		availableSlots.forEach((slotItem) => {
-			// Only process slot-type targets for FROM compositions
-			if (slotItem.metadata.type !== 'slot') return;
+		availableSources.forEach((sourceItem) => {
+			let sourceCapacityId: string | undefined;
+			let sourceSlotId: string | undefined;
 
-			const sourceCapacityId = slotItem.metadata.capacityId;
-			const sourceSlotId = slotItem.metadata.slotId;
+			if (sourceItem.metadata.type === 'slot') {
+				// Handle slot sources (traditional slot-to-slot)
+				sourceCapacityId = sourceItem.metadata.capacityId;
+				sourceSlotId = sourceItem.metadata.slotId;
 
-			// Skip if we don't have valid slot metadata
-			if (!sourceCapacityId || !sourceSlotId) return;
+				// Skip if we don't have valid slot metadata
+				if (!sourceCapacityId || !sourceSlotId) return;
+			} else if (sourceItem.metadata.type === 'pubkey') {
+				// Handle pubkey sources (person-to-slot composition)
+				sourceCapacityId = sourceItem.id; // pubkey becomes the source "capacity"
+				sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
+			} else {
+				// Skip unknown types
+				return;
+			}
 
-			// Check if we have a user desire for this composition (we want FROM their slot INTO our slot)
+			// Check if we have a user desire for this composition (we want FROM their source INTO our slot)
 			const userDesire =
 				$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id] || 0;
 
-			// Check if there's a network desire for this composition (they want FROM their slot INTO our slot)
+			// Check if there's a network desire for this composition (they want FROM their source INTO our slot)
 			// From their perspective, this is a ComposeInto desire (INTO our slot)
 			let networkDesire = 0;
 			Object.values($networkDesiredSlotComposeInto).forEach((userCompositions) => {
-				const desire = userCompositions[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id];
+				const desire = userCompositions[sourceCapacityId!]?.[sourceSlotId!]?.[capacityId]?.[slot.id];
 				if (desire && desire > networkDesire) networkDesire = desire;
 			});
 
-			// Include slots where EITHER party has expressed desire (user OR network)
+			// Include sources where EITHER party has expressed desire (user OR network)
 			if (userDesire > 0 || networkDesire > 0) {
 				result.push({
 					sourceCapacityId,
@@ -1181,10 +1191,10 @@
 		// Set initial desire of 1 unit
 		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
 
-		// Update store (Gun handles timestamps natively now)
+		// Update store (will sync via Gun or Holster based on feature flag)
 		userDesiredSlotComposeInto.set(currentDesires);
 
-		console.log('[SLOT-COMPOSITION] Added INTO composition to user store, will sync via Gun:', {
+		console.log('[SLOT-COMPOSITION] Added INTO composition to user store:', {
 			sourceCapacity: capacityId,
 			sourceSlot: slot.id,
 			targetCapacity: targetCapacityId,
@@ -1197,11 +1207,26 @@
 
 	// Handle selecting a source slot for INTO composition (source slot → our slot)
 	function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
-		const sourceCapacityId = data.metadata?.capacityId;
-		const sourceSlotId = data.metadata?.slotId;
+		console.log('[SLOT-COMPOSITION] Adding FROM composition:', data);
 
-		if (!sourceCapacityId || !sourceSlotId) {
-			console.error('Invalid slot data for INTO composition:', data);
+		let sourceCapacityId: string;
+		let sourceSlotId: string;
+
+		if (data.metadata?.type === 'slot') {
+			// Handle slot sources (traditional slot-to-slot)
+			sourceCapacityId = data.metadata.capacityId;
+			sourceSlotId = data.metadata.slotId;
+
+			if (!sourceCapacityId || !sourceSlotId) {
+				console.error('Invalid slot data for FROM composition:', data);
+				return;
+			}
+		} else if (data.metadata?.type === 'pubkey') {
+			// Handle pubkey sources (person-to-slot composition)
+			sourceCapacityId = data.id; // pubkey becomes the source "capacity"
+			sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
+		} else {
+			console.error('Unknown source type for FROM composition:', data);
 			return;
 		}
 
@@ -1218,14 +1243,15 @@
 		// Set initial desire of 1 unit
 		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
 
-		// Update store (Gun handles timestamps natively now)
+		// Update store (will sync via Gun or Holster based on feature flag)
 		userDesiredSlotComposeFrom.set(currentDesires);
 
-		console.log('[SLOT-COMPOSITION] Added FROM composition to user store, will sync via Gun:', {
+		console.log('[SLOT-COMPOSITION] Added FROM composition to user store:', {
 			sourceCapacity: sourceCapacityId,
 			sourceSlot: sourceSlotId,
 			targetCapacity: capacityId,
-			targetSlot: slot.id
+			targetSlot: slot.id,
+			sourceType: data.metadata?.type || 'unknown'
 		});
 
 		showAddComposeInto = false;

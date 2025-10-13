@@ -802,10 +802,30 @@ const createOwnCapacitiesStream = withAuthentication(async (userId: string) => {
 });
 
 const createOwnDesiredSlotComposeFromStream = withAuthentication(async (userId: string) => {
+	// When using Holster, initialize Holster compose instead of Gun stream
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[NETWORK] Using Holster for compose-from - skipping Gun stream');
+		const { initializeHolsterComposeFrom } = await import('./compose-holster.svelte');
+		initializeHolsterComposeFrom();
+		return;
+	}
+
+	// Gun implementation
 	await createStream(ownDataStreamConfigs.desiredComposeFrom, userId);
 });
 
 const createOwnDesiredSlotComposeIntoStream = withAuthentication(async (userId: string) => {
+	// When using Holster, initialize Holster compose instead of Gun stream
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[NETWORK] Using Holster for compose-into - skipping Gun stream');
+		const { initializeHolsterComposeInto } = await import('./compose-holster.svelte');
+		initializeHolsterComposeInto();
+		return;
+	}
+
+	// Gun implementation
 	await createStream(ownDataStreamConfigs.desiredComposeInto, userId);
 });
 
@@ -885,14 +905,25 @@ const createMutualContributorStreams = withAuthentication(
 			return;
 		}
 
+		// Check if Holster compose is enabled to skip Gun compose streams
+		const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
 		// Create all mutual contributor streams
-		const streamTypes = [
+		let streamTypes = [
 			'capacities',
 			'allocationStates',
 			'desiredSlotComposeFrom',
 			'desiredSlotComposeInto',
 			'tree'
 		] as const;
+
+		// Skip compose streams if using Holster
+		if (USE_HOLSTER_COMPOSE) {
+			streamTypes = streamTypes.filter(
+				(type) => type !== 'desiredSlotComposeFrom' && type !== 'desiredSlotComposeInto'
+			) as any;
+			console.log(`[NETWORK] Skipping Gun compose streams for ${contributorId} - using Holster`);
+		}
 
 		for (const streamType of streamTypes) {
 			const config = mutualContributorStreamConfigs[streamType];
@@ -917,7 +948,9 @@ const createMutualContributorStreams = withAuthentication(
  */
 export async function initializeUserDataStreams(): Promise<void> {
 	try {
-		if (!userPub || !get(userPub)) {
+		const currentUserPub = get(userPub);
+
+		if (!userPub || !currentUserPub) {
 			console.log('[NETWORK] Cannot initialize streams - not authenticated');
 			return;
 		}
@@ -958,6 +991,44 @@ export async function initializeUserDataStreams(): Promise<void> {
 		console.log('[NETWORK] User data streams initialized successfully');
 	} catch (error) {
 		console.error('[NETWORK] Error initializing user data streams:', error);
+	}
+}
+
+/**
+ * Initialize all Holster user data streams
+ * Called after Holster authentication succeeds
+ * This is completely independent from Gun initialization
+ */
+export async function initializeHolsterDataStreams(): Promise<void> {
+	// Import holsterUser to check authentication
+	const { holsterUser } = await import('./holster.svelte');
+
+	if (!holsterUser.is) {
+		console.log('[NETWORK-HOLSTER] Cannot initialize - not authenticated');
+		return;
+	}
+
+	console.log('[NETWORK-HOLSTER] Initializing all Holster data streams');
+
+	try {
+		// Initialize all Holster modules that have been migrated
+		const { initializeHolsterContacts } = await import('./contacts-holster.svelte');
+		const { initializeHolsterCapacities } = await import('./capacities-holster.svelte');
+		const { initializeHolsterTree } = await import('./tree-holster.svelte');
+		const { initializeHolsterSogf } = await import('./recognition-holster.svelte');
+
+		// Initialize each module
+		initializeHolsterContacts();
+		initializeHolsterCapacities();
+		initializeHolsterTree();
+		initializeHolsterSogf();
+
+		// Chat initialization is handled by getChatMessages() calling subscribeToHolsterChat()
+		// No explicit initialization needed here
+
+		console.log('[NETWORK-HOLSTER] All Holster data streams initialized successfully');
+	} catch (error) {
+		console.error('[NETWORK-HOLSTER] Error initializing Holster data streams:', error);
 	}
 }
 
@@ -1273,6 +1344,10 @@ chatIdsToSubscribe.subscribe(debouncedUpdateChatSubscriptions);
 // Track active Holster SOGF subscriptions
 const activeHolsterSogfSubs = new Set<string>();
 
+// Track active Holster compose subscriptions for mutual contributors
+const activeHolsterComposeFromSubs = new Set<string>();
+const activeHolsterComposeIntoSubs = new Set<string>();
+
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
 	/*console.log(
@@ -1351,7 +1426,7 @@ const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) =>
 contributors.subscribe(debouncedUpdateSOGFSubscriptions);
 
 // Watch for changes to mutual contributors and subscribe to get their capacity data and shares
-const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: string[]) => {
+const debouncedUpdateMutualSubscriptions = debounce(async (currentMutualContributors: string[]) => {
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {
@@ -1370,6 +1445,10 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 		networkDesiredSlotComposeFrom.set({});
 		networkDesiredSlotComposeInto.set({});
 		mutualStreamManager.stopAllStreams();
+
+		// Clear Holster compose tracking sets
+		activeHolsterComposeFromSubs.clear();
+		activeHolsterComposeIntoSubs.clear();
 		return;
 	}
 
@@ -1381,6 +1460,107 @@ const debouncedUpdateMutualSubscriptions = debounce((currentMutualContributors: 
 		{ store: networkDesiredSlotComposeInto, name: 'networkDesiredComposeInto' }
 	];
 
+	// Check if Holster compose is enabled
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[COMPOSE-HOLSTER] Using Holster for compose - setting up Holster compose streams for mutual contributors');
+
+		// Get contributors with resolved public keys
+		const contributorsWithPubKeys = currentMutualContributors
+			.map(id => resolveToPublicKey(id))
+			.filter((pubKey): pubKey is string => pubKey !== null && pubKey !== undefined);
+
+		const ourPubKey = get(userPub);
+
+		// === COMPOSE-FROM subscriptions ===
+		// Remove subscriptions for contributors no longer in the list
+		activeHolsterComposeFromSubs.forEach(pubKey => {
+			if (!contributorsWithPubKeys.includes(pubKey)) {
+				console.log(`[COMPOSE-FROM-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterComposeFromSubs.delete(pubKey);
+				// Clear from network store
+				networkDesiredSlotComposeFrom.update((current) => {
+					const { [pubKey]: _, ...rest } = current;
+					return rest;
+				});
+			}
+		});
+
+		// Add subscriptions for new contributors
+		contributorsWithPubKeys.forEach(pubKey => {
+			// Skip ourselves
+			if (pubKey === ourPubKey) {
+				return;
+			}
+
+			if (!activeHolsterComposeFromSubs.has(pubKey)) {
+				console.log(`[COMPOSE-FROM-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterComposeFromSubs.add(pubKey);
+
+				// Import and subscribe
+				import('./compose-holster.svelte').then(({ subscribeToContributorHolsterComposeFrom }) => {
+					subscribeToContributorHolsterComposeFrom(pubKey, (composeFrom) => {
+						// Update network store
+						networkDesiredSlotComposeFrom.update((current) => ({
+							...current,
+							[pubKey]: composeFrom
+						}));
+					});
+				});
+			}
+		});
+
+		// === COMPOSE-INTO subscriptions ===
+		// Remove subscriptions for contributors no longer in the list
+		activeHolsterComposeIntoSubs.forEach(pubKey => {
+			if (!contributorsWithPubKeys.includes(pubKey)) {
+				console.log(`[COMPOSE-INTO-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterComposeIntoSubs.delete(pubKey);
+				// Clear from network store
+				networkDesiredSlotComposeInto.update((current) => {
+					const { [pubKey]: _, ...rest } = current;
+					return rest;
+				});
+			}
+		});
+
+		// Add subscriptions for new contributors
+		contributorsWithPubKeys.forEach(pubKey => {
+			// Skip ourselves
+			if (pubKey === ourPubKey) {
+				return;
+			}
+
+			if (!activeHolsterComposeIntoSubs.has(pubKey)) {
+				console.log(`[COMPOSE-INTO-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+				activeHolsterComposeIntoSubs.add(pubKey);
+
+				// Import and subscribe
+				import('./compose-holster.svelte').then(({ subscribeToContributorHolsterComposeInto }) => {
+					subscribeToContributorHolsterComposeInto(pubKey, (composeInto) => {
+						// Update network store
+						networkDesiredSlotComposeInto.update((current) => ({
+							...current,
+							[pubKey]: composeInto
+						}));
+					});
+				});
+			}
+		});
+
+		console.log(`[COMPOSE-HOLSTER] Active Holster compose subscriptions: from=${activeHolsterComposeFromSubs.size}, into=${activeHolsterComposeIntoSubs.size}`);
+
+		// Note: Still create Gun streams for other data (capacities, allocationStates, tree)
+		// but skip compose-from/into streams
+		mutualStreamManager.updateSubscriptions(
+			currentMutualContributors,
+			createMutualContributorStreams
+		);
+		return;
+	}
+
+	// Gun implementation (legacy) - create all streams including compose
 	mutualStreamManager.updateSubscriptions(
 		currentMutualContributors,
 		createMutualContributorStreams
@@ -1411,3 +1591,32 @@ mutualContributors.subscribe((currentMutualContributors) => {
 		);
 	}, 3000);
 });
+
+// ============================================================================
+// Development Test Utilities
+// ============================================================================
+
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	(window as any).testNetworkInit = {
+		// Test Gun initialization
+		testGunInit: async () => {
+			console.log('[TEST] Testing Gun initialization...');
+			console.log('[TEST] Current userPub:', get(userPub) || '(not authenticated)');
+			await initializeUserDataStreams();
+			console.log('[TEST] Gun initialization complete');
+		},
+
+		// Test Holster initialization
+		testHolsterInit: async () => {
+			console.log('[TEST] Testing Holster initialization...');
+			const { holsterUser } = await import('./holster.svelte');
+			console.log('[TEST] Holster authenticated:', holsterUser.is?.username || '(not authenticated)');
+			await initializeHolsterDataStreams();
+			console.log('[TEST] Holster initialization complete');
+		}
+	};
+
+	console.log('[TEST] Network initialization test utilities loaded');
+	console.log('[TEST] Run window.testNetworkInit.testGunInit() to test Gun initialization');
+	console.log('[TEST] Run window.testNetworkInit.testHolsterInit() to test Holster initialization');
+}
