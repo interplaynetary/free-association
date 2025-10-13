@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { writeAtPath, readAtPath, listenAtPath } from '../utils/holsterData';
+import { addTimestamp, getTimestamp, mergeByTimestamp } from '../utils/holsterTime';
 
 // ============================================================================
 // ZOD SCHEMAS (same as p2p-decider.svelte.ts)
@@ -9,19 +10,19 @@ const PlayerSchema = z.string().min(1);
 
 const ChallengeSchema = z.object({
 	content: z.string(),
-	timestamp: z.number(),
+	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
 const CommentSchema = z.object({
 	content: z.string(),
-	timestamp: z.number(),
+	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
 const ModificationProposalSchema = z.object({
 	content: z.string(),
-	timestamp: z.number(),
+	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
@@ -29,7 +30,7 @@ const SupportExpressionSchema = z.record(z.string(), z.number().int().min(0));
 
 const ProposalSchema = z.object({
 	content: z.string().nullable(),
-	timestamp: z.number(),
+	_updatedAt: z.number(),
 	authorPub: z.string(),
 	challenges: z.array(ChallengeSchema).optional(),
 	comments: z.array(CommentSchema).optional(),
@@ -132,7 +133,11 @@ class ReactiveP2PDecider {
 		for (const [_pub, proposal] of this.proposalsState) {
 			if (proposal) result.push(proposal);
 		}
-		return result.sort((a, b) => a.timestamp - b.timestamp);
+		return result.sort((a, b) => {
+			const tsA = getTimestamp(a) || 0;
+			const tsB = getTimestamp(b) || 0;
+			return tsA - tsB;
+		});
 	}
 
 	private getAllChallenges(): Map<string, Challenge[]> {
@@ -153,7 +158,11 @@ class ReactiveP2PDecider {
 		
 		// Sort by timestamp
 		for (const [key, challenges] of result) {
-			result.set(key, challenges.sort((a, b) => a.timestamp - b.timestamp));
+			result.set(key, challenges.sort((a, b) => {
+				const tsA = getTimestamp(a) || 0;
+				const tsB = getTimestamp(b) || 0;
+				return tsA - tsB;
+			}));
 		}
 		
 		return result;
@@ -174,7 +183,11 @@ class ReactiveP2PDecider {
 		}
 		
 		for (const [key, comments] of result) {
-			result.set(key, comments.sort((a, b) => a.timestamp - b.timestamp));
+			result.set(key, comments.sort((a, b) => {
+				const tsA = getTimestamp(a) || 0;
+				const tsB = getTimestamp(b) || 0;
+				return tsA - tsB;
+			}));
 		}
 		
 		return result;
@@ -195,7 +208,11 @@ class ReactiveP2PDecider {
 		}
 		
 		for (const [key, modifications] of result) {
-			result.set(key, modifications.sort((a, b) => a.timestamp - b.timestamp));
+			result.set(key, modifications.sort((a, b) => {
+				const tsA = getTimestamp(a) || 0;
+				const tsB = getTimestamp(b) || 0;
+				return tsA - tsB;
+			}));
 		}
 		
 		return result;
@@ -415,7 +432,13 @@ class ReactiveP2PDecider {
 				(data) => {
 					if (data) {
 						console.log(`📥 Received proposal from ${participantPub}`);
-						this.proposalsState.set(participantPub, ProposalSchema.parse(data));
+						const newProposal = ProposalSchema.parse(data);
+						const existingProposal = this.proposalsState.get(participantPub);
+						// Use mergeByTimestamp to keep the newer version
+						const merged = mergeByTimestamp(existingProposal, newProposal);
+						if (merged) {
+							this.proposalsState.set(participantPub, merged);
+						}
 					}
 				},
 				true  // Get initial data
@@ -434,7 +457,12 @@ class ReactiveP2PDecider {
 							if (!this.challengesState.has(participantPub)) {
 								this.challengesState.set(participantPub, new Map());
 							}
-							this.challengesState.get(participantPub)!.set(proposalAuthorPub, ChallengeSchema.parse(data));
+							const newChallenge = ChallengeSchema.parse(data);
+							const existingChallenge = this.challengesState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = mergeByTimestamp(existingChallenge, newChallenge);
+							if (merged) {
+								this.challengesState.get(participantPub)!.set(proposalAuthorPub, merged);
+							}
 						}
 					},
 					true
@@ -451,7 +479,12 @@ class ReactiveP2PDecider {
 							if (!this.commentsState.has(participantPub)) {
 								this.commentsState.set(participantPub, new Map());
 							}
-							this.commentsState.get(participantPub)!.set(proposalAuthorPub, CommentSchema.parse(data));
+							const newComment = CommentSchema.parse(data);
+							const existingComment = this.commentsState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = mergeByTimestamp(existingComment, newComment);
+							if (merged) {
+								this.commentsState.get(participantPub)!.set(proposalAuthorPub, merged);
+							}
 						}
 					},
 					true
@@ -468,7 +501,12 @@ class ReactiveP2PDecider {
 							if (!this.modificationsState.has(participantPub)) {
 								this.modificationsState.set(participantPub, new Map());
 							}
-							this.modificationsState.get(participantPub)!.set(proposalAuthorPub, ModificationProposalSchema.parse(data));
+							const newModification = ModificationProposalSchema.parse(data);
+							const existingModification = this.modificationsState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = mergeByTimestamp(existingModification, newModification);
+							if (merged) {
+								this.modificationsState.get(participantPub)!.set(proposalAuthorPub, merged);
+							}
 						}
 					},
 					true
@@ -515,11 +553,10 @@ class ReactiveP2PDecider {
 		const config = this.config;
 
 		const agendaIndex = config.currentAgendaIndex;
-		const proposal = {
+		const proposal = addTimestamp({
 			content,
-			timestamp: Date.now(),
 			authorPub: this.myPublicKey,
-		};
+		});
 
 		console.log(`✍️ Writing my proposal for agenda item ${agendaIndex}:`, content);
 
@@ -540,11 +577,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyChallengeToProposal(proposalAuthorPub: string, challengeContent: string): Promise<void> {
-		const challenge: Challenge = {
+		const challenge = addTimestamp({
 			content: challengeContent,
-			timestamp: Date.now(),
 			authorPub: this.myPublicKey,
-		};
+		});
 
 		console.log(`✍️ Writing challenge to proposal by ${proposalAuthorPub}`);
 
@@ -565,11 +601,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyCommentOnProposal(proposalAuthorPub: string, commentContent: string): Promise<void> {
-		const comment: Comment = {
+		const comment = addTimestamp({
 			content: commentContent,
-			timestamp: Date.now(),
 			authorPub: this.myPublicKey,
-		};
+		});
 
 		console.log(`✍️ Writing comment on proposal by ${proposalAuthorPub}`);
 
@@ -590,11 +625,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyModificationToProposal(proposalAuthorPub: string, modificationContent: string): Promise<void> {
-		const modification: ModificationProposal = {
+		const modification = addTimestamp({
 			content: modificationContent,
-			timestamp: Date.now(),
 			authorPub: this.myPublicKey,
-		};
+		});
 
 		console.log(`✍️ Writing modification to proposal by ${proposalAuthorPub}`);
 
