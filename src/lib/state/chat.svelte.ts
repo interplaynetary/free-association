@@ -3,6 +3,8 @@ import { browser } from '$app/environment';
 import { writable, get, type Writable, derived } from 'svelte/store';
 import SEA from 'gun/sea';
 import type { ChatReadStates, ChatReadState } from '$lib/schema';
+import { USE_HOLSTER_CHAT } from '$lib/config';
+import * as HolsterChat from './chat-holster.svelte';
 
 interface Message {
 	who: string;
@@ -129,6 +131,10 @@ export function unsubscribeFromChat(chatId: string) {
  * Get messages store for a specific chat (subscribes if not already subscribed)
  */
 export function getChatMessages(chatId: string): Writable<Message[]> {
+	if (USE_HOLSTER_CHAT) {
+		return HolsterChat.getHolsterChatMessages(chatId) as Writable<Message[]>;
+	}
+
 	const subscription = chatSubscriptions.get(chatId) || subscribeToChat(chatId);
 	return subscription.store;
 }
@@ -137,6 +143,10 @@ export function getChatMessages(chatId: string): Writable<Message[]> {
  * Send a message to a chat
  */
 export async function sendMessage(chatId: string, messageText: string): Promise<void> {
+	if (USE_HOLSTER_CHAT) {
+		return HolsterChat.sendHolsterMessage(chatId, messageText);
+	}
+
 	if (!messageText.trim()) {
 		throw new Error('Message cannot be empty');
 	}
@@ -193,6 +203,11 @@ export function clearAllChatSubscriptions() {
 export function clearAllChatData() {
 	clearAllChatSubscriptions();
 	clearChatReadStates();
+
+	if (USE_HOLSTER_CHAT) {
+		HolsterChat.clearAllHolsterChatSubscriptions();
+	}
+
 	//console.log('[Chat State] Cleared all chat data');
 }
 

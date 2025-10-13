@@ -1213,8 +1213,8 @@ If critical issues after Gun removal:
 - [x] Phase 5: Migrate Contacts ✅
 - [x] Phase 6: Migrate Capacities ✅
 - [x] Phase 7: Migrate Tree ✅
-- [ ] Phase 8: Migrate Recognition
-- [ ] Phase 9: Migrate Chat
+- [x] Phase 8: Migrate Recognition ✅
+- [x] Phase 9: Migrate Chat ✅
 - [ ] Phase 10: Migrate Authentication System
 - [ ] Phase 11: Migrate Network Layer
 - [ ] Phase 12: Remove Gun
@@ -1357,18 +1357,103 @@ Holster/Gun cannot handle `undefined` values:
 - ✅ All nodes persist after page reload
 - ✅ Performance dramatically improved
 
+### Phase 8: Recognition/SOGF Migration ✅
+
+**Files Created:**
+- `src/lib/state/recognition-holster.svelte.ts` - Holster SOGF implementation
+
+**Files Modified:**
+- `src/lib/config.ts` - Added `USE_HOLSTER_RECOGNITION` flag
+- `src/lib/state/core.svelte.ts` - Conditional support for both implementations
+- `src/lib/state/network.svelte.ts` - Initialize Holster SOGF when flag enabled
+- `src/lib/state/persistence.svelte.ts` - Skip Gun persistence when using Holster
+- `src/lib/state/subscriptions.svelte.ts` - Handle Holster persistence in debounce
+
+**Key Learnings:**
+1. ✅ SOGF is a flat ShareMap (simple key-value), so full-node writes are acceptable
+2. ✅ **Svelte 5 $state rune usage**: Use `let` not `const`, access directly without `.value`
+3. ✅ Still subscribe to contributors' Gun SOGF streams to receive their shares
+4. ✅ Only our own SOGF persistence switches to Holster when flag enabled
+5. ✅ Feature flag toggle works seamlessly via `window.toggleHolster.recognition()`
+
+**Testing Results:**
+- ✅ SOGF persists to Holster correctly
+- ✅ Real-time sync validated
+- ✅ Toggle between Gun/Holster works correctly
+- ✅ Timestamps prevent conflict issues
+- ✅ Debounced persistence (300ms) batches updates efficiently
+
+---
+
+### Phase 9: Chat Migration ✅
+
+**Files Created:**
+- `src/lib/state/chat-holster.svelte.ts` - Holster chat implementation with optimistic UI
+
+**Files Modified:**
+- `src/lib/config.ts` - Added `USE_HOLSTER_CHAT` flag with toggle utility
+- `src/lib/state/chat.svelte.ts` - Conditional routing to Holster or Gun based on flag
+- `src/lib/state/network.svelte.ts` - Skip Gun chat streams when using Holster
+- `src/lib/components/ChatMessage.svelte` - Added status indicator for optimistic UI
+
+**Key Architectural Differences:**
+- **Gun**: `.map()` streams individual messages, auto-resolves references
+- **Holster**: Returns complete object with all messages, requires manual delta detection
+- **Gun**: Reference-based storage (message in `user.get('all')`, reference in chat)
+- **Holster**: Direct storage (message directly at `holster.get(chatId).next(messageId)`)
+
+**Features Implemented:**
+1. ✅ **Direct storage** - No Gun-style references, simpler data structure
+2. ✅ **Delta detection** - Tracks `lastSeenTimestamp` to filter duplicate network updates
+3. ✅ **Optimistic UI** - Messages appear instantly with "Sending..." status
+4. ✅ **Status tracking** - `pending`, `sent`, `failed` states with visual indicators
+5. ✅ **Svelte 5 reactivity** - Used `$derived` for reactive status display
+6. ✅ **Deduplication** - Prevents duplicate messages by timestamp comparison
+
+**Key Learnings:**
+1. ✅ **Holster returns complete objects** - No streaming, use manual delta detection
+2. ✅ **Update timestamp before sending** - Prevents network duplicate from racing with callback
+3. ✅ **Create new objects, don't mutate** - Using `delete` doesn't trigger Svelte reactivity
+4. ✅ **Use `$derived` for computed values** - In Svelte 5, const values aren't reactive
+5. ✅ **Plain text by design** - No encryption for capacity chats
+
+**Testing Results:**
+- ✅ Optimistic UI works - instant message display
+- ✅ Status indicator clears on success
+- ✅ Failed messages show error status
+- ✅ Real-time sync validated
+- ✅ Delta detection prevents duplicates
+- ✅ Toggle between Gun/Holster works correctly
+- ✅ No race conditions with network updates
+
+**Known Issues / Security Considerations:**
+
+⚠️ **Messages Not in User Space**
+
+Current implementation stores messages in **public global space**:
+```javascript
+// Current implementation (INSECURE)
+holster.get(chatId).next(messageId).put(message);  // Public space
+```
+
+**Security Risks:**
+- Anyone who knows the `chatId` can write/overwrite messages
+- No authentication required to modify chat data
+- Messages stored as **plain text** (no encryption)
+
+**Proper Implementation (Future):**
+```javascript
+// Secure implementation (requires authentication)
+holsterUser.get('chats').next(chatId).next(messageId).put(message);  // User space
+```
+
+**Status:** Documented but not yet implemented (acceptable for capacity chat POC)
+
 ---
 
 ## Next Immediate Steps
 
-**Phase 8: Migrate Recognition/SOGF Module**
-
-Following the established pattern:
-1. Create `src/lib/state/recognition-holster.svelte.ts`
-2. Add `USE_HOLSTER_RECOGNITION` flag to config
-3. Handle peer data access (array syntax for accessing other users' data)
-4. Test mutual recognition calculations
-5. Test toggle and real-time sync
+**Phase 10: Migrate Authentication System**
 
 ---
 
@@ -1403,5 +1488,5 @@ This optimization was completed during Phase 7 and is now production-ready.
 
 ---
 
-*Last Updated: 2025-10-11*
-*Status: Phase 7 Complete (with incremental persistence optimization) - Ready for Phase 8 (Recognition/SOGF)*
+*Last Updated: 2025-10-13*
+*Status: Phase 9 Complete (Chat with optimistic UI) - Ready for Phase 10 (Authentication System)*

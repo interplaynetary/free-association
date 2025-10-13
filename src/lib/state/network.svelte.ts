@@ -8,7 +8,7 @@ import {
 	isLoadingContacts,
 	initializeContacts
 } from '$lib/state/users.svelte';
-import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION } from '$lib/config';
+import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION, USE_HOLSTER_CHAT } from '$lib/config';
 import { initializeHolsterCapacities } from './capacities-holster.svelte';
 import { initializeHolsterTree } from './tree-holster.svelte';
 import { initializeHolsterSogf } from './recognition-holster.svelte';
@@ -1244,6 +1244,15 @@ const chatIdsToSubscribe = derived(
 
 // Watch for changes to chat IDs and subscribe to their message streams
 const debouncedUpdateChatSubscriptions = debounce((chatIds: string[]) => {
+	// Skip Gun chat streams when using Holster
+	if (USE_HOLSTER_CHAT) {
+		console.log('[NETWORK] Using Holster for chat - skipping Gun chat streams');
+		chatStreamManager.stopAllStreams();
+		// Note: Holster chat subscriptions are managed by chat-holster.svelte.ts
+		// via getChatMessages() which calls subscribeToHolsterChat()
+		return;
+	}
+
 	// Only run this if we're authenticated
 	try {
 		if (!userPub || !get(userPub)) {

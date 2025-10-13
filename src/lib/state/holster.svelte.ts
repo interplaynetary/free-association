@@ -218,7 +218,8 @@ export function cleanupAllHolsterSubscriptions() {
 		import('./contacts-holster.svelte').then(m => m.cleanupHolsterContacts()),
 		import('./capacities-holster.svelte').then(m => m.cleanupHolsterCapacities()),
 		import('./tree-holster.svelte').then(m => m.cleanupHolsterTree()),
-		import('./recognition-holster.svelte').then(m => m.cleanupHolsterSogf())
+		import('./recognition-holster.svelte').then(m => m.cleanupHolsterSogf()),
+		import('./chat-holster.svelte').then(m => m.cleanupHolsterChat())
 	]).then(() => {
 		console.log('[HOLSTER] All subscriptions cleaned up');
 	}).catch(err => {
