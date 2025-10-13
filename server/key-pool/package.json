@@ -1,28 +1,21 @@
 {
-  "name": "ai-proxy",
+  "name": "key-pool",
   "version": "2.0.0",
   "type": "module",
-  "description": "AI Proxy Gateway for Free Association",
+  "description": "API key pool manager with health monitoring and rotation",
   "main": "server.ts",
   "scripts": {
     "start": "bun run server.ts",
     "dev": "bun run --watch server.ts"
   },
   "dependencies": {
-    "body-parser": "^1.20.2",
-    "cors": "^2.8.5",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
-    "helmet": "^7.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "node-fetch": "^3.3.2",
     "zod": "^4.1.12"
   },
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
     "@types/express": "^5.0.3",
-    "@types/jsonwebtoken": "^9.0.10",
     "bun-types": "^1.3.0"
   },
   "peerDependencies": {

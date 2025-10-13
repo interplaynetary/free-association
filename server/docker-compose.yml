@@ -47,6 +47,63 @@ services:
       retries: 3
       start_period: 15s
 
+  key-pool:
+    build:
+      context: ./key-pool
+      dockerfile: Dockerfile
+    container_name: key-pool
+    ports:
+      - "8769:8769"
+    environment:
+      - KEY_POOL_HOST=0.0.0.0
+      - KEY_POOL_PORT=8769
+      - HEALTH_CHECK_INTERVAL=30000
+      # OpenRouter keys (recommended - one key for all models, comma-separated for pooling)
+      - OPENROUTER_KEYS=${OPENROUTER_KEYS:-}
+      # Optional: Direct provider keys (for users with direct API access)
+      - GPT_4_KEYS=${GPT_4_KEYS:-}
+      - GPT_4_TURBO_KEYS=${GPT_4_TURBO_KEYS:-}
+      - GPT_3_5_TURBO_KEYS=${GPT_3_5_TURBO_KEYS:-}
+      - CLAUDE_3_OPUS_KEYS=${CLAUDE_3_OPUS_KEYS:-}
+      - CLAUDE_3_SONNET_KEYS=${CLAUDE_3_SONNET_KEYS:-}
+      - CLAUDE_3_HAIKU_KEYS=${CLAUDE_3_HAIKU_KEYS:-}
+      - MISTRAL_LARGE_KEYS=${MISTRAL_LARGE_KEYS:-}
+      - MISTRAL_MEDIUM_KEYS=${MISTRAL_MEDIUM_KEYS:-}
+      - MISTRAL_SMALL_KEYS=${MISTRAL_SMALL_KEYS:-}
+    networks:
+      - free-association-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8769/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  llm-router:
+    build:
+      context: ./llm-router
+      dockerfile: Dockerfile
+    container_name: llm-router
+    ports:
+      - "8768:8768"
+    environment:
+      - LLM_ROUTER_HOST=0.0.0.0
+      - LLM_ROUTER_PORT=8768
+      - KEY_POOL_URL=http://key-pool:8769
+    networks:
+      - free-association-network
+    depends_on:
+      key-pool:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8768/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   ai-proxy:
     build:
       context: ./ai-proxy
@@ -58,12 +115,22 @@ services:
       - AI_PROXY_HOST=0.0.0.0
       - AI_PROXY_PORT=8767
       - NODE_ENV=${NODE_ENV:-development}
+      - LLM_ROUTER_URL=http://llm-router:8768
       - MASTER_API_KEY=${MASTER_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174}
       - DEBUG=false
+      # Optional: Override default provider API URLs
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-https://api.anthropic.com/v1}
+      - MISTRAL_BASE_URL=${MISTRAL_BASE_URL:-https://api.mistral.ai/v1}
+      - APP_URL=${APP_URL:-https://free-association.playnet.lol}
     networks:
       - free-association-network
+    depends_on:
+      llm-router:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8767/health"]

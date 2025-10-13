@@ -1,4 +1,4 @@
-# Bun-based AI Proxy Dockerfile
+# Bun-based Key Pool Manager Dockerfile
 FROM oven/bun:latest
 WORKDIR /app
 
@@ -6,22 +6,21 @@ WORKDIR /app
 COPY package.json ./
 COPY tsconfig.json ./
 
-# Install dependencies with bun (includes dev deps for types)
+# Install dependencies (includes dev deps for types)
 RUN bun install
 
-# Copy all app code
+# Copy code
 COPY . .
 
-# Expose the API port
-EXPOSE 8767
+EXPOSE 8769
 
-# Environment variables
-ENV AI_PROXY_HOST=0.0.0.0
-ENV AI_PROXY_PORT=8767
+ENV KEY_POOL_HOST=0.0.0.0
+ENV KEY_POOL_PORT=8769
+ENV HEALTH_CHECK_INTERVAL=30000
 
-# Healthcheck using Bun's HTTP
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8767/health || exit 1
+  CMD curl -f http://localhost:8769/health || exit 1
 
 # Run TypeScript server (Bun runs TS natively)
 CMD ["bun", "run", "server.ts"]
+

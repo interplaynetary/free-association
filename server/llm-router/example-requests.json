@@ -1,0 +1,158 @@
+{
+  "examples": [
+    {
+      "name": "Recognition Analysis - Mutual Recognition",
+      "request": {
+        "requestType": "recognition-analysis",
+        "players": [
+          {
+            "id": "alice",
+            "name": "Alice",
+            "recognitions": {
+              "bob": 30,
+              "charlie": 20,
+              "diana": 50
+            }
+          },
+          {
+            "id": "bob",
+            "name": "Bob",
+            "recognitions": {
+              "alice": 40,
+              "charlie": 10,
+              "diana": 50
+            }
+          },
+          {
+            "id": "charlie",
+            "name": "Charlie",
+            "recognitions": {
+              "alice": 25,
+              "bob": 15,
+              "diana": 60
+            }
+          },
+          {
+            "id": "diana",
+            "name": "Diana",
+            "recognitions": {
+              "alice": 45,
+              "bob": 35,
+              "charlie": 20
+            }
+          }
+        ],
+        "analysisType": "mutual-recognition",
+        "maxTokens": 1200
+      }
+    },
+    {
+      "name": "Capacity Recommendation",
+      "request": {
+        "requestType": "capacity-recommendation",
+        "player": {
+          "id": "alice",
+          "name": "Alice",
+          "surplusCapacities": [
+            {
+              "type": "housing",
+              "quantity": 2,
+              "description": "2 spare bedrooms in 3BR apartment"
+            },
+            {
+              "type": "workspace",
+              "quantity": 1,
+              "description": "Dedicated office space with high-speed internet"
+            },
+            {
+              "type": "tools",
+              "quantity": 1,
+              "description": "Complete woodworking shop"
+            }
+          ]
+        },
+        "contributors": [
+          {
+            "id": "bob",
+            "name": "Bob",
+            "mutualRecognition": 35,
+            "needs": ["housing", "workspace"]
+          },
+          {
+            "id": "charlie",
+            "name": "Charlie",
+            "mutualRecognition": 22,
+            "needs": ["tools", "workspace"]
+          },
+          {
+            "id": "diana",
+            "name": "Diana",
+            "mutualRecognition": 43,
+            "needs": ["housing"]
+          }
+        ],
+        "maxTokens": 1000
+      }
+    },
+    {
+      "name": "Code Generation - Mutual Recognition Calculator",
+      "request": {
+        "requestType": "code-generation",
+        "language": "typescript",
+        "task": "Create a function that calculates mutual recognition between all players in a network",
+        "context": "Part of free-association system. Mutual recognition is the minimum of bidirectional recognitions. The function should take an array of players with their recognitions and return a map of mutual recognition values.",
+        "maxTokens": 2000
+      }
+    },
+    {
+      "name": "Data Analysis - Network Health",
+      "request": {
+        "requestType": "data-analysis",
+        "data": {
+          "network": "free-association-alpha",
+          "players": 24,
+          "totalRecognitions": 156,
+          "averageMutualRecognition": 18.5,
+          "topMutualBonds": [
+            { "players": ["alice", "diana"], "mutual": 43 },
+            { "players": ["bob", "eve"], "mutual": 38 },
+            { "players": ["charlie", "frank"], "mutual": 35 }
+          ],
+          "isolated": ["george", "helen"],
+          "capacityFlows": {
+            "housing": 12,
+            "workspace": 8,
+            "tools": 15,
+            "transport": 6
+          }
+        },
+        "question": "What is the overall health of this free-association network and what improvements would strengthen it?",
+        "analysisType": "summary",
+        "maxTokens": 1500
+      }
+    },
+    {
+      "name": "General Chat (Fallback)",
+      "request": {
+        "requestType": "chat",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Explain the concept of mutual recognition in free-association networks"
+          }
+        ],
+        "maxTokens": 800,
+        "temperature": 0.7
+      }
+    }
+  ],
+  "testCommands": {
+    "recognitionAnalysis": "curl -X POST http://localhost:8768/route -H 'Content-Type: application/json' -d @example-requests.json | jq '.examples[0].request'",
+    "capacityRecommendation": "curl -X POST http://localhost:8768/route -H 'Content-Type: application/json' -d @example-requests.json | jq '.examples[1].request'",
+    "codeGeneration": "curl -X POST http://localhost:8768/route -H 'Content-Type: application/json' -d @example-requests.json | jq '.examples[2].request'",
+    "dataAnalysis": "curl -X POST http://localhost:8768/route -H 'Content-Type: application/json' -d @example-requests.json | jq '.examples[3].request'",
+    "chat": "curl -X POST http://localhost:8768/route -H 'Content-Type: application/json' -d @example-requests.json | jq '.examples[4].request'",
+    "listFlows": "curl http://localhost:8768/flows | jq"
+  }
+}
+

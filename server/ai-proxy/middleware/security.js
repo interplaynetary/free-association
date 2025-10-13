@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import helmet from 'helmet';
 
 /**
@@ -8,16 +8,18 @@ import helmet from 'helmet';
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each user/IP to 100 requests per windowMs
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     // Prefer userId from JWT token (set by auth middleware)
-    return req.user?.userId || req.ip;
+    return req.user?.userId || ipKeyGenerator(req, res);
   },
-  message: {
-    error: 'Too many requests',
-    message: 'You have exceeded the 100 requests in 15 minutes limit.',
-    retryAfter: '15 minutes'
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'You have exceeded the 100 requests in 15 minutes limit.',
+      retryAfter: '15 minutes'
+    });
   },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
 });
 
@@ -28,15 +30,17 @@ export const generalLimiter = rateLimit({
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // Limit each user/IP to 20 AI requests per windowMs
-  keyGenerator: (req) => {
-    return req.user?.userId || req.ip;
+  keyGenerator: (req, res) => {
+    return req.user?.userId || ipKeyGenerator(req, res);
   },
-  message: {
-    error: 'Too many AI requests',
-    message: 'You have exceeded the 20 AI requests in 15 minutes limit.',
-    retryAfter: '15 minutes'
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many AI requests',
+      message: 'You have exceeded the 20 AI requests in 15 minutes limit.',
+      retryAfter: '15 minutes'
+    });
   },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
 });
 
@@ -47,12 +51,14 @@ export const aiLimiter = rateLimit({
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5, // Limit auth attempts per IP
-  message: {
-    error: 'Too many authentication attempts',
-    message: 'Too many attempts. Please try again later.',
-    retryAfter: '15 minutes'
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many authentication attempts',
+      message: 'Too many attempts. Please try again later.',
+      retryAfter: '15 minutes'
+    });
   },
-  standardHeaders: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
 });
 

@@ -22,7 +22,7 @@ Production-ready API gateway for securely proxying requests to an AI (LLM) backe
 
 ```bash
 bun install
-bun run server.js
+bun start
 ```
 
 ## Configuration
@@ -80,7 +80,8 @@ If targeting a local endpoint (e.g., Ollama, vLLM), set `AI_API_URL` in `.env` t
 
 ```
 ai-proxy/
-├── server.js              # Main server
+├── server.ts              # Main TypeScript server
+├── schemas/               # Zod v4 validation schemas
 ├── middleware/            # Auth, rate-limiting, security
 ├── utils/                 # (If used)
 ├── package.json
