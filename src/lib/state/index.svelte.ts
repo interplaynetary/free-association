@@ -16,7 +16,8 @@ export {
 	login as holsterLogin,
 	signup as holsterSignup,
 	signout as holsterSignout,
-	changePassword as holsterChangePassword
+	changePassword as holsterChangePassword,
+	cleanupAllHolsterSubscriptions
 } from './holster.svelte';
 
 // Calculation and recalculation logic

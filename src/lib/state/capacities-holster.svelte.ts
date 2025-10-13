@@ -28,6 +28,55 @@ export const isLoadingHolsterCapacities = writable(false);
 // Track last known network timestamp for capacities collection
 let lastNetworkTimestamp: number | null = null;
 
+// Track capacity IDs that exist in Holster (for detecting deletions)
+let lastKnownCapacityIds: Set<string> = new Set();
+
+// Prevent duplicate initialization
+let isInitialized: boolean = false;
+
+// ============================================================================
+// localStorage Cache
+// ============================================================================
+
+const CAPACITIES_CACHE_KEY = 'holster_capacities_cache';
+const CAPACITIES_CACHE_TIMESTAMP_KEY = 'holster_capacities_cache_timestamp';
+
+function getCachedCapacities(): CapacitiesCollection | null {
+	if (typeof localStorage === 'undefined') return null;
+
+	try {
+		const cached = localStorage.getItem(CAPACITIES_CACHE_KEY);
+		if (!cached) return null;
+
+		const parsed = JSON.parse(cached);
+		const validation = CapacitiesCollectionSchema.safeParse(parsed);
+
+		if (validation.success) {
+			const timestamp = localStorage.getItem(CAPACITIES_CACHE_TIMESTAMP_KEY);
+			console.log('[CAPACITIES-HOLSTER] Loaded capacities from cache, timestamp:', timestamp);
+			return validation.data;
+		} else {
+			console.warn('[CAPACITIES-HOLSTER] Invalid cached capacities, ignoring');
+			return null;
+		}
+	} catch (error) {
+		console.error('[CAPACITIES-HOLSTER] Error reading cached capacities:', error);
+		return null;
+	}
+}
+
+function setCachedCapacities(capacities: CapacitiesCollection, timestamp: number): void {
+	if (typeof localStorage === 'undefined') return;
+
+	try {
+		localStorage.setItem(CAPACITIES_CACHE_KEY, JSON.stringify(capacities));
+		localStorage.setItem(CAPACITIES_CACHE_TIMESTAMP_KEY, timestamp.toString());
+		console.log('[CAPACITIES-HOLSTER] Cached capacities with timestamp:', timestamp);
+	} catch (error) {
+		console.error('[CAPACITIES-HOLSTER] Error caching capacities:', error);
+	}
+}
+
 // ============================================================================
 // Subscription Management
 // ============================================================================
@@ -60,15 +109,23 @@ function subscribeToCapacities() {
 		}
 
 		// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
-		const isDeleted = (value: any): boolean => {
-			if (value === null || value === undefined) return true;
+		const isDeleted = (value: any, key?: string): boolean => {
+			if (value === null || value === undefined) {
+				console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: null/undefined`);
+				return true;
+			}
 			if (typeof value === 'object' && value !== null) {
 				// Check if required capacity fields are missing (indicates deletion)
 				if (!value.id || !value.name) {
+					console.warn(`[CAPACITIES-HOLSTER] Skipping malformed entry${key ? ` (${key})` : ''}: missing required fields (id or name)`, value);
 					return true;
 				}
 				// Check if all fields are null or undefined (Holster deletion pattern)
-				return Object.values(value).every((v) => v === null || v === undefined);
+				const allFieldsNull = Object.values(value).every((v) => v === null || v === undefined);
+				if (allFieldsNull) {
+					console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: all fields null/undefined`);
+					return true;
+				}
 			}
 			return false;
 		};
@@ -77,7 +134,7 @@ function subscribeToCapacities() {
 		const networkTimestamp = getTimestamp(data);
 		const capacitiesOnly: any = {};
 		for (const [key, value] of Object.entries(data)) {
-			if (!isDeleted(value) && !key.startsWith('_')) {
+			if (!isDeleted(value, key) && !key.startsWith('_')) {
 				capacitiesOnly[key] = value;
 			}
 		}
@@ -112,7 +169,11 @@ function subscribeToCapacities() {
 			holsterCapacities.set(networkCapacities);
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
+				// Cache for faster future loads
+				setCachedCapacities(networkCapacities, networkTimestamp);
 			}
+			// Track capacity IDs for deletion detection
+			lastKnownCapacityIds = new Set(Object.keys(networkCapacities));
 			console.log(
 				'[CAPACITIES-HOLSTER] Updated capacities:',
 				Object.keys(networkCapacities).length
@@ -136,8 +197,31 @@ export function initializeHolsterCapacities() {
 		return;
 	}
 
+	if (isInitialized) {
+		console.log('[CAPACITIES-HOLSTER] Already initialized, skipping duplicate call');
+		return;
+	}
+
 	console.log('[CAPACITIES-HOLSTER] Initializing capacities...');
+	isInitialized = true;
 	isLoadingHolsterCapacities.set(true);
+
+	// Try to load from cache first for instant UI
+	const cachedCapacities = getCachedCapacities();
+	const cachedTimestamp = cachedCapacities
+		? parseInt(localStorage.getItem(CAPACITIES_CACHE_TIMESTAMP_KEY) || '0', 10)
+		: 0;
+
+	if (cachedCapacities) {
+		console.log('[CAPACITIES-HOLSTER] Using cached capacities for instant UI');
+		holsterCapacities.set(cachedCapacities);
+		lastNetworkTimestamp = cachedTimestamp;
+		lastKnownCapacityIds = new Set(Object.keys(cachedCapacities));
+		isLoadingHolsterCapacities.set(false);
+
+		// Continue loading from network in background to check for updates
+		console.log('[CAPACITIES-HOLSTER] Fetching from network to check for updates...');
+	}
 
 	// Load initial data with get() - receives object graph
 	holsterUser.get('capacities', (data: any) => {
@@ -145,15 +229,23 @@ export function initializeHolsterCapacities() {
 
 		if (data) {
 			// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
-			const isDeleted = (value: any): boolean => {
-				if (value === null || value === undefined) return true;
+			const isDeleted = (value: any, key?: string): boolean => {
+				if (value === null || value === undefined) {
+					console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: null/undefined`);
+					return true;
+				}
 				if (typeof value === 'object' && value !== null) {
 					// Check if required capacity fields are missing (indicates deletion)
 					if (!value.id || !value.name) {
+						console.warn(`[CAPACITIES-HOLSTER] Skipping malformed entry${key ? ` (${key})` : ''}: missing required fields (id or name)`, value);
 						return true;
 					}
 					// Check if all fields are null or undefined (Holster deletion pattern)
-					return Object.values(value).every((v) => v === null || v === undefined);
+					const allFieldsNull = Object.values(value).every((v) => v === null || v === undefined);
+					if (allFieldsNull) {
+						console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: all fields null/undefined`);
+						return true;
+					}
 				}
 				return false;
 			};
@@ -162,7 +254,7 @@ export function initializeHolsterCapacities() {
 			const timestamp = getTimestamp(data);
 			const capacitiesOnly: any = {};
 			for (const [key, value] of Object.entries(data)) {
-				if (!isDeleted(value) && !key.startsWith('_')) {
+				if (!isDeleted(value, key) && !key.startsWith('_')) {
 					capacitiesOnly[key] = value;
 				}
 			}
@@ -186,11 +278,21 @@ export function initializeHolsterCapacities() {
 			// Parse and validate (without timestamp)
 			const parseResult = CapacitiesCollectionSchema.safeParse(capacitiesOnly);
 			if (parseResult.success) {
-				holsterCapacities.set(parseResult.data);
+				// Only update if newer than cache or no cache
+				if (!lastNetworkTimestamp || (timestamp && timestamp > lastNetworkTimestamp)) {
+					holsterCapacities.set(parseResult.data);
 
-				// Track initial timestamp
-				if (timestamp) {
-					lastNetworkTimestamp = timestamp;
+					// Track initial timestamp
+					if (timestamp) {
+						lastNetworkTimestamp = timestamp;
+						// Cache for faster future loads
+						setCachedCapacities(parseResult.data, timestamp);
+					}
+
+					// Track capacity IDs for deletion detection
+					lastKnownCapacityIds = new Set(Object.keys(parseResult.data));
+				} else {
+					console.log('[CAPACITIES-HOLSTER] Cached data is newer, skipping network data');
 				}
 			} else {
 				console.error('[CAPACITIES-HOLSTER] Invalid initial data:', parseResult.error);
@@ -217,6 +319,8 @@ export function cleanupHolsterCapacities() {
 	}
 	holsterCapacities.set(null);
 	lastNetworkTimestamp = null;
+	lastKnownCapacityIds.clear();
+	isInitialized = false; // Reset initialization flag
 	console.log('[CAPACITIES-HOLSTER] Cleaned up');
 }
 
@@ -342,6 +446,8 @@ function cleanCapacitiesData(capacities: CapacitiesCollection): any {
 export async function persistHolsterCapacities(
 	capacities?: CapacitiesCollection
 ): Promise<void> {
+	console.log('[CAPACITIES-HOLSTER] persistHolsterCapacities called with', capacities ? Object.keys(capacities).length : 'store', 'capacities');
+
 	if (!holsterUser.is) {
 		console.log('[CAPACITIES-HOLSTER] Not authenticated, skipping persistence');
 		return;
@@ -360,11 +466,11 @@ export async function persistHolsterCapacities(
 	const capacitiesToSave = capacities || get(holsterCapacities);
 
 	if (!capacitiesToSave || Object.keys(capacitiesToSave).length === 0) {
-		console.log('[CAPACITIES-HOLSTER] No capacities to persist');
+		console.log('[CAPACITIES-HOLSTER] No capacities to persist (empty collection)');
 		return;
 	}
 
-	console.log('[CAPACITIES-HOLSTER] Starting persistence...');
+	console.log('[CAPACITIES-HOLSTER] Starting persistence for', Object.keys(capacitiesToSave).length, 'capacities');
 
 	try {
 		// Process addresses for geocoding (same as Gun version)
@@ -377,17 +483,44 @@ export async function persistHolsterCapacities(
 		const timestampedCapacities = addTimestamp(cleanedCapacities);
 		const localTimestamp = getTimestamp(timestampedCapacities);
 
+		console.log('[CAPACITIES-HOLSTER] Timestamp check: local=', localTimestamp, 'network=', lastNetworkTimestamp);
+
 		// Check if safe to persist
 		if (!shouldPersist(localTimestamp, lastNetworkTimestamp)) {
-			console.warn('[CAPACITIES-HOLSTER] Skipping persist - network has newer data');
+			console.warn('[CAPACITIES-HOLSTER] Skipping persist - network has newer data. Local:', localTimestamp, 'Network:', lastNetworkTimestamp);
 			return;
 		}
 
+		console.log('[CAPACITIES-HOLSTER] Timestamp check passed, proceeding with persistence');
+
+		// Detect deleted capacities (IDs that were in Holster but aren't in new collection)
+		const currentCapacityIds = new Set(Object.keys(cleanedCapacities));
+		const deletedCapacityIds = Array.from(lastKnownCapacityIds).filter(
+			id => !currentCapacityIds.has(id)
+		);
+
+		if (deletedCapacityIds.length > 0) {
+			console.log('[CAPACITIES-HOLSTER] Detected', deletedCapacityIds.length, 'deleted capacities:', deletedCapacityIds);
+		}
+
 		// Store as object graph - put the entire collection with timestamp
-		// Holster can handle nested objects/arrays, no need to stringify
 		console.log('[CAPACITIES-HOLSTER] Persisting', Object.keys(cleanedCapacities).length, 'capacities');
 
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject) => {
+			// First, explicitly null out deleted capacities
+			for (const deletedId of deletedCapacityIds) {
+				console.log('[CAPACITIES-HOLSTER] Explicitly nulling deleted capacity:', deletedId);
+				await new Promise<void>((resolveDelete) => {
+					holsterUser.get('capacities').next(deletedId).put(null, (err: any) => {
+						if (err) {
+							console.warn('[CAPACITIES-HOLSTER] Error nulling deleted capacity:', deletedId, err);
+						}
+						resolveDelete();
+					});
+				});
+			}
+
+			// Then persist the current collection
 			holsterUser.get('capacities').put(timestampedCapacities, (err: any) => {
 				if (err) {
 					console.error('[CAPACITIES-HOLSTER] Persist error:', err);
@@ -396,7 +529,11 @@ export async function persistHolsterCapacities(
 					console.log('[CAPACITIES-HOLSTER] Persisted successfully');
 					if (localTimestamp) {
 						lastNetworkTimestamp = localTimestamp;
+						// Cache for faster future loads (cache the original data, not cleaned)
+						setCachedCapacities(capacitiesWithCoordinates, localTimestamp);
 					}
+					// Update tracking set to current IDs
+					lastKnownCapacityIds = currentCapacityIds;
 					resolve();
 				}
 			});
@@ -413,7 +550,8 @@ export async function persistHolsterCapacities(
 
 /**
  * Delete a capacity from Holster
- * Uses object graph traversal with .next(capacityId)
+ * After deletion, persists the entire collection to update the timestamp
+ * This ensures the deletion is permanent and won't be restored on reload
  */
 export async function deleteHolsterCapacity(capacityId: string): Promise<void> {
 	if (!holsterUser.is) {
@@ -424,24 +562,35 @@ export async function deleteHolsterCapacity(capacityId: string): Promise<void> {
 	console.log('[CAPACITIES-HOLSTER] Deleting capacity:', capacityId);
 
 	// Optimistically update local state
-	holsterCapacities.update((capacities) => {
-		if (!capacities) return null;
-		const { [capacityId]: deleted, ...remaining } = capacities;
-		return remaining;
+	const updatedCapacities = await new Promise<CapacitiesCollection>((resolve) => {
+		holsterCapacities.update((capacities) => {
+			if (!capacities) {
+				resolve({});
+				return null;
+			}
+			const { [capacityId]: deleted, ...remaining } = capacities;
+			resolve(remaining);
+			return remaining;
+		});
 	});
 
 	// Remove from Holster by setting to null using .next() for object graph traversal
-	return new Promise((resolve, reject) => {
+	await new Promise((resolve, reject) => {
 		holsterUser.get('capacities').next(capacityId).put(null, (err: any) => {
 			if (err) {
 				console.error('[CAPACITIES-HOLSTER] Delete error:', err);
 				reject(err);
 			} else {
-				console.log('[CAPACITIES-HOLSTER] Deleted successfully:', capacityId);
-				resolve();
+				console.log('[CAPACITIES-HOLSTER] Deleted from Holster:', capacityId);
+				resolve(null);
 			}
 		});
 	});
+
+	// CRITICAL: Persist the entire collection to update the timestamp
+	// This ensures the deletion is permanent and won't be restored on reload
+	console.log('[CAPACITIES-HOLSTER] Persisting collection after deletion to update timestamp');
+	await persistHolsterCapacities(updatedCapacities);
 }
 
 /**

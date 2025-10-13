@@ -206,7 +206,30 @@ export async function signup(alias: string, password: string): Promise<void> {
 	}
 }
 
+/**
+ * Cleanup all Holster subscriptions
+ * Call this on logout to prevent memory leaks
+ */
+export function cleanupAllHolsterSubscriptions() {
+	console.log('[HOLSTER] Cleaning up all subscriptions...');
+
+	// Import cleanup functions dynamically to avoid circular dependencies
+	Promise.all([
+		import('./contacts-holster.svelte').then(m => m.cleanupHolsterContacts()),
+		import('./capacities-holster.svelte').then(m => m.cleanupHolsterCapacities()),
+		import('./tree-holster.svelte').then(m => m.cleanupHolsterTree()),
+		import('./recognition-holster.svelte').then(m => m.cleanupHolsterSogf())
+	]).then(() => {
+		console.log('[HOLSTER] All subscriptions cleaned up');
+	}).catch(err => {
+		console.error('[HOLSTER] Error during cleanup:', err);
+	});
+}
+
 export async function signout() {
+	// Clean up all Holster subscriptions before leaving
+	cleanupAllHolsterSubscriptions();
+
 	holsterUser.leave();
 	holsterUserAlias.set('');
 	holsterUserPub.set('');

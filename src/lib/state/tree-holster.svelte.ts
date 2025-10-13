@@ -69,6 +69,11 @@ let isInitialized: boolean = false; // Prevent duplicate initialization
 let queuedNetworkUpdate: any = null; // Store latest network update while persisting
 
 // Track if local changes are pending persistence
+// NOTE: This is intentionally a boolean flag, not a queue of tree snapshots.
+// The persistence system implements EVENTUAL CONSISTENCY - we only care about
+// persisting the most recent state from userTree, not intermediate snapshots.
+// Multiple rapid updates during persistence will trigger a single retry that
+// reads the current userTree state, which is the desired behavior.
 let hasPendingLocalChanges: boolean = false;
 
 // ============================================================================
@@ -529,7 +534,9 @@ export async function persistHolsterTree(tree?: RootNode): Promise<void> {
 
 	// Check if already persisting to prevent concurrent writes
 	if (isPersisting) {
-		// Mark that we have pending local changes that need to be persisted
+		// Mark that we have pending local changes that need to be persisted.
+		// This implements eventual consistency: the retry will read the most
+		// recent userTree state, not this specific snapshot (which is desired).
 		hasPendingLocalChanges = true;
 		return;
 	}

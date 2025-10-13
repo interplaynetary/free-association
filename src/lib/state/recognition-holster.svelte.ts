@@ -131,8 +131,11 @@ export async function persistHolsterSogf(sogf?: ShareMap): Promise<void> {
 		return;
 	}
 
+	// Generate local timestamp for the data we want to write
+	const localTimestamp = Date.now();
+
 	// Check if we should persist (based on timestamps)
-	if (!shouldPersist(lastNetworkTimestamp)) {
+	if (!shouldPersist(localTimestamp, lastNetworkTimestamp)) {
 		console.log('[SOGF-HOLSTER] Skipping persistence - network has newer data');
 		return;
 	}
@@ -140,8 +143,8 @@ export async function persistHolsterSogf(sogf?: ShareMap): Promise<void> {
 	console.log('[SOGF-HOLSTER] Persisting SOGF...');
 
 	try {
-		// Add timestamp to data
-		const timestampedData = addTimestamp(sogfToSave);
+		// Add timestamp to data (use the same local timestamp for consistency)
+		const timestampedData = { ...sogfToSave, _updatedAt: localTimestamp };
 
 		return new Promise((resolve, reject) => {
 			holsterUser.get('sogf').put(timestampedData, (err) => {
@@ -150,8 +153,8 @@ export async function persistHolsterSogf(sogf?: ShareMap): Promise<void> {
 					reject(err);
 				} else {
 					console.log('[SOGF-HOLSTER] Persisted successfully');
-					// Update our timestamp tracker
-					lastNetworkTimestamp = getTimestamp(timestampedData);
+					// Update our timestamp tracker with the timestamp we just wrote
+					lastNetworkTimestamp = localTimestamp;
 					resolve();
 				}
 			});
@@ -246,4 +249,21 @@ export function subscribeToContributorHolsterSogf(
 			console.error(`[SOGF-HOLSTER] Error processing SOGF from ${contributorPubKey.slice(0, 20)}...:`, error);
 		}
 	});
+}
+
+/**
+ * Cleanup Holster SOGF subscriptions
+ * Call this on logout to prevent memory leaks
+ */
+export function cleanupHolsterSogf() {
+	console.log('[SOGF-HOLSTER] Cleaning up subscriptions...');
+
+	// Turn off own SOGF subscription
+	holsterUser.get('sogf').off();
+
+	// Reset state
+	holsterSogf.set(null);
+	lastNetworkTimestamp = null;
+
+	console.log('[SOGF-HOLSTER] Cleanup complete');
 }

@@ -1276,10 +1276,10 @@ const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) =>
 		console.log('[SOGF-STREAMS] Using Holster for recognition - setting up Holster SOGF streams');
 		sogfStreamManager.stopAllStreams(); // Stop any Gun streams
 
-		// Get contributors with resolved public keys
+		// Get contributors with resolved public keys (filter out null and undefined)
 		const contributorsWithPubKeys = allContributors
 			.map(id => resolveToPublicKey(id))
-			.filter(pubKey => pubKey !== null) as string[];
+			.filter((pubKey): pubKey is string => pubKey !== null && pubKey !== undefined);
 
 		// Get our own pubkey to skip ourselves
 		const ourPubKey = get(userPub);
