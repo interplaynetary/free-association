@@ -5,8 +5,6 @@
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	import { goto } from '$app/navigation';
-	import { tick } from 'svelte';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/gun.svelte';
 	import { userCapacities, mutualContributors } from '$lib/state/core.svelte';
@@ -58,8 +56,8 @@
 	let searchPanelRef = $state<HTMLDivElement>();
 	let selectedResultIndex = $state(-1);
 
-	// Network subtrees state (for main route)
-	let showNetworkPanel = $state(false);
+	// Forest subtrees state (for main route)
+	let showForestPanel = $state(false);
 	let selectedContributorId = $state<string | null>(null);
 
 	// Derived search results
@@ -236,10 +234,10 @@
 		}
 	}
 
-	// Network panel toggle
-	function toggleNetworkPanel() {
-		showNetworkPanel = !showNetworkPanel;
-		if (!showNetworkPanel) {
+	// Forest panel toggle
+	function toggleForestPanel() {
+		showForestPanel = !showForestPanel;
+		if (!showForestPanel) {
 			selectedContributorId = null;
 		}
 	}
@@ -253,9 +251,9 @@
 		}
 	}
 
-	// Helper function to resolve contact IDs to public keys for network subtrees
+	// Helper function to resolve contact IDs to public keys for forest subtrees
 	// This ensures we only store public keys when adding subtrees from other users
-	function resolveContactIdsForNetworkSubtree(node: Node): Node {
+	function resolveContactIdsForForestSubtree(node: Node): Node {
 		// Create a deep clone to avoid modifying the original
 		const resolvedNode = structuredClone(node);
 
@@ -277,8 +275,8 @@
 						return resolvedPublicKey;
 					}
 
-					// If contact ID can't be resolved, exclude it from network subtree
-					// This ensures we only store public keys for network collaboration
+					// If contact ID can't be resolved, exclude it from forest subtree
+					// This ensures we only store public keys for forest collaboration
 					console.log(
 						`[NETWORK-SUBTREE] Excluding contact ID '${contributorId}' - no public key available`
 					);
@@ -353,11 +351,11 @@
 			// Clone the subtree to add, preserving all structure and contributor info
 			const clonedSubtree = structuredClone(subtreeToAdd);
 
-			// IMPORTANT: Resolve any contact IDs to public keys for network subtrees
+			// IMPORTANT: Resolve any contact IDs to public keys for forest subtrees
 			// This ensures we only store public keys when adding subtrees from other users
 			// TODO: In the future, we might resolve contact_ids of others by subscribing
 			// to their stored contact_id lists to get better name resolution
-			const resolvedSubtree = resolveContactIdsForNetworkSubtree(clonedSubtree);
+			const resolvedSubtree = resolveContactIdsForForestSubtree(clonedSubtree);
 
 			// Update the root node of the resolved subtree
 			resolvedSubtree.id = newSubtreeId;
@@ -374,8 +372,8 @@
 			// Show success message
 			globalState.showToast(`Added subtree "${subtreeToAdd.name}" successfully`, 'success');
 
-			// Close the network panel
-			toggleNetworkPanel();
+			// Close the forest panel
+			toggleForestPanel();
 
 			console.log('[TOOLBAR] Successfully added subtree with ID:', newSubtreeId);
 		} catch (error) {
@@ -460,7 +458,7 @@
 		}
 	}
 
-	// Create new capacity handler (for inventory route)
+	// Create new capacity handler
 	async function handleCreateCapacity() {
 		const alias = $userAlias;
 		const pub = $userPub;
@@ -471,13 +469,6 @@
 
 		try {
 			const newCapacity = createDefaultCapacity();
-
-			// Navigate to inventory first if not already there
-			if (!isInventoryRoute) {
-				await goto(`${base}/inventory`);
-				// Wait for navigation to complete
-				await tick();
-			}
 
 			const success = addCapacity(newCapacity);
 
@@ -507,70 +498,128 @@
 			{#if isMainRoute}
 				<!-- Main route buttons -->
 				<div class="toolbar-actions">
-					<div class="toolbar-item">
-						<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
-							➕
-						</button>
-						<span class="button-caption">Add</span>
-					</div>
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button edit-button"
-							class:edit-active={isTextEditMode}
-							title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
-							onclick={handleTextEditMode}
-						>
-							✏️
-						</button>
-						<span class="button-caption">Edit</span>
-					</div>
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button recompose-button"
-							class:recompose-active={isRecomposeMode}
-							title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
-							onclick={handleRecompose}
-						>
-							↕️
-						</button>
-						<span class="button-caption">Recompose</span>
-					</div>
-
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button delete-button"
-							class:delete-active={isDeleteMode}
-							title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
-							onclick={globalState.toggleDeleteMode}
-						>
-							🗑️
-						</button>
-						<span class="button-caption">Delete</span>
+					<!-- View Switchers -->
+					<div class="view-group">
+						<div class="toolbar-item">
+							<button
+								class="toolbar-button view-button"
+								class:view-active={globalState.currentView === 'tree'}
+								title="Tree view"
+								onclick={() => globalState.setView('tree')}
+							>
+								🌲
+							</button>
+							<span class="button-caption">Tree</span>
+						</div>
+						<div class="toolbar-item">
+							<button
+								class="toolbar-button view-button"
+								class:view-active={globalState.currentView === 'map'}
+								title="Map view"
+								onclick={() => globalState.setView('map')}
+							>
+								🌍
+							</button>
+							<span class="button-caption">Map</span>
+						</div>
+						<div class="toolbar-item">
+							<button
+								class="toolbar-button view-button"
+								class:view-active={globalState.currentView === 'inventory'}
+								title="Inventory view"
+								onclick={() => globalState.setView('inventory')}
+							>
+								📊
+							</button>
+							<span class="button-caption">Inventory</span>
+						</div>
 					</div>
 
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button search-button"
-							class:search-active={showSearchPanel}
-							title="Search tree"
-							onclick={toggleSearchPanel}
-						>
-							🔍
-						</button>
-						<span class="button-caption">Search</span>
-					</div>
+					<!-- Tree View Controls -->
+					{#if globalState.currentView === 'tree'}
+						<div class="view-controls tree-controls">
+							<div class="toolbar-item">
+								<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
+									➕
+								</button>
+								<span class="button-caption">Add</span>
+							</div>
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button edit-button"
+									class:edit-active={isTextEditMode}
+									title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
+									onclick={handleTextEditMode}
+								>
+									✏️
+								</button>
+								<span class="button-caption">Edit</span>
+							</div>
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button recompose-button"
+									class:recompose-active={isRecomposeMode}
+									title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+									onclick={handleRecompose}
+								>
+									↕️
+								</button>
+								<span class="button-caption">Recompose</span>
+							</div>
 
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button network-button"
-							class:network-active={showNetworkPanel}
-							title="Network subtrees"
-							onclick={toggleNetworkPanel}
-						>
-							🌳
-						</button>
-						<span class="button-caption">Network</span>
-					</div>
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button delete-button"
+									class:delete-active={isDeleteMode}
+									title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
+									onclick={globalState.toggleDeleteMode}
+								>
+									🗑️
+								</button>
+								<span class="button-caption">Delete</span>
+							</div>
+
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button search-button"
+									class:search-active={showSearchPanel}
+									title="Search tree"
+									onclick={toggleSearchPanel}
+								>
+									🔍
+								</button>
+								<span class="button-caption">Search</span>
+							</div>
+
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button forest-button"
+									class:forest-active={showForestPanel}
+									title="Forest subtrees"
+									onclick={toggleForestPanel}
+								>
+									🌳
+								</button>
+								<span class="button-caption">Forest</span>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Inventory View Controls -->
+					{#if globalState.currentView === 'inventory'}
+						<div class="view-controls inventory-controls">
+							<div class="toolbar-item">
+								<button
+									class="toolbar-button create-capacity-button"
+									title="Create new capacity"
+									onclick={handleCreateCapacity}
+								>
+									➕
+								</button>
+								<span class="button-caption">New Capacity</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{:else if isInventoryRoute}
 				<!-- Inventory route buttons -->
@@ -589,11 +638,11 @@
 			{/if}
 		</div>
 
-		<!-- Network subtrees panel for main route -->
-		{#if isMainRoute && showNetworkPanel}
-			<div class="network-panel">
-				<div class="network-content">
-					<div class="network-body">
+		<!-- Forest subtrees panel for main route -->
+		{#if isMainRoute && showForestPanel}
+			<div class="forest-panel">
+				<div class="forest-content">
+					<div class="forest-body">
 						{#if selectedContributorId}
 							<!-- Selected contributor mode: show selected contributor on left, subtrees on right -->
 							<div class="selected-contributor-section">
@@ -731,8 +780,34 @@
 
 	.toolbar-actions {
 		display: flex;
-		gap: 16px;
+		gap: 8px;
 		align-items: center;
+	}
+
+	.view-group {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		padding: 4px;
+		border-radius: 6px;
+		background: rgba(0, 0, 0, 0.02);
+	}
+
+	.view-controls {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		padding: 4px 8px;
+		margin-left: 8px;
+		border-left: 2px solid rgba(33, 150, 243, 0.2);
+	}
+
+	.view-controls.tree-controls {
+		border-left-color: rgba(76, 175, 80, 0.3);
+	}
+
+	.view-controls.inventory-controls {
+		border-left-color: rgba(33, 150, 243, 0.3);
 	}
 
 	.toolbar-item {
@@ -777,6 +852,12 @@
 	}
 
 	/* Active states with animations */
+	.view-button.view-active {
+		color: #2196f3;
+		background: rgba(33, 150, 243, 0.1);
+		border-radius: 4px;
+	}
+
 	.edit-button.edit-active {
 		color: #4caf50;
 		background: rgba(76, 175, 80, 0.1);
@@ -795,7 +876,7 @@
 		border-radius: 4px;
 	}
 
-	.network-button.network-active {
+	.forest-button.forest-active {
 		color: #4caf50;
 		background: rgba(76, 175, 80, 0.1);
 		border-radius: 4px;
@@ -934,8 +1015,8 @@
 		background: #f5f5f5;
 	}
 
-	/* Network panel */
-	.network-panel {
+	/* Forest panel */
+	.forest-panel {
 		background: white;
 		border-top: 1px solid #e0e0e0;
 		box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
@@ -943,13 +1024,13 @@
 		overflow: hidden;
 	}
 
-	.network-content {
+	.forest-content {
 		height: 100%;
 		display: flex;
 		flex-direction: column;
 	}
 
-	.network-body {
+	.forest-body {
 		display: flex;
 		flex: 1;
 		min-height: 0; /* Allow shrinking */

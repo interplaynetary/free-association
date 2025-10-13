@@ -41,9 +41,10 @@
 
 	interface Props {
 		// Map now shows read-only share slots, no update functionality needed
+		fullHeight?: boolean; // If true, map fills 100% of parent height
 	}
 
-	let {}: Props = $props();
+	let { fullHeight = false }: Props = $props();
 
 	let features: maplibregl.MapGeoJSONFeature[] = $state.raw([]);
 	let mode: 'source' = $state('source');
@@ -1421,9 +1422,9 @@
 	});
 </script>
 
-<div class="map-wrapper normal-size relative overflow-hidden rounded-md">
+<div class="map-wrapper" class:full-height={fullHeight} class:normal-size={!fullHeight}>
 	<!-- Map Container -->
-	<div class="map-content full-width">
+	<div class="map-content" class:full-width={!fullHeight}>
 		<MapLibre
 			bind:map
 			bind:pitch
@@ -2027,6 +2028,11 @@
 		height: 400px;
 		max-height: 50vh;
 		min-height: 300px;
+	}
+
+	.map-wrapper.full-height {
+		height: 100%;
+		width: 100%;
 	}
 
 	.map-content {

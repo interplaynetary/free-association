@@ -57,6 +57,9 @@ export const globalState = $state({
 	newlyCreatedNodeId: '', // Track newly created nodes for auto-disable behavior
 	initializationStarted: false,
 
+	// Main view state
+	currentView: 'tree' as 'tree' | 'map' | 'inventory',
+
 	// Unified highlighting state for newly created items
 	highlightedCapacities: new Set<string>(),
 	highlightedSlots: new Set<string>(),
@@ -163,6 +166,7 @@ export const globalState = $state({
 		globalState.newlyCreatedNodeId = '';
 		globalState.deleteMode = false;
 		globalState.textEditMode = false;
+		globalState.currentView = 'tree';
 
 		// Reset search state
 		globalState.searchQuery = '';
@@ -660,6 +664,13 @@ export const globalState = $state({
 	clearAllHighlights: () => {
 		globalState.highlightedCapacities = new Set();
 		globalState.highlightedSlots = new Set();
+	},
+
+	/**
+	 * View Management
+	 */
+	setView: (view: 'tree' | 'map' | 'inventory') => {
+		globalState.currentView = view;
 	}
 
 	/**

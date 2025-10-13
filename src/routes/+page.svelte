@@ -1,14 +1,21 @@
 <script lang="ts">
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
+	import Map from '$lib/components/Map.svelte';
+	import Capacities from '$lib/components/Capacities.svelte';
+	import Shares from '$lib/components/Shares.svelte';
 	import { userSogf, userTree, generalShares } from '$lib/state/core.svelte';
 	import { recalculateFromTree } from '$lib/state/calculations.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
 
 	// Reactive variable for mobile detection
 	let isMobile = $state(false);
 	let mediaQuery: MediaQueryList;
+
+	// Reactive view state
+	const currentView = $derived(globalState.currentView);
 
 	// Create reactive derived store from userSogf
 	const barSegments = derived(userSogf, ($sogf) => {
@@ -78,11 +85,24 @@
 	});
 </script>
 
-<div class="layout root-page">
-	<div class="parent">
-		<Parent />
+<div class="layout root-page" class:full-width={currentView !== 'tree'}>
+	<div class="view-content">
+		{#if currentView === 'tree'}
+			<Parent />
+		{:else if currentView === 'map'}
+			<Map fullHeight={true} />
+		{:else if currentView === 'inventory'}
+			<div class="inventory-view">
+				<h2 class="text-center text-2xl font-bold">Capacities</h2>
+				<Capacities />
+
+				<h2 class="text-center text-2xl font-bold">Shares</h2>
+				<Shares />
+			</div>
+		{/if}
 	</div>
-	<div class="bars">
+	{#if currentView === 'tree'}
+		<div class="bars">
 		<div class="bar-group" class:vertical={!isMobile}>
 			<div
 				class="bar-label"
@@ -144,7 +164,8 @@
 				{/if}
 			</div>
 		</div>
-	</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -161,6 +182,11 @@
 		user-select: none;
 	}
 
+	/* Full-width layout when bars are hidden */
+	.layout.full-width {
+		grid-template-columns: 1fr;
+	}
+
 	/* Root page specific: ensure it doesn't scroll */
 	.layout.root-page {
 		overflow: hidden;
@@ -169,7 +195,7 @@
 		position: relative;
 	}
 
-	.parent,
+	.view-content,
 	.bars {
 		width: 100%;
 		height: 100%;
@@ -255,6 +281,20 @@
 		padding: 1rem;
 		background: #f5f5f5;
 		border-radius: 4px;
+	}
+
+	.inventory-view {
+		padding: 1rem;
+		overflow-y: auto;
+		height: 100%;
+	}
+
+	.inventory-view h2 {
+		margin: 1.5rem 0 1rem 0;
+	}
+
+	.inventory-view h2:first-child {
+		margin-top: 0;
 	}
 
 	/* Responsive layout for mobile */

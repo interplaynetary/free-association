@@ -930,10 +930,6 @@
 		</div>
 
 		<div class="header-controls">
-			<a href="{base}/inventory" class="icon-button inventory-button" title="View inventory">
-				<span>📊</span>
-			</a>
-
 			<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
 				<span>❓</span>
 			</button>
