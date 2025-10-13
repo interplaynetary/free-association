@@ -14,6 +14,7 @@
 	import { collectiveForest } from '$lib/collective.svelte';
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
+	import { fade } from 'svelte/transition';
 	import {
 		getColorForUserId,
 		getColorForNameHash,
@@ -59,6 +60,12 @@
 	// Inventory search state
 	let showInventorySearchPanel = $state(false);
 	let inventorySearchPanelRef = $state<HTMLDivElement>();
+
+	// View switcher state
+	let showViewMenu = $state(false);
+	let viewMenuRef = $state<HTMLDivElement>();
+	let longPressTimer = $state<number | null>(null);
+	let isLongPressing = $state(false);
 
 	// Forest subtrees state (for main route)
 	let showForestPanel = $state(false);
@@ -116,6 +123,31 @@
 				}
 			}
 		})();
+	});
+
+	// Handle click outside to close view menu
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		function handleClickOutside(event: MouseEvent | TouchEvent) {
+			const target = event.target as HTMLElement;
+			if (showViewMenu && viewMenuRef && !viewMenuRef.contains(target)) {
+				const viewButton = document.querySelector('.view-cycle-button');
+				if (!viewButton?.contains(target)) {
+					showViewMenu = false;
+				}
+			}
+		}
+
+		if (showViewMenu) {
+			document.addEventListener('mousedown', handleClickOutside);
+			document.addEventListener('touchstart', handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('touchstart', handleClickOutside);
+		};
 	});
 
 	// Helper function to get the sequence of node names from our current path
@@ -301,6 +333,48 @@
 		globalState.inventorySelectedProvider = 'all';
 		globalState.inventorySortBy = 'name';
 		globalState.inventorySortDirection = 'asc';
+	}
+
+	// View switcher helpers
+	const viewConfig = {
+		tree: { emoji: '🌲', name: 'Tree', next: 'map' as const },
+		map: { emoji: '🌍', name: 'Map', next: 'inventory' as const },
+		inventory: { emoji: '📊', name: 'Inventory', next: 'tree' as const }
+	};
+
+	const currentViewConfig = $derived(viewConfig[globalState.currentView]);
+	const nextViewConfig = $derived(viewConfig[currentViewConfig.next]);
+
+	function cycleView() {
+		const nextView = currentViewConfig.next;
+		globalState.setView(nextView);
+	}
+
+	function handleViewPress() {
+		isLongPressing = true;
+		longPressTimer = window.setTimeout(() => {
+			// Long press detected - show menu
+			showViewMenu = true;
+		}, 500); // 500ms for long press
+	}
+
+	function handleViewRelease() {
+		if (longPressTimer) {
+			clearTimeout(longPressTimer);
+			longPressTimer = null;
+		}
+
+		// If menu didn't open (wasn't a long press), cycle the view
+		if (isLongPressing && !showViewMenu) {
+			cycleView();
+		}
+
+		isLongPressing = false;
+	}
+
+	function selectView(view: 'tree' | 'map' | 'inventory') {
+		globalState.setView(view);
+		showViewMenu = false;
 	}
 
 	// Forest panel toggle
@@ -567,41 +641,60 @@
 			{#if isMainRoute}
 				<!-- Main route buttons -->
 				<div class="toolbar-actions">
-					<!-- View Switchers -->
-					<div class="view-group">
+					<!-- View Switcher - Cycle Button with Long Press Menu -->
+					<div class="view-switcher-container">
 						<div class="toolbar-item">
 							<button
-								class="toolbar-button view-button"
-								class:view-active={globalState.currentView === 'tree'}
-								title="Tree view"
-								onclick={() => globalState.setView('tree')}
+								class="toolbar-button view-cycle-button"
+								title="Tap to cycle views • Hold for menu"
+								onpointerdown={handleViewPress}
+								onpointerup={handleViewRelease}
+								onpointercancel={handleViewRelease}
+								onpointerleave={handleViewRelease}
 							>
-								🌲
+								<span class="view-emoji-container">
+									{#key globalState.currentView}
+										<span class="view-emoji" in:fade={{ duration: 250, delay: 100 }} out:fade={{ duration: 150 }}>
+											{currentViewConfig.emoji}
+										</span>
+									{/key}
+								</span>
 							</button>
-							<span class="button-caption">Tree</span>
+							<span class="button-caption">{currentViewConfig.name}</span>
 						</div>
-						<div class="toolbar-item">
-							<button
-								class="toolbar-button view-button"
-								class:view-active={globalState.currentView === 'map'}
-								title="Map view"
-								onclick={() => globalState.setView('map')}
-							>
-								🌍
-							</button>
-							<span class="button-caption">Map</span>
-						</div>
-						<div class="toolbar-item">
-							<button
-								class="toolbar-button view-button"
-								class:view-active={globalState.currentView === 'inventory'}
-								title="Inventory view"
-								onclick={() => globalState.setView('inventory')}
-							>
-								📊
-							</button>
-							<span class="button-caption">Inventory</span>
-						</div>
+
+						<!-- Absolutely positioned separator -->
+						<div class="view-separator"></div>
+
+						<!-- View Menu (appears on long press) -->
+						{#if showViewMenu}
+							<div class="view-menu" bind:this={viewMenuRef}>
+								<button
+									class="view-menu-item"
+									class:active={globalState.currentView === 'tree'}
+									onclick={() => selectView('tree')}
+								>
+									<span class="menu-emoji">🌲</span>
+									<span class="menu-label">Tree</span>
+								</button>
+								<button
+									class="view-menu-item"
+									class:active={globalState.currentView === 'map'}
+									onclick={() => selectView('map')}
+								>
+									<span class="menu-emoji">🌍</span>
+									<span class="menu-label">Map</span>
+								</button>
+								<button
+									class="view-menu-item"
+									class:active={globalState.currentView === 'inventory'}
+									onclick={() => selectView('inventory')}
+								>
+									<span class="menu-emoji">📊</span>
+									<span class="menu-label">Inventory</span>
+								</button>
+							</div>
+						{/if}
 					</div>
 
 					<!-- Tree View Controls -->
@@ -915,27 +1008,142 @@
 
 	.toolbar {
 		display: flex;
-		justify-content: center;
+		justify-content: flex-start;
 		align-items: center;
 		padding: 8px 16px;
 		background: white;
 		position: relative;
-		min-height: 46px;
+		height: 62px;
+		flex-shrink: 0;
 	}
 
 	.toolbar-actions {
 		display: flex;
 		gap: 8px;
 		align-items: center;
+		height: 100%;
 	}
 
-	.view-group {
+	/* View Switcher Container */
+	.view-switcher-container {
+		position: relative;
 		display: flex;
-		gap: 8px;
 		align-items: center;
+	}
+
+	/* Absolutely positioned separator - always in same place */
+	.view-separator {
+		position: absolute;
+		left: 48px;
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		background: rgba(33, 150, 243, 0.2);
+		pointer-events: none;
+	}
+
+	.view-cycle-button {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		transition: transform 0.1s ease;
+	}
+
+	.view-cycle-button:active {
+		transform: scale(0.95);
+	}
+
+	.view-emoji-container {
+		position: relative;
+		display: inline-block;
+		width: 24px;
+		height: 24px;
+	}
+
+	.view-emoji {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		font-size: 20px;
+		line-height: 1;
+		display: inline-block;
+	}
+
+	/* View Menu */
+	.view-menu {
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 0;
+		background: white;
+		border: 1px solid #e0e0e0;
+		border-radius: 8px;
+		box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
 		padding: 4px;
-		border-radius: 6px;
-		background: rgba(0, 0, 0, 0.02);
+		z-index: 1000;
+		animation: slideUp 0.2s ease-out;
+		min-width: 120px;
+	}
+
+	@keyframes slideUp {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.view-menu-item {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 12px;
+		background: none;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background 0.2s ease;
+		text-align: left;
+	}
+
+	.view-menu-item:hover {
+		background: rgba(33, 150, 243, 0.1);
+	}
+
+	.view-menu-item.active {
+		background: rgba(33, 150, 243, 0.15);
+		font-weight: 600;
+	}
+
+	.menu-emoji {
+		font-size: 20px;
+		line-height: 1;
+	}
+
+	.menu-label {
+		font-size: 14px;
+		color: #333;
+		font-weight: 500;
+	}
+
+	.view-menu-item.active .menu-label {
+		color: #2196f3;
+	}
+
+	/* Mobile-specific view menu adjustments */
+	@media (max-width: 480px) {
+		.view-menu {
+			position: fixed;
+			bottom: 70px;
+			left: 16px;
+			min-width: 140px;
+		}
 	}
 
 	.view-controls {
@@ -943,16 +1151,8 @@
 		gap: 12px;
 		align-items: center;
 		padding: 4px 8px;
-		margin-left: 8px;
-		border-left: 2px solid rgba(33, 150, 243, 0.2);
-	}
-
-	.view-controls.tree-controls {
-		border-left-color: rgba(76, 175, 80, 0.3);
-	}
-
-	.view-controls.inventory-controls {
-		border-left-color: rgba(33, 150, 243, 0.3);
+		padding-left: 56px;
+		height: 100%;
 	}
 
 	.toolbar-item {
@@ -997,11 +1197,6 @@
 	}
 
 	/* Active states with animations */
-	.view-button.view-active {
-		color: #2196f3;
-		background: rgba(33, 150, 243, 0.1);
-		border-radius: 4px;
-	}
 
 	.edit-button.edit-active {
 		color: #4caf50;

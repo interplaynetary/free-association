@@ -461,7 +461,7 @@ function getCurrentView(): string {
 	// Map view types to tour types
 	switch (currentView) {
 		case 'inventory':
-			return 'inventory';
+		return 'inventory';
 		case 'map':
 			return 'map';
 		case 'tree':
