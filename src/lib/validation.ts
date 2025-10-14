@@ -1,7 +1,7 @@
 /**
  * Validation utilities for the Free Association Protocol
  */
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import {
 	RootNodeSchema,
 	NodeSchema,

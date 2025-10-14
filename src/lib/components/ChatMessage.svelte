@@ -2,11 +2,16 @@
 	import { gunAvatar } from 'gun-avatar';
 	import { getColorForUserId, getContrastTextColor } from '$lib/utils/colorUtils';
 
+	type MessageStatus = 'pending' | 'sent' | 'failed';
+
 	interface Message {
 		who: string;
 		what: string;
 		when: number;
 		whopub?: string; // Public key for gun-avatar
+		// Optimistic UI fields (only present for pending messages)
+		messageId?: string;
+		status?: MessageStatus;
 	}
 
 	interface ChatMessageProps {
@@ -75,6 +80,10 @@
 
 	// Debug logging for color
 	console.log('ChatMessage - message.whopub:', message.whopub, 'userColor:', userColor);
+
+	// Status display text - use $derived for reactivity in Svelte 5
+	const statusText = $derived(message.status === 'pending' ? 'Sending...' : message.status === 'failed' ? 'Failed to send' : '');
+	const showStatus = $derived(message.status === 'pending' || message.status === 'failed');
 </script>
 
 <div class={`message ${messageClass}`}>
@@ -86,7 +95,14 @@
 			</div>
 		{/if}
 		<p>{message.what}</p>
-		<time style="color: {textColor}; opacity: 0.8;">{ts.toLocaleTimeString()}</time>
+		<div class="message-footer">
+			<time style="color: {textColor}; opacity: 0.8;">{ts.toLocaleTimeString()}</time>
+			{#if showStatus}
+				<span class="status {message.status}" style="color: {textColor};">
+					{statusText}
+				</span>
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -145,9 +161,42 @@
 		white-space: pre-wrap; /* Preserve line breaks but wrap text */
 	}
 
+	.message-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
 	.message-text time {
 		font-size: 0.75rem;
-		display: block;
 		word-wrap: break-word;
+	}
+
+	.status {
+		font-size: 0.7rem;
+		font-style: italic;
+		opacity: 0.8;
+		white-space: nowrap;
+	}
+
+	.status.pending {
+		/* Subtle animation for pending state */
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.status.failed {
+		font-weight: 600;
+		opacity: 1;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			opacity: 0.6;
+		}
+		50% {
+			opacity: 1;
+		}
 	}
 </style>

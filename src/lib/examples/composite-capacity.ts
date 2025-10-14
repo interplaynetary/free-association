@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { SlotSchema, ProfferRegistryManager, type Slot, type Proffer } from './experiments/proffer';
 import { BaseCapacitySchema, ShareMapSchema, type BaseCapacity, type ShareMap } from '../schema';
 

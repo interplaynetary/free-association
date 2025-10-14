@@ -3,6 +3,18 @@ import type { Writable } from 'svelte/store';
 import { gun } from '$lib/state/gun.svelte';
 import type { Contact, ContactsCollectionData } from '$lib/schema';
 import { ContactSchema } from '$lib/schema';
+import { USE_HOLSTER_CONTACTS } from '$lib/config';
+
+// Import Holster contacts module
+import {
+	holsterContacts,
+	isLoadingHolsterContacts,
+	initializeHolsterContacts,
+	cleanupHolsterContacts,
+	persistHolsterContacts,
+	updateHolsterContactsStore,
+	deleteHolsterContact
+} from './contacts-holster.svelte';
 
 // ================================
 // CORE USER & CONTACT STORES
@@ -11,9 +23,17 @@ import { ContactSchema } from '$lib/schema';
 // User tracking stores
 export const userPubKeys = writable<string[]>([]);
 
-// Contact management stores
-export const userContacts: Writable<ContactsCollectionData> = writable({});
-export const isLoadingContacts = writable(false);
+// Separate stores for Gun and Holster to avoid data overlap
+const gunContacts = writable<ContactsCollectionData>({});
+const gunIsLoadingContacts = writable(false);
+
+// Contact management stores - switch based on feature flag
+export const userContacts: Writable<ContactsCollectionData> = USE_HOLSTER_CONTACTS
+	? holsterContacts
+	: gunContacts;
+export const isLoadingContacts = USE_HOLSTER_CONTACTS
+	? isLoadingHolsterContacts
+	: gunIsLoadingContacts;
 export const contactSearchQuery = writable('');
 
 // User name/alias caching stores
@@ -62,6 +82,44 @@ export const userNamesOrAliasesCache = derived(
 );
 
 // ================================
+// CONTACT LIFECYCLE FUNCTIONS
+// ================================
+
+/**
+ * Initialize contacts loading and subscription
+ * Call this when user logs in
+ */
+export function initializeContacts() {
+	if (USE_HOLSTER_CONTACTS) {
+		initializeHolsterContacts();
+	}
+	// Gun initialization happens via network.svelte.ts subscriptions
+}
+
+/**
+ * Cleanup contacts subscription
+ * Call this when user logs out
+ */
+export function cleanupContacts() {
+	if (USE_HOLSTER_CONTACTS) {
+		cleanupHolsterContacts();
+	}
+	// Gun cleanup happens via network.svelte.ts
+}
+
+/**
+ * Persist contacts to backend
+ * For Holster: called automatically via CRUD operations
+ * For Gun: called by persistence.svelte.ts
+ */
+export async function persistContacts(contacts?: ContactsCollectionData) {
+	if (USE_HOLSTER_CONTACTS) {
+		return persistHolsterContacts(contacts);
+	}
+	// Gun persistence handled by persistence.svelte.ts
+}
+
+// ================================
 // CONTACT MANAGEMENT FUNCTIONS
 // ================================
 
@@ -92,12 +150,19 @@ export function createContact(
 	// Validate the contact data
 	const validatedContact = ContactSchema.parse(newContact);
 
-	// Add to contacts collection (Gun handles timestamps internally)
+	// Add to contacts collection
 	const updatedContacts = {
 		...get(userContacts),
 		[contact_id]: validatedContact
 	};
-	userContacts.set(updatedContacts);
+
+	// Update store and persist based on implementation
+	if (USE_HOLSTER_CONTACTS) {
+		updateHolsterContactsStore(updatedContacts);
+	} else {
+		userContacts.set(updatedContacts);
+		// Gun persistence happens separately via persistence.svelte.ts
+	}
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -139,21 +204,34 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 		}));
 	}
 
-	// Update contacts (Gun handles timestamps internally)
+	// Update contacts collection
 	const updatedContacts = {
 		...currentContacts,
 		[contact_id]: validatedContact
 	};
-	userContacts.set(updatedContacts);
+
+	// Update store and persist based on implementation
+	if (USE_HOLSTER_CONTACTS) {
+		updateHolsterContactsStore(updatedContacts);
+	} else {
+		userContacts.set(updatedContacts);
+		// Gun persistence happens separately via persistence.svelte.ts
+	}
 }
 
 /**
  * Delete a contact
  */
-export function deleteContact(contact_id: string): void {
-	const currentContacts = get(userContacts);
-	const { [contact_id]: deleted, ...remaining } = currentContacts;
-	userContacts.set(remaining);
+export async function deleteContact(contact_id: string): Promise<void> {
+	if (USE_HOLSTER_CONTACTS) {
+		// Use Holster-specific delete that sets to null
+		await deleteHolsterContact(contact_id);
+	} else {
+		// Gun: optimistically update store, persistence happens via persistence.svelte.ts
+		const currentContacts = get(userContacts);
+		const { [contact_id]: deleted, ...remaining } = currentContacts;
+		userContacts.set(remaining);
+	}
 }
 
 /**

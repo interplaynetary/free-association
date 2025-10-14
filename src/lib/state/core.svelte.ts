@@ -4,6 +4,15 @@ import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import { parseCompositionTarget } from '$lib/validation';
 import { resolveToPublicKey } from './users.svelte';
+import { USE_HOLSTER_CAPACITIES, USE_HOLSTER_RECOGNITION } from '$lib/config';
+import {
+	holsterCapacities,
+	isLoadingHolsterCapacities
+} from './capacities-holster.svelte';
+import {
+	holsterSogf,
+	isLoadingHolsterSogf
+} from './recognition-holster.svelte';
 import type {
 	RootNode,
 	CapacitiesCollection,
@@ -19,16 +28,36 @@ import type {
 // Core reactive state - these form the main reactive chain
 // All timestamps are tracked by Gun internally via GUN.state.is()
 export const userTree: Writable<RootNode | null> = writable(null);
-export const userSogf: Writable<ShareMap | null> = writable(null);
-export const userCapacities: Writable<CapacitiesCollection | null> = writable(null);
+
+// Gun-based SOGF (internal)
+const gunUserSogf: Writable<ShareMap | null> = writable(null);
+const gunIsLoadingSogf = writable(false);
+
+// Conditional export: use Holster or Gun based on feature flag
+export const userSogf: Writable<ShareMap | null> = USE_HOLSTER_RECOGNITION
+	? holsterSogf
+	: gunUserSogf;
+export const isLoadingSogf = USE_HOLSTER_RECOGNITION
+	? isLoadingHolsterSogf
+	: gunIsLoadingSogf;
+
+// Gun-based capacities (internal)
+const gunUserCapacities: Writable<CapacitiesCollection | null> = writable(null);
+const gunIsLoadingCapacities = writable(false);
+
+// Conditional export: use Holster or Gun based on feature flag
+export const userCapacities: Writable<CapacitiesCollection | null> = USE_HOLSTER_CAPACITIES
+	? holsterCapacities
+	: gunUserCapacities;
+export const isLoadingCapacities = USE_HOLSTER_CAPACITIES
+	? isLoadingHolsterCapacities
+	: gunIsLoadingCapacities;
 
 // DELETED: Timestamp tracking stores - Replaced by Gun's native timestamp tracking
 // Use getGunTimestamp() from $lib/utils/gunTimestamp.ts when timestamp comparison is needed
 
 // Loading state flags
-export const isLoadingCapacities = writable(false);
 export const isLoadingTree = writable(false);
-export const isLoadingSogf = writable(false);
 
 export const isRecalculatingTree = writable(false);
 export const isRecalculatingCapacities = writable(false);
@@ -396,10 +425,11 @@ export const specificShares = derived(
 
 		// Process each of our provider capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// Only process provider capacities (our own capacities)
-			if (typeof capacity !== 'object' || capacity === null || !('recipient_shares' in capacity)) return;
+			// Only process provider capacities (our own capacities, which don't have provider_id)
+			// Recipient capacities have a provider_id field, so skip those
+			if (typeof capacity !== 'object' || capacity === null || 'provider_id' in capacity) return;
 
-			// Type assertion: we've verified it has recipient_shares, so it's a ProviderCapacity
+			// Type assertion: we've verified it's a provider capacity (no provider_id)
 			const providerCapacity = capacity as unknown as ProviderCapacity;
 
 			// Create filter context for this capacity
@@ -494,8 +524,9 @@ export const computedProviderAllocations = derived(
 
 		// Process each of our capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// Only process provider capacities (our own capacities)
-			if (!('recipient_shares' in capacity)) return;
+			// Only process provider capacities (our own capacities, which don't have provider_id)
+			// Recipient capacities have a provider_id field, so skip those
+			if ('provider_id' in capacity) return;
 
 			const providerCapacity = capacity as ProviderCapacity;
 			const capacityAllocations: ProviderAllocationStateData = {};

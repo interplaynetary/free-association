@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
 import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
-import { userPub } from '$lib/state/gun.svelte';
+import { userPub } from '$lib/state/auth.svelte';
 import { userTree } from '$lib/state/core.svelte';
 
 // 🚨 CRITICAL FIX: Import subscriptions to initialize store persistence

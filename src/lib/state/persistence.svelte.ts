@@ -111,6 +111,14 @@ async function safelyPersist(
 }
 
 export async function persistTree() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_TREE } = await import('$lib/config');
+
+	if (USE_HOLSTER_TREE) {
+		console.log('[PERSIST] Using Holster for tree - skipping Gun persistence');
+		return;
+	}
+
 	// Check if user is initialized
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping tree persistence');
@@ -158,6 +166,15 @@ export async function persistTree() {
 }
 
 export async function persistSogf() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_RECOGNITION } = await import('$lib/config');
+
+	if (USE_HOLSTER_RECOGNITION) {
+		console.log('[PERSIST] Using Holster for SOGF - skipping Gun persistence');
+		// Holster persistence is triggered automatically via subscriptions
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping SOGF persistence');
 		return;
@@ -216,6 +233,14 @@ export function persistGeneralShares() {
 }
 
 export async function persistCapacities() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_CAPACITIES } = await import('$lib/config');
+
+	if (USE_HOLSTER_CAPACITIES) {
+		console.log('[PERSIST] Using Holster for capacities - skipping Gun persistence');
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping capacities persistence');
 		return;
@@ -308,6 +333,15 @@ export function persistContributorCapacityShares() {
  * Persist user's desired slot compose-from to Gun
  */
 export async function persistUserDesiredSlotComposeFrom() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[PERSIST] Using Holster for compose - skipping Gun persistence');
+		// Holster persistence happens in compose-holster.svelte.ts
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-from persistence');
 		return;
@@ -353,6 +387,15 @@ export async function persistUserDesiredSlotComposeFrom() {
  * Persist user's desired slot compose-into to Gun
  */
 export async function persistUserDesiredSlotComposeInto() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_COMPOSE } = await import('$lib/config');
+
+	if (USE_HOLSTER_COMPOSE) {
+		console.log('[PERSIST] Using Holster for compose - skipping Gun persistence');
+		// Holster persistence happens in compose-holster.svelte.ts
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping slot compose-into persistence');
 		return;
@@ -400,7 +443,16 @@ export async function persistUserDesiredSlotComposeInto() {
 /**
  * Persist provider allocation states to Gun (for network publishing)
  */
-export function persistProviderAllocationStates() {
+export async function persistProviderAllocationStates() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_ALLOCATION_STATES } = await import('$lib/config');
+
+	if (USE_HOLSTER_ALLOCATION_STATES) {
+		console.log('[PERSIST] Using Holster for allocation states - skipping Gun persistence');
+		// Holster persistence happens in allocation-states-holster.svelte.ts
+		return;
+	}
+
 	// Check if user is initialized
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping provider allocation states persistence');
@@ -455,8 +507,17 @@ export function persistProviderAllocationStates() {
 
 /**
  * Persist user's contacts to Gun
+ * Note: When USE_HOLSTER_CONTACTS is true, persistence happens in users.svelte.ts
  */
 export async function persistContacts() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_CONTACTS } = await import('$lib/config');
+
+	if (USE_HOLSTER_CONTACTS) {
+		console.log('[PERSIST] Using Holster for contacts - skipping Gun persistence');
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping contacts persistence');
 		return;
@@ -496,6 +557,15 @@ export async function persistContacts() {
  * Persist chat read states to Gun
  */
 export async function persistChatReadStates() {
+	// Import config dynamically to avoid circular dependencies
+	const { USE_HOLSTER_CHAT_READ_STATES } = await import('$lib/config');
+
+	if (USE_HOLSTER_CHAT_READ_STATES) {
+		console.log('[PERSIST] Using Holster for chat read states - skipping Gun persistence');
+		// Holster persistence happens in chat-read-states-holster.svelte.ts
+		return;
+	}
+
 	if (!isUserInitialized()) {
 		console.log('[PERSIST] User not initialized, skipping chat read states persistence');
 		return;

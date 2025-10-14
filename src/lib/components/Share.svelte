@@ -5,7 +5,7 @@
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
 	import { userDesiredSlotComposeFrom, mutualRecognition } from '$lib/state/core.svelte';
-	import { userPub } from '$lib/state/gun.svelte';
+	import { userPub } from '$lib/state/auth.svelte';
 	import { get } from 'svelte/store';
 	import {
 		getSlotAllocatedQuantity,

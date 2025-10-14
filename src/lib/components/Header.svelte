@@ -6,14 +6,33 @@
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import {
-		userAlias,
-		userPub,
-		login,
-		signup,
-		signout,
-		isAuthenticating,
-		changePassword
+		userAlias as gunUserAlias,
+		userPub as gunUserPub,
+		login as gunLogin,
+		signup as gunSignup,
+		signout as gunSignout,
+		isAuthenticating as gunIsAuthenticating,
+		changePassword as gunChangePassword
 	} from '$lib/state/gun.svelte';
+	import {
+		holsterUserAlias,
+		holsterUserPub,
+		login as holsterLogin,
+		signup as holsterSignup,
+		signout as holsterSignout,
+		isHolsterAuthenticating,
+		changePassword as holsterChangePassword
+	} from '$lib/state/holster.svelte';
+	import { USE_HOLSTER_AUTH } from '$lib/config';
+
+	// Conditionally use Gun or Holster based on feature flag
+	const userAlias = USE_HOLSTER_AUTH ? holsterUserAlias : gunUserAlias;
+	const userPub = USE_HOLSTER_AUTH ? holsterUserPub : gunUserPub;
+	const isAuthenticating = USE_HOLSTER_AUTH ? isHolsterAuthenticating : gunIsAuthenticating;
+	const login = USE_HOLSTER_AUTH ? holsterLogin : gunLogin;
+	const signup = USE_HOLSTER_AUTH ? holsterSignup : gunSignup;
+	const signout = USE_HOLSTER_AUTH ? holsterSignout : gunSignout;
+	const changePassword = USE_HOLSTER_AUTH ? holsterChangePassword : gunChangePassword;
 	import { userTree } from '$lib/state/core.svelte';
 	import { findNodeById } from '$lib/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
