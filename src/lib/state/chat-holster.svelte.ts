@@ -286,6 +286,13 @@ export function clearAllHolsterChatSubscriptions(): void {
 }
 
 /**
+ * Alias for clearAllHolsterChatSubscriptions (for consistency with other modules)
+ */
+export function cleanupHolsterChat(): void {
+	clearAllHolsterChatSubscriptions();
+}
+
+/**
  * Reset all chat subscriptions (alias for logout/re-login)
  */
 export function resetAllChatSubscriptions(): void {

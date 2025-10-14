@@ -313,7 +313,7 @@ export function initializeHolsterCapacities() {
  * Cleanup subscription
  */
 export function cleanupHolsterCapacities() {
-	if (capacitiesCallback) {
+	if (capacitiesCallback && holsterUser.is) {
 		holsterUser.get('capacities').off(capacitiesCallback);
 		capacitiesCallback = null;
 	}
@@ -321,6 +321,14 @@ export function cleanupHolsterCapacities() {
 	lastNetworkTimestamp = null;
 	lastKnownCapacityIds.clear();
 	isInitialized = false; // Reset initialization flag
+
+	// Clear localStorage cache
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(CAPACITIES_CACHE_KEY);
+		localStorage.removeItem(CAPACITIES_CACHE_TIMESTAMP_KEY);
+		console.log('[CAPACITIES-HOLSTER] Cleared localStorage cache');
+	}
+
 	console.log('[CAPACITIES-HOLSTER] Cleaned up');
 }
 
@@ -610,4 +618,98 @@ export async function updateHolsterCapacitiesStore(
 ): Promise<void> {
 	holsterCapacities.set(updatedCapacities);
 	await persistHolsterCapacities(updatedCapacities);
+}
+
+// ============================================================================
+// Cross-User Data Fetching (for Mutual Contributors)
+// ============================================================================
+
+/**
+ * Subscribe to a mutual contributor's capacities from Holster
+ * Used to fetch their published capacities for allocation algorithm
+ */
+export function subscribeToContributorHolsterCapacities(
+	contributorPubKey: string,
+	onUpdate: (capacities: CapacitiesCollection) => void
+) {
+	if (!holsterUser.is) {
+		console.log(`[CAPACITIES-HOLSTER] Not authenticated, cannot subscribe to ${contributorPubKey.slice(0, 20)}...`);
+		return;
+	}
+
+	console.log(`[CAPACITIES-HOLSTER] Subscribing to contributor capacities: ${contributorPubKey.slice(0, 20)}...`);
+
+	// Subscribe to this contributor's capacities
+	holsterUser.get([contributorPubKey, 'capacities']).on((capacitiesData) => {
+		if (!capacitiesData) {
+			console.log(`[CAPACITIES-HOLSTER] No capacities data from ${contributorPubKey.slice(0, 20)}...`);
+			// Call with empty object to clear
+			onUpdate({});
+			return;
+		}
+
+		try {
+			// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
+			const isDeleted = (value: any, key?: string): boolean => {
+				if (value === null || value === undefined) {
+					return true;
+				}
+				if (typeof value === 'object' && value !== null) {
+					// Check if required capacity fields are missing (indicates deletion)
+					if (!value.id || !value.name) {
+						return true;
+					}
+					// Check if all fields are null or undefined (Holster deletion pattern)
+					const allFieldsNull = Object.values(value).every((v) => v === null || v === undefined);
+					if (allFieldsNull) {
+						return true;
+					}
+				}
+				return false;
+			};
+
+			// Filter out metadata fields and null/deleted values
+			const { _updatedAt, ...dataOnly } = capacitiesData;
+			const capacitiesOnly: any = {};
+			for (const [key, value] of Object.entries(dataOnly)) {
+				if (!isDeleted(value, key) && !key.startsWith('_')) {
+					capacitiesOnly[key] = value;
+				}
+			}
+
+			// Convert availability_slots objects back to arrays
+			for (const [capacityId, capacity] of Object.entries(capacitiesOnly)) {
+				if ((capacity as any).availability_slots && typeof (capacity as any).availability_slots === 'object') {
+					const slotsObj = (capacity as any).availability_slots;
+					const slotsArray: any[] = [];
+					for (const slotId of Object.keys(slotsObj)) {
+						if (slotsObj[slotId]) {
+							slotsArray.push(slotsObj[slotId]);
+						}
+					}
+					(capacity as any).availability_slots = slotsArray;
+				} else {
+					(capacity as any).availability_slots = [];
+				}
+			}
+
+			// Parse and validate
+			const parsed = CapacitiesCollectionSchema.safeParse(capacitiesOnly);
+			if (!parsed.success) {
+				console.warn(`[CAPACITIES-HOLSTER] Invalid capacities from ${contributorPubKey.slice(0, 20)}...`, parsed.error);
+				return;
+			}
+
+			console.log(
+				`[CAPACITIES-HOLSTER] Received capacities from ${contributorPubKey.slice(0, 20)}...:`,
+				Object.keys(parsed.data).length,
+				'capacities'
+			);
+
+			// Call the update callback
+			onUpdate(parsed.data);
+		} catch (error) {
+			console.error(`[CAPACITIES-HOLSTER] Error processing capacities from ${contributorPubKey.slice(0, 20)}...:`, error);
+		}
+	});
 }

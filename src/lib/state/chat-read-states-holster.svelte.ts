@@ -139,7 +139,7 @@ export function initializeHolsterChatReadStates() {
  * Cleanup chat read states subscription
  */
 export function cleanupHolsterChatReadStates() {
-	if (chatReadStatesCallback) {
+	if (chatReadStatesCallback && holsterUser.is) {
 		holsterUser.get('chatReadStates').off(chatReadStatesCallback);
 		chatReadStatesCallback = null;
 	}

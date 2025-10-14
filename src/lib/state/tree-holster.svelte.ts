@@ -135,7 +135,8 @@ function processNetworkUpdate(data: any) {
 
 	// Validate we have nodes and root_id
 	if (Object.keys(nodes).length === 0 || !treeData.root_id) {
-		console.error('[TREE-HOLSTER] Invalid tree structure - no nodes or root_id');
+		console.warn('[TREE-HOLSTER] Skipping update - incomplete tree structure (nodes:', Object.keys(nodes).length, 'root_id:', !!treeData.root_id, ')');
+		// This can happen during initial persistence when metadata arrives before all nodes
 		return;
 	}
 
@@ -498,8 +499,35 @@ export function initializeHolsterTree() {
 			// This prevents stale network data from corrupting lastPersistedNodes
 			processNetworkUpdate(data);
 		} else {
-			holsterTree.set(null);
-			userTree.set(null);
+			// No tree exists - create default tree with username as root node name
+			console.log('[TREE-HOLSTER] No existing tree - creating default tree');
+			const username = holsterUser.is?.username || 'User';
+			const now = new Date().toISOString();
+			const defaultTree: RootNode = {
+				id: 'root',
+				name: username,
+				type: 'RootNode',
+				manual_fulfillment: null,
+				children: [],
+				created_at: now,
+				updated_at: now
+			};
+
+			holsterTree.set(defaultTree);
+			userTree.set(defaultTree);
+
+			// Persist the default tree and subscribe after it completes
+			console.log('[TREE-HOLSTER] Persisting default tree...');
+			persistHolsterTree(defaultTree).then(() => {
+				console.log('[TREE-HOLSTER] Default tree persisted, subscribing to updates');
+				isLoadingHolsterTree.set(false);
+				subscribeToTree();
+			}).catch((err) => {
+				console.error('[TREE-HOLSTER] Error persisting default tree:', err);
+				isLoadingHolsterTree.set(false);
+				subscribeToTree();
+			});
+			return; // Early return - subscription handled in promise
 		}
 
 		isLoadingHolsterTree.set(false);
@@ -512,13 +540,21 @@ export function initializeHolsterTree() {
 // ============================================================================
 
 export function cleanupHolsterTree() {
-	if (treeCallback) {
+	if (treeCallback && holsterUser.is) {
 		holsterUser.get('tree').off(treeCallback);
 		treeCallback = null;
 	}
 	holsterTree.set(null);
 	lastNetworkTimestamp = null;
 	isInitialized = false; // Reset initialization flag
+
+	// Clear localStorage cache
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(TREE_CACHE_KEY);
+		localStorage.removeItem(TREE_CACHE_TIMESTAMP_KEY);
+		console.log('[TREE-HOLSTER] Cleared localStorage cache');
+	}
+
 	console.log('[TREE-HOLSTER] Cleaned up');
 }
 
@@ -705,4 +741,90 @@ export async function persistHolsterTree(tree?: RootNode): Promise<void> {
 		processQueuedUpdate(); // Process any queued updates even on error
 		throw error;
 	}
+}
+
+// ============================================================================
+// Cross-User Data Fetching (for Mutual Contributors)
+// ============================================================================
+
+/**
+ * Subscribe to a mutual contributor's tree from Holster
+ * Used to fetch their recognition tree for collective recognition calculations
+ */
+export function subscribeToContributorHolsterTree(
+	contributorPubKey: string,
+	onUpdate: (tree: RootNode | null) => void
+) {
+	if (!holsterUser.is) {
+		console.log(`[TREE-HOLSTER] Not authenticated, cannot subscribe to ${contributorPubKey.slice(0, 20)}...`);
+		return;
+	}
+
+	console.log(`[TREE-HOLSTER] Subscribing to contributor tree: ${contributorPubKey.slice(0, 20)}...`);
+
+	// Subscribe to this contributor's tree
+	holsterUser.get([contributorPubKey, 'tree']).on((treeData) => {
+		if (!treeData) {
+			console.log(`[TREE-HOLSTER] No tree data from ${contributorPubKey.slice(0, 20)}...`);
+			// Call with null to clear
+			onUpdate(null);
+			return;
+		}
+
+		try {
+			// Remove timestamp field
+			const { _updatedAt, ...dataOnly } = treeData;
+
+			// Extract nodes - filter out metadata fields and null values (deleted nodes)
+			const nodes: Record<string, FlatNode> = {};
+			if (dataOnly.nodes && typeof dataOnly.nodes === 'object') {
+				for (const [key, value] of Object.entries(dataOnly.nodes)) {
+					if (!key.startsWith('_') && value && typeof value === 'object') {
+						nodes[key] = value as FlatNode;
+					}
+				}
+			}
+
+			// Validate we have nodes and root_id
+			if (Object.keys(nodes).length === 0 || !dataOnly.root_id) {
+				console.warn(`[TREE-HOLSTER] Invalid tree structure from ${contributorPubKey.slice(0, 20)}... - no nodes or root_id`);
+				onUpdate(null);
+				return;
+			}
+
+			const flatTreeData: FlatTreeData = {
+				nodes,
+				root_id: dataOnly.root_id
+			};
+
+			// Reconstruct tree from flat format
+			const reconstructed = reconstructTree(flatTreeData);
+
+			if (!reconstructed) {
+				console.warn(`[TREE-HOLSTER] Failed to reconstruct tree from ${contributorPubKey.slice(0, 20)}...`);
+				onUpdate(null);
+				return;
+			}
+
+			// Validate reconstructed tree
+			const parseResult = RootNodeSchema.safeParse(reconstructed);
+			if (!parseResult.success) {
+				console.warn(`[TREE-HOLSTER] Invalid tree from ${contributorPubKey.slice(0, 20)}...`, parseResult.error);
+				onUpdate(null);
+				return;
+			}
+
+			console.log(
+				`[TREE-HOLSTER] Received tree from ${contributorPubKey.slice(0, 20)}...:`,
+				Object.keys(nodes).length,
+				'nodes'
+			);
+
+			// Call the update callback
+			onUpdate(parseResult.data);
+		} catch (error) {
+			console.error(`[TREE-HOLSTER] Error processing tree from ${contributorPubKey.slice(0, 20)}...:`, error);
+			onUpdate(null);
+		}
+	});
 }

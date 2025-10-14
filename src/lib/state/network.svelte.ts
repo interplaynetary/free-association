@@ -1362,6 +1362,11 @@ const activeHolsterSogfSubs = new Set<string>();
 const activeHolsterComposeFromSubs = new Set<string>();
 const activeHolsterComposeIntoSubs = new Set<string>();
 
+// Track active Holster subscriptions for mutual contributor data
+const activeHolsterCapacitiesSubs = new Set<string>();
+const activeHolsterTreeSubs = new Set<string>();
+const activeHolsterAllocationStatesSubs = new Set<string>();
+
 // Watch for changes to contributors and subscribe to get their SOGF data
 const debouncedUpdateSOGFSubscriptions = debounce((allContributors: string[]) => {
 	/*console.log(
@@ -1564,17 +1569,201 @@ const debouncedUpdateMutualSubscriptions = debounce(async (currentMutualContribu
 		});
 
 		console.log(`[COMPOSE-HOLSTER] Active Holster compose subscriptions: from=${activeHolsterComposeFromSubs.size}, into=${activeHolsterComposeIntoSubs.size}`);
+	}
 
-		// Note: Still create Gun streams for other data (capacities, allocationStates, tree)
-		// but skip compose-from/into streams
-		mutualStreamManager.updateSubscriptions(
-			currentMutualContributors,
-			createMutualContributorStreams
-		);
+	// === CAPACITIES HOLSTER subscriptions ===
+	if (USE_HOLSTER_CAPACITIES) {
+		console.log('[CAPACITIES-HOLSTER] Using Holster for capacities - setting up Holster capacities streams for mutual contributors');
+
+		// Import holsterUserPub to get our public key from Holster
+		const { holsterUserPub } = await import('./holster.svelte');
+		const ourPubKey = get(holsterUserPub);
+
+		if (!ourPubKey) {
+			console.log('[CAPACITIES-HOLSTER] Not authenticated in Holster, skipping subscriptions');
+		} else {
+			// Get contributors with resolved public keys
+			const contributorsWithPubKeys = currentMutualContributors
+				.map(id => resolveToPublicKey(id))
+				.filter((pubKey): pubKey is string => pubKey !== null && pubKey !== undefined);
+
+			// Remove subscriptions for contributors no longer in the list
+			activeHolsterCapacitiesSubs.forEach(pubKey => {
+				if (!contributorsWithPubKeys.includes(pubKey)) {
+					console.log(`[CAPACITIES-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterCapacitiesSubs.delete(pubKey);
+					// Clear from network store
+					networkCapacities.update((current) => {
+						const { [pubKey]: _, ...rest } = current;
+						return rest;
+					});
+				}
+			});
+
+			// Add subscriptions for new contributors
+			contributorsWithPubKeys.forEach(pubKey => {
+				// Skip ourselves
+				if (pubKey === ourPubKey) {
+					return;
+				}
+
+				if (!activeHolsterCapacitiesSubs.has(pubKey)) {
+					console.log(`[CAPACITIES-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterCapacitiesSubs.add(pubKey);
+
+					// Import and subscribe
+					import('./capacities-holster.svelte').then(({ subscribeToContributorHolsterCapacities }) => {
+						subscribeToContributorHolsterCapacities(pubKey, (capacities) => {
+							// Update network store
+							networkCapacities.update((current) => ({
+								...current,
+								[pubKey]: capacities
+							}));
+						});
+					});
+				}
+			});
+
+			console.log(`[CAPACITIES-HOLSTER] Active Holster capacities subscriptions: ${activeHolsterCapacitiesSubs.size}`);
+		}
+	}
+
+	// === TREE HOLSTER subscriptions ===
+	if (USE_HOLSTER_TREE) {
+		console.log('[TREE-HOLSTER] Using Holster for tree - setting up Holster tree streams for mutual contributors');
+
+		// Import holsterUserPub to get our public key from Holster
+		const { holsterUserPub } = await import('./holster.svelte');
+		const ourPubKey = get(holsterUserPub);
+
+		if (!ourPubKey) {
+			console.log('[TREE-HOLSTER] Not authenticated in Holster, skipping subscriptions');
+		} else {
+			// Get contributors with resolved public keys
+			const contributorsWithPubKeys = currentMutualContributors
+				.map(id => resolveToPublicKey(id))
+				.filter((pubKey): pubKey is string => pubKey !== null && pubKey !== undefined);
+
+			// Remove subscriptions for contributors no longer in the list
+			activeHolsterTreeSubs.forEach(pubKey => {
+				if (!contributorsWithPubKeys.includes(pubKey)) {
+					console.log(`[TREE-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterTreeSubs.delete(pubKey);
+					// Clear from collective forest
+					collectiveForest.update((forest) => {
+						const newForest = new Map(forest);
+						newForest.delete(pubKey);
+						return newForest;
+					});
+				}
+			});
+
+			// Add subscriptions for new contributors
+			contributorsWithPubKeys.forEach(pubKey => {
+				// Skip ourselves
+				if (pubKey === ourPubKey) {
+					return;
+				}
+
+				if (!activeHolsterTreeSubs.has(pubKey)) {
+					console.log(`[TREE-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterTreeSubs.add(pubKey);
+
+					// Import and subscribe
+					import('./tree-holster.svelte').then(({ subscribeToContributorHolsterTree }) => {
+						subscribeToContributorHolsterTree(pubKey, (tree) => {
+							// Update collective forest
+							if (tree) {
+								collectiveForest.update((forest) => {
+									const newForest = new Map(forest);
+									newForest.set(pubKey, tree);
+									return newForest;
+								});
+							} else {
+								collectiveForest.update((forest) => {
+									const newForest = new Map(forest);
+									newForest.delete(pubKey);
+									return newForest;
+								});
+							}
+						});
+					});
+				}
+			});
+
+			console.log(`[TREE-HOLSTER] Active Holster tree subscriptions: ${activeHolsterTreeSubs.size}`);
+		}
+	}
+
+	// === ALLOCATION STATES HOLSTER subscriptions ===
+	const { USE_HOLSTER_ALLOCATION_STATES } = await import('$lib/config');
+	if (USE_HOLSTER_ALLOCATION_STATES) {
+		console.log('[ALLOCATION-STATES-HOLSTER] Using Holster for allocation states - setting up Holster allocation states streams for mutual contributors');
+
+		// Import holsterUserPub to get our public key from Holster
+		const { holsterUserPub } = await import('./holster.svelte');
+		const ourPubKey = get(holsterUserPub);
+
+		if (!ourPubKey) {
+			console.log('[ALLOCATION-STATES-HOLSTER] Not authenticated in Holster, skipping subscriptions');
+		} else {
+			// Get contributors with resolved public keys
+			const contributorsWithPubKeys = currentMutualContributors
+				.map(id => resolveToPublicKey(id))
+				.filter((pubKey): pubKey is string => pubKey !== null && pubKey !== undefined);
+
+			// Remove subscriptions for contributors no longer in the list
+			activeHolsterAllocationStatesSubs.forEach(pubKey => {
+				if (!contributorsWithPubKeys.includes(pubKey)) {
+					console.log(`[ALLOCATION-STATES-HOLSTER] Removing subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterAllocationStatesSubs.delete(pubKey);
+					// Clear from network store
+					networkAllocationStates.update((current) => {
+						const { [pubKey]: _, ...rest } = current;
+						return rest;
+					});
+				}
+			});
+
+			// Add subscriptions for new contributors
+			contributorsWithPubKeys.forEach(pubKey => {
+				// Skip ourselves
+				if (pubKey === ourPubKey) {
+					return;
+				}
+
+				if (!activeHolsterAllocationStatesSubs.has(pubKey)) {
+					console.log(`[ALLOCATION-STATES-HOLSTER] Adding subscription for ${pubKey.slice(0, 20)}...`);
+					activeHolsterAllocationStatesSubs.add(pubKey);
+
+					// Import and subscribe
+					import('./allocation-states-holster.svelte').then(({ subscribeToContributorHolsterAllocationStates }) => {
+						subscribeToContributorHolsterAllocationStates(pubKey, (allocationStates) => {
+							// Update network store
+							networkAllocationStates.update((current) => ({
+								...current,
+								[pubKey]: allocationStates
+							}));
+						});
+					});
+				}
+			});
+
+			console.log(`[ALLOCATION-STATES-HOLSTER] Active Holster allocation states subscriptions: ${activeHolsterAllocationStatesSubs.size}`);
+		}
+	}
+
+	// Determine if we should skip Gun streams entirely
+	const shouldUseGunForMutual = !USE_HOLSTER_COMPOSE && !USE_HOLSTER_CAPACITIES && !USE_HOLSTER_TREE && !USE_HOLSTER_ALLOCATION_STATES;
+
+	if (!shouldUseGunForMutual) {
+		// Stop all Gun mutual contributor streams when using Holster
+		console.log('[NETWORK] Using Holster for mutual contributor data - stopping Gun mutual streams');
+		mutualStreamManager.stopAllStreams();
 		return;
 	}
 
-	// Gun implementation (legacy) - create all streams including compose
+	// Gun implementation (legacy) - create all streams
 	mutualStreamManager.updateSubscriptions(
 		currentMutualContributors,
 		createMutualContributorStreams

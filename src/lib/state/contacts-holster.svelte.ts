@@ -165,7 +165,7 @@ export function initializeHolsterContacts() {
  * Cleanup subscription
  */
 export function cleanupHolsterContacts() {
-	if (contactsCallback) {
+	if (contactsCallback && holsterUser.is) {
 		holsterUser.get('contacts').off(contactsCallback);
 		contactsCallback = null;
 	}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import { userTree } from '$lib/state/core.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';

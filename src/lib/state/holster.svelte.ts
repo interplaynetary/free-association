@@ -1,6 +1,6 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import { writable, get } from 'svelte/store';
-import { initializeUserDataStreams } from './network.svelte';
+import { initializeHolsterDataStreams } from './network.svelte';
 import { config } from '../config';
 
 // Initialize Holster - now uses config from environment variables
@@ -36,10 +36,13 @@ if (typeof window !== 'undefined') {
 			await new Promise((resolve) => {
 				holsterUser.recall();
 				// Check if user is authenticated
+				console.log('[HOLSTER RECALL] holsterUser.is:', holsterUser.is);
 				if (holsterUser.is && holsterUser.is.username) {
 					console.log('[HOLSTER RECALL] User authenticated:', holsterUser.is.username);
+					console.log('[HOLSTER RECALL] Setting stores - username:', holsterUser.is.username, 'pub:', holsterUser.is.pub);
 					holsterUserAlias.set(holsterUser.is.username);
 					holsterUserPub.set(holsterUser.is.pub);
+					console.log('[HOLSTER RECALL] Stores set successfully');
 
 					// Update users list
 					holster.get('freely-associating-players').next(holsterUser.is.pub).put({
@@ -47,8 +50,9 @@ if (typeof window !== 'undefined') {
 						lastSeen: Date.now()
 					});
 
-					// Load the data streams
-					initializeUserDataStreams();
+					// Initialize Holster data streams (Phase 10 function)
+					console.log('[HOLSTER RECALL] Initializing Holster data streams...');
+					initializeHolsterDataStreams();
 				} else {
 					console.log('[HOLSTER RECALL] No authenticated user found');
 					holsterUserAlias.set('');
@@ -143,8 +147,9 @@ export async function login(alias: string, password: string): Promise<void> {
 						// Store credentials in localStorage for cross-tab access
 						holsterUser.store(true);
 
-						// Load existing user data
-						initializeUserDataStreams();
+						// Initialize Holster data streams (Phase 10 function)
+						console.log('[HOLSTER LOGIN] Initializing Holster data streams...');
+						initializeHolsterDataStreams();
 
 						resolve();
 					}
@@ -214,7 +219,7 @@ export function cleanupAllHolsterSubscriptions() {
 	console.log('[HOLSTER] Cleaning up all subscriptions...');
 
 	// Import cleanup functions dynamically to avoid circular dependencies
-	Promise.all([
+	return Promise.all([
 		import('./contacts-holster.svelte').then(m => m.cleanupHolsterContacts()),
 		import('./capacities-holster.svelte').then(m => m.cleanupHolsterCapacities()),
 		import('./tree-holster.svelte').then(m => m.cleanupHolsterTree()),
@@ -228,9 +233,10 @@ export function cleanupAllHolsterSubscriptions() {
 }
 
 export async function signout() {
-	// Clean up all Holster subscriptions before leaving
-	cleanupAllHolsterSubscriptions();
+	// Clean up all Holster subscriptions BEFORE leaving (while still authenticated)
+	await cleanupAllHolsterSubscriptions();
 
+	// Now safely destroy the session
 	holsterUser.leave();
 	holsterUserAlias.set('');
 	holsterUserPub.set('');

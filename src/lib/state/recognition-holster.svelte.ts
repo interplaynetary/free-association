@@ -258,8 +258,10 @@ export function subscribeToContributorHolsterSogf(
 export function cleanupHolsterSogf() {
 	console.log('[SOGF-HOLSTER] Cleaning up subscriptions...');
 
-	// Turn off own SOGF subscription
-	holsterUser.get('sogf').off();
+	// Turn off own SOGF subscription (only if still authenticated)
+	if (holsterUser.is) {
+		holsterUser.get('sogf').off();
+	}
 
 	// Reset state
 	holsterSogf.set(null);

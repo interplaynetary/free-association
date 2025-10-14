@@ -6,7 +6,7 @@
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
-	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import { userCapacities, mutualContributors, userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';

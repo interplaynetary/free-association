@@ -1,5 +1,6 @@
 import { get } from 'svelte/store';
-import { gun, usersList, userPub, userAlias } from '$lib/state/gun.svelte';
+import { gun, usersList } from '$lib/state/gun.svelte';
+import { userPub, userAlias } from '$lib/state/auth.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
 import { userTree } from '$lib/state/core.svelte';
 import { createRootNode } from '$lib/protocol';

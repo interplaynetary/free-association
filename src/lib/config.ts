@@ -112,9 +112,20 @@ export const USE_HOLSTER_ALLOCATION_STATES =
 	(typeof localStorage !== 'undefined' &&
 		localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true');
 
+/**
+ * Use Holster for authentication (Phase 11)
+ * - When true: uses holster.svelte.ts login/signup/signout
+ * - When false: uses gun.svelte.ts login/signup/signout
+ */
+export const USE_HOLSTER_AUTH =
+	import.meta.env.VITE_USE_HOLSTER_AUTH === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_AUTH') === 'true');
+
 // Log active flags in development
 if (import.meta.env.DEV && typeof window !== 'undefined') {
 	console.log('[CONFIG] Holster Migration Flags:', {
+		USE_HOLSTER_AUTH,
 		USE_HOLSTER_CONTACTS,
 		USE_HOLSTER_CAPACITIES,
 		USE_HOLSTER_TREE,
@@ -127,6 +138,12 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 
 	// Add toggle utilities to window
 	(window as any).toggleHolster = {
+		auth: () => {
+			const current = localStorage.getItem('USE_HOLSTER_AUTH') === 'true';
+			localStorage.setItem('USE_HOLSTER_AUTH', (!current).toString());
+			console.log(`[TOGGLE] Holster auth: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
 		contacts: () => {
 			const current = localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true';
 			localStorage.setItem('USE_HOLSTER_CONTACTS', (!current).toString());
@@ -177,6 +194,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 		},
 		status: () => {
 			console.log('[TOGGLE] Current Holster flags:', {
+				auth: localStorage.getItem('USE_HOLSTER_AUTH') === 'true',
 				contacts: localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true',
 				capacities: localStorage.getItem('USE_HOLSTER_CAPACITIES') === 'true',
 				tree: localStorage.getItem('USE_HOLSTER_TREE') === 'true',
@@ -186,6 +204,32 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 				chatReadStates: localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true',
 				allocationStates: localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true'
 			});
+		},
+		enableAll: () => {
+			localStorage.setItem('USE_HOLSTER_AUTH', 'true');
+			localStorage.setItem('USE_HOLSTER_CONTACTS', 'true');
+			localStorage.setItem('USE_HOLSTER_CAPACITIES', 'true');
+			localStorage.setItem('USE_HOLSTER_TREE', 'true');
+			localStorage.setItem('USE_HOLSTER_CHAT', 'true');
+			localStorage.setItem('USE_HOLSTER_RECOGNITION', 'true');
+			localStorage.setItem('USE_HOLSTER_COMPOSE', 'true');
+			localStorage.setItem('USE_HOLSTER_CHAT_READ_STATES', 'true');
+			localStorage.setItem('USE_HOLSTER_ALLOCATION_STATES', 'true');
+			console.log('[TOGGLE] All Holster flags enabled');
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		disableAll: () => {
+			localStorage.removeItem('USE_HOLSTER_AUTH');
+			localStorage.removeItem('USE_HOLSTER_CONTACTS');
+			localStorage.removeItem('USE_HOLSTER_CAPACITIES');
+			localStorage.removeItem('USE_HOLSTER_TREE');
+			localStorage.removeItem('USE_HOLSTER_CHAT');
+			localStorage.removeItem('USE_HOLSTER_RECOGNITION');
+			localStorage.removeItem('USE_HOLSTER_COMPOSE');
+			localStorage.removeItem('USE_HOLSTER_CHAT_READ_STATES');
+			localStorage.removeItem('USE_HOLSTER_ALLOCATION_STATES');
+			console.log('[TOGGLE] All Holster flags disabled');
+			console.log('[TOGGLE] Reload page to apply changes');
 		}
 	};
 

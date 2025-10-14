@@ -145,7 +145,7 @@ export function initializeHolsterComposeFrom() {
  * Cleanup compose-from subscription
  */
 export function cleanupHolsterComposeFrom() {
-	if (composeFromCallback) {
+	if (composeFromCallback && holsterUser.is) {
 		holsterUser.get('desiredSlotComposeFrom').off(composeFromCallback);
 		composeFromCallback = null;
 	}
@@ -309,7 +309,7 @@ export function initializeHolsterComposeInto() {
  * Cleanup compose-into subscription
  */
 export function cleanupHolsterComposeInto() {
-	if (composeIntoCallback) {
+	if (composeIntoCallback && holsterUser.is) {
 		holsterUser.get('desiredSlotComposeInto').off(composeIntoCallback);
 		composeIntoCallback = null;
 	}

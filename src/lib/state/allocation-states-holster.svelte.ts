@@ -238,3 +238,76 @@ export function clearHolsterAllocationStates(): void {
 	holsterProviderAllocationStates.set({});
 	lastNetworkTimestamp = null;
 }
+
+// ============================================================================
+// Cross-User Data Fetching (for Mutual Contributors)
+// ============================================================================
+
+/**
+ * Subscribe to a mutual contributor's allocation states from Holster
+ * Used to see their published provider allocations for mutual fulfillment algorithm
+ */
+export function subscribeToContributorHolsterAllocationStates(
+	contributorPubKey: string,
+	onUpdate: (allocationStates: Record<string, ProviderAllocationStateData>) => void
+) {
+	if (!holsterUser.is) {
+		console.log(`[ALLOCATION-STATES-HOLSTER] Not authenticated, cannot subscribe to ${contributorPubKey.slice(0, 20)}...`);
+		return;
+	}
+
+	console.log(`[ALLOCATION-STATES-HOLSTER] Subscribing to contributor allocation states: ${contributorPubKey.slice(0, 20)}...`);
+
+	// Subscribe to this contributor's allocation states
+	holsterUser.get([contributorPubKey, 'allocationStates']).on((allocationStatesData) => {
+		if (!allocationStatesData) {
+			console.log(`[ALLOCATION-STATES-HOLSTER] No allocation states data from ${contributorPubKey.slice(0, 20)}...`);
+			// Call with empty object to clear
+			onUpdate({});
+			return;
+		}
+
+		try {
+			// Extract timestamp and filter out metadata
+			const { _updatedAt, ...dataOnly } = allocationStatesData as TimestampedData<any>;
+
+			// Parse the JSON string (or use object directly if already parsed)
+			const parsed = typeof dataOnly === 'string' ? JSON.parse(dataOnly) : dataOnly;
+
+			// Validate each capacity's allocation states
+			const validatedAllocationStates: Record<string, ProviderAllocationStateData> = {};
+			let hasValidData = false;
+
+			Object.entries(parsed).forEach(([capacityId, capacityAllocations]) => {
+				try {
+					// Each capacity's allocation states is a ProviderAllocationStateData
+					const validated = parseProviderAllocationStateData(capacityAllocations);
+					if (validated) {
+						validatedAllocationStates[capacityId] = validated;
+						hasValidData = true;
+					}
+				} catch (error) {
+					console.warn(`[ALLOCATION-STATES-HOLSTER] Failed to validate allocation states for capacity ${capacityId} from ${contributorPubKey.slice(0, 20)}...:`, error);
+				}
+			});
+
+			if (!hasValidData) {
+				console.warn(`[ALLOCATION-STATES-HOLSTER] No valid allocation states from ${contributorPubKey.slice(0, 20)}...`);
+				onUpdate({});
+				return;
+			}
+
+			console.log(
+				`[ALLOCATION-STATES-HOLSTER] Received allocation states from ${contributorPubKey.slice(0, 20)}...:`,
+				Object.keys(validatedAllocationStates).length,
+				'capacities'
+			);
+
+			// Call the update callback
+			onUpdate(validatedAllocationStates);
+		} catch (error) {
+			console.error(`[ALLOCATION-STATES-HOLSTER] Error processing allocation states from ${contributorPubKey.slice(0, 20)}...:`, error);
+			onUpdate({});
+		}
+	});
+}
