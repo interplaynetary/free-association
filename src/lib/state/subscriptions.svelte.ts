@@ -127,14 +127,31 @@ const debouncedPersistUserDesiredSlotComposeInto = debounce(() => {
 // DELETED: debouncedPersistContributorCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
 // Old recipient-computed slot quantities no longer needed
 
-const debouncedPersistProviderAllocationStates = debounce(() => {
+const debouncedPersistProviderAllocationStates = debounce(async () => {
 	console.log(
 		'[PROVIDER-ALLOCATION-STATES-SUB] Executing debounced provider allocation states persistence'
 	);
-	try {
-		persistProviderAllocationStates();
-	} catch (error) {
-		console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during debounced persistence:', error);
+
+	// Check if using Holster for allocation states
+	const { USE_HOLSTER_ALLOCATION_STATES } = await import('$lib/config');
+
+	if (USE_HOLSTER_ALLOCATION_STATES) {
+		// Use Holster persistence
+		console.log('[PROVIDER-ALLOCATION-STATES-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterAllocationStates } = await import('./allocation-states-holster.svelte');
+			await persistHolsterAllocationStates();
+			console.log('[PROVIDER-ALLOCATION-STATES-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		try {
+			persistProviderAllocationStates();
+		} catch (error) {
+			console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during Gun persistence:', error);
+		}
 	}
 }, 200);
 

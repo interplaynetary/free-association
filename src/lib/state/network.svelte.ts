@@ -844,6 +844,16 @@ const createOwnContactsStream = withAuthentication(async (userId: string) => {
 });
 
 const createOwnChatReadStatesStream = withAuthentication(async (userId: string) => {
+	// When using Holster, initialize Holster chat read states instead of Gun stream
+	const { USE_HOLSTER_CHAT_READ_STATES } = await import('$lib/config');
+	if (USE_HOLSTER_CHAT_READ_STATES) {
+		console.log('[NETWORK] Using Holster for chat read states - skipping Gun stream');
+		const { initializeHolsterChatReadStates } = await import('./chat-read-states-holster.svelte');
+		initializeHolsterChatReadStates();
+		return;
+	}
+
+	// Gun implementation
 	await createStream(ownDataStreamConfigs.chatReadStates, userId);
 });
 
@@ -1016,15 +1026,19 @@ export async function initializeHolsterDataStreams(): Promise<void> {
 		const { initializeHolsterCapacities } = await import('./capacities-holster.svelte');
 		const { initializeHolsterTree } = await import('./tree-holster.svelte');
 		const { initializeHolsterSogf } = await import('./recognition-holster.svelte');
+		const { initializeHolsterAllocationStates } = await import('./allocation-states-holster.svelte');
 
 		// Initialize each module
 		initializeHolsterContacts();
 		initializeHolsterCapacities();
 		initializeHolsterTree();
 		initializeHolsterSogf();
+		initializeHolsterAllocationStates();
 
 		// Chat initialization is handled by getChatMessages() calling subscribeToHolsterChat()
-		// No explicit initialization needed here
+		// Compose initialization is handled by compose-holster.svelte.ts subscriptions
+		// Chat read states initialization is handled by chat-read-states-holster.svelte.ts subscriptions
+		// No explicit initialization needed here for these modules
 
 		console.log('[NETWORK-HOLSTER] All Holster data streams initialized successfully');
 	} catch (error) {

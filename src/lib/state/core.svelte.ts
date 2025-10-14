@@ -425,10 +425,11 @@ export const specificShares = derived(
 
 		// Process each of our provider capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// Only process provider capacities (our own capacities)
-			if (typeof capacity !== 'object' || capacity === null || !('recipient_shares' in capacity)) return;
+			// Only process provider capacities (our own capacities, which don't have provider_id)
+			// Recipient capacities have a provider_id field, so skip those
+			if (typeof capacity !== 'object' || capacity === null || 'provider_id' in capacity) return;
 
-			// Type assertion: we've verified it has recipient_shares, so it's a ProviderCapacity
+			// Type assertion: we've verified it's a provider capacity (no provider_id)
 			const providerCapacity = capacity as unknown as ProviderCapacity;
 
 			// Create filter context for this capacity
@@ -523,8 +524,9 @@ export const computedProviderAllocations = derived(
 
 		// Process each of our capacities
 		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// Only process provider capacities (our own capacities)
-			if (!('recipient_shares' in capacity)) return;
+			// Only process provider capacities (our own capacities, which don't have provider_id)
+			// Recipient capacities have a provider_id field, so skip those
+			if ('provider_id' in capacity) return;
 
 			const providerCapacity = capacity as ProviderCapacity;
 			const capacityAllocations: ProviderAllocationStateData = {};

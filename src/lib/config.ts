@@ -92,6 +92,26 @@ export const USE_HOLSTER_COMPOSE =
 	(typeof localStorage !== 'undefined' &&
 		localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true');
 
+/**
+ * Use Holster for chat read states
+ * - When true: uses chat-read-states-holster.svelte.ts
+ * - When false: uses Gun-based chat read states in persistence.svelte.ts
+ */
+export const USE_HOLSTER_CHAT_READ_STATES =
+	import.meta.env.VITE_USE_HOLSTER_CHAT_READ_STATES === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true');
+
+/**
+ * Use Holster for allocation states
+ * - When true: uses allocation-states-holster.svelte.ts
+ * - When false: uses Gun-based allocation states in persistence.svelte.ts
+ */
+export const USE_HOLSTER_ALLOCATION_STATES =
+	import.meta.env.VITE_USE_HOLSTER_ALLOCATION_STATES === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true');
+
 // Log active flags in development
 if (import.meta.env.DEV && typeof window !== 'undefined') {
 	console.log('[CONFIG] Holster Migration Flags:', {
@@ -100,7 +120,9 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 		USE_HOLSTER_TREE,
 		USE_HOLSTER_CHAT,
 		USE_HOLSTER_RECOGNITION,
-		USE_HOLSTER_COMPOSE
+		USE_HOLSTER_COMPOSE,
+		USE_HOLSTER_CHAT_READ_STATES,
+		USE_HOLSTER_ALLOCATION_STATES
 	});
 
 	// Add toggle utilities to window
@@ -141,6 +163,18 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 			console.log(`[TOGGLE] Holster compose: ${!current}`);
 			console.log('[TOGGLE] Reload page to apply changes');
 		},
+		chatReadStates: () => {
+			const current = localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true';
+			localStorage.setItem('USE_HOLSTER_CHAT_READ_STATES', (!current).toString());
+			console.log(`[TOGGLE] Holster chat read states: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		allocationStates: () => {
+			const current = localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true';
+			localStorage.setItem('USE_HOLSTER_ALLOCATION_STATES', (!current).toString());
+			console.log(`[TOGGLE] Holster allocation states: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
 		status: () => {
 			console.log('[TOGGLE] Current Holster flags:', {
 				contacts: localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true',
@@ -148,7 +182,9 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 				tree: localStorage.getItem('USE_HOLSTER_TREE') === 'true',
 				chat: localStorage.getItem('USE_HOLSTER_CHAT') === 'true',
 				recognition: localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true',
-				compose: localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true'
+				compose: localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true',
+				chatReadStates: localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true',
+				allocationStates: localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true'
 			});
 		}
 	};
