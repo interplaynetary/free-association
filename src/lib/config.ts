@@ -14,15 +14,226 @@ export const config = {
   },
   holster: {
     peers: [
-      // Use environment variable or fallback to defaults
-      import.meta.env.VITE_HOLSTER_PEER_URL || 'ws://localhost:8766/holster',
-      // Keep external peer as fallback
-      'wss://holster.haza.website'
+      // Use environment variable or fallback to default
+      import.meta.env.VITE_HOLSTER_PEER_URL || 'wss://holster.haza.website'
     ],
     indexedDB: true,
-    secure: true
+    file: 'holster-data'
   },
   dataApi: {
     url: import.meta.env.VITE_DATA_API_URL || 'http://localhost:8767'
   }
 };
+
+// ============================================================================
+// Feature Flags for Gradual Holster Migration
+// ============================================================================
+
+/**
+ * These flags enable toggling between Gun and Holster implementations
+ * for each module during the migration process.
+ *
+ * Flags can be set via:
+ * 1. Environment variables (VITE_USE_HOLSTER_*)
+ * 2. localStorage (USE_HOLSTER_*)
+ *
+ * Example: localStorage.setItem('USE_HOLSTER_CONTACTS', 'true')
+ */
+
+/**
+ * Use Holster for contacts management
+ * - When true: uses contacts-holster.svelte.ts
+ * - When false: uses Gun-based contacts in users.svelte.ts
+ */
+export const USE_HOLSTER_CONTACTS =
+	import.meta.env.VITE_USE_HOLSTER_CONTACTS === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true');
+
+/**
+ * Use Holster for capacities management
+ * - When true: uses capacities-holster.svelte.ts
+ * - When false: uses Gun-based capacities in core.svelte.ts
+ */
+export const USE_HOLSTER_CAPACITIES =
+	import.meta.env.VITE_USE_HOLSTER_CAPACITIES === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_CAPACITIES') === 'true');
+
+/**
+ * Use Holster for tree management (not yet implemented)
+ */
+export const USE_HOLSTER_TREE =
+	import.meta.env.VITE_USE_HOLSTER_TREE === 'true' ||
+	(typeof localStorage !== 'undefined' && localStorage.getItem('USE_HOLSTER_TREE') === 'true');
+
+/**
+ * Use Holster for chat (not yet implemented)
+ */
+export const USE_HOLSTER_CHAT =
+	import.meta.env.VITE_USE_HOLSTER_CHAT === 'true' ||
+	(typeof localStorage !== 'undefined' && localStorage.getItem('USE_HOLSTER_CHAT') === 'true');
+
+/**
+ * Use Holster for recognition/SOGF data (not yet implemented)
+ */
+export const USE_HOLSTER_RECOGNITION =
+	import.meta.env.VITE_USE_HOLSTER_RECOGNITION === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true');
+
+/**
+ * Use Holster for slot composition (compose-from/into)
+ * - When true: uses compose-holster.svelte.ts
+ * - When false: uses Gun-based compose in persistence.svelte.ts
+ */
+export const USE_HOLSTER_COMPOSE =
+	import.meta.env.VITE_USE_HOLSTER_COMPOSE === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true');
+
+/**
+ * Use Holster for chat read states
+ * - When true: uses chat-read-states-holster.svelte.ts
+ * - When false: uses Gun-based chat read states in persistence.svelte.ts
+ */
+export const USE_HOLSTER_CHAT_READ_STATES =
+	import.meta.env.VITE_USE_HOLSTER_CHAT_READ_STATES === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true');
+
+/**
+ * Use Holster for allocation states
+ * - When true: uses allocation-states-holster.svelte.ts
+ * - When false: uses Gun-based allocation states in persistence.svelte.ts
+ */
+export const USE_HOLSTER_ALLOCATION_STATES =
+	import.meta.env.VITE_USE_HOLSTER_ALLOCATION_STATES === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true');
+
+/**
+ * Use Holster for authentication (Phase 11)
+ * - When true: uses holster.svelte.ts login/signup/signout
+ * - When false: uses gun.svelte.ts login/signup/signout
+ */
+export const USE_HOLSTER_AUTH =
+	import.meta.env.VITE_USE_HOLSTER_AUTH === 'true' ||
+	(typeof localStorage !== 'undefined' &&
+		localStorage.getItem('USE_HOLSTER_AUTH') === 'true');
+
+// Log active flags in development
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	console.log('[CONFIG] Holster Migration Flags:', {
+		USE_HOLSTER_AUTH,
+		USE_HOLSTER_CONTACTS,
+		USE_HOLSTER_CAPACITIES,
+		USE_HOLSTER_TREE,
+		USE_HOLSTER_CHAT,
+		USE_HOLSTER_RECOGNITION,
+		USE_HOLSTER_COMPOSE,
+		USE_HOLSTER_CHAT_READ_STATES,
+		USE_HOLSTER_ALLOCATION_STATES
+	});
+
+	// Add toggle utilities to window
+	(window as any).toggleHolster = {
+		auth: () => {
+			const current = localStorage.getItem('USE_HOLSTER_AUTH') === 'true';
+			localStorage.setItem('USE_HOLSTER_AUTH', (!current).toString());
+			console.log(`[TOGGLE] Holster auth: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		contacts: () => {
+			const current = localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true';
+			localStorage.setItem('USE_HOLSTER_CONTACTS', (!current).toString());
+			console.log(`[TOGGLE] Holster contacts: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		capacities: () => {
+			const current = localStorage.getItem('USE_HOLSTER_CAPACITIES') === 'true';
+			localStorage.setItem('USE_HOLSTER_CAPACITIES', (!current).toString());
+			console.log(`[TOGGLE] Holster capacities: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		tree: () => {
+			const current = localStorage.getItem('USE_HOLSTER_TREE') === 'true';
+			localStorage.setItem('USE_HOLSTER_TREE', (!current).toString());
+			console.log(`[TOGGLE] Holster tree: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		chat: () => {
+			const current = localStorage.getItem('USE_HOLSTER_CHAT') === 'true';
+			localStorage.setItem('USE_HOLSTER_CHAT', (!current).toString());
+			console.log(`[TOGGLE] Holster chat: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		recognition: () => {
+			const current = localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true';
+			localStorage.setItem('USE_HOLSTER_RECOGNITION', (!current).toString());
+			console.log(`[TOGGLE] Holster recognition: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		compose: () => {
+			const current = localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true';
+			localStorage.setItem('USE_HOLSTER_COMPOSE', (!current).toString());
+			console.log(`[TOGGLE] Holster compose: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		chatReadStates: () => {
+			const current = localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true';
+			localStorage.setItem('USE_HOLSTER_CHAT_READ_STATES', (!current).toString());
+			console.log(`[TOGGLE] Holster chat read states: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		allocationStates: () => {
+			const current = localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true';
+			localStorage.setItem('USE_HOLSTER_ALLOCATION_STATES', (!current).toString());
+			console.log(`[TOGGLE] Holster allocation states: ${!current}`);
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		status: () => {
+			console.log('[TOGGLE] Current Holster flags:', {
+				auth: localStorage.getItem('USE_HOLSTER_AUTH') === 'true',
+				contacts: localStorage.getItem('USE_HOLSTER_CONTACTS') === 'true',
+				capacities: localStorage.getItem('USE_HOLSTER_CAPACITIES') === 'true',
+				tree: localStorage.getItem('USE_HOLSTER_TREE') === 'true',
+				chat: localStorage.getItem('USE_HOLSTER_CHAT') === 'true',
+				recognition: localStorage.getItem('USE_HOLSTER_RECOGNITION') === 'true',
+				compose: localStorage.getItem('USE_HOLSTER_COMPOSE') === 'true',
+				chatReadStates: localStorage.getItem('USE_HOLSTER_CHAT_READ_STATES') === 'true',
+				allocationStates: localStorage.getItem('USE_HOLSTER_ALLOCATION_STATES') === 'true'
+			});
+		},
+		enableAll: () => {
+			localStorage.setItem('USE_HOLSTER_AUTH', 'true');
+			localStorage.setItem('USE_HOLSTER_CONTACTS', 'true');
+			localStorage.setItem('USE_HOLSTER_CAPACITIES', 'true');
+			localStorage.setItem('USE_HOLSTER_TREE', 'true');
+			localStorage.setItem('USE_HOLSTER_CHAT', 'true');
+			localStorage.setItem('USE_HOLSTER_RECOGNITION', 'true');
+			localStorage.setItem('USE_HOLSTER_COMPOSE', 'true');
+			localStorage.setItem('USE_HOLSTER_CHAT_READ_STATES', 'true');
+			localStorage.setItem('USE_HOLSTER_ALLOCATION_STATES', 'true');
+			console.log('[TOGGLE] All Holster flags enabled');
+			console.log('[TOGGLE] Reload page to apply changes');
+		},
+		disableAll: () => {
+			localStorage.removeItem('USE_HOLSTER_AUTH');
+			localStorage.removeItem('USE_HOLSTER_CONTACTS');
+			localStorage.removeItem('USE_HOLSTER_CAPACITIES');
+			localStorage.removeItem('USE_HOLSTER_TREE');
+			localStorage.removeItem('USE_HOLSTER_CHAT');
+			localStorage.removeItem('USE_HOLSTER_RECOGNITION');
+			localStorage.removeItem('USE_HOLSTER_COMPOSE');
+			localStorage.removeItem('USE_HOLSTER_CHAT_READ_STATES');
+			localStorage.removeItem('USE_HOLSTER_ALLOCATION_STATES');
+			console.log('[TOGGLE] All Holster flags disabled');
+			console.log('[TOGGLE] Reload page to apply changes');
+		}
+	};
+
+	console.log('[CONFIG] Toggle utilities available: window.toggleHolster');
+	console.log('[CONFIG] Example: window.toggleHolster.contacts()');
+	console.log('[CONFIG] Check status: window.toggleHolster.status()');
+}

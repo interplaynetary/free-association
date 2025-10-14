@@ -10,7 +10,7 @@
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
-	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import {
 		userTree,
 		userCapacities,

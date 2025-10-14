@@ -32,33 +32,66 @@ import { chatReadStates, isLoadingChatReadStates } from '$lib/state/chat.svelte'
 import { debounce } from '$lib/utils/debounce';
 
 // Debounced persistence functions
-const debouncedPersistSogf = debounce(() => {
+const debouncedPersistSogf = debounce(async () => {
 	console.log('[SOGF-SUB] Executing debounced SOGF persistence');
-	try {
-		persistSogf();
-	} catch (error) {
-		console.error('[SOGF-SUB] Error during debounced persistence:', error);
+
+	// Check if using Holster for SOGF
+	const { USE_HOLSTER_RECOGNITION } = await import('$lib/config');
+
+	if (USE_HOLSTER_RECOGNITION) {
+		// Use Holster persistence
+		console.log('[SOGF-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterSogf } = await import('./recognition-holster.svelte');
+			await persistHolsterSogf();
+			console.log('[SOGF-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[SOGF-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		try {
+			persistSogf();
+		} catch (error) {
+			console.error('[SOGF-SUB] Error during Gun persistence:', error);
+		}
 	}
 }, 300);
 
-const debouncedPersistCapacities = debounce(() => {
+const debouncedPersistCapacities = debounce(async () => {
 	console.log('[CAPACITIES-SUB] Executing debounced capacities persistence');
 	console.log('[CAPACITIES-SUB] 🚨 DEBUG: debouncedPersistCapacities debounced function executing');
 
-	// 🚨 SMART RACE CONDITION PROTECTION: The persistCapacities function
-	// will check isLoadingCapacities and defer if needed, preventing
-	// local changes from overwriting incoming network data
-	try {
-		console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call persistCapacities()');
-		persistCapacities();
-		console.log('[CAPACITIES-SUB] 🚨 DEBUG: persistCapacities() completed');
-	} catch (error) {
-		console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
-		console.error('[CAPACITIES-SUB] 🚨 DEBUG: Error details:', {
-			name: error instanceof Error ? error.name : 'Unknown',
-			message: error instanceof Error ? error.message : String(error),
-			stack: error instanceof Error ? error.stack : undefined
-		});
+	// Check if using Holster for capacities
+	const { USE_HOLSTER_CAPACITIES } = await import('$lib/config');
+
+	if (USE_HOLSTER_CAPACITIES) {
+		// Use Holster persistence
+		console.log('[CAPACITIES-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterCapacities } = await import('./capacities-holster.svelte');
+			await persistHolsterCapacities();
+			console.log('[CAPACITIES-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		// 🚨 SMART RACE CONDITION PROTECTION: The persistCapacities function
+		// will check isLoadingCapacities and defer if needed, preventing
+		// local changes from overwriting incoming network data
+		try {
+			console.log('[CAPACITIES-SUB] 🚨 DEBUG: About to call persistCapacities()');
+			persistCapacities();
+			console.log('[CAPACITIES-SUB] 🚨 DEBUG: persistCapacities() completed');
+		} catch (error) {
+			console.error('[CAPACITIES-SUB] Error during debounced persistence:', error);
+			console.error('[CAPACITIES-SUB] 🚨 DEBUG: Error details:', {
+				name: error instanceof Error ? error.name : 'Unknown',
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
+		}
 	}
 }, 200);
 
@@ -94,14 +127,31 @@ const debouncedPersistUserDesiredSlotComposeInto = debounce(() => {
 // DELETED: debouncedPersistContributorCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
 // Old recipient-computed slot quantities no longer needed
 
-const debouncedPersistProviderAllocationStates = debounce(() => {
+const debouncedPersistProviderAllocationStates = debounce(async () => {
 	console.log(
 		'[PROVIDER-ALLOCATION-STATES-SUB] Executing debounced provider allocation states persistence'
 	);
-	try {
-		persistProviderAllocationStates();
-	} catch (error) {
-		console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during debounced persistence:', error);
+
+	// Check if using Holster for allocation states
+	const { USE_HOLSTER_ALLOCATION_STATES } = await import('$lib/config');
+
+	if (USE_HOLSTER_ALLOCATION_STATES) {
+		// Use Holster persistence
+		console.log('[PROVIDER-ALLOCATION-STATES-SUB] Using Holster persistence');
+		try {
+			const { persistHolsterAllocationStates } = await import('./allocation-states-holster.svelte');
+			await persistHolsterAllocationStates();
+			console.log('[PROVIDER-ALLOCATION-STATES-SUB] Holster persistence completed');
+		} catch (error) {
+			console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during Holster persistence:', error);
+		}
+	} else {
+		// Use Gun persistence
+		try {
+			persistProviderAllocationStates();
+		} catch (error) {
+			console.error('[PROVIDER-ALLOCATION-STATES-SUB] Error during Gun persistence:', error);
+		}
 	}
 }, 200);
 
@@ -131,33 +181,65 @@ const debouncedPersistChatReadStates = debounce(() => {
 	}
 }, 200);
 
+const debouncedPersistTree = debounce(async () => {
+	console.log('[TREE-SUB] Executing debounced tree persistence');
+
+	// Check if using Holster for tree
+	const { USE_HOLSTER_TREE } = await import('$lib/config');
+
+	if (USE_HOLSTER_TREE) {
+		// Use Holster persistence - it has its own loading and isPersisting checks
+		const { persistHolsterTree, isLoadingHolsterTree } = await import('./tree-holster.svelte');
+		if (!get(isLoadingHolsterTree)) {
+			try {
+				await persistHolsterTree();
+				console.log('[TREE-SUB] Holster tree persistence completed');
+			} catch (error) {
+				console.error('[TREE-SUB] Error during Holster tree persistence:', error);
+			}
+		} else {
+			console.log('[TREE-SUB] Skipping Holster persistence - tree is loading');
+		}
+	} else {
+		// Use Gun persistence
+		if (!get(isLoadingTree)) {
+			try {
+				await persistTree();
+			} catch (error) {
+				console.error('[TREE-SUB] Error during Gun tree persistence:', error);
+			}
+		} else {
+			console.log('[TREE-SUB] Skipping Gun persistence - tree is loading');
+		}
+	}
+}, 500); // Longer debounce for trees since they can be complex
+
 /**
- * Update nodes map whenever the tree changes
+ * Update nodes map and trigger persistence whenever the tree changes
  */
 userTree.subscribe((tree) => {
-	if (tree) {
-		console.log('[TREE-SUB] Tree updated in store, rebuilding nodes map');
-		console.log('[TREE-SUB] Tree has', tree.children.length, 'children');
+	if (!tree) return;
 
-		// Create a map of all nodes by ID for faster lookup
-		const newNodesMap: Record<string, Node> = {};
+	console.log('[TREE-SUB] Tree updated in store, rebuilding nodes map');
+	console.log('[TREE-SUB] Tree has', tree.children.length, 'children');
 
-		// Helper to traverse tree and add nodes to map
-		function addNodeToMap(node: Node) {
-			newNodesMap[node.id] = node;
-			node.children.forEach(addNodeToMap);
-		}
+	// Create a map of all nodes by ID for faster lookup
+	const newNodesMap: Record<string, Node> = {};
 
-		addNodeToMap(tree);
-		nodesMap.set(newNodesMap);
-
-		console.log('[TREE-SUB] Rebuilt nodes map with', Object.keys(newNodesMap).length, 'nodes');
-
-		// Force immediate tree persistence on every tree change
-		// This ensures tree changes are always saved, even if recalculation fails
-		console.log('[TREE-SUB] Forcing immediate tree persistence');
-		persistTree();
+	// Helper to traverse tree and add nodes to map
+	function addNodeToMap(node: Node) {
+		newNodesMap[node.id] = node;
+		node.children.forEach(addNodeToMap);
 	}
+
+	addNodeToMap(tree);
+	nodesMap.set(newNodesMap);
+
+	console.log('[TREE-SUB] Rebuilt nodes map with', Object.keys(newNodesMap).length, 'nodes');
+
+	// Trigger debounced persistence
+	// This will be blocked by isLoadingTree and isPersisting flags
+	debouncedPersistTree();
 });
 
 /**
@@ -216,7 +298,18 @@ userTree.subscribe((tree) => {
 
 			// Even if recalculation fails, ensure the tree is persisted
 			console.log('[TREE-RECALC-SUB] Forcing tree persistence after error');
-			persistTree();
+
+			import('$lib/config').then(({ USE_HOLSTER_TREE }) => {
+				if (USE_HOLSTER_TREE) {
+					import('./tree-holster.svelte').then(({ persistHolsterTree }) => {
+						persistHolsterTree(tree).catch(err => {
+							console.error('[TREE-RECALC-SUB] Error persisting tree to Holster:', err);
+						});
+					});
+				} else {
+					persistTree();
+				}
+			});
 		}
 
 		treeRecalcTimer = null;

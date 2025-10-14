@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // Lets transition from functions to jsonlogic so we can be completely json encodable.
 

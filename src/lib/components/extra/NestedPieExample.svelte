@@ -6,7 +6,7 @@
 	import NestedPie from './NestedPie.svelte';
 	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { userAlias, userPub } from '$lib/state/gun.svelte';
+	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import { userTree, userSogf, generalShares } from '$lib/state/core.svelte';
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/schema';
