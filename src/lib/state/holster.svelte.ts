@@ -39,10 +39,8 @@ if (typeof window !== 'undefined') {
 				console.log('[HOLSTER RECALL] holsterUser.is:', holsterUser.is);
 				if (holsterUser.is && holsterUser.is.username) {
 					console.log('[HOLSTER RECALL] User authenticated:', holsterUser.is.username);
-					console.log('[HOLSTER RECALL] Setting stores - username:', holsterUser.is.username, 'pub:', holsterUser.is.pub);
 					holsterUserAlias.set(holsterUser.is.username);
 					holsterUserPub.set(holsterUser.is.pub);
-					console.log('[HOLSTER RECALL] Stores set successfully');
 
 					// Update users list
 					holster.get('freely-associating-players').next(holsterUser.is.pub).put({
@@ -256,7 +254,6 @@ export function changePassword(currentPassword: string, newPassword: string) {
 }
 
 // Log initialization
-console.log('[HOLSTER] Initialized successfully');
 console.log('[HOLSTER] Peers:', config.holster.peers);
 console.log('[HOLSTER] IndexedDB:', config.holster.indexedDB);
 console.log('[HOLSTER] File:', config.holster.file);
@@ -270,7 +267,6 @@ if (typeof window !== 'undefined') {
 
 // Initialize test utilities in development mode
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-	console.log('[HOLSTER] Loading test utilities...');
 	import('./holster-tests')
 		.then((module) => {
 			module.initializeHolsterTests();

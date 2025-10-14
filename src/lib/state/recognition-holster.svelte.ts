@@ -28,10 +28,8 @@ export function loadHolsterSogf() {
 	}
 
 	isLoadingHolsterSogf.set(true);
-	console.log('[SOGF-HOLSTER] Loading SOGF...');
 
 	holsterUser.get('sogf', (sogfData) => {
-		console.log('[SOGF-HOLSTER] Received data:', sogfData);
 
 		if (!sogfData) {
 			holsterSogf.set(null);
@@ -42,7 +40,6 @@ export function loadHolsterSogf() {
 		try {
 			// Extract timestamp and validate
 			const networkTimestamp = getTimestamp(sogfData);
-			console.log('[SOGF-HOLSTER] Network timestamp:', networkTimestamp);
 
 			// Filter out metadata before validation
 			const { _updatedAt, ...dataOnly } = sogfData;
@@ -52,7 +49,6 @@ export function loadHolsterSogf() {
 			if (parsed) {
 				holsterSogf.set(parsed);
 				lastNetworkTimestamp = networkTimestamp;
-				console.log('[SOGF-HOLSTER] Loaded SOGF with', Object.keys(parsed).length, 'shares');
 			} else {
 				console.error('[SOGF-HOLSTER] Failed to parse SOGF data');
 			}
@@ -70,10 +66,8 @@ export function loadHolsterSogf() {
 export function subscribeToHolsterSogf() {
 	if (!holsterUser.is) return;
 
-	console.log('[SOGF-HOLSTER] Subscribing to real-time updates...');
 
 	holsterUser.get('sogf').on((sogfData) => {
-		console.log('[SOGF-HOLSTER] Real-time update received');
 
 		if (!sogfData) {
 			holsterSogf.set(null);
@@ -107,7 +101,6 @@ export function subscribeToHolsterSogf() {
 
 				holsterSogf.set(parsed);
 				lastNetworkTimestamp = networkTimestamp;
-				console.log('[SOGF-HOLSTER] Real-time update applied:', Object.keys(parsed).length, 'shares');
 			}
 		} catch (error) {
 			console.error('[SOGF-HOLSTER] Real-time parse error:', error);
@@ -152,7 +145,6 @@ export async function persistHolsterSogf(sogf?: ShareMap): Promise<void> {
 					console.error('[SOGF-HOLSTER] Persist error:', err);
 					reject(err);
 				} else {
-					console.log('[SOGF-HOLSTER] Persisted successfully');
 					// Update our timestamp tracker with the timestamp we just wrote
 					lastNetworkTimestamp = localTimestamp;
 					resolve();
@@ -206,7 +198,6 @@ export function subscribeToContributorHolsterSogf(
 		return;
 	}
 
-	console.log(`[SOGF-HOLSTER] Subscribing to contributor SOGF: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's SOGF
 	holsterUser.get([contributorPubKey, 'sogf']).on((sogfData) => {

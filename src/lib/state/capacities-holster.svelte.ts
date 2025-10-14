@@ -53,7 +53,6 @@ function getCachedCapacities(): CapacitiesCollection | null {
 
 		if (validation.success) {
 			const timestamp = localStorage.getItem(CAPACITIES_CACHE_TIMESTAMP_KEY);
-			console.log('[CAPACITIES-HOLSTER] Loaded capacities from cache, timestamp:', timestamp);
 			return validation.data;
 		} else {
 			console.warn('[CAPACITIES-HOLSTER] Invalid cached capacities, ignoring');
@@ -71,7 +70,6 @@ function setCachedCapacities(capacities: CapacitiesCollection, timestamp: number
 	try {
 		localStorage.setItem(CAPACITIES_CACHE_KEY, JSON.stringify(capacities));
 		localStorage.setItem(CAPACITIES_CACHE_TIMESTAMP_KEY, timestamp.toString());
-		console.log('[CAPACITIES-HOLSTER] Cached capacities with timestamp:', timestamp);
 	} catch (error) {
 		console.error('[CAPACITIES-HOLSTER] Error caching capacities:', error);
 	}
@@ -93,11 +91,9 @@ function subscribeToCapacities() {
 		return;
 	}
 
-	console.log('[CAPACITIES-HOLSTER] Subscribing to capacities for user:', holsterUser.is.username);
 
 	// Create callback for updates - this receives the entire capacities object graph
 	capacitiesCallback = (data: any) => {
-		console.log('[CAPACITIES-HOLSTER] Received update:', data);
 
 		// Skip if loading (initial data fetch)
 		if (get(isLoadingHolsterCapacities)) {
@@ -179,7 +175,6 @@ function subscribeToCapacities() {
 				Object.keys(networkCapacities).length
 			);
 		} else {
-			console.log('[CAPACITIES-HOLSTER] Skipping stale update');
 		}
 	};
 
@@ -213,19 +208,16 @@ export function initializeHolsterCapacities() {
 		: 0;
 
 	if (cachedCapacities) {
-		console.log('[CAPACITIES-HOLSTER] Using cached capacities for instant UI');
 		holsterCapacities.set(cachedCapacities);
 		lastNetworkTimestamp = cachedTimestamp;
 		lastKnownCapacityIds = new Set(Object.keys(cachedCapacities));
 		isLoadingHolsterCapacities.set(false);
 
 		// Continue loading from network in background to check for updates
-		console.log('[CAPACITIES-HOLSTER] Fetching from network to check for updates...');
 	}
 
 	// Load initial data with get() - receives object graph
 	holsterUser.get('capacities', (data: any) => {
-		console.log('[CAPACITIES-HOLSTER] Initial load:', data);
 
 		if (data) {
 			// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
@@ -486,7 +478,6 @@ export async function persistHolsterCapacities(
 		return;
 	}
 
-	console.log('[CAPACITIES-HOLSTER] Starting persistence for', Object.keys(capacitiesToSave).length, 'capacities');
 
 	try {
 		// Process addresses for geocoding (same as Gun version)
@@ -542,7 +533,6 @@ export async function persistHolsterCapacities(
 					console.error('[CAPACITIES-HOLSTER] Persist error:', err);
 					reject(err);
 				} else {
-					console.log('[CAPACITIES-HOLSTER] Persisted successfully');
 					if (localTimestamp) {
 						lastNetworkTimestamp = localTimestamp;
 						// Cache for faster future loads (cache the original data, not cleaned)
@@ -637,7 +627,6 @@ export function subscribeToContributorHolsterCapacities(
 		return;
 	}
 
-	console.log(`[CAPACITIES-HOLSTER] Subscribing to contributor capacities: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's capacities
 	holsterUser.get([contributorPubKey, 'capacities']).on((capacitiesData) => {

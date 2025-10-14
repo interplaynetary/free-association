@@ -86,9 +86,6 @@ let hasPendingLocalChanges: boolean = false;
 function processQueuedUpdate() {
 	// First, process any queued network updates
 	if (queuedNetworkUpdate) {
-		const queuedTimestamp = getTimestamp(queuedNetworkUpdate);
-		console.log('[TREE-HOLSTER] Processing queued network update, timestamp:', queuedTimestamp);
-
 		const data = queuedNetworkUpdate;
 		queuedNetworkUpdate = null; // Clear queue
 
@@ -98,7 +95,6 @@ function processQueuedUpdate() {
 
 	// Second, retry persistence if local changes are pending
 	if (hasPendingLocalChanges) {
-		console.log('[TREE-HOLSTER] Retrying persistence for pending local changes');
 		hasPendingLocalChanges = false; // Clear flag before retrying
 		// Use setTimeout to avoid recursion and give queue a chance to settle
 		setTimeout(() => {
@@ -111,14 +107,10 @@ function processQueuedUpdate() {
  * Process a network update (shared logic for subscription and queued updates)
  */
 function processNetworkUpdate(data: any) {
-	if (!data) {
-		console.log('[TREE-HOLSTER] Skipping - no data');
-		return;
-	}
+	if (!data) return;
 
 	// Extract timestamp
 	const networkTimestamp = getTimestamp(data);
-	console.log('[TREE-HOLSTER] Network timestamp:', networkTimestamp, 'vs last:', lastNetworkTimestamp);
 
 	// Remove timestamp field
 	const { _updatedAt, ...treeData } = data;
@@ -135,14 +127,12 @@ function processNetworkUpdate(data: any) {
 
 	// Validate we have nodes and root_id
 	if (Object.keys(nodes).length === 0 || !treeData.root_id) {
-		console.warn('[TREE-HOLSTER] Skipping update - incomplete tree structure (nodes:', Object.keys(nodes).length, 'root_id:', !!treeData.root_id, ')');
 		// This can happen during initial persistence when metadata arrives before all nodes
 		return;
 	}
 
 	// Only update if newer
 	if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {
-		console.log('[TREE-HOLSTER] Processing network update (newer than local)');
 		// Track loaded nodes for incremental updates
 		lastPersistedNodes = { ...nodes };
 
@@ -166,13 +156,10 @@ function processNetworkUpdate(data: any) {
 					// Cache the tree for faster future loads
 					setCachedTree(parseResult.data, networkTimestamp);
 				}
-				console.log('[TREE-HOLSTER] Tree updated successfully and synced to userTree');
 			} else {
 				console.error('[TREE-HOLSTER] Invalid reconstructed tree:', parseResult.error);
 			}
 		}
-	} else {
-		console.log('[TREE-HOLSTER] Skipping stale tree update');
 	}
 }
 
@@ -381,7 +368,6 @@ function subscribeToTree() {
 		return;
 	}
 
-	console.log('[TREE-HOLSTER] Subscribing to tree for user:', holsterUser.is.username);
 
 	treeCallback = (data: any) => {
 		if (get(isLoadingHolsterTree)) {
@@ -426,7 +412,6 @@ function getCachedTree(): RootNode | null {
 
 		if (validation.success) {
 			const timestamp = localStorage.getItem(TREE_CACHE_TIMESTAMP_KEY);
-			console.log('[TREE-HOLSTER] Loaded tree from cache, timestamp:', timestamp);
 			return validation.data;
 		} else {
 			console.warn('[TREE-HOLSTER] Invalid cached tree, ignoring');
@@ -444,7 +429,6 @@ function setCachedTree(tree: RootNode, timestamp: number): void {
 	try {
 		localStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
 		localStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, timestamp.toString());
-		console.log('[TREE-HOLSTER] Cached tree with timestamp:', timestamp);
 	} catch (error) {
 		console.error('[TREE-HOLSTER] Error caching tree:', error);
 	}
@@ -476,7 +460,6 @@ export function initializeHolsterTree() {
 		: 0;
 
 	if (cachedTree) {
-		console.log('[TREE-HOLSTER] Using cached tree for instant UI');
 		holsterTree.set(cachedTree);
 		userTree.set(cachedTree);
 		lastNetworkTimestamp = cachedTimestamp;
@@ -488,11 +471,9 @@ export function initializeHolsterTree() {
 		isLoadingHolsterTree.set(false);
 
 		// Continue loading from network in background to check for updates
-		console.log('[TREE-HOLSTER] Fetching from network to check for updates...');
 	}
 
 	holsterUser.get('tree', (data: any) => {
-		console.log('[TREE-HOLSTER] Initial network load:', data ? 'received' : 'empty');
 
 		if (data) {
 			// Use the same timestamp-aware processing as subscription
@@ -605,12 +586,10 @@ export async function persistHolsterTree(tree?: RootNode): Promise<void> {
 	// Set lock
 	isPersisting = true;
 	hasPendingLocalChanges = false; // Clear pending flag since we're persisting now
-	console.log('[TREE-HOLSTER] Starting incremental tree persistence...');
 
 	try {
 		// Flatten tree to node collection
 		const flatTree = flattenTree(treeToSave);
-		console.log('[TREE-HOLSTER] Flattened tree:', Object.keys(flatTree.nodes).length, 'total nodes');
 
 		const localTimestamp = Date.now();
 
@@ -760,7 +739,6 @@ export function subscribeToContributorHolsterTree(
 		return;
 	}
 
-	console.log(`[TREE-HOLSTER] Subscribing to contributor tree: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's tree
 	holsterUser.get([contributorPubKey, 'tree']).on((treeData) => {

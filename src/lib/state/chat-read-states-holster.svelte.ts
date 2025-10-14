@@ -44,10 +44,8 @@ function subscribeToChatReadStates() {
 		return;
 	}
 
-	console.log('[CHAT-READ-STATES-HOLSTER] Subscribing for user:', holsterUser.is.username);
 
 	chatReadStatesCallback = (data: any) => {
-		console.log('[CHAT-READ-STATES-HOLSTER] Received update:', data);
 
 		// Skip if loading (initial data fetch)
 		if (get(isLoadingHolsterChatReadStates)) {
@@ -77,9 +75,7 @@ function subscribeToChatReadStates() {
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-			console.log('[CHAT-READ-STATES-HOLSTER] Updated chat read states:', Object.keys(networkReadStates).length, 'chats');
 		} else {
-			console.log('[CHAT-READ-STATES-HOLSTER] Skipping stale update');
 		}
 	};
 
@@ -106,7 +102,6 @@ export function initializeHolsterChatReadStates() {
 
 	// Load initial data
 	holsterUser.get('chatReadStates', (data: any) => {
-		console.log('[CHAT-READ-STATES-HOLSTER] Initial load:', data);
 
 		if (data) {
 			// Extract timestamp and filter out metadata
@@ -183,7 +178,6 @@ export async function persistHolsterChatReadStates(readStates?: ChatReadStates):
 				console.error('[CHAT-READ-STATES-HOLSTER] Persist error:', err);
 				reject(err);
 			} else {
-				console.log('[CHAT-READ-STATES-HOLSTER] Persisted successfully');
 				if (localTimestamp) {
 					lastNetworkTimestamp = localTimestamp;
 				}

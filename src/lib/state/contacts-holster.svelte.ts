@@ -42,11 +42,9 @@ function subscribeToContacts() {
 		return;
 	}
 
-	console.log('[CONTACTS-HOLSTER] Subscribing to contacts for user:', holsterUser.is.username);
 
 	// Create callback for updates
 	contactsCallback = (data: any) => {
-		console.log('[CONTACTS-HOLSTER] Received update:', data);
 
 		// Skip if loading (initial data fetch)
 		if (get(isLoadingHolsterContacts)) {
@@ -91,9 +89,7 @@ function subscribeToContacts() {
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-			console.log('[CONTACTS-HOLSTER] Updated contacts:', Object.keys(networkContacts).length);
 		} else {
-			console.log('[CONTACTS-HOLSTER] Skipping stale update');
 		}
 	};
 
@@ -115,7 +111,6 @@ export function initializeHolsterContacts() {
 
 	// Load initial data with get()
 	holsterUser.get('contacts', (data: any) => {
-		console.log('[CONTACTS-HOLSTER] Initial load:', data);
 
 		if (data) {
 			// Helper to check if a value is "deleted" (null or object with all null fields)
@@ -249,7 +244,6 @@ export async function persistHolsterContacts(
 				console.error('[CONTACTS-HOLSTER] Persist error:', err);
 				reject(err);
 			} else {
-				console.log('[CONTACTS-HOLSTER] Persisted successfully');
 				if (localTimestamp) {
 					lastNetworkTimestamp = localTimestamp;
 				}
@@ -287,7 +281,6 @@ export async function deleteHolsterContact(contactId: string): Promise<void> {
 				console.error('[CONTACTS-HOLSTER] Delete error:', err);
 				reject(err);
 			} else {
-				console.log('[CONTACTS-HOLSTER] Deleted successfully:', contactId);
 				resolve();
 			}
 		});

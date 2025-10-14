@@ -50,10 +50,8 @@ function subscribeToComposeFrom() {
 		return;
 	}
 
-	console.log('[COMPOSE-FROM-HOLSTER] Subscribing for user:', holsterUser.is.username);
 
 	composeFromCallback = (data: any) => {
-		console.log('[COMPOSE-FROM-HOLSTER] Received update:', data);
 
 		// Skip if loading (initial data fetch)
 		if (get(isLoadingHolsterComposeFrom)) {
@@ -83,9 +81,7 @@ function subscribeToComposeFrom() {
 			if (networkTimestamp) {
 				lastNetworkTimestampFrom = networkTimestamp;
 			}
-			console.log('[COMPOSE-FROM-HOLSTER] Updated compose-from:', Object.keys(networkComposeFrom).length, 'entries');
 		} else {
-			console.log('[COMPOSE-FROM-HOLSTER] Skipping stale update');
 		}
 	};
 
@@ -112,7 +108,6 @@ export function initializeHolsterComposeFrom() {
 
 	// Load initial data
 	holsterUser.get('desiredSlotComposeFrom', (data: any) => {
-		console.log('[COMPOSE-FROM-HOLSTER] Initial load:', data);
 
 		if (data) {
 			// Extract timestamp and filter out metadata
@@ -189,7 +184,6 @@ export async function persistHolsterComposeFrom(composeFrom?: UserSlotCompositio
 				console.error('[COMPOSE-FROM-HOLSTER] Persist error:', err);
 				reject(err);
 			} else {
-				console.log('[COMPOSE-FROM-HOLSTER] Persisted successfully');
 				if (localTimestamp) {
 					lastNetworkTimestampFrom = localTimestamp;
 				}
@@ -214,10 +208,8 @@ function subscribeToComposeInto() {
 		return;
 	}
 
-	console.log('[COMPOSE-INTO-HOLSTER] Subscribing for user:', holsterUser.is.username);
 
 	composeIntoCallback = (data: any) => {
-		console.log('[COMPOSE-INTO-HOLSTER] Received update:', data);
 
 		// Skip if loading (initial data fetch)
 		if (get(isLoadingHolsterComposeInto)) {
@@ -247,9 +239,7 @@ function subscribeToComposeInto() {
 			if (networkTimestamp) {
 				lastNetworkTimestampInto = networkTimestamp;
 			}
-			console.log('[COMPOSE-INTO-HOLSTER] Updated compose-into:', Object.keys(networkComposeInto).length, 'entries');
 		} else {
-			console.log('[COMPOSE-INTO-HOLSTER] Skipping stale update');
 		}
 	};
 
@@ -276,7 +266,6 @@ export function initializeHolsterComposeInto() {
 
 	// Load initial data
 	holsterUser.get('desiredSlotComposeInto', (data: any) => {
-		console.log('[COMPOSE-INTO-HOLSTER] Initial load:', data);
 
 		if (data) {
 			// Extract timestamp and filter out metadata
@@ -353,7 +342,6 @@ export async function persistHolsterComposeInto(composeInto?: UserSlotCompositio
 				console.error('[COMPOSE-INTO-HOLSTER] Persist error:', err);
 				reject(err);
 			} else {
-				console.log('[COMPOSE-INTO-HOLSTER] Persisted successfully');
 				if (localTimestamp) {
 					lastNetworkTimestampInto = localTimestamp;
 				}
@@ -415,7 +403,6 @@ export function subscribeToContributorHolsterComposeFrom(
 		return;
 	}
 
-	console.log(`[COMPOSE-FROM-HOLSTER] Subscribing to contributor compose-from: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's compose-from data
 	holsterUser.get([contributorPubKey, 'desiredSlotComposeFrom']).on((composeFromData) => {
@@ -464,7 +451,6 @@ export function subscribeToContributorHolsterComposeInto(
 		return;
 	}
 
-	console.log(`[COMPOSE-INTO-HOLSTER] Subscribing to contributor compose-into: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's compose-into data
 	holsterUser.get([contributorPubKey, 'desiredSlotComposeInto']).on((composeIntoData) => {

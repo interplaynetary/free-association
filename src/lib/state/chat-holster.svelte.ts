@@ -87,7 +87,6 @@ export function subscribeToHolsterChat(chatId: string): ChatSubscription {
 
 	// Define callback for subscription
 	const onChatUpdate = (chatData: any) => {
-		console.log('[CHAT-HOLSTER] Received chat update:', chatId, chatData);
 
 		// On initial load, load ALL messages (ignore lastSeenTimestamp)
 		// On subsequent updates, only process new messages (delta detection)
@@ -233,7 +232,6 @@ export async function sendHolsterMessage(chatId: string, messageText: string): P
 					};
 					subscription.store.set(updatedMessages);
 				} else {
-					console.log('[CHAT-HOLSTER] Message sent successfully');
 
 					// Remove optimistic fields by creating a clean new object
 					// Don't use delete - create new object for proper Svelte reactivity

@@ -50,7 +50,6 @@ function loadHolsterAllocationStates() {
 	}
 
 	isLoadingHolsterAllocationStates.set(true);
-	console.log('[ALLOCATION-STATES-HOLSTER] Loading allocation states...');
 
 	holsterUser.get('allocationStates', (data: any) => {
 		try {
@@ -88,7 +87,6 @@ function loadHolsterAllocationStates() {
 				// Update store
 				holsterProviderAllocationStates.set(validatedAllocationStates);
 				lastNetworkTimestamp = networkTimestamp;
-				console.log('[ALLOCATION-STATES-HOLSTER] Loaded allocation states for', Object.keys(validatedAllocationStates).length, 'capacities');
 			} else {
 				console.warn('[ALLOCATION-STATES-HOLSTER] No valid allocation states data found');
 				holsterProviderAllocationStates.set({});
@@ -111,7 +109,6 @@ function subscribeToHolsterAllocationStates() {
 		return;
 	}
 
-	console.log('[ALLOCATION-STATES-HOLSTER] Subscribing to real-time updates...');
 
 	holsterUser.get('allocationStates').on((data: any) => {
 		// Skip if currently loading (initial load will handle it)
@@ -121,7 +118,6 @@ function subscribeToHolsterAllocationStates() {
 
 		try {
 			if (!data) {
-				console.log('[ALLOCATION-STATES-HOLSTER] Received null data (deleted?)');
 				holsterProviderAllocationStates.set({});
 				lastNetworkTimestamp = null;
 				return;
@@ -159,7 +155,6 @@ function subscribeToHolsterAllocationStates() {
 			if (hasValidData) {
 				holsterProviderAllocationStates.set(validatedAllocationStates);
 				lastNetworkTimestamp = networkTimestamp;
-				console.log('[ALLOCATION-STATES-HOLSTER] Real-time update:', Object.keys(validatedAllocationStates).length, 'capacities');
 			}
 		} catch (error) {
 			console.error('[ALLOCATION-STATES-HOLSTER] Error processing real-time update:', error);
@@ -219,7 +214,6 @@ export async function persistHolsterAllocationStates(): Promise<void> {
 				} else {
 					// Update last network timestamp after successful persist
 					lastNetworkTimestamp = currentTimestamp;
-					console.log('[ALLOCATION-STATES-HOLSTER] Allocation states persisted successfully');
 					resolve();
 				}
 			});
@@ -256,7 +250,6 @@ export function subscribeToContributorHolsterAllocationStates(
 		return;
 	}
 
-	console.log(`[ALLOCATION-STATES-HOLSTER] Subscribing to contributor allocation states: ${contributorPubKey.slice(0, 20)}...`);
 
 	// Subscribe to this contributor's allocation states
 	holsterUser.get([contributorPubKey, 'allocationStates']).on((allocationStatesData) => {
