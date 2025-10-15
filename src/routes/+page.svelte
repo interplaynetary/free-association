@@ -9,7 +9,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
-	import { t } from '$lib/translations';
+	import { t, loading } from '$lib/translations';
 
 	// Reactive variable for mobile detection
 	let isMobile = $state(false);
@@ -103,6 +103,7 @@
 		{/if}
 	</div>
 	{#if currentView === 'tree'}
+		{#key $loading}
 		<div class="bars">
 		<div class="bar-group" class:vertical={!isMobile}>
 			<div
@@ -165,6 +166,7 @@
 			</div>
 		</div>
 		</div>
+		{/key}
 	{/if}
 </div>
 

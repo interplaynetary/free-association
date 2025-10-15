@@ -22,6 +22,8 @@ export const load = async ({ url }) => {
       storedLocale = browserLang.startsWith('pt') ? 'pt' :
                      browserLang.startsWith('tr') ? 'tr' : 
                      defaultLocale;
+      // Save the detected language to localStorage
+      localStorage.setItem('lang', storedLocale);
     }
 
     await loadTranslations(storedLocale, pathname);

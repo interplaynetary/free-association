@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { locale } from '$lib/translations';
 
-  let currentLang = browser ? (localStorage.getItem('lang') || 'en') : 'en';
   let isOpen = false;
 
   const languages = [
@@ -17,7 +17,6 @@
     if (!browser) return;
     console.log('Changing language to:', langCode);
     localStorage.setItem('lang', langCode);
-    currentLang = langCode;
     isOpen = false;
     window.location.reload();
   }
@@ -29,6 +28,7 @@
     }
   }
 
+  $: currentLang = $locale || 'en';
   $: currentLangObj = languages.find(l => l.code === currentLang) || languages[0];
 </script>
 
