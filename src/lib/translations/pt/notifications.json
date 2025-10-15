@@ -1,0 +1,17 @@
+{
+  "title": "Notificações",
+  "notifications": "Notificações",
+  "no_notifications": "Nenhuma notificação",
+  "mark_read": "Marcar como lida",
+  "mark_unread": "Marcar como não lida",
+  "mark_all_read": "Marcar todas como lidas",
+  "delete_notification": "Excluir Notificação",
+  "delete_all": "Excluir Todas",
+  "notification_settings": "Configurações de Notificação",
+  "enable_notifications": "Ativar Notificações",
+  "disable_notifications": "Desativar Notificações",
+  "notification_permission": "Permissão de Notificação",
+  "feature_not_implemented": "Este recurso ainda não foi implementado",
+  "coming_soon": "Em breve"
+}
+

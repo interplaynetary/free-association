@@ -7,6 +7,7 @@
 	import CountrySelector from '$lib/components/CountrySelector.svelte';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { createCompositionTargetsDataProvider } from '$lib/utils/ui-providers.svelte';
+	import { t } from '$lib/translations';
 
 	import {
 		userDesiredSlotComposeFrom,
@@ -832,7 +833,7 @@
 				// Just time, no date
 				timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
 			} else {
-				timeStr = 'No time set';
+				timeStr = $t('inventory.no_time_set');
 			}
 		}
 
@@ -851,9 +852,9 @@
 		tomorrow.setDate(tomorrow.getDate() + 1);
 
 		if (date.toDateString() === today.toDateString()) {
-			return 'Today';
+			return $t('inventory.today');
 		} else if (date.toDateString() === tomorrow.toDateString()) {
-			return 'Tomorrow';
+			return $t('inventory.tomorrow');
 		} else {
 			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 		}
@@ -896,7 +897,7 @@
 			}
 		}
 
-		return slotLocationType || 'No location';
+		return slotLocationType || $t('inventory.no_location');
 	}
 
 	// Format date for input
@@ -918,10 +919,10 @@
 		}
 
 		if (slotMutualAgreementRequired) {
-			parts.push('Agreement req.');
+			parts.push($t('inventory.agreement_required'));
 		}
 
-		return parts.length > 0 ? parts.join(', ') : 'No constraints';
+		return parts.length > 0 ? parts.join(', ') : $t('inventory.no_constraints');
 	}
 
 	// Sync local state when slot prop changes from parent

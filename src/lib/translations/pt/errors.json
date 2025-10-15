@@ -1,0 +1,28 @@
+{
+  "error": "Erro",
+  "error_occurred": "Ocorreu um erro",
+  "error_generic": "Algo deu errado",
+  "error_network": "Erro de rede",
+  "error_connection": "Erro de conexão",
+  "error_timeout": "Tempo esgotado",
+  "error_not_found": "Não encontrado",
+  "error_unauthorized": "Não autorizado",
+  "error_forbidden": "Proibido",
+  "error_server": "Erro do servidor",
+  "error_validation": "Erro de validação",
+  "error_required_field": "Este campo é obrigatório",
+  "error_invalid_email": "E-mail inválido",
+  "error_invalid_phone": "Número de telefone inválido",
+  "error_invalid_url": "URL inválida",
+  "error_invalid_date": "Data inválida",
+  "error_invalid_format": "Formato inválido",
+  "error_min_length": "Comprimento mínimo: {min} caracteres",
+  "error_max_length": "Comprimento máximo: {max} caracteres",
+  "error_min_value": "Valor mínimo: {min}",
+  "error_max_value": "Valor máximo: {max}",
+  "try_again": "Tente novamente",
+  "contact_support": "Contate o suporte",
+  "go_back": "Voltar",
+  "reload_page": "Recarregar página"
+}
+

@@ -27,9 +27,11 @@
 		resolveToPublicKey
 	} from '$lib/state/users.svelte';
 	import { createNewTree } from '$lib/utils/cleanUtils';
+	import { getTemplates, applyTemplate } from '$lib/templates';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import { browser } from '$app/environment';
+	import { t } from '$lib/translations';
 
 	// Define a type for visualization data
 	interface VisualizationNode {
@@ -46,6 +48,10 @@
 	// UI state
 	let labelIndex = $state(0);
 	const nodeLabels = ['Priority', 'Value', 'Goal', 'Dependency', 'Desire', 'Contribution', 'Node'];
+
+	// Template selection state (for creating new trees)
+	const availableTemplates = getTemplates();
+	let selectedTemplateId = $state(availableTemplates[0]?.id || 'sdg');
 
 	// For tracking changes in d3 visualization
 	let updateCounter = $state(0);
@@ -362,7 +368,7 @@
 		// Don't allow navigation into nodes with contributors - they are leaf nodes
 		if (nodeHasContributors(nodeId)) {
 			console.log('[UI FLOW] Navigation blocked - node has contributors');
-			globalState.showToast('Cannot navigate into contribution nodes', 'info');
+			globalState.showToast($t('tree.cannot_navigate_into_contributions'), 'info');
 			return;
 		}
 
@@ -376,18 +382,29 @@
 		// Check if user is authenticated
 		if (!$userAlias || !$userPub) {
 			console.log('[UI FLOW] User not authenticated, prompting to log in');
-			globalState.showToast('Please log in to start playing!', 'info');
+			globalState.showToast($t('tree.please_login'), 'info');
 			return;
 		}
 
 		try {
-			const newTree = createNewTree(true); // Include example data
+			// Create empty tree, then apply the selected template generically
+			const newTree = createNewTree(false);
 			if (newTree) {
-				globalState.showToast('Greetings player, welcome to playnet!', 'success');
+				const populated = applyTemplate(newTree, selectedTemplateId);
+				if (populated) {
+					userTree.set(populated);
+					const chosen = availableTemplates.find((t) => t.id === selectedTemplateId);
+					globalState.showToast(
+						$t('tree.template_loaded', { template: chosen ? `${chosen.emoji} ${chosen.label}` : selectedTemplateId }),
+						'success'
+					);
+				} else {
+					globalState.showToast($t('tree.error_unknown_template'), 'error');
+				}
 			}
 		} catch (error) {
 			console.error('[UI FLOW] Error creating new tree:', error);
-			globalState.showToast('Error creating new tree', 'error');
+			globalState.showToast($t('tree.error_creating_tree'), 'error');
 		}
 	}
 
@@ -396,13 +413,13 @@
 
 		// Don't allow adding nodes when in edit mode
 		if (globalState.editMode) {
-			globalState.showToast('Cannot add nodes while editing', 'warning');
+			globalState.showToast($t('tree.cannot_add_nodes_editing'), 'warning');
 			return;
 		}
 
 		// Don't allow adding nodes when in delete mode
 		if (globalState.deleteMode) {
-			globalState.showToast('Cannot add nodes in delete mode', 'warning');
+			globalState.showToast($t('tree.cannot_add_nodes_delete_mode'), 'warning');
 			return;
 		}
 
@@ -428,13 +445,13 @@
 		try {
 			// Get the tree and current node
 			if (!tree) {
-				globalState.showToast('Error creating node: No tree found', 'error');
+				globalState.showToast($t('tree.error_no_tree'), 'error');
 				return;
 			}
 
 			// Find the current node
 			if (!currentNode) {
-				globalState.showToast('Error creating node: Current node not found', 'error');
+				globalState.showToast($t('tree.error_node_not_found'), 'error');
 				return;
 			}
 
@@ -445,7 +462,7 @@
 			const updatedCurrentNode = findNodeById(updatedTree, currentNodeId);
 			if (!updatedCurrentNode) {
 				globalState.showToast(
-					'Error creating node: Current node not found in updated tree',
+					$t('tree.error_node_not_found_tree'),
 					'error'
 				);
 				return;
@@ -461,7 +478,7 @@
 			triggerUpdate();
 
 			console.log('[UI FLOW] addNode successful');
-			globalState.showToast('New node created', 'success');
+			globalState.showToast($t('tree.node_created'), 'success');
 
 			// Set node to edit mode directly
 			console.log('[UI FLOW] Setting node to edit mode:', newNodeId);
@@ -479,7 +496,7 @@
 			}, 100); // Slightly longer delay to ensure DOM is ready
 		} catch (err) {
 			console.error('[UI FLOW] Error in handleAddNode:', err);
-			globalState.showToast('Error creating node', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
 	}
 
@@ -507,10 +524,10 @@
 			// Clear edit mode
 			globalState.exitEditMode();
 
-			globalState.showToast(`Node renamed to "${newName}"`, 'success');
+			globalState.showToast($t('tree.node_renamed', { name: newName }), 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
-			globalState.showToast('Error updating node name', 'error');
+			globalState.showToast($t('tree.error_updating_name'), 'error');
 		}
 	}
 
@@ -567,12 +584,12 @@
 
 			// Only show notification if requested (e.g., on drag end, not during drag)
 			if (showNotification) {
-				globalState.showToast(`Fulfillment set to ${Math.round(value * 100)}%`, 'success');
+				globalState.showToast($t('tree.fulfillment_set', { value: Math.round(value * 100) }), 'success');
 			}
 		} catch (err) {
 			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
 			if (showNotification) {
-				globalState.showToast('Error updating manual fulfillment', 'error');
+				globalState.showToast($t('tree.error_updating_fulfillment'), 'error');
 			}
 		}
 	}
@@ -648,10 +665,10 @@
 			// Force update
 			triggerUpdate();
 
-			globalState.showToast('Contributor removed successfully', 'success');
+			globalState.showToast($t('tree.contributor_removed_success'), 'success');
 		} catch (err) {
 			console.error('Error removing contributor:', err);
-			globalState.showToast('Error removing contributor', 'error');
+			globalState.showToast($t('tree.error_removing_contributor'), 'error');
 		}
 	}
 
@@ -685,10 +702,10 @@
 			// Force update
 			triggerUpdate();
 
-			globalState.showToast('Anti-contributor removed successfully', 'success');
+			globalState.showToast($t('tree.anti_contributor_removed'), 'success');
 		} catch (err) {
 			console.error('Error removing anti-contributor:', err);
-			globalState.showToast('Error removing anti-contributor', 'error');
+			globalState.showToast($t('tree.error_removing_anti_contributor'), 'error');
 		}
 	}
 
@@ -839,7 +856,7 @@
 				}
 			}
 
-			globalState.showToast(`Contact "${detail.name}" created successfully`, 'success');
+			globalState.showToast($t('tree.contact_created', { name: detail.name }), 'success');
 
 			// Automatically add the new contact to the active node based on current mode
 			if (activeNodeId) {
@@ -851,7 +868,7 @@
 			}
 		} catch (error) {
 			console.error('[CONTACT] Error creating contact:', error);
-			globalState.showToast('Error creating contact: ' + (error as Error).message, 'error');
+			globalState.showToast($t('tree.error_creating_contact', { error: (error as Error).message }), 'error');
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -861,10 +878,10 @@
 			updateContact(detail.contactId, { name: detail.name });
 
 			console.log('[CONTACT] Updated contact:', detail);
-			globalState.showToast(`Contact renamed to "${detail.name}"`, 'success');
+			globalState.showToast($t('tree.contact_renamed', { name: detail.name }), 'success');
 		} catch (error) {
 			console.error('[CONTACT] Error updating contact:', error);
-			globalState.showToast('Error updating contact: ' + (error as Error).message, 'error');
+			globalState.showToast($t('tree.error_updating_contact', { error: (error as Error).message }), 'error');
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -872,7 +889,7 @@
 	function handleDeleteContact(detail: { contactId: string; name: string; publicKey?: string }) {
 		try {
 			if (!tree) {
-				globalState.showToast('No tree found to update', 'error');
+				globalState.showToast($t('tree.no_tree_to_update'), 'error');
 				return;
 			}
 
@@ -979,7 +996,7 @@
 			console.log('[CONTACT] Contact deletion completed successfully');
 		} catch (error) {
 			console.error('[CONTACT] Error deleting contact:', error);
-			globalState.showToast('Error deleting contact: ' + (error as Error).message, 'error');
+			globalState.showToast($t('tree.error_deleting_contact', { error: (error as Error).message }), 'error');
 		}
 	}
 
@@ -1053,11 +1070,11 @@
 				// Force update
 				triggerUpdate();
 
-				globalState.showToast('Contributor added successfully', 'success');
+				globalState.showToast($t('tree.contributor_added'), 'success');
 			}
 		} catch (err) {
 			console.error('Error adding contributor:', err);
-			globalState.showToast('Error adding contributor', 'error');
+			globalState.showToast($t('tree.error_adding_contributor'), 'error');
 		}
 	}
 
@@ -1096,11 +1113,11 @@
 				// Force update
 				triggerUpdate();
 
-				globalState.showToast('Anti-contributor added successfully', 'success');
+				globalState.showToast($t('tree.anti_contributor_added'), 'success');
 			}
 		} catch (err) {
 			console.error('Error adding anti-contributor:', err);
-			globalState.showToast('Error adding anti-contributor', 'error');
+			globalState.showToast($t('tree.error_adding_anti_contributor'), 'error');
 		}
 	}
 
@@ -1378,7 +1395,7 @@
 			triggerUpdate();
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
-			globalState.showToast('Error saving node points', 'error');
+			globalState.showToast($t('tree.error_saving_points'), 'error');
 		}
 	}
 
@@ -1672,7 +1689,7 @@
 	});
 
 	function handleNodeDeletion(nodeId: string) {
-		if (confirm(`Delete this node and all its children?`)) {
+		if (confirm($t('tree.confirm_delete'))) {
 			try {
 				if (!tree) return;
 
@@ -1689,7 +1706,7 @@
 				// Don't allow deleting root node
 				if (nodeId === path[0]) {
 					console.error('Cannot delete root node');
-					globalState.showToast('Cannot delete root node', 'error');
+					globalState.showToast($t('tree.cannot_delete_root'), 'error');
 					return;
 				}
 
@@ -1872,6 +1889,13 @@
 						<button class="play-button" onclick={handleCreateNewTree}>
 							<span class="play-text">Play! ✨</span>
 						</button>
+					<div class="template-select">
+						<select class="template-select-input" bind:value={selectedTemplateId}>
+							{#each availableTemplates as t}
+								<option value={t.id}>{t.emoji} {t.label}</option>
+							{/each}
+						</select>
+					</div>
 					</div>
 				</div>
 			{:else if hierarchyData && hierarchyData.children && hierarchyData.children.length > 0}
@@ -2068,6 +2092,27 @@
 		align-items: center;
 		text-align: center;
 		padding: 24px;
+	}
+
+	.template-select {
+		margin-top: 12px;
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.template-label {
+		font-size: 14px;
+		color: #555;
+	}
+
+	.template-select-input {
+		padding: 8px 10px;
+		border-radius: 6px;
+		border: 1px solid #ddd;
+		background: #fff;
+		font-size: 14px;
+		cursor: pointer;
 	}
 
 	.add-node-button {

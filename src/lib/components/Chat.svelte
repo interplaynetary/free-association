@@ -12,6 +12,7 @@
 		getLastMessageTimestamp,
 		getUnreadMessageCount
 	} from '$lib/state/chat.svelte';
+	import { t } from '$lib/translations';
 
 	interface ChatProps {
 		chatId?: string;
@@ -19,7 +20,7 @@
 		maxLength?: number;
 	}
 
-	let { chatId = 'chat', placeholder = 'Type a message...', maxLength = 100 }: ChatProps = $props();
+	let { chatId = 'chat', placeholder = $t('common.chat_placeholder'), maxLength = 100 }: ChatProps = $props();
 
 	let newMessage = $state('');
 	let isSending = $state(false);

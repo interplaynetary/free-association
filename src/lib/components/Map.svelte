@@ -22,6 +22,7 @@
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
+	import { t } from '$lib/translations';
 	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
 	import {
 		reverseGeocode,
@@ -1488,61 +1489,61 @@
 			<!-- Collapsible Controls Group -->
 			<CustomControl position="bottom-right">
 				<div class="controls-group">
-					<!-- Main toggle button -->
-					<button
-						class="map-control-btn controls-toggle"
-						onclick={() => {
-							isControlsExpanded = !isControlsExpanded;
-						}}
-						title="Toggle map controls"
-					>
-						<span>{isControlsExpanded ? '✕' : '⚙️'}</span>
-					</button>
+				<!-- Main toggle button -->
+				<button
+					class="map-control-btn controls-toggle"
+					onclick={() => {
+						isControlsExpanded = !isControlsExpanded;
+					}}
+					title={$t('map.toggle_controls')}
+				>
+					<span>{isControlsExpanded ? '✕' : '⚙️'}</span>
+				</button>
 
-					<!-- Expandable controls -->
-					{#if isControlsExpanded}
-						<div class="expanded-controls">
-							<button
-								class="map-control-btn"
-								onclick={() => {
-									enableClustering = !enableClustering;
-								}}
-								title="Toggle clustering"
-								class:active={enableClustering}
-							>
-								<span>🗂️</span>
-							</button>
-							<button
-								class="map-control-btn"
-								onclick={() => {
-									isGlobeMode = !isGlobeMode;
-								}}
-								title="Toggle globe mode"
-							>
-								<span>🌐</span>
-							</button>
-							<button
-								class="map-control-btn"
-								onclick={() => {
-									show3DBuildings = !show3DBuildings;
-									if (map) map.setPitch(show3DBuildings ? 70 : 0);
-								}}
-								title="Toggle 3D buildings"
-							>
-								<span>🏢</span>
-							</button>
-							<button
-								class="map-control-btn"
-								onclick={() => {
-									isTerrainVisible = !isTerrainVisible;
-									if (map) map.setPitch(isTerrainVisible ? 70 : 0);
-								}}
-								title="Toggle terrain"
-							>
-								<span>🏔️</span>
-							</button>
-						</div>
-					{/if}
+				<!-- Expandable controls -->
+				{#if isControlsExpanded}
+					<div class="expanded-controls">
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								enableClustering = !enableClustering;
+							}}
+							title={$t('map.toggle_clustering')}
+							class:active={enableClustering}
+						>
+							<span>🗂️</span>
+						</button>
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								isGlobeMode = !isGlobeMode;
+							}}
+							title={$t('map.toggle_globe')}
+						>
+							<span>🌐</span>
+						</button>
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								show3DBuildings = !show3DBuildings;
+								if (map) map.setPitch(show3DBuildings ? 70 : 0);
+							}}
+							title={$t('map.toggle_3d_buildings')}
+						>
+							<span>🏢</span>
+						</button>
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								isTerrainVisible = !isTerrainVisible;
+								if (map) map.setPitch(isTerrainVisible ? 70 : 0);
+							}}
+							title={$t('map.toggle_terrain')}
+						>
+							<span>🏔️</span>
+						</button>
+					</div>
+				{/if}
 				</div>
 			</CustomControl>
 

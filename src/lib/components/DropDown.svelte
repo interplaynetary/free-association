@@ -9,12 +9,13 @@
 		getUserName
 	} from '$lib/state/users.svelte';
 	import { browser } from '$app/environment';
+	import { t } from '$lib/translations';
 	import type { Readable } from 'svelte/store';
 
 	// Props using Svelte 5 runes
 	let {
-		title = 'Select Item',
-		searchPlaceholder = 'Search...',
+		title = $t('common.select_item'),
+		searchPlaceholder = $t('common.search_placeholder'),
 		position = { x: 0, y: 0 },
 		width = 280,
 		maxHeight = 320,
@@ -625,9 +626,8 @@
 		}
 
 		// Show confirmation dialog
-		const confirmed = confirm(
-			`Delete contact "${contactName}"?\n\nThis will remove the contact and replace any references in the tree with the public key (if available) or remove them entirely.`
-		);
+		const confirmMessage = $t('common.delete_contact_confirm').replace('{name}', contactName);
+		const confirmed = confirm(confirmMessage);
 
 		if (!confirmed) {
 			return;
@@ -817,76 +817,76 @@
 				bind:this={searchInput}
 				bind:value={searchFilter}
 			/>
-			{#if allowCreateContact}
-				<button
-					class="create-button"
-					onclick={handleShowCreateForm}
-					title="Create new contact"
-					disabled={showCreateForm || showCreateCollectiveForm}
-				>
-					👤+
-				</button>
-			{/if}
-			{#if allowCreateCollective}
-				<button
-					class="create-button collective-button"
-					onclick={handleShowCreateCollectiveForm}
-					title="Create new collective"
-					disabled={showCreateForm || showCreateCollectiveForm}
-				>
-					👥+
-				</button>
-			{/if}
-			{#if collectiveMode}
-				<div class="mode-indicator" title="Collective mode - select multiple people">
-					👥 Multi-select
-				</div>
-			{/if}
+		{#if allowCreateContact}
+			<button
+				class="create-button"
+				onclick={handleShowCreateForm}
+				title={$t('common.create_new_contact')}
+				disabled={showCreateForm || showCreateCollectiveForm}
+			>
+				👤+
+			</button>
+		{/if}
+		{#if allowCreateCollective}
+			<button
+				class="create-button collective-button"
+				onclick={handleShowCreateCollectiveForm}
+				title={$t('common.create_new_collective')}
+				disabled={showCreateForm || showCreateCollectiveForm}
+			>
+				👥+
+			</button>
+		{/if}
+		{#if collectiveMode}
+			<div class="mode-indicator" title={$t('common.collective_mode')}>
+				👥 {$t('common.multi_select')}
+			</div>
+		{/if}
 			<button class="close-button" onclick={handleClose}>×</button>
 		</div>
 
-		{#if showCreateForm}
-			<div class="create-form">
-				<div class="form-field">
-					<input
-						type="text"
-						placeholder="Contact name"
-						bind:this={nameInput}
-						bind:value={createForm.name}
-						onkeydown={handleCreateFormKeydown}
-					/>
-				</div>
-				<div class="form-actions">
-					<button class="cancel-button" onclick={handleHideCreateForm} disabled={isCreating}>
-						Cancel
-					</button>
-					<button
-						class="save-button"
-						onclick={handleCreateContact}
-						disabled={isCreating || !createForm.name.trim()}
-					>
-						{isCreating ? 'Creating...' : 'Create'}
-					</button>
-				</div>
+	{#if showCreateForm}
+		<div class="create-form">
+			<div class="form-field">
+				<input
+					type="text"
+					placeholder={$t('common.contact_name')}
+					bind:this={nameInput}
+					bind:value={createForm.name}
+					onkeydown={handleCreateFormKeydown}
+				/>
 			</div>
-		{/if}
+			<div class="form-actions">
+				<button class="cancel-button" onclick={handleHideCreateForm} disabled={isCreating}>
+					{$t('common.cancel')}
+				</button>
+				<button
+					class="save-button"
+					onclick={handleCreateContact}
+					disabled={isCreating || !createForm.name.trim()}
+				>
+					{isCreating ? $t('common.creating') : $t('common.create')}
+				</button>
+			</div>
+		</div>
+	{/if}
 
-		{#if showCreateCollectiveForm}
-			<div class="create-form collective-form">
-				<div class="form-field">
-					<input
-						type="text"
-						placeholder="Collective name"
-						bind:this={nameInput}
-						bind:value={createCollectiveForm.name}
-						onkeydown={handleCreateCollectiveFormKeydown}
-					/>
+	{#if showCreateCollectiveForm}
+		<div class="create-form collective-form">
+			<div class="form-field">
+				<input
+					type="text"
+					placeholder={$t('common.collective_name')}
+					bind:this={nameInput}
+					bind:value={createCollectiveForm.name}
+					onkeydown={handleCreateCollectiveFormKeydown}
+				/>
+			</div>
+			<div class="collective-members">
+				<div class="members-header">
+					<span>{$t('common.members_count')} ({createCollectiveForm.selectedMembers.length})</span>
+					<span class="members-hint">{$t('common.select_at_least_2')}</span>
 				</div>
-				<div class="collective-members">
-					<div class="members-header">
-						<span>Members ({createCollectiveForm.selectedMembers.length})</span>
-						<span class="members-hint">Select at least 2 people</span>
-					</div>
 					<div class="members-list">
 						{#each dataProviderItems as item (item.id)}
 							{#if !item.metadata?.isContact || item.metadata?.userId}
@@ -908,35 +908,35 @@
 						{/each}
 					</div>
 				</div>
-				<div class="form-actions">
-					<button
-						class="cancel-button"
-						onclick={handleHideCreateCollectiveForm}
-						disabled={isCreatingCollective}
-					>
-						Cancel
-					</button>
-					<button
-						class="save-button"
-						onclick={handleCreateCollective}
-						disabled={isCreatingCollective ||
-							!createCollectiveForm.name.trim() ||
-							createCollectiveForm.selectedMembers.length < 2}
-					>
-						{isCreatingCollective
-							? 'Creating...'
-							: `Create Collective (${createCollectiveForm.selectedMembers.length})`}
-					</button>
-				</div>
+			<div class="form-actions">
+				<button
+					class="cancel-button"
+					onclick={handleHideCreateCollectiveForm}
+					disabled={isCreatingCollective}
+				>
+					{$t('common.cancel')}
+				</button>
+				<button
+					class="save-button"
+					onclick={handleCreateCollective}
+					disabled={isCreatingCollective ||
+						!createCollectiveForm.name.trim() ||
+						createCollectiveForm.selectedMembers.length < 2}
+				>
+					{isCreatingCollective
+						? $t('common.creating')
+						: `${$t('common.create_collective_with_count')} (${createCollectiveForm.selectedMembers.length})`}
+				</button>
 			</div>
-		{/if}
+		</div>
+	{/if}
 
-		<div class="results" bind:this={resultsContainer}>
-			{#if !filteredItems || filteredItems.length === 0}
-				<div class="message">
-					{searchFilter ? 'No matching items found' : 'No items available'}
-				</div>
-			{:else}
+	<div class="results" bind:this={resultsContainer}>
+		{#if !filteredItems || filteredItems.length === 0}
+			<div class="message">
+				{searchFilter ? $t('common.no_matching_items') : $t('common.no_items_available')}
+			</div>
+		{:else}
 				{#each filteredItems as item (item.id)}
 					<div
 						class="item"
@@ -952,35 +952,35 @@
 							<!-- Editing mode for this entry -->
 							<div class="item-content editing">
 								<div class="editing-form">
-									<div class="input-row">
-										<input
-											type="text"
-											placeholder={editingMode === 'create'
-												? 'Enter contact name'
-												: 'Edit contact name'}
-											bind:this={editingEntryInput}
-											bind:value={editingEntryName}
-											onkeydown={(e) => handleEntryKeydown(e, item.id)}
-											onclick={(e) => e.stopPropagation()}
-											disabled={isCreatingFromEntry}
-										/>
+					<div class="input-row">
+						<input
+							type="text"
+							placeholder={editingMode === 'create'
+								? $t('common.enter_contact_name')
+								: $t('common.edit_contact_name')}
+							bind:this={editingEntryInput}
+							bind:value={editingEntryName}
+							onkeydown={(e) => handleEntryKeydown(e, item.id)}
+							onclick={(e) => e.stopPropagation()}
+							disabled={isCreatingFromEntry}
+						/>
 
-										{#if editingMode === 'edit'}
-											<div class="alias-input-container">
-												<input
-													type="text"
-													placeholder="Link to alias (optional)"
-													bind:this={editingContactAliasInput}
-													bind:value={editingContactAlias}
-													oninput={handleAliasInput}
-													onkeydown={handleAliasKeydown}
-													onclick={(e) => e.stopPropagation()}
-													disabled={isCreatingFromEntry}
-												/>
+						{#if editingMode === 'edit'}
+							<div class="alias-input-container">
+								<input
+									type="text"
+									placeholder={$t('common.link_to_alias')}
+									bind:this={editingContactAliasInput}
+									bind:value={editingContactAlias}
+									oninput={handleAliasInput}
+									onkeydown={handleAliasKeydown}
+									onclick={(e) => e.stopPropagation()}
+									disabled={isCreatingFromEntry}
+								/>
 
-												{#if showAliasDropdown && filteredAliases().length > 0}
-													<div class="alias-dropdown">
-														{#each filteredAliases() as aliasItem, index}
+								{#if showAliasDropdown && filteredAliases.length > 0}
+									<div class="alias-dropdown">
+										{#each filteredAliases as aliasItem, index}
 															<div
 																class="alias-item"
 																class:selected={index === selectedAliasIndex}
@@ -1023,27 +1023,27 @@
 										>
 											×
 										</button>
-										{#if editingMode === 'edit'}
-											<button
-												class="delete-entry-button"
-												onclick={(e) => handleDeleteContact(item.id, item.name, e)}
-												title="Delete contact"
-											>
-												🗑️
-											</button>
-										{/if}
-									</div>
-								</div>
-								<div class="item-meta">
-									{#if editingMode === 'create'}
-										{item.metadata?.gunAlias
-											? `@${item.metadata.gunAlias}`
-											: `Public key: ${item.id.substring(0, 12)}...`}
-									{:else}
-										Contact: {item.metadata?.contactName || 'Editing contact name'}
+									{#if editingMode === 'edit'}
+										<button
+											class="delete-entry-button"
+											onclick={(e) => handleDeleteContact(item.id, item.name, e)}
+											title={$t('common.delete_contact')}
+										>
+											🗑️
+										</button>
 									{/if}
 								</div>
 							</div>
+							<div class="item-meta">
+								{#if editingMode === 'create'}
+									{item.metadata?.gunAlias
+										? `@${item.metadata.gunAlias}`
+										: `${$t('common.public_key')}: ${item.id.substring(0, 12)}...`}
+								{:else}
+									{$t('common.contact')}: {item.metadata?.contactName || $t('common.editing_contact_name')}
+								{/if}
+							</div>
+						</div>
 						{:else}
 							<!-- Normal display mode -->
 							<div
@@ -1058,28 +1058,28 @@
 									}
 								}}
 							>
-								<div class="item-name">
-									{#if isItemSelected(item.id)}
-										<span class="selected-icon">✓</span>
-									{/if}
+							<div class="item-name">
+								{#if isItemSelected(item.id)}
+									<span class="selected-icon">✓</span>
+								{/if}
 
-									<!-- Enhanced icon display with better logic -->
-									{#if item.metadata?.isContact}
-										<span class="contact-icon" title="Contact">👤</span>
-									{/if}
+								<!-- Enhanced icon display with better logic -->
+								{#if item.metadata?.isContact}
+									<span class="contact-icon" title={$t('common.contact')}>👤</span>
+								{/if}
 
-									<span class="item-display-name">{item.name || item.id}</span>
+								<span class="item-display-name">{item.name || item.id}</span>
 
-									{#if isItemSelected(item.id)}
-										<span class="remove-hint">click to remove</span>
-									{/if}
-								</div>
+								{#if isItemSelected(item.id)}
+									<span class="remove-hint">{$t('common.click_to_remove')}</span>
+								{/if}
+							</div>
 
-								<!-- Enhanced metadata display -->
-								<div class="item-meta">
-									{#if item.metadata?.contributorCount !== undefined}
-										({item.metadata.contributorCount} contributors)
-									{/if}
+							<!-- Enhanced metadata display -->
+							<div class="item-meta">
+								{#if item.metadata?.contributorCount !== undefined}
+									({item.metadata.contributorCount} {$t('common.contributors_count')})
+								{/if}
 
 									<!-- Show Gun alias when available -->
 									{#if item.metadata?.isContact && item.metadata?.gunAlias}
@@ -1088,24 +1088,24 @@
 								</div>
 							</div>
 
-							{#if shouldShowAddButton(item)}
-								<button
-									class="add-entry-button"
-									onclick={(e) => handleStartNaming(item.id, e)}
-									title="Add to contacts"
-								>
-									+
-								</button>
-							{/if}
-							{#if shouldShowEditButton(item)}
-								<button
-									class="edit-entry-button"
-									onclick={(e) => handleStartEditingContact(item.id, item.name, e)}
-									title="Edit contact name"
-								>
-									✏️
-								</button>
-							{/if}
+						{#if shouldShowAddButton(item)}
+							<button
+								class="add-entry-button"
+								onclick={(e) => handleStartNaming(item.id, e)}
+								title={$t('common.add_to_contacts')}
+							>
+								+
+							</button>
+						{/if}
+						{#if shouldShowEditButton(item)}
+							<button
+								class="edit-entry-button"
+								onclick={(e) => handleStartEditingContact(item.id, item.name, e)}
+								title={$t('common.edit_contact_name')}
+							>
+								✏️
+							</button>
+						{/if}
 						{/if}
 					</div>
 				{/each}

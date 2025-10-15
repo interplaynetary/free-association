@@ -1,0 +1,18 @@
+{
+  "title": "Collectives",
+  "create": "Create Collective",
+  "join": "Join Collective",
+  "members": "Members",
+  "settings": "Collective Settings",
+  "no_members": "No collective members added yet.",
+  "add_members_hint": "Add members to the collective to see their merged tree visualization.",
+  "your_recognition": "your recognition",
+  "your_recognition_abbr": "YR",
+  "your_recognition_tooltip": "Your-Recognition: your acknowledgment of contributions towards the realization of your priorities",
+  "mutual_recognition": "mutual recognition",
+  "mutual_recognition_abbr": "MR",
+  "mutual_recognition_tooltip": "Mutual-Recognition: Your mutual-recognition with another is the minimum of your recognition of each other. This displays your mutual-recognition with each as a % of your total-mutual-recognition with all!",
+  "no_contributors_yet": "You have not yet recognized any contributors! Adding contributors to a node makes it a contribution!",
+  "no_mutual_contributors": "You don't have any mutual contributors yet!"
+}
+

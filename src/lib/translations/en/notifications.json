@@ -1,0 +1,17 @@
+{
+  "title": "Notifications",
+  "notifications": "Notifications",
+  "no_notifications": "No notifications",
+  "mark_read": "Mark as read",
+  "mark_unread": "Mark as unread",
+  "mark_all_read": "Mark all as read",
+  "delete_notification": "Delete Notification",
+  "delete_all": "Delete All",
+  "notification_settings": "Notification Settings",
+  "enable_notifications": "Enable Notifications",
+  "disable_notifications": "Disable Notifications",
+  "notification_permission": "Notification Permission",
+  "feature_not_implemented": "This feature has not been implemented yet",
+  "coming_soon": "Coming soon"
+}
+

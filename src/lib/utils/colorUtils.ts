@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { resolveToPublicKey } from '$lib/state/users.svelte';
-import { getSDGColor, isSDGNode } from './sdg';
+import { getSDGColor, isSDGNode } from '../templates/sdg';
 
 const nameColors = new Map();
 

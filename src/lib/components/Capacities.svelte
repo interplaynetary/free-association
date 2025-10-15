@@ -18,6 +18,7 @@
 		userDesiredSlotComposeInto
 	} from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
+	import { t } from '$lib/translations';
 
 	// Reactive derived values
 	const capacityEntries = $derived(() => {
@@ -127,7 +128,7 @@
 		// Add to highlighted capacities using global state
 		globalState.highlightCapacity(capacity.id);
 
-		globalState.showToast(`Capacity "${capacity.name}" created`, 'success');
+		globalState.showToast($t('inventory.capacity_created', { name: capacity.name }), 'success');
 		return true;
 	}
 
@@ -215,11 +216,11 @@
 			// Update store (Gun handles timestamps natively now)
 			userCapacities.set(newCapacities);
 
-			globalState.showToast(`Capacity "${plainCapacity.name}" updated`, 'success');
+			globalState.showToast($t('inventory.capacity_updated', { name: plainCapacity.name }), 'success');
 			return true;
 		} catch (error) {
 			console.error('Error updating capacity:', error);
-			globalState.showToast('Error updating capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
 	}
@@ -329,11 +330,11 @@
 			// Update store (Gun handles timestamps natively now)
 			userCapacities.set(newCaps);
 
-			globalState.showToast('Capacity and all related slot data deleted', 'success');
+			globalState.showToast($t('inventory.capacity_deleted', { name: '' }), 'success');
 			return true;
 		} catch (error) {
 			console.error('Error deleting capacity:', error);
-			globalState.showToast('Error deleting capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
 	}
@@ -788,7 +789,7 @@
 		// Use the addCapacity function to properly add the capacity
 		const success = addCapacity(newCapacity);
 		if (!success) {
-			globalState.showToast('Failed to add capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 	}
@@ -802,7 +803,7 @@
 		// Use the addCapacity function to properly add the capacity
 		const success = addCapacity(newCapacity);
 		if (!success) {
-			globalState.showToast('Failed to add random capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 
@@ -812,7 +813,7 @@
 		const quantityInfo = `${slot.quantity} ${newCapacity.unit}`;
 
 		globalState.showToast(
-			`🎲 Generated "${newCapacity.name} ${quantityInfo}" ${locationInfo}!`,
+			`🎲 ${newCapacity.name} ${quantityInfo} ${locationInfo}!`,
 			'success'
 		);
 	}
@@ -821,7 +822,7 @@
 	function handleCapacityUpdate(capacity: ProviderCapacity) {
 		const success = updateCapacity(capacity);
 		if (!success) {
-			globalState.showToast('Failed to update capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
 	}
 
@@ -829,7 +830,7 @@
 	function handleCapacityDelete(id: string) {
 		const success = deleteCapacity(id);
 		if (!success) {
-			globalState.showToast('Failed to delete capacity', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
 	}
 </script>

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { writeAtPath, readAtPath, listenAtPath } from '../utils/holsterData';
-import { addTimestamp, getTimestamp, mergeByTimestamp } from '../utils/holsterTime';
+import { addTimestamp, getTimestamp, mergeByTimestamp } from '../utils/holsterTimestamp';
 
 // ============================================================================
 // ZOD SCHEMAS (same as p2p-decider.svelte.ts)

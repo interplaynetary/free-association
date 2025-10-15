@@ -1,0 +1,15 @@
+{
+  "title": "Welcome to Free Association",
+  "subtitle": "A p2p platform for societal flourishing",
+  "capacities": "Capacities",
+  "shares": "Shares",
+  "your_recognition": "Your Recognition",
+  "your_recognition_abbr": "YR",
+  "your_recognition_description": "Your recognition of contributions towards your own self-actualization",
+  "mutual_recognition": "Mutual Recognition",
+  "mutual_recognition_abbr": "MR",
+  "mutual_recognition_description": "Your mutual-recognition with another is the minimum of your recognition of each other. This displays your mutual-recognition with each as a % of your total-mutual-recognition with all!",
+  "no_contributors": "You have not yet recognized any contributors! Adding contributors to a node makes it a contribution!",
+  "no_mutual_contributors": "You don't have any mutual contributors yet!"
+}
+

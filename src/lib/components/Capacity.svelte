@@ -12,6 +12,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
+	import { t } from '$lib/translations';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -635,7 +636,7 @@
 				type="button"
 				class="emoji-btn"
 				onclick={handleEmojiPickerToggle}
-				title="Select emoji"
+				title={$t('inventory.select_emoji')}
 			>
 				{capacityEmoji || '🎁'}
 			</button>
@@ -650,21 +651,21 @@
 			type="text"
 			class="capacity-input name auto-size"
 			bind:value={capacityName}
-			placeholder="Name"
+			placeholder={$t('inventory.name')}
 			onfocus={() => handleFocus('name', capacityName)}
 			onblur={() => handleBlurIfChanged('name', capacityName)}
-			style="width: {Math.max(capacityName?.length || 0, 'Name'.length) +
-				3}ch; min-width: {Math.max(6, 'Name'.length + 2)}ch;"
+			style="width: {Math.max(capacityName?.length || 0, $t('inventory.name').length) +
+				3}ch; min-width: {Math.max(6, $t('inventory.name').length + 2)}ch;"
 		/>
 		<input
 			type="text"
 			class="capacity-input unit auto-size"
 			bind:value={capacityUnit}
-			placeholder="Unit"
+			placeholder={$t('inventory.unit')}
 			onfocus={() => handleFocus('unit', capacityUnit)}
 			onblur={() => handleBlurIfChanged('unit', capacityUnit)}
-			style="width: {Math.max(capacityUnit?.length || 0, 'Unit'.length) +
-				3}ch; min-width: {Math.max(6, 'Unit'.length + 2)}ch;"
+			style="width: {Math.max(capacityUnit?.length || 0, $t('inventory.unit').length) +
+				3}ch; min-width: {Math.max(6, $t('inventory.unit').length + 2)}ch;"
 		/>
 		<!-- Description field with integrated toggle -->
 		<div class="description-field-container">
@@ -672,7 +673,7 @@
 				<textarea
 					class="capacity-input description-textarea auto-size"
 					bind:value={capacityDescription}
-					placeholder="Description"
+					placeholder={$t('inventory.description')}
 					onfocus={() => handleFocus('description', capacityDescription)}
 					onblur={() => handleBlurIfChanged('description', capacityDescription)}
 					rows="3"
@@ -682,11 +683,11 @@
 					type="text"
 					class="capacity-input description auto-size"
 					bind:value={capacityDescription}
-					placeholder="Description"
+					placeholder={$t('inventory.description')}
 					onfocus={() => handleFocus('description', capacityDescription)}
 					onblur={() => handleBlurIfChanged('description', capacityDescription)}
-					style="width: {Math.max(capacityDescription?.length || 0, 'Description'.length) +
-						3}ch; min-width: {Math.max(12, 'Description'.length + 2)}ch;"
+					style="width: {Math.max(capacityDescription?.length || 0, $t('inventory.description').length) +
+						3}ch; min-width: {Math.max(12, $t('inventory.description').length + 2)}ch;"
 				/>
 			{/if}
 			{#if capacityDescription}
@@ -694,7 +695,7 @@
 					type="button"
 					class="description-expand-btn"
 					onclick={() => (descriptionExpanded = !descriptionExpanded)}
-					title={descriptionExpanded ? 'Collapse' : 'Expand'}
+					title={descriptionExpanded ? $t('common.collapse') : $t('common.expand')}
 				>
 					{descriptionExpanded ? '▼' : '▲'}
 				</button>
@@ -706,7 +707,7 @@
 			type="button"
 			class="chat-btn relative ml-1"
 			onclick={toggleChat}
-			title="Chat about this capacity"
+			title={$t('inventory.chat_about_capacity')}
 		>
 			💬
 			{#if $unreadCount > 0}
@@ -718,7 +719,7 @@
 			type="button"
 			class="slots-btn ml-1"
 			onclick={toggleSlots}
-			title="Manage availability slots"
+			title={$t('inventory.manage_slots')}
 		>
 			🕒
 		</button>
@@ -735,7 +736,7 @@
 			<div class="filter-button-container">
 				<button type="button" class="add-filter-btn" onclick={handleAddSubtreeFilter}>
 					<span class="add-icon">+</span>
-					<span class="add-text">Filter</span>
+					<span class="add-text">{$t('common.filter')}</span>
 				</button>
 			</div>
 
@@ -762,9 +763,7 @@
 		{#if selectedSubtrees.length > 0}
 			<div class="filter-description">
 				<span class="filter-desc-text">
-					Only contributors from {selectedSubtrees.length === 1
-						? 'this subtree'
-						: `${selectedSubtrees.length} subtrees`}
+					{$t('inventory.filter_description', { count: selectedSubtrees.length })}
 				</span>
 			</div>
 		{/if}
@@ -775,14 +774,14 @@
 		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
-					💬 Chat about {capacity.emoji || '🎁'}
+					💬 {$t('inventory.chat_about_capacity')} {capacity.emoji || '🎁'}
 					{capacity.name}
 				</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					Discuss this capacity with recipients and other stakeholders
+					{$t('inventory.discuss_capacity')}
 				</p>
 			</div>
-			<Chat chatId={capacity.id} placeholder={`Discuss ${capacity.name}...`} maxLength={200} />
+			<Chat chatId={capacity.id} placeholder={`${$t('inventory.discuss')} ${capacity.name}...`} maxLength={200} />
 		</div>
 	{/if}
 
@@ -790,31 +789,31 @@
 	{#if slotsExpanded}
 		<div class="slots-section mb-4 rounded border border-gray-200 bg-purple-50 p-3">
 			<div class="slots-header mb-3">
-				<h4 class="text-sm font-medium text-gray-700">🕒 Availability Slots</h4>
+				<h4 class="text-sm font-medium text-gray-700">🕒 {$t('inventory.availability_slots')}</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					Manage specific time and location slots for this capacity ({totalSlotCount()} total)
+					{$t('inventory.manage_slots_description', { count: totalSlotCount() })}
 				</p>
 			</div>
 
 			<!-- Add slot button -->
 			<button type="button" class="add-slot-btn mb-4" onclick={handleAddSlot}>
 				<span class="add-icon">+</span>
-				<span class="add-text">Add new slot</span>
+				<span class="add-text">{$t('inventory.add_slot')}</span>
 			</button>
 
 			<!-- Slot controls -->
 			<div class="slots-controls mb-4 rounded border border-gray-200 bg-white p-3">
 				<div class="flex flex-wrap items-center gap-2">
-					<span class="text-xs font-medium text-gray-600">Sort by:</span>
+					<span class="text-xs font-medium text-gray-600">{$t('common.sort_by')}:</span>
 					<select class="slot-control-select" bind:value={slotSortBy}>
-						<option value="time">Time</option>
-						<option value="location">Location</option>
-						<option value="quantity">Quantity</option>
+						<option value="time">{$t('inventory.time')}</option>
+						<option value="location">{$t('inventory.location')}</option>
+						<option value="quantity">{$t('inventory.quantity')}</option>
 					</select>
 					<button
 						class="slot-control-btn"
 						onclick={() => (slotSortDirection = slotSortDirection === 'asc' ? 'desc' : 'asc')}
-						title="Toggle sort direction"
+						title={$t('common.toggle_sort')}
 					>
 						{slotSortDirection === 'asc' ? '↑' : '↓'}
 					</button>
@@ -832,7 +831,7 @@
 							>
 								<span class="category-icon">{recurringSlotsExpanded ? '▼' : '▶'}</span>
 								<span class="category-title"
-									>🔄 Recurring Availability ({categorizedSlots().recurring.length})</span
+									>🔄 {$t('inventory.recurring_availability')} ({categorizedSlots().recurring.length})</span
 								>
 							</button>
 							{#if recurringSlotsExpanded}
@@ -872,7 +871,7 @@
 							>
 								<span class="category-icon">{currentFutureSlotsExpanded ? '▼' : '▶'}</span>
 								<span class="category-title"
-									>📅 Current & Upcoming Availability ({categorizedSlots().currentFuture
+									>📅 {$t('inventory.current_upcoming')} ({categorizedSlots().currentFuture
 										.length})</span
 								>
 							</button>
@@ -907,7 +906,7 @@
 							>
 								<span class="category-icon">{pastSlotsExpanded ? '▼' : '▶'}</span>
 								<span class="category-title"
-									>📜 Past Availability ({categorizedSlots().past.length})</span
+									>📜 {$t('inventory.past_availability')} ({categorizedSlots().past.length})</span
 								>
 							</button>
 							{#if pastSlotsExpanded}
@@ -934,7 +933,7 @@
 					{/if}
 				{:else}
 					<div class="empty-slots py-6 text-center text-xs text-gray-500 italic">
-						No slots defined. Click "Add new slot" to get started.
+						{$t('inventory.no_slots')}
 					</div>
 				{/if}
 			</div>
@@ -947,7 +946,7 @@
 			<div class="settings-content">
 				<div class="other-options mb-4">
 					<div class="max-divisibility-section mb-6">
-						<h4 class="mb-4 text-sm font-medium text-gray-700">Max-divisibility</h4>
+						<h4 class="mb-4 text-sm font-medium text-gray-700">{$t('inventory.max_divisibility')}</h4>
 						<div class="grid grid-cols-2 gap-8">
 							<div>
 								<input
@@ -956,7 +955,7 @@
 									step="1"
 									class="capacity-input qty w-full text-right"
 									bind:value={capacityMaxNaturalDiv}
-									placeholder="Natural"
+									placeholder={$t('inventory.natural')}
 									onfocus={() => handleFocus('maxNaturalDiv', capacityMaxNaturalDiv)}
 									onblur={() => handleBlurIfChanged('maxNaturalDiv', capacityMaxNaturalDiv)}
 								/>
@@ -969,7 +968,7 @@
 									step="0.01"
 									class="capacity-input qty w-full text-right"
 									bind:value={capacityMaxPercentageDiv}
-									placeholder="Percentage (0-1)"
+									placeholder={$t('inventory.percentage')}
 									onfocus={() => handleFocus('maxPercentageDiv', capacityMaxPercentageDiv)}
 									onblur={() => handleBlurIfChanged('maxPercentageDiv', capacityMaxPercentageDiv)}
 								/>
@@ -987,8 +986,8 @@
 	<DropDown
 		position={dropdownPosition}
 		show={showSubtreeDropdown}
-		title="Select Subtree Category"
-		searchPlaceholder="Search subtrees..."
+		title={$t('inventory.select_subtree')}
+		searchPlaceholder={$t('common.search_placeholder')}
 		dataProvider={subtreesDataProvider}
 		select={handleSubtreeSelect}
 		updatePosition={(newPosition) => (dropdownPosition = newPosition)}

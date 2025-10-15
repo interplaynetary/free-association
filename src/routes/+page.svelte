@@ -9,6 +9,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { onMount } from 'svelte';
+	import { t } from '$lib/translations';
 
 	// Reactive variable for mobile detection
 	let isMobile = $state(false);
@@ -93,10 +94,10 @@
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
-				<h2 class="text-center text-2xl font-bold">Capacities</h2>
+				<h2 class="text-center text-2xl font-bold">{$t('home.capacities')}</h2>
 				<Capacities />
 
-				<h2 class="text-center text-2xl font-bold">Shares</h2>
+				<h2 class="text-center text-2xl font-bold">{$t('home.shares')}</h2>
 				<Shares />
 			</div>
 		{/if}
@@ -106,12 +107,12 @@
 		<div class="bar-group" class:vertical={!isMobile}>
 			<div
 				class="bar-label"
-				title="Your-Recognition: your acknowledgment of contributions towards the realization of your priorities"
+				title={$t('home.your_recognition_description')}
 			>
 				{#if isMobile}
-					your<br />recognition
+					{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}
 				{:else}
-					YR
+					{$t('home.your_recognition_abbr')}
 				{/if}
 			</div>
 			<div class="bar-area">
@@ -128,8 +129,7 @@
 				{:else}
 					<div class="placeholder">
 						<p>
-							You have not yet recognized any contributors! Adding contributors to a node makes it a
-							contribution!
+							{$t('home.no_contributors')}
 						</p>
 					</div>
 				{/if}
@@ -138,12 +138,12 @@
 		<div class="bar-group" class:vertical={!isMobile}>
 			<div
 				class="bar-label"
-				title="Mutual-Recognition: Your mutual-recognition with another is the minimum of your recognition of each other. This displays your mutual-recognition with each as a % of your total-mutual-recognition with all!"
+				title={$t('home.mutual_recognition_description')}
 			>
 				{#if isMobile}
-					mutual<br />recognition
+					{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}
 				{:else}
-					MR
+					{$t('home.mutual_recognition_abbr')}
 				{/if}
 			</div>
 			<div class="bar-area">
@@ -159,7 +159,7 @@
 					/>
 				{:else}
 					<div class="placeholder">
-						<p>You don't have any mutual contributors yet!</p>
+						<p>{$t('home.no_mutual_contributors')}</p>
 					</div>
 				{/if}
 			</div>

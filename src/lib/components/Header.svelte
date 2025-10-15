@@ -24,6 +24,8 @@
 		changePassword as holsterChangePassword
 	} from '$lib/state/holster.svelte';
 	import { USE_HOLSTER_AUTH } from '$lib/config';
+	import LanguageSwitcher from './LanguageSwitcher.svelte';
+	import { t } from '$lib/translations';
 
 	// Conditionally use Gun or Holster based on feature flag
 	const userAlias = USE_HOLSTER_AUTH ? holsterUserAlias : gunUserAlias;
@@ -882,7 +884,7 @@
 		<div class="node-name">
 			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
-					<div class="breadcrumb-item loading-path">Loading...</div>
+					<div class="breadcrumb-item loading-path">{$t('common.loading')}</div>
 				{:else if currentPathInfo.length === 0 && $userAlias}
 					<a
 						href="{base}/"
@@ -900,7 +902,7 @@
 						tabindex="0"
 						aria-label="Show login panel"
 					>
-						Login
+						{$t('auth.login')}
 					</button>
 				{:else}
 					{#each currentPathInfo as segment, index}
@@ -949,6 +951,8 @@
 		</div>
 
 		<div class="header-controls">
+			<LanguageSwitcher />
+			
 			<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
 				<span>❓</span>
 			</button>
@@ -971,7 +975,7 @@
 			{#if isAuthenticatingState}
 				<div class="loading-state">
 					<div class="spinner"></div>
-					<p>Checking authentication...</p>
+					<p>{$t('auth.checking_authentication')}</p>
 				</div>
 			{:else if $userAlias}
 				<!-- Logged in view -->
@@ -981,14 +985,14 @@
 							<img src={generateAvatar($userAlias, $userPub, 60)} alt={$userAlias} />
 						</div>
 						<div class="user-details">
-							<h3 title={$userAlias}>Welcome, {truncateText($userAlias, 15)}</h3>
+							<h3 title={$userAlias}>{$t('auth.welcome')}, {truncateText($userAlias, 15)}</h3>
 							<p class="user-id" title={'@' + ($userAlias || 'anonymous')}>
 								@{truncateText($userAlias || 'anonymous', 15)}
 							</p>
 							{#if $userPub}
 								<button
 									class="copy-pub-btn"
-									title="Click to copy your public key"
+									title={$t('auth.copy_public_key')}
 									onclick={() => copyToClipboard($userPub)}
 								>
 									<span class="pub-text"> {truncateText($userPub, 20)}</span>
@@ -1000,7 +1004,7 @@
 
 					{#if showPasswordChange}
 						<div class="password-change-form">
-							<h4>Change Password</h4>
+							<h4>{$t('auth.change_password')}</h4>
 
 							{#if passwordChangeError}
 								<div class="error-message">{passwordChangeError}</div>
@@ -1013,14 +1017,14 @@
 								}}
 							>
 								<div class="form-group password-group">
-									<label for="currentPassword">Current Password</label>
+									<label for="currentPassword">{$t('auth.current_password')}</label>
 									<div class="password-input-container">
 										<input
 											type={showCurrentPassword ? 'text' : 'password'}
 											id="currentPassword"
 											name="current-password"
 											bind:value={currentPassword}
-											placeholder="Enter current password"
+											placeholder={$t('auth.current_password')}
 											disabled={isChangingPassword}
 											autocomplete="current-password"
 											required
@@ -1029,7 +1033,7 @@
 											type="button"
 											class="toggle-password"
 											onclick={toggleCurrentPasswordVisibility}
-											title={showCurrentPassword ? 'Hide password' : 'Show password'}
+											title={showCurrentPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 										>
 											<span>{showCurrentPassword ? '🙈' : '🐵'}</span>
 										</button>
@@ -1037,14 +1041,14 @@
 								</div>
 
 								<div class="form-group password-group">
-									<label for="newPassword">New Password</label>
+									<label for="newPassword">{$t('auth.new_password')}</label>
 									<div class="password-input-container">
 										<input
 											type={showNewPassword ? 'text' : 'password'}
 											id="newPassword"
 											name="new-password"
 											bind:value={newPassword}
-											placeholder="Enter new password"
+											placeholder={$t('auth.new_password')}
 											disabled={isChangingPassword}
 											autocomplete="new-password"
 											required
@@ -1053,7 +1057,7 @@
 											type="button"
 											class="toggle-password"
 											onclick={toggleNewPasswordVisibility}
-											title={showNewPassword ? 'Hide password' : 'Show password'}
+											title={showNewPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 										>
 											<span>{showNewPassword ? '🙈' : '🐵'}</span>
 										</button>
@@ -1061,14 +1065,14 @@
 								</div>
 
 								<div class="form-group password-group">
-									<label for="confirmNewPassword">Confirm New Password</label>
+									<label for="confirmNewPassword">{$t('auth.confirm_new_password')}</label>
 									<div class="password-input-container">
 										<input
 											type={showConfirmNewPassword ? 'text' : 'password'}
 											id="confirmNewPassword"
 											name="new-password"
 											bind:value={confirmNewPassword}
-											placeholder="Confirm new password"
+											placeholder={$t('auth.confirm_new_password')}
 											disabled={isChangingPassword}
 											autocomplete="new-password"
 											required
@@ -1077,7 +1081,7 @@
 											type="button"
 											class="toggle-password"
 											onclick={toggleConfirmNewPasswordVisibility}
-											title={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+											title={showConfirmNewPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 										>
 											<span>{showConfirmNewPassword ? '🙈' : '🐵'}</span>
 										</button>
@@ -1095,9 +1099,9 @@
 									>
 										{#if isChangingPassword}
 											<div class="spinner small"></div>
-											Changing...
+											{$t('auth.changing_password')}
 										{:else}
-											Change Password
+											{$t('auth.change_password')}
 										{/if}
 									</button>
 									<button
@@ -1106,7 +1110,7 @@
 										onclick={togglePasswordChange}
 										disabled={isChangingPassword}
 									>
-										Cancel
+										{$t('common.cancel')}
 									</button>
 								</div>
 							</form>
@@ -1114,22 +1118,22 @@
 					{/if}
 
 					<div class="actions">
-						<button class="key-btn" title="Change password" onclick={togglePasswordChange}>
+						<button class="key-btn" title={$t('auth.change_password')} onclick={togglePasswordChange}>
 							<span>🔑</span>
 						</button>
-						<button class="export-data-btn" title="Export user data" onclick={handleExportData}>
+						<button class="export-data-btn" title={$t('toolbar.export_data')} onclick={handleExportData}>
 							<span>💾</span>
 						</button>
-						<button class="import-data-btn" title="Import user data" onclick={toggleImportPanel}>
+						<button class="import-data-btn" title={$t('toolbar.import_data')} onclick={toggleImportPanel}>
 							<span>📥</span>
 						</button>
-						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
+						<button class="logout-btn" onclick={handleLogout}>{$t('auth.logout')}</button>
 					</div>
 				</div>
 			{:else}
 				<!-- Login/Register form -->
 				<div class="login-form">
-					<h3>{isRegisterMode ? 'Create Account' : 'Sign In'}</h3>
+					<h3>{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}</h3>
 					{#if errorMessage}
 						<div class="error-message">{errorMessage}</div>
 					{/if}
@@ -1140,13 +1144,13 @@
 
 					<form method="post" onsubmit={handleSubmit}>
 						<div class="form-group">
-							<label for="username">Username</label>
+							<label for="username">{$t('auth.username')}</label>
 							<input
 								type="text"
 								id="username"
 								name="username"
 								bind:value={usernameInput}
-								placeholder="Enter username"
+								placeholder={$t('auth.username')}
 								disabled={isLoading}
 								autocomplete="username"
 								required
@@ -1154,20 +1158,20 @@
 							/>
 							{#if isRegisterMode}
 								<div class="form-info">
-									⚠️ Choose wisely! Usernames cannot be changed after creation
+									{$t('auth.username_warning')}
 								</div>
 							{/if}
 						</div>
 
 						<div class="form-group password-group">
-							<label for="password">Password</label>
+							<label for="password">{$t('auth.password')}</label>
 							<div class="password-input-container">
 								<input
 									type={showPassword ? 'text' : 'password'}
 									id="password"
 									name="password"
 									bind:value={password}
-									placeholder="Enter password"
+									placeholder={$t('auth.password')}
 									disabled={isLoading}
 									autocomplete={isRegisterMode ? 'new-password' : 'current-password'}
 									required
@@ -1177,7 +1181,7 @@
 									type="button"
 									class="toggle-password"
 									onclick={togglePasswordVisibility}
-									title={showPassword ? 'Hide password' : 'Show password'}
+									title={showPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 								>
 									<span>{showPassword ? '🙈' : '🐵'}</span>
 								</button>
@@ -1186,14 +1190,14 @@
 
 						{#if isRegisterMode}
 							<div class="form-group password-group">
-								<label for="confirmPassword">Confirm Password</label>
+								<label for="confirmPassword">{$t('auth.confirm_password')}</label>
 								<div class="password-input-container">
 									<input
 										type={showConfirmPassword ? 'text' : 'password'}
 										id="confirmPassword"
 										name="confirmPassword"
 										bind:value={confirmPassword}
-										placeholder="Confirm password"
+										placeholder={$t('auth.confirm_password')}
 										disabled={isLoading}
 										autocomplete="new-password"
 										required
@@ -1203,14 +1207,14 @@
 										type="button"
 										class="toggle-password"
 										onclick={toggleConfirmPasswordVisibility}
-										title={showConfirmPassword ? 'Hide password' : 'Show password'}
+										title={showConfirmPassword ? $t('auth.hide_password') : $t('auth.show_password')}
 									>
 										<span>{showConfirmPassword ? '🙈' : '🐵'}</span>
 									</button>
 								</div>
 							</div>
 							{#if isRegisterMode}
-								<div class="form-info">🔐 Save this password!</div>
+								<div class="form-info">{$t('auth.password_warning')}</div>
 							{/if}
 
 							<div class="form-group checkbox-group">
@@ -1222,10 +1226,10 @@
 										disabled={isLoading}
 									/>
 									<span class="checkbox-text">
-										I agree to the <a href="{base}/privacy" target="_blank" class="terms-link"
-											>Privacy Policy</a
+										{$t('auth.terms_agreement')} <a href="{base}/privacy" target="_blank" class="terms-link"
+											>{$t('auth.privacy_policy')}</a
 										>
-										and <a href="{base}/terms" target="_blank" class="terms-link">Terms of Use</a>
+										{$t('auth.and')} <a href="{base}/terms" target="_blank" class="terms-link">{$t('auth.terms_of_use')}</a>
 									</span>
 								</label>
 							</div>
@@ -1242,23 +1246,23 @@
 							>
 								{#if isLoading}
 									<div class="spinner small"></div>
-									{isRegisterMode ? 'Creating account...' : 'Signing in...'}
+									{isRegisterMode ? $t('auth.creating_account') : $t('auth.signing_in')}
 								{:else}
-									{isRegisterMode ? 'Create Account' : 'Sign In'}
+									{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}
 								{/if}
 							</button>
 						</div>
 
 						<div class="toggle-auth-mode">
 							{#if isRegisterMode}
-								Already have an account?
+								{$t('auth.already_have_account')}
 								<button type="button" class="text-link" onclick={toggleAuthMode}>
-									Sign in instead
+									{$t('auth.sign_in_instead')}
 								</button>
 							{:else}
-								Don't have an account?
+								{$t('auth.dont_have_account')}
 								<button type="button" class="text-link" onclick={toggleAuthMode}>
-									Create one now
+									{$t('auth.create_one_now')}
 								</button>
 							{/if}
 						</div>

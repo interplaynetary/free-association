@@ -92,6 +92,7 @@
 		"svelte-bottom-sheet": "^2.2.0",
 		"svelte-french-toast": "^1.2.0",
 		"svelte-maplibre-gl": "^0.1.6",
+		"sveltekit-i18n": "^2.4.2",
 		"tailwindcss-animate": "^1.0.7",
 		"uuid": "^11.1.0",
 		"zod": "^3.25.0"

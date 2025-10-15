@@ -7,6 +7,7 @@
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { pie, arc } from 'd3-shape';
+	import { t } from '$lib/translations';
 
 	// Define interface for node data
 	interface NodeData {
@@ -345,7 +346,7 @@
 
 		// Don't allow adding contributors when editing
 		if (globalState.editMode) {
-			globalState.showToast('Cannot add contributors while editing', 'warning');
+			globalState.showToast($t('tree.cannot_add_while_editing'), 'warning');
 			return;
 		}
 
@@ -388,7 +389,7 @@
 
 		// Don't allow adding anti-contributors when editing
 		if (globalState.editMode) {
-			globalState.showToast('Cannot add anti-contributors while editing', 'warning');
+			globalState.showToast($t('tree.cannot_add_while_editing'), 'warning');
 			return;
 		}
 
@@ -787,12 +788,12 @@
 					margin: 0;
 					box-sizing: border-box;
 				"
-				role="slider"
-				tabindex="0"
-				aria-valuenow={currentSliderValue()}
-				aria-valuemin="0"
-				aria-valuemax="100"
-				aria-label="Manual fulfillment percentage"
+			role="slider"
+			tabindex="0"
+			aria-valuenow={currentSliderValue()}
+			aria-valuemin="0"
+			aria-valuemax="100"
+			aria-label={$t('tree.manual_fulfillment')}
 				onkeydown={(e) => {
 					e.stopPropagation();
 					let newValue = currentSliderValue();
@@ -1048,7 +1049,7 @@
 						viewBox="-25 -25 50 50"
 						role="button"
 						tabindex="0"
-						aria-label="Add anti-contributor"
+						aria-label={$t('tree.add_anti_contributor')}
 						onclick={handleAddAntiContributorClick}
 						ontouchstart={handleAddAntiContributorClick}
 						onpointerdown={(e) => {
@@ -1149,7 +1150,7 @@
 						viewBox="-25 -25 50 50"
 						role="button"
 						tabindex="0"
-						aria-label="Add contributor"
+						aria-label={$t('tree.add_contributor')}
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}
 						onpointerdown={(e) => {
@@ -1229,7 +1230,7 @@
 							e.stopPropagation();
 							e.stopImmediatePropagation();
 						}}
-						title="Add contributor"
+						title={$t('tree.add_contributor')}
 					>
 						+
 					</button>

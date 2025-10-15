@@ -4,6 +4,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
 	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol';
+	import { t } from '$lib/translations';
 	import type {
 		Node,
 		RootNode,
@@ -176,16 +177,16 @@
 					onProviderClick={handleProviderClick}
 				/>
 			{/each}
-		{:else}
-			<div class="empty-state">
-				{#if globalState.inventorySearchQuery || globalState.inventorySelectedProvider !== 'all'}
-					<p>No shares match your filters.</p>
-					<button class="clear-btn" onclick={clearFilters}>Clear filters</button>
-				{:else}
-					<p>No shares available.</p>
-				{/if}
-			</div>
-		{/if}
+	{:else}
+		<div class="empty-state">
+			{#if globalState.inventorySearchQuery || globalState.inventorySelectedProvider !== 'all'}
+				<p>{$t('inventory.no_shares_match_filters')}</p>
+				<button class="clear-btn" onclick={clearFilters}>{$t('inventory.clear_filters')}</button>
+			{:else}
+				<p>{$t('inventory.no_shares_available')}</p>
+			{/if}
+		</div>
+	{/if}
 	</div>
 </div>
 

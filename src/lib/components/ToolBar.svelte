@@ -20,6 +20,7 @@
 		getColorForNameHash,
 		getContrastTextColor
 	} from '$lib/utils/colorUtils';
+	import { t } from '$lib/translations';
 
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
@@ -270,7 +271,7 @@
 		// Find the current node in the cloned tree
 		const currentNode = findNodeById(updatedTree, currentNodeId);
 		if (!currentNode) {
-			globalState.showToast('Error creating node: Current node not found', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 
@@ -298,7 +299,7 @@
 			userTree.set(updatedTree);
 
 			// Show success message
-			globalState.showToast('New node added successfully', 'success');
+			globalState.showToast($t('tree.node_created'), 'success');
 
 			// Set the new node to edit mode for immediate editing
 			globalState.setNodeToEditMode(newNodeId);
@@ -306,7 +307,7 @@
 			console.log('[UI FLOW] Successfully added new node with ID:', newNodeId);
 		} catch (error) {
 			console.error('[UI FLOW] Error adding new node:', error);
-			globalState.showToast('Error creating new node', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
 	}
 
@@ -336,11 +337,11 @@
 	}
 
 	// View switcher helpers
-	const viewConfig = {
-		tree: { emoji: '🌈', name: 'Values', next: 'map' as const },
-		map: { emoji: '🌍', name: 'Map', next: 'inventory' as const },
-		inventory: { emoji: '📊', name: 'Inventory', next: 'tree' as const }
-	};
+	const viewConfig = $derived({
+		tree: { emoji: '🌈', name: $t('toolbar.tree_view'), next: 'map' as const },
+		map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'inventory' as const },
+		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'tree' as const }
+	});
 
 	const currentViewConfig = $derived(viewConfig[globalState.currentView]);
 	const nextViewConfig = $derived(viewConfig[currentViewConfig.next]);
@@ -480,7 +481,7 @@
 		// Find the current node in the cloned tree
 		const currentNode = findNodeById(updatedTree, currentNodeId);
 		if (!currentNode) {
-			globalState.showToast('Error adding subtree: Current node not found', 'error');
+			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 
@@ -513,7 +514,7 @@
 			userTree.set(updatedTree);
 
 			// Show success message
-			globalState.showToast(`Added subtree "${subtreeToAdd.name}" successfully`, 'success');
+			globalState.showToast($t('tree.node_created'), 'success');
 
 			// Close the forest panel
 			toggleForestPanel();
@@ -702,63 +703,63 @@
 						<div class="action-controls">
 							<div class="view-controls tree-controls">
 							<div class="toolbar-item">
-								<button class="toolbar-button add-button" title="Add new node" onclick={handleAddNode}>
+								<button class="toolbar-button add-button" title={$t('tree.add_node')} onclick={handleAddNode}>
 									➕
 								</button>
-								<span class="button-caption">Add</span>
+								<span class="button-caption">{$t('common.add')}</span>
 							</div>
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button edit-button"
 									class:edit-active={isTextEditMode}
-									title={isTextEditMode ? 'Click to turn off text edit mode' : 'Toggle text edit mode'}
+									title={isTextEditMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.text_edit_mode')) : $t('toolbar.text_edit_mode')}
 									onclick={handleTextEditMode}
 								>
 									✏️
 								</button>
-								<span class="button-caption">Edit</span>
+								<span class="button-caption">{$t('common.edit')}</span>
 							</div>
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button recompose-button"
 									class:recompose-active={isRecomposeMode}
-									title={isRecomposeMode ? 'Click to turn off recompose mode' : 'Toggle recompose mode'}
+									title={isRecomposeMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.recompose')) : $t('toolbar.recompose_mode')}
 									onclick={handleRecompose}
 								>
 									↕️
 								</button>
-								<span class="button-caption">Recompose</span>
+								<span class="button-caption">{$t('toolbar.recompose')}</span>
 							</div>
 
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button delete-button"
 									class:delete-active={isDeleteMode}
-									title={isDeleteMode ? 'Click to turn off delete mode' : 'Toggle delete mode'}
+									title={isDeleteMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.delete_mode')) : $t('toolbar.delete_mode')}
 									onclick={globalState.toggleDeleteMode}
 								>
 									🗑️
 								</button>
-								<span class="button-caption">Delete</span>
+								<span class="button-caption">{$t('common.delete')}</span>
 							</div>
 
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button search-button"
 									class:search-active={showSearchPanel}
-									title="Search tree"
+									title={$t('toolbar.search_tree')}
 									onclick={toggleSearchPanel}
 								>
 									🔍
 								</button>
-								<span class="button-caption">Search</span>
+								<span class="button-caption">{$t('common.search')}</span>
 							</div>
 
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button forest-button"
 									class:forest-active={showForestPanel}
-									title="Forest subtrees"
+									title={$t('toolbar.forest_view')}
 									onclick={toggleForestPanel}
 								>
 								💞
@@ -776,23 +777,23 @@
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button create-capacity-button"
-									title="Create new capacity"
+									title={$t('toolbar.add_capacity')}
 									onclick={handleCreateCapacity}
 								>
 									➕
 								</button>
-								<span class="button-caption">New Capacity</span>
+								<span class="button-caption">{$t('toolbar.add_capacity')}</span>
 							</div>
 							<div class="toolbar-item">
 								<button
 									class="toolbar-button search-button"
 									class:search-active={showInventorySearchPanel}
-									title="Search capacities and shares"
+									title={$t('toolbar.search_placeholder')}
 									onclick={toggleInventorySearchPanel}
 								>
 									🔍
 								</button>
-								<span class="button-caption">Search</span>
+								<span class="button-caption">{$t('common.search')}</span>
 							</div>
 							</div>
 						</div>

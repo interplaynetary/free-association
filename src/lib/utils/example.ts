@@ -3,7 +3,7 @@ import type { RootNode, ProviderCapacity, CapacitiesCollection } from '$lib/sche
 import { userTree, userCapacities } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 import { getLocalTimeZone } from '@internationalized/date';
-import { populateSDGTree } from './sdg';
+import { populateSDGTree } from '../templates/sdg';
 
 /**
  * Populate tree with all 17 Sustainable Development Goals

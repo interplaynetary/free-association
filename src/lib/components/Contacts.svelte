@@ -11,6 +11,7 @@
 	import { getUserAlias } from '$lib/state/users.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
 	import type { Contact } from '$lib/schema';
+	import { t } from '$lib/translations';
 
 	// Component state
 	let showCreateForm = $state(false);
@@ -116,14 +117,14 @@
 
 <div class="contacts-container">
 	<div class="header">
-		<h2>Contacts</h2>
-		<button class="add-button" onclick={openCreateForm}>Add Contact</button>
+		<h2>{$t('contacts.title')}</h2>
+		<button class="add-button" onclick={openCreateForm}>{$t('contacts.add_contact')}</button>
 	</div>
 
 	<div class="search-bar">
 		<input
 			type="text"
-			placeholder="Search contacts..."
+			placeholder={$t('contacts.search_contacts')}
 			bind:value={searchQuery}
 			class="search-input"
 		/>
@@ -133,7 +134,7 @@
 	</div>
 
 	{#if $isLoadingContacts}
-		<div class="loading">Loading contacts...</div>
+		<div class="loading">{$t('common.loading')}</div>
 	{:else}
 		<div class="contacts-list">
 			{#each $filteredContacts as contact (contact.contact_id)}
@@ -155,9 +156,9 @@
 						{/if}
 					</div>
 					<div class="contact-actions">
-						<button class="action-button edit" onclick={() => openEditForm(contact)}>Edit</button>
+						<button class="action-button edit" onclick={() => openEditForm(contact)}>{$t('common.edit')}</button>
 						<button class="action-button delete" onclick={() => handleDelete(contact)}
-							>Delete</button
+							>{$t('common.delete')}</button
 						>
 					</div>
 				</div>
@@ -167,11 +168,11 @@
 		{#if $filteredContacts.length === 0}
 			<div class="empty-state">
 				{#if searchQuery}
-					<p>No contacts found</p>
-					<button class="secondary-button" onclick={clearSearch}>Clear search</button>
+					<p>{$t('contacts.no_contacts')}</p>
+					<button class="secondary-button" onclick={clearSearch}>{$t('common.clear')}</button>
 				{:else}
-					<p>No contacts yet</p>
-					<button class="secondary-button" onclick={openCreateForm}>Add your first contact</button>
+					<p>{$t('contacts.no_contacts_yet')}</p>
+					<button class="secondary-button" onclick={openCreateForm}>{$t('contacts.add_first_contact')}</button>
 				{/if}
 			</div>
 		{/if}
@@ -183,7 +184,7 @@
 	<div class="modal-overlay" onclick={closeForm}>
 		<div class="modal-content" onclick={(e) => e.stopPropagation()}>
 			<div class="modal-header">
-				<h3>{editingContact ? 'Edit Contact' : 'Add Contact'}</h3>
+				<h3>{editingContact ? $t('contacts.edit_contact') : $t('contacts.add_contact')}</h3>
 				<button class="close-button" onclick={closeForm}>×</button>
 			</div>
 
@@ -194,19 +195,19 @@
 				}}
 			>
 				<div class="form-field">
-					<label for="name">Name</label>
+					<label for="name">{$t('contacts.contact_name')}</label>
 					<input type="text" id="name" bind:value={formData.name} required />
 				</div>
 
 				<div class="form-field">
-					<label for="public_key">Public Key (optional)</label>
+					<label for="public_key">{$t('contacts.public_key')}</label>
 					<input type="text" id="public_key" bind:value={formData.public_key} />
 				</div>
 
 				<div class="form-actions">
-					<button type="button" class="secondary-button" onclick={closeForm}>Cancel</button>
+					<button type="button" class="secondary-button" onclick={closeForm}>{$t('common.cancel')}</button>
 					<button type="submit" class="primary-button">
-						{editingContact ? 'Update' : 'Create'}
+						{editingContact ? $t('common.update') : $t('common.create')}
 					</button>
 				</div>
 			</form>

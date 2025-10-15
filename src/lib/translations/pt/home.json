@@ -1,0 +1,19 @@
+{
+  "title": "Bem-vindo à Associação Livre",
+  "subtitle": "Uma plataforma descentralizada para organização coletiva",
+  "capacities": "Capacidades",
+  "shares": "Compartilhamentos",
+  "your_recognition": "Seu Reconhecimento",
+  "your_recognition_abbr": "SR",
+  "your_recognition_description": "Seu reconhecimento de contribuições para a realização de suas prioridades",
+  "mutual_recognition": "Reconhecimento Mútuo",
+  "mutual_recognition_abbr": "RM",
+  "mutual_recognition_description": "Seu reconhecimento mútuo com outro é o mínimo do reconhecimento de cada um. Isso exibe seu reconhecimento mútuo com cada um como % do seu reconhecimento mútuo total com todos!",
+  "no_contributors": "Você ainda não reconheceu nenhum contribuidor! Adicionar contribuidores a um nó o torna uma contribuição!",
+  "no_mutual_contributors": "Você ainda não tem contribuidores mútuos!",
+  "placeholder_empty": "Vazio",
+  "tree_view": "Árvore",
+  "map_view": "Mapa",
+  "inventory_view": "Inventário"
+}
+

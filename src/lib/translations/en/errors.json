@@ -1,0 +1,28 @@
+{
+  "error": "Error",
+  "error_occurred": "An error occurred",
+  "error_generic": "Something went wrong",
+  "error_network": "Network error",
+  "error_connection": "Connection error",
+  "error_timeout": "Timeout",
+  "error_not_found": "Not found",
+  "error_unauthorized": "Unauthorized",
+  "error_forbidden": "Forbidden",
+  "error_server": "Server error",
+  "error_validation": "Validation error",
+  "error_required_field": "This field is required",
+  "error_invalid_email": "Invalid email",
+  "error_invalid_phone": "Invalid phone number",
+  "error_invalid_url": "Invalid URL",
+  "error_invalid_date": "Invalid date",
+  "error_invalid_format": "Invalid format",
+  "error_min_length": "Minimum length: {min} characters",
+  "error_max_length": "Maximum length: {max} characters",
+  "error_min_value": "Minimum value: {min}",
+  "error_max_value": "Maximum value: {max}",
+  "try_again": "Try again",
+  "contact_support": "Contact support",
+  "go_back": "Go back",
+  "reload_page": "Reload page"
+}
+
