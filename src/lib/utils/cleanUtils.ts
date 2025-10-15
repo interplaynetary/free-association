@@ -1,11 +1,12 @@
 import { get } from 'svelte/store';
-import { gun, usersList } from '$lib/state/gun.svelte';
+import { gun, usersList as gunUsersList } from '$lib/state/gun.svelte';
 import { userPub, userAlias } from '$lib/state/auth.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
 import { userTree } from '$lib/state/core.svelte';
 import { createRootNode } from '$lib/protocol';
 import { populateWithExampleData } from '$lib/utils/example';
 import type { Node, NonRootNode } from '$lib/schema';
+import { USE_HOLSTER_AUTH } from '$lib/config';
 
 /**
  * Convert a string duration like '30m', '2h', '1d', '1w', '3mo' to milliseconds
@@ -38,8 +39,15 @@ function parseDuration(durationStr: string): number {
 /**
  * Prune users from the usersList who haven't been seen within the specified duration
  * @param {string} inactivityThreshold - Duration string like '30m', '1h', '2d', etc.
+ *
+ * NOTE: This utility only works with Gun, not Holster
  */
 export function clearUsersList(inactivityThreshold: string = '30m') {
+	if (USE_HOLSTER_AUTH) {
+		console.warn('[PRUNE] clearUsersList() only works with Gun. Holster users list management is different.');
+		return;
+	}
+
 	let inactivityThresholdMs: number;
 	try {
 		inactivityThresholdMs = parseDuration(inactivityThreshold);
@@ -52,7 +60,7 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 
 	const thresholdTime = Date.now() - inactivityThresholdMs;
 
-	usersList.once((data: any) => {
+	gunUsersList.once((data: any) => {
 		if (data) {
 			const userPubKeys = Object.keys(data);
 			console.log(`[PRUNE] Found ${userPubKeys.length} users to check`);
@@ -61,14 +69,14 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 			let checkedCount = 0;
 
 			userPubKeys.forEach((pubKey) => {
-				usersList.get(pubKey).once((userData: any) => {
+				gunUsersList.get(pubKey).once((userData: any) => {
 					checkedCount++;
 
 					if (userData && userData.lastSeen) {
 						const lastSeen = userData.lastSeen;
 
 						if (lastSeen < thresholdTime) {
-							usersList.get(pubKey).put(null, (ack: any) => {
+							gunUsersList.get(pubKey).put(null, (ack: any) => {
 								if (ack.err) {
 									console.error(`[PRUNE] Error removing inactive user ${pubKey}:`, ack.err);
 								} else {
@@ -85,7 +93,7 @@ export function clearUsersList(inactivityThreshold: string = '30m') {
 						}
 					} else {
 						console.log(`[PRUNE] User ${pubKey} has no lastSeen data, removing...`);
-						usersList.get(pubKey).put(null, (ack: any) => {
+						gunUsersList.get(pubKey).put(null, (ack: any) => {
 							if (ack.err) {
 								console.error(`[PRUNE] Error removing user without lastSeen ${pubKey}:`, ack.err);
 							} else {
@@ -136,12 +144,19 @@ export function changeTreeName(newName: string) {
 /**
  * Fix corrupted names in the usersList where names were saved as public keys
  * This function checks each user in the usersList and corrects names that match their pubkey
+ *
+ * NOTE: This utility only works with Gun, not Holster
  */
 export function fixCorruptedUserListNames() {
+	if (USE_HOLSTER_AUTH) {
+		console.warn('[USERS-FIX] fixCorruptedUserListNames() only works with Gun. Holster users list management is different.');
+		return;
+	}
+
 	console.log('[USERS-FIX] Starting to fix corrupted names in usersList...');
 
 	// Get current usersList data
-	usersList.once((usersData: any) => {
+	gunUsersList.once((usersData: any) => {
 		if (!usersData) {
 			console.log('[USERS-FIX] No users data found');
 			return;
@@ -183,7 +198,7 @@ export function fixCorruptedUserListNames() {
 							);
 
 							// Update the usersList with the correct name
-							usersList.get(pubKey).put(
+							gunUsersList.get(pubKey).put(
 								{
 									...userData,
 									alias: alias,

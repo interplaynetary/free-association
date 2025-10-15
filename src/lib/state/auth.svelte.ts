@@ -16,6 +16,7 @@ import {
 	userAlias as gunUserAlias,
 	userPub as gunUserPub,
 	isAuthenticating as gunIsAuthenticating,
+	usersList as gunUsersList,
 	login as gunLogin,
 	signup as gunSignup,
 	signout as gunSignout
@@ -25,6 +26,7 @@ import {
 	holsterUserAlias,
 	holsterUserPub,
 	isHolsterAuthenticating,
+	holsterUsersList,
 	login as holsterLogin,
 	signup as holsterSignup,
 	signout as holsterSignout
