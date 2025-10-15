@@ -305,9 +305,26 @@ function objectToArray(obj: Record<string, string> | undefined): string[] {
 function reconstructTree(flatData: FlatTreeData): RootNode | null {
 	const { nodes, root_id } = flatData;
 
+	// Try to find root node by specified ID
+	let actualRootId = root_id;
+
 	if (!nodes[root_id]) {
-		console.error('[TREE-HOLSTER] Root node not found:', root_id);
-		return null;
+		console.warn('[TREE-HOLSTER] Root node not found with ID:', root_id);
+
+		// Try to find any RootNode type in the nodes collection
+		const rootNodes = Object.values(nodes).filter(node => node.type === 'RootNode');
+
+		if (rootNodes.length === 0) {
+			console.error('[TREE-HOLSTER] No RootNode found in nodes collection');
+			return null;
+		}
+
+		if (rootNodes.length > 1) {
+			console.warn('[TREE-HOLSTER] Multiple RootNodes found, using first one');
+		}
+
+		actualRootId = rootNodes[0].id;
+		console.log('[TREE-HOLSTER] Found RootNode with ID:', actualRootId);
 	}
 
 	function buildNode(nodeId: string): Node | null {
@@ -354,7 +371,7 @@ function reconstructTree(flatData: FlatTreeData): RootNode | null {
 		}
 	}
 
-	const rootNode = buildNode(root_id);
+	const rootNode = buildNode(actualRootId);
 	return rootNode as RootNode | null;
 }
 
@@ -520,7 +537,41 @@ export function initializeHolsterTree() {
 // Cleanup
 // ============================================================================
 
-export function cleanupHolsterTree() {
+/**
+ * Check if persistence is currently in progress
+ */
+export function isTreePersisting(): boolean {
+	return isPersisting;
+}
+
+/**
+ * Wait for any in-flight persistence to complete
+ */
+export async function waitForTreePersistence(): Promise<void> {
+	if (!isPersisting) return;
+
+	console.log('[TREE-HOLSTER] Waiting for in-flight persistence to complete...');
+
+	// Poll until persistence completes (with timeout)
+	const maxWait = 20000; // 20 seconds max
+	const startTime = Date.now();
+
+	while (isPersisting && (Date.now() - startTime) < maxWait) {
+		await new Promise(resolve => setTimeout(resolve, 100));
+	}
+
+	if (isPersisting) {
+		console.warn('[TREE-HOLSTER] Persistence did not complete within timeout');
+	} else {
+		console.log('[TREE-HOLSTER] Persistence completed successfully');
+	}
+}
+
+export async function cleanupHolsterTree() {
+	// Wait for any in-flight persistence to complete before cleaning up
+	// This ensures data is saved before logout
+	await waitForTreePersistence();
+
 	if (treeCallback && holsterUser.is) {
 		holsterUser.get('tree').off(treeCallback);
 		treeCallback = null;
@@ -528,6 +579,12 @@ export function cleanupHolsterTree() {
 	holsterTree.set(null);
 	lastNetworkTimestamp = null;
 	isInitialized = false; // Reset initialization flag
+
+	// Clear pending state and locks
+	isPersisting = false;
+	hasPendingLocalChanges = false;
+	queuedNetworkUpdate = null;
+	lastPersistedNodes = {};
 
 	// Clear localStorage cache
 	if (typeof localStorage !== 'undefined') {

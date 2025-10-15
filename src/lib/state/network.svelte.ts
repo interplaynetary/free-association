@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { gun, user, userPub, usersList } from './gun.svelte';
+import { gun, user, userPub, usersList as gunUsersList } from './gun.svelte';
 import {
 	userPubKeys,
 	userAliasesCache,
@@ -8,7 +8,7 @@ import {
 	isLoadingContacts,
 	initializeContacts
 } from '$lib/state/users.svelte';
-import { USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION, USE_HOLSTER_CHAT } from '$lib/config';
+import { USE_HOLSTER_AUTH, USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION, USE_HOLSTER_CHAT } from '$lib/config';
 import { initializeHolsterCapacities } from './capacities-holster.svelte';
 import { initializeHolsterTree } from './tree-holster.svelte';
 import { initializeHolsterSogf } from './recognition-holster.svelte';
@@ -1035,6 +1035,12 @@ export async function initializeHolsterDataStreams(): Promise<void> {
 		initializeHolsterSogf();
 		initializeHolsterAllocationStates();
 
+		// IMPORTANT: Set up users list subscription AFTER Holster is authenticated
+		// This ensures the subscription sees the current user in the list
+		// Force re-subscription to ensure it picks up the authenticated user
+		console.log('[NETWORK-HOLSTER] Setting up users list subscription after authentication');
+		setupUsersListSubscription(true);
+
 		// Chat initialization is handled by getChatMessages() calling subscribeToHolsterChat()
 		// Compose initialization is handled by compose-holster.svelte.ts subscriptions
 		// Chat read states initialization is handled by chat-read-states-holster.svelte.ts subscriptions
@@ -1151,26 +1157,136 @@ export function updateTheirShareFromNetwork(contributorId: string, theirShare: n
 // Track if usersList subscription is active
 let usersListSubscriptionActive = false;
 
+/**
+ * Holster implementation of users list subscription
+ * Uses Holster's .on() API
+ */
+function setupHolsterUsersListSubscription() {
+	// Dynamically import Holster to avoid circular dependencies
+	import('./holster.svelte').then(({ holster }) => {
+		// Track current users to detect additions/removals
+		const currentUsers = new Map<string, any>();
+
+		// Helper function to update userPubKeys store
+		function updateUserPubKeysStore() {
+			const allUserIds = Array.from(currentUsers.keys());
+			userPubKeys.set(allUserIds);
+		}
+
+		// Subscribe to all users - .on(callback, true) fires for initial data too
+		holster.get('freely-associating-players').on((allUsers: any) => {
+			if (!allUsers) {
+				currentUsers.clear();
+				userPubKeys.set([]);
+				return;
+			}
+
+			// Track if collection changed
+			let collectionChanged = false;
+
+			// Process all users in the update
+			const updatedUserKeys = new Set(Object.keys(allUsers).filter(key => key !== '_'));
+
+			// Remove users that are no longer in the list
+			currentUsers.forEach((_, pubKey) => {
+				if (!updatedUserKeys.has(pubKey)) {
+					console.log(`[USERS-HOLSTER] User removed: ${pubKey.slice(0, 20)}...`);
+					currentUsers.delete(pubKey);
+					collectionChanged = true;
+				}
+			});
+
+			// Add or update users
+			updatedUserKeys.forEach(pubKey => {
+				const userData = allUsers[pubKey];
+				const wasNew = !currentUsers.has(pubKey);
+
+				if (wasNew) {
+					console.log(`[USERS-HOLSTER] New user: ${pubKey.slice(0, 20)}...`, userData);
+					collectionChanged = true;
+				}
+
+				currentUsers.set(pubKey, userData);
+
+				// Update alias cache
+				const userAlias = userData?.alias || userData?.username;
+				if (userAlias && typeof userAlias === 'string') {
+					console.log(`[USERS-HOLSTER] Updating alias cache for ${pubKey.slice(0, 20)}...: ${userAlias}`);
+					userAliasesCache.update((cache) => ({
+						...cache,
+						[pubKey]: userAlias
+					}));
+				} else {
+					// Try to get alias from user's protected space
+					console.log(`[USERS-HOLSTER] No alias in users list for ${pubKey.slice(0, 20)}..., trying user space...`);
+					holster.user().get([pubKey, 'alias'], (alias: any) => {
+						if (alias && typeof alias === 'string') {
+							console.log(`[USERS-HOLSTER] Got alias from user space for ${pubKey.slice(0, 20)}...: ${alias}`);
+							userAliasesCache.update((cache) => ({
+								...cache,
+								[pubKey]: alias
+							}));
+						} else {
+							// Fallback to truncated pubkey
+							console.log(`[USERS-HOLSTER] No alias found for ${pubKey.slice(0, 20)}..., using truncated pubkey`);
+							const fallbackName = pubKey.substring(0, 8) + '...';
+							userAliasesCache.update((cache) => ({
+								...cache,
+								[pubKey]: fallbackName
+							}));
+						}
+					});
+				}
+			});
+
+			// Update userPubKeys store if collection changed
+			if (collectionChanged) {
+				console.log(`[USERS-HOLSTER] Collection changed, updating userPubKeys store. Total users: ${currentUsers.size}`);
+				updateUserPubKeysStore();
+			}
+		}, true);
+
+		// Debug: Log userPubKeys store changes
+		userPubKeys.subscribe((pubKeys) => {
+			console.log('[USERS-HOLSTER] userPubKeys store updated:', {
+				count: pubKeys.length,
+				pubKeys: pubKeys.map(pk => pk.slice(0, 20) + '...')
+			});
+		});
+
+		console.log('[USERS-HOLSTER] Subscription set up successfully');
+	}).catch(err => {
+		console.error('[USERS-HOLSTER] Error setting up subscription:', err);
+	});
+}
+
 // Centralized reactive subscription to usersList
-export function setupUsersListSubscription() {
+export function setupUsersListSubscription(force: boolean = false) {
 	if (typeof window === 'undefined') {
 		console.log('[USERS-DEBUG] Skipping usersList subscription - not in browser');
 		return; // Only run in browser
 	}
-	if (usersListSubscriptionActive) {
+	if (usersListSubscriptionActive && !force) {
 		console.log('[USERS] usersList subscription already active, skipping setup');
 		return;
 	}
 
-	console.log('[USERS] Setting up centralized usersList subscription');
-	console.log('[USERS-DEBUG] usersList reference:', usersList);
+	console.log(`[USERS] Setting up centralized usersList subscription (${USE_HOLSTER_AUTH ? 'Holster' : 'Gun'})`);
 	usersListSubscriptionActive = true;
+
+	// Use Holster API if enabled
+	if (USE_HOLSTER_AUTH) {
+		return setupHolsterUsersListSubscription();
+	}
+
+	// Gun implementation
+	console.log('[USERS-DEBUG] Gun usersList reference:', gunUsersList);
 
 	// Test: Expose a function to manually trigger a test update
 	if (typeof window !== 'undefined') {
 		(window as any).testUsersListUpdate = () => {
 			console.log('[USERS-TEST] Manually triggering test update...');
-			usersList.get('test-user-' + Date.now()).put({
+			gunUsersList.get('test-user-' + Date.now()).put({
 				alias: 'TestUser' + Date.now(),
 				lastSeen: Date.now()
 			});
@@ -1195,7 +1311,7 @@ export function setupUsersListSubscription() {
 	// Debug: Try to read current usersList data
 	setTimeout(() => {
 		console.log('[USERS-DEBUG] Attempting to read current usersList data...');
-		usersList.map().once((userData: any, pubKey: string) => {
+		gunUsersList.map().once((userData: any, pubKey: string) => {
 			if (pubKey && pubKey !== '_' && userData) {
 				console.log('[USERS-DEBUG] Found existing user in usersList:', {
 					pubKey: pubKey.slice(0, 20) + '...',
@@ -1205,7 +1321,7 @@ export function setupUsersListSubscription() {
 		});
 	}, 2000);
 
-	usersList.map().on((userData: any, pubKey: string) => {
+	gunUsersList.map().on((userData: any, pubKey: string) => {
 		console.log(`[USERS-DEBUG] Raw usersList update:`, {
 			pubKey: pubKey?.slice(0, 20) + '...',
 			userData,

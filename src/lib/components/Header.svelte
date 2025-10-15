@@ -23,7 +23,10 @@
 		isHolsterAuthenticating,
 		changePassword as holsterChangePassword
 	} from '$lib/state/holster.svelte';
-	import { USE_HOLSTER_AUTH } from '$lib/config';
+	import { USE_HOLSTER_AUTH, USE_HOLSTER_TREE } from '$lib/config';
+
+	// Track tree persistence state
+	let isTreePersisting = $state(false);
 
 	// Conditionally use Gun or Holster based on feature flag
 	const userAlias = USE_HOLSTER_AUTH ? holsterUserAlias : gunUserAlias;
@@ -99,11 +102,17 @@
 		if (!tree || path.length === 0) return [];
 
 		// Map each path ID to a name, finding the name in the tree
-		return path.map((id) => {
+		return path.map((id, index) => {
 			const node = findNodeById(tree, id);
+			// For the root node (index 0), fall back to userAlias if node not found
+			const name = node
+				? node.name
+				: (index === 0 && user)
+					? user
+					: 'Unknown';
 			return {
 				id,
-				name: node ? node.name : 'Unknown'
+				name
 			};
 		});
 	});
@@ -243,6 +252,22 @@
 
 	// Check auth status and show login automatically
 	onMount(() => {
+		// Set up persistence status checking for tree holster
+		let persistenceInterval: number | null = null;
+
+		if (browser && USE_HOLSTER_TREE) {
+			const checkPersistence = async () => {
+				try {
+					const { isTreePersisting: checkFn } = await import('$lib/state/tree-holster.svelte');
+					isTreePersisting = checkFn();
+				} catch (err) {
+					console.error('[HEADER] Error checking tree persistence:', err);
+				}
+			};
+
+			persistenceInterval = setInterval(checkPersistence, 100) as any;
+		}
+
 		// Add click/touch outside handler
 		function handleClickOutside(event: MouseEvent | TouchEvent) {
 			const target = event.target as HTMLElement;
@@ -310,6 +335,9 @@
 			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('touchstart', handleClickOutside);
 			clearLoginPanelTimer();
+			if (persistenceInterval) {
+				clearInterval(persistenceInterval);
+			}
 		};
 	});
 
@@ -883,7 +911,7 @@
 			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">Loading...</div>
-				{:else if currentPathInfo.length === 0 && $userAlias}
+				{:else if (currentPathInfo.length === 0 || !tree) && $userAlias}
 					<a
 						href="{base}/"
 						class="breadcrumb-item auth-root current"
@@ -1123,7 +1151,14 @@
 						<button class="import-data-btn" title="Import user data" onclick={toggleImportPanel}>
 							<span>📥</span>
 						</button>
-						<button class="logout-btn" onclick={handleLogout}>Log Out</button>
+						<button class="logout-btn" onclick={handleLogout} disabled={isTreePersisting}>
+							{#if isTreePersisting}
+								<div class="spinner small"></div>
+								Saving data...
+							{:else}
+								Log Out
+							{/if}
+						</button>
 					</div>
 				</div>
 			{:else}
@@ -1751,6 +1786,12 @@
 
 	.logout-btn:hover {
 		background: #d32f2f;
+	}
+
+	.logout-btn:disabled {
+		background: #e0e0e0;
+		color: #999;
+		cursor: not-allowed;
 	}
 
 	.signup-btn {
