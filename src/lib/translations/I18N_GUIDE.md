@@ -112,13 +112,23 @@ Translation files are organized by:
 
 ## Route-Specific Translations
 
-Translations can be loaded based on routes for better performance:
+**Note:** Route-specific loading is disabled for production reliability. All translations are loaded upfront.
+
+Previously, translations could be loaded based on routes, but this doesn't work reliably with static site generation (`prerender: true`) and client-side rendering (`ssr: false`):
 
 ```typescript
+// ❌ Don't use routes in production builds
 {
   locale: 'en',
   key: 'collective',
-  routes: ['/collective'],  // Only load on /collective route
+  routes: ['/collective'],  // Can cause issues in production
+  loader: async () => (await import('./en/collective.json')).default,
+}
+
+// ✅ Load all translations upfront
+{
+  locale: 'en',
+  key: 'collective',
   loader: async () => (await import('./en/collective.json')).default,
 }
 ```

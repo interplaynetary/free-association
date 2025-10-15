@@ -23,13 +23,11 @@ export const config = {
     {
       locale: 'en',
       key: 'home',
-      routes: ['/'],
       loader: async () => (await import('./en/home.json')).default,
     },
     {
       locale: 'en',
       key: 'collective',
-      routes: ['/collective'],
       loader: async () => (await import('./en/collective.json')).default,
     },
     {
@@ -81,13 +79,11 @@ export const config = {
     {
       locale: 'pt',
       key: 'home',
-      routes: ['/'],
       loader: async () => (await import('./pt/home.json')).default,
     },
     {
       locale: 'pt',
       key: 'collective',
-      routes: ['/collective'],
       loader: async () => (await import('./pt/collective.json')).default,
     },
     {
