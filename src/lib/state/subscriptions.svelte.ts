@@ -182,7 +182,6 @@ const debouncedPersistChatReadStates = debounce(() => {
 }, 200);
 
 const debouncedPersistTree = debounce(async () => {
-	console.log('[TREE-SUB] Executing debounced tree persistence');
 
 	// Check if using Holster for tree
 	const { USE_HOLSTER_TREE } = await import('$lib/config');
@@ -190,15 +189,13 @@ const debouncedPersistTree = debounce(async () => {
 	if (USE_HOLSTER_TREE) {
 		// Use Holster persistence - it has its own loading and isPersisting checks
 		const { persistHolsterTree, isLoadingHolsterTree } = await import('./tree-holster.svelte');
-		if (!get(isLoadingHolsterTree)) {
+		const isLoading = get(isLoadingHolsterTree);
+		if (!isLoading) {
 			try {
 				await persistHolsterTree();
-				console.log('[TREE-SUB] Holster tree persistence completed');
 			} catch (error) {
 				console.error('[TREE-SUB] Error during Holster tree persistence:', error);
 			}
-		} else {
-			console.log('[TREE-SUB] Skipping Holster persistence - tree is loading');
 		}
 	} else {
 		// Use Gun persistence
@@ -208,8 +205,6 @@ const debouncedPersistTree = debounce(async () => {
 			} catch (error) {
 				console.error('[TREE-SUB] Error during Gun tree persistence:', error);
 			}
-		} else {
-			console.log('[TREE-SUB] Skipping Gun persistence - tree is loading');
 		}
 	}
 }, 500); // Longer debounce for trees since they can be complex
@@ -220,7 +215,6 @@ const debouncedPersistTree = debounce(async () => {
 userTree.subscribe((tree) => {
 	if (!tree) return;
 
-	console.log('[TREE-SUB] Tree updated in store, rebuilding nodes map');
 	console.log('[TREE-SUB] Tree has', tree.children.length, 'children');
 
 	// Create a map of all nodes by ID for faster lookup

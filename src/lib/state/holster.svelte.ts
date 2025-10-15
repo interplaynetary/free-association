@@ -46,11 +46,15 @@ if (typeof window !== 'undefined') {
 					holster.get('freely-associating-players').next(holsterUser.is.pub).put({
 						alias: holsterUser.is.username,
 						lastSeen: Date.now()
-					});
+					}, (err: any) => {
+						if (err) {
+							console.error('[HOLSTER RECALL] Error writing to users list:', err);
+						}
 
-					// Initialize Holster data streams (Phase 10 function)
-					console.log('[HOLSTER RECALL] Initializing Holster data streams...');
-					initializeHolsterDataStreams();
+						// Initialize Holster data streams (Phase 10 function) after write completes
+						console.log('[HOLSTER RECALL] Initializing Holster data streams...');
+						initializeHolsterDataStreams();
+					});
 				} else {
 					console.log('[HOLSTER RECALL] No authenticated user found');
 					holsterUserAlias.set('');
@@ -140,16 +144,20 @@ export async function login(alias: string, password: string): Promise<void> {
 						holster.get('freely-associating-players').next(holsterUser.is.pub).put({
 							alias: holsterUser.is.username,
 							lastSeen: Date.now()
+						}, (putErr: any) => {
+							if (putErr) {
+								console.error('[HOLSTER LOGIN] Error writing to users list:', putErr);
+							}
+
+							// Store credentials in localStorage for cross-tab access
+							holsterUser.store(true);
+
+							// Initialize Holster data streams (Phase 10 function) after write completes
+							console.log('[HOLSTER LOGIN] Initializing Holster data streams...');
+							initializeHolsterDataStreams();
+
+							resolve();
 						});
-
-						// Store credentials in localStorage for cross-tab access
-						holsterUser.store(true);
-
-						// Initialize Holster data streams (Phase 10 function)
-						console.log('[HOLSTER LOGIN] Initializing Holster data streams...');
-						initializeHolsterDataStreams();
-
-						resolve();
 					}
 				});
 			});
