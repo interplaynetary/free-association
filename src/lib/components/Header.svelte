@@ -23,7 +23,9 @@
 		isHolsterAuthenticating,
 		changePassword as holsterChangePassword
 	} from '$lib/state/holster.svelte';
-	import { USE_HOLSTER_AUTH } from '$lib/config';
+	import { USE_HOLSTER_AUTH, USE_HOLSTER_TREE } from '$lib/config';
+	// Track tree persistence state
+	let isTreePersisting = $state(false);
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import { t } from '$lib/translations';
 
@@ -910,7 +912,7 @@
 			<div class="breadcrumbs" bind:this={breadcrumbsRef}>
 				{#if isAuthenticatingState}
 					<div class="breadcrumb-item loading-path">{$t('common.loading')}</div>
-				{:else if currentPathInfo.length === 0 && $userAlias}
+					{:else if (currentPathInfo.length === 0 || !tree) && $userAlias}
 					<a
 						href="{base}/"
 						class="breadcrumb-item auth-root current"
@@ -1152,7 +1154,14 @@
 						<button class="import-data-btn" title={$t('toolbar.import_data')} onclick={toggleImportPanel}>
 							<span>📥</span>
 						</button>
-						<button class="logout-btn" onclick={handleLogout}>{$t('auth.logout')}</button>
+						<button class="logout-btn" onclick={handleLogout} disabled={isTreePersisting}>
+							{#if isTreePersisting}
+								<div class="spinner small"></div>
+								Saving data...
+							{:else}
+								{$t('auth.logout')}
+							{/if}
+						</button>
 					</div>
 				</div>
 			{:else}
