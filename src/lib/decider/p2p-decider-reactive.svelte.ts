@@ -1,40 +1,45 @@
 import { z } from 'zod';
 import { writeAtPath, readAtPath, listenAtPath } from '../utils/holsterData';
-import { addTimestamp, getTimestamp, mergeByTimestamp } from '../utils/holsterTimestamp';
+import { 
+  setNodeId, 
+  toVersioned, 
+  mergeVersioned, 
+  updateFields, 
+  fromVersioned,
+  type VersionedData 
+} from '../utils/crdt';
 
 // ============================================================================
-// ZOD SCHEMAS (same as p2p-decider.svelte.ts)
+// BASE ZOD SCHEMAS (without CRDT metadata)
+// CRDT versioning will be applied per-field automatically
 // ============================================================================
 
 const PlayerSchema = z.string().min(1);
 
-const ChallengeSchema = z.object({
+// Base schemas for content - CRDT metadata is added separately
+const ChallengeBaseSchema = z.object({
 	content: z.string(),
-	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
-const CommentSchema = z.object({
+const CommentBaseSchema = z.object({
 	content: z.string(),
-	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
-const ModificationProposalSchema = z.object({
+const ModificationProposalBaseSchema = z.object({
 	content: z.string(),
-	_updatedAt: z.number(),
 	authorPub: z.string(),
 });
 
 const SupportExpressionSchema = z.record(z.string(), z.number().int().min(0));
 
-const ProposalSchema = z.object({
+const ProposalBaseSchema = z.object({
 	content: z.string().nullable(),
-	_updatedAt: z.number(),
 	authorPub: z.string(),
-	challenges: z.array(ChallengeSchema).optional(),
-	comments: z.array(CommentSchema).optional(),
-	modificationProposals: z.array(ModificationProposalSchema).optional(),
+	challenges: z.array(ChallengeBaseSchema).optional(),
+	comments: z.array(CommentBaseSchema).optional(),
+	modificationProposals: z.array(ModificationProposalBaseSchema).optional(),
 	supportExpressions: z.array(SupportExpressionSchema).optional(),
 });
 
@@ -53,11 +58,11 @@ const GameConfigSchema = z.object({
 // ============================================================================
 
 type Player = z.infer<typeof PlayerSchema>;
-type Challenge = z.infer<typeof ChallengeSchema>;
-type Comment = z.infer<typeof CommentSchema>;
-type ModificationProposal = z.infer<typeof ModificationProposalSchema>;
+type Challenge = z.infer<typeof ChallengeBaseSchema>;
+type Comment = z.infer<typeof CommentBaseSchema>;
+type ModificationProposal = z.infer<typeof ModificationProposalBaseSchema>;
 type SupportExpression = z.infer<typeof SupportExpressionSchema>;
-type ProposalData = z.infer<typeof ProposalSchema>;
+type ProposalData = z.infer<typeof ProposalBaseSchema>;
 type GameConfig = z.infer<typeof GameConfigSchema>;
 
 type GamePhase = 
@@ -91,11 +96,11 @@ class ReactiveP2PDecider {
 	config = $state<GameConfig | null>(null);
 	participants = $state<string[]>([]);
 	
-	// Raw data state (one per participant)
-	private proposalsState = $state(new Map<string, ProposalData | null>());
-	private challengesState = $state(new Map<string, Map<string, Challenge | null>>());
-	private commentsState = $state(new Map<string, Map<string, Comment | null>>());
-	private modificationsState = $state(new Map<string, Map<string, ModificationProposal | null>>());
+	// Raw data state (one per participant) - stored as versioned CRDT data
+	private proposalsState = $state(new Map<string, VersionedData | null>());
+	private challengesState = $state(new Map<string, Map<string, VersionedData | null>>());
+	private commentsState = $state(new Map<string, Map<string, VersionedData | null>>());
+	private modificationsState = $state(new Map<string, Map<string, VersionedData | null>>());
 	private supportState = $state(new Map<string, Map<string, SupportExpression | null>>());
 	
 	// Derived state - automatically calculated from raw data (using $derived rune)
@@ -121,6 +126,9 @@ class ReactiveP2PDecider {
 		this.gameId = gameId;
 		this.myPublicKey = user.is.pub;
 		
+		// Set CRDT node ID to our public key for deterministic tie-breaking
+		setNodeId(this.myPublicKey);
+		
 		// Runes are initialized inline above, no setup needed here
 	}
 
@@ -130,37 +138,59 @@ class ReactiveP2PDecider {
 
 	private getAllProposals(): ProposalData[] {
 		const result: ProposalData[] = [];
-		for (const [_pub, proposal] of this.proposalsState) {
-			if (proposal) result.push(proposal);
+		for (const [_pub, versionedProposal] of this.proposalsState) {
+			if (versionedProposal) {
+				// Extract plain values from versioned CRDT data
+				const proposal = fromVersioned(versionedProposal) as ProposalData;
+				result.push(proposal);
+			}
 		}
+		// Sort by the highest timestamp in any field of the proposal
 		return result.sort((a, b) => {
-			const tsA = getTimestamp(a) || 0;
-			const tsB = getTimestamp(b) || 0;
+			const tsA = this.getMaxTimestamp(this.proposalsState.get(a.authorPub));
+			const tsB = this.getMaxTimestamp(this.proposalsState.get(b.authorPub));
 			return tsA - tsB;
 		});
+	}
+	
+	// Helper to get the max timestamp from versioned data for sorting
+	private getMaxTimestamp(versionedData: VersionedData | null | undefined): number {
+		if (!versionedData) return 0;
+		let max = 0;
+		for (const field of Object.values(versionedData)) {
+			if (field?.timestamp && field.timestamp > max) {
+				max = field.timestamp;
+			}
+		}
+		return max;
 	}
 
 	private getAllChallenges(): Map<string, Challenge[]> {
 		const result = new Map<string, Challenge[]>();
+		const versionedMap = new Map<string, Map<string, VersionedData>>();
 		
 		// Aggregate: participantPub -> proposalAuthorPub -> challenge
 		// Into: proposalAuthorPub -> challenge[]
 		for (const [_participantPub, proposalMap] of this.challengesState) {
-			for (const [proposalAuthorPub, challenge] of proposalMap) {
-				if (challenge) {
+			for (const [proposalAuthorPub, versionedChallenge] of proposalMap) {
+				if (versionedChallenge) {
 					if (!result.has(proposalAuthorPub)) {
 						result.set(proposalAuthorPub, []);
+						versionedMap.set(proposalAuthorPub, new Map());
 					}
+					const challenge = fromVersioned(versionedChallenge) as Challenge;
 					result.get(proposalAuthorPub)!.push(challenge);
+					versionedMap.get(proposalAuthorPub)!.set(challenge.authorPub, versionedChallenge);
 				}
 			}
 		}
 		
 		// Sort by timestamp
 		for (const [key, challenges] of result) {
+			const versionedChallenges = versionedMap.get(key)!;
 			result.set(key, challenges.sort((a, b) => {
-				const tsA = getTimestamp(a) || 0;
-				const tsB = getTimestamp(b) || 0;
+				const tsA = this.getMaxTimestamp(versionedChallenges.get(a.authorPub));
+				const tsB = this.getMaxTimestamp(versionedChallenges.get(b.authorPub));
 				return tsA - tsB;
 			}));
 		}
@@ -170,22 +200,27 @@ class ReactiveP2PDecider {
 
 	private getAllComments(): Map<string, Comment[]> {
 		const result = new Map<string, Comment[]>();
+		const versionedMap = new Map<string, Map<string, VersionedData>>();
 		
 		for (const [_participantPub, proposalMap] of this.commentsState) {
-			for (const [proposalAuthorPub, comment] of proposalMap) {
-				if (comment) {
+			for (const [proposalAuthorPub, versionedComment] of proposalMap) {
+				if (versionedComment) {
 					if (!result.has(proposalAuthorPub)) {
 						result.set(proposalAuthorPub, []);
+						versionedMap.set(proposalAuthorPub, new Map());
 					}
+					const comment = fromVersioned(versionedComment) as Comment;
 					result.get(proposalAuthorPub)!.push(comment);
+					versionedMap.get(proposalAuthorPub)!.set(comment.authorPub, versionedComment);
 				}
 			}
 		}
 		
 		for (const [key, comments] of result) {
+			const versionedComments = versionedMap.get(key)!;
 			result.set(key, comments.sort((a, b) => {
-				const tsA = getTimestamp(a) || 0;
-				const tsB = getTimestamp(b) || 0;
+				const tsA = this.getMaxTimestamp(versionedComments.get(a.authorPub));
+				const tsB = this.getMaxTimestamp(versionedComments.get(b.authorPub));
 				return tsA - tsB;
 			}));
 		}
@@ -195,22 +230,27 @@ class ReactiveP2PDecider {
 
 	private getAllModifications(): Map<string, ModificationProposal[]> {
 		const result = new Map<string, ModificationProposal[]>();
+		const versionedMap = new Map<string, Map<string, VersionedData>>();
 		
 		for (const [_participantPub, proposalMap] of this.modificationsState) {
-			for (const [proposalAuthorPub, modification] of proposalMap) {
-				if (modification) {
+			for (const [proposalAuthorPub, versionedModification] of proposalMap) {
+				if (versionedModification) {
 					if (!result.has(proposalAuthorPub)) {
 						result.set(proposalAuthorPub, []);
+						versionedMap.set(proposalAuthorPub, new Map());
 					}
+					const modification = fromVersioned(versionedModification) as ModificationProposal;
 					result.get(proposalAuthorPub)!.push(modification);
+					versionedMap.get(proposalAuthorPub)!.set(modification.authorPub, versionedModification);
 				}
 			}
 		}
 		
 		for (const [key, modifications] of result) {
+			const versionedModifications = versionedMap.get(key)!;
 			result.set(key, modifications.sort((a, b) => {
-				const tsA = getTimestamp(a) || 0;
-				const tsB = getTimestamp(b) || 0;
+				const tsA = this.getMaxTimestamp(versionedModifications.get(a.authorPub));
+				const tsB = this.getMaxTimestamp(versionedModifications.get(b.authorPub));
 				return tsA - tsB;
 			}));
 		}
@@ -432,13 +472,14 @@ class ReactiveP2PDecider {
 				(data) => {
 					if (data) {
 						console.log(`📥 Received proposal from ${participantPub}`);
-						const newProposal = ProposalSchema.parse(data);
-						const existingProposal = this.proposalsState.get(participantPub);
-						// Use mergeByTimestamp to keep the newer version
-						const merged = mergeByTimestamp(existingProposal, newProposal);
-						if (merged) {
-							this.proposalsState.set(participantPub, merged);
-						}
+						// Data is already in versioned format from network
+						const newVersionedProposal = data as VersionedData;
+						const existingVersionedProposal = this.proposalsState.get(participantPub);
+						// Use CRDT merge for per-field conflict resolution
+						const merged = existingVersionedProposal 
+							? mergeVersioned(existingVersionedProposal, newVersionedProposal)
+							: newVersionedProposal;
+						this.proposalsState.set(participantPub, merged);
 					}
 				},
 				true  // Get initial data
@@ -457,12 +498,12 @@ class ReactiveP2PDecider {
 							if (!this.challengesState.has(participantPub)) {
 								this.challengesState.set(participantPub, new Map());
 							}
-							const newChallenge = ChallengeSchema.parse(data);
-							const existingChallenge = this.challengesState.get(participantPub)!.get(proposalAuthorPub);
-							const merged = mergeByTimestamp(existingChallenge, newChallenge);
-							if (merged) {
-								this.challengesState.get(participantPub)!.set(proposalAuthorPub, merged);
-							}
+							const newVersionedChallenge = data as VersionedData;
+							const existingVersionedChallenge = this.challengesState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = existingVersionedChallenge 
+								? mergeVersioned(existingVersionedChallenge, newVersionedChallenge)
+								: newVersionedChallenge;
+							this.challengesState.get(participantPub)!.set(proposalAuthorPub, merged);
 						}
 					},
 					true
@@ -479,12 +520,12 @@ class ReactiveP2PDecider {
 							if (!this.commentsState.has(participantPub)) {
 								this.commentsState.set(participantPub, new Map());
 							}
-							const newComment = CommentSchema.parse(data);
-							const existingComment = this.commentsState.get(participantPub)!.get(proposalAuthorPub);
-							const merged = mergeByTimestamp(existingComment, newComment);
-							if (merged) {
-								this.commentsState.get(participantPub)!.set(proposalAuthorPub, merged);
-							}
+							const newVersionedComment = data as VersionedData;
+							const existingVersionedComment = this.commentsState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = existingVersionedComment 
+								? mergeVersioned(existingVersionedComment, newVersionedComment)
+								: newVersionedComment;
+							this.commentsState.get(participantPub)!.set(proposalAuthorPub, merged);
 						}
 					},
 					true
@@ -501,12 +542,12 @@ class ReactiveP2PDecider {
 							if (!this.modificationsState.has(participantPub)) {
 								this.modificationsState.set(participantPub, new Map());
 							}
-							const newModification = ModificationProposalSchema.parse(data);
-							const existingModification = this.modificationsState.get(participantPub)!.get(proposalAuthorPub);
-							const merged = mergeByTimestamp(existingModification, newModification);
-							if (merged) {
-								this.modificationsState.get(participantPub)!.set(proposalAuthorPub, merged);
-							}
+							const newVersionedModification = data as VersionedData;
+							const existingVersionedModification = this.modificationsState.get(participantPub)!.get(proposalAuthorPub);
+							const merged = existingVersionedModification 
+								? mergeVersioned(existingVersionedModification, newVersionedModification)
+								: newVersionedModification;
+							this.modificationsState.get(participantPub)!.set(proposalAuthorPub, merged);
 						}
 					},
 					true
@@ -553,10 +594,11 @@ class ReactiveP2PDecider {
 		const config = this.config;
 
 		const agendaIndex = config.currentAgendaIndex;
-		const proposal = addTimestamp({
+		// Convert to versioned CRDT format with per-field timestamps
+		const versionedProposal = toVersioned({
 			content,
 			authorPub: this.myPublicKey,
-		});
+		}, ProposalBaseSchema);
 
 		console.log(`✍️ Writing my proposal for agenda item ${agendaIndex}:`, content);
 
@@ -564,7 +606,7 @@ class ReactiveP2PDecider {
 			writeAtPath(
 				this.user,
 				['games', this.gameId, 'proposals', agendaIndex.toString()],
-				proposal,
+				versionedProposal,
 				(err) => {
 					if (err) reject(err);
 					else {
@@ -577,10 +619,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyChallengeToProposal(proposalAuthorPub: string, challengeContent: string): Promise<void> {
-		const challenge = addTimestamp({
+		const versionedChallenge = toVersioned({
 			content: challengeContent,
 			authorPub: this.myPublicKey,
-		});
+		}, ChallengeBaseSchema);
 
 		console.log(`✍️ Writing challenge to proposal by ${proposalAuthorPub}`);
 
@@ -588,7 +630,7 @@ class ReactiveP2PDecider {
 			writeAtPath(
 				this.user,
 				['games', this.gameId, 'challenges', proposalAuthorPub],
-				challenge,
+				versionedChallenge,
 				(err) => {
 					if (err) reject(err);
 					else {
@@ -601,10 +643,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyCommentOnProposal(proposalAuthorPub: string, commentContent: string): Promise<void> {
-		const comment = addTimestamp({
+		const versionedComment = toVersioned({
 			content: commentContent,
 			authorPub: this.myPublicKey,
-		});
+		}, CommentBaseSchema);
 
 		console.log(`✍️ Writing comment on proposal by ${proposalAuthorPub}`);
 
@@ -612,7 +654,7 @@ class ReactiveP2PDecider {
 			writeAtPath(
 				this.user,
 				['games', this.gameId, 'comments', proposalAuthorPub],
-				comment,
+				versionedComment,
 				(err) => {
 					if (err) reject(err);
 					else {
@@ -625,10 +667,10 @@ class ReactiveP2PDecider {
 	}
 
 	async writeMyModificationToProposal(proposalAuthorPub: string, modificationContent: string): Promise<void> {
-		const modification = addTimestamp({
+		const versionedModification = toVersioned({
 			content: modificationContent,
 			authorPub: this.myPublicKey,
-		});
+		}, ModificationProposalBaseSchema);
 
 		console.log(`✍️ Writing modification to proposal by ${proposalAuthorPub}`);
 
@@ -636,7 +678,7 @@ class ReactiveP2PDecider {
 			writeAtPath(
 				this.user,
 				['games', this.gameId, 'modifications', proposalAuthorPub],
-				modification,
+				versionedModification,
 				(err) => {
 					if (err) reject(err);
 					else {
