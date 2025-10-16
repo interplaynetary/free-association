@@ -26,6 +26,7 @@ export const isLoadingHolsterContacts = writable(false);
 
 // Track last known network timestamp for contacts collection
 let lastNetworkTimestamp: number | null = null;
+let hasReceivedRealData = false;
 
 // ============================================================================
 // Subscription Management
@@ -43,16 +44,17 @@ function subscribeToContacts() {
 	}
 
 
-	// Create callback for updates
 	contactsCallback = (data: any) => {
-
-		// Skip if loading (initial data fetch)
-		if (get(isLoadingHolsterContacts)) {
+		if (!data) {
+			if (!hasReceivedRealData) {
+				console.log('[CONTACTS-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
 		}
 
-		if (!data) {
-			return;
+		if (!hasReceivedRealData) {
+			console.log('[CONTACTS-HOLSTER] First real data received from network');
+			hasReceivedRealData = true;
 		}
 
 		// Helper to check if a value is "deleted" (null or object with all null fields)
@@ -83,18 +85,16 @@ function subscribeToContacts() {
 
 		const networkContacts = parseResult.data;
 
-		// Only update if newer or first time seeing contacts
 		if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {
 			holsterContacts.set(networkContacts);
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-		} else {
+			isLoadingHolsterContacts.set(false);
 		}
 	};
 
-	// Subscribe with on()
-	holsterUser.get('contacts').on(contactsCallback);
+	holsterUser.get('contacts').on(contactsCallback, true);
 }
 
 /**
@@ -109,51 +109,7 @@ export function initializeHolsterContacts() {
 	console.log('[CONTACTS-HOLSTER] Initializing contacts...');
 	isLoadingHolsterContacts.set(true);
 
-	// Load initial data with get()
-	holsterUser.get('contacts', (data: any) => {
-
-		if (data) {
-			// Helper to check if a value is "deleted" (null or object with all null fields)
-			const isDeleted = (value: any): boolean => {
-				if (value === null) return true;
-				if (typeof value === 'object' && value !== null) {
-					// Check if all fields are null (Gun/Holster deletion pattern)
-					return Object.values(value).every(v => v === null);
-				}
-				return false;
-			};
-
-			// Extract timestamp and filter out metadata fields AND null/deleted values
-			const timestamp = getTimestamp(data);
-			const contactsOnly: any = {};
-			for (const [key, value] of Object.entries(data)) {
-				if (!isDeleted(value) && !key.startsWith('_')) {
-					contactsOnly[key] = value;
-				}
-			}
-
-			// Parse and validate (without timestamp)
-			const parseResult = ContactsCollectionSchema.safeParse(contactsOnly);
-			if (parseResult.success) {
-				holsterContacts.set(parseResult.data);
-
-				// Track initial timestamp
-				if (timestamp) {
-					lastNetworkTimestamp = timestamp;
-				}
-			} else {
-				console.error('[CONTACTS-HOLSTER] Invalid initial data:', parseResult.error);
-				holsterContacts.set({});
-			}
-		} else {
-			holsterContacts.set({});
-		}
-
-		isLoadingHolsterContacts.set(false);
-
-		// Subscribe to updates
-		subscribeToContacts();
-	});
+	subscribeToContacts();
 }
 
 /**
@@ -166,6 +122,7 @@ export function cleanupHolsterContacts() {
 	}
 	holsterContacts.set({});
 	lastNetworkTimestamp = null;
+	hasReceivedRealData = false;
 	console.log('[CONTACTS-HOLSTER] Cleaned up');
 }
 

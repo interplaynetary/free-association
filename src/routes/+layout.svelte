@@ -9,6 +9,7 @@
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import { Toaster } from 'svelte-french-toast';
+	import { loading } from '$lib/translations';
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
 	import '$lib/services';
@@ -32,15 +33,21 @@
 </svelte:head>
 
 <main>
-	<div class="app-header">
-		<Header />
-	</div>
-	<div class="app-content">
-		{@render children()}
-	</div>
-	<div class="app-footer">
-		<ToolBar />
-	</div>
+	{#if $loading}
+		<div class="loading-translations">
+			<p>Loading translations...</p>
+		</div>
+	{:else}
+		<div class="app-header">
+			<Header />
+		</div>
+		<div class="app-content">
+			{@render children()}
+		</div>
+		<div class="app-footer">
+			<ToolBar />
+		</div>
+	{/if}
 </main>
 
 <!-- Toaster component for svelte-french-toast - positioned within content area -->
@@ -119,6 +126,15 @@
 		z-index: 100;
 		background: white;
 		flex-shrink: 0;
+	}
+
+	.loading-translations {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		color: #666;
 	}
 
 	/* Fullscreen styling is now handled by FullScreenControl */

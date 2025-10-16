@@ -17,48 +17,7 @@ export const isLoadingHolsterSogf = writable(false);
 
 // Track last network timestamp for conflict resolution
 let lastNetworkTimestamp = $state<number | null>(null);
-
-/**
- * Load SOGF from Holster
- */
-export function loadHolsterSogf() {
-	if (!holsterUser.is) {
-		console.log('[SOGF-HOLSTER] Not authenticated');
-		return;
-	}
-
-	isLoadingHolsterSogf.set(true);
-
-	holsterUser.get('sogf', (sogfData) => {
-
-		if (!sogfData) {
-			holsterSogf.set(null);
-			isLoadingHolsterSogf.set(false);
-			return;
-		}
-
-		try {
-			// Extract timestamp and validate
-			const networkTimestamp = getTimestamp(sogfData);
-
-			// Filter out metadata before validation
-			const { _updatedAt, ...dataOnly } = sogfData;
-
-			// Parse and validate
-			const parsed = parseShareMap(dataOnly);
-			if (parsed) {
-				holsterSogf.set(parsed);
-				lastNetworkTimestamp = networkTimestamp;
-			} else {
-				console.error('[SOGF-HOLSTER] Failed to parse SOGF data');
-			}
-		} catch (error) {
-			console.error('[SOGF-HOLSTER] Parse error:', error);
-		} finally {
-			isLoadingHolsterSogf.set(false);
-		}
-	});
-}
+let hasReceivedRealData = false;
 
 /**
  * Subscribe to real-time SOGF updates
@@ -66,12 +25,17 @@ export function loadHolsterSogf() {
 export function subscribeToHolsterSogf() {
 	if (!holsterUser.is) return;
 
-
 	holsterUser.get('sogf').on((sogfData) => {
-
 		if (!sogfData) {
-			holsterSogf.set(null);
+			if (!hasReceivedRealData) {
+				console.log('[SOGF-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
+		}
+
+		if (!hasReceivedRealData) {
+			console.log('[SOGF-HOLSTER] First real data received from network');
+			hasReceivedRealData = true;
 		}
 
 		try {
@@ -101,11 +65,12 @@ export function subscribeToHolsterSogf() {
 
 				holsterSogf.set(parsed);
 				lastNetworkTimestamp = networkTimestamp;
+				isLoadingHolsterSogf.set(false);
 			}
 		} catch (error) {
 			console.error('[SOGF-HOLSTER] Real-time parse error:', error);
 		}
-	});
+	}, true);
 }
 
 /**
@@ -168,14 +133,9 @@ export function initializeHolsterSogf() {
 	}
 
 	console.log('[SOGF-HOLSTER] Initializing...');
+	isLoadingHolsterSogf.set(true);
 
-	// Load initial data
-	loadHolsterSogf();
-
-	// Subscribe to updates
 	subscribeToHolsterSogf();
-
-	console.log('[SOGF-HOLSTER] Initialization complete');
 }
 
 /**
@@ -202,7 +162,6 @@ export function subscribeToContributorHolsterSogf(
 	// Subscribe to this contributor's SOGF
 	holsterUser.get([contributorPubKey, 'sogf']).on((sogfData) => {
 		if (!sogfData) {
-			console.log(`[SOGF-HOLSTER] No SOGF data from ${contributorPubKey.slice(0, 20)}...`);
 			return;
 		}
 
@@ -239,7 +198,7 @@ export function subscribeToContributorHolsterSogf(
 		} catch (error) {
 			console.error(`[SOGF-HOLSTER] Error processing SOGF from ${contributorPubKey.slice(0, 20)}...:`, error);
 		}
-	});
+	}, true);
 }
 
 /**
@@ -257,6 +216,7 @@ export function cleanupHolsterSogf() {
 	// Reset state
 	holsterSogf.set(null);
 	lastNetworkTimestamp = null;
+	hasReceivedRealData = false;
 
 	console.log('[SOGF-HOLSTER] Cleanup complete');
 }

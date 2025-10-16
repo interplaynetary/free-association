@@ -14,12 +14,38 @@ export const config = {
     pt: { lang },
   },
   loaders: [
-    // English
+    // English - Global (loaded for all routes)
     {
       locale: 'en',
       key: 'common',
+      routes: [/.*/],
       loader: async () => (await import('./en/common.json')).default,
     },
+    {
+      locale: 'en',
+      key: 'auth',
+      routes: [/.*/],
+      loader: async () => (await import('./en/auth.json')).default,
+    },
+    {
+      locale: 'en',
+      key: 'toolbar',
+      routes: [/.*/],
+      loader: async () => (await import('./en/toolbar.json')).default,
+    },
+    {
+      locale: 'en',
+      key: 'notifications',
+      routes: [/.*/],
+      loader: async () => (await import('./en/notifications.json')).default,
+    },
+    {
+      locale: 'en',
+      key: 'errors',
+      routes: [/.*/],
+      loader: async () => (await import('./en/errors.json')).default,
+    },
+    // English - Route-specific
     {
       locale: 'en',
       key: 'home',
@@ -31,11 +57,6 @@ export const config = {
       loader: async () => (await import('./en/collective.json')).default,
     },
     {
-      locale: 'en',
-      key: 'auth',
-      loader: async () => (await import('./en/auth.json')).default,
-    },
-    { 	
       locale: 'en',
       key: 'inventory',
       loader: async () => (await import('./en/inventory.json')).default,
@@ -55,27 +76,38 @@ export const config = {
       key: 'contacts',
       loader: async () => (await import('./en/contacts.json')).default,
     },
-    {
-      locale: 'en',
-      key: 'toolbar',
-      loader: async () => (await import('./en/toolbar.json')).default,
-    },
-    {
-      locale: 'en',
-      key: 'notifications',
-      loader: async () => (await import('./en/notifications.json')).default,
-    },
-    {
-      locale: 'en',
-      key: 'errors',
-      loader: async () => (await import('./en/errors.json')).default,
-    },
-    // Portuguese
+    // Portuguese - Global (loaded for all routes)
     {
       locale: 'pt',
       key: 'common',
+      routes: [/.*/],
       loader: async () => (await import('./pt/common.json')).default,
     },
+    {
+      locale: 'pt',
+      key: 'auth',
+      routes: [/.*/],
+      loader: async () => (await import('./pt/auth.json')).default,
+    },
+    {
+      locale: 'pt',
+      key: 'toolbar',
+      routes: [/.*/],
+      loader: async () => (await import('./pt/toolbar.json')).default,
+    },
+    {
+      locale: 'pt',
+      key: 'notifications',
+      routes: [/.*/],
+      loader: async () => (await import('./pt/notifications.json')).default,
+    },
+    {
+      locale: 'pt',
+      key: 'errors',
+      routes: [/.*/],
+      loader: async () => (await import('./pt/errors.json')).default,
+    },
+    // Portuguese - Route-specific
     {
       locale: 'pt',
       key: 'home',
@@ -85,11 +117,6 @@ export const config = {
       locale: 'pt',
       key: 'collective',
       loader: async () => (await import('./pt/collective.json')).default,
-    },
-    {
-      locale: 'pt',
-      key: 'auth',
-      loader: async () => (await import('./pt/auth.json')).default,
     },
     {
       locale: 'pt',
@@ -110,21 +137,6 @@ export const config = {
       locale: 'pt',
       key: 'contacts',
       loader: async () => (await import('./pt/contacts.json')).default,
-    },
-    {
-      locale: 'pt',
-      key: 'toolbar',
-      loader: async () => (await import('./pt/toolbar.json')).default,
-    },
-    {
-      locale: 'pt',
-      key: 'notifications',
-      loader: async () => (await import('./pt/notifications.json')).default,
-    },
-    {
-      locale: 'pt',
-      key: 'errors',
-      loader: async () => (await import('./pt/errors.json')).default,
     },
   ],
 };
