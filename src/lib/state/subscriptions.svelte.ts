@@ -7,6 +7,7 @@ import {
 	isLoadingCapacities,
 	isRecalculatingTree,
 	nodesMap,
+	contributorCapacityShares,
 	computedProviderAllocations,
 	providerAllocationStates
 } from './core.svelte';
@@ -16,6 +17,7 @@ import {
 	persistTree,
 	persistSogf,
 	persistCapacities,
+	persistContributorCapacityShares,
 	persistProviderAllocationStates,
 	persistContacts,
 	persistChatReadStates
@@ -93,9 +95,16 @@ const debouncedPersistCapacities = debounce(async () => {
 	}
 }, 200);
 
-// DELETED: debouncedPersistContributorCapacityShares - Stub for contributorCapacityShares no longer needs persistence
-// The contributorCapacityShares store is now a compatibility bridge that returns empty object
-// See core.svelte.ts for details
+const debouncedPersistContributorCapacityShares = debounce(() => {
+	console.log(
+		'[CONTRIBUTOR-CAPACITY-SHARES-SUB] Executing debounced contributor capacity shares persistence'
+	);
+	try {
+		persistContributorCapacityShares();
+	} catch (error) {
+		console.error('[CONTRIBUTOR-CAPACITY-SHARES-SUB] Error during debounced persistence:', error);
+	}
+}, 200);
 
 const debouncedPersistUserDesiredSlotComposeFrom = debounce(() => {
 	console.log('[USER-SLOT-COMPOSE-FROM-SUB] Executing debounced slot compose-from persistence');
@@ -324,9 +333,19 @@ userCapacities.subscribe((capacities) => {
 	console.log('[CAPACITIES-SUB] 🚨 DEBUG: debouncedPersistCapacities called');
 });
 
-// DELETED: contributorCapacityShares subscription - Stub no longer needs persistence
-// The contributorCapacityShares store is now a compatibility bridge that returns empty object
-// See core.svelte.ts for details
+/**
+ * Trigger persistence when contributor capacity shares change
+ */
+contributorCapacityShares.subscribe((contributorCapacityShares) => {
+	console.log('[CONTRIBUTOR-CAPACITY-SHARES-SUB] Contributor capacity shares updated');
+	console.log(
+		'[CONTRIBUTOR-CAPACITY-SHARES-SUB] Contributor capacity shares count:',
+		Object.keys(contributorCapacityShares).length
+	);
+
+	// Debounced persistence function
+	debouncedPersistContributorCapacityShares();
+});
 
 // DELETED: capacitySlotQuantities subscription - Replaced by efficient provider-centric algorithm
 // Old recipient-computed slot quantities no longer needed, providers compute allocations directly

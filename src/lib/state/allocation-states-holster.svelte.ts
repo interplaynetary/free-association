@@ -29,6 +29,9 @@ let lastNetworkTimestamp: number | null = null;
 // Track first real data received
 let hasReceivedRealData = false;
 
+// Prevent duplicate initialization
+let isInitialized: boolean = false;
+
 /**
  * Initialize Holster allocation states (load + subscribe)
  */
@@ -38,7 +41,13 @@ export function initializeHolsterAllocationStates() {
 		return;
 	}
 
+	if (isInitialized) {
+		console.log('[ALLOCATION-STATES-HOLSTER] Already initialized, skipping duplicate call');
+		return;
+	}
+
 	console.log('[ALLOCATION-STATES-HOLSTER] Initializing...');
+	isInitialized = true;
 	isLoadingHolsterAllocationStates.set(true);
 	subscribeToHolsterAllocationStates();
 }
@@ -175,6 +184,7 @@ export function clearHolsterAllocationStates(): void {
 	console.log('[ALLOCATION-STATES-HOLSTER] Clearing allocation states');
 	holsterProviderAllocationStates.set({});
 	lastNetworkTimestamp = null;
+	isInitialized = false;
 	hasReceivedRealData = false;
 }
 

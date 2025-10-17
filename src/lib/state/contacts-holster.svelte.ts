@@ -28,6 +28,9 @@ export const isLoadingHolsterContacts = writable(false);
 let lastNetworkTimestamp: number | null = null;
 let hasReceivedRealData = false;
 
+// Prevent duplicate initialization
+let isInitialized: boolean = false;
+
 // ============================================================================
 // Subscription Management
 // ============================================================================
@@ -106,7 +109,13 @@ export function initializeHolsterContacts() {
 		return;
 	}
 
+	if (isInitialized) {
+		console.log('[CONTACTS-HOLSTER] Already initialized, skipping duplicate call');
+		return;
+	}
+
 	console.log('[CONTACTS-HOLSTER] Initializing contacts...');
+	isInitialized = true;
 	isLoadingHolsterContacts.set(true);
 
 	subscribeToContacts();
@@ -122,6 +131,7 @@ export function cleanupHolsterContacts() {
 	}
 	holsterContacts.set({});
 	lastNetworkTimestamp = null;
+	isInitialized = false;
 	hasReceivedRealData = false;
 	console.log('[CONTACTS-HOLSTER] Cleaned up');
 }

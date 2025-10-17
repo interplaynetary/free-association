@@ -19,6 +19,9 @@ export const isLoadingHolsterSogf = writable(false);
 let lastNetworkTimestamp = $state<number | null>(null);
 let hasReceivedRealData = false;
 
+// Prevent duplicate initialization
+let isInitialized: boolean = false;
+
 /**
  * Subscribe to real-time SOGF updates
  */
@@ -132,7 +135,13 @@ export function initializeHolsterSogf() {
 		return;
 	}
 
+	if (isInitialized) {
+		console.log('[SOGF-HOLSTER] Already initialized, skipping duplicate call');
+		return;
+	}
+
 	console.log('[SOGF-HOLSTER] Initializing...');
+	isInitialized = true;
 	isLoadingHolsterSogf.set(true);
 
 	subscribeToHolsterSogf();
@@ -216,6 +225,7 @@ export function cleanupHolsterSogf() {
 	// Reset state
 	holsterSogf.set(null);
 	lastNetworkTimestamp = null;
+	isInitialized = false;
 	hasReceivedRealData = false;
 
 	console.log('[SOGF-HOLSTER] Cleanup complete');

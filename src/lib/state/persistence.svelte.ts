@@ -6,7 +6,8 @@ import {
 	isLoadingTree,
 	isLoadingCapacities,
 	isLoadingSogf,
-	generalShares
+	generalShares,
+	contributorCapacityShares
 } from './core.svelte';
 import {
 	userContacts,
@@ -284,9 +285,45 @@ export async function persistCapacities() {
 	}
 }
 
-// DELETED: persistContributorCapacityShares - Stub store no longer needs persistence
-// The contributorCapacityShares store is now a compatibility bridge that returns empty object
-// See core.svelte.ts for details. No subscription or persistence needed for this stub.
+/**
+ * Persist contributor capacity shares to gun
+ */
+export function persistContributorCapacityShares() {
+	// Check if user is initialized
+	if (!isUserInitialized()) {
+		console.log('[PERSIST] User not initialized, skipping contributor capacity shares persistence');
+		return;
+	}
+
+	const ourId = get(userPub);
+	if (!ourId) {
+		console.log('[PERSIST] No user ID available, cannot persist contributor capacity shares');
+		return;
+	}
+
+	const shares = get(contributorCapacityShares);
+	// console.log('[PERSIST] Persisting contributor capacity shares:', shares);
+
+	// For each contributor, store their shares under their path
+	Object.entries(shares).forEach(([contributorId, capacityShares]) => {
+		// Store under contributorId/capacityShares/{ourId}
+		user
+			.get('capacityShares')
+			.get(contributorId)
+			.put(JSON.stringify(capacityShares), (ack: any) => {
+				if (ack.err) {
+					console.error(
+						`[PERSIST] Error persisting capacity shares for contributor ${contributorId}:`,
+						ack.err
+					);
+				} else {
+					/*console.log(
+						`[PERSIST] Successfully persisted capacity shares for contributor ${contributorId}`
+					); */
+				}
+			});
+	});
+}
 
 // DELETED: persistContributorCapacitySlotQuantities - Replaced by efficient provider-centric algorithm
 // Old approach persisted recipient-computed slot quantities
