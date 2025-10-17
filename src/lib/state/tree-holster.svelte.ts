@@ -64,6 +64,8 @@ let treeCallback: ((data: any) => void) | null = null;
 let isPersisting: boolean = false; // Lock to prevent concurrent persistence
 let lastPersistedNodes: Record<string, FlatNode> = {}; // Track full node data from last persist (for incremental updates)
 let isInitialized: boolean = false; // Prevent duplicate initialization
+let hasReceivedRealData = false;
+let defaultTreePersistTimeout: NodeJS.Timeout | null = null;
 
 // Queue for network updates during persistence
 let queuedNetworkUpdate: any = null; // Store latest network update while persisting
@@ -385,10 +387,47 @@ function subscribeToTree() {
 		return;
 	}
 
-
 	treeCallback = (data: any) => {
-		if (get(isLoadingHolsterTree)) {
+		if (!data) {
+			if (!hasReceivedRealData) {
+				console.log('[TREE-HOLSTER] Subscription returned null, waiting for network data...');
+
+				const username = holsterUser.is?.username || 'User';
+				const now = new Date().toISOString();
+				const defaultTree: RootNode = {
+					id: 'root',
+					name: username,
+					type: 'RootNode',
+					manual_fulfillment: null,
+					children: [],
+					created_at: now,
+					updated_at: now
+				};
+
+				holsterTree.set(defaultTree);
+				userTree.set(defaultTree);
+
+				defaultTreePersistTimeout = setTimeout(() => {
+					console.log('[TREE-HOLSTER] No network data received, persisting default tree...');
+					persistHolsterTree(defaultTree).then(() => {
+						console.log('[TREE-HOLSTER] Default tree persisted');
+						isLoadingHolsterTree.set(false);
+					}).catch((err) => {
+						console.error('[TREE-HOLSTER] Error persisting default tree:', err);
+						isLoadingHolsterTree.set(false);
+					});
+				}, 10000);
+			}
 			return;
+		}
+
+		if (!hasReceivedRealData) {
+			console.log('[TREE-HOLSTER] First real data received from network');
+			hasReceivedRealData = true;
+			if (defaultTreePersistTimeout) {
+				clearTimeout(defaultTreePersistTimeout);
+				defaultTreePersistTimeout = null;
+			}
 		}
 
 		// QUEUE updates during persistence to prevent processing incomplete data
@@ -407,7 +446,7 @@ function subscribeToTree() {
 		processNetworkUpdate(data);
 	};
 
-	holsterUser.get('tree').on(treeCallback);
+	holsterUser.get('tree').on(treeCallback, true);
 }
 
 // ============================================================================
@@ -486,51 +525,9 @@ export function initializeHolsterTree() {
 		lastPersistedNodes = { ...flatCached.nodes };
 
 		isLoadingHolsterTree.set(false);
-
-		// Continue loading from network in background to check for updates
 	}
 
-	holsterUser.get('tree', (data: any) => {
-
-		if (data) {
-			// Use the same timestamp-aware processing as subscription
-			// This prevents stale network data from corrupting lastPersistedNodes
-			processNetworkUpdate(data);
-		} else {
-			// No tree exists - create default tree with username as root node name
-			console.log('[TREE-HOLSTER] No existing tree - creating default tree');
-			const username = holsterUser.is?.username || 'User';
-			const now = new Date().toISOString();
-			const defaultTree: RootNode = {
-				id: 'root',
-				name: username,
-				type: 'RootNode',
-				manual_fulfillment: null,
-				children: [],
-				created_at: now,
-				updated_at: now
-			};
-
-			holsterTree.set(defaultTree);
-			userTree.set(defaultTree);
-
-			// Persist the default tree and subscribe after it completes
-			console.log('[TREE-HOLSTER] Persisting default tree...');
-			persistHolsterTree(defaultTree).then(() => {
-				console.log('[TREE-HOLSTER] Default tree persisted, subscribing to updates');
-				isLoadingHolsterTree.set(false);
-				subscribeToTree();
-			}).catch((err) => {
-				console.error('[TREE-HOLSTER] Error persisting default tree:', err);
-				isLoadingHolsterTree.set(false);
-				subscribeToTree();
-			});
-			return; // Early return - subscription handled in promise
-		}
-
-		isLoadingHolsterTree.set(false);
-		subscribeToTree();
-	});
+	subscribeToTree();
 }
 
 // ============================================================================
@@ -579,6 +576,12 @@ export async function cleanupHolsterTree() {
 	holsterTree.set(null);
 	lastNetworkTimestamp = null;
 	isInitialized = false; // Reset initialization flag
+	hasReceivedRealData = false;
+
+	if (defaultTreePersistTimeout) {
+		clearTimeout(defaultTreePersistTimeout);
+		defaultTreePersistTimeout = null;
+	}
 
 	// Clear pending state and locks
 	isPersisting = false;

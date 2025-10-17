@@ -35,6 +35,10 @@ let lastNetworkTimestampInto: number | null = null;
 let isInitializedFrom: boolean = false;
 let isInitializedInto: boolean = false;
 
+// Track first real data received
+let hasReceivedRealDataFrom = false;
+let hasReceivedRealDataInto = false;
+
 // ============================================================================
 // Compose From (Recipient Desires)
 // ============================================================================
@@ -50,16 +54,17 @@ function subscribeToComposeFrom() {
 		return;
 	}
 
-
 	composeFromCallback = (data: any) => {
-
-		// Skip if loading (initial data fetch)
-		if (get(isLoadingHolsterComposeFrom)) {
+		if (!data) {
+			if (!hasReceivedRealDataFrom) {
+				console.log('[COMPOSE-FROM-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
 		}
 
-		if (!data) {
-			return;
+		if (!hasReceivedRealDataFrom) {
+			console.log('[COMPOSE-FROM-HOLSTER] First real data received from network');
+			hasReceivedRealDataFrom = true;
 		}
 
 		// Extract timestamp and filter out metadata fields
@@ -81,11 +86,11 @@ function subscribeToComposeFrom() {
 			if (networkTimestamp) {
 				lastNetworkTimestampFrom = networkTimestamp;
 			}
-		} else {
+			isLoadingHolsterComposeFrom.set(false);
 		}
 	};
 
-	holsterUser.get('desiredSlotComposeFrom').on(composeFromCallback);
+	holsterUser.get('desiredSlotComposeFrom').on(composeFromCallback, true);
 }
 
 /**
@@ -106,34 +111,7 @@ export function initializeHolsterComposeFrom() {
 	isInitializedFrom = true;
 	isLoadingHolsterComposeFrom.set(true);
 
-	// Load initial data
-	holsterUser.get('desiredSlotComposeFrom', (data: any) => {
-
-		if (data) {
-			// Extract timestamp and filter out metadata
-			const timestamp = getTimestamp(data);
-			const { _updatedAt, ...dataOnly } = data;
-
-			// Parse and validate
-			const parseResult = UserSlotCompositionSchema.safeParse(dataOnly);
-			if (parseResult.success) {
-				holsterComposeFrom.set(parseResult.data);
-				if (timestamp) {
-					lastNetworkTimestampFrom = timestamp;
-				}
-			} else {
-				console.error('[COMPOSE-FROM-HOLSTER] Invalid initial data:', parseResult.error);
-				holsterComposeFrom.set({});
-			}
-		} else {
-			holsterComposeFrom.set({});
-		}
-
-		isLoadingHolsterComposeFrom.set(false);
-
-		// Subscribe to updates
-		subscribeToComposeFrom();
-	});
+	subscribeToComposeFrom();
 }
 
 /**
@@ -147,6 +125,7 @@ export function cleanupHolsterComposeFrom() {
 	holsterComposeFrom.set({});
 	lastNetworkTimestampFrom = null;
 	isInitializedFrom = false;
+	hasReceivedRealDataFrom = false;
 	console.log('[COMPOSE-FROM-HOLSTER] Cleaned up');
 }
 
@@ -208,16 +187,17 @@ function subscribeToComposeInto() {
 		return;
 	}
 
-
 	composeIntoCallback = (data: any) => {
-
-		// Skip if loading (initial data fetch)
-		if (get(isLoadingHolsterComposeInto)) {
+		if (!data) {
+			if (!hasReceivedRealDataInto) {
+				console.log('[COMPOSE-INTO-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
 		}
 
-		if (!data) {
-			return;
+		if (!hasReceivedRealDataInto) {
+			console.log('[COMPOSE-INTO-HOLSTER] First real data received from network');
+			hasReceivedRealDataInto = true;
 		}
 
 		// Extract timestamp and filter out metadata fields
@@ -239,11 +219,11 @@ function subscribeToComposeInto() {
 			if (networkTimestamp) {
 				lastNetworkTimestampInto = networkTimestamp;
 			}
-		} else {
+			isLoadingHolsterComposeInto.set(false);
 		}
 	};
 
-	holsterUser.get('desiredSlotComposeInto').on(composeIntoCallback);
+	holsterUser.get('desiredSlotComposeInto').on(composeIntoCallback, true);
 }
 
 /**
@@ -264,34 +244,7 @@ export function initializeHolsterComposeInto() {
 	isInitializedInto = true;
 	isLoadingHolsterComposeInto.set(true);
 
-	// Load initial data
-	holsterUser.get('desiredSlotComposeInto', (data: any) => {
-
-		if (data) {
-			// Extract timestamp and filter out metadata
-			const timestamp = getTimestamp(data);
-			const { _updatedAt, ...dataOnly } = data;
-
-			// Parse and validate
-			const parseResult = UserSlotCompositionSchema.safeParse(dataOnly);
-			if (parseResult.success) {
-				holsterComposeInto.set(parseResult.data);
-				if (timestamp) {
-					lastNetworkTimestampInto = timestamp;
-				}
-			} else {
-				console.error('[COMPOSE-INTO-HOLSTER] Invalid initial data:', parseResult.error);
-				holsterComposeInto.set({});
-			}
-		} else {
-			holsterComposeInto.set({});
-		}
-
-		isLoadingHolsterComposeInto.set(false);
-
-		// Subscribe to updates
-		subscribeToComposeInto();
-	});
+	subscribeToComposeInto();
 }
 
 /**
@@ -305,6 +258,7 @@ export function cleanupHolsterComposeInto() {
 	holsterComposeInto.set({});
 	lastNetworkTimestampInto = null;
 	isInitializedInto = false;
+	hasReceivedRealDataInto = false;
 	console.log('[COMPOSE-INTO-HOLSTER] Cleaned up');
 }
 
@@ -407,8 +361,6 @@ export function subscribeToContributorHolsterComposeFrom(
 	// Subscribe to this contributor's compose-from data
 	holsterUser.get([contributorPubKey, 'desiredSlotComposeFrom']).on((composeFromData) => {
 		if (!composeFromData) {
-			console.log(`[COMPOSE-FROM-HOLSTER] No compose-from data from ${contributorPubKey.slice(0, 20)}...`);
-			// Call with empty object to clear
 			onUpdate({});
 			return;
 		}
@@ -435,7 +387,7 @@ export function subscribeToContributorHolsterComposeFrom(
 		} catch (error) {
 			console.error(`[COMPOSE-FROM-HOLSTER] Error processing compose-from from ${contributorPubKey.slice(0, 20)}...:`, error);
 		}
-	});
+	}, true);
 }
 
 /**
@@ -455,8 +407,6 @@ export function subscribeToContributorHolsterComposeInto(
 	// Subscribe to this contributor's compose-into data
 	holsterUser.get([contributorPubKey, 'desiredSlotComposeInto']).on((composeIntoData) => {
 		if (!composeIntoData) {
-			console.log(`[COMPOSE-INTO-HOLSTER] No compose-into data from ${contributorPubKey.slice(0, 20)}...`);
-			// Call with empty object to clear
 			onUpdate({});
 			return;
 		}
@@ -483,5 +433,5 @@ export function subscribeToContributorHolsterComposeInto(
 		} catch (error) {
 			console.error(`[COMPOSE-INTO-HOLSTER] Error processing compose-into from ${contributorPubKey.slice(0, 20)}...:`, error);
 		}
-	});
+	}, true);
 }

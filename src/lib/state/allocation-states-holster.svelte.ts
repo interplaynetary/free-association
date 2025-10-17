@@ -26,6 +26,12 @@ export const isLoadingHolsterAllocationStates = writable(false);
 // Track last network timestamp for conflict detection
 let lastNetworkTimestamp: number | null = null;
 
+// Track first real data received
+let hasReceivedRealData = false;
+
+// Prevent duplicate initialization
+let isInitialized: boolean = false;
+
 /**
  * Initialize Holster allocation states (load + subscribe)
  */
@@ -35,69 +41,15 @@ export function initializeHolsterAllocationStates() {
 		return;
 	}
 
-	console.log('[ALLOCATION-STATES-HOLSTER] Initializing...');
-	loadHolsterAllocationStates();
-	subscribeToHolsterAllocationStates();
-}
-
-/**
- * Load allocation states from Holster
- */
-function loadHolsterAllocationStates() {
-	if (!holsterUser.is) {
-		console.log('[ALLOCATION-STATES-HOLSTER] Not authenticated, skipping load');
+	if (isInitialized) {
+		console.log('[ALLOCATION-STATES-HOLSTER] Already initialized, skipping duplicate call');
 		return;
 	}
 
+	console.log('[ALLOCATION-STATES-HOLSTER] Initializing...');
+	isInitialized = true;
 	isLoadingHolsterAllocationStates.set(true);
-
-	holsterUser.get('allocationStates', (data: any) => {
-		try {
-			if (!data) {
-				console.log('[ALLOCATION-STATES-HOLSTER] No allocation states found');
-				holsterProviderAllocationStates.set({});
-				return;
-			}
-
-			// Extract timestamp if present
-			const { _updatedAt, ...dataOnly } = data as TimestampedData<any>;
-			const networkTimestamp = _updatedAt || null;
-
-			// Parse the JSON string
-			const parsed = typeof dataOnly === 'string' ? JSON.parse(dataOnly) : dataOnly;
-
-			// Validate each capacity's allocation states
-			const validatedAllocationStates: Record<string, ProviderAllocationStateData> = {};
-			let hasValidData = false;
-
-			Object.entries(parsed).forEach(([capacityId, capacityAllocations]) => {
-				try {
-					// Each capacity's allocation states is a ProviderAllocationStateData
-					const validated = parseProviderAllocationStateData(capacityAllocations);
-					if (validated) {
-						validatedAllocationStates[capacityId] = validated;
-						hasValidData = true;
-					}
-				} catch (error) {
-					console.warn(`[ALLOCATION-STATES-HOLSTER] Failed to validate allocation states for capacity ${capacityId}:`, error);
-				}
-			});
-
-			if (hasValidData) {
-				// Update store
-				holsterProviderAllocationStates.set(validatedAllocationStates);
-				lastNetworkTimestamp = networkTimestamp;
-			} else {
-				console.warn('[ALLOCATION-STATES-HOLSTER] No valid allocation states data found');
-				holsterProviderAllocationStates.set({});
-			}
-		} catch (error) {
-			console.error('[ALLOCATION-STATES-HOLSTER] Error loading allocation states:', error);
-			holsterProviderAllocationStates.set({});
-		} finally {
-			isLoadingHolsterAllocationStates.set(false);
-		}
-	});
+	subscribeToHolsterAllocationStates();
 }
 
 /**
@@ -109,18 +61,18 @@ function subscribeToHolsterAllocationStates() {
 		return;
 	}
 
-
 	holsterUser.get('allocationStates').on((data: any) => {
-		// Skip if currently loading (initial load will handle it)
-		if (get(isLoadingHolsterAllocationStates)) {
-			return;
-		}
-
 		try {
 			if (!data) {
-				holsterProviderAllocationStates.set({});
-				lastNetworkTimestamp = null;
+				if (!hasReceivedRealData) {
+					console.log('[ALLOCATION-STATES-HOLSTER] Subscription returned null, waiting for network data...');
+				}
 				return;
+			}
+
+			if (!hasReceivedRealData) {
+				console.log('[ALLOCATION-STATES-HOLSTER] First real data received from network');
+				hasReceivedRealData = true;
 			}
 
 			// Extract timestamp
@@ -155,11 +107,12 @@ function subscribeToHolsterAllocationStates() {
 			if (hasValidData) {
 				holsterProviderAllocationStates.set(validatedAllocationStates);
 				lastNetworkTimestamp = networkTimestamp;
+				isLoadingHolsterAllocationStates.set(false);
 			}
 		} catch (error) {
 			console.error('[ALLOCATION-STATES-HOLSTER] Error processing real-time update:', error);
 		}
-	});
+	}, true);
 }
 
 /**
@@ -231,6 +184,8 @@ export function clearHolsterAllocationStates(): void {
 	console.log('[ALLOCATION-STATES-HOLSTER] Clearing allocation states');
 	holsterProviderAllocationStates.set({});
 	lastNetworkTimestamp = null;
+	isInitialized = false;
+	hasReceivedRealData = false;
 }
 
 // ============================================================================
@@ -254,8 +209,6 @@ export function subscribeToContributorHolsterAllocationStates(
 	// Subscribe to this contributor's allocation states
 	holsterUser.get([contributorPubKey, 'allocationStates']).on((allocationStatesData) => {
 		if (!allocationStatesData) {
-			console.log(`[ALLOCATION-STATES-HOLSTER] No allocation states data from ${contributorPubKey.slice(0, 20)}...`);
-			// Call with empty object to clear
 			onUpdate({});
 			return;
 		}
@@ -302,5 +255,5 @@ export function subscribeToContributorHolsterAllocationStates(
 			console.error(`[ALLOCATION-STATES-HOLSTER] Error processing allocation states from ${contributorPubKey.slice(0, 20)}...:`, error);
 			onUpdate({});
 		}
-	});
+	}, true);
 }
