@@ -399,6 +399,221 @@ Each provider allocates based on collective recognition within their set.
 Alice can receive from multiple providers based on different capacity sets.
 ```
 
+### Primary Model: Verein as Computational Provider
+
+**This is the core model. The Verein holds funds and allocates computationally.**
+
+```
+Verein has $100K available balance (from general donations, accumulated surplus, etc.)
+
+Automatic Allocation Protocol:
+1. Available balance becomes declared capacity
+2. Capacity set = all current members (MRD ≥ threshold)
+3. Protocol computes collective-recognition-shares for all members
+4. Protocol reviews all open needs from members
+5. Protocol allocates automatically based on:
+   - Collective-recognition-share (higher share = higher priority)
+   - Need amount and urgency
+   - Available capacity
+   - Compliance filters (see below)
+6. Board receives transfer instructions
+7. Board executes mechanically
+
+Example:
+Verein balance: $100K
+Members: {Alice, Bob, Charlie, Dave, Eve}
+
+Collective-recognition-shares:
+- Alice: 28% (highest mutual recognition)
+- Bob: 22%
+- Charlie: 19%
+- Dave: 18%
+- Eve: 13%
+
+Open needs:
+- Alice: $50K (water infrastructure)
+- Bob: $30K (agriculture)
+- Charlie: $25K (education)
+- Dave: $20K (research)
+- Eve: $15K (organizing)
+
+Protocol allocation (prioritized by recognition + feasibility):
+- Alice: $50K (highest share, full need met)
+- Bob: $30K (second priority, full need met)
+- Charlie: $20K (partial, capacity exhausted)
+- Total: $100K allocated
+
+Board receives: "Transfer $50K to Alice, $30K to Bob, $20K to Charlie"
+Board executes transfers.
+```
+
+**Key principle:** The Board doesn't decide allocations. The protocol computes allocations based on collective recognition + needs + compliance filters.
+
+### Secondary Model: External Provider via Verein
+
+**External providers can use the Verein as an execution agent for their allocations.**
+
+```
+Foundation X deposits $100K to Verein:
+- Foundation X declares capacity and specifies member set
+- Foundation X reviews collective-recognition-shares within their set
+- Foundation X makes allocation decisions
+- Foundation X instructs Board to execute
+- Board executes Foundation X's allocation decisions mechanically
+- Provider: Foundation X (makes decisions, uses Verein for execution)
+```
+
+### Capacity Filters: Compliance and Restrictions
+
+**Providers are wholly responsible for implementing filters to comply with socio-technical-legal limits.**
+
+Each provider can apply filters to their capacity based on:
+- AML/KYC compliance (Know Your Customer verification)
+- Sanctions screening (OFAC, UN sanctions lists)
+- Legal jurisdiction restrictions
+- Tax compliance requirements
+- Mission/purpose alignment
+- Risk assessment
+
+**Allocation Filter Model:**
+
+```
+Filter(Member, Capacity) = Maximum amount that can be allocated to Member from this Capacity
+
+Values:
+- $0 = Cannot allocate (sanctions, KYC failed, etc.)
+- $X = Can allocate up to $X (jurisdiction limits, risk caps, etc.)
+- Unlimited = No restriction
+
+Allocation computation:
+For each member:
+  Ideal-Allocation = Collective-Recognition-Share × Total-Capacity
+  Actual-Allocation = min(Ideal-Allocation, Filter(Member, Capacity), Member-Need)
+
+Members who hit their filter limit receive up to that limit.
+Remaining capacity redistributes to other members proportionally by their recognition shares.
+```
+
+**Example: Compliance Filtering with Limits**
+
+```
+Verein has $100K to allocate
+All members: {Alice, Bob, Charlie, Dave, Eve}
+
+General collective-recognition-shares:
+- Alice: 28%
+- Bob: 22%
+- Charlie: 19%
+- Dave: 18%
+- Eve: 13%
+
+Verein's compliance filters:
+- Alice: Unlimited (KYC complete, no restrictions)
+- Bob: Unlimited (KYC complete, no restrictions)
+- Charlie: $0 (KYC failed - cannot allocate)
+- Dave: Unlimited (KYC complete, no restrictions)
+- Eve: $5K max (Jurisdiction limit - can only send up to $5K to her country)
+
+Open needs:
+- Alice: $50K
+- Bob: $30K
+- Charlie: $25K
+- Dave: $20K
+- Eve: $15K
+
+Initial allocation (by recognition share):
+- Alice: 28% × $100K = $28K
+- Bob: 22% × $100K = $22K
+- Charlie: 19% × $100K = $19K
+- Dave: 18% × $100K = $18K
+- Eve: 13% × $100K = $13K
+
+After applying filters:
+- Alice: min($28K, Unlimited, $50K) = $28K ✓
+- Bob: min($22K, Unlimited, $30K) = $22K ✓
+- Charlie: min($19K, $0, $25K) = $0 ✗ (excluded by compliance)
+- Dave: min($18K, Unlimited, $20K) = $18K ✓
+- Eve: min($13K, $5K, $15K) = $5K ✓ (limited by filter)
+
+Unallocated: $19K (Charlie) + $8K (Eve) = $27K
+
+Redistribute $27K to remaining members by recognition share:
+- Alice gets: 28/(28+22+18) × $27K = $11.1K → Total: $39.1K
+- Bob gets: 22/(28+22+18) × $27K = $8.7K → Total: $30.7K (but need is $30K) → $30K
+- Dave gets: 18/(28+22+18) × $27K = $7.1K → Total: $25.1K (but need is $20K) → $20K
+- Excess: $0.1K + $5.1K = $5.2K → back to Alice
+
+Final allocations:
+- Alice: $39.1K + $5.2K = $44.3K (highest recognition, absorbs excess)
+- Bob: $30K (full need met)
+- Charlie: $0 (excluded by compliance filter)
+- Dave: $20K (full need met)
+- Eve: $5K (limited by jurisdiction filter, partial need met)
+- Total: $99.3K allocated, $0.7K remains for next cycle
+```
+
+**Union of Filters (External Provider via Verein):**
+
+```
+When external provider uses Verein as executor, BOTH filters apply:
+
+Effective-Filter(Member, Capacity) = min(
+  Provider-Filter(Member, Capacity),
+  Verein-Filter(Member, Capacity)
+)
+
+Most restrictive filter wins. Both must allow allocation.
+
+Example:
+Foundation X wants to allocate via Verein to Alice:
+- Foundation X filter: $50K max (their internal risk limit)
+- Verein filter: $30K max (Swiss jurisdiction limit for Alice's country)
+- Effective filter: min($50K, $30K) = $30K
+
+Foundation X wants to allocate via Verein to Charlie:
+- Foundation X filter: $40K max (they approve Charlie)
+- Verein filter: $0 (Charlie is on sanctions list)
+- Effective filter: min($40K, $0) = $0 → Cannot allocate
+
+Key: External provider's approval is necessary but not sufficient.
+Verein's compliance filters always apply (Swiss law).
+```
+
+**Compliance Responsibility:**
+
+```
+Each provider implements their own filters:
+
+Verein (as provider):
+- Must comply with Swiss AML laws
+- Must screen against sanctions lists (OFAC, UN, EU)
+- Must verify recipient identity (KYC)
+- Sets Filter(Member, Capacity) for each member:
+  - $0 for sanctioned individuals
+  - $0 for KYC failures
+  - $X for jurisdiction limits
+  - Unlimited for fully compliant members
+- Board cannot override compliance filters
+
+External Provider (via Verein):
+- Responsible for their own compliance
+- Sets their own Filter(Member, Capacity)
+- Can be more restrictive than Verein
+- Cannot be less restrictive (Verein filters always apply)
+- Must instruct Board only on compliant transfers
+- Example Foundation X filters:
+  - $0 for members outside target countries
+  - $0 for non-water projects (mission alignment)
+  - $25K max per member (risk management)
+
+Final allocation = min(Provider-Filter, Verein-Filter, Recognition-Share, Need)
+
+Key principle: Providers own their compliance obligations.
+Protocol provides filtering mechanism.
+Union of filters ensures maximum compliance.
+Board executes only compliant, filtered allocations.
+```
+
 ---
 
 ## 3. Decision Making: Setting Parameters
@@ -622,6 +837,12 @@ Large Foundation W declares:
   
 Foundation W allocates based on collective recognition across entire network.
 
+Meanwhile, Verein has accumulated $250K in unrestricted funds:
+- Protocol automatically declares capacity: all 150 members
+- Protocol computes collective-recognition-shares across entire network
+- Protocol allocates $250K based on recognition + open needs
+- Board executes automatic allocations
+
 No central coordination needed.
 Resources flow based on provider capacity declarations + collective recognition.
 ```
@@ -680,6 +901,7 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ❌ Performance theater for funders
 - ❌ Phantom capacity declarations (only providers declare capacity)
 - ❌ Intermediate "claim" concept (providers allocate directly to needs)
+- ❌ Board discretion over Verein funds (automatic computational allocation)
 
 ### What It Guarantees
 
@@ -694,6 +916,7 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ✓ Sybil-resistant
 - ✓ Self-organizing around real contribution
 - ✓ Direct allocation from capacity to needs (no intermediate claims)
+- ✓ Verein's own funds allocated computationally (Board never decides)
 
 ### Emergence Without Central Control
 
@@ -772,12 +995,14 @@ type Need = {
 ### Provider Capacity Declaration
 ```typescript
 type ProviderCapacity = {
-  providerId: string; // Must be the provider themselves
+  providerId: string; // Provider ID or "VEREIN_AUTOMATIC"
   setOfPeople: string[];
   capacityType: string;
   totalAmount: number | string;
   unit: string; // "$", "hours", "acres", etc.
   timestamp: Date;
+  isAutomatic?: boolean; // true if Verein automatic allocation
+  filters?: Record<string, number | null>; // Member ID → Max allocation (null = unlimited)
 };
 ```
 
@@ -839,14 +1064,20 @@ Every day 00:00 UTC:
 
 1. Collect new need declarations
 2. Collect new provider capacity declarations
-3. For each provider capacity:
+3. Check Verein available balance (unrestricted funds):
+   - If balance > 0, automatically generate capacity declaration:
+     - Provider: "VEREIN_AUTOMATIC"
+     - Set: all current members (MRD ≥ threshold)
+     - Amount: available balance
+     - isAutomatic: true
+4. For each provider capacity (including automatic):
    - Calculate collective-recognition-shares within declared set
    - Match needs from members in the set
-   - Provider allocates based on recognition + needs + available capacity
-4. Record allocations
-5. Update need fulfillment status
-6. Update recognition based on outcomes (successful delivery → recognition boost)
-7. Publish results to network
+   - Provider/Protocol allocates based on recognition + needs + available capacity
+5. Record allocations
+6. Update need fulfillment status
+7. Update recognition based on outcomes (successful delivery → recognition boost)
+8. Publish results to network
 ```
 
 ### As-Needed: Decider
@@ -1493,9 +1724,97 @@ Recognition data → MRD computation → Need declarations →
 Provider capacity declaration → Allocation → Resource transfer → Financial record
 ```
 
-### Complete Legal Mapping Example
+### Complete Legal Mapping Examples
 
-**Scenario:** Foundation X wants to donate $100K to the Verein
+**Primary Model: Verein as Computational Provider**
+
+Verein accumulates $50K in unrestricted funds (general donations, surplus):
+
+```
+Step 1: Daily protocol cycle detects available balance
+- Verein bank account: $50K unrestricted funds
+- Protocol automatically triggers allocation
+
+Step 2: Automatic capacity declaration
+- Protocol generates:
+  Provider: "VEREIN_AUTOMATIC"
+  Set: all current members {Alice, Bob, Charlie, Dave, Eve}
+  Total: $50K
+  isAutomatic: true
+
+Step 3: Protocol applies compliance filters
+- Alice: Unlimited (KYC complete, no restrictions)
+- Bob: Unlimited (KYC complete, no restrictions)
+- Charlie: $0 (KYC failed, cannot allocate)
+- Dave: Unlimited (KYC complete, no restrictions)
+- Eve: $5K max (Jurisdiction limit for her country)
+
+Step 4: Protocol computes collective-recognition-shares
+- Alice: 28%
+- Bob: 22%
+- Charlie: 19%
+- Dave: 18%
+- Eve: 13%
+
+Step 5: Protocol reviews open needs
+- Alice: $50K (water infrastructure)
+- Bob: $30K (regenerative agriculture)
+- Charlie: $25K (education programs) - excluded by compliance
+- Dave: $20K (research)
+- Eve: $15K (organizing)
+
+Step 6: Protocol allocates automatically
+Initial allocation by recognition shares:
+- Alice: 28% × $50K = $14K
+- Bob: 22% × $50K = $11K
+- Charlie: 19% × $50K = $9.5K
+- Dave: 18% × $50K = $9K
+- Eve: 13% × $50K = $6.5K
+
+After applying filters:
+- Alice: min($14K, Unlimited, $50K need) = $14K ✓
+- Bob: min($11K, Unlimited, $30K need) = $11K ✓
+- Charlie: min($9.5K, $0, $25K need) = $0 ✗ (excluded)
+- Dave: min($9K, Unlimited, $20K need) = $9K ✓
+- Eve: min($6.5K, $5K, $15K need) = $5K ✓ (capped by filter)
+
+Unallocated: $9.5K (Charlie) + $1.5K (Eve cap) = $11K
+
+Redistribute $11K to Alice, Bob, Dave by their recognition shares:
+- Alice: 28/(28+22+18) × $11K = $4.5K → Total: $18.5K
+- Bob: 22/(28+22+18) × $11K = $3.6K → Total: $14.6K
+- Dave: 18/(28+22+18) × $11K = $2.9K → Total: $11.9K
+
+Final allocations:
+- Alice: $18.5K
+- Bob: $14.6K
+- Charlie: $0 (excluded by compliance filter)
+- Dave: $11.9K
+- Eve: $5K (capped by jurisdiction filter)
+- Total: $50K allocated
+
+Step 7: Board executes
+- Board receives protocol output: "Transfer $18.5K to Alice, $14.6K to Bob, $11.9K to Dave, $5K to Eve"
+- Board verifies: Compliance filters applied, funds available
+- Board executes mechanically (no discretion)
+- Board records transactions
+
+Step 8: Accounting records
+Balance: $50K unrestricted
+Expenses:
+  - $18.5K to Alice/Water Infrastructure
+  - $14.6K to Bob/Regenerative Agriculture
+  - $11.9K to Dave/Research
+  - $5K to Eve/Organizing (capped by jurisdiction limit)
+Balance: $0 remaining
+
+Key: Board never decided allocations or compliance. Protocol decided based on filtered collective recognition.
+Charlie excluded by $0 filter. Eve capped at $5K. Excess redistributed to others.
+```
+
+**Secondary Model: External Provider via Verein**
+
+Foundation X wants to use Verein as executor for $100K allocation:
 
 ```
 Step 1: Foundation X becomes participant
@@ -1506,7 +1825,7 @@ Step 1: Foundation X becomes participant
 Step 2: Foundation X contribution
 - Legally: Donation to Swiss Verein bank account
 - Recorded: $100K received from Foundation X
-- Free-Association view: Foundation X can now declare capacity and allocate
+- Foundation X retains allocation authority
 
 Step 3: Needs are visible
 - Alice needs: $50K (water infrastructure)
@@ -1517,34 +1836,66 @@ Step 4: Foundation X declares capacity and allocates
 - Foundation X declares capacity:
   Set: {Alice, Bob, Charlie, Dave, Eve}
   Total: $100K
-- Foundation X calculates collective-recognition-shares
-- Foundation X reviews needs from members in set
-- Foundation X allocates: $30K to Alice, $25K to Bob, $20K to Charlie
-- Total: $75K allocated, $25K remaining for future needs
+
+Foundation X's filters (their compliance):
+- Alice: $35K max (their risk limit)
+- Bob: $40K max (their risk limit)
+- Charlie: $0 (outside their target region)
+- Dave: $30K max (their risk limit)
+- Eve: Unlimited
+
+Verein's filters (Swiss AML/KYC):
+- Alice: $30K max (jurisdiction limit)
+- Bob: Unlimited (fully compliant)
+- Charlie: $0 (on EU sanctions list)
+- Dave: Unlimited (fully compliant)
+- Eve: $5K max (jurisdiction limit)
+
+Effective filters (min of both):
+- Alice: min($35K, $30K) = $30K
+- Bob: min($40K, Unlimited) = $40K
+- Charlie: min($0, $0) = $0
+- Dave: min($30K, Unlimited) = $30K
+- Eve: min(Unlimited, $5K) = $5K
+
+Foundation X allocates based on recognition + union of filters:
+- Alice: $30K (capped by Verein's jurisdiction filter)
+- Bob: $25K (within both filters)
+- Charlie: $0 (excluded by both filters)
+- Dave: $20K (within both filters)
+- Eve: $5K (capped by Verein's jurisdiction filter)
+- Total: $80K allocated, $20K remaining
 
 Step 5: Board executes
-- Board (top 3 MRD) receives allocation instructions
+- Board receives allocation instructions from Foundation X
+- Board verifies: Foundation X deposited funds, union of filters applied
 - Board transfers:
-  - $30K to Alice's project account
+  - $30K to Alice's project account (capped by Verein filter)
   - $25K to Bob's project account
-  - $20K to Charlie's project account
+  - $20K to Dave's project account
+  - $5K to Eve's project account (capped by Verein filter)
 - Board signs bank transfers (legal requirement)
 - Board records transactions in ledger
 
 Step 6: Accounting records
 Income: $100K donation from Foundation X
 Expenses: 
-  - $30K to Alice/Uganda Water Infrastructure
-  - $25K to Bob/Kenya Regenerative Agriculture
-  - $20K to Charlie/Education Programs
-Balance: $25K remaining
+  - $30K to Alice/Water Infrastructure (capped by Verein jurisdiction limit)
+  - $25K to Bob/Regenerative Agriculture
+  - $20K to Dave/Research
+  - $5K to Eve/Organizing (capped by Verein jurisdiction limit)
+  - Charlie excluded (both filters = $0)
+Balance: $20K remaining (Foundation X's unallocated funds)
 
 Step 7: Next cycle
-- Alice, Bob, Charlie deliver projects
+- Alice, Bob, Dave, Eve deliver projects
 - Members increase recognition of successful projects
-- Higher recognition → higher collective-recognition-shares in future capacity sets
 - Foundation X sees successful delivery → declares new capacity and allocates more
 - Reciprocity spiral continues
+
+Key: Foundation X decided allocations BUT Verein's compliance filters always applied.
+Union of filters: min(Foundation-Filter, Verein-Filter).
+Board verified union of filters and executed.
 ```
 
 ### Legal Compliance Summary
@@ -1632,6 +1983,7 @@ Resources flow to what enables self-actualization
 - Assembly acknowledges computational results (annual formality)
 - All Swiss requirements satisfied
 - Zero governance overhead (computation does the work)
+- Even Verein's own funds are allocated computationally (Board never decides)
 
 **The Key Insight:**
 

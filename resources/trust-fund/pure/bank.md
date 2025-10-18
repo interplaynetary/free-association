@@ -79,30 +79,39 @@ That's sufficient for banks.
    - Present: Statutes, commercial register extract, IDs
    - Fill signatory cards
    - Account opened
+   - Bank notes: Board authorized signatories
 
-2. Receive funds:
-   - Foundation X wants to contribute $100K
-   - Foundation transfers to Verein account
-   - Bank receives wire transfer
-   - Board records: Foundation X deposited $100K
+2. Receive funds (Primary model):
+   - Individual donors contribute $100K (unrestricted)
+   - Bank receives wire transfers
+   - Verein balance: $100K available
+   - Board records: General funds received
 
-3. Execute transfer (protocol-determined):
-   - Protocol outputs: "Transfer $30K to Alice"
-   - Board verifies: Funds available, protocol authentic
-   - Board signs: Transfer instruction to bank
-   - Bank receives: Signed transfer form
+3. Protocol allocation (Primary model):
+   - Protocol detects $100K available balance
+   - Protocol computes collective-recognition-shares for all members
+   - Protocol applies compliance filters (AML/KYC/sanctions)
+   - Protocol outputs: "Transfer $30K to Alice, $25K to Bob, $20K to Charlie"
+   - Board receives transfer instructions
+   
+4. Execute transfers:
+   - Board verifies: Funds available, protocol authentic, compliance verified
+   - Board signs: Transfer instructions to bank
+   - Bank receives: Signed transfer forms
    - Bank verifies: Valid signatures
-   - Bank executes: $30K to Alice
-   - Board records: Transaction in ledger
+   - Bank executes: $30K to Alice, $25K to Bob, $20K to Charlie
+   - Board records: Transactions in ledger
 
-4. Bank sees:
-   - Normal organizational transfer
+5. Bank sees:
+   - Normal organizational transfers
    - Properly authorized by Board
    - Legal and compliant
+   - Recipients verified (KYC/AML)
    
-5. Bank doesn't see:
-   - That protocol determined allocation
-   - That collective recognition computed amount
+6. Bank doesn't see:
+   - That protocol determined allocations
+   - That collective recognition computed amounts
+   - That compliance filtering was computational
    - That this was distributed decision-making
 ```
 
@@ -168,12 +177,139 @@ Legal/Banking Layer:
 Computational Layer:
 - Protocol determines allocations
 - Members make distributed decisions
-- Provider responses are voluntary
+- Compliance filters applied computationally
 → This happens "above" the legal layer
 
 Board is the interface:
-- Receives protocol outputs
+- Receives protocol outputs (already filtered for compliance)
 - Signs for legal/banking layer
 - Pure execution, no discretion
 → Bridge between layers
+```
+
+**AML/KYC Compliance with Computational Model:**
+
+```
+How compliance works:
+
+1. Member onboarding:
+   - Member applies to join network
+   - Verein collects KYC information (identity verification)
+   - Verein screens against sanctions lists (OFAC, UN, EU)
+   - Verein assigns compliance Filter(Member):
+     - Unlimited = Fully compliant, no restrictions
+     - $X = Can allocate up to $X (jurisdiction/risk limits)
+     - $0 = Cannot allocate (sanctions, KYC failed)
+
+2. Protocol allocation (Primary model):
+   - Protocol computes collective-recognition-shares
+   - Protocol applies compliance filters as limits:
+     Allocation = min(Recognition-Share × Capacity, Filter, Need)
+   - Members who hit filter limit get capped
+   - Excess redistributes to others by recognition shares
+
+3. Board execution:
+   - Board receives filtered allocation instructions
+   - Board verifies: All allocations respect filters
+   - Board signs transfers (only to compliant recipients)
+   - Bank executes transfers
+
+4. Bank perspective:
+   - Sees normal organizational transfers
+   - Recipients are pre-verified by Verein
+   - Board signing = proper authorization
+   - No questions about how recipients were chosen
+
+Key: Compliance filtering happens computationally (in protocol).
+Board doesn't decide who passes compliance or their limits.
+Protocol applies filters as hard caps on allocations.
+Bank never sees the filtering mechanism.
+```
+
+**Example 1: Sanctions screening:**
+
+```
+Scenario: Member added to sanctions list
+
+Week 1: Charlie is compliant member
+- Filter: Unlimited
+- Receives allocations normally
+- Collective-recognition-share: 19%
+- Allocated: $19K from $100K pool
+
+Week 2: Charlie added to UN sanctions list
+- Verein's compliance system detects change
+- Updates Charlie's Filter: Unlimited → $0
+- Protocol automatically excludes Charlie from allocations
+- Charlie's $19K redistributes to other members
+
+Week 3: Protocol runs allocation
+- Charlie has 19% general recognition
+- Charlie has $0 compliance filter
+- Charlie receives $0 (excluded)
+- Other members receive proportionally more
+
+Board sees:
+- Transfer instructions without Charlie
+- No explanation needed
+- Simply executes as instructed
+
+Bank sees:
+- Normal transfers to verified recipients
+- No unusual activity
+- Board authorized all transfers
+
+Key: Compliance enforcement is computational, not Board discretion.
+Protocol applies sanctions screening automatically.
+Board never decides to exclude someone - protocol does.
+```
+
+**Example 2: Union of filters (External provider via Verein):**
+
+```
+Scenario: Foundation X uses Verein to allocate $100K
+
+Foundation X's filters (their compliance):
+- Alice: $50K max (their risk limit)
+- Bob: $40K max (their risk limit)
+- Charlie: $0 (outside their target region)
+- Dave: $30K max (their risk limit)
+
+Verein's filters (Swiss AML/KYC):
+- Alice: $30K max (jurisdiction limit for her country)
+- Bob: Unlimited (fully compliant)
+- Charlie: $0 (on EU sanctions list)
+- Dave: Unlimited (fully compliant)
+
+Effective filters (min of both):
+- Alice: min($50K, $30K) = $30K
+- Bob: min($40K, Unlimited) = $40K
+- Charlie: min($0, $0) = $0
+- Dave: min($30K, Unlimited) = $30K
+
+Foundation X wants to allocate:
+- $35K to Alice → Effective filter caps at $30K
+- $40K to Bob → Passes both filters, allocated $40K
+- $25K to Charlie → Effective filter = $0, cannot allocate
+- $30K to Dave → Passes both filters, allocated $30K
+
+Board receives instruction: "Transfer $30K to Alice, $40K to Bob, $30K to Dave"
+(Charlie excluded by union of filters, Alice capped by Verein's jurisdiction limit)
+
+Board executes mechanically.
+
+Bank sees:
+- Three normal transfers
+- All properly authorized by Board
+- All recipients pre-verified
+
+Bank doesn't see:
+- That Foundation X wanted to send more to Alice
+- That Foundation X wanted to send to Charlie
+- That two independent filter systems applied
+- How the allocation decisions were made
+
+Key: Both filters must pass. Most restrictive wins.
+External provider cannot override Verein's compliance filters.
+Verein ensures Swiss law compliance regardless of provider's wishes.
 ```
