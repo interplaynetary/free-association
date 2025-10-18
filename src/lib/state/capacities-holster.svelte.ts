@@ -80,6 +80,7 @@ function setCachedCapacities(capacities: CapacitiesCollection, timestamp: number
 // ============================================================================
 
 let capacitiesCallback: ((data: any) => void) | null = null;
+let hasReceivedRealData = false;
 
 /**
  * Subscribe to user's capacities from Holster
@@ -91,17 +92,17 @@ function subscribeToCapacities() {
 		return;
 	}
 
-
-	// Create callback for updates - this receives the entire capacities object graph
 	capacitiesCallback = (data: any) => {
-
-		// Skip if loading (initial data fetch)
-		if (get(isLoadingHolsterCapacities)) {
+		if (!data) {
+			if (!hasReceivedRealData) {
+				console.log('[CAPACITIES-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
 		}
 
-		if (!data) {
-			return;
+		if (!hasReceivedRealData) {
+			console.log('[CAPACITIES-HOLSTER] First real data received from network');
+			hasReceivedRealData = true;
 		}
 
 		// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
@@ -165,21 +166,18 @@ function subscribeToCapacities() {
 			holsterCapacities.set(networkCapacities);
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
-				// Cache for faster future loads
 				setCachedCapacities(networkCapacities, networkTimestamp);
 			}
-			// Track capacity IDs for deletion detection
 			lastKnownCapacityIds = new Set(Object.keys(networkCapacities));
 			console.log(
 				'[CAPACITIES-HOLSTER] Updated capacities:',
 				Object.keys(networkCapacities).length
 			);
-		} else {
+			isLoadingHolsterCapacities.set(false);
 		}
 	};
 
-	// Subscribe with on() - this watches the entire capacities object graph
-	holsterUser.get('capacities').on(capacitiesCallback);
+	holsterUser.get('capacities').on(capacitiesCallback, true);
 }
 
 /**
@@ -201,7 +199,6 @@ export function initializeHolsterCapacities() {
 	isInitialized = true;
 	isLoadingHolsterCapacities.set(true);
 
-	// Try to load from cache first for instant UI
 	const cachedCapacities = getCachedCapacities();
 	const cachedTimestamp = cachedCapacities
 		? parseInt(localStorage.getItem(CAPACITIES_CACHE_TIMESTAMP_KEY) || '0', 10)
@@ -212,93 +209,9 @@ export function initializeHolsterCapacities() {
 		lastNetworkTimestamp = cachedTimestamp;
 		lastKnownCapacityIds = new Set(Object.keys(cachedCapacities));
 		isLoadingHolsterCapacities.set(false);
-
-		// Continue loading from network in background to check for updates
 	}
 
-	// Load initial data with get() - receives object graph
-	holsterUser.get('capacities', (data: any) => {
-
-		if (data) {
-			// Helper to check if a value is "deleted" (null, undefined, or object with missing required fields)
-			const isDeleted = (value: any, key?: string): boolean => {
-				if (value === null || value === undefined) {
-					console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: null/undefined`);
-					return true;
-				}
-				if (typeof value === 'object' && value !== null) {
-					// Check if required capacity fields are missing (indicates deletion)
-					if (!value.id || !value.name) {
-						console.warn(`[CAPACITIES-HOLSTER] Skipping malformed entry${key ? ` (${key})` : ''}: missing required fields (id or name)`, value);
-						return true;
-					}
-					// Check if all fields are null or undefined (Holster deletion pattern)
-					const allFieldsNull = Object.values(value).every((v) => v === null || v === undefined);
-					if (allFieldsNull) {
-						console.log(`[CAPACITIES-HOLSTER] Skipping deleted entry${key ? ` (${key})` : ''}: all fields null/undefined`);
-						return true;
-					}
-				}
-				return false;
-			};
-
-			// Extract timestamp and filter out metadata fields AND null/deleted values
-			const timestamp = getTimestamp(data);
-			const capacitiesOnly: any = {};
-			for (const [key, value] of Object.entries(data)) {
-				if (!isDeleted(value, key) && !key.startsWith('_')) {
-					capacitiesOnly[key] = value;
-				}
-			}
-
-			// Convert availability_slots objects back to arrays
-			for (const [capacityId, capacity] of Object.entries(capacitiesOnly)) {
-				if ((capacity as any).availability_slots && typeof (capacity as any).availability_slots === 'object') {
-					const slotsObj = (capacity as any).availability_slots;
-					const slotsArray: any[] = [];
-					for (const slotId of Object.keys(slotsObj)) {
-						if (slotsObj[slotId]) { // Only include non-null/undefined slots
-							slotsArray.push(slotsObj[slotId]);
-						}
-					}
-					(capacity as any).availability_slots = slotsArray;
-				} else {
-					(capacity as any).availability_slots = [];
-				}
-			}
-
-			// Parse and validate (without timestamp)
-			const parseResult = CapacitiesCollectionSchema.safeParse(capacitiesOnly);
-			if (parseResult.success) {
-				// Only update if newer than cache or no cache
-				if (!lastNetworkTimestamp || (timestamp && timestamp > lastNetworkTimestamp)) {
-					holsterCapacities.set(parseResult.data);
-
-					// Track initial timestamp
-					if (timestamp) {
-						lastNetworkTimestamp = timestamp;
-						// Cache for faster future loads
-						setCachedCapacities(parseResult.data, timestamp);
-					}
-
-					// Track capacity IDs for deletion detection
-					lastKnownCapacityIds = new Set(Object.keys(parseResult.data));
-				} else {
-					console.log('[CAPACITIES-HOLSTER] Cached data is newer, skipping network data');
-				}
-			} else {
-				console.error('[CAPACITIES-HOLSTER] Invalid initial data:', parseResult.error);
-				holsterCapacities.set(null);
-			}
-		} else {
-			holsterCapacities.set(null);
-		}
-
-		isLoadingHolsterCapacities.set(false);
-
-		// Subscribe to updates
-		subscribeToCapacities();
-	});
+	subscribeToCapacities();
 }
 
 /**
@@ -312,9 +225,9 @@ export function cleanupHolsterCapacities() {
 	holsterCapacities.set(null);
 	lastNetworkTimestamp = null;
 	lastKnownCapacityIds.clear();
-	isInitialized = false; // Reset initialization flag
+	isInitialized = false;
+	hasReceivedRealData = false;
 
-	// Clear localStorage cache
 	if (typeof localStorage !== 'undefined') {
 		localStorage.removeItem(CAPACITIES_CACHE_KEY);
 		localStorage.removeItem(CAPACITIES_CACHE_TIMESTAMP_KEY);

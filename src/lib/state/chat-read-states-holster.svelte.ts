@@ -29,6 +29,9 @@ let lastNetworkTimestamp: number | null = null;
 // Prevent duplicate initialization
 let isInitialized: boolean = false;
 
+// Track first real data received
+let hasReceivedRealData = false;
+
 // ============================================================================
 // Subscription Management
 // ============================================================================
@@ -44,16 +47,17 @@ function subscribeToChatReadStates() {
 		return;
 	}
 
-
 	chatReadStatesCallback = (data: any) => {
-
-		// Skip if loading (initial data fetch)
-		if (get(isLoadingHolsterChatReadStates)) {
+		if (!data) {
+			if (!hasReceivedRealData) {
+				console.log('[CHAT-READ-STATES-HOLSTER] Subscription returned null, waiting for network data...');
+			}
 			return;
 		}
 
-		if (!data) {
-			return;
+		if (!hasReceivedRealData) {
+			console.log('[CHAT-READ-STATES-HOLSTER] First real data received from network');
+			hasReceivedRealData = true;
 		}
 
 		// Extract timestamp and filter out metadata fields
@@ -75,11 +79,11 @@ function subscribeToChatReadStates() {
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-		} else {
+			isLoadingHolsterChatReadStates.set(false);
 		}
 	};
 
-	holsterUser.get('chatReadStates').on(chatReadStatesCallback);
+	holsterUser.get('chatReadStates').on(chatReadStatesCallback, true);
 }
 
 /**
@@ -100,34 +104,7 @@ export function initializeHolsterChatReadStates() {
 	isInitialized = true;
 	isLoadingHolsterChatReadStates.set(true);
 
-	// Load initial data
-	holsterUser.get('chatReadStates', (data: any) => {
-
-		if (data) {
-			// Extract timestamp and filter out metadata
-			const timestamp = getTimestamp(data);
-			const { _updatedAt, ...dataOnly } = data;
-
-			// Parse and validate
-			const parsed = parseChatReadStates(dataOnly);
-			if (parsed) {
-				holsterChatReadStates.set(parsed);
-				if (timestamp) {
-					lastNetworkTimestamp = timestamp;
-				}
-			} else {
-				console.error('[CHAT-READ-STATES-HOLSTER] Invalid initial data');
-				holsterChatReadStates.set({});
-			}
-		} else {
-			holsterChatReadStates.set({});
-		}
-
-		isLoadingHolsterChatReadStates.set(false);
-
-		// Subscribe to updates
-		subscribeToChatReadStates();
-	});
+	subscribeToChatReadStates();
 }
 
 /**
@@ -141,6 +118,7 @@ export function cleanupHolsterChatReadStates() {
 	holsterChatReadStates.set({});
 	lastNetworkTimestamp = null;
 	isInitialized = false;
+	hasReceivedRealData = false;
 	console.log('[CHAT-READ-STATES-HOLSTER] Cleaned up');
 }
 
