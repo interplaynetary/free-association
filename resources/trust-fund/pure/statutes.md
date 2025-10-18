@@ -30,12 +30,16 @@ The Association has two organs:
 Comprises all current members (MRD ≥ threshold).
 
 **4.2 Board**  
-Comprises the three members with highest MRD scores:
-- Highest MRD = President
-- 2nd highest MRD = Treasurer  
-- 3rd highest MRD = Secretary
+Comprises three members with collective signature authority. Board positions are offered to members in order of highest MRD scores. If a member declines, the position is offered to the next highest MRD.
 
-Board composition updates automatically with each MRD computation.
+All Board members have equal authority. Roles exist only for legal requirements:
+- One member designated as "President" (legal representative)
+- All members are authorized signatories
+
+Board composition updates when:
+- MRD computation changes ranking, AND
+- Current Board member declines to continue, OR
+- Higher-ranked member accepts position
 
 ## Article 5 — General Assembly
 
@@ -54,54 +58,89 @@ Decisions on constitutional matters follow the Decider process specification at 
 
 ## Article 6 — Board
 
-**6.1 Powers**  
-The Board:
-- Represents the Association externally
-- Signs legal documents
-- Maintains statutory compliance
-- Executes transfers per computational protocol outputs
-- Manages bank accounts
+**6.1 Minimal Responsibilities**  
+Board members have only these duties:
+- Sign bank transfers as instructed by protocol
+- Sign legal documents as required by Swiss law
+- File required reports with authorities
+- Maintain bank account access
 
-**6.2 Signatory Authority**  
-The President and one other Board member sign collectively.
+**6.2 What Board Does NOT Do**  
+The Board does not:
+- Decide membership (protocol computes MRD)
+- Decide resource allocation (protocol computes allocations)
+- Decide compliance filters (compliance service determines)
+- Set strategy (emerges from member activity)
+- Make discretionary decisions
 
-**6.3 Limitation**  
-The Board does not decide membership, resource allocation, or strategy. These are determined by computational protocols.
+**6.3 Signatory Authority**  
+Any two Board members sign collectively. All Board members have equal signing authority.
 
-## Article 7 — Resources
+**6.4 Compensation**  
+Board service is voluntary. Reasonable expenses may be reimbursed.
 
-**7.1 Resource Allocation**  
+**6.5 Liability Protection**  
+Board members execute protocol instructions mechanically. They are not personally liable for allocation decisions made by the protocol.
+
+## Article 7 — Compliance Services
+
+**7.1 Compliance Requirement**  
+The Association must comply with Swiss AML (Anti-Money Laundering) and KYC (Know Your Customer) laws.
+
+**7.2 Compliance Service Provider**  
+The Association engages a compliance service provider to:
+- Verify member identities (KYC)
+- Screen members against sanctions lists (OFAC, UN, EU)
+- Determine jurisdiction transfer limits
+- Maintain compliance filter data
+- Update filters when compliance status changes
+
+**7.3 Compliance Filters**  
+The compliance service determines Filter(Member) for each member:
+- $0 = Cannot receive funds (sanctions, KYC failure)
+- $X = Maximum allocation (jurisdiction limits, risk caps)
+- Unlimited = No restrictions
+
+**7.4 Protocol Integration**  
+The protocol applies compliance filters computationally. The Board does not override or modify compliance filters.
+
+**7.5 Compliance Service Selection**  
+The General Assembly may designate a compliance service provider via Decider process. The service must be independent of the Board.
+
+## Article 8 — Resources
+
+**8.1 Resource Allocation**  
 Resources are allocated according to the Resource Allocation Protocol specification at [URL/reference].
 
-**7.2 Needs and Allocations**  
-Members declare needs. Providers declare capacities and allocate to needs. When the Association itself holds unrestricted funds, the protocol automatically allocates to member needs based on collective-recognition-shares. The Board executes approved transfers.
+**8.2 Needs and Allocations**  
+Members declare needs. Providers declare capacities and allocate to needs. When the Association itself holds unrestricted funds, the protocol automatically allocates to member needs based on collective-recognition-shares and compliance filters. The Board executes approved transfers.
 
-**7.3 Financial Records**  
+**8.3 Financial Records**  
 All flows are recorded in a transparent ledger maintained per the protocol specification.
 
-## Article 8 — Computational Protocols
+## Article 9 — Computational Protocols
 
-**8.1 Protocol Specifications**  
+**9.1 Protocol Specifications**  
 The Association operates through three computational protocols:
 - Membership Module (MRD computation)
 - Resource Allocation Protocol (provider capacities and need matching)
 - Decider Process (parameter adjustments)
 
-**8.2 Protocol References**  
+**9.2 Protocol References**  
 Current protocol specifications are maintained at [URL/repository] and may be updated via Decider process.
 
-**8.3 Interface**  
+**9.3 Interface**  
 The Board implements protocol outputs. Protocol computations are authoritative for membership and resource allocation.
 
-## Article 9 — Dissolution
+## Article 10 — Dissolution
 
-**9.1 Decision**  
+**10.1 Decision**  
 Dissolution requires Decider process with supermajority (75% weighted support).
 
-**9.2 Liquidation**  
+**10.2 Liquidation**  
 Upon dissolution, assets are distributed to members pro-rata by collective-recognition-share (calculated across all members as of dissolution decision), or to organizations with similar purpose.
 
-## Article 10 — Entry into Force
+## Article 11 — Entry into Force
 
 These Statutes enter into force upon adoption by the founding members.
 
@@ -119,41 +158,145 @@ These Statutes enter into force upon adoption by the founding members.
 
 ### Interface Points Between Statutes and Protocols
 
-| Statute Article | Protocol | Data Flow |
-|-----------------|----------|-----------|
+| Statute Article | Protocol/Service | Data Flow |
+|-----------------|------------------|-----------|
 | Art. 3.2 | Membership Module | Weekly MRD computation → Member list |
-| Art. 4.2 | Membership Module | Weekly MRD ranking → Board composition |
+| Art. 4.2 | Membership Module | Weekly MRD ranking → Board position offers |
 | Art. 5.3 | Decider Process | Constitutional proposals → Weighted decision |
-| Art. 7.1 | Resource Allocation | Needs + Provider capacities → Transfer instructions |
-| Art. 7.3 | Resource Allocation | All transactions → Ledger entries |
+| Art. 7.2 | Compliance Service | KYC/sanctions checks → Compliance filters |
+| Art. 8.1 | Resource Allocation | Needs + Provider capacities + Filters → Transfer instructions |
+| Art. 8.3 | Resource Allocation | All transactions → Ledger entries |
 
 ### Required Protocol Outputs (to Board)
 
 **Weekly:**
 - Current member list (names, MRD scores)
-- Current Board composition (top 3 MRD)
+- Current MRD ranking (for Board position offers)
 
 **As-needed:**
-- Transfer instructions (from provider allocations)
+- Transfer instructions (from provider allocations with filters applied)
 - Decider results (for constitutional changes)
+- Compliance filter updates (from compliance service)
 
 **Annually:**
 - Financial statements (auto-generated from ledger)
 - Membership changes summary
 
-### Board's Mechanical Role
+### Board Selection Process (Opt-In Model)
 
-The Board receives computational outputs and executes:
-1. **Membership changes:** Update Swiss registry if required
-2. **Resource transfers:** Execute bank transfers per protocol
-3. **Legal representation:** Sign documents as authorized
-4. **Compliance:** File required reports with authorities
+**Position offers go by MRD ranking:**
+```
+Week 1: MRD computation ranks all members
+Week 2: Positions offered in order:
+1. Highest MRD → Offered Board position
+   - If accepts: Becomes Board member
+   - If declines: Offer goes to next highest
+
+2. 2nd highest MRD → Offered Board position
+   - If accepts: Becomes Board member
+   - If declines: Offer goes to next highest
+
+3. Continue until 3 positions filled
+
+Current Board members:
+- Automatically offered to continue if still in top ranks
+- Can decline to continue (position offered to next highest)
+- Must explicitly accept to continue each term
+```
+
+**Term length:** Board positions reviewed quarterly after MRD computation.
+
+**Example:**
+```
+MRD Ranking:
+1. Alice (MRD: 1.8)
+2. Bob (MRD: 1.5)
+3. Charlie (MRD: 1.3)
+4. Dave (MRD: 1.2)
+5. Eve (MRD: 1.0)
+
+Offers:
+1. Alice offered → Accepts → Board Member 1
+2. Bob offered → Declines (too busy)
+3. Charlie offered → Accepts → Board Member 2
+4. Dave offered → Accepts → Board Member 3
+
+Final Board: {Alice, Charlie, Dave}
+President designation: Alice (highest MRD of actual Board)
+```
+
+**Why Board members might decline:**
+- Time constraints
+- Travel commitments
+- Conflict of interest
+- Don't want legal signing responsibility
+- Any personal reason
+
+**No penalty for declining:** MRD score unaffected, full participation rights maintained.
+
+### Compliance Service
+
+**Independent service provider performs:**
+```
+1. Member onboarding:
+   - KYC verification (identity documents)
+   - Sanctions screening (OFAC, UN, EU lists)
+   - Jurisdiction assessment
+   - Risk evaluation
+
+2. Ongoing monitoring:
+   - Daily sanctions list updates
+   - Quarterly re-verification
+   - Status change notifications
+
+3. Filter determination:
+   For each member, compliance service sets:
+   - Filter = $0 (cannot receive: sanctions, KYC failed)
+   - Filter = $X (cap: jurisdiction limits, risk levels)
+   - Filter = Unlimited (no restrictions)
+
+4. Protocol integration:
+   - Provides filter data to protocol
+   - Protocol applies filters computationally
+   - Board receives filtered allocations
+   - Board never modifies filters
+```
+
+**Service characteristics:**
+- Independent of Board (no Board override)
+- Automated sanctions screening
+- API integration with protocol
+- Transparent filter logic
+- Auditable compliance trail
+
+**Example compliance services:**
+- ComplyAdvantage (sanctions/AML screening)
+- Onfido (KYC verification)
+- Sumsub (identity verification)
+- Custom service built on these APIs
+
+**Key separation:**
+- Compliance service determines who can receive (filters)
+- Protocol determines who should receive (recognition)
+- Board executes transfers (mechanical only)
+- No single entity has full discretion
+
+### Board's Minimal Role
+
+The Board performs ONLY these mechanical tasks:
+1. **Sign bank transfers:** As instructed by protocol (with compliance filters already applied)
+2. **Sign legal documents:** As required by Swiss law
+3. **File reports:** With Swiss authorities
+4. **Maintain access:** To bank account
 
 The Board does NOT:
 - Decide who is a member (protocol does)
 - Decide resource allocation (protocol does)
-- Set strategic direction (members + protocol do)
+- Decide compliance filters (compliance service does)
+- Set strategic direction (emerges from members)
+- Make discretionary decisions
 - Override protocol outputs
+- Have fiduciary discretion
 
 ### Reconciling Distributed Decisions with Centralized Execution
 
@@ -297,15 +440,6 @@ Contributing to Verein gives Foundation trust in execution,
 but Board still doesn't decide allocation.
 ```
 
-**Why this works:**
-- Need declarations are distributed (members declare)
-- Capacity declarations are distributed (only providers declare)
-- Provider allocations are voluntary (providers decide)
-- Board execution is mechanical (Board doesn't decide)
-- Funds can flow through Verein (with Board execution) or peer-to-peer (no Board)
-- Verein provides legal structure for those who want it
-- Protocol operates independently of Verein's legal status
-
 ### Two Provider Scenarios
 
 The Verein operates under two provider models:
@@ -357,13 +491,6 @@ Foundation X: Responsible for their own compliance
 - In Primary model, the protocol makes allocation decisions (with compliance filtering)
 - In Secondary model, external entity makes allocation decisions (with their own compliance)
 - In both models, the Board only executes (never decides)
-
-**Why Primary model is core:**
-- Verein receives unrestricted donations (most funding)
-- Verein accumulates surplus from operations
-- Maintains computational allocation even for Verein's own funds
-- Board never gains discretionary power over allocations
-- Compliance filtering happens computationally (not Board discretion)
 
 ### Compliance Filtering
 

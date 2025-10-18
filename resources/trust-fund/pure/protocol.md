@@ -1554,49 +1554,86 @@ Assembly is formality acknowledging computational results, not making operationa
 
 **Free-Association Implementation:**
 ```
-Board Designation:
-- Automatic: Top 3 MRD scores become board
-- President: Highest MRD
-- Treasurer: 2nd highest MRD  
-- Secretary: 3rd highest MRD
+Board Selection (Opt-In Model):
+- Positions offered by MRD ranking
+- Highest MRD offered first, can accept or decline
+- If declines, offer goes to next highest MRD
+- Continue until 3 positions filled
+- President: Highest MRD of actual Board members (not ranking)
+- All Board members: Equal signing authority
 
-No election needed - computation determines board.
+No forced appointment - members opt in to Board service.
 
-Board Responsibilities:
+Board Minimal Responsibilities:
+- Sign bank transfers as instructed by protocol
 - Sign legal documents as required by Swiss law
-- Maintain statutory compliance
-- Execute decisions already made by computational protocols
-- Interface with external legal/financial entities
-- Hold bank account signing authority
+- File required reports with authorities
+- Maintain bank account access
 
 Board does NOT:
 - Decide membership (MRD module does)
-- Allocate resources (Providers do via capacity declarations)
-- Set strategy (Decider process does)
-- Appoint officers (MRD ranking does)
+- Allocate resources (Protocol does via capacity + filters)
+- Decide compliance filters (Compliance service does)
+- Set strategy (Emerges from member activity)
+- Make discretionary decisions
+- Have fiduciary discretion
 
-Board rotates automatically as MRD scores change.
-If Alice's MRD drops below top 3, she automatically leaves board.
-If Bob's MRD rises to top 3, he automatically joins board.
+Board rotates quarterly:
+- Current members offered to continue if in top ranks
+- Must explicitly accept to continue
+- Can decline anytime (no penalty)
+- Position offered to next highest MRD
 ```
 
 **Example Board Operation:**
 ```
 Month 1:
-Top MRD scores:
-1. Alice (1.8) → President
-2. Bob (1.5) → Treasurer
-3. Charlie (1.3) → Secretary
+MRD Ranking: Alice (1.8), Bob (1.5), Charlie (1.3), Dave (1.2)
+
+Board offers:
+- Alice offered → Accepts → Board Member
+- Bob offered → Accepts → Board Member
+- Charlie offered → Accepts → Board Member
+
+Board: {Alice, Bob, Charlie}
+President: Alice (highest MRD of actual Board)
 
 Month 6:
-Top MRD scores change:
-1. Alice (1.7) → President (still)
-2. Dave (1.6) → Treasurer (new)
-3. Bob (1.4) → Secretary (demoted)
+MRD Ranking changes: Alice (1.7), Dave (1.6), Bob (1.4), Charlie (1.3)
 
-Board composition changes automatically.
-Bob hands over treasurer responsibilities to Dave.
-No vote, no election, no drama.
+Quarterly review:
+- Alice offered to continue → Accepts
+- Dave offered (new high MRD) → Accepts
+- Bob offered to continue → Declines (too busy)
+- Charlie offered to continue → Accepts
+
+Board: {Alice, Dave, Charlie}
+President: Alice (highest MRD of actual Board)
+
+Bob gracefully exits Board, no drama.
+Dave joins, brings signing authority online.
+```
+
+**Compliance Service Integration:**
+```
+Independent compliance service provider:
+- Performs KYC verification for all members
+- Screens against sanctions lists (OFAC, UN, EU)
+- Determines jurisdiction transfer limits
+- Sets Filter(Member) for each member:
+  - $0 (cannot receive)
+  - $X (capped allocation)
+  - Unlimited (no restrictions)
+- Provides filter data to protocol via API
+- Updates filters when compliance status changes
+
+Board receives transfer instructions with filters already applied.
+Board never modifies or overrides compliance filters.
+
+Separation of powers:
+- Compliance service: Determines who CAN receive
+- Protocol: Determines who SHOULD receive (recognition)
+- Board: Executes transfers mechanically
 ```
 
 #### 4. Purpose
