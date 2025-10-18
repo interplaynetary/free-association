@@ -232,125 +232,127 @@ Any participant can declare a need for their self-actualization:
 - Charlie: "I need 5 acres of land for regenerative agriculture pilot"
 
 These are what they need to actualize their contributions.
+All needs are visible in the network.
 ```
 
-**Collective Capacity Declaration**:
+**Provider Capacity Declaration**:
 ```
-Any participant can declare their view of what collective capacity exists:
+Only providers (those with actual resources) declare capacities:
 
-Alice declares:
-  Set: {Alice, Bob, Charlie, Dave}
+Foundation X declares:
+  Set: {Alice, Bob, Charlie, Dave, Eve}
   Capacity-Type: "Water Infrastructure Funding"
-  Total-Amount: $500,000
+  Total-Amount: $200,000
 
-This is Alice's subjective view of what the collective can provide.
-
-Interpretation: "These people collectively enable $500K of water infrastructure capacity.
-Their combined contributions, relationships, and access make this capacity available.
-I recognize this capacity because it enables self-actualization (mine and others')."
+Interpretation: "I (Foundation X) can provide $200K to support water infrastructure
+work among these participants. I recognize this group's collective capacity to
+use these resources effectively toward water infrastructure."
 ```
 
-**Why subjective declarations matter:**
-- Different people see different collective capacities (different organizational lenses)
-- Each person's view of capacity reflects what they recognize as enabling
-- Multiple overlapping views create rich coordination opportunities
-- No single "correct" view - each perspective creates coordination pathways
+**Why only providers declare capacities:**
+- Providers know what they can actually provide (eliminates phantom capacity)
+- Non-providers speculating about capacity adds no value
+- Providers evaluate needs directly through their own capacity lens
+- Eliminates intermediate "claim" concept
 
-### Collective Recognition Share
+### Collective Recognition Allocation
 
-For Alice's declaration {Alice, Bob, Charlie, Dave} with $500K capacity:
+When Foundation X declares a capacity for {Alice, Bob, Charlie, Dave, Eve}:
 
 **Step 1: Calculate Collective Recognition Pool**
 ```
-Pool = Σ MutualRecognition(i, j) for all pairs in set
+Pool = Σ MutualRecognition(i, j) for all pairs in provider's set
 
 Example:
 Alice ↔ Bob: 10%
 Alice ↔ Charlie: 8%
 Alice ↔ Dave: 12%
+Alice ↔ Eve: 9%
 Bob ↔ Charlie: 6%
 Bob ↔ Dave: 7%
+Bob ↔ Eve: 5%
 Charlie ↔ Dave: 9%
+Charlie ↔ Eve: 7%
+Dave ↔ Eve: 8%
 
-Pool = 52%
+Pool = 81%
 ```
 
-**Step 2: Calculate Individual's Collective Recognition Share**
+**Step 2: Calculate Each Person's Collective Recognition Share**
 ```
-Alice's-Share = (Σ MutualRecognition(Alice, Other)) / Pool
-                = (10% + 8% + 12%) / 52%
-                = 57.7%
-```
+Alice's-Share = (Σ MutualRecognition(Alice, Others-in-set)) / Pool
+                = (10% + 8% + 12% + 9%) / 81%
+                = 48.1%
 
-**Step 3: Generate Claim**
-```
-Alice's-Claim = Alice's-Share × Total-Amount
-               = 57.7% × $500K
-               = $288,500
-
-This becomes a visible claim in the network.
+Bob's-Share = (10% + 6% + 7% + 5%) / 81% = 34.6%
+Charlie's-Share = (8% + 6% + 9% + 7%) / 81% = 37.0%
+Dave's-Share = (12% + 7% + 9% + 8%) / 81% = 44.4%
+Eve's-Share = (9% + 5% + 7% + 8%) / 81% = 35.8%
 ```
 
-### Provider Response
-
-**Providers respond to claims based on mutual recognition - which reflects how much the claimant enables the provider's self-actualization.**
-
-When a provider responds to a claim:
+**Step 3: Provider Sees Needs and Allocates**
 ```
-Foundation X recognizes Alice: 15%
-Meaning: "Alice's work represents 15% of what enables Foundation X to self-actualize
-(fulfill its mission, create impact, advance its values)."
+Foundation X sees needs from members of their declared set:
+- Alice needs: $50K (water filtration)
+- Bob needs: $30K (pump systems)
+- Charlie needs: $25K (sanitation)
+- Dave needs: $40K (infrastructure)
+- Eve needs: $15K (education)
 
-Foundation X has $200K available to allocate
-Foundation X sees Alice's $288.5K claim for water infrastructure
+Foundation X has $200K to allocate.
 
-Foundation X calculation:
-- Alice enables 15% of our self-actualization
-- Alice's claim is legitimate (proven track record, real need)
-- We have $200K available
-- Response: $30K to Alice (reflecting recognition weight and assessment)
+Foundation X allocates based on:
+1. Collective recognition shares (who's most mutually recognized in the set)
+2. Expressed needs (what people actually need)
+3. Foundation's own recognition of each person (who enables Foundation's self-actualization)
+4. Available capacity ($200K total)
 
-This is Foundation X investing in what enables its own self-actualization.
-```
+Foundation X allocation:
+- Alice: $50K (high collective recognition, full need met)
+- Dave: $40K (high collective recognition, full need met)
+- Bob: $30K (medium collective recognition, full need met)
+- Charlie: $25K (medium collective recognition, full need met)
+- Eve: $15K (lower collective recognition, but all needs in set were met)
+- Total: $160K allocated, $40K remaining for future needs
 
-**Another provider:**
-```
-Individual Donor Y recognizes Alice: 20%
-Meaning: "Alice's work represents 20% of what enables me to self-actualize
-(live my values, create meaningful change, fulfill my purpose)."
-
-Donor Y has $10K available
-Donor Y sees Alice's $288.5K claim
-Response: $8K to Alice (reflecting higher recognition %)
-
-Donor Y is investing in what enables their own self-actualization.
+All needs in this set were fully met because total needs ($160K) < capacity ($200K).
 ```
 
-**Total fulfilled: $38K of Alice's $288.5K claim**
+**Allocation when capacity is constrained:**
+```
+If Foundation X only had $100K:
+
+Allocation would prioritize by collective recognition shares:
+- Alice: $50K (48.1% × need fully met, highest recognition)
+- Dave: $35K (44.4% × need partially met, second highest recognition)
+- Bob: $15K (34.6% × need partially met)
+- Total: $100K allocated
+
+Remaining unfulfilled needs visible to other providers.
+```
 
 **Key insight:**
 - Providers aren't "donating" - they're investing in what enables their own self-actualization
-- Higher mutual recognition = provider's self-actualization more dependent on claimant
-- Response proportional to both recognition and available resources
-- This creates natural alignment: resources flow to what enables self-actualization across the network
+- Collective recognition shares guide allocation priorities
+- Providers see actual needs and allocate based on their available resources
+- No intermediate "claims" needed - direct from capacity to allocation
 
 ### Self-Correction Mechanisms
 
-**Phantom Claims Get Ignored**:
+**Phantom Capacity Eliminated**:
 ```
-If Alice declares phantom capacity ($1M when collective only has $100K):
-- Alice's claim is proportionally large
-- But providers with actual resources know real availability
-- Providers don't respond to inflated claim
-- Alice's claim remains unfulfilled
-- Network learns Alice makes unrealistic declarations
-- Alice's future claims get less response
+Unlike the old model where anyone could declare phantom capacity,
+only providers (with actual resources) declare capacity.
+
+Foundation X declares: $200K capacity for {Alice, Bob, Charlie}
+→ Foundation X has $200K and is committing to allocate it
+→ No phantom capacity possible (provider wouldn't declare what they don't have)
 ```
 
 **Success Amplifies**:
 ```
 Cycle 1:
-Alice receives $38K, delivers water filtration systems
+Foundation X allocates $50K to Alice, Alice delivers water filtration systems
 
 Cycle 2:
 Other members increase recognition of Alice:
@@ -361,9 +363,9 @@ Other members increase recognition of Alice:
 Alice's MRS increases: 30% → 45%
 
 Cycle 3:
-Alice declares same collective capacity
-Alice's share is now higher due to increased recognition
-More providers respond due to proven track record
+Foundation Y declares capacity including Alice
+Alice's collective-recognition-share is now higher due to increased recognition
+Foundation Y allocates more to Alice based on higher recognition
 Alice receives $85K
 ```
 
@@ -372,21 +374,29 @@ Alice receives $85K
 If Alice fails to deliver:
 - Recognition from Bob, Charlie, Dave decreases
 - Alice's MRS drops
-- Alice's collective-recognition-share shrinks
-- Fewer providers respond to future claims
+- Alice's collective-recognition-share shrinks in future capacity sets
+- Providers allocate less to Alice (lower recognition)
 - Resources naturally redirect to better performers
 ```
 
-### Multiple Overlapping Collectives
+### Multiple Provider Lenses
 
 ```
-Alice can simultaneously declare:
-- {Alice, Bob, Charlie} "Water Capacity" = $300K → Alice's claim: $120K
-- {Alice, Dave, Eve} "Education Capacity" = 500 hours → Alice's claim: 200 hours
-- {Bob, Charlie, Alice} "Land Access" = 50 acres → Alice's claim: 18 acres
+Foundation X declares:
+  Set: {Alice, Bob, Charlie}
+  Capacity: $300K for "Water Infrastructure"
+  
+Foundation Y declares:
+  Set: {Alice, Dave, Eve}
+  Capacity: 500 hours for "Education Programs"
+  
+Individual Donor Z declares:
+  Set: {Bob, Charlie, Alice}
+  Capacity: $50K for "Community Organizing"
 
-All claims are visible simultaneously.
-Providers can respond to any/all based on mutual recognition and resource availability.
+Each provider sees needs through their own lens.
+Each provider allocates based on collective recognition within their set.
+Alice can receive from multiple providers based on different capacity sets.
 ```
 
 ---
@@ -494,18 +504,26 @@ All become initial members
 Alice declares need:
 "I need $50K to establish water filtration in Uganda village"
 
-Bob declares collective capacity:
-{Alice, Bob, Charlie, Dave, Eve} has "$200K Water Infrastructure Funding"
+Foundation X declares capacity:
+  Set: {Alice, Bob, Charlie, Dave, Eve}
+  Capacity-Type: "Water Infrastructure Funding"
+  Total-Amount: $200K
 
-Bob's collective-recognition-share: 23%
-Bob's claim: $46K
+Foundation X calculates collective recognition shares:
+- Alice: 45% (highest mutual recognition in set)
+- Bob: 28%
+- Charlie: 22%
+- Dave: 18%
+- Eve: 15%
 
-But Bob doesn't need resources - Bob is declaring what he sees the collective can provide.
+Foundation X sees Alice's $50K need (within their declared set)
+Foundation X allocates: $25K to Alice (prioritized by recognition + need)
 
-Providers see the collective capacity declaration and respond:
-- Foundation X sees high recognition within {Alice, Bob, Charlie, Dave, Eve}
-- Foundation X responds to Alice's $50K need with $25K
-- Individual donors contribute $8K more
+Individual Donor Y declares capacity:
+  Set: {Alice, Bob}
+  Capacity: $10K for water work
+  
+Donor Y allocates: $8K to Alice, $2K to Bob
 
 Alice receives $33K of requested $50K
 ```
@@ -524,27 +542,29 @@ Week 4: Frank's MRD = 0.52 (becomes member!)
 No approval process needed - computation determines membership
 ```
 
-**Week 8: Collective Recognition Expansion**
+**Week 8: Multiple Provider Lenses**
 ```
-Multiple overlapping collective capacity declarations:
+Multiple providers declare capacities through different lenses:
 
-Alice declares:
-{Alice, Bob, Frank} "Uganda Water Capacity" = $100K
+Foundation X declares:
+  Set: {Alice, Bob, Frank}
+  Capacity: $100K for "Uganda Water Projects"
 
-Charlie declares:
-{Charlie, Dave, Eve} "Kenya Sanitation Capacity" = $75K
+Foundation Y declares:
+  Set: {Charlie, Dave, Eve}
+  Capacity: $75K for "Kenya Sanitation"
 
-Bob declares:
-{Alice, Bob, Charlie, Dave, Eve, Frank} "Network Water Capacity" = $500K
+Foundation Z declares:
+  Set: {Alice, Bob, Charlie, Dave, Eve, Frank}
+  Capacity: $500K for "Network Water Infrastructure"
 
-All are subjective views of collective capacity.
-All generate claims proportional to collective-recognition-shares.
-All are visible to provider network.
+Each provider:
+- Calculates collective recognition shares within their set
+- Sees needs from members of their set
+- Allocates based on recognition + needs + available resources
 
-Providers respond based on:
-- Which claimants they have mutual recognition with
-- Which collective capacity declarations seem legitimate
-- Their available resources
+Needs are visible to all providers.
+Each provider allocates through their own capacity lens.
 ```
 
 **Month 6: Success Amplification**
@@ -559,9 +579,9 @@ Alice's MRS: 30% → 47%
 Alice's MRD: 0.7 → 1.1
 
 Next cycle:
-Alice's collective-recognition-shares are larger
-More providers respond (proven track record)
-Alice receives $80K for expansion project
+Foundation X declares new capacity including Alice
+Alice's collective-recognition-share is higher (due to increased recognition)
+Foundation X allocates $80K to Alice for expansion project
 
 Automatic reciprocity through recognition growth.
 ```
@@ -586,20 +606,24 @@ Implementation: Next computation cycle
 ```
 Network now has 150 members across 5 bioregions
 
-Collective capacity declarations span geographies:
-- Uganda hub declares water capacity
-- Kenya hub declares sanitation capacity
-- Rwanda hub declares agricultural capacity
+Providers declare capacities spanning geographies:
+- Foundation X declares: $500K capacity for Uganda hub members
+- Foundation Y declares: $300K capacity for Kenya hub members
+- Foundation Z declares: $200K capacity for Rwanda hub members
 
 Inter-hub recognition creates network effects:
-- Uganda hub recognizes Kenya hub: 25%
-- Kenya hub recognizes Rwanda hub: 18%
-- Cross-hub collective capacities emerge
+- Uganda-Kenya mutual recognition: 25%
+- Kenya-Rwanda mutual recognition: 18%
+- Providers can declare cross-hub capacity sets
 
-Providers can respond to claims across entire network based on mutual recognition patterns.
+Large Foundation W declares:
+  Set: {50 members across all hubs}
+  Capacity: $2M for bioregional water infrastructure
+  
+Foundation W allocates based on collective recognition across entire network.
 
 No central coordination needed.
-Resources flow to highest recognition + highest legitimacy claims.
+Resources flow based on provider capacity declarations + collective recognition.
 ```
 
 ---
@@ -654,6 +678,8 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ❌ Giver/receiver power dynamics
 - ❌ Charitable dependency relationships
 - ❌ Performance theater for funders
+- ❌ Phantom capacity declarations (only providers declare capacity)
+- ❌ Intermediate "claim" concept (providers allocate directly to needs)
 
 ### What It Guarantees
 
@@ -661,12 +687,13 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ✓ Resources flow to recognized needs from willing providers
 - ✓ Success amplifies through recognition increase
 - ✓ Failure corrects through recognition decrease
-- ✓ Phantom claims get ignored by providers
+- ✓ Only providers with actual resources declare capacity
 - ✓ No single point of failure
 - ✓ Transparent and auditable
 - ✓ Scale-invariant (works from 5 to 5000 participants)
 - ✓ Sybil-resistant
 - ✓ Self-organizing around real contribution
+- ✓ Direct allocation from capacity to needs (no intermediate claims)
 
 ### Emergence Without Central Control
 
@@ -685,19 +712,19 @@ No appointments needed. Roles visible from recognition patterns.
 
 **Priorities emerge naturally:**
 ```
-High collective-recognition-share claims = high priority
-Many provider responses = high priority
-Low collective-recognition-share claims = low priority
-Few provider responses = low priority
+Needs with high collective-recognition-shares in provider capacity sets = high priority
+Needs that receive allocations from multiple providers = high priority
+Needs with low collective-recognition-shares = low priority
+Needs that receive no provider allocations = low priority
 
-Priorities emerge from recognition + provider response patterns.
+Priorities emerge from recognition + provider allocation patterns.
 No planning committee needed.
 ```
 
 **Quality emerges naturally:**
 ```
-High quality work → high recognition → larger claims → more resources
-Low quality work → low recognition → smaller claims → fewer resources
+High quality work → high recognition → higher collective-recognition-shares → more provider allocations
+Low quality work → low recognition → lower collective-recognition-shares → fewer provider allocations
 
 Quality differential emerges automatically.
 No quality review board needed.
@@ -730,10 +757,22 @@ type MembershipStatus = {
 };
 ```
 
-### Collective Capacity Declaration
+### Need Declaration
 ```typescript
-type CollectiveCapacity = {
+type Need = {
   declarerId: string;
+  description: string;
+  amount: number | string;
+  unit: string; // "$", "hours", "acres", etc.
+  timestamp: Date;
+  status: "open" | "partially-fulfilled" | "fulfilled";
+};
+```
+
+### Provider Capacity Declaration
+```typescript
+type ProviderCapacity = {
+  providerId: string; // Must be the provider themselves
   setOfPeople: string[];
   capacityType: string;
   totalAmount: number | string;
@@ -742,27 +781,16 @@ type CollectiveCapacity = {
 };
 ```
 
-### Claim
+### Allocation
 ```typescript
-type Claim = {
-  claimantId: string;
-  sourceDeclaration: CollectiveCapacity;
-  collectiveRecognitionShare: number; // 0-1
-  claimAmount: number | string;
-  unit: string;
-  status: "pending" | "partially-fulfilled" | "fulfilled";
-  providerResponses: ProviderResponse[];
-};
-```
-
-### Provider Response
-```typescript
-type ProviderResponse = {
+type Allocation = {
   providerId: string;
-  claimId: string;
+  recipientId: string;
+  sourceCapacity: ProviderCapacity;
   amount: number | string;
   unit: string;
-  mutualRecognitionWithClaimant: number;
+  recipientCollectiveRecognitionShare: number; // 0-1 (within provider's set)
+  mutualRecognition: number; // Between provider and recipient
   timestamp: Date;
   notes?: string;
 };
@@ -805,15 +833,18 @@ Every Monday 00:00 UTC:
 8. Publish results to network
 ```
 
-### Daily: Collective Recognition
+### Daily: Resource Allocation
 ```
 Every day 00:00 UTC:
 
-1. Collect new collective capacity declarations
-2. Calculate collective-recognition-shares for each declaration
-3. Generate/update claims
-4. Collect provider responses
-5. Update claim fulfillment status
+1. Collect new need declarations
+2. Collect new provider capacity declarations
+3. For each provider capacity:
+   - Calculate collective-recognition-shares within declared set
+   - Match needs from members in the set
+   - Provider allocates based on recognition + needs + available capacity
+4. Record allocations
+5. Update need fulfillment status
 6. Update recognition based on outcomes (successful delivery → recognition boost)
 7. Publish results to network
 ```
@@ -852,23 +883,25 @@ When parameter change proposed:
 
 **Declare Needs:**
 - Post what you need
-- See response from network
+- See allocations from providers
 - Update as needs change
 
-**Declare Collective Capacities:**
-- Your view of what collective can provide
-- See resulting claims
-- See provider responses
+**Declare Capacity (if you're a provider):**
+- Declare your available resources
+- Specify set of participants you can support
+- System calculates collective-recognition-shares
+- You allocate to needs based on recognition + availability
 
-**View Claims:**
-- Your claims from collective capacity declarations
-- Fulfillment status
-- Provider responses
+**View Allocations:**
+- Allocations you've received from providers
+- Fulfillment status of your needs
+- Which providers allocated to you
 
-**Respond to Claims (if you're a provider):**
-- See all claims in network
-- Filter by mutual recognition
-- Respond with your resources
+**Make Allocations (if you're a provider):**
+- See all needs in network
+- Filter by participants in your capacity sets
+- See collective-recognition-shares within your sets
+- Allocate your resources to needs
 
 ### Observer Interface
 
@@ -877,12 +910,12 @@ When parameter change proposed:
 - Total MRS in network
 - Average MRD
 - Recognition density
-- Claim fulfillment rate
+- Need fulfillment rate
 
-**Active Claims:**
-- All pending claims
+**Active Needs:**
+- All open needs
 - Fulfillment rates by type
-- Provider response patterns
+- Provider allocation patterns
 
 **Recognition Patterns:**
 - Who recognizes whom (anonymized)
@@ -891,8 +924,8 @@ When parameter change proposed:
 - Emerging roles
 
 **Resource Flows:**
-- Provider responses over time
-- Claim fulfillment trends
+- Provider allocations over time
+- Need fulfillment trends
 - Resource velocity
 - Distribution patterns
 
@@ -900,26 +933,19 @@ When parameter change proposed:
 
 ## 9. Edge Cases
 
-### What if someone declares phantom collective capacity?
+### What if someone tries to declare capacity they don't have?
 
 ```
-Alice declares: {Alice, Bob, Charlie} has "$10 million funding capacity"
-Reality: Collective only has access to $100K
+This edge case is eliminated by design:
+- Only providers can declare capacity
+- A provider declaring "$10 million capacity" commits to allocating that amount
+- If provider doesn't actually have $10M, they won't declare it (would expose their fraud)
+- No incentive to declare phantom capacity (you can only allocate what you have)
 
-Alice's collective-recognition-share: 40%
-Alice's claim: $4 million
+In the old model, non-providers could speculate about capacity.
+In the new model, only providers with actual resources declare capacity.
 
-Providers see Alice's $4M claim but:
-- Know real capacity is only $100K
-- Don't respond to inflated claim
-- Alice's claim remains unfulfilled
-
-Next cycle:
-- Network learns Alice makes unrealistic declarations
-- Other members reduce recognition of Alice (or tag as "unrealistic")
-- Alice's future claims get less response
-
-Self-correcting through provider reality check.
+Phantom capacity problem: Solved by eliminating non-provider capacity declarations.
 ```
 
 ### What if everyone recognizes everyone maximally?
@@ -935,11 +961,11 @@ Result:
 This is fine! If recognition is genuine and everyone contributes value, everyone should be a member.
 
 If recognition is NOT genuine (just courtesy):
-- Collective capacity declarations will be inflated
-- Providers won't respond (know real capacity)
-- Claims remain unfulfilled
-- Members stop making phantom declarations
-- Natural correction
+- Collective-recognition-shares will be relatively equal
+- Providers will still allocate based on needs + their own judgment
+- Providers can weight by their own recognition of recipients
+- If outcomes are poor, providers reduce future capacity declarations
+- Natural correction through provider discretion
 ```
 
 ### What if a member stops contributing?
@@ -1090,25 +1116,30 @@ If Alice falsely doesn't recognize Bob (Bob does enable Alice, but Alice doesn't
 - Accurate recognition optimizes your self-actualization
 - Truth-telling is self-interested, not altruistic
 
-### Collective Recognition as Organizational Intelligence
+### Provider Lenses as Organizational Intelligence
 
-**Collective capacity declarations reveal organizational perspectives:**
+**Provider capacity declarations reveal organizational perspectives:**
 
 ```
-Alice sees: {Alice, Bob, Charlie, Dave} has "$500K Water Capacity"
-Charlie sees: {Bob, Charlie, Dave, Eve} has "$300K Agriculture Capacity"
+Foundation X declares:
+  Set: {Alice, Bob, Charlie, Dave}
+  Capacity: $500K for "Water Infrastructure"
 
-These aren't competing claims - they're different organizational lenses.
+Foundation Y declares:
+  Set: {Bob, Charlie, Dave, Eve}
+  Capacity: $300K for "Agriculture"
 
-Alice's lens:
+These aren't competing - they're different organizational lenses.
+
+Foundation X's lens:
 - Focuses on water infrastructure
-- Sees Alice, Bob, Charlie, Dave as water-enabling collective
-- Generates claims for water-related work
+- Recognizes Alice, Bob, Charlie, Dave as water-enabling collective
+- Allocates to water-related needs within this set
 
-Charlie's lens:
+Foundation Y's lens:
 - Focuses on agriculture
-- Sees Bob, Charlie, Dave, Eve as agriculture-enabling collective
-- Generates claims for agriculture-related work
+- Recognizes Bob, Charlie, Dave, Eve as agriculture-enabling collective
+- Allocates to agriculture-related needs within this set
 
 Both lenses are valid.
 Both create coordination opportunities.
@@ -1116,15 +1147,15 @@ Both enable different forms of self-actualization.
 ```
 
 **No single "correct" organization:**
-- Multiple overlapping collectives
-- Multiple perspectives on capacity
+- Multiple provider lenses
+- Multiple perspectives on who can effectively use resources
 - Multiple coordination pathways
-- Prismatic coordination (same people, different organizational views)
+- Prismatic coordination (same people, different provider views)
 
 **Intelligence emerges from multiplicity:**
-- Network becomes more intelligent as more lenses exist
-- Each lens reveals different enabling relationships
-- Providers can respond through any lens based on their recognition
+- Network becomes more intelligent as more provider lenses exist
+- Each provider lens reveals different enabling relationships
+- Providers allocate through their own capacity lenses
 - No central planning needed - organizational intelligence is distributed
 
 ### Why This Works: Alignment of Incentives
@@ -1145,11 +1176,21 @@ To get resources, you must:
 2. Help others succeed
    → Because their success increases their recognition of you
    
-3. Be honest about capacity
-   → Because phantom claims get ignored by providers
+3. Demonstrate real contribution
+   → Because that's what providers recognize and allocate toward
    
-4. Focus on real contribution
-   → Because that's what others recognize
+4. Build genuine enabling relationships
+   → Because that's what increases collective-recognition-shares
+
+For providers:
+1. Only declare capacity you actually have
+   → Because you must allocate what you declare
+   
+2. Allocate to highest-recognition contributors
+   → Because that's what maximizes impact of your resources
+   
+3. Track outcomes
+   → Because successful allocations inform future capacity declarations
 
 You cannot game this system without actually doing the thing.
 The only way to win is to genuinely enable self-actualization.
@@ -1174,19 +1215,19 @@ The only way to win is to genuinely enable self-actualization.
 Network of 10 people:
 - 45 potential mutual recognitions
 - Each person manages ~9 recognitions
-- Collective capacity declarations create coordination
+- Provider capacity declarations create coordination
 
 Network of 100 people:
 - 4,950 potential mutual recognitions
 - Each person still manages ~recognition budget (100%)
-- More collective capacity declarations → more coordination pathways
-- More providers → more claim responses
+- More provider capacity declarations → more coordination pathways
+- More providers → more allocations to needs
 - More enabling relationships → more self-actualization opportunities
 
 Network of 1,000 people:
 - 499,500 potential mutual recognitions
 - Each person still manages same recognition budget
-- Massive coordination opportunities through collective capacities
+- Massive coordination opportunities through provider capacities
 - Rich provider network
 - Deep specialization possible
 - High network effects
@@ -1196,12 +1237,12 @@ Network of 1,000 people:
 1. **Fixed individual complexity**: Each person manages 100% recognition (doesn't increase with network size)
 2. **Distributed computation**: No central processor bottleneck
 3. **Natural clustering**: Sub-networks form around enabling relationships
-4. **Multiple coordination layers**: Collective capacities create high-level coordination without requiring all-to-all connections
-5. **Provider-claim matching**: Automatic discovery of alignment without search committees
+4. **Multiple coordination layers**: Provider capacities create high-level coordination without requiring all-to-all connections
+5. **Provider-need matching**: Automatic discovery of alignment without search committees
 
 **Network effects increase with scale:**
-- More providers → better claim fulfillment rates
-- More collective capacity declarations → more coordination opportunities
+- More providers → better need fulfillment rates
+- More provider capacity declarations → more coordination opportunities
 - More enabling relationships → more self-actualization pathways
 - More specialization → higher quality enabling contributions
 
@@ -1244,12 +1285,12 @@ a) General Assembly: All members (MRD ≥ 0.5)
 b) Board: Members with highest MRD scores (automatic designation)"
 
 Article 4 - Decision Making
-"Resource allocation via Collective Recognition Module.
+"Resource allocation via provider capacity declarations and need matching.
 Constitutional decisions via Decider process.
 Membership decisions via MRD computation."
 
 Article 5 - Finances
-"Resources flow via Collective Recognition claims and provider responses.
+"Resources flow via provider allocations to member needs.
 All flows recorded in transparent ledger."
 ```
 
@@ -1263,13 +1304,13 @@ Annual General Assembly convenes (legally required):
 
 Agenda:
 1. Review of past year's membership (MRD computations)
-2. Review of resource flows (Collective Recognition results)
-3. Financial statements (provider responses and claim fulfillments)
+2. Review of resource flows (provider allocations to needs)
+3. Financial statements (provider allocations and need fulfillments)
 4. Any Decider proposals for parameter changes
 5. Acknowledgment of computation results
 
 Decisions:
-- Routine matters: Already handled by Membership + Collective Recognition
+- Routine matters: Already handled by Membership + Resource Allocation protocols
 - Constitutional changes: Use Decider process (can happen async before assembly)
 - Legal compliance: Board implements based on member consensus
 
@@ -1299,7 +1340,7 @@ Board Responsibilities:
 
 Board does NOT:
 - Decide membership (MRD module does)
-- Allocate resources (Collective Recognition does)
+- Allocate resources (Providers do via capacity declarations)
 - Set strategy (Decider process does)
 - Appoint officers (MRD ranking does)
 
@@ -1435,20 +1476,21 @@ Income:
 - By source: Foundation X ($50K), Individual donors ($20K), etc.
 
 Expenses:
-- Claim fulfillments (recorded as expense when disbursed)
+- Allocations (recorded as expense when disbursed)
 - By recipient/project: Alice/Uganda Water ($30K), Bob/Kenya Sanitation ($15K), etc.
 
 All transactions tied to:
-- Collective Recognition claim ID
-- Provider response ID  
+- Provider capacity declaration ID
+- Allocation ID  
 - MRD scores at time of transaction
 - Mutual recognition between provider and recipient
+- Recipient's collective-recognition-share in provider's set
 
-Financial statements generated automatically from Collective Recognition ledger.
+Financial statements generated automatically from allocation ledger.
 
 Auditable trail:
-Recognition data → MRD computation → Collective capacity declaration → 
-Claim generation → Provider response → Resource transfer → Financial record
+Recognition data → MRD computation → Need declarations → 
+Provider capacity declaration → Allocation → Resource transfer → Financial record
 ```
 
 ### Complete Legal Mapping Example
@@ -1464,22 +1506,24 @@ Step 1: Foundation X becomes participant
 Step 2: Foundation X contribution
 - Legally: Donation to Swiss Verein bank account
 - Recorded: $100K received from Foundation X
-- Free-Association view: Foundation X can now respond to claims up to $100K
+- Free-Association view: Foundation X can now declare capacity and allocate
 
-Step 3: Claims emerge
-- Alice has $50K claim (water infrastructure)
-- Bob has $30K claim (regenerative agriculture)
-- Charlie has $40K claim (education programs)
+Step 3: Needs are visible
+- Alice needs: $50K (water infrastructure)
+- Bob needs: $30K (regenerative agriculture)
+- Charlie needs: $40K (education programs)
 
-Step 4: Foundation X responds
-- Foundation X reviews claims
-- Checks mutual recognition with claimants
-- Assesses claim legitimacy
-- Responds: $30K to Alice, $25K to Bob, $20K to Charlie
-- Total: $75K allocated, $25K remaining
+Step 4: Foundation X declares capacity and allocates
+- Foundation X declares capacity:
+  Set: {Alice, Bob, Charlie, Dave, Eve}
+  Total: $100K
+- Foundation X calculates collective-recognition-shares
+- Foundation X reviews needs from members in set
+- Foundation X allocates: $30K to Alice, $25K to Bob, $20K to Charlie
+- Total: $75K allocated, $25K remaining for future needs
 
 Step 5: Board executes
-- Board (top 3 MRD) receives notification
+- Board (top 3 MRD) receives allocation instructions
 - Board transfers:
   - $30K to Alice's project account
   - $25K to Bob's project account
@@ -1498,8 +1542,8 @@ Balance: $25K remaining
 Step 7: Next cycle
 - Alice, Bob, Charlie deliver projects
 - Members increase recognition of successful projects
-- Higher recognition → larger future claims
-- Foundation X sees successful delivery → responds to future claims
+- Higher recognition → higher collective-recognition-shares in future capacity sets
+- Foundation X sees successful delivery → declares new capacity and allocates more
 - Reciprocity spiral continues
 ```
 
@@ -1507,13 +1551,13 @@ Step 7: Next cycle
 
 | Swiss Requirement | Free-Association Implementation | Interface Point |
 |-------------------|--------------------------------|-----------------|
-| Statutes | Document encoding MRD, Collective Recognition, Decider | Written once, references protocols |
+| Statutes | Document encoding MRD, Resource Allocation, Decider | Written once, references protocols |
 | General Assembly | Annual meeting acknowledging computational results | Formality, not decision-making |
 | Board | Top 3 MRD scores, auto-designated | Board signs documents, executes |
 | Purpose | Stated in statutes, enforced by recognition patterns | Purpose filters what work gets recognized |
 | Members | MRD ≥ threshold | Updated weekly, list provided to authorities |
 | Meeting Protocols | Document assembly, acknowledge results | Written record of computational outcomes |
-| Financial Records | Auto-generated from Collective Recognition ledger | Standard accounting from transparent flows |
+| Financial Records | Auto-generated from provider allocation ledger | Standard accounting from transparent flows |
 | Bank Account | Board signatories (top 3 MRD) | Board executes transfers per protocol |
 | Legal Representation | President (highest MRD) | Signs contracts, represents externally |
 
@@ -1546,7 +1590,7 @@ Resources flow to what enables self-actualization
 
 **Three Computational Mechanisms:**
 1. **Membership Module** → Determines who participates (MRD ≥ threshold)
-2. **Collective Recognition** → Allocates resources (claims + provider responses)
+2. **Resource Allocation** → Allocates resources (provider capacities + needs)
 3. **Decider** → Tunes parameters (rarely, weighted by MRD)
 
 **Zero Governance:**
@@ -1554,20 +1598,20 @@ Resources flow to what enables self-actualization
 - No committees (computation handles all)
 - No approval processes (MRD determines membership)
 - No voting (except rare Decider for parameters)
-- No centralized planning (collective capacities create coordination)
-- No grant applications (needs + claims + provider responses)
+- No centralized planning (provider lenses create coordination)
+- No grant applications (needs + provider allocations)
 
 **Complete Functionality:**
 - Membership emerges from mutual recognition patterns
-- Resources flow to recognized needs through provider responses
-- Success amplifies automatically (higher recognition → larger claims)
-- Failure corrects automatically (lower recognition → smaller claims)
+- Resources flow to recognized needs through provider allocations
+- Success amplifies automatically (higher recognition → higher collective-recognition-shares)
+- Failure corrects automatically (lower recognition → lower collective-recognition-shares)
 - Roles emerge from recognition patterns (who's recognized for what)
-- Priorities emerge from claim responses (what gets fulfilled)
+- Priorities emerge from allocation patterns (what gets fulfilled)
 - Quality emerges from enabling outcomes (what actually helps self-actualization)
 
 **Self-Correcting Properties:**
-- Phantom capacity declarations get ignored by providers
+- Phantom capacity eliminated (only providers with actual resources declare capacity)
 - False recognition hurts your own self-actualization (wrong allocation)
 - Success increases recognition (enabling others → they recognize you more)
 - Failure decreases recognition (not enabling → recognition drops)
@@ -1578,7 +1622,7 @@ Resources flow to what enables self-actualization
 - Fixed individual complexity (always manage 100% recognition)
 - Distributed computation (no bottlenecks)
 - Natural clustering (sub-networks around enabling relationships)
-- Multiple coordination layers (collective capacities)
+- Multiple coordination layers (provider capacities)
 - Network effects increase with scale (more providers, more coordination opportunities)
 
 **Legal Compliance:**
@@ -1599,9 +1643,9 @@ Traditional trusts require governance because they assume:
 
 Free-association eliminates need for governance by recognizing:
 - Recognition patterns determine who belongs (MRD computation)
-- Recognition patterns determine resource flows (collective recognition)
+- Recognition patterns determine resource flows (provider allocations based on collective recognition)
 - Recognition patterns measure performance (recognition increases/decreases)
-- Recognition patterns create coordination (collective capacities + provider responses)
+- Recognition patterns create coordination (provider capacities + need matching)
 
 **Result:** A trust that operates through recognition of mutual enabling, with computational mechanisms handling all coordination, and legal wrapper for compliance only. 
 

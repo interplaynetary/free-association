@@ -71,10 +71,10 @@ The Board does not decide membership, resource allocation, or strategy. These ar
 ## Article 7 — Resources
 
 **7.1 Resource Allocation**  
-Resources are allocated according to the Collective Recognition Module specification at [URL/reference].
+Resources are allocated according to the Resource Allocation Protocol specification at [URL/reference].
 
-**7.2 Claims and Responses**  
-Members declare needs and collective capacities. Providers respond to claims. The Board executes approved transfers.
+**7.2 Needs and Allocations**  
+Members declare needs. Providers declare capacities and allocate to needs. The Board executes approved transfers.
 
 **7.3 Financial Records**  
 All flows are recorded in a transparent ledger maintained per the protocol specification.
@@ -84,7 +84,7 @@ All flows are recorded in a transparent ledger maintained per the protocol speci
 **8.1 Protocol Specifications**  
 The Association operates through three computational protocols:
 - Membership Module (MRD computation)
-- Collective Recognition Module (resource allocation)
+- Resource Allocation Protocol (provider capacities and need matching)
 - Decider Process (parameter adjustments)
 
 **8.2 Protocol References**  
@@ -124,8 +124,8 @@ These Statutes enter into force upon adoption by the founding members.
 | Art. 3.2 | Membership Module | Weekly MRD computation → Member list |
 | Art. 4.2 | Membership Module | Weekly MRD ranking → Board composition |
 | Art. 5.3 | Decider Process | Constitutional proposals → Weighted decision |
-| Art. 7.1 | Collective Recognition | Claims + Responses → Transfer instructions |
-| Art. 7.3 | Collective Recognition | All transactions → Ledger entries |
+| Art. 7.1 | Resource Allocation | Needs + Provider capacities → Transfer instructions |
+| Art. 7.3 | Resource Allocation | All transactions → Ledger entries |
 
 ### Required Protocol Outputs (to Board)
 
@@ -134,7 +134,7 @@ These Statutes enter into force upon adoption by the founding members.
 - Current Board composition (top 3 MRD)
 
 **As-needed:**
-- Transfer instructions (from Collective Recognition)
+- Transfer instructions (from provider allocations)
 - Decider results (for constitutional changes)
 
 **Annually:**
@@ -157,32 +157,34 @@ The Board does NOT:
 
 ### Reconciling Distributed Decisions with Centralized Execution
 
-**Key insight:** The Board never sees collective capacity declarations. The Board only receives specific transfer instructions.
+**Key insight:** The Board never sees capacity declarations or needs. The Board only receives specific transfer instructions.
 
 **The flow:**
 ```
 Layer 1 - Distributed (No centralization):
-Members declare collective capacities (subjective, overlapping)
-- Alice: "{Alice,Bob,Charlie} has $500K water capacity"
-- Bob: "{Bob,Charlie,Dave} has $300K agriculture capacity"
+Members declare needs (visible to all)
+- Alice: "I need $50K for water infrastructure"
+- Bob: "I need $30K for agriculture"
 
-Layer 2 - Protocol Computation (Deterministic):
-Protocol computes claims from each declaration
-- Alice's claim: $288K (from her declaration)
-- Bob's claim: $144K (from his declaration)
+Providers declare capacities (only providers, with actual resources)
+- Foundation X: "{Alice,Bob,Charlie,Dave,Eve} - I can provide $200K"
+- Foundation Y: "{Bob,Charlie,Dave} - I can provide $100K"
 
-Layer 3 - Provider Response (Distributed):
-Providers see claims, respond voluntarily
-- Foundation X: "I'll send $30K to Alice"
+Layer 2 - Provider Allocation (Distributed):
+Each provider:
+- Calculates collective-recognition-shares within their set
+- Sees needs from members in their set
+- Allocates based on recognition + needs + available capacity
+- Foundation X: "I'll send $30K to Alice, $25K to Bob"
 - Foundation Y: "I'll send $20K to Bob"
 
-Layer 4 - Board Execution (Mechanical):
-Board receives ONLY: "Transfer $30K to Alice, $20K to Bob"
+Layer 3 - Board Execution (Mechanical):
+Board receives ONLY: "Transfer $30K to Alice, $45K to Bob"
 
 Board does NOT see:
-❌ Collective capacity declarations ($500K, $300K)
-❌ Claim amounts ($288K, $144K)
-❌ Why these transfers
+❌ Capacity declarations ($200K, $100K)
+❌ Need amounts ($50K, $30K)
+❌ Collective-recognition-shares
 ❌ Provider reasoning
 
 Board ONLY sees:
@@ -191,7 +193,7 @@ Board ONLY sees:
 ✓ That's it
 ```
 
-**No centralization of capacities.** Capacities remain distributed and subjective.
+**No centralization of capacities or needs.** Both remain distributed.
 
 **What gets centralized:** Only the execution of specific transfers that already emerged from the distributed process.
 
@@ -203,19 +205,22 @@ Board ONLY sees:
 
 **Flow:**
 ```
-1. Members declare collective capacities (distributed, subjective)
-2. Protocol computes collective-recognition-shares → Claims
-3. Providers see claims in network
-4. Providers respond to claims:
+1. Members declare needs (visible to all)
+2. Providers declare capacities (only providers, with actual resources)
+3. For each provider capacity:
+   - Protocol computes collective-recognition-shares within provider's set
+   - Provider sees needs from members in their set
+   - Provider allocates based on recognition + needs + capacity
+4. Providers allocate to needs:
 
-   Path A: Direct transfer (provider to claimant)
+   Path A: Direct transfer (provider to recipient)
    - Provider has funds outside Verein
-   - Provider transfers directly to claimant
+   - Provider transfers directly to recipient
    - No Board involvement
    
    Path B: Verein transfer (provider instructs Board)
    - Provider contributed funds TO Verein
-   - Provider response = instruction to Board
+   - Provider allocation = instruction to Board
    - Board executes transfer from Verein account
 
 5. Board receives transfer instructions from protocol
@@ -224,20 +229,25 @@ Board ONLY sees:
 
 **Example:**
 ```
-Alice has $50K claim (from collective capacity declaration)
+Alice declares need: $50K for water infrastructure
 
-Provider responses:
-- Foundation X: "Transfer $30K from Verein account to Alice"
-  → Goes through Board (Foundation donated to Verein)
-  
-- Individual Y: "I'm sending $5K directly to Alice" 
-  → Direct transfer (no Board involvement)
-  
-- Foundation Z: "Transfer $10K from our account to Alice"
-  → Direct transfer (Foundation pays from own account)
+Foundation X declares capacity:
+  Set: {Alice, Bob, Charlie}
+  Total: $200K via Verein
+Foundation X allocates: $30K to Alice
+
+Individual Y declares capacity:
+  Set: {Alice}
+  Total: $5K direct
+Individual Y allocates: $5K to Alice (direct transfer)
+
+Foundation Z declares capacity:
+  Set: {Alice, Bob}
+  Total: $10K direct
+Foundation Z allocates: $10K to Alice (from their account)
 
 Board sees:
-- Protocol output: "Transfer $30K to Alice (from Foundation X response)"
+- Protocol output: "Transfer $30K to Alice (from Foundation X allocation)"
 - Board verifies: Foundation X contributed $100K to Verein
 - Board executes: Bank transfer $30K to Alice
 - Board records: Transaction in ledger
@@ -262,20 +272,21 @@ Board CAN:
 - Ensure legal compliance
 
 Board CANNOT:
-- Decide who gets resources (protocol decides)
+- Decide who gets resources (providers decide)
 - Override protocol allocations
-- Prioritize one claim over another
+- Prioritize one need over another
 - Withhold authorized transfers
 ```
 
 **Provider's choice:**
 ```
 When Foundation X contributes $100K to Verein:
-1. Foundation sees network claims
-2. Foundation responds to Alice's claim: $30K
-3. Foundation instructs Verein: "Transfer $30K to Alice"
-4. Protocol records: Foundation X → Alice response
-5. Board executes: $30K transfer from Verein account
+1. Foundation declares capacity for members
+2. Protocol shows collective-recognition-shares within Foundation's set
+3. Foundation sees needs from members in their set
+4. Foundation allocates: $30K to Alice
+5. Foundation instructs Verein: "Transfer $30K to Alice"
+6. Board executes: $30K transfer from Verein account
 
 Foundation could also:
 - Keep funds in own account
@@ -287,8 +298,9 @@ but Board still doesn't decide allocation.
 ```
 
 **Why this works:**
-- Collective Recognition is distributed (members decide)
-- Provider responses are voluntary (providers decide)
+- Need declarations are distributed (members declare)
+- Capacity declarations are distributed (only providers declare)
+- Provider allocations are voluntary (providers decide)
 - Board execution is mechanical (Board doesn't decide)
 - Funds can flow through Verein (with Board execution) or peer-to-peer (no Board)
 - Verein provides legal structure for those who want it
