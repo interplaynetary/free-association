@@ -3,7 +3,7 @@
 	import * as d3 from 'd3';
 	import { currentPath } from '$lib/global.svelte';
 	import { type CollectiveNode, type CollectiveTree } from '$lib/schema';
-	import { findCollectiveNodeById } from '$lib/collective.svelte';
+	import { findCollectiveNodeById } from '$lib/collective-tree.svelte';
 	import Child from '$lib/components/collective/Child.svelte';
 
 	// Props for the collective tree

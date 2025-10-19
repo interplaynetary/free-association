@@ -210,9 +210,13 @@ Resources flow based on computational protocols, not governance decisions.
 
 **Step 1: Members declare needs**
 
-* Post needs via protocol interface
+* Post needs via protocol interface (slot-based structure)
 * Example: "I need $1000 for water infrastructure"
-* All needs visible to collective
+  - Need slot: $1000 by March 15th, Uganda location
+  - Time: Flexible within Q1 2024
+  - Location: Uganda, specific village coordinates
+* Each need has multiple slots (time/location/quantity specific)
+* All needs visible to collective with full temporal/spatial details
 
 **Step 2: Members recognize contributions**
 
@@ -222,10 +226,14 @@ Resources flow based on computational protocols, not governance decisions.
 
 **Step 3: Members declare capacity perspectives**
 
-* Any member can map: "From my view, Collective X can allocate $5000 to {Alice, Bob, Charlie}"
-* These are perspectives of what resources exist
+* Any member can map capacity (slot-based structure):
+  - "From my view, Collective X can allocate $5000 to {Alice, Bob, Charlie}"
+  - Availability slots: $2000 by March 1st, $3000 by April 1st
+  - Location: Global, prioritize East Africa
+  - Time: Q1-Q2 2024 funding rounds
+* These are perspectives of what resources exist (with time/location/quantity)
 * All members see collective-recognition-shares for any declared capacity
-* Enables distributed coordination
+* Enables distributed coordination with temporal/spatial awareness
 
 **Step 4: Protocol computes collective-recognition-shares**
 
@@ -851,7 +859,10 @@ In addition to Open Collective budget:
 **Mutual Recognition:** Min of bidirectional recognition between two members\
 **Collective-Recognition-Share:** Your proportion of mutual recognition within a set\
 **Capacity Declaration:** Statement of resources available for allocation\
-**Need Declaration:** Statement of what you need for your work\
+**Need Declaration:** Slot-based statement of what you need (time/location/quantity)\
+**Need Slot:** Specific time/location/quantity constraint for a need\
+**Capacity Declaration:** Slot-based statement of resources available\
+**Availability Slot:** Specific time/location/quantity when resources are available\
 **Provider:** Someone with actual resources who can allocate\
 **Allocation:** Distribution of resources from provider to need\
 **Compliance Filter:** Maximum amount that can be allocated to a member\

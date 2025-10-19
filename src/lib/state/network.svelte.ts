@@ -29,7 +29,7 @@ import {
 } from '$lib/state/core.svelte';
 import { getGunTimestamp, compareGunTimestamps, isReliableGunTimestamp } from '$lib/utils/gunTimestamp';
 import { chatReadStates, isLoadingChatReadStates, setChatReadStates } from '$lib/state/chat.svelte';
-import { collectiveMembers, collectiveForest } from '$lib/collective.svelte';
+import { collectiveMembers, collectiveForest } from '$lib/collective-tree.svelte';
 import type {
 	NetworkSlotComposition,
 	CapacitiesCollection,

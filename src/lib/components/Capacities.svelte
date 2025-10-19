@@ -720,6 +720,7 @@
 			hidden_until_request_accepted: false,
 			owner_id: $userPub,
 			filter_rule: null,
+			members: [$userPub], // Default to current user as the only member
 			availability_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -759,6 +760,7 @@
 			hidden_until_request_accepted: false,
 			owner_id: $userPub,
 			filter_rule: null,
+			members: [$userPub], // Default to current user as the only member
 			availability_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

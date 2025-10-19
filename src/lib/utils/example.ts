@@ -173,6 +173,7 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			hidden_until_request_accepted: false,
 			owner_id: userPubKey,
 			filter_rule: null,
+			members: [userPubKey], // Default to owner as the only member
 			availability_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

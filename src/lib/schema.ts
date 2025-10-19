@@ -109,15 +109,27 @@ export const BaseCapacitySchema = z.object({
 	filter_rule: z.optional(z.nullable(z.any())),
 
 	// Multiple availability slots instead of single quantity/time/location
-	availability_slots: z.array(AvailabilitySlotSchema)
+	availability_slots: z.array(AvailabilitySlotSchema),
+
+	// Dynamic membership: Makes any capacity a "collective capacity"
+	members: z.optional(z.array(IdSchema)), // Current members of this capacity collective
+	auto_update_members_by_mrd: z.optional(z.boolean()), // If true, membership module updates this list
+	mrd_threshold: z.optional(z.number().gte(0)), // Custom MRD threshold for this capacity (defaults to 0.5)
+	membership_update_frequency_ms: z.optional(z.number().gt(0)), // How often to recompute (defaults to 7 days)
+	last_membership_update: z.optional(z.string()), // Timestamp of last MRD-based update
+	
+	// Compliance filters for allocation (defined after ComplianceFilterSchema)
+	// filters: z.optional(z.record(IdSchema, ComplianceFilterSchema)) // Member ID → Filter
 
 	// use-conditions: effects (possibly triggers)
 });
 
 // Provider perspective - efficient algorithm handles allocation internally
 export const ProviderCapacitySchema = z.object({
-	...BaseCapacitySchema.shape
+	...BaseCapacitySchema.shape,
+	provider_id: z.optional(IdSchema) // Who is providing this capacity
 	// DELETED: recipient_shares - Replaced by computedProviderAllocations
+	// Note: filters added below after ComplianceFilterSchema is defined
 });
 
 // DELETED: SlotComputedQuantitySchema - Replaced by efficient algorithm
@@ -447,6 +459,278 @@ export const TreeMergeResultSchema = z.object({
 });
 
 export type TreeMergeResult = z.infer<typeof TreeMergeResultSchema>;
+
+// === COLLECTIVE TREE TYPES ===
+
+// Entity ID type
+export type EntityID = string;
+
+// Collective type (for collective tree operations)
+export interface Collective {
+	type: 'Collective';
+	id: string;
+	members: Array<Entity>;
+	weights: Map<string, number>; // Maps member IDs to their weight in the collective
+}
+
+// Entity can be either a Node or a Collective
+export type Entity = Node | Collective;
+
+// Forest - maps node IDs to nodes
+export type Forest = Map<string, Node>;
+
+// Node merge data structure for tree merging
+export interface NodeMergeData {
+	id: string;
+	name: string;
+	contributors: Map<
+		string,
+		{
+			originalNode: Node;
+			weightInParent: number;
+			contributorWeight: number;
+		}
+	>;
+	children: Map<string, NodeMergeData>;
+	path: string[];
+}
+
+// Proportional node analysis for contributor percentage calculations
+export interface ProportionalNode {
+	contributor_id: string;
+	percentage_of_node: number;
+	individual_node_percentage: number;
+	contributor_collective_weight: number;
+	path_weight_contribution: number;
+	derivation_steps: Array<{
+		level: number;
+		node_id: string;
+		individual_percentage: number;
+		collective_weight: number;
+		cumulative_path_weight: number;
+	}>;
+}
+
+// Collective capacity allocation result
+export interface CollectiveCapacityAllocation {
+	collective_tree_id: string;
+	total_collective_capacity: Record<string, number>; // Capacity type → total amount
+	node_capacity_allocations: Record<string, Record<string, number>>; // Node ID → Capacity type → allocated amount
+	contributor_capacity_shares: Record<string, Record<string, number>>; // Contributor → Capacity type → share
+	allocation_efficiency: number; // How efficiently capacity is allocated
+	allocation_fairness: number; // How fairly capacity is distributed
+}
+
+// Tree filter configuration
+export interface TreeFilterConfig {
+	minimum_percentage?: number; // Filter nodes below this percentage (0.0-1.0)
+	minimum_quorum?: number; // Filter nodes with fewer contributors than this
+	minimum_collective_recognition?: number; // Filter nodes below this collective recognition
+	minimum_capacity_allocation?: number; // Filter nodes below this capacity threshold
+	preserve_paths?: boolean; // Keep parent nodes even if they don't meet criteria (to preserve structure)
+	contributor_whitelist?: string[]; // Only include nodes with these contributors
+	contributor_blacklist?: string[]; // Exclude nodes with these contributors
+}
+
+// Filtered tree result
+export interface FilteredTreeResult {
+	filtered_tree: CollectiveTree;
+	removed_nodes: Array<{
+		node_id: string;
+		node_name: string;
+		reason: string;
+		original_weight: number;
+		contributor_count: number;
+	}>;
+	filter_stats: {
+		original_node_count: number;
+		filtered_node_count: number;
+		nodes_removed: number;
+		total_weight_removed: number;
+		contributors_affected: string[];
+	};
+}
+
+// === MEMBERSHIP MODULE SCHEMAS ===
+
+// Recognition data for MRD computation
+export const RecognitionDataSchema = z.object({
+	fromId: IdSchema,
+	toId: IdSchema,
+	percentage: z.number().gte(0).lte(100), // 0.0 to 100.0
+	timestamp: z.date()
+});
+
+// Membership computation output
+export const MembershipOutputSchema = z.object({
+	membershipStatus: z.record(IdSchema, z.boolean()), // participantId -> isMember
+	mrdScores: z.record(IdSchema, z.number()), // participantId -> MRD
+	mutualRecognitionScores: z.record(IdSchema, z.number()), // participantId -> total mutual recognition
+	networkAverage: z.number(), // current network average MRS
+	threshold: z.number(), // threshold used
+	timestamp: z.date(),
+	iterations: z.number() // iterations to converge
+});
+
+// Network health metrics
+export const HealthMetricsSchema = z.object({
+	memberCount: z.number(),
+	participantCount: z.number(),
+	membershipRate: z.number(),
+	mrsStdDev: z.number(),
+	mrdStdDev: z.number(),
+	mrsMedian: z.number(),
+	mrdMedian: z.number(),
+	concentration: z.number(),
+	nearThresholdCount: z.number(),
+	stronglyIntegratedCount: z.number(),
+	peripheralCount: z.number()
+});
+
+// Export membership types
+export type RecognitionData = z.infer<typeof RecognitionDataSchema>;
+export type MembershipOutput = z.infer<typeof MembershipOutputSchema>;
+export type HealthMetrics = z.infer<typeof HealthMetricsSchema>;
+
+// === COLLECTIVE RECOGNITION & RESOURCE ALLOCATION SCHEMAS ===
+
+// Need Slot - mirrors AvailabilitySlot structure
+export const NeedSlotSchema = z.object({
+	id: IdSchema, // Unique identifier for this slot
+	quantity: z.number().gte(0),
+
+	// Timing constraints (when the need is relevant)
+	advance_notice_hours: z.optional(z.number().gte(0)), // How much notice before need becomes active
+	booking_window_hours: z.optional(z.number().gte(0)), // How far in advance need is relevant
+
+	// Time pattern fields (when the need exists)
+	all_day: z.optional(z.boolean()),
+	recurrence: z.optional(z.nullable(z.string())),
+	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),
+	custom_recurrence_repeat_unit: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_type: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_value: z.optional(z.nullable(z.string())),
+	start_date: z.optional(z.nullable(z.string())),
+	start_time: z.optional(z.nullable(z.string())),
+	end_date: z.optional(z.nullable(z.string())),
+	end_time: z.optional(z.nullable(z.string())),
+	time_zone: z.optional(z.string()),
+
+	// Location fields (where the need is relevant)
+	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().min(-180).max(180)),
+	latitude: z.optional(z.number().min(-90).max(90)),
+	street_address: z.optional(z.string()),
+	city: z.optional(z.string()),
+	state_province: z.optional(z.string()),
+	postal_code: z.optional(z.string()),
+	country: z.optional(z.string()),
+	online_link: z.optional(z.string().url().or(z.string().length(0))),
+
+	// Hierarchical relationship for subset needs
+	parent_slot_id: z.optional(IdSchema), // If this is a subset of another need slot
+
+	// Mutual agreement for coordination
+	mutual_agreement_required: z.optional(z.boolean().default(false)), // Requires explicit bilateral consent
+
+	// Slot-specific metadata
+	priority: z.optional(z.number()) // For conflict resolution / urgency
+});
+
+// Base need schema - mirrors BaseCapacity structure
+export const BaseNeedSchema = z.object({
+	id: IdSchema,
+	name: z.string(),
+	emoji: z.optional(z.string()),
+	unit: z.optional(
+		z.string().regex(/^$|^(?!\s*\d+\.?\d*\s*$).+$/, {
+			message: 'Unit must be text, not a number (e.g., "hours", "kg", "items")'
+		})
+	),
+	description: z.optional(z.string()),
+	max_natural_div: z.optional(z.number().gte(1)),
+	max_percentage_div: z.optional(PercentageSchema),
+
+	hidden_until_request_accepted: z.optional(z.boolean()),
+	declarer_id: IdSchema, // Who declared this need (like owner_id for capacities)
+	filter_rule: z.optional(z.nullable(z.any())),
+
+	// Multiple need slots instead of single quantity/time/location
+	need_slots: z.array(NeedSlotSchema),
+
+	// Overall status tracking
+	status: z.enum(['open', 'partially-fulfilled', 'fulfilled']).default('open'),
+	fulfilled_amount: z.number().gte(0).default(0),
+	tags: z.array(z.string()).optional()
+});
+
+// Compliance Filter - limits on what can be allocated to a member
+export const ComplianceFilterSchema = z.union([
+	z.object({ type: z.literal('blocked'), value: z.literal(0) }), // $0 - Cannot allocate
+	z.object({ type: z.literal('capped'), value: z.number().gt(0) }), // $X - Can allocate up to $X
+	z.object({ type: z.literal('unlimited') }) // Unlimited - No restriction
+]);
+
+// Allocation - actual distribution of resources
+export const AllocationSchema = z.object({
+	id: IdSchema,
+	provider_id: IdSchema,
+	recipient_id: IdSchema,
+	source_capacity_id: IdSchema,
+	amount: z.number().gte(0),
+	unit: z.string(),
+	recipient_collective_recognition_share: z.number().gte(0).lte(1), // 0-1 (within provider's set)
+	mutual_recognition: z.number().gte(0).lte(1).optional(), // Between provider and recipient
+	timestamp: z.string(),
+	notes: z.string().optional(),
+	// Filter information for transparency
+	applied_filter: ComplianceFilterSchema.optional(),
+	ideal_allocation: z.number().gte(0).optional(), // Before filters were applied
+	was_redistributed: z.boolean().default(false) // Whether this came from redistribution
+});
+
+// Allocation Computation Result - transparent breakdown of allocation logic
+export const AllocationComputationResultSchema = z.object({
+	capacity_id: IdSchema,
+	provider_id: IdSchema, // Can be capacity.provider_id, owner_id, or 'unknown'
+	total_capacity: z.number().gte(0),
+	member_set: z.array(IdSchema), // Current members of this capacity collective
+
+	// Step 1: Collective recognition shares
+	collective_recognition_pool: z.number().gte(0),
+	collective_recognition_shares: z.record(IdSchema, z.number().gte(0).lte(1)),
+
+	// Step 2: Initial allocations (before filters)
+	ideal_allocations: z.record(IdSchema, z.number().gte(0)),
+
+	// Step 3: Filter application
+	applied_filters: z.record(IdSchema, ComplianceFilterSchema),
+	filtered_allocations: z.record(IdSchema, z.number().gte(0)),
+	blocked_members: z.array(IdSchema),
+	capped_members: z.array(IdSchema),
+
+	// Step 4: Redistribution
+	unallocated_amount: z.number().gte(0),
+	redistribution_pool: z.array(IdSchema), // Members who can receive redistribution
+	redistributed_amounts: z.record(IdSchema, z.number().gte(0)),
+
+	// Step 5: Final allocations
+	final_allocations: z.record(IdSchema, z.number().gte(0)),
+	unused_capacity: z.number().gte(0),
+
+	// Metadata
+	computation_timestamp: z.string(),
+	algorithm_version: z.string().default('collective_rec_v1')
+});
+
+// Export need types
+export type NeedSlot = z.infer<typeof NeedSlotSchema>;
+export type BaseNeed = z.infer<typeof BaseNeedSchema>;
+
+// Export collective-rec types
+export type ComplianceFilter = z.infer<typeof ComplianceFilterSchema>;
+export type Allocation = z.infer<typeof AllocationSchema>;
+export type AllocationComputationResult = z.infer<typeof AllocationComputationResultSchema>;
 
 // DELETED: Timestamped utility functions - No longer needed
 // Use getGunTimestamp() from $lib/utils/gunTimestamp.ts to work with Gun's native timestamps

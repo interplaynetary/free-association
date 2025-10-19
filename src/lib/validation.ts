@@ -235,7 +235,9 @@ function migrateCapacityToSlotBased(capacity: any): any {
 			hidden_until_request_accepted: capacity.hidden_until_request_accepted,
 			owner_id: capacity.owner_id,
 			filter_rule: capacity.filter_rule,
-			availability_slots: [migratedSlot]
+			availability_slots: [migratedSlot],
+			// Migrate members field
+			members: capacity.members || (capacity.owner_id ? [capacity.owner_id] : [])
 		};
 
 		// Handle different capacity types

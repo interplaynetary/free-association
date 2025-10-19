@@ -11,7 +11,7 @@
 	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import type { ProviderCapacity, Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
-	import { collectiveForest } from '$lib/collective.svelte';
+	import { collectiveForest } from '$lib/collective-tree.svelte';
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
@@ -544,6 +544,7 @@
 			hidden_until_request_accepted: false,
 			owner_id: pub,
 			filter_rule: null,
+			members: [pub], // Default to current user as the only member
 			availability_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

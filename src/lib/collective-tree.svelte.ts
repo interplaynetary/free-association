@@ -14,7 +14,20 @@ A note on privacy:
 - only subtrees in my personal tree marked as public will be mergeable
 */
 
-import type { Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
+import type {
+	Node,
+	NonRootNode,
+	CapacitiesCollection,
+	EntityID,
+	Collective,
+	Entity,
+	Forest,
+	NodeMergeData,
+	ProportionalNode,
+	CollectiveCapacityAllocation,
+	TreeFilterConfig,
+	FilteredTreeResult
+} from '$lib/schema';
 import { mutualFulfillment as originalMutualFulfillment } from '$lib/protocol';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
@@ -24,20 +37,19 @@ import { resolveToPublicKey } from '$lib/state/users.svelte';
 import { parseTree } from '$lib/validation';
 
 /**
+ * Collective Tree Operations
+ * 
+ * This module handles:
+ * - Tree merging from multiple contributors
+ * - Collective recognition mathematics
+ * - Tree filtering and analysis
+ * - Capacity calculations (tree-level, not resource allocation)
+ * 
+ * For resource allocation logic (needs, capacities, filters), see:
+ * - collective-rec.svelte.ts
+ *
  * Enhanced with Memoization & Caching
  */
-type EntityID = string;
-
-// Define collective-specific types
-interface Collective {
-	type: 'Collective';
-	id: string;
-	members: Array<Entity>;
-	weights: Map<string, number>; // Maps member IDs to their weight in the collective
-}
-
-type Entity = Node | Collective;
-type Forest = Map<string, Node>; // Maps node IDs to nodes
 
 // Collective members store - manually populated with specific members we want in the collective
 export const collectiveMembers: Writable<Array<Entity>> = writable([]);
@@ -253,11 +265,8 @@ function collectiveCapacity(ci: Forest, collective: Collective): number {
 	return total;
 }
 
-// Export the main functions
+// Export the main functions (types now exported from schema.ts)
 export {
-	type Entity,
-	type Collective,
-	type Forest,
 	isCollective,
 	mutualFulfillment,
 	getCollectiveWeights,
@@ -343,22 +352,6 @@ function calculateContributorWeights(
 	}
 
 	return weights;
-}
-
-// Node merging data structure
-interface NodeMergeData {
-	id: string;
-	name: string;
-	contributors: Map<
-		string,
-		{
-			originalNode: Node;
-			weightInParent: number;
-			contributorWeight: number;
-		}
-	>;
-	children: Map<string, NodeMergeData>;
-	path: string[];
 }
 
 // Create a collective tree by merging multiple contributor trees
@@ -632,13 +625,12 @@ function createSimpleMergeConfig(
 	};
 }
 
-// Export new tree merging functions
+// Export new tree merging functions (types now in schema.ts)
 export {
 	mergeContributorTrees,
 	createSimpleMergeConfig,
 	hashContributorIds,
-	calculateContributorWeights,
-	type NodeMergeData
+	calculateContributorWeights
 };
 
 // === MATHEMATICAL FRAMEWORK FOR COLLECTIVE RECOGNITION ===
@@ -918,21 +910,6 @@ export {
  * contributor_percentage_of_node = (individual_node_path_weight × contributor_collective_weight) / sum(all_weighted_contributions)
  */
 
-interface ProportionalNode {
-	contributor_id: string;
-	percentage_of_node: number;
-	individual_node_percentage: number;
-	contributor_collective_weight: number;
-	path_weight_contribution: number;
-	derivation_steps: Array<{
-		level: number;
-		node_id: string;
-		individual_percentage: number;
-		collective_weight: number;
-		cumulative_path_weight: number;
-	}>;
-}
-
 function calculateContributorPercentageOfNode(
 	collectiveTree: CollectiveTree,
 	nodeId: string,
@@ -1115,12 +1092,11 @@ function explainContributorPercentageCalculation(
 	return explanation;
 }
 
-// Export the new functions
+// Export the new functions (ProportionalNode type now in schema.ts as ProportionalNode)
 export {
 	calculateContributorPercentageOfNode,
 	calculateAllContributorPercentagesOfNode,
-	explainContributorPercentageCalculation,
-	type ProportionalNode as ContributorNodeAnalysis
+	explainContributorPercentageCalculation
 };
 
 function generateMathematicalProof(
@@ -1146,15 +1122,6 @@ function generateMathematicalProof(
  * resource allocation. This creates PERFECT ALIGNMENT between collective
  * decisions and collective resources.
  */
-
-interface CollectiveCapacityAllocation {
-	collective_tree_id: string;
-	total_collective_capacity: Record<string, number>; // Capacity type → total amount
-	node_capacity_allocations: Record<string, Record<string, number>>; // Node ID → Capacity type → allocated amount
-	contributor_capacity_shares: Record<string, Record<string, number>>; // Contributor → Capacity type → share
-	allocation_efficiency: number; // How efficiently capacity is allocated
-	allocation_fairness: number; // How fairly capacity is distributed
-}
 
 function calculateCollectiveCapacityAllocation(
 	collectiveTree: CollectiveTree,
@@ -1231,8 +1198,8 @@ function calculateCollectiveCapacityAllocation(
 	};
 }
 
-// Export the architectural analysis functions
-export { calculateCollectiveCapacityAllocation, type CollectiveCapacityAllocation };
+// Export the architectural analysis functions (type now in schema.ts)
+export { calculateCollectiveCapacityAllocation };
 
 // === COLLECTIVE TREE FILTERING MATHEMATICS ===
 
@@ -1508,34 +1475,6 @@ export { calculateCollectiveCapacityAllocation, type CollectiveCapacityAllocatio
  * - Collective recognition thresholds
  * - Capacity allocation minimums
  */
-
-interface TreeFilterConfig {
-	minimum_percentage?: number; // Filter nodes below this percentage (0.0-1.0)
-	minimum_quorum?: number; // Filter nodes with fewer contributors than this
-	minimum_collective_recognition?: number; // Filter nodes below this collective recognition
-	minimum_capacity_allocation?: number; // Filter nodes below this capacity threshold
-	preserve_paths?: boolean; // Keep parent nodes even if they don't meet criteria (to preserve structure)
-	contributor_whitelist?: string[]; // Only include nodes with these contributors
-	contributor_blacklist?: string[]; // Exclude nodes with these contributors
-}
-
-interface FilteredTreeResult {
-	filtered_tree: CollectiveTree;
-	removed_nodes: Array<{
-		node_id: string;
-		node_name: string;
-		reason: string;
-		original_weight: number;
-		contributor_count: number;
-	}>;
-	filter_stats: {
-		original_node_count: number;
-		filtered_node_count: number;
-		nodes_removed: number;
-		total_weight_removed: number;
-		contributors_affected: string[];
-	};
-}
 
 // Helper function to get contributors from either node type
 function getNodeContributors(node: CollectiveNode): string[] {
@@ -2120,7 +2059,7 @@ function analyzeFilteredContributors(
 	};
 }
 
-// Export the filtering functions
+// Export the filtering functions (types now in schema.ts)
 export {
 	filterTreeByMinimumPercentage,
 	filterTreeByMinimumQuorum,
@@ -2129,9 +2068,7 @@ export {
 	analyzeFilteredContributors,
 	countNodesInTree,
 	renormalizeChildrenWeights,
-	renormalizeCollectiveTree,
-	type TreeFilterConfig,
-	type FilteredTreeResult
+	renormalizeCollectiveTree
 };
 
 // === RENORMALIZATION FUNCTIONS ===

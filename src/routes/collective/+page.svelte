@@ -10,7 +10,7 @@
 		collectiveForest,
 		mergeContributorTrees,
 		createSimpleMergeConfig
-	} from '$lib/collective.svelte';
+	} from '$lib/collective-tree.svelte';
 	import type { CollectiveTree, Node } from '$lib/schema';
 
 	// Reactive variable for mobile detection

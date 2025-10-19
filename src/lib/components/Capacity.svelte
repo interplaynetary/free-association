@@ -13,6 +13,8 @@
 	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { t } from '$lib/translations';
+	import { userPub } from '$lib/state/gun.svelte';
+	import { createUsersDataProvider } from '$lib/utils/ui-providers.svelte';
 
 	interface Props {
 		capacity: ProviderCapacity;
@@ -60,6 +62,10 @@
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
 
+	// Member management state
+	let showMembersDropdown = $state(false);
+	let membersDataProvider = createUsersDataProvider();
+	
 	// Reactive capacity properties for proper binding (matching schema types)
 	let capacityName = $state(capacity.name);
 	let capacityEmoji = $state(capacity.emoji);
@@ -67,6 +73,10 @@
 	let capacityDescription = $state(capacity.description);
 	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
 	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
+	let capacityMembers = $state(capacity.members || []);
+	let capacityAutoUpdateMRD = $state(capacity.auto_update_members_by_mrd || false);
+	let capacityMRDThreshold = $state(capacity.mrd_threshold || 0.5);
+	let capacityMembershipFrequency = $state(capacity.membership_update_frequency_ms || 7 * 24 * 60 * 60 * 1000);
 
 	// Derived filter rule - automatically updates when selectedSubtrees changes
 	let filterRule = $derived(() => {
@@ -170,7 +180,7 @@
 
 	// Handler for input events that updates capacity
 	function handleCapacityUpdate() {
-		// Create updated capacity with current filter rule
+		// Create updated capacity with current filter rule and member settings
 		const updatedCapacity = {
 			...capacity,
 			name: capacityName,
@@ -179,7 +189,11 @@
 			description: capacityDescription,
 			max_natural_div: capacityMaxNaturalDiv,
 			max_percentage_div: capacityMaxPercentageDiv,
-			filter_rule: filterRule()
+			filter_rule: filterRule(),
+			members: capacityMembers,
+			auto_update_members_by_mrd: capacityAutoUpdateMRD,
+			mrd_threshold: capacityMRDThreshold,
+			membership_update_frequency_ms: capacityMembershipFrequency
 		};
 
 		// Validate using schema
@@ -285,6 +299,78 @@
 	// Close dropdown
 	function handleDropdownClose() {
 		showSubtreeDropdown = false;
+	}
+
+	// === MEMBER MANAGEMENT ===
+
+	// Handle adding a member
+	function handleAddMember(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+
+		const rect = (event.target as HTMLElement).getBoundingClientRect();
+		dropdownPosition = {
+			x: rect.left,
+			y: rect.bottom + 5
+		};
+
+		showMembersDropdown = true;
+	}
+
+	// Handle member selection from dropdown
+	function handleMemberSelect(detail: { id: string; name: string; metadata?: any }) {
+		const { id: memberId } = detail;
+
+		// Don't add if already a member
+		if (capacityMembers.includes(memberId)) {
+			showMembersDropdown = false;
+			globalState.showToast(`${detail.name} is already a member`, 'info');
+			return;
+		}
+
+		// Add to members
+		capacityMembers = [...capacityMembers, memberId];
+
+		// Update capacity
+		handleCapacityUpdate();
+
+		// Close dropdown
+		showMembersDropdown = false;
+		
+		globalState.showToast(`Added ${detail.name} as member`, 'success');
+	}
+
+	// Handle removing a member
+	function handleRemoveMember(memberId: string) {
+		// Don't allow removing the last member (owner)
+		if (capacityMembers.length === 1 && capacityMembers[0] === $userPub) {
+			globalState.showToast('Cannot remove the only member (you)', 'warning');
+			return;
+		}
+
+		capacityMembers = capacityMembers.filter((id) => id !== memberId);
+		handleCapacityUpdate();
+		
+		globalState.showToast('Member removed', 'success');
+	}
+
+	// Close members dropdown
+	function handleMembersDropdownClose() {
+		showMembersDropdown = false;
+	}
+
+	// Handle manual membership recomputation
+	// TODO: Implement network-wide recognition data subscription first
+	// MRD computation requires recognition data between ALL network participants,
+	// not just our direct connections. Currently blocked on proper data architecture.
+	async function handleRecomputeMembers() {
+		globalState.showToast(
+			'Manual recomputation requires network-wide recognition data. Feature coming soon!',
+			'info'
+		);
+		
+		// For now, auto-update will work when allocations are computed
+		// (which happens server-side with full network data)
 	}
 
 	// Handle emoji picker
@@ -763,7 +849,7 @@
 		{#if selectedSubtrees.length > 0}
 			<div class="filter-description">
 				<span class="filter-desc-text">
-					{$t('inventory.filter_description', { count: selectedSubtrees.length })}
+					{$t('inventory.filter_description', { count: selectedSubtrees.length } as any)}
 				</span>
 			</div>
 		{/if}
@@ -791,7 +877,7 @@
 			<div class="slots-header mb-3">
 				<h4 class="text-sm font-medium text-gray-700">🕒 {$t('inventory.availability_slots')}</h4>
 				<p class="mt-1 text-xs text-gray-500">
-					{$t('inventory.manage_slots_description', { count: totalSlotCount() })}
+					{$t('inventory.manage_slots_description', { count: totalSlotCount() } as any)}
 				</p>
 			</div>
 
@@ -975,11 +1061,131 @@
 							</div>
 						</div>
 					</div>
+
+					<!-- Member Management Section -->
+					<div class="member-management-section mb-6">
+						<h4 class="mb-4 text-sm font-medium text-gray-700">👥 Members</h4>
+						
+						<!-- Current Members -->
+						<div class="members-list mb-4">
+							<div class="flex flex-wrap items-center gap-2 mb-3">
+								<button type="button" class="add-member-btn" onclick={handleAddMember}>
+									<span class="add-icon">+</span>
+									<span class="add-text">Add Member</span>
+								</button>
+								{#each capacityMembers as memberId}
+									<TagPill
+										userId={memberId}
+										truncateLength={15}
+										removable={true}
+										onClick={() => {}}
+										onRemove={() => handleRemoveMember(memberId)}
+									/>
+								{/each}
+							</div>
+							<p class="text-xs text-gray-500 italic">
+								{capacityMembers.length} member{capacityMembers.length !== 1 ? 's' : ''} can receive allocations from this capacity
+							</p>
+						</div>
+
+						<!-- Auto-Update Toggle -->
+						<div class="auto-update-section p-4 rounded border border-gray-200 bg-gray-50 mb-4">
+							<label class="flex items-center gap-2 mb-3 cursor-pointer">
+								<input
+									type="checkbox"
+									class="form-checkbox h-4 w-4 text-blue-600 rounded"
+									bind:checked={capacityAutoUpdateMRD}
+									onchange={handleCapacityUpdate}
+								/>
+								<span class="text-sm font-medium text-gray-700">
+									🔄 Auto-update members by MRD
+								</span>
+							</label>
+							
+							{#if capacityAutoUpdateMRD}
+								<div class="auto-update-config space-y-3 pl-6 border-l-2 border-blue-200">
+									<!-- MRD Threshold -->
+									<div>
+										<label class="block text-xs text-gray-600 mb-1">
+											MRD Threshold
+										</label>
+										<input
+											type="number"
+											min="0"
+											max="2"
+											step="0.1"
+											class="capacity-input w-full text-sm"
+											bind:value={capacityMRDThreshold}
+											onfocus={() => handleFocus('mrdThreshold', capacityMRDThreshold)}
+											onblur={() => handleBlurIfChanged('mrdThreshold', capacityMRDThreshold)}
+										/>
+										<p class="text-xs text-gray-500 mt-1">
+											Members need MRD ≥ {capacityMRDThreshold} to stay in collective
+										</p>
+									</div>
+
+									<!-- Update Frequency -->
+									<div>
+										<label class="block text-xs text-gray-600 mb-1">
+											Update Frequency
+										</label>
+										<select
+											class="capacity-input w-full text-sm"
+											bind:value={capacityMembershipFrequency}
+											onchange={handleCapacityUpdate}
+										>
+											<option value={60 * 60 * 1000}>Hourly</option>
+											<option value={24 * 60 * 60 * 1000}>Daily</option>
+											<option value={7 * 24 * 60 * 60 * 1000}>Weekly (Default)</option>
+											<option value={30 * 24 * 60 * 60 * 1000}>Monthly</option>
+										</select>
+										<p class="text-xs text-gray-500 mt-1">
+											How often to automatically recompute membership
+										</p>
+									</div>
+
+									<!-- Last Update Info -->
+									{#if capacity.last_membership_update}
+										<div class="text-xs text-gray-500">
+											Last updated: {new Date(capacity.last_membership_update).toLocaleString()}
+										</div>
+									{/if}
+								</div>
+							{/if}
+						</div>
+
+						<!-- Manual Recompute Button (Disabled - needs network-wide data) -->
+						<button
+							type="button"
+							class="recompute-btn w-full"
+							onclick={handleRecomputeMembers}
+							title="Requires network-wide recognition data subscription"
+						>
+							<span>🔄 Recompute Members Now</span>
+						</button>
+						<p class="text-xs text-gray-500 mt-2 italic">
+							Note: Manual recomputation requires network-wide recognition data. Auto-update will work during allocation computation.
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>
 	{/if}
 </div>
+
+<!-- Members dropdown for adding new members -->
+{#if showMembersDropdown}
+	<DropDown
+		position={dropdownPosition}
+		show={showMembersDropdown}
+		title="Select Member"
+		searchPlaceholder="Search users..."
+		dataProvider={membersDataProvider}
+		select={handleMemberSelect}
+		updatePosition={(newPosition) => (dropdownPosition = newPosition)}
+		close={handleMembersDropdownClose}
+	/>
+{/if}
 
 <!-- Subtree dropdown for adding filters -->
 {#if showSubtreeDropdown}
@@ -1519,5 +1725,88 @@
 	div[data-slot-id].newly-created :global(.slot-item) {
 		background: rgba(240, 253, 244, 0.8) !important;
 		border-color: rgba(34, 197, 94, 0.2) !important;
+	}
+
+	/* Member Management Styles */
+	.member-management-section {
+		border-top: 1px solid #e5e7eb;
+		padding-top: 1.5rem;
+	}
+
+	.add-member-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 3px 10px;
+		border: 1px dashed #d1d5db;
+		border-radius: 12px;
+		background: rgba(249, 250, 251, 0.8);
+		color: #6b7280;
+		font-size: 12px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		height: 22px;
+		line-height: 1;
+	}
+
+	.add-member-btn:hover {
+		border-color: #3b82f6;
+		color: #3b82f6;
+		background: rgba(248, 250, 252, 0.9);
+		transform: scale(1.02);
+	}
+
+	.add-member-btn .add-icon {
+		font-size: 0.875rem;
+		font-weight: bold;
+		line-height: 1;
+	}
+
+	.add-member-btn .add-text {
+		font-weight: 500;
+	}
+
+	.members-list {
+		padding: 1rem;
+		background: rgba(249, 250, 251, 0.5);
+		border-radius: 6px;
+		border: 1px solid rgba(229, 231, 235, 0.6);
+	}
+
+	.auto-update-section {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.auto-update-config {
+		animation: slideDown 0.2s ease-out;
+	}
+
+	.recompute-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		padding: 10px 16px;
+		border: 2px solid #3b82f6;
+		border-radius: 6px;
+		background: white;
+		color: #3b82f6;
+		font-size: 0.875rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.recompute-btn:hover:not(:disabled) {
+		background: #3b82f6;
+		color: white;
+		transform: scale(1.02);
+	}
+
+	.recompute-btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		border-color: #9ca3af;
+		color: #9ca3af;
 	}
 </style>

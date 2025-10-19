@@ -563,7 +563,7 @@ export const computedProviderAllocations = derived(
 						const amountPerRecipient = Number(amount) || 0;
 
 						// For collectives, split the amount equally among recipients
-						// TODO (in future): replace with collective recognition distributions! collective.svelte.ts
+						// TODO (in future): replace with collective recognition distributions! collective-tree.svelte.ts
 						const splitAmount =
 							recipientIds.length > 0 ? amountPerRecipient / recipientIds.length : 0;
 

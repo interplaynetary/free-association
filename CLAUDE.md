@@ -78,8 +78,9 @@ persistence.svelte.ts (Write back to Gun)
 - **`calculations.svelte.ts`**: Reactive calculations (mutual recognition, shares, allocations)
 - **`users.svelte.ts`**: User/contact management, public key resolution
 - **`chat.svelte.ts`**: Per-capacity chat functionality
-- **`collective.svelte.ts`**: Collective recognition and forest management
-
+- **`collective-rec.svelte.ts`**: Collective recognition 
+- **`collective-tree.svelte.ts`**: Collective trees
+ 
 #### **Stream Management Pattern**
 
 The codebase uses a sophisticated stream subscription system (`network.svelte.ts`) based on `StreamSubscriptionManager`:

@@ -949,25 +949,9 @@ Both are governance-free, computed from recognition patterns, and aligned with f
 */
 
 // TypeScript implementation of the MRD Membership Module
+import type { RecognitionData, MembershipOutput, HealthMetrics } from '$lib/schema';
 
 export const EPSILON = 1e-9;
-
-export interface RecognitionData {
-    fromId: string;
-    toId: string;
-    percentage: number; // 0.0 to 100.0
-    timestamp: Date;
-}
-
-export interface MembershipOutput {
-    membershipStatus: Record<string, boolean>;
-    mrdScores: Record<string, number>;
-    mutualRecognitionScores: Record<string, number>;
-    networkAverage: number;
-    threshold: number;
-    timestamp: Date;
-    iterations: number;
-}
 
 export class MRDMembershipModule {
     private threshold: number;
@@ -1163,20 +1147,6 @@ export class MRDMembershipModule {
 }
 
 // TypeScript health metrics helpers replacing prior Python examples
-export interface HealthMetrics {
-    memberCount: number;
-    participantCount: number;
-    membershipRate: number;
-    mrsStdDev: number;
-    mrdStdDev: number;
-    mrsMedian: number;
-    mrdMedian: number;
-    concentration: number;
-    nearThresholdCount: number;
-    stronglyIntegratedCount: number;
-    peripheralCount: number;
-}
-
 export function calculateHealthMetrics(output: MembershipOutput): HealthMetrics {
     const membershipValues: number[] = Object.values(output.membershipStatus).map(v => (v ? 1 : 0));
     const mrsScores = Object.values(output.mutualRecognitionScores);
@@ -1221,4 +1191,161 @@ export function calculateHealthMetrics(output: MembershipOutput): HealthMetrics 
         stronglyIntegratedCount,
         peripheralCount,
     };
+}
+
+/**
+ * Update capacity membership based on MRD computation
+ * 
+ * This allows any capacity to become a "collective capacity" by dynamically
+ * updating its member list based on mutual recognition density.
+ * 
+ * Process:
+ * 1. Compute MRD for all participants relative to current members
+ * 2. Add participants who meet threshold and have mutual recognition with current members
+ * 3. Remove current members who fall below threshold
+ * 4. Return updated member list
+ * 
+ * @param currentMembers - Current member list of the capacity
+ * @param recognitionData - All recognition data
+ * @param threshold - MRD threshold for membership (defaults to 0.5)
+ * @param options - Optional configuration
+ * @returns Updated member list and computation details
+ */
+export function updateCapacityMembership(
+    currentMembers: string[],
+    recognitionData: RecognitionData[],
+    threshold: number = 0.5,
+    options: {
+        minMutualRecognition?: number; // Minimum mutual recognition required with existing members
+        maxNewMembers?: number; // Maximum new members to add in one update
+        preserveFoundingMembers?: string[]; // Members who cannot be removed
+    } = {}
+): {
+    updatedMembers: string[];
+    added: string[];
+    removed: string[];
+    mrdScores: Record<string, number>;
+    mutualRecognitionScores: Record<string, number>;
+    timestamp: Date;
+} {
+    const minMutualRecognition = options.minMutualRecognition ?? 0.01; // Small positive value
+    const maxNewMembers = options.maxNewMembers ?? Infinity;
+    const preserveFoundingMembers = new Set(options.preserveFoundingMembers || []);
+
+    // Use MRD module to compute membership relative to current members
+    const module = new MRDMembershipModule(threshold, minMutualRecognition);
+    const output = module.computeMembership(recognitionData, currentMembers);
+
+    // Determine who should be added
+    const potentialNewMembers: Array<{ id: string; mrd: number }> = [];
+    for (const [participantId, isMember] of Object.entries(output.membershipStatus)) {
+        if (isMember && !currentMembers.includes(participantId)) {
+            potentialNewMembers.push({
+                id: participantId,
+                mrd: output.mrdScores[participantId]
+            });
+        }
+    }
+
+    // Sort by MRD (highest first) and limit to maxNewMembers
+    potentialNewMembers.sort((a, b) => b.mrd - a.mrd);
+    const added = potentialNewMembers
+        .slice(0, maxNewMembers)
+        .map(m => m.id);
+
+    // Determine who should be removed (excluding founding members)
+    const removed: string[] = [];
+    for (const memberId of currentMembers) {
+        if (preserveFoundingMembers.has(memberId)) continue; // Cannot remove founding members
+        
+        const isMember = output.membershipStatus[memberId];
+        if (!isMember) {
+            removed.push(memberId);
+        }
+    }
+
+    // Build updated member list
+    const updatedMembers = [
+        ...currentMembers.filter(id => !removed.includes(id)),
+        ...added
+    ];
+
+    return {
+        updatedMembers,
+        added,
+        removed,
+        mrdScores: output.mrdScores,
+        mutualRecognitionScores: output.mutualRecognitionScores,
+        timestamp: output.timestamp
+    };
+}
+
+/**
+ * Check if a capacity's membership needs updating
+ * 
+ * @param capacity - Capacity with dynamic membership settings
+ * @param timeSinceLastUpdate - Time since last update in milliseconds
+ * @param updateFrequencyMs - How often to update (defaults to weekly: 7 days)
+ * @returns Whether membership should be updated
+ */
+export function shouldUpdateCapacityMembership(
+	capacity: {
+		auto_update_members_by_mrd?: boolean;
+		last_membership_update?: string;
+		membership_update_frequency_ms?: number;
+	},
+	timeSinceLastUpdate?: number,
+	defaultUpdateFrequencyMs: number = 7 * 24 * 60 * 60 * 1000 // 7 days default
+): boolean {
+	// Only update if auto-update is enabled
+	if (!capacity.auto_update_members_by_mrd) return false;
+
+	// If never updated, should update
+	if (!capacity.last_membership_update) return true;
+
+	// Use capacity's custom frequency or the default
+	const updateFrequencyMs = capacity.membership_update_frequency_ms || defaultUpdateFrequencyMs;
+
+	// Check if enough time has passed
+	if (timeSinceLastUpdate !== undefined) {
+		return timeSinceLastUpdate >= updateFrequencyMs;
+	}
+
+	// Calculate time since last update
+	const lastUpdate = new Date(capacity.last_membership_update);
+	const now = new Date();
+	const elapsed = now.getTime() - lastUpdate.getTime();
+	
+	return elapsed >= updateFrequencyMs;
+}
+
+/**
+ * Manually trigger membership recomputation for a capacity
+ * This bypasses the frequency check and forces an immediate update
+ * 
+ * @param currentMembers - Current member list of the capacity
+ * @param recognitionData - All recognition data for MRD computation
+ * @param threshold - MRD threshold for membership (defaults to 0.5)
+ * @param options - Optional configuration
+ * @returns Updated member list and computation details
+ */
+export function forceUpdateCapacityMembership(
+	currentMembers: string[],
+	recognitionData: RecognitionData[],
+	threshold: number = 0.5,
+	options: {
+		minMutualRecognition?: number;
+		maxNewMembers?: number;
+		preserveFoundingMembers?: string[];
+	} = {}
+): {
+	updatedMembers: string[];
+	added: string[];
+	removed: string[];
+	mrdScores: Record<string, number>;
+	mutualRecognitionScores: Record<string, number>;
+	timestamp: Date;
+} {
+	// Just call the regular update function - it doesn't check frequency
+	return updateCapacityMembership(currentMembers, recognitionData, threshold, options);
 }

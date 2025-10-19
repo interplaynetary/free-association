@@ -245,9 +245,25 @@ and demonstrates the regenerative values I work to advance."
 
 ```
 Any participant can declare a need for their self-actualization:
+
+Needs are slot-based, mirroring capacity structure:
 - Alice: "I need $50,000 for water filtration systems in Uganda"
+  Need slots: $30K by June 1st (equipment purchase), $20K by August 1st (installation)
+  Location: Uganda, flexible timing for installation
+  
 - Bob: "I need 200 hours of web development work"
+  Need slots: 100 hours May-June (design phase), 100 hours July-August (implementation)
+  Location: Remote/online, prefer European timezone overlap
+  
 - Charlie: "I need 5 acres of land for regenerative agriculture pilot"
+  Need slot: 5 acres, year-round access, Oregon region
+  Timing: Immediate, ongoing for 2-year pilot
+
+Each need has:
+- Multiple need slots (time/location/quantity specific)
+- When the need exists (time patterns, urgency, deadlines)
+- Where the need is relevant (location constraints, online/in-person)
+- Fulfillment tracking (open/partially-fulfilled/fulfilled)
 
 These are what they need to actualize their contributions.
 All needs are visible in the network.
@@ -258,14 +274,41 @@ All needs are visible in the network.
 ```
 Only providers (those with actual resources) declare capacities:
 
+Capacities are slot-based, mirroring need structure:
+
 Foundation X declares:
   Set: {Alice, Bob, Charlie, Dave, Eve}
   Capacity-Type: "Water Infrastructure Funding"
   Total-Amount: $200,000
+  Availability slots:
+    - $100K available by May 15th (early funding round)
+    - $100K available by September 1st (later funding round)
+  Location: Global, prioritize Uganda/East Africa
+  
+Individual Developer Y declares:
+  Set: {Bob, Alice, Frank}
+  Capacity-Type: "Web Development Hours"
+  Total-Amount: 120 hours
+  Availability slots:
+    - 60 hours June 1-30 (Mon-Fri, 9am-5pm Berlin time)
+    - 60 hours July 1-31 (flexible scheduling)
+  Location: Remote/online
 
-Interpretation: "I (Foundation X) can provide $200K to support water infrastructure
-work among these participants. I recognize this group's collective capacity to
-use these resources effectively toward water infrastructure."
+Community Farm Z declares:
+  Set: {Charlie, Grace}
+  Capacity-Type: "Farmland Access"
+  Total-Amount: 10 acres
+  Availability slot: 10 acres, year-round access
+  Location: Oregon, specific plot coordinates provided
+
+Each capacity has:
+- Multiple availability slots (time/location/quantity specific)
+- When resources are available (time patterns, deadlines)
+- Where resources can be used (location constraints)
+- Set of people who can receive from this capacity
+
+Interpretation: "I (Provider) can provide these resources to support this group's work.
+I recognize this group's collective capacity to use these resources effectively."
 ```
 
 **Why only providers declare capacities:**
@@ -1029,28 +1072,101 @@ type MembershipStatus = {
 #### Need Declaration
 
 ```typescript
-type Need = {
-  declarerId: string;
-  description: string;
-  amount: number | string;
-  unit: string; // "$", "hours", "acres", etc.
-  timestamp: Date;
+type NeedSlot = {
+  id: string;
+  quantity: number;
+  // Time constraints (when the need exists)
+  advance_notice_hours?: number;
+  booking_window_hours?: number;
+  all_day?: boolean;
+  recurrence?: string;
+  start_date?: string;
+  start_time?: string;
+  end_date?: string;
+  end_time?: string;
+  time_zone?: string;
+  // Location constraints (where the need is relevant)
+  location_type?: string;
+  longitude?: number;
+  latitude?: number;
+  street_address?: string;
+  city?: string;
+  state_province?: string;
+  country?: string;
+  online_link?: string;
+  // Coordination
+  parent_slot_id?: string;
+  mutual_agreement_required?: boolean;
+  priority?: number; // Urgency
+};
+
+type BaseNeed = {
+  id: string;
+  name: string;
+  emoji?: string;
+  unit?: string; // "$", "hours", "acres", etc.
+  description?: string;
+  declarer_id: string;
+  need_slots: NeedSlot[]; // Multiple time/location/quantity slots
   status: "open" | "partially-fulfilled" | "fulfilled";
+  fulfilled_amount: number;
+  tags?: string[];
+  timestamp: Date;
 };
 ```
 
 #### Provider Capacity Declaration
 
 ```typescript
+type AvailabilitySlot = {
+  id: string;
+  quantity: number;
+  // Time constraints (when resources are available)
+  advance_notice_hours?: number;
+  booking_window_hours?: number;
+  all_day?: boolean;
+  recurrence?: string;
+  start_date?: string;
+  start_time?: string;
+  end_date?: string;
+  end_time?: string;
+  time_zone?: string;
+  // Location constraints (where resources can be used)
+  location_type?: string;
+  longitude?: number;
+  latitude?: number;
+  street_address?: string;
+  city?: string;
+  state_province?: string;
+  country?: string;
+  online_link?: string;
+  // Coordination
+  parent_slot_id?: string;
+  mutual_agreement_required?: boolean;
+  priority?: number;
+};
+
+type BaseCapacity = {
+  id: string;
+  name: string;
+  emoji?: string;
+  unit?: string; // "$", "hours", "acres", etc.
+  description?: string;
+  owner_id?: string;
+  availability_slots: AvailabilitySlot[]; // Multiple time/location/quantity slots
+  hidden_until_request_accepted?: boolean;
+  filter_rule?: any;
+};
+
 type ProviderCapacity = {
-  providerId: string; // Provider ID or "VEREIN_AUTOMATIC"
-  setOfPeople: string[];
+  ...BaseCapacity;
+  providerId: string; // Provider ID or "ENTITY_AUTOMATIC"
+  setOfPeople: string[]; // Who can receive from this capacity
   capacityType: string;
-  totalAmount: number | string;
-  unit: string; // "$", "hours", "acres", etc.
+  totalAmount: number | string; // Sum of all availability slots
   timestamp: Date;
-  isAutomatic?: boolean; // true if Verein automatic allocation
-  filters?: Record<string, number | null>; // Member ID → Max allocation (null = unlimited)
+  isAutomatic?: boolean; // true if entity automatic allocation
+  filters?: Record<string, ComplianceFilter>; // Member ID → Filter ($0, $X, Unlimited)
 };
 ```
 
@@ -1088,6 +1204,58 @@ type DeciderSession = {
     breakdown: Record<string, number>; // proposalId → weighted support
   };
 };
+```
+
+#### Need-Capacity Mirror Structure
+
+**Key Insight:** Needs and Capacities are mirror images of each other.
+
+```
+Need = "What I require"          ↔  Capacity = "What I can provide"
+--------------------------------------------------------------------
+NeedSlot                         ↔  AvailabilitySlot
+- quantity                       ↔  - quantity
+- time patterns (when needed)    ↔  - time patterns (when available)
+- location (where needed)        ↔  - location (where provided)
+- priority/urgency               ↔  - priority
+- mutual_agreement_required      ↔  - mutual_agreement_required
+
+BaseNeed                         ↔  BaseCapacity
+- name, emoji, unit              ↔  - name, emoji, unit
+- description                    ↔  - description
+- need_slots[]                   ↔  - availability_slots[]
+- declarer_id                    ↔  - owner_id
+- fulfilled_amount, status       ↔  - (tracked via allocations)
+```
+
+**Why this matters:**
+
+* **Sophisticated matching:** Can match needs to capacities by time/location/quantity constraints
+* **Temporal coordination:** "I need 10 hours Monday" matches with "I have 15 hours Monday available"
+* **Spatial coordination:** "I need office space in Berlin" matches with "I have desk space in Berlin"
+* **Flexible fulfillment:** One need with multiple slots can be fulfilled by different providers at different times/locations
+* **Natural scheduling:** Time patterns (recurrence, deadlines) enable automatic scheduling
+* **Explicit symmetry:** The mirror structure makes the relationship clear and enables algorithmic matching
+
+**Example matching:**
+
+```
+Alice's Need:
+  "I need 20 hours of web development"
+  Need slots: 
+    - 10 hours June 1-15 (design phase)
+    - 10 hours July 1-15 (implementation)
+
+Bob's Capacity:
+  "I have 30 hours available for web development"
+  Availability slots:
+    - 15 hours June 1-30 (Mon-Fri, 9am-5pm Berlin)
+    - 15 hours July 1-31 (flexible)
+
+Matching:
+  ✓ Alice's first slot (10h June 1-15) matches Bob's first slot (15h June 1-30)
+  ✓ Alice's second slot (10h July 1-15) matches Bob's second slot (15h July 1-31)
+  → Bob can fulfill Alice's entire need with time to spare
 ```
 
 ***
