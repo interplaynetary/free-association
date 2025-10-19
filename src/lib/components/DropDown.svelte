@@ -890,11 +890,9 @@
 					<div class="members-list">
 						{#each dataProviderItems as item (item.id)}
 							{#if !item.metadata?.isContact || item.metadata?.userId}
-								<div
-									class="member-item"
-									class:selected={isMemberInCollective(item.id)}
-									onclick={() => handleToggleMemberInCollective(item.id)}
-								>
+                                <button type="button" class="member-item"
+                                    class:selected={isMemberInCollective(item.id)}
+                                    onclick={() => handleToggleMemberInCollective(item.id)} aria-pressed={isMemberInCollective(item.id)}>
 									<div
 										class="color-dot"
 										style="background-color: {getColorForUserId(item.id)}"
@@ -903,7 +901,7 @@
 									{#if isMemberInCollective(item.id)}
 										<span class="member-selected">✓</span>
 									{/if}
-								</div>
+                                </button>
 							{/if}
 						{/each}
 					</div>
@@ -1786,3 +1784,5 @@
 		font-size: 12px;
 	}
 </style>
+
+

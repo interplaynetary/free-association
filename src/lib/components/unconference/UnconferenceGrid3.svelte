@@ -34,14 +34,15 @@
 		</div>
 	</div>
 
-	<div 
-		class="grid-wrapper"
-		bind:this={gridElement}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-		class:dragging-over={isDraggingOver}
-	>
+    <div 
+        class="grid-wrapper"
+        bind:this={gridElement}
+        ondragover={handleDragOver}
+        ondragleave={handleDragLeave}
+        ondrop={handleDrop}
+        role="application"
+        class:dragging-over={isDraggingOver}
+    >
 		<div class="grid" style="--room-count: {unconferenceState.sortedRooms.length}">
 			<!-- Time header row -->
 			<div class="grid-corner"></div>

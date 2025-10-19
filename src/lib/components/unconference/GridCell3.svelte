@@ -59,16 +59,18 @@
 </script>
 
 <div 
-	class="grid-cell"
-	class:occupied={placement !== null}
-	class:drag-over={isDragOver}
-	class:valid-drop={isValidDrop}
-	class:invalid-drop={isDragOver && !isValidDrop}
-	class:spanned={placement && !showContent}
-	ondragover={handleDragOver}
-	ondragleave={handleDragLeave}
-	ondrop={handleDrop}
-	style:grid-row-end={showContent && spanSlots > 1 ? `span ${spanSlots}` : undefined}
+    class="grid-cell"
+    class:occupied={placement !== null}
+    class:drag-over={isDragOver}
+    class:valid-drop={isValidDrop}
+    class:invalid-drop={isDragOver && !isValidDrop}
+    class:spanned={placement && !showContent}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}
+    role="gridcell"
+    tabindex="0"
+    style:grid-row-end={showContent && spanSlots > 1 ? `span ${spanSlots}` : undefined}
 >
 	{#if placement && note && showContent}
 		<StickyNote3

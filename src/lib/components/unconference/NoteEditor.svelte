@@ -38,10 +38,10 @@
 	}
 </script>
 
-<div class="modal-overlay" onclick={onClose}>
-	<div class="modal-content" onclick={(e) => e.stopPropagation()}>
+<div class="modal-overlay" role="button" tabindex="0" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClose(); } }}>
+	<div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="note-editor-title" onpointerdown={(e) => e.stopPropagation()}>
 		<div class="modal-header">
-			<h3>Create Session Idea</h3>
+			<h3 id="note-editor-title">Create Session Idea</h3>
 			<button class="btn-close" onclick={onClose}>✕</button>
 		</div>
 
@@ -53,12 +53,11 @@
 					onkeydown={handleKeyDown}
 					placeholder="Describe your session idea..."
 					class="content-input"
-					autofocus
-				/>
+					></textarea>
 			</label>
 
 			<div class="color-picker">
-				<label class="input-label">Note Color</label>
+        <div class="input-label">Note Color</div>
 				<div class="color-options">
 					{#each colors as color}
 						<button
@@ -66,14 +65,13 @@
 							class:selected={selectedColor === color}
 							style:background-color={color}
 							onclick={() => selectedColor = color}
-							aria-label="Select color {color}"
-						/>
+							aria-label="Select color {color}"></button>
 					{/each}
 				</div>
 			</div>
 
 			<div class="preview-container">
-				<label class="input-label">Preview</label>
+        <div class="input-label">Preview</div>
 				<div 
 					class="note-preview"
 					style:background-color={selectedColor}

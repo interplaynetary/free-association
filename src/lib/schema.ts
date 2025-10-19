@@ -182,6 +182,46 @@ export type ChatReadStatesData = z.infer<typeof ChatReadStatesDataSchema>;
 export type RecognitionCacheEntry = z.infer<typeof RecognitionCacheEntrySchema>;
 export type RecognitionCache = z.infer<typeof RecognitionCacheSchema>;
 
+// ========================
+// Wallet and KYC Schemas
+// ========================
+
+// Basic EVM wallet info stored under user profile
+export const WalletEvmSchema = z.object({
+    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    chainId: z.number().optional(),
+    connectedAt: z.number().optional()
+});
+
+export const WalletsSchema = z.object({
+    evm: z.optional(WalletEvmSchema)
+});
+
+// KYC structures – lightweight and provider‑agnostic
+export const KycStatusSchema = z.enum(['unverified', 'pending', 'verified', 'rejected']);
+
+export const KycSelfAttestationSchema = z.object({
+    method: z.literal('self'),
+    full_name: z.string().min(1),
+    country: z.string().min(1),
+    dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    over18: z.boolean(),
+    submittedAt: z.number()
+});
+
+export const KycRecordSchema = z.object({
+    status: KycStatusSchema,
+    provider: z.string().default('self'),
+    data: KycSelfAttestationSchema.optional(),
+    updatedAt: z.number()
+});
+
+export type WalletEvm = z.infer<typeof WalletEvmSchema>;
+export type Wallets = z.infer<typeof WalletsSchema>;
+export type KycStatus = z.infer<typeof KycStatusSchema>;
+export type KycSelfAttestation = z.infer<typeof KycSelfAttestationSchema>;
+export type KycRecord = z.infer<typeof KycRecordSchema>;
+
 // Composition desire schema - maps target capacity ID to desired absolute units
 export const CompositionDesireSchema = z.record(IdSchema, z.number().gte(0));
 

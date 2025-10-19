@@ -394,3 +394,18 @@ bun run build
 ```
 
 We have a world to win! Lets play! 🌍✨☺️
+
+## Wallet & KYC
+
+- EVM wallet: Basic connect/disconnect via MetaMask or compatible wallet. The address and chainId are stored under your profile (`profile.wallets.evm`).
+- KYC: Lightweight, provider-agnostic flow with self-attestation. Status persists under `profile.kyc`.
+
+Setup
+- Optional env flag to auto-approve self KYC in dev: add `VITE_KYC_AUTO_APPROVE_SELF=true` to your Vite env (e.g., `.env.local`).
+- Navigate to `/profile/wallet` to connect a wallet and `/profile/kyc` to submit KYC.
+
+Notes
+- Data is persisted based on your active auth mode (Gun or Holster) and mirrored to localStorage for faster boot.
+- Third-party KYC providers can be integrated later via the KYC state module adapter pattern.
+
+We have a world to win! Lets play! 🌍✨☺️
