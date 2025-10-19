@@ -1,645 +1,867 @@
-# Statutes of [Name] Association
+# Open Collective
 
-## Article 1 — Name and Seat
+## Playnet - Governance and Operating Guidelines
 
-The Association "[Name]" (the "Association") is established under Articles 60 et seq. of the Swiss Civil Code. Its seat is in [City], Switzerland.
+**Status:** Hosted Collective on Open Collective\
+**Fiscal Host:** Open Collective Europe (Belgian non-profit)\
+**Platform:** opencollective.com
 
-## Article 2 — Purpose
+***
 
-The Association exists to support and experiment with games/organizations that enable societal flourishing.
+### Overview
 
-## Article 3 — Powers
+This collective operates as a **Hosted Collective** on Open Collective, with **Open Collective Europe** as our fiscal host.
 
-In furtherance of its purpose, the Association may:
-- Manage assets and reserves in any form, including digital assets
-- Engage in commercial activities consistent with its purpose
-- Utilize computational, algorithmic, or automated processes for coordination and governance
-- Establish partnerships, collaborations, subsidiaries, or participate in other legal entities
-- Issue internal coordination mechanisms or units
-- Delegate operational authority to designated persons, services, or systems
-- Employ any other lawful means consistent with its purpose
+**What this means:**
 
-## Article 4 — Membership
+* We do NOT have our own legal entity
+* We do NOT have our own bank account
+* We do NOT handle our own taxes, accounting, or legal compliance
+* Open Collective Europe provides legal status (Belgian non-profit)
+* Open Collective Europe holds our funds in their bank account
+* Open Collective Europe handles all administrative obligations
 
-**4.1 Determination**  
-Membership is determined computationally. A person is a member when their Mutual Recognition Density (MRD) equals or exceeds the threshold value (currently 0.5).
+**What we control:**
 
-**4.2 MRD Computation**  
-MRD is computed weekly according to the Membership Module specification, available at [URL/reference].
+* Our collective's purpose and activities
+* Who our members are
+* How we allocate our resources
+* What expenses we approve
+* Our transparent budget on Open Collective
 
-**4.3 Member List**  
-The current member list consists of all participants with MRD ≥ threshold as of the most recent computation.
+***
 
-**4.4 Exit**  
-Membership ends automatically when MRD falls below threshold. Members may also exit by written declaration.
+### 1. Purpose
 
-## Article 5 — Organs
+This collective exists to support and experiment with games/organizations that enable societal flourishing.
 
-The Association has two organs:
+We coordinate through computational protocols that eliminate traditional governance overhead while maintaining transparency and fairness.
 
-**5.1 General Assembly**  
-Comprises all current members (MRD ≥ threshold).
+***
 
-**5.2 Board**  
-Comprises three members with collective signature authority. Board positions are offered to members in order of highest MRD scores. If a member declines, the position is offered to the next highest MRD.
+### 2. Legal Structure
 
-All Board members have equal authority. Roles exist only for legal requirements:
-- One member designated as "President" (legal representative)
-- All members are authorized signatories
+#### 2.1 Fiscal Host Relationship
 
-Board composition updates when:
-- MRD computation changes ranking, AND
-- Current Board member declines to continue, OR
-- Higher-ranked member accepts position
+**Legal Entity:** Open Collective Europe ASBL (Belgian non-profit)\
+**Registered Address:** \[Belgium]\
+**Tax Status:** Belgian non-profit\
+**Bank Account:** Held by Open Collective Europe
 
-## Article 6 — General Assembly
+**Services Provided by Open Collective Europe:**
 
-**6.1 Powers**  
-The General Assembly:
-- Acknowledges computational results (membership, resource flows)
-- Approves annual financial statements
-- Adopts constitutional amendments via Decider process
-- Supervises the Board
+* Legal status and liability coverage
+* Bank account for holding collective funds
+* Payment processing (Stripe, Wise, PayPal, bank transfers)
+* Tax compliance and reporting
+* Accounting and bookkeeping
+* Regulatory compliance (Belgian and EU law)
+* Anti-money laundering (AML) compliance
+* Platform access and support
 
-**6.2 Convening**  
-Meets at least annually. All members may attend. Notice period: 14 days.
+**Host Fees:**
 
-**6.3 Decisions**  
-Decisions on constitutional matters follow the Decider process specification at [URL/reference]. Routine matters are determined by computational protocols.
+* Open Collective Europe charges a hosting fee (typically 5-10%)
+* Covers administrative overhead and legal services
+* Transparent and visible on all transactions
 
-## Article 7 — Board
+#### 2.2 Our Responsibilities
 
-**7.1 Minimal Responsibilities**  
-Board members have only these duties:
-- Sign bank transfers as instructed by protocol
-- Sign legal documents as required by Swiss law
-- File required reports with authorities
-- Maintain bank account access
+As a hosted collective, we are responsible for:
 
-**7.2 What Board Does NOT Do**  
-The Board does not:
-- Decide membership (protocol computes MRD)
-- Decide resource allocation (protocol computes allocations)
-- Decide compliance filters (compliance service determines)
-- Set strategy (emerges from member activity)
-- Make discretionary decisions
+* Managing our transparent budget on Open Collective
+* Approving or rejecting expense submissions
+* Maintaining our collective's purpose and activities
+* Communicating with contributors and members
+* Following Open Collective Europe's policies
+* Ensuring expenses align with our stated purpose
 
-**7.3 Signatory Authority**  
-Any two Board members sign collectively. All Board members have equal signing authority.
+#### 2.3 What We Cannot Do
 
-**7.4 Compensation**  
-Board service is voluntary. Reasonable expenses may be reimbursed.
+Because we don't have independent legal status:
 
-**7.5 Liability Protection**  
-Board members execute protocol instructions mechanically. They are not personally liable for allocation decisions made by the protocol.
+* Cannot enter contracts in our own name (must go through OC Europe)
+* Cannot open our own bank account
+* Cannot have our own tax status
+* Cannot sue or be sued independently
+* Cannot own property directly
 
-## Article 8 — Compliance Services
+***
 
-**8.1 Compliance Requirement**  
-The Association must comply with Swiss AML (Anti-Money Laundering) and KYC (Know Your Customer) laws.
+### 3. Membership
 
-**8.2 Compliance Service Provider**  
-The Association engages a compliance service provider to:
-- Verify member identities (KYC)
-- Screen members against sanctions lists (OFAC, UN, EU)
-- Determine jurisdiction transfer limits
-- Maintain compliance filter data
-- Update filters when compliance status changes
+#### 3.1 Computational Membership
 
-**8.3 Compliance Filters**  
-The compliance service determines Filter(Member) for each member:
-- $0 = Cannot receive funds (sanctions, KYC failure)
-- $X = Maximum allocation (jurisdiction limits, risk caps)
-- Unlimited = No restrictions
+Membership is determined by the **Membership Module** - a computational protocol based on mutual recognition.
 
-**8.4 Protocol Integration**  
-The protocol applies compliance filters computationally. The Board does not override or modify compliance filters.
+**Mutual Recognition Density (MRD):**
 
-**8.5 Compliance Service Selection**  
-The General Assembly may designate a compliance service provider via Decider process. The service must be independent of the Board.
+* Each participant recognizes others' contributions to their own self-actualization
+* Each participant distributes 100% recognition total
+* Mutual Recognition = min(your recognition of them, their recognition of you)
+* MRD = Your total mutual recognition / Network average mutual recognition
+* Membership threshold: MRD ≥ 0.5 (adjustable via Decider)
 
-## Article 9 — Resources
+**Automatic Membership:**
 
-**9.1 Resource Allocation**  
-Resources are allocated according to the Resource Allocation Protocol specification at [URL/reference].
+* Computed weekly
+* No approval process
+* No membership fees
+* Join by building genuine mutual recognition
+* Leave when MRD drops below threshold or by written declaration
 
-**9.2 Needs and Allocations**  
-Members declare needs. Providers declare capacities and allocate to needs. When the Association itself holds unrestricted funds, the protocol automatically allocates to member needs based on collective-recognition-shares and compliance filters. The Board executes approved transfers.
+**Full protocol specification:** [playnet.gitbook.io/docs/organizations/protocol](https://playnet.gitbook.io/docs/organizations/protocol)
 
-**9.3 Financial Records**  
-All flows are recorded in a transparent ledger maintained per the protocol specification.
+#### 3.2 Member Rights
 
-## Article 10 — Computational Protocols
+All members (MRD ≥ threshold) can:
 
-**10.1 Protocol Specifications**  
-The Association operates through three computational protocols:
-- Membership Module (MRD computation)
-- Resource Allocation Protocol (provider capacities and need matching)
-- Decider Process (parameter adjustments)
+* Submit recognition data
+* Declare needs
+* Declare capacity perspectives (mapping what resources exist)
+* Allocate resources if they are providers
+* Participate in Decider processes
+* View transparent budget on Open Collective
+* Propose expenses to the collective
 
-**10.2 Protocol References**  
-Current protocol specifications are maintained at [URL/repository] and may be updated via Decider process.
+#### 3.3 Open Collective Account
 
-**10.3 Interface**  
-The Board implements protocol outputs. Protocol computations are authoritative for membership and resource allocation.
+All members are encouraged to create an Open Collective account to:
 
-## Article 11 — Dissolution
+* Submit expenses for approved allocations
+* View transparent budget
+* See allocation rationale
+* Track collective activities
 
-**11.1 Decision**  
-Dissolution requires Decider process with supermajority (75% weighted support).
+***
 
-**11.2 Liquidation**  
-Upon dissolution, assets are distributed to members pro-rata by collective-recognition-share (calculated across all members as of dissolution decision), or to organizations with similar purpose.
+### 4. Governance Structure
 
-## Article 12 — Entry into Force
+#### 4.1 Collective Admins
 
-These Statutes enter into force upon adoption by the founding members.
+**Selection:** Top 3 members by MRD score (opt-in)
 
----
+* Positions offered by MRD ranking
+* If a member declines, offer goes to next highest
+* Members must explicitly accept to become admin
+* Positions reviewed quarterly
 
-**Adopted:** [Date]  
-**Place:** [City]
+**Responsibilities:**
 
-**Founding Members:**  
-[Signatures of at least 2 founding members]
+* Approve expenses on Open Collective (based on protocol outputs)
+* Manage collective settings on platform
+* Communicate with Open Collective Europe when needed
+* Execute protocol decisions mechanically
+* Maintain collective description and transparency
 
----
+**What Admins Do NOT Do:**
 
-## Implementation Notes
+* Decide membership (protocol computes MRD)
+* Decide resource allocation (protocol computes allocations)
+* Make discretionary decisions
+* Override protocol outputs
+* Control individual member activities
 
-### Interface Points Between Statutes and Protocols
+**Admin Access:**
 
-| Statute Article | Protocol/Service | Data Flow |
-|-----------------|------------------|-----------|
-| Art. 4.2 | Membership Module | Weekly MRD computation → Member list |
-| Art. 5.2 | Membership Module | Weekly MRD ranking → Board position offers |
-| Art. 6.3 | Decider Process | Constitutional proposals → Weighted decision |
-| Art. 8.2 | Compliance Service | KYC/sanctions checks → Compliance filters |
-| Art. 9.1 | Resource Allocation | Needs + Provider capacities + Filters → Transfer instructions |
-| Art. 9.3 | Resource Allocation | All transactions → Ledger entries |
+* All 3 admins have equal access to Open Collective admin panel
+* Any admin can approve expenses
+* Changes to collective settings require 2 admins
 
-### Required Protocol Outputs (to Board)
+#### 4.2 No Traditional Governance
+
+This collective has:
+
+* ❌ No board of directors
+* ❌ No executive committee
+* ❌ No voting on resource allocation
+* ❌ No approval processes for members
+* ❌ No appointed positions
+
+Everything is determined by:
+
+* ✓ Computational protocols (membership, allocation)
+* ✓ Mutual recognition patterns
+* ✓ Provider capacity declarations
+* ✓ Transparent public budget
+
+***
+
+### 5. Resource Allocation Protocol
+
+#### 5.1 Core Principles
+
+Resources flow based on computational protocols, not governance decisions.
+
+**Recognition = Your acknowledgment of contributions to YOUR self-actualization**
+
+* Each member has 100% recognition to distribute
+* Non-transferable (can't be sold or traded)
+* Dynamically adjustable
+* Represents what enables you to self-actualize
+
+**Mutual Recognition = min(your recognition of them, their recognition of you)**
+
+* Ensures genuine reciprocity
+* One-sided recognition doesn't create mutual relationship
+* Measures real interdependence
+
+#### 5.2 Allocation Process
+
+**Step 1: Members declare needs**
+
+* Post needs via protocol interface
+* Example: "I need $1000 for water infrastructure"
+* All needs visible to collective
+
+**Step 2: Members recognize contributions**
+
+* Each member distributes their 100% recognition
+* Recognition patterns emerge from genuine enabling relationships
+* Protocol tracks recognition data
+
+**Step 3: Members declare capacity perspectives**
+
+* Any member can map: "From my view, Collective X can allocate $5000 to {Alice, Bob, Charlie}"
+* These are perspectives of what resources exist
+* All members see collective-recognition-shares for any declared capacity
+* Enables distributed coordination
+
+**Step 4: Protocol computes collective-recognition-shares**
+
+* For each capacity declaration, calculates each member's share
+* Alice's share = (Alice's mutual recognition with others in set) / (Total mutual recognition in set)
+* Visible to all members for any declared capacity lens
+
+**Step 5: Providers allocate**
+
+* When someone with actual resources (provider) declares capacity, they allocate to needs
+* Based on collective-recognition-shares + actual needs + available capacity
+* Providers can be: External donors, grant-makers, or the collective itself
+
+**Step 6: Admins approve expenses on Open Collective**
+
+* Protocol outputs allocation decision
+* Admins create/approve expense on Open Collective
+* Include allocation rationale: "Collective-recognition-share: 28%, Need: $1000, Protocol timestamp: \[date]"
+* Member receives payment via Open Collective (Stripe/Wise/PayPal/bank transfer)
+
+#### 5.3 Automatic Allocation of Collective Funds
+
+When the collective has available balance on Open Collective:
+
+**Automatic Protocol:**
+
+1. Protocol detects available balance
+2. Protocol generates capacity declaration: all current members
+3. Protocol computes collective-recognition-shares for all members
+4. Protocol reviews all open needs from members
+5. Protocol allocates automatically by recognition shares + needs
+6. Admins receive allocation instructions
+7. Admins approve expenses on Open Collective
+8. Members receive payments automatically
+
+**Example:**
+
+```
+Collective balance: $5000
+
+Members: {Alice, Bob, Charlie, Dave, Eve}
+Collective-recognition-shares:
+- Alice: 28%
+- Bob: 22%
+- Charlie: 19%
+- Dave: 18%
+- Eve: 13%
+
+Open needs:
+- Alice: $2000 (water infrastructure)
+- Bob: $1500 (agriculture)
+- Charlie: $1000 (education)
+- Dave: $800 (research)
+- Eve: $500 (organizing)
+
+Protocol allocation (by recognition + feasibility):
+- Alice: $2000 (highest share, full need)
+- Bob: $1500 (second priority, full need)
+- Charlie: $1000 (third priority, full need)
+- Dave: $500 (partial, capacity exhausted)
+- Total: $5000 allocated
+
+Admins approve expenses on OC for Alice, Bob, Charlie, Dave
+Members receive payments via Open Collective
+```
+
+**Key: Admins never decide allocations. Protocol computes based on recognition.**
+
+#### 5.4 External Provider Allocations
+
+External funders can contribute with their own allocation decisions:
+
+**Option A: General contribution**
+
+* Donor contributes to collective on Open Collective
+* Funds go into general balance
+* Protocol allocates automatically based on collective-recognition-shares
+
+**Option B: Directed allocation**
+
+* Donor contributes to collective
+* Provides allocation instructions: "I want this allocated to {Alice, Bob, Charlie} based on protocol"
+* Protocol computes collective-recognition-shares within donor's specified set
+* Donor sees shares and makes allocation decision
+* Admins approve expenses per donor's instructions
+
+**Option C: Direct expense**
+
+* External provider creates expense for specific member
+* Admins approve if aligned with purpose and protocol
+* Member receives payment
+
+#### 5.5 Compliance and Restrictions
+
+**Open Collective Europe handles:**
+
+* KYC verification (identity checks)
+* Sanctions screening (OFAC, UN, EU lists)
+* Payment processor compliance (Stripe, Wise)
+* Belgian/EU regulatory requirements
+* Tax reporting
+
+**We apply computational filters:**
+
+* Protocol can apply additional filters based on compliance data
+* Filter(Member) = Maximum allocation
+  * $0 = Cannot allocate (sanctions, compliance failure)
+  * $X = Capped amount (jurisdiction limits, risk management)
+  * Unlimited = No restrictions
+* Filters applied before admins see allocation instructions
+* Admins never override filters
+
+**Expense Approval Criteria:**
+
+* ✓ Aligned with collective purpose
+* ✓ Recipient is member or approved by protocol
+* ✓ Amount matches protocol allocation
+* ✓ Compliance filters respected
+* ✓ Documentation provided
+* ✓ Open Collective Europe policies followed
+
+***
+
+### 6. Decider Process
+
+For constitutional/parameter changes only (rarely used).
+
+**When to use:**
+
+* Changing MRD threshold
+* Changing protocol parameters
+* Changing collective purpose
+* Major structural changes
+
+**When NOT to use:**
+
+* Resource allocation (use protocol)
+* Membership decisions (use MRD computation)
+* Daily operations (use protocol)
+* Project priorities (use protocol)
+
+**Process:**
+
+1. Member initiates Decider session
+2. Proposal phase (1 week)
+3. Challenge phase (1 week)
+4. Discussion phase (1 week)
+5. Improvement phase (1 week)
+6. Support distribution phase (1 week)
+7. Result: Weighted by MRD scores
+8. Implementation: Admins update settings
+
+**Full specification:** [**pl**aynet.gitbook.io/docs/decider/decider](https://playnet.gitbook.io/docs/decider/decider)
+
+***
+
+### 7. Transparency and Public Budget
+
+#### 7.1 Open Collective Transparency
+
+Everything is public on our Open Collective page:
+
+**Visible to Everyone:**
+
+* All incoming contributions (who gave, how much, when)
+* All outgoing expenses (who received, how much, for what, when)
+* Current balance and reserves
+* Allocation rationale (collective-recognition-shares)
+* Admin activity
+* Member list (optional)
+
+**Budget Dashboard:**
+
+* Real-time balance
+* Monthly income and expenses
+* Historical transactions
+* Contribution trends
+* Impact metrics
+
+#### 7.2 Protocol Transparency
+
+In addition to Open Collective budget:
+
+**Protocol Data (on our interface):**
+
+* Current member list (MRD ≥ threshold)
+* MRD scores and rankings
+* Recognition patterns (anonymized or public, as we choose)
+* Collective-recognition-shares for any capacity declaration
+* Open needs from members
+* Allocation history and rationale
+
+**Full Transparency:**
+
+* Anyone can verify protocol computations
+* Anyone can see why allocations were made
+* Anyone can observe recognition patterns
+* Anyone can understand collective-recognition-shares
+
+#### 7.3 Communication
+
+**Update Collective regularly:**
+
+* Post updates on Open Collective
+* Share impact stories
+* Show how funds were used
+* Thank contributors publicly
+* Explain protocol decisions
+
+**Build Trust:**
+
+* Transparency creates confidence
+* Clear allocation rationale
+* Public recognition patterns
+* Auditable protocol computations
+
+***
+
+### 8. Practical Operations
+
+#### 8.1 Receiving Contributions
+
+**Anyone can contribute via Open Collective:**
+
+* One-time donations
+* Recurring contributions (monthly, yearly)
+* Custom amounts
+* Payment methods: Credit card, PayPal, bank transfer, cryptocurrency (via partner integrations)
+
+**Contributors receive:**
+
+* Instant receipt
+* Public acknowledgment (unless anonymous)
+* Real-time tracking of how funds are used
+* Visibility of allocation rationale
+
+#### 8.2 Making Expenses
+
+**Members submit expenses:**
+
+1. Create expense on Open Collective
+2. Provide documentation (invoice, receipt, description)
+3. Link to protocol allocation (if applicable)
+4. Submit for admin approval
+
+**Admins review:**
+
+1. Check protocol output (was this allocated?)
+2. Verify alignment with purpose
+3. Confirm compliance filters respected
+4. Ensure documentation adequate
+5. Approve or request changes
+
+**Payment:**
+
+* Open Collective processes payment
+* Via Stripe, Wise, PayPal, or bank transfer
+* Typically within 1-5 business days
+* Member receives notification
+
+#### 8.3 Different Expense Types
+
+**Protocol Allocations:**
+
+* Based on collective-recognition-shares
+* Pre-computed by protocol
+* Admins verify and approve mechanically
+
+**Project Expenses:**
+
+* Member doing work declares need
+* Protocol computes allocation
+* Member submits expense with deliverables
+* Admins approve based on protocol
+
+**Reimbursements:**
+
+* Member spends own money for collective purpose
+* Submits receipt and justification
+* If aligned with protocol allocation, approved
+* If not, can be approved if admins consensus (2 of 3)
+
+**Grants to External Projects:**
+
+* If aligned with purpose
+* Can be approved by admins
+* Visible on transparent budget
+
+#### 8.4 Host Relationship
+
+**Open Collective Europe:**
+
+* Holds our funds legally
+* Processes all payments
+* Handles tax reporting
+* Ensures compliance
+* Charges hosting fee
+* Provides platform access
+
+**We must:**
+
+* Follow OC Europe policies
+* Ensure expenses align with purpose
+* Provide adequate documentation
+* Respond to OC Europe inquiries
+* Maintain active collective (transactions, updates)
+
+**Host can:**
+
+* Request additional documentation
+* Freeze collective for policy violations
+* Remove collective if terms violated
+* Require compliance verification
+
+***
+
+### 9. Member Experience
+
+#### 9.1 For Regular Members
+
+**Participating:**
+
+1. Submit recognition via protocol interface
+2. Declare your needs
+3. Declare capacity perspectives (what resources you see)
+4. View collective-recognition-shares for different lenses
+5. See allocations and rationale on Open Collective
+
+**Receiving Allocations:**
+
+1. Protocol computes allocation based on your collective-recognition-share
+2. Admin creates expense for you on Open Collective
+3. You receive email notification
+4. Submit documentation (invoice, work product, receipts)
+5. Admin approves expense
+6. Receive payment via your preferred method
+7. Transaction visible publicly on Open Collective
+
+#### 9.2 For Contributors/Donors
+
+**Contributing:**
+
+1. Visit collective on opencollective.com/\[collective-name]
+2. See transparent budget and impact
+3. View allocation methodology (collective-recognition-shares)
+4. Decide contribution amount and frequency
+5. Contribute via credit card, PayPal, or bank transfer
+6. Receive instant receipt
+
+**Tracking Impact:**
+
+1. See how your contribution was allocated
+2. View expenses funded by your contribution
+3. Understand allocation rationale (recognition shares)
+4. Observe collective activities and outcomes
+5. Continue contributing if aligned with impact
+
+#### 9.3 For Admins
+
+**Daily:**
+
+* Check for expense submissions
+* Verify protocol allocations
+* Approve qualifying expenses
+* Respond to member questions
 
 **Weekly:**
-- Current member list (names, MRD scores)
-- Current MRD ranking (for Board position offers)
-
-**As-needed:**
-- Transfer instructions (from provider allocations with filters applied)
-- Decider results (for constitutional changes)
-- Compliance filter updates (from compliance service)
-
-**Annually:**
-- Financial statements (auto-generated from ledger)
-- Membership changes summary
-
-### Board Selection Process (Opt-In Model)
-
-**Position offers go by MRD ranking:**
-```
-Week 1: MRD computation ranks all members
-Week 2: Positions offered in order:
-1. Highest MRD → Offered Board position
-   - If accepts: Becomes Board member
-   - If declines: Offer goes to next highest
-
-2. 2nd highest MRD → Offered Board position
-   - If accepts: Becomes Board member
-   - If declines: Offer goes to next highest
-
-3. Continue until 3 positions filled
-
-Current Board members:
-- Automatically offered to continue if still in top ranks
-- Can decline to continue (position offered to next highest)
-- Must explicitly accept to continue each term
-```
-
-**Term length:** Board positions reviewed quarterly after MRD computation.
-
-**Example:**
-```
-MRD Ranking:
-1. Alice (MRD: 1.8)
-2. Bob (MRD: 1.5)
-3. Charlie (MRD: 1.3)
-4. Dave (MRD: 1.2)
-5. Eve (MRD: 1.0)
-
-Offers:
-1. Alice offered → Accepts → Board Member 1
-2. Bob offered → Declines (too busy)
-3. Charlie offered → Accepts → Board Member 2
-4. Dave offered → Accepts → Board Member 3
-
-Final Board: {Alice, Charlie, Dave}
-President designation: Alice (highest MRD of actual Board)
-```
-
-**Why Board members might decline:**
-- Time constraints
-- Travel commitments
-- Conflict of interest
-- Don't want legal signing responsibility
-- Any personal reason
-
-**No penalty for declining:** MRD score unaffected, full participation rights maintained.
-
-### Compliance Service
-
-**Independent service provider performs:**
-```
-1. Member onboarding:
-   - KYC verification (identity documents)
-   - Sanctions screening (OFAC, UN, EU lists)
-   - Jurisdiction assessment
-   - Risk evaluation
-
-2. Ongoing monitoring:
-   - Daily sanctions list updates
-   - Quarterly re-verification
-   - Status change notifications
-
-3. Filter determination:
-   For each member, compliance service sets:
-   - Filter = $0 (cannot receive: sanctions, KYC failed)
-   - Filter = $X (cap: jurisdiction limits, risk levels)
-   - Filter = Unlimited (no restrictions)
-
-4. Protocol integration:
-   - Provides filter data to protocol
-   - Protocol applies filters computationally
-   - Board receives filtered allocations
-   - Board never modifies filters
-```
-
-**Service characteristics:**
-- Independent of Board (no Board override)
-- Automated sanctions screening
-- API integration with protocol
-- Transparent filter logic
-- Auditable compliance trail
-
-**Example compliance services:**
-- ComplyAdvantage (sanctions/AML screening)
-- Onfido (KYC verification)
-- Sumsub (identity verification)
-- Custom service built on these APIs
-
-**Key separation:**
-- Compliance service determines who can receive (filters)
-- Protocol determines who should receive (recognition)
-- Board executes transfers (mechanical only)
-- No single entity has full discretion
-
-### Board's Minimal Role
-
-The Board performs ONLY these mechanical tasks:
-1. **Sign bank transfers:** As instructed by protocol (with compliance filters already applied)
-2. **Sign legal documents:** As required by Swiss law
-3. **File reports:** With Swiss authorities
-4. **Maintain access:** To bank account
-
-The Board does NOT:
-- Decide who is a member (protocol does)
-- Decide resource allocation (protocol does)
-- Decide compliance filters (compliance service does)
-- Set strategic direction (emerges from members)
-- Make discretionary decisions
-- Override protocol outputs
-- Have fiduciary discretion
-
-### Reconciling Distributed Decisions with Centralized Execution
-
-**Key insight:** The Board never sees capacity declarations or needs. The Board only receives specific transfer instructions.
-
-**The flow:**
-```
-Layer 1 - Distributed (No centralization):
-Members declare needs (visible to all)
-- Alice: "I need $50K for water infrastructure"
-- Bob: "I need $30K for agriculture"
-
-Providers declare capacities (only providers, with actual resources)
-- Foundation X: "{Alice,Bob,Charlie,Dave,Eve} - I can provide $200K"
-- Foundation Y: "{Bob,Charlie,Dave} - I can provide $100K"
-
-Layer 2 - Provider Allocation (Distributed):
-Each provider:
-- Calculates collective-recognition-shares within their set
-- Sees needs from members in their set
-- Allocates based on recognition + needs + available capacity
-- Foundation X: "I'll send $30K to Alice, $25K to Bob"
-- Foundation Y: "I'll send $20K to Bob"
-
-Layer 3 - Board Execution (Mechanical):
-Board receives ONLY: "Transfer $30K to Alice, $45K to Bob"
-
-Board does NOT see:
-❌ Capacity declarations ($200K, $100K)
-❌ Need amounts ($50K, $30K)
-❌ Collective-recognition-shares
-❌ Provider reasoning
-
-Board ONLY sees:
-✓ Specific transfer instructions
-✓ Amounts and recipients
-✓ That's it
-```
-
-**No centralization of capacities or needs.** Both remain distributed.
-
-**What gets centralized:** Only the execution of specific transfers that already emerged from the distributed process.
-
-**Board = Signing robot.** Receives final instructions, executes mechanically, sees nothing upstream.
-
-### Resource Flow: Protocol to Board Interface
-
-**The distributed protocol determines allocations. The Board executes approved transfers.**
-
-**Flow:**
-```
-1. Members declare needs (visible to all)
-2. Providers declare capacities (only providers, with actual resources)
-3. For each provider capacity:
-   - Protocol computes collective-recognition-shares within provider's set
-   - Provider sees needs from members in their set
-   - Provider allocates based on recognition + needs + capacity
-4. Providers allocate to needs:
-
-   Path A: Direct transfer (provider to recipient)
-   - Provider has funds outside Verein
-   - Provider transfers directly to recipient
-   - No Board involvement
-   
-   Path B: Verein transfer (provider instructs Board)
-   - Provider contributed funds TO Verein
-   - Provider allocation = instruction to Board
-   - Board executes transfer from Verein account
-
-5. Board receives transfer instructions from protocol
-6. Board executes authorized transfers
-```
-
-**Example:**
-```
-Alice declares need: $50K for water infrastructure
-
-Foundation X declares capacity:
-  Set: {Alice, Bob, Charlie}
-  Total: $200K via Verein
-Foundation X allocates: $30K to Alice
-
-Individual Y declares capacity:
-  Set: {Alice}
-  Total: $5K direct
-Individual Y allocates: $5K to Alice (direct transfer)
-
-Foundation Z declares capacity:
-  Set: {Alice, Bob}
-  Total: $10K direct
-Foundation Z allocates: $10K to Alice (from their account)
-
-Board sees:
-- Protocol output: "Transfer $30K to Alice (from Foundation X allocation)"
-- Board verifies: Foundation X contributed $100K to Verein
-- Board executes: Bank transfer $30K to Alice
-- Board records: Transaction in ledger
-
-Board does NOT see or approve:
-- Individual Y's direct $5K transfer
-- Foundation Z's direct $10K transfer
-These bypass Verein entirely (peer-to-peer)
-```
-
-**Key separation:**
-- **Protocol authority:** Determines who should receive what (via collective recognition)
-- **Board execution:** Implements transfers from Verein funds only
-- **Direct transfers:** Providers can respond outside Verein (peer-to-peer)
-
-**Board's limited scope:**
-```
-Board CAN:
-- Execute transfers authorized by protocol
-- Verify provider has deposited funds
-- Maintain accounting records
-- Ensure legal compliance
-
-Board CANNOT:
-- Decide who gets resources (providers decide)
-- Override protocol allocations
-- Prioritize one need over another
-- Withhold authorized transfers
-```
-
-**Provider's choice:**
-```
-When Foundation X contributes $100K to Verein:
-1. Foundation declares capacity for members
-2. Protocol shows collective-recognition-shares within Foundation's set
-3. Foundation sees needs from members in their set
-4. Foundation allocates: $30K to Alice
-5. Foundation instructs Verein: "Transfer $30K to Alice"
-6. Board executes: $30K transfer from Verein account
-
-Foundation could also:
-- Keep funds in own account
-- Transfer directly to Alice (bypass Verein)
-- No Board involvement in that case
-
-Contributing to Verein gives Foundation trust in execution,
-but Board still doesn't decide allocation.
-```
-
-### Two Provider Scenarios
-
-The Verein operates under two provider models:
-
-**Primary: Verein as Computational Provider**
-
-This is the core model.
-
-```
-Verein has $100K available (general donations, accumulated surplus):
-1. Protocol detects available balance
-2. Protocol automatically declares capacity: all current members
-3. Protocol computes collective-recognition-shares for all members
-4. Protocol applies compliance filters (AML/KYC verification)
-5. Protocol reviews all open needs
-6. Protocol allocates automatically by:
-   - Filtered collective-recognition-shares
-   - Need amounts and urgency
-   - Available capacity
-7. Board receives: "Transfer $50K to Alice, $30K to Bob, $20K to Charlie"
-8. Board executes mechanically
-
-Provider: Verein (but allocation is computational)
-Allocator: Protocol (not Board, not General Assembly)
-Board: Execution only (doesn't decide)
-Compliance: Protocol applies filters before allocation
-```
-
-**Secondary: External Provider Using Verein as Executor**
-
-External entities can use the Verein for execution.
-
-```
-Foundation X (external provider):
-1. Deposits $100K to Verein bank account
-2. Declares capacity: {Alice, Bob, Charlie} - $100K
-3. Reviews collective-recognition-shares + needs
-4. Applies their own compliance filters
-5. Makes allocation decision: $30K to Alice, $25K to Bob
-6. Instructs Board: "Execute these transfers"
-7. Board executes mechanically
-
-Provider: Foundation X (makes allocation decisions)
-Board: Execution agent only (doesn't decide)
-Foundation X: Responsible for their own compliance
-```
-
-**Key distinction:**
-- In Primary model, the protocol makes allocation decisions (with compliance filtering)
-- In Secondary model, external entity makes allocation decisions (with their own compliance)
-- In both models, the Board only executes (never decides)
-
-### Compliance Filtering
-
-**Providers are wholly responsible for implementing compliance filters.**
-
-Each provider (including Verein itself) must filter their capacity declarations based on:
-- AML/KYC compliance (Know Your Customer verification)
-- Sanctions screening (OFAC, UN, EU sanctions lists)
-- Legal jurisdiction restrictions
-- Tax compliance requirements
-- Mission/purpose alignment
-
-**Allocation Filter Model:**
-```
-Filter(Member, Capacity) = Maximum amount that can be allocated to Member from this Capacity
-
-Values:
-- $0 = Cannot allocate (sanctions, KYC failed, etc.)
-- $X = Can allocate up to $X (jurisdiction limits, risk caps, etc.)
-- Unlimited = No restriction
-
-Actual-Allocation = min(
-  Recognition-Share × Total-Capacity,
-  Filter(Member, Capacity),
-  Member-Need
-)
-
-Members who hit their filter limit receive up to that limit.
-Unallocated capacity redistributes to other members by recognition shares.
-```
-
-**Union of Filters (External Provider via Verein):**
-```
-When external provider uses Verein as executor, BOTH filters apply:
-
-Effective-Filter(Member) = min(
-  Provider-Filter(Member),
-  Verein-Filter(Member)
-)
-
-Most restrictive filter wins. Both must allow allocation.
-
-Example:
-- Foundation X filter for Alice: $50K max
-- Verein filter for Alice: $30K max (jurisdiction limit)
-- Effective filter: min($50K, $30K) = $30K
-
-- Foundation X filter for Charlie: $40K max
-- Verein filter for Charlie: $0 (sanctions list)
-- Effective filter: min($40K, $0) = $0 → Cannot allocate
-
-External provider's approval is necessary but not sufficient.
-Verein's compliance filters always apply (Swiss law).
-```
-
-**Example:**
-```
-Verein has $100K to allocate to 5 members
-
-Verein's compliance filters:
-- Alice: Unlimited (fully compliant)
-- Bob: Unlimited (fully compliant)
-- Charlie: $0 (KYC failed - cannot allocate)
-- Dave: Unlimited (fully compliant)
-- Eve: $5K max (jurisdiction limit)
-
-Initial allocation by recognition share:
-- Alice: $28K, Bob: $22K, Charlie: $19K, Dave: $18K, Eve: $13K
-
-After applying filters:
-- Alice: $28K ✓
-- Bob: $22K ✓
-- Charlie: $0 (excluded)
-- Dave: $18K ✓
-- Eve: $5K (limited)
-
-Unallocated $27K redistributes to Alice, Bob, Dave by recognition shares.
-
-Final: Alice: $44K, Bob: $30K, Charlie: $0, Dave: $20K, Eve: $5K
-```
-
-**Key principle:** Compliance filtering is computational, not Board discretion. Board executes only compliant, filtered allocations.
-
-### Decider Process Integration
-
-When constitutional change needed:
-1. Member initiates Decider session via protocol
-2. Decider process runs (weeks 1-5)
-3. Result: Weighted decision output
-4. General Assembly formally adopts result
-5. Board implements (if legal changes needed)
-
-**Example 1: Protocol parameter (no legal filing)**
-```
-Changing MRD threshold from 0.5 to 0.6
-
-Decider runs → Result: Adopt 0.6 threshold (60% support)
-General Assembly acknowledges
-Protocol updated → New threshold takes effect
-Board: No action needed
-```
-
-**Example 2: Legal structure (requires filing)**
-```
-Changing seat from Zurich to Basel
-
-Decider runs → Result: Move to Basel (64% support)
-General Assembly adopts amendment
-Board: File amended Article 1 with commercial register
-Board: Update bank, tax records
-New seat legally effective
-```
-
-**Example 3: Self-amendment (higher threshold)**
-```
-Changing amendment threshold from 60% to 66%
-
-Decider runs → Result: Adopt 66% threshold (78% support)
-General Assembly adopts amendment to Article 9
-Article 9.3 updated
-Future amendments require 66% (except Article 9 itself: 75%)
-```
-
-All decisions follow same process. Board executes mechanically, cannot override.
-
-### Minimum Viable Implementation
-
-**To launch:**
-1. 2+ founding members sign statutes
-2. Register with Swiss authorities
-3. Open bank account (Board signatories)
-4. Deploy computational protocols at [URL]
-5. Begin weekly MRD computations
-
-**Ongoing operation:**
-- Week 1: MRD computation → Member list updated
-- Week 2-52: Repeat
-- Annually: General Assembly acknowledges results
-- As-needed: Board executes transfers per protocol
-
-**No meetings, no votes, no governance** except annual formality and rare constitutional changes via Decider.
+
+* Review MRD computation output
+* Update admin composition if needed
+* Post collective updates
+
+**Quarterly:**
+
+* Review protocol parameters
+* Consider Decider proposals
+* Evaluate collective health
+* Report to contributors
+
+**As Needed:**
+
+* Communicate with Open Collective Europe
+* Handle edge cases
+* Update collective description
+* Manage platform settings
+
+***
+
+### 10. Advantages of This Model
+
+#### 10.1 Legal and Administrative
+
+✓ **No incorporation needed** - OC Europe provides legal status\
+✓ **No bank account needed** - OC Europe holds funds\
+✓ **No tax compliance burden** - OC Europe handles\
+✓ **No accounting overhead** - OC Europe maintains books\
+✓ **No insurance/liability** - Covered by OC Europe\
+✓ **No lawyer fees** - OC Europe manages legal
+
+#### 10.2 Operational
+
+✓ **Fast setup** - Start immediately, no registration delay\
+✓ **Global payments** - Stripe, Wise, PayPal, bank transfers\
+✓ **Multiple currencies** - Accept contributions in any currency\
+✓ **Professional platform** - Clean interface, automated receipts\
+✓ **Event ticketing** - Built-in if needed\
+✓ **Recurring contributions** - Automated monthly/yearly support
+
+#### 10.3 Governance
+
+✓ **No traditional governance** - Computational protocols decide\
+✓ **No voting needed** - Recognition patterns determine allocation\
+✓ **No committees** - Admins execute mechanically\
+✓ **No approval processes** - Membership emerges from MRD\
+✓ **No politics** - Math doesn't have opinions\
+✓ **No gatekeeping** - Recognition is earned, not granted
+
+#### 10.4 Transparency
+
+✓ **Public budget** - Everything visible on Open Collective\
+✓ **Clear rationale** - Allocation logic explained\
+✓ **Real-time tracking** - Contributors see impact live\
+✓ **Auditable protocol** - Anyone can verify computations\
+✓ **Trust through transparency** - No hidden decisions
+
+***
+
+### 11. Limitations and Considerations
+
+#### 11.1 What We Can't Do
+
+❌ **Independent legal identity** - We operate under OC Europe\
+❌ **Own bank account** - Funds held by OC Europe\
+❌ **Own contracts** - Must go through OC Europe\
+❌ **Own property** - Cannot hold assets directly\
+❌ **Own IP** - Intellectual property held by OC Europe or members individually\
+❌ **Legal standing** - Cannot sue/be sued independently
+
+#### 11.2 Host Dependency
+
+* Dependent on Open Collective Europe's policies
+* Must follow their rules and procedures
+* Subject to their fee structure
+* Risk if OC Europe changes terms or closes
+* Limited recourse if disagreement with host
+
+**Mitigation:**
+
+* OC Europe is established and stable
+* Can switch hosts if needed (requires fund transfer)
+* Can become Independent Collective later (requires legal entity)
+* Protocol is portable (can move to different infrastructure)
+
+#### 11.3 Payment Processing
+
+* Dependent on Stripe, Wise, PayPal availability
+* Subject to their terms and fees
+* Some countries not supported
+* Payment delays possible
+* Currency conversion fees
+
+#### 11.4 Protocol Trust
+
+* Members must trust protocol computations
+* Requires understanding of how MRD works
+* Recognition patterns can be gamed theoretically
+* Requires active participation for meaningful recognition
+
+**Mitigation:**
+
+* Protocol is transparent and auditable
+* Recognition gaming hurts gamer's own allocations
+* Natural correction through recognition decrease
+* Community norms enforce genuine participation
+
+***
+
+### 12. Evolution and Flexibility
+
+#### 12.1 Changing Parameters
+
+**Via Decider Process:**
+
+* MRD threshold
+* Protocol computation frequency
+* Allocation algorithms
+* Compliance filter logic
+* Collective purpose (within OC Europe limits)
+
+**Via Admin Consensus:**
+
+* Open Collective settings
+* Transparency preferences
+* Communication approaches
+* Documentation requirements
+
+#### 12.2 Scaling
+
+**As Collective Grows:**
+
+* More members → richer recognition network
+* More contributions → larger allocations possible
+* More needs → protocol prioritizes by recognition shares
+* More providers → multiple capacity lenses emerge
+
+**Network Effects:**
+
+* Larger network = more enabling relationships
+* More recognition data = better allocation accuracy
+* More transparency = higher contributor trust
+* More impact = attracts more contributors
+
+#### 12.3 Future Options
+
+**If Needs Change:**
+
+**Option A: Stay Hosted**
+
+* Continue with Open Collective Europe
+* Simplest and cheapest
+* Good for most collectives
+
+**Option B: Switch Hosts**
+
+* Move to different fiscal host
+* Might offer specialized services
+* Transfer funds on Open Collective
+
+**Option C: Become Independent Collective**
+
+* Establish own legal entity (e.g., Swiss Verein, US 501(c)(3))
+* Open own bank account
+* Keep using Open Collective for transparency
+* More control, more responsibility
+
+**Option D: Become Fiscal Host**
+
+* Register as fiscal host on Open Collective
+* Host other collectives under your legal entity
+* Requires significant administrative capacity
+* Generates hosting fee revenue
+
+***
+
+### 13. Contact and Support
+
+**Collective Admins:**
+
+* Ruzgar Imski: <ruzgar@playnet.lol>
+* Kern Mangan Walker: <kernmanganwalker@gmail.com>
+* David Rug: <david.rug98@icloud.com>
+
+**Open Collective Europe:**
+
+* Website: [opencollective.com/europe](https://opencollective.com/europe)
+* Email: <hello@opencollective.com>
+* Documentation: [docs.opencollective.com](https://docs.opencollective.com)
+
+**Our Resources:**
+
+* Open Collective: [opencollective.com/playnet](https://opencollective.com/playnet)
+* Protocol Interface: [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association)
+* Documentation: [playnet.gitbook.io](https://playnet.gitbook.io)
+* GitHub: [github.com/interplaynetary](https://github.com/interplaynetary)
+* Chat: <https://t.me/interplaynetary>
+
+***
+
+### Appendix A: Protocol Specifications
+
+**Membership Module:**
+
+* [playnet.gitbook.io/docs/membership-module](https://playnet.gitbook.io/docs/membership-module)
+* \[Link to recognition submission interface]
+* \[Link to membership computation code]
+
+**Resource Allocation Protocol:**
+
+* [playnet.gitbook.io/docs/collective-recognition](https://playnet.gitbook.io/docs/collective-recognition)
+* \[Link to capacity declaration spec]
+* \[Link to need declaration spec]
+* \[Link to collective-recognition-share computation]
+
+**Decider Process:**
+
+* [playnet.gitbook.io/docs/decider/decider](https://playnet.gitbook.io/docs/decider/decider)
+* \[Link to proposal template]
+* \[Link to voting interface]
+
+***
+
+### Appendix B: Open Collective Europe Policies
+
+**Must Comply With:**
+
+* \[Link to OC Europe terms of fiscal sponsorship]
+* \[Link to OC Europe acceptable use policy]
+* \[Link to Open Collective platform terms]
+* \[Belgian non-profit law]
+* \[EU data protection (GDPR)]
+
+**Hosting Fees:**
+
+* Standard: 5% of incoming contributions
+* May vary based on agreement
+* Visible on every transaction
+
+**Payment Processing Fees:**
+
+* Stripe: \~2.9% + $0.30 per transaction
+* Wise: Variable by currency/country
+* PayPal: \~3.5% per transaction
+* Bank transfer: Variable by bank
+
+***
+
+### Appendix C: Glossary
+
+**Collective:** Group coordinating on Open Collective\
+**Fiscal Host:** Legal entity holding funds and providing admin (OC Europe for us)\
+**MRD:** Mutual Recognition Density - computational membership score\
+**Recognition:** Your acknowledgment of contributions to your self-actualization\
+**Mutual Recognition:** Min of bidirectional recognition between two members\
+**Collective-Recognition-Share:** Your proportion of mutual recognition within a set\
+**Capacity Declaration:** Statement of resources available for allocation\
+**Need Declaration:** Statement of what you need for your work\
+**Provider:** Someone with actual resources who can allocate\
+**Allocation:** Distribution of resources from provider to need\
+**Compliance Filter:** Maximum amount that can be allocated to a member\
+**Decider:** Structured decision process for parameter changes\
+**Admin:** Collective member with Open Collective admin access\
+**Expense:** Submitted payment request on Open Collective\
+**Contribution:** Incoming donation/payment to collective
+
+***
+
+**Version:** 1.0\
+**Last Updated:** \[Date]\
+**Next Review:** \[Date]

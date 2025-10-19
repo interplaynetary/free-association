@@ -1,6 +1,8 @@
-# Free-Association Organizational Protocol
+# Protocol
 
-## Organization
+## Free-Association Organizational Protocol
+
+### Organization
 
 Protocol operates through three computational mechanisms:
 
@@ -10,21 +12,23 @@ Protocol operates through three computational mechanisms:
 
 No governance. No committees. No appointments. Pure computation from recognition patterns.
 
----
+***
 
-## Core Principles
+### Core Principles
 
-### The 100% Recognition Constraint
+#### The 100% Recognition Constraint
 
 **Each participant has exactly 100% recognition to distribute.**
 
 This is not arbitrary - it represents a fundamental truth:
-- Your self-actualization is a whole (100%)
-- Everything that enables your self-actualization sums to that whole
-- You cannot exceed 100% (you can't self-actualize more than fully)
-- You cannot go below 100% (your self-actualization is complete as-is)
+
+* Your self-actualization is a whole (100%)
+* Everything that enables your self-actualization sums to that whole
+* You cannot exceed 100% (you can't self-actualize more than fully)
+* You cannot go below 100% (your self-actualization is complete as-is)
 
 **What this means:**
+
 ```
 When you give Bob 15% recognition, you're saying:
 "Bob's contributions represent 15% of what enables me to self-actualize."
@@ -36,6 +40,7 @@ Total distributed = 100% = your complete self-actualization
 ```
 
 **Trade-offs are real:**
+
 ```
 If you increase Bob from 15% → 20%, you must decrease others.
 
@@ -50,6 +55,7 @@ This creates honest accounting:
 ```
 
 **Dynamic adjustment:**
+
 ```
 Your recognition distribution can change:
 
@@ -61,6 +67,7 @@ This reflects changing reality of what enables me.
 ```
 
 **Non-transferable:**
+
 ```
 Recognition cannot be sold, traded, or transferred.
 
@@ -75,20 +82,21 @@ This prevents:
 - Disconnection from actual enabling contributions
 ```
 
----
+***
 
-## 1. Membership: Who Participates
+### 1. Membership: Who Participates
 
-### Recognition as Fundamental Unit
+#### Recognition as Fundamental Unit
 
 **Recognition is your acknowledgment of contributions toward your own self-actualization.**
 
 Each participant has 100% total recognition to distribute:
-- Represents what enables you to self-actualize
-- Includes direct contributions to your work/life
-- Includes contributions to social values and needs you care about
-- Non-transferable (cannot be sold or traded)
-- Dynamically adjustable as relationships and contributions evolve
+
+* Represents what enables you to self-actualize
+* Includes direct contributions to your work/life
+* Includes contributions to social values and needs you care about
+* Non-transferable (cannot be sold or traded)
+* Dynamically adjustable as relationships and contributions evolve
 
 ```
 Alice's total recognition = 100%
@@ -112,12 +120,14 @@ Bob recognizes Alice: 12% (of Bob's self-actualization)
 ```
 
 **Why the minimum?**
-- Ensures reciprocity in proportion
-- One-sided recognition doesn't create mutual relationship
-- Both must acknowledge the other's contribution to their own self-actualization
-- Creates genuine mutual interdependence, not patronage
+
+* Ensures reciprocity in proportion
+* One-sided recognition doesn't create mutual relationship
+* Both must acknowledge the other's contribution to their own self-actualization
+* Creates genuine mutual interdependence, not patronage
 
 **Example:**
+
 ```
 If Bob is 50% of Alice's self-actualization (Alice deeply depends on Bob)
 But Alice is only 10% of Bob's self-actualization (Bob benefits less from Alice)
@@ -127,24 +137,28 @@ This captures the reality: their mutual interdependence is limited by the weaker
 Alice may depend on Bob more, but their actual mutual relationship is 10%.
 ```
 
-### Membership Computation
+#### Membership Computation
 
 **Mutual Recognition Score (MRS)**:
+
 ```
 MRS(Alice) = Σ MutualRecognition(Alice, Member) for all current members
 ```
 
 **Network Average**:
+
 ```
 AverageMRS = Σ MRS(Member) / Count(Members)
 ```
 
 **Mutual Recognition Density (MRD)**:
+
 ```
 MRD(Alice) = MRS(Alice) / AverageMRS
 ```
 
 **Membership Status**:
+
 ```
 IsMember(Alice) = MRD(Alice) ≥ threshold
 
@@ -152,15 +166,15 @@ Default threshold: 0.5
 Computed: Weekly
 ```
 
-### Properties
+#### Properties
 
-- No gatekeeping: Membership emerges from mutual recognition
-- No appointments: MRD computation is automatic
-- Self-correcting: Stop contributing → recognition drops → lose membership
-- Sybil-resistant: Fake accounts can't build genuine mutual recognition
-- Scale-invariant: Threshold adjusts automatically as network grows
+* No gatekeeping: Membership emerges from mutual recognition
+* No appointments: MRD computation is automatic
+* Self-correcting: Stop contributing → recognition drops → lose membership
+* Sybil-resistant: Fake accounts can't build genuine mutual recognition
+* Scale-invariant: Threshold adjusts automatically as network grows
 
-### Example
+#### Example
 
 ```
 Week 0: Bootstrap
@@ -191,20 +205,22 @@ Dave's MRD = 30% / 46.67% = 0.64
 0.64 ≥ 0.5 → Dave becomes a member
 ```
 
----
+***
 
-## 2. Resource Allocation: Who Gets What
+### 2. Resource Allocation: Who Gets What
 
-### Recognition and Self-Actualization
+#### Recognition and Self-Actualization
 
 **Core Principle:** You recognize contributions that enable your self-actualization.
 
 When you recognize someone:
-- You acknowledge they contribute to your ability to self-actualize
-- This could be direct (they help your work)
-- Or indirect (they contribute to social values/conditions you need)
+
+* You acknowledge they contribute to your ability to self-actualize
+* This could be direct (they help your work)
+* Or indirect (they contribute to social values/conditions you need)
 
 **Examples:**
+
 ```
 Alice recognizes Bob: 15%
 Meaning: "Bob's water infrastructure work is 15% of what enables me to self-actualize.
@@ -218,13 +234,15 @@ and demonstrates the regenerative values I work to advance."
 ```
 
 **Recognition flows naturally toward enabling contributions:**
-- Those who enable many people's self-actualization receive high aggregate recognition
-- Those who enable few people's self-actualization receive low aggregate recognition
-- Quality and breadth of enabling contribution determines recognition
 
-### Needs and Capacities
+* Those who enable many people's self-actualization receive high aggregate recognition
+* Those who enable few people's self-actualization receive low aggregate recognition
+* Quality and breadth of enabling contribution determines recognition
+
+#### Needs and Capacities
 
 **Need Declaration**:
+
 ```
 Any participant can declare a need for their self-actualization:
 - Alice: "I need $50,000 for water filtration systems in Uganda"
@@ -236,6 +254,7 @@ All needs are visible in the network.
 ```
 
 **Provider Capacity Declaration**:
+
 ```
 Only providers (those with actual resources) declare capacities:
 
@@ -250,16 +269,18 @@ use these resources effectively toward water infrastructure."
 ```
 
 **Why only providers declare capacities:**
-- Providers know what they can actually provide (eliminates phantom capacity)
-- Non-providers speculating about capacity adds no value
-- Providers evaluate needs directly through their own capacity lens
-- Eliminates intermediate "claim" concept
 
-### Collective Recognition Allocation
+* Providers know what they can actually provide (eliminates phantom capacity)
+* Non-providers speculating about capacity adds no value
+* Providers evaluate needs directly through their own capacity lens
+* Eliminates intermediate "claim" concept
+
+#### Collective Recognition Allocation
 
 When Foundation X declares a capacity for {Alice, Bob, Charlie, Dave, Eve}:
 
 **Step 1: Calculate Collective Recognition Pool**
+
 ```
 Pool = Σ MutualRecognition(i, j) for all pairs in provider's set
 
@@ -279,6 +300,7 @@ Pool = 81%
 ```
 
 **Step 2: Calculate Each Person's Collective Recognition Share**
+
 ```
 Alice's-Share = (Σ MutualRecognition(Alice, Others-in-set)) / Pool
                 = (10% + 8% + 12% + 9%) / 81%
@@ -291,6 +313,7 @@ Eve's-Share = (9% + 5% + 7% + 8%) / 81% = 35.8%
 ```
 
 **Step 3: Provider Sees Needs and Allocates**
+
 ```
 Foundation X sees needs from members of their declared set:
 - Alice needs: $50K (water filtration)
@@ -319,6 +342,7 @@ All needs in this set were fully met because total needs ($160K) < capacity ($20
 ```
 
 **Allocation when capacity is constrained:**
+
 ```
 If Foundation X only had $100K:
 
@@ -332,14 +356,16 @@ Remaining unfulfilled needs visible to other providers.
 ```
 
 **Key insight:**
-- Providers aren't "donating" - they're investing in what enables their own self-actualization
-- Collective recognition shares guide allocation priorities
-- Providers see actual needs and allocate based on their available resources
-- No intermediate "claims" needed - direct from capacity to allocation
 
-### Self-Correction Mechanisms
+* Providers aren't "donating" - they're investing in what enables their own self-actualization
+* Collective recognition shares guide allocation priorities
+* Providers see actual needs and allocate based on their available resources
+* No intermediate "claims" needed - direct from capacity to allocation
+
+#### Self-Correction Mechanisms
 
 **Phantom Capacity Eliminated**:
+
 ```
 Unlike the old model where anyone could declare phantom capacity,
 only providers (with actual resources) declare capacity.
@@ -350,6 +376,7 @@ Foundation X declares: $200K capacity for {Alice, Bob, Charlie}
 ```
 
 **Success Amplifies**:
+
 ```
 Cycle 1:
 Foundation X allocates $50K to Alice, Alice delivers water filtration systems
@@ -370,6 +397,7 @@ Alice receives $85K
 ```
 
 **Failure Corrects**:
+
 ```
 If Alice fails to deliver:
 - Recognition from Bob, Charlie, Dave decreases
@@ -379,7 +407,7 @@ If Alice fails to deliver:
 - Resources naturally redirect to better performers
 ```
 
-### Multiple Provider Lenses
+#### Multiple Provider Lenses
 
 ```
 Foundation X declares:
@@ -399,7 +427,7 @@ Each provider allocates based on collective recognition within their set.
 Alice can receive from multiple providers based on different capacity sets.
 ```
 
-### Primary Model: Administrative Entity as Computational Provider
+#### Primary Model: Administrative Entity as Computational Provider
 
 **This is the core model. The administrative entity holds funds and allocates computationally.**
 
@@ -449,7 +477,7 @@ Admins execute transfers.
 
 **Key principle:** The admins don't decide allocations. The protocol computes allocations based on collective recognition + needs + compliance filters.
 
-### Secondary Model: External Provider via Administrative Entity
+#### Secondary Model: External Provider via Administrative Entity
 
 **External providers can use the administrative entity as an execution agent for their allocations.**
 
@@ -463,17 +491,18 @@ Foundation X deposits $100K to administrative entity:
 - Provider: Foundation X (makes decisions, uses administrative entity for execution)
 ```
 
-### Capacity Filters: Compliance and Restrictions
+#### Capacity Filters: Compliance and Restrictions
 
 **Providers are wholly responsible for implementing filters to comply with socio-technical-legal limits.**
 
 Each provider can apply filters to their capacity based on:
-- AML/KYC compliance (Know Your Customer verification)
-- Sanctions screening (OFAC, UN sanctions lists)
-- Legal jurisdiction restrictions
-- Tax compliance requirements
-- Mission/purpose alignment
-- Risk assessment
+
+* AML/KYC compliance (Know Your Customer verification)
+* Sanctions screening (OFAC, UN sanctions lists)
+* Legal jurisdiction restrictions
+* Tax compliance requirements
+* Mission/purpose alignment
+* Risk assessment
 
 **Allocation Filter Model:**
 
@@ -614,25 +643,27 @@ Union of filters ensures maximum compliance.
 Admins execute only compliant, filtered allocations.
 ```
 
----
+***
 
-## 3. Decision Making: Setting Parameters
+### 3. Decision Making: Setting Parameters
 
-### When to Use Decider
+#### When to Use Decider
 
 **Rarely. Only for:**
-- Setting membership threshold (default 0.5)
-- Setting minimum recognition level (default 0%)
-- Setting computation frequency (default weekly)
-- Constitutional/structural changes
+
+* Setting membership threshold (default 0.5)
+* Setting minimum recognition level (default 0%)
+* Setting computation frequency (default weekly)
+* Constitutional/structural changes
 
 **Not for:**
-- Resource allocation (use Collective Recognition)
-- Membership decisions (use MRD computation)
-- Daily operations (use Collective Recognition)
-- Project priorities (use Collective Recognition)
 
-### Decider Process
+* Resource allocation (use Collective Recognition)
+* Membership decisions (use MRD computation)
+* Daily operations (use Collective Recognition)
+* Project priorities (use Collective Recognition)
+
+#### Decider Process
 
 **Participants**: Only current members (MRD ≥ threshold)
 
@@ -688,21 +719,22 @@ Winning option: Highest total weighted support
 Decision takes effect next computation cycle
 ```
 
-### Decider Properties
+#### Decider Properties
 
-- Structured: Clear phases prevent chaos
-- Weighted: More integrated members have more influence
-- Collaborative: Ideas improve through challenges and discussion
-- Transparent: All proposals, challenges, support visible
-- Fair: Everyone can propose, challenge, support
+* Structured: Clear phases prevent chaos
+* Weighted: More integrated members have more influence
+* Collaborative: Ideas improve through challenges and discussion
+* Transparent: All proposals, challenges, support visible
+* Fair: Everyone can propose, challenge, support
 
----
+***
 
-## 4. Complete System in Action
+### 4. Complete System in Action
 
-### Scenario: Bioregional Water Trust
+#### Scenario: Bioregional Water Trust
 
 **Week 0: Bootstrap**
+
 ```
 5 seed participants gather for first dialogue:
 {Alice, Bob, Charlie, Dave, Eve}
@@ -715,6 +747,7 @@ All become initial members
 ```
 
 **Week 1: First Resource Allocation**
+
 ```
 Alice declares need:
 "I need $50K to establish water filtration in Uganda village"
@@ -744,6 +777,7 @@ Alice receives $33K of requested $50K
 ```
 
 **Week 4: New Member Integration**
+
 ```
 Frank wants to join
 Frank contributes water engineering expertise
@@ -758,6 +792,7 @@ No approval process needed - computation determines membership
 ```
 
 **Week 8: Multiple Provider Lenses**
+
 ```
 Multiple providers declare capacities through different lenses:
 
@@ -783,6 +818,7 @@ Each provider allocates through their own capacity lens.
 ```
 
 **Month 6: Success Amplification**
+
 ```
 Alice successfully deployed Uganda water system
 Recognition increases:
@@ -802,6 +838,7 @@ Automatic reciprocity through recognition growth.
 ```
 
 **Month 12: Parameter Tuning**
+
 ```
 Network has grown to 30 members
 Some members suggest lowering threshold to 0.4
@@ -818,6 +855,7 @@ Implementation: Next computation cycle
 ```
 
 **Year 2: Network Scaling**
+
 ```
 Network now has 150 members across 5 bioregions
 
@@ -847,29 +885,32 @@ No central coordination needed.
 Resources flow based on provider capacity declarations + collective recognition.
 ```
 
----
+***
 
-## 5. Properties of This System
+### 5. Properties of This System
 
-### Philosophical Foundation
+#### Philosophical Foundation
 
 **This is not charity or altruism - it's mutual self-actualization.**
 
 Traditional model:
-- "Donors" give to "beneficiaries"
-- Donor sacrifices for recipient's benefit
-- Creates power dynamic (giver/receiver)
-- Recipient feels dependent or grateful
-- Giver feels benevolent or superior
+
+* "Donors" give to "beneficiaries"
+* Donor sacrifices for recipient's benefit
+* Creates power dynamic (giver/receiver)
+* Recipient feels dependent or grateful
+* Giver feels benevolent or superior
 
 Free-association model:
-- Everyone invests in their own self-actualization
-- Alice enables Bob's self-actualization; Bob enables Alice's self-actualization
-- Both recognize what enables them
-- Resources flow based on mutual recognition
-- No giver/receiver dynamic - mutual enabling relationship
+
+* Everyone invests in their own self-actualization
+* Alice enables Bob's self-actualization; Bob enables Alice's self-actualization
+* Both recognize what enables them
+* Resources flow based on mutual recognition
+* No giver/receiver dynamic - mutual enabling relationship
 
 **Example:**
+
 ```
 Foundation X doesn't "donate" to Alice's water project.
 Foundation X recognizes: "Alice's water work is 15% of what enables us to self-actualize
@@ -881,46 +922,47 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 ```
 
 **This transforms the entire dynamic:**
-- Resources flow to what enables self-actualization (not to who can write best grant)
-- Recognition measures actual enabling contribution (not performance for funders)
-- Success = enabling more self-actualization across network (not extracting more funding)
-- Everyone is both enabling and enabled (not givers vs. receivers)
 
-### What It Eliminates
+* Resources flow to what enables self-actualization (not to who can write best grant)
+* Recognition measures actual enabling contribution (not performance for funders)
+* Success = enabling more self-actualization across network (not extracting more funding)
+* Everyone is both enabling and enabled (not givers vs. receivers)
 
-- ❌ Membership approval processes
-- ❌ Resource allocation committees
-- ❌ Grant application reviews
-- ❌ Appointed roles or positions
-- ❌ Governance meetings (except rare Decider for parameters)
-- ❌ Arbitrary funding targets
-- ❌ Selection of beneficiaries
-- ❌ Centralized planning
-- ❌ Giver/receiver power dynamics
-- ❌ Charitable dependency relationships
-- ❌ Performance theater for funders
-- ❌ Phantom capacity declarations (only providers declare capacity)
-- ❌ Intermediate "claim" concept (providers allocate directly to needs)
-- ❌ Admin discretion over entity funds (automatic computational allocation)
+#### What It Eliminates
 
-### What It Guarantees
+* ❌ Membership approval processes
+* ❌ Resource allocation committees
+* ❌ Grant application reviews
+* ❌ Appointed roles or positions
+* ❌ Governance meetings (except rare Decider for parameters)
+* ❌ Arbitrary funding targets
+* ❌ Selection of beneficiaries
+* ❌ Centralized planning
+* ❌ Giver/receiver power dynamics
+* ❌ Charitable dependency relationships
+* ❌ Performance theater for funders
+* ❌ Intermediate "claim" concept (providers allocate directly to needs)
+* ❌ Admin discretion over entity funds (automatic computational allocation)
 
-- ✓ Membership emerges from contribution and recognition
-- ✓ Resources flow to recognized needs from willing providers
-- ✓ Success amplifies through recognition increase
-- ✓ Failure corrects through recognition decrease
-- ✓ Only providers with actual resources declare capacity
-- ✓ No single point of failure
-- ✓ Transparent and auditable
-- ✓ Scale-invariant (works from 5 to 5000 participants)
-- ✓ Sybil-resistant
-- ✓ Self-organizing around real contribution
-- ✓ Direct allocation from capacity to needs (no intermediate claims)
-- ✓ Entity's own funds allocated computationally (admins never decide)
+#### What It Guarantees
 
-### Emergence Without Central Control
+* ✓ Membership emerges from contribution and recognition
+* ✓ Resources flow to recognized needs from willing providers
+* ✓ Success amplifies through recognition increase
+* ✓ Failure corrects through recognition decrease
+* ✓ Only providers with actual resources declare capacity
+* ✓ No single point of failure
+* ✓ Transparent and auditable
+* ✓ Scale-invariant (works from 5 to 5000 participants)
+* ✓ Sybil-resistant
+* ✓ Self-organizing around real contribution
+* ✓ Direct allocation from capacity to needs (no intermediate claims)
+* ✓ Entity's own funds allocated computationally (admins never decide)
+
+#### Emergence Without Central Control
 
 **Roles emerge naturally:**
+
 ```
 System tracks recognition by type:
 - Alice: 45% MRS (30% for water stewardship, 15% for community organizing)
@@ -934,6 +976,7 @@ No appointments needed. Roles visible from recognition patterns.
 ```
 
 **Priorities emerge naturally:**
+
 ```
 Needs with high collective-recognition-shares in provider capacity sets = high priority
 Needs that receive allocations from multiple providers = high priority
@@ -945,6 +988,7 @@ No planning committee needed.
 ```
 
 **Quality emerges naturally:**
+
 ```
 High quality work → high recognition → higher collective-recognition-shares → more provider allocations
 Low quality work → low recognition → lower collective-recognition-shares → fewer provider allocations
@@ -953,11 +997,12 @@ Quality differential emerges automatically.
 No quality review board needed.
 ```
 
----
+***
 
-## 6. Data Structures
+### 6. Data Structures
 
-### Recognition Data
+#### Recognition Data
+
 ```typescript
 type Recognition = {
   fromId: string;
@@ -968,7 +1013,8 @@ type Recognition = {
 };
 ```
 
-### Membership Output
+#### Membership Output
+
 ```typescript
 type MembershipStatus = {
   participantId: string;
@@ -980,7 +1026,8 @@ type MembershipStatus = {
 };
 ```
 
-### Need Declaration
+#### Need Declaration
+
 ```typescript
 type Need = {
   declarerId: string;
@@ -992,7 +1039,8 @@ type Need = {
 };
 ```
 
-### Provider Capacity Declaration
+#### Provider Capacity Declaration
+
 ```typescript
 type ProviderCapacity = {
   providerId: string; // Provider ID or "VEREIN_AUTOMATIC"
@@ -1006,7 +1054,8 @@ type ProviderCapacity = {
 };
 ```
 
-### Allocation
+#### Allocation
+
 ```typescript
 type Allocation = {
   providerId: string;
@@ -1021,7 +1070,8 @@ type Allocation = {
 };
 ```
 
-### Decider Session
+#### Decider Session
+
 ```typescript
 type DeciderSession = {
   sessionId: string;
@@ -1040,11 +1090,12 @@ type DeciderSession = {
 };
 ```
 
----
+***
 
-## 7. Computation Cycles
+### 7. Computation Cycles
 
-### Weekly: Membership
+#### Weekly: Membership
+
 ```
 Every Monday 00:00 UTC:
 
@@ -1058,7 +1109,8 @@ Every Monday 00:00 UTC:
 8. Publish results to network
 ```
 
-### Daily: Resource Allocation
+#### Daily: Resource Allocation
+
 ```
 Every day 00:00 UTC:
 
@@ -1080,7 +1132,8 @@ Every day 00:00 UTC:
 8. Publish results to network
 ```
 
-### As-Needed: Decider
+#### As-Needed: Decider
+
 ```
 When parameter change proposed:
 
@@ -1094,77 +1147,87 @@ When parameter change proposed:
 8. Implement decision next cycle
 ```
 
----
+***
 
-## 8. Interfaces
+### 8. Interfaces
 
-### Participant Interface
+#### Participant Interface
 
 **View Your Status:**
-- Current MRD score
-- Membership status
-- Recognition breakdown (who recognizes you for what)
-- Trajectory over time
-- Distance to threshold
+
+* Current MRD score
+* Membership status
+* Recognition breakdown (who recognizes you for what)
+* Trajectory over time
+* Distance to threshold
 
 **Submit Recognition:**
-- Recognize others (allocate your 100%)
-- Tag recognition by contribution type
-- See your recognition history
+
+* Recognize others (allocate your 100%)
+* Tag recognition by contribution type
+* See your recognition history
 
 **Declare Needs:**
-- Post what you need
-- See allocations from providers
-- Update as needs change
+
+* Post what you need
+* See allocations from providers
+* Update as needs change
 
 **Declare Capacity (if you're a provider):**
-- Declare your available resources
-- Specify set of participants you can support
-- System calculates collective-recognition-shares
-- You allocate to needs based on recognition + availability
+
+* Declare your available resources
+* Specify set of participants you can support
+* System calculates collective-recognition-shares
+* You allocate to needs based on recognition + availability
 
 **View Allocations:**
-- Allocations you've received from providers
-- Fulfillment status of your needs
-- Which providers allocated to you
+
+* Allocations you've received from providers
+* Fulfillment status of your needs
+* Which providers allocated to you
 
 **Make Allocations (if you're a provider):**
-- See all needs in network
-- Filter by participants in your capacity sets
-- See collective-recognition-shares within your sets
-- Allocate your resources to needs
 
-### Observer Interface
+* See all needs in network
+* Filter by participants in your capacity sets
+* See collective-recognition-shares within your sets
+* Allocate your resources to needs
+
+#### Observer Interface
 
 **Network Health:**
-- Member count
-- Total MRS in network
-- Average MRD
-- Recognition density
-- Need fulfillment rate
+
+* Member count
+* Total MRS in network
+* Average MRD
+* Recognition density
+* Need fulfillment rate
 
 **Active Needs:**
-- All open needs
-- Fulfillment rates by type
-- Provider allocation patterns
+
+* All open needs
+* Fulfillment rates by type
+* Provider allocation patterns
 
 **Recognition Patterns:**
-- Who recognizes whom (anonymized)
-- Recognition by type
-- Network topology
-- Emerging roles
+
+* Who recognizes whom (anonymized)
+* Recognition by type
+* Network topology
+* Emerging roles
 
 **Resource Flows:**
-- Provider allocations over time
-- Need fulfillment trends
-- Resource velocity
-- Distribution patterns
 
----
+* Provider allocations over time
+* Need fulfillment trends
+* Resource velocity
+* Distribution patterns
 
-## 9. Edge Cases
+***
 
-### What if someone tries to declare capacity they don't have?
+### 9. Edge Cases
+
+#### What if someone tries to declare capacity they don't have?
 
 ```
 This edge case is eliminated by design:
@@ -1179,7 +1242,7 @@ In the new model, only providers with actual resources declare capacity.
 Phantom capacity problem: Solved by eliminating non-provider capacity declarations.
 ```
 
-### What if everyone recognizes everyone maximally?
+#### What if everyone recognizes everyone maximally?
 
 ```
 Everyone genuinely recognizes everyone at ~10% (equal distribution)
@@ -1199,7 +1262,7 @@ If recognition is NOT genuine (just courtesy):
 - Natural correction through provider discretion
 ```
 
-### What if a member stops contributing?
+#### What if a member stops contributing?
 
 ```
 Week 20: Alice is active member (MRD: 1.2)
@@ -1228,7 +1291,7 @@ Automatic without governance decision.
 Alice can rejoin by contributing again and rebuilding recognition.
 ```
 
-### What if two disconnected clusters form?
+#### What if two disconnected clusters form?
 
 ```
 Cluster A: {Alice, Bob, Charlie} - internally connected
@@ -1259,7 +1322,7 @@ If they want to integrate:
 - Bridge forms naturally
 ```
 
-### What if threshold is too high/low?
+#### What if threshold is too high/low?
 
 ```
 If too high (e.g., 0.8):
@@ -1279,19 +1342,20 @@ Solution: Use Decider to raise threshold or add minimum recognition filter
 Threshold is experimental parameter - adjust based on network health.
 ```
 
----
+***
 
-## 10. The Self-Actualization Economy
+### 10. The Self-Actualization Economy
 
-### From Extraction to Mutual Enabling
+#### From Extraction to Mutual Enabling
 
 Traditional economic models are based on extraction:
-- Employees extract wages from employers
-- Employers extract labor from employees
-- Consumers extract value from producers
-- Producers extract payment from consumers
-- Donors extract gratitude/status from recipients
-- Recipients extract resources from donors
+
+* Employees extract wages from employers
+* Employers extract labor from employees
+* Consumers extract value from producers
+* Producers extract payment from consumers
+* Donors extract gratitude/status from recipients
+* Recipients extract resources from donors
 
 Each transaction is zero-sum or extractive. Someone gains, someone loses.
 
@@ -1322,7 +1386,7 @@ Resources flow to amplify mutual enabling.
 3. **Natural alignment**: Everyone's self-interest is to enable others (that's how you self-actualize)
 4. **No extraction**: Resources flow to what enables self-actualization, not extracted from losers to winners
 
-### Recognition as Truth-Telling About Enablement
+#### Recognition as Truth-Telling About Enablement
 
 **Recognition cannot lie (for long):**
 
@@ -1342,12 +1406,13 @@ If Alice falsely doesn't recognize Bob (Bob does enable Alice, but Alice doesn't
 ```
 
 **The system creates pressure toward truth:**
-- False recognition hurts your own self-actualization (wrong allocation)
-- Missing recognition hurts your own self-actualization (enabler may reduce contribution)
-- Accurate recognition optimizes your self-actualization
-- Truth-telling is self-interested, not altruistic
 
-### Provider Lenses as Organizational Intelligence
+* False recognition hurts your own self-actualization (wrong allocation)
+* Missing recognition hurts your own self-actualization (enabler may reduce contribution)
+* Accurate recognition optimizes your self-actualization
+* Truth-telling is self-interested, not altruistic
+
+#### Provider Lenses as Organizational Intelligence
 
 **Provider capacity declarations reveal organizational perspectives:**
 
@@ -1378,24 +1443,27 @@ Both enable different forms of self-actualization.
 ```
 
 **No single "correct" organization:**
-- Multiple provider lenses
-- Multiple perspectives on who can effectively use resources
-- Multiple coordination pathways
-- Prismatic coordination (same people, different provider views)
+
+* Multiple provider lenses
+* Multiple perspectives on who can effectively use resources
+* Multiple coordination pathways
+* Prismatic coordination (same people, different provider views)
 
 **Intelligence emerges from multiplicity:**
-- Network becomes more intelligent as more provider lenses exist
-- Each provider lens reveals different enabling relationships
-- Providers allocate through their own capacity lenses
-- No central planning needed - organizational intelligence is distributed
 
-### Why This Works: Alignment of Incentives
+* Network becomes more intelligent as more provider lenses exist
+* Each provider lens reveals different enabling relationships
+* Providers allocate through their own capacity lenses
+* No central planning needed - organizational intelligence is distributed
+
+#### Why This Works: Alignment of Incentives
 
 **In traditional systems, incentives misalign:**
-- Grantseekers optimize for grant writing (not impact)
-- Donors optimize for visible credit (not effectiveness)
-- Committees optimize for defensible decisions (not best outcomes)
-- Organizations optimize for survival (not mission)
+
+* Grantseekers optimize for grant writing (not impact)
+* Donors optimize for visible credit (not effectiveness)
+* Committees optimize for defensible decisions (not best outcomes)
+* Organizations optimize for survival (not mission)
 
 **In free-association, incentives align:**
 
@@ -1428,17 +1496,19 @@ The only way to win is to genuinely enable self-actualization.
 ```
 
 **Self-interest becomes pro-social:**
-- Your self-interest = enable others (that's how you self-actualize)
-- Others' success = your success (they recognize you more)
-- Network health = your health (more enabling relationships available)
-- Truth-telling = optimal strategy (accurate recognition optimizes your outcomes)
 
-### Scaling Properties
+* Your self-interest = enable others (that's how you self-actualize)
+* Others' success = your success (they recognize you more)
+* Network health = your health (more enabling relationships available)
+* Truth-telling = optimal strategy (accurate recognition optimizes your outcomes)
+
+#### Scaling Properties
 
 **Traditional systems scale poorly:**
-- More people → more committees → more bureaucracy
-- More resources → more gate-keeping → more politics
-- More complexity → more rules → less responsiveness
+
+* More people → more committees → more bureaucracy
+* More resources → more gate-keeping → more politics
+* More complexity → more rules → less responsiveness
 
 **Free-association scales elegantly:**
 
@@ -1465,6 +1535,7 @@ Network of 1,000 people:
 ```
 
 **Why it scales:**
+
 1. **Fixed individual complexity**: Each person manages 100% recognition (doesn't increase with network size)
 2. **Distributed computation**: No central processor bottleneck
 3. **Natural clustering**: Sub-networks form around enabling relationships
@@ -1472,16 +1543,17 @@ Network of 1,000 people:
 5. **Provider-need matching**: Automatic discovery of alignment without search committees
 
 **Network effects increase with scale:**
-- More providers → better need fulfillment rates
-- More provider capacity declarations → more coordination opportunities
-- More enabling relationships → more self-actualization pathways
-- More specialization → higher quality enabling contributions
 
----
+* More providers → better need fulfillment rates
+* More provider capacity declarations → more coordination opportunities
+* More enabling relationships → more self-actualization pathways
+* More specialization → higher quality enabling contributions
 
-## 11. Administrative Entity Integration
+***
 
-### Overview
+### 11. Administrative Entity Integration
+
+#### Overview
 
 The Free-Association protocols are **implementation-agnostic**. They can operate with any legal or administrative structure that provides:
 
@@ -1492,33 +1564,37 @@ The Free-Association protocols are **implementation-agnostic**. They can operate
 
 **Key principle:** The administrative entity/host doesn't decide anything - it acknowledges and executes what the protocols compute.
 
-### Implementation Patterns
+#### Implementation Patterns
 
 The protocols can be wrapped by:
 
 **A. Incorporated Entity (e.g., Swiss Verein, US 501(c)(3))**
-- Own legal status and bank account
-- Admins selected by MRD ranking (opt-in)
-- Constitutional document references protocols
-- See: playnet.gitbook.io/docs/fiscal-interfaces/swiss-association for Swiss Verein implementation
+
+* Own legal status and bank account
+* Admins selected by MRD ranking (opt-in)
+* Constitutional document references protocols
+* See: [playnet.gitbook.io/docs/fiscal-interfaces/swiss-association](https://playnet.gitbook.io/docs/organizations/swiss-association) for Swiss Verein implementation
 
 **B. Fiscally Hosted Collective (e.g., via Open Collective Europe)**
-- No own legal status (uses host's)
-- No own bank account (host holds funds)
-- Admins approve expenses on platform
-- Operating guidelines reference protocols
-- See: playnet.gitbook.io/docs/fiscal-interfaces/open-collective for hosted implementation
+
+* No own legal status (uses host's)
+* No own bank account (host holds funds)
+* Admins approve expenses on platform
+* Operating guidelines reference protocols
+* See: [playnet.gitbook.io/docs/fiscal-interfaces/open-collective](https://playnet.gitbook.io/docs/organizations/open-collective) for hosted implementation
 
 **C. DAO/Smart Contract (future)**
-- On-chain execution
-- Automated compliance via oracles
-- No traditional admins (code executes)
 
-### Core Integration Requirements
+* On-chain execution
+* Automated compliance via oracles
+* No traditional admins (code executes)
+
+#### Core Integration Requirements
 
 Regardless of implementation, all structures need:
 
 **1. Membership Registry**
+
 ```
 Input: Recognition data from participants
 Computation: Weekly MRD calculation
@@ -1527,6 +1603,7 @@ Interface: Admins/members can view list
 ```
 
 **2. Resource Tracking**
+
 ```
 Input: Available balance/capacity
 Computation: Allocation based on recognition + needs + filters
@@ -1535,6 +1612,7 @@ Interface: Admins receive and execute instructions
 ```
 
 **3. Execution Mechanism**
+
 ```
 Role: Admins or automated system
 Action: Execute transfers per protocol output
@@ -1543,6 +1621,7 @@ Recording: All transactions in transparent ledger
 ```
 
 **4. Compliance Layer**
+
 ```
 Source: Compliance service, fiscal host, or oracle
 Data: Filter(Member) for each member ($0, $X, or Unlimited)
@@ -1551,6 +1630,7 @@ Override: Not possible by admins
 ```
 
 **5. Transparency**
+
 ```
 Public or member-visible:
 - Recognition patterns (may be anonymized)
@@ -1560,22 +1640,24 @@ Public or member-visible:
 - All transactions
 ```
 
-### Implementation-Specific Details
+#### Implementation-Specific Details
 
 For complete implementation guides including:
-- Legal requirements and mappings
-- Admin selection and responsibilities  
-- Compliance procedures
-- Financial record keeping
-- Meeting protocols
-- Step-by-step setup instructions
+
+* Legal requirements and mappings
+* Admin selection and responsibilities
+* Compliance procedures
+* Financial record keeping
+* Meeting protocols
+* Step-by-step setup instructions
 
 **See implementation-specific documentation:**
-- **Swiss Verein**: playnet.gitbook.io/docs/fiscal-interfaces/swiss-association
-- **Open Collective Hosted**: playnet.gitbook.io/docs/fiscal-interfaces/open-collective
-- **Other jurisdictions**: Adapt patterns from above examples
 
-### Generic Operational Flow
+* **Swiss Verein**: playnet.gitbook.io/docs/fiscal-interfaces/swiss-association
+* **Open Collective Hosted**: playnet.gitbook.io/docs/fiscal-interfaces/open-collective
+* **Other jurisdictions**: Adapt patterns from above examples
+
+#### Generic Operational Flow
 
 **For any implementation:**
 
@@ -1611,108 +1693,117 @@ For complete implementation guides including:
    → Full audit trail
 ```
 
-### Key Principles Across All Implementations
+#### Key Principles Across All Implementations
 
-- **Admins never decide allocations** - Protocol computes based on recognition
-- **Compliance filters are computational** - Applied before admin sees instructions  
-- **Membership is automatic** - MRD computation determines who participates
-- **Resources flow by recognition** - Not by voting or discretionary approval
-- **Transparency is mandatory** - All transactions and rationale visible
-- **No governance overhead** - Computation replaces committees and approvals
+* **Admins never decide allocations** - Protocol computes based on recognition
+* **Compliance filters are computational** - Applied before admin sees instructions
+* **Membership is automatic** - MRD computation determines who participates
+* **Resources flow by recognition** - Not by voting or discretionary approval
+* **Transparency is mandatory** - All transactions and rationale visible
+* **No governance overhead** - Computation replaces committees and approvals
 
----
+***
 
 **Note:** Section 11 previously contained detailed Swiss Verein-specific examples. These have been moved to `statutes.md` to keep this protocol specification implementation-agnostic. The protocol described here works identically whether wrapped by a Swiss Verein, an Open Collective hosted collective, a US 501(c)(3), or any other administrative structure.
 
----
+***
 
-## 12. Summary
+### 12. Summary
 
-### Free-Association
+#### Free-Association
 
 **Philosophical Foundation:**
 
 Recognition = Your acknowledgment of contributions to YOUR self-actualization
-- Each person has 100% to distribute (your complete self-actualization)
-- Non-transferable (only you can judge what enables you)
-- Dynamically adjustable (as enabling relationships change)
-- Includes both direct contributions and contributions to values/conditions you need
+
+* Each person has 100% to distribute (your complete self-actualization)
+* Non-transferable (only you can judge what enables you)
+* Dynamically adjustable (as enabling relationships change)
+* Includes both direct contributions and contributions to values/conditions you need
 
 Mutual Recognition = min(recognition in both directions)
-- Ensures reciprocity in proportion
-- Measures genuine mutual interdependence
-- One-sided recognition doesn't create mutual relationship
+
+* Ensures reciprocity in proportion
+* Measures genuine mutual interdependence
+* One-sided recognition doesn't create mutual relationship
 
 Resources flow to what enables self-actualization
-- Not charity or altruism - mutual enabling
-- Providers invest in their own self-actualization by allocating to needs
-- Everyone is both enabling and enabled
-- Non-zero-sum: your enabling others IS your self-actualization
+
+* Not charity or altruism - mutual enabling
+* Providers invest in their own self-actualization by allocating to needs
+* Everyone is both enabling and enabled
+* Non-zero-sum: your enabling others IS your self-actualization
 
 **Three Computational Mechanisms:**
+
 1. **Membership Module** → Determines who participates (MRD ≥ threshold)
 2. **Resource Allocation** → Allocates resources (provider capacities + needs)
 3. **Decider** → Tunes parameters (rarely, weighted by MRD)
 
 **Zero Governance:**
-- No appointments (admins = top MRD, opt-in)
-- No committees (computation handles all)
-- No approval processes (MRD determines membership)
-- No voting (except rare Decider for parameters)
-- No centralized planning (provider lenses create coordination)
-- No grant applications (needs + provider allocations)
+
+* No appointments (admins = top MRD, opt-in)
+* No committees (computation handles all)
+* No approval processes (MRD determines membership)
+* No voting (except rare Decider for parameters)
+* No centralized planning (provider lenses create coordination)
+* No grant applications (needs + provider allocations)
 
 **Complete Functionality:**
-- Membership emerges from mutual recognition patterns
-- Resources flow to recognized needs through provider allocations
-- Success amplifies automatically (higher recognition → higher collective-recognition-shares)
-- Failure corrects automatically (lower recognition → lower collective-recognition-shares)
-- Roles emerge from recognition patterns (who's recognized for what)
-- Priorities emerge from allocation patterns (what gets fulfilled)
-- Quality emerges from enabling outcomes (what actually helps self-actualization)
+
+* Membership emerges from mutual recognition patterns
+* Resources flow to recognized needs through provider allocations
+* Success amplifies automatically (higher recognition → higher collective-recognition-shares)
+* Failure corrects automatically (lower recognition → lower collective-recognition-shares)
+* Roles emerge from recognition patterns (who's recognized for what)
+* Priorities emerge from allocation patterns (what gets fulfilled)
+* Quality emerges from enabling outcomes (what actually helps self-actualization)
 
 **Self-Correcting Properties:**
-- Phantom capacity eliminated (only providers with actual resources declare capacity)
-- False recognition hurts your own self-actualization (wrong allocation)
-- Success increases recognition (enabling others → they recognize you more)
-- Failure decreases recognition (not enabling → recognition drops)
-- Stop contributing → lose membership (MRD drops below threshold)
-- Truth-telling is optimal strategy (accurate recognition optimizes outcomes)
+
+* Phantom capacity eliminated (only providers with actual resources declare capacity)
+* False recognition hurts your own self-actualization (wrong allocation)
+* Success increases recognition (enabling others → they recognize you more)
+* Failure decreases recognition (not enabling → recognition drops)
+* Stop contributing → lose membership (MRD drops below threshold)
+* Truth-telling is optimal strategy (accurate recognition optimizes outcomes)
 
 **Scaling Properties:**
-- Fixed individual complexity (always manage 100% recognition)
-- Distributed computation (no bottlenecks)
-- Natural clustering (sub-networks around enabling relationships)
-- Multiple coordination layers (provider capacities)
-- Network effects increase with scale (more providers, more coordination opportunities)
+
+* Fixed individual complexity (always manage 100% recognition)
+* Distributed computation (no bottlenecks)
+* Natural clustering (sub-networks around enabling relationships)
+* Multiple coordination layers (provider capacities)
+* Network effects increase with scale (more providers, more coordination opportunities)
 
 **Implementation Integration:**
-- Administrative entity is thin wrapper around protocols
-- Admins = top participants by MRD (opt-in)
-- Admins execute protocol outputs (don't make decisions)
-- Members acknowledge computational results (formality)
-- Legal requirements handled by administrative structure
-- Zero governance overhead (computation does the work)
-- Even entity's own funds are allocated computationally (admins never decide)
+
+* Administrative entity is thin wrapper around protocols
+* Admins = top participants by MRD (opt-in)
+* Admins execute protocol outputs (don't make decisions)
+* Members acknowledge computational results (formality)
+* Legal requirements handled by administrative structure
+* Zero governance overhead (computation does the work)
+* Even entity's own funds are allocated computationally (admins never decide)
 
 **The Key Insight:**
 
 Traditional fiscal interfaces require governance because they assume:
-- Someone must decide who belongs
-- Someone must decide who gets resources
-- Someone must monitor performance
-- Someone must coordinate activity
+
+* Someone must decide who belongs
+* Someone must decide who gets resources
+* Someone must monitor performance
+* Someone must coordinate activity
 
 Free-association eliminates need for governance by recognizing:
-- Recognition patterns determine who belongs (MRD computation)
-- Recognition patterns determine resource flows (provider allocations based on collective recognition)
-- Recognition patterns measure performance (recognition increases/decreases)
-- Recognition patterns create coordination (provider capacities + need matching)
 
-**Result:** An organization that operates through recognition of mutual enabling, with computational mechanisms handling all coordination, and administrative wrapper for compliance only. 
+* Recognition patterns determine who belongs (MRD computation)
+* Recognition patterns determine resource flows (provider allocations based on collective recognition)
+* Recognition patterns measure performance (recognition increases/decreases)
+* Recognition patterns create coordination (provider capacities + need matching)
 
-Everyone participates by recognizing what enables them.
-Resources flow to what's recognized as enabling.
-The system optimizes for genuine mutual enabling because that's what generates recognition.
+**Result:** An organization that operates through recognition of mutual enabling, with computational mechanisms handling all coordination, and administrative wrapper for compliance only.
+
+Everyone participates by recognizing what enables them. Resources flow to what's recognized as enabling. The system optimizes for genuine mutual enabling because that's what generates recognition.
 
 The organization is a **computational protocol for mutual self-actualization**.
