@@ -10,7 +10,7 @@
    - Registered seat in Switzerland
 
 2. Authorized signatories ✓
-   - Board members (President + Treasurer typically)
+   - Board members (3 members with equal authority)
    - Signatory cards filed
    - Collective signature (2 signatures required)
 
@@ -43,9 +43,10 @@ Banks only care:
 ```
 Bank sees:
 - Swiss Verein "Playnet" registered in [Canton]
-- Board: President (Person A), Treasurer (Person B), Secretary (Person C)
-- Signatory authority: President + 1 other Board member
-- Transfer request: Signed by President + Treasurer
+- Board: 3 members with equal authority (Person A, Person B, Person C)
+- President: Person A (legal representative designation)
+- Signatory authority: Any 2 Board members collectively
+- Transfer request: Signed by two Board members
 - Bank verifies: Valid signatures, sufficient funds
 - Bank executes: Transfer
 

@@ -875,7 +875,7 @@ Foundation X doesn't "donate" to Alice's water project.
 Foundation X recognizes: "Alice's water work is 15% of what enables us to self-actualize
 (fulfill our mission, create meaningful impact, advance the values we exist to serve)."
 
-Foundation X responds to Alice's claim because funding Alice IS Foundation X's self-actualization.
+Foundation X allocates to Alice's need because funding Alice IS Foundation X's self-actualization.
 
 Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it wants to be.
 ```
@@ -1647,13 +1647,13 @@ Stated purpose:
 
 Purpose is fulfilled through:
 - Members declaring needs
-- Members declaring collective capacities
-- Providers responding to claims
+- Providers declaring capacities
+- Providers allocating to needs
 - Resources flowing to recognized needs
 
 Purpose serves as filter:
-- Claims related to purpose → visible to provider network
-- Claims unrelated to purpose → not promoted (but not forbidden)
+- Needs related to purpose → visible to provider network
+- Needs unrelated to purpose → not promoted (but not forbidden)
 - Network naturally focuses on purpose-aligned work through recognition patterns
 ```
 
@@ -1674,8 +1674,9 @@ For Swiss authorities:
 
 Members can:
 - Submit recognition data
-- Declare needs and collective capacities
-- Respond to claims (if they have resources)
+- Declare needs
+- Declare provider capacities (if they have resources)
+- Allocate resources (if they are providers)
 - Participate in Decider processes
 - Attend General Assembly
 ```
@@ -1700,9 +1701,9 @@ Agenda & Resolutions:
    - Assembly acknowledges computation results
 
 2. Financial Review
-   - Presented Collective Recognition flows
-   - $X total resources allocated via provider responses
-   - Y claims fulfilled, Z claims pending
+   - Presented resource allocation flows
+   - $X total resources allocated by providers
+   - Y needs fulfilled, Z needs pending
    - Assembly acknowledges transparent ledger
 
 3. Parameter Changes (if any)
@@ -1740,7 +1741,7 @@ Liabilities:
 - Outstanding commitments
 
 Income:
-- Provider responses (recorded as income when received)
+- Provider allocations (recorded as income when received)
 - By source: Foundation X ($50K), Individual donors ($20K), etc.
 
 Expenses:
@@ -1972,7 +1973,7 @@ Mutual Recognition = min(recognition in both directions)
 
 Resources flow to what enables self-actualization
 - Not charity or altruism - mutual enabling
-- Providers invest in their own self-actualization by responding to claims
+- Providers invest in their own self-actualization by allocating to needs
 - Everyone is both enabling and enabled
 - Non-zero-sum: your enabling others IS your self-actualization
 

@@ -8,28 +8,39 @@ The Association "[Name]" (the "Association") is established under Articles 60 et
 
 The Association exists to support and experiment with games/organizations that enable societal flourishing.
 
-## Article 3 — Membership
+## Article 3 — Powers
 
-**3.1 Determination**  
+In furtherance of its purpose, the Association may:
+- Manage assets and reserves in any form, including digital assets
+- Engage in commercial activities consistent with its purpose
+- Utilize computational, algorithmic, or automated processes for coordination and governance
+- Establish partnerships, collaborations, subsidiaries, or participate in other legal entities
+- Issue internal coordination mechanisms or units
+- Delegate operational authority to designated persons, services, or systems
+- Employ any other lawful means consistent with its purpose
+
+## Article 4 — Membership
+
+**4.1 Determination**  
 Membership is determined computationally. A person is a member when their Mutual Recognition Density (MRD) equals or exceeds the threshold value (currently 0.5).
 
-**3.2 MRD Computation**  
+**4.2 MRD Computation**  
 MRD is computed weekly according to the Membership Module specification, available at [URL/reference].
 
-**3.3 Member List**  
+**4.3 Member List**  
 The current member list consists of all participants with MRD ≥ threshold as of the most recent computation.
 
-**3.4 Exit**  
+**4.4 Exit**  
 Membership ends automatically when MRD falls below threshold. Members may also exit by written declaration.
 
-## Article 4 — Organs
+## Article 5 — Organs
 
 The Association has two organs:
 
-**4.1 General Assembly**  
+**5.1 General Assembly**  
 Comprises all current members (MRD ≥ threshold).
 
-**4.2 Board**  
+**5.2 Board**  
 Comprises three members with collective signature authority. Board positions are offered to members in order of highest MRD scores. If a member declines, the position is offered to the next highest MRD.
 
 All Board members have equal authority. Roles exist only for legal requirements:
@@ -41,31 +52,31 @@ Board composition updates when:
 - Current Board member declines to continue, OR
 - Higher-ranked member accepts position
 
-## Article 5 — General Assembly
+## Article 6 — General Assembly
 
-**5.1 Powers**  
+**6.1 Powers**  
 The General Assembly:
 - Acknowledges computational results (membership, resource flows)
 - Approves annual financial statements
 - Adopts constitutional amendments via Decider process
 - Supervises the Board
 
-**5.2 Convening**  
+**6.2 Convening**  
 Meets at least annually. All members may attend. Notice period: 14 days.
 
-**5.3 Decisions**  
+**6.3 Decisions**  
 Decisions on constitutional matters follow the Decider process specification at [URL/reference]. Routine matters are determined by computational protocols.
 
-## Article 6 — Board
+## Article 7 — Board
 
-**6.1 Minimal Responsibilities**  
+**7.1 Minimal Responsibilities**  
 Board members have only these duties:
 - Sign bank transfers as instructed by protocol
 - Sign legal documents as required by Swiss law
 - File required reports with authorities
 - Maintain bank account access
 
-**6.2 What Board Does NOT Do**  
+**7.2 What Board Does NOT Do**  
 The Board does not:
 - Decide membership (protocol computes MRD)
 - Decide resource allocation (protocol computes allocations)
@@ -73,21 +84,21 @@ The Board does not:
 - Set strategy (emerges from member activity)
 - Make discretionary decisions
 
-**6.3 Signatory Authority**  
+**7.3 Signatory Authority**  
 Any two Board members sign collectively. All Board members have equal signing authority.
 
-**6.4 Compensation**  
+**7.4 Compensation**  
 Board service is voluntary. Reasonable expenses may be reimbursed.
 
-**6.5 Liability Protection**  
+**7.5 Liability Protection**  
 Board members execute protocol instructions mechanically. They are not personally liable for allocation decisions made by the protocol.
 
-## Article 7 — Compliance Services
+## Article 8 — Compliance Services
 
-**7.1 Compliance Requirement**  
+**8.1 Compliance Requirement**  
 The Association must comply with Swiss AML (Anti-Money Laundering) and KYC (Know Your Customer) laws.
 
-**7.2 Compliance Service Provider**  
+**8.2 Compliance Service Provider**  
 The Association engages a compliance service provider to:
 - Verify member identities (KYC)
 - Screen members against sanctions lists (OFAC, UN, EU)
@@ -95,52 +106,52 @@ The Association engages a compliance service provider to:
 - Maintain compliance filter data
 - Update filters when compliance status changes
 
-**7.3 Compliance Filters**  
+**8.3 Compliance Filters**  
 The compliance service determines Filter(Member) for each member:
 - $0 = Cannot receive funds (sanctions, KYC failure)
 - $X = Maximum allocation (jurisdiction limits, risk caps)
 - Unlimited = No restrictions
 
-**7.4 Protocol Integration**  
+**8.4 Protocol Integration**  
 The protocol applies compliance filters computationally. The Board does not override or modify compliance filters.
 
-**7.5 Compliance Service Selection**  
+**8.5 Compliance Service Selection**  
 The General Assembly may designate a compliance service provider via Decider process. The service must be independent of the Board.
 
-## Article 8 — Resources
+## Article 9 — Resources
 
-**8.1 Resource Allocation**  
+**9.1 Resource Allocation**  
 Resources are allocated according to the Resource Allocation Protocol specification at [URL/reference].
 
-**8.2 Needs and Allocations**  
+**9.2 Needs and Allocations**  
 Members declare needs. Providers declare capacities and allocate to needs. When the Association itself holds unrestricted funds, the protocol automatically allocates to member needs based on collective-recognition-shares and compliance filters. The Board executes approved transfers.
 
-**8.3 Financial Records**  
+**9.3 Financial Records**  
 All flows are recorded in a transparent ledger maintained per the protocol specification.
 
-## Article 9 — Computational Protocols
+## Article 10 — Computational Protocols
 
-**9.1 Protocol Specifications**  
+**10.1 Protocol Specifications**  
 The Association operates through three computational protocols:
 - Membership Module (MRD computation)
 - Resource Allocation Protocol (provider capacities and need matching)
 - Decider Process (parameter adjustments)
 
-**9.2 Protocol References**  
+**10.2 Protocol References**  
 Current protocol specifications are maintained at [URL/repository] and may be updated via Decider process.
 
-**9.3 Interface**  
+**10.3 Interface**  
 The Board implements protocol outputs. Protocol computations are authoritative for membership and resource allocation.
 
-## Article 10 — Dissolution
+## Article 11 — Dissolution
 
-**10.1 Decision**  
+**11.1 Decision**  
 Dissolution requires Decider process with supermajority (75% weighted support).
 
-**10.2 Liquidation**  
+**11.2 Liquidation**  
 Upon dissolution, assets are distributed to members pro-rata by collective-recognition-share (calculated across all members as of dissolution decision), or to organizations with similar purpose.
 
-## Article 11 — Entry into Force
+## Article 12 — Entry into Force
 
 These Statutes enter into force upon adoption by the founding members.
 
@@ -160,12 +171,12 @@ These Statutes enter into force upon adoption by the founding members.
 
 | Statute Article | Protocol/Service | Data Flow |
 |-----------------|------------------|-----------|
-| Art. 3.2 | Membership Module | Weekly MRD computation → Member list |
-| Art. 4.2 | Membership Module | Weekly MRD ranking → Board position offers |
-| Art. 5.3 | Decider Process | Constitutional proposals → Weighted decision |
-| Art. 7.2 | Compliance Service | KYC/sanctions checks → Compliance filters |
-| Art. 8.1 | Resource Allocation | Needs + Provider capacities + Filters → Transfer instructions |
-| Art. 8.3 | Resource Allocation | All transactions → Ledger entries |
+| Art. 4.2 | Membership Module | Weekly MRD computation → Member list |
+| Art. 5.2 | Membership Module | Weekly MRD ranking → Board position offers |
+| Art. 6.3 | Decider Process | Constitutional proposals → Weighted decision |
+| Art. 8.2 | Compliance Service | KYC/sanctions checks → Compliance filters |
+| Art. 9.1 | Resource Allocation | Needs + Provider capacities + Filters → Transfer instructions |
+| Art. 9.3 | Resource Allocation | All transactions → Ledger entries |
 
 ### Required Protocol Outputs (to Board)
 

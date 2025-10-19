@@ -26,8 +26,8 @@ Below is a high-level diagram (which I can later render as an image or system ma
                               ▼
                 ┌───────────────────────────┐
                 │          BOARD             │
-                │  (President, Treasurer,    │
-                │   Secretary = Top 3 MRD)   │
+                │  (3 Board members =        │
+                │   Top 3 MRD who accept)    │
                 │ Executes only, no decisions│
                 └─────────────┬─────────────┘
                               │
