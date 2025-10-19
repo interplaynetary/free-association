@@ -1,8 +1,8 @@
-# Free-Association Trust
+# Free-Association Organizational Protocol
 
-## Foundation
+## Organization
 
-A trust operates through three computational mechanisms:
+Protocol operates through three computational mechanisms:
 
 1. **Membership Module**: Determines who participates based on mutual recognition density
 2. **Collective Recognition**: Allocates resources based on recognized needs and collective capacities
@@ -399,12 +399,12 @@ Each provider allocates based on collective recognition within their set.
 Alice can receive from multiple providers based on different capacity sets.
 ```
 
-### Primary Model: Verein as Computational Provider
+### Primary Model: Administrative Entity as Computational Provider
 
-**This is the core model. The Verein holds funds and allocates computationally.**
+**This is the core model. The administrative entity holds funds and allocates computationally.**
 
 ```
-Verein has $100K available balance (from general donations, accumulated surplus, etc.)
+Administrative entity has $100K available balance (from general donations, accumulated surplus, etc.)
 
 Automatic Allocation Protocol:
 1. Available balance becomes declared capacity
@@ -416,11 +416,11 @@ Automatic Allocation Protocol:
    - Need amount and urgency
    - Available capacity
    - Compliance filters (see below)
-6. Board receives transfer instructions
-7. Board executes mechanically
+6. Admins receive transfer instructions
+7. Admins execute mechanically
 
 Example:
-Verein balance: $100K
+Administrative entity balance: $100K
 Members: {Alice, Bob, Charlie, Dave, Eve}
 
 Collective-recognition-shares:
@@ -443,24 +443,24 @@ Protocol allocation (prioritized by recognition + feasibility):
 - Charlie: $20K (partial, capacity exhausted)
 - Total: $100K allocated
 
-Board receives: "Transfer $50K to Alice, $30K to Bob, $20K to Charlie"
-Board executes transfers.
+Admins receive: "Transfer $50K to Alice, $30K to Bob, $20K to Charlie"
+Admins execute transfers.
 ```
 
-**Key principle:** The Board doesn't decide allocations. The protocol computes allocations based on collective recognition + needs + compliance filters.
+**Key principle:** The admins don't decide allocations. The protocol computes allocations based on collective recognition + needs + compliance filters.
 
-### Secondary Model: External Provider via Verein
+### Secondary Model: External Provider via Administrative Entity
 
-**External providers can use the Verein as an execution agent for their allocations.**
+**External providers can use the administrative entity as an execution agent for their allocations.**
 
 ```
-Foundation X deposits $100K to Verein:
+Foundation X deposits $100K to administrative entity:
 - Foundation X declares capacity and specifies member set
 - Foundation X reviews collective-recognition-shares within their set
 - Foundation X makes allocation decisions
-- Foundation X instructs Board to execute
-- Board executes Foundation X's allocation decisions mechanically
-- Provider: Foundation X (makes decisions, uses Verein for execution)
+- Foundation X instructs admins to execute
+- Admins execute Foundation X's allocation decisions mechanically
+- Provider: Foundation X (makes decisions, uses administrative entity for execution)
 ```
 
 ### Capacity Filters: Compliance and Restrictions
@@ -497,7 +497,7 @@ Remaining capacity redistributes to other members proportionally by their recogn
 **Example: Compliance Filtering with Limits**
 
 ```
-Verein has $100K to allocate
+Administrative entity has $100K to allocate
 All members: {Alice, Bob, Charlie, Dave, Eve}
 
 General collective-recognition-shares:
@@ -507,7 +507,7 @@ General collective-recognition-shares:
 - Dave: 18%
 - Eve: 13%
 
-Verein's compliance filters:
+Entity's compliance filters:
 - Alice: Unlimited (KYC complete, no restrictions)
 - Bob: Unlimited (KYC complete, no restrictions)
 - Charlie: $0 (KYC failed - cannot allocate)
@@ -552,31 +552,31 @@ Final allocations:
 - Total: $99.3K allocated, $0.7K remains for next cycle
 ```
 
-**Union of Filters (External Provider via Verein):**
+**Union of Filters (External Provider via Administrative Entity):**
 
 ```
-When external provider uses Verein as executor, BOTH filters apply:
+When external provider uses administrative entity as executor, BOTH filters apply:
 
 Effective-Filter(Member, Capacity) = min(
   Provider-Filter(Member, Capacity),
-  Verein-Filter(Member, Capacity)
+  Entity-Filter(Member, Capacity)
 )
 
 Most restrictive filter wins. Both must allow allocation.
 
 Example:
-Foundation X wants to allocate via Verein to Alice:
+Foundation X wants to allocate via administrative entity to Alice:
 - Foundation X filter: $50K max (their internal risk limit)
-- Verein filter: $30K max (Swiss jurisdiction limit for Alice's country)
+- Entity filter: $30K max (jurisdiction limit for Alice's country)
 - Effective filter: min($50K, $30K) = $30K
 
-Foundation X wants to allocate via Verein to Charlie:
+Foundation X wants to allocate via administrative entity to Charlie:
 - Foundation X filter: $40K max (they approve Charlie)
-- Verein filter: $0 (Charlie is on sanctions list)
+- Entity filter: $0 (Charlie is on sanctions list)
 - Effective filter: min($40K, $0) = $0 → Cannot allocate
 
 Key: External provider's approval is necessary but not sufficient.
-Verein's compliance filters always apply (Swiss law).
+Administrative entity's compliance filters always apply.
 ```
 
 **Compliance Responsibility:**
@@ -584,8 +584,8 @@ Verein's compliance filters always apply (Swiss law).
 ```
 Each provider implements their own filters:
 
-Verein (as provider):
-- Must comply with Swiss AML laws
+Administrative Entity (as provider):
+- Must comply with applicable AML/KYC laws (jurisdiction-specific)
 - Must screen against sanctions lists (OFAC, UN, EU)
 - Must verify recipient identity (KYC)
 - Sets Filter(Member, Capacity) for each member:
@@ -593,25 +593,25 @@ Verein (as provider):
   - $0 for KYC failures
   - $X for jurisdiction limits
   - Unlimited for fully compliant members
-- Board cannot override compliance filters
+- Admins cannot override compliance filters
 
-External Provider (via Verein):
+External Provider (via Administrative Entity):
 - Responsible for their own compliance
 - Sets their own Filter(Member, Capacity)
-- Can be more restrictive than Verein
-- Cannot be less restrictive (Verein filters always apply)
-- Must instruct Board only on compliant transfers
+- Can be more restrictive than entity
+- Cannot be less restrictive (entity filters always apply)
+- Must instruct admins only on compliant transfers
 - Example Foundation X filters:
   - $0 for members outside target countries
   - $0 for non-water projects (mission alignment)
   - $25K max per member (risk management)
 
-Final allocation = min(Provider-Filter, Verein-Filter, Recognition-Share, Need)
+Final allocation = min(Provider-Filter, Entity-Filter, Recognition-Share, Need)
 
 Key principle: Providers own their compliance obligations.
 Protocol provides filtering mechanism.
 Union of filters ensures maximum compliance.
-Board executes only compliant, filtered allocations.
+Admins execute only compliant, filtered allocations.
 ```
 
 ---
@@ -837,11 +837,11 @@ Large Foundation W declares:
   
 Foundation W allocates based on collective recognition across entire network.
 
-Meanwhile, Verein has accumulated $250K in unrestricted funds:
+Meanwhile, administrative entity has accumulated $250K in unrestricted funds:
 - Protocol automatically declares capacity: all 150 members
 - Protocol computes collective-recognition-shares across entire network
 - Protocol allocates $250K based on recognition + open needs
-- Board executes automatic allocations
+- Admins execute automatic allocations
 
 No central coordination needed.
 Resources flow based on provider capacity declarations + collective recognition.
@@ -901,7 +901,7 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ❌ Performance theater for funders
 - ❌ Phantom capacity declarations (only providers declare capacity)
 - ❌ Intermediate "claim" concept (providers allocate directly to needs)
-- ❌ Board discretion over Verein funds (automatic computational allocation)
+- ❌ Admin discretion over entity funds (automatic computational allocation)
 
 ### What It Guarantees
 
@@ -916,7 +916,7 @@ Alice isn't a "beneficiary" - Alice is what enables Foundation X to be what it w
 - ✓ Sybil-resistant
 - ✓ Self-organizing around real contribution
 - ✓ Direct allocation from capacity to needs (no intermediate claims)
-- ✓ Verein's own funds allocated computationally (Board never decides)
+- ✓ Entity's own funds allocated computationally (admins never decide)
 
 ### Emergence Without Central Control
 
@@ -1479,484 +1479,156 @@ Network of 1,000 people:
 
 ---
 
-## 11. Swiss Verein Legal Mapping
+## 11. Administrative Entity Integration
 
-### Minimum Legal Requirements
+### Overview
 
-A Swiss Verein requires:
-1. **Statutes** (constitution)
-2. **General Assembly** (supreme organ)
-3. **Board** (executive organ)
-4. **Purpose** (must be legal and determinate)
-5. **Members** (at least 2 persons)
-6. **Meeting protocols**
-7. **Financial records**
+The Free-Association protocols are **implementation-agnostic**. They can operate with any legal or administrative structure that provides:
 
-### How Free-Association Protocols Map
+1. **Legal personality** or fiscal host relationship (ability to hold/access funds)
+2. **Execution mechanism** (admins who can approve/execute transfers)
+3. **Transparency layer** (public or member-visible ledger)
+4. **Compliance framework** (KYC/AML as required by jurisdiction)
 
-#### 1. Statutes (Constitution)
+**Key principle:** The administrative entity/host doesn't decide anything - it acknowledges and executes what the protocols compute.
 
-**Legal Requirement:** Written document defining purpose, membership, organs, decision-making
+### Implementation Patterns
 
-**Free-Association Implementation:**
+The protocols can be wrapped by:
+
+**A. Incorporated Entity (e.g., Swiss Verein, US 501(c)(3))**
+- Own legal status and bank account
+- Admins selected by MRD ranking (opt-in)
+- Constitutional document references protocols
+- See: playnet.gitbook.io/docs/fiscal-interfaces/swiss-association for Swiss Verein implementation
+
+**B. Fiscally Hosted Collective (e.g., via Open Collective Europe)**
+- No own legal status (uses host's)
+- No own bank account (host holds funds)
+- Admins approve expenses on platform
+- Operating guidelines reference protocols
+- See: playnet.gitbook.io/docs/fiscal-interfaces/open-collective for hosted implementation
+
+**C. DAO/Smart Contract (future)**
+- On-chain execution
+- Automated compliance via oracles
+- No traditional admins (code executes)
+
+### Core Integration Requirements
+
+Regardless of implementation, all structures need:
+
+**1. Membership Registry**
 ```
-Statutes state:
-
-Article 1 - Purpose
-"The Verein exists to facilitate bioregional regenerative projects through computational trust mechanisms."
-
-Article 2 - Membership
-"Membership is determined by the Membership Module computation (MRD ≥ 0.5).
-Participants become members when their Mutual Recognition Density reaches the threshold.
-The threshold may be adjusted via Decider process."
-
-Article 3 - Organs
-"The Verein has two organs:
-a) General Assembly: All members (MRD ≥ 0.5)
-b) Board: Members with highest MRD scores (automatic designation)"
-
-Article 4 - Decision Making
-"Resource allocation via provider capacity declarations and need matching.
-Constitutional decisions via Decider process.
-Membership decisions via MRD computation."
-
-Article 5 - Finances
-"Resources flow via provider allocations to member needs.
-All flows recorded in transparent ledger."
-```
-
-#### 2. General Assembly
-
-**Legal Requirement:** Must meet at least annually, all members can attend, supreme decision-making body
-
-**Free-Association Implementation:**
-```
-Annual General Assembly convenes (legally required):
-
-Agenda:
-1. Review of past year's membership (MRD computations)
-2. Review of resource flows (provider allocations to needs)
-3. Financial statements (provider allocations and need fulfillments)
-4. Any Decider proposals for parameter changes
-5. Acknowledgment of computation results
-
-Decisions:
-- Routine matters: Already handled by Membership + Resource Allocation protocols
-- Constitutional changes: Use Decider process (can happen async before assembly)
-- Legal compliance: Board implements based on member consensus
-
-Assembly is formality acknowledging computational results, not making operational decisions.
+Input: Recognition data from participants
+Computation: Weekly MRD calculation
+Output: Current member list (MRD ≥ threshold)
+Interface: Admins/members can view list
 ```
 
-#### 3. Board (Executive Organ)
-
-**Legal Requirement:** Represents the Verein, manages affairs, signs legal documents
-
-**Free-Association Implementation:**
+**2. Resource Tracking**
 ```
-Board Selection (Opt-In Model):
-- Positions offered by MRD ranking
-- Highest MRD offered first, can accept or decline
-- If declines, offer goes to next highest MRD
-- Continue until 3 positions filled
-- President: Highest MRD of actual Board members (not ranking)
-- All Board members: Equal signing authority
-
-No forced appointment - members opt in to Board service.
-
-Board Minimal Responsibilities:
-- Sign bank transfers as instructed by protocol
-- Sign legal documents as required by Swiss law
-- File required reports with authorities
-- Maintain bank account access
-
-Board does NOT:
-- Decide membership (MRD module does)
-- Allocate resources (Protocol does via capacity + filters)
-- Decide compliance filters (Compliance service does)
-- Set strategy (Emerges from member activity)
-- Make discretionary decisions
-- Have fiduciary discretion
-
-Board rotates quarterly:
-- Current members offered to continue if in top ranks
-- Must explicitly accept to continue
-- Can decline anytime (no penalty)
-- Position offered to next highest MRD
+Input: Available balance/capacity
+Computation: Allocation based on recognition + needs + filters
+Output: Transfer instructions {recipient, amount, rationale}
+Interface: Admins receive and execute instructions
 ```
 
-**Example Board Operation:**
+**3. Execution Mechanism**
 ```
-Month 1:
-MRD Ranking: Alice (1.8), Bob (1.5), Charlie (1.3), Dave (1.2)
-
-Board offers:
-- Alice offered → Accepts → Board Member
-- Bob offered → Accepts → Board Member
-- Charlie offered → Accepts → Board Member
-
-Board: {Alice, Bob, Charlie}
-President: Alice (highest MRD of actual Board)
-
-Month 6:
-MRD Ranking changes: Alice (1.7), Dave (1.6), Bob (1.4), Charlie (1.3)
-
-Quarterly review:
-- Alice offered to continue → Accepts
-- Dave offered (new high MRD) → Accepts
-- Bob offered to continue → Declines (too busy)
-- Charlie offered to continue → Accepts
-
-Board: {Alice, Dave, Charlie}
-President: Alice (highest MRD of actual Board)
-
-Bob gracefully exits Board, no drama.
-Dave joins, brings signing authority online.
+Role: Admins or automated system
+Action: Execute transfers per protocol output
+Discretion: None (mechanical execution only)
+Recording: All transactions in transparent ledger
 ```
 
-**Compliance Service Integration:**
+**4. Compliance Layer**
 ```
-Independent compliance service provider:
-- Performs KYC verification for all members
-- Screens against sanctions lists (OFAC, UN, EU)
-- Determines jurisdiction transfer limits
-- Sets Filter(Member) for each member:
-  - $0 (cannot receive)
-  - $X (capped allocation)
-  - Unlimited (no restrictions)
-- Provides filter data to protocol via API
-- Updates filters when compliance status changes
-
-Board receives transfer instructions with filters already applied.
-Board never modifies or overrides compliance filters.
-
-Separation of powers:
-- Compliance service: Determines who CAN receive
-- Protocol: Determines who SHOULD receive (recognition)
-- Board: Executes transfers mechanically
+Source: Compliance service, fiscal host, or oracle
+Data: Filter(Member) for each member ($0, $X, or Unlimited)
+Application: Protocol applies filters before allocation computation
+Override: Not possible by admins
 ```
 
-#### 4. Purpose
-
-**Legal Requirement:** Must have clear, lawful purpose
-
-**Free-Association Implementation:**
+**5. Transparency**
 ```
-Stated purpose: 
-"Facilitate bioregional regenerative projects including water infrastructure, regenerative agriculture, ecological restoration, and community resilience, through decentralized trust mechanisms."
-
-Purpose is fulfilled through:
-- Members declaring needs
-- Providers declaring capacities
-- Providers allocating to needs
-- Resources flowing to recognized needs
-
-Purpose serves as filter:
-- Needs related to purpose → visible to provider network
-- Needs unrelated to purpose → not promoted (but not forbidden)
-- Network naturally focuses on purpose-aligned work through recognition patterns
+Public or member-visible:
+- Recognition patterns (may be anonymized)
+- MRD scores and membership status
+- Allocations and rationale
+- Collective-recognition-shares
+- All transactions
 ```
 
-#### 5. Members
+### Implementation-Specific Details
 
-**Legal Requirement:** At least 2 persons
+For complete implementation guides including:
+- Legal requirements and mappings
+- Admin selection and responsibilities  
+- Compliance procedures
+- Financial record keeping
+- Meeting protocols
+- Step-by-step setup instructions
 
-**Free-Association Implementation:**
-```
-Current members = all participants with MRD ≥ threshold
+**See implementation-specific documentation:**
+- **Swiss Verein**: playnet.gitbook.io/docs/fiscal-interfaces/swiss-association
+- **Open Collective Hosted**: playnet.gitbook.io/docs/fiscal-interfaces/open-collective
+- **Other jurisdictions**: Adapt patterns from above examples
 
-Legal member list updated weekly after MRD computation.
+### Generic Operational Flow
 
-For Swiss authorities:
-- Submit member list quarterly or annually as required
-- List includes all participants with current MRD ≥ 0.5
-- Show MRD computation is transparent and auditable
-
-Members can:
-- Submit recognition data
-- Declare needs
-- Declare provider capacities (if they have resources)
-- Allocate resources (if they are providers)
-- Participate in Decider processes
-- Attend General Assembly
-```
-
-#### 6. Meeting Protocols
-
-**Legal Requirement:** Document decisions and attendance at assemblies
-
-**Free-Association Implementation:**
-```
-Annual Assembly Protocol:
-
-Date: [Date]
-Location: [Physical or virtual]
-Attendees: [All members with MRD ≥ 0.5 at time of assembly]
-
-Agenda & Resolutions:
-1. Membership Review
-   - Presented MRD computations from past year
-   - X new members joined (listed with MRD scores)
-   - Y former members left (MRD dropped below threshold)
-   - Assembly acknowledges computation results
-
-2. Financial Review
-   - Presented resource allocation flows
-   - $X total resources allocated by providers
-   - Y needs fulfilled, Z needs pending
-   - Assembly acknowledges transparent ledger
-
-3. Parameter Changes (if any)
-   - Decider process result: [threshold/parameter change]
-   - Weighted support: [breakdown]
-   - Assembly formally adopts Decider result
-
-4. Board Composition
-   - Current top 3 MRD: [Names and scores]
-   - Assembly acknowledges automatic board designation
-
-5. Legal Compliance
-   - Board confirms Swiss statutory compliance
-   - Financial statements approved
-   - Next assembly date set
-
-All resolutions pass by acknowledging computational results.
-No contentious voting - computation already determined outcomes.
-```
-
-#### 7. Financial Records
-
-**Legal Requirement:** Maintain books, annual financial statements
-
-**Free-Association Implementation:**
-```
-Accounting Structure:
-
-Assets:
-- Bank account balance
-- Token Reserves (if applicable)
-- Physical assets (if any)
-
-Liabilities:
-- Outstanding commitments
-
-Income:
-- Provider allocations (recorded as income when received)
-- By source: Foundation X ($50K), Individual donors ($20K), etc.
-
-Expenses:
-- Allocations (recorded as expense when disbursed)
-- By recipient/project: Alice/Uganda Water ($30K), Bob/Kenya Sanitation ($15K), etc.
-
-All transactions tied to:
-- Provider capacity declaration ID
-- Allocation ID  
-- MRD scores at time of transaction
-- Mutual recognition between provider and recipient
-- Recipient's collective-recognition-share in provider's set
-
-Financial statements generated automatically from allocation ledger.
-
-Auditable trail:
-Recognition data → MRD computation → Need declarations → 
-Provider capacity declaration → Allocation → Resource transfer → Financial record
-```
-
-### Complete Legal Mapping Examples
-
-**Primary Model: Verein as Computational Provider**
-
-Verein accumulates $50K in unrestricted funds (general donations, surplus):
+**For any implementation:**
 
 ```
-Step 1: Daily protocol cycle detects available balance
-- Verein bank account: $50K unrestricted funds
-- Protocol automatically triggers allocation
+1. Members submit recognition data (via protocol interface)
+   → Protocol computes MRD scores weekly
+   → Membership list updated
 
-Step 2: Automatic capacity declaration
-- Protocol generates:
-  Provider: "VEREIN_AUTOMATIC"
-  Set: all current members {Alice, Bob, Charlie, Dave, Eve}
-  Total: $50K
-  isAutomatic: true
+2. Members declare needs (via protocol interface)
+   → All needs visible to network
+   → Needs tagged by type/purpose
 
-Step 3: Protocol applies compliance filters
-- Alice: Unlimited (KYC complete, no restrictions)
-- Bob: Unlimited (KYC complete, no restrictions)
-- Charlie: $0 (KYC failed, cannot allocate)
-- Dave: Unlimited (KYC complete, no restrictions)
-- Eve: $5K max (Jurisdiction limit for her country)
+3. Providers declare capacities (via protocol interface)
+   → Capacity includes: set of members, total amount, type
+   → Protocol computes collective-recognition-shares within set
 
-Step 4: Protocol computes collective-recognition-shares
-- Alice: 28%
-- Bob: 22%
-- Charlie: 19%
-- Dave: 18%
-- Eve: 13%
+4. Protocol allocates (automatic for entity's own funds)
+   → Based on: recognition shares + needs + available capacity + compliance filters
+   → Output: Transfer instructions
 
-Step 5: Protocol reviews open needs
-- Alice: $50K (water infrastructure)
-- Bob: $30K (regenerative agriculture)
-- Charlie: $25K (education programs) - excluded by compliance
-- Dave: $20K (research)
-- Eve: $15K (organizing)
+5. Admins execute (mechanical, no discretion)
+   → Verify protocol authenticity
+   → Execute transfers via available mechanism:
+     * Bank transfers (incorporated entity)
+     * Platform expense approval (hosted collective)
+     * Smart contract execution (DAO)
+   → Record all transactions
 
-Step 6: Protocol allocates automatically
-Initial allocation by recognition shares:
-- Alice: 28% × $50K = $14K
-- Bob: 22% × $50K = $11K
-- Charlie: 19% × $50K = $9.5K
-- Dave: 18% × $50K = $9K
-- Eve: 13% × $50K = $6.5K
-
-After applying filters:
-- Alice: min($14K, Unlimited, $50K need) = $14K ✓
-- Bob: min($11K, Unlimited, $30K need) = $11K ✓
-- Charlie: min($9.5K, $0, $25K need) = $0 ✗ (excluded)
-- Dave: min($9K, Unlimited, $20K need) = $9K ✓
-- Eve: min($6.5K, $5K, $15K need) = $5K ✓ (capped by filter)
-
-Unallocated: $9.5K (Charlie) + $1.5K (Eve cap) = $11K
-
-Redistribute $11K to Alice, Bob, Dave by their recognition shares:
-- Alice: 28/(28+22+18) × $11K = $4.5K → Total: $18.5K
-- Bob: 22/(28+22+18) × $11K = $3.6K → Total: $14.6K
-- Dave: 18/(28+22+18) × $11K = $2.9K → Total: $11.9K
-
-Final allocations:
-- Alice: $18.5K
-- Bob: $14.6K
-- Charlie: $0 (excluded by compliance filter)
-- Dave: $11.9K
-- Eve: $5K (capped by jurisdiction filter)
-- Total: $50K allocated
-
-Step 7: Board executes
-- Board receives protocol output: "Transfer $18.5K to Alice, $14.6K to Bob, $11.9K to Dave, $5K to Eve"
-- Board verifies: Compliance filters applied, funds available
-- Board executes mechanically (no discretion)
-- Board records transactions
-
-Step 8: Accounting records
-Balance: $50K unrestricted
-Expenses:
-  - $18.5K to Alice/Water Infrastructure
-  - $14.6K to Bob/Regenerative Agriculture
-  - $11.9K to Dave/Research
-  - $5K to Eve/Organizing (capped by jurisdiction limit)
-Balance: $0 remaining
-
-Key: Board never decided allocations or compliance. Protocol decided based on filtered collective recognition.
-Charlie excluded by $0 filter. Eve capped at $5K. Excess redistributed to others.
+6. Transparency (continuous)
+   → All allocations visible with rationale
+   → Public or member-visible budget
+   → Recognition patterns observable
+   → Full audit trail
 ```
 
-**Secondary Model: External Provider via Verein**
+### Key Principles Across All Implementations
 
-Foundation X wants to use Verein as executor for $100K allocation:
+- **Admins never decide allocations** - Protocol computes based on recognition
+- **Compliance filters are computational** - Applied before admin sees instructions  
+- **Membership is automatic** - MRD computation determines who participates
+- **Resources flow by recognition** - Not by voting or discretionary approval
+- **Transparency is mandatory** - All transactions and rationale visible
+- **No governance overhead** - Computation replaces committees and approvals
 
-```
-Step 1: Foundation X becomes participant
-- Submits to recognition by existing members
-- May receive recognition for financial capacity
-- May achieve member status (MRD ≥ 0.5) or remain provider-only
+---
 
-Step 2: Foundation X contribution
-- Legally: Donation to Swiss Verein bank account
-- Recorded: $100K received from Foundation X
-- Foundation X retains allocation authority
-
-Step 3: Needs are visible
-- Alice needs: $50K (water infrastructure)
-- Bob needs: $30K (regenerative agriculture)
-- Charlie needs: $40K (education programs)
-
-Step 4: Foundation X declares capacity and allocates
-- Foundation X declares capacity:
-  Set: {Alice, Bob, Charlie, Dave, Eve}
-  Total: $100K
-
-Foundation X's filters (their compliance):
-- Alice: $35K max (their risk limit)
-- Bob: $40K max (their risk limit)
-- Charlie: $0 (outside their target region)
-- Dave: $30K max (their risk limit)
-- Eve: Unlimited
-
-Verein's filters (Swiss AML/KYC):
-- Alice: $30K max (jurisdiction limit)
-- Bob: Unlimited (fully compliant)
-- Charlie: $0 (on EU sanctions list)
-- Dave: Unlimited (fully compliant)
-- Eve: $5K max (jurisdiction limit)
-
-Effective filters (min of both):
-- Alice: min($35K, $30K) = $30K
-- Bob: min($40K, Unlimited) = $40K
-- Charlie: min($0, $0) = $0
-- Dave: min($30K, Unlimited) = $30K
-- Eve: min(Unlimited, $5K) = $5K
-
-Foundation X allocates based on recognition + union of filters:
-- Alice: $30K (capped by Verein's jurisdiction filter)
-- Bob: $25K (within both filters)
-- Charlie: $0 (excluded by both filters)
-- Dave: $20K (within both filters)
-- Eve: $5K (capped by Verein's jurisdiction filter)
-- Total: $80K allocated, $20K remaining
-
-Step 5: Board executes
-- Board receives allocation instructions from Foundation X
-- Board verifies: Foundation X deposited funds, union of filters applied
-- Board transfers:
-  - $30K to Alice's project account (capped by Verein filter)
-  - $25K to Bob's project account
-  - $20K to Dave's project account
-  - $5K to Eve's project account (capped by Verein filter)
-- Board signs bank transfers (legal requirement)
-- Board records transactions in ledger
-
-Step 6: Accounting records
-Income: $100K donation from Foundation X
-Expenses: 
-  - $30K to Alice/Water Infrastructure (capped by Verein jurisdiction limit)
-  - $25K to Bob/Regenerative Agriculture
-  - $20K to Dave/Research
-  - $5K to Eve/Organizing (capped by Verein jurisdiction limit)
-  - Charlie excluded (both filters = $0)
-Balance: $20K remaining (Foundation X's unallocated funds)
-
-Step 7: Next cycle
-- Alice, Bob, Dave, Eve deliver projects
-- Members increase recognition of successful projects
-- Foundation X sees successful delivery → declares new capacity and allocates more
-- Reciprocity spiral continues
-
-Key: Foundation X decided allocations BUT Verein's compliance filters always applied.
-Union of filters: min(Foundation-Filter, Verein-Filter).
-Board verified union of filters and executed.
-```
-
-### Legal Compliance Summary
-
-| Swiss Requirement | Free-Association Implementation | Interface Point |
-|-------------------|--------------------------------|-----------------|
-| Statutes | Document encoding MRD, Resource Allocation, Decider | Written once, references protocols |
-| General Assembly | Annual meeting acknowledging computational results | Formality, not decision-making |
-| Board | Top 3 MRD scores, auto-designated | Board signs documents, executes |
-| Purpose | Stated in statutes, enforced by recognition patterns | Purpose filters what work gets recognized |
-| Members | MRD ≥ threshold | Updated weekly, list provided to authorities |
-| Meeting Protocols | Document assembly, acknowledge results | Written record of computational outcomes |
-| Financial Records | Auto-generated from provider allocation ledger | Standard accounting from transparent flows |
-| Bank Account | Board signatories (top 3 MRD) | Board executes transfers per protocol |
-| Legal Representation | President (highest MRD) | Signs contracts, represents externally |
-
-**Key Insight:** The Swiss Verein is a thin legal wrapper around the free-association protocols. The Verein doesn't decide anything - it acknowledges and executes what the protocols compute.
+**Note:** Section 11 previously contained detailed Swiss Verein-specific examples. These have been moved to `statutes.md` to keep this protocol specification implementation-agnostic. The protocol described here works identically whether wrapped by a Swiss Verein, an Open Collective hosted collective, a US 501(c)(3), or any other administrative structure.
 
 ---
 
 ## 12. Summary
 
-### Pure Free-Association Trust
+### Free-Association
 
 **Philosophical Foundation:**
 
@@ -1983,7 +1655,7 @@ Resources flow to what enables self-actualization
 3. **Decider** → Tunes parameters (rarely, weighted by MRD)
 
 **Zero Governance:**
-- No appointments (board = top 3 MRD, automatic)
+- No appointments (admins = top MRD, opt-in)
 - No committees (computation handles all)
 - No approval processes (MRD determines membership)
 - No voting (except rare Decider for parameters)
@@ -2014,18 +1686,18 @@ Resources flow to what enables self-actualization
 - Multiple coordination layers (provider capacities)
 - Network effects increase with scale (more providers, more coordination opportunities)
 
-**Legal Compliance:**
-- Swiss Verein is thin wrapper around protocols
-- Board = top 3 MRD scores (auto-designated)
-- Board executes protocol decisions (doesn't make them)
-- Assembly acknowledges computational results (annual formality)
-- All Swiss requirements satisfied
+**Implementation Integration:**
+- Administrative entity is thin wrapper around protocols
+- Admins = top participants by MRD (opt-in)
+- Admins execute protocol outputs (don't make decisions)
+- Members acknowledge computational results (formality)
+- Legal requirements handled by administrative structure
 - Zero governance overhead (computation does the work)
-- Even Verein's own funds are allocated computationally (Board never decides)
+- Even entity's own funds are allocated computationally (admins never decide)
 
 **The Key Insight:**
 
-Traditional trusts require governance because they assume:
+Traditional fiscal interfaces require governance because they assume:
 - Someone must decide who belongs
 - Someone must decide who gets resources
 - Someone must monitor performance
@@ -2037,12 +1709,10 @@ Free-association eliminates need for governance by recognizing:
 - Recognition patterns measure performance (recognition increases/decreases)
 - Recognition patterns create coordination (provider capacities + need matching)
 
-**Result:** A trust that operates through recognition of mutual enabling, with computational mechanisms handling all coordination, and legal wrapper for compliance only. 
-
-The trust doesn't need to be governed because it's not an organization - it's a **computational protocol for mutual self-actualization**.
+**Result:** An organization that operates through recognition of mutual enabling, with computational mechanisms handling all coordination, and administrative wrapper for compliance only. 
 
 Everyone participates by recognizing what enables them.
 Resources flow to what's recognized as enabling.
 The system optimizes for genuine mutual enabling because that's what generates recognition.
 
-**This is not a better way to govern a trust. This is a way to eliminate governance entirely.**
+The organization is a **computational protocol for mutual self-actualization**.

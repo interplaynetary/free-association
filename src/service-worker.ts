@@ -117,7 +117,9 @@ self.addEventListener('fetch', (event) => {
 				throw new Error('invalid response from fetch');
 			}
 
-			if (response.status === 200) {
+			// Only cache http/https requests (Cache API doesn't support chrome-extension, etc.)
+			const isHttpScheme = url.protocol === 'http:' || url.protocol === 'https:';
+			if (response.status === 200 && isHttpScheme) {
 				cache.put(event.request, response.clone());
 			}
 

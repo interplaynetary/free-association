@@ -366,6 +366,30 @@ class ReactiveP2PDecider {
 	}
 
 	// ========================================================================
+	// HELPER FUNCTIONS FOR GUN COMPATIBILITY
+	// ========================================================================
+
+	/**
+	 * Convert array to object with numeric keys for Gun storage
+	 */
+	private arrayToObject(arr: any[]): Record<string, any> {
+		const obj: Record<string, any> = {};
+		arr.forEach((item, index) => {
+			obj[index.toString()] = item;
+		});
+		return obj;
+	}
+
+	/**
+	 * Convert object with numeric keys back to array
+	 */
+	private objectToArray(obj: Record<string, any>): any[] {
+		if (!obj) return [];
+		const keys = Object.keys(obj).filter(k => !isNaN(Number(k))).sort((a, b) => Number(a) - Number(b));
+		return keys.map(k => obj[k]);
+	}
+
+	// ========================================================================
 	// GAME INITIALIZATION
 	// ========================================================================
 
@@ -385,11 +409,22 @@ class ReactiveP2PDecider {
 		this.config = config;
 		this.participants = config.participants;
 
+		// Convert arrays to objects for Gun storage
+		const gunCompatibleConfig = {
+			gameId: config.gameId,
+			participants: this.arrayToObject(config.participants),
+			agenda: this.arrayToObject(config.agenda),
+			currentAgendaIndex: config.currentAgendaIndex,
+			timeWindow: config.timeWindow,
+			createdAt: config.createdAt,
+			createdBy: config.createdBy,
+		};
+
 		return new Promise((resolve, reject) => {
 			writeAtPath(
 				this.user,
 				['games', this.gameId, 'config'],
-				config,
+				gunCompatibleConfig,
 				(err) => {
 					if (err) {
 						console.error('Failed to create game:', err);
@@ -420,7 +455,15 @@ class ReactiveP2PDecider {
 						return;
 					}
 
-					const config = GameConfigSchema.parse(data);
+					// Convert Gun-stored objects back to arrays
+					const gunData = data as any;
+					const normalizedData = {
+						...gunData,
+						participants: this.objectToArray(gunData.participants),
+						agenda: this.objectToArray(gunData.agenda),
+					};
+
+					const config = GameConfigSchema.parse(normalizedData);
 					
 					if (!config.participants.includes(this.myPublicKey)) {
 						config.participants.push(this.myPublicKey);
@@ -429,10 +472,21 @@ class ReactiveP2PDecider {
 					this.config = config;
 					this.participants = config.participants;
 
+					// Convert back to Gun-compatible format for writing
+					const gunCompatibleConfig = {
+						gameId: config.gameId,
+						participants: this.arrayToObject(config.participants),
+						agenda: this.arrayToObject(config.agenda),
+						currentAgendaIndex: config.currentAgendaIndex,
+						timeWindow: config.timeWindow,
+						createdAt: config.createdAt,
+						createdBy: config.createdBy,
+					};
+
 					writeAtPath(
 						this.user,
 						['games', this.gameId, 'config'],
-						config,
+						gunCompatibleConfig,
 						(err) => {
 							if (err) {
 								console.error('Failed to write config:', err);
