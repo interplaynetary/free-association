@@ -55,27 +55,28 @@
   <h2>Bank Details</h2>
   {#if !USE_HOLSTER_AUTH}
     <p class="note">Enable Holster auth to store encrypted bank details.</p>
+    <button class="btn primary" onclick={() => { if (browser) { localStorage.setItem('USE_HOLSTER_AUTH','true'); location.reload(); } }}>Enable Holster Auth</button>
   {:else}
     <div class="form">
       <div class="row">
-        <label>Account holder</label>
-        <input bind:value={holderName} placeholder="Full name" />
+        <label for="holderName">Account holder</label>
+        <input id="holderName" bind:value={holderName} placeholder="Full name" />
       </div>
       <div class="row">
-        <label>IBAN</label>
-        <input bind:value={iban} placeholder="DE89 3704 0044 0532 0130 00" />
+        <label for="iban">IBAN</label>
+        <input id="iban" bind:value={iban} placeholder="DE89 3704 0044 0532 0130 00" />
       </div>
       <div class="row">
-        <label>BIC/SWIFT (optional)</label>
-        <input bind:value={bic} placeholder="DEUTDEFF" />
+        <label for="bic">BIC/SWIFT (optional)</label>
+        <input id="bic" bind:value={bic} placeholder="DEUTDEFF" />
       </div>
       <div class="row">
-        <label>Bank name (optional)</label>
-        <input bind:value={bankName} placeholder="Your Bank" />
+        <label for="bankName">Bank name (optional)</label>
+        <input id="bankName" bind:value={bankName} placeholder="Your Bank" />
       </div>
       <div class="row">
-        <label>Country (2-letter, optional)</label>
-        <input bind:value={country} placeholder="DE" />
+        <label for="country">Country (2-letter, optional)</label>
+        <input id="country" bind:value={country} placeholder="DE" />
       </div>
 
       <button class="btn primary" onclick={save} disabled={saving}>
@@ -134,4 +135,3 @@
   .request .status.rejected { color: #ef4444; }
   .actions { display: flex; gap: .5rem; }
 </style>
-
