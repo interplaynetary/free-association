@@ -89,24 +89,29 @@
 </script>
 
 <div 
-	class="sticky-note"
-	class:editing={isEditing}
-	class:dragging={isDragging}
-	class:sidebar={isInSidebar}
-	style:background-color={note.color}
-	style:grid-row-end={spanHeight}
-	draggable={!isEditing}
-	ondragstart={handleDragStart}
-	ondragend={handleDragEnd}
-	ondblclick={startEditing}
+    class="sticky-note"
+    class:editing={isEditing}
+    class:dragging={isDragging}
+    class:sidebar={isInSidebar}
+    style:background-color={note.color}
+    style:grid-row-end={spanHeight}
+    draggable={!isEditing}
+    ondragstart={handleDragStart}
+    ondragend={handleDragEnd}
+    ondblclick={startEditing}
+    role="button"
+    tabindex="0"
+    onkeydown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditing(); }
+    }}
 >
-	{#if isEditing}
-		<textarea
-			bind:value={editContent}
-			onblur={saveEdit}
-			onkeydown={handleKeyDown}
-			class="edit-textarea"
-		/>
+    {#if isEditing}
+        <textarea
+            bind:value={editContent}
+            onblur={saveEdit}
+            onkeydown={handleKeyDown}
+            class="edit-textarea"
+        ></textarea>
 	{:else}
 		<div class="note-content">
 			{note.content}

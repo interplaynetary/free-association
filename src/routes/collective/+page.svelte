@@ -262,14 +262,15 @@
 	.bar-group.vertical {
 		grid-template-columns: 1fr;
 		grid-template-rows: auto 1fr;
-		gap: 0.25rem;
+		gap: 0.5rem;
 		height: 100%;
 		min-height: 0;
 		max-height: 100%;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
-		width: 2rem;
+		/* increase width so placeholder text is readable */
+		width: 14rem;
 	}
 
 	.bar-group.vertical .bar-area {
@@ -282,8 +283,8 @@
 
 	.bar-group.vertical .bar-label {
 		order: 2;
-		font-size: min(0.5em, 1vw);
-		padding: 0 0.25rem;
+		font-size: 0.75em;
+		padding: 0 0.25rem 0.5rem 0.25rem;
 		max-width: 100%;
 		text-align: center;
 	}
@@ -319,6 +320,15 @@
 		border-radius: 4px;
 	}
 
+	/* ensure placeholder text wraps nicely in narrow columns */
+	.bar-group.vertical .placeholder {
+		align-items: flex-start;
+		justify-content: flex-start;
+		text-align: left;
+		padding: 0.75rem;
+		overflow: auto;
+	}
+
 	.empty-state {
 		height: 100%;
 		display: flex;
@@ -349,6 +359,9 @@
 			height: auto;
 			gap: 1rem;
 		}
+
+		/* slightly narrower on small screens but still readable */
+		.bar-group.vertical { width: 10rem; }
 
 		.placeholder {
 			padding: 0.5rem;

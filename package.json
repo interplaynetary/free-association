@@ -95,6 +95,6 @@
 		"sveltekit-i18n": "^2.4.2",
 		"tailwindcss-animate": "^1.0.7",
 		"uuid": "^11.1.0",
-		"zod": "^3.25.0"
-	}
+    "zod": "^3.25.0"
+  }
 }

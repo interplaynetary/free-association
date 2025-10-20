@@ -1026,6 +1026,13 @@
 									<span class="copy-icon">📋</span>
 								</button>
 							{/if}
+							<div class="profile-links">
+								<a href={`${base}/`}>Home</a>
+            <a href={`${base}/profile/wallet`}>Wallet</a>
+            <a href={`${base}/profile/kyc`}>KYC</a>
+            <a href={`${base}/profile/bank`}>Bank</a>
+								<a href={`${base}/profile/community`}>Community</a>
+							</div>
 						</div>
 					</div>
 
@@ -2449,5 +2456,30 @@
 		color: #64748b;
 		font-size: 0.85em;
 		line-height: 1.4;
+	}
+
+	/* Profile quick links (Wallet / KYC / Verified) */
+	.profile-links {
+		margin-top: 8px;
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.profile-links a {
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 8px;
+		border: 1px solid #e5e7eb;
+		border-radius: 9999px;
+		text-decoration: none;
+		font-size: 12px;
+		color: #374151;
+		background: #f9fafb;
+	}
+
+	.profile-links a:hover {
+		background: #f3f4f6;
+		border-color: #d1d5db;
 	}
 </style>

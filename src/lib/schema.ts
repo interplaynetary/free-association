@@ -194,6 +194,72 @@ export type ChatReadStatesData = z.infer<typeof ChatReadStatesDataSchema>;
 export type RecognitionCacheEntry = z.infer<typeof RecognitionCacheEntrySchema>;
 export type RecognitionCache = z.infer<typeof RecognitionCacheSchema>;
 
+// ========================
+// Wallet and KYC Schemas
+// ========================
+
+// Basic EVM wallet info stored under user profile
+export const WalletEvmSchema = z.object({
+    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    chainId: z.number().optional(),
+    connectedAt: z.number().optional()
+});
+
+export const WalletsSchema = z.object({
+    evm: z.optional(WalletEvmSchema)
+});
+
+// KYC structures – lightweight and provider‑agnostic
+export const KycStatusSchema = z.enum(['unverified', 'pending', 'verified', 'rejected']);
+
+export const KycSelfAttestationSchema = z.object({
+    method: z.literal('self'),
+    full_name: z.string().min(1),
+    country: z.string().min(1),
+    dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    over18: z.boolean(),
+    submittedAt: z.number()
+});
+
+export const KycRecordSchema = z.object({
+    status: KycStatusSchema,
+    provider: z.string().default('self'),
+    data: KycSelfAttestationSchema.optional(),
+    updatedAt: z.number()
+});
+
+export type WalletEvm = z.infer<typeof WalletEvmSchema>;
+export type Wallets = z.infer<typeof WalletsSchema>;
+export type KycStatus = z.infer<typeof KycStatusSchema>;
+export type KycSelfAttestation = z.infer<typeof KycSelfAttestationSchema>;
+export type KycRecord = z.infer<typeof KycRecordSchema>;
+
+// ==================================
+// Bank Details (encrypted at rest)
+// ==================================
+
+// Very lightweight IBAN/BIC validation (basic shape only). Use stronger validation in UI if available.
+export const IbanSchema = z
+    .string()
+    .transform((s) => s.replace(/\s+/g, '').toUpperCase())
+    .refine((s) => /^[A-Z]{2}[0-9A-Z]{13,34}$/.test(s), 'Invalid IBAN format');
+
+export const BicSchema = z
+    .string()
+    .transform((s) => s.replace(/\s+/g, '').toUpperCase())
+    .refine((s) => /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s), 'Invalid BIC/SWIFT format');
+
+export const BankDetailsSchema = z.object({
+    holderName: z.string().min(1),
+    iban: IbanSchema,
+    bic: z.optional(BicSchema),
+    bankName: z.optional(z.string().min(1)),
+    country: z.optional(z.string().length(2)),
+    updatedAt: z.number()
+});
+
+export type BankDetails = z.infer<typeof BankDetailsSchema>;
+
 // Composition desire schema - maps target capacity ID to desired absolute units
 export const CompositionDesireSchema = z.record(IdSchema, z.number().gte(0));
 
