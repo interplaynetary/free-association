@@ -1028,8 +1028,9 @@
 							{/if}
 							<div class="profile-links">
 								<a href={`${base}/`}>Home</a>
-								<a href={`${base}/profile/wallet`}>Wallet</a>
-								<a href={`${base}/profile/kyc`}>KYC</a>
+            <a href={`${base}/profile/wallet`}>Wallet</a>
+            <a href={`${base}/profile/kyc`}>KYC</a>
+            <a href={`${base}/profile/bank`}>Bank</a>
 								<a href={`${base}/profile/community`}>Community</a>
 							</div>
 						</div>

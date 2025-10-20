@@ -222,6 +222,32 @@ export type KycStatus = z.infer<typeof KycStatusSchema>;
 export type KycSelfAttestation = z.infer<typeof KycSelfAttestationSchema>;
 export type KycRecord = z.infer<typeof KycRecordSchema>;
 
+// ==================================
+// Bank Details (encrypted at rest)
+// ==================================
+
+// Very lightweight IBAN/BIC validation (basic shape only). Use stronger validation in UI if available.
+export const IbanSchema = z
+    .string()
+    .transform((s) => s.replace(/\s+/g, '').toUpperCase())
+    .refine((s) => /^[A-Z]{2}[0-9A-Z]{13,34}$/.test(s), 'Invalid IBAN format');
+
+export const BicSchema = z
+    .string()
+    .transform((s) => s.replace(/\s+/g, '').toUpperCase())
+    .refine((s) => /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s), 'Invalid BIC/SWIFT format');
+
+export const BankDetailsSchema = z.object({
+    holderName: z.string().min(1),
+    iban: IbanSchema,
+    bic: z.optional(BicSchema),
+    bankName: z.optional(z.string().min(1)),
+    country: z.optional(z.string().length(2)),
+    updatedAt: z.number()
+});
+
+export type BankDetails = z.infer<typeof BankDetailsSchema>;
+
 // Composition desire schema - maps target capacity ID to desired absolute units
 export const CompositionDesireSchema = z.record(IdSchema, z.number().gte(0));
 
