@@ -84,22 +84,39 @@ export async function persistEvmWallet(wallet: WalletEvm): Promise<void> {
         .get('evm')
         .put(wallet);
     }
-    // Also mirror in localStorage for quick boot
-    if (browser) localStorage.setItem('wallet:evm', JSON.stringify(wallet));
   } catch (e) {
     console.error('[WALLET] persist error', e);
   }
 }
 
-// Try restore from localStorage on module load
+// Load from Holster or Gun on module load
 if (browser) {
   try {
-    const raw = localStorage.getItem('wallet:evm');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const v = WalletEvmSchema.safeParse(parsed);
-      if (v.success) setWalletState(v.data.address, v.data.chainId ?? null);
+    if (USE_HOLSTER_AUTH) {
+      // Read once from Holster SEA user space
+      const chain: any = (holsterUser as any)
+        .get('profile')
+        .next('wallets')
+        .next('evm');
+      const cb = (w: any) => {
+        if (w && w.address) {
+          const v = WalletEvmSchema.safeParse(w);
+          if (v.success) setWalletState(v.data.address, v.data.chainId ?? null);
+        }
+      };
+      chain.once ? chain.once(cb) : chain.on(cb, true);
+    } else {
+      // Read once from Gun user space
+      gunUser
+        .get('profile')
+        .get('wallets')
+        .get('evm')
+        .once((w: any) => {
+          if (w && w.address) {
+            const v = WalletEvmSchema.safeParse(w);
+            if (v.success) setWalletState(v.data.address, v.data.chainId ?? null);
+          }
+        });
     }
   } catch {}
 }
-

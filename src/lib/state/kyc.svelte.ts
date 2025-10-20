@@ -15,16 +15,28 @@ import { holsterUser } from '$lib/state/holster.svelte';
 export const kycStatus = writable<KycStatus>('unverified');
 export const kycRecord = writable<KycRecord | null>(null);
 
-export function loadKycFromLocal() {
+// Load KYC from Holster SEA user space (or Gun) on module load
+function loadKycFromRemote() {
   if (!browser) return;
   try {
-    const raw = localStorage.getItem('profile:kyc');
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    const v = KycRecordSchema.safeParse(parsed);
-    if (v.success) {
-      kycRecord.set(v.data);
-      kycStatus.set(v.data.status);
+    if (USE_HOLSTER_AUTH) {
+      const chain: any = (holsterUser as any).get('profile').next('kyc');
+      const cb = (k: any) => {
+        const v = KycRecordSchema.safeParse(k);
+        if (v.success) {
+          kycRecord.set(v.data);
+          kycStatus.set(v.data.status);
+        }
+      };
+      chain.once ? chain.once(cb) : chain.on(cb, true);
+    } else {
+      gunUser.get('profile').get('kyc').once((k: any) => {
+        const v = KycRecordSchema.safeParse(k);
+        if (v.success) {
+          kycRecord.set(v.data);
+          kycStatus.set(v.data.status);
+        }
+      });
     }
   } catch {}
 }
@@ -80,7 +92,6 @@ export async function persistKyc(rec: KycRecord) {
     } else {
       gunUser.get('profile').get('kyc').put(validated);
     }
-    if (browser) localStorage.setItem('profile:kyc', JSON.stringify(validated));
   } catch (e) {
     console.error('[KYC] persist error', e);
     throw e;
@@ -90,11 +101,9 @@ export async function persistKyc(rec: KycRecord) {
 function shouldAutoApprove(): boolean {
   if (!browser) return false;
   try {
-    return (import.meta as any).env?.VITE_KYC_AUTO_APPROVE_SELF === 'true' ||
-      localStorage.getItem('KYC_AUTO_APPROVE_SELF') === 'true';
+    return (import.meta as any).env?.VITE_KYC_AUTO_APPROVE_SELF === 'true';
   } catch { return false; }
 }
 
-// Load initial state
-loadKycFromLocal();
-
+// Load initial state from remote
+loadKycFromRemote();
