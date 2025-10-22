@@ -7,7 +7,9 @@ export const config = {
       // Use environment variable or fallback to defaults
       import.meta.env.VITE_GUN_PEER_URL || 'http://localhost:8765/gun',
       // Keep single external peer as fallback (matching current branch)
-      'https://104.248.129.153/gun'
+      'https://104.248.129.153/gun',
+	  'http://104.248.129.153:8765/gun',
+	  'http://104.248.129.153:8766/gun'
     ],
     localStorage: false,
     radisk: true
