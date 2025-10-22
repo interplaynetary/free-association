@@ -16,9 +16,9 @@ import {
 	computeDampingFactor,
 	updateCommitmentDamping,
 	DENOMINATOR_FLOOR,
-	CONVERGENCE_EPSILON,
-	type Commitment
-} from './mutual-priority-allocation.svelte';
+	CONVERGENCE_EPSILON
+} from './algorithm.svelte';
+import type { Commitment } from './schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS

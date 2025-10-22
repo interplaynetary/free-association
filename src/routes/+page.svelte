@@ -11,12 +11,11 @@
 	import { onMount } from 'svelte';
 	import { t, loading } from '$lib/translations';
 
-	// Reactive variable for mobile detection
-	let isMobile = $state(false);
-	let mediaQuery: MediaQueryList;
-
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
+
+	// Reactive variable for Bar component orientation
+	let isBarVertical = $state(false);
 
 	// Create reactive derived store from userSogf
 	const barSegments = derived(userSogf, ($sogf) => {
@@ -65,21 +64,17 @@
 			recalculateFromTree();
 		}
 
-		// Set up media query listener for responsive behavior
-		mediaQuery = window.matchMedia('(max-width: 768px)');
-
-		// Function to handle media query changes
+		// Set up media query for Bar component orientation
+		const mediaQuery = window.matchMedia('(min-width: 769px)');
+		
 		function handleMediaChange(e: MediaQueryListEvent | MediaQueryList) {
-			isMobile = e.matches;
+			isBarVertical = e.matches; // true for desktop (vertical bars), false for mobile (horizontal bars)
+			console.log('[Layout] Media query changed - isBarVertical:', isBarVertical, 'viewport width:', window.innerWidth);
 		}
 
-		// Set initial value
 		handleMediaChange(mediaQuery);
-
-		// Listen for changes
 		mediaQuery.addEventListener('change', handleMediaChange);
 
-		// Cleanup listener on unmount
 		return () => {
 			mediaQuery.removeEventListener('change', handleMediaChange);
 		};
@@ -105,15 +100,15 @@
 	{#if currentView === 'tree'}
 		{#key $loading}
 		<div class="bars">
-		<div class="bar-group" class:vertical={!isMobile}>
+		<div class="bar-group">
 			<div
 				class="bar-label"
 				title={$t('home.your_recognition_description')}
 			>
-				{#if isMobile}
-					{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}
-				{:else}
+				{#if isBarVertical}
 					{$t('home.your_recognition_abbr')}
+				{:else}
+					{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}
 				{/if}
 			</div>
 			<div class="bar-area">
@@ -122,7 +117,7 @@
 						segments={$barSegments}
 						width="100%"
 						height="100%"
-						vertical={!isMobile}
+						vertical={isBarVertical}
 						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
@@ -136,15 +131,15 @@
 				{/if}
 			</div>
 		</div>
-		<div class="bar-group" class:vertical={!isMobile}>
+		<div class="bar-group">
 			<div
 				class="bar-label"
 				title={$t('home.mutual_recognition_description')}
 			>
-				{#if isMobile}
-					{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}
-				{:else}
+				{#if isBarVertical}
 					{$t('home.mutual_recognition_abbr')}
+				{:else}
+					{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}
 				{/if}
 			</div>
 			<div class="bar-area">
@@ -153,7 +148,7 @@
 						segments={$providerSegments}
 						width="100%"
 						height="100%"
-						vertical={!isMobile}
+						vertical={isBarVertical}
 						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
@@ -205,56 +200,69 @@
 
 	.bars {
 		display: flex;
-		flex-direction: row;
 		gap: 0.5rem;
-		padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-	}
-
-	.bar-group {
-		flex: 1;
-		display: grid;
-		min-height: 0;
-	}
-
-	/* Horizontal layout */
-	.bar-group {
-		grid-template-columns: auto 1fr;
-		gap: 0.75rem;
-		align-items: center;
-		height: 2rem;
-	}
-
-	/* Vertical layout */
-	.bar-group.vertical {
-		grid-template-columns: 1fr;
-		grid-template-rows: auto 1fr;
-		gap: 0.25rem;
-		height: 100%;
-		min-height: 0;
-		max-height: 100%;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		width: 2rem;
-	}
-
-	.bar-group.vertical .bar-area {
-		flex: 1;
-		order: 1;
-		display: flex;
-		align-items: flex-end;
+		padding: 0.5rem;
 		width: 100%;
+		height: 100%;
 	}
 
-	.bar-group.vertical .bar-label {
-		order: 2;
-		font-size: min(0.5em, 1vw);
-		padding: 0 0.25rem;
-		max-width: 100%;
-		text-align: center;
+	/* Mobile/Horizontal mode: bars stack vertically, each bar-group is horizontal */
+	@media (max-width: 768px) {
+		.bars {
+			flex-direction: column;
+			height: auto;
+		}
+
+		.bar-group {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			gap: 0.75rem;
+			align-items: center;
+			height: 2rem;
+			width: 100%;
+		}
+
+		.bar-label {
+			white-space: normal;
+		}
+
+		.bar-area {
+			width: 100%;
+		}
+	}
+
+	/* Desktop/Vertical mode: bars side by side, each bar-group is vertical */
+	@media (min-width: 769px) {
+		.bars {
+			flex-direction: row;
+		}
+
+		.bar-group {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			height: 100%;
+			width: 2rem;
+			min-height: 0;
+			max-height: 100%;
+			overflow: hidden;
+		}
+
+		.bar-area {
+			flex: 1;
+			order: 1;
+			display: flex;
+			align-items: flex-end;
+			width: 100%;
+		}
+
+		.bar-label {
+			order: 2;
+			font-size: min(0.5em, 1vw);
+			padding: 0 0.25rem;
+			max-width: 100%;
+			text-align: center;
+		}
 	}
 
 	.bar-area {
@@ -270,22 +278,54 @@
 		letter-spacing: 0.05em;
 		font-weight: 500;
 		line-height: 1.1;
-		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.placeholder {
 		height: 100%;
+		width: 100%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		text-align: center;
 		color: #666;
-		font-size: 0.9em;
-		padding: 1rem;
 		background: #f5f5f5;
 		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.placeholder p {
+		margin: 0;
+		padding: 0.25rem;
+		line-height: 1.2;
+		word-break: break-word;
+		hyphens: auto;
+	}
+
+	/* Horizontal placeholder (mobile) */
+	@media (max-width: 768px) {
+		.placeholder {
+			padding: 0.5rem;
+		}
+
+		.placeholder p {
+			font-size: clamp(0.5rem, 1.5vw, 0.75rem);
+		}
+	}
+
+	/* Vertical placeholder (desktop) */
+	@media (min-width: 769px) {
+		.placeholder {
+			writing-mode: vertical-rl;
+			text-orientation: mixed;
+			padding: 0.5rem 0.25rem;
+		}
+
+		.placeholder p {
+			font-size: clamp(0.35rem, 0.8vw, 0.5rem);
+			max-width: 100%;
+		}
 	}
 
 	.inventory-view {
@@ -302,22 +342,11 @@
 		margin-top: 0;
 	}
 
-	/* Responsive layout for mobile */
+	/* Additional mobile adjustments */
 	@media (max-width: 768px) {
 		.layout {
 			grid-template-columns: 1fr;
 			grid-template-rows: 1fr auto;
-		}
-
-		.bars {
-			flex-direction: column;
-			height: auto;
-			gap: 0.5rem;
-		}
-
-		.placeholder {
-			padding: 0.5rem;
-			font-size: 0.8em;
 		}
 	}
 </style>
