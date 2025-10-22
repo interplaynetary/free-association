@@ -1,0 +1,147 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main  # or your production branch
+    paths:
+      - 'src/routes/api/**'
+      - 'src/lib/server/**'
+      - 'server/**'
+      - 'package.json'
+      - 'bun.lockb'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: 'latest'
+
+jobs:
+  deploy:
+    name: Deploy Server to DigitalOcean
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build server (Node.js adapter)
+        run: |
+          # Use the server-specific config
+          cp svelte.config.server.js svelte.config.js.backup
+          mv svelte.config.server.js svelte.config.js || true
+          bun run build
+          # Restore original config
+          mv svelte.config.js.backup svelte.config.js || true
+        env:
+          NODE_ENV: production
+
+      - name: Create deployment archive
+        run: |
+          # Create archive with build output and necessary files
+          tar -czf deploy.tar.gz \
+            build-server/ \
+            server/ \
+            package.json \
+            bun.lockb \
+            --exclude='server/*/node_modules' \
+            --exclude='*.log'
+
+      - name: Deploy to DigitalOcean
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: 22
+          source: "deploy.tar.gz"
+          target: "/tmp/"
+
+      - name: Extract and setup on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            
+            # Define paths
+            APP_DIR="/var/www/free-association"
+            DATA_BACKUP="/var/backups/free-association-data"
+            
+            # Create directories if they don't exist
+            sudo mkdir -p $APP_DIR
+            sudo mkdir -p $DATA_BACKUP
+            sudo chown -R $USER:$USER $APP_DIR
+            
+            # Backup data directories if they exist
+            if [ -d "$APP_DIR/gun-data" ]; then
+              echo "Backing up gun-data..."
+              sudo rsync -a $APP_DIR/gun-data/ $DATA_BACKUP/gun-data/
+            fi
+            
+            if [ -d "$APP_DIR/holster-data" ]; then
+              echo "Backing up holster-data..."
+              sudo rsync -a $APP_DIR/holster-data/ $DATA_BACKUP/holster-data/
+            fi
+            
+            # Extract new deployment
+            cd $APP_DIR
+            tar -xzf /tmp/deploy.tar.gz
+            rm /tmp/deploy.tar.gz
+            
+            # Restore data directories
+            if [ -d "$DATA_BACKUP/gun-data" ]; then
+              echo "Restoring gun-data..."
+              mkdir -p gun-data
+              sudo rsync -a $DATA_BACKUP/gun-data/ gun-data/
+              sudo chown -R $USER:$USER gun-data
+            fi
+            
+            if [ -d "$DATA_BACKUP/holster-data" ]; then
+              echo "Restoring holster-data..."
+              mkdir -p holster-data
+              sudo rsync -a $DATA_BACKUP/holster-data/ holster-data/
+              sudo chown -R $USER:$USER holster-data
+            fi
+            
+            # Install Bun if not present
+            if ! command -v bun &> /dev/null; then
+              echo "Installing Bun..."
+              curl -fsSL https://bun.sh/install | bash
+              export BUN_INSTALL="$HOME/.bun"
+              export PATH="$BUN_INSTALL/bin:$PATH"
+            fi
+            
+            # Install production dependencies
+            bun install --production
+            
+            # Set correct permissions
+            sudo chown -R $USER:$USER $APP_DIR
+            sudo chmod -R 755 $APP_DIR
+            
+            # Reload systemd service (will create next)
+            sudo systemctl daemon-reload
+            sudo systemctl restart free-association
+            
+            echo "✅ Deployment complete!"
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.DROPLET_HOST }}:3000/api/ai/health || exit 1
+          curl -f http://${{ secrets.DROPLET_HOST }}:3000/api/llm/health || exit 1
+          curl -f http://${{ secrets.DROPLET_HOST }}:3000/api/keys/health || exit 1
+          echo "✅ All health checks passed!"
+

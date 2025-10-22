@@ -30,6 +30,13 @@ export default defineConfig({
 	esbuild: {
 		target: 'esnext'
 	},
+	// SSR configuration for server-only packages
+	ssr: {
+		noExternal: []
+	},
+	resolve: {
+		conditions: ['node']
+	},
 	server: {
 		watch: {
 			ignored: [
