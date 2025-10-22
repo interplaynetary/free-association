@@ -17,7 +17,7 @@ import { holsterUser } from './holster.svelte';
 import type { RootNode, Node, NonRootNode } from '$lib/schema';
 import { RootNodeSchema } from '$lib/schema';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
-import { userTree } from './core.svelte';
+import { userTree, isLoadingTree } from './core.svelte';
 
 // ============================================================================
 // Types
@@ -57,7 +57,6 @@ interface FlatTreeData {
 // ============================================================================
 
 export const holsterTree = writable<RootNode | null>(null);
-export const isLoadingHolsterTree = writable(false);
 
 let lastNetworkTimestamp: number | null = null;
 let treeCallback: ((data: any) => void) | null = null;
@@ -158,6 +157,8 @@ function processNetworkUpdate(data: any) {
 					// Cache the tree for faster future loads
 					setCachedTree(parseResult.data, networkTimestamp);
 				}
+				// Data loaded successfully - stop loading
+				isLoadingTree.set(false);
 			} else {
 				console.error('[TREE-HOLSTER] Invalid reconstructed tree:', parseResult.error);
 			}
@@ -411,10 +412,10 @@ function subscribeToTree() {
 					console.log('[TREE-HOLSTER] No network data received, persisting default tree...');
 					persistHolsterTree(defaultTree).then(() => {
 						console.log('[TREE-HOLSTER] Default tree persisted');
-						isLoadingHolsterTree.set(false);
+						isLoadingTree.set(false);
 					}).catch((err) => {
 						console.error('[TREE-HOLSTER] Error persisting default tree:', err);
-						isLoadingHolsterTree.set(false);
+						isLoadingTree.set(false);
 					});
 				}, 10000);
 			}
@@ -507,7 +508,7 @@ export function initializeHolsterTree() {
 
 	console.log('[TREE-HOLSTER] Initializing tree...');
 	isInitialized = true;
-	isLoadingHolsterTree.set(true);
+	isLoadingTree.set(true);
 
 	// Try to load from cache first for instant UI
 	const cachedTree = getCachedTree();
@@ -524,7 +525,7 @@ export function initializeHolsterTree() {
 		const flatCached = flattenTree(cachedTree);
 		lastPersistedNodes = { ...flatCached.nodes };
 
-		isLoadingHolsterTree.set(false);
+		isLoadingTree.set(false);
 	}
 
 	subscribeToTree();
@@ -626,10 +627,10 @@ export async function persistHolsterTree(tree?: RootNode): Promise<void> {
 		return;
 	}
 
-	if (get(isLoadingHolsterTree)) {
+	if (get(isLoadingTree)) {
 		console.log('[TREE-HOLSTER] Still loading, deferring persistence');
 		setTimeout(() => {
-			if (!get(isLoadingHolsterTree)) {
+			if (!get(isLoadingTree)) {
 				persistHolsterTree(tree);
 			}
 		}, 500);

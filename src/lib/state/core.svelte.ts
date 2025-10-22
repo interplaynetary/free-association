@@ -4,7 +4,7 @@ import { normalizeShareMap, getSubtreeContributorMap, findNodeById } from '$lib/
 import { applyCapacityFilter, type FilterContext } from '$lib/filters';
 import { parseCompositionTarget } from '$lib/validation';
 import { resolveToPublicKey } from './users.svelte';
-import { USE_HOLSTER_CAPACITIES, USE_HOLSTER_RECOGNITION } from '$lib/config';
+import { USE_HOLSTER_CAPACITIES, USE_HOLSTER_RECOGNITION, USE_HOLSTER_TREE } from '$lib/config';
 import {
 	holsterCapacities,
 	isLoadingHolsterCapacities
@@ -56,7 +56,7 @@ export const isLoadingCapacities = USE_HOLSTER_CAPACITIES
 // DELETED: Timestamp tracking stores - Replaced by Gun's native timestamp tracking
 // Use getGunTimestamp() from $lib/utils/gunTimestamp.ts when timestamp comparison is needed
 
-// Loading state flags
+// Loading state flags - shared by both Gun and Holster implementations
 export const isLoadingTree = writable(false);
 
 export const isRecalculatingTree = writable(false);

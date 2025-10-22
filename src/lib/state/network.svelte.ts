@@ -8,7 +8,7 @@ import {
 	isLoadingContacts,
 	initializeContacts
 } from '$lib/state/users.svelte';
-import { USE_HOLSTER_AUTH, USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION, USE_HOLSTER_CHAT } from '$lib/config';
+import { USE_HOLSTER_AUTH, USE_HOLSTER_CONTACTS, USE_HOLSTER_CAPACITIES, USE_HOLSTER_TREE, USE_HOLSTER_RECOGNITION, USE_HOLSTER_CHAT, USE_HOLSTER_ALLOCATION_STATES } from '$lib/config';
 import { initializeHolsterCapacities } from './capacities-holster.svelte';
 import { initializeHolsterTree } from './tree-holster.svelte';
 import { initializeHolsterSogf } from './recognition-holster.svelte';
@@ -781,11 +781,13 @@ const createOwnTreeStream = withAuthentication(async (userId: string) => {
 	// When using Holster, initialize Holster tree instead of Gun stream
 	if (USE_HOLSTER_TREE) {
 		console.log('[NETWORK] Using Holster for tree - skipping Gun stream');
+		// Set loading flag only for Holster (Gun processor handles it via config)
+		isLoadingTree.set(true);
 		initializeHolsterTree();
 		return;
 	}
 
-	// Gun implementation
+	// Gun implementation - loading flag is managed by the stream processor config
 	await createStream(ownDataStreamConfigs.tree, userId);
 });
 
@@ -1021,19 +1023,36 @@ export async function initializeHolsterDataStreams(): Promise<void> {
 	console.log('[NETWORK-HOLSTER] Initializing all Holster data streams');
 
 	try {
-		// Initialize all Holster modules that have been migrated
-		const { initializeHolsterContacts } = await import('./contacts-holster.svelte');
-		const { initializeHolsterCapacities } = await import('./capacities-holster.svelte');
-		const { initializeHolsterTree } = await import('./tree-holster.svelte');
-		const { initializeHolsterSogf } = await import('./recognition-holster.svelte');
-		const { initializeHolsterAllocationStates } = await import('./allocation-states-holster.svelte');
+		// Initialize each module only if its feature flag is enabled
+		if (USE_HOLSTER_CONTACTS) {
+			const { initializeHolsterContacts } = await import('./contacts-holster.svelte');
+			console.log('[NETWORK-HOLSTER] Initializing Holster contacts');
+			initializeHolsterContacts();
+		}
 
-		// Initialize each module
-		initializeHolsterContacts();
-		initializeHolsterCapacities();
-		initializeHolsterTree();
-		initializeHolsterSogf();
-		initializeHolsterAllocationStates();
+		if (USE_HOLSTER_CAPACITIES) {
+			const { initializeHolsterCapacities } = await import('./capacities-holster.svelte');
+			console.log('[NETWORK-HOLSTER] Initializing Holster capacities');
+			initializeHolsterCapacities();
+		}
+
+		if (USE_HOLSTER_TREE) {
+			const { initializeHolsterTree } = await import('./tree-holster.svelte');
+			console.log('[NETWORK-HOLSTER] Initializing Holster tree');
+			initializeHolsterTree();
+		}
+
+		if (USE_HOLSTER_RECOGNITION) {
+			const { initializeHolsterSogf } = await import('./recognition-holster.svelte');
+			console.log('[NETWORK-HOLSTER] Initializing Holster recognition/SOGF');
+			initializeHolsterSogf();
+		}
+
+		if (USE_HOLSTER_ALLOCATION_STATES) {
+			const { initializeHolsterAllocationStates } = await import('./allocation-states-holster.svelte');
+			console.log('[NETWORK-HOLSTER] Initializing Holster allocation states');
+			initializeHolsterAllocationStates();
+		}
 
 		// IMPORTANT: Set up users list subscription AFTER Holster is authenticated
 		// This ensures the subscription sees the current user in the list
