@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	import { userTree } from '$lib/state/core.svelte';
+	import { userTree, isLoadingTree } from '$lib/state/core.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode } from '$lib/schema';
@@ -1883,7 +1883,14 @@
 	<!-- Main treemap content -->
 	<div class="app-content">
 		<div class="treemap-container">
-			{#if !tree || (tree.children && tree.children.length === 0)}
+			{#if $isLoadingTree}
+				<div class="empty-state">
+					<div class="loading-message">
+						<div class="loading-spinner"></div>
+						<p>Loading...</p>
+					</div>
+				</div>
+			{:else if !tree || (tree.children && tree.children.length === 0)}
 				<div class="empty-state">
 					<div class="add-node-prompt">
 						<button class="play-button" onclick={handleCreateNewTree}>
@@ -2166,5 +2173,35 @@
 
 	.add-icon {
 		font-size: 20px;
+	}
+
+	.loading-message {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 20px;
+		padding: 40px;
+	}
+
+	.loading-spinner {
+		width: 40px;
+		height: 40px;
+		border: 4px solid #e0e0e0;
+		border-top-color: #4caf50;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	.loading-message p {
+		font-size: 18px;
+		color: #666;
+		margin: 0;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>
