@@ -3,7 +3,19 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { CompletionRequestSchema, RoutingResponseSchema, HealthReportSchema, type CompletionRequest, type RoutingResponse } from '$lib/server/schemas';
 import { requireAuth } from '$lib/server/middleware/auth';
 import { checkGeneralRateLimit, checkAiRateLimit, checkTokenRateLimit } from '$lib/server/middleware/rate-limit';
-import { OPENROUTER_BASE_URL, APP_URL } from '$env/static/private';
+
+// Import env vars with fallbacks for static builds
+let OPENROUTER_BASE_URL: string | undefined;
+let APP_URL: string | undefined;
+
+try {
+  const env = await import('$env/static/private');
+  OPENROUTER_BASE_URL = env.OPENROUTER_BASE_URL;
+  APP_URL = env.APP_URL;
+} catch (e) {
+  OPENROUTER_BASE_URL = undefined;
+  APP_URL = undefined;
+}
 
 const OPENROUTER_ENDPOINT = `${OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'}/chat/completions`;
 
@@ -84,7 +96,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${routing.key}`,
-      'HTTP-Referer': APP_URL,
+      'HTTP-Referer': APP_URL || '',
       'X-Title': 'Free Association AI'
     };
     

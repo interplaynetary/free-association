@@ -64,7 +64,7 @@ let isPersisting: boolean = false; // Lock to prevent concurrent persistence
 let lastPersistedNodes: Record<string, FlatNode> = {}; // Track full node data from last persist (for incremental updates)
 let isInitialized: boolean = false; // Prevent duplicate initialization
 let hasReceivedRealData = false;
-let defaultTreePersistTimeout: NodeJS.Timeout | null = null;
+let defaultTreePersistTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Queue for network updates during persistence
 let queuedNetworkUpdate: any = null; // Store latest network update while persisting
@@ -385,6 +385,7 @@ function reconstructTree(flatData: FlatTreeData): RootNode | null {
 function subscribeToTree() {
 	if (!holsterUser.is) {
 		console.log('[TREE-HOLSTER] Cannot subscribe: no authenticated user');
+		isLoadingTree.set(false);
 		return;
 	}
 
@@ -447,7 +448,12 @@ function subscribeToTree() {
 		processNetworkUpdate(data);
 	};
 
-	holsterUser.get('tree').on(treeCallback, true);
+	try {
+		holsterUser.get('tree').on(treeCallback, true);
+	} catch (error) {
+		console.error('[TREE-HOLSTER] Error subscribing to tree:', error);
+		isLoadingTree.set(false);
+	}
 }
 
 // ============================================================================
@@ -802,7 +808,7 @@ export function subscribeToContributorHolsterTree(
 
 
 	// Subscribe to this contributor's tree
-	holsterUser.get([contributorPubKey, 'tree']).on((treeData) => {
+	holsterUser.get([contributorPubKey, 'tree']).on((treeData: any) => {
 		if (!treeData) {
 			console.log(`[TREE-HOLSTER] No tree data from ${contributorPubKey.slice(0, 20)}...`);
 			// Call with null to clear

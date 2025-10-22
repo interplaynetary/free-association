@@ -3,7 +3,19 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { TokenRequestSchema } from '$lib/server/schemas';
 import { generateToken } from '$lib/server/middleware/auth';
 import { checkAuthRateLimit } from '$lib/server/middleware/rate-limit';
-import { MASTER_API_KEY, JWT_EXPIRY } from '$env/static/private';
+
+// Import env vars with fallbacks for static builds
+let MASTER_API_KEY: string | undefined;
+let JWT_EXPIRY: string | undefined;
+
+try {
+  const env = await import('$env/static/private');
+  MASTER_API_KEY = env.MASTER_API_KEY;
+  JWT_EXPIRY = env.JWT_EXPIRY;
+} catch (e) {
+  MASTER_API_KEY = undefined;
+  JWT_EXPIRY = undefined;
+}
 
 /**
  * POST /api/ai/token - Token generation endpoint

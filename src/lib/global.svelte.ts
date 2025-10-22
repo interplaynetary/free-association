@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
-import toast from 'svelte-french-toast';
+import { toast } from '$lib/stores/toast.svelte';
 import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
 import { userPub } from '$lib/state/auth.svelte';
 import { userTree } from '$lib/state/core.svelte';
@@ -362,7 +362,7 @@ export const globalState = $state({
 		console.log('[GLOBAL STATE] Exited edit mode');
 	},
 
-	// Display a toast notification using svelte-french-toast
+	// Display a toast notification
 	showToast: (message: string, type: ToastType = 'info') => {
 		switch (type) {
 			case 'success':
@@ -372,16 +372,11 @@ export const globalState = $state({
 				toast.error(message);
 				break;
 			case 'warning':
-				toast(message, {
-					icon: '⚠️',
-					style: 'border: 1px solid #f59e0b; background: #fef3c7; color: #92400e;'
-				});
+				toast.warning(message);
 				break;
 			case 'info':
 			default:
-				toast(message, {
-					icon: 'ℹ️'
-				});
+				toast.info(message);
 				break;
 		}
 	},

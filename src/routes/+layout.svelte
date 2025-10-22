@@ -2,13 +2,13 @@
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
-	import { Toaster } from 'svelte-french-toast';
 	import { loading } from '$lib/translations';
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
@@ -50,8 +50,8 @@
 	{/if}
 </main>
 
-<!-- Toaster component for svelte-french-toast - positioned within content area -->
-<Toaster position="top-center" />
+<!-- Toast notification component - positioned at top center -->
+<Toast />
 
 <!-- DraggedNode component that appears on top of everything -->
 <DraggedNode

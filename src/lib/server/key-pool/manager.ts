@@ -1,5 +1,14 @@
 import type { KeyHealthStatus } from '../schemas/routing';
-import { OPENROUTER_KEYS } from '$env/static/private';
+
+// Import env vars with fallbacks for static builds
+let OPENROUTER_KEYS: string | undefined;
+
+try {
+  const env = await import('$env/static/private');
+  OPENROUTER_KEYS = env.OPENROUTER_KEYS;
+} catch (e) {
+  OPENROUTER_KEYS = undefined;
+}
 
 /**
  * OpenRouter key pool structure

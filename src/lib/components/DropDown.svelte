@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { getColorForUserId } from '../utils/colorUtils';
 	import {
 		resolveToPublicKey,
@@ -64,13 +64,13 @@
 	// Initialize empty - will populate on mount
 	let dataProviderItems = $state<Array<{ id: string; name: string; metadata?: any }>>([]);
 
-	// Subscribe on mount to avoid $effect infinite loops
-	let unsubscribe: (() => void) | undefined;
-
-	onMount(() => {
-		console.log('[DROPDOWN-DEBUG] onMount - subscribing to dataProvider');
+	// Use $effect for subscription instead of onMount/onDestroy to avoid lifecycle conflicts
+	$effect(() => {
+		console.log('[DROPDOWN-DEBUG] $effect - subscribing to dataProvider');
 		let subscriptionCount = 0;
-		unsubscribe = dataProvider.subscribe((items: Array<{ id: string; name: string; metadata?: any }>) => {
+		let mounted = true;
+		
+		const unsubscribe = dataProvider.subscribe((items: Array<{ id: string; name: string; metadata?: any }>) => {
 			subscriptionCount++;
 			console.log('[DROPDOWN-DEBUG] dataProvider subscription fired (count: ' + subscriptionCount + '):', {
 				itemsCount: items?.length || 0,
@@ -80,15 +80,19 @@
 					isContact: i.metadata?.isContact
 				}))
 			});
-			dataProviderItems = items || [];
+			if (mounted) {
+				dataProviderItems = items || [];
+			}
 		});
-	});
 
-	onDestroy(() => {
-		console.log('[DROPDOWN-DEBUG] onDestroy - cleaning up');
-		if (unsubscribe) {
-			unsubscribe();
-		}
+		// Return cleanup function
+		return () => {
+			console.log('[DROPDOWN-DEBUG] $effect cleanup - unsubscribing');
+			mounted = false;
+			if (unsubscribe) {
+				unsubscribe();
+			}
+		};
 	});
 	let searchInput = $state<HTMLInputElement | null>(null);
 	let resultsContainer = $state<HTMLDivElement | null>(null);

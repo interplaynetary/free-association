@@ -1,6 +1,22 @@
 import { error } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, JWT_EXPIRY, MASTER_API_KEY } from '$env/static/private';
+
+// Import env vars with fallbacks for static builds (GitHub Pages)
+let JWT_SECRET: string | undefined;
+let JWT_EXPIRY: string | undefined;
+let MASTER_API_KEY: string | undefined;
+
+try {
+  const env = await import('$env/static/private');
+  JWT_SECRET = env.JWT_SECRET;
+  JWT_EXPIRY = env.JWT_EXPIRY;
+  MASTER_API_KEY = env.MASTER_API_KEY;
+} catch (e) {
+  // Static build - server routes won't be used anyway
+  JWT_SECRET = undefined;
+  JWT_EXPIRY = undefined;
+  MASTER_API_KEY = undefined;
+}
 
 // In-memory API key store for multi-key support
 const validApiKeys = new Set<string>();
@@ -94,7 +110,9 @@ export function generateToken(payload: any, expiresIn?: string): string {
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET not configured - cannot generate tokens');
   }
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn || JWT_EXPIRY || '24h' });
+  const secret: string = JWT_SECRET;
+  const expiry = expiresIn || JWT_EXPIRY || '24h';
+  return jwt.sign(payload, secret, { expiresIn: expiry } as any);
 }
 
 /**

@@ -781,8 +781,7 @@ const createOwnTreeStream = withAuthentication(async (userId: string) => {
 	// When using Holster, initialize Holster tree instead of Gun stream
 	if (USE_HOLSTER_TREE) {
 		console.log('[NETWORK] Using Holster for tree - skipping Gun stream');
-		// Set loading flag only for Holster (Gun processor handles it via config)
-		isLoadingTree.set(true);
+		// Loading flag is managed inside initializeHolsterTree()
 		initializeHolsterTree();
 		return;
 	}

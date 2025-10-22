@@ -395,7 +395,7 @@
 					userTree.set(populated);
 					const chosen = availableTemplates.find((t) => t.id === selectedTemplateId);
 					globalState.showToast(
-						$t('tree.template_loaded', { template: chosen ? `${chosen.emoji} ${chosen.label}` : selectedTemplateId }),
+						$t('tree.template_loaded', { template: chosen ? `${chosen.emoji} ${chosen.label}` : selectedTemplateId } as any),
 						'success'
 					);
 				} else {
@@ -428,20 +428,6 @@
 			return;
 		}
 
-		// Calculate initial points for new node using the protocol function
-		const newPoints = calculateNodePoints(currentNode!);
-		console.log('[UI FLOW] Calculated points based on siblings:', newPoints);
-		const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-		const newNodeName = 'New Node'; // Default name for better UX
-
-		console.log('[UI FLOW] Creating new node:', {
-			id: newNodeId,
-			points: newPoints,
-			name: newNodeName
-		});
-		console.log('[UI FLOW] Current parent:', currentNodeId);
-		console.log('[UI FLOW] Current path:', path);
-
 		try {
 			// Get the tree and current node
 			if (!tree) {
@@ -454,6 +440,20 @@
 				globalState.showToast($t('tree.error_node_not_found'), 'error');
 				return;
 			}
+
+			// Calculate initial points for new node using the protocol function
+			const newPoints = calculateNodePoints(currentNode);
+			console.log('[UI FLOW] Calculated points based on siblings:', newPoints);
+			const newNodeId = `node_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+			const newNodeName = 'New Node'; // Default name for better UX
+
+			console.log('[UI FLOW] Creating new node:', {
+				id: newNodeId,
+				points: newPoints,
+				name: newNodeName
+			});
+			console.log('[UI FLOW] Current parent:', currentNodeId);
+			console.log('[UI FLOW] Current path:', path);
 
 			// Create a deep clone of the current tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
@@ -521,10 +521,10 @@
 			// Force update
 			triggerUpdate();
 
-			// Clear edit mode
-			globalState.exitEditMode();
+		// Clear edit mode
+		globalState.exitEditMode();
 
-			globalState.showToast($t('tree.node_renamed', { name: newName }), 'success');
+		globalState.showToast($t('tree.node_renamed', { name: newName } as any), 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
 			globalState.showToast($t('tree.error_updating_name'), 'error');
@@ -579,13 +579,13 @@
 			console.log(`[MANUAL-FULFILLMENT-DEBUG] Setting updated tree in store`);
 			userTree.set(updatedTree);
 
-			// Force update
-			triggerUpdate();
+		// Force update
+		triggerUpdate();
 
-			// Only show notification if requested (e.g., on drag end, not during drag)
-			if (showNotification) {
-				globalState.showToast($t('tree.fulfillment_set', { value: Math.round(value * 100) }), 'success');
-			}
+		// Only show notification if requested (e.g., on drag end, not during drag)
+		if (showNotification) {
+			globalState.showToast($t('tree.fulfillment_set', { value: Math.round(value * 100) } as any), 'success');
+		}
 		} catch (err) {
 			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
 			if (showNotification) {
@@ -853,12 +853,12 @@
 					);
 					userTree.set(updatedTree);
 					triggerUpdate();
-				}
 			}
+		}
 
-			globalState.showToast($t('tree.contact_created', { name: detail.name }), 'success');
+		globalState.showToast($t('tree.contact_created', { name: detail.name } as any), 'success');
 
-			// Automatically add the new contact to the active node based on current mode
+		// Automatically add the new contact to the active node based on current mode
 			if (activeNodeId) {
 				if (contributorMode === 'anti-contributor') {
 					addAntiContributorToNode(activeNodeId, newContact.contact_id);
@@ -868,7 +868,7 @@
 			}
 		} catch (error) {
 			console.error('[CONTACT] Error creating contact:', error);
-			globalState.showToast($t('tree.error_creating_contact', { error: (error as Error).message }), 'error');
+			globalState.showToast($t('tree.error_creating_contact', { error: (error as Error).message } as any), 'error');
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -878,10 +878,10 @@
 			updateContact(detail.contactId, { name: detail.name });
 
 			console.log('[CONTACT] Updated contact:', detail);
-			globalState.showToast($t('tree.contact_renamed', { name: detail.name }), 'success');
+			globalState.showToast($t('tree.contact_renamed', { name: detail.name } as any), 'success');
 		} catch (error) {
 			console.error('[CONTACT] Error updating contact:', error);
-			globalState.showToast($t('tree.error_updating_contact', { error: (error as Error).message }), 'error');
+			globalState.showToast($t('tree.error_updating_contact', { error: (error as Error).message } as any), 'error');
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -996,7 +996,7 @@
 			console.log('[CONTACT] Contact deletion completed successfully');
 		} catch (error) {
 			console.error('[CONTACT] Error deleting contact:', error);
-			globalState.showToast($t('tree.error_deleting_contact', { error: (error as Error).message }), 'error');
+			globalState.showToast($t('tree.error_deleting_contact', { error: (error as Error).message } as any), 'error');
 		}
 	}
 
@@ -2106,11 +2106,6 @@
 		display: flex;
 		gap: 8px;
 		align-items: center;
-	}
-
-	.template-label {
-		font-size: 14px;
-		color: #555;
 	}
 
 	.template-select-input {
