@@ -14,9 +14,6 @@
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
 
-	// Reactive variable for Bar component orientation
-	let isBarVertical = $state(false);
-
 	// Create reactive derived store from userSogf
 	const barSegments = derived(userSogf, ($sogf) => {
 		if (!$sogf || Object.keys($sogf).length === 0) {
@@ -63,21 +60,6 @@
 		if (tree && (!sogf || Object.keys(sogf).length === 0)) {
 			recalculateFromTree();
 		}
-
-		// Set up media query for Bar component orientation
-		const mediaQuery = window.matchMedia('(min-width: 769px)');
-		
-		function handleMediaChange(e: MediaQueryListEvent | MediaQueryList) {
-			isBarVertical = e.matches; // true for desktop (vertical bars), false for mobile (horizontal bars)
-			console.log('[Layout] Media query changed - isBarVertical:', isBarVertical, 'viewport width:', window.innerWidth);
-		}
-
-		handleMediaChange(mediaQuery);
-		mediaQuery.addEventListener('change', handleMediaChange);
-
-		return () => {
-			mediaQuery.removeEventListener('change', handleMediaChange);
-		};
 	});
 </script>
 
@@ -86,9 +68,7 @@
 		{#if currentView === 'tree'}
 			<Parent />
 		<!-- {:else if currentView === 'map'}
-			{#key currentView}
-				<Map fullHeight={true} />
-			{/key} -->
+			<Map fullHeight={true} /> -->
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<h2 class="text-center text-2xl font-bold">{$t('home.capacities')}</h2>
@@ -99,20 +79,16 @@
 			</div>
 		{/if}
 	</div>
-
 	{#if currentView === 'tree'}
-	<div class="bars">
 		{#key $loading}
+		<div class="bars">
 		<div class="bar-group">
 			<div
-				class="bar-label"
+				class="bar-label bar-label-yr"
 				title={$t('home.your_recognition_description')}
 			>
-				{#if isBarVertical}
-					{$t('home.your_recognition_abbr')}
-				{:else}
-					{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}
-				{/if}
+				<span class="label-mobile">{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}</span>
+				<span class="label-desktop">{$t('home.your_recognition_abbr')}</span>
 			</div>
 			<div class="bar-area">
 				{#if $barSegments.length > 0}
@@ -120,7 +96,6 @@
 						segments={$barSegments}
 						width="100%"
 						height="100%"
-						vertical={isBarVertical}
 						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
@@ -136,14 +111,11 @@
 		</div>
 		<div class="bar-group">
 			<div
-				class="bar-label"
+				class="bar-label bar-label-mr"
 				title={$t('home.mutual_recognition_description')}
 			>
-				{#if isBarVertical}
-					{$t('home.mutual_recognition_abbr')}
-				{:else}
-					{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}
-				{/if}
+				<span class="label-mobile">{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}</span>
+				<span class="label-desktop">{$t('home.mutual_recognition_abbr')}</span>
 			</div>
 			<div class="bar-area">
 				{#if $providerSegments.length > 0}
@@ -151,7 +123,6 @@
 						segments={$providerSegments}
 						width="100%"
 						height="100%"
-						vertical={isBarVertical}
 						showLabelsOnSelect={true}
 						showValues={false}
 						rounded={false}
@@ -163,8 +134,8 @@
 				{/if}
 			</div>
 		</div>
+		</div>
 		{/key}
-	</div>
 	{/if}
 </div>
 
@@ -205,11 +176,9 @@
 		display: flex;
 		gap: 0.5rem;
 		padding: 0.5rem;
-		width: 100%;
-		height: 100%;
 	}
 
-	/* Mobile/Horizontal mode: bars stack vertically, each bar-group is horizontal */
+	/* Mobile: Horizontal bars stacked vertically */
 	@media (max-width: 768px) {
 		.bars {
 			flex-direction: column;
@@ -225,29 +194,39 @@
 			width: 100%;
 		}
 
+		.bar-area {
+			height: 100%;
+			width: 100%;
+		}
+
 		.bar-label {
 			white-space: normal;
 		}
 
-		.bar-area {
-			width: 100%;
+		.label-mobile {
+			display: inline;
+		}
+
+		.label-desktop {
+			display: none;
 		}
 	}
 
-	/* Desktop/Vertical mode: bars side by side, each bar-group is vertical */
+	/* Desktop: Vertical bars side by side */
 	@media (min-width: 769px) {
 		.bars {
 			flex-direction: row;
+			height: 100%;
 		}
 
 		.bar-group {
 			display: flex;
 			flex-direction: column;
-			gap: 0.25rem;
-			height: 100%;
 			width: 2rem;
+			height: 100%;
 			min-height: 0;
 			max-height: 100%;
+			gap: 0.25rem;
 			overflow: hidden;
 		}
 
@@ -257,6 +236,7 @@
 			display: flex;
 			align-items: flex-end;
 			width: 100%;
+			min-height: 0;
 		}
 
 		.bar-label {
@@ -266,12 +246,14 @@
 			max-width: 100%;
 			text-align: center;
 		}
-	}
 
-	.bar-area {
-		height: 100%;
-		min-width: 0;
-		min-height: 0;
+		.label-mobile {
+			display: none;
+		}
+
+		.label-desktop {
+			display: inline;
+		}
 	}
 
 	.bar-label {
@@ -287,48 +269,15 @@
 
 	.placeholder {
 		height: 100%;
-		width: 100%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		text-align: center;
 		color: #666;
+		font-size: 0.9em;
+		padding: 1rem;
 		background: #f5f5f5;
 		border-radius: 4px;
-		overflow: hidden;
-	}
-
-	.placeholder p {
-		margin: 0;
-		padding: 0.25rem;
-		line-height: 1.2;
-		word-break: break-word;
-		hyphens: auto;
-	}
-
-	/* Horizontal placeholder (mobile) */
-	@media (max-width: 768px) {
-		.placeholder {
-			padding: 0.5rem;
-		}
-
-		.placeholder p {
-			font-size: clamp(0.5rem, 1.5vw, 0.75rem);
-		}
-	}
-
-	/* Vertical placeholder (desktop) */
-	@media (min-width: 769px) {
-		.placeholder {
-			writing-mode: vertical-rl;
-			text-orientation: mixed;
-			padding: 0.5rem 0.25rem;
-		}
-
-		.placeholder p {
-			font-size: clamp(0.35rem, 0.8vw, 0.5rem);
-			max-width: 100%;
-		}
 	}
 
 	.inventory-view {
@@ -345,11 +294,22 @@
 		margin-top: 0;
 	}
 
-	/* Additional mobile adjustments */
+	/* Responsive layout for mobile */
 	@media (max-width: 768px) {
 		.layout {
 			grid-template-columns: 1fr;
 			grid-template-rows: 1fr auto;
+		}
+
+		.bars {
+			flex-direction: column;
+			height: auto;
+			gap: 0.5rem;
+		}
+
+		.placeholder {
+			padding: 0.5rem;
+			font-size: 0.8em;
 		}
 	}
 </style>

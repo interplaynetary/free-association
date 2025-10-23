@@ -9,15 +9,13 @@
  * - Conflict resolution (network wins if newer)
  * - Incremental updates (only persist what changed)
  * - Queue management (handle updates during persistence)
- * - localStorage caching (instant UI)
  * - Cross-user subscriptions (for mutual contributors)
  * 
  * Usage:
  * ```typescript
  * const commitmentStore = createStore({
  *   holsterPath: 'commitment',
- *   schema: CommitmentSchema,
- *   cacheable: true
+ *   schema: CommitmentSchema
  * });
  * 
  * // Initialize (subscribes to network)
@@ -48,9 +46,6 @@ export interface StoreConfig<T extends z.ZodTypeAny> {
 	/** Zod schema for validation */
 	schema: T;
 	
-	/** Enable localStorage caching for instant load */
-	cacheable?: boolean;
-	
 	/** Custom comparison function (default: JSON equality) */
 	isEqual?: (a: z.infer<T>, b: z.infer<T>) => boolean;
 	
@@ -68,7 +63,7 @@ export interface HolsterStore<T> extends Readable<T | null> {
 	/** Initialize store (subscribe to network) */
 	initialize: () => void;
 	
-	/** Cleanup (unsubscribe, clear cache) */
+	/** Cleanup (unsubscribe, clear state) */
 	cleanup: () => Promise<void>;
 	
 	/** Subscribe to another user's data */
@@ -105,9 +100,6 @@ export function createStore<T extends z.ZodTypeAny>(
 	let isInitialized = false;
 	let persistDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 	
-	const CACHE_KEY = `holster_${config.holsterPath}_cache`;
-	const CACHE_TIMESTAMP_KEY = `holster_${config.holsterPath}_timestamp`;
-	
 	// ────────────────────────────────────────────────────────────────
 	// Equality Check
 	// ────────────────────────────────────────────────────────────────
@@ -119,45 +111,6 @@ export function createStore<T extends z.ZodTypeAny>(
 			return false;
 		}
 	});
-	
-	// ────────────────────────────────────────────────────────────────
-	// Cache Management
-	// ────────────────────────────────────────────────────────────────
-	
-	function getCached(): DataType | null {
-		if (!config.cacheable || typeof localStorage === 'undefined') return null;
-		
-		try {
-			const cached = localStorage.getItem(CACHE_KEY);
-			if (!cached) return null;
-			
-			const parsed = JSON.parse(cached);
-			const validation = config.schema.safeParse(parsed);
-			
-			return validation.success ? validation.data : null;
-		} catch (error) {
-			console.error(`[HOLSTER-STORE:${config.holsterPath}] Error reading cache:`, error);
-			return null;
-		}
-	}
-	
-	function setCache(data: DataType, timestamp: number): void {
-		if (!config.cacheable || typeof localStorage === 'undefined') return;
-		
-		try {
-			localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-			localStorage.setItem(CACHE_TIMESTAMP_KEY, timestamp.toString());
-		} catch (error) {
-			console.error(`[HOLSTER-STORE:${config.holsterPath}] Error setting cache:`, error);
-		}
-	}
-	
-	function clearCache(): void {
-		if (typeof localStorage === 'undefined') return;
-		
-		localStorage.removeItem(CACHE_KEY);
-		localStorage.removeItem(CACHE_TIMESTAMP_KEY);
-	}
 	
 	// ────────────────────────────────────────────────────────────────
 	// Network Update Processing
@@ -185,7 +138,6 @@ export function createStore<T extends z.ZodTypeAny>(
 			
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
-				setCache(validation.data, networkTimestamp);
 			}
 		}
 	}
@@ -295,9 +247,6 @@ export function createStore<T extends z.ZodTypeAny>(
 						return reject(err);
 					}
 					
-					// Update cache
-					setCache(dataToSave, localTimestamp);
-					
 					isPersisting = false;
 					processQueuedUpdate();
 					resolve();
@@ -344,18 +293,6 @@ export function createStore<T extends z.ZodTypeAny>(
 		isInitialized = true;
 		isLoading.set(true);
 		
-		// Try cache first for instant UI
-		const cached = getCached();
-		const cachedTimestamp = cached
-			? parseInt(localStorage.getItem(CACHE_TIMESTAMP_KEY) || '0', 10)
-			: 0;
-		
-		if (cached) {
-			store.set(cached);
-			lastNetworkTimestamp = cachedTimestamp;
-			isLoading.set(false);
-		}
-		
 		// Subscribe to network
 		subscribeToNetwork();
 	}
@@ -390,9 +327,6 @@ export function createStore<T extends z.ZodTypeAny>(
 			clearTimeout(persistDebounceTimeout);
 			persistDebounceTimeout = null;
 		}
-		
-		// Clear cache
-		clearCache();
 		
 		console.log(`[HOLSTER-STORE:${config.holsterPath}] Cleaned up`);
 	}

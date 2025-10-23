@@ -44,7 +44,6 @@ import * as z from 'zod';
 export const myCommitmentStore = createStore({
 	holsterPath: 'allocation/commitment',
 	schema: CommitmentSchema,
-	cacheable: true,
 	persistDebounce: 100 // Debounce rapid updates
 });
 
@@ -59,7 +58,6 @@ export const myCommitmentStore = createStore({
 export const myAllocationStateStore = createStore({
 	holsterPath: 'allocation/allocationState',
 	schema: TwoTierAllocationStateSchema,
-	cacheable: true,
 	persistDebounce: 100
 });
 
@@ -73,7 +71,6 @@ export const myAllocationStateStore = createStore({
 export const myRecognitionWeightsStore = createStore({
 	holsterPath: 'allocation/recognitionWeights',
 	schema: z.record(z.string(), z.number().nonnegative()),
-	cacheable: true,
 	persistDebounce: 200 // Recognition changes less frequently
 });
 
@@ -88,7 +85,6 @@ export const myRecognitionWeightsStore = createStore({
 export const myRoundStateStore = createStore({
 	holsterPath: 'allocation/roundState',
 	schema: RoundStateSchema,
-	cacheable: false, // Round state is ephemeral
 	persistDebounce: 0 // Publish immediately
 });
 

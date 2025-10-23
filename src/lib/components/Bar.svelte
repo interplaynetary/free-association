@@ -41,7 +41,6 @@
 		segments = [],
 		height = '100%',
 		width = '100%',
-		vertical = false,
 		rounded = false,
 		showLabels = false,
 		showLabelsOnSelect = false,
@@ -52,7 +51,6 @@
 		segments: BarSegment[];
 		height?: string;
 		width?: string;
-		vertical?: boolean;
 		rounded?: boolean;
 		showLabels?: boolean;
 		showLabelsOnSelect?: boolean;
@@ -307,7 +305,6 @@
 <div
 	bind:this={barContainer}
 	class="stacked-bar"
-	class:vertical
 	style:height
 	style:width
 	style:background-color={backgroundColor}
@@ -320,13 +317,12 @@
 				class:interactive={showLabelsOnSelect || showLabelsAboveOnSelect}
 				class:selected={(showLabelsOnSelect || showLabelsAboveOnSelect) &&
 					selectedSegmentId === segment.id}
-				style:width={vertical ? '100%' : `${segment.normalizedValue}%`}
-				style:height={vertical ? `${segment.normalizedValue}%` : '100%'}
+				style:--segment-pct={segment.normalizedValue}
 				style:background-color={segment.color}
 				style:border-radius={getSegmentBorderRadius(
 					i,
 					normalizedSegments.length,
-					vertical,
+					false,
 					rounded
 				)}
 				data-id={segment.id}
@@ -375,47 +371,61 @@
 		display: flex;
 		overflow: hidden;
 		width: 100%;
-		box-sizing: border-box;
-		position: relative; /* Enable absolute positioning for popup */
-		border-radius: 999px; /* Rounded ends for the entire bar */
-	}
-
-	.stacked-bar.vertical {
-		flex-direction: column;
 		height: 100%;
+		box-sizing: border-box;
+		position: relative;
+		border-radius: 999px;
 	}
 
 	.bar-segment {
-		height: 100%;
-		transition: width 0.3s ease;
+		transition: all 0.3s ease;
 		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		overflow: hidden;
 		min-width: 1px;
+		flex-shrink: 0;
 	}
 
-	/* Apply minimum height only for horizontal bars */
-	.stacked-bar:not(.vertical) .bar-segment {
-		min-height: 25px;
+	/* Mobile: Horizontal bars */
+	@media (max-width: 768px) {
+		.stacked-bar {
+			flex-direction: row;
+		}
+
+		.bar-segment {
+			height: 100%;
+			min-height: 25px;
+			width: calc(var(--segment-pct) * 1%);
+		}
+	}
+
+	/* Desktop: Vertical bars */
+	@media (min-width: 769px) {
+		.stacked-bar {
+			flex-direction: column;
+		}
+
+		.bar-segment {
+			width: 100%;
+			height: calc(var(--segment-pct) * 1%);
+		}
 	}
 
 	.bar-segment.interactive {
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: opacity 0.2s ease, box-shadow 0.2s ease;
 	}
 
 	.bar-segment.interactive:hover {
 		opacity: 0.8;
-		transform: scale(1.02);
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 		z-index: 1;
 	}
 
 	.bar-segment.selected {
 		opacity: 0.9;
-		transform: scale(1.01);
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 		z-index: 1;
 	}
