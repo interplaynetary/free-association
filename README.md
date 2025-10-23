@@ -360,8 +360,8 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 - [Playnet.lol](https://playnet.lol)
 - [Glossary](GLOSSARY.md)
-- [Dialectics of Love (Hegel and Mutual Recognition)](resources/love.md) Free-Association can be seen as the social-material inversion of Hegel's dialectics of Desire, Recognition, and Love
-- [Free-Association as the Psychoanalysis of the Economic Unconscious](resources/matheme.md)
+- [Dialectics of Love (Hegel and Mutual Recognition)](docs/love.md) Free-Association can be seen as the social-material inversion of Hegel's dialectics of Desire, Recognition, and Love
+- [Free-Association as the Psychoanalysis of the Economic Unconscious](docs/matheme.md)
 
 - **Inteface Overview (Older Version)**
 
@@ -378,6 +378,7 @@ bun install
 bun run dev
 ```
 
+We use [vitest](https://vitest.dev/) and [playwright](https://playwright.dev/) for testing:
 ```
 bun test
 ```
