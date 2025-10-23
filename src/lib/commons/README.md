@@ -1,10 +1,10 @@
-# Circles: Slot-Native Mutual-Priority Allocation System
+# Commons: Slot-Native Mutual-Priority Allocation System
 
 A decentralized peer-to-peer resource allocation algorithm for the free-association project. This system enables fair distribution of resources based on mutual recognition and bilateral relationships, with precise time/location matching at the slot level.
 
 ## Overview
 
-The Circles module implements a **Slot-Native Two-Tier Allocation Algorithm** that allocates resources between participants based on their recognition of each other. The system works at the slot level - each availability slot is allocated independently using the same recognition-based logic, enabling real-world constraints like time and location matching.
+The Commons module implements a **Slot-Native Two-Tier Allocation Algorithm** that allocates resources between participants based on their recognition of each other. The system works at the slot level - each availability slot is allocated independently using the same recognition-based logic, enabling real-world constraints like time and location matching.
 
 ### Key Features
 
@@ -23,19 +23,15 @@ The Circles module implements a **Slot-Native Two-Tier Allocation Algorithm** th
 ### File Structure
 
 ```
-circles/
+commons/
 ├── schemas.ts                      # Zod schemas (slot-based commitments)
 ├── match.svelte.ts                 # Slot compatibility matching logic
 ├── store.svelte.ts                 # Generic Holster store utility
 ├── stores.svelte.ts                # Allocation-specific store instances
 ├── algorithm.svelte.ts             # Core slot-native allocation algorithm
-├── CircleVisualization.svelte      # D3.js visualization component
+├── visualization.svelte      # D3.js visualization component
 ├── index.ts                        # Module exports
-├── circle.tsx                      # [Legacy] React prototype (superseded)
 ├── convergence.test.ts             # Algorithm convergence tests
-├── ARCHITECTURE_REVIEW.md          # Architecture review documentation
-├── TRANSITION_COMPLETE.md          # Transition notes
-├── MIGRATION_FROM_REACT.md         # Migration guide from circle.tsx
 └── README.md                       # This file
 ```
 
@@ -203,7 +199,7 @@ Published periodically for coordination:
 import { 
   initializeAllocationStores,
   initializeAlgorithmSubscriptions 
-} from '$lib/commons/circles';
+} from '$lib/commons';
 
 // After Holster authentication
 initializeAllocationStores();
@@ -213,7 +209,7 @@ initializeAlgorithmSubscriptions();
 ### Publishing Recognition
 
 ```typescript
-import { publishMyRecognitionWeights } from '$lib/commons/circles/algorithm.svelte';
+import { publishMyRecognitionWeights } from '$lib/commons/algorithm.svelte';
 
 const weights = {
   'pubkey1': 0.4,  // 40% recognition
@@ -227,7 +223,7 @@ await publishMyRecognitionWeights(weights);
 ### Publishing Commitment (Slot-Native)
 
 ```typescript
-import { publishMyCommitment } from '$lib/commons/circles/algorithm.svelte';
+import { publishMyCommitment } from '$lib/commons/algorithm.svelte';
 
 const commitment = {
   capacity_slots: [
@@ -261,7 +257,7 @@ await publishMyCommitment(commitment);
 ### Computing Slot-Native Allocations
 
 ```typescript
-import { computeAndPublishAllocations } from '$lib/commons/circles/algorithm.svelte';
+import { computeAndPublishAllocations } from '$lib/commons/algorithm.svelte';
 
 // Algorithm automatically uses computeSlotNativeAllocation()
 // - Matches slots by time/location
@@ -282,7 +278,7 @@ The system automatically subscribes based on algorithm needs:
 Manual subscription is also available:
 
 ```typescript
-import { subscribeToFullParticipant } from '$lib/commons/circles/stores.svelte';
+import { subscribeToFullParticipant } from '$lib/commons/stores.svelte';
 
 subscribeToFullParticipant('pubkey-to-subscribe');
 ```
@@ -301,7 +297,7 @@ import {
   activeParticipants,              // Fresh commitments (< 60s)
   oscillatingParticipants,         // Participants with damping < 1.0
   hasSystemConverged               // Convergence indicator
-} from '$lib/commons/circles/algorithm.svelte';
+} from '$lib/commons/algorithm.svelte';
 
 ```
 
@@ -313,7 +309,7 @@ import {
   myAllocationStateStore,
   myRecognitionWeightsStore,
   myRoundStateStore
-} from '$lib/commons/circles/stores.svelte';
+} from '$lib/commons/stores.svelte';
 
 // Subscribe to changes
 myCommitmentStore.subscribe(commitment => {
@@ -440,7 +436,7 @@ await myStore.cleanup();
 import { 
   cleanupAllocationStores,
   cleanupAlgorithmSubscriptions 
-} from '$lib/commons/circles';
+} from '$lib/commons';
 
 // Before logout or unmount
 await cleanupAllocationStores();
@@ -519,7 +515,7 @@ The `CircleVisualization.svelte` component provides a real-time D3.js-based visu
 **Features:**
 - **Live Denominators**: Circular visualizations showing capacity distribution
 - **Two-Tier Color Coding**: Blue (mutual) vs amber (generous) for providers
-- **Need Fulfillment**: Inner circles showing sources (green for mutual, lime for generous)
+- **Need Fulfillment**: Inner commons showing sources (green for mutual, lime for generous)
 - **Mutual Recognition Links**: Dashed lines connecting mutually recognized participants
 - **Breathing Animation**: Living system that pulses to show dynamic state
 - **Interactive Tooltips**: Hover to see allocation details
@@ -528,8 +524,8 @@ The `CircleVisualization.svelte` component provides a real-time D3.js-based visu
 
 ```svelte
 <script>
-	import { CircleVisualization } from '$lib/commons/circles';
-	import { initializeAllocationStores } from '$lib/commons/circles';
+	import { CircleVisualization } from '$lib/commons';
+	import { initializeAllocationStores } from '$lib/commons';
 	
 	// Initialize stores after holster authentication
 	initializeAllocationStores();
@@ -552,7 +548,7 @@ The component automatically:
 - Shows fulfillment percentages for receivers
 
 **Migration from circle.tsx:**
-This Svelte component replaces the standalone React visualization (`circle.tsx`) with full integration into the circles infrastructure:
+This Svelte component replaces the standalone React visualization (`circle.tsx`) with full integration into the commons infrastructure:
 - Uses real schemas from `schemas.ts` (not mock data)
 - Integrates with Holster stores for P2P sync
 - Leverages the actual allocation algorithm from `algorithm.svelte.ts`

@@ -22,5 +22,5 @@ export * from './algorithm.svelte';
 export * from './match.svelte';
 
 // Visualization component
-export { default as CircleVisualization } from './Visualization.svelte';
+export { default as Visualization } from './Visualization.svelte';
 

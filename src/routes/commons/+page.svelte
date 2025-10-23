@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { CircleVisualization, initializeAllocationStores, myCommitmentStore, myRecognitionWeightsStore } from '$lib/commons/circles';
+	import { Visualization, initializeAllocationStores, myCommitmentStore, myRecognitionWeightsStore } from '$lib/commons';
 	import { holsterUserPub } from '$lib/state/holster.svelte';
 	
 	let initialized = $state(false);
@@ -60,7 +60,7 @@
 
 <div class="circles-demo">
 	<div class="header-section">
-		<h1>Circle Visualization Demo</h1>
+		<h1>Commons Demo</h1>
 		<p class="subtitle">
 			Real-time visualization of the slot-native two-tier allocation algorithm
 		</p>
@@ -101,7 +101,7 @@
 	</div>
 	
 	{#if $holsterUserPub && initialized}
-		<CircleVisualization width={900} height={700} />
+		<Visualization width={900} height={700} />
 		
 		<div class="dev-info">
 			<h3>Developer Info</h3>
