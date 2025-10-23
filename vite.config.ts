@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
+import { configDefaults } from 'vitest/config';
 
 // GUN module exclusion function for text-encoding
 const moduleExclude = (match: string): Plugin => {
@@ -78,6 +79,19 @@ export default defineConfig({
 		],
 		esbuildOptions: {
 			target: 'esnext'
+		}
+	},
+	// Vitest configuration
+	test: {
+		globals: false,
+		environment: 'node',
+		include: ['**/*.test.ts'],
+		exclude: [...configDefaults.exclude],
+		coverage: {
+			provider: 'v8',
+			reporter: ['text', 'json', 'html'],
+			include: ['src/**/*.{ts,js,svelte.ts}'],
+			exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts']
 		}
 	}
 });

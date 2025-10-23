@@ -16,9 +16,9 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
-		"test": "NODE_OPTIONS=--experimental-vm-modules jest",
-		"test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
-		"test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
 		"cap:ios": "npx cap open ios",
 		"cap:android": "npx cap open android",
 		"cap:sync": "npx cap sync",
@@ -39,6 +39,7 @@
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"@vitest/coverage-v8": "^3.0.0",
 		"browserslist": "^4.24.5",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
@@ -55,7 +56,8 @@
 		"typescript": "^5.0.0",
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.3.6",
-		"vite-plugin-devtools-json": "^0.1.1"
+		"vite-plugin-devtools-json": "^0.1.1",
+		"vitest": "^3.0.0"
 	},
 	"dependencies": {
 		"@automerge/automerge": "^3.1.1",
@@ -73,7 +75,6 @@
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/bcryptjs": "^3.0.0",
 		"@types/d3": "^7.4.3",
-		"@types/jest": "^30.0.0",
 		"@types/json-logic-js": "^2.0.8",
 		"@types/jsonwebtoken": "^9.0.7",
 		"autoprefixer": "^10.4.21",
@@ -104,7 +105,6 @@
 		"svelte-maplibre-gl": "^1.0.1",
 		"sveltekit-i18n": "^2.4.2",
 		"tailwindcss-animate": "^1.0.7",
-		"ts-jest": "^29.4.5",
 		"uuid": "^11.1.0",
 		"ws": "^8.18.3",
 		"zod": "^3.25.0"

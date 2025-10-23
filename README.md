@@ -373,17 +373,13 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 ### For development:
 
-In one console:
-
 ```V
 bun install
 bun run dev
 ```
 
-In another console start the gun relay:
-
 ```
-bun start
+bun test
 ```
 
 ### For production:

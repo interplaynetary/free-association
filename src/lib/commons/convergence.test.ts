@@ -15,7 +15,7 @@
  * - Verifies slot_allocations and recipient_totals
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	computeAllocation,
 	computeDampingFactor,
