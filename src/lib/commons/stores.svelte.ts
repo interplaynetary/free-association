@@ -24,7 +24,7 @@ import {
 	type Commitment,
 	type TwoTierAllocationState,
 	type RoundState
-} from '$lib/commons/circles/schemas';
+} from '$lib/commons/schemas';
 import * as z from 'zod';
 
 // ═══════════════════════════════════════════════════════════════════

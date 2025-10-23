@@ -373,7 +373,7 @@
 		isLongPressing = false;
 	}
 
-	function selectView(view: 'tree' | 'map' | 'inventory') {
+	function selectView(view: 'tree' /*| 'map'*/ | 'inventory') {
 		globalState.setView(view);
 		showViewMenu = false;
 	}

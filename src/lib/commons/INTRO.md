@@ -214,30 +214,6 @@ Free Association Response:
 
 ---
 
-## The Vision
-
-### 2025: Pilot Success
-- 10 nations, $1B health resources
-- Demonstrate 10x faster response than traditional allocation
-- Prove mathematical properties in practice
-
-### 2030: Sector Expansion
-- 50 nations, $100B across health, climate, food security
-- UN endorsement as complementary coordination mechanism
-- Crisis response time: 48 hours standard
-
-### 2035: Global Standard
-- 150+ nations, $1T+ annual coordination
-- Automatic resource redistribution during crises
-- Self-organizing global resilience system
-
-### 2050: Recognition Economy
-- Mutual recognition as standard coordination mechanism
-- Voluntary, fair, fast, transparent resource allocation
-- A new foundation for international cooperation
-
----
-
 ## Pilot Proposal
 
 ### Scope

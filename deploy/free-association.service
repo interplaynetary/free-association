@@ -6,7 +6,7 @@
 [Unit]
 Description=Free Association Backend Server
 After=network.target
-Documentation=https://github.com/YOUR_USERNAME/free-association
+Documentation=https://github.com/interplaynetary/free-association
 
 [Service]
 Type=simple

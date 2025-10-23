@@ -6,7 +6,7 @@
  * - Stores (Holster-backed P2P data stores)
  * - Algorithm (allocation computation)
  * - Matching (slot compatibility)
- * - Visualization (CircleVisualization component)
+ * - Visualization (Visualization component)
  */
 
 // Schemas and types
@@ -22,5 +22,5 @@ export * from './algorithm.svelte';
 export * from './match.svelte';
 
 // Visualization component
-export { default as CircleVisualization } from './CircleVisualization.svelte';
+export { default as CircleVisualization } from './Visualization.svelte';
 
