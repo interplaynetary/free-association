@@ -1,19 +1,22 @@
-# Circles: Mutual-Priority Allocation System
+# Circles: Slot-Native Mutual-Priority Allocation System
 
-A decentralized peer-to-peer resource allocation algorithm for the free-association project. This system enables fair distribution of resources based on mutual recognition and bilateral relationships.
+A decentralized peer-to-peer resource allocation algorithm for the free-association project. This system enables fair distribution of resources based on mutual recognition and bilateral relationships, with precise time/location matching at the slot level.
 
 ## Overview
 
-The Circles module implements a **Two-Tier Mutual-Priority Allocation Algorithm** that allocates resources between participants based on their recognition of each other. The system is fully decentralized, using vector clocks for coordination and Holster for P2P data synchronization.
+The Circles module implements a **Slot-Native Two-Tier Allocation Algorithm** that allocates resources between participants based on their recognition of each other. The system works at the slot level - each availability slot is allocated independently using the same recognition-based logic, enabling real-world constraints like time and location matching.
 
 ### Key Features
 
-- **Two-Tier Allocation**: Prioritizes mutual relationships over one-way recognition
+- **Slot-Native Allocation**: Works at slot level (time/location-specific)
+- **Two-Tier Recognition**: Prioritizes mutual relationships over one-way recognition
+- **Time/Location Matching**: Only allocates when schedules and locations are compatible
 - **Adaptive Damping**: Prevents oscillations during convergence
 - **Decentralized Coordination**: Vector clocks and gossip-based round advancement
 - **Schema-Driven**: Zod validation for type-safe data exchange
 - **P2P Synchronized**: Real-time data sharing via Holster
 - **Convergence Guarantees**: Contractiveness through allocation capping
+- **Full Transparency**: Slot-to-slot allocation records
 
 ## Architecture
 
@@ -21,17 +24,25 @@ The Circles module implements a **Two-Tier Mutual-Priority Allocation Algorithm*
 
 ```
 circles/
-├── schemas.ts           # Zod schemas and type definitions
-├── store.svelte.ts      # Generic Holster store utility
-├── stores.svelte.ts     # Allocation-specific store instances
-└── algorithm.svelte.ts  # Core allocation algorithm
+├── schemas.ts                      # Zod schemas (slot-based commitments)
+├── match.svelte.ts                 # Slot compatibility matching logic
+├── store.svelte.ts                 # Generic Holster store utility
+├── stores.svelte.ts                # Allocation-specific store instances
+├── algorithm.svelte.ts             # Core slot-native allocation algorithm
+├── SLOT_NATIVE_ARCHITECTURE.md    # Detailed architecture documentation
+└── README.md                       # This file
 ```
 
 ### Data Flow
 
 ```
-User Recognition → Commitment Publishing → Algorithm Computation → Allocation Publishing → Network Sync
+User Recognition + Slot Declarations → Commitment Publishing 
+  → Per-Slot Matching → Per-Slot Allocation → Network Sync
 ```
+
+### Key Insight
+
+**Each availability slot is a mini "capacity"** that gets allocated using the same two-tier recognition logic. Instead of allocating aggregate capacity, we allocate each slot's quantity independently, considering time/location compatibility.
 
 ## Core Concepts
 
@@ -89,15 +100,14 @@ Provides causal consistency in decentralized coordination:
 
 ## Data Schemas
 
-### Commitment
+### Commitment (Slot-Native)
 
-Published by each participant to declare their state:
+Published by each participant to declare their capacity and needs:
 
 ```typescript
 {
-  residual_need: number,        // Current unmet need
-  stated_need: number,          // Original need (unchanging)
-  capacity?: number,            // Available capacity (if provider)
+  capacity_slots?: AvailabilitySlot[],  // What I can provide (if provider)
+  need_slots?: NeedSlot[],              // What I need (if recipient)
   mr_values?: Record<string, number>,  // MR with all participants
   recognition_weights?: Record<string, number>,  // One-way recognition
   damping_factor?: number,      // Current damping (0.5-1.0)
@@ -108,17 +118,61 @@ Published by each participant to declare their state:
 }
 ```
 
-### TwoTierAllocationState
+### AvailabilitySlot / NeedSlot
 
-Published by providers after computing allocations:
+Each slot has quantity + time/location constraints:
 
 ```typescript
 {
-  mutualDenominator: Record<string, number>,     // Tier 1 denominators
-  nonMutualDenominator: Record<string, number>,  // Tier 2 denominators
-  mutualAllocations: Record<string, Record<string, number>>,
-  nonMutualAllocations: Record<string, Record<string, number>>,
+  id: string,
+  quantity: number,  // How much capacity/need
+  
+  // Time constraints
+  start_date?: string,
+  end_date?: string,
+  start_time?: string,
+  end_time?: string,
+  time_zone?: string,
+  recurrence?: string,
+  
+  // Location constraints
+  city?: string,
+  country?: string,
+  latitude?: number,
+  longitude?: number,
+  location_type?: string,  // e.g., "remote", "in-person"
+  online_link?: string,
+  
+  // ... more fields
+}
+```
+
+### TwoTierAllocationState (Slot-Native)
+
+Published by providers after computing slot-level allocations:
+
+```typescript
+{
+  slot_denominators: Record<slotId, { mutual: number, nonMutual: number }>,
+  slot_allocations: SlotAllocationRecord[],  // Detailed slot-to-slot records
+  recipient_totals: Record<pubKey, number>,  // Aggregate view
   timestamp: number
+}
+```
+
+### SlotAllocationRecord
+
+Tracks which slot fulfills which need:
+
+```typescript
+{
+  availability_slot_id: string,
+  recipient_pubkey: string,
+  recipient_need_slot_id?: string,
+  quantity: number,
+  time_compatible: boolean,
+  location_compatible: boolean,
+  tier: 'mutual' | 'non-mutual'
 }
 ```
 
@@ -164,27 +218,49 @@ const weights = {
 await publishMyRecognitionWeights(weights);
 ```
 
-### Publishing Commitment
+### Publishing Commitment (Slot-Native)
 
 ```typescript
 import { publishMyCommitment } from '$lib/commons/circles/algorithm.svelte';
 
 const commitment = {
-  residual_need: 100,
-  stated_need: 100,
-  capacity: 50,
+  capacity_slots: [
+    {
+      id: "mon-evening",
+      quantity: 3,  // 3 hours
+      start_date: "2024-06-10",
+      start_time: "18:00",
+      end_time: "21:00",
+      city: "Berlin",
+      country: "Germany"
+    }
+  ],
+  need_slots: [
+    {
+      id: "childcare-morning",
+      quantity: 4,  // 4 hours
+      start_date: "2024-06-10",
+      start_time: "08:00",
+      end_time: "12:00",
+      city: "Berlin",
+      country: "Germany"
+    }
+  ],
   timestamp: Date.now()
 };
 
 await publishMyCommitment(commitment);
 ```
 
-### Computing Allocations
+### Computing Slot-Native Allocations
 
 ```typescript
 import { computeAndPublishAllocations } from '$lib/commons/circles/algorithm.svelte';
 
-// Call when network state changes or round advances
+// Algorithm automatically uses computeSlotNativeAllocation()
+// - Matches slots by time/location
+// - Applies two-tier recognition logic per slot
+// - Tracks which slots fulfill which needs
 await computeAndPublishAllocations();
 ```
 
@@ -413,10 +489,20 @@ Guaranteed by:
 
 ## Performance
 
+### Storage & Persistence
 - **Debounced Persistence**: Reduces write frequency (100-200ms)
 - **localStorage Caching**: Instant UI load
 - **Incremental Updates**: Only changed data persisted
 - **Selective Subscriptions**: Only subscribe to relevant participants
+
+### Slot-Native Allocation Optimizations
+- **Bucketing**: Time/location bucketing reduces compatibility checks by 10-100x
+- **Pre-computed Compatibility Matrix**: Avoids redundant slot matching across tiers
+- **Active Set Tracking**: Pre-filters recipients without recognition or compatible slots
+- **Early Exit Conditions**: Skips unnecessary computation for exhausted slots
+- **Capacity Utilization Tracking**: Monitors and logs allocation efficiency
+
+See `SLOT_NATIVE_ARCHITECTURE.md` for detailed performance analysis.
 
 ## Future Enhancements
 

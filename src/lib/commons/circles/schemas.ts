@@ -14,6 +14,11 @@ import * as z from 'zod';
 // CORE SCHEMAS
 // ═══════════════════════════════════════════════════════════════════
 
+// Basic types
+export const IdSchema = z.string().min(1);
+export const NameSchema = z.string().min(1);
+export const PercentageSchema = z.number().gte(0).lte(1);
+
 /**
  * Vector Clock for decentralized coordination
  * Maps pubKey → logical timestamp
@@ -38,32 +43,181 @@ export const CapacityFilterSchema = z.object({
 	required_attributes: z.record(z.string(), z.unknown()).optional()
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// SLOT SCHEMAS (for capacity and need matching)
+// ═══════════════════════════════════════════════════════════════════
+
 /**
- * Commitment - A participant's declaration of needs, capacity, and recognition
+ * Availability Slot - Represents a specific time/location/quantity of available capacity
+ */
+export const AvailabilitySlotSchema = z.object({
+	id: IdSchema, // Unique identifier for this slot
+	quantity: z.number().gte(0),
+
+	// Timing constraints
+	advance_notice_hours: z.optional(z.number().gte(0)),
+	booking_window_hours: z.optional(z.number().gte(0)),
+
+	// Time pattern fields
+	all_day: z.optional(z.boolean()),
+	recurrence: z.optional(z.nullable(z.string())),
+	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),
+	custom_recurrence_repeat_unit: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_type: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_value: z.optional(z.nullable(z.string())),
+	start_date: z.optional(z.nullable(z.string())),
+	start_time: z.optional(z.nullable(z.string())),
+	end_date: z.optional(z.nullable(z.string())),
+	end_time: z.optional(z.nullable(z.string())),
+	time_zone: z.optional(z.string()),
+
+	// Location fields
+	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().min(-180).max(180)),
+	latitude: z.optional(z.number().min(-90).max(90)),
+	street_address: z.optional(z.string()),
+	city: z.optional(z.string()),
+	state_province: z.optional(z.string()),
+	postal_code: z.optional(z.string()),
+	country: z.optional(z.string()),
+	online_link: z.optional(z.string().url().or(z.string().length(0))),
+
+	// Hierarchical relationship for subset allocation
+	parent_slot_id: z.optional(IdSchema),
+
+	// Mutual agreement for coordination
+	mutual_agreement_required: z.optional(z.boolean().default(false)),
+
+	// Slot-specific metadata
+	priority: z.optional(z.number())
+});
+
+/**
+ * Need Slot - Represents a specific time/location/quantity of needed capacity
+ */
+export const NeedSlotSchema = z.object({
+	id: IdSchema, // Unique identifier for this slot
+	quantity: z.number().gte(0),
+
+	// Timing constraints
+	advance_notice_hours: z.optional(z.number().gte(0)),
+	booking_window_hours: z.optional(z.number().gte(0)),
+
+	// Time pattern fields
+	all_day: z.optional(z.boolean()),
+	recurrence: z.optional(z.nullable(z.string())),
+	custom_recurrence_repeat_every: z.optional(z.nullable(z.number())),
+	custom_recurrence_repeat_unit: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_type: z.optional(z.nullable(z.string())),
+	custom_recurrence_end_value: z.optional(z.nullable(z.string())),
+	start_date: z.optional(z.nullable(z.string())),
+	start_time: z.optional(z.nullable(z.string())),
+	end_date: z.optional(z.nullable(z.string())),
+	end_time: z.optional(z.nullable(z.string())),
+	time_zone: z.optional(z.string()),
+
+	// Location fields
+	location_type: z.optional(z.string()),
+	longitude: z.optional(z.number().min(-180).max(180)),
+	latitude: z.optional(z.number().min(-90).max(90)),
+	street_address: z.optional(z.string()),
+	city: z.optional(z.string()),
+	state_province: z.optional(z.string()),
+	postal_code: z.optional(z.string()),
+	country: z.optional(z.string()),
+	online_link: z.optional(z.string().url().or(z.string().length(0))),
+
+	// Hierarchical relationship for subset needs
+	parent_slot_id: z.optional(IdSchema),
+
+	// Mutual agreement for coordination
+	mutual_agreement_required: z.optional(z.boolean().default(false)),
+
+	// Slot-specific metadata
+	priority: z.optional(z.number())
+});
+
+/**
+ * Base Capacity - A participant's available resources with slots
+ */
+export const BaseCapacitySchema = z.object({
+	id: IdSchema,
+	name: z.string(),
+	emoji: z.optional(z.string()),
+	unit: z.optional(z.string()),
+	description: z.optional(z.string()),
+	
+	// Multiple availability slots
+	availability_slots: z.array(AvailabilitySlotSchema),
+	
+	// Owner/provider
+	owner_id: z.optional(IdSchema),
+	provider_id: z.optional(IdSchema),
+	
+	// Metadata
+	hidden_until_request_accepted: z.optional(z.boolean()),
+	filter_rule: z.optional(z.nullable(z.any()))
+});
+
+/**
+ * Base Need - A participant's resource needs with slots
+ */
+export const BaseNeedSchema = z.object({
+	id: IdSchema,
+	name: z.string(),
+	emoji: z.optional(z.string()),
+	unit: z.optional(z.string()),
+	description: z.optional(z.string()),
+	
+	// Multiple need slots
+	need_slots: z.array(NeedSlotSchema),
+	
+	// Declarer
+	declarer_id: IdSchema,
+	
+	// Status tracking
+	status: z.enum(['open', 'partially-fulfilled', 'fulfilled']).default('open'),
+	fulfilled_amount: z.number().gte(0).default(0),
+	tags: z.array(z.string()).optional(),
+	
+	// Metadata
+	hidden_until_request_accepted: z.optional(z.boolean()),
+	filter_rule: z.optional(z.nullable(z.any()))
+});
+
+/**
+ * Commitment - A participant's slot-based declaration
+ * 
+ * SLOT-NATIVE DESIGN:
+ * - Each slot is a mini "capacity" or "need" with its own quantity
+ * - Provider declares availability slots (what they can provide)
+ * - Recipients declare need slots (what they need)
+ * - Algorithm allocates each availability slot using two-tier logic
+ * - Same recognition-based allocation, just applied per-slot
  * 
  * Published by each participant to declare:
- * - Their current residual need
- * - Their stated need (unchanging reference)
- * - Their available capacity (if provider)
+ * - Their availability slots (if provider)
+ * - Their need slots (if recipient)
  * - Their recognition weights (MR values)
  * - Adaptive damping state
  */
 export const CommitmentSchema = z.object({
-	// Need state
-	residual_need: z.number().nonnegative(),
-	stated_need: z.number().nonnegative(),
+	// SLOT-BASED CAPACITY (if provider)
+	// Array of availability slots with quantities
+	capacity_slots: z.array(AvailabilitySlotSchema).optional(),
 	
-	// Capacity (if provider)
-	capacity: z.number().nonnegative().optional(),
+	// SLOT-BASED NEEDS (if recipient)
+	// Array of need slots with quantities
+	need_slots: z.array(NeedSlotSchema).optional(),
 	
 	// Recognition (mutual and one-way)
 	mr_values: z.record(z.string(), z.number().nonnegative()).optional(),
 	recognition_weights: z.record(z.string(), z.number().nonnegative()).optional(),
 	
-	// Capacity filters
+	// Capacity filters (which recipients can access which slots)
 	capacity_filters: z.record(z.string(), CapacityFilterSchema).optional(),
 	
-	// Adaptive damping
+	// Adaptive damping (applied to need slot quantities)
 	damping_factor: z.number().min(0).max(1).optional(),
 	over_allocation_history: z.array(z.number().nonnegative()).max(3).optional(),
 	
@@ -74,22 +228,65 @@ export const CommitmentSchema = z.object({
 });
 
 /**
- * Two-Tier Allocation State - Result of allocation computation
+ * Slot Allocation Record - Records one slot allocating to one recipient
  * 
- * Published by providers after computing allocations:
- * - Denominators for both tiers
- * - Computed allocations for both tiers
+ * Each record represents:
+ * - Which availability slot is providing
+ * - Which recipient is receiving
+ * - How much quantity is allocated
+ * - Whether time/location were compatible
+ * - Which tier (mutual vs non-mutual)
+ */
+export const SlotAllocationRecordSchema = z.object({
+	// Provider's availability slot
+	availability_slot_id: IdSchema,
+	
+	// Recipient info
+	recipient_pubkey: z.string(),
+	recipient_need_slot_id: IdSchema.optional(), // Which need slot (if matched to specific need)
+	
+	// Allocation amount
+	quantity: z.number().nonnegative(),
+	
+	// Compatibility flags (for transparency)
+	time_compatible: z.boolean(),
+	location_compatible: z.boolean(),
+	
+	// Which tier was this allocation from?
+	tier: z.enum(['mutual', 'non-mutual'])
+});
+
+/**
+ * Two-Tier Allocation State - SLOT-NATIVE
+ * 
+ * Published by providers after computing slot-level allocations.
+ * 
+ * DESIGN: Each availability slot runs two-tier allocation independently
+ * - Find compatible recipients for that slot
+ * - Mutual recipients compete in Tier 1 for the slot's quantity
+ * - Non-mutual recipients get remaining quantity in Tier 2
+ * - Recognition weights determine shares within each tier
+ * 
+ * Same recognition logic, just applied per-slot instead of aggregate.
  */
 export const TwoTierAllocationStateSchema = z.object({
-	// Tier 1: Mutual recognition denominators
-	mutualDenominator: z.record(z.string(), z.number().nonnegative()),
+	// SLOT-LEVEL DENOMINATORS
+	// Map: slotId → { mutual: number, nonMutual: number }
+	slot_denominators: z.record(
+		IdSchema,
+		z.object({
+			mutual: z.number().nonnegative(),
+			nonMutual: z.number().nonnegative()
+		})
+	),
 	
-	// Tier 2: Non-mutual denominators
-	nonMutualDenominator: z.record(z.string(), z.number().nonnegative()),
+	// SLOT-LEVEL ALLOCATION RECORDS
+	// Array of all slot-to-recipient allocations
+	slot_allocations: z.array(SlotAllocationRecordSchema),
 	
-	// Computed allocations by tier
-	mutualAllocations: z.record(z.string(), z.record(z.string(), z.number().nonnegative())),
-	nonMutualAllocations: z.record(z.string(), z.record(z.string(), z.number().nonnegative())),
+	// SUMMARY BY RECIPIENT (aggregated view for convenience)
+	// Map: recipientPubkey → total quantity allocated across all slots
+	recipient_totals: z.record(z.string(), z.number().nonnegative()),
 	
 	// Metadata
 	timestamp: z.number().int().positive()
@@ -131,6 +328,14 @@ export const StoredRecognitionWeightsSchema = withTimestamp(
 // TYPE EXPORTS (inferred from schemas)
 // ═══════════════════════════════════════════════════════════════════
 
+// Slot and capacity/need types
+export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
+export type NeedSlot = z.infer<typeof NeedSlotSchema>;
+export type BaseCapacity = z.infer<typeof BaseCapacitySchema>;
+export type BaseNeed = z.infer<typeof BaseNeedSchema>;
+export type SlotAllocationRecord = z.infer<typeof SlotAllocationRecordSchema>;
+
+// Allocation algorithm types
 export type VectorClock = z.infer<typeof VectorClockSchema>;
 export type RoundState = z.infer<typeof RoundStateSchema>;
 export type CapacityFilter = z.infer<typeof CapacityFilterSchema>;

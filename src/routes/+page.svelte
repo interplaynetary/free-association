@@ -86,7 +86,9 @@
 		{#if currentView === 'tree'}
 			<Parent />
 		{:else if currentView === 'map'}
-			<Map fullHeight={true} />
+			{#key currentView}
+				<Map fullHeight={true} />
+			{/key}
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<h2 class="text-center text-2xl font-bold">{$t('home.capacities')}</h2>
@@ -97,9 +99,10 @@
 			</div>
 		{/if}
 	</div>
+
 	{#if currentView === 'tree'}
+	<div class="bars">
 		{#key $loading}
-		<div class="bars">
 		<div class="bar-group">
 			<div
 				class="bar-label"
@@ -160,8 +163,8 @@
 				{/if}
 			</div>
 		</div>
-		</div>
 		{/key}
+	</div>
 	{/if}
 </div>
 

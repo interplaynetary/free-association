@@ -1,5 +1,5 @@
 /**
- * Tests for Mutual-Priority Allocation Algorithm
+ * Tests for Slot-Native Mutual-Priority Allocation Algorithm
  * 
  * Test Coverage:
  * 1. Allocation Capping (contractiveness)
@@ -8,17 +8,22 @@
  * 4. Lipschitz Bounds Computation
  * 5. Convergence Rate Validation
  * 6. Edge Cases (dropout, oscillation, over-allocation)
+ * 
+ * Updated for slot-native architecture:
+ * - Uses capacity_slots and need_slots instead of scalar values
+ * - Tests computeAllocation (slot-native) instead of deprecated function
+ * - Verifies slot_allocations and recipient_totals
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
-	computeTwoTierAllocation,
+	computeAllocation,
 	computeDampingFactor,
 	updateCommitmentDamping,
 	DENOMINATOR_FLOOR,
 	CONVERGENCE_EPSILON
 } from './algorithm.svelte';
-import type { Commitment } from './schemas';
+import type { Commitment, AvailabilitySlot, NeedSlot } from './schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS
@@ -33,24 +38,63 @@ interface TestParticipant {
 	recognitionWeights: Record<string, number>;
 }
 
+/**
+ * Create a simple availability slot with given quantity
+ * (no time/location constraints for basic tests)
+ */
+function createAvailabilitySlot(id: string, quantity: number): AvailabilitySlot {
+	return {
+		id,
+		quantity
+	};
+}
+
+/**
+ * Create a simple need slot with given quantity
+ * (no time/location constraints for basic tests)
+ */
+function createNeedSlot(id: string, quantity: number): NeedSlot {
+	return {
+		id,
+		quantity
+	};
+}
+
+/**
+ * Create a test commitment using slot-native format
+ * For simplicity, creates a single slot with the given quantity
+ */
 function createTestCommitment(
 	residualNeed: number,
 	statedNeed: number,
 	capacity: number = 0,
 	dampingFactor: number = 1.0
 ): Commitment {
-	return {
-		residual_need: residualNeed,
-		stated_need: statedNeed,
-		capacity,
+	const commitment: Commitment = {
 		mr_values: {},
 		recognition_weights: {},
 		damping_factor: dampingFactor,
 		over_allocation_history: [],
 		timestamp: Date.now()
 	};
+	
+	// Add capacity slot if capacity > 0
+	if (capacity > 0) {
+		commitment.capacity_slots = [createAvailabilitySlot('slot-1', capacity)];
+	}
+	
+	// Add need slot if need > 0
+	if (residualNeed > 0 || statedNeed > 0) {
+		commitment.need_slots = [createNeedSlot('need-1', residualNeed)];
+	}
+	
+	return commitment;
 }
 
+/**
+ * Run allocation round using slot-native algorithm
+ * Returns recipient totals for each provider
+ */
 function runAllocationRound(
 	providers: TestParticipant[],
 	recipients: TestParticipant[],
@@ -59,24 +103,31 @@ function runAllocationRound(
 	const allocations: Record<string, Record<string, number>> = {};
 
 	for (const provider of providers) {
-		const result = computeTwoTierAllocation(
+		// Create provider commitment with capacity slots
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', provider.capacity)],
+			mr_values: provider.mrValues,
+			recognition_weights: provider.recognitionWeights,
+			timestamp: Date.now()
+		};
+		
+		const result = computeAllocation(
 			provider.pubKey,
-			provider.capacity,
-			'default',
+			providerCommitment,
 			provider.mrValues,
 			provider.recognitionWeights,
 			networkCommitments
 		);
 
-		allocations[provider.pubKey] = {
-			...result.mutualAllocations['default'],
-			...result.nonMutualAllocations['default']
-		};
+		allocations[provider.pubKey] = result.recipient_totals;
 	}
 
 	return allocations;
 }
 
+/**
+ * Aggregate allocations from all providers to a recipient
+ */
 function aggregateAllocations(
 	allocations: Record<string, Record<string, number>>,
 	recipientPubKey: string
@@ -100,17 +151,23 @@ describe('Allocation Capping (Contractiveness)', () => {
 
 		const providerMR = { recipient1: 1.0 };
 		const providerWeights = { recipient1: 1.0 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 1000)], // huge capacity
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			1000, // huge capacity
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const allocation = result.mutualAllocations['default']['recipient1'];
+		const allocation = result.recipient_totals['recipient1'] || 0;
 
 		// Allocation should be capped at 100 (residual need), not 1000
 		expect(allocation).toBeLessThanOrEqual(100);
@@ -126,25 +183,31 @@ describe('Allocation Capping (Contractiveness)', () => {
 
 		const providerMR = { r1: 0.33, r2: 0.33, r3: 0.34 };
 		const providerWeights = { r1: 0.33, r2: 0.33, r3: 0.34 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 300)], // total capacity
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			300, // total capacity
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const allocations = result.mutualAllocations['default'];
+		const allocations = result.recipient_totals;
 
 		// Each allocation should be capped by its need
-		expect(allocations['r1']).toBeLessThanOrEqual(50);
-		expect(allocations['r2']).toBeLessThanOrEqual(500);
-		expect(allocations['r3']).toBeLessThanOrEqual(200);
+		expect(allocations['r1'] || 0).toBeLessThanOrEqual(50);
+		expect(allocations['r2'] || 0).toBeLessThanOrEqual(500);
+		expect(allocations['r3'] || 0).toBeLessThanOrEqual(200);
 
 		// Total should not exceed capacity
-		const total = Object.values(allocations).reduce((sum, a) => sum + a, 0);
+		const total = Object.values(allocations).reduce((sum: number, a: number) => sum + a, 0);
 		expect(total).toBeLessThanOrEqual(300);
 	});
 
@@ -155,35 +218,40 @@ describe('Allocation Capping (Contractiveness)', () => {
 
 		const providerMR = { recipient1: 1.0 };
 		const providerWeights = { recipient1: 1.0 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 1000)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
 		// Round 1: Large capacity
-		const round1 = computeTwoTierAllocation(
+		const round1 = computeAllocation(
 			'provider1',
-			1000,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const alloc1 = round1.mutualAllocations['default']['recipient1'];
+		const alloc1 = round1.recipient_totals['recipient1'] || 0;
 
 		// Should be capped at 100
 		expect(alloc1).toBe(100);
 
 		// Round 2: After satisfaction, residual = 0
-		networkCommitments['recipient1'].residual_need = 0;
+		networkCommitments['recipient1'].need_slots = [createNeedSlot('need-1', 0)];
 
-		const round2 = computeTwoTierAllocation(
+		const round2 = computeAllocation(
 			'provider1',
-			1000,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const alloc2 = round2.mutualAllocations['default']['recipient1'] || 0;
+		const alloc2 = round2.recipient_totals['recipient1'] || 0;
 
 		// Should get nothing (need is 0)
 		expect(alloc2).toBe(0);
@@ -211,13 +279,19 @@ describe('Denominator Floor (Lipschitz Continuity)', () => {
 
 		const providerMR = { recipient1: 0.5, recipient2: 0.5 };
 		const providerWeights = { recipient1: 0.5, recipient2: 0.5 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 100)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
 		// Should not throw
 		expect(() => {
-			computeTwoTierAllocation(
+			computeAllocation(
 				'provider1',
-				100,
-				'default',
+				providerCommitment,
 				providerMR,
 				providerWeights,
 				networkCommitments
@@ -232,18 +306,24 @@ describe('Denominator Floor (Lipschitz Continuity)', () => {
 
 		const providerMR = { recipient1: 0.0001 }; // tiny MR
 		const providerWeights = { recipient1: 0.0001 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 100)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			100,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
 		// Should complete without NaN or Infinity
-		const allocation = result.mutualAllocations['default']['recipient1'] || 0;
+		const allocation = result.recipient_totals['recipient1'] || 0;
 		expect(allocation).toBeGreaterThanOrEqual(0);
 		expect(allocation).toBeLessThanOrEqual(100);
 		expect(Number.isFinite(allocation)).toBe(true);
@@ -754,18 +834,24 @@ describe('Edge Cases', () => {
 
 		const providerMR = { r1: 0.5, r2: 0.5 }; // still recognizes r2
 		const providerWeights = { r1: 0.5, r2: 0.5 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 100)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			100,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const alloc1 = result.mutualAllocations['default']['r1'];
-		const alloc2 = result.mutualAllocations['default']['r2'] || 0;
+		const alloc1 = result.recipient_totals['r1'] || 0;
+		const alloc2 = result.recipient_totals['r2'] || 0;
 
 		// r1 should get allocation
 		expect(alloc1).toBeGreaterThan(0);
@@ -781,17 +867,23 @@ describe('Edge Cases', () => {
 
 		const providerMR = { r1: 1.0 };
 		const providerWeights = { r1: 1.0 };
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 0)], // no capacity
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			0, // no capacity
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const alloc = result.mutualAllocations['default']['r1'] || 0;
+		const alloc = result.recipient_totals['r1'] || 0;
 
 		// Should allocate nothing
 		expect(alloc).toBe(0);
@@ -804,17 +896,23 @@ describe('Edge Cases', () => {
 
 		const providerMR = {}; // recognizes no one
 		const providerWeights = {};
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', 100)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
 
-		const result = computeTwoTierAllocation(
+		const result = computeAllocation(
 			'provider1',
-			100,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const alloc = result.mutualAllocations['default']['r1'] || 0;
+		const alloc = result.recipient_totals['r1'] || 0;
 
 		// Should allocate nothing (no recognition)
 		expect(alloc).toBe(0);
@@ -842,30 +940,31 @@ describe('Edge Cases', () => {
 		};
 
 		const capacity = 200;
-		const result = computeTwoTierAllocation(
+		
+		const providerCommitment: Commitment = {
+			capacity_slots: [createAvailabilitySlot('cap-1', capacity)],
+			mr_values: providerMR,
+			recognition_weights: providerWeights,
+			timestamp: Date.now()
+		};
+		
+		const result = computeAllocation(
 			'provider1',
-			capacity,
-			'default',
+			providerCommitment,
 			providerMR,
 			providerWeights,
 			networkCommitments
 		);
 
-		const mutualTotal = Object.values(result.mutualAllocations['default']).reduce(
-			(sum, a) => sum + a,
+		const total = Object.values(result.recipient_totals).reduce(
+			(sum: number, a: number) => sum + a,
 			0
 		);
-		const nonMutualTotal = Object.values(result.nonMutualAllocations['default']).reduce(
-			(sum, a) => sum + a,
-			0
-		);
-
-		const total = mutualTotal + nonMutualTotal;
 
 		// Total allocation should not exceed capacity
 		expect(total).toBeLessThanOrEqual(capacity + 0.01); // small epsilon for floating point
 
-		console.log(`[CONSERVATION] Mutual: ${mutualTotal.toFixed(2)}, Non-mutual: ${nonMutualTotal.toFixed(2)}, Total: ${total.toFixed(2)}/${capacity}`);
+		console.log(`[CONSERVATION] Total: ${total.toFixed(2)}/${capacity}`);
 	});
 });
 
