@@ -85,10 +85,10 @@
 	<div class="view-content">
 		{#if currentView === 'tree'}
 			<Parent />
-		{:else if currentView === 'map'}
+		<!-- {:else if currentView === 'map'}
 			{#key currentView}
 				<Map fullHeight={true} />
-			{/key}
+			{/key} -->
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<h2 class="text-center text-2xl font-bold">{$t('home.capacities')}</h2>

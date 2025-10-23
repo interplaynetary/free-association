@@ -29,7 +29,13 @@ circles/
 ├── store.svelte.ts                 # Generic Holster store utility
 ├── stores.svelte.ts                # Allocation-specific store instances
 ├── algorithm.svelte.ts             # Core slot-native allocation algorithm
-├── SLOT_NATIVE_ARCHITECTURE.md    # Detailed architecture documentation
+├── CircleVisualization.svelte      # D3.js visualization component
+├── index.ts                        # Module exports
+├── circle.tsx                      # [Legacy] React prototype (superseded)
+├── convergence.test.ts             # Algorithm convergence tests
+├── ARCHITECTURE_REVIEW.md          # Architecture review documentation
+├── TRANSITION_COMPLETE.md          # Transition notes
+├── MIGRATION_FROM_REACT.md         # Migration guide from circle.tsx
 └── README.md                       # This file
 ```
 
@@ -503,6 +509,55 @@ Guaranteed by:
 - **Capacity Utilization Tracking**: Monitors and logs allocation efficiency
 
 See `SLOT_NATIVE_ARCHITECTURE.md` for detailed performance analysis.
+
+## Visualization
+
+### CircleVisualization Component
+
+The `CircleVisualization.svelte` component provides a real-time D3.js-based visualization of the allocation system:
+
+**Features:**
+- **Live Denominators**: Circular visualizations showing capacity distribution
+- **Two-Tier Color Coding**: Blue (mutual) vs amber (generous) for providers
+- **Need Fulfillment**: Inner circles showing sources (green for mutual, lime for generous)
+- **Mutual Recognition Links**: Dashed lines connecting mutually recognized participants
+- **Breathing Animation**: Living system that pulses to show dynamic state
+- **Interactive Tooltips**: Hover to see allocation details
+
+**Usage:**
+
+```svelte
+<script>
+	import { CircleVisualization } from '$lib/commons/circles';
+	import { initializeAllocationStores } from '$lib/commons/circles';
+	
+	// Initialize stores after holster authentication
+	initializeAllocationStores();
+</script>
+
+<CircleVisualization width={900} height={700} />
+```
+
+**Visual Elements:**
+- **Outer pie slices** = Provider's capacity allocation (who they give to)
+- **Inner pie slices** = Receiver's sources (who they receive from)
+- **Circle size** = Total capacity or need magnitude
+- **Line thickness** = Mutual recognition strength
+
+**Integration:**
+The component automatically:
+- Subscribes to Holster stores for real-time updates
+- Computes allocations using the slot-native algorithm
+- Visualizes both aggregate capacity/need and slot-level allocations
+- Shows fulfillment percentages for receivers
+
+**Migration from circle.tsx:**
+This Svelte component replaces the standalone React visualization (`circle.tsx`) with full integration into the circles infrastructure:
+- Uses real schemas from `schemas.ts` (not mock data)
+- Integrates with Holster stores for P2P sync
+- Leverages the actual allocation algorithm from `algorithm.svelte.ts`
+- Supports slot-based capacity/need (not just simple quantities)
+- Shows real two-tier denominator computations
 
 ## Future Enhancements
 

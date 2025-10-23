@@ -101,7 +101,7 @@
 		"svelecte": "^5.3.0",
 		"svelte-bottom-sheet": "^2.2.0",
 		"svelte-french-toast": "^1.2.0",
-		"svelte-maplibre-gl": "^0.1.6",
+		"svelte-maplibre-gl": "^1.0.1",
 		"sveltekit-i18n": "^2.4.2",
 		"tailwindcss-animate": "^1.0.7",
 		"ts-jest": "^29.4.5",

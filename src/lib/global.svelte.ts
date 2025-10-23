@@ -58,7 +58,7 @@ export const globalState = $state({
 	initializationStarted: false,
 
 	// Main view state
-	currentView: 'tree' as 'tree' | 'map' | 'inventory',
+	currentView: 'tree' as 'tree' | /*'map' | */ 'inventory',
 
 	// Inventory search and filter state (shared between toolbar and components)
 	inventorySearchQuery: '',
@@ -674,7 +674,7 @@ export const globalState = $state({
 	/**
 	 * View Management
 	 */
-	setView: (view: 'tree' | 'map' | 'inventory') => {
+	setView: (view: 'tree' | /*'map' | */ 'inventory') => {
 		globalState.currentView = view;
 	}
 
