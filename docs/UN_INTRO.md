@@ -1,7 +1,5 @@
 # Free Association: A New Way to Coordinate Global Resources
 
-**Presented to the United Nations**
-
 ---
 
 ## Executive Summary

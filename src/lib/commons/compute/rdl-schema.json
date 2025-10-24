@@ -1,0 +1,258 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rdl.spec.org/v1/schema",
+  "title": "Reactive Dataflow Language Schema",
+  "description": "JSON Schema for validating RDL programs",
+  "version": "1.0.0",
+
+  "definitions": {
+    "Identifier": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_][a-zA-Z0-9_-]*$",
+      "description": "Valid identifier for variables, computations, etc."
+    },
+
+    "Path": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_/.~-]+$",
+      "description": "Holster or state path"
+    },
+
+    "PubKey": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$",
+      "description": "64 character hexadecimal public key"
+    },
+
+    "SchemaTypeName": {
+      "type": "string",
+      "description": "Name of a registered schema type"
+    },
+
+    "FunctionName": {
+      "type": "string",
+      "description": "Name of a registered computation function"
+    },
+
+    "ValueBinding": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "value" },
+        "value": {
+          "description": "Static literal value (any JSON type)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "SubscriptionBinding": {
+      "type": "object",
+      "required": ["type", "holster_path", "schema_type"],
+      "properties": {
+        "type": { "const": "subscription" },
+        "holster_path": { "$ref": "#/definitions/Path" },
+        "schema_type": { "$ref": "#/definitions/SchemaTypeName" },
+        "subscribe_to_user": { "$ref": "#/definitions/PubKey" },
+        "default_value": {
+          "description": "Fallback value if subscription empty"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "FetchBinding": {
+      "type": "object",
+      "required": ["type", "holster_path", "schema_type"],
+      "properties": {
+        "type": { "const": "fetch" },
+        "holster_path": { "$ref": "#/definitions/Path" },
+        "schema_type": { "$ref": "#/definitions/SchemaTypeName" },
+        "fetch_from_user": { "$ref": "#/definitions/PubKey" },
+        "default_value": {
+          "description": "Fallback value if fetch returns null"
+        },
+        "wait_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 100,
+          "description": "Wait time for response in milliseconds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LocalBinding": {
+      "type": "object",
+      "required": ["type", "state_path"],
+      "properties": {
+        "type": { "const": "local" },
+        "state_path": { "$ref": "#/definitions/Path" },
+        "default_value": {
+          "description": "Fallback value if path doesn't exist"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "DerivedBinding": {
+      "type": "object",
+      "required": ["type", "computation_id", "output_key"],
+      "properties": {
+        "type": { "const": "derived" },
+        "computation_id": { "$ref": "#/definitions/Identifier" },
+        "output_key": { "$ref": "#/definitions/Identifier" },
+        "default_value": {
+          "description": "Fallback value if computation hasn't run"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "VariableBinding": {
+      "oneOf": [
+        { "$ref": "#/definitions/ValueBinding" },
+        { "$ref": "#/definitions/SubscriptionBinding" },
+        { "$ref": "#/definitions/FetchBinding" },
+        { "$ref": "#/definitions/LocalBinding" },
+        { "$ref": "#/definitions/DerivedBinding" }
+      ]
+    },
+
+    "HolsterOutput": {
+      "type": "object",
+      "required": ["type", "holster_path"],
+      "properties": {
+        "type": { "const": "holster" },
+        "holster_path": { "$ref": "#/definitions/Path" },
+        "schema_type": { "$ref": "#/definitions/SchemaTypeName" },
+        "persist_debounce_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Debounce time for persistence in milliseconds"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "LocalOutput": {
+      "type": "object",
+      "required": ["type", "state_path"],
+      "properties": {
+        "type": { "const": "local" },
+        "state_path": { "$ref": "#/definitions/Path" }
+      },
+      "additionalProperties": false
+    },
+
+    "MemoryOutput": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "memory" }
+      },
+      "additionalProperties": false
+    },
+
+    "OutputBinding": {
+      "oneOf": [
+        { "$ref": "#/definitions/HolsterOutput" },
+        { "$ref": "#/definitions/LocalOutput" },
+        { "$ref": "#/definitions/MemoryOutput" }
+      ]
+    },
+
+    "Computation": {
+      "type": "object",
+      "required": ["id", "inputs", "compute_fn", "outputs"],
+      "properties": {
+        "id": { "$ref": "#/definitions/Identifier" },
+        "inputs": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_-]*$": { "$ref": "#/definitions/VariableBinding" }
+          },
+          "additionalProperties": false,
+          "description": "Input variable bindings"
+        },
+        "compute_fn": { "$ref": "#/definitions/FunctionName" },
+        "local_bindings": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_-]*$": { "$ref": "#/definitions/VariableBinding" }
+          },
+          "additionalProperties": false,
+          "description": "Local variables bound within computation closure"
+        },
+        "outputs": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_-]*$": { "$ref": "#/definitions/OutputBinding" }
+          },
+          "additionalProperties": false,
+          "minProperties": 1,
+          "description": "Output persistence bindings"
+        },
+        "debounce_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Debounce time for re-execution in milliseconds"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this computation is enabled"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Identifier" },
+          "uniqueItems": true,
+          "description": "Explicit computation dependencies for ordering"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of computation"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version identifier for this computation"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ReactiveComputationGraph": {
+      "type": "object",
+      "required": ["id", "variables", "computations"],
+      "properties": {
+        "id": { "$ref": "#/definitions/Identifier" },
+        "variables": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z_][a-zA-Z0-9_-]*$": { "$ref": "#/definitions/VariableBinding" }
+          },
+          "additionalProperties": false,
+          "description": "Global variable declarations"
+        },
+        "computations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Computation" },
+          "minItems": 1,
+          "description": "Computation pipeline"
+        },
+        "version": {
+          "type": "string",
+          "description": "Graph version identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of graph"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "$ref": "#/definitions/ReactiveComputationGraph"
+}
+

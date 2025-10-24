@@ -316,7 +316,7 @@ MR(Me, Them) = min(MyRecognitionOf[Them], TheirRecognitionOf[Me])
 
 **File**: `match.svelte.ts`
 
-Pure functions for checking slot compatibility.
+Pure functions for slot compatibility checking, bilateral filters, and space-time utilities.
 
 ### Compatibility Checks:
 
@@ -331,6 +331,46 @@ Pure functions for checking slot compatibility.
 **`slotsCompatible(needSlot, availSlot)`** - Combined check
 - Must pass BOTH time AND location compatibility
 
+### Bilateral Filter System:
+
+**`evaluateFilter(filter, context)`** - Evaluate a single filter rule against a context
+
+Supports:
+- Trust filters (mutual recognition requirements)
+- Location filters (geographic constraints)
+- Attribute filters (required/forbidden attributes)
+- Certification filters (required certs, minimum levels)
+- Resource type filters (allowed/forbidden types)
+- Custom functions (serialized)
+
+**`passesSlotFilters(needSlot, availSlot, providerContext, recipientContext)`** - Bilateral consent check
+
+Both filters must pass:
+- Provider's filter on recipient (capacity filter)
+- Recipient's filter on provider (need filter)
+
+### Space-Time Utilities:
+
+**Bucketing (Performance Optimization):**
+
+**`getTimeBucketKey(slot)`** - Coarse-grained time bucket (month-level)
+- Used by algorithm to reduce O(N×A) to O(N×A_bucket)
+- Returns "2024-06" or "any-time"
+
+**`getLocationBucketKey(slot)`** - Coarse-grained location bucket
+- Returns "remote", city name, country name, or "unknown"
+- Enables fast location-based filtering
+
+**Space-Time Grouping:**
+
+**`getSpaceTimeSignature(slot)`** - Precise signature for exact grouping
+- Identifies slots at identical time/location
+- Used for quantity aggregation
+
+**`groupSlotsBySpaceTime(slots)`** - Aggregate slots with identical signatures
+- Returns Map<signature, {quantity, slots}>
+- Critical for space-time aware profiles
+
 ### Slot Matching:
 
 **`matchNeedToCapacitySlots(need, capacity, maxAmount)`** - Match algorithm
@@ -340,6 +380,14 @@ Returns:
 - `total_matchable` - Total quantity that can be allocated
 - `unmatched_need_slots` - Need slots with no compatible availability
 - `unmatched_availability_slots` - Availability slots with no compatible needs
+
+### Space-Time Profiles:
+
+**`getSpaceTimeNeedProfile(need)`** - Group need slots by space-time
+- Returns unique space-time combinations with aggregated quantities
+
+**`getSpaceTimeCapacityProfile(capacity)`** - Group capacity slots by space-time
+- Returns unique space-time combinations with aggregated quantities
 
 ---
 

@@ -22,8 +22,8 @@ import {
 	updateCommitmentDamping,
 	DENOMINATOR_FLOOR,
 	CONVERGENCE_EPSILON
-} from './algorithm.svelte';
-import type { Commitment, AvailabilitySlot, NeedSlot } from './schemas';
+} from '../algorithm.svelte';
+import type { Commitment, AvailabilitySlot, NeedSlot } from '../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS
@@ -45,6 +45,7 @@ interface TestParticipant {
 function createAvailabilitySlot(id: string, quantity: number): AvailabilitySlot {
 	return {
 		id,
+		name: 'Test Capacity', // Required by ResourceMetadataSchema
 		quantity
 	};
 }
@@ -56,6 +57,7 @@ function createAvailabilitySlot(id: string, quantity: number): AvailabilitySlot 
 function createNeedSlot(id: string, quantity: number): NeedSlot {
 	return {
 		id,
+		name: 'Test Need', // Required by ResourceMetadataSchema
 		quantity
 	};
 }
@@ -354,7 +356,13 @@ describe('Adaptive Damping', () => {
 	});
 
 	it('should update commitment with damping info', () => {
-		const commitment = createTestCommitment(100, 500);
+		// Create commitment with stated need = 500 (in need slots)
+		const commitment: Commitment = {
+			need_slots: [createNeedSlot('need-1', 500)], // stated need = 500
+			mr_values: {},
+			recognition_weights: {},
+			timestamp: Date.now()
+		};
 		const totalReceived = 600; // over-allocated!
 
 		const updated = updateCommitmentDamping(commitment, totalReceived);
@@ -365,24 +373,35 @@ describe('Adaptive Damping', () => {
 	});
 
 	it('should maintain history of last 3 over-allocations', () => {
-		let commitment = createTestCommitment(100, 500);
+		// Create commitment with stated need = 500
+		let commitment: Commitment = {
+			need_slots: [createNeedSlot('need-1', 500)],
+			mr_values: {},
+			recognition_weights: {},
+			timestamp: Date.now()
+		};
 
-		// Round 1
+		// Round 1: receive 600 (over by 100)
 		commitment = updateCommitmentDamping(commitment, 600);
 		expect(commitment.over_allocation_history).toHaveLength(1);
+		expect(commitment.over_allocation_history![0]).toBe(100);
 
-		// Round 2
+		// Round 2: receive 550 (over by 50)
 		commitment = updateCommitmentDamping(commitment, 550);
 		expect(commitment.over_allocation_history).toHaveLength(2);
+		expect(commitment.over_allocation_history![1]).toBe(50);
 
-		// Round 3
+		// Round 3: receive 650 (over by 150)
 		commitment = updateCommitmentDamping(commitment, 650);
 		expect(commitment.over_allocation_history).toHaveLength(3);
+		expect(commitment.over_allocation_history![2]).toBe(150);
 
-		// Round 4 (should drop oldest)
+		// Round 4: receive 580 (over by 80) - should drop oldest (100)
 		commitment = updateCommitmentDamping(commitment, 580);
 		expect(commitment.over_allocation_history).toHaveLength(3);
 		expect(commitment.over_allocation_history![0]).toBe(50); // oldest from round 2
+		expect(commitment.over_allocation_history![1]).toBe(150); // from round 3
+		expect(commitment.over_allocation_history![2]).toBe(80); // from round 4
 	});
 });
 

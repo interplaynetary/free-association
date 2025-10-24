@@ -26,23 +26,40 @@
 	import type { Commitment, TwoTierAllocationState } from './schemas';
 	
 	// Props (Svelte 5 runes mode)
-	let { width = 900, height = 700 }: { width?: number; height?: number } = $props();
+	let { 
+		width = 900, 
+		height = 700, 
+		resourceType 
+	}: { 
+		width?: number; 
+		height?: number; 
+		resourceType?: string;
+	} = $props();
 	
 	// Local state
 	let svgRef: SVGSVGElement;
 	let selectedEntity: string | null = null;
 	let round = $state(0);
 	
+	// Filter slots by resource type
+	function filterSlotsByType<T extends { resource_type?: string }>(slots: T[] | undefined): T[] {
+		if (!slots) return [];
+		if (!resourceType) return slots;
+		return slots.filter(slot => slot.resource_type === resourceType);
+	}
+	
 	// Calculate total capacity from slots
 	function getTotalCapacity(commitment: Commitment | undefined): number {
 		if (!commitment?.capacity_slots) return 0;
-		return commitment.capacity_slots.reduce((sum, slot) => sum + slot.quantity, 0);
+		const filteredSlots = filterSlotsByType(commitment.capacity_slots);
+		return filteredSlots.reduce((sum, slot) => sum + slot.quantity, 0);
 	}
 	
 	// Calculate total need from slots
 	function getTotalNeed(commitment: Commitment | undefined): number {
 		if (!commitment?.need_slots) return 0;
-		return commitment.need_slots.reduce((sum, slot) => sum + slot.quantity, 0);
+		const filteredSlots = filterSlotsByType(commitment.need_slots);
+		return filteredSlots.reduce((sum, slot) => sum + slot.quantity, 0);
 	}
 	
 	// Get mutual recognition value
@@ -126,8 +143,25 @@
 			
 		if (!allocationState?.slot_allocations) return allocations;
 		
+		// Get provider's commitment to check slot types
+		const providerCommitment = providerPubKey === $myPubKey
+			? $myCommitmentStore
+			: networkCommitments.get(providerPubKey);
+		
+		// If filtering by resource type, only include allocations from matching slots
+		const validSlotIds = new Set<string>();
+		if (resourceType && providerCommitment?.capacity_slots) {
+			const filteredSlots = filterSlotsByType(providerCommitment.capacity_slots);
+			filteredSlots.forEach(slot => validSlotIds.add(slot.id));
+		}
+		
 		// Aggregate slot allocations by recipient
 		for (const slotAlloc of allocationState.slot_allocations) {
+			// Skip if filtering and slot doesn't match resource type
+			if (resourceType && validSlotIds.size > 0 && !validSlotIds.has(slotAlloc.availability_slot_id)) {
+				continue;
+			}
+			
 			const existing = allocations.get(slotAlloc.recipient_pubkey) || { amount: 0, tier: slotAlloc.tier };
 			existing.amount += slotAlloc.quantity;
 			allocations.set(slotAlloc.recipient_pubkey, existing);
@@ -409,6 +443,9 @@
 	<div class="header">
 		<h1>Free Association: Living Denominators</h1>
 		<p>Capacity circles distribute outward • Need circles receive inward</p>
+		{#if resourceType}
+			<p class="resource-filter">Filtered by resource type: <strong>{resourceType}</strong></p>
+		{/if}
 	</div>
 	
 	<!-- Legend -->
@@ -497,6 +534,17 @@
 	.header p {
 		font-size: 1.125rem;
 		color: #cbd5e1;
+	}
+	
+	.header .resource-filter {
+		font-size: 1rem;
+		color: #60a5fa;
+		margin-top: 0.5rem;
+	}
+	
+	.header .resource-filter strong {
+		color: #93c5fd;
+		font-weight: 700;
 	}
 	
 	.legend {
