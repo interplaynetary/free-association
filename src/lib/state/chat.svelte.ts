@@ -1,10 +1,20 @@
 import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
-import { browser } from '$app/environment';
 import { writable, get, type Writable, derived } from 'svelte/store';
 import SEA from 'gun/sea';
 import type { ChatReadStates, ChatReadState } from '$lib/schema';
 import { USE_HOLSTER_CHAT } from '$lib/config';
 import * as HolsterChat from './chat-holster.svelte';
+
+// Conditionally import browser - gracefully handle test environment
+let browser = false;
+try {
+	// @ts-ignore - dynamic import for test compatibility
+	const env = await import('$app/environment');
+	browser = env.browser;
+} catch {
+	// Running in test environment without SvelteKit
+	browser = false;
+}
 
 interface Message {
 	who: string;

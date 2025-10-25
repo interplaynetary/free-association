@@ -27,7 +27,7 @@ import type {
 	SlotAllocationRecord,
 	ITCStamp,
 	DampingHistoryEntry
-} from './schemas';
+} from '../v2/schemas';
 
 // Import ITC functions
 import { 
@@ -37,7 +37,7 @@ import {
 	leq as itcLeq,
 	equals as itcEquals,
 	toString as itcToString
-} from './utils/itc';
+} from '../utils/itc';
 
 // Import slot matching utilities
 import { 

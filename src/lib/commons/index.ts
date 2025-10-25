@@ -16,10 +16,10 @@
  */
 
 // Schemas and types
-export * from './schemas';
+export * from './v2/schemas';
 
 // Protocol functions
-export * from './protocol';
+export * from './v2/protocol';
 
 // Stores
 export * from './stores.svelte';

@@ -32,7 +32,7 @@ import { createStore, type HolsterStore } from '../utils/store.svelte';
 import { getSchema } from './node-store.svelte';
 import { holsterUser } from '$lib/state/holster.svelte';
 import { holsterUserPub as myPubKey } from '$lib/state/holster.svelte';
-import { getMyITCStamp, incrementMyITCStamp } from '../algorithm-v2.svelte';
+import { getMyITCStamp, incrementMyITCStamp } from '../v2/algorithm.svelte';
 import { 
 	getProgramHash, 
 	prefixHolsterPath, 
@@ -44,6 +44,17 @@ import {
 	createProvenanceSignature,
 	buildProvenancePath
 } from './program-hash.svelte';
+
+// Space-stores integration (Phase 1: Unified User Space Architecture)
+import {
+	writeVariable,
+	writeComputationResult,
+	writeOutput,
+	writeProvenance as writeProvenanceToSpace,
+	registerLocalSubscription,
+	registerPeerSubscription,
+	UserSpacePaths
+} from './kernel.svelte';
 
 // ═══════════════════════════════════════════════════════════════════
 // COMPUTATION FUNCTION REGISTRY
@@ -144,6 +155,25 @@ async function resolveVariableBinding(
 			if (binding.subscribe_to_user) {
 				holsterStore.subscribeToUser(binding.subscribe_to_user, (data) => {
 					console.log(`[REACTIVE-COMPUTE] Received data from ${binding.subscribe_to_user?.slice(0, 20)}...`);
+				});
+				
+				// Track peer subscription in subscription namespace (Phase 1)
+				registerPeerSubscription(
+					binding.subscribe_to_user,
+					binding.holster_path,
+					binding.schema_type,
+					`${programHash || 'default'}_${binding.holster_path}`
+				).catch(err => {
+					console.warn('[REACTIVE-COMPUTE] Failed to track peer subscription:', err);
+				});
+			} else {
+				// Track local subscription in subscription namespace (Phase 1)
+				registerLocalSubscription(
+					binding.holster_path,
+					binding.schema_type,
+					`${programHash || 'default'}_${binding.holster_path}`
+				).catch(err => {
+					console.warn('[REACTIVE-COMPUTE] Failed to track local subscription:', err);
 				});
 			}
 			
@@ -277,6 +307,19 @@ async function handleOutputBinding(
 				? prefixHolsterPath(programHash, binding.holster_path)
 				: binding.holster_path;
 			
+			// Write to space-stores (Phase 1)
+			if (programHash) {
+				writeOutput(
+					programHash,
+					outputKey,
+					value,
+					binding.holster_path
+				).catch(err => {
+					console.warn('[REACTIVE-COMPUTE] Failed to write output to space-stores:', err);
+				});
+			}
+			
+			// Also write to the actual holster path (for backwards compat & immediate availability)
 			const store = createStore({
 				holsterPath,
 				schema: schema || getSchema('Any')!,
@@ -392,6 +435,17 @@ async function executeComputation(
 		
 		// Handle output binding
 		await handleOutputBinding(outputKey, value, outputBinding, localState, programHash);
+	}
+	
+	// Track computation result in space-stores (Phase 1)
+	if (programHash) {
+		writeComputationResult(
+			programHash,
+			computation.id,
+			result
+		).catch(err => {
+			console.warn('[REACTIVE-COMPUTE] Failed to write computation result to space-stores:', err);
+		});
 	}
 	
 	return outputResults;
@@ -625,7 +679,15 @@ export class ComputationGraphRuntime {
 		
 		// Create provenance record
 		if (this.enableProvenance) {
-			const myPub = get(myPubKey);
+			// Safely get myPubKey (may not be initialized in test environment)
+			let myPub: string | null = null;
+			try {
+				myPub = myPubKey ? get(myPubKey) : null;
+			} catch (error) {
+				// Not in browser environment or store not initialized
+				myPub = null;
+			}
+			
 			const currentITC = getMyITCStamp();
 			
 			// Hash outputs
@@ -663,96 +725,112 @@ export class ComputationGraphRuntime {
 				parents: [] // TODO: Track parent provenance IDs
 			};
 			
-			// Store provenance
-			this.provenanceLog.set(computation.id, provenance);
-			
+		// Store provenance
+		this.provenanceLog.set(computation.id, provenance);
+		
+		// Write provenance to space-stores (Phase 1)
+		const provenanceSignature = createProvenanceSignature(provenance);
+		writeProvenanceToSpace(
+			this.programHash,
+			provenance.id,
+			{
+				record: provenance,
+				signature: provenanceSignature
+			}
+		).catch(err => {
+			console.warn('[PROVENANCE] Failed to write provenance to space-stores:', err);
+		});
+		
 		console.log(`[PROVENANCE] Created provenance for ${computation.id}`);
 		console.log(`[PROVENANCE]   Deterministic hash: ${deterministicHash}`);
 		console.log(`[PROVENANCE]   ITC stamp: ${JSON.stringify(currentITC)}`);
 		
 		// Store outputs with hybrid storage strategy
-		for (const [name, binding] of Object.entries(computation.outputs)) {
-			if (binding.type === 'holster') {
-				const outputValue = results.get(name);
-				const timestamp = Date.now();
-				const provenanceSig = createProvenanceSignature(provenance);
-				
-				// Prepare data with provenance metadata
-				const dataWithProvenance = {
-					data: outputValue,
-					_provenance: provenance,
-					_updatedAt: timestamp
-				};
-				
-				// 1. Store at CANONICAL path (latest, easy to query)
-				const canonicalPath = prefixHolsterPath(this.programHash, binding.holster_path);
-				
-				if (myPub) {
-					// Cross-user: use array format [pubkey, path]
-					holsterUser.get([myPub, canonicalPath]).put(dataWithProvenance);
-					console.log(`[PROVENANCE] Canonical: ~${myPub}/${canonicalPath}`);
-				} else {
-					// Current user: use string path
-					holsterUser.get(canonicalPath).put(dataWithProvenance);
-					console.log(`[PROVENANCE] Canonical: ${canonicalPath}`);
+		// Only execute if holsterUser is available (not in test environment)
+		if (holsterUser && holsterUser.is) {
+			for (const [name, binding] of Object.entries(computation.outputs)) {
+				if (binding.type === 'holster') {
+					const outputValue = results.get(name);
+					const timestamp = Date.now();
+					const provenanceSig = createProvenanceSignature(provenance);
+					
+					// Prepare data with provenance metadata
+					const dataWithProvenance = {
+						data: outputValue,
+						_provenance: provenance,
+						_updatedAt: timestamp
+					};
+					
+					// 1. Store at CANONICAL path (latest, easy to query)
+					const canonicalPath = prefixHolsterPath(this.programHash, binding.holster_path);
+					
+					if (myPub) {
+						// Cross-user: use array format [pubkey, path]
+						holsterUser.get([myPub, canonicalPath]).put(dataWithProvenance);
+						console.log(`[PROVENANCE] Canonical: ~${myPub}/${canonicalPath}`);
+					} else {
+						// Current user: use string path
+						holsterUser.get(canonicalPath).put(dataWithProvenance);
+						console.log(`[PROVENANCE] Canonical: ${canonicalPath}`);
+					}
+					
+					// 2. Store at VERSIONED path (immutable history)
+					const versionPath = `${canonicalPath}/_versions/${provenanceSig}`;
+					const immutableData = {
+						...dataWithProvenance,
+						_immutable: true
+					};
+					
+					if (myPub) {
+						holsterUser.get([myPub, versionPath]).put(immutableData);
+						console.log(`[PROVENANCE] Version: ~${myPub}/${versionPath}`);
+					} else {
+						holsterUser.get(versionPath).put(immutableData);
+						console.log(`[PROVENANCE] Version: ${versionPath}`);
+					}
+					
+					// 3. Update LATEST index (pointer to current version)
+					const latestIndexPath = `${this.programHash}/_index/latest/${binding.holster_path}`;
+					
+					if (myPub) {
+						holsterUser.get([myPub, latestIndexPath]).put(provenanceSig);
+					} else {
+						holsterUser.get(latestIndexPath).put(provenanceSig);
+					}
+					
+					// 4. Update COMPUTATIONS index (all outputs of this computation)
+					const compIndexPath = `${this.programHash}/_index/computations/${computation.id}`;
+					
+					if (myPub) {
+						holsterUser.get([myPub, compIndexPath]).set(binding.holster_path);
+					} else {
+						holsterUser.get(compIndexPath).set(binding.holster_path);
+					}
+					
+					// 5. Update LINEAGE index (provenance lineage for traversal)
+					const lineageIndexPath = `${this.programHash}/_index/lineage/${provenance.id}`;
+					const lineageData = {
+						computationId: computation.id,
+						programHash: this.programHash,
+						inputs: Object.keys(provenance.inputs),
+						outputs: [binding.holster_path],
+						timestamp: timestamp,
+						itcStamp: currentITC
+					};
+					
+					if (myPub) {
+						holsterUser.get([myPub, lineageIndexPath]).put(lineageData);
+					} else {
+						holsterUser.get(lineageIndexPath).put(lineageData);
+					}
+					
+					console.log(`[PROVENANCE] ✅ Hybrid storage complete for ${binding.holster_path}`);
+					console.log(`[PROVENANCE]   - Canonical path (latest)`);
+					console.log(`[PROVENANCE]   - Versioned path (immutable)`);
+					console.log(`[PROVENANCE]   - Latest index updated`);
+					console.log(`[PROVENANCE]   - Computation index updated`);
+					console.log(`[PROVENANCE]   - Lineage index updated`);
 				}
-				
-				// 2. Store at VERSIONED path (immutable history)
-				const versionPath = `${canonicalPath}/_versions/${provenanceSig}`;
-				const immutableData = {
-					...dataWithProvenance,
-					_immutable: true
-				};
-				
-				if (myPub) {
-					holsterUser.get([myPub, versionPath]).put(immutableData);
-					console.log(`[PROVENANCE] Version: ~${myPub}/${versionPath}`);
-				} else {
-					holsterUser.get(versionPath).put(immutableData);
-					console.log(`[PROVENANCE] Version: ${versionPath}`);
-				}
-				
-				// 3. Update LATEST index (pointer to current version)
-				const latestIndexPath = `${this.programHash}/_index/latest/${binding.holster_path}`;
-				
-				if (myPub) {
-					holsterUser.get([myPub, latestIndexPath]).put(provenanceSig);
-				} else {
-					holsterUser.get(latestIndexPath).put(provenanceSig);
-				}
-				
-				// 4. Update COMPUTATIONS index (all outputs of this computation)
-				const compIndexPath = `${this.programHash}/_index/computations/${computation.id}`;
-				
-				if (myPub) {
-					holsterUser.get([myPub, compIndexPath]).set(binding.holster_path);
-				} else {
-					holsterUser.get(compIndexPath).set(binding.holster_path);
-				}
-				
-				// 5. Update LINEAGE index (provenance lineage for traversal)
-				const lineageIndexPath = `${this.programHash}/_index/lineage/${provenance.id}`;
-				const lineageData = {
-					computationId: computation.id,
-					programHash: this.programHash,
-					inputs: Object.keys(provenance.inputs),
-					outputs: [binding.holster_path],
-					timestamp: timestamp,
-					itcStamp: currentITC
-				};
-				
-				if (myPub) {
-					holsterUser.get([myPub, lineageIndexPath]).put(lineageData);
-				} else {
-					holsterUser.get(lineageIndexPath).put(lineageData);
-				}
-				
-				console.log(`[PROVENANCE] ✅ Hybrid storage complete for ${binding.holster_path}`);
-				console.log(`[PROVENANCE]   - Canonical path (latest)`);
-				console.log(`[PROVENANCE]   - Versioned path (immutable)`);
-				console.log(`[PROVENANCE]   - Latest index updated`);
-				console.log(`[PROVENANCE]   - Computation index updated`);
-				console.log(`[PROVENANCE]   - Lineage index updated`);
 			}
 		}
 	}

@@ -26,7 +26,7 @@ import {
 	getProgramMetadata,
 	getAllProgramMetadata
 } from '../program-hash.svelte';
-import type { ReactiveComputationGraph } from '../v1/schemas';
+import type { ReactiveComputationGraph } from '../../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST FIXTURES

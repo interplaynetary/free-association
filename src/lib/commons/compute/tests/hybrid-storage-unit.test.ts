@@ -18,7 +18,7 @@ import {
 import type { 
 	ComputationProvenance,
 	VectorClock 
-} from '../v1/schemas';
+} from '../../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER: Create Mock Provenance

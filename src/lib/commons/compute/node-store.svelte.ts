@@ -17,7 +17,7 @@
  */
 
 import { createStore, type HolsterStore } from '../utils/store.svelte';
-import type { NodeDataStorage } from '../schemas';
+import type { NodeDataStorage } from '../v2/schemas';
 import * as z from 'zod';
 
 // Import all protocol schemas (v2)
@@ -31,7 +31,7 @@ import {
 	type BaseCapacity,
 	type BaseNeed,
 	type ResourceMetadata
-} from '../schemas';
+} from '../v2/schemas';
 
 // Import additional schemas from main schema file
 import {

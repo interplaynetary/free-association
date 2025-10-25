@@ -35,9 +35,14 @@ export default defineConfig({
 	ssr: {
 		noExternal: []
 	},
-	resolve: {
-		conditions: ['node']
-	},
+	// Tell Vitest to use the `browser` entry points in `package.json` files, even though it's running in Node
+	resolve: process.env.VITEST
+		? {
+				conditions: ['browser']
+			}
+		: {
+				conditions: ['node']
+			},
 	server: {
 		watch: {
 			ignored: [
@@ -83,8 +88,8 @@ export default defineConfig({
 	},
 	// Vitest configuration
 	test: {
-		globals: false,
-		environment: 'node',
+		globals: true, // Enable globals (describe, it, expect)
+		environment: 'jsdom', // Use jsdom for DOM/Svelte support
 		include: ['**/*.test.ts'],
 		exclude: [...configDefaults.exclude],
 		coverage: {

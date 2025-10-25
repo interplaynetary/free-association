@@ -23,7 +23,7 @@
  * - Conflict resolution (timestamp-based)
  */
 
-import { createStore } from './utils/store.svelte';
+import { createStore } from '../utils/store.svelte';
 import {
 	CommitmentSchema,
 	TwoTierAllocationStateSchema,

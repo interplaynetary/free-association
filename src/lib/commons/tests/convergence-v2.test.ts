@@ -32,7 +32,7 @@ import type {
 	NeedSlot,
 	DampingHistoryEntry,
 	ITCStamp
-} from '../schemas';
+} from '../v2/schemas';
 import { seed as itcSeed, event as itcEvent } from '../utils/itc';
 
 // ═══════════════════════════════════════════════════════════════════

@@ -40,7 +40,7 @@ mock.module('$app/environment', () => ({
 // Now import after mocks are set up
 import { ComputationGraphRuntime, registerComputationFunction } from '../compute.svelte';
 import { clearProgramRegistry, hashProgram, listRegisteredPrograms } from '../program-hash.svelte';
-import type { ReactiveComputationGraph } from '../v1/schemas';
+import type { ReactiveComputationGraph } from '../../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST FIXTURES

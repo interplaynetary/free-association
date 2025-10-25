@@ -136,7 +136,7 @@ import type {
 	ComputationProvenance, 
 	VectorClock,
 	ReactiveComputationGraph 
-} from '../v1/schemas';
+} from '../../v1/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
