@@ -10,7 +10,6 @@
 		networkRecognitionWeights,
 		initializeAllocationStores
 	} from '$lib/commons/stores.svelte';
-	import { myPubKey } from '$lib/commons/algorithm.svelte';
 	import { holsterUserPub } from '$lib/state/holster.svelte';
 	import type { Commitment, TwoTierAllocationState } from '$lib/commons/schemas';
 	

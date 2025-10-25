@@ -22,7 +22,7 @@ export * from './v2/schemas';
 export * from './v2/protocol';
 
 // Stores
-export * from './stores.svelte';
+export * from './v2/stores.svelte';
 
 // Node store factory and manager
 export * from './compute/node-store.svelte';
@@ -33,17 +33,14 @@ export * from './compute/compute.svelte';
 // Program hashing and indexing
 export * from './compute/program-hash.svelte';
 
-// RDL validator
-export * from './compute/rdl-validator';
-
 // Interval Tree Clocks (ITC)
 export * from './utils/itc';
 
 // Algorithm
-export * from './algorithm.svelte';
+export * from './v2/algorithm.svelte';
 
 // Slot matching
-export * from './match.svelte';
+export * from './v2/match.svelte';
 
 // Visualization component
 export { default as Visualization } from './components/Visualization.svelte';
