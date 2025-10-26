@@ -104,6 +104,7 @@
 		"lodash.debounce": "^4.0.8",
 		"maplibre-gl": "^5.4.0",
 		"marked": "^15.0.12",
+		"o1js": "^2.10.0",
 		"peerbit": "^4.1.36",
 		"pmtiles": "^4.3.0",
 		"push.js": "^1.0.12",

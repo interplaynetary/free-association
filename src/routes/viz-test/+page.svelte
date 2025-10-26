@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Visualization from '$lib/commons/Visualization.svelte';
+	import Visualization from '$lib/commons/components/Visualization.svelte';
 	import {
 		myCommitmentStore,
 		myAllocationStateStore,
