@@ -276,21 +276,43 @@ The computational commons is **a different model entirely**:
 **A: Nobody.** It runs on participants' devices (browsers, phones, computers). Like BitTorrent—the network is the infrastructure.
 
 **Q: How do you trust the results?**
-**A: Verification.** Every computation creates a cryptographic proof:
+**A: Cryptographic provenance.** Every computation creates an immutable record:
 ```
-Inputs (hashed) + Program (hashed) → Output (hashed)
-Provenance: "I used these inputs with this program and got this output"
-Anyone can check: "If I run the same program with the same inputs, do I get the same output?"
+Event = {
+  id: hash(entire event),           // Content-addressed (tamper-proof)
+  author: digital signature,         // Cryptographic proof of who
+  payload: inputs + outputs,         // What happened
+  itc: logical timestamp,            // When (without global clock)
+  parents: [previous event hashes]   // Where it came from (hash-linked)
+}
+
+Provenance chain:
+Event A → Event B → Event C
+ ↓         ↓         ↓
+All cryptographically linked
+Change anything → breaks the chain
 ```
 
 **Q: What if someone cheats?**
-**A: They get caught.** If your provenance doesn't match mine, we know someone's wrong. The network can verify who.
+**A: They get caught.** The system uses:
+- **Content-addressing**: Event ID = hash of content (can't fake)
+- **Digital signatures**: ECDSA proves authorship (can't forge)
+- **Merkle-DAG**: Hash-linking proves lineage (can't tamper)
+- **ITC causality**: Logical time proves ordering (can't reorder)
+- **ZK proofs**: Prove correctness without revealing data (privacy + verification)
+
+If provenance doesn't match, the fraud is mathematically provable.
 
 **Q: How fast is it?**
 **A: Fast enough.** Updates propagate in seconds. Computations run in milliseconds. Verifications are instant. For coordination (not high-frequency trading), it's perfect.
 
 **Q: What about privacy?**
-**A: You choose.** Publish results publicly, keep source data private. Or encrypt everything. Or share only with specific people. It's your device, your data, your choice.
+**A: You choose.** 
+- Keep everything local (default)
+- Share results publicly, keep source data private
+- Generate ZK proofs (prove correctness without revealing values)
+- Encrypt for specific people
+- It's your device, your data, your choice
 
 **Q: How does it scale?**
 **A: Peer-to-peer.** Every participant adds capacity (storage + computation). Like the web—adding users adds infrastructure.

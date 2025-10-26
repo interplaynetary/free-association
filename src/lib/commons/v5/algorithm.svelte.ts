@@ -1,5 +1,5 @@
 /**
- * Mutual-Priority Allocation Algorithm v4 - Multi-Dimensional Framework
+ * Mutual-Priority Allocation Algorithm v5 - Multi-Dimensional Framework
  * 
  * Implements the complete multi-dimensional framework from multi-grammar.md:
  * ✅ Multi-dimensional need vectors N⃗_i(t) = [N_i^1(t), ..., N_i^m(t)]^T (D3')
@@ -16,7 +16,7 @@
  * ✅ ITC causal consistency (E39-E40)
  * ✅ Slot-native space-time extension with type matching (E27'-E30')
  * 
- * v4 vs v2 differences:
+ * v5 vs v2 differences:
  * - Vector needs and capacities instead of scalar
  * - Independent allocation per need type k
  * - Frobenius norm ||N⃗⃗(t)||_F for system convergence
