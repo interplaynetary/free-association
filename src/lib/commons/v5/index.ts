@@ -128,8 +128,8 @@ export {
 	computePerTypeNeedVectorNorm,
 	computeFrobeniusNorm,
 	computePerTypeContractionConstant,
-	checkPerTypeHeavenCondition,
-	checkMultiDimensionalHeavenCondition,
+	checkPerTypeUniversalSatisfactionCondition,
+	checkMultiDimensionalUniversalSatisfactionCondition,
 	computePerTypePercentNeedsMet,
 	computeOverallPercentNeedsMet,
 	getAllNeedTypes,
@@ -212,14 +212,14 @@ export {
  *   
  *   // System-level metrics (Frobenius norm)
  *   console.log('||N⃗⃗||_F =', result.convergenceMetrics.frobeniusNorm);
- *   console.log('Heaven achieved:', result.convergenceMetrics.heavenAchieved);
+ *   console.log('UniversalSatisfaction achieved:', result.convergenceMetrics.universalSatisfactionAchieved);
  *   
  *   // Per-type metrics
  *   for (const [typeId, metrics] of Object.entries(result.convergenceMetrics.perTypeMetrics)) {
  *     console.log(`Type ${typeId}:`);
  *     console.log('  ||N⃗^k|| =', metrics.needVectorNorm);
  *     console.log('  k_k =', metrics.contractionConstant);
- *     console.log('  Heaven^k =', metrics.heavenAchieved);
+ *     console.log('  UniversalSatisfaction^k =', metrics.universalSatisfactionAchieved);
  *   }
  * });
  * ```
@@ -235,7 +235,7 @@ export {
  * Each need type k evolves independently with its own:
  * - Contraction constant k_k < 1
  * - Damping factor α_k ∈ [0.5, 1.0]
- * - Heaven condition (∀i: N_i^k = 0)
+ * - UniversalSatisfaction condition (∀i: N_i^k = 0)
  * 
  * ### System Convergence
  * The system as a whole converges at the rate of the slowest type:

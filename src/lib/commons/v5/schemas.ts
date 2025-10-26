@@ -451,8 +451,8 @@ export const PerTypeConvergenceMetricsSchema = z.object({
 	iterationsToConvergence: z.number().int().nullable(),
 	convergenceRate: z.number(),
 	
-	// Per-type heaven condition
-	heavenAchieved: z.boolean(),                              // ∀i: N_i^k(t) = 0
+	// Per-type universalSatisfaction condition
+	universalSatisfactionAchieved: z.boolean(),                              // ∀i: N_i^k(t) = 0
 	percentNeedsMet: z.number().min(0).max(100)               // % with N_i^k = 0
 });
 
@@ -470,7 +470,7 @@ export const ConvergenceMetricsSchema = z.object({
 	
 	// Per-type metrics
 	perTypeMetrics: z.record(z.string(), PerTypeConvergenceMetricsSchema),
-	
+		
 	// Overall convergence
 	isConverged: z.boolean(),                                 // All types converged
 	iterationsToConvergence: z.number().int().nullable(),
@@ -481,8 +481,8 @@ export const ConvergenceMetricsSchema = z.object({
 	lastIterationTime: z.number().int().positive(),
 	iterationFrequency: z.number().nonnegative(),
 	
-	// Heaven condition (E41' - multi-dimensional)
-	heavenAchieved: z.boolean(),                              // ∀i,k: N_i^k(t) = 0
+	// UniversalSatisfaction condition (E41' - multi-dimensional)
+	universalSatisfactionAchieved: z.boolean(),                              // ∀i,k: N_i^k(t) = 0
 	percentNeedsMet: z.number().min(0).max(100),              // % across all types
 	
 	// Freedom metric (E45' - Frobenius norm)

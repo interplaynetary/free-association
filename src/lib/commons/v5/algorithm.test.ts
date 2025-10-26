@@ -9,7 +9,7 @@
  * - E12'-E15': Adaptive damping
  * - E19': Love's symmetry (MR^k(A,B) = MR^k(B,A))
  * - E20': Non-accumulation (capping)
- * - E41': Heaven condition
+ * - E41': UniversalSatisfaction condition
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -37,8 +37,8 @@ import {
 	computePerTypeNeedVectorNorm,
 	computeFrobeniusNorm,
 	computePerTypeContractionConstant,
-	checkPerTypeHeavenCondition,
-	checkMultiDimensionalHeavenCondition,
+	checkPerTypeUniversalSatisfactionCondition,
+	checkMultiDimensionalUniversalSatisfactionCondition,
 	computePerTypePercentNeedsMet,
 	computeOverallPercentNeedsMet,
 	computeConvergenceMetrics,
@@ -471,7 +471,7 @@ describe('Frobenius Norm & Convergence Metrics', () => {
 		expect(k_k).toBeCloseTo(0.8, 5); // 8/10 = 0.8 < 1 (contracting)
 	});
 	
-	it('should check per-type Heaven condition (E41\')', () => {
+	it('should check per-type UniversalSatisfaction condition (E41\')', () => {
 		const needVectorConverged: Record<string, MultiDimensionalNeedState> = {
 			'alice': {
 				pubKey: 'alice',
@@ -493,8 +493,8 @@ describe('Frobenius Norm & Convergence Metrics', () => {
 			}
 		};
 		
-		const heavenAchieved = checkPerTypeHeavenCondition(needVectorConverged, 'food');
-		expect(heavenAchieved).toBe(true);
+		const universalSatisfactionAchieved = checkPerTypeUniversalSatisfactionCondition(needVectorConverged, 'food');
+		expect(universalSatisfactionAchieved).toBe(true);
 		
 		const needVectorNotConverged: Record<string, MultiDimensionalNeedState> = {
 			'alice': {
@@ -508,11 +508,11 @@ describe('Frobenius Norm & Convergence Metrics', () => {
 			}
 		};
 		
-		const notAchieved = checkPerTypeHeavenCondition(needVectorNotConverged, 'food');
+		const notAchieved = checkPerTypeUniversalSatisfactionCondition(needVectorNotConverged, 'food');
 		expect(notAchieved).toBe(false);
 	});
 	
-	it('should check multi-dimensional Heaven condition (E41\')', () => {
+	it('should check multi-dimensional UniversalSatisfaction condition (E41\')', () => {
 		const converged: Record<string, MultiDimensionalNeedState> = {
 			'alice': {
 				pubKey: 'alice',
@@ -526,7 +526,7 @@ describe('Frobenius Norm & Convergence Metrics', () => {
 			}
 		};
 		
-		expect(checkMultiDimensionalHeavenCondition(converged)).toBe(true);
+		expect(checkMultiDimensionalUniversalSatisfactionCondition(converged)).toBe(true);
 		
 		const notConverged: Record<string, MultiDimensionalNeedState> = {
 			'alice': {
@@ -541,7 +541,7 @@ describe('Frobenius Norm & Convergence Metrics', () => {
 			}
 		};
 		
-		expect(checkMultiDimensionalHeavenCondition(notConverged)).toBe(false);
+		expect(checkMultiDimensionalUniversalSatisfactionCondition(notConverged)).toBe(false);
 	});
 	
 	it('should compute percent needs met per type', () => {
@@ -1052,7 +1052,7 @@ describe('Convergence to Zero Fixed-Point (Theorem 2\')', () => {
 			
 			needVector = result.updatedNeedVector;
 			
-			if (result.convergenceMetrics.heavenAchieved) {
+			if (result.convergenceMetrics.universalSatisfactionAchieved) {
 				break;
 			}
 			
@@ -1066,7 +1066,7 @@ describe('Convergence to Zero Fixed-Point (Theorem 2\')', () => {
 		expect(iterations).toBeLessThan(maxIterations);
 	});
 	
-	it('should satisfy Heaven condition at equilibrium (E41\')', () => {
+	it('should satisfy UniversalSatisfaction condition at equilibrium (E41\')', () => {
 		const providerCommitment = createTestCommitment([], [
 			createCapacitySlot('food', 50),
 			createCapacitySlot('healthcare', 50)
@@ -1108,15 +1108,15 @@ describe('Convergence to Zero Fixed-Point (Theorem 2\')', () => {
 			
 			needVector = result.updatedNeedVector;
 			
-			if (result.convergenceMetrics.heavenAchieved) {
+			if (result.convergenceMetrics.universalSatisfactionAchieved) {
 				break;
 			}
 		}
 		
-		// Check Heaven condition for all types
-		expect(checkMultiDimensionalHeavenCondition(needVector)).toBe(true);
-		expect(checkPerTypeHeavenCondition(needVector, 'food')).toBe(true);
-		expect(checkPerTypeHeavenCondition(needVector, 'healthcare')).toBe(true);
+		// Check UniversalSatisfaction condition for all types
+		expect(checkMultiDimensionalUniversalSatisfactionCondition(needVector)).toBe(true);
+		expect(checkPerTypeUniversalSatisfactionCondition(needVector, 'food')).toBe(true);
+		expect(checkPerTypeUniversalSatisfactionCondition(needVector, 'healthcare')).toBe(true);
 	});
 });
 
@@ -1129,11 +1129,11 @@ describe('System Properties', () => {
 		const emptyVector: Record<string, MultiDimensionalNeedState> = {};
 		
 		const norm = computeFrobeniusNorm(emptyVector);
-		const heaven = checkMultiDimensionalHeavenCondition(emptyVector);
+		const universalSatisfaction = checkMultiDimensionalUniversalSatisfactionCondition(emptyVector);
 		const pctMet = computeOverallPercentNeedsMet(emptyVector);
 		
 		expect(norm).toBe(0);
-		expect(heaven).toBe(true);
+		expect(universalSatisfaction).toBe(true);
 		expect(pctMet).toBe(100);
 	});
 	
