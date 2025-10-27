@@ -127,29 +127,15 @@
 	});
 
 	// Handle click outside to close view menu
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-
-		function handleClickOutside(event: MouseEvent | TouchEvent) {
-			const target = event.target as HTMLElement;
-			if (showViewMenu && viewMenuRef && !viewMenuRef.contains(target)) {
-				const viewButton = document.querySelector('.view-cycle-button');
-				if (!viewButton?.contains(target)) {
-					showViewMenu = false;
-				}
+	function handleClickOutside(event: MouseEvent | TouchEvent) {
+		const target = event.target as HTMLElement;
+		if (showViewMenu && viewMenuRef && !viewMenuRef.contains(target)) {
+			const viewButton = document.querySelector('.view-cycle-button');
+			if (!viewButton?.contains(target)) {
+				showViewMenu = false;
 			}
 		}
-
-		if (showViewMenu) {
-			document.addEventListener('mousedown', handleClickOutside);
-			document.addEventListener('touchstart', handleClickOutside);
-		}
-
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-			document.removeEventListener('touchstart', handleClickOutside);
-		};
-	});
+	}
 
 	// Helper function to get the sequence of node names from our current path
 	function getPathNodeNames(ourTree: Node | null, path: string[]): string[] {
@@ -636,6 +622,8 @@
 		globalState.showToast(`Navigated to "${result.node.name}"`, 'success');
 	}
 </script>
+
+<svelte:document onmousedown={handleClickOutside} ontouchstart={handleClickOutside} />
 
 {#if shouldShowToolbar}
 	<div class="toolbar-container">
