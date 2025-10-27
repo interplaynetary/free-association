@@ -611,9 +611,6 @@
 		onupdate?.(updatedCapacity);
 	}
 
-	// Track the ID of the most recently added slot for scrolling and highlighting
-	let recentlyAddedSlotId = $state<string | null>(null);
-
 	// Add new slot
 	function handleAddSlot() {
 		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
@@ -645,24 +642,11 @@
 		// Ensure the current/future slots section is expanded (where new slots appear)
 		currentFutureSlotsExpanded = true;
 
-		// Track the new slot ID for scrolling and highlighting
-		recentlyAddedSlotId = newSlotId;
-
 		// Add to highlighted slots using global state
 		globalState.highlightSlot(newSlotId);
 
 		onupdate?.(updatedCapacity);
 	}
-
-	// Clean up tracking ID after highlighting (the global state handles scrolling now)
-	$effect(() => {
-		if (recentlyAddedSlotId) {
-			// Clear the tracking ID after a short delay
-			setTimeout(() => {
-				recentlyAddedSlotId = null;
-			}, 100);
-		}
-	});
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
