@@ -462,8 +462,8 @@ function getCurrentView(): string {
 	switch (currentView) {
 		case 'inventory':
 		return 'inventory';
-		/*case 'map':
-			return 'map';*/
+		case 'map':
+			return 'map';
 		case 'tree':
 		default:
 			return 'tree';
