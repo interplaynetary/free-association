@@ -13,35 +13,27 @@
  * - Algorithm (allocation computation)
  * - Matching (slot compatibility)
  * - Visualization (Visualization component)
+ * 
+ * V5 UPDATE: Now using global recognition model with event-driven allocation
  */
 
-// Schemas and types
-export * from './v2/schemas';
+// Schemas and types (V5) - Safe for SSR
+export * from './v5/schemas';
 
-// Protocol functions
-export * from './v2/protocol';
+// Protocol functions (V5) - Safe for SSR
+export * from './v5/protocol';
 
-// Stores
-export * from './v2/stores.svelte';
-
-// Node store factory and manager
-export * from './compute/node-store.svelte';
-
-// Reactive computation runtime
-export * from './compute/compute.svelte';
-
-// Program hashing and indexing
-export * from './compute/program-hash.svelte';
-
-// Interval Tree Clocks (ITC)
+// Interval Tree Clocks (ITC) - Safe for SSR
 export * from './utils/itc';
 
-// Algorithm
-export * from './v2/algorithm.svelte';
+// Slot matching (V5) - Safe for SSR  
+export * from './v5/match.svelte';
 
-// Slot matching
-export * from './v2/match.svelte';
-
-// Visualization component
+// Browser-only exports (require Holster, reactive stores, D3)
+export * from './v5/stores.svelte';
+export * from './v5/free-algorithm.svelte';
+export * from './compute/node-store.svelte';
+export * from './compute/compute.svelte';
+export * from './compute/program-hash.svelte';
 export { default as Visualization } from './components/Visualization.svelte';
 

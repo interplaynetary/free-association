@@ -3,27 +3,23 @@
 	import * as d3 from 'd3';
 	import { derived } from 'svelte/store';
 	
-	// Import existing stores and types
+	// Import V5 stores and types
 	import {
 		myCommitmentStore,
-		myAllocationStateStore,
-		myRecognitionWeightsStore,
 		networkCommitments,
-		networkAllocationStates,
-		getNetworkCommitmentsRecord
-	} from './stores.svelte';
+		getNetworkCommitmentsRecord,
+		holsterUserPub
+	} from '$lib/commons';
 	
+	// Import V5 algorithm (reactive)
 	import {
 		myMutualRecognition,
-		myMutualBeneficiaries,
-		myNonMutualBeneficiaries,
-		mutualProvidersForMe,
-		computeAndPublishAllocations,
-		publishMyCommitment,
-		myPubKey
-	} from './algorithm.svelte';
+		myPublicKey,
+		myAllocationsAsProvider,
+		publishMyCommitment
+	} from '$lib/commons';
 	
-	import type { Commitment, TwoTierAllocationState } from './schemas';
+	import type { Commitment } from '$lib/commons';
 	
 	// Props (Svelte 5 runes mode)
 	let { 
@@ -41,11 +37,11 @@
 	let selectedEntity: string | null = null;
 	let round = $state(0);
 	
-	// Filter slots by resource type
-	function filterSlotsByType<T extends { resource_type?: string }>(slots: T[] | undefined): T[] {
+	// Filter slots by resource type (V5: uses need_type_id)
+	function filterSlotsByType<T extends { need_type_id?: string }>(slots: T[] | undefined): T[] {
 		if (!slots) return [];
 		if (!resourceType) return slots;
-		return slots.filter(slot => slot.resource_type === resourceType);
+		return slots.filter(slot => slot.need_type_id === resourceType);
 	}
 	
 	// Calculate total capacity from slots
@@ -65,24 +61,26 @@
 	// Get mutual recognition value
 	function getMR(entityA: string, entityB: string): number {
 		const mrValues = $myMutualRecognition;
-		if (entityA === $myPubKey) {
+		const myPub = $myPublicKey;
+		if (entityA === myPub) {
 			return mrValues[entityB] || 0;
 		}
 		// For other entities, we'd need their MR values from network
-		const entityACommitment = networkCommitments.get(entityA);
-		const entityBCommitment = networkCommitments.get(entityB);
+		const commitments = getNetworkCommitmentsRecord();
+		const entityACommitment = commitments[entityA];
+		const entityBCommitment = commitments[entityB];
 		
-		if (!entityACommitment?.mr_values || !entityBCommitment?.mr_values) return 0;
+		if (!entityACommitment?.global_mr_values || !entityBCommitment?.global_mr_values) return 0;
 		
-		const aRecognizesB = entityACommitment.mr_values[entityB] || 0;
-		const bRecognizesA = entityBCommitment.mr_values[entityA] || 0;
+		const aRecognizesB = entityACommitment.global_mr_values[entityB] || 0;
+		const bRecognizesA = entityBCommitment.global_mr_values[entityA] || 0;
 		return Math.min(aRecognizesB, bRecognizesA);
 	}
 	
 	// Get all entities to visualize
 	const entities = derived(
-		[myCommitmentStore, myMutualRecognition],
-		([$myCommitment, $myMR]) => {
+		[myCommitmentStore, myMutualRecognition, myPublicKey],
+		([$myCommitment, $myMR, $myPub]) => {
 			const result = new Map<string, {
 				pubKey: string;
 				name: string;
@@ -94,9 +92,9 @@
 			}>();
 			
 			// Add me
-			if ($myPubKey && $myCommitment) {
-				result.set($myPubKey, {
-					pubKey: $myPubKey,
+			if ($myPub && $myCommitment) {
+				result.set($myPub, {
+					pubKey: $myPub,
 					name: 'Me',
 					commitment: $myCommitment,
 					capacity: getTotalCapacity($myCommitment),
@@ -113,7 +111,7 @@
 			const radius = Math.min(width, height) * 0.35;
 			
 			pubKeys.forEach((pubKey, index) => {
-				if (pubKey === $myPubKey) return;
+				if (pubKey === $myPub) return;
 				
 				const commitment = commitments[pubKey];
 				const angle = index * angleStep;
@@ -133,20 +131,21 @@
 		}
 	);
 	
-	// Get allocations for a provider
+	// Get allocations for a provider (V5: uses reactive myAllocationsAsProvider)
 	function getProviderAllocations(providerPubKey: string): Map<string, { amount: number; tier: 'mutual' | 'non-mutual' }> {
 		const allocations = new Map();
 		
-		const allocationState = providerPubKey === $myPubKey 
-			? $myAllocationStateStore 
-			: networkAllocationStates.get(providerPubKey);
-			
-		if (!allocationState?.slot_allocations) return allocations;
+		// V5: Only my allocations are available (reactive computation)
+		// Others' allocations not needed for visualization
+		if (providerPubKey !== $myPublicKey) {
+			return allocations; // Can't see others' allocation decisions in V5
+		}
+		
+		const myAllocations = $myAllocationsAsProvider;
+		if (!myAllocations?.allocations) return allocations;
 		
 		// Get provider's commitment to check slot types
-		const providerCommitment = providerPubKey === $myPubKey
-			? $myCommitmentStore
-			: networkCommitments.get(providerPubKey);
+		const providerCommitment = $myCommitmentStore;
 		
 		// If filtering by resource type, only include allocations from matching slots
 		const validSlotIds = new Set<string>();
@@ -156,7 +155,7 @@
 		}
 		
 		// Aggregate slot allocations by recipient
-		for (const slotAlloc of allocationState.slot_allocations) {
+		for (const slotAlloc of myAllocations.allocations) {
 			// Skip if filtering and slot doesn't match resource type
 			if (resourceType && validSlotIds.size > 0 && !validSlotIds.has(slotAlloc.availability_slot_id)) {
 				continue;
@@ -415,21 +414,24 @@
 		});
 	}
 	
-	// Run allocation round
+	// Run allocation round (V5: reactive, so just trigger re-render)
 	async function runAllocation() {
 		round++;
 		
-		// Recompute and publish my allocation
-		await computeAndPublishAllocations();
+		// V5: Allocations are computed reactively, just re-publish commitment to trigger network update
+		const currentCommitment = $myCommitmentStore;
+		if (currentCommitment) {
+			await publishMyCommitment(currentCommitment);
+		}
 		
-		console.log('[CIRCLE-VIZ] Round', round, 'complete');
+		console.log('[CIRCLE-VIZ] Round', round, 'complete (V5 reactive)');
 	}
 	
-	// React to store changes
+	// React to store changes (V5: uses myAllocationsAsProvider)
 	$effect(() => {
-		// Trigger re-render when entities change
+		// Trigger re-render when entities or allocations change
 		$entities;
-		$myAllocationStateStore;
+		$myAllocationsAsProvider;
 		renderVisualization();
 	});
 	
