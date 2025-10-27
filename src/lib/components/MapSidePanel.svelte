@@ -45,18 +45,11 @@
 	// Track fullscreen state for responsive panel sizing
 	let isFullscreen = $state(false);
 
-	// Listen for fullscreen changes
-	$effect(() => {
-		if (typeof document === 'undefined') return;
-
-		const handleFullscreenChange = () => {
-			isFullscreen = !!document.fullscreenElement;
-			console.log('[MapSidePanel] Fullscreen changed:', isFullscreen);
-		};
-
-		document.addEventListener('fullscreenchange', handleFullscreenChange);
-		return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-	});
+	// Handle fullscreen changes
+	const handleFullscreenChange = () => {
+		isFullscreen = !!document.fullscreenElement;
+		console.log('[MapSidePanel] Fullscreen changed:', isFullscreen);
+	};
 
 	// Prevent scroll events from bubbling to parent page
 	function handlePanelScroll(event: Event) {
@@ -516,6 +509,8 @@
 		}
 	}
 </script>
+
+<svelte:document onfullscreenchange={handleFullscreenChange} />
 
 <!-- Fixed search input that never moves -->
 <div
