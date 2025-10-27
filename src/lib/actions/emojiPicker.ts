@@ -1,10 +1,9 @@
 import type { Action } from 'svelte/action';
 
-export const emojiPicker: Action<HTMLElement, { isVisible: boolean, onClick: (emoji: string) => void,  onVisibilityChange: (isVisible: boolean) => void}> = (node, { isVisible, onClick, onVisibilityChange }) => {
+export const emojiPicker: Action<HTMLElement, { onClick: (emoji: string) => void }> = (node, { onClick }) => {
 	let picker: HTMLElement | null = null;
 
 	let clickHandler = onClick;
-	let handleVisibilityChange = onVisibilityChange;
 
 	try {
 		picker = document.createElement('emoji-picker');
@@ -18,37 +17,17 @@ export const emojiPicker: Action<HTMLElement, { isVisible: boolean, onClick: (em
 
 		// Listen for emoji selection
 		picker.addEventListener('emoji-click', (event: any) => {
-			clickHandler(event.detail.unicode)
-			handleVisibilityChange(false);
+			clickHandler(event.detail.unicode);
 		});
 
-		if (isVisible) {
-			node.appendChild(picker);
-		}
+		node.appendChild(picker);
 	} catch (error) {
 		console.warn('Failed to create emoji picker:', error);
 	}
 
-	function handleDocumentClick(event: MouseEvent) {
-		if (!node.contains(event.target as Node)) {
-			handleVisibilityChange(false);
-		}
-	}
-	document.addEventListener('click', handleDocumentClick);
-
 	return {
-		update({ isVisible, onClick, onVisibilityChange }) {
+		update({ onClick }) {
 			clickHandler = onClick
-			handleVisibilityChange = onVisibilityChange;
-			if (!picker) return;
-			if (isVisible) {
-				node.appendChild(picker);
-			} else {
-				node.removeChild(picker);
-			}
-		},
-		destroy() {
-			document.removeEventListener('click', handleDocumentClick);
 		}
 	}
 };

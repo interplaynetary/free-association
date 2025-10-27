@@ -4,6 +4,7 @@
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 	import { emojiPicker } from '$lib/actions/emojiPicker';
+	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
 	import { Rules } from '$lib/filters';
@@ -115,10 +116,6 @@
 	const handleEmojiClick = (emoji: string) => {
 		capacityEmoji = emoji;
 		handleCapacityUpdate();
-	}
-
-	const handleEmojiPickerVisibilityChange = (isVisible: boolean) => {
-		showEmojiPicker = isVisible;
 	}
 
 	// Note: Recipient shares are no longer displayed as bars in the new efficient allocation system
@@ -666,7 +663,8 @@
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}
 				<div
-					use:emojiPicker={{ isVisible: showEmojiPicker, onClick: handleEmojiClick, onVisibilityChange: handleEmojiPickerVisibilityChange }}
+					use:outsideClick={() => (showEmojiPicker = false)}
+					use:emojiPicker={{ onClick: handleEmojiClick }}
 					class="emoji-picker-container"
 				></div>
 			{/if}
