@@ -1,5 +1,5 @@
 /**
- * Free Association Protocol v5 - Multi-Dimensional Commons Edition
+ * Free Association Protocol v5 - Global Recognition Model
  *
  * This protocol implements a clean, intuitive node architecture:
  *
@@ -18,10 +18,10 @@
  * This clean separation preserves both semantic clarity and mathematical elegance.
  *
  * V5 ARCHITECTURE:
- * - All schemas imported from ./schemas.ts (Multi-dimensional, ITC-based)
+ * - All schemas imported from ./schemas.ts (Multi-dimensional slots, ITC-based)
  * - Tree operations for recognition/priority calculations
  * - Multi-dimensional slot-native two-tier allocation
- * - Type-specific recognition (MR^k per need type)
+ * - GLOBAL recognition (same MR for all types, tree structure encodes type preferences)
  * - Hierarchical availability windows (yearly → monthly → weekly → daily)
  * - Filter utilities for capacity/need constraints
  * - No round coordination (event-driven)
@@ -42,7 +42,7 @@ import type {
 	TwoTierAllocationState,
 	SlotAllocationRecord,
 	ITCStamp,
-	MultiDimensionalRecognition,
+	GlobalRecognitionWeights,
 	NeedType,
 	AvailabilityWindow
 } from './schemas';
@@ -1324,24 +1324,19 @@ export function areSlotsLocationCompatible(
  * Create a commitment from recognition shares and capacity/need declarations (v5)
  * Helper for building Commitment objects for the multi-dimensional allocation system
  * 
- * V5 supports both scalar (backward compatible) and multi-dimensional recognition
+ * V5 uses GLOBAL recognition: same MR value for all need types
+ * Type preferences are encoded in recognition tree structure, not in separate MR values
  */
 export function createCommitment(
-	recognitionWeights: Record<string, number> | MultiDimensionalRecognition,
+	globalRecognitionWeights: GlobalRecognitionWeights,
 	capacitySlots?: AvailabilitySlot[],
 	needSlots?: NeedSlot[],
 	itcStamp?: ITCStamp
 ): Commitment {
-	// Detect if recognition is multi-dimensional (object with type keys)
-	const isMultiDimensional = recognitionWeights && 
-		Object.values(recognitionWeights).some(v => typeof v === 'object');
-	
 	return {
 		capacity_slots: capacitySlots,
 		need_slots: needSlots,
-		recognition_weights_by_type: isMultiDimensional 
-			? (recognitionWeights as MultiDimensionalRecognition) 
-			: undefined,
+		global_recognition_weights: globalRecognitionWeights,
 		timestamp: Date.now(),
 		itcStamp: itcStamp!  // Required in v5
 	};
@@ -1428,7 +1423,7 @@ export function isRecipientMutual(
 }
 
 /**
- * Re-export schema types for convenience (v5 - multi-dimensional)
+ * Re-export schema types for convenience (v5 - global recognition model)
  */
 export type {
 	Node,
@@ -1443,7 +1438,7 @@ export type {
 	TwoTierAllocationState,
 	SlotAllocationRecord,
 	ITCStamp,
-	MultiDimensionalRecognition,
+	GlobalRecognitionWeights,
 	NeedType,
 	AvailabilityWindow
 };

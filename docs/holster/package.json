@@ -1,0 +1,44 @@
+{
+  "name": "@mblaney/holster",
+  "version": "1.0.21",
+  "description": "Holster is a service that allows synchronising data between devices using Node, Deno, Bun or the browser.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "build": "esbuild src/holster.js --bundle --format=esm --sourcemap \"--external:node:*\" \"--external:ws\" --minify --outdir=build"
+  },
+  "keywords": [],
+  "author": "Malcolm Blaney",
+  "license": "Zlib, MIT, Apache-2.0",
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.3",
+    "mock-socket": "^9.3.1",
+    "prettier": "^3.4.2"
+  },
+  "prettier": {
+    "semi": false,
+    "bracketSpacing": false,
+    "arrowParens": "avoid"
+  },
+  "browser": {
+    "fs": false
+  },
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mblaney/holster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mblaney/holster/issues"
+  },
+  "homepage": "https://github.com/mblaney/holster/wiki"
+}
