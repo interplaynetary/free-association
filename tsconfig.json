@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": true,
+		"types": [],
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
@@ -11,7 +12,15 @@
 		"strict": true,
 		"moduleResolution": "bundler",
 		"typeRoots": ["./node_modules/@types", "./src/lib/types"]
-	}
+	},
+	"exclude": [
+		"docs/**/*",
+		"holster-data/**/*",
+		"deploy/**/*",
+		"node_modules/**/*",
+		".svelte-kit/**/*",
+		"build/**/*"
+	]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
 	//
