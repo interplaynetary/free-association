@@ -2,7 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
-	import Toast from '$lib/components/Toast.svelte';
+	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
@@ -51,7 +51,7 @@
 </main>
 
 <!-- Toast notification component - positioned at top center -->
-<Toast />
+<Toaster />
 
 <!-- DraggedNode component that appears on top of everything -->
 <DraggedNode

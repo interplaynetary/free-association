@@ -1,0 +1,68 @@
+name: Test Summary Report
+
+on:
+  workflow_run:
+    workflows: ["Playwright E2E Tests"]
+    types:
+      - completed
+
+jobs:
+  report:
+    name: Generate Test Summary
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion != 'cancelled' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report-20.x
+          path: playwright-report/
+      
+      - name: Publish test report
+        uses: daun/playwright-report-summary@v3
+        with:
+          report-file: playwright-report/results.json
+          report-url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          job-summary: true
+      
+      - name: Comment on PR
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('playwright-report/results.json', 'utf8'));
+            
+            const passed = report.stats.expected || 0;
+            const failed = report.stats.unexpected || 0;
+            const flaky = report.stats.flaky || 0;
+            const skipped = report.stats.skipped || 0;
+            const total = passed + failed + flaky + skipped;
+            
+            const successRate = total > 0 ? ((passed / total) * 100).toFixed(1) : 0;
+            
+            const comment = `
+            ## 🎭 Playwright Test Results
+            
+            **Total Tests:** ${total}
+            - ✅ Passed: ${passed}
+            - ❌ Failed: ${failed}
+            - 🔄 Flaky: ${flaky}
+            - ⏭️ Skipped: ${skipped}
+            
+            **Success Rate:** ${successRate}%
+            
+            [View Full Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
