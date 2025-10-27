@@ -20,62 +20,34 @@
 	}>();
 
 	// State
-	let displayName = $state(providedDisplayName || userId);
+	let fetchedDisplayName = $state<string | null>(null);
+	let displayName = $derived(providedDisplayName || fetchedDisplayName || userId);
 	let isLoading = $state(!providedDisplayName);
-
-	// Element reference
-	let pillElement: HTMLDivElement;
 
 	// Load user data using centralized function (only if no displayName provided)
 	async function loadUserData() {
-		if (providedDisplayName) {
-			displayName = providedDisplayName;
-			isLoading = false;
-			updateTooltip(displayName);
+		if (!userId || providedDisplayName || fetchedDisplayName) {
 			return;
 		}
 
 		isLoading = true;
 		try {
-			displayName = await getUserName(userId);
-			isLoading = false;
-			updateTooltip(displayName);
+			fetchedDisplayName = await getUserName(userId);
 		} catch (error) {
 			console.error(`Error loading user data for ${userId}:`, error);
-			displayName = userId;
+		} finally {
 			isLoading = false;
-			updateTooltip(displayName);
 		}
 	}
 
-	// Update display name when providedDisplayName changes
-	$effect(() => {
-		if (providedDisplayName) {
-			displayName = providedDisplayName;
-			isLoading = false;
-			updateTooltip(displayName);
-		}
-	});
-
 	// Initial load of user data
 	$effect(() => {
-		if (userId) {
-			loadUserData();
-		}
+		loadUserData();
 	});
 
 	// Function to truncate and format display name
 	function getFormattedName(name: string): string {
 		return name?.length > truncateLength ? name?.substring(0, truncateLength - 2) + '...' : name;
-	}
-
-	// Update tooltip text
-	function updateTooltip(name: string): void {
-		if (pillElement) {
-			pillElement.title = removable
-				? `${name}: Click to view tree, click × to remove`
-				: `${name}: Click to view tree`;
-		}
 	}
 
 	// Handle pill click
@@ -97,13 +69,15 @@
 </script>
 
 <div
-	bind:this={pillElement}
 	class="tag-pill"
 	data-user-id={userId}
 	style="background: {getColorForUserId(userId)}"
 	role="button"
 	tabindex="0"
 	onclick={handlePillClick}
+	title={removable
+				? `${displayName}: Click to view tree, click × to remove`
+				: `${displayName}: Click to view tree`}
 	onkeydown={(e) => {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
