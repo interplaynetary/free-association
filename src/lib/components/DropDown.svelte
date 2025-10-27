@@ -769,39 +769,24 @@
 		}
 	});
 
-	// Effect to manage click outside and keyboard listeners
-	$effect(() => {
-		if (!browser) return;
-
-		if (show) {
-			const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-				if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
-					handleClose();
-				}
-			};
-
-			const handleKeydown = (event: KeyboardEvent) => {
-				if (event.key === 'Escape') {
-					handleClose();
-				}
-			};
-
-			// Add listeners after a small delay to prevent immediate closure
-			const timeoutId = setTimeout(() => {
-				document.addEventListener('click', handleClickOutside);
-				document.addEventListener('touchstart', handleClickOutside);
-				document.addEventListener('keydown', handleKeydown);
-			}, 100);
-
-			return () => {
-				clearTimeout(timeoutId);
-				document.removeEventListener('click', handleClickOutside);
-				document.removeEventListener('touchstart', handleClickOutside);
-				document.removeEventListener('keydown', handleKeydown);
-			};
+	const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+		if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
+			handleClose();
 		}
-	});
+	};
+
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (event.key === 'Escape') {
+			handleClose();
+		}
+	};
 </script>
+
+<svelte:document
+	onclick={show ? handleClickOutside : undefined}
+	ontouchstart={show ? handleClickOutside : undefined}
+	onkeydown={show ? handleKeydown : undefined}
+/>
 
 {#if show}
 	<div
