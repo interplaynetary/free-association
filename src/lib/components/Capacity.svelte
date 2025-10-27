@@ -3,6 +3,7 @@
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
+	import { emojiPicker } from '$lib/actions/emojiPicker';
 
 	import Slot from './Slot.svelte';
 	import { Rules } from '$lib/filters';
@@ -56,8 +57,6 @@
 
 	// Emoji picker state
 	let showEmojiPicker = $state(false);
-	let emojiPickerContainer: HTMLDivElement | undefined = $state();
-	let emojiPickerElement: any = $state();
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
@@ -113,43 +112,14 @@
 		}
 	});
 
-	// Initialize emoji picker when container is available
-	$effect(() => {
-		if (emojiPickerContainer && browser && !emojiPickerElement) {
-			try {
-				const picker = document.createElement('emoji-picker');
-				picker.style.position = 'absolute';
-				picker.style.zIndex = '1000';
-				picker.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
-				picker.style.border = '1px solid #e5e7eb';
-				picker.style.borderRadius = '8px';
-				picker.style.width = '320px';
-				picker.style.height = '400px';
+	const handleEmojiClick = (emoji: string) => {
+		capacityEmoji = emoji;
+		handleCapacityUpdate();
+	}
 
-				// Listen for emoji selection
-				picker.addEventListener('emoji-click', (event: any) => {
-					capacityEmoji = event.detail.unicode;
-					handleCapacityUpdate();
-					showEmojiPicker = false;
-				});
-
-				emojiPickerElement = picker;
-			} catch (error) {
-				console.warn('Failed to create emoji picker:', error);
-			}
-		}
-	});
-
-	// Handle emoji picker visibility
-	$effect(() => {
-		if (emojiPickerElement && emojiPickerContainer) {
-			if (showEmojiPicker) {
-				emojiPickerContainer.appendChild(emojiPickerElement);
-			} else if (emojiPickerElement.parentNode) {
-				emojiPickerElement.parentNode.removeChild(emojiPickerElement);
-			}
-		}
-	});
+	const handleEmojiPickerVisibilityChange = (isVisible: boolean) => {
+		showEmojiPicker = isVisible;
+	}
 
 	// Note: Recipient shares are no longer displayed as bars in the new efficient allocation system
 	// Recipients can see their allocations directly in the shares view
@@ -379,23 +349,6 @@
 		event.stopPropagation();
 		showEmojiPicker = !showEmojiPicker;
 	}
-
-	// Close emoji picker when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
-			showEmojiPicker = false;
-		}
-	}
-
-	// Add click outside listener
-	$effect(() => {
-		if (showEmojiPicker) {
-			document.addEventListener('click', handleClickOutside);
-			return () => {
-				document.removeEventListener('click', handleClickOutside);
-			};
-		}
-	});
 
 	// Format date for input
 	function formatDateForInput(date: Date | undefined): string {
@@ -728,7 +681,10 @@
 			</button>
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}
-				<div bind:this={emojiPickerContainer} class="emoji-picker-container"></div>
+				<div
+					use:emojiPicker={{ isVisible: showEmojiPicker, onClick: handleEmojiClick, onVisibilityChange: handleEmojiPickerVisibilityChange }}
+					class="emoji-picker-container"
+				></div>
 			{/if}
 		</div>
 
