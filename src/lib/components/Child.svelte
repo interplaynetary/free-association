@@ -59,18 +59,14 @@
 	// shouldEdit prop is no longer used for auto-edit functionality
 
 	// Editing state - now synced with global state
-	let isEditing = $state(false);
+	let isEditing = $derived(globalState.editMode && globalState.editingNodeId === node.id);
 	let editValue = $state('');
 	let editInput: HTMLInputElement | null = $state(null);
 
-	// Sync local editing state with global state
+	// Reset edit value when node is being edited
 	$effect(() => {
-		const isThisNodeBeingEdited = globalState.editMode && globalState.editingNodeId === node.id;
-		if (isThisNodeBeingEdited !== isEditing) {
-			isEditing = isThisNodeBeingEdited;
-			if (isEditing) {
-				editValue = node.name || '';
-			}
+		if (isEditing) {
+			editValue = node.name || '';
 		}
 	});
 
