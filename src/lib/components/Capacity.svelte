@@ -3,6 +3,8 @@
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
+	import { emojiPicker } from '$lib/actions/emojiPicker';
+	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
 	import { Rules } from '$lib/filters';
@@ -56,8 +58,6 @@
 
 	// Emoji picker state
 	let showEmojiPicker = $state(false);
-	let emojiPickerContainer: HTMLDivElement | undefined = $state();
-	let emojiPickerElement: any = $state();
 
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
@@ -101,55 +101,10 @@
 		return names;
 	});
 
-	// Load emoji picker client-side only
-	onMount(async () => {
-		if (browser) {
-			try {
-				// Dynamic import to avoid SSR issues
-				await import('emoji-picker-element');
-			} catch (error) {
-				console.warn('Failed to load emoji picker:', error);
-			}
-		}
-	});
-
-	// Initialize emoji picker when container is available
-	$effect(() => {
-		if (emojiPickerContainer && browser && !emojiPickerElement) {
-			try {
-				const picker = document.createElement('emoji-picker');
-				picker.style.position = 'absolute';
-				picker.style.zIndex = '1000';
-				picker.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
-				picker.style.border = '1px solid #e5e7eb';
-				picker.style.borderRadius = '8px';
-				picker.style.width = '320px';
-				picker.style.height = '400px';
-
-				// Listen for emoji selection
-				picker.addEventListener('emoji-click', (event: any) => {
-					capacityEmoji = event.detail.unicode;
-					handleCapacityUpdate();
-					showEmojiPicker = false;
-				});
-
-				emojiPickerElement = picker;
-			} catch (error) {
-				console.warn('Failed to create emoji picker:', error);
-			}
-		}
-	});
-
-	// Handle emoji picker visibility
-	$effect(() => {
-		if (emojiPickerElement && emojiPickerContainer) {
-			if (showEmojiPicker) {
-				emojiPickerContainer.appendChild(emojiPickerElement);
-			} else if (emojiPickerElement.parentNode) {
-				emojiPickerElement.parentNode.removeChild(emojiPickerElement);
-			}
-		}
-	});
+	const handleEmojiClick = (emoji: string) => {
+		capacityEmoji = emoji;
+		handleCapacityUpdate();
+	}
 
 	// Note: Recipient shares are no longer displayed as bars in the new efficient allocation system
 	// Recipients can see their allocations directly in the shares view
@@ -379,23 +334,6 @@
 		event.stopPropagation();
 		showEmojiPicker = !showEmojiPicker;
 	}
-
-	// Close emoji picker when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		if (emojiPickerContainer && !emojiPickerContainer.contains(event.target as Node)) {
-			showEmojiPicker = false;
-		}
-	}
-
-	// Add click outside listener
-	$effect(() => {
-		if (showEmojiPicker) {
-			document.addEventListener('click', handleClickOutside);
-			return () => {
-				document.removeEventListener('click', handleClickOutside);
-			};
-		}
-	});
 
 	// Format date for input
 	function formatDateForInput(date: Date | undefined): string {
@@ -658,9 +596,6 @@
 		onupdate?.(updatedCapacity);
 	}
 
-	// Track the ID of the most recently added slot for scrolling and highlighting
-	let recentlyAddedSlotId = $state<string | null>(null);
-
 	// Add new slot
 	function handleAddSlot() {
 		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
@@ -692,24 +627,11 @@
 		// Ensure the current/future slots section is expanded (where new slots appear)
 		currentFutureSlotsExpanded = true;
 
-		// Track the new slot ID for scrolling and highlighting
-		recentlyAddedSlotId = newSlotId;
-
 		// Add to highlighted slots using global state
 		globalState.highlightSlot(newSlotId);
 
 		onupdate?.(updatedCapacity);
 	}
-
-	// Clean up tracking ID after highlighting (the global state handles scrolling now)
-	$effect(() => {
-		if (recentlyAddedSlotId) {
-			// Clear the tracking ID after a short delay
-			setTimeout(() => {
-				recentlyAddedSlotId = null;
-			}, 100);
-		}
-	});
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
@@ -728,7 +650,11 @@
 			</button>
 			<!-- Emoji picker container -->
 			{#if showEmojiPicker}
-				<div bind:this={emojiPickerContainer} class="emoji-picker-container"></div>
+				<div
+					use:outsideClick={() => (showEmojiPicker = false)}
+					use:emojiPicker={{ onClick: handleEmojiClick }}
+					class="emoji-picker-container"
+				></div>
 			{/if}
 		</div>
 
@@ -933,14 +859,16 @@
 													{getRecurrenceDisplay(slot)}
 												</span>
 											</div>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>
@@ -968,14 +896,16 @@
 											data-slot-id={slot.id}
 											class:newly-created={globalState.highlightedSlots.has(slot.id)}
 										>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>
@@ -1003,14 +933,16 @@
 											data-slot-id={slot.id}
 											class:newly-created={globalState.highlightedSlots.has(slot.id)}
 										>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>

@@ -39,9 +39,6 @@
 	let locationExpanded = $state(false);
 	let compositionsExpanded = $state(false);
 
-	// Provider name cache for compositions
-	let providerNames = $state<Record<string, string>>({});
-
 	// Composition UI state
 	let expandedCompositions = $state<Record<string, boolean>>({});
 	let showAddComposeFrom = $state(false);
@@ -924,69 +921,6 @@
 
 		return parts.length > 0 ? parts.join(', ') : $t('inventory.no_constraints');
 	}
-
-	// Sync local state when slot prop changes from parent
-	$effect(() => {
-		// Initialize or update lastSentState when slot prop changes
-		// This allows updates from parent while preventing our own circular updates
-		const incomingState = JSON.stringify(slot);
-		if (incomingState !== lastSentState) {
-			lastSentState = incomingState;
-
-			// Sync local state variables with incoming slot data
-			slotId = slot.id;
-			slotQuantity = slot.quantity;
-			slotAdvanceNoticeHours = slot.advance_notice_hours;
-			slotBookingWindowHours = slot.booking_window_hours;
-			slotMutualAgreementRequired = slot.mutual_agreement_required;
-			slotAllDay = slot.all_day;
-			slotStartDate = slot.start_date;
-			slotEndDate = slot.end_date;
-			slotStartTime = slot.start_time;
-			slotEndTime = slot.end_time;
-			slotTimeZone = slot.time_zone;
-			slotRecurrence = slot.recurrence;
-			slotCustomRecurrenceRepeatEvery = slot.custom_recurrence_repeat_every;
-			slotCustomRecurrenceRepeatUnit = slot.custom_recurrence_repeat_unit;
-			slotCustomRecurrenceEndType = slot.custom_recurrence_end_type;
-			slotCustomRecurrenceEndValue = slot.custom_recurrence_end_value;
-			slotLocationType = slot.location_type;
-			slotLongitude = slot.longitude;
-			slotLatitude = slot.latitude;
-			slotStreetAddress = slot.street_address;
-			slotCity = slot.city;
-			slotStateProvince = slot.state_province;
-			slotPostalCode = slot.postal_code;
-			slotCountry = slot.country;
-			slotOnlineLink = slot.online_link;
-		}
-	});
-
-	// Load provider names asynchronously
-	$effect(() => {
-		void (async () => {
-			const capacities = Object.values($userNetworkCapacitiesWithSlotQuantities || {});
-			const uniqueProviders = [
-				...new Set(capacities.map((cap: any) => cap.provider_id).filter(Boolean))
-			];
-
-			for (const providerId of uniqueProviders) {
-				if (!providerNames[providerId]) {
-					try {
-						const name = await getUserName(providerId);
-						if (name) {
-							providerNames = {
-								...providerNames,
-								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to get provider name:', providerId, error);
-					}
-				}
-			}
-		})();
-	});
 
 	// ============================================================================
 	// COMPOSITION LOGIC - Following Original Capacity Pattern
