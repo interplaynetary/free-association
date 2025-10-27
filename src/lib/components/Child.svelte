@@ -561,10 +561,6 @@
 		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
 
 		if (isEditing) {
-			// Add global event listeners for both mouse and touch interactions outside
-			document.addEventListener('mousedown', handleOutsideInteraction);
-			document.addEventListener('touchstart', handleOutsideInteraction);
-
 			// iOS-compatible focus handling with user interaction detection
 			const focusInput = () => {
 				if (editInput) {
@@ -627,36 +623,19 @@
 				// Input not ready, wait for DOM update
 				setTimeout(focusInput, 150);
 			}
-		} else {
-			// Remove the event listeners when not editing
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
 		}
-
-		// Clean up function
-		return () => {
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
-		};
-	});
-
-	// Set up global listeners for slider dragging state
-	$effect(() => {
-		// Always add these listeners to handle slider drag state cleanup
-		document.addEventListener('mouseup', handleGlobalMouseUp);
-		document.addEventListener('touchend', handleGlobalTouchEnd);
-		document.addEventListener('touchcancel', handleGlobalTouchEnd);
-
-		// Clean up function
-		return () => {
-			document.removeEventListener('mouseup', handleGlobalMouseUp);
-			document.removeEventListener('touchend', handleGlobalTouchEnd);
-			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
-		};
 	});
 
 	// Auto-edit functionality removed - users must manually tap to edit
 </script>
+
+<svelte:document
+	onmousedown={isEditing ? handleOutsideInteraction : undefined}
+	onmouseup={handleGlobalMouseUp}
+	ontouchstart={isEditing ? handleOutsideInteraction : undefined}
+	ontouchend={handleGlobalTouchEnd}
+	ontouchcancel={handleGlobalTouchEnd}
+/>
 
 <div
 	class="treemap-node"
