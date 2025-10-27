@@ -137,12 +137,12 @@ export async function login(alias: string, password: string): Promise<void> {
 						console.log(`[HOLSTER LOGIN] Auth succeeded for "${alias}"`);
 
 						// Update stores
-						holsterUserAlias.set(holsterUser.is.username);
-						holsterUserPub.set(holsterUser.is.pub);
+						holsterUserAlias.set(holsterUser.is?.username || '');
+						holsterUserPub.set(holsterUser.is?.pub || '');
 
 						// Update users list
-						holster.get('freely-associating-players').next(holsterUser.is.pub).put({
-							alias: holsterUser.is.username,
+						holster.get('freely-associating-players').next(holsterUser.is?.pub || '').put({
+							alias: holsterUser.is?.username || '',
 							lastSeen: Date.now()
 						}, (putErr: any) => {
 							if (putErr) {

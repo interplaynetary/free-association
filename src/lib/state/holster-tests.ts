@@ -11,14 +11,14 @@ export function initializeHolsterTests() {
 		// Basic operations test
 		testBasic: () => {
 			console.log('[HOLSTER-TEST] Testing basic put/get operations...');
-			holster.get('test-key').put('test-value', (err) => {
+			holster.get('test-key').put('test-value', (err: any) => {
 				if (err) {
 					console.error('[HOLSTER-TEST] Put failed:', err);
 					return;
 				}
 				console.log('[HOLSTER-TEST] ✅ Put succeeded');
 
-				holster.get('test-key', (data) => {
+				holster.get('test-key', (data: any) => {
 					console.log('[HOLSTER-TEST] Get result:', data);
 					if (data === 'test-value') {
 						console.log('[HOLSTER-TEST] ✅ Basic operations working!');
@@ -59,7 +59,7 @@ export function initializeHolsterTests() {
 
 				// Create account first
 				await new Promise((resolve) => {
-					holsterUser.create(holsterUsername, 'test-password-123', (err) => {
+					holsterUser.create(holsterUsername, 'test-password-123', (err: any) => {
 						if (err) {
 							console.error('[HOLSTER-AUTH] ❌ Create failed:', err);
 						} else {
@@ -71,7 +71,7 @@ export function initializeHolsterTests() {
 
 				// Then login
 				return new Promise((resolve) => {
-					holsterUser.auth(holsterUsername, 'test-password-123', (err) => {
+					holsterUser.auth(holsterUsername, 'test-password-123', (err: any) => {
 						if (err) {
 							console.error('[HOLSTER-AUTH] ❌ Login failed:', err);
 						} else {
@@ -121,7 +121,7 @@ export function initializeHolsterTests() {
 
 				console.log(`[HOLSTER-DATA] Writing "${key}":`, value);
 				return new Promise((resolve) => {
-					holsterUser.get(key).put(value, (err) => {
+					holsterUser.get(key).put(value, (err: any) => {
 						if (err) {
 							console.error('[HOLSTER-DATA] ❌ Write failed:', err);
 						} else {
@@ -140,7 +140,7 @@ export function initializeHolsterTests() {
 				}
 
 				console.log(`[HOLSTER-DATA] Reading "${key}"...`);
-				holsterUser.get(key, (data) => {
+				holsterUser.get(key, (data: any) => {
 					console.log('[HOLSTER-DATA] Result:', data);
 				});
 			},

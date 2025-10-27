@@ -17,35 +17,173 @@
 
 import * as z from 'zod';
 
-// Re-export v2 schemas that don't change
-export {
-	IdSchema,
-	NameSchema,
-	PointsSchema,
-	PercentageSchema,
-	ShareMapSchema,
-	ITCIdSchema,
-	ITCEventSchema,
-	ITCStampSchema,
-	ResourceMetadataSchema,
-	NodeDataStorageSchema,
-	NonRootNodeSchema,
-	RootNodeSchema,
-	NodeSchema
-} from '../v2/schemas';
+// ═══════════════════════════════════════════════════════════════════
+// CORE SCHEMAS (from v2, made independent)
+// ═══════════════════════════════════════════════════════════════════
 
-// Re-export v2 types that don't change
-export type {
-	ShareMap,
-	ITCId,
-	ITCEvent,
-	ITCStamp,
-	ResourceMetadata,
-	NodeDataStorage,
-	NonRootNode,
-	RootNode,
-	Node
-} from '../v2/schemas';
+export const IdSchema = z.string().min(1);
+export const NameSchema = z.string().min(1);
+export const PointsSchema = z.number().gte(0);
+export const PercentageSchema = z.number().gte(0).lte(1);
+
+/**
+ * ShareMap - Maps entity IDs to their percentage shares
+ * Used for recognition and allocation calculations
+ */
+export const ShareMapSchema = z.record(IdSchema, PercentageSchema);
+
+export type ShareMap = z.infer<typeof ShareMapSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// ITC CAUSALITY SCHEMAS (Replaces Vector Clocks)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * ITC Id Component
+ * Can be: 0 (null), 1 (full), or {l, r} (split)
+ */
+export const ITCIdSchema: z.ZodType<0 | 1 | { l: any; r: any }> = z.union([
+	z.literal(0),
+	z.literal(1),
+	z.lazy(() => z.object({
+		l: ITCIdSchema,
+		r: ITCIdSchema
+	}))
+]);
+
+/**
+ * ITC Event Component
+ * Can be: number (counter) or {n, l, r} (tree node)
+ */
+export const ITCEventSchema: z.ZodType<number | { n: number; l: any; r: any }> = z.union([
+	z.number(),
+	z.lazy(() => z.object({
+		n: z.number(),
+		l: ITCEventSchema,
+		r: ITCEventSchema
+	}))
+]);
+
+/**
+ * ITC Stamp - Compact causality tracking
+ * Replaces VectorClock with O(log n) space complexity
+ */
+export const ITCStampSchema = z.object({
+	id: ITCIdSchema,
+	event: ITCEventSchema
+});
+
+export type ITCId = z.infer<typeof ITCIdSchema>;
+export type ITCEvent = z.infer<typeof ITCEventSchema>;
+export type ITCStamp = z.infer<typeof ITCStampSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// RESOURCE METADATA
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Resource Metadata - Common fields for slots, capacities, needs
+ */
+export const ResourceMetadataSchema = z.object({
+	name: z.string(),
+	emoji: z.optional(z.string()),
+	unit: z.optional(z.string()),
+	description: z.optional(z.string()),
+	resource_type: z.optional(z.string()),
+	filter_rule: z.optional(z.nullable(z.any())),
+	hidden_until_request_accepted: z.optional(z.boolean())
+});
+
+export type ResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// TREE SCHEMAS (for recognition and priority trees)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Node Data Storage - Reactive Store Pattern for Tree Nodes
+ * 
+ * Each node becomes a mini-store that can:
+ * - Store typed data (validated with schema)
+ * - Track its Holster subscription path
+ * - Maintain sync timestamps
+ * - Manage loading/persisting state
+ * - Subscribe to specific network data
+ */
+export const NodeDataStorageSchema = z.object({
+	/** Arbitrary data stored at this node */
+	data: z.optional(z.any()),
+	
+	/** Holster path this node subscribes to */
+	holster_path: z.optional(z.string()),
+	
+	/** Schema type identifier for validation */
+	data_schema_type: z.optional(z.string()),
+	
+	/** Timestamp when this node's data was last updated locally */
+	data_updated_at: z.optional(z.number().int().positive()),
+	
+	/** Whether this node is currently loading data from network */
+	is_loading: z.optional(z.boolean()),
+	
+	/** Whether this node is currently persisting data to network */
+	is_persisting: z.optional(z.boolean()),
+	
+	/** Last network timestamp seen (for conflict resolution) */
+	last_network_timestamp: z.optional(z.number().int().positive()),
+	
+	/** Whether to auto-persist changes to this node's data */
+	auto_persist: z.optional(z.boolean().default(true)),
+	
+	/** Debounce time for persistence (ms) */
+	persist_debounce_ms: z.optional(z.number().gte(0).default(0)),
+	
+	/** Optional pubkey to subscribe to (if subscribing to another user's data) */
+	subscribe_to_user: z.optional(z.string()),
+	
+	/** Custom comparison function name for equality checking */
+	equality_check: z.optional(z.string())
+});
+
+/**
+ * Non-Root Node - Represents a node in a recognition/priority tree
+ */
+export const NonRootNodeSchema = z.object({
+	id: IdSchema,
+	name: NameSchema,
+	type: z.literal('NonRootNode'),
+	manual_fulfillment: z.nullable(z.number()),
+	children: z.array(z.any()), // Recursive reference
+	points: PointsSchema,
+	parent_id: IdSchema,
+	contributor_ids: z.array(IdSchema),
+	anti_contributors_ids: z.array(IdSchema),
+	storage: z.optional(NodeDataStorageSchema)
+});
+
+/**
+ * Root Node - Top-level node of a recognition/priority tree
+ */
+export const RootNodeSchema = z.object({
+	id: IdSchema,
+	name: NameSchema,
+	type: z.literal('RootNode'),
+	manual_fulfillment: z.nullable(z.number()),
+	children: z.array(z.any()), // Recursive reference
+	created_at: z.string(),
+	updated_at: z.string(),
+	storage: z.optional(NodeDataStorageSchema)
+});
+
+/**
+ * Node - Union type for any node in a tree
+ */
+export const NodeSchema = z.union([RootNodeSchema, NonRootNodeSchema]);
+
+export type NodeDataStorage = z.infer<typeof NodeDataStorageSchema>;
+export type NonRootNode = z.infer<typeof NonRootNodeSchema>;
+export type RootNode = z.infer<typeof RootNodeSchema>;
+export type Node = z.infer<typeof NodeSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // NEED TYPE SYSTEM
@@ -73,6 +211,135 @@ export const NeedTypeSchema = z.object({
 export type NeedType = z.infer<typeof NeedTypeSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
+// AVAILABILITY WINDOW SYSTEM (for precise recurrence matching)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Time Range within a day
+ * Example: { start_time: '09:00', end_time: '17:00' }
+ */
+export const TimeRangeSchema = z.object({
+	start_time: z.string(), // HH:MM format
+	end_time: z.string()     // HH:MM format
+});
+
+export type TimeRange = z.infer<typeof TimeRangeSchema>;
+
+/**
+ * Days of the week (for weekly/monthly recurrence)
+ */
+export const DayOfWeekSchema = z.enum([
+	'monday',
+	'tuesday', 
+	'wednesday',
+	'thursday',
+	'friday',
+	'saturday',
+	'sunday'
+]);
+
+export type DayOfWeek = z.infer<typeof DayOfWeekSchema>;
+
+/**
+ * Day Schedule - Associates specific days with specific time ranges
+ * 
+ * This allows expressing patterns like:
+ * - "Monday & Friday: 9am-12pm, Tuesday: 2pm-5pm"
+ * - "Weekends: 10am-6pm, Weekdays: 9am-5pm"
+ */
+export const DayScheduleSchema = z.object({
+	days: z.array(DayOfWeekSchema),
+	time_ranges: z.array(TimeRangeSchema)
+});
+
+export type DaySchedule = z.infer<typeof DayScheduleSchema>;
+
+/**
+ * Week Schedule - Associates specific weeks of a month with day/time patterns
+ * 
+ * Allows expressing:
+ * - "First and third week: Monday-Friday 9-5"
+ * - "Second week: Tuesday only 2-4"
+ */
+export const WeekScheduleSchema = z.object({
+	weeks: z.array(z.number().int().min(1).max(5)),  // 1-5 (which weeks)
+	day_schedules: z.array(DayScheduleSchema)
+});
+
+export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;
+
+/**
+ * Month Schedule - Associates a specific month with week/day/time patterns
+ * 
+ * Allows expressing:
+ * - "February: all weeks, Monday/Wednesday 9-12"
+ * - "September: first week only, all weekdays 10-5"
+ * - "October: second week Tuesday 2-4, fourth week Monday/Wednesday 9-12"
+ */
+export const MonthScheduleSchema = z.object({
+	month: z.number().int().min(1).max(12),  // 1-12 (January-December)
+	
+	// OPTION 1: Week-specific patterns within this month (most flexible)
+	week_schedules: z.array(WeekScheduleSchema).optional(),
+	
+	// OPTION 2: Simple day schedules for all weeks in this month
+	day_schedules: z.array(DayScheduleSchema).optional(),
+	
+	// OPTION 3: Same times every day, all weeks in this month
+	time_ranges: z.array(TimeRangeSchema).optional()
+});
+
+export type MonthSchedule = z.infer<typeof MonthScheduleSchema>;
+
+/**
+ * Availability Window - Hierarchical definition of recurring availability
+ * 
+ * THREE LEVELS OF SPECIFICITY:
+ * 
+ * LEVEL 1 (Most Specific): Month-specific patterns
+ *   month_schedules: [
+ *     { month: 2, day_schedules: [...] },           // February: specific days/times
+ *     { month: 9, week_schedules: [                 // September: week-specific
+ *       { weeks: [1], day_schedules: [...] }
+ *     ]},
+ *     { month: 10, week_schedules: [                // October: multiple week patterns
+ *       { weeks: [2], day_schedules: [{ days: ['tuesday'], ... }] },
+ *       { weeks: [4], day_schedules: [...] }
+ *     ]}
+ *   ]
+ * 
+ * LEVEL 2 (Week-Specific): Week/day patterns (no month distinction)
+ *   week_schedules: [
+ *     { weeks: [1, 3], day_schedules: [...] }       // First & third week
+ *   ]
+ * 
+ * LEVEL 3 (Simple): Day patterns (all weeks, all months)
+ *   day_schedules: [
+ *     { days: ['monday', 'friday'], time_ranges: [...] }
+ *   ]
+ * 
+ * LEVEL 4 (Simplest): Time ranges (all days, all weeks, all months)
+ *   time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+ * 
+ * Priority: month_schedules > week_schedules > day_schedules > time_ranges
+ */
+export const AvailabilityWindowSchema = z.object({
+	// LEVEL 1: Month-specific patterns (for yearly recurrence)
+	month_schedules: z.array(MonthScheduleSchema).optional(),
+	
+	// LEVEL 2: Week-specific patterns (for monthly recurrence)
+	week_schedules: z.array(WeekScheduleSchema).optional(),
+	
+	// LEVEL 3: Day-specific patterns (for weekly/daily recurrence)
+	day_schedules: z.array(DayScheduleSchema).optional(),
+	
+	// LEVEL 4: Simple time ranges (same for all days/weeks/months)
+	time_ranges: z.array(TimeRangeSchema).optional()
+});
+
+export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
 // MULTI-DIMENSIONAL SLOTS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -87,6 +354,10 @@ export const AvailabilitySlotSchema = z.object({
 	// REQUIRED: Type specification for multi-dimensional framework
 	need_type_id: z.string().min(1), // k in C_j^k(t)
 	
+	// Divisibility constraints (prevents over-fragmentation)
+	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
+	max_percentage_div: PercentageSchema.optional(), // Max % divisibility (e.g., can't give less than 10%)
+	
 	// Resource metadata
 	name: z.string(),
 	emoji: z.string().optional(),
@@ -100,18 +371,19 @@ export const AvailabilitySlotSchema = z.object({
 	advance_notice_hours: z.number().gte(0).optional(),
 	booking_window_hours: z.number().gte(0).optional(),
 	
-	// Time pattern
-	all_day: z.boolean().optional(),
-	recurrence: z.string().nullable().optional(),
-	custom_recurrence_repeat_every: z.number().nullable().optional(),
-	custom_recurrence_repeat_unit: z.string().nullable().optional(),
-	custom_recurrence_end_type: z.string().nullable().optional(),
-	custom_recurrence_end_value: z.string().nullable().optional(),
-	start_date: z.string().nullable().optional(),
-	start_time: z.string().nullable().optional(),
-	end_date: z.string().nullable().optional(),
-	end_time: z.string().nullable().optional(),
+	// Recurrence pattern
+	recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+	
+	// Date range (for one-time slots or to bound recurring patterns)
+	start_date: z.string().nullable().optional(),  // ISO date string
+	end_date: z.string().nullable().optional(),    // ISO date string (for recurring, when pattern ends)
+	
+	// Timezone
 	time_zone: z.string().optional(),
+	
+	// Structured availability window (REQUIRED for recurring, optional for one-time)
+	// Defines exactly when during each recurrence period the slot is available
+	availability_window: AvailabilityWindowSchema.optional(),
 	
 	// Location
 	location_type: z.string().optional(),
@@ -143,6 +415,10 @@ export const NeedSlotSchema = z.object({
 	// REQUIRED: Type specification for multi-dimensional framework
 	need_type_id: z.string().min(1), // k in N_i^k(t)
 	
+	// Divisibility constraints (prevents over-fragmentation)
+	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
+	max_percentage_div: PercentageSchema.optional(), // Max % divisibility (e.g., can't accept less than 10%)
+	
 	// Resource metadata
 	name: z.string(),
 	emoji: z.string().optional(),
@@ -156,18 +432,19 @@ export const NeedSlotSchema = z.object({
 	advance_notice_hours: z.number().gte(0).optional(),
 	booking_window_hours: z.number().gte(0).optional(),
 	
-	// Time pattern
-	all_day: z.boolean().optional(),
-	recurrence: z.string().nullable().optional(),
-	custom_recurrence_repeat_every: z.number().nullable().optional(),
-	custom_recurrence_repeat_unit: z.string().nullable().optional(),
-	custom_recurrence_end_type: z.string().nullable().optional(),
-	custom_recurrence_end_value: z.string().nullable().optional(),
-	start_date: z.string().nullable().optional(),
-	start_time: z.string().nullable().optional(),
-	end_date: z.string().nullable().optional(),
-	end_time: z.string().nullable().optional(),
+	// Recurrence pattern
+	recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
+	
+	// Date range (for one-time needs or to bound recurring patterns)
+	start_date: z.string().nullable().optional(),  // ISO date string
+	end_date: z.string().nullable().optional(),    // ISO date string (for recurring, when pattern ends)
+	
+	// Timezone
 	time_zone: z.string().optional(),
+	
+	// Structured availability window (REQUIRED for recurring, optional for one-time)
+	// Defines exactly when the need occurs during each recurrence period
+	availability_window: AvailabilityWindowSchema.optional(),
 	
 	// Location
 	location_type: z.string().optional(),
@@ -189,30 +466,33 @@ export const NeedSlotSchema = z.object({
 export type NeedSlot = z.infer<typeof NeedSlotSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
-// MULTI-DIMENSIONAL RECOGNITION
+// GLOBAL RECOGNITION (PURE MODEL)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Type-Specific Recognition Weights
- * R_A^k(B) for each need type k
+ * Global Recognition Weights
+ *
+ * R_A(B) = A's global recognition of B as community member
+ * Constraint: Σ_i R_A(i) = 1.0
+ *
+ * Computed from recognition trees (see protocol.ts sharesOfGeneralFulfillmentMap)
+ * Trees naturally encode type-specific preferences through their structure.
+ *
+ * Example:
+ *   MyRecognitionTree
+ *   ├─ Healthcare (70 points)
+ *   │  └─ Dr. Smith contributes → 0.56 global share
+ *   └─ Food (30 points)
+ *      └─ Alice contributes → 0.24 global share
+ *
+ * Result: { dr_smith_pub: 0.56, alice_pub: 0.24, ... }
  */
-export const TypeSpecificRecognitionSchema = z.object({
-	need_type_id: z.string().min(1),
-	weights: z.record(z.string(), z.number().nonnegative()) // pubKey -> R_A^k(B)
-});
-
-export type TypeSpecificRecognition = z.infer<typeof TypeSpecificRecognitionSchema>;
-
-/**
- * Multi-Dimensional Recognition Weights
- * Map from need type to recognition weights
- */
-export const MultiDimensionalRecognitionSchema = z.record(
-	z.string(), // need_type_id
-	z.record(z.string(), z.number().nonnegative()) // pubKey -> weight
+export const GlobalRecognitionWeightsSchema = z.record(
+	z.string(), // pubKey
+	z.number().nonnegative() // global recognition weight
 );
 
-export type MultiDimensionalRecognition = z.infer<typeof MultiDimensionalRecognitionSchema>;
+export type GlobalRecognitionWeights = z.infer<typeof GlobalRecognitionWeightsSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-DIMENSIONAL DAMPING
@@ -252,25 +532,26 @@ export type MultiDimensionalDamping = z.infer<typeof MultiDimensionalDampingSche
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Commitment - Pure Multi-Dimensional Framework
- * 
- * v4 Pure Implementation:
- * - All slots have required need_type_id
- * - Recognition weights organized by type
+ * Commitment - Pure Global Recognition Model
+ *
+ * v5 Implementation:
+ * - All slots have required need_type_id for type-specific allocation
+ * - Global recognition: MR(A, B) = min(R_A(B), R_B(A)) - same for all types
+ * - Type preferences expressed through recognition tree structure (protocol.ts)
  * - Per-type damping factors and history
- * - No backward compatibility layers
  */
 export const CommitmentSchema = z.object({
 	// Multi-dimensional capacity & needs (slot-native)
 	capacity_slots: z.array(AvailabilitySlotSchema).optional(),
 	need_slots: z.array(NeedSlotSchema).optional(),
 	
-	// Type-specific recognition (R_A^k)
-	recognition_weights_by_type: MultiDimensionalRecognitionSchema.optional(),
-	mr_values_by_type: MultiDimensionalRecognitionSchema.optional(),
+	// Global recognition: MR(A, B) = min(R_A(B), R_B(A))
+	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
+	global_recognition_weights: GlobalRecognitionWeightsSchema.optional(),
+	global_mr_values: GlobalRecognitionWeightsSchema.optional(),
 	
 	// Causality tracking (ITC)
-	itcStamp: z.any(), // ITCStampSchema imported from v2
+	itcStamp: z.any(), // ITCStampSchema
 	timestamp: z.number().int().positive(),
 	
 	// Per-type adaptive damping (α_k)
@@ -486,7 +767,12 @@ export const ConvergenceMetricsSchema = z.object({
 	percentNeedsMet: z.number().min(0).max(100),              // % across all types
 	
 	// Freedom metric (E45' - Frobenius norm)
-	freedomMetric: z.number().nonnegative()                   // lim(t→∞) ||N⃗⃗(t)||_F
+	freedomMetric: z.number().nonnegative(),                   // lim(t→∞) ||N⃗⃗(t)||_F
+	
+	// Additional distribution metrics (detect edge cases)
+	maxPersonNeed: z.number().nonnegative().optional(),        // Worst-case participant ||N⃗_i||
+	needVariance: z.number().nonnegative().optional(),         // Distribution inequality
+	peopleStuck: z.number().int().nonnegative().optional()     // How many with unchanging needs
 });
 
 export type ConvergenceMetrics = z.infer<typeof ConvergenceMetricsSchema>;
@@ -541,6 +827,54 @@ export function parseConvergenceMetrics(data: unknown): ConvergenceMetrics | nul
 		return null;
 	}
 	return result.data;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RECOGNITION HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Normalize global recognition weights to sum to 1.0
+ * 
+ * CRITICAL: If all weights are zero, returns empty object (no recognition)
+ * This respects explicit non-recognition rather than auto-assigning equal weights
+ */
+export function normalizeGlobalRecognitionWeights(
+	weights: GlobalRecognitionWeights
+): GlobalRecognitionWeights {
+	const entries = Object.entries(weights);
+
+	if (entries.length === 0) {
+		return {};
+	}
+
+	const sum = entries.reduce((acc, [_, weight]) => acc + weight, 0);
+
+	// If sum is zero or very small, return empty (explicit non-recognition)
+	// DO NOT auto-assign equal weights - zero means zero!
+	if (sum < 0.0001) {
+		console.warn('[NORMALIZE] All recognition weights are zero or near-zero - treating as no recognition');
+		return {}; // Respect explicit non-recognition
+	}
+
+	// Normalize to sum to 1.0
+	const normalized: GlobalRecognitionWeights = {};
+	for (const [key, weight] of entries) {
+		normalized[key] = weight / sum;
+	}
+
+	return normalized;
+}
+
+/**
+ * Validate that recognition weights sum to 1.0 (within epsilon)
+ */
+export function validateGlobalRecognitionWeights(
+	weights: GlobalRecognitionWeights,
+	epsilon: number = 0.001
+): boolean {
+	const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+	return Math.abs(sum - 1.0) < epsilon;
 }
 
 

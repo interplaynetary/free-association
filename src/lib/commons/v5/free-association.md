@@ -11,10 +11,11 @@ How Mutual Aid Can Work at Scale Without Markets or States
 
 You divide your recognition among the people whose contributions matter to you. Think of it like: "Of all the people helping me live well, how much does each person contribute?"
 
-**Examples:**
-- Alice recognizes Bob (30%), Carol (50%), Dave (20%) for food support
-- Bob recognizes Alice (40%), Eve (60%) for healthcare
-- These percentages add up to 100% for each person and each type of need
+**Example:**
+- You recognize Alice (40%), Bob (35%), Carol (25%)
+- These percentages add up to 100% total
+
+**How do you arrive at these recognition percentages?** Through a **contribution tree** that tracks who helps you with what. More on this below.
 
 ### What is Mutual Recognition?
 
@@ -31,6 +32,43 @@ You divide your recognition among the people whose contributions matter to you. 
 
 This is symmetric: Mutual-Recognition(Alice, Bob) = Mutual-Recognition(Bob, Alice)
 
+**Self-Recognition is Valid:**
+- You can have mutual recognition with yourself!
+- Example: "I have capacity Tuesday, but I need it Wednesday"
+- You allocate to your future self based on your self-recognition
+- This enables personal time-shifting of resources
+
+**Key insight:** Mutual recognition is **global** - it's the same value regardless of whether you're allocating food, healthcare, or housing. The recognition itself measures your social relationship, not the specific type of help.
+
+### How Recognition Trees Work
+
+Your recognition is organized as a **contribution tree** - a structure that tracks who helps you with what.
+
+**Example tree:**
+
+```
+My Contributions (100%)
+├─ Healthcare Contributions (70 points)
+│  ├─ Dr. Smith's work (80 points)
+│  └─ Nurse Jane's work (20 points)
+└─ Food Contributions (30 points)
+   ├─ Alice's meals (50 points)
+   └─ Bob's groceries (50 points)
+```
+
+**How this becomes recognition:**
+
+The system calculates each person's share based on their contribution points:
+
+- **Dr. Smith**: 70% × (80/100) = 56% of your total recognition
+- **Nurse Jane**: 70% × (20/100) = 14% of your total recognition
+- **Alice**: 30% × (50/100) = 15% of your total recognition
+- **Bob**: 30% × (50/100) = 15% of your total recognition
+
+**Result:** You recognize Dr. Smith (56%), Alice (15%), Bob (15%), Nurse Jane (14%)
+
+**This is global recognition** - these percentages stay the same whether you're allocating food, healthcare, or housing. The tree structure naturally encodes that Dr. Smith contributes more to your well-being (mostly through healthcare), so they get a higher share of your recognition overall.
+
 ### Types of Needs
 
 Not all needs are the same. The system tracks different **Need-Types**:
@@ -41,12 +79,29 @@ Not all needs are the same. The system tracks different **Need-Types**:
 - Transportation (rides, access)
 - Childcare (hours of care)
 
-**Your-Recognition-by-Type** = You can recognize different people for different types of needs
+**Each need type is tracked independently**, but your recognition of people is **global** (same across all types). The tree structure above shows how type-specific contributions naturally produce global recognition weights.
 
-**Example:**
-- You recognize Dr. Smith 80% for healthcare, but 0% for food
-- You recognize the community kitchen 70% for food, but 0% for healthcare
-- Each type of recognition adds up to 100% separately
+### Why Global Recognition Works
+
+You might wonder: "If Dr. Smith mainly helps with healthcare and Alice mainly helps with food, shouldn't my mutual recognition with them be different for healthcare vs food?"
+
+**No - and here's why:**
+
+**Mutual recognition measures your social relationship**, not the specific type of resource being allocated.
+
+When Dr. Smith gets 56% of your recognition (from the tree structure), that's because they contribute 56% to your well-being overall - mostly through healthcare. When you allocate food, Dr. Smith still has that 56% recognition because that's your social relationship.
+
+**The key insight:** The tree structure already captured that Dr. Smith contributes mostly through healthcare (70 points in healthcare, 0 in food). So Dr. Smith's high recognition (56%) naturally reflects their healthcare contributions, even though the recognition itself is global.
+
+**What happens when allocating different resources?**
+
+- **Allocating healthcare**: Dr. Smith (56% MR) is in the mutual tier, gets priority
+- **Allocating food**: Dr. Smith (56% MR) is in the mutual tier, gets priority (but might not need food)
+- **Allocating housing**: Dr. Smith (56% MR) is in the mutual tier, gets priority (if they need housing)
+
+The **same mutual recognition** is used for all types. Dr. Smith's high recognition reflects their overall contribution to your well-being, and they have priority in receiving from you regardless of resource type - because that's what mutual aid means.
+
+If Dr. Smith doesn't need food when you're allocating food, they simply won't receive any (needs-based allocation prevents accumulation). But if they do need food, your strong mutual relationship means they get priority - just as they would for any other need.
 
 ---
 
@@ -71,23 +126,41 @@ When someone has capacity to give, the system prioritizes in two tiers:
 
 **Provider's-Available-Capacity** = How much they can give right now
 
-**Step 1: Calculate Mutual Recognition Share**
+**Step 1: Filter Recipients (Critical for Correct Allocation)**
+
+**Who Gets Considered?**
+- Only people who have **compatible slots** with the provider's capacity slot
+- **Compatible means**: Time windows overlap + Location matches + Type matches
+- Only people who have **mutual recognition** with the provider
+
+**This filtering is crucial:** 
+- If the Kitchen offers "Tuesday 2-4pm, 100 meals", we don't allocate to someone who needs "Wednesday meals"
+- Even though they both "need food", their time windows don't overlap
+- We only consider recipients whose need slots are actually compatible (space-time-type match)
+
+**Example:**
+- Kitchen offers: "Tuesday 2-4pm, Downtown, 100 meals"
+- Alice needs: "Tuesday 3-5pm, Downtown, 40 meals" → ✅ Compatible (time overlaps)
+- Bob needs: "Wednesday 2-4pm, Downtown, 30 meals" → ❌ Not compatible (wrong day)
+- Only Alice gets considered for allocation
+
+**Step 2: Calculate Mutual Recognition Share (Filtered Normalization)**
 
 **Your-Mutual-Recognition-Share** = 
 - Your Mutual-Recognition with Provider
-- Divided by the sum of Provider's Mutual-Recognition with everyone
+- Divided by the sum of Provider's Mutual-Recognition with everyone **who passed the filter in Step 1**
 
-This means: "Out of all the people this provider mutually recognizes, what fraction is your relationship?"
+This means: "Out of all the people this provider mutually recognizes **who need this type of resource**, what fraction is your relationship?"
 
-**Step 2: Calculate Your Portion**
+**Step 3: Calculate Your Portion**
 
 **Your-Raw-Allocation** = 
 - Provider's Available Capacity
-- Times Your Mutual-Recognition Share
+- Times Your Mutual-Recognition Share (from Step 2)
 - Times Your Active Need
-- Divided by the sum of (everyone's Active Need × their Mutual-Recognition Share)
+- Divided by the sum of (everyone's Active Need × their Mutual-Recognition Share) **from the filtered set**
 
-**Step 3: Cap at Your Need**
+**Step 4: Cap at Your Need**
 
 **Your-Final-Allocation** = minimum(Your-Raw-Allocation, Your-Actual-Need)
 
@@ -103,22 +176,57 @@ This means: "Out of all the people this provider mutually recognizes, what fract
 - Bob needs 30 meals  
 - Carol needs 50 meals
 
-**Mutual Recognition (simplified to one type: food):**
-- Kitchen ↔ Alice: 50% mutual
-- Kitchen ↔ Bob: 30% mutual
-- Kitchen ↔ Carol: 20% mutual
+**The Kitchen's Recognition Tree:**
+```
+Kitchen's Contributors (100%)
+├─ Food Prep & Delivery (60%)
+│  ├─ Alice's work (50%)
+│  └─ Bob's work (50%)
+└─ Equipment & Supplies (40%)
+   └─ Carol's work (100%)
+```
+
+**This produces global recognition:**
+- Kitchen recognizes Alice: 60% × 50% = 30%
+- Kitchen recognizes Bob: 60% × 50% = 30%
+- Kitchen recognizes Carol: 40% × 100% = 40%
+
+**Assume each person also recognizes the Kitchen:**
+- Alice → Kitchen: 50%
+- Bob → Kitchen: 60%
+- Carol → Kitchen: 80%
+
+**Mutual Recognition (global - same for all resource types):**
+- Kitchen ↔ Alice: min(30%, 50%) = 30% mutual
+- Kitchen ↔ Bob: min(30%, 60%) = 30% mutual
+- Kitchen ↔ Carol: min(40%, 80%) = 40% mutual
 
 **Calculation:**
-1. Total mutual recognition = 50% + 30% + 20% = 100%
-2. Alice's share = 50% of 100 meals = 50 meals... but she only needs 40, so she gets 40
+1. Total mutual recognition = 30% + 30% + 40% = 100%
+2. Alice's share = 30% of 100 meals = 30 meals (she needs 40, so gets 30)
 3. Bob's share = 30% of 100 meals = 30 meals (exactly his need)
-4. Carol's share = 20% of 100 meals = 20 meals... but she needs 50
+4. Carol's share = 40% of 100 meals = 40 meals (she needs 50, so gets 40)
+
+**After Tier 1:** Alice still needs 10 meals, Carol still needs 10 meals
 
 **Tier 2 (if the kitchen has non-mutual recognition):**
-- Remaining capacity = 100 - 40 - 30 = 30 meals
-- Carol gets up to 30 more meals from Tier 2 (if kitchen recognizes her)
+- Remaining capacity = 100 - 30 - 30 - 40 = 0 meals
+- No remaining capacity in this example
 
-**Result:** Everyone's needs are met (or get closer to being met) without money, prices, or central planning.
+**If there were remaining capacity**, Tier 2 would work like this:
+
+**Tier 2 Filtered Normalization:**
+1. **Filter:** Only people the Kitchen recognizes (one-way, not mutual) **who need food**
+2. **Normalize:** Sum Kitchen's recognition of these filtered recipients
+3. **Allocate:** Distribute remaining capacity using the same formula, but with recognition instead of mutual recognition
+
+**Example:** If Dave needs 20 meals but has no mutual recognition with Kitchen:
+- Kitchen recognizes Dave: 20%
+- If 10 meals remain after Tier 1:
+- Dave gets allocated from this remaining pool (along with others in Tier 2)
+- Same filtered normalization: only Dave and others Kitchen recognizes who need food
+
+**Result:** Everyone got their fair share based on mutual recognition, without money, prices, or central planning. The tree structure encoded the kitchen's recognition (30% each for Alice and Bob based on food work, 40% for Carol based on equipment contribution), and the same global MR values were used regardless of what's being allocated.
 
 ---
 
@@ -257,9 +365,14 @@ At equilibrium (when everyone's needs are zero):
 ### Time, Location, and Type Matching
 
 **Slot** = A specific offering or need with:
-- A time window (e.g., "Tuesday 2-4pm")
+- A time window (e.g., "Tuesday 2-4pm", "Every Monday in February", "First week of September")
 - A location (e.g., "Downtown clinic" or "Online")
 - A type (e.g., "Healthcare consultation")
+
+**Time windows can be simple or complex:**
+- Simple: "Tuesday 2-4pm" (one-time or recurring)
+- Complex: "Every February Mon-Fri 9-5, plus first week of September"
+- The system handles any pattern: yearly, monthly, weekly, daily, or combinations
 
 **Slots-are-Compatible** when:
 - Time windows overlap
@@ -356,7 +469,41 @@ At equilibrium (when everyone's needs are zero):
 - Community = the web of mutual recognition relationships
 - Not based on property ("who owns what")
 - Based on contribution ("who helps whom")
-- Multi-dimensional (different recognition for different types of help)
+- Global recognition captures your overall contribution
+- Tree structure tracks specific types of help naturally
+
+**The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
+
+Self-actualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
+
+Let:
+True is not False, False is not True
+
+(Recognition does not need to be true/false in a binary sense but the question is what % of this recognition is true. This % does not take the form of a reified proposition.)
+
+True-Recognition(You): Recognition that, when acted upon, reliably leads to the enhancement of your self-actualization (as defined by you) by connecting you with capacities that genuinely contribute to it. It is validated by positive material and social outcomes.
+
+False-Recognition(You): Recognition that, when acted upon, fails to connect you with the necessary capacities or connects you with harmful ones, thereby undermining your self-actualization. It is invalidated by negative material and social outcomes (like hunger, in the example).
+
+In essence, the truth or falsity is a function of the recognition's practical efficacy in the real world, as experienced by the individual in pursuit of their goals. It is not about correspondence with a statement but about successful navigation of the material-social environment.
+
+```
+For any participant:
+Total Recognition = 100%
+Total Recognition = True-Recognition + False-Recognition
+   ∴ ↑False-Recognition = ↓True-Recognition
+      ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
+         ∴ ↓Shares of Actually-Beneficial-Capacities 
+         from Actually-Beneficial-Contributors
+            ∴ ↓Real-Social-Material-Basis for Self-Actualization
+               ∴ Social-Material-Truth is processually realized in Free-Association 
+               by processual social-material negation of False-Recognition
+```
+
+This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to actually-beneficial-contributors and their surplus-capacities.
+
+Systems built on falsehood eventually collapse, they can't sustain themselves because they starve the very thing that makes them thrive, genuine connection and collaboration.
+
 
 ---
 

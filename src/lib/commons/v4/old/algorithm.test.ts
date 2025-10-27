@@ -62,9 +62,9 @@ import type {
 	PerTypeDampingHistoryEntry,
 	NeedSlot,
 	AvailabilitySlot
-} from './schemas';
+} from '../../v5/schemas';
 
-import { seed as itcSeed } from '../utils/itc';
+import { seed as itcSeed } from '../../utils/itc';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS
@@ -1326,6 +1326,1281 @@ describe('Integration: Multi-Dimensional Scenarios', () => {
 		ratios.forEach(ratio => {
 			expect(ratio).toBeLessThan(1);
 		});
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 13: HIERARCHICAL AVAILABILITY WINDOWS (v5 - New Time System)
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Hierarchical Availability Windows (v5 Time System)', () => {
+	it('should match slots with simple daily time ranges', () => {
+		// Provider available daily 9am-5pm
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('consulting', 10),
+				recurrence: 'daily',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '09:00', end_time: '17:00' }
+					]
+				}
+			}
+		]);
+		
+		// Need on a specific Monday 10am-12pm (falls within provider's daily 9-5)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('consulting', 5),
+				start_date: '2024-03-04', // Monday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'consulting': { 'recipient': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'consulting': { 'recipient': 1.0 }
+		};
+		
+		const networkCommitments: Record<string, Commitment> = {
+			'recipient': needCommitment
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			networkCommitments
+		);
+		
+		// Should match because need time (10-12) falls within provider availability (9-5)
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+		const total = result.recipient_totals_by_type?.consulting?.recipient || 0;
+		expect(total).toBeGreaterThan(0);
+	});
+	
+	it('should match slots with day-specific schedules', () => {
+		// Provider available Mon/Wed/Fri 9am-5pm
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('tutoring', 10),
+				recurrence: 'weekly',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday', 'wednesday', 'friday'],
+							time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Need on Monday 10am-12pm (matches)
+		const needCommitmentMatch = createTestCommitment([
+			{
+				...createNeedSlot('tutoring', 5),
+				start_date: '2024-03-04', // Monday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		// Need on Tuesday 10am-12pm (does NOT match - provider not available Tuesday)
+		const needCommitmentNoMatch = createTestCommitment([
+			{
+				...createNeedSlot('tutoring', 5),
+				start_date: '2024-03-05', // Tuesday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		// Test match case
+		const networkCommitments1: Record<string, Commitment> = {
+			'student': needCommitmentMatch
+		};
+		
+		const result1 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			networkCommitments1
+		);
+		
+		expect(result1.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test no-match case
+		const networkCommitments2: Record<string, Commitment> = {
+			'student': needCommitmentNoMatch
+		};
+		
+		const result2 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			networkCommitments2
+		);
+		
+		// Should NOT match - Tuesday not in provider's schedule
+		expect(result2.slot_allocations.length).toBe(0);
+	});
+	
+	it('should match slots with different times on different days', () => {
+		// Provider: Monday/Friday 9-12, Tuesday 2-5
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('counseling', 10),
+				recurrence: 'weekly',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday', 'friday'],
+							time_ranges: [{ start_time: '09:00', end_time: '12:00' }]
+						},
+						{
+							days: ['tuesday'],
+							time_ranges: [{ start_time: '14:00', end_time: '17:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Need on Monday 10-11 (matches - Monday 9-12)
+		const needMonday = createTestCommitment([
+			{
+				...createNeedSlot('counseling', 3),
+				start_date: '2024-03-04', // Monday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '11:00' }
+					]
+				}
+			}
+		]);
+		
+		// Need on Tuesday 15-16 (matches - Tuesday 2-5)
+		const needTuesday = createTestCommitment([
+			{
+				...createNeedSlot('counseling', 3),
+				start_date: '2024-03-05', // Tuesday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '15:00', end_time: '16:00' }
+					]
+				}
+			}
+		]);
+		
+		// Need on Monday 15-16 (does NOT match - Monday only 9-12)
+		const needMondayAfternoon = createTestCommitment([
+			{
+				...createNeedSlot('counseling', 3),
+				start_date: '2024-03-04', // Monday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '15:00', end_time: '16:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'counseling': { 'client': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'counseling': { 'client': 1.0 }
+		};
+		
+		// Test Monday morning (should match)
+		const result1 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needMonday }
+		);
+		expect(result1.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test Tuesday afternoon (should match)
+		const result2 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needTuesday }
+		);
+		expect(result2.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test Monday afternoon (should NOT match)
+		const result3 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needMondayAfternoon }
+		);
+		expect(result3.slot_allocations.length).toBe(0);
+	});
+	
+	it('should match slots with week-specific monthly patterns', () => {
+		// Provider: First and third week of each month, Monday-Friday 9-5
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('training', 20),
+				recurrence: 'monthly',
+				availability_window: {
+					week_schedules: [
+						{
+							weeks: [1, 3],
+							day_schedules: [
+								{
+									days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+									time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+								}
+							]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Need on first week of month (should match)
+		const needFirstWeek = createTestCommitment([
+			{
+				...createNeedSlot('training', 5),
+				start_date: '2024-03-04', // Monday, first week of March
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		// Need on second week of month (should NOT match)
+		const needSecondWeek = createTestCommitment([
+			{
+				...createNeedSlot('training', 5),
+				start_date: '2024-03-11', // Monday, second week of March
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'training': { 'trainee': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'training': { 'trainee': 1.0 }
+		};
+		
+		// Test first week (should match)
+		const result1 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'trainee': needFirstWeek }
+		);
+		expect(result1.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test second week (should NOT match)
+		const result2 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'trainee': needSecondWeek }
+		);
+		expect(result2.slot_allocations.length).toBe(0);
+	});
+	
+	it('should match slots with complex yearly patterns (specific months/weeks/days)', () => {
+		// Provider: 
+		// - February: all weeks, Mon/Wed/Fri 9-12
+		// - September: first week only, weekdays 10-5
+		// - October: second week Tuesday 2-4, fourth week Mon/Wed 9-12
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('seasonal', 30),
+				recurrence: 'yearly',
+				availability_window: {
+					month_schedules: [
+						{
+							month: 2, // February
+							day_schedules: [
+								{
+									days: ['monday', 'wednesday', 'friday'],
+									time_ranges: [{ start_time: '09:00', end_time: '12:00' }]
+								}
+							]
+						},
+						{
+							month: 9, // September
+							week_schedules: [
+								{
+									weeks: [1],
+									day_schedules: [
+										{
+											days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+											time_ranges: [{ start_time: '10:00', end_time: '17:00' }]
+										}
+									]
+								}
+							]
+						},
+						{
+							month: 10, // October
+							week_schedules: [
+								{
+									weeks: [2],
+									day_schedules: [
+										{
+											days: ['tuesday'],
+											time_ranges: [{ start_time: '14:00', end_time: '16:00' }]
+										}
+									]
+								},
+								{
+									weeks: [4],
+									day_schedules: [
+										{
+											days: ['monday', 'wednesday'],
+											time_ranges: [{ start_time: '09:00', end_time: '12:00' }]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'seasonal': { 'client': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'seasonal': { 'client': 1.0 }
+		};
+		
+		// Test 1: February Wednesday 10-11 (should match - Feb Mon/Wed/Fri 9-12)
+		const needFeb = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-02-07', // Wednesday in February
+				availability_window: {
+					time_ranges: [{ start_time: '10:00', end_time: '11:00' }]
+				}
+			}
+		]);
+		
+		const resultFeb = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needFeb }
+		);
+		expect(resultFeb.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test 2: September first week Tuesday 11-13 (should match - Sept first week weekdays 10-5)
+		const needSept = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-09-03', // Tuesday, first week of September
+				availability_window: {
+					time_ranges: [{ start_time: '11:00', end_time: '13:00' }]
+				}
+			}
+		]);
+		
+		const resultSept = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needSept }
+		);
+		expect(resultSept.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test 3: October second week Tuesday 14:30-15:30 (should match - Oct 2nd week Tue 2-4)
+		const needOct2 = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-10-08', // Tuesday, second week of October
+				availability_window: {
+					time_ranges: [{ start_time: '14:30', end_time: '15:30' }]
+				}
+			}
+		]);
+		
+		const resultOct2 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needOct2 }
+		);
+		expect(resultOct2.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test 4: October fourth week Monday 10-11 (should match - Oct 4th week Mon/Wed 9-12)
+		const needOct4 = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-10-28', // Monday, fourth week of October
+				availability_window: {
+					time_ranges: [{ start_time: '10:00', end_time: '11:00' }]
+				}
+			}
+		]);
+		
+		const resultOct4 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needOct4 }
+		);
+		expect(resultOct4.slot_allocations.length).toBeGreaterThan(0);
+		
+		// Test 5: March (should NOT match - provider not available in March)
+		const needMarch = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-03-15',
+				availability_window: {
+					time_ranges: [{ start_time: '10:00', end_time: '11:00' }]
+				}
+			}
+		]);
+		
+		const resultMarch = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needMarch }
+		);
+		expect(resultMarch.slot_allocations.length).toBe(0);
+		
+		// Test 6: September second week (should NOT match - provider only first week)
+		const needSeptWeek2 = createTestCommitment([
+			{
+				...createNeedSlot('seasonal', 5),
+				start_date: '2024-09-10', // Tuesday, second week of September
+				availability_window: {
+					time_ranges: [{ start_time: '11:00', end_time: '13:00' }]
+				}
+			}
+		]);
+		
+		const resultSeptWeek2 = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needSeptWeek2 }
+		);
+		expect(resultSeptWeek2.slot_allocations.length).toBe(0);
+	});
+	
+	it('should handle recurring needs matching recurring capacity', () => {
+		// Provider: Weekly, Mon/Wed/Fri 9-5
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('therapy', 15),
+				recurrence: 'weekly',
+				start_date: '2024-01-01',
+				end_date: '2024-12-31',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday', 'wednesday', 'friday'],
+							time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Need: Weekly Wednesday 10-11
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('therapy', 8),
+				recurrence: 'weekly',
+				start_date: '2024-01-01',
+				end_date: '2024-12-31',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['wednesday'],
+							time_ranges: [{ start_time: '10:00', end_time: '11:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'therapy': { 'patient': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'therapy': { 'patient': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'patient': needCommitment }
+		);
+		
+		// Should match - both recurring, Wednesday overlaps, time overlaps
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+		const total = result.recipient_totals_by_type?.therapy?.patient || 0;
+		expect(total).toBeGreaterThan(0);
+	});
+	
+	it('should converge with complex time-constrained allocations', () => {
+		// Multi-provider scenario with different availability patterns
+		const provider1 = createTestCommitment([], [
+			{
+				...createCapacitySlot('healthcare', 10),
+				recurrence: 'weekly',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday', 'tuesday'],
+							time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		const provider2 = createTestCommitment([], [
+			{
+				...createCapacitySlot('healthcare', 10),
+				recurrence: 'weekly',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['wednesday', 'thursday', 'friday'],
+							time_ranges: [{ start_time: '09:00', end_time: '17:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Patient needs spread across the week
+		const patientCommitment = createTestCommitment([
+			{
+				...createNeedSlot('healthcare', 5),
+				start_date: '2024-03-04', // Monday
+				availability_window: {
+					time_ranges: [{ start_time: '10:00', end_time: '12:00' }]
+				}
+			},
+			{
+				...createNeedSlot('healthcare', 5),
+				start_date: '2024-03-06', // Wednesday
+				availability_window: {
+					time_ranges: [{ start_time: '14:00', end_time: '16:00' }]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'healthcare': { 'patient': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'healthcare': { 'patient': 1.0 }
+		};
+		
+		const networkCommitments = { 'patient': patientCommitment };
+		
+		let needVector: Record<string, MultiDimensionalNeedState> = {
+			'patient': initializeMultiDimensionalNeedState('patient', patientCommitment)
+		};
+		
+		// Provider 1 allocates (Monday need)
+		const result1 = applyMultiDimensionalAllocationOperator(
+			'provider1',
+			provider1,
+			myMRValuesByType,
+			myWeightsByType,
+			networkCommitments,
+			needVector
+		);
+		
+		needVector = result1.updatedNeedVector;
+		
+		// Provider 2 allocates (Wednesday need)
+		const result2 = applyMultiDimensionalAllocationOperator(
+			'provider2',
+			provider2,
+			myMRValuesByType,
+			myWeightsByType,
+			networkCommitments,
+			needVector
+		);
+		
+		needVector = result2.updatedNeedVector;
+		
+		// All needs should be met
+		const finalNorm = computeFrobeniusNorm(needVector);
+		expect(finalNorm).toBeLessThan(CONVERGENCE_EPSILON);
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SUITE 14: TIMEZONE-AWARE MATCHING (Global Coordination)
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Timezone-Aware Matching (Global Coordination)', () => {
+	it('should match NYC provider (2pm EST) with London recipient (7pm GMT)', () => {
+		// Provider in NYC: Monday 2pm-4pm EST (UTC-5)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('consulting', 10),
+				recurrence: 'weekly',
+				time_zone: 'America/New_York',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '14:00', end_time: '16:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in London: Monday, March 4 at 7pm-9pm GMT (UTC+0)
+		// 7pm GMT = 2pm EST (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('consulting', 5),
+				start_date: '2024-03-04', // Monday
+				time_zone: 'Europe/London',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '19:00', end_time: '21:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'consulting': { 'recipient': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'consulting': { 'recipient': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'recipient': needCommitment }
+		);
+		
+		// Should match! 2pm EST = 7pm GMT
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+		const total = result.recipient_totals_by_type?.consulting?.recipient || 0;
+		expect(total).toBeGreaterThan(0);
+	});
+	
+	it('should NOT match when times do not overlap across timezones', () => {
+		// Provider in Tokyo: Monday 9am-11am JST (UTC+9)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('tutoring', 10),
+				recurrence: 'weekly',
+				time_zone: 'Asia/Tokyo',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '09:00', end_time: '11:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in NYC: Monday at 2pm-4pm EST (UTC-5)
+		// 2pm EST = 4am+1day JST (Tuesday 4am) - DOES NOT OVERLAP
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('tutoring', 5),
+				start_date: '2024-03-04', // Monday
+				time_zone: 'America/New_York',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '14:00', end_time: '16:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'student': needCommitment }
+		);
+		
+		// Should NOT match - times don't overlap
+		expect(result.slot_allocations.length).toBe(0);
+	});
+	
+	it('should handle UTC as default timezone', () => {
+		// Provider: no timezone specified (defaults to UTC)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('healthcare', 10),
+				recurrence: 'weekly',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['tuesday'],
+							time_ranges: [{ start_time: '10:00', end_time: '12:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient: also no timezone (defaults to UTC)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('healthcare', 5),
+				start_date: '2024-03-05', // Tuesday
+				availability_window: {
+					time_ranges: [
+						{ start_time: '11:00', end_time: '11:30' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'healthcare': { 'patient': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'healthcare': { 'patient': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'patient': needCommitment }
+		);
+		
+		// Should match - both UTC, times overlap
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should match across multiple timezones (Sydney -> Berlin)', () => {
+		// Provider in Sydney: Wednesday 8am-10am AEDT (UTC+11)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('language', 10),
+				recurrence: 'weekly',
+				time_zone: 'Australia/Sydney',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['wednesday'],
+							time_ranges: [{ start_time: '08:00', end_time: '10:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in Berlin: Tuesday 10pm-midnight CET (UTC+1)
+		// 10pm Tuesday CET = 8am Wednesday AEDT (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('language', 5),
+				start_date: '2024-03-05', // Tuesday in Berlin = Wednesday in Sydney
+				time_zone: 'Europe/Berlin',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '22:00', end_time: '23:59' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'language': { 'student': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'language': { 'student': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'student': needCommitment }
+		);
+		
+		// Should match despite being in different calendar days locally
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should handle recurring-to-recurring matching across timezones with day-shift', () => {
+		// Provider in LA: Monday 11pm-1am PST (UTC-8) - crosses into Tuesday
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('mentoring', 10),
+				recurrence: 'weekly',
+				time_zone: 'America/Los_Angeles',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '23:00', end_time: '23:59' }]
+						},
+						{
+							days: ['tuesday'],
+							time_ranges: [{ start_time: '00:00', end_time: '01:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in Paris: Tuesday 8am-10am CET (UTC+1)
+		// 8am Tuesday CET = 11pm Monday PST (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('mentoring', 5),
+				recurrence: 'weekly',
+				time_zone: 'Europe/Paris',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['tuesday'],
+							time_ranges: [{ start_time: '08:00', end_time: '10:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'mentoring': { 'mentee': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'mentoring': { 'mentee': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'mentee': needCommitment }
+		);
+		
+		// Should match! Monday 11pm PST = Tuesday 8am CET
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+		const total = result.recipient_totals_by_type?.mentoring?.mentee || 0;
+		expect(total).toBeGreaterThan(0);
+	});
+	
+	it('should handle DST transitions correctly', () => {
+		// Test that timezone conversion handles DST
+		// March 10, 2024: DST starts in US (spring forward)
+		
+		// Provider in NYC: March 11 (after DST) at 2pm EDT (UTC-4, was UTC-5)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('workshop', 10),
+				recurrence: 'weekly',
+				time_zone: 'America/New_York',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '14:00', end_time: '16:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in London: March 11 at 6pm GMT (UTC+0, no DST yet)
+		// 2pm EDT (UTC-4) = 6pm GMT (matches)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('workshop', 5),
+				start_date: '2024-03-11', // Monday after DST
+				time_zone: 'Europe/London',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '18:00', end_time: '20:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'workshop': { 'participant': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'workshop': { 'participant': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'participant': needCommitment }
+		);
+		
+		// Should match with correct DST offset
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should handle half-hour timezone offsets (India UTC+5:30)', () => {
+		// Provider in India: Thursday 10:30am-12:30pm IST (UTC+5:30)
+		// = Thursday 05:00-07:00 UTC
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('tutoring', 10),
+				recurrence: 'weekly',
+				time_zone: 'Asia/Kolkata',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['thursday'],
+							time_ranges: [{ start_time: '10:30', end_time: '12:30' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in NYC: Thursday 1am-2am EST (UTC-5)
+		// = Thursday 06:00-07:00 UTC (overlaps with 05:00-07:00!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('tutoring', 5),
+				start_date: '2024-03-07', // Thursday
+				time_zone: 'America/New_York',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '01:00', end_time: '02:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'tutoring': { 'student': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'student': needCommitment }
+		);
+		
+		// Should match with correct half-hour offset
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should handle extreme timezone differences (Auckland UTC+13 to Hawaii UTC-10)', () => {
+		// Provider in Auckland: Monday 9am-11am NZDT (UTC+13)
+		// = Sunday 20:00-22:00 UTC (day shifts backward!)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('consulting', 10),
+				recurrence: 'weekly',
+				time_zone: 'Pacific/Auckland',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '09:00', end_time: '11:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in Hawaii: Sunday 10am-12pm HST (UTC-10)
+		// = Sunday 20:00-22:00 UTC (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('consulting', 5),
+				start_date: '2024-03-03', // Sunday in Hawaii
+				time_zone: 'Pacific/Honolulu',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '10:00', end_time: '12:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'consulting': { 'client': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'consulting': { 'client': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needCommitment }
+		);
+		
+		// Should match despite 23-hour timezone difference
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should handle slots that span midnight locally', () => {
+		// Provider in Tokyo: Friday 11pm-Saturday 1am JST (spans midnight locally)
+		// = Friday 14:00-16:00 UTC (continuous in UTC!)
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('support', 10),
+				recurrence: 'weekly',
+				time_zone: 'Asia/Tokyo',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['friday'],
+							time_ranges: [{ start_time: '23:00', end_time: '23:59' }]
+						},
+						{
+							days: ['saturday'],
+							time_ranges: [{ start_time: '00:00', end_time: '01:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in LA: Friday 6am-8am PST (UTC-8)
+		// = Friday 14:00-16:00 UTC (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('support', 5),
+				start_date: '2024-03-08', // Friday
+				time_zone: 'America/Los_Angeles',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '06:00', end_time: '08:00' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'support': { 'user': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'support': { 'user': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'user': needCommitment }
+		);
+		
+		// Should match - provider's midnight-spanning slot (11pm Fri - 1am Sat JST) 
+		// becomes continuous 2pm-4pm Fri UTC, matching recipient's 6am-8am Fri PST
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
+	});
+	
+	it('should NOT match when timezones cause non-overlapping UTC times', () => {
+		// Provider in London: Tuesday 9am-11am GMT (UTC+0)
+		// = Tuesday 09:00-11:00 UTC
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('coaching', 10),
+				recurrence: 'weekly',
+				time_zone: 'Europe/London',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['tuesday'],
+							time_ranges: [{ start_time: '09:00', end_time: '11:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in Sydney: Tuesday 9pm-11pm AEDT (UTC+11)
+		// = Tuesday 10:00-12:00 UTC (only 1 hour overlap: 10:00-11:00)
+		// But let's test NO overlap case: Tuesday 12:30pm-2:30pm
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('coaching', 5),
+				start_date: '2024-03-05', // Tuesday
+				time_zone: 'Australia/Sydney',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '23:30', end_time: '01:30' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'coaching': { 'client': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'coaching': { 'client': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'client': needCommitment }
+		);
+		
+		// Should NOT match - times don't overlap in UTC
+		expect(result.slot_allocations.length).toBe(0);
+	});
+	
+	it('should handle southern hemisphere DST (opposite of northern)', () => {
+		// Test matching during a time when northern hemisphere is NOT in DST
+		// but southern hemisphere IS in DST
+		
+		// Provider in Melbourne: January 15 (summer, AEDT UTC+11) at 2pm-4pm
+		// = January 15 03:00-05:00 UTC
+		const providerCommitment = createTestCommitment([], [
+			{
+				...createCapacitySlot('training', 10),
+				recurrence: 'weekly',
+				time_zone: 'Australia/Melbourne',
+				availability_window: {
+					day_schedules: [
+						{
+							days: ['monday'],
+							time_ranges: [{ start_time: '14:00', end_time: '16:00' }]
+						}
+					]
+				}
+			}
+		]);
+		
+		// Recipient in NYC: January 14 (winter, EST UTC-5) at 10pm-midnight
+		// = January 15 03:00-05:00 UTC (matches!)
+		const needCommitment = createTestCommitment([
+			{
+				...createNeedSlot('training', 5),
+				start_date: '2024-01-14', // Sunday in NYC
+				time_zone: 'America/New_York',
+				availability_window: {
+					time_ranges: [
+						{ start_time: '22:00', end_time: '23:59' }
+					]
+				}
+			}
+		]);
+		
+		const myMRValuesByType: MultiDimensionalRecognition = {
+			'training': { 'trainee': 1.0 }
+		};
+		
+		const myWeightsByType: MultiDimensionalRecognition = {
+			'training': { 'trainee': 1.0 }
+		};
+		
+		const result = computeMultiDimensionalSlotNativeAllocation(
+			'provider',
+			providerCommitment,
+			myMRValuesByType,
+			myWeightsByType,
+			{ 'trainee': needCommitment }
+		);
+		
+		// Should match with opposite DST seasons
+		expect(result.slot_allocations.length).toBeGreaterThan(0);
 	});
 });
 

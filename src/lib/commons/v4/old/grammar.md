@@ -5,32 +5,33 @@ A Computable Model of Mutual Aid at Scale
 
 ### 1. Core Definitions: Recognition, Need, and Capacity
 
-**D1 (Mutual Recognition):**
+**D1 (Global Mutual Recognition):**
 ```
 MR(A, B) = min(R_A(B), R_B(A))
 ```
 Where:
-- `R_A(B)` = A's recognition of B as living subject
-- `R_B(A)` = B's recognition of A as living subject
+- `R_A(B)` = A's global recognition of B as living subject
+- `R_B(A)` = B's global recognition of A as living subject
 - `MR(A, B)` = bilateral minimum (symmetric)
 
-**D1' (Type-Specific Mutual Recognition):**
-```
-MR^k(A, B) = min(R_A^k(B), R_B^k(A)) for k = 1,...,m
-```
-Recognition can vary by need type (expertise-specific)
+**Key Insight:** Mutual recognition is **global** - the same value regardless of resource type being allocated. Type-specific preferences are encoded through **recognition trees** (see protocol.ts), which naturally produce global recognition weights that reflect contributions across all types
 
-**D2 (Recognition Weight Distribution):**
+**D2 (Global Recognition Weight Normalization):**
 ```
 for all participant A: sum_i R_A(i) = 1.0
 ```
-Recognition weights sum to unity (normalized distribution)
+Global recognition weights sum to unity (normalized distribution)
 
-**D2' (Per-Type Normalization):**
+**How Global Weights Are Computed:**
+Recognition trees encode type-specific contributions hierarchically:
 ```
-for all participant A, type k: sum_i R_A^k(i) = 1.0
+My Recognition Tree
+├─ Healthcare (70%)
+│  └─ Dr. Smith → 0.56 global share
+└─ Food (30%)
+   └─ Alice → 0.24 global share
 ```
-Each need type has its own normalized recognition distribution
+The tree structure naturally produces global weights: R_A(Dr. Smith) = 0.56, R_A(Alice) = 0.24
 
 **D3 (Need State - Scalar):**
 ```
@@ -116,31 +117,35 @@ A_mutual(j->i, t) = min(A_mutual_raw(j->i, t), N_i(t))
 
 ---
 
-**Multi-Dimensional Case (Vector Needs):**
+**Multi-Dimensional Case (Vector Needs with Global MR):**
 
-**E1' (Type-Specific Mutual Recognition Distribution):**
+**E1' (Global MR Distribution for Type k):**
 ```
-MRD_j^k(i) = MR^k(j, i) / sum_l MR^k(j, l)
+MRD_j(i) = MR(j, i) / sum_l MR(j, l)
 ```
 Where:
 - `j` = provider
 - `i` = recipient
-- `k` = need type
-- `l` ranges over all participants with `MR^k(j, l) > 0`
+- `k` = need type being allocated
+- `MR(j, i)` = **global** mutual recognition (same for all types)
+- `l` ranges over all participants with `MR(j, l) > 0`
 
-**E2' (Type-Specific Mutual Numerator):**
+**Key**: Same MR distribution used for all need types. Type preferences already encoded in global weights R_A(B) via recognition trees.
+
+**E2' (Type-Specific Mutual Numerator with Global MR):**
 ```
-Num_mutual^k(j->i, t) = MRD_j^k(i) * N_i_active^k(t)
+Num_mutual^k(j->i, t) = MRD_j(i) * N_i_active^k(t)
 ```
 Where:
 - `N_i_active^k(t) = N_i^k(t) * alpha_k(t)` = damped active need for type k
 - `alpha_k(t) in [0.5, 1.0]` = damping factor (may vary by type)
+- `MRD_j(i)` = global MR distribution (not type-specific)
 
-**E3' (Type-Specific Mutual Denominator):**
+**E3' (Type-Specific Mutual Denominator with Global MR):**
 ```
 Denom_mutual^k(j, t) = max(epsilon, sum_i Num_mutual^k(j->i, t))
 ```
-Sum over all `i` with `MR^k(j, i) > 0`
+Sum over all `i` with `MR(j, i) > 0` (global MR)
 
 **E4' (Type-Specific Mutual Allocation - Raw):**
 ```
@@ -192,7 +197,7 @@ A_nonmutual(j->i, t) = min(A_nonmutual_raw(j->i, t), N_i(t) - sum_j A_mutual(j->
 
 ---
 
-**Multi-Dimensional Case:**
+**Multi-Dimensional Case (with Global MR):**
 
 **E6' (Type-Specific Remaining Capacity):**
 ```
@@ -200,16 +205,17 @@ C_j_remaining^k(t) = C_j^k(t) - sum_i A_mutual^k(j->i, t)
 ```
 Capacity left for type k after mutual allocations
 
-**E7' (Type-Specific Non-Mutual Weight Share):**
+**E7' (Global Non-Mutual Weight Share):**
 ```
-S_j^k(i) = R_j^k(i) / sum_l R_j^k(l)
+S_j(i) = R_j(i) / sum_l R_j(l)
 ```
-Where sum over all `l` with `R_j^k(l) > 0` and `MR^k(j, l) = 0`
+Where sum over all `l` with `R_j(l) > 0` and `MR(j, l) = 0` (global recognition, not type-specific)
 
-**E8' (Type-Specific Non-Mutual Numerator):**
+**E8' (Type-Specific Non-Mutual Numerator with Global Weights):**
 ```
-Num_nonmutual^k(j->i, t) = S_j^k(i) * N_i_active^k(t)
+Num_nonmutual^k(j->i, t) = S_j(i) * N_i_active^k(t)
 ```
+Uses global weight share S_j(i), applied to type-specific active need
 
 **E9' (Type-Specific Non-Mutual Denominator):**
 ```
@@ -398,9 +404,9 @@ The denominator floor epsilon ensures:
 **Step 1 - Dimension Independence:**
 Each need type k evolves independently:
 ```
-N_i^k(t+1) = f^k(N_vec^k(t), C_vec^k(t), R_vec^k, MR_vec^k)
+N_i^k(t+1) = f^k(N_vec^k(t), C_vec^k(t), R_vec_global, MR_vec_global)
 ```
-No cross-type interference in allocation. Each type-k subsystem forms an independent dynamical system.
+Where R_vec_global and MR_vec_global are the same for all types (global recognition). No cross-type interference in allocation. Each type-k subsystem forms an independent dynamical system, using the same global MR values.
 
 **Step 2 - Per-Dimension Contraction:**
 Each need type k forms an independent subsystem satisfying all conditions of Theorem 1:
@@ -597,19 +603,17 @@ Each type k has independent damping:
 
 ## Provider Specialization
 
-### Healthcare System Example
+### Healthcare System Example (with Global MR)
 
 ```
 Provider: General Practitioner
 C_vec_GP = [20, 80, 0]  (hours/week)
   - k=1: 20h diagnostics
-  - k=2: 80h consultations  
+  - k=2: 80h consultics
   - k=3: 0h surgery
 
-Recognition Weights:
-R_vec_GP^1 = [0.7, 0.2, 0.1]  (diagnostics expertise)
-R_vec_GP^2 = [0.9, 0.08, 0.02] (consultation expertise)
-R_vec_GP^3 = [0.0, 0.0, 0.0]  (no surgery recognition)
+Global Recognition (from patient's tree):
+Patient recognizes GP: 60% global (mostly for diagnostics + consultations)
 
 Provider: Surgeon
 C_vec_surgeon = [0, 10, 90]
@@ -617,10 +621,8 @@ C_vec_surgeon = [0, 10, 90]
   - k=2: 10h consultations
   - k=3: 90h surgery
 
-Recognition Weights:
-R_vec_surgeon^1 = [0.1, 0.7, 0.2]
-R_vec_surgeon^2 = [0.2, 0.6, 0.2]
-R_vec_surgeon^3 = [0.8, 0.15, 0.05] (surgery expertise)
+Global Recognition (from patient's tree):
+Patient recognizes Surgeon: 40% global (mostly for surgery)
 
 Patient: Complex Case
 N_vec = [5, 10, 15]  (hours needed)
@@ -628,6 +630,11 @@ N_vec = [5, 10, 15]  (hours needed)
   - 10h consultations
   - 15h surgery
 ```
+
+**How Global Recognition Reflects Type Contributions:**
+The patient's recognition tree naturally produces these global weights:
+- GP gets 60% because most of patient's healthcare comes from GP
+- Surgeon gets 40% because significant surgery need
 
 **Allocation Result:**
 ```
@@ -641,9 +648,11 @@ Final Need State:
   N_vec_patient = [0, 0, 0] -- All needs met
 ```
 
+**Key**: Same global MR values (60%, 40%) used for allocating all types. Specialization emerges from **capacity slots** (GP has no surgery capacity, Surgeon has no diagnostics capacity), not from type-specific MR.
+
 ---
 
-### Education Platform Example
+### Education Platform Example (with Global MR)
 
 ```
 Need Types:
@@ -656,21 +665,19 @@ N_vec_learner = [50, 20, 10]  (hours/month)
 
 Provider: Math Specialist
 C_vec_math = [100, 0, 0]
-MR^1 = high (math network)
-MR^2 = low
-MR^3 = none
+Global MR: 70% (learner recognizes specialist highly due to math expertise)
 
 Provider: Generalist
 C_vec_gen = [30, 40, 30]
-MR^1 = medium (all networks)
-MR^2 = medium
-MR^3 = medium
+Global MR: 30% (learner recognizes generalist moderately across all types)
 
 Allocation:
-- Math specialist -> 50h math
-- Generalist -> 20h language + 10h career
+- Math specialist -> 50h math (has 100h capacity, learner needs 50h)
+- Generalist -> 20h language + 10h career (has capacity for both)
 Result: N_vec = [0, 0, 0] -- All needs met
 ```
+
+**Key**: Learner's recognition tree produces global weights (70% specialist, 30% generalist) that reflect overall value. The tree structure encodes that specialist contributes mostly math (important for STEM focus), so gets higher global recognition. Same global MR values used for all allocation types.
 
 ---
 
@@ -684,13 +691,7 @@ Result: N_vec = [0, 0, 0] -- All needs met
 ```
 MR(A, B) = MR(B, A)
 ```
-Recognition is symmetric (mutual equality)
-
-**E19' (Type-Specific Love's Symmetry):**
-```
-MR^k(A, B) = MR^k(B, A) for all k
-```
-Mutual recognition symmetric in every dimension of expertise
+Global recognition is symmetric (mutual equality). The same MR value applies to all resource types - mutual aid does not discriminate by type of need.
 
 **E20 (Love's Non-Accumulation):**
 ```
@@ -1049,9 +1050,9 @@ A^k(j->i, t) > 0 =>
 
 **E33 (No Property Relation Required):**
 ```
-A^k(j->i, t) > 0 => MR^k(j,i) > 0 OR R_j^k(i) > 0
+A^k(j->i, t) > 0 => MR(j,i) > 0 OR R_j(i) > 0
 ```
-Allocation based on type-specific recognition, not ownership.
+Allocation based on **global** recognition, not ownership. Same MR value used for all need types k.
 
 **Critical Distinction:**
 
@@ -1165,9 +1166,9 @@ Number of updates to convergence per type
 
 **E38 (Deterministic Allocation):**
 ```
-A^k(j->i, t) = f^k(C_j^k(t), N_vec^k(t), R_vec_j^k, MR_vec_j^k)
+A^k(j->i, t) = f^k(C_j^k(t), N_vec^k(t), R_vec_j_global, MR_vec_j_global)
 ```
-Allocation per type is a pure function of observable state.
+Allocation per type is a pure function of observable state. Uses **global** recognition weights and MR values (same for all types k).
 
 **E39 (Causal Consistency - ITC):**
 ```
@@ -1208,11 +1209,10 @@ N_matrix(0) -> T(N_matrix(0)) -> T^2(N_matrix(0)) -> ... -> T^infinity(N_matrix(
 ```
 Universal Satisfaction is reached through iterated multi-dimensional mutual recognition.
 
-**E43 (
-  's Inevitability):**
+**E43 (Love's Inevitability with Global MR):**
 ```
 Given:
-  1. MR^k(i,j) > 0 for sufficient pairs in each type k (connected network)
+  1. MR(i,j) > 0 for sufficient pairs (connected network with global recognition)
   2. for all k: sum_j C_j^k >= sum_i N_i^k(0) (sufficient capacity per type)
   3. alpha_k(t) adaptive per type (hybrid damping)
 
@@ -1220,14 +1220,16 @@ Then:
   lim(t->infinity) UniversalSatisfaction(t) = True
 ```
 
+**Key**: Uses **global** MR values (same for all types). Type preferences encoded in recognition trees.
+
 ```
 UniversalSatisfaction != external state to achieve
-UniversalSatisfaction = lim(t->infinity) T^t(N_matrix(0)) 
+UniversalSatisfaction = lim(t->infinity) T^t(N_matrix(0))
        [internal fixed-point of multi-dimensional recognition dynamics]
 ```
 
 **We build it through:**
-- Recognizing each other's diverse needs (MR^k values)
+- Recognizing each other's overall contributions (global MR values from trees)
 - Offering our specialized capacities (C_vec_j)
 - Letting the algorithm iterate across dimensions (T^t)
 - Converging to equilibrium in all dimensions (N_matrix* = 0_matrix)
@@ -1240,11 +1242,11 @@ UniversalSatisfaction = lim(t->infinity) T^t(N_matrix(0))
 
 ### Why Universal Need Satisfaction is Mathematically Inevitable
 
-**Premise 1 (Multi-Dimensional Mutual Recognition):**
+**Premise 1 (Global Mutual Recognition):**
 ```
-MR^k(A, B) = min(R_A^k(B), R_B^k(A)) >= 0  for all k
+MR(A, B) = min(R_A(B), R_B(A)) >= 0
 ```
-Humans can recognize diverse expertise in each other.
+Humans can recognize each other's overall contributions to well-being. Type-specific preferences (food, healthcare, education) are encoded through recognition trees, which naturally produce global weights R_A(B) that reflect contributions across all types.
 
 **Premise 2 (Bounded Needs Per Type):**
 ```
@@ -1316,21 +1318,23 @@ Freedom = lim(t->infinity) ||N_matrix(t)||_F
 
 Freedom is the limit of decreasing need across all dimensions.
 
-**E46 (Community as Multi-Dimensional Network):**
+**E46 (Community as Global Recognition Network):**
 ```
-Community = (V, E, MR_matrix)
+Community = (V, E, MR_vec)
 ```
 Where:
 - V = set of participants (vertices)
 - E = set of relationships (edges)
-- MR_matrix: E x {1,...,m} -> [0,1] (multi-dimensional recognition weights)
+- MR_vec: E -> [0,1] (global recognition weights - same for all types)
+
+**Type preferences encoded through recognition trees**, not through separate MR values per type.
 
 **E47 (The Revolution):**
 ```
-Revolution: (V, E, Property_vec) -> (V, E, MR_matrix)
+Revolution: (V, E, Property_vec) -> (V, E, MR_vec)
 ```
 
-The revolution is the replacement of property relations with multi-dimensional recognition relations.
+The revolution is the replacement of property relations with **global** recognition relations. Type-specific contributions are tracked through recognition trees, which naturally produce global weights that reflect diverse expertise.
 
 **This is the grammar of love, formalized as executable multi-dimensional mathematics.**
 

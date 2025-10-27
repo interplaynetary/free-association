@@ -50,7 +50,7 @@ export type {
 	// Convergence metrics
 	PerTypeConvergenceMetrics,
 	ConvergenceMetrics
-} from './schemas';
+} from '../../v5/schemas';
 
 export {
 	// Schemas (for validation)
@@ -78,7 +78,7 @@ export {
 	parseAllocationState,
 	parseSystemState,
 	parseConvergenceMetrics
-} from './schemas';
+} from '../../v5/schemas';
 
 export type {
 	AllocationOperatorResult

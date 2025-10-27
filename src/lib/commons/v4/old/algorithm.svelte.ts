@@ -1,34 +1,35 @@
 /**
- * Mutual-Priority Allocation Algorithm v5 - Multi-Dimensional Framework
- * 
- * Implements the complete multi-dimensional framework from multi-grammar.md:
+ * Mutual-Priority Allocation Algorithm v5 - Pure Global Recognition Model
+ *
+ * ═══ RECOGNITION MODEL ═══
+ * ✅ Global mutual recognition MR(A, B) = min(R_A(B), R_B(A)) - same for all types
+ * ✅ Type preferences expressed through recognition tree structure (protocol.ts)
+ * ✅ Trees naturally encode "who contributes what" through hierarchical points
+ *
+ * ═══ Multi-Dimensional Features ═══
  * ✅ Multi-dimensional need vectors N⃗_i(t) = [N_i^1(t), ..., N_i^m(t)]^T (D3')
  * ✅ Multi-dimensional capacity vectors C⃗_j(t) = [C_j^1(t), ..., C_j^m(t)]^T (D4')
- * ✅ Type-specific mutual recognition MR^k(A, B) (D1')
- * ✅ Per-type recognition weight normalization (D2')
- * ✅ Type-specific two-tier allocation (E1'-E11')
+ * ✅ Global recognition weight normalization Σ_i R_A(i) = 1.0
+ * ✅ Type-specific two-tier allocation (E1'-E11') using global MR
  * ✅ Per-type adaptive damping α_k(t) (E12'-E15')
  * ✅ Multi-dimensional contraction mapping T: ℝ^{n×m} → ℝ^{n×m} (E17'-E18')
  * ✅ Frobenius norm convergence tracking (Theorem 1', 3)
- * ✅ Per-type heaven condition (E41')
+ * ✅ Per-type universalSatisfaction condition (E41')
  * ✅ Multi-dimensional freedom metric (E45')
- * ✅ Provider specialization by need type
+ * ✅ Provider specialization by need type (through slots)
  * ✅ ITC causal consistency (E39-E40)
  * ✅ Slot-native space-time extension with type matching (E27'-E30')
- * 
- * v5 vs v2 differences:
- * - Vector needs and capacities instead of scalar
- * - Independent allocation per need type k
- * - Frobenius norm ||N⃗⃗(t)||_F for system convergence
- * - Per-type convergence metrics and damping
- * - Type matching in slot compatibility
- * - Provider specialization support
+ *
+ * v5 key insight:
+ * - MR is global (social relationship)
+ * - Types handled through slot.need_type_id and tree structure
+ * - Same MR value used for allocating food, healthcare, or housing
  */
 
 import { derived, get } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 
-// Import v4 schemas (multi-dimensional)
+// Import v5 schemas (pure global recognition)
 import type {
 	Commitment,
 	TwoTierAllocationState,
@@ -45,7 +46,7 @@ import type {
 	ConvergenceMetrics,
 	PerTypeConvergenceMetrics,
 	PerTypeAllocationTotals,
-	MultiDimensionalRecognition,
+	GlobalRecognitionWeights,
 	MultiDimensionalDamping,
 	NeedType
 } from './schemas';
@@ -91,15 +92,15 @@ import { writable } from 'svelte/store';
 
 const myCommitmentStore = writable<Commitment | null>(null);
 const myAllocationStateStore = writable<TwoTierAllocationState | null>(null);
-const myRecognitionWeightsStore = writable<MultiDimensionalRecognition | null>(null);
+const myRecognitionWeightsStore = writable<GlobalRecognitionWeights | null>(null);
 const networkCommitments = new Map<string, Commitment>();
-const networkRecognitionWeights = new Map<string, MultiDimensionalRecognition>();
+const networkRecognitionWeights = new Map<string, GlobalRecognitionWeights>();
 
 function getNetworkCommitmentsRecord(): Record<string, Commitment> {
 	return Object.fromEntries(networkCommitments);
 }
 
-function getNetworkRecognitionWeightsRecord(): Record<string, MultiDimensionalRecognition> {
+function getNetworkRecognitionWeightsRecord(): Record<string, GlobalRecognitionWeights> {
 	return Object.fromEntries(networkRecognitionWeights);
 }
 
@@ -339,144 +340,122 @@ export function updateSystemStateFromNetwork(): void {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RECOGNITION WEIGHT NORMALIZATION (D2')
+// GLOBAL RECOGNITION WEIGHT NORMALIZATION
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Normalize type-specific recognition weights to sum to 1.0
- * Enforces: ∀ participant A, type k: Σ_i R_A^k(i) = 1.0
+ * Normalize global recognition weights to sum to 1.0
+ * Enforces: ∀ participant A: Σ_i R_A(i) = 1.0
  */
-export function normalizeTypeSpecificRecognitionWeights(
-	weightsByType: MultiDimensionalRecognition
-): MultiDimensionalRecognition {
-	const normalized: MultiDimensionalRecognition = {};
-	
-	for (const [typeId, weights] of Object.entries(weightsByType)) {
-		normalized[typeId] = normalizeRecognitionWeights(weights);
-	}
-	
-	return normalized;
-}
-
-/**
- * Normalize recognition weights to sum to 1.0 (per type)
- */
-export function normalizeRecognitionWeights(weights: Record<string, number>): Record<string, number> {
+export function normalizeGlobalRecognitionWeights(
+	weights: GlobalRecognitionWeights
+): GlobalRecognitionWeights {
 	const entries = Object.entries(weights);
-	
+
 	if (entries.length === 0) {
 		return {};
 	}
-	
+
 	// Calculate sum
 	const sum = entries.reduce((acc, [_, weight]) => acc + weight, 0);
-	
+
 	// If sum is zero or very small, return equal weights
 	if (sum < 0.0001) {
 		const equalWeight = 1.0 / entries.length;
 		return Object.fromEntries(entries.map(([key, _]) => [key, equalWeight]));
 	}
-	
+
 	// Normalize to sum to 1.0
-	const normalized: Record<string, number> = {};
+	const normalized: GlobalRecognitionWeights = {};
 	for (const [key, weight] of entries) {
 		normalized[key] = weight / sum;
 	}
-	
+
 	return normalized;
 }
 
 /**
- * Validate that recognition weights sum to 1.0 (within epsilon)
+ * Validate that global recognition weights sum to 1.0 (within epsilon)
  */
-export function validateRecognitionWeights(weights: Record<string, number>): boolean {
+export function validateGlobalRecognitionWeights(
+	weights: GlobalRecognitionWeights,
+	epsilon: number = CONVERGENCE_EPSILON
+): boolean {
 	const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-	const isValid = Math.abs(sum - 1.0) < CONVERGENCE_EPSILON;
-	
+	const isValid = Math.abs(sum - 1.0) < epsilon;
+
 	if (!isValid) {
-		console.warn(`[VALIDATE-V4] Recognition weights sum to ${sum.toFixed(4)}, not 1.0`);
+		console.warn(`[VALIDATE-V5] Global recognition weights sum to ${sum.toFixed(4)}, not 1.0`);
 	}
-	
+
 	return isValid;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MUTUAL RECOGNITION COMPUTATION (D1', E19')
+// GLOBAL MUTUAL RECOGNITION (PURE MODEL)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Compute type-specific bilateral Mutual Recognition (D1')
- * MR^k(A, B) = min(R_A^k(B), R_B^k(A))
- * 
- * Symmetric property (E19'): MR^k(A, B) = MR^k(B, A)
+ * Compute global bilateral Mutual Recognition
+ * MR(A, B) = min(R_A(B), R_B(A))
+ *
+ * This is the social relationship strength, independent of need type.
+ * Symmetric property: MR(A, B) = MR(B, A)
+ *
+ * Type preferences are expressed through recognition tree structure,
+ * not through MR itself. See protocol.ts sharesOfGeneralFulfillmentMap()
  */
-export function computeTypeSpecificMutualRecognition(
+export function computeGlobalMutualRecognition(
 	myPub: string,
 	theirPub: string,
-	typeId: string,
-	myWeightsByType: MultiDimensionalRecognition,
-	theirWeightsByType: MultiDimensionalRecognition
+	myGlobalWeights: GlobalRecognitionWeights,
+	theirGlobalWeights: GlobalRecognitionWeights
 ): number {
-	const myWeights = myWeightsByType[typeId] || {};
-	const theirWeights = theirWeightsByType[typeId] || {};
-	
-	const myRecOfThem = myWeights[theirPub] || 0;
-	const theirRecOfMe = theirWeights[myPub] || 0;
-	
+	const myRecOfThem = myGlobalWeights[theirPub] || 0;
+	const theirRecOfMe = theirGlobalWeights[myPub] || 0;
+
 	return Math.min(myRecOfThem, theirRecOfMe);
 }
 
 /**
- * Compute all type-specific MR values for a given participant
+ * Compute all global MR values for a given participant
  */
-export function computeAllTypeSpecificMutualRecognition(
+export function computeAllGlobalMutualRecognition(
 	myPub: string,
-	myWeightsByType: MultiDimensionalRecognition,
-	networkWeightsByType: Record<string, MultiDimensionalRecognition>
-): MultiDimensionalRecognition {
-	const mrValuesByType: MultiDimensionalRecognition = {};
-	
-	// For each need type
-	const allTypes = new Set<string>();
-	Object.keys(myWeightsByType).forEach(t => allTypes.add(t));
-	Object.values(networkWeightsByType).forEach(weights => 
-		Object.keys(weights).forEach(t => allTypes.add(t))
-	);
-	
-	for (const typeId of allTypes) {
-		const mrValues: Record<string, number> = {};
-		const myWeights = myWeightsByType[typeId] || {};
-		
-		// For everyone I recognize for this type
-		for (const theirPub in myWeights) {
-			if (myWeights[theirPub] > 0) {
-				const theirWeightsByType = networkWeightsByType[theirPub] || {};
-				mrValues[theirPub] = computeTypeSpecificMutualRecognition(
-					myPub, theirPub, typeId, myWeightsByType, theirWeightsByType
-				);
-			}
-		}
-		
-		// For everyone who recognizes me for this type
-		for (const theirPub in networkWeightsByType) {
-			if (theirPub === myPub) continue;
-			
-			const theirWeightsByType = networkWeightsByType[theirPub];
-			const theirWeightsForType = theirWeightsByType[typeId] || {};
-			
-			if (theirWeightsForType[myPub] > 0 && !mrValues[theirPub]) {
-				mrValues[theirPub] = computeTypeSpecificMutualRecognition(
-					myPub, theirPub, typeId, myWeightsByType, theirWeightsByType
-				);
-			}
-		}
-		
-		if (Object.keys(mrValues).length > 0) {
-			mrValuesByType[typeId] = mrValues;
+	myGlobalWeights: GlobalRecognitionWeights,
+	networkGlobalWeights: Record<string, GlobalRecognitionWeights>
+): GlobalRecognitionWeights {
+	const mrValues: GlobalRecognitionWeights = {};
+
+	// For everyone I recognize
+	for (const theirPub in myGlobalWeights) {
+		if (myGlobalWeights[theirPub] > 0) {
+			const theirWeights = networkGlobalWeights[theirPub] || {};
+			mrValues[theirPub] = computeGlobalMutualRecognition(
+				myPub,
+				theirPub,
+				myGlobalWeights,
+				theirWeights
+			);
 		}
 	}
-	
-	return mrValuesByType;
+
+	// For everyone who recognizes me
+	for (const theirPub in networkGlobalWeights) {
+		if (theirPub === myPub) continue;
+
+		const theirWeights = networkGlobalWeights[theirPub];
+		if (theirWeights[myPub] > 0 && !mrValues[theirPub]) {
+			mrValues[theirPub] = computeGlobalMutualRecognition(
+				myPub,
+				theirPub,
+				myGlobalWeights,
+				theirWeights
+			);
+		}
+	}
+
+	return mrValues;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -486,21 +465,21 @@ export function computeAllTypeSpecificMutualRecognition(
 export const myPubKey = holsterUserPub;
 
 /**
- * My multi-dimensional MR values (with normalization)
+ * My global MR values (pure global model)
  */
-export const myMultiDimensionalMutualRecognition: Readable<MultiDimensionalRecognition> = derived(
+export const myGlobalMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 	[myRecognitionWeightsStore],
 	([$myRecognitionWeights]) => {
 		if (!$myRecognitionWeights) return {};
-		
+
 		const myPub = get(myPubKey);
 		if (!myPub) return {};
-		
-		// Normalize weights first (D2')
-		const normalizedWeights = normalizeTypeSpecificRecognitionWeights($myRecognitionWeights);
-		
+
+		// Normalize weights first
+		const normalizedWeights = normalizeGlobalRecognitionWeights($myRecognitionWeights);
+
 		const networkWeights = getNetworkRecognitionWeightsRecord();
-		return computeAllTypeSpecificMutualRecognition(myPub, normalizedWeights, networkWeights);
+		return computeAllGlobalMutualRecognition(myPub, normalizedWeights, networkWeights);
 	}
 );
 
@@ -682,10 +661,10 @@ export function computePerTypeContractionConstant(
 }
 
 /**
- * Check Heaven condition per type (E41')
- * Heaven^k(t) ⟺ ∀i: N_i^k(t) = 0
+ * Check UniversalSatisfaction condition per type (E41')
+ * UniversalSatisfaction^k(t) ⟺ ∀i: N_i^k(t) = 0
  */
-export function checkPerTypeHeavenCondition(
+export function checkPerTypeUniversalSatisfactionCondition(
 	needVector: Record<string, MultiDimensionalNeedState>,
 	typeId: string
 ): boolean {
@@ -699,10 +678,10 @@ export function checkPerTypeHeavenCondition(
 }
 
 /**
- * Check multi-dimensional Heaven condition (E41')
- * Heaven(t) ⟺ ∀i,k: N_i^k(t) = 0
+ * Check multi-dimensional UniversalSatisfaction condition (E41')
+ * UniversalSatisfaction(t) ⟺ ∀i,k: N_i^k(t) = 0
  */
-export function checkMultiDimensionalHeavenCondition(
+export function checkMultiDimensionalUniversalSatisfactionCondition(
 	needVector: Record<string, MultiDimensionalNeedState>
 ): boolean {
 	for (const needState of Object.values(needVector)) {
@@ -814,7 +793,7 @@ export function computeConvergenceMetrics(
 		maxContractionConstant = Math.max(maxContractionConstant, k_k);
 		
 		const isConverged = currentNorm < CONVERGENCE_EPSILON;
-		const heavenAchieved = checkPerTypeHeavenCondition(currentState.needVector, typeId);
+		const universalSatisfactionAchieved = checkPerTypeUniversalSatisfactionCondition(currentState.needVector, typeId);
 		const percentNeedsMet = computePerTypePercentNeedsMet(currentState.needVector, typeId);
 		
 		let iterationsToConvergence: number | null = null;
@@ -835,13 +814,13 @@ export function computeConvergenceMetrics(
 			isConverged,
 			iterationsToConvergence,
 			convergenceRate,
-			heavenAchieved,
+			universalSatisfactionAchieved,
 			percentNeedsMet
 		};
 	}
 	
 	const isConverged = currentFrobeniusNorm < CONVERGENCE_EPSILON;
-	const heavenAchieved = checkMultiDimensionalHeavenCondition(currentState.needVector);
+	const universalSatisfactionAchieved = checkMultiDimensionalUniversalSatisfactionCondition(currentState.needVector);
 	const percentNeedsMet = computeOverallPercentNeedsMet(currentState.needVector);
 	
 	// Timing metrics
@@ -877,7 +856,7 @@ export function computeConvergenceMetrics(
 		responseLatency,
 		lastIterationTime: now,
 		iterationFrequency,
-		heavenAchieved,
+		universalSatisfactionAchieved,
 		percentNeedsMet,
 		freedomMetric
 	};
@@ -903,6 +882,12 @@ function buildFilterContext(
 // ═══════════════════════════════════════════════════════════════════
 // NOTE: Type matching (E28') is now built into slotsCompatible() in match.svelte.ts
 // The v5 slotsCompatible() checks: type + time + location compatibility
+// 
+// RECURRENCE HANDLING (ASYMMETRIC MODEL):
+// - Capacity slots can match ANY compatible need, regardless of recurrence
+// - Need slots are separated into "recurring" vs "onetime" tracks by their metadata
+// - The slot-native design handles this naturally - no special logic needed
+// - See match.svelte.ts for getRecurrenceTrack() and detailed examples
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-DIMENSIONAL ALLOCATION OPERATOR T: ℝ^{n×m} → ℝ^{n×m}
 // (E1'-E11', E16'-E18')
@@ -923,24 +908,25 @@ function buildFilterContext(
 export function applyMultiDimensionalAllocationOperator(
 	providerPubKey: string,
 	providerCommitment: Commitment,
-	myMRValuesByType: MultiDimensionalRecognition,
-	myWeightsByType: MultiDimensionalRecognition,
+	myGlobalMRValues: GlobalRecognitionWeights,
+	myGlobalWeights: GlobalRecognitionWeights,
 	networkCommitments: Record<string, Commitment>,
 	currentNeedVector: Record<string, MultiDimensionalNeedState>
 ): AllocationOperatorResult {
 	const iterationStartTime = Date.now();
-	
-	console.log(`[OPERATOR-V4] Applying T to N⃗⃗(t), ||N⃗⃗||_F = ${computeFrobeniusNorm(currentNeedVector).toFixed(3)}`);
-	
+
+	console.log(`[OPERATOR-V5] Applying T to N⃗⃗(t), ||N⃗⃗||_F = ${computeFrobeniusNorm(currentNeedVector).toFixed(3)}`);
+
 	// ────────────────────────────────────────────────────────────────
 	// STEP 1: Compute slot-native allocations per type (E1'-E11')
+	// Using SAME global MR for all types
 	// ────────────────────────────────────────────────────────────────
-	
+
 	const allocations = computeMultiDimensionalSlotNativeAllocation(
 		providerPubKey,
 		providerCommitment,
-		myMRValuesByType,
-		myWeightsByType,
+		myGlobalMRValues,
+		myGlobalWeights,
 		networkCommitments
 	);
 	
@@ -1014,7 +1000,7 @@ export function applyMultiDimensionalAllocationOperator(
 		iterationStartTime
 	);
 	
-	console.log(`[METRICS-V4] k_max=${convergenceMetrics.contractionConstant.toFixed(3)}, Heaven=${convergenceMetrics.heavenAchieved}, Freedom=${convergenceMetrics.freedomMetric.toFixed(3)}`);
+	console.log(`[METRICS-V4] k_max=${convergenceMetrics.contractionConstant.toFixed(3)}, UniversalSatisfaction=${convergenceMetrics.universalSatisfactionAchieved}, Freedom=${convergenceMetrics.freedomMetric.toFixed(3)}`);
 	
 	return {
 		allocations,
@@ -1032,17 +1018,17 @@ export function applyMultiDimensionalAllocationOperator(
 export function computeMultiDimensionalSlotNativeAllocation(
 	providerPubKey: string,
 	providerCommitment: Commitment,
-	myMRValuesByType: MultiDimensionalRecognition,
-	myWeightsByType: MultiDimensionalRecognition,
+	myGlobalMRValues: GlobalRecognitionWeights,
+	myGlobalWeights: GlobalRecognitionWeights,
 	networkCommitments: Record<string, Commitment>
 ): TwoTierAllocationState {
-	
-	console.log(`[ALLOC-V4] Computing multi-dimensional allocation for ${providerPubKey.slice(0,8)}`);
-	
+
+	console.log(`[ALLOC-V5] Computing multi-dimensional allocation for ${providerPubKey.slice(0,8)}`);
+
 	const slotAllocations: SlotAllocationRecord[] = [];
 	const slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }> = {};
 	const recipientTotalsByType: PerTypeAllocationTotals = {};
-	
+
 	if (!providerCommitment.capacity_slots || providerCommitment.capacity_slots.length === 0) {
 		return {
 			slot_denominators: {},
@@ -1051,7 +1037,7 @@ export function computeMultiDimensionalSlotNativeAllocation(
 			timestamp: Date.now()
 		};
 	}
-	
+
 	// Group capacity slots by type for independent processing
 	const slotsByType = new Map<string, AvailabilitySlot[]>();
 	for (const slot of providerCommitment.capacity_slots) {
@@ -1061,35 +1047,36 @@ export function computeMultiDimensionalSlotNativeAllocation(
 		}
 		slotsByType.get(typeId)!.push(slot);
 	}
-	
-	// Process each need type independently (CRITICAL for multi-dimensional framework)
+
+	// Process each need type independently (using SAME global MR for all types)
 	for (const [typeId, capacitySlots] of slotsByType.entries()) {
-		const myMRValues = myMRValuesByType[typeId] || {};
-		const myWeights = myWeightsByType[typeId] || {};
-		
+		// KEY CHANGE: Use same global MR values for all types
+		// Type preferences are encoded in the recognition tree structure,
+		// not in MR itself
+
 		// Initialize type-specific totals
 		if (!recipientTotalsByType[typeId]) {
 			recipientTotalsByType[typeId] = {};
 		}
-		
-		// Process this type's allocations
+
+		// Process this type's allocations with global MR
 		const typeResult = computePerTypeSlotAllocation(
 			providerPubKey,
 			capacitySlots,
 			typeId,
-			myMRValues,
-			myWeights,
+			myGlobalMRValues,  // ← Same for all types
+			myGlobalWeights,   // ← Same for all types
 			networkCommitments
 		);
-		
+
 		// Merge results
 		slotAllocations.push(...typeResult.slot_allocations);
 		Object.assign(slotDenominators, typeResult.slot_denominators);
-		
+
 		// Merge recipient totals for this type
 		const typeRecipientTotals = typeResult.recipient_totals_by_type[typeId] || {};
 		for (const [recipientPub, amount] of Object.entries(typeRecipientTotals)) {
-			recipientTotalsByType[typeId][recipientPub] = 
+			recipientTotalsByType[typeId][recipientPub] =
 				(recipientTotalsByType[typeId][recipientPub] || 0) + amount;
 		}
 	}
@@ -1108,12 +1095,20 @@ export function computeMultiDimensionalSlotNativeAllocation(
  * Compute allocation for a single need type
  * This is where the type-specific allocation equations (E1'-E11') are applied
  */
+/**
+ * Compute allocation for a specific need type using global MR
+ *
+ * PURE GLOBAL MODEL:
+ * - myGlobalMRValues: Same MR values for all types
+ * - myGlobalWeights: Same recognition weights for all types
+ * - Type preferences encoded in tree structure, not in MR
+ */
 function computePerTypeSlotAllocation(
 	providerPubKey: string,
 	capacitySlots: AvailabilitySlot[],
 	typeId: string,
-	myMRValues: Record<string, number>,
-	myWeights: Record<string, number>,
+	myGlobalMRValues: GlobalRecognitionWeights,
+	myGlobalWeights: GlobalRecognitionWeights,
 	networkCommitments: Record<string, Commitment>
 ): TwoTierAllocationState {
 	
@@ -1147,7 +1142,7 @@ function computePerTypeSlotAllocation(
 					timestamp: Date.now()
 				};
 				
-				const providerMR = myMRValues[recipientPub] || 0;
+				const providerMR = myGlobalMRValues[recipientPub] || 0;
 				
 				const providerContext = buildFilterContext(
 					providerPubKey,
@@ -1190,8 +1185,8 @@ function computePerTypeSlotAllocation(
 		const nonMutualRecipients = new Map<string, NeedSlot[]>();
 		
 		for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
-			const mr = myMRValues[recipientPub] || 0;
-			const weight = myWeights[recipientPub] || 0;
+			const mr = myGlobalMRValues[recipientPub] || 0;
+			const weight = myGlobalWeights[recipientPub] || 0;
 			
 			if (mr > 0) {
 				mutualRecipients.set(recipientPub, needSlots);
@@ -1211,13 +1206,13 @@ function computePerTypeSlotAllocation(
 		
 		let totalMutualRecognition = 0;
 		for (const recipientPub of mutualRecipients.keys()) {
-			const mr = myMRValues[recipientPub] || 0;
+			const mr = myGlobalMRValues[recipientPub] || 0;
 			if (mr > 0) totalMutualRecognition += mr;
 		}
 		
 		if (totalMutualRecognition > 0) {
 			for (const [recipientPub, needSlots] of mutualRecipients.entries()) {
-				const mr = myMRValues[recipientPub] || 0;
+				const mr = myGlobalMRValues[recipientPub] || 0;
 				if (mr === 0) continue;
 				
 				const recipientCommitment = networkCommitments[recipientPub];
@@ -1262,17 +1257,23 @@ function computePerTypeSlotAllocation(
 			const rawAllocation = slotQuantity * numerator / safeMutualDenominator;
 			
 			// E5': A_mutual^k(j→i, t) = min(A_mutual^{k,raw}, N_i^k(t))
-			// CRITICAL: Per-type capping ensures contractiveness
-			const cappedAllocation = Math.min(rawAllocation, totalNeed);
+		// CRITICAL: Per-type capping ensures contractiveness
+		const cappedAllocation = Math.min(rawAllocation, totalNeed);
+		
+		if (cappedAllocation > 0) {
+			// PROPORTIONAL DISTRIBUTION: Allocate to each slot based on its share of total need
+			// This avoids FIFO order-dependency
+			const totalSlotNeed = needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+			let actuallyAllocated = 0;
 			
-			if (cappedAllocation > 0) {
-				let remainingAllocation = cappedAllocation;
+			for (const needSlot of needSlots) {
+				const proportion = needSlot.quantity / totalSlotNeed;
+				const slotAllocation = Math.min(
+					needSlot.quantity,
+					cappedAllocation * proportion
+				);
 				
-				for (const needSlot of needSlots) {
-					if (remainingAllocation <= 0) break;
-					
-					const slotAllocation = Math.min(needSlot.quantity, remainingAllocation);
-					
+				if (slotAllocation > 0) {
 					slotAllocations.push({
 						availability_slot_id: availSlot.id,
 						recipient_pubkey: recipientPub,
@@ -1284,11 +1285,13 @@ function computePerTypeSlotAllocation(
 						tier: 'mutual'
 					});
 					
-					remainingAllocation -= slotAllocation;
+					actuallyAllocated += slotAllocation;
 					mutualCapacityUsed += slotAllocation;
-					recipientTotalsByType[recipientPub] = (recipientTotalsByType[recipientPub] || 0) + slotAllocation;
 				}
 			}
+			
+			recipientTotalsByType[recipientPub] = (recipientTotalsByType[recipientPub] || 0) + actuallyAllocated;
+		}
 		}
 		
 		// ────────────────────────────────────────────────────────────
@@ -1312,13 +1315,13 @@ function computePerTypeSlotAllocation(
 		
 		let totalNonMutualRecognition = 0;
 		for (const recipientPub of nonMutualRecipients.keys()) {
-			const weight = myWeights[recipientPub] || 0;
+			const weight = myGlobalWeights[recipientPub] || 0;
 			if (weight > 0) totalNonMutualRecognition += weight;
 		}
 		
 		if (remainingCapacity > 0 && totalNonMutualRecognition > 0) {
 			for (const [recipientPub, needSlots] of nonMutualRecipients.entries()) {
-				const weight = myWeights[recipientPub] || 0;
+				const weight = myGlobalWeights[recipientPub] || 0;
 				if (weight === 0) continue;
 				
 				const recipientCommitment = networkCommitments[recipientPub];
@@ -1360,17 +1363,22 @@ function computePerTypeSlotAllocation(
 			// E10': A_nonmutual^{k,raw}(j→i, t) = C_j^{k,remaining}(t) × [Num / Denom]
 			const rawAllocation = remainingCapacity * numerator / safeNonMutualDenominator;
 			
-			// E11': A_nonmutual^k(j→i, t) = min(A_nonmutual^{k,raw}, residual need)
-			const cappedAllocation = Math.min(rawAllocation, totalNeed);
+		// E11': A_nonmutual^k(j→i, t) = min(A_nonmutual^{k,raw}, residual need)
+		const cappedAllocation = Math.min(rawAllocation, totalNeed);
+		
+		if (cappedAllocation > 0) {
+			// PROPORTIONAL DISTRIBUTION: Allocate to each slot based on its share of total need (Tier 2)
+			const totalSlotNeed = needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+			let actuallyAllocated = 0;
 			
-			if (cappedAllocation > 0) {
-				let remainingAllocation = cappedAllocation;
+			for (const needSlot of needSlots) {
+				const proportion = needSlot.quantity / totalSlotNeed;
+				const slotAllocation = Math.min(
+					needSlot.quantity,
+					cappedAllocation * proportion
+				);
 				
-				for (const needSlot of needSlots) {
-					if (remainingAllocation <= 0) break;
-					
-					const slotAllocation = Math.min(needSlot.quantity, remainingAllocation);
-					
+				if (slotAllocation > 0) {
 					slotAllocations.push({
 						availability_slot_id: availSlot.id,
 						recipient_pubkey: recipientPub,
@@ -1382,10 +1390,12 @@ function computePerTypeSlotAllocation(
 						tier: 'non-mutual'
 					});
 					
-					remainingAllocation -= slotAllocation;
-					recipientTotalsByType[recipientPub] = (recipientTotalsByType[recipientPub] || 0) + slotAllocation;
+					actuallyAllocated += slotAllocation;
 				}
 			}
+			
+			recipientTotalsByType[recipientPub] = (recipientTotalsByType[recipientPub] || 0) + actuallyAllocated;
+		}
 		}
 		
 		slotDenominators[availSlot.id] = {
@@ -1414,13 +1424,13 @@ function computePerTypeSlotAllocation(
 export const myAllocationsReactive: Readable<AllocationOperatorResult | null> = derived<
 	[
 		typeof myCommitmentStore,
-		typeof myMultiDimensionalMutualRecognition,
+		typeof myGlobalMutualRecognition,
 		typeof myRecognitionWeightsStore,
 		typeof myPubKey
 	],
 	AllocationOperatorResult | null
 >(
-	[myCommitmentStore, myMultiDimensionalMutualRecognition, myRecognitionWeightsStore, myPubKey],
+	[myCommitmentStore, myGlobalMutualRecognition, myRecognitionWeightsStore, myPubKey],
 	([$myCommit, $mr, $weights, $myPubKey], set) => {
 		if (!$myCommit || !$weights || !$myPubKey) {
 			set(null);
@@ -1444,7 +1454,7 @@ export const myAllocationsReactive: Readable<AllocationOperatorResult | null> = 
 			$myPubKey,
 			$myCommit,
 			$mr,
-			normalizeTypeSpecificRecognitionWeights($weights), // Enforce D2'
+			normalizeGlobalRecognitionWeights($weights), // Enforce global normalization
 			commitments,
 			currentSystemState.needVector
 		);
@@ -1473,7 +1483,7 @@ export const myAllocationsReactive: Readable<AllocationOperatorResult | null> = 
 			iteration: currentSystemState.iteration,
 			frobeniusNorm: result.convergenceMetrics.frobeniusNorm.toFixed(3),
 			k_max: result.convergenceMetrics.contractionConstant.toFixed(3),
-			heaven: result.convergenceMetrics.heavenAchieved,
+			universalSatisfaction: result.convergenceMetrics.universalSatisfactionAchieved,
 			pctMet: result.convergenceMetrics.percentNeedsMet.toFixed(1) + '%',
 			types: Object.keys(result.convergenceMetrics.perTypeMetrics).length
 		});
@@ -1497,38 +1507,38 @@ export async function publishMyCommitment(commitment: Commitment) {
 		return;
 	}
 	
-	const mrValuesByType = get(myMultiDimensionalMutualRecognition);
-	const recognitionWeightsByType = get(myRecognitionWeightsStore);
-	
-	// Normalize recognition weights (D2')
-	const normalizedWeightsByType = recognitionWeightsByType 
-		? normalizeTypeSpecificRecognitionWeights(recognitionWeightsByType)
+	const globalMRValues = get(myGlobalMutualRecognition);
+	const globalRecognitionWeights = get(myRecognitionWeightsStore);
+
+	// Normalize global recognition weights
+	const normalizedGlobalWeights = globalRecognitionWeights
+		? normalizeGlobalRecognitionWeights(globalRecognitionWeights)
 		: {};
-	
+
 	const enrichedCommitment: Commitment = {
 		...commitment,
-		mr_values_by_type: mrValuesByType,
-		recognition_weights_by_type: normalizedWeightsByType,
+		global_mr_values: globalMRValues,
+		global_recognition_weights: normalizedGlobalWeights,
 		itcStamp: getMyITCStamp(),
 		timestamp: Date.now()
 	};
-	
+
 	await myCommitmentStore.set(enrichedCommitment);
-	
-	console.log('[PUBLISH-V4] Published multi-dimensional commitment');
+
+	console.log('[PUBLISH-V5] Published commitment with global recognition');
 }
 
 /**
- * Publish my recognition weights (with normalization per type)
+ * Publish my global recognition weights (with normalization)
  */
-export async function publishMyRecognitionWeights(weightsByType: MultiDimensionalRecognition) {
-	// Enforce normalization (D2')
-	const normalizedWeightsByType = normalizeTypeSpecificRecognitionWeights(weightsByType);
-	
-	await myRecognitionWeightsStore.set(normalizedWeightsByType);
-	
-	const typeCount = Object.keys(normalizedWeightsByType).length;
-	console.log(`[PUBLISH-V4] Published multi-dimensional recognition weights: ${typeCount} types`);
+export async function publishMyRecognitionWeights(globalWeights: GlobalRecognitionWeights) {
+	// Enforce normalization
+	const normalizedWeights = normalizeGlobalRecognitionWeights(globalWeights);
+
+	await myRecognitionWeightsStore.set(normalizedWeights);
+
+	const recipientCount = Object.keys(normalizedWeights).length;
+	console.log(`[PUBLISH-V5] Published global recognition weights: ${recipientCount} recipients`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1538,7 +1548,7 @@ export async function publishMyRecognitionWeights(weightsByType: MultiDimensiona
 export function logSystemState() {
 	const state = getCurrentSystemState();
 	const frobeniusNorm = computeFrobeniusNorm(state.needVector);
-	const heaven = checkMultiDimensionalHeavenCondition(state.needVector);
+	const universalSatisfaction = checkMultiDimensionalUniversalSatisfactionCondition(state.needVector);
 	const pctMet = computeOverallPercentNeedsMet(state.needVector);
 	const types = getAllNeedTypes(state);
 	
@@ -1547,7 +1557,7 @@ export function logSystemState() {
 		participants: Object.keys(state.needVector).length,
 		needTypes: types.length,
 		frobeniusNorm: frobeniusNorm.toFixed(3),
-		heavenAchieved: heaven,
+		universalSatisfactionAchieved: universalSatisfaction,
 		percentNeedsMet: pctMet.toFixed(1) + '%',
 		itcStamp: itcToString(state.itcStamp)
 	});
@@ -1556,9 +1566,9 @@ export function logSystemState() {
 	console.log('[TYPES-V4]');
 	for (const typeId of types) {
 		const norm = computePerTypeNeedVectorNorm(state.needVector, typeId);
-		const typeHeaven = checkPerTypeHeavenCondition(state.needVector, typeId);
+		const typeUniversalSatisfaction = checkPerTypeUniversalSatisfactionCondition(state.needVector, typeId);
 		const typePctMet = computePerTypePercentNeedsMet(state.needVector, typeId);
-		console.log(`  ${typeId}: ||N⃗^k|| = ${norm.toFixed(3)}, heaven=${typeHeaven}, ${typePctMet.toFixed(0)}% met`);
+		console.log(`  ${typeId}: ||N⃗^k|| = ${norm.toFixed(3)}, universalSatisfaction=${typeUniversalSatisfaction}, ${typePctMet.toFixed(0)}% met`);
 	}
 	
 	// Log individual participants
@@ -1581,7 +1591,7 @@ export function logConvergenceMetrics(metrics: ConvergenceMetrics) {
 		rate: metrics.convergenceRate.toFixed(3),
 		latency: metrics.responseLatency.toFixed(0) + 'ms',
 		frequency: metrics.iterationFrequency.toFixed(1) + ' Hz',
-		heaven: metrics.heavenAchieved,
+		universalSatisfaction: metrics.universalSatisfactionAchieved,
 		pctMet: metrics.percentNeedsMet.toFixed(1) + '%',
 		freedom: metrics.freedomMetric.toFixed(3),
 		types: Object.keys(metrics.perTypeMetrics).length
@@ -1594,20 +1604,20 @@ export function logConvergenceMetrics(metrics: ConvergenceMetrics) {
 			norm: typeMetrics.needVectorNorm.toFixed(3),
 			k_k: typeMetrics.contractionConstant.toFixed(3),
 			converged: typeMetrics.isConverged,
-			heaven: typeMetrics.heavenAchieved,
+			universalSatisfaction: typeMetrics.universalSatisfactionAchieved,
 			pctMet: typeMetrics.percentNeedsMet.toFixed(0) + '%'
 		});
 	}
 }
 
 if (typeof window !== 'undefined') {
-	(window as any).debugAllocationV4 = logSystemState;
-	(window as any).debugConvergenceV4 = (result: AllocationOperatorResult) => {
+	(window as any).debugAllocationV5 = logSystemState;
+	(window as any).debugConvergenceV5 = (result: AllocationOperatorResult) => {
 		logConvergenceMetrics(result.convergenceMetrics);
 	};
-	(window as any).computeAllocationV4 = applyMultiDimensionalAllocationOperator;
-	(window as any).normalizeWeightsV4 = normalizeTypeSpecificRecognitionWeights;
-	(window as any).getCurrentSystemStateV4 = getCurrentSystemState;
-	(window as any).getMyITCStampV4 = getMyITCStamp;
-	(window as any).getAllNeedTypesV4 = () => getAllNeedTypes(getCurrentSystemState());
+	(window as any).computeAllocationV5 = applyMultiDimensionalAllocationOperator;
+	(window as any).normalizeWeightsV5 = normalizeGlobalRecognitionWeights;
+	(window as any).getCurrentSystemStateV5 = getCurrentSystemState;
+	(window as any).getMyITCStampV5 = getMyITCStamp;
+	(window as any).getAllNeedTypesV5 = () => getAllNeedTypes(getCurrentSystemState());
 }
