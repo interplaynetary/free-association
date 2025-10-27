@@ -101,18 +101,6 @@
 		return names;
 	});
 
-	// Load emoji picker client-side only
-	onMount(async () => {
-		if (browser) {
-			try {
-				// Dynamic import to avoid SSR issues
-				await import('emoji-picker-element');
-			} catch (error) {
-				console.warn('Failed to load emoji picker:', error);
-			}
-		}
-	});
-
 	const handleEmojiClick = (emoji: string) => {
 		capacityEmoji = emoji;
 		handleCapacityUpdate();

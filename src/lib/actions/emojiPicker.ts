@@ -1,9 +1,15 @@
 import type { Action } from 'svelte/action';
 
-export const emojiPicker: Action<HTMLElement, { onClick: (emoji: string) => void }> = (node, { onClick }) => {
-	let picker: HTMLElement | null = null;
+export const emojiPicker: Action<HTMLElement, { onClick: (emoji: string) => void }> = (
+	node,
+	{ onClick }
+) => {
+	import('emoji-picker-element').catch((error) =>
+		console.warn('Failed to load emoji picker:', error)
+	);
 
 	let clickHandler = onClick;
+	let picker: HTMLElement | null = null;
 
 	try {
 		picker = document.createElement('emoji-picker');
@@ -27,7 +33,7 @@ export const emojiPicker: Action<HTMLElement, { onClick: (emoji: string) => void
 
 	return {
 		update({ onClick }) {
-			clickHandler = onClick
+			clickHandler = onClick;
 		}
-	}
+	};
 };
