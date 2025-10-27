@@ -3,10 +3,13 @@
   "version": "1.0.21",
   "description": "Holster is a service that allows synchronising data between devices using Node, Deno, Bun or the browser.",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "node --test",
-    "build": "esbuild src/holster.js --bundle --format=esm --sourcemap \"--external:node:*\" \"--external:ws\" --minify --outdir=build"
+    "test": "tsx --test test/**/*.test.ts",
+    "build": "tsc && esbuild dist/holster.js --bundle --format=esm --sourcemap \"--external:node:*\" \"--external:ws\" --minify --outdir=build",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "Malcolm Blaney",
@@ -14,12 +17,18 @@
   "dependencies": {
     "express": "^5.1.0",
     "fs": "^0.0.1-security",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
     "esbuild": "0.25.3",
     "mock-socket": "^9.3.1",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   },
   "prettier": {
     "semi": false,

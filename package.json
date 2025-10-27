@@ -83,6 +83,7 @@
 		"@tailwindcss/postcss": "^4.1.4",
 		"@types/bcryptjs": "^3.0.0",
 		"@types/d3": "^7.4.3",
+		"@types/express": "^5.0.5",
 		"@types/json-logic-js": "^2.0.8",
 		"@types/jsonwebtoken": "^9.0.7",
 		"autoprefixer": "^10.4.21",
