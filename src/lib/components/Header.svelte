@@ -210,12 +210,7 @@
 	);
 
 	// Mutable state for selected index
-	let selectedResultIndex = $state(-1);
-
-	// Reactive update of selected index when search results change
-	$effect(() => {
-		selectedResultIndex = searchResults.length > 0 ? 0 : -1;
-	});
+	let selectedResultIndex = $derived(searchResults.length > 0 ? 0 : -1);
 
 	// Password change state
 	let showPasswordChange = $state(false);
