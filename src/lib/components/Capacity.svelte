@@ -873,14 +873,16 @@
 													{getRecurrenceDisplay(slot)}
 												</span>
 											</div>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>
@@ -908,14 +910,16 @@
 											data-slot-id={slot.id}
 											class:newly-created={globalState.highlightedSlots.has(slot.id)}
 										>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>
@@ -943,14 +947,16 @@
 											data-slot-id={slot.id}
 											class:newly-created={globalState.highlightedSlots.has(slot.id)}
 										>
-											<Slot
-												{slot}
-												capacityId={capacity.id}
-												unit={capacity.unit}
-												canDelete={capacity.availability_slots.length > 1}
-												onupdate={handleSlotUpdate}
-												ondelete={handleSlotDelete}
-											/>
+											{#key JSON.stringify(slot)}
+												<Slot
+													{slot}
+													capacityId={capacity.id}
+													unit={capacity.unit}
+													canDelete={capacity.availability_slots.length > 1}
+													onupdate={handleSlotUpdate}
+													ondelete={handleSlotDelete}
+												/>
+											{/key}
 										</div>
 									{/each}
 								</div>
