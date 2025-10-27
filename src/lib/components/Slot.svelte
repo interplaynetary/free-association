@@ -39,9 +39,6 @@
 	let locationExpanded = $state(false);
 	let compositionsExpanded = $state(false);
 
-	// Provider name cache for compositions
-	let providerNames = $state<Record<string, string>>({});
-
 	// Composition UI state
 	let expandedCompositions = $state<Record<string, boolean>>({});
 	let showAddComposeFrom = $state(false);
@@ -924,32 +921,6 @@
 
 		return parts.length > 0 ? parts.join(', ') : $t('inventory.no_constraints');
 	}
-
-	// Load provider names asynchronously
-	$effect(() => {
-		void (async () => {
-			const capacities = Object.values($userNetworkCapacitiesWithSlotQuantities || {});
-			const uniqueProviders = [
-				...new Set(capacities.map((cap: any) => cap.provider_id).filter(Boolean))
-			];
-
-			for (const providerId of uniqueProviders) {
-				if (!providerNames[providerId]) {
-					try {
-						const name = await getUserName(providerId);
-						if (name) {
-							providerNames = {
-								...providerNames,
-								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to get provider name:', providerId, error);
-					}
-				}
-			}
-		})();
-	});
 
 	// ============================================================================
 	// COMPOSITION LOGIC - Following Original Capacity Pattern
