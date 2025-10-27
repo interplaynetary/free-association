@@ -5,11 +5,17 @@ How Mutual Aid Can Work at Scale Without Markets or States
 
 ### What is Recognition?
 
-**Your-Recognition** = Your acknowledgment of others who contribute to your well-being
+**Your-Recognition** = Your acknowledgment of others who contribute to your self-actualization
 
 **Your-Total-Recognition** = 100%
 
-You divide your recognition among the people whose contributions matter to you. Think of it like: "Of all the people helping me live well, how much does each person contribute?"
+You divide your recognition among the people whose contributions matter to you. Think of it like: "Of all the people helping me realize my potential and live the life I want, how much does each person contribute?"
+
+**Key properties of recognition:**
+- Always represents a share/portion/percentage of your total recognition (100%)
+- **Non-transferable** - unlike shares or equity that can be traded, you cannot sell or transfer your recognition to others
+- **Dynamically (re)adjustable** - you can change your recognition as relationships and contributions evolve
+- **Not limited to direct personal consumption** - you can recognize those contributing to broader social values and needs you care about (e.g., environmental work, community infrastructure, education for others)
 
 **Example:**
 - You recognize Alice (40%), Bob (35%), Carol (25%)
@@ -23,7 +29,7 @@ You divide your recognition among the people whose contributions matter to you. 
 - Their share of Your total recognition, OR
 - Your share of Their total recognition
 
-**Why the smaller number?** Because mutual recognition requires *both* people to acknowledge each other. If you recognize them 80% but they only recognize you 20%, the mutual part is just 20%.
+**Why the smaller number?** Because mutual recognition requires *both* people to acknowledge each other. **Taking the minimum of both shares ensures reciprocity in proportion.** If you recognize them 80% but they only recognize you 20%, the mutual part is just 20% - this is the extent to which you mutually recognize contribution towards each other's self-actualization.
 
 **Example:**
 - Alice gives Bob 30% of her recognition
@@ -32,11 +38,14 @@ You divide your recognition among the people whose contributions matter to you. 
 
 This is symmetric: Mutual-Recognition(Alice, Bob) = Mutual-Recognition(Bob, Alice)
 
+**This is mutual-recognition of contribution towards each other's self-actualization** - not just acknowledgment of exchange, but recognition of how you each contribute to the other's ability to realize their potential.
+
 **Self-Recognition is Valid:**
 - You can have mutual recognition with yourself!
 - Example: "I have capacity Tuesday, but I need it Wednesday"
 - You allocate to your future self based on your self-recognition
 - This enables personal time-shifting of resources
+- **Note**: Self-recognition is part of your 100% total recognition (e.g., if you give yourself 20%, you have 80% left for others)
 
 **Key insight:** Mutual recognition is **global** - it's the same value regardless of whether you're allocating food, healthcare, or housing. The recognition itself measures your social relationship, not the specific type of help.
 
@@ -67,7 +76,7 @@ The system calculates each person's share based on their contribution points:
 
 **Result:** You recognize Dr. Smith (56%), Alice (15%), Bob (15%), Nurse Jane (14%)
 
-**This is global recognition** - these percentages stay the same whether you're allocating food, healthcare, or housing. The tree structure naturally encodes that Dr. Smith contributes more to your well-being (mostly through healthcare), so they get a higher share of your recognition overall.
+**This is global recognition** - these percentages stay the same whether you're allocating food, healthcare, or housing. The tree structure naturally encodes that Dr. Smith contributes more to your self-actualization (mostly through healthcare), so they get a higher share of your recognition overall.
 
 ### Types of Needs
 
@@ -121,8 +130,8 @@ When someone has capacity to give, the system prioritizes in two tiers:
 
 ### How Your Share Gets Calculated
 
-**Your-Need** = How much of something you currently need
-**Your-Active-Need** = Your-Need × Damping-Factor (explained below)
+**Your-Declared-Need** = How much of something you state you currently need
+**Your-Active-Need** = Your-Declared-Need × Damping-Factor (explained below)
 
 **Provider's-Available-Capacity** = How much they can give right now
 
@@ -236,6 +245,8 @@ Kitchen's Contributors (100%)
 
 Sometimes the system can overshoot: it gives you more than you need, then less than you need, then more again. This oscillation slows convergence.
 
+**How is over-allocation possible?** Allocations are capped at your declared need *per provider*, but you might receive from multiple providers in one round. If you need 100 meals and receive 60 from Provider A and 60 from Provider B simultaneously, your total allocation is 120 meals (20 over your need).
+
 **Over-Allocation-History** = The last 3 times you received allocation, how much excess was there?
 
 **Oscillation-Detected** = When the history shows an up-down-up or down-up-down pattern
@@ -249,7 +260,7 @@ Sometimes the system can overshoot: it gives you more than you need, then less t
 2. **Medium-Speed (0.8)**: Default when neither oscillating nor smooth
 3. **Slow-Down (0.5)**: When oscillation is detected (system learns to be cautious)
 
-**Your-Active-Need** = Your-Stated-Need × Damping-Factor
+**Your-Active-Need** = Your-Declared-Need × Damping-Factor
 
 **Example:**
 - You need 100 hours of tutoring
@@ -265,58 +276,157 @@ Sometimes the system can overshoot: it gives you more than you need, then less t
 
 ### How Needs Decrease
 
-**Your-Need-at-Next-Step** = maximum(0, Your-Current-Need - Total-You-Received)
+**Important Distinction:**
+- **Declared-Need** = What you state you currently need (can be updated any time)
+- **Remaining-Need** = Declared-Need - Total-Already-Received
+- **The Update Law** = How the system suggests updating your declaration after receiving allocations
+
+**Your-Remaining-Need** = maximum(0, Your-Declared-Need - Total-You-Received)
 
 **In plain English:**
-- Whatever you receive reduces your need
-- Your need can never go below zero
-- You never accumulate beyond your stated need
+- Whatever you receive reduces your remaining need
+- Your remaining need can never go below zero
+- You never accumulate beyond your declared need
 
-**Example:**
-- You need 50 meals
-- You receive 30 meals today
-- Tomorrow you need: maximum(0, 50 - 30) = 20 meals
-- Next day you receive 25 meals
-- Day after you need: maximum(0, 20 - 25) = 0 meals (you're satisfied)
+**Example (assuming unchanged declaration):**
+- You declare you need 50 meals
+- You receive 30 meals in iteration 1
+- Your remaining need: maximum(0, 50 - 30) = 20 meals
+- If you don't change your declaration, next iteration you declare: 20 meals
+- You receive 25 meals in iteration 2
+- Your remaining need: maximum(0, 20 - 25) = 0 meals (you're satisfied)
+
+**What if your declared need changes?**
+
+You can update your declaration at any time (new circumstances, changing situation):
+- Initially declared: 40 meals
+- Received: 30 meals
+- Remaining: 10 meals
+- But then circumstances change, you now declare: 60 meals
+- New remaining need: 60 - 30 = 30 meals (accounting for what you already received)
+
+**The update law assumes unchanged declarations between iterations.** In practice:
+- The system suggests: New-Declaration = Old-Declaration - Received
+- But you can override this with any new declaration
+- Your `fulfilled_amount` tracks total received regardless of declaration changes
 
 **Multi-Dimensional:**
 Each type of need updates independently:
-- Food-Need(tomorrow) = Food-Need(today) - Food-Received(today)
-- Healthcare-Need(tomorrow) = Healthcare-Need(today) - Healthcare-Received(today)
+- Food-Remaining-Need = Food-Declared-Need - Food-Total-Received
+- Healthcare-Remaining-Need = Healthcare-Declared-Need - Healthcare-Total-Received
 - etc.
 
 ---
 
 ## Part V: Why This Works (The Math in Plain Language)
 
-### Proof 1: Needs Always Decrease (The System Never Makes Things Worse)
+### Proof 1: Remaining Needs Always Decrease (The System Never Makes Things Worse)
 
-**The Key Insight:** Since allocations are always capped at your need, receiving help always makes your situation better or stays the same, never worse.
+**The Key Insight:** Since allocations are always capped at your declared need, receiving help always makes your situation better or stays the same, never worse.
 
 **Formally:**
-- Before allocation: You need X
-- After allocation: You need (X - amount-received), which is less than or equal to X
-- Over the whole network: Total-Needs-Tomorrow ≤ Total-Needs-Today
+- Before allocation: You have declared need X
+- After allocation: Your remaining need is (X - amount-received), which is less than or equal to X
+- Over the whole network (assuming no arbitrary declaration increases): Total-Remaining-Needs-Tomorrow ≤ Total-Remaining-Needs-Today
 
-**This is called "contraction"** - the system always moves toward zero needs.
+**This is called "contraction"** - the system always moves toward zero remaining needs.
+
+**Note:** This assumes people declare what they actually need. If someone declares they need 100 meals when they only need 10, the system will still allocate based on mutual recognition and declared amounts, but this would be false declaration (covered in the Truth section).
 
 ### Proof 2: Complete Satisfaction is Guaranteed (If Capacity is Sufficient)
 
 **The Fixed-Point Argument:**
 
-Imagine the system reaches a point where it's stable (a "fixed point"). At this stable point, your needs aren't changing anymore.
+Imagine the system reaches a point where it's stable (a "fixed point"). At this stable point, your remaining needs aren't changing anymore, and you're not changing your declarations.
 
-If Your-Need-Tomorrow = Your-Need-Today, then:
-- Your-Need-Today = Your-Need-Today - Allocations-You-Received
+If Your-Remaining-Need-Tomorrow = Your-Remaining-Need-Today (with unchanged declaration), then:
+- Your-Remaining-Need-Today = Your-Remaining-Need-Today - Allocations-You-Received
 - This means: Allocations-You-Received = 0
 
-**But wait!** If you still have a need (Your-Need > 0) AND there's capacity in the network AND people recognize you, then you MUST receive some allocation (can't be zero).
+**But wait!** If you still have a remaining need (Remaining-Need > 0) AND there's capacity in the network AND people recognize you, then you MUST receive some allocation (can't be zero).
 
-**Contradiction!** The only way the fixed point works is if Your-Need = 0.
+**Contradiction!** The only way the fixed point works is if Your-Remaining-Need = 0.
 
-**Therefore:** If there's enough capacity in the system, everyone's needs converge to zero.
+**Therefore:** If there's enough capacity in the system, everyone's remaining needs converge to zero.
 
-**In each dimension independently:** This proof works for food, healthcare, housing, etc. separately. Each type of need converges to zero at its own rate.
+**In each dimension independently:** This proof works for food, healthcare, housing, etc. separately. Each type of remaining need converges to zero at its own rate.
+
+### What Happens Under Insufficient Capacity?
+
+The proof above requires sufficient capacity. What happens when capacity < total needs?
+
+**The Equilibrium Under Scarcity:**
+
+When total available capacity is less than total needs, the system still converges — but to a non-zero fixed point.
+
+**At this equilibrium:**
+- Need(tomorrow) = Need(today) for all participants
+- This means: Received = 0 (no change in needs)
+- But Received = 0 not because Need = 0, but because all available capacity is already allocated
+
+**Example:**
+- Total capacity: 100 meals/day
+- Total need: 150 meals/day
+- System converges: 100 meals distributed according to mutual recognition shares
+- Persistent unmet need: 50 meals/day
+
+**Who Bears the Burden:**
+
+Under scarcity, allocation follows mutual recognition shares:
+- Those with stronger recognition networks receive proportionally more
+- Those with weak or zero mutual recognition receive less or nothing
+- Tier 2 recipients (one-way recognition) receive nothing if all capacity goes to Tier 1
+
+**Critical Differences from Markets and States:**
+
+**Unlike Markets:**
+- No accumulation: can't receive more than need, can't stockpile
+- No price speculation: allocation stays needs-based
+- No profit from scarcity: providers can't enrich themselves by maintaining scarcity
+- Scarcity is transparent: exact shortfall is measurable
+
+**Unlike State Systems:**
+- No bureaucratic hierarchy determining allocation
+- Recognition is non-transferable: can't inherit, buy, or sell access
+- Recognition is dynamically adjustable: relationships can change
+- Allocation logic is peer-to-peer and transparent
+
+**The Risk of Recognition-Based Stratification:**
+
+There is a genuine risk: those with weak recognition networks face persistent unmet needs, which could prevent them from contributing, leading to further isolation.
+
+**Three Responses to Scarcity:**
+
+1. **Tier 2 Generosity**: Those whose mutual needs are met allocate surplus capacity to those with weaker recognition, creating pathways for new relationships
+
+2. **Recognition Adjustment**: Participants can increase recognition of persistently unmet individuals, especially if they value potential contributions
+
+3. **Capacity Increase**: Most important—scarcity is visible and measurable, creating collective incentive to increase production, bring in new providers, or improve efficiency
+
+**Strategic Recognition Under Scarcity:**
+
+**The tension**: If capacity is scarce, why recognize more people (diluting your own share)?
+
+**The game theory**: Recognition is mutual. You cannot force others to recognize you. If you concentrate recognition narrowly, you gain high mutual recognition with few people—but you're vulnerable if they can't meet all your needs or your needs are diverse. If you spread recognition widely, you build a broader network with lower mutual recognition per person but more sources.
+
+**Mathematical Properties Under Scarcity:**
+
+1. **Contraction still holds**: Total-Needs(tomorrow) ≤ Total-Needs(today)
+2. **Convergence still happens**: System reaches fixed point in seconds
+3. **No accumulation**: Formula caps at need regardless of capacity level
+4. **Transparency**: Exact shortfall visible: (Total-Needs - Total-Capacity)
+5. **No artificial scarcity**: No incentive to restrict capacity for profit
+
+**The Bottom Line:**
+
+The system doesn't magically solve scarcity. If there are 100 meals and 150 people need food, 50 meals of need remain unmet.
+
+But it does three things differently:
+1. **Prevents accumulation**: No hoarding, no wealth from scarcity
+2. **Makes scarcity transparent**: Shows exactly how much capacity is needed
+3. **Creates incentives to increase capacity**: Persistent unmet needs are visible to all, no profit motive to maintain them
+
+The system is honest about its limitations: it makes allocation fair and transparent, but it cannot create resources that don't exist.
 
 ### Proof 3: Convergence is Exponential (It Happens Fast)
 
@@ -471,6 +581,7 @@ At equilibrium (when everyone's needs are zero):
 - Based on contribution ("who helps whom")
 - Global recognition captures your overall contribution
 - Tree structure tracks specific types of help naturally
+- Non-transferable and dynamically adjustable
 
 **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
 
@@ -537,6 +648,7 @@ Your-Recognition(Them) =
 
 Your-Total-Recognition = 100%
   (divided among all who contribute)
+  (non-transferable, dynamically re-adjustable)
 
 Mutual-Recognition(You, Them) = 
   minimum(
@@ -558,19 +670,32 @@ Your-Share-of-Provider's-Capacity =
 Your-Allocation = 
   minimum(
     Your-Calculated-Share,
-    Your-Actual-Need
+    Your-Declared-Need
   )
 
-Your-Need(tomorrow) = 
+Your-Declared-Need = 
+  What you state you need (can be updated any time)
+
+Your-Remaining-Need = 
   maximum(
     0,
-    Your-Need(today) - Your-Allocation(today)
+    Your-Declared-Need - Total-You-Received
   )
+
+Update Law (assuming unchanged declaration):
+  Your-Declared-Need(tomorrow) = Your-Remaining-Need(today)
+  = maximum(
+      0,
+      Your-Declared-Need(today) - Your-Allocation(today)
+    )
+    
 ```
 
 **Key Properties:**
 
 - **Symmetric:** Mutual-Recognition(A,B) = Mutual-Recognition(B,A)
+- **Non-transferable:** Recognition and shares cannot be traded or sold
+- **Dynamic:** Recognition and distribution are (re)adjustable as relationships evolve
 - **Capped:** You never receive more than you need
 - **Contracting:** Total needs always decrease
 - **Converging:** Needs approach zero exponentially
