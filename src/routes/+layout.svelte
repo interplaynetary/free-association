@@ -2,7 +2,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
-	import Toast from '$lib/components/Toast.svelte';
+	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
@@ -10,6 +10,7 @@
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import { loading } from '$lib/translations';
+	import { registerServiceWorker } from '$lib/utils/pwa';
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
 	import '$lib/services';
@@ -17,13 +18,18 @@
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Handle notification permission request (layout-appropriate functionality)
+	// Handle notification permission request and PWA setup (layout-appropriate functionality)
 	onMount(() => {
-		// Request notification permission if supported
-		if (browser && 'Notification' in window && Notification.permission === 'default') {
-			Notification.requestPermission().then((permission) => {
-				console.log('Notification permission:', permission);
-			});
+		if (browser) {
+			// Request notification permission if supported
+			if ('Notification' in window && Notification.permission === 'default') {
+				Notification.requestPermission().then((permission) => {
+					console.log('Notification permission:', permission);
+				});
+			}
+
+			// Register service worker for PWA functionality
+			registerServiceWorker();
 		}
 	});
 </script>
@@ -51,7 +57,7 @@
 </main>
 
 <!-- Toast notification component - positioned at top center -->
-<Toast />
+<Toaster />
 
 <!-- DraggedNode component that appears on top of everything -->
 <DraggedNode

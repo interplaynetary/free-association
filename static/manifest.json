@@ -1,27 +1,42 @@
 {
-  "name": "Playnet",
+  "name": "Playnet - Free Association Network",
   "short_name": "Playnet",
-  "description": "Free association network platform",
+  "description": "Free association network platform for collaborative productivity and social engagement",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "lang": "en",
   "dir": "ltr",
+  "id": "/?source=pwa",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/favicon.png",
@@ -36,10 +51,32 @@
       "purpose": "any"
     }
   ],
+  "shortcuts": [
+    {
+      "name": "Home",
+      "short_name": "Home",
+      "description": "Open Playnet home page",
+      "url": "/",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    }
+  ],
   "categories": [
     "productivity",
     "social",
-    "collaboration"
+    "collaboration",
+    "utilities"
   ],
-  "screenshots": []
+  "screenshots": [],
+  "related_applications": [],
+  "protocol_handlers": [],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

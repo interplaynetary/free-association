@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
-import { toast } from '$lib/stores/toast.svelte';
+import toast from 'svelte-french-toast';
 import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
 import { userPub } from '$lib/state/auth.svelte';
 import { userTree } from '$lib/state/core.svelte';
@@ -372,11 +372,11 @@ export const globalState = $state({
 				toast.error(message);
 				break;
 			case 'warning':
-				toast.warning(message);
+				toast(message, { icon: '⚠️' });
 				break;
 			case 'info':
 			default:
-				toast.info(message);
+				toast(message, { icon: 'ℹ️' });
 				break;
 		}
 	},

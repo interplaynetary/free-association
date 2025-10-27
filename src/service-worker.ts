@@ -1,168 +1,165 @@
 /// <reference types="@sveltejs/kit" />
+/// <reference lib="webworker" />
 
-// Polyfill window object for Gun in service worker context - must be before imports
-if (typeof window === 'undefined') {
-	// @ts-ignore
-	globalThis.window = {
-		crypto: self.crypto,
-		TextEncoder: self.TextEncoder,
-		TextDecoder: self.TextDecoder,
-		WebSocket: self.WebSocket,
-		location: self.location
-	};
-}
-
-import { build, files, version } from '$service-worker';
+import { build, files, prerendered, version } from '$service-worker';
 import { NotificationManager } from './lib/notification-manager';
+import {
+	cleanupOutdatedCaches,
+	createHandlerBoundToURL,
+	precacheAndRoute
+} from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
+import {
+	CacheFirst,
+	NetworkFirst,
+	StaleWhileRevalidate,
+	NetworkOnly
+} from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
-import Gun from 'gun';
-import 'gun/lib/radix.js';
-import 'gun/lib/radisk.js';
-import 'gun/lib/store.js';
-import 'gun/lib/rindexed.js';
-import 'gun/lib/then.js';
-// import 'gun/sea';
-
-// Create Gun instance
-const gun = new Gun({
-	peers: [
-		'https://gun-manhattan.herokuapp.com/gun',
-		'https://peer.wallie.io/gun',
-		'https://gun.defucc.me/gun'
-	],
-	localStorage: false,
-	store: window.RindexedDB,
-	radisk: false
-});
-
-// Function to check connected peers
-function getConnectedPeers() {
-	try {
-		// @ts-ignore - Gun's internal structure
-		const peers = gun._.opt.peers;
-		if (!peers) return [];
-
-		return Object.values(peers).filter((peer: any) => {
-			return peer && peer.wire && peer.wire.readyState === 1;
-		});
-	} catch (error) {
-		console.error('Error checking connected peers:', error);
-		return [];
-	}
-}
+declare const self: ServiceWorkerGlobalScope;
 
 // Initialize notification manager
 const notificationManager = new NotificationManager();
 
-// Create unique cache name for this deployment
-const CACHE = `cache-${version}`;
-const ASSETS = [
-	...build, // the app itself
-	...files // everything in `static`
+// Workbox: Clean up outdated caches
+cleanupOutdatedCaches();
+
+// Workbox: Precache all static assets
+const manifest = [
+	...build.map((file: string) => ({ url: file, revision: version })),
+	...files.map((file: string) => ({ url: file, revision: version })),
+	...prerendered.map((file: string) => ({ url: file, revision: version }))
 ];
 
-// Service worker event handlers
-self.addEventListener('install', (event) => {
-	// Create a new cache and add all files to it
-	async function addFilesToCache() {
-		const cache = await caches.open(CACHE);
-		await cache.addAll(ASSETS);
-	}
+precacheAndRoute(manifest);
 
-	event.waitUntil(addFilesToCache());
+// Workbox: Cache strategy for navigation requests (app shell)
+const handler = createHandlerBoundToURL('/index.html');
+const navigationRoute = new NavigationRoute(handler, {
+	denylist: [/^\/api\//, /\.json$/, /\.xml$/]
+});
+registerRoute(navigationRoute);
+
+// Workbox: Cache strategy for static assets (CSS, JS, Fonts)
+registerRoute(
+	({ request }: { request: Request }) =>
+		request.destination === 'style' ||
+		request.destination === 'script' ||
+		request.destination === 'font',
+	new CacheFirst({
+		cacheName: 'static-assets-v1',
+		plugins: [
+			new CacheableResponsePlugin({
+				statuses: [0, 200]
+			}),
+			new ExpirationPlugin({
+				maxEntries: 60,
+				maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+			})
+		]
+	})
+);
+
+// Workbox: Cache strategy for images
+registerRoute(
+	({ request }: { request: Request }) => request.destination === 'image',
+	new CacheFirst({
+		cacheName: 'images-v1',
+		plugins: [
+			new CacheableResponsePlugin({
+				statuses: [0, 200]
+			}),
+			new ExpirationPlugin({
+				maxEntries: 100,
+				maxAgeSeconds: 60 * 24 * 60 * 60 // 60 days
+			})
+		]
+	})
+);
+
+// Workbox: Cache strategy for API calls (Network First with fallback)
+registerRoute(
+	({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
+	new NetworkFirst({
+		cacheName: 'api-cache-v1',
+		plugins: [
+			new CacheableResponsePlugin({
+				statuses: [0, 200]
+			}),
+			new ExpirationPlugin({
+				maxEntries: 50,
+				maxAgeSeconds: 5 * 60 // 5 minutes
+			})
+		]
+	})
+);
+
+// Workbox: Stale-while-revalidate for dynamic content
+registerRoute(
+	({ url }: { url: URL }) => url.origin === self.location.origin && !url.pathname.startsWith('/api/'),
+	new StaleWhileRevalidate({
+		cacheName: 'dynamic-content-v1',
+		plugins: [
+			new CacheableResponsePlugin({
+				statuses: [0, 200]
+			}),
+			new ExpirationPlugin({
+				maxEntries: 50,
+				maxAgeSeconds: 24 * 60 * 60 // 24 hours
+			})
+		]
+	})
+);
+
+// Workbox: Network-only for websocket connections and external resources
+registerRoute(
+	({ url }: { url: URL }) => url.protocol === 'wss:' || url.protocol === 'ws:',
+	new NetworkOnly()
+);
+
+// Service worker lifecycle events
+self.addEventListener('install', (event) => {
+	console.log('[Service Worker] Installing...');
+	self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-	// Remove previous cached data from disk
-	async function deleteOldCaches() {
-		for (const key of await caches.keys()) {
-			if (key !== CACHE) await caches.delete(key);
-		}
-	}
-
-	event.waitUntil(deleteOldCaches());
+	console.log('[Service Worker] Activating...');
+	event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', (event) => {
-	// Ignore POST requests etc
-	if (event.request.method !== 'GET') return;
-
-	async function respond() {
-		const url = new URL(event.request.url);
-		const cache = await caches.open(CACHE);
-
-		// Handle base path for GitHub Pages deployment
-		let pathname = url.pathname;
-		const basePath = '/free-association';
-		if (pathname.startsWith(basePath)) {
-			pathname = pathname.substring(basePath.length) || '/';
-		}
-
-		// `build`/`files` can always be served from the cache
-		if (ASSETS.includes(pathname)) {
-			const response = await cache.match(pathname);
-			if (response) {
-				return response;
-			}
-		}
-
-		// For everything else, try the network first, but
-		// fall back to the cache if we're offline
-		try {
-			const response = await fetch(event.request);
-
-			// If we're offline, fetch can return a value that is not a Response
-			// instead of throwing - and we can't pass this non-Response to respondWith
-			if (!(response instanceof Response)) {
-				throw new Error('invalid response from fetch');
-			}
-
-			// Only cache http/https requests (Cache API doesn't support chrome-extension, etc.)
-			const isHttpScheme = url.protocol === 'http:' || url.protocol === 'https:';
-			if (response.status === 200 && isHttpScheme) {
-				cache.put(event.request, response.clone());
-			}
-
-			return response;
-		} catch (err) {
-			const response = await cache.match(event.request);
-
-			if (response) {
-				return response;
-			}
-
-			// If there's no cache, then just error out
-			// as there is nothing we can do to respond to this request
-			throw err;
-		}
-	}
-
-	event.respondWith(respond());
-});
-
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
 	event.notification.close();
 
-	// @ts-ignore
 	event.waitUntil(
-		// @ts-ignore
-		clients.matchAll().then((clientList) => {
-			if (clientList.length > 0) {
-				return clientList[0].focus();
+		self.clients.matchAll({ type: 'window' }).then((clientList) => {
+			// Check if there's already a window open
+			for (const client of clientList) {
+				if ('focus' in client) {
+					return client.focus();
+				}
 			}
-			// @ts-ignore
-			const basePath = self.registration.scope.replace(self.location.origin, '').replace(/\/$/, '');
-			const targetUrl = basePath || '/free-association/';
-			// @ts-ignore
-			return clients.openWindow(targetUrl);
+			// If no window is open, open a new one
+			if (self.clients.openWindow) {
+				const basePath = self.registration.scope.replace(self.location.origin, '').replace(/\/$/, '');
+				const targetUrl = basePath || '/';
+				return self.clients.openWindow(targetUrl);
+			}
 		})
 	);
 });
 
+// Message handler for notifications and other commands
 self.addEventListener('message', async (event) => {
 	const { type, data } = event.data;
 
 	switch (type) {
+		case 'SKIP_WAITING':
+			self.skipWaiting();
+			break;
 		case 'QUEUE_NOTIFICATION':
 			await notificationManager.queueNotification(data);
 			break;
@@ -172,30 +169,9 @@ self.addEventListener('message', async (event) => {
 		case 'CLEAR_ALL_NOTIFICATIONS':
 			await notificationManager.clearAllNotifications();
 			break;
-		case 'GET_PEER_COUNT':
-			const peerCount = getConnectedPeers().length;
-			console.log('Connected peers:', peerCount);
-			break;
 		default:
 			console.log('Unknown message type:', type);
 	}
 });
 
-// Set up Gun subscription for notifications
-gun
-	.get('test')
-	.get('paste')
-	.on((data: any) => {
-		if (data && typeof data === 'string') {
-			notificationManager.queueNotification({
-				title: 'New Paste Available',
-				body: data.length > 100 ? `${data.substring(0, 100)}...` : data,
-				tag: 'paste-notification',
-				source: 'gun-paste',
-				timestamp: Date.now(),
-				data: { content: data }
-			});
-		}
-	});
-
-console.log('getConnectedPeers', getConnectedPeers());
+console.log('[Service Worker] Initialized with Workbox');
