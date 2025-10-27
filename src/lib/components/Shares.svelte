@@ -56,48 +56,6 @@
 		return sharesList.filter((share) => share.name && share.name.trim() !== '');
 	});
 
-	// Cache for provider names
-	let providerNames = $state<Record<string, string>>({});
-
-	// Load provider names asynchronously
-	$effect(() => {
-		void (async () => {
-			const uniqueProviders = [...new Set(allShares().map((share) => share.provider_id))];
-
-			for (const providerId of uniqueProviders) {
-				if (providerId && !providerNames[providerId]) {
-					try {
-						const name = await getUserName(providerId);
-						if (name) {
-							providerNames = {
-								...providerNames,
-								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to get provider name:', providerId, error);
-					}
-				}
-			}
-		})();
-	});
-
-	// Get providers with resolved names
-	let providersWithNames = $derived(() => {
-		const providerMap = new Map<string, string>();
-
-		allShares().forEach((share) => {
-			if (share.provider_id && !providerMap.has(share.provider_id)) {
-				const displayName = providerNames[share.provider_id] || share.provider_id;
-				providerMap.set(share.provider_id, displayName);
-			}
-		});
-
-		return Array.from(providerMap.entries())
-			.map(([id, name]) => ({ id, name }))
-			.sort((a, b) => a.name.localeCompare(b.name));
-	});
-
 	// Filtered and sorted shares
 	let filteredShares = $derived(() => {
 		let filtered = allShares();
@@ -147,7 +105,6 @@
 	let stats = $derived(() => ({
 		total: allShares().length,
 		filtered: filteredShares().length,
-		providers: providersWithNames().length
 	}));
 
 	function clearFilters() {
