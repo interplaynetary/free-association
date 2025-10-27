@@ -19,7 +19,7 @@ jobs:
       - name: Download test artifacts
         uses: actions/download-artifact@v4
         with:
-          name: playwright-report-20.x
+          name: playwright-report
           path: playwright-report/
       
       - name: Publish test report
