@@ -339,7 +339,7 @@
 	// View switcher helpers
 	const viewConfig = $derived({
 		tree: { emoji: '🌈', name: $t('toolbar.tree_view'), next: 'inventory' as const },
-		// map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'inventory' as const },
+		map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'inventory' as const },
 		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'tree' as const }
 	});
 
@@ -373,7 +373,7 @@
 		isLongPressing = false;
 	}
 
-	function selectView(view: 'tree' /*| 'map'*/ | 'inventory') {
+	function selectView(view: 'tree' | 'map' | 'inventory') {
 		globalState.setView(view);
 		showViewMenu = false;
 	}
@@ -679,14 +679,14 @@
 									<span class="menu-emoji">🌈</span>
 									<span class="menu-label">values</span>
 								</button>
-								<!-- <button
+								<button
 									class="view-menu-item"
 									class:active={globalState.currentView === 'map'}
 									onclick={() => selectView('map')}
 								>
 									<span class="menu-emoji">🌍</span>
 									<span class="menu-label">Map</span>
-								</button> -->
+								</button>
 								<button
 									class="view-menu-item"
 									class:active={globalState.currentView === 'inventory'}
