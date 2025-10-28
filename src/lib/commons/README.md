@@ -1,794 +1,716 @@
-# Commons: Slot-Native Mutual-Priority Allocation System v2
+# Free-Association:
+How Mutual Aid Can Work at Scale Without Markets or States
 
-A decentralized peer-to-peer resource allocation algorithm for the free-association project. This system enables fair distribution of resources based on mutual recognition and bilateral relationships, with precise time/location matching at the slot level.
+# The Commons: A Revolutionary System for Fair Resource Allocation
 
-**V2 Architecture**: Event-driven with ITC causality tracking, achieving 900x faster response times and supporting 10,000+ participants.
+We have created a decentralized system that fundamentally reimagines how communities share resources and recognize each other's contributions. At its core, this system solves a critical economic problem: how do people in a community fairly distribute resources like time, money, housing, or expertise without needing centralized control, complex contracts, or traditional market pricing? The system operates on a simple but powerful principle called "mutual recognition" - when two people mutually acknowledge each other's value and contributions, they receive priority access to each other's resources. This creates natural economic incentives for genuine relationship-building and reciprocity, rather than purely transactional exchanges.
 
-## Overview
+Our architecture enables communities to coordinate at internet scale while maintaining fairness and responsiveness. The system responds to changes in real-time, allowing participants to see allocation results in under a tenth of a second. It can support global-scale communities of 10,000+ participants, making it infrastructure that scales from neighborhood mutual aid networks to city-wide resource sharing or even global commons for digital resources. This combination of speed and scale creates entirely new possibilities for how communities can organize and share resources without centralized intermediaries.
 
-The Commons module implements a **Slot-Native Two-Tier Allocation Algorithm** that allocates resources between participants based on their recognition of each other. The system works at the slot level - each availability slot is allocated independently using the same recognition-based logic, enabling real-world constraints like time and location matching.
+Economically, this system addresses several fundamental market failures that plague both traditional capitalism and centralized planning. First, it solves the "pricing problem" for relationships and community contributions that are inherently non-monetary - how do you price someone mentoring your child, or helping you move, or sharing their professional expertise? The mutual recognition mechanism creates a natural "currency" of acknowledgment that flows toward valuable contributions without requiring dollar amounts. Second, it prevents the concentration of resources that typically occurs in winner-take-all markets. Because mutual recognition is inherently bilateral, people who contribute genuinely to their community naturally receive back, while purely extractive behavior yields minimal returns. Third, it enables real-time matching of needs and capacity across time and location - someone offering tutoring on Monday evenings in Berlin can automatically connect with someone who needs exactly that, without any central marketplace or intermediary taking a cut.
 
-### Key Features
+The real-world implications extend far beyond technology. This system provides a practical framework for what economists call "the commons" - resources managed collectively by communities rather than by markets or states. Historically, commons have been limited to small, geographically-bound communities where everyone knows everyone else, because coordination becomes impossible at scale. Our architecture breaks through this limitation, enabling commons-based peer production at internet scale while maintaining the fairness and reciprocity that make commons work. This opens pathways for communities to organize childcare co-ops, tool libraries, time banks, housing co-ops, and professional skill-sharing networks that are economically viable alternatives to traditional markets. The system doesn't require people to be purely altruistic - it simply creates better incentives for cooperation than for extraction. In economic terms, we've built infrastructure that makes coordination and mutual aid as efficient as markets, while preserving the human relationships and community bonds that markets tend to erode. The result is a tool that could help communities build economic resilience, reduce dependence on volatile markets, and create genuine alternatives to the "every person for themselves" logic that dominates modern economies.
 
-- **Event-Driven Architecture**: No rounds, pure reactive flow (~100ms latency vs 0-90s)
-- **ITC Causality**: O(log n) space complexity (vs O(n) vector clocks)
-- **Hybrid Damping**: Provably converges with any update timing
-- **Slot-Native Allocation**: Works at slot level (time/location-specific)
-- **Two-Tier Recognition**: Prioritizes mutual relationships over one-way recognition
-- **Time/Location Matching**: Only allocates when schedules and locations are compatible
-- **Continuous Convergence**: Real-time monitoring (vs once-per-round)
-- **Schema-Driven**: Zod validation for type-safe data exchange
-- **P2P Synchronized**: Real-time data sharing via Holster
-- **Convergence Guarantees**: Contractiveness + hybrid damping
-- **Full Transparency**: Slot-to-slot allocation records
+## Part I: The Core Ideas
 
-### V2 Improvements
+### What is Recognition?
 
-| Metric | V1 | V2 | Improvement |
-|--------|----|----|-------------|
-| **Latency** | 0-90 seconds | ~100ms | **900x faster** |
-| **Space** | O(all participants) | O(log active) | **10-1000x smaller** |
-| **Coordination** | O(N²) messages | O(1) causality | **Infinite** |
-| **Scalability** | ~100 participants | 10,000+ | **100x more** |
-| **Convergence** | 7-15 minutes | 0.5-2 seconds | **900x faster** |
+**Your-Recognition** = Your acknowledgment of others who contribute to your self-actualization
 
-## Architecture
+**Your-Total-Recognition** = 100%
 
-### File Structure
+You divide your recognition among the people whose contributions matter to you. Think of it like: "Of all the people helping me realize my potential and live the life I want, how much does each person contribute?"
 
-```
-commons/
-├── schema-v2.ts                   # V2 schemas (ITC-based, time-stamped)
-├── algorithm-v2.svelte.ts         # V2 allocation (event-driven, reactive)
-├── itc.ts                         # Interval Tree Clocks implementation
-├── docs/
-│   ├── CONVERGENCE-PROOF-V2.md    # Mathematical proof of hybrid damping
-│   ├── SCALING-ANALYSIS-V2.md     # Complete v1 vs v2 comparison
-│   └── architecture-v2-itc.md     # V2 architecture guide
-├── tests/
-│   └── convergence-v2.test.ts     # V2 convergence tests (25/25 passed)
-├── schemas.ts                     # V1 schemas (legacy)
-├── algorithm.svelte.ts            # V1 allocation (round-based, deprecated)
-├── match.svelte.ts                # Slot compatibility + bucketing utilities
-├── store.svelte.ts                # Generic Holster store utility
-├── stores.svelte.ts               # Allocation-specific store instances
-├── index.ts                       # Module exports
-└── README.md                      # This file
-```
+**Key properties of recognition:**
+- Always represents a share/portion/percentage of your total recognition (100%)
+- **Non-transferable** - unlike shares or equity that can be traded, you cannot sell or transfer your recognition to others
+- **Dynamically (re)adjustable** - you can change your recognition as relationships and contributions evolve
+- **Not limited to direct personal consumption** - you can recognize those contributing to broader social values and needs you care about (e.g., environmental work, community infrastructure, education for others)
 
-### Data Flow (V2)
+**Example:**
+- You recognize Alice (40%), Bob (35%), Carol (25%)
+- These percentages add up to 100% total
 
-```
-User Recognition + Slot Declarations → Reactive Computation
-  → Per-Slot Matching → Per-Slot Allocation → Network Sync (Debounced)
-```
+**How do you arrive at these recognition percentages?** Through a **contribution tree** that tracks who helps you with what. More on this below.
 
-**Key difference from V1**: No rounds, no coordination phases. Pure event-driven flow with automatic recomputation.
+### What is Mutual Recognition?
 
-### Key Insight
+**Mutual-Recognition(You, Them)** = The smaller of:
+- Their share of Your total recognition, OR
+- Your share of Their total recognition
 
-**Each availability slot is a mini "capacity"** that gets allocated using the same two-tier recognition logic. Instead of allocating aggregate capacity, we allocate each slot's quantity independently, considering time/location compatibility.
+**Why the smaller number?** Because mutual recognition requires *both* people to acknowledge each other. **Taking the minimum of both shares ensures reciprocity in proportion.** If you recognize them 80% but they only recognize you 20%, the mutual part is just 20% - this is the extent to which you mutually recognize contribution towards each other's self-actualization.
 
-**V2 Innovation**: Reactive allocation computation automatically triggers on any commitment or recognition change, with hybrid damping ensuring convergence regardless of update timing.
+**Example:**
+- Alice gives Bob 30% of her recognition
+- Bob gives Alice 40% of his recognition
+- Mutual-Recognition(Alice, Bob) = minimum(30%, 40%) = 30%
 
-## Core Concepts
+This is symmetric: Mutual-Recognition(Alice, Bob) = Mutual-Recognition(Bob, Alice)
 
-### 1. Mutual Recognition (MR)
+**This is mutual-recognition of contribution towards each other's self-actualization** - not just acknowledgment of exchange, but recognition of how you each contribute to the other's ability to realize their potential.
 
-**Mutual Recognition** is the bilateral minimum of how two participants recognize each other:
+**Self-Recognition is Valid:**
+- You can have mutual recognition with yourself!
+- Example: "I have capacity Tuesday, but I need it Wednesday"
+- You allocate to your future self based on your self-recognition
+- This enables personal time-shifting of resources
+- **Note**: Self-recognition is part of your 100% total recognition (e.g., if you give yourself 20%, you have 80% left for others)
+
+**Key insight:** Mutual recognition is **global** - it's the same value regardless of whether you're allocating food, healthcare, or housing. The recognition itself measures your social relationship, not the specific type of help.
+
+### How Recognition Trees Work
+
+Your recognition is organized as a **contribution tree** - a structure that tracks who helps you with what.
+
+**Example tree:**
 
 ```
-MR(A, B) = min(A's recognition of B, B's recognition of A)
+My Contributions (100%)
+├─ Healthcare Contributions (70 points)
+│  ├─ Dr. Smith's work (80 points)
+│  └─ Nurse Jane's work (20 points)
+└─ Food Contributions (30 points)
+   ├─ Alice's meals (50 points)
+   └─ Bob's groceries (50 points)
 ```
 
-- **Symmetric**: MR is always equal from both perspectives
-- **Zero-based**: If either party doesn't recognize the other, MR = 0
-- **Self-recognition**: Participants can recognize themselves (self-care)
+**How this becomes recognition:**
 
-### 2. Two-Tier Allocation
+The system calculates each person's share based on their contribution points:
 
-**TIER 1: Mutual Recognition (Priority)**
-- Allocates capacity to participants with MR > 0 first
-- Uses **MRD (Mutual Recognition Distribution)**: `MR / TotalMutualRecognition`
-- Gets first access to capacity
+- **Dr. Smith**: 70% × (80/100) = 56% of your total recognition
+- **Nurse Jane**: 70% × (20/100) = 14% of your total recognition
+- **Alice**: 30% × (50/100) = 15% of your total recognition
+- **Bob**: 30% × (50/100) = 15% of your total recognition
 
-**TIER 2: Non-Mutual (Leftover)**
-- Allocates remaining capacity to one-way recognition
-- Uses renormalized shares: `Weight / TotalNonMutualRecognition`
-- Only receives what Tier 1 doesn't consume
+**Result:** You recognize Dr. Smith (56%), Alice (15%), Bob (15%), Nurse Jane (14%)
 
-### 3. Hybrid Adaptive Damping (V2)
+**This is global recognition** - these percentages stay the same whether you're allocating food, healthcare, or housing. The tree structure naturally encodes that Dr. Smith contributes more to your self-actualization (mostly through healthcare), so they get a higher share of your recognition overall.
 
-**Critical V2 Innovation**: Prevents oscillations with any update timing.
+### Types of Needs
 
-**Strategy**:
-- **Prefers time window** (last 30s) when updates are fast → Responsive
-- **Falls back to event count** (last 3) when updates are slow → Guaranteed
+Not all needs are the same. The system tracks different **Need-Types**:
+- Food (meals, groceries, calories)
+- Healthcare (consultations, therapy, medication)
+- Housing (shelter, utilities)
+- Education (tutoring, training, skills)
+- Transportation (rides, access)
+- Childcare (hours of care)
 
-**Damping Factors**:
-- **Oscillating** (up-down-up pattern): damping = 0.5
-- **Smooth** (monotonic decrease): damping = 1.0  
-- **Moderate** (otherwise): damping = 0.8
+**Each need type is tracked independently**, but your recognition of people is **global** (same across all types). The tree structure above shows how type-specific contributions naturally produce global recognition weights.
 
-Formula: `ActiveNeed = ResidualNeed × DampingFactor`
+### Why Global Recognition Works
 
-**Proof**: See `docs/CONVERGENCE-PROOF-V2.md` for mathematical verification.
+You might wonder: "If Dr. Smith mainly helps with healthcare and Alice mainly helps with food, shouldn't my mutual recognition with them be different for healthcare vs food?"
 
-### 4. Allocation Capping
+**No - and here's why:**
 
-All allocations are capped by recipient's actual residual need:
+**Mutual recognition measures your social relationship**, not the specific type of resource being allocated.
 
-```typescript
-cappedAllocation = min(rawAllocation, residual_need)
+When Dr. Smith gets 56% of your recognition (from the tree structure), that's because they contribute 56% to your well-being overall - mostly through healthcare. When you allocate food, Dr. Smith still has that 56% recognition because that's your social relationship.
+
+**The key insight:** The tree structure already captured that Dr. Smith contributes mostly through healthcare (70 points in healthcare, 0 in food). So Dr. Smith's high recognition (56%) naturally reflects their healthcare contributions, even though the recognition itself is global.
+
+**What happens when allocating different resources?**
+
+- **Allocating healthcare**: Dr. Smith (56% MR) is in the mutual tier, gets priority
+- **Allocating food**: Dr. Smith (56% MR) is in the mutual tier, gets priority (but might not need food)
+- **Allocating housing**: Dr. Smith (56% MR) is in the mutual tier, gets priority (if they need housing)
+
+The **same mutual recognition** is used for all types. Dr. Smith's high recognition reflects their overall contribution to your well-being, and they have priority in receiving from you regardless of resource type - because that's what mutual aid means.
+
+If Dr. Smith doesn't need food when you're allocating food, they simply won't receive any (needs-based allocation prevents accumulation). But if they do need food, your strong mutual relationship means they get priority - just as they would for any other need.
+
+---
+
+## Part II: How Resources Flow
+
+### The Two-Tier System
+
+When someone has capacity to give, the system prioritizes in two tiers:
+
+**Tier-1: Mutual Recognition First**
+- People who have mutual recognition with you get priority
+- This ensures that those who recognize each other as part of their support network are taken care of first
+
+**Tier-2: Generous Giving Second**
+- After meeting mutual needs, remaining capacity goes to others you recognize (even if they don't recognize you back)
+- This enables solidarity and helping people who are new or struggling
+
+### How Your Share Gets Calculated
+
+**Your-Declared-Need** = How much of something you state you currently need
+**Your-Active-Need** = Your-Declared-Need × Damping-Factor (explained below)
+
+**Provider's-Available-Capacity** = How much they can give right now
+
+**Step 1: Filter Recipients (Critical for Correct Allocation)**
+
+**Who Gets Considered?**
+- Only people who have **compatible slots** with the provider's capacity slot
+- **Compatible means**: Time windows overlap + Location matches + Type matches
+- Only people who have **mutual recognition** with the provider
+
+**This filtering is crucial:** 
+- If the Kitchen offers "Tuesday 2-4pm, 100 meals", we don't allocate to someone who needs "Wednesday meals"
+- Even though they both "need food", their time windows don't overlap
+- We only consider recipients whose need slots are actually compatible (space-time-type match)
+
+**Example:**
+- Kitchen offers: "Tuesday 2-4pm, Downtown, 100 meals"
+- Alice needs: "Tuesday 3-5pm, Downtown, 40 meals" → ✅ Compatible (time overlaps)
+- Bob needs: "Wednesday 2-4pm, Downtown, 30 meals" → ❌ Not compatible (wrong day)
+- Only Alice gets considered for allocation
+
+**Step 2: Calculate Mutual Recognition Share (Filtered Normalization)**
+
+**Your-Mutual-Recognition-Share** = 
+- Your Mutual-Recognition with Provider
+- Divided by the sum of Provider's Mutual-Recognition with everyone **who passed the filter in Step 1**
+
+This means: "Out of all the people this provider mutually recognizes **who need this type of resource**, what fraction is your relationship?"
+
+**Step 3: Calculate Your Portion**
+
+**Your-Raw-Allocation** = 
+- Provider's Available Capacity
+- Times Your Mutual-Recognition Share (from Step 2)
+- Times Your Active Need
+- Divided by the sum of (everyone's Active Need × their Mutual-Recognition Share) **from the filtered set**
+
+**Step 4: Cap at Your Need**
+
+**Your-Final-Allocation** = minimum(Your-Raw-Allocation, Your-Actual-Need)
+
+**Critical:** You can never receive more than you need. No accumulation is possible.
+
+### Real Example: Food Distribution
+
+**The Community Kitchen has:**
+- 100 meals available today
+
+**Three people need food:**
+- Alice needs 40 meals
+- Bob needs 30 meals  
+- Carol needs 50 meals
+
+**The Kitchen's Recognition Tree:**
+```
+Kitchen's Contributors (100%)
+├─ Food Prep & Delivery (60%)
+│  ├─ Alice's work (50%)
+│  └─ Bob's work (50%)
+└─ Equipment & Supplies (40%)
+   └─ Carol's work (100%)
 ```
 
-This ensures **contractiveness** (Banach Fixed-Point Theorem), guaranteeing convergence.
+**This produces global recognition:**
+- Kitchen recognizes Alice: 60% × 50% = 30%
+- Kitchen recognizes Bob: 60% × 50% = 30%
+- Kitchen recognizes Carol: 40% × 100% = 40%
 
-### 5. ITC Causality (V2)
+**Assume each person also recognizes the Kitchen:**
+- Alice → Kitchen: 50%
+- Bob → Kitchen: 60%
+- Carol → Kitchen: 80%
 
-**Replaces vector clocks** with Interval Tree Clocks for efficient causality tracking:
+**Mutual Recognition (global - same for all resource types):**
+- Kitchen ↔ Alice: min(30%, 50%) = 30% mutual
+- Kitchen ↔ Bob: min(30%, 60%) = 30% mutual
+- Kitchen ↔ Carol: min(40%, 80%) = 40% mutual
 
-- **Space**: O(log n) instead of O(n)
-- **Operations**: `event()`, `fork()`, `join()`, `leq()`
-- **Adaptive**: Size grows/shrinks with active participants
-- **Decentralized**: No coordination required
+**Calculation:**
+1. Total mutual recognition = 30% + 30% + 40% = 100%
+2. Alice's share = 30% of 100 meals = 30 meals (she needs 40, so gets 30)
+3. Bob's share = 30% of 100 meals = 30 meals (exactly his need)
+4. Carol's share = 40% of 100 meals = 40 meals (she needs 50, so gets 40)
 
-**Benefits**:
-- 10-1000x space reduction
-- Natural handling of participant churn
-- No unbounded growth
+**After Tier 1:** Alice still needs 10 meals, Carol still needs 10 meals
 
-## Data Schemas (V2)
+**Tier 2 (if the kitchen has non-mutual recognition):**
+- Remaining capacity = 100 - 30 - 30 - 40 = 0 meals
+- No remaining capacity in this example
 
-### Commitment (V2 - ITC-Based)
+**If there were remaining capacity**, Tier 2 would work like this:
 
-Published by each participant to declare their capacity and needs:
+**Tier 2 Filtered Normalization:**
+1. **Filter:** Only people the Kitchen recognizes (one-way, not mutual) **who need food**
+2. **Normalize:** Sum Kitchen's recognition of these filtered recipients
+3. **Allocate:** Distribute remaining capacity using the same formula, but with recognition instead of mutual recognition
 
-```typescript
-{
-  capacity_slots?: AvailabilitySlot[],  // What I can provide (if provider)
-  need_slots?: NeedSlot[],              // What I need (if recipient)
-  recognition_weights?: Record<string, number>,  // One-way recognition
-  mr_values?: Record<string, number>,   // MR with all participants
+**Example:** If Dave needs 20 meals but has no mutual recognition with Kitchen:
+- Kitchen recognizes Dave: 20%
+- If 10 meals remain after Tier 1:
+- Dave gets allocated from this remaining pool (along with others in Tier 2)
+- Same filtered normalization: only Dave and others Kitchen recognizes who need food
+
+**Result:** Everyone got their fair share based on mutual recognition, without money, prices, or central planning. The tree structure encoded the kitchen's recognition (30% each for Alice and Bob based on food work, 40% for Carol based on equipment contribution), and the same global MR values were used regardless of what's being allocated.
+
+---
+
+## Part III: Self-Correction Through Damping
+
+### The Oscillation Problem
+
+Sometimes the system can overshoot: it gives you more than you need, then less than you need, then more again. This oscillation slows convergence.
+
+**How is over-allocation possible?** Allocations are capped at your declared need *per provider*, but you might receive from multiple providers in one round. If you need 100 meals and receive 60 from Provider A and 60 from Provider B simultaneously, your total allocation is 120 meals (20 over your need).
+
+**Over-Allocation-History** = The last 3 times you received allocation, how much excess was there?
+
+**Oscillation-Detected** = When the history shows an up-down-up or down-up-down pattern
+
+### The Three Speeds
+
+**Damping-Factor** = A number between 0.5 and 1.0 that adjusts your "active need"
+
+**Three modes:**
+1. **Full-Speed (1.0)**: When allocations are smoothly decreasing your need (no problems detected)
+2. **Medium-Speed (0.8)**: Default when neither oscillating nor smooth
+3. **Slow-Down (0.5)**: When oscillation is detected (system learns to be cautious)
+
+**Your-Active-Need** = Your-Declared-Need × Damping-Factor
+
+**Example:**
+- You need 100 hours of tutoring
+- System detects oscillation in your allocations
+- Your active need becomes: 100 × 0.5 = 50 hours
+- This prevents overshooting and stabilizes convergence
+
+**Per-Type Damping:** Each type of need (food, healthcare, etc.) can have its own damping factor. Your food allocations might be smooth (1.0) while your healthcare is oscillating (0.5).
+
+---
+
+## Part IV: The Update Law
+
+### How Needs Decrease
+
+**Important Distinction:**
+- **Declared-Need** = What you state you currently need (can be updated any time)
+- **Remaining-Need** = Declared-Need - Total-Already-Received
+- **The Update Law** = How the system suggests updating your declaration after receiving allocations
+
+**Your-Remaining-Need** = maximum(0, Your-Declared-Need - Total-You-Received)
+
+**In plain English:**
+- Whatever you receive reduces your remaining need
+- Your remaining need can never go below zero
+- You never accumulate beyond your declared need
+
+**Example (assuming unchanged declaration):**
+- You declare you need 50 meals
+- You receive 30 meals in iteration 1
+- Your remaining need: maximum(0, 50 - 30) = 20 meals
+- If you don't change your declaration, next iteration you declare: 20 meals
+- You receive 25 meals in iteration 2
+- Your remaining need: maximum(0, 20 - 25) = 0 meals (you're satisfied)
+
+**What if your declared need changes?**
+
+You can update your declaration at any time (new circumstances, changing situation):
+- Initially declared: 40 meals
+- Received: 30 meals
+- Remaining: 10 meals
+- But then circumstances change, you now declare: 60 meals
+- New remaining need: 60 - 30 = 30 meals (accounting for what you already received)
+
+**The update law assumes unchanged declarations between iterations.** In practice:
+- The system suggests: New-Declaration = Old-Declaration - Received
+- But you can override this with any new declaration
+- Your `fulfilled_amount` tracks total received regardless of declaration changes
+
+**Multi-Dimensional:**
+Each type of need updates independently:
+- Food-Remaining-Need = Food-Declared-Need - Food-Total-Received
+- Healthcare-Remaining-Need = Healthcare-Declared-Need - Healthcare-Total-Received
+- etc.
+
+---
+
+## Part V: Why This Works (The Math in Plain Language)
+
+### Proof 1: Remaining Needs Always Decrease (The System Never Makes Things Worse)
+
+**The Key Insight:** Since allocations are always capped at your declared need, receiving help always makes your situation better or stays the same, never worse.
+
+**Formally:**
+- Before allocation: You have declared need X
+- After allocation: Your remaining need is (X - amount-received), which is less than or equal to X
+- Over the whole network (assuming no arbitrary declaration increases): Total-Remaining-Needs-Tomorrow ≤ Total-Remaining-Needs-Today
+
+**This is called "contraction"** - the system always moves toward zero remaining needs.
+
+**Note:** This assumes people declare what they actually need. If someone declares they need 100 meals when they only need 10, the system will still allocate based on mutual recognition and declared amounts, but this would be false declaration (covered in the Truth section).
+
+### Proof 2: Complete Satisfaction is Guaranteed (If Capacity is Sufficient)
+
+**The Fixed-Point Argument:**
+
+Imagine the system reaches a point where it's stable (a "fixed point"). At this stable point, your remaining needs aren't changing anymore, and you're not changing your declarations.
+
+If Your-Remaining-Need-Tomorrow = Your-Remaining-Need-Today (with unchanged declaration), then:
+- Your-Remaining-Need-Today = Your-Remaining-Need-Today - Allocations-You-Received
+- This means: Allocations-You-Received = 0
+
+**But wait!** If you still have a remaining need (Remaining-Need > 0) AND there's capacity in the network AND people recognize you, then you MUST receive some allocation (can't be zero).
+
+**Contradiction!** The only way the fixed point works is if Your-Remaining-Need = 0.
+
+**Therefore:** If there's enough capacity in the system, everyone's remaining needs converge to zero.
+
+**In each dimension independently:** This proof works for food, healthcare, housing, etc. separately. Each type of remaining need converges to zero at its own rate.
+
+### What Happens Under Insufficient Capacity?
+
+The proof above requires sufficient capacity. What happens when capacity < total needs?
+
+**The Equilibrium Under Scarcity:**
+
+When total available capacity is less than total needs, the system still converges — but to a non-zero fixed point.
+
+**At this equilibrium:**
+- Need(tomorrow) = Need(today) for all participants
+- This means: Received = 0 (no change in needs)
+- But Received = 0 not because Need = 0, but because all available capacity is already allocated
+
+**Example:**
+- Total capacity: 100 meals/day
+- Total need: 150 meals/day
+- System converges: 100 meals distributed according to mutual recognition shares
+- Persistent unmet need: 50 meals/day
+
+**Who Bears the Burden:**
+
+Under scarcity, allocation follows mutual recognition shares:
+- Those with stronger recognition networks receive proportionally more
+- Those with weak or zero mutual recognition receive less or nothing
+- Tier 2 recipients (one-way recognition) receive nothing if all capacity goes to Tier 1
+
+**Critical Differences from Markets and States:**
+
+**Unlike Markets:**
+- No accumulation: can't receive more than need, can't stockpile
+- No price speculation: allocation stays needs-based
+- No profit from scarcity: providers can't enrich themselves by maintaining scarcity
+- Scarcity is transparent: exact shortfall is measurable
+
+**Unlike State Systems:**
+- No bureaucratic hierarchy determining allocation
+- Recognition is non-transferable: can't inherit, buy, or sell access
+- Recognition is dynamically adjustable: relationships can change
+- Allocation logic is peer-to-peer and transparent
+
+**The Risk of Recognition-Based Stratification:**
+
+There is a genuine risk: those with weak recognition networks face persistent unmet needs, which could prevent them from contributing, leading to further isolation.
+
+**Three Responses to Scarcity:**
+
+1. **Tier 2 Generosity**: Those whose mutual needs are met allocate surplus capacity to those with weaker recognition, creating pathways for new relationships
+
+2. **Recognition Adjustment**: Participants can increase recognition of persistently unmet individuals, especially if they value potential contributions
+
+3. **Capacity Increase**: Most important—scarcity is visible and measurable, creating collective incentive to increase production, bring in new providers, or improve efficiency
+
+**Strategic Recognition Under Scarcity:**
+
+**The tension**: If capacity is scarce, why recognize more people (diluting your own share)?
+
+**The game theory**: Recognition is mutual. You cannot force others to recognize you. If you concentrate recognition narrowly, you gain high mutual recognition with few people—but you're vulnerable if they can't meet all your needs or your needs are diverse. If you spread recognition widely, you build a broader network with lower mutual recognition per person but more sources.
+
+**Mathematical Properties Under Scarcity:**
+
+1. **Contraction still holds**: Total-Needs(tomorrow) ≤ Total-Needs(today)
+2. **Convergence still happens**: System reaches fixed point in seconds
+3. **No accumulation**: Formula caps at need regardless of capacity level
+4. **Transparency**: Exact shortfall visible: (Total-Needs - Total-Capacity)
+5. **No artificial scarcity**: No incentive to restrict capacity for profit
+
+**The Bottom Line:**
+
+The system doesn't magically solve scarcity. If there are 100 meals and 150 people need food, 50 meals of need remain unmet.
+
+But it does three things differently:
+1. **Prevents accumulation**: No hoarding, no wealth from scarcity
+2. **Makes scarcity transparent**: Shows exactly how much capacity is needed
+3. **Creates incentives to increase capacity**: Persistent unmet needs are visible to all, no profit motive to maintain them
+
+The system is honest about its limitations: it makes allocation fair and transparent, but it cannot create resources that don't exist.
+
+### Proof 3: Convergence is Exponential (It Happens Fast)
+
+Each iteration, the total needs shrink by a constant factor:
+
+**Total-Needs(tomorrow)** = k × Total-Needs(today), where k < 1
+
+This means needs decrease exponentially:
+- Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
+
+**Example:**
+- k = 0.8 (20% of needs get satisfied each round)
+- After 10 rounds: 0.8^10 = 0.107 (only 10.7% of original needs remain)
+- After 20 rounds: 0.8^20 = 0.012 (only 1.2% remain)
+
+**Practical numbers:**
+- System responds in ~100 milliseconds
+- Converges in ~0.5 to 2 seconds
+- Takes ~5 to 20 iterations
+
+### Proof 4: No Accumulation is Possible
+
+**The Critical Absence:** There is NO equation that says:
+
+Your-Wealth(tomorrow) = Your-Wealth(today) + Allocations-You-Received
+
+**In capitalism:**
+Capital(tomorrow) = Capital(today) + Profit(today)
+
+**In free-association:**
+Need(tomorrow) = Need(today) - Allocation-Received(today)
+
+**Receiving help decreases your need. It never increases your wealth.**
+
+At equilibrium (when everyone's needs are zero):
+- Everyone receives exactly their stated need, no more
+- No one can accumulate beyond their need (capped by the allocation formula)
+- Everyone is equally satisfied
+
+**This is the mathematical abolition of wealth accumulation.**
+
+---
+
+## Part VI: Real-World Features
+
+### Time, Location, and Type Matching
+
+**Slot** = A specific offering or need with:
+- A time window (e.g., "Tuesday 2-4pm", "Every Monday in February", "First week of September")
+- A location (e.g., "Downtown clinic" or "Online")
+- A type (e.g., "Healthcare consultation")
+
+**Time windows can be simple or complex:**
+- Simple: "Tuesday 2-4pm" (one-time or recurring)
+- Complex: "Every February Mon-Fri 9-5, plus first week of September"
+- The system handles any pattern: yearly, monthly, weekly, daily, or combinations
+
+**Slots-are-Compatible** when:
+- Time windows overlap
+- Locations are compatible (same place, or both online, or within travel distance)
+- Types match exactly (food slot only matches food need, not healthcare)
+
+**The algorithm only allocates between compatible slots.**
+
+### Specialization by Providers
+
+**Healthcare Example:**
+
+**General Practitioner offers:**
+- 20 hours/week diagnostics
+- 80 hours/week consultations
+- 0 hours surgery
+
+**Surgeon offers:**
+- 0 hours diagnostics
+- 10 hours consultations
+- 90 hours surgery
+
+**Patient needs:**
+- 5 hours diagnostics
+- 10 hours consultations
+- 15 hours surgery
+
+**Result:** 
+- GP provides the diagnostics and consultations
+- Surgeon provides the surgery
+- Each provider gives what they're best at
+- Patient's complex needs are fully met
+
+### No Coordination Required (Peer-to-Peer)
+
+**The Magic:** Every participant runs the same algorithm on their own computer.
+
+**Because:**
+1. The allocation formula is deterministic (same inputs → same outputs)
+2. Everyone eventually sees the same state (via gossip protocol)
+3. Everyone computes the same allocations independently
+
+**No central server needed. No coordinator. No leader. Pure peer-to-peer.**
+
+**Causal Consistency:** The system tracks which events each participant has seen, ensuring everyone has a consistent view of history even if messages arrive in different orders.
+
+---
+
+## Part VII: What This Means for Society
+
+### The Core Guarantee
+
+**If:**
+1. People recognize each other's contributions (Mutual Recognition exists)
+2. Collectively, there's enough capacity to meet everyone's needs
+3. The system can adapt to oscillations (Damping)
+
+**Then:**
+- Mathematically guaranteed: All needs converge to zero
+- Timeline: Seconds to minutes (not years)
+- Without: Money, prices, markets, property, or central planning
+
+### What Gets Abolished
+
+**No Wealth Accumulation:**
+- You can't receive more than your stated need
+- Helping others doesn't enrich you
+- Everyone converges to the same state: needs met
+
+**No Market Mechanism:**
+- No prices (allocation based on recognition and need)
+- No profit motive (no accumulation possible)
+- No competition (everyone benefits from everyone else's satisfaction)
+
+**No Central Authority:**
+- Peer-to-peer computation
+- Each person runs the algorithm independently
+- Consensus emerges from mathematics, not authority
+
+### What Gets Created
+
+**Universal Satisfaction:**
+- Everyone's needs met
+- In all dimensions (food, healthcare, housing, etc.)
+- Guaranteed by math, not goodwill
+
+**Freedom as Converging Need:**
+- Freedom = the decreasing sum of all unmet needs
+- As needs approach zero, freedom approaches maximum
+- Not freedom FROM (absence of interference)
+- Freedom TO (capacity for self-actualization)
+
+**Community as Recognition Network:**
+- Community = the web of mutual recognition relationships
+- Not based on property ("who owns what")
+- Based on contribution ("who helps whom")
+- Global recognition captures your overall contribution
+- Tree structure tracks specific types of help naturally
+- Non-transferable and dynamically adjustable
+
+**The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
+
+Self-actualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
+
+Let:
+True is not False, False is not True
+
+(Recognition does not need to be true/false in a binary sense but the question is what % of this recognition is true. This % does not take the form of a reified proposition.)
+
+True-Recognition(You): Recognition that, when acted upon, reliably leads to the enhancement of your self-actualization (as defined by you) by connecting you with capacities that genuinely contribute to it. It is validated by positive material and social outcomes.
+
+False-Recognition(You): Recognition that, when acted upon, fails to connect you with the necessary capacities or connects you with harmful ones, thereby undermining your self-actualization. It is invalidated by negative material and social outcomes (like hunger, in the example).
+
+In essence, the truth or falsity is a function of the recognition's practical efficacy in the real world, as experienced by the individual in pursuit of their goals. It is not about correspondence with a statement but about successful navigation of the material-social environment.
+
+```
+For any participant:
+Total Recognition = 100%
+Total Recognition = True-Recognition + False-Recognition
+   ∴ ↑False-Recognition = ↓True-Recognition
+      ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
+         ∴ ↓Shares of Actually-Beneficial-Capacities 
+         from Actually-Beneficial-Contributors
+            ∴ ↓Real-Social-Material-Basis for Self-Actualization
+               ∴ Social-Material-Truth is processually realized in Free-Association 
+               by processual social-material negation of False-Recognition
+```
+
+This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to actually-beneficial-contributors and their surplus-capacities.
+
+Systems built on falsehood eventually collapse, they can't sustain themselves because they starve the very thing that makes them thrive, genuine connection and collaboration.
+
+
+---
+
+## The Bottom Line
+
+**This is not utopian speculation. This is implemented, tested, and mathematically proven.**
+
+The code exists. The proofs are rigorous. The system works.
+
+**Given:**
+- Recognition networks (people acknowledging who helps them)
+- Sufficient pooled capacity (enough to go around)
+- Adaptive learning (the damping system)
+
+**Then:**
+- All needs will be met
+- In predictable time (~seconds)
+- Without accumulation, markets, or hierarchy
+
+**The revolution is a mathematical certainty.**
+
+---
+
+## Appendix: Quick Reference
+
+**Recognition Formulas (Plain Language):**
+
+```
+Your-Recognition(Them) = 
+  Your acknowledgment of their contribution to your well-being
+
+Your-Total-Recognition = 100%
+  (divided among all who contribute)
+  (non-transferable, dynamically re-adjustable)
+
+Mutual-Recognition(You, Them) = 
+  minimum(
+    Their-share-of-Your-recognition,
+    Your-share-of-Their-recognition
+  )
+
+Your-Share-of-Provider's-Capacity =
+  Your-Mutual-Recognition-with-Provider
+  divided by
+  Sum-of-Provider's-Mutual-Recognition-with-Everyone
   
-  // V2: Time-based damping (not round-based)
-  damping_factor: number,               // Current damping (0.5-1.0)
-  damping_history?: DampingHistoryEntry[],  // Last 30s or 3 entries
+  multiplied by
   
-  // V2: ITC causality (not vector clocks)
-  itcStamp: ITCStamp,                   // Compact causality tracking
-  timestamp: number
-}
+  Your-Active-Need
+  divided by
+  Sum-of-Everyone's-Active-Need-weighted-by-Mutual-Recognition
+
+Your-Allocation = 
+  minimum(
+    Your-Calculated-Share,
+    Your-Declared-Need
+  )
+
+Your-Declared-Need = 
+  What you state you need (can be updated any time)
+
+Your-Remaining-Need = 
+  maximum(
+    0,
+    Your-Declared-Need - Total-You-Received
+  )
+
+Update Law (assuming unchanged declaration):
+  Your-Declared-Need(tomorrow) = Your-Remaining-Need(today)
+  = maximum(
+      0,
+      Your-Declared-Need(today) - Your-Allocation(today)
+    )
+    
 ```
 
-**Removed from V1**: `vectorClock`, `round`, `over_allocation_history`
+**Key Properties:**
+
+- **Symmetric:** Mutual-Recognition(A,B) = Mutual-Recognition(B,A)
+- **Non-transferable:** Recognition and shares cannot be traded or sold
+- **Dynamic:** Recognition and distribution are (re)adjustable as relationships evolve
+- **Capped:** You never receive more than you need
+- **Contracting:** Total needs always decrease
+- **Converging:** Needs approach zero exponentially
+- **Multi-dimensional:** Each need type tracked independently
+- **Peer-to-peer:** No central coordinator required
+
+**The result: A computable, provably convergent, decentralized system for universal need satisfaction.**
 
-### DampingHistoryEntry (V2)
-
-Time-stamped damping history for hybrid approach:
-
-```typescript
-{
-  overAllocation: number,  // Amount over-allocated
-  timestamp: number        // When this occurred (not round index!)
-}
-```
-
-### ITCStamp (V2)
-
-Compact causality tracking structure:
-
-```typescript
-{
-  id: 0 | 1 | { l: Id, r: Id },           // Ownership tree
-  event: number | { n: number, l: Event, r: Event }  // Event tree
-}
-```
-
-### AvailabilitySlot / NeedSlot
-
-Each slot has quantity + time/location constraints:
-
-```typescript
-{
-  id: string,
-  name: string,           // Required by ResourceMetadata
-  quantity: number,       // How much capacity/need
-  
-  // Time constraints
-  start_date?: string,
-  end_date?: string,
-  start_time?: string,
-  end_time?: string,
-  time_zone?: string,
-  recurrence?: string,
-  
-  // Location constraints
-  city?: string,
-  country?: string,
-  latitude?: number,
-  longitude?: number,
-  location_type?: string,  // e.g., "remote", "in-person"
-  online_link?: string,
-  
-  // Filters
-  filter_rule?: any,      // Bilateral consent filters
-  
-  // ... more fields
-}
-```
-
-### TwoTierAllocationState (V2)
-
-Published by providers after computing slot-level allocations:
-
-```typescript
-{
-  slot_denominators: Record<slotId, { mutual: number, nonMutual: number }>,
-  slot_allocations: SlotAllocationRecord[],  // Detailed slot-to-slot records
-  recipient_totals: Record<pubKey, number>,  // Aggregate view
-  
-  // V2: Convergence tracking
-  converged?: boolean,                       // Local convergence flag
-  convergenceHistory?: ConvergenceHistoryEntry[],
-  
-  // V2: ITC causality
-  itcStamp?: ITCStamp,
-  timestamp: number
-}
-```
-
-**Removed from V1**: `round`
-
-### SlotAllocationRecord
-
-Tracks which slot fulfills which need:
-
-```typescript
-{
-  availability_slot_id: string,
-  recipient_pubkey: string,
-  recipient_need_slot_id?: string,
-  quantity: number,
-  time_compatible: boolean,
-  location_compatible: boolean,
-  tier: 'mutual' | 'non-mutual'
-}
-```
-
-## Usage (V2)
-
-### Initialization
-
-```typescript
-import { 
-  initializeAllocationStores,
-  initializeAlgorithmSubscriptions 
-} from '$lib/commons';
-
-// After Holster authentication
-initializeAllocationStores();
-initializeAlgorithmSubscriptions();
-
-// V2: No round coordination needed! Pure event-driven.
-```
-
-### Publishing Recognition
-
-```typescript
-import { publishMyRecognitionWeights } from '$lib/commons/algorithm-v2.svelte';
-
-const weights = {
-  'pubkey1': 0.4,  // 40% recognition
-  'pubkey2': 0.3,  // 30% recognition
-  'pubkey3': 0.3   // 30% recognition
-};
-
-await publishMyRecognitionWeights(weights);
-// V2: Automatically triggers reactive recomputation
-```
-
-### Publishing Commitment (Slot-Native)
-
-```typescript
-import { publishMyCommitment } from '$lib/commons/algorithm-v2.svelte';
-
-const commitment = {
-  capacity_slots: [
-    {
-      id: "mon-evening",
-      name: "Evening tutoring",
-      quantity: 3,  // 3 hours
-      start_date: "2024-06-10",
-      start_time: "18:00",
-      end_time: "21:00",
-      city: "Berlin",
-      country: "Germany"
-    }
-  ],
-  need_slots: [
-    {
-      id: "childcare-morning",
-      name: "Morning childcare",
-      quantity: 4,  // 4 hours
-      start_date: "2024-06-10",
-      start_time: "08:00",
-      end_time: "12:00",
-      city: "Berlin",
-      country: "Germany"
-    }
-  ]
-};
-
-await publishMyCommitment(commitment);
-// V2: Reactive allocations automatically computed within ~100ms
-```
-
-### Reactive Allocation Computation (V2)
-
-```typescript
-import { myAllocationsReactive } from '$lib/commons/algorithm-v2.svelte';
-
-// V2: Subscribe to reactive allocations (auto-computed!)
-myAllocationsReactive.subscribe(allocations => {
-  if (allocations) {
-    console.log('New allocations computed:', allocations);
-    console.log('Converged?', allocations.converged);
-  }
-});
-
-// No manual computation needed - fully automatic!
-```
-
-### Subscribing to Participants
-
-The system automatically subscribes based on algorithm needs:
-
-- **Mutual Partners**: Full data exchange (all stores)
-- **Non-Mutual Beneficiaries**: Commitments only
-- **Non-Mutual Providers**: Commitments + allocation states
-
-Manual subscription is also available:
-
-```typescript
-import { subscribeToFullParticipant } from '$lib/commons/stores.svelte';
-
-subscribeToFullParticipant('pubkey-to-subscribe');
-```
-
-## Reactive Stores (V2)
-
-### Derived Subgroups
-
-```typescript
-import {
-  myMutualBeneficiaries,           // People I allocate to (mutual)
-  myNonMutualBeneficiaries,        // People I allocate to (one-way)
-  mutualProvidersForMe,            // People who allocate to me (mutual)
-  nonMutualProvidersForMe,         // People who allocate to me (one-way)
-  activeParticipants,              // Fresh commitments (< 60s)
-  oscillatingParticipants,         // Participants with damping < 1.0
-  hasSystemConverged               // Continuous convergence monitoring
-} from '$lib/commons/algorithm-v2.svelte';
-```
-
-**V2 Change**: `allMutualPartners` removed (use union of beneficiaries + providers)
-
-### My Data Stores
-
-```typescript
-import {
-  myCommitmentStore,
-  myAllocationStateStore,
-  myRecognitionWeightsStore
-} from '$lib/commons/stores.svelte';
-
-// Subscribe to changes
-myCommitmentStore.subscribe(commitment => {
-  console.log('My commitment updated:', commitment);
-});
-```
-
-**V2 Change**: `myRoundStateStore` removed (no rounds!)
-
-## Constants (V2)
-
-```typescript
-// Freshness & convergence
-STALE_THRESHOLD_MS = 60000           // 60 seconds (freshness check)
-CONVERGENCE_EPSILON = 0.001          // Convergence threshold
-DENOMINATOR_FLOOR = 0.0001           // Minimum denominator (prevent div/0)
-
-// V2: Hybrid damping parameters
-DAMPING_HISTORY_WINDOW_MS = 30000    // 30 seconds (time window)
-DAMPING_HISTORY_MAX_COUNT = 3        // Max count (fallback)
-```
-
-**V2 Removed**: `ROUND_GOSSIP_INTERVAL_MS`, `ROUND_ADVANCEMENT_THRESHOLD` (no rounds!)
-
-## Slot Matching & Filtering
-
-### Compatibility System
-
-The `match.svelte.ts` module provides space-time aware matching and bilateral filtering:
-
-**Time Compatibility:**
-- `timeRangesOverlap(slot1, slot2)` - Checks date/time range overlap
-- Handles various formats (date-only, datetime, recurrence)
-- Optimistic when time info is missing
-
-**Location Compatibility:**
-- `locationsCompatible(slot1, slot2)` - Checks geographic compatibility
-- City/country matching, coordinate proximity (50km), remote/online
-- Optimistic when location info is missing
-
-**Combined:**
-- `slotsCompatible(needSlot, availSlot)` - Must pass BOTH time AND location
-
-### Bilateral Filter System
-
-Filters ensure mutual consent in allocations:
-
-**Filter Types:**
-- `trust` - Mutual recognition requirements (min_mutual_recognition, only_mutual)
-- `location` - Geographic constraints (allowed_cities, allowed_countries)
-- `attribute` - Required/forbidden attributes
-- `certification` - Required certifications, minimum levels
-- `resource_type` - Allowed/forbidden resource types
-- `allow_all` / `deny_all` - Explicit pass/fail
-
-**Bilateral Checking:**
-```typescript
-// Both filters must pass for allocation
-passesSlotFilters(needSlot, availSlot, providerContext, recipientContext)
-```
-
-### Space-Time Bucketing
-
-Performance optimization through coarse-grained grouping:
-
-**Bucketing Functions:**
-- `getTimeBucketKey(slot)` - Month-level bucketing (e.g., "2024-06")
-- `getLocationBucketKey(slot)` - Location bucketing (remote/city/country/unknown)
-
-**Benefits:**
-- Reduces compatibility checks from O(N×A) to O(N×A_bucket)
-- 10-100x performance improvement for large networks
-- Used internally by allocation algorithm
-
-**Space-Time Grouping:**
-- `getSpaceTimeSignature(slot)` - Precise signature for exact grouping
-- `groupSlotsBySpaceTime(slots)` - Aggregate slots at identical time/location
-- Critical for understanding true capacity/need distribution
-
-## Algorithm Details (V2)
-
-### Two-Tier Allocation Formula
-
-**Tier 1 (Mutual):**
-```
-MRD(recipient) = MR(me, recipient) / TotalMutualRecognition
-Numerator(recipient) = MRD(recipient) × ActiveNeed(recipient)
-Allocation(recipient) = SlotCapacity × Numerator(recipient) / ΣNumerators
-```
-
-**Tier 2 (Non-Mutual):**
-```
-Share(recipient) = Weight(recipient) / TotalNonMutualRecognition  
-Numerator(recipient) = Share(recipient) × ActiveNeed(recipient)
-Allocation(recipient) = RemainingCapacity × Numerator(recipient) / ΣNumerators
-```
-
-**Final Capping:**
-```
-FinalAllocation = min(Allocation, ResidualNeed)
-```
-
-### Convergence Properties (V2)
-
-1. **Contractiveness**: Allocations are always capped by residual need
-2. **Monotonicity**: Needs decrease (or stay constant) each computation
-3. **Lipschitz Continuity**: Denominator floor ensures bounded changes
-4. **Hybrid Damping**: Works with ANY update timing (fast or slow)
-5. **Fixed-Point**: System converges to equilibrium by Banach Fixed-Point Theorem
-
-**V2 Proof**: See `docs/CONVERGENCE-PROOF-V2.md` for complete mathematical verification.
-
-### Hybrid Damping Algorithm (V2)
-
-```typescript
-function computeDampingFactor(history: DampingHistoryEntry[]): number {
-  if (history.length < 3) return 1.0;
-  
-  const now = Date.now();
-  const timeFiltered = history.filter(h => now - h.timestamp < 30000);
-  
-  // HYBRID: Prefer time window, fall back to count
-  const relevantHistory = timeFiltered.length >= 3
-    ? timeFiltered.slice(-3)  // Time-based (responsive)
-    : history.slice(-3);      // Count-based (guaranteed)
-  
-  if (detectOscillation(relevantHistory)) return 0.5;  // Slow down
-  if (detectSmoothConvergence(relevantHistory)) return 1.0;  // Full speed
-  return 0.8;  // Moderate
-}
-```
-
-**Key Innovation**: Always has 3 entries to detect patterns, regardless of update timing.
-
-Oscillation patterns:
-- **Up-Down-Up**: `history[0] < history[1] && history[1] > history[2]`
-- **Down-Up-Down**: `history[0] > history[1] && history[1] < history[2]`
-
-## ITC Causality (V2)
-
-### ITC Operations
-
-```typescript
-import { 
-  getMyITCStamp,
-  incrementMyITCStamp,
-  mergeITCStampFromPeer,
-  isPeerUpdateStale 
-} from '$lib/commons/algorithm-v2.svelte';
-
-// Get current stamp
-const myStamp = getMyITCStamp();
-
-// Increment before publishing
-incrementMyITCStamp();
-
-// Merge peer's stamp
-mergeITCStampFromPeer(peerStamp);
-
-// Check staleness
-if (isPeerUpdateStale(peerStamp)) {
-  console.log('Already seen this update');
-}
-```
-
-### ITC vs Vector Clocks
-
-| Feature | Vector Clocks (V1) | ITC (V2) |
-|---------|-------------------|----------|
-| **Space** | O(all participants ever) | O(log active) |
-| **Growth** | Unbounded | Adaptive |
-| **Churn** | Grows with every join | Natural adaptation |
-| **Comparison** | O(n) | O(log n) |
-| **Join/Leave** | Manual management | Automatic (fork/stop) |
-
-## Store Utilities
-
-### Generic Store Creation
-
-The `store.svelte.ts` file provides a generic factory for Holster-backed stores:
-
-```typescript
-import { createStore } from './store.svelte';
-
-const myStore = createStore({
-  holsterPath: 'my/data/path',
-  schema: MyZodSchema,
-  persistDebounce: 100       // Debounce writes (ms)
-});
-
-myStore.initialize();
-await myStore.set(newData);
-await myStore.cleanup();
-```
-
-### Features
-
-- **Schema Validation**: Zod validation on all data
-- **Timestamp Management**: Automatic conflict resolution
-- **Queue Management**: Handles updates during persistence
-- **Cross-User Subscriptions**: Subscribe to other participants
-
-## Cleanup
-
-```typescript
-import { 
-  cleanupAllocationStores,
-  cleanupAlgorithmSubscriptions 
-} from '$lib/commons';
-
-// Before logout or unmount
-await cleanupAllocationStores();
-cleanupAlgorithmSubscriptions();
-```
-
-## Debugging (V2)
-
-Debug utilities are attached to `window` for browser console access:
-
-```javascript
-// V2: Log current state
-window.debugAllocationV2();
-
-// V2: Test allocation computation
-window.computeAllocationV2(providerPub, commitment, mrValues, weights, commitments);
-
-// V2: Test hybrid damping
-window.computeDampingFactorV2([
-  { overAllocation: 100, timestamp: Date.now() - 80000 },
-  { overAllocation: 50, timestamp: Date.now() - 40000 },
-  { overAllocation: 100, timestamp: Date.now() }
-]);  // Returns 0.5 (oscillating detected even with slow updates!)
-
-// V2: ITC operations
-window.getMyITCStamp();
-window.incrementMyITCStamp();
-```
-
-## Mathematical Foundations (V2)
-
-### Banach Fixed-Point Theorem
-
-The algorithm guarantees convergence by satisfying:
-
-1. **Complete Metric Space**: Residual needs bounded by [0, stated_need]
-2. **Contraction Mapping**: `||T(x) - T(y)|| ≤ k||x - y||` where k < 1
-   - Achieved through allocation capping and denominator floor
-   - Enhanced by hybrid damping (always detects oscillations)
-3. **Unique Fixed Point**: System converges to unique equilibrium
-
-### Hybrid Damping Theorem (V2)
-
-**Theorem**: The hybrid approach ALWAYS has 3 events when needed (history.length ≥ 3).
-
-**Proof**: See `docs/CONVERGENCE-PROOF-V2.md`
-
-**Corollary**: Convergence is guaranteed regardless of update timing.
-
-### Lipschitz Continuity
-
-The allocation function is Lipschitz continuous:
-
-```
-||f(x₁) - f(x₂)|| ≤ L||x₁ - x₂||
-```
-
-Guaranteed by:
-- Denominator floor (prevents unbounded changes)
-- Capping by residual need (bounds output)
-
-### Convergence Rate (V2)
-
-**Exponential convergence**: `residual(n) ≤ k^n × residual(0)`
-
-Where k < 1 is the contraction constant:
-- With damping (α = 0.5): k ≈ 0.85
-- Without oscillation (α = 1.0): k ≈ 0.7
-
-**Typical convergence time**: 0.5-2 seconds (vs 7-15 minutes in V1)
-
-## Security Considerations
-
-- **Schema Validation**: All network data validated before processing
-- **ITC Causality**: Prevents causality violations (replaces vector clocks)
-- **Filter Safety**: Capacity filters use safe attribute matching (no eval)
-- **Stale Data**: Automatic freshness checks (60s threshold)
-
-## Performance (V2)
-
-### V2 Improvements
-
-| Metric | V1 | V2 | Improvement |
-|--------|----|----|-------------|
-| **Response Latency** | 45s avg | 100ms | **450x faster** |
-| **Convergence Time** | 7-15 min | 0.5-2s | **900x faster** |
-| **Space per Participant** | 1.6 KB (100p) | 200 bytes | **8x smaller** |
-| **Coordination Messages** | 10,000 (100p) | 0 | **Infinite** |
-| **Max Participants** | ~100 | 10,000+ | **100x more** |
-
-### Storage & Persistence
-
-- **Debounced Persistence**: Reduces write frequency (100ms)
-- **Incremental Updates**: Only changed data persisted
-- **Selective Subscriptions**: Only subscribe to relevant participants
-- **ITC Compression**: Adaptive size based on active participants
-
-### Slot-Native Allocation Optimizations
-
-- **Bucketing**: Time/location bucketing reduces compatibility checks by 10-100x
-  - `getTimeBucketKey(slot)` - Month-level time bucketing
-  - `getLocationBucketKey(slot)` - Location bucketing (remote/city/country)
-- **Pre-computed Compatibility Matrix**: Avoids redundant slot matching across tiers
-- **Active Set Tracking**: Pre-filters recipients without recognition or compatible slots
-- **Early Exit Conditions**: Skips unnecessary computation for exhausted slots
-- **Capacity Utilization Tracking**: Monitors and logs allocation efficiency
-
-## Testing (V2)
-
-### Convergence Tests
-
-Comprehensive test suite verifying v2 convergence:
-
-```bash
-npm test -- convergence-v2
-```
-
-**Coverage**:
-- ✅ Hybrid damping (time-window + fallback)
-- ✅ History management (time-based)
-- ✅ Allocation capping (contractiveness)
-- ✅ Denominator floor (Lipschitz continuity)
-- ✅ Convergence simulation (multi-round)
-- ✅ Slow update convergence (40s intervals)
-- ✅ Edge cases (dropout, zero capacity, etc.)
-
-**Results**: 25/25 tests passed ✅
-
-## Documentation (V2)
-
-### V2-Specific Documentation
-
-- **`docs/CONVERGENCE-PROOF-V2.md`** - Mathematical proof of hybrid damping
-- **`docs/SCALING-ANALYSIS-V2.md`** - Complete v1 vs v2 comparison
-- **`docs/architecture-v2-itc.md`** - Event-driven architecture guide
-- **`docs/ITC-GUIDE.md`** - Interval Tree Clocks explanation
-- **`docs/ROUNDS-NECESSITY-ANALYSIS.md`** - Why rounds aren't needed
-
-### API Documentation
-
-All v2 functions are fully documented with JSDoc comments:
-- Type signatures
-- Parameter descriptions
-- Return value details
-- Usage examples
-
-## Migration from V1
-
-### Key Changes
-
-1. **Event-Driven**: Remove all round coordination code
-2. **ITC Causality**: Replace vector clock operations with ITC
-3. **Hybrid Damping**: Update damping logic to use time-based history
-4. **Reactive Allocations**: Use derived stores instead of manual computation
-5. **Continuous Monitoring**: Remove periodic convergence checks
-
-### Migration Guide
-
-See `docs/architecture-v2-itc.md` for detailed migration instructions.
-
-## Visualization
-
-### Visualization Component
-
-The `Visualization.svelte` component provides a real-time D3.js-based visualization of the allocation system:
-
-**Features:**
-- **Live Denominators**: Circular visualizations showing capacity distribution
-- **Two-Tier Color Coding**: Blue (mutual) vs amber (generous) for providers
-- **Need Fulfillment**: Inner commons showing sources (green for mutual, lime for generous)
-- **Mutual Recognition Links**: Dashed lines connecting mutually recognized participants
-- **Breathing Animation**: Living system that pulses to show dynamic state
-- **Interactive Tooltips**: Hover to see allocation details
-- **V2 Compatible**: Works with both v1 and v2 allocation states
-
-**Usage:**
-
-```svelte
-<script>
-	import { Visualization } from '$lib/commons';
-	import { initializeAllocationStores } from '$lib/commons';
-	
-	// Initialize stores after holster authentication
-	initializeAllocationStores();
-</script>
-
-<Visualization width={900} height={700} />
-```
-
-## Future Enhancements
-
-- [ ] ITC-based multi-device sync
-- [ ] Historical allocation analytics
-- [ ] Reputation system integration
-- [ ] Capacity commitment scheduling
-- [ ] Real-time convergence visualization
-- [ ] Multi-resource allocation
-
-## License
-
-Part of the free-association project.

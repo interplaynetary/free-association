@@ -17,31 +17,39 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { writable } from 'svelte/store';
 
-// Mock holster to prevent Gun initialization
-// NOTE: Factory functions are hoisted, so we create stores inside the factory
-vi.mock('$lib/state/holster.svelte', () => {
-	const { writable } = require('svelte/store');
-	return {
-		holsterUser: writable(null),
-		holsterUserPub: writable('test-user-pub-key'),
-		default: {}
-	};
-});
+// Mock old state modules to prevent localStorage access
+vi.mock('$lib/state/holster.svelte', () => ({
+	holsterUser: null,
+	holsterUserPub: { subscribe: () => () => {} },
+	default: {}
+}));
 
-// Mock gun to prevent network initialization
 vi.mock('$lib/state/gun.svelte', () => ({
 	gun: null,
 	default: null
 }));
 
-import { get } from 'svelte/store';
-import type { Commitment, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights } from './schemas';
-import { seed as itcSeed, event as itcEvent } from '../utils/itc';
+vi.mock('$lib/config', () => ({
+	config: {
+		holster: {
+			peers: [],
+			indexedDB: false,
+			file: undefined
+		}
+	}
+}));
 
-// Import the mocked holster stores (these will be our mock stores from the factory)
-import { holsterUserPub as mockHolsterUserPub } from '$lib/state/holster.svelte';
+// ═══════════════════════════════════════════════════════════════════
+// IMPORTS
+// ═══════════════════════════════════════════════════════════════════
+
+import { get } from 'svelte/store';
+import type { Commitment, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights } from '../schemas';
+import { seed as itcSeed, event as itcEvent } from '../../utils/itc';
+
+// Import V5 holster auth utilities for tests
+import { mockAuth, clearAuth } from '../holster.svelte';
 
 // Import stores and functions from free-algorithm
 import {
@@ -95,7 +103,7 @@ import {
 	publishMyCommitment,
 	publishMyRecognitionWeights,
 	updateCommitmentWithDampingHistory
-} from './free-algorithm.svelte';
+} from '../free-algorithm.svelte';
 
 // Import stores module
 import {
@@ -105,7 +113,7 @@ import {
 	holsterUserPub,
 	networkNeedsIndex,
 	type SpaceTimeIndex
-} from './stores.svelte';
+} from '../stores.svelte';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS
@@ -157,6 +165,12 @@ function createEmptyCommitment(): Commitment {
 	};
 }
 
+// Helper to clear networkCommitments (VersionedStore)
+function clearNetworkCommitments() {
+	const keys = Array.from(networkCommitments.get().keys());
+	keys.forEach(key => networkCommitments.delete(key));
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // SUITE 1: REACTIVE STORES - RECOGNITION
 // ═══════════════════════════════════════════════════════════════════
@@ -164,9 +178,13 @@ function createEmptyCommitment(): Commitment {
 describe('Reactive Stores - Recognition (free-association.md)', () => {
 	beforeEach(() => {
 		// Reset stores before each test
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
+	});
+	
+	afterEach(() => {
+		clearAuth();
 	});
 	
 	it('should reactively compute myRecognitionOfOthers from commitment', () => {
@@ -202,10 +220,7 @@ describe('Reactive Stores - Recognition (free-association.md)', () => {
 			'charlie': 0.3
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
 		
 		const mutualRec = get(myMutualRecognition);
 		
@@ -224,10 +239,7 @@ describe('Reactive Stores - Recognition (free-association.md)', () => {
 		
 		// For self-recognition to work, my commitment must also be visible in the network
 		// This happens naturally in production (via stores), but must be explicit in tests
-		networkCommitments.update(map => {
-			map.set(mockUserPub, myCommitment);
-			return map;
-		});
+		networkCommitments.update(mockUserPub, myCommitment);
 		
 		const mutualRec = get(myMutualRecognition);
 		
@@ -242,8 +254,12 @@ describe('Reactive Stores - Recognition (free-association.md)', () => {
 
 describe('Reactive Stores - Needs & Capacity', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
+	});
+	
+	afterEach(() => {
+		clearAuth();
 	});
 	
 	it('should reactively compute myCurrentNeeds from commitment', () => {
@@ -297,7 +313,7 @@ describe('Reactive Stores - Needs & Capacity', () => {
 
 describe('Adaptive Damping (Self-Correction)', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
 	});
 	
@@ -348,9 +364,13 @@ describe('Adaptive Damping (Self-Correction)', () => {
 
 describe('Two-Tier Allocation System', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
+	});
+	
+	afterEach(() => {
+		clearAuth();
 	});
 	
 	it('should prioritize mutual recognition in Tier 1', () => {
@@ -378,11 +398,8 @@ describe('Two-Tier Allocation System', () => {
 			'charlie': 1.0 // Bob doesn't recognize me
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			map.set('bob', bobCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -423,11 +440,8 @@ describe('Two-Tier Allocation System', () => {
 			'charlie': 1.0
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			map.set('bob', bobCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -450,9 +464,9 @@ describe('Two-Tier Allocation System', () => {
 
 describe('Non-Accumulation & Capping (E20\')', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
 	});
 	
 	it('should cap allocation at recipient need', () => {
@@ -472,10 +486,7 @@ describe('Non-Accumulation & Capping (E20\')', () => {
 			[mockUserPub]: 1.0
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -508,9 +519,9 @@ describe('Non-Accumulation & Capping (E20\')', () => {
 
 describe('Slot-Native Architecture (Space-Time-Type Matching)', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
 	});
 	
 	it('should only match slots with same need_type_id', () => {
@@ -529,10 +540,7 @@ describe('Slot-Native Architecture (Space-Time-Type Matching)', () => {
 			[mockUserPub]: 1.0
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -575,10 +583,7 @@ describe('Slot-Native Architecture (Space-Time-Type Matching)', () => {
 			[mockUserPub]: 1.0
 		});
 		
-		networkCommitments.update(map => {
-			map.set('student', studentCommitment);
-			return map;
-		});
+		networkCommitments.update('student', studentCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -593,9 +598,9 @@ describe('Slot-Native Architecture (Space-Time-Type Matching)', () => {
 
 describe('Convergence to Zero Fixed-Point', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
 		totalReceivedByType.set({}); // Reset allocation tracking
 	});
 	
@@ -867,10 +872,7 @@ describe('ITC Causal Consistency (Peer-to-Peer)', () => {
 		const aliceCommitment = createTestCommitment([], [], { 'bob': 1.0 });
 		aliceCommitment.itcStamp = itcSeed();
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
 		
 		const causalCommitments = getCausallyConsistentCommitments();
 		
@@ -930,9 +932,9 @@ describe('Spatial/Temporal Indexing (O(1) Lookup)', () => {
 
 describe('Self-Allocation (Time-Shifting)', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
 	});
 	
 	it('should allow self-allocation for time-shifting', () => {
@@ -979,9 +981,13 @@ describe('Self-Allocation (Time-Shifting)', () => {
 
 describe('Integration: Complex Multi-Party Scenarios', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
-		networkCommitments.set(new Map());
+		clearNetworkCommitments();
+	});
+	
+	afterEach(() => {
+		clearAuth();
 	});
 	
 	it('should handle multi-provider, multi-recipient scenario', () => {
@@ -1015,12 +1021,9 @@ describe('Integration: Complex Multi-Party Scenarios', () => {
 			[mockUserPub]: 0.4
 		});
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			map.set('bob', bobCommitment);
-			map.set('charlie', charlieCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
+		networkCommitments.update('charlie', charlieCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -1056,10 +1059,7 @@ describe('Integration: Complex Multi-Party Scenarios', () => {
 			[mockUserPub]: 0.8
 		});
 		
-		networkCommitments.update(map => {
-			map.set('patient', patientCommitment);
-			return map;
-		});
+		networkCommitments.update('patient', patientCommitment);
 		
 		const allocations = get(myAllocationsAsProvider);
 		
@@ -1078,7 +1078,7 @@ describe('Integration: Complex Multi-Party Scenarios', () => {
 
 describe('Need Update Law (E17\': Contraction Mapping)', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
 	});
 	
@@ -1145,10 +1145,7 @@ describe('System State Tracking (Multi-Iteration Convergence)', () => {
 			createNeedSlot('food', 10)
 		]);
 		
-		networkCommitments.update(map => {
-			map.set('alice', aliceCommitment);
-			return map;
-		});
+		networkCommitments.update('alice', aliceCommitment);
 		
 		updateSystemStateFromNetwork();
 		
@@ -1198,7 +1195,7 @@ describe('System State Tracking (Multi-Iteration Convergence)', () => {
 
 describe('Publishing Functions (Network Communication)', () => {
 	beforeEach(() => {
-		mockHolsterUserPub.set(mockUserPub);
+		mockAuth(mockUserPub, 'test-user');
 		myCommitmentStore.set(createEmptyCommitment());
 	});
 	
@@ -1224,7 +1221,7 @@ describe('Publishing Functions (Network Communication)', () => {
 		};
 		
 		// Import and test normalization directly
-		const { normalizeGlobalRecognitionWeights } = await import('./schemas');
+		const { normalizeGlobalRecognitionWeights } = await import('../schemas');
 		const normalized = normalizeGlobalRecognitionWeights(weights);
 		
 		// Verify normalization worked correctly

@@ -32,6 +32,8 @@ import {
 	getNetworkRecognitionWeightsRecord,
 	holsterUserPub,
 	networkNeedsIndex,
+	networkRecognitionWeights,
+	myMutualRecognition,
 	type SpaceTimeIndex
 } from './stores.svelte';
 
@@ -141,39 +143,20 @@ export const myRecognitionOfOthers: Readable<GlobalRecognitionWeights> = derived
  * "Alice recognizes me 50%, Bob recognizes me 60%"
  */
 export const othersRecognitionOfMe: Readable<Record<string, GlobalRecognitionWeights>> = derived(
-	[], // Updated when networkRecognitionWeights changes
-	() => getNetworkRecognitionWeightsRecord()
-);
-
-/**
- * My Mutual Recognition with Everyone (Global - same for all types)
- * Mutual-Recognition(Me, Alice) = min(My-Recognition-of-Alice, Alice's-Recognition-of-Me)
- */
-export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
-	[myPublicKey, myRecognitionOfOthers, othersRecognitionOfMe],
-	([$myPub, $myRec, $othersRec]) => {
-		if (!$myPub) return {};
-		
-		const mutualRec: GlobalRecognitionWeights = {};
-		
-		// For everyone I recognize
-		for (const theirPub in $myRec) {
-			const myRecOfThem = $myRec[theirPub] || 0;
-			const theirRecOfMe = $othersRec[theirPub]?.[$myPub] || 0;
-			mutualRec[theirPub] = Math.min(myRecOfThem, theirRecOfMe);
+	[networkRecognitionWeights],
+	([$networkWeights]) => {
+		// Convert Map<string, GlobalRecognitionWeights> to Record<string, GlobalRecognitionWeights>
+		const record: Record<string, GlobalRecognitionWeights> = {};
+		for (const [pubKey, weights] of $networkWeights.entries()) {
+			record[pubKey] = weights;
 		}
-		
-		// For everyone who recognizes me (that I didn't already check)
-		for (const theirPub in $othersRec) {
-			if (mutualRec[theirPub] !== undefined) continue; // Already computed
-			const theirRecOfMe = $othersRec[theirPub]?.[$myPub] || 0;
-			const myRecOfThem = $myRec[theirPub] || 0;
-			mutualRec[theirPub] = Math.min(myRecOfThem, theirRecOfMe);
-		}
-		
-		return mutualRec;
+		return record;
 	}
 );
+
+// myMutualRecognition is imported from stores.svelte (avoids duplicate export)
+// Re-export for API compatibility
+export { myMutualRecognition };
 
 // ═══════════════════════════════════════════════════════════════════
 // PART II: NEEDS & CAPACITY

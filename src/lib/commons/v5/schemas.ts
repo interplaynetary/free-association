@@ -101,6 +101,21 @@ export type ResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Contributor - Represents a person who contributed to a node
+ * 
+ * Points determine the contributor's share of recognition from this node.
+ * If a node has contributors [Alice: 50pts, Bob: 30pts], Alice gets 50/80 = 62.5% of the node's recognition.
+ * 
+ * This is analogous to how child node points work, but for contributors instead of subtasks.
+ */
+export const ContributorSchema = z.object({
+	id: IdSchema,
+	points: PointsSchema
+});
+
+export type Contributor = z.infer<typeof ContributorSchema>;
+
+/**
  * Node Data Storage - Reactive Store Pattern for Tree Nodes
  * 
  * Each node becomes a mini-store that can:
@@ -147,6 +162,13 @@ export const NodeDataStorageSchema = z.object({
 
 /**
  * Non-Root Node - Represents a node in a recognition/priority tree
+ * 
+ * V5 WEIGHTED CONTRIBUTORS:
+ * - contributors: Array of {id, points} - each contributor has weighted share
+ * - anti_contributors: Array of {id, points} - each anti-contributor has weighted share
+ * - Share = contributor.points / sum(all contributor points)
+ * 
+ * Example: contributors: [{alice, 50}, {bob, 30}] → alice gets 50/80, bob gets 30/80
  */
 export const NonRootNodeSchema = z.object({
 	id: IdSchema,
@@ -156,8 +178,8 @@ export const NonRootNodeSchema = z.object({
 	children: z.array(z.any()), // Recursive reference
 	points: PointsSchema,
 	parent_id: IdSchema,
-	contributor_ids: z.array(IdSchema),
-	anti_contributors_ids: z.array(IdSchema),
+	contributors: z.array(ContributorSchema).default([]),
+	anti_contributors: z.array(ContributorSchema).default([]),
 	storage: z.optional(NodeDataStorageSchema)
 });
 

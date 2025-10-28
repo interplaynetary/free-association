@@ -44,7 +44,8 @@ import type {
 	ITCStamp,
 	GlobalRecognitionWeights,
 	NeedType,
-	AvailabilityWindow
+	AvailabilityWindow,
+	Contributor
 } from './schemas';
 
 // Filter utilities (from main lib)
@@ -195,7 +196,7 @@ export function isContribution(node: Node): boolean {
 	if (node.type === 'RootNode') return false;
 
 	const nonRootNode = node as NonRootNode;
-	return nonRootNode.contributor_ids?.length > 0;
+	return nonRootNode.contributors?.length > 0;
 }
 
 // Calculate the fulfillment value for a node
@@ -248,38 +249,50 @@ function resolveContributorId(
 	return resolveToPublicKey ? resolveToPublicKey(contributorId) || contributorId : contributorId;
 }
 
-// Get unique resolved contributor IDs from a list
+// Get unique resolved contributor IDs from a list (V5: works with Contributor objects)
 function getUniqueResolvedIds(
-	contributorIds: string[],
+	contributors: Contributor[],
 	resolveToPublicKey?: (id: string) => string | undefined
 ): string[] {
-	const resolvedIds = contributorIds.map((id) => resolveContributorId(id, resolveToPublicKey));
+	const resolvedIds = contributors.map((c) => resolveContributorId(c.id, resolveToPublicKey));
 	return [...new Set(resolvedIds)];
 }
 
-// Check if a contributor appears in a list of contributor IDs
-function contributorAppearsIn(
+// Calculate total points for a set of contributors
+function totalContributorPoints(contributors: Contributor[]): number {
+	return contributors.reduce((sum, c) => sum + c.points, 0);
+}
+
+// Find a contributor in a list and return their entry (V5: works with Contributor objects)
+function findContributor(
 	targetContributorId: string,
-	contributorIds: string[],
+	contributors: Contributor[],
 	resolveToPublicKey?: (id: string) => string | undefined
-): boolean {
-	return contributorIds.some(
-		(id) => resolveContributorId(id, resolveToPublicKey) === targetContributorId
+): Contributor | undefined {
+	return contributors.find(
+		(c) => resolveContributorId(c.id, resolveToPublicKey) === targetContributorId
 	);
 }
 
-// Calculate contributor share for a single node
+// Calculate contributor share for a single node (V5: weighted by contributor points)
 function calculateNodeContributorShare(
 	node: NonRootNode,
 	contributorId: string,
 	nodeWeight: number,
 	nodeValue: number, // fulfillment for positive, desire for negative
-	contributorIds: string[],
+	contributors: Contributor[],
 	resolveToPublicKey?: (id: string) => string | undefined
 ): number {
-	const uniqueContributorIds = getUniqueResolvedIds(contributorIds, resolveToPublicKey);
-	const contributorCount = uniqueContributorIds.length;
-	return (nodeWeight * nodeValue) / contributorCount;
+	// Find this contributor's entry
+	const contributor = findContributor(contributorId, contributors, resolveToPublicKey);
+	if (!contributor) return 0;
+	
+	// Calculate total points across all contributors
+	const totalPoints = totalContributorPoints(contributors);
+	if (totalPoints === 0) return 0;
+	
+	// Share = (node's weight × node's value) × (contributor's points / total points)
+	return (nodeWeight * nodeValue) * (contributor.points / totalPoints);
 }
 
 // Calculate a node's share of general fulfillment to another node
@@ -307,8 +320,8 @@ export function shareOfGeneralFulfillment(
 				P_total += nodeWeight * nodeFulfillment;
 
 				// Anti influence: contribution nodes with anti-contributors
-				const antiContributorIds = (node as NonRootNode).anti_contributors_ids || [];
-				if (antiContributorIds.length > 0) {
+				const antiContributors = (node as NonRootNode).anti_contributors || [];
+				if (antiContributors.length > 0) {
 					N_total += nodeWeight * nodeDesire;
 				}
 			}
@@ -331,38 +344,37 @@ export function shareOfGeneralFulfillment(
 			const nodeFulfillment = fulfilled(node, target);
 			const nodeDesire = desire(node, target);
 
-			// Process positive contributions
-			if (
-				isContribution(node) &&
-				contributorAppearsIn(resolvedContributorId, nonRootNode.contributor_ids, resolveToPublicKey)
-			) {
+		// Process positive contributions (V5: weighted by contributor points)
+		if (isContribution(node)) {
+			const contributors = nonRootNode.contributors || [];
+			const contributor = findContributor(resolvedContributorId, contributors, resolveToPublicKey);
+			if (contributor) {
 				rawPositiveShare += calculateNodeContributorShare(
 					nonRootNode,
 					resolvedContributorId,
 					nodeWeight,
 					nodeFulfillment,
-					nonRootNode.contributor_ids,
+					contributors,
 					resolveToPublicKey
 				);
 			}
+		}
 
-			// Process negative contributions (only on contribution nodes)
-			if (isContribution(node)) {
-				const antiContributorIds = nonRootNode.anti_contributors_ids || [];
-				if (
-					antiContributorIds.length > 0 &&
-					contributorAppearsIn(resolvedContributorId, antiContributorIds, resolveToPublicKey)
-				) {
-					rawAntiShare += calculateNodeContributorShare(
-						nonRootNode,
-						resolvedContributorId,
-						nodeWeight,
-						nodeDesire,
-						antiContributorIds,
-						resolveToPublicKey
-					);
-				}
+		// Process negative contributions (V5: weighted by anti-contributor points)
+		if (isContribution(node)) {
+			const antiContributors = nonRootNode.anti_contributors || [];
+			const antiContributor = findContributor(resolvedContributorId, antiContributors, resolveToPublicKey);
+			if (antiContributor) {
+				rawAntiShare += calculateNodeContributorShare(
+					nonRootNode,
+					resolvedContributorId,
+					nodeWeight,
+					nodeDesire,
+					antiContributors,
+					resolveToPublicKey
+				);
 			}
+		}
 		}
 	}
 
@@ -376,6 +388,7 @@ export function shareOfGeneralFulfillment(
 /**
  * Extract all unique contributor IDs from a tree (both positive and negative contributors)
  * If resolveToPublicKey is provided, resolves contact IDs to public keys
+ * V5: Works with weighted Contributor objects
  */
 export function getAllContributorsFromTree(
 	tree: Node,
@@ -390,15 +403,16 @@ export function getAllContributorsFromTree(
 
 			// Add positive contributors from contribution nodes
 			if (isContribution(node)) {
+				const contributors = nonRootNode.contributors || [];
 				const resolvedPositiveIds = getUniqueResolvedIds(
-					nonRootNode.contributor_ids,
+					contributors,
 					resolveToPublicKey
 				);
 				resolvedPositiveIds.forEach((id) => allContributorIds.add(id));
 
 				// Add anti-contributors from contribution nodes
-				const antiContributorIds = nonRootNode.anti_contributors_ids || [];
-				const resolvedAntiIds = getUniqueResolvedIds(antiContributorIds, resolveToPublicKey);
+				const antiContributors = nonRootNode.anti_contributors || [];
+				const resolvedAntiIds = getUniqueResolvedIds(antiContributors, resolveToPublicKey);
 				resolvedAntiIds.forEach((id) => allContributorIds.add(id));
 			}
 		}
@@ -569,14 +583,14 @@ export function createRootNode(id: string, name: string, manual?: number): RootN
 	};
 }
 
-// Create a non-root node
+// Create a non-root node (V5: with weighted contributors)
 export function createNonRootNode(
 	id: string,
 	name: string,
 	parentId: string,
 	pts: number,
-	contributorIds: string[] = [],
-	antiContributorIds: string[] = [],
+	contributors: Contributor[] = [],
+	antiContributors: Contributor[] = [],
 	manual?: number
 ): NonRootNode {
 	return {
@@ -586,27 +600,27 @@ export function createNonRootNode(
 		points: pts,
 		parent_id: parentId,
 		children: [],
-		contributor_ids: contributorIds,
-		anti_contributors_ids: antiContributorIds,
+		contributors,
+		anti_contributors: antiContributors,
 		manual_fulfillment: validateManualFulfillment(manual)
 	};
 }
 
-// Directly add a child to a node (mutates the parent)
+// Directly add a child to a node (V5: with weighted contributors, mutates the parent)
 export function addChild(
 	parentNode: Node,
 	id: string,
 	name: string,
 	points: number,
-	contributorIds: string[] = [],
-	antiContributorIds: string[] = [],
+	contributors: Contributor[] = [],
+	antiContributors: Contributor[] = [],
 	manual?: number
 ): void {
 	// Don't allow adding children to nodes with contributors or anti-contributors
 	if (
 		parentNode.type === 'NonRootNode' &&
-		((parentNode as NonRootNode).contributor_ids.length > 0 ||
-			((parentNode as NonRootNode).anti_contributors_ids || []).length > 0)
+		((parentNode as NonRootNode).contributors.length > 0 ||
+			((parentNode as NonRootNode).anti_contributors || []).length > 0)
 	) {
 		throw new Error('Cannot add children to nodes with contributors or anti-contributors');
 	}
@@ -614,7 +628,7 @@ export function addChild(
 	// Anti-contributors can be placed on:
 	// 1. Contribution nodes (nodes with positive contributors)
 	// 2. Empty leaf nodes (no contributors and no children) - but this doesn't apply to addChild since we're creating a new node
-	if (antiContributorIds.length > 0 && contributorIds.length === 0) {
+	if (antiContributors.length > 0 && contributors.length === 0) {
 		throw new Error(
 			'Anti-contributors can only be placed on contribution nodes (nodes with positive contributors).'
 		);
@@ -626,8 +640,8 @@ export function addChild(
 		name,
 		parentNode.id,
 		points,
-		contributorIds,
-		antiContributorIds,
+		contributors,
+		antiContributors,
 		manual
 	);
 
@@ -635,19 +649,35 @@ export function addChild(
 	parentNode.children.push(newChild);
 }
 
-// Add contributors/anti-contributors to a node and clear its children (mutates the node)
+/**
+ * Add contributors/anti-contributors to a node and clear its children (V5: weighted contributors)
+ * 
+ * Default points strategy:
+ * - New contributors get average points of existing contributors
+ * - If no existing contributors, default to 100 points each
+ * 
+ * @param node - Node to add contributors to
+ * @param contributorIds - IDs of contributors to add
+ * @param antiContributorIds - IDs of anti-contributors to add
+ * @param contributorPoints - Optional: explicit points for each contributor (if not provided, uses average)
+ * @param antiContributorPoints - Optional: explicit points for each anti-contributor
+ */
 export function addContributors(
 	node: Node,
 	contributorIds: string[] = [],
-	antiContributorIds: string[] = []
+	antiContributorIds: string[] = [],
+	contributorPoints?: number[],
+	antiContributorPoints?: number[]
 ): void {
 	if (node.type === 'NonRootNode') {
+		const nonRootNode = node as NonRootNode;
+		
 		// Anti-contributors can be placed on:
 		// 1. Contribution nodes (nodes with positive contributors)
 		// 2. Empty leaf nodes (no contributors and no children)
 		const hasContributors = contributorIds.length > 0;
 		const isEmptyLeaf =
-			node.children.length === 0 && (node as NonRootNode).contributor_ids.length === 0;
+			node.children.length === 0 && nonRootNode.contributors.length === 0;
 
 		if (antiContributorIds.length > 0 && !hasContributors && !isEmptyLeaf) {
 			throw new Error(
@@ -655,9 +685,27 @@ export function addContributors(
 			);
 		}
 
+		// Calculate default points for new contributors
+		const existingContributors = nonRootNode.contributors || [];
+		const avgPoints = existingContributors.length > 0
+			? totalContributorPoints(existingContributors) / existingContributors.length
+			: 100; // Default to 100 if no existing contributors
+
+		// Build contributor objects with points
+		const contributors: Contributor[] = contributorIds.map((id, index) => ({
+			id,
+			points: contributorPoints?.[index] ?? avgPoints
+		}));
+
+		// Build anti-contributor objects with points
+		const antiContributors: Contributor[] = antiContributorIds.map((id, index) => ({
+			id,
+			points: antiContributorPoints?.[index] ?? avgPoints
+		}));
+
 		// Update contributors and anti-contributors, and clear children
-		(node as NonRootNode).contributor_ids = [...contributorIds];
-		(node as NonRootNode).anti_contributors_ids = [...antiContributorIds];
+		nonRootNode.contributors = contributors;
+		nonRootNode.anti_contributors = antiContributors;
 		node.children = [];
 	} else {
 		// Root nodes can't have contributors, but we still clear children
@@ -704,10 +752,62 @@ export function updateName(node: Node, name: string): void {
 }
 
 /**
+ * Update contributor points (V5: weighted contributors)
+ * 
+ * @param node - Node containing the contributor
+ * @param contributorId - ID of contributor to update
+ * @param newPoints - New point value
+ * @param isAntiContributor - Whether this is an anti-contributor (default: false)
+ */
+export function updateContributorPoints(
+	node: Node,
+	contributorId: string,
+	newPoints: number,
+	isAntiContributor: boolean = false
+): boolean {
+	if (node.type !== 'NonRootNode') return false;
+	
+	const nonRootNode = node as NonRootNode;
+	const contributors = isAntiContributor 
+		? (nonRootNode.anti_contributors || [])
+		: (nonRootNode.contributors || []);
+	
+	const contributor = contributors.find(c => c.id === contributorId);
+	if (!contributor) return false;
+	
+	contributor.points = Math.max(0, newPoints); // Ensure non-negative
+	return true;
+}
+
+/**
+ * Get contributor points (V5: weighted contributors)
+ * 
+ * @param node - Node containing the contributor
+ * @param contributorId - ID of contributor
+ * @param isAntiContributor - Whether this is an anti-contributor (default: false)
+ * @returns Point value, or undefined if not found
+ */
+export function getContributorPoints(
+	node: Node,
+	contributorId: string,
+	isAntiContributor: boolean = false
+): number | undefined {
+	if (node.type !== 'NonRootNode') return undefined;
+	
+	const nonRootNode = node as NonRootNode;
+	const contributors = isAntiContributor 
+		? (nonRootNode.anti_contributors || [])
+		: (nonRootNode.contributors || []);
+	
+	const contributor = contributors.find(c => c.id === contributorId);
+	return contributor?.points;
+}
+
+/**
  * Subtree Analysis Functions
  */
 
-// Get a map of subtree names to their contributor lists
+// Get a map of subtree names to their contributor lists (V5: weighted contributors)
 export function getSubtreeContributorMap(
 	tree: Node,
 	resolveToPublicKey?: (id: string) => string | undefined
@@ -721,9 +821,12 @@ export function getSubtreeContributorMap(
 
 		subtreeNodes.forEach((n) => {
 			if (n.type === 'NonRootNode') {
-				(n as NonRootNode).contributor_ids.forEach((id) => {
+				const contributors = (n as NonRootNode).contributors || [];
+				contributors.forEach((contributor) => {
 					// Resolve to public key if resolver is provided
-					const resolvedId = resolveToPublicKey ? resolveToPublicKey(id) || id : id;
+					const resolvedId = resolveToPublicKey 
+						? resolveToPublicKey(contributor.id) || contributor.id 
+						: contributor.id;
 					contributorIds.add(resolvedId);
 				});
 			}
@@ -746,7 +849,7 @@ export function getSubtreeContributorMap(
 	return subtreeMap;
 }
 
-// Get a map of subtree names to their anti-contributor lists
+// Get a map of subtree names to their anti-contributor lists (V5: weighted anti-contributors)
 export function getSubtreeAntiContributorMap(
 	tree: Node,
 	resolveToPublicKey?: (id: string) => string | undefined
@@ -760,9 +863,11 @@ export function getSubtreeAntiContributorMap(
 
 		subtreeNodes.forEach((n) => {
 			if (n.type === 'NonRootNode' && isContribution(n)) {
-				const nodeAntiContributorIds = (n as NonRootNode).anti_contributors_ids || [];
-				nodeAntiContributorIds.forEach((id) => {
-					const resolvedId = resolveToPublicKey ? resolveToPublicKey(id) || id : id;
+				const antiContributors = (n as NonRootNode).anti_contributors || [];
+				antiContributors.forEach((antiContributor) => {
+					const resolvedId = resolveToPublicKey 
+						? resolveToPublicKey(antiContributor.id) || antiContributor.id 
+						: antiContributor.id;
 					antiContributorIds.add(resolvedId);
 				});
 			}
@@ -898,22 +1003,39 @@ export function reorderNode(tree: Node, nodeId: string, newParentId: string): bo
  * Node Point Calculation Functions
  */
 
-// Calculate appropriate points for a node based on its siblings
-// This uses the same logic as when creating new nodes
+/**
+ * Calculate appropriate points for a node based on its siblings (V5)
+ * 
+ * Default points strategy (consistent with contributor points):
+ * - No siblings: 100 points (standard default)
+ * - Has siblings: average points of existing siblings
+ * 
+ * This ensures:
+ * - New nodes don't drastically shift sibling weights
+ * - Intuitive defaults (similar contribution level as peers)
+ * - Consistent with contributor point defaults
+ * 
+ * Example: If siblings have [50, 30, 20] points, new node gets 33.33 (average)
+ */
 export function calculateNodePoints(parentNode: Node): number {
 	// No siblings - set to 100 points
 	if (!parentNode.children || parentNode.children.length === 0) {
 		return 100;
 	}
 
-	// Has siblings - use 20% of total points
-	const currentLevelPoints = parentNode.children.reduce((sum: number, child: Node) => {
-		// Only count NonRootNode points
-		return sum + (child.type === 'NonRootNode' ? (child as NonRootNode).points : 0);
-	}, 0);
-
-	const points = Math.max(1, currentLevelPoints * 0.2);
-	return points;
+	// Has siblings - use average of sibling points
+	const siblingPoints = parentNode.children
+		.filter((child: Node) => child.type === 'NonRootNode')
+		.map((child: Node) => (child as NonRootNode).points);
+	
+	if (siblingPoints.length === 0) {
+		return 100; // Safety: no valid siblings
+	}
+	
+	const totalPoints = siblingPoints.reduce((sum: number, pts: number) => sum + pts, 0);
+	const averagePoints = totalPoints / siblingPoints.length;
+	
+	return Math.max(1, Math.round(averagePoints)); // Round to nearest integer, min 1
 }
 
 // Re-export filter-related functions
@@ -1440,6 +1562,7 @@ export type {
 	ITCStamp,
 	GlobalRecognitionWeights,
 	NeedType,
-	AvailabilityWindow
+	AvailabilityWindow,
+	Contributor
 };
 
