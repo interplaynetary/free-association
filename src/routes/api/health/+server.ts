@@ -1,6 +1,6 @@
 import {json} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {requestStats} from "$lib/server/rsstream/holster"
+import {requestStats} from "$lib/server/holster/core"
 
 export const GET: RequestHandler = async () => {
   const uptime = process.uptime()

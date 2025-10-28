@@ -1,7 +1,6 @@
-import {initializeHolster} from "$lib/server/rsstream/holster"
-import {initializeMonitoring} from "$lib/server/rsstream/monitoring"
+import {initializeHolster, user} from "$lib/server/holster/core"
+import {initializeMonitoring} from "$lib/server/holster/monitoring"
 import {getRegistry} from "$lib/server/data-relay"
-import {user} from "$lib/server/rsstream/holster"
 import {env} from "$env/dynamic/private"
 
 // Initialize Holster on server startup

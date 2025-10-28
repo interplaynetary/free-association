@@ -1,6 +1,6 @@
 import {text, error} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {user} from "$lib/server/rsstream/holster"
+import {user} from "$lib/server/holster/core"
 
 export const GET: RequestHandler = async () => {
   if (user.is) {

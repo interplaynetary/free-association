@@ -1,8 +1,8 @@
 import {error, text} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {resetPasswordSchema} from "$lib/server/schemas/rsstream"
-import {user, holster} from "$lib/server/rsstream/holster"
-import {newCode, resetPassword as sendResetPasswordEmail} from "$lib/server/rsstream/utils"
+import {resetPasswordSchema} from "$lib/server/schemas/holster"
+import {user, holster} from "$lib/server/holster/core"
+import {newCode, resetPassword as sendResetPasswordEmail} from "$lib/server/holster/utils"
 
 export const POST: RequestHandler = async ({request}) => {
   const body = await request.json()

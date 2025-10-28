@@ -1,8 +1,8 @@
 import {json} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
 import {getRegistry} from "$lib/server/data-relay"
-import {user} from "$lib/server/rsstream/holster"
-import {checkAuth} from "$lib/server/rsstream/auth"
+import {user} from "$lib/server/holster/core"
+import {checkAuth} from "$lib/server/holster/auth"
 
 /**
  * Get statistics and information for all registered data relays

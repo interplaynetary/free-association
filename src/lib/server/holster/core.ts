@@ -1,6 +1,6 @@
 import Holster from "@mblaney/holster/src/holster.js"
 import {env} from "$env/dynamic/private"
-import type {AccountData, InviteCode} from "$lib/server/schemas/rsstream"
+import type {AccountData, InviteCode} from "$lib/server/schemas/holster"
 
 // ============================================================================
 // Holster Instance
@@ -14,40 +14,16 @@ export const password = env.HOLSTER_USER_PASSWORD ?? "password"
 export const host = env.APP_HOST ?? "http://localhost:3000"
 
 // ============================================================================
-// In-Memory Caches
+// Account Management Caches
 // ============================================================================
 
 // inviteCodes is a map of invite codes and their (random) holster keys, stored
 // in memory to avoid decrypting them in each of the functions they're required.
 export const inviteCodes = new Map<string, InviteCode>()
 
-// removeDays is a set of days where old data has already been removed so that
-// holster doesn't need to be checked every time an item is added.
-export const removeDays = new Set<string>()
-
-// Cleanup queue to batch cleanup operations
-export const cleanupQueue = new Set<string>()
-export const processingCleanup = new Set<string>() // Track days currently being processed
-export let cleanupTimer: ReturnType<typeof setTimeout> | null = null
-
-// Request deduplication - prevent duplicate requests for same item
-export const pendingRequests = new Map<string, {startTime: number; res: any}>()
-
-// Content hash cache to avoid processing unchanged data (2-week TTL matching item age limit)
-export const contentHashCache = new Map<string, {hash: string; timestamp: number}>()
-export const HASH_CACHE_TTL = 1209600000 // 2 weeks TTL for content hashes
-
 // ============================================================================
-// Processing Statistics
+// Performance Statistics
 // ============================================================================
-
-export let processingStats = {
-  averageProcessingTime: 0,
-  totalProcessed: 0,
-  lastProcessedTime: 0,
-  delayThreshold: 2000,
-  currentDelay: 0,
-}
 
 export let requestStats = {
   totalRequests: 0,
@@ -105,15 +81,6 @@ export function timeDbOperation<T>(
 }
 
 /**
- * Returns the zero timestamp on the day of the given timestamp.
- * Items are grouped by day to make it easier for the browser to find recent items.
- */
-export function day(key: number): number {
-  const t = new Date(+key)
-  return Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate())
-}
-
-/**
  * Map invite codes from Holster to in-memory cache
  */
 export function mapInviteCodes() {
@@ -165,32 +132,8 @@ export async function getAccount(code: string): Promise<AccountData | null> {
 }
 
 /**
- * Update stats for monitoring
+ * Update request statistics
  */
-export function updateProcessingStats(processingTime: number) {
-  processingStats.totalProcessed++
-  processingStats.averageProcessingTime =
-    (processingStats.averageProcessingTime *
-      (processingStats.totalProcessed - 1) +
-      processingTime) /
-    processingStats.totalProcessed
-  processingStats.lastProcessedTime = processingTime
-
-  // Calculate delay based on processing time
-  if (processingTime > processingStats.delayThreshold) {
-    processingStats.currentDelay = Math.max(
-      processingStats.currentDelay,
-      processingTime - processingStats.delayThreshold,
-    )
-  } else {
-    // Reduce delay when processing is fast
-    processingStats.currentDelay = Math.max(
-      0,
-      processingStats.currentDelay - 100,
-    )
-  }
-}
-
 export function updateRequestStats(processingTime: number) {
   requestStats.totalRequests++
   requestStats.averageTime =
@@ -203,6 +146,9 @@ export function updateRequestStats(processingTime: number) {
   }
 }
 
+/**
+ * Reset statistics if needed (hourly)
+ */
 export function resetStatsIfNeeded() {
   if (Date.now() - requestStats.lastReset > 3600000) {
     requestStats = {

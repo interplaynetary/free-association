@@ -77,26 +77,8 @@ export const removeFeedSchema = z.object({
   url: z.string().min(1),
 })
 
-export const enclosureSchema = z.object({
-  photo: z.array(z.object({
-    link: z.string().optional(),
-    alt: z.string().optional(),
-  })).optional(),
-  audio: z.array(z.string()).optional(),
-  video: z.array(z.string()).optional(),
-}).optional()
-
-export const addItemSchema = z.object({
-  url: z.string().min(1),
-  guid: z.string().min(1),
-  title: z.string().optional(),
-  content: z.string().optional(),
-  author: z.string().optional(),
-  permalink: z.string().optional(),
-  timestamp: z.number().int().positive(),
-  enclosure: enclosureSchema,
-  category: z.array(z.string()).optional(),
-})
+// Note: Feed item schemas (addItemSchema, enclosureSchema, etc.) 
+// have been moved to data-relay/presets/rss-feed.ts
 
 // ============================================================================
 // Response Schemas
@@ -200,21 +182,7 @@ export const feedDataSchema = z.object({
   subscriber_count: z.number().int().nonnegative(),
 })
 
-export const feedItemDataSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-  author: z.string(),
-  permalink: z.string(),
-  guid: z.string(),
-  timestamp: z.number(),
-  url: z.string(),
-  enclosure: z.object({
-    photo: z.record(z.string()).optional(),
-    audio: z.record(z.boolean()).optional(),
-    video: z.record(z.boolean()).optional(),
-  }).optional(),
-  category: z.record(z.boolean()).optional(),
-})
+// Note: feedItemDataSchema moved to data-relay/presets/rss-feed.ts
 
 export const inviteCodeSchema = z.object({
   code: z.string(),
@@ -240,11 +208,11 @@ export type CreateInviteCodes = z.infer<typeof createInviteCodesSchema>
 export type SendInviteCode = z.infer<typeof sendInviteCodeSchema>
 export type UpdateFeedLimit = z.infer<typeof updateFeedLimitSchema>
 export type RemoveFeed = z.infer<typeof removeFeedSchema>
-export type AddItem = z.infer<typeof addItemSchema>
 export type HealthResponse = z.infer<typeof healthResponseSchema>
 export type PerformanceResponse = z.infer<typeof performanceResponseSchema>
 export type AccountData = z.infer<typeof accountDataSchema>
 export type FeedData = z.infer<typeof feedDataSchema>
-export type FeedItemData = z.infer<typeof feedItemDataSchema>
 export type InviteCode = z.infer<typeof inviteCodeSchema>
+
+// Note: AddItem and FeedItemData types moved to data-relay/presets/rss-feed.ts
 

@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import nodemailer from "nodemailer"
 import {env} from "$env/dynamic/private"
-import {host} from "./holster"
+import {host} from "./core"
 
 // ============================================================================
 // Code Generation

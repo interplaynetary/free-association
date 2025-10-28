@@ -1,7 +1,7 @@
 import {env} from "$env/dynamic/private"
-import {user, holster, inviteCodes} from "./holster"
+import {user, holster, inviteCodes} from "./core"
 import {newCode} from "./utils"
-import type {AccountData} from "$lib/server/schemas/rsstream"
+import type {AccountData} from "$lib/server/schemas/holster"
 
 /**
  * Check if codes are unique across local accounts and existing invite codes

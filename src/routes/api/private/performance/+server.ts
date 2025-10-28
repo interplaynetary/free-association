@@ -9,8 +9,8 @@ import {
   cleanupQueue,
   contentHashCache,
   pendingRequests,
-} from "$lib/server/rsstream/holster"
-import {checkAuth} from "$lib/server/rsstream/auth"
+} from "$lib/server/holster/core"
+import {checkAuth} from "$lib/server/holster/auth"
 
 export const GET: RequestHandler = async (event) => {
   const authError = checkAuth(event)

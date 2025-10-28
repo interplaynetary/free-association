@@ -1,9 +1,9 @@
 import {error, text} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {createInviteCodesSchema} from "$lib/server/schemas/rsstream"
-import {user} from "$lib/server/rsstream/holster"
-import {createInviteCodes} from "$lib/server/rsstream/invite-codes"
-import {checkAuth} from "$lib/server/rsstream/auth"
+import {createInviteCodesSchema} from "$lib/server/schemas/holster"
+import {user} from "$lib/server/holster/core"
+import {createInviteCodes} from "$lib/server/holster/invite-codes"
+import {checkAuth} from "$lib/server/holster/auth"
 
 export const POST: RequestHandler = async (event) => {
   const authError = checkAuth(event)

@@ -1,8 +1,8 @@
 import {error, text} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {updateFeedLimitSchema} from "$lib/server/schemas/rsstream"
-import {user} from "$lib/server/rsstream/holster"
-import {checkAuth} from "$lib/server/rsstream/auth"
+import {updateFeedLimitSchema} from "$lib/server/schemas/holster"
+import {user} from "$lib/server/holster/core"
+import {checkAuth} from "$lib/server/holster/auth"
 
 export const POST: RequestHandler = async (event) => {
   const authError = checkAuth(event)

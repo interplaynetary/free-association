@@ -1,7 +1,7 @@
 import {error, json, text} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {removeSubscriberSchema} from "$lib/server/schemas/rsstream"
-import {user, holster} from "$lib/server/rsstream/holster"
+import {removeSubscriberSchema} from "$lib/server/schemas/holster"
+import {user, holster} from "$lib/server/holster/core"
 import {env} from "$env/dynamic/private"
 
 const addFeedUrl = env.ADD_FEED_URL

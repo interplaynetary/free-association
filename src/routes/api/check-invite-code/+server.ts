@@ -1,7 +1,7 @@
 import {error, text} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
-import {checkInviteCodeSchema} from "$lib/server/schemas/rsstream"
-import {user, inviteCodes} from "$lib/server/rsstream/holster"
+import {checkInviteCodeSchema} from "$lib/server/schemas/holster"
+import {user, inviteCodes} from "$lib/server/holster/core"
 
 export const POST: RequestHandler = async ({request}) => {
   const body = await request.json()

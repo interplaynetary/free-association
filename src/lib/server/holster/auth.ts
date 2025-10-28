@@ -1,5 +1,5 @@
 import type {RequestEvent} from "@sveltejs/kit"
-import {username, password} from "./holster"
+import {username, password} from "./core"
 
 /**
  * Basic authentication middleware for private routes
