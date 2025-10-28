@@ -11,3 +11,9 @@ get rssstream to use /middleware /rate-limit maybe even /auth
 fix type errors
 
 get the holster relay to run on server start up? am not sure hooks.server.ts is the place for this
+
+Make issues for:
+- standardize translations for international support
+- decider route
+
+Make tests for holster folder ts
