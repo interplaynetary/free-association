@@ -5,8 +5,6 @@
 		resolveToPublicKey,
 		userAliasesCache,
 		updateContact as updateContactInStore,
-		createCollectiveTarget,
-		getUserName
 	} from '$lib/state/users.svelte';
 	import { browser } from '$app/environment';
 	import { t } from '$lib/translations';

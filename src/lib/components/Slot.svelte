@@ -2,24 +2,26 @@
 	import type { AvailabilitySlot } from '$lib/commons/v5/schemas';
 	import { AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
 	import { derived } from 'svelte/store';
-	import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
+	// V5: Composition feature not yet implemented
+	// import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import CountrySelector from '$lib/components/CountrySelector.svelte';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { createCompositionTargetsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { t } from '$lib/translations';
 
-	import {
-		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto,
-		networkDesiredSlotComposeFrom,
-		networkDesiredSlotComposeInto
-	} from '$lib/state/core.svelte';
-	import {
-		userNetworkCapacitiesWithSlotQuantities,
-		networkCapacities,
-		userCapacities
-	} from '$lib/state/core.svelte';
+	// V5: Composition feature not yet implemented in v5
+	// TODO: Re-implement slot composition using v5 patterns when needed
+	// import {
+	// 	userDesiredSlotComposeFrom,
+	// 	userDesiredSlotComposeInto,
+	// 	networkDesiredSlotComposeFrom,
+	// 	networkDesiredSlotComposeInto
+	// } from '$lib/state/core.svelte';
+	
+	// V5: Import capacity stores from v5
+	import { myCommitmentStore, networkCommitments, getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
+	import { get } from 'svelte/store';
 	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	interface Props {
@@ -39,14 +41,15 @@
 	let locationExpanded = $state(false);
 	let compositionsExpanded = $state(false);
 
-	// Composition UI state
-	let expandedCompositions = $state<Record<string, boolean>>({});
-	let showAddComposeFrom = $state(false);
-	let showAddComposeInto = $state(false);
+	// V5: Composition feature not yet implemented
+	// TODO: Re-enable when v5 composition is implemented
+	// let expandedCompositions = $state<Record<string, boolean>>({});
+	// let showAddComposeFrom = $state(false);
+	// let showAddComposeInto = $state(false);
 
-	// V5: Simple composition data providers - show all slots except current
-	let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
-	let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+	// V5: Composition data providers commented out
+	// let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+	// let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
 
 	// V5 REQUIRED FIELDS - Core slot metadata
 	let slotId = $state(slot.id);
@@ -302,15 +305,15 @@
 		}
 	}
 
-	function toggleCompositions() {
-		compositionsExpanded = !compositionsExpanded;
-		// Close other sections when opening this one
-		if (compositionsExpanded) {
-			timeExpanded = false;
-			constraintsExpanded = false;
-			locationExpanded = false;
-		}
-	}
+	// V5: Composition feature not yet implemented
+	// function toggleCompositions() {
+	// 	compositionsExpanded = !compositionsExpanded;
+	// 	if (compositionsExpanded) {
+	// 		timeExpanded = false;
+	// 		constraintsExpanded = false;
+	// 		locationExpanded = false;
+	// 	}
+	// }
 
 	// Helper function to safely extract time from potentially malformed time strings
 	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
@@ -548,270 +551,76 @@
 	// ============================================================================
 
 	// FROM other slots = compositions coming INTO this slot
-	let fromOtherSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'from';
-		}> = [];
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// let fromOtherSlots = $derived(() => {
+	// 	const result: Array<{
+	// 		sourceCapacityId: string;
+	// 		sourceSlotId: string;
+	// 		targetCapacityId: string;
+	// 		targetSlotId: string;
+	// 		desiredAmount: number;
+	// 		direction: 'from';
+	// 	}> = [];
+	// 	return result;
+	// });
 
-		// Get all available sources that could compose INTO this slot
-		const availableSources = $composeIntoDataProvider;
-
-		availableSources.forEach((sourceItem) => {
-			let sourceCapacityId: string | undefined;
-			let sourceSlotId: string | undefined;
-
-			if (sourceItem.metadata.type === 'slot') {
-				// Handle slot sources (traditional slot-to-slot)
-				sourceCapacityId = sourceItem.metadata.capacityId;
-				sourceSlotId = sourceItem.metadata.slotId;
-
-				// Skip if we don't have valid slot metadata
-				if (!sourceCapacityId || !sourceSlotId) return;
-			} else if (sourceItem.metadata.type === 'pubkey') {
-				// Handle pubkey sources (person-to-slot composition)
-				sourceCapacityId = sourceItem.id; // pubkey becomes the source "capacity"
-				sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
-			} else {
-				// Skip unknown types
-				return;
-			}
-
-			// Check if we have a user desire for this composition (we want FROM their source INTO our slot)
-			const userDesire =
-				$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id] || 0;
-
-			// Check if there's a network desire for this composition (they want FROM their source INTO our slot)
-			// From their perspective, this is a ComposeInto desire (INTO our slot)
-			let networkDesire = 0;
-			Object.values($networkDesiredSlotComposeInto).forEach((userCompositions) => {
-				const desire = userCompositions[sourceCapacityId!]?.[sourceSlotId!]?.[capacityId]?.[slot.id];
-				if (desire && desire > networkDesire) networkDesire = desire;
-			});
-
-			// Include sources where EITHER party has expressed desire (user OR network)
-			if (userDesire > 0 || networkDesire > 0) {
-				result.push({
-					sourceCapacityId,
-					sourceSlotId,
-					targetCapacityId: capacityId,
-					targetSlotId: slot.id,
-					desiredAmount: Math.max(userDesire, networkDesire),
-					direction: 'from'
-				});
-			}
-		});
-
-		return result;
-	});
-
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
 	// INTO other targets = compositions going FROM this slot (slots + pubkeys)
-	let intoOtherSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'into';
-		}> = [];
+	// let intoOtherSlots = $derived(() => {
+	// 	const result: Array<{
+	// 		sourceCapacityId: string;
+	// 		sourceSlotId: string;
+	// 		targetCapacityId: string;
+	// 		targetSlotId: string;
+	// 		desiredAmount: number;
+	// 		direction: 'into';
+	// 	}> = [];
+	// 	return result;
+	// });
 
-		// Get all available targets that this slot could compose INTO
-		const availableTargets = $composeFromDataProvider;
-
-		availableTargets.forEach((targetItem) => {
-			let targetCapacityId: string | undefined;
-			let targetSlotId: string | undefined;
-			let userDesire = 0;
-			let networkDesire = 0;
-
-			if (targetItem.metadata.type === 'slot') {
-				// Handle slot targets (traditional slot-to-slot composition)
-				targetCapacityId = targetItem.metadata.capacityId;
-				targetSlotId = targetItem.metadata.slotId;
-
-				if (!targetCapacityId || !targetSlotId) return; // Skip invalid slot targets
-
-				// Check if we have a user desire for this composition
-				userDesire =
-					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
-					0;
-
-				// Check if there's a network desire for this composition
-				Object.values($networkDesiredSlotComposeFrom).forEach((userCompositions) => {
-					const desire =
-						userCompositions[capacityId]?.[slot.id]?.[targetCapacityId!]?.[targetSlotId!];
-					if (desire && desire > networkDesire) networkDesire = desire;
-				});
-			} else if (targetItem.metadata.type === 'pubkey') {
-				// Handle pubkey targets (slot-to-person composition)
-				targetCapacityId = targetItem.id; // pubkey becomes the target "capacity"
-				targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
-
-				// Check if we have a user desire for this pubkey composition
-				userDesire =
-					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
-					0;
-
-				// Check if the pubkey user wants our slot (they express this via Share.svelte -> compose-from pattern)
-				const pubkeyUserId = targetItem.id;
-				networkDesire =
-					$networkDesiredSlotComposeFrom[pubkeyUserId]?.[capacityId]?.[slot.id]?.[pubkeyUserId]?.[
-						slot.id
-					] || 0;
-			}
-
-			// Include targets where EITHER party has expressed desire (user OR network) and we have valid target IDs
-			if ((userDesire > 0 || networkDesire > 0) && targetCapacityId && targetSlotId) {
-				result.push({
-					sourceCapacityId: capacityId,
-					sourceSlotId: slot.id,
-					targetCapacityId,
-					targetSlotId,
-					desiredAmount: Math.max(userDesire, networkDesire),
-					direction: 'into'
-				});
-			}
-		});
-
-		return result;
-	});
-
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
 	// Total compositions count for display in button
-	let totalCompositionsCount = $derived(() => {
-		return fromOtherSlots().length + intoOtherSlots().length;
-	});
+	// let totalCompositionsCount = $derived(() => {
+	// 	return fromOtherSlots().length + intoOtherSlots().length;
+	// });
 
-	// Toggle composition item expansion
-	function toggleCompositionItem(compositionKey: string) {
-		expandedCompositions = {
-			...expandedCompositions,
-			[compositionKey]: !expandedCompositions[compositionKey]
-		};
-	}
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// function toggleCompositionItem(compositionKey: string) {
+	// 	expandedCompositions = {
+	// 		...expandedCompositions,
+	// 		[compositionKey]: !expandedCompositions[compositionKey]
+	// 	};
+	// }
 
-	// Handle adding new compose-from relationship
-	function handleAddComposeFrom() {
-		showAddComposeFrom = !showAddComposeFrom;
-		if (showAddComposeFrom) {
-			showAddComposeInto = false;
-		}
-	}
+	// function handleAddComposeFrom() {
+	// 	showAddComposeFrom = !showAddComposeFrom;
+	// 	if (showAddComposeFrom) {
+	// 		showAddComposeInto = false;
+	// 	}
+	// }
 
-	// Handle adding new compose-into relationship
-	function handleAddComposeInto() {
-		showAddComposeInto = !showAddComposeInto;
-		if (showAddComposeInto) {
-			showAddComposeFrom = false;
-		}
-	}
+	// function handleAddComposeInto() {
+	// 	showAddComposeInto = !showAddComposeInto;
+	// 	if (showAddComposeInto) {
+	// 		showAddComposeFrom = false;
+	// 	}
+	// }
 
-	// Handle selecting a target slot for FROM composition (our slot → target slot)
-	function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
-		console.log('[SLOT-COMPOSITION] Adding INTO composition:', data);
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
+	// 	console.log('[SLOT-COMPOSITION] Adding INTO composition:', data);
+	// 	// ... implementation
+	// }
 
-		let targetCapacityId: string;
-		let targetSlotId: string;
-
-		if (data.metadata?.type === 'slot') {
-			// Handle slot targets (traditional slot-to-slot)
-			targetCapacityId = data.metadata.capacityId;
-			targetSlotId = data.metadata.slotId;
-
-			if (!targetCapacityId || !targetSlotId) {
-				console.error('Invalid slot data for INTO composition:', data);
-				return;
-			}
-		} else if (data.metadata?.type === 'pubkey') {
-			// Handle pubkey targets (slot-to-person composition)
-			targetCapacityId = data.id; // pubkey becomes the target "capacity"
-			targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
-		} else {
-			console.error('Unknown target type for INTO composition:', data);
-			return;
-		}
-
-		// Initialize the composition desire in userDesiredSlotComposeInto
-		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
-		const currentDesires = $userDesiredSlotComposeInto;
-		if (!currentDesires[capacityId]) currentDesires[capacityId] = {};
-		if (!currentDesires[capacityId][slot.id]) currentDesires[capacityId][slot.id] = {};
-		if (!currentDesires[capacityId][slot.id][targetCapacityId]) {
-			currentDesires[capacityId][slot.id][targetCapacityId] = {};
-		}
-
-		// Set initial desire of 1 unit
-		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
-
-		// Update store (will sync via Gun or Holster based on feature flag)
-		userDesiredSlotComposeInto.set(currentDesires);
-
-		console.log('[SLOT-COMPOSITION] Added INTO composition to user store:', {
-			sourceCapacity: capacityId,
-			sourceSlot: slot.id,
-			targetCapacity: targetCapacityId,
-			targetSlot: targetSlotId,
-			targetType: data.metadata?.type || 'unknown'
-		});
-
-		showAddComposeFrom = false;
-	}
-
-	// Handle selecting a source slot for INTO composition (source slot → our slot)
-	function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
-		console.log('[SLOT-COMPOSITION] Adding FROM composition:', data);
-
-		let sourceCapacityId: string;
-		let sourceSlotId: string;
-
-		if (data.metadata?.type === 'slot') {
-			// Handle slot sources (traditional slot-to-slot)
-			sourceCapacityId = data.metadata.capacityId;
-			sourceSlotId = data.metadata.slotId;
-
-			if (!sourceCapacityId || !sourceSlotId) {
-				console.error('Invalid slot data for FROM composition:', data);
-				return;
-			}
-		} else if (data.metadata?.type === 'pubkey') {
-			// Handle pubkey sources (person-to-slot composition)
-			sourceCapacityId = data.id; // pubkey becomes the source "capacity"
-			sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
-		} else {
-			console.error('Unknown source type for FROM composition:', data);
-			return;
-		}
-
-		// Initialize the composition desire in userDesiredSlotComposeFrom
-		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
-		const currentDesires = $userDesiredSlotComposeFrom;
-		if (!currentDesires[sourceCapacityId]) currentDesires[sourceCapacityId] = {};
-		if (!currentDesires[sourceCapacityId][sourceSlotId])
-			currentDesires[sourceCapacityId][sourceSlotId] = {};
-		if (!currentDesires[sourceCapacityId][sourceSlotId][capacityId]) {
-			currentDesires[sourceCapacityId][sourceSlotId][capacityId] = {};
-		}
-
-		// Set initial desire of 1 unit
-		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
-
-		// Update store (will sync via Gun or Holster based on feature flag)
-		userDesiredSlotComposeFrom.set(currentDesires);
-
-		console.log('[SLOT-COMPOSITION] Added FROM composition to user store:', {
-			sourceCapacity: sourceCapacityId,
-			sourceSlot: sourceSlotId,
-			targetCapacity: capacityId,
-			targetSlot: slot.id,
-			sourceType: data.metadata?.type || 'unknown'
-		});
-
-		showAddComposeInto = false;
-	}
+	// function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
+	// 	console.log('[SLOT-COMPOSITION] Adding FROM composition:', data);
+	// 	// ... implementation
+	// }
 
 	// Handle country selection from CountrySelector
 	function handleCountrySelect(country: { id: string; name: string; timezones: string[] }) {
@@ -939,7 +748,8 @@
 			📍 {formatLocationDisplay()}
 		</button>
 
-		<!-- Compositions button -->
+		<!-- V5: Composition feature not yet implemented -->
+		<!-- 
 		<button
 			type="button"
 			class="section-btn compositions-btn"
@@ -948,6 +758,7 @@
 		>
 			🔄 Compositions ({totalCompositionsCount()})
 		</button>
+		-->
 
 		<!-- Constraints button -->
 		<button
@@ -1382,128 +1193,8 @@
 		</div>
 	{/if}
 
-	<!-- Compositions section -->
-	{#if compositionsExpanded}
-		<div class="slot-details compositions-details mt-3 rounded bg-purple-50 p-4">
-			<h5 class="mb-3 text-sm font-medium text-gray-700">🔄 Slot Compositions</h5>
-
-			<div class="composition-columns grid grid-cols-1 gap-4 md:grid-cols-2">
-				<!-- Compose FROM column -->
-				<div class="compose-from-column">
-					<div class="column-header mb-3">
-						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
-							<span>FROM other slots</span>
-						</h5>
-						<p class="mt-1 text-xs text-gray-500">Other slots composing into this slot</p>
-					</div>
-
-					<div class="column-content">
-						<!-- Add slot button -->
-						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeInto}>
-							<span class="add-icon">+</span>
-							<span class="add-text">Add source</span>
-						</button>
-
-						<!-- Add slot dropdown -->
-						{#if showAddComposeInto}
-							<div class="add-dropdown mb-3">
-								<DropDown
-									dataProvider={composeIntoDataProvider}
-									searchPlaceholder="Select source slot..."
-									select={handleSelectComposeIntoSlot}
-									show={showAddComposeInto}
-									close={() => (showAddComposeInto = false)}
-									width={280}
-									maxHeight={200}
-								/>
-							</div>
-						{/if}
-
-						<!-- From other slots items -->
-						{#if fromOtherSlots().length > 0}
-							<div class="composition-items space-y-2">
-								{#each fromOtherSlots() as composition}
-									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
-									<SlotCompositionItem
-										sourceCapacityId={composition.sourceCapacityId}
-										sourceSlotId={composition.sourceSlotId}
-										targetCapacityId={composition.targetCapacityId}
-										targetSlotId={composition.targetSlotId}
-										direction="from"
-										currentCapacityId={capacityId}
-										currentSlotId={slot.id}
-										expanded={expandedCompositions[compositionKey] || false}
-										onToggle={() => toggleCompositionItem(compositionKey)}
-									/>
-								{/each}
-							</div>
-						{:else}
-							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								No compositions from other slots yet. Click "Add source slot" to start.
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Compose INTO column -->
-				<div class="compose-into-column">
-					<div class="column-header mb-3">
-						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
-							<span>INTO other slots</span>
-						</h5>
-						<p class="mt-1 text-xs text-gray-500">This slot composing into other slots</p>
-					</div>
-
-					<div class="column-content">
-						<!-- Add slot button -->
-						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeFrom}>
-							<span class="add-icon">+</span>
-							<span class="add-text">Add target</span>
-						</button>
-
-						<!-- Add slot dropdown -->
-						{#if showAddComposeFrom}
-							<div class="add-dropdown mb-3">
-								<DropDown
-									dataProvider={composeFromDataProvider}
-									searchPlaceholder="Select target slot..."
-									select={handleSelectComposeFromSlot}
-									show={showAddComposeFrom}
-									close={() => (showAddComposeFrom = false)}
-									width={280}
-									maxHeight={200}
-								/>
-							</div>
-						{/if}
-
-						<!-- Into other slots items -->
-						{#if intoOtherSlots().length > 0}
-							<div class="composition-items space-y-2">
-								{#each intoOtherSlots() as composition}
-									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
-									<SlotCompositionItem
-										sourceCapacityId={composition.sourceCapacityId}
-										sourceSlotId={composition.sourceSlotId}
-										targetCapacityId={composition.targetCapacityId}
-										targetSlotId={composition.targetSlotId}
-										direction="into"
-										currentCapacityId={capacityId}
-										currentSlotId={slot.id}
-										expanded={expandedCompositions[compositionKey] || false}
-										onToggle={() => toggleCompositionItem(compositionKey)}
-									/>
-								{/each}
-							</div>
-						{:else}
-							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								No compositions to other slots yet. Click "Add target slot" to start.
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
+	<!-- V5: Composition section removed (not yet implemented in v5) -->
+	<!-- TODO: Re-implement slot composition using v5 patterns when needed -->
 </div>
 
 <style>

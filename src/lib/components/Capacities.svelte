@@ -10,12 +10,10 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	import {
-		userTree,
-		userCapacities,
-		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto
-	} from '$lib/state/core.svelte';
+	// V5: Import from v5 stores
+	import { myRecognitionTreeStore as userTree, myCommitmentStore } from '$lib/commons/v5/stores.svelte';
+	// V5: Composition features not yet implemented
+	// import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
 	import { t } from '$lib/translations';
 	
@@ -31,9 +29,20 @@
 		).join(' ').toLowerCase();
 	}
 
+	// V5: Create a compatibility wrapper for userCapacities
+	// In v5, there's one commitment with capacity_slots, but this component expects multiple "capacity" objects
+	// For now, wrap the single commitment as a collection
+	const userCapacities = $derived(() => {
+		const commitment = get(myCommitmentStore);
+		const pub = get(userPub);
+		if (!commitment || !pub) return {};
+		// Wrap as a collection with the pubkey as ID
+		return { [pub]: commitment };
+	});
+
 	// Reactive derived values
 	const capacityEntries = $derived(() => {
-		let entries = Object.entries($userCapacities || {})
+		let entries = Object.entries(userCapacities() || {})
 			.filter(([id, commitment]) => id && commitment)
 			.map(([id, commitment]) => ({ ...commitment, id } as CommitmentWithId));
 		
@@ -68,19 +77,16 @@
 			});
 		}
 
-		// Create a deep clone and add the new commitment
-		const newCommitments: CommitmentsCollection = structuredClone($userCapacities || {});
-		newCommitments[commitment.id] = commitment;
-
-		// Update store
-		userCapacities.set(newCommitments);
+		// V5: Update the single commitment store
+		// In v5, we just update myCommitmentStore directly
+		myCommitmentStore.set(commitment);
 
 		// Highlight the new commitment
 		globalState.highlightCapacity(commitment.id);
 
 		// Show success toast with first slot name or generic message
 		const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
-		globalState.showToast($t('inventory.capacity_created', { name: firstName }), 'success');
+		globalState.showToast(`Created: ${firstName}`, 'success');
 		return true;
 	}
 
@@ -105,16 +111,13 @@
 				});
 			}
 
-			// Create a deep clone and update the commitment
-			const newCommitments: CommitmentsCollection = structuredClone($userCapacities || {});
-			newCommitments[commitment.id] = structuredClone(commitment);
-
-			// Update store
-			userCapacities.set(newCommitments);
+			// V5: Update the single commitment store
+			// In v5, we just update myCommitmentStore directly
+			myCommitmentStore.set(structuredClone(commitment));
 
 			// Show success toast with first slot name or generic message
 			const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
-			globalState.showToast($t('inventory.capacity_updated', { name: firstName }), 'success');
+			globalState.showToast(`Updated: ${firstName}`, 'success');
 			return true;
 		} catch (error) {
 			console.error('[CAPACITIES] Error updating commitment:', error);
@@ -127,8 +130,8 @@
 	function cleanupCapacitySlotData(capacityId: string) {
 		console.log(`🧹 [CLEANUP] Starting comprehensive cleanup for commitment: ${capacityId}`);
 
-		// Get the commitment to find all its slot IDs before deletion
-		const commitment = $userCapacities?.[capacityId];
+		// V5: Get the commitment to find all its slot IDs before deletion
+		const commitment = userCapacities()[capacityId];
 		if (!commitment) {
 			console.warn(`[CLEANUP] Commitment ${capacityId} not found, skipping slot cleanup`);
 			return;
@@ -137,80 +140,13 @@
 		const slotIds = commitment.capacity_slots?.map((slot) => slot.id) || [];
 		console.log(`[CLEANUP] Found ${slotIds.length} slots to clean up:`, slotIds);
 
-		// 1. Clean up userDesiredSlotComposeFrom (where deleted capacity is SOURCE)
-		const currentComposeFrom = get(userDesiredSlotComposeFrom);
-		const updatedComposeFrom = { ...currentComposeFrom };
-		let changes = 0;
-
-		// Remove entries where deleted capacity is the source
-		if (updatedComposeFrom[capacityId]) {
-			changes += Object.keys(updatedComposeFrom[capacityId]).length;
-			delete updatedComposeFrom[capacityId];
-		}
-
-		// Remove entries where deleted capacity is the target
-		Object.keys(updatedComposeFrom).forEach((sourceCapId) => {
-			Object.keys(updatedComposeFrom[sourceCapId]).forEach((sourceSlotId) => {
-				if (updatedComposeFrom[sourceCapId][sourceSlotId][capacityId]) {
-					changes += Object.keys(updatedComposeFrom[sourceCapId][sourceSlotId][capacityId]).length;
-					delete updatedComposeFrom[sourceCapId][sourceSlotId][capacityId];
-
-					// Clean up empty objects
-					if (Object.keys(updatedComposeFrom[sourceCapId][sourceSlotId]).length === 0) {
-						delete updatedComposeFrom[sourceCapId][sourceSlotId];
-					}
-					if (Object.keys(updatedComposeFrom[sourceCapId]).length === 0) {
-						delete updatedComposeFrom[sourceCapId];
-					}
-				}
-			});
-		});
-
-		console.log(`[CLEANUP] Cleaned ${changes} userDesiredSlotComposeFrom entries`);
-		// Update store (Gun handles timestamps natively now)
-		userDesiredSlotComposeFrom.set(updatedComposeFrom);
-
-		// 2. Clean up userDesiredSlotComposeInto (where deleted capacity is SOURCE or TARGET)
-		const currentComposeInto = get(userDesiredSlotComposeInto);
-		const updatedComposeInto = { ...currentComposeInto };
-		let changesInto = 0;
-
-		// Remove entries where deleted capacity is the source
-		if (updatedComposeInto[capacityId]) {
-			changesInto += Object.keys(updatedComposeInto[capacityId]).length;
-			delete updatedComposeInto[capacityId];
-		}
-
-		// Remove entries where deleted capacity is the target
-		Object.keys(updatedComposeInto).forEach((sourceCapId) => {
-			Object.keys(updatedComposeInto[sourceCapId]).forEach((sourceSlotId) => {
-				if (updatedComposeInto[sourceCapId][sourceSlotId][capacityId]) {
-					changesInto += Object.keys(
-						updatedComposeInto[sourceCapId][sourceSlotId][capacityId]
-					).length;
-					delete updatedComposeInto[sourceCapId][sourceSlotId][capacityId];
-
-					// Clean up empty objects
-					if (Object.keys(updatedComposeInto[sourceCapId][sourceSlotId]).length === 0) {
-						delete updatedComposeInto[sourceCapId][sourceSlotId];
-					}
-					if (Object.keys(updatedComposeInto[sourceCapId]).length === 0) {
-						delete updatedComposeInto[sourceCapId];
-					}
-				}
-			});
-		});
-
-		console.log(`[CLEANUP] Cleaned ${changesInto} userDesiredSlotComposeInto entries`);
-		// Update store (Gun handles timestamps natively now)
-		userDesiredSlotComposeInto.set(updatedComposeInto);
-
-		// 3. Cleanup complete - slot claims are now handled via compose-from-self
-
-		console.log(`✅ [CLEANUP] Completed comprehensive cleanup for capacity: ${capacityId}`);
+		// V5: Composition features not yet implemented - cleanup code removed
+		// TODO: Re-enable composition cleanup when v5 composition is implemented
+		
+		console.log(`✅ [CLEANUP] Completed cleanup for capacity: ${capacityId}`);
 	}
 
-	// Delete commitment from the userCapacities store with comprehensive cleanup
+	// Delete commitment from the store with comprehensive cleanup
 	function deleteCommitment(commitmentId: string) {
 		try {
 			if (!$userAlias || !$userPub) return false;
@@ -218,17 +154,20 @@
 			// STEP 1: Clean up all slot composition data BEFORE deleting the commitment
 			cleanupCapacitySlotData(commitmentId);
 
-			// STEP 2: Remove the commitment itself
-			const currentCommitments = get(userCapacities) || {};
-			const newCommitments: CommitmentsCollection = { ...currentCommitments };
-			if (newCommitments[commitmentId]) {
-				delete newCommitments[commitmentId];
-			}
+			// STEP 2: Remove the commitment itself (V5: clear the commitment store)
+			// In v5, we have a single commitment, so "deleting" means clearing it
+			// or setting it to an empty commitment
+			const emptyCommitment: Commitment = {
+				capacity_slots: [],
+				need_slots: [],
+				global_recognition_weights: {},
+				global_mr_values: {},
+				itcStamp: null as any,
+				timestamp: Date.now()
+			};
+			myCommitmentStore.set(emptyCommitment);
 
-			// Update store
-			userCapacities.set(newCommitments);
-
-			globalState.showToast($t('inventory.capacity_deleted', { name: '' }), 'success');
+			globalState.showToast('Capacity deleted', 'success');
 			return true;
 		} catch (error) {
 			console.error('[CAPACITIES] Error deleting commitment:', error);
@@ -618,20 +557,25 @@
 					need_type_id: 'need_type_general', // Default need type - should be selectable in UI
 					name: verb,
 					emoji: emoji,
-					unit: unit,
-					description: '', // Leave blank for auto-generated commitments
-					location_type: 'Specific',
-					city: city.name,
-					country: city.country,
-					start_date: todayString,
-					start_time: timePattern.allDay ? undefined : timePattern.startTime,
-					end_date: null,
-					end_time: timePattern.allDay ? undefined : timePattern.endTime,
-					time_zone: getLocalTimeZone(),
-					recurrence: timePattern.recurrence as any,
-					max_natural_div: maxNaturalDiv,
-					max_percentage_div: maxPercentageDiv,
-					filter_rule: null
+				unit: unit,
+				description: '', // Leave blank for auto-generated commitments
+				location_type: 'Specific',
+				city: city.name,
+				country: city.country,
+				start_date: todayString,
+				end_date: null,
+			time_zone: getLocalTimeZone(),
+			recurrence: timePattern.recurrence as any,
+			// V5: Use availability_window for time ranges instead of start_time/end_time
+			availability_window: (timePattern.allDay || !timePattern.startTime || !timePattern.endTime) ? undefined : {
+				time_ranges: [{
+					start_time: timePattern.startTime,
+					end_time: timePattern.endTime
+				}]
+			},
+				max_natural_div: maxNaturalDiv,
+				max_percentage_div: maxPercentageDiv,
+				filter_rule: null
 				}
 			],
 			timestamp: Date.now(),

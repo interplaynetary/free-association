@@ -18,7 +18,8 @@
 		FullScreenControl
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
+	// V5: Import commitments (contains capacity slots) from v5 stores
+	import { getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
@@ -894,12 +895,13 @@
 
 		// Process all immediate capacities in parallel (they don't need API calls)
 		const promises = immediateQueue.map(async (capacityId) => {
-			const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
-			if (!sharedCapacities || !sharedCapacities[capacityId]) {
+			// V5: Get all commitments (includes capacity_slots)
+			const allCommitments = getAllCommitmentsRecord();
+			if (!allCommitments || !allCommitments[capacityId]) {
 				return [];
 			}
 
-			const capacity = sharedCapacities[capacityId];
+			const capacity = allCommitments[capacityId];
 			const providerId = (capacity as any).provider_id;
 			let providerName = 'Unknown Provider';
 
@@ -950,13 +952,14 @@
 
 		while (geocodingQueue.length > 0) {
 			const capacityId = geocodingQueue.shift()!;
-			const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
+			// V5: Get all commitments (includes capacity_slots)
+			const allCommitments = getAllCommitmentsRecord();
 
-			if (!sharedCapacities || !sharedCapacities[capacityId]) {
+			if (!allCommitments || !allCommitments[capacityId]) {
 				continue;
 			}
 
-			const capacity = sharedCapacities[capacityId];
+			const capacity = allCommitments[capacityId];
 			const providerId = (capacity as any).provider_id;
 			let providerName = 'Unknown Provider';
 
@@ -1000,15 +1003,16 @@
 
 	// Smart capacity classification and queuing
 	function classifyAndQueueCapacities(capacityIds: string[]) {
-		const sharedCapacities = get(userNetworkCapacitiesWithSlotQuantities);
-		if (!sharedCapacities) return;
+		// V5: Get all commitments (includes capacity_slots)
+		const allCommitments = getAllCommitmentsRecord();
+		if (!allCommitments) return;
 
 		const immediateCapacities: string[] = [];
 		const geocodingCapacities: string[] = [];
 
 		// Classify capacities based on whether they need geocoding
 		capacityIds.forEach((capacityId) => {
-			const capacity = sharedCapacities[capacityId];
+			const capacity = allCommitments[capacityId];
 			if (!capacity || !capacity.capacity_slots) return;
 
 			let hasDirectCoordinates = false;
@@ -1076,7 +1080,8 @@
 	}
 
 	// Reactive Svelte 5 approach using $derived.by for side effects
-	let currentCapacities = $derived($userNetworkCapacitiesWithSlotQuantities);
+	// V5: Use getAllCommitmentsRecord() to get all commitments (user + network)
+	let currentCapacities = $derived(getAllCommitmentsRecord());
 	let capacitiesCount = $derived(Object.keys(currentCapacities || {}).length);
 
 	// Ultra-efficient streaming: Handle capacity additions with smart classification

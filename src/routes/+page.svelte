@@ -4,24 +4,24 @@
 	import Map from '$lib/components/Map.svelte';
 	import Capacities from '$lib/components/Capacities.svelte';
 	import Shares from '$lib/components/Shares.svelte';
-	import { userSogf, userTree, generalShares } from '$lib/state/core.svelte';
-	import { recalculateFromTree } from '$lib/state/calculations.svelte';
+	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
+	import { myRecognitionTreeStore, myRecognitionWeights, myMutualRecognition } from '$lib/commons/v5/stores.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
-	import { onMount } from 'svelte';
 	import { t, loading } from '$lib/translations';
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
 
-	// Create reactive derived store from userSogf
-	const barSegments = derived(userSogf, ($sogf) => {
-		if (!$sogf || Object.keys($sogf).length === 0) {
+	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
+	// Recognition weights are automatically computed from the tree in v5!
+	const barSegments = derived(myRecognitionWeights, ($weights) => {
+		if (!$weights || Object.keys($weights).length === 0) {
 			return [];
 		}
 
-		// Transform SOGF data into segments for Bar
-		return Object.entries($sogf)
+		// Transform recognition weights into segments for Bar
+		return Object.entries($weights)
 			.filter(([_, value]) => value > 0) // Only include non-zero values
 			.map(([id, value]) => ({
 				id,
@@ -30,17 +30,18 @@
 			.sort((a, b) => b.value - a.value); // Sort by value descending
 	});
 
-	// Create reactive derived store from generalShares
-	const providerSegments = derived(generalShares, ($generalShares) => {
-		console.log('[UI] generalShares changed:', $generalShares);
+	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
+	// Mutual recognition is automatically computed from recognition weights + network data in v5!
+	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
+		console.log('[UI] myMutualRecognition changed:', $mutualRec);
 
-		if (!$generalShares || Object.keys($generalShares).length === 0) {
-			console.log('[UI] No provider shares data for segments');
+		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
+			console.log('[UI] No mutual recognition data for segments');
 			return [];
 		}
 
-		// Transform provider shares data into segments for Bar
-		const segments = Object.entries($generalShares)
+		// Transform mutual recognition data into segments for Bar
+		const segments = Object.entries($mutualRec)
 			.filter(([_, value]) => value > 0) // Only include non-zero values
 			.map(([id, value]) => ({
 				id,
@@ -48,19 +49,13 @@
 			}))
 			.sort((a, b) => b.value - a.value); // Sort by value descending
 
-		console.log('[UI] Generated provider segments:', segments);
+		console.log('[UI] Generated mutual recognition segments:', segments);
 		return segments;
 	});
 
-	// Ensure SOGF is calculated if we have a tree but no SOGF
-	onMount(() => {
-		const tree = $userTree;
-		const sogf = $userSogf;
-
-		if (tree && (!sogf || Object.keys(sogf).length === 0)) {
-			recalculateFromTree();
-		}
-	});
+	// V5: No manual recalculation needed! Everything is reactive 🎉
+	// Recognition weights auto-update when tree changes
+	// Mutual recognition auto-updates when recognition weights or network data changes
 </script>
 
 <div class="layout root-page" class:full-width={currentView !== 'tree'}>

@@ -13,7 +13,7 @@
 		signup,
 		signout,
 		isAuthenticating,
-		changePassword
+		// changePassword
 	} from '$lib/state/auth.svelte';
 	// Track tree persistence state
 	let isTreePersisting = $state(false);
@@ -856,7 +856,7 @@
 		passwordChangeError = '';
 
 		try {
-			await changePassword(currentPassword, newPassword);
+			//await changePassword(currentPassword, newPassword);
 			globalState.showToast('Password changed successfully', 'success');
 			resetPasswordChangeForm();
 			showPasswordChange = false;

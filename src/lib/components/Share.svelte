@@ -4,7 +4,10 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
-	import { userDesiredSlotComposeFrom, mutualRecognition } from '$lib/state/core.svelte';
+	// V5: Import mutual recognition from v5 stores
+	import { myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	// V5: Composition feature not yet implemented
+	// import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
 	import { userPub } from '$lib/state/auth.svelte';
 	import { get } from 'svelte/store';
 	// V5: Import slot utility functions from v5 protocol
@@ -86,8 +89,8 @@
 		const providerId = share.provider_id;
 		if (!providerId) return 0;
 
-		// Get the user's mutual recognition share with this provider
-		const userMutualRecShare = $mutualRecognition[providerId] || 0;
+		// Get the user's mutual recognition share with this provider (v5)
+		const userMutualRecShare = $myMutualRecognition[providerId] || 0;
 
 		// Calculate: slot total quantity * mutual recognition share
 		const totalQuantity = slot.quantity || 0;
@@ -214,65 +217,15 @@
 		return past.length + recurring.length + currentFuture.length;
 	});
 
-	// Get current desired amount for a slot (self-consumption)
-	function getCurrentDesiredAmount(capacityId: string, slotId: string): number {
-		const currentComposeFrom = get(userDesiredSlotComposeFrom);
-		const ourPubkey = get(userPub);
+	// V5: Composition features not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// function getCurrentDesiredAmount(capacityId: string, slotId: string): number {
+	// 	return 0;
+	// }
 
-		if (!ourPubkey) {
-			console.warn('[DESIRE] No user pubkey available for self-consumption');
-			return 0;
-		}
-
-		// Look for self-consumption: FROM this slot TO self (our own pubkey)
-		return currentComposeFrom[capacityId]?.[slotId]?.[ourPubkey]?.[slotId] || 0;
-	}
-
-	// Handle desire input change
-	function handleDesireChange(capacityId: string, slotId: string, newAmount: number) {
-		const currentComposeFrom = get(userDesiredSlotComposeFrom);
-		const ourPubkey = get(userPub);
-
-		if (!ourPubkey) {
-			console.warn('[DESIRE] No user pubkey available for self-consumption desire');
-			return;
-		}
-
-		// Create new compose-from structure
-		const newComposeFrom = { ...currentComposeFrom };
-
-		if (newAmount > 0) {
-			// Set the desire for self-consumption: FROM this slot TO our pubkey
-			if (!newComposeFrom[capacityId]) newComposeFrom[capacityId] = {};
-			if (!newComposeFrom[capacityId][slotId]) newComposeFrom[capacityId][slotId] = {};
-			if (!newComposeFrom[capacityId][slotId][ourPubkey])
-				newComposeFrom[capacityId][slotId][ourPubkey] = {};
-
-			newComposeFrom[capacityId][slotId][ourPubkey][slotId] = newAmount;
-		} else {
-			// Remove the desire (clean up empty structures)
-			if (newComposeFrom[capacityId]?.[slotId]?.[ourPubkey]) {
-				delete newComposeFrom[capacityId][slotId][ourPubkey][slotId];
-
-				// Clean up empty nested objects
-				if (Object.keys(newComposeFrom[capacityId][slotId][ourPubkey]).length === 0) {
-					delete newComposeFrom[capacityId][slotId][ourPubkey];
-				}
-				if (Object.keys(newComposeFrom[capacityId][slotId]).length === 0) {
-					delete newComposeFrom[capacityId][slotId];
-				}
-				if (Object.keys(newComposeFrom[capacityId]).length === 0) {
-					delete newComposeFrom[capacityId];
-				}
-			}
-		}
-
-		// Update the store
-		userDesiredSlotComposeFrom.set(newComposeFrom);
-		console.log(
-			`[DESIRE] Updated self-consumption desire for ${capacityId}:${slotId} to ${newAmount} (pubkey: ${ourPubkey.substring(0, 8)}...)`
-		);
-	}
+	// function handleDesireChange(capacityId: string, slotId: string, newAmount: number) {
+	// 	console.log('[DESIRE] Composition not yet implemented in v5');
+	// }
 </script>
 
 <div class="capacity-share-container">
@@ -460,37 +413,14 @@
 												<span
 													class="recurrence-badge flex-shrink-0 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800"
 												>
-													{getRecurrenceDisplay(slot)}
-												</span>
+											{getRecurrenceDisplay(slot)}
+										</span>
 
-												<!-- Simple desire input -->
-												<div class="desire-input-wrapper flex-shrink-0">
-													<label
-														for="desire-input-{share.id}-{slot.id}"
-														class="desire-label text-xs text-gray-600">I want:</label
-													>
-													<input
-														id="desire-input-{share.id}-{slot.id}"
-														type="number"
-														class="desire-input"
-														min="0"
-														max={availableQuantity}
-														step="0.1"
-														value={getCurrentDesiredAmount(share.id, slot.id)}
-														oninput={(e) => {
-															const target = e.target as HTMLInputElement;
-															const value = parseFloat(target?.value || '0') || 0;
-															handleDesireChange(share.id, slot.id, value);
-														}}
-														placeholder="0"
-													/>
-													{#if share.unit}
-														<span class="desire-unit text-xs text-gray-500">{share.unit}</span>
-													{/if}
-												</div>
-											</div>
+										<!-- V5: Composition/desire features not yet implemented -->
+										<!-- <div class="desire-input-wrapper flex-shrink-0">...</div> -->
+									</div>
 
-											<!-- Slot summary row -->
+									<!-- Slot summary row -->
 											<div class="slot-summary mb-2 text-xs text-gray-500">
 												<div class="flex flex-wrap gap-4">
 													<span>⏰ {formatSlotTimeDisplay(slot)}</span>
@@ -586,38 +516,15 @@
 														Share: {Number.isInteger(mutualRecShare)
 															? mutualRecShare
 															: mutualRecShare.toFixed(2)}
-														{share.unit}
-													</span>
-												{/if}
+												{share.unit}
+												</span>
+											{/if}
 
-												<!-- Simple desire input -->
-												<div class="desire-input-wrapper flex-shrink-0">
-													<label
-														for="desire-input-{share.id}-{slot.id}"
-														class="desire-label text-xs text-gray-600">I want:</label
-													>
-													<input
-														id="desire-input-{share.id}-{slot.id}"
-														type="number"
-														class="desire-input"
-														min="0"
-														max={availableQuantity}
-														step="0.1"
-														value={getCurrentDesiredAmount(share.id, slot.id)}
-														oninput={(e) => {
-															const target = e.target as HTMLInputElement;
-															const value = parseFloat(target?.value || '0') || 0;
-															handleDesireChange(share.id, slot.id, value);
-														}}
-														placeholder="0"
-													/>
-													{#if share.unit}
-														<span class="desire-unit text-xs text-gray-500">{share.unit}</span>
-													{/if}
-												</div>
-											</div>
+											<!-- V5: Composition/desire features not yet implemented -->
+											<!-- <div class="desire-input-wrapper flex-shrink-0">...</div> -->
+										</div>
 
-											<!-- Slot summary row -->
+										<!-- Slot summary row -->
 											<div class="slot-summary mb-2 text-xs text-gray-500">
 												<div class="flex flex-wrap gap-4">
 													<span>⏰ {formatSlotTimeDisplay(slot)}</span>

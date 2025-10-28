@@ -17,3 +17,5 @@ Make issues for:
 - decider route
 
 Make tests for holster folder ts
+
+Reimplement changePassword in Header.svelte

@@ -2,7 +2,9 @@
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { mutualRecognition } from '$lib/state/core.svelte';
+	// V5: Import mutual recognition from v5 stores
+	import { myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	import { get } from 'svelte/store';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -211,8 +213,8 @@
 		const providerId = capacity.provider_id;
 		if (!providerId) return 0;
 
-		// Get the user's mutual recognition share with this provider
-		const userMutualRecShare = $mutualRecognition[providerId] || 0;
+		// Get the user's mutual recognition share with this provider (v5)
+		const userMutualRecShare = $myMutualRecognition[providerId] || 0;
 
 		// Calculate: slot total quantity * mutual recognition share
 		const totalQuantity = slot.quantity || 0;

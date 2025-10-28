@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
+	// V5: Import commitments from v5 stores
+	import { getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
@@ -44,11 +45,13 @@
 
 	// Base shares data - ALL available network capacities (for discovery and desire expression)
 	let allShares = $derived(() => {
-		if (!$userNetworkCapacitiesWithSlotQuantities) {
+		// V5: Get all commitments
+		const allCommitments = getAllCommitmentsRecord();
+		if (!allCommitments) {
 			return [];
 		}
 
-		const sharesList = Object.entries($userNetworkCapacitiesWithSlotQuantities).map(
+		const sharesList = Object.entries(allCommitments).map(
 			([capacityId, capacity]) =>
 				({
 					...capacity,
