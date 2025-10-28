@@ -107,6 +107,7 @@
 		"lodash.debounce": "^4.0.8",
 		"maplibre-gl": "^5.4.0",
 		"marked": "^15.0.12",
+		"mock-socket": "^9.3.1",
 		"nodemailer": "^6.9.16",
 		"o1js": "^2.10.0",
 		"peerbit": "^4.1.36",

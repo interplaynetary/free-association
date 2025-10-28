@@ -24,6 +24,6 @@
     "noEmit": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "build", "test", "examples"]
+  "exclude": ["node_modules", "dist", "build", "src/js/test", "examples"]
 }
 

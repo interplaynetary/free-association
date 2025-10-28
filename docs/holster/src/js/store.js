@@ -1,8 +1,6 @@
-import {z} from "zod"
-import Radisk, {type StoreInterface, type RadiskFunction} from "./radisk.js"
-import Radix from "./radix.js"
-import * as utils from "./utils.js"
-import type {GraphType} from "./get.js"
+import Radisk from "../radisk.js"
+import Radix from "../radix.js"
+import * as utils from "../utils.js"
 
 const isNode = typeof document === "undefined"
 const fs = isNode ? await import(/*webpackIgnore: true*/ "node:fs") : undefined
@@ -14,37 +12,16 @@ const unit = String.fromCharCode(31)
 // On-disk root node format.
 const root = unit + "+0" + unit + "#" + unit + '"root' + unit
 
-// Zod schemas for Store operations
-export const storeOptionsSchema = z.object({
-  file: z.string().optional(),
-  indexedDB: z.boolean().optional(),
-  store: z
-    .object({
-      get: z.function(),
-      put: z.function(),
-      list: z.function(),
-    })
-    .optional(),
-})
-
-export const lexStoreSchema = z.object({
-  "#": z.string(),
-  ".": z.union([z.string(), z.record(z.string(), z.any())]).optional(),
-})
-
-export type StoreOptions = z.infer<typeof storeOptionsSchema>
-export type LexStore = z.infer<typeof lexStoreSchema>
-
-const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface => {
+const fileSystem = opt => {
   const dir = opt.file
 
   if (isNode) {
-    if (!fs!.existsSync(dir)) fs!.mkdirSync(dir)
-    if (!fs!.existsSync(dir + "/!")) fs!.writeFileSync(dir + "/!", root)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir)
+    if (!fs.existsSync(dir + "/!")) fs.writeFileSync(dir + "/!", root)
 
     return {
-      get: (file: string, cb: (err?: string, data?: string) => void) => {
-        fs!.readFile(dir + "/" + file, (err: NodeJS.ErrnoException | null, data: Buffer) => {
+      get: (file, cb) => {
+        fs.readFile(dir + "/" + file, (err, data) => {
           if (err) {
             if (err.code === "ENOENT") {
               cb()
@@ -52,28 +29,26 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
             }
 
             console.log("fs.readFile error:", err)
-            cb(err.message)
-            return
           }
-          const dataStr = data ? data.toString() : undefined
-          cb(undefined, dataStr)
+          if (data) data = data.toString()
+          cb(err, data)
         })
       },
-      put: (file: string, data: string, cb: (err?: string) => void) => {
+      put: (file, data, cb) => {
         // Don't put tmp files under dir so that they're not listed.
-        const tmp = file + "." + utils.text.random(9) + ".tmp"
-        fs!.writeFile(tmp, data, (err: NodeJS.ErrnoException | null) => {
+        var tmp = file + "." + utils.text.random(9) + ".tmp"
+        fs.writeFile(tmp, data, err => {
           if (err) {
             console.log("fs.writeFile error:", err)
-            cb(err.message)
+            cb(err)
             return
           }
 
-          fs!.rename(tmp, dir + "/" + file, (err: NodeJS.ErrnoException | null) => cb(err ? err.message : undefined))
+          fs.rename(tmp, dir + "/" + file, cb)
         })
       },
-      list: (cb: (file?: string) => void) => {
-        fs!.readdir(dir, (err: NodeJS.ErrnoException | null, files: string[]) => {
+      list: cb => {
+        fs.readdir(dir, (err, files) => {
           if (err) {
             console.log("fs.readdir error:", err)
             cb()
@@ -88,10 +63,10 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
   }
 
   if (opt.indexedDB) {
-    let db: IDBDatabase | null = null
+    let db
     const o = indexedDB.open(dir, 1)
     o.onupgradeneeded = event => {
-      (event.target as IDBOpenDBRequest).result.createObjectStore(dir)
+      event.target.result.createObjectStore(dir)
     }
     o.onerror = event => {
       console.log(event)
@@ -106,7 +81,7 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
           console.log(`error getting key ${dir}/!`)
         }
         req.onsuccess = () => {
-          if (!req.result && db) {
+          if (!req.result) {
             const tx = db.transaction([dir], "readwrite")
             const req = tx.objectStore(dir).put(root, "!")
             req.onerror = () => {
@@ -120,16 +95,15 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
     }
 
     return {
-      get: (file: string, cb: (err?: string, data?: string) => void) => {
-        const _get = (file: string, cb: (err?: string, data?: string) => void) => {
-          if (!db) return
+      get: (file, cb) => {
+        const _get = (file, cb) => {
           const tx = db.transaction([dir], "readonly")
           const req = tx.objectStore(dir).get(file)
           req.onerror = () => {
             console.log(`error getting ${dir}/${file}`)
           }
           req.onsuccess = () => {
-            cb(undefined, req.result)
+            cb(null, req.result)
           }
         }
         if (db) {
@@ -151,16 +125,15 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
           }
         }, 1000)
       },
-      put: (file: string, data: string, cb: (err?: string) => void) => {
-        const _put = (file: string, data: string, cb: (err?: string) => void) => {
-          if (!db) return
+      put: (file, data, cb) => {
+        const _put = (file, data, cb) => {
           const tx = db.transaction([dir], "readwrite")
           const req = tx.objectStore(dir).put(data, file)
           req.onerror = () => {
             console.log(`error putting data on ${dir}/${file}`)
           }
           req.onsuccess = () => {
-            cb(undefined)
+            cb(null)
           }
         }
         if (db) {
@@ -182,14 +155,13 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
           }
         }, 1000)
       },
-      list: (cb: (file?: string) => void) => {
-        const _list = (cb: (file?: string) => void) => {
-          if (!db) return
+      list: cb => {
+        const _list = cb => {
           const tx = db.transaction([dir], "readonly")
           const req = tx.objectStore(dir).getAllKeys()
           req.onerror = () => console.log("error getting keys for", dir)
           req.onsuccess = () => {
-            req.result.forEach(key => cb(String(key)))
+            req.result.forEach(cb)
             cb()
           }
         }
@@ -218,33 +190,28 @@ const fileSystem = (opt: {file: string; indexedDB?: boolean}): StoreInterface =>
 
   // No browser storage.
   return {
-    get: (_file: string, cb: (err?: string, data?: string) => void) => {
-      cb(undefined, root)
+    get: (file, cb) => {
+      cb(null, root)
     },
-    put: (_file: string, _data: string, cb: (err?: string) => void) => {
-      cb(undefined)
+    put: (file, data, cb) => {
+      cb(null)
     },
-    list: (cb: (file?: string) => void) => {
+    list: cb => {
       cb("!")
       cb()
     },
   }
 }
 
-export interface StoreReturnType {
-  get: (lex: LexStore, cb: (err?: string, graph?: GraphType) => void) => void
-  put: (graph: GraphType, cb?: (err?: string) => void) => void
-}
-
 // Store provides get and put methods that can access radisk.
-const Store = (opt?: Partial<StoreOptions>): StoreReturnType => {
+const Store = opt => {
   if (!utils.obj.is(opt)) opt = {}
   opt.file = String(opt.file || "radata")
-  if (!opt.store) opt.store = fileSystem(opt as {file: string})
-  const radisk = Radisk(opt) as RadiskFunction
+  if (!opt.store) opt.store = fileSystem(opt)
+  const radisk = Radisk(opt)
 
   return {
-    get: (lex: LexStore, cb: (err?: string, graph?: GraphType) => void) => {
+    get: (lex, cb) => {
       if (!lex || !utils.obj.is(lex)) {
         cb("lex required")
         return
@@ -254,10 +221,10 @@ const Store = (opt?: Partial<StoreOptions>): StoreReturnType => {
         return
       }
 
-      const soul = lex["#"]
-      const key = typeof lex["."] === "string" ? lex["."] : ""
-      let node: any
-      const each = (value: [any, number], key: string) => {
+      var soul = lex["#"]
+      var key = typeof lex["."] === "string" ? lex["."] : ""
+      var node
+      const each = (value, key) => {
         if (!utils.match(lex["."], key)) return
 
         if (!node) node = {_: {"#": soul, ">": {}}}
@@ -265,53 +232,52 @@ const Store = (opt?: Partial<StoreOptions>): StoreReturnType => {
         node._[">"][key] = value[1]
       }
 
-      radisk(soul + enq + key, (err: string | undefined, value: any) => {
-        let graph: GraphType | undefined
+      radisk(soul + enq + key, (err, value) => {
+        let graph
         if (utils.obj.is(value)) {
-          // value is a radix tree object, map over it
           Radix.map(value, each)
-          graph = node ? {[soul]: node} : undefined
+          if (!node) each(value, key)
+          graph = {[soul]: node}
         } else if (value) {
-          // value is a tuple [val, state]
           each(value, key)
           graph = {[soul]: node}
         }
         cb(err, graph)
       })
     },
-    put: (graph: GraphType, cb?: (err?: string) => void) => {
+    put: (graph, cb) => {
       if (!graph) {
-        cb?.("graph required")
+        cb("graph required")
         return
       }
 
       let count = 0
       let finished = false
-      const ack = (err?: string) => {
+      const ack = err => {
         count--
         if (finished) return
 
         if (err) {
           finished = true
-          cb?.(err)
+          cb(err)
           return
         }
 
         if (count === 0) {
           finished = true
-          cb?.()
+          cb(null)
         }
       }
 
       Object.keys(graph).forEach(soul => {
-        const node = graph[soul]
+        var node = graph[soul]
         Object.keys(node).forEach(key => {
           if (key === "_") return
 
           count++
-          const value = node[key]
-          const state = node._[">"][key]
-          radisk(soul + enq + key, [value, state] as [any, number], ack)
+          let value = node[key]
+          let state = node._[">"][key]
+          radisk(soul + enq + key, [value, state], ack)
         })
       })
     },
@@ -319,4 +285,3 @@ const Store = (opt?: Partial<StoreOptions>): StoreReturnType => {
 }
 
 export default Store
-

@@ -1,53 +1,20 @@
-import {z} from "zod"
-import * as utils from "./utils.js"
-import Wire, {type WireAPI} from "./wire.js"
-import SEA from "./sea.js"
+import * as utils from "../utils.js"
+import Wire from "../wire.js"
+import SEA from "../sea.js"
 
-// Zod schemas for User operations
-export const userIsSchema = z.object({
-  username: z.string(),
-  pub: z.string(),
-  epub: z.string(),
-  priv: z.string(),
-  epriv: z.string(),
-})
-
-export type UserIs = z.infer<typeof userIsSchema>
-
-export interface UserAPI {
-  is: UserIs | null
-  create: (username: string, password: string, cb?: (err: string | null) => void) => void
-  auth: (username: string, password: string, cb?: (err?: string | null) => void) => void
-  change: (
-    username: string,
-    password: string,
-    newPassword: string,
-    cb?: (err?: string | null) => void,
-  ) => void
-  store: (localStorage?: boolean) => void
-  recall: () => void
-  leave: () => void
-  delete: (username: string, password: string, cb?: (err: string | null) => void) => void
-}
-
-const User = (opt: any, wire?: WireAPI): UserAPI => {
+const User = (opt, wire) => {
   if (!wire) wire = Wire(opt)
-  let pubs: string[] = []
+  let pubs = []
   let creating = false
   let authing = false
   let retries = 0
 
-  const auth = (
-    username: string,
-    password: string,
-    newPassword: string,
-    ack: (err?: string | null) => void,
-  ) => {
-    const retry = (username: string) => {
+  const auth = (username, password, newPassword, ack) => {
+    const retry = username => {
       retries++
       auth(username, password, newPassword, ack)
     }
-    const done = (err?: string | null) => {
+    const done = err => {
       pubs = []
       retries = 0
       authing = false
@@ -59,10 +26,10 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
         return
       }
 
-      const pub = pubs.shift()!
-      wire!.get(
+      const pub = pubs.shift()
+      wire.get(
         {"#": pub},
-        async (msg: any) => {
+        async msg => {
           if (msg.err) {
             done(`error getting ${pub}: ${msg.err}`)
             return
@@ -71,9 +38,9 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
           const data = msg.put && msg.put[pub]
           if (!data || !data.auth) return next()
 
-          const authData = JSON.parse(data.auth)
-          const work = await SEA.work(password, authData.salt)
-          const dec = await SEA.decrypt(authData.enc, work)
+          const auth = JSON.parse(data.auth)
+          const work = await SEA.work(password, auth.salt)
+          const dec = await SEA.decrypt(auth.enc, work)
           if (!dec) return next()
 
           user.is = {
@@ -96,10 +63,10 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
               auth: JSON.stringify({enc: enc, salt: salt}),
             }
             const signed = await SEA.sign(update, user.is)
-            const graph = utils.graph(pub, signed!.m as Record<string, any>, signed!.s, data.pub)
-            wire!.put(graph, err => {
+            const graph = utils.graph(pub, signed.m, signed.s, data.pub)
+            wire.put(graph, err => {
               if (err) {
-                done(`error putting ${JSON.stringify(update)} on ${pub}: ${err}`)
+                done(`error putting ${update} on ${pub}: ${err}`)
               } else {
                 done(null)
               }
@@ -119,9 +86,9 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
     }
 
     const soul = "~@" + username
-    wire!.get(
+    wire.get(
       {"#": soul},
-      async (msg: any) => {
+      async msg => {
         if (msg.err) {
           done(`error getting ${soul}: ${msg.err}`)
           return
@@ -140,12 +107,11 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
     )
   }
 
-  const user: UserAPI = {
-    is: null,
-    create: (username: string, password: string, cb?: (err: string | null) => void) => {
-      const ack = (err: string | null) => {
+  const user = {
+    create: (username, password, cb) => {
+      const ack = err => {
         if (cb) cb(err)
-        else if (err) console.log(err)
+        else console.log(err)
       }
 
       if (creating) {
@@ -166,9 +132,9 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
       creating = true
 
       const soul = "~@" + username
-      wire!.get(
+      wire.get(
         {"#": soul},
-        async (msg: any) => {
+        async msg => {
           if (msg.err) {
             creating = false
             ack(`error getting ${soul}: ${msg.err}`)
@@ -195,18 +161,18 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
 
           const pub = "~" + pair.pub
           const signed = await SEA.sign(data, pair)
-          const graph = utils.graph(pub, signed!.m as Record<string, any>, signed!.s, pair.pub)
-          wire!.put(graph, err => {
+          const graph = utils.graph(pub, signed.m, signed.s, pair.pub)
+          wire.put(graph, err => {
             creating = false
             if (err) {
-              ack(`error putting ${JSON.stringify(data)} on ${pub}: ${err}`)
+              ack(`error putting ${data} on ${pub}: ${err}`)
               return
             }
 
             const rel = {[pub]: {"#": pub}}
-            wire!.put(utils.graph(soul, rel), err => {
+            wire.put(utils.graph(soul, rel), err => {
               if (err) {
-                ack(`error putting ${JSON.stringify(rel)} on ${soul}: ${err}`)
+                ack(`error putting ${rel} on ${soul}: ${err}`)
                 return
               }
 
@@ -218,8 +184,8 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
         {wait: 1000},
       )
     },
-    auth: (username: string, password: string, cb?: (err?: string | null) => void) => {
-      const ack = (err?: string | null) => {
+    auth: (username, password, cb) => {
+      const ack = err => {
         if (cb) cb(err)
         else if (err) console.log(err)
       }
@@ -244,13 +210,8 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
       authing = true
       auth(username, password, "", ack)
     },
-    change: (
-      username: string,
-      password: string,
-      newPassword: string,
-      cb?: (err?: string | null) => void,
-    ) => {
-      const ack = (err?: string | null) => {
+    change: (username, password, newPassword, cb) => {
+      const ack = err => {
         if (cb) cb(err)
         else if (err) console.log(err)
       }
@@ -280,7 +241,7 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
       authing = true
       auth(username, password, newPassword, ack)
     },
-    store: (localStorage?: boolean) => {
+    store: localStorage => {
       if (!user.is) {
         console.log("Please authenticate before calling store")
         return
@@ -296,10 +257,10 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
         return
       }
 
-      if (typeof globalThis.sessionStorage !== "undefined" && globalThis.sessionStorage?.setItem) {
+      if (typeof globalThis.sessionStorage !== "undefined") {
         globalThis.sessionStorage.setItem("user.is", JSON.stringify(user.is))
       }
-      if (typeof globalThis.localStorage !== "undefined" && globalThis.localStorage?.removeItem) {
+      if (typeof globalThis.localStorage !== "undefined") {
         globalThis.localStorage.removeItem("user.is")
       }
     },
@@ -321,17 +282,17 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
     },
     leave: () => {
       user.is = null
-      if (typeof globalThis.localStorage !== "undefined" && globalThis.localStorage?.removeItem) {
+      if (typeof globalThis.localStorage !== "undefined") {
         globalThis.localStorage.removeItem("user.is")
       }
-      if (typeof globalThis.sessionStorage !== "undefined" && globalThis.sessionStorage?.removeItem) {
+      if (typeof globalThis.sessionStorage !== "undefined") {
         globalThis.sessionStorage.removeItem("user.is")
       }
     },
-    delete: (username: string, password: string, cb?: (err: string | null) => void) => {
-      const ack = (err: string | null) => {
+    delete: (username, password, cb) => {
+      const ack = err => {
         if (cb) cb(err)
-        else if (err) console.log(err)
+        else console.log(err)
       }
 
       if (authing) {
@@ -357,10 +318,10 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
         }
 
         const data = {username: null, pub: null, epub: null, auth: null}
-        const signed = await SEA.sign(data, user.is!)
-        const pub = "~" + user.is!.pub
-        const graph = utils.graph(pub, signed!.m as Record<string, any>, signed!.s, user.is!.pub)
-        wire!.put(graph, err => {
+        const signed = await SEA.sign(data, user.is)
+        const pub = "~" + user.is.pub
+        const graph = utils.graph(pub, signed.m, signed.s, user.is.pub)
+        wire.put(graph, err => {
           if (err) {
             ack(`error putting null on ${pub}: ${err}`)
             return
@@ -378,4 +339,3 @@ const User = (opt: any, wire?: WireAPI): UserAPI => {
 }
 
 export default User
-

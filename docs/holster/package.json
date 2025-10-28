@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "tsx --test test/**/*.test.ts",
+    "test": "tsx --test test-ts/**/*.test.ts",
     "build": "tsc && esbuild dist/holster.js --bundle --format=esm --sourcemap \"--external:node:*\" \"--external:ws\" --minify --outdir=build",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
@@ -40,7 +40,7 @@
   },
   "directories": {
     "example": "examples",
-    "test": "test"
+    "test": "test-ts"
   },
   "repository": {
     "type": "git",
