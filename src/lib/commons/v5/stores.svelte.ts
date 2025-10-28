@@ -232,7 +232,7 @@ import { createVersionedStore, type VersionedStore } from './v-store.svelte';
  * - Their damping state
  * - Their ITC stamp
  */
-import { jsonEquals } from './v-store-equality-checkers';
+import { jsonEquals } from './utils/v-store-equality-checkers';
 
 export const networkCommitments: VersionedStore<Commitment, string> = createVersionedStore({
 	fields: {

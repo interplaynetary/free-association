@@ -24,7 +24,7 @@ import {
   zodEquals,
   zodArrayEquals,
   commonCheckers
-} from '../v-store-equality-checkers';
+} from '../utils/v-store-equality-checkers';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, leq as itcLeq, type Stamp as ITCStamp } from '../../utils/itc';
 import { z } from 'zod';
 

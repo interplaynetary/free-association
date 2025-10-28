@@ -17,7 +17,7 @@ import {
   zodEquals,
   zodArrayEquals,
   commonCheckers
-} from '../v-store-equality-checkers';
+} from '../utils/v-store-equality-checkers';
 import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════════════
