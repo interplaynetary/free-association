@@ -1,4 +1,4 @@
-import type { RootNode } from '$lib/schema';
+import type { RootNode } from '$lib/commons/v5/schemas';
 import { populateSDGTree } from './sdg';
 import { populateNVCTree } from './nvc';
 

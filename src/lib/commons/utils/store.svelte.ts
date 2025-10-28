@@ -31,9 +31,9 @@
 
 import { writable, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
-import { holsterUser } from '$lib/state/holster.svelte';
+import { holsterUser } from '$lib/commons/v5/holster.svelte';
 import * as z from 'zod';
-import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
+import { getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES

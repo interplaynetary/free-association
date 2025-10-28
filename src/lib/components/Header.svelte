@@ -38,9 +38,9 @@
 	const signout = USE_HOLSTER_AUTH ? holsterSignout : gunSignout;
 	const changePassword = USE_HOLSTER_AUTH ? holsterChangePassword : gunChangePassword;
 	import { userTree } from '$lib/state/core.svelte';
-	import { findNodeById } from '$lib/protocol';
+	import { findNodeById } from '$lib/commons/v5/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
-	import { type Node, type RootNode } from '$lib/schema';
+	import { type Node, type RootNode } from '$lib/commons/v5/schemas';
 	import { gunAvatar } from 'gun-avatar';
 	import { startTour } from '$lib/utils/tour';
 	import { browser } from '$app/environment';

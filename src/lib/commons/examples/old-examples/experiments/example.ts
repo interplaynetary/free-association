@@ -1,5 +1,5 @@
-import { addChild } from '$lib/protocol';
-import type { RootNode, Node } from '$lib/schema';
+import { addChild } from '$lib/commons/v5/protocol';
+import type { RootNode, Node } from '$lib/commons/v5/schemas';
 import { userTree } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 

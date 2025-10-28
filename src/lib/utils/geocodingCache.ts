@@ -9,7 +9,7 @@
  */
 
 import { geocodeCapacityAddress, formatAddress } from './geocoding';
-import type { AvailabilitySlot } from '$lib/schema';
+import type { AvailabilitySlot } from '$lib/commons/v5/schemas';
 
 interface AddressComponents {
 	street_address?: string;

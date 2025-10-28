@@ -1,17 +1,28 @@
 <script lang="ts">
 	import { globalState, currentPath } from '$lib/global.svelte';
 	import { userTree } from '$lib/state/core.svelte';
-	import { findNodeById, addChild, calculateNodePoints } from '$lib/protocol';
+	import { findNodeById, addChild, calculateNodePoints } from '$lib/commons/v5/protocol';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import { userCapacities, mutualContributors, userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
-	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import type { ProviderCapacity, Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/commons/v5/schemas';
 	import { collectiveForest } from '$lib/collective-tree.svelte';
+	
+	// V5: Wrap Commitment with id for collection storage
+	type CommitmentWithId = Commitment & { id: string };
+	type ProviderCapacity = CommitmentWithId;
+	type CapacitiesCollection = Record<string, CommitmentWithId>;
+	
+	// Simple helper to add capacity to collection
+	function addCapacityToCollection(collection: CapacitiesCollection, capacity: CommitmentWithId): void {
+		if (capacity.id) {
+			collection[capacity.id] = capacity;
+		}
+	}
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
@@ -181,12 +192,16 @@
 	}> {
 		return node.children.map((child) => ({
 			id: child.id,
-			name: child.name,
-			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
-			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
-			antiContributors:
-				child.type === 'NonRootNode' ? (child as NonRootNode).anti_contributors_ids : [],
-			subtree: child
+		name: child.name,
+		points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
+		// V5: Extract IDs from Contributor[] arrays {id, points}
+		contributors: child.type === 'NonRootNode' 
+			? (child as NonRootNode).contributors.map(c => c.id) 
+			: [],
+		antiContributors: child.type === 'NonRootNode' 
+			? ((child as NonRootNode).anti_contributors || []).map(c => c.id) 
+			: [],
+		subtree: child
 		}));
 	}
 
@@ -415,29 +430,39 @@
 				.filter((id): id is string => id !== null); // Remove null entries
 		}
 
-		// Recursive function to process the tree
+		// V5: Recursive function to process the tree with Contributor[] arrays
 		function processNode(currentNode: Node): void {
 			// Only NonRootNodes have contributor arrays
 			if (currentNode.type === 'NonRootNode') {
 				const nonRootNode = currentNode as NonRootNode;
 
-				// Resolve contributor IDs
-				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-					const originalCount = nonRootNode.contributor_ids.length;
-					nonRootNode.contributor_ids = resolveContributorArray(nonRootNode.contributor_ids);
+				// V5: Resolve contributor IDs (extract from Contributor[] objects, resolve, reconstruct)
+				if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+					const originalCount = nonRootNode.contributors.length;
+					const contributorIds = nonRootNode.contributors.map(c => c.id);
+					const resolvedIds = resolveContributorArray(contributorIds);
+					// Reconstruct Contributor[] array with resolved IDs, preserving points
+					nonRootNode.contributors = resolvedIds.map((id, index) => ({
+						id,
+						points: nonRootNode.contributors[index]?.points || 100
+					}));
 					console.log(
-						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.contributor_ids.length} contributor IDs for node '${currentNode.name}'`
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.contributors.length} contributor IDs for node '${currentNode.name}'`
 					);
 				}
 
-				// Resolve anti-contributor IDs
-				if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
-					const originalCount = nonRootNode.anti_contributors_ids.length;
-					nonRootNode.anti_contributors_ids = resolveContributorArray(
-						nonRootNode.anti_contributors_ids
-					);
+				// V5: Resolve anti-contributor IDs
+				if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+					const originalCount = nonRootNode.anti_contributors.length;
+					const antiContributorIds = nonRootNode.anti_contributors.map(c => c.id);
+					const resolvedIds = resolveContributorArray(antiContributorIds);
+					// Reconstruct Contributor[] array with resolved IDs, preserving points
+					nonRootNode.anti_contributors = resolvedIds.map((id, index) => ({
+						id,
+						points: nonRootNode.anti_contributors![index]?.points || 100
+					}));
 					console.log(
-						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.anti_contributors_ids.length} anti-contributor IDs for node '${currentNode.name}'`
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.anti_contributors.length} anti-contributor IDs for node '${currentNode.name}'`
 					);
 				}
 			}
@@ -528,34 +553,30 @@
 			max_natural_div: 1,
 			max_percentage_div: 1.0,
 			hidden_until_request_accepted: false,
-			owner_id: pub,
-			filter_rule: null,
-			members: [pub], // Default to current user as the only member
-			availability_slots: [
-				{
-					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-					quantity: 1,
-					location_type: 'Undefined',
-					all_day: true,
-					start_date: todayString,
-					start_time: null,
-					end_date: null,
-					end_time: null,
-					time_zone: getLocalTimeZone(),
-					recurrence: 'Daily',
-					custom_recurrence_repeat_every: null,
-					custom_recurrence_repeat_unit: null,
-					custom_recurrence_end_type: null,
-					custom_recurrence_end_value: null,
-					latitude: undefined,
-					longitude: undefined,
-					street_address: undefined,
-					city: undefined,
-					state_province: undefined,
-					postal_code: undefined,
-					country: undefined
-				}
-			]
+		owner_id: pub,
+		filter_rule: null,
+		members: [pub], // Default to current user as the only member
+		capacity_slots: [  // V5: Use capacity_slots with required fields only
+			{
+				id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+				name: '',  // V5: Required field
+				need_type_id: 'default',  // V5: Required field
+				quantity: 1,
+				location_type: 'Undefined',
+				start_date: todayString,
+				end_date: null,
+				time_zone: getLocalTimeZone(),
+				recurrence: 'daily',  // V5: lowercase enum value
+				// Optional fields
+				latitude: undefined,
+				longitude: undefined,
+				street_address: undefined,
+				city: undefined,
+				state_province: undefined,
+				postal_code: undefined,
+				country: undefined
+			}
+		]
 		};
 	}
 

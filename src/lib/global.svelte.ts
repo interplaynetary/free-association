@@ -1,9 +1,16 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
-import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
+// V5: Import from v5 protocol and stores
+import { 
+	findNodeById, 
+	isContribution, 
+	reorderNode, 
+	wouldCreateCycle,
+	createRootNode
+} from '$lib/commons/v5/protocol';
 import { userPub } from '$lib/state/auth.svelte';
-import { userTree } from '$lib/state/core.svelte';
+import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
 
 // 🚨 CRITICAL FIX: Import subscriptions to initialize store persistence
 // This sets up the userCapacities.subscribe() and other store subscriptions
@@ -163,8 +170,10 @@ export const globalState = $state({
 		return path.length > 1;
 	},
 	// Reset all state (logout)
+	// V5: Create empty root node instead of null
 	resetState: () => {
-		userTree.set(null);
+		const emptyTree = createRootNode('root', 'My Values');
+		userTree.set(emptyTree);
 		currentPath.set([]);
 		globalState.editMode = false;
 		globalState.editingNodeId = '';
@@ -677,8 +686,4 @@ export const globalState = $state({
 	setView: (view: 'tree' | 'map' | 'inventory') => {
 		globalState.currentView = view;
 	}
-
-	/**
-	 * Map fullscreen is now handled by FullScreenControl component
-	 */
 });

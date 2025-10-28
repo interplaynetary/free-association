@@ -243,9 +243,9 @@ function collectiveCapacity(ci: Forest, collective: Collective): number {
 		} else {
 			const capacities = getNodeCapacities(member as Node);
 			const memberCap = Object.values(capacities).reduce((acc, cap) => {
-				// Calculate total quantity from availability_slots
-				if (cap.availability_slots && Array.isArray(cap.availability_slots)) {
-					const slotTotal = cap.availability_slots.reduce(
+				// Calculate total quantity from capacity_slots
+				if (cap.capacity_slots && Array.isArray(cap.capacity_slots)) {
+					const slotTotal = cap.capacity_slots.reduce(
 						(slotSum, slot) => slotSum + (slot.quantity || 0),
 						0
 					);
@@ -273,6 +273,7 @@ export {
 
 // === NEW TREE MERGING FUNCTIONALITY ===
 
+// V5: Import from v5 schemas (collective types may be defined elsewhere)
 import type {
 	CollectiveTree,
 	CollectiveNode,
@@ -280,8 +281,8 @@ import type {
 	CollectiveNonRootNode,
 	TreeMergeConfig,
 	TreeMergeResult
-} from '$lib/schema';
-import { shareOfParent } from '$lib/protocol';
+} from './schemas';
+import { shareOfParent } from '../protocol';
 import crypto from 'crypto';
 
 // Hash function for creating collective IDs

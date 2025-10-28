@@ -9,9 +9,10 @@
  */
 
 import { writable, get } from 'svelte/store';
-import { holsterUser } from './holster.svelte';
-import type { ContactsCollection, Contact } from '$lib/schema';
-import { ContactsCollectionSchema } from '$lib/schema';
+import { holsterUser } from '$lib/commons/v5/holster.svelte';
+// V5: Import from v5 schemas
+import type { ContactsCollection, Contact } from '$lib/commons/v5/schemas';
+import { ContactsCollectionSchema } from '$lib/commons/v5/schemas';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ============================================================================

@@ -199,13 +199,13 @@
 	// Get allocated quantity for a specific slot (your share from efficient algorithm)
 	function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
 		// Use the new efficient allocation data structure
-		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 		return slot?.allocated_quantity || 0;
 	}
 
 	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
 	function getSlotMutualRecognitionShare(capacity: any, slotId: string): number {
-		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 		if (!slot) return 0;
 
 		const providerId = capacity.provider_id;

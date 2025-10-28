@@ -1,5 +1,6 @@
-import { addCapacity as addCapacityToCollection } from '$lib/protocol';
-import type { RootNode, ProviderCapacity, CapacitiesCollection } from '$lib/schema';
+import { addCapacity as addCapacityToCollection } from '$lib/commons/v5/protocol';
+// V5: Fixed import path (was /schema, now /schemas)
+import type { RootNode, ProviderCapacity, CapacitiesCollection } from '$lib/commons/v5/schemas';
 import { userTree, userCapacities } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 import { getLocalTimeZone } from '@internationalized/date';

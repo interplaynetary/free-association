@@ -217,14 +217,14 @@ export function groupObjectsByTravelTime(
  * Returns all unique locations from availability slots
  */
 export const extractCapacityLocations = (capacity: any): LocationPoint[] => {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		return [];
 	}
 
 	const locations: LocationPoint[] = [];
 	const seen = new Set<string>();
 
-	capacity.availability_slots.forEach((slot: any) => {
+	capacity.capacity_slots.forEach((slot: any) => {
 		if (slot.latitude != null && slot.longitude != null) {
 			const locationKey = `${slot.latitude},${slot.longitude}`;
 			if (!seen.has(locationKey)) {
@@ -241,11 +241,11 @@ export const extractCapacityLocations = (capacity: any): LocationPoint[] => {
  * Extract the primary location from a capacity (first slot with location)
  */
 export const extractCapacityPrimaryLocation = (capacity: any): LocationPoint | null => {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		return null;
 	}
 
-	for (const slot of capacity.availability_slots) {
+	for (const slot of capacity.capacity_slots) {
 		if (slot.latitude != null && slot.longitude != null) {
 			return { lat: slot.latitude, lng: slot.longitude };
 		}

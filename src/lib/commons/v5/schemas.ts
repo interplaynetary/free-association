@@ -899,4 +899,66 @@ export function validateGlobalRecognitionWeights(
 	return Math.abs(sum - 1.0) < epsilon;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CONTACTS SCHEMA (Legacy Compatibility)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Contact - Represents a user contact
+ */
+export const ContactSchema = z.object({
+	contact_id: z.string(),
+	name: z.string(),
+	public_key: z.string().optional(),
+	emoji: z.string().optional(),
+	notes: z.string().optional(),
+	created_at: z.number().optional(),  // Gun timestamp
+	updated_at: z.number().optional(),  // Gun timestamp
+	_updatedAt: z.number().optional()   // Holster timestamp
+});
+
+export type Contact = z.infer<typeof ContactSchema>;
+
+/**
+ * Contacts Collection - Map of contact_id to Contact
+ */
+export const ContactsCollectionSchema = z.record(z.string(), ContactSchema);
+export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
+export type ContactsCollectionData = ContactsCollection;  // Alias for compatibility
+
+// ═══════════════════════════════════════════════════════════════════
+// CHAT SCHEMA (Legacy Compatibility)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Chat Read State - Tracks read status for a chat with another user
+ */
+export const ChatReadStateSchema = z.object({
+	lastRead: z.number().int().positive(),
+	lastReadTimestamp: z.number().int().positive().optional(),  // Alias for Gun compatibility
+	updatedAt: z.number().optional(),   // Gun timestamp
+	_updatedAt: z.number().optional()   // Holster timestamp
+});
+
+export type ChatReadState = z.infer<typeof ChatReadStateSchema>;
+
+/**
+ * Chat Read States - Map of user public key to read state
+ */
+export const ChatReadStatesSchema = z.record(z.string(), ChatReadStateSchema);
+export type ChatReadStates = z.infer<typeof ChatReadStatesSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// LEGACY TYPE ALIASES (For backward compatibility during migration)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Legacy type aliases - Components use Commitment, but some state files
+ * may still reference these old names during migration
+ */
+export type BaseCapacity = Commitment;
+export type ProviderCapacity = Commitment & { id?: string };  // Some legacy code expects id
+export type RecipientCapacity = Commitment;
+export type CapacitiesCollection = Record<string, Commitment>;
+
 

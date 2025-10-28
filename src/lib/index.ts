@@ -14,7 +14,6 @@ export { default as Share } from './components/Share.svelte';
 
 export { default as Slot } from './components/Slot.svelte';
 export { default as SlotCompositionItem } from './components/SlotCompositionItem.svelte';
-export { default as UnifiedShare } from './components/UnifiedShare.svelte';
 
 export { default as Chat } from './components/Chat.svelte';
 export { default as ChatMessage } from './components/ChatMessage.svelte';

@@ -1052,7 +1052,7 @@ export { filter, normalizeShareMap, applyCapacityFilter, Rules };
  * Get allocated quantity for a specific slot from the efficient algorithm
  */
 export function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
-	const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+	const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 	return slot?.allocated_quantity || 0;
 }
 
@@ -1060,7 +1060,7 @@ export function getSlotAllocatedQuantity(capacity: any, slotId: string): number 
  * Get available quantity for a specific slot
  */
 export function getSlotAvailableQuantity(capacity: any, slotId: string): number {
-	const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+	const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 	return slot?.available_quantity || slot?.quantity || 0;
 }
 
@@ -1068,10 +1068,10 @@ export function getSlotAvailableQuantity(capacity: any, slotId: string): number 
  * Get count of slots with allocated quantities
  */
 export function getAllocatedSlotCount(capacity: any): number {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		return 0;
 	}
-	return capacity.availability_slots.filter((slot: any) => (slot.allocated_quantity || 0) > 0)
+	return capacity.capacity_slots.filter((slot: any) => (slot.allocated_quantity || 0) > 0)
 		.length;
 }
 
@@ -1079,17 +1079,17 @@ export function getAllocatedSlotCount(capacity: any): number {
  * Get total number of slots available
  */
 export function getTotalSlotCount(capacity: any): number {
-	return capacity.availability_slots?.length || 0;
+	return capacity.capacity_slots?.length || 0;
 }
 
 /**
  * Calculate total allocated quantity across all slots
  */
 export function getTotalAllocated(capacity: any): number {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		return 0;
 	}
-	return capacity.availability_slots.reduce((total: number, slot: any) => {
+	return capacity.capacity_slots.reduce((total: number, slot: any) => {
 		return total + (slot.allocated_quantity || 0);
 	}, 0);
 }
@@ -1098,10 +1098,10 @@ export function getTotalAllocated(capacity: any): number {
  * Calculate total available quantity across all slots
  */
 export function getTotalAvailable(capacity: any): number {
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		return 0;
 	}
-	return capacity.availability_slots.reduce((total: number, slot: any) => {
+	return capacity.capacity_slots.reduce((total: number, slot: any) => {
 		return total + (slot.available_quantity || slot.quantity || 0);
 	}, 0);
 }

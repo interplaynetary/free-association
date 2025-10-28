@@ -174,7 +174,7 @@ export function matchNeedToCapacitySlots(
 	}>;
 	total_matchable: number;
 	unmatched_need_slots: import('$lib/schema').NeedSlot[];
-	unmatched_availability_slots: import('$lib/schema').AvailabilitySlot[];
+	unmatched_capacity_slots: import('$lib/schema').AvailabilitySlot[];
 } {
 	const compatible_pairs: Array<{
 		need_slot: import('$lib/schema').NeedSlot;
@@ -188,7 +188,7 @@ export function matchNeedToCapacitySlots(
 
 	// Try to match each need slot to availability slots
 	for (const needSlot of need.need_slots) {
-		for (const availSlot of capacity.availability_slots) {
+		for (const availSlot of capacity.capacity_slots) {
 			// Check if slots are compatible (time/location)
 			if (slotsCompatible(needSlot, availSlot)) {
 				// Calculate how much we can allocate from this availability slot to this need slot
@@ -225,7 +225,7 @@ export function matchNeedToCapacitySlots(
 
 	// Collect unmatched slots
 	const unmatched_need_slots = need.need_slots.filter((s) => !matched_need_slot_ids.has(s.id));
-	const unmatched_availability_slots = capacity.availability_slots.filter(
+	const unmatched_capacity_slots = capacity.capacity_slots.filter(
 		(s) => !matched_availability_slot_ids.has(s.id)
 	);
 
@@ -233,7 +233,7 @@ export function matchNeedToCapacitySlots(
 		compatible_pairs,
 		total_matchable: totalMatchable,
 		unmatched_need_slots,
-		unmatched_availability_slots
+		unmatched_capacity_slots
 	};
 }
 
@@ -293,7 +293,7 @@ export function allocateSlotsToRecipients(
 	total_capacity: number;
 } {
 	// Calculate total capacity
-	const totalCapacity = capacity.availability_slots.reduce((sum, s) => sum + s.quantity, 0);
+	const totalCapacity = capacity.capacity_slots.reduce((sum, s) => sum + s.quantity, 0);
 
 	// Calculate target allocation for each recipient (proportional to recognition)
 	const memberTargets = new Map<string, number>();
@@ -308,7 +308,7 @@ export function allocateSlotsToRecipients(
 
 	// Initialize availability slot states
 	const availabilitySlotStates = new Map<string, AvailabilitySlotState>();
-	for (const availSlot of capacity.availability_slots) {
+	for (const availSlot of capacity.capacity_slots) {
 		availabilitySlotStates.set(availSlot.id, {
 			slot_id: availSlot.id,
 			original_quantity: availSlot.quantity,
@@ -337,7 +337,7 @@ export function allocateSlotsToRecipients(
 	const timeBuckets = new Map<string, string[]>(); // "2024-06" → [avail_slot_ids]
 	const locationBuckets = new Map<string, string[]>(); // "Berlin" | "Remote" → [avail_slot_ids]
 	
-	for (const availSlot of capacity.availability_slots) {
+	for (const availSlot of capacity.capacity_slots) {
 		// Time bucket (month-level for quick filtering)
 		if (availSlot.start_date) {
 			const bucket = availSlot.start_date.substring(0, 7); // "2024-06"
@@ -372,7 +372,7 @@ export function allocateSlotsToRecipients(
 				slotsInTimeBucket.forEach(id => candidateSlotIds.add(id));
 			} else {
 				// No time constraint - consider all slots
-				capacity.availability_slots.forEach(s => candidateSlotIds.add(s.id));
+				capacity.capacity_slots.forEach(s => candidateSlotIds.add(s.id));
 			}
 			
 			// Filter by location bucket (intersection)
@@ -398,7 +398,7 @@ export function allocateSlotsToRecipients(
 			
 			// Now check detailed compatibility only for candidate slots (much smaller set!)
 			for (const availSlotId of candidateSlotIds) {
-				const availSlot = capacity.availability_slots.find(s => s.id === availSlotId)!;
+				const availSlot = capacity.capacity_slots.find(s => s.id === availSlotId)!;
 				
 				// Check detailed time/location compatibility
 				if (slotsCompatible(needSlot, availSlot)) {
@@ -416,7 +416,7 @@ export function allocateSlotsToRecipients(
 	// OPTIMIZATION: Track active availability slots (those not fully allocated)
 	// Similar to activeRecipients, this shrinks the search space
 	const activeAvailSlots = new Set<string>(
-		capacity.availability_slots.filter(s => s.quantity > 0).map(s => s.id)
+		capacity.capacity_slots.filter(s => s.quantity > 0).map(s => s.id)
 	);
 
 	// OPTIMIZATION: Pre-filter recipients who can't receive anything
@@ -514,7 +514,7 @@ export function allocateSlotsToRecipients(
 					if (canAllocate <= 0) continue;
 
 					// Get the actual availability slot for metadata
-					const availSlot = capacity.availability_slots.find(s => s.id === availSlotId)!;
+					const availSlot = capacity.capacity_slots.find(s => s.id === availSlotId)!;
 
 					// Create allocation (compatibility already verified in matrix)
 					const allocation: SlotAllocation = {
@@ -744,7 +744,7 @@ export function calculateCollectiveRecognitionShares(
  * 5. Prevent over-allocation of availability slots
  * 6. Return final allocations with full slot-level transparency
  * 
- * @param capacity - Provider's capacity declaration (with availability_slots)
+ * @param capacity - Provider's capacity declaration (with capacity_slots)
  * @param needs - Map of member ID to their need declaration (with need_slots)
  * @param memberTrees - Map of member ID to their recognition tree
  * @param recognitionData - (Optional) Recognition data for dynamic membership updates

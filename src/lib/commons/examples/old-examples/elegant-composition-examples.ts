@@ -2,7 +2,7 @@
  * Examples of the elegant composition target schema in action
  */
 
-import type { UserSlotCompositionData } from '$lib/schema';
+import type { UserSlotCompositionData } from '$lib/commons/v5/schemas';
 import { parseCompositionTarget } from '$lib/validation';
 import { createCollectiveTarget, isSelfConsumption } from '$lib/state/users.svelte';
 

@@ -7,6 +7,7 @@
 	import { userDesiredSlotComposeFrom, mutualRecognition } from '$lib/state/core.svelte';
 	import { userPub } from '$lib/state/auth.svelte';
 	import { get } from 'svelte/store';
+	// V5: Import slot utility functions from v5 protocol
 	import {
 		getSlotAllocatedQuantity,
 		getSlotAvailableQuantity,
@@ -20,7 +21,7 @@
 		formatSlotTimeDisplay,
 		formatSlotLocationDisplay,
 		getSlotSortValue
-	} from '$lib/protocol';
+	} from '$lib/commons/v5/protocol';
 
 	interface Props {
 		share: any; // Using any since we're now working with inventory data, not RecipientCapacity
@@ -78,7 +79,8 @@
 
 	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
 	function getSlotMutualRecognitionShare(share: any, slotId: string): number {
-		const slot = share.availability_slots?.find((s: any) => s.id === slotId);
+		// V5: Use capacity_slots instead of availability_slots
+		const slot = share.capacity_slots?.find((s: any) => s.id === slotId);
 		if (!slot) return 0;
 
 		const providerId = share.provider_id;
@@ -164,7 +166,8 @@
 
 	// Categorize and sort slots
 	let categorizedSlots = $derived(() => {
-		if (!share.availability_slots || !Array.isArray(share.availability_slots)) {
+		// V5: Use capacity_slots instead of availability_slots
+		if (!share.capacity_slots || !Array.isArray(share.capacity_slots)) {
 			return { past: [], recurring: [], currentFuture: [] };
 		}
 
@@ -173,7 +176,8 @@
 		const currentFuture: any[] = [];
 
 		// Categorize slots
-		share.availability_slots.forEach((slot: any) => {
+		// V5: Use capacity_slots instead of availability_slots
+		share.capacity_slots.forEach((slot: any) => {
 			if (isSlotRecurring(slot)) {
 				recurring.push(slot);
 			} else if (isSlotInPast(slot)) {

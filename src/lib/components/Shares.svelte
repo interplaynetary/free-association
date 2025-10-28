@@ -3,19 +3,24 @@
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
-	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/commons/v5/protocol';
 	import { t } from '$lib/translations';
 	import type {
 		Node,
 		RootNode,
 		NonRootNode,
-		Capacity,
-		CapacitiesCollection,
 		ShareMap,
-		ProviderCapacity,
-		RecipientCapacity,
-		BaseCapacity
-	} from '$lib/schema';
+		Commitment,
+		AvailabilitySlot,
+		NeedSlot
+	} from '$lib/commons/v5/schemas';
+	
+	// V5: Use Commitment types directly (already have capacity_slots and need_slots)
+	type Capacity = Commitment;
+	type ProviderCapacity = Commitment;  // V5: Already has capacity_slots
+	type RecipientCapacity = Commitment;  // V5: Already has need_slots
+	type BaseCapacity = Commitment;
+	type CapacitiesCollection = Record<string, Commitment>;
 
 	async function handleProviderClick(provider: string) {
 		// This function will be implemented later to navigate to the provider

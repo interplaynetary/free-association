@@ -1,11 +1,10 @@
 import { get, writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { gun } from '$lib/state/gun.svelte';
-import type { Contact, ContactsCollectionData } from '$lib/schema';
-import { ContactSchema } from '$lib/schema';
-import { USE_HOLSTER_CONTACTS } from '$lib/config';
+// V5: Import from v5 schemas
+import type { Contact, ContactsCollectionData } from '$lib/commons/v5/schemas';
+import { ContactSchema } from '$lib/commons/v5/schemas';
 
-// Import Holster contacts module
+// V5: Import Holster contacts module (from v5 commons)
 import {
 	holsterContacts,
 	isLoadingHolsterContacts,
@@ -17,23 +16,15 @@ import {
 } from './contacts-holster.svelte';
 
 // ================================
-// CORE USER & CONTACT STORES
+// CORE USER & CONTACT STORES (V5: Holster-Only)
 // ================================
 
 // User tracking stores
 export const userPubKeys = writable<string[]>([]);
 
-// Separate stores for Gun and Holster to avoid data overlap
-const gunContacts = writable<ContactsCollectionData>({});
-const gunIsLoadingContacts = writable(false);
-
-// Contact management stores - switch based on feature flag
-export const userContacts: Writable<ContactsCollectionData> = USE_HOLSTER_CONTACTS
-	? holsterContacts
-	: gunContacts;
-export const isLoadingContacts = USE_HOLSTER_CONTACTS
-	? isLoadingHolsterContacts
-	: gunIsLoadingContacts;
+// V5: Contact management stores (Holster-only)
+export const userContacts: Writable<ContactsCollectionData> = holsterContacts;
+export const isLoadingContacts = isLoadingHolsterContacts;
 export const contactSearchQuery = writable('');
 
 // User name/alias caching stores
@@ -82,7 +73,7 @@ export const userNamesOrAliasesCache = derived(
 );
 
 // ================================
-// CONTACT LIFECYCLE FUNCTIONS
+// CONTACT LIFECYCLE FUNCTIONS (V5: Holster-Only)
 // ================================
 
 /**
@@ -90,10 +81,7 @@ export const userNamesOrAliasesCache = derived(
  * Call this when user logs in
  */
 export function initializeContacts() {
-	if (USE_HOLSTER_CONTACTS) {
-		initializeHolsterContacts();
-	}
-	// Gun initialization happens via network.svelte.ts subscriptions
+	initializeHolsterContacts();
 }
 
 /**
@@ -101,22 +89,15 @@ export function initializeContacts() {
  * Call this when user logs out
  */
 export function cleanupContacts() {
-	if (USE_HOLSTER_CONTACTS) {
-		cleanupHolsterContacts();
-	}
-	// Gun cleanup happens via network.svelte.ts
+	cleanupHolsterContacts();
 }
 
 /**
  * Persist contacts to backend
- * For Holster: called automatically via CRUD operations
- * For Gun: called by persistence.svelte.ts
+ * Called automatically via CRUD operations
  */
 export async function persistContacts(contacts?: ContactsCollectionData) {
-	if (USE_HOLSTER_CONTACTS) {
-		return persistHolsterContacts(contacts);
-	}
-	// Gun persistence handled by persistence.svelte.ts
+	return persistHolsterContacts(contacts);
 }
 
 // ================================
@@ -136,8 +117,8 @@ export function createContact(
 		throw new Error('Contact already exists with this public key');
 	}
 
-	const now = new Date().toISOString();
-	const contact_id = `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+	const now = Date.now();
+	const contact_id = `contact_${now}_${Math.random().toString(36).substr(2, 9)}`;
 
 	const newContact: Contact = {
 		contact_id,
@@ -156,13 +137,8 @@ export function createContact(
 		[contact_id]: validatedContact
 	};
 
-	// Update store and persist based on implementation
-	if (USE_HOLSTER_CONTACTS) {
-		updateHolsterContactsStore(updatedContacts);
-	} else {
-		userContacts.set(updatedContacts);
-		// Gun persistence happens separately via persistence.svelte.ts
-	}
+	// V5: Update store and persist (Holster-only)
+	updateHolsterContactsStore(updatedContacts);
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -190,7 +166,7 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 	const updatedContact = {
 		...existingContact,
 		...updates,
-		updated_at: new Date().toISOString()
+		updated_at: Date.now()
 	};
 
 	// Validate the updated contact
@@ -210,28 +186,16 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 		[contact_id]: validatedContact
 	};
 
-	// Update store and persist based on implementation
-	if (USE_HOLSTER_CONTACTS) {
-		updateHolsterContactsStore(updatedContacts);
-	} else {
-		userContacts.set(updatedContacts);
-		// Gun persistence happens separately via persistence.svelte.ts
-	}
+	// V5: Update store and persist (Holster-only)
+	updateHolsterContactsStore(updatedContacts);
 }
 
 /**
- * Delete a contact
+ * Delete a contact (V5: Holster-only)
  */
 export async function deleteContact(contact_id: string): Promise<void> {
-	if (USE_HOLSTER_CONTACTS) {
-		// Use Holster-specific delete that sets to null
-		await deleteHolsterContact(contact_id);
-	} else {
-		// Gun: optimistically update store, persistence happens via persistence.svelte.ts
-		const currentContacts = get(userContacts);
-		const { [contact_id]: deleted, ...remaining } = currentContacts;
-		userContacts.set(remaining);
-	}
+	// Use Holster-specific delete that sets to null
+	await deleteHolsterContact(contact_id);
 }
 
 /**
@@ -323,29 +287,20 @@ export function resolveToPublicKeys(identifiers: string[]): string[] {
 // ================================
 
 /**
- * Get Gun alias for a user by public key
+ * Get alias for a user by public key (V5: Holster-only)
+ * Returns cached alias or fallback to truncated ID
  */
 export async function getUserAlias(pubkey: string) {
-	// First check the reactive cache
+	// Check the reactive cache
 	const cache = get(userAliasesCache);
 	if (cache[pubkey]) {
 		return cache[pubkey];
 	}
 
-	// If not found, try the user's protected space using Gun's user system
-	try {
-		const alias = await gun.user(pubkey).get('alias');
-		if (alias && typeof alias === 'string') {
-			// Update cache
-			userAliasesCache.update((cache) => ({
-				...cache,
-				[pubkey]: alias
-			}));
-			return alias;
-		}
-	} catch (error) {
-		console.log(`[USER-NAME] Could not fetch alias for user ${pubkey}:`, error);
-	}
+	// V5: Holster user data is loaded via holster.svelte.ts subscription
+	// No need to fetch directly - data comes through reactive stores
+	// If not in cache yet, return fallback
+	console.log(`[USER-NAME-V5] Alias not yet cached for ${pubkey}, using fallback`);
 
 	// Fallback to truncated ID
 	const fallbackName = pubkey.substring(0, 8) + '...';
@@ -413,8 +368,8 @@ export async function getUserName(identifier: string): Promise<string> {
  * while preserving contact IDs that don't have public keys
  */
 export function resolveContactIdsInTree(
-	node: import('$lib/schema').Node
-): import('$lib/schema').Node {
+	node: import('$lib/commons/v5/schemas').Node
+): import('$lib/commons/v5/schemas').Node {
 	// Create a deep clone to avoid modifying the original
 	const resolvedNode = structuredClone(node);
 
@@ -434,29 +389,39 @@ export function resolveContactIdsInTree(
 		});
 	}
 
-	// Recursive function to process the tree
-	function processNode(currentNode: import('$lib/schema').Node): void {
+	// V5: Recursive function to process the tree with Contributor[] arrays
+	function processNode(currentNode: import('$lib/commons/v5/schemas').Node): void {
 		// Only NonRootNodes have contributor arrays
 		if (currentNode.type === 'NonRootNode') {
-			const nonRootNode = currentNode as import('$lib/schema').NonRootNode;
+			const nonRootNode = currentNode as import('$lib/commons/v5/schemas').NonRootNode;
 
-			// Resolve contributor IDs
-			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-				const originalCount = nonRootNode.contributor_ids.length;
-				nonRootNode.contributor_ids = resolveContributorArray(nonRootNode.contributor_ids);
+			// V5: Resolve contributor IDs (extract from Contributor[] objects, resolve, reconstruct)
+			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+				const originalCount = nonRootNode.contributors.length;
+				const contributorIds = nonRootNode.contributors.map(c => c.id);
+				const resolvedIds = resolveContributorArray(contributorIds);
+				// Reconstruct Contributor[] array with resolved IDs, preserving points
+				nonRootNode.contributors = resolvedIds.map((id, index) => ({
+					id,
+					points: nonRootNode.contributors[index]?.points || 100
+				}));
 				console.log(
-					`[PERSIST-RESOLVE] Processed ${originalCount} contributor IDs for node '${currentNode.name}' (${currentNode.id})`
+					`[PERSIST-RESOLVE] Processed ${originalCount} → ${nonRootNode.contributors.length} contributor IDs for node '${currentNode.name}' (${currentNode.id})`
 				);
 			}
 
-			// Resolve anti-contributor IDs
-			if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
-				const originalCount = nonRootNode.anti_contributors_ids.length;
-				nonRootNode.anti_contributors_ids = resolveContributorArray(
-					nonRootNode.anti_contributors_ids
-				);
+			// V5: Resolve anti-contributor IDs
+			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+				const originalCount = nonRootNode.anti_contributors.length;
+				const antiContributorIds = nonRootNode.anti_contributors.map(c => c.id);
+				const resolvedIds = resolveContributorArray(antiContributorIds);
+				// Reconstruct Contributor[] array with resolved IDs, preserving points
+				nonRootNode.anti_contributors = resolvedIds.map((id, index) => ({
+					id,
+					points: nonRootNode.anti_contributors![index]?.points || 100
+				}));
 				console.log(
-					`[PERSIST-RESOLVE] Processed ${originalCount} anti-contributor IDs for node '${currentNode.name}' (${currentNode.id})`
+					`[PERSIST-RESOLVE] Processed ${originalCount} → ${nonRootNode.anti_contributors.length} anti-contributor IDs for node '${currentNode.name}' (${currentNode.id})`
 				);
 			}
 		}
@@ -471,222 +436,4 @@ export function resolveContactIdsInTree(
 	processNode(resolvedNode);
 
 	return resolvedNode;
-}
-
-// ================================
-// COMPOSITION TARGET USER FUNCTIONS
-// ================================
-
-/**
- * Create a collective target identifier from multiple pubkeys or contact IDs
- * Resolves contact IDs to pubkeys when possible
- */
-export function createCollectiveTarget(identifiers: string[]): string {
-	// Resolve all identifiers to pubkeys
-	const pubkeys = resolveToPublicKeys(identifiers);
-
-	if (pubkeys.length === 0) {
-		throw new Error('No valid pubkeys found for collective target');
-	}
-
-	return `collective:${pubkeys.join(',')}`;
-}
-
-/**
- * Check if a target identifier represents self-consumption
- * Works with both pubkeys and contact IDs
- */
-export function isSelfConsumption(targetId: string, userPubkey: string): boolean {
-	// If targetId is a contact ID, resolve it first
-	const resolvedTarget = resolveToPublicKey(targetId) || targetId;
-
-	// Check if the resolved target matches our pubkey
-	return resolvedTarget === userPubkey;
-}
-
-/**
- * Get display names for all recipients in a composition target
- */
-export async function getCompositionTargetDisplayNames(targetId: string): Promise<string[]> {
-	const { parseCompositionTarget } = await import('$lib/validation');
-	const parsed = parseCompositionTarget(targetId);
-
-	switch (parsed.type) {
-		case 'individual':
-			return [await getUserName(parsed.recipients[0])];
-		case 'collective':
-			return Promise.all(parsed.recipients.map((pubkey) => getUserName(pubkey)));
-		case 'capacity':
-			return [targetId]; // Return capacity ID as-is
-		default:
-			return [targetId];
-	}
-}
-
-/**
- * Format a composition target for display
- */
-export async function formatCompositionTargetDisplay(targetId: string): Promise<string> {
-	const { parseCompositionTarget } = await import('$lib/validation');
-	const parsed = parseCompositionTarget(targetId);
-
-	switch (parsed.type) {
-		case 'individual':
-			return await getUserName(parsed.recipients[0]);
-		case 'collective':
-			const names = await Promise.all(parsed.recipients.map((pubkey) => getUserName(pubkey)));
-			return `Group: ${names.join(', ')}`;
-		case 'capacity':
-			return targetId; // Return capacity ID as-is
-		default:
-			return targetId;
-	}
-}
-
-// ================================
-// COMPOSITION TARGET RESOLUTION FOR PERSISTENCE
-// ================================
-
-/**
- * Local implementation of parseCompositionTarget to avoid circular dependencies
- * This duplicates the logic from validation.ts but avoids require() issues
- */
-function parseCompositionTargetLocal(targetId: string): {
-	type: 'capacity' | 'individual' | 'collective';
-	recipients: string[];
-	originalId: string;
-} {
-	// Check for collective format first
-	if (targetId.startsWith('collective:')) {
-		const pubkeysStr = targetId.slice(11); // Remove "collective:" prefix
-		const pubkeys = pubkeysStr.split(',').filter((pk) => /^[0-9a-fA-F]{64}$/.test(pk));
-		return {
-			type: 'collective',
-			recipients: pubkeys,
-			originalId: targetId
-		};
-	}
-
-	// Check for individual pubkey (64 hex characters)
-	if (/^[0-9a-fA-F]{64}$/.test(targetId)) {
-		return {
-			type: 'individual',
-			recipients: [targetId],
-			originalId: targetId
-		};
-	}
-
-	// Default to capacity ID
-	return {
-		type: 'capacity',
-		recipients: [],
-		originalId: targetId
-	};
-}
-
-/**
- * Resolve contact IDs to public keys in composition targets
- * This ensures composition data is persisted with pubkeys that other users can understand
- */
-export function resolveCompositionTarget(targetId: string): string {
-	// Import parseCompositionTarget from validation module
-	// Note: We import this at the top level to avoid require() issues
-	const parsed = parseCompositionTargetLocal(targetId);
-
-	switch (parsed.type) {
-		case 'individual':
-			// Single contact ID or pubkey - resolve if it's a contact ID
-			const resolvedPubkey = resolveToPublicKey(targetId);
-			if (resolvedPubkey && resolvedPubkey !== targetId) {
-				console.log(
-					`[PERSIST-RESOLVE] Resolved contact ID '${targetId}' to pubkey '${resolvedPubkey.substring(0, 20)}...'`
-				);
-				return resolvedPubkey;
-			}
-			return targetId; // Already a pubkey or no resolution available
-
-		case 'collective':
-			// Collective target - resolve each contact ID to pubkey
-			const resolvedPubkeys = parsed.recipients
-				.map((pubkey: string) => {
-					const resolved = resolveToPublicKey(pubkey);
-					if (resolved && resolved !== pubkey) {
-						console.log(
-							`[PERSIST-RESOLVE] Resolved collective member '${pubkey}' to pubkey '${resolved.substring(0, 20)}...'`
-						);
-						return resolved;
-					}
-					return pubkey; // Already a pubkey or no resolution available
-				})
-				.filter((pk: string) => pk); // Remove any failed resolutions
-
-			if (resolvedPubkeys.length === 0) {
-				console.warn(`[PERSIST-RESOLVE] No valid pubkeys found for collective target: ${targetId}`);
-				return targetId; // Return original if no resolutions worked
-			}
-
-			const resolvedCollective = `collective:${resolvedPubkeys.join(',')}`;
-			if (resolvedCollective !== targetId) {
-				console.log(
-					`[PERSIST-RESOLVE] Resolved collective target '${targetId}' to '${resolvedCollective}'`
-				);
-			}
-			return resolvedCollective;
-
-		case 'capacity':
-			// Capacity ID - no resolution needed
-			return targetId;
-
-		default:
-			console.warn(`[PERSIST-RESOLVE] Unknown composition target type: ${targetId}`);
-			return targetId;
-	}
-}
-
-/**
- * Resolve contact IDs to public keys in slot composition data
- * This ensures the composition data is persisted with pubkeys that other users can understand
- */
-export function resolveContactIdsInSlotComposition(
-	compositionData: import('$lib/schema').UserSlotCompositionData
-): import('$lib/schema').UserSlotCompositionData {
-	console.log('[PERSIST-RESOLVE] Starting slot composition contact ID resolution...');
-
-	// Create a deep clone to avoid modifying the original
-	const resolvedData = structuredClone(compositionData);
-	let resolutionCount = 0;
-
-	// Process each source capacity
-	Object.entries(resolvedData).forEach(([sourceCapacityId, sourceSlots]) => {
-		// Process each source slot
-		Object.entries(sourceSlots).forEach(([sourceSlotId, targetCompositions]) => {
-			// Process each target - this is where we need to resolve contact IDs
-			const resolvedTargetCompositions: Record<string, Record<string, number>> = {};
-
-			Object.entries(targetCompositions).forEach(([targetId, targetSlots]) => {
-				// Resolve the target ID (could be contact ID, pubkey, collective with contact IDs, or capacity ID)
-				const resolvedTargetId = resolveCompositionTarget(targetId);
-
-				if (resolvedTargetId !== targetId) {
-					resolutionCount++;
-				}
-
-				// Use the resolved target ID
-				resolvedTargetCompositions[resolvedTargetId] = targetSlots;
-			});
-
-			// Replace the target compositions with resolved ones
-			resolvedData[sourceCapacityId][sourceSlotId] = resolvedTargetCompositions;
-		});
-	});
-
-	if (resolutionCount > 0) {
-		console.log(
-			`[PERSIST-RESOLVE] Resolved ${resolutionCount} composition targets in slot composition data`
-		);
-	} else {
-		console.log('[PERSIST-RESOLVE] No composition target resolutions needed');
-	}
-
-	return resolvedData;
 }

@@ -10,15 +10,18 @@
 	import { t } from '$lib/translations';
 
 	// Define interface for node data
+	// V5 NOTE: This interface uses string[] for contributors/antiContributors for visualization purposes.
+	// Parent.svelte extracts contributor IDs from the v5 Contributor[] arrays (which contain {id, points})
+	// before passing to this component. This keeps the visualization component simple and focused on rendering.
 	interface NodeData {
 		id: string;
 		name: string;
 		points: number;
-		contributors: string[];
-		antiContributors?: string[];
+		contributors: string[];         // Contributor IDs for display (extracted from v5 Contributor[])
+		antiContributors?: string[];    // Anti-contributor IDs for display (extracted from v5 Contributor[])
 		fulfillment?: number;
-		manualFulfillment?: number; // Add manual fulfillment to interface
-		hasChildren?: boolean; // Flag to indicate if this node has children
+		manualFulfillment?: number;     // Manual fulfillment override
+		hasChildren?: boolean;          // Flag to indicate if this node has children
 	}
 
 	// Define interface for node dimensions

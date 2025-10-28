@@ -1,12 +1,11 @@
 import { get } from 'svelte/store';
-import { gun, usersList as gunUsersList } from '$lib/state/gun.svelte';
 import { userPub, userAlias } from '$lib/state/auth.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
-import { userTree } from '$lib/state/core.svelte';
-import { createRootNode } from '$lib/protocol';
+// V5: Import from v5 stores
+import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
+import { createRootNode } from '$lib/commons/v5/protocol';
 import { populateWithExampleData } from '$lib/utils/example';
-import type { Node, NonRootNode } from '$lib/schema';
-import { USE_HOLSTER_AUTH } from '$lib/config';
+import type { Node, NonRootNode } from '$lib/commons/v5/schemas';
 
 /**
  * Convert a string duration like '30m', '2h', '1d', '1w', '3mo' to milliseconds
@@ -40,80 +39,11 @@ function parseDuration(durationStr: string): number {
  * Prune users from the usersList who haven't been seen within the specified duration
  * @param {string} inactivityThreshold - Duration string like '30m', '1h', '2d', etc.
  *
- * NOTE: This utility only works with Gun, not Holster
+ * @deprecated V5: This utility only worked with Gun. Holster users list management is different.
  */
 export function clearUsersList(inactivityThreshold: string = '30m') {
-	if (USE_HOLSTER_AUTH) {
-		console.warn('[PRUNE] clearUsersList() only works with Gun. Holster users list management is different.');
-		return;
-	}
-
-	let inactivityThresholdMs: number;
-	try {
-		inactivityThresholdMs = parseDuration(inactivityThreshold);
-	} catch (error) {
-		console.error(`[PRUNE] ${error}`);
-		return;
-	}
-
-	console.log(`[PRUNE] Starting to prune users inactive for more than ${inactivityThreshold}...`);
-
-	const thresholdTime = Date.now() - inactivityThresholdMs;
-
-	gunUsersList.once((data: any) => {
-		if (data) {
-			const userPubKeys = Object.keys(data);
-			console.log(`[PRUNE] Found ${userPubKeys.length} users to check`);
-
-			let prunedCount = 0;
-			let checkedCount = 0;
-
-			userPubKeys.forEach((pubKey) => {
-				gunUsersList.get(pubKey).once((userData: any) => {
-					checkedCount++;
-
-					if (userData && userData.lastSeen) {
-						const lastSeen = userData.lastSeen;
-
-						if (lastSeen < thresholdTime) {
-							gunUsersList.get(pubKey).put(null, (ack: any) => {
-								if (ack.err) {
-									console.error(`[PRUNE] Error removing inactive user ${pubKey}:`, ack.err);
-								} else {
-									console.log(
-										`[PRUNE] Removed inactive user ${pubKey} (last seen: ${new Date(lastSeen).toLocaleString()})`
-									);
-									prunedCount++;
-								}
-							});
-						} else {
-							console.log(
-								`[PRUNE] User ${pubKey} is active (last seen: ${new Date(lastSeen).toLocaleString()})`
-							);
-						}
-					} else {
-						console.log(`[PRUNE] User ${pubKey} has no lastSeen data, removing...`);
-						gunUsersList.get(pubKey).put(null, (ack: any) => {
-							if (ack.err) {
-								console.error(`[PRUNE] Error removing user without lastSeen ${pubKey}:`, ack.err);
-							} else {
-								console.log(`[PRUNE] Removed user without lastSeen data: ${pubKey}`);
-								prunedCount++;
-							}
-						});
-					}
-
-					if (checkedCount === userPubKeys.length) {
-						console.log(
-							`[PRUNE] Pruning complete. Checked ${checkedCount} users, removed ${prunedCount} inactive users.`
-						);
-					}
-				});
-			});
-		} else {
-			console.log('[PRUNE] No users found to prune');
-		}
-	});
+	console.error('[PRUNE] clearUsersList() is deprecated in v5. Holster users list management uses different patterns.');
+	console.error('[PRUNE] This function is no longer supported. Please use Holster-specific user management.');
 }
 
 /**
@@ -145,115 +75,11 @@ export function changeTreeName(newName: string) {
  * Fix corrupted names in the usersList where names were saved as public keys
  * This function checks each user in the usersList and corrects names that match their pubkey
  *
- * NOTE: This utility only works with Gun, not Holster
+ * @deprecated V5: This utility only worked with Gun. Holster users list management is different.
  */
 export function fixCorruptedUserListNames() {
-	if (USE_HOLSTER_AUTH) {
-		console.warn('[USERS-FIX] fixCorruptedUserListNames() only works with Gun. Holster users list management is different.');
-		return;
-	}
-
-	console.log('[USERS-FIX] Starting to fix corrupted names in usersList...');
-
-	// Get current usersList data
-	gunUsersList.once((usersData: any) => {
-		if (!usersData) {
-			console.log('[USERS-FIX] No users data found');
-			return;
-		}
-
-		const userPubKeys = Object.keys(usersData).filter((pubkey) => pubkey !== '_');
-		console.log(`[USERS-FIX] Found ${userPubKeys.length} users to check for corrupted names`);
-
-		let checkedCount = 0;
-		let fixedCount = 0;
-
-		userPubKeys.forEach((pubKey) => {
-			const userData = usersData[pubKey];
-
-			if (!userData || !userData.name) {
-				console.log(`[USERS-FIX] User ${pubKey} has no name data, skipping`);
-				checkedCount++;
-				return;
-			}
-
-			// Check if the name is corrupted (equals the userId/pubkey)
-			const isCorrupted = userData.name === pubKey;
-
-			if (isCorrupted) {
-				console.log(
-					`[USERS-FIX] Found corrupted name for user ${pubKey.substring(0, 20)}... (name equals pubkey)`
-				);
-
-				// Try to get the correct alias from their protected space using Gun's user system
-				gun
-					.user(pubKey) // Use Gun's user system
-					.get('alias')
-					.once((alias: any) => {
-						checkedCount++;
-
-						if (alias && typeof alias === 'string' && alias !== pubKey) {
-							console.log(
-								`[USERS-FIX] Fixing user ${pubKey.substring(0, 20)}... with correct alias: ${alias}`
-							);
-
-							// Update the usersList with the correct name
-							gunUsersList.get(pubKey).put(
-								{
-									...userData,
-									alias: alias,
-									lastSeen: Date.now(), // Update timestamp to show it was fixed
-									fixed: true // Mark as fixed
-								},
-								(ack: any) => {
-									if (ack.err) {
-										console.error(`[USERS-FIX] Error fixing user ${pubKey}:`, ack.err);
-									} else {
-										console.log(`[USERS-FIX] Successfully fixed user ${pubKey} -> ${alias}`);
-										fixedCount++;
-									}
-
-									// Log completion when all users have been processed
-									if (checkedCount === userPubKeys.length) {
-										console.log(
-											`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
-										);
-									}
-								}
-							);
-						} else {
-							console.log(
-								`[USERS-FIX] Could not get valid alias for user ${pubKey.substring(0, 20)}..., keeping current name`
-							);
-
-							// Log completion when all users have been processed
-							if (checkedCount === userPubKeys.length) {
-								console.log(
-									`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
-								);
-							}
-						}
-					});
-			} else {
-				console.log(
-					`[USERS-FIX] User ${pubKey.substring(0, 20)}... has valid alias: ${userData.alias}`
-				);
-				checkedCount++;
-
-				// Log completion when all users have been processed
-				if (checkedCount === userPubKeys.length) {
-					console.log(
-						`[USERS-FIX] Completed fixing corrupted names. Checked ${checkedCount} users, fixed ${fixedCount} corrupted names.`
-					);
-				}
-			}
-		});
-
-		// Handle case where no users need checking
-		if (userPubKeys.length === 0) {
-			console.log('[USERS-FIX] No users to check');
-		}
-	});
+	console.error('[USERS-FIX] fixCorruptedUserListNames() is deprecated in v5. Holster uses different user management.');
+	console.error('[USERS-FIX] This function is no longer supported. Please use Holster-specific user management.');
 }
 
 /**
@@ -377,20 +203,20 @@ export function cleanOrphanedContactIds() {
 
 	// Recursive function to clean contact_ids from a node and its children
 	function cleanNodeContributors(node: Node): void {
-		// Only NonRootNodes have contributor_ids
+		// V5: Only NonRootNodes have contributors array
 		if (node.type === 'NonRootNode') {
 			const nonRootNode = node as NonRootNode;
-			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-				const originalLength = nonRootNode.contributor_ids.length;
+			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+				const originalLength = nonRootNode.contributors.length;
 
-				// Filter out orphaned contact_ids
-				nonRootNode.contributor_ids = nonRootNode.contributor_ids.filter((contributorId) => {
+				// Filter out orphaned contact_ids (v5: contributors are {id, points} objects)
+				nonRootNode.contributors = nonRootNode.contributors.filter((contributor) => {
 					// If it's a contact_id, check if it still exists in userContacts
-					if (contributorId.startsWith('contact_')) {
-						const exists = validContactIds.has(contributorId);
+					if (contributor.id.startsWith('contact_')) {
+						const exists = validContactIds.has(contributor.id);
 						if (!exists) {
 							console.log(
-								`[TREE-CLEAN] Removing orphaned contact_id '${contributorId}' from node '${node.name}' (${node.id})`
+								`[TREE-CLEAN] Removing orphaned contact_id '${contributor.id}' from node '${node.name}' (${node.id})`
 							);
 							cleanedCount++;
 						}
@@ -401,7 +227,30 @@ export function cleanOrphanedContactIds() {
 				});
 
 				// Check if any contributors were removed
-				if (nonRootNode.contributor_ids.length < originalLength) {
+				if (nonRootNode.contributors.length < originalLength) {
+					hasChanges = true;
+				}
+			}
+			
+			// V5: Also clean anti_contributors
+			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+				const originalLength = nonRootNode.anti_contributors.length;
+				
+				nonRootNode.anti_contributors = nonRootNode.anti_contributors.filter((contributor) => {
+					if (contributor.id.startsWith('contact_')) {
+						const exists = validContactIds.has(contributor.id);
+						if (!exists) {
+							console.log(
+								`[TREE-CLEAN] Removing orphaned contact_id '${contributor.id}' from anti_contributors in node '${node.name}' (${node.id})`
+							);
+							cleanedCount++;
+						}
+						return exists;
+					}
+					return true;
+				});
+				
+				if (nonRootNode.anti_contributors.length < originalLength) {
 					hasChanges = true;
 				}
 			}
@@ -452,69 +301,84 @@ export function deduplicateContributors() {
 
 	// Recursive function to deduplicate contributors in a node and its children
 	function deduplicateNodeContributors(node: Node): void {
-		// Only NonRootNodes have contributor_ids
+		// V5: Only NonRootNodes have contributors array with {id, points} objects
 		if (node.type === 'NonRootNode') {
 			const nonRootNode = node as NonRootNode;
-			if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-				const originalLength = nonRootNode.contributor_ids.length;
-				const originalContributors = [...nonRootNode.contributor_ids];
+			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+				const originalLength = nonRootNode.contributors.length;
+				const originalContributors = [...nonRootNode.contributors];
 
 				// Create a set to track resolved public keys we've already seen
 				const seenPublicKeys = new Set<string>();
-				const deduplicatedContributors: string[] = [];
+				const deduplicatedContributors: Array<{id: string, points: number}> = [];
 
 				// First pass: collect all contact IDs and their resolved public keys
 				const contactIdToPublicKey = new Map<string, string>();
 				const publicKeyToContactId = new Map<string, string>();
 
-				originalContributors.forEach((contributorId) => {
-					if (contributorId.startsWith('contact_')) {
-						const resolvedPublicKey = resolveToPublicKey(contributorId);
+				originalContributors.forEach((contributor) => {
+					if (contributor.id.startsWith('contact_')) {
+						const resolvedPublicKey = resolveToPublicKey(contributor.id);
 						if (resolvedPublicKey) {
-							contactIdToPublicKey.set(contributorId, resolvedPublicKey);
-							publicKeyToContactId.set(resolvedPublicKey, contributorId);
+							contactIdToPublicKey.set(contributor.id, resolvedPublicKey);
+							publicKeyToContactId.set(resolvedPublicKey, contributor.id);
 						}
 					}
 				});
 
 				// Second pass: deduplicate, preferring contact IDs over public keys
-				originalContributors.forEach((contributorId) => {
-					if (contributorId.startsWith('contact_')) {
+				// When merging duplicates, sum their points
+				const pointsByPublicKey = new Map<string, number>();
+				
+				originalContributors.forEach((contributor) => {
+					if (contributor.id.startsWith('contact_')) {
 						// This is a contact ID - resolve to public key to check for duplicates
-						const resolvedPublicKey = resolveToPublicKey(contributorId);
+						const resolvedPublicKey = resolveToPublicKey(contributor.id);
 						if (resolvedPublicKey) {
 							if (!seenPublicKeys.has(resolvedPublicKey)) {
 								seenPublicKeys.add(resolvedPublicKey);
 								// Always prefer the contact ID over the public key
-								deduplicatedContributors.push(contributorId);
+								deduplicatedContributors.push(contributor);
+								pointsByPublicKey.set(resolvedPublicKey, contributor.points);
 							} else {
-								// This public key was already seen - this is a duplicate contact
+								// This public key was already seen - merge points
+								const existingPoints = pointsByPublicKey.get(resolvedPublicKey) || 0;
+								pointsByPublicKey.set(resolvedPublicKey, existingPoints + contributor.points);
 								console.log(
-									`[TREE-DEDUP] Removing duplicate contact '${contributorId}' (resolves to '${resolvedPublicKey.substring(0, 20)}...') from node '${node.name}' (${node.id})`
+									`[TREE-DEDUP] Merging duplicate contact '${contributor.id}' (resolves to '${resolvedPublicKey.substring(0, 20)}...') from node '${node.name}' (${node.id}) - adding ${contributor.points} points`
 								);
 								deduplicatedCount++;
 							}
 						} else {
 							// Contact ID couldn't be resolved - keep it anyway
-							deduplicatedContributors.push(contributorId);
+							deduplicatedContributors.push(contributor);
 						}
 					} else {
 						// This is a public key - check if we have a contact ID for this person
-						if (publicKeyToContactId.has(contributorId)) {
-							// We have a contact ID for this person - remove the public key
+						if (publicKeyToContactId.has(contributor.id)) {
+							// We have a contact ID for this person - merge points with the contact
+							const contactId = publicKeyToContactId.get(contributor.id)!;
+							const existingContributor = deduplicatedContributors.find(c => c.id === contactId);
+							if (existingContributor) {
+								existingContributor.points += contributor.points;
+							}
 							console.log(
-								`[TREE-DEDUP] Removing public key '${contributorId.substring(0, 20)}...' in favor of contact ID '${publicKeyToContactId.get(contributorId)}' from node '${node.name}' (${node.id})`
+								`[TREE-DEDUP] Merging public key '${contributor.id.substring(0, 20)}...' into contact ID '${contactId}' from node '${node.name}' (${node.id}) - adding ${contributor.points} points`
 							);
 							deduplicatedCount++;
 						} else {
 							// No contact ID for this person - keep the public key if not already seen
-							if (!seenPublicKeys.has(contributorId)) {
-								seenPublicKeys.add(contributorId);
-								deduplicatedContributors.push(contributorId);
+							if (!seenPublicKeys.has(contributor.id)) {
+								seenPublicKeys.add(contributor.id);
+								deduplicatedContributors.push(contributor);
 							} else {
-								// This is a duplicate public key
+								// This is a duplicate public key - merge points
+								const existingContributor = deduplicatedContributors.find(c => c.id === contributor.id);
+								if (existingContributor) {
+									existingContributor.points += contributor.points;
+								}
 								console.log(
-									`[TREE-DEDUP] Removing duplicate public key '${contributorId.substring(0, 20)}...' from node '${node.name}' (${node.id})`
+									`[TREE-DEDUP] Merging duplicate public key '${contributor.id.substring(0, 20)}...' from node '${node.name}' (${node.id}) - adding ${contributor.points} points`
 								);
 								deduplicatedCount++;
 							}
@@ -522,15 +386,87 @@ export function deduplicateContributors() {
 					}
 				});
 
-				// Update the contributor_ids array
-				nonRootNode.contributor_ids = deduplicatedContributors;
+				// Update the contributors array
+				nonRootNode.contributors = deduplicatedContributors;
 
 				// Check if any contributors were removed
-				if (nonRootNode.contributor_ids.length < originalLength) {
+				if (nonRootNode.contributors.length < originalLength) {
 					hasChanges = true;
 					console.log(
-						`[TREE-DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributor_ids.length} contributors`
+						`[TREE-DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributors.length} contributors`
 					);
+				}
+			}
+			
+			// V5: Also deduplicate anti_contributors
+			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+				const originalLength = nonRootNode.anti_contributors.length;
+				const originalAntiContributors = [...nonRootNode.anti_contributors];
+				
+				const seenPublicKeys = new Set<string>();
+				const deduplicatedAntiContributors: Array<{id: string, points: number}> = [];
+				
+				const contactIdToPublicKey = new Map<string, string>();
+				const publicKeyToContactId = new Map<string, string>();
+				
+				originalAntiContributors.forEach((contributor) => {
+					if (contributor.id.startsWith('contact_')) {
+						const resolvedPublicKey = resolveToPublicKey(contributor.id);
+						if (resolvedPublicKey) {
+							contactIdToPublicKey.set(contributor.id, resolvedPublicKey);
+							publicKeyToContactId.set(resolvedPublicKey, contributor.id);
+						}
+					}
+				});
+				
+				// Deduplicate anti_contributors using the same logic
+				originalAntiContributors.forEach((contributor) => {
+					if (contributor.id.startsWith('contact_')) {
+						const resolvedPublicKey = resolveToPublicKey(contributor.id);
+						if (resolvedPublicKey) {
+							if (!seenPublicKeys.has(resolvedPublicKey)) {
+								seenPublicKeys.add(resolvedPublicKey);
+								deduplicatedAntiContributors.push(contributor);
+							} else {
+								const existingContributor = deduplicatedAntiContributors.find(c => {
+									const resolved = resolveToPublicKey(c.id);
+									return resolved === resolvedPublicKey;
+								});
+								if (existingContributor) {
+									existingContributor.points += contributor.points;
+								}
+								deduplicatedCount++;
+							}
+						} else {
+							deduplicatedAntiContributors.push(contributor);
+						}
+					} else {
+						if (publicKeyToContactId.has(contributor.id)) {
+							const contactId = publicKeyToContactId.get(contributor.id)!;
+							const existingContributor = deduplicatedAntiContributors.find(c => c.id === contactId);
+							if (existingContributor) {
+								existingContributor.points += contributor.points;
+							}
+							deduplicatedCount++;
+						} else {
+							if (!seenPublicKeys.has(contributor.id)) {
+								seenPublicKeys.add(contributor.id);
+								deduplicatedAntiContributors.push(contributor);
+							} else {
+								const existingContributor = deduplicatedAntiContributors.find(c => c.id === contributor.id);
+								if (existingContributor) {
+									existingContributor.points += contributor.points;
+								}
+								deduplicatedCount++;
+							}
+						}
+					}
+				});
+				
+				nonRootNode.anti_contributors = deduplicatedAntiContributors;
+				
+				if (nonRootNode.anti_contributors.length < originalLength) {
+					hasChanges = true;
 				}
 			}
 		}

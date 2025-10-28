@@ -10,8 +10,17 @@
 	} from '$lib/state/users.svelte';
 	import { getUserAlias } from '$lib/state/users.svelte';
 	import { getColorForUserId } from '$lib/utils/colorUtils';
-	import type { Contact } from '$lib/schema';
 	import { t } from '$lib/translations';
+	
+	// Contact type - defined locally as it's not part of v5 core schemas
+	// This is a user management type, not a resource allocation type
+	interface Contact {
+		contact_id: string;
+		name: string;
+		public_key?: string;
+		created_at?: string;
+		updated_at?: string;
+	}
 
 	// Component state
 	let showCreateForm = $state(false);

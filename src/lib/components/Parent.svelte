@@ -5,7 +5,7 @@
 	import { userTree, isLoadingTree } from '$lib/state/core.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode } from '$lib/schema';
+	import { type Node, type NonRootNode } from '$lib/commons/v5/schemas';
 	import {
 		findNodeById,
 		getParentNode,
@@ -18,7 +18,7 @@
 		calculateNodePoints,
 		getPathToNode,
 		updateManualFulfillment
-	} from '$lib/protocol';
+	} from '$lib/commons/v5/protocol';
 	import { get } from 'svelte/store';
 	import {
 		createContact,
@@ -75,16 +75,21 @@
 	const usersDataProvider = createChildContributorsDataProvider(null, []);
 
 	// Get current node contributors for the dropdown (based on current mode)
+	// V5: Extract IDs from Contributor[] arrays {id, points}
 	let currentContributors = $derived.by(() => {
 		if (!activeNodeId || !tree) return [];
 
 		const node = findNodeById(tree, activeNodeId);
 		if (!node || node.type !== 'NonRootNode') return [];
 
+		const nonRootNode = node as NonRootNode;
+
 		if (contributorMode === 'anti-contributor') {
-			return (node as NonRootNode).anti_contributors_ids || [];
+			// V5: anti_contributors is Contributor[], extract IDs
+			return (nonRootNode.anti_contributors || []).map(c => c.id);
 		} else {
-			return (node as NonRootNode).contributor_ids || [];
+			// V5: contributors is Contributor[], extract IDs
+			return (nonRootNode.contributors || []).map(c => c.id);
 		}
 	});
 
@@ -151,13 +156,17 @@
 			return { id: '', selfPoints: 0, children: [] };
 		}
 
+		// V5: Extract contributor IDs from Contributor[] arrays {id, points}
 		const mappedChildren = childNodes.map((child) => ({
 			id: child.id,
 			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
-			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
-			antiContributors:
-				child.type === 'NonRootNode' ? (child as NonRootNode).anti_contributors_ids : [],
+			contributors: child.type === 'NonRootNode' 
+				? (child as NonRootNode).contributors.map(c => c.id) 
+				: [],
+			antiContributors: child.type === 'NonRootNode' 
+				? ((child as NonRootNode).anti_contributors || []).map(c => c.id) 
+				: [],
 			children: [] as VisualizationNode[],
 			hasChildren: child.children.length > 0 // Check if this child has children in the full tree
 		}));
@@ -348,6 +357,7 @@
 	});
 
 	// Helper function to check if a node has any contributors (positive or anti)
+	// V5: Check Contributor[] arrays {id, points}
 	function nodeHasContributors(nodeId: string): boolean {
 		if (!tree) return false;
 
@@ -355,8 +365,8 @@
 		if (!node || node.type !== 'NonRootNode') return false;
 
 		const nonRootNode = node as NonRootNode;
-		const hasPositiveContributors = nonRootNode.contributor_ids.length > 0;
-		const hasAntiContributors = (nonRootNode.anti_contributors_ids || []).length > 0;
+		const hasPositiveContributors = (nonRootNode.contributors || []).length > 0;
+		const hasAntiContributors = (nonRootNode.anti_contributors || []).length > 0;
 
 		return hasPositiveContributors || hasAntiContributors;
 	}
@@ -644,17 +654,17 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-			// Find the node to update
-			const node = findNodeById(updatedTree, nodeId);
-			if (!node || node.type !== 'NonRootNode') return;
+		// Find the node to update
+		const node = findNodeById(updatedTree, nodeId);
+		if (!node || node.type !== 'NonRootNode') return;
 
-			// Get current contributor IDs and filter out the one to remove
-			const updatedContributors = (node as NonRootNode).contributor_ids.filter(
-				(id: string) => id !== contributorId
-			);
+		// V5: Filter out contributor from Contributor[] array {id, points}
+		const updatedContributors = ((node as NonRootNode).contributors || []).filter(
+			(contributor) => contributor.id !== contributorId
+		);
 
-			// Update the node's contributors
-			(node as NonRootNode).contributor_ids = updatedContributors;
+		// Update the node's contributors
+		(node as NonRootNode).contributors = updatedContributors;
 
 			// Run deduplication to ensure no duplicates exist
 			deduplicateContributorsInTree(updatedTree);
@@ -681,17 +691,17 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-			// Find the node to update
-			const node = findNodeById(updatedTree, nodeId);
-			if (!node || node.type !== 'NonRootNode') return;
+		// Find the node to update
+		const node = findNodeById(updatedTree, nodeId);
+		if (!node || node.type !== 'NonRootNode') return;
 
-			// Get current anti-contributor IDs and filter out the one to remove
-			const updatedAntiContributors = ((node as NonRootNode).anti_contributors_ids || []).filter(
-				(id: string) => id !== contributorId
-			);
+		// V5: Filter out anti-contributor from Contributor[] array {id, points}
+		const updatedAntiContributors = ((node as NonRootNode).anti_contributors || []).filter(
+			(contributor) => contributor.id !== contributorId
+		);
 
-			// Update the node's anti-contributors
-			(node as NonRootNode).anti_contributors_ids = updatedAntiContributors;
+		// Update the node's anti-contributors
+		(node as NonRootNode).anti_contributors = updatedAntiContributors;
 
 			// Run deduplication to ensure no duplicates exist
 			deduplicateContributorsInTree(updatedTree);
@@ -749,6 +759,7 @@
 	}
 
 	// Specific substitution function - replaces all instances of a public key with a contact ID
+	// V5: Works with Contributor[] arrays {id, points}
 	function replacePublicKeyWithContactId(
 		treeToModify: Node,
 		publicKeyToReplace: string,
@@ -758,44 +769,44 @@
 
 		// Recursive function to substitute public key with contact ID in a node and its children
 		function substituteInNode(node: Node): void {
-			// Only NonRootNodes have contributor_ids and anti_contributor_ids
+			// Only NonRootNodes have contributors and anti_contributors
 			if (node.type === 'NonRootNode') {
 				const nonRootNode = node as NonRootNode;
 
-				// Handle regular contributors
-				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+				// Handle regular contributors (V5: Contributor[] with {id, points})
+				if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
 					// Replace all instances of the public key with the contact ID
-					const updatedContributors = nonRootNode.contributor_ids.map((contributorId) => {
-						if (contributorId === publicKeyToReplace) {
+					const updatedContributors = nonRootNode.contributors.map((contributor) => {
+						if (contributor.id === publicKeyToReplace) {
 							console.log(
 								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in contributors of node '${node.name}' (${node.id})`
 							);
 							substitutionCount++;
-							return newContactId;
+							return { ...contributor, id: newContactId }; // V5: Return new Contributor object
 						}
-						return contributorId;
+						return contributor;
 					});
 
-					// Update the contributor_ids array
-					nonRootNode.contributor_ids = updatedContributors;
+					// Update the contributors array
+					nonRootNode.contributors = updatedContributors;
 				}
 
-				// Handle anti-contributors
-				if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+				// Handle anti-contributors (V5: Contributor[] with {id, points})
+				if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
 					// Replace all instances of the public key with the contact ID
-					const updatedAntiContributors = nonRootNode.anti_contributors_ids.map((contributorId) => {
-						if (contributorId === publicKeyToReplace) {
+					const updatedAntiContributors = nonRootNode.anti_contributors.map((contributor) => {
+						if (contributor.id === publicKeyToReplace) {
 							console.log(
 								`[SUBSTITUTION] Replacing public key '${publicKeyToReplace.substring(0, 20)}...' with contact ID '${newContactId}' in anti-contributors of node '${node.name}' (${node.id})`
 							);
 							substitutionCount++;
-							return newContactId;
+							return { ...contributor, id: newContactId }; // V5: Return new Contributor object
 						}
-						return contributorId;
+						return contributor;
 					});
 
-					// Update the anti_contributors_ids array
-					nonRootNode.anti_contributors_ids = updatedAntiContributors;
+					// Update the anti_contributors array
+					nonRootNode.anti_contributors = updatedAntiContributors;
 				}
 			}
 
@@ -903,22 +914,23 @@
 			let substitutionCount = 0;
 			let removalCount = 0;
 
+			// V5: Replace contact ID in Contributor[] arrays {id, points}
 			function replaceSpecificContactId(node: Node): void {
 				if (node.type === 'NonRootNode') {
 					const nonRootNode = node as NonRootNode;
 
-					// Handle regular contributors
-					if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
+					// Handle regular contributors (V5: Contributor[] with {id, points})
+					if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
 						// Replace contact_id with public key, or remove if no public key
-						nonRootNode.contributor_ids = nonRootNode.contributor_ids
-							.map((contributorId) => {
-								if (contributorId === contactId) {
+						nonRootNode.contributors = nonRootNode.contributors
+							.map((contributor) => {
+								if (contributor.id === contactId) {
 									if (publicKey) {
 										console.log(
 											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in contributors of node '${node.name}' (${node.id})`
 										);
 										substitutionCount++;
-										return publicKey;
+										return { ...contributor, id: publicKey }; // V5: Return new Contributor object
 									} else {
 										console.log(
 											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from contributors of node '${node.name}' (${node.id})`
@@ -927,23 +939,23 @@
 										return null; // Mark for removal
 									}
 								}
-								return contributorId;
+								return contributor;
 							})
-							.filter((id) => id !== null) as string[]; // Remove null entries
+							.filter((c) => c !== null) as any[]; // Remove null entries
 					}
 
-					// Handle anti-contributors
-					if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
+					// Handle anti-contributors (V5: Contributor[] with {id, points})
+					if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
 						// Replace contact_id with public key, or remove if no public key
-						nonRootNode.anti_contributors_ids = nonRootNode.anti_contributors_ids
-							.map((contributorId) => {
-								if (contributorId === contactId) {
+						nonRootNode.anti_contributors = nonRootNode.anti_contributors
+							.map((contributor) => {
+								if (contributor.id === contactId) {
 									if (publicKey) {
 										console.log(
 											`[CONTACT] Replacing contact_id '${contactId}' with public key '${publicKey.substring(0, 20)}...' in anti-contributors of node '${node.name}' (${node.id})`
 										);
 										substitutionCount++;
-										return publicKey;
+										return { ...contributor, id: publicKey }; // V5: Return new Contributor object
 									} else {
 										console.log(
 											`[CONTACT] Contact '${contactId}' has no public key, it will be removed from anti-contributors of node '${node.name}' (${node.id})`
@@ -952,9 +964,9 @@
 										return null; // Mark for removal
 									}
 								}
-								return contributorId;
+								return contributor;
 							})
-							.filter((id) => id !== null) as string[]; // Remove null entries
+							.filter((c) => c !== null) as any[]; // Remove null entries
 					}
 				}
 
@@ -1044,22 +1056,23 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-			// Find the node to update
-			const node = findNodeById(updatedTree, nodeId);
-			if (!node || node.type !== 'NonRootNode') return;
+		// Find the node to update
+		const node = findNodeById(updatedTree, nodeId);
+		if (!node || node.type !== 'NonRootNode') return;
 
-			// Check if contributor already exists
-			const hasContributor = (node as NonRootNode).contributor_ids.includes(userId);
+		// V5: Check if contributor already exists in Contributor[] array {id, points}
+		const nonRootNode = node as NonRootNode;
+		const hasContributor = (nonRootNode.contributors || []).some(c => c.id === userId);
 
-			if (!hasContributor) {
-				// Get current contributors and add the new one
-				const currentContributors = [...(node as NonRootNode).contributor_ids];
-				const currentAntiContributors = [...((node as NonRootNode).anti_contributors_ids || [])];
-				currentContributors.push(userId);
+		if (!hasContributor) {
+			// V5: Get current contributor IDs and add the new one
+			const currentContributorIds = (nonRootNode.contributors || []).map(c => c.id);
+			const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map(c => c.id);
+			currentContributorIds.push(userId);
 
-				// Use the protocol function to properly add contributors AND clear children
-				// This ensures the node becomes a proper leaf contribution node
-				addContributors(node, currentContributors, currentAntiContributors);
+			// Use the protocol function to properly add contributors AND clear children
+			// This ensures the node becomes a proper leaf contribution node
+			addContributors(node, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1085,24 +1098,23 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-			// Find the node to update
-			const node = findNodeById(updatedTree, nodeId);
-			if (!node || node.type !== 'NonRootNode') return;
+		// Find the node to update
+		const node = findNodeById(updatedTree, nodeId);
+		if (!node || node.type !== 'NonRootNode') return;
 
-			// Check if anti-contributor already exists
-			const hasAntiContributor = ((node as NonRootNode).anti_contributors_ids || []).includes(
-				userId
-			);
+		// V5: Check if anti-contributor already exists in Contributor[] array {id, points}
+		const nonRootNode = node as NonRootNode;
+		const hasAntiContributor = (nonRootNode.anti_contributors || []).some(c => c.id === userId);
 
-			if (!hasAntiContributor) {
-				// Get current contributors and anti-contributors, add the new anti-contributor
-				const currentContributors = [...(node as NonRootNode).contributor_ids];
-				const currentAntiContributors = [...((node as NonRootNode).anti_contributors_ids || [])];
-				currentAntiContributors.push(userId);
+		if (!hasAntiContributor) {
+			// V5: Get current contributor IDs and add the new anti-contributor
+			const currentContributorIds = (nonRootNode.contributors || []).map(c => c.id);
+			const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map(c => c.id);
+			currentAntiContributorIds.push(userId);
 
-				// Use the protocol function to properly add both types AND clear children
-				// This ensures the node becomes a proper leaf contribution node
-				addContributors(node, currentContributors, currentAntiContributors);
+			// Use the protocol function to properly add both types AND clear children
+			// This ensures the node becomes a proper leaf contribution node
+			addContributors(node, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1234,32 +1246,52 @@
 			return deduplicatedContributors;
 		}
 
-		// Recursive function to deduplicate contributors in a node and its children
-		function deduplicateNodeContributors(node: Node): void {
-			// Only NonRootNodes have contributor_ids and anti_contributor_ids
-			if (node.type === 'NonRootNode') {
-				const nonRootNode = node as NonRootNode;
+	// V5: Recursive function to deduplicate contributors in Contributor[] arrays {id, points}
+	function deduplicateNodeContributors(node: Node): void {
+		// Only NonRootNodes have contributors and anti_contributors
+		if (node.type === 'NonRootNode') {
+			const nonRootNode = node as NonRootNode;
 
-				// Deduplicate regular contributors
-				if (nonRootNode.contributor_ids) {
-					nonRootNode.contributor_ids = deduplicateContributorArray(
-						nonRootNode.contributor_ids,
-						'contributors',
-						node.name,
-						node.id
-					);
-				}
-
-				// Deduplicate anti-contributors
-				if (nonRootNode.anti_contributors_ids) {
-					nonRootNode.anti_contributors_ids = deduplicateContributorArray(
-						nonRootNode.anti_contributors_ids,
-						'anti-contributors',
-						node.name,
-						node.id
+			// Deduplicate regular contributors (V5: keep first occurrence, preserve points)
+			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+				const seen = new Set<string>();
+				const originalLength = nonRootNode.contributors.length;
+				nonRootNode.contributors = nonRootNode.contributors.filter(contributor => {
+					if (seen.has(contributor.id)) {
+						return false; // Duplicate, remove it
+					}
+					seen.add(contributor.id);
+					return true;
+				});
+				
+				if (nonRootNode.contributors.length !== originalLength) {
+					hasChanges = true;
+					console.log(
+						`[DEDUP] Node '${node.name}' (${node.id}) contributors: ${originalLength} → ${nonRootNode.contributors.length}`
 					);
 				}
 			}
+
+			// Deduplicate anti-contributors (V5: keep first occurrence, preserve points)
+			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+				const seen = new Set<string>();
+				const originalLength = nonRootNode.anti_contributors.length;
+				nonRootNode.anti_contributors = nonRootNode.anti_contributors.filter(contributor => {
+					if (seen.has(contributor.id)) {
+						return false; // Duplicate, remove it
+					}
+					seen.add(contributor.id);
+					return true;
+				});
+				
+				if (nonRootNode.anti_contributors.length !== originalLength) {
+					hasChanges = true;
+					console.log(
+						`[DEDUP] Node '${node.name}' (${node.id}) anti-contributors: ${originalLength} → ${nonRootNode.anti_contributors.length}`
+					);
+				}
+			}
+		}
 
 			// Recursively deduplicate all child nodes
 			if (node.children && node.children.length > 0) {

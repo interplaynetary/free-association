@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { AvailabilitySlot } from '$lib/schema';
-	import { AvailabilitySlotSchema } from '$lib/schema';
+	import type { AvailabilitySlot } from '$lib/commons/v5/schemas';
+	import { AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
 	import { derived } from 'svelte/store';
 	import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
@@ -25,13 +25,13 @@
 	interface Props {
 		slot: AvailabilitySlot;
 		capacityId: string;
-		unit?: string;
+		// V5 REMOVED: unit prop (now on slot itself: slot.unit)
 		canDelete: boolean;
 		onupdate?: (slot: AvailabilitySlot) => void;
 		ondelete?: (slotId: string) => void;
 	}
 
-	let { slot, capacityId, unit, canDelete, onupdate, ondelete }: Props = $props();
+	let { slot, capacityId, canDelete, onupdate, ondelete }: Props = $props();
 
 	// UI state for expanded slot details sections
 	let timeExpanded = $state(false);
@@ -44,11 +44,15 @@
 	let showAddComposeFrom = $state(false);
 	let showAddComposeInto = $state(false);
 
-	// Data providers for slot selection - now includes pubkey targets
-	// FROM: Show targets from ALL sources EXCEPT the current slot
+	// V5: Simple composition data providers - show all slots except current
 	let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+	let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
 
-	// Legacy derived provider for backward compatibility during transition
+	// V5 REMOVED: Legacy composition providers (~355 lines) 
+	// Now using clean v5 composition via composeFromDataProvider and composeIntoDataProvider
+	
+	/****** LEGACY CODE REMOVED ******
+	// Legacy derived provider for backward compatibility during transition  
 	let legacyComposeFromDataProvider = derived(
 		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
 		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
@@ -149,8 +153,9 @@
 				Object.entries($userCapacities).forEach(([capId, capacity]) => {
 					if (capId === capacityId) return; // Skip current capacity
 
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
+					// V5: Use capacity_slots instead of availability_slots
+					if (capacity.capacity_slots && Array.isArray(capacity.capacity_slots)) {
+						capacity.capacity_slots.forEach((slotData: any) => {
 							if (slotData.id === slot.id) return; // Skip current slot just in case
 
 							// Create unique key to avoid duplicates
@@ -185,8 +190,8 @@
 					const providerId = (capacity as any).provider_id;
 					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
 
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
+					if (capacity.capacity_slots && Array.isArray(capacity.capacity_slots)) {
+						capacity.capacity_slots.forEach((slotData: any) => {
 							// Create unique key to avoid duplicates
 							const slotKey = `${capId}:${slotData.id}`;
 							if (seenSlots.has(slotKey)) return;
@@ -328,8 +333,8 @@
 			// Add slots from user's own capacities (INCLUDING current capacity for INTO)
 			if ($userCapacities) {
 				Object.entries($userCapacities).forEach(([capId, capacity]) => {
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
+					if (capacity.capacity_slots && Array.isArray(capacity.capacity_slots)) {
+						capacity.capacity_slots.forEach((slotData: any) => {
 							if (slotData.id === slot.id && capId === capacityId) return; // Skip current slot
 
 							// Create unique key to avoid duplicates
@@ -364,8 +369,8 @@
 					const providerId = (capacity as any).provider_id;
 					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
 
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
+					if (capacity.capacity_slots && Array.isArray(capacity.capacity_slots)) {
+						capacity.capacity_slots.forEach((slotData: any) => {
 							// Create unique key to avoid duplicates
 							const slotKey = `${capId}:${slotData.id}`;
 							if (seenSlots.has(slotKey)) return;
@@ -404,30 +409,56 @@
 			});
 		}
 	);
+	**************************************/
 
-	// Reactive slot properties for proper binding
+	// V5 REQUIRED FIELDS - Core slot metadata
 	let slotId = $state(slot.id);
 	let slotQuantity = $state(slot.quantity);
+	let slotNeedTypeId = $state(slot.need_type_id || 'need_type_general'); // ✅ REQUIRED in v5
+	let slotName = $state(slot.name || ''); // ✅ REQUIRED in v5
+	let slotEmoji = $state(slot.emoji || '');
+	let slotUnit = $state(slot.unit || '');
+	let slotDescription = $state(slot.description || '');
+	
+	// V5 Divisibility constraints (moved from commitment level to slot level)
+	let slotMaxNaturalDiv = $state(slot.max_natural_div);
+	let slotMaxPercentageDiv = $state(slot.max_percentage_div);
+	
+	// V5 Filter rule (per-slot filtering)
+	let slotFilterRule = $state(slot.filter_rule);
+	
+	// Booking constraints
 	let slotAdvanceNoticeHours = $state(slot.advance_notice_hours);
 	let slotBookingWindowHours = $state(slot.booking_window_hours);
 	let slotMutualAgreementRequired = $state(slot.mutual_agreement_required);
 
-	// Time fields
-	let slotAllDay = $state(slot.all_day);
+	// Time fields (v5 uses availability_window, but we support legacy fields for now)
 	let slotStartDate = $state(slot.start_date);
 	let slotEndDate = $state(slot.end_date);
-	let slotStartTime = $state(slot.start_time);
-	let slotEndTime = $state(slot.end_time);
-
-	// Computed properties for time inputs (convert stored values to HH:MM format)
-	let displayStartTime = $derived(() => safeExtractTime(slotStartTime) || '');
-	let displayEndTime = $derived(() => safeExtractTime(slotEndTime) || '');
-	let slotTimeZone = $state(slot.time_zone);
+	let slotTimeZone = $state(slot.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone);
 	let slotRecurrence = $state(slot.recurrence);
-	let slotCustomRecurrenceRepeatEvery = $state(slot.custom_recurrence_repeat_every);
-	let slotCustomRecurrenceRepeatUnit = $state(slot.custom_recurrence_repeat_unit);
-	let slotCustomRecurrenceEndType = $state(slot.custom_recurrence_end_type);
-	let slotCustomRecurrenceEndValue = $state(slot.custom_recurrence_end_value);
+	
+	// Legacy time fields (will be converted to availability_window on save)
+	// These allow existing UI to work while we migrate
+	let legacyStartTime = $state<string | null>(null);
+	let legacyEndTime = $state<string | null>(null);
+	let legacyAllDay = $state(false);
+	
+	// Initialize legacy fields from availability_window if present
+	$effect(() => {
+		if (slot.availability_window?.time_ranges?.[0]) {
+			const range = slot.availability_window.time_ranges[0];
+			legacyStartTime = range.start_time;
+			legacyEndTime = range.end_time;
+			legacyAllDay = false;
+		} else {
+			legacyAllDay = true;
+		}
+	});
+	
+	// Computed properties for time inputs
+	let displayStartTime = $derived(() => legacyStartTime || '');
+	let displayEndTime = $derived(() => legacyEndTime || '');
 
 	// Location fields
 	let slotLocationType = $state(slot.location_type);
@@ -452,16 +483,14 @@
 	// Track last state sent to parent to prevent infinite loops
 	let lastSentState = $state<string | null>(null);
 
-	// Recurrence options
+	// V5: Simple recurrence options matching v5 schema enum
+	// z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable()
 	const recurrenceOptions = [
-		'Does not repeat',
-		'Daily',
-		'Weekly',
-		'Monthly',
-		'Annually',
-		'Every weekday (Monday to Friday)',
-		'Every 4 days',
-		'Custom...'
+		{ value: null, label: 'Does not repeat' },
+		{ value: 'daily', label: 'Daily' },
+		{ value: 'weekly', label: 'Weekly' },
+		{ value: 'monthly', label: 'Monthly' },
+		{ value: 'yearly', label: 'Yearly' }
 	];
 
 	// Helper to track original value on focus
@@ -469,87 +498,22 @@
 		originalValues[fieldName] = currentValue;
 	}
 
-	// Calculate total occurrences and quantity over the pattern window
+	// V5 REMOVED: calculateTotalOccurrences()
+	// No longer needed with simplified v5 recurrence
+	// V5 uses 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+	// Occurrence tracking will be handled by allocation algorithm if needed
+	
+	/****** LEGACY FUNCTION REMOVED ******
 	function calculateTotalOccurrences(): {
 		occurrences: number;
 		totalQuantity: number;
 		isInfinite: boolean;
 	} | null {
-		if (!slotStartDate || !slotRecurrence || slotRecurrence === 'Does not repeat') {
-			return null;
-		}
-
-		const startDate = new Date(slotStartDate);
-		const endDate = slotEndDate ? new Date(slotEndDate) : null;
-		const isInfinite = !endDate;
-
-		// For infinite patterns, calculate for one year from start date
-		const calculationEndDate = endDate || new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
-
-		let occurrences = 0;
-		const msPerDay = 24 * 60 * 60 * 1000;
-
-		switch (slotRecurrence) {
-			case 'Daily':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) + 1;
-				break;
-			case 'Weekly':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (7 * msPerDay)) + 1;
-				break;
-			case 'Monthly':
-				// Approximate - 30.44 days per month on average
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (30.44 * msPerDay)) + 1;
-				break;
-			case 'Annually':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (365.25 * msPerDay)) +
-					1;
-				break;
-			case 'Every weekday (Monday to Friday)':
-				// Approximate - 5/7 of total days
-				occurrences =
-					Math.floor(((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) * (5 / 7)) +
-					1;
-				break;
-			case 'Every 4 days':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (4 * msPerDay)) + 1;
-				break;
-			case 'Custom...':
-				if (slotCustomRecurrenceRepeatEvery && slotCustomRecurrenceRepeatUnit) {
-					let intervalMs = 0;
-					switch (slotCustomRecurrenceRepeatUnit) {
-						case 'days':
-							intervalMs = slotCustomRecurrenceRepeatEvery * msPerDay;
-							break;
-						case 'weeks':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 7 * msPerDay;
-							break;
-						case 'months':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 30.44 * msPerDay;
-							break;
-						case 'years':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 365.25 * msPerDay;
-							break;
-					}
-					if (intervalMs > 0) {
-						occurrences =
-							Math.floor((calculationEndDate.getTime() - startDate.getTime()) / intervalMs) + 1;
-					}
-				}
-				break;
-			default:
-				occurrences = 1;
-		}
-
-		occurrences = Math.max(1, occurrences); // At least 1 occurrence
-		const totalQuantity = occurrences * (slotQuantity || 0);
-
-		return { occurrences, totalQuantity, isInfinite };
+		// Based on old string-based recurrence ('Daily', 'Weekly', etc.)
+		// V5 uses enum: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+		// ...350 lines of legacy logic...
 	}
+	**************************************/
 
 	// Helper to save only if value changed on blur
 	function handleBlurIfChanged(fieldName: string, currentValue: any) {
@@ -585,28 +549,52 @@
 		}
 	}
 
-	// Handler for slot updates
+	// Handler for slot updates (V5)
 	function handleSlotUpdate() {
-		const updatedSlot = {
-			...slot,
+		// Build availability_window from legacy time fields
+		let availabilityWindow = undefined;
+		if (!legacyAllDay && legacyStartTime && legacyEndTime) {
+			availabilityWindow = {
+				time_ranges: [
+					{
+						start_time: legacyStartTime,
+						end_time: legacyEndTime
+					}
+				]
+			};
+		}
+		
+		// Create v5-compliant AvailabilitySlot
+		const updatedSlot: AvailabilitySlot = {
+			// V5 REQUIRED FIELDS
 			id: slotId,
 			quantity: slotQuantity,
+			need_type_id: slotNeedTypeId, // ✅ Required
+			name: slotName,                 // ✅ Required
+			
+			// Optional metadata
+			emoji: slotEmoji,
+			unit: slotUnit,
+			description: slotDescription,
+			
+			// Divisibility constraints
+			max_natural_div: slotMaxNaturalDiv,
+			max_percentage_div: slotMaxPercentageDiv,
+			
+			// Filter rule
+			filter_rule: slotFilterRule,
+			
+			// Booking constraints
 			advance_notice_hours: slotAdvanceNoticeHours,
 			booking_window_hours: slotBookingWindowHours,
 			mutual_agreement_required: slotMutualAgreementRequired,
 
-			// Time fields
-			all_day: slotAllDay,
+			// Time fields (v5 structure)
 			start_date: slotStartDate,
 			end_date: slotEndDate,
-			start_time: slotStartTime,
-			end_time: slotEndTime,
 			time_zone: slotTimeZone,
 			recurrence: slotRecurrence,
-			custom_recurrence_repeat_every: slotCustomRecurrenceRepeatEvery,
-			custom_recurrence_repeat_unit: slotCustomRecurrenceRepeatUnit,
-			custom_recurrence_end_type: slotCustomRecurrenceEndType,
-			custom_recurrence_end_value: slotCustomRecurrenceEndValue,
+			availability_window: availabilityWindow,
 
 			// Location fields
 			location_type: slotLocationType,
@@ -620,11 +608,11 @@
 			online_link: slotOnlineLink
 		};
 
-		// Validate using schema
+		// Validate using v5 schema
 		const validationResult = AvailabilitySlotSchema.safeParse(updatedSlot);
 
 		if (!validationResult.success) {
-			console.error('Slot validation failed:', validationResult.error);
+			console.error('[SLOT] V5 validation failed:', validationResult.error);
 			return;
 		}
 
@@ -637,6 +625,7 @@
 
 		// Update last sent state and notify parent
 		lastSentState = currentState;
+		console.log('[SLOT] ✅ Sending v5-compliant slot update');
 		onupdate?.(validationResult.data);
 	}
 
@@ -730,13 +719,12 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
-		// Get recurrence display and total calculation
-		const recurrenceDisplay =
-			slotRecurrence && slotRecurrence !== 'Does not repeat' ? slotRecurrence : '';
-		const totalCalc = calculateTotalOccurrences();
+		// Get recurrence display
+		const recurrenceDisplay = slotRecurrence || '';
+		// V5 REMOVED: totalCalc = calculateTotalOccurrences() - no longer needed
 
 		// Handle "All day" case first
-		if (slotAllDay) {
+		if (legacyAllDay) {
 			const startDate = slotStartDate ? new Date(slotStartDate) : null;
 			const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
@@ -768,10 +756,8 @@
 				}
 			}
 
-			// Add total quantity if available
-			if (totalCalc && recurrenceDisplay) {
-				timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
-			}
+			// V5 REMOVED: Total quantity calculation (was based on legacy calculateTotalOccurrences)
+			// Quantity tracking now handled by allocation algorithm
 
 			return timeStr;
 		}
@@ -834,10 +820,8 @@
 			}
 		}
 
-		// Add total quantity if available
-		if (totalCalc && recurrenceDisplay) {
-			timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
-		}
+		// V5 REMOVED: Total quantity calculation
+		// (was based on legacy calculateTotalOccurrences)
 
 		return timeStr;
 	}
@@ -1219,6 +1203,68 @@
 </script>
 
 <div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+	<!-- V5 Required Fields Row -->
+	<div class="slot-metadata mb-3 flex flex-wrap items-center gap-2 rounded bg-gray-50 p-2">
+		<!-- Emoji (optional but helpful) -->
+		<input
+			type="text"
+			class="slot-input emoji w-12 text-center"
+			bind:value={slotEmoji}
+			placeholder="📦"
+			maxlength="2"
+			onfocus={() => handleFocus('emoji', slotEmoji)}
+			onblur={() => handleBlurIfChanged('emoji', slotEmoji)}
+			title="Emoji"
+		/>
+		
+		<!-- Name (REQUIRED) -->
+		<input
+			type="text"
+			class="slot-input name flex-1"
+			bind:value={slotName}
+			placeholder="Slot name (required)"
+			onfocus={() => handleFocus('name', slotName)}
+			onblur={() => handleBlurIfChanged('name', slotName)}
+			required
+		/>
+		
+		<!-- Unit (optional) -->
+		<input
+			type="text"
+			class="slot-input unit w-20"
+			bind:value={slotUnit}
+			placeholder="units"
+			onfocus={() => handleFocus('unit', slotUnit)}
+			onblur={() => handleBlurIfChanged('unit', slotUnit)}
+			title="Unit of measurement"
+		/>
+		
+		<!-- Need Type (REQUIRED) -->
+		<select
+			class="slot-input need-type w-40"
+			bind:value={slotNeedTypeId}
+			onchange={handleSlotUpdate}
+			required
+			title="Need type category"
+		>
+			<option value="need_type_general">General</option>
+			<option value="need_type_food">Food</option>
+			<option value="need_type_housing">Housing</option>
+			<option value="need_type_healthcare">Healthcare</option>
+			<option value="need_type_education">Education</option>
+			<option value="need_type_transportation">Transportation</option>
+			<option value="need_type_childcare">Childcare</option>
+			<option value="need_type_other">Other</option>
+		</select>
+	</div>
+	
+	<!-- Description (optional, expandable) -->
+	{#if slotDescription}
+		<div class="slot-description mb-2 text-sm text-gray-600 italic">
+			{slotDescription}
+		</div>
+	{/if}
+
 	<!-- Slot header row -->
 	<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
 		<!-- Quantity input -->
@@ -1232,8 +1278,8 @@
 			onfocus={() => handleFocus('quantity', slotQuantity)}
 			onblur={() => handleBlurIfChanged('quantity', slotQuantity)}
 		/>
-		{#if unit}
-			<span class="slot-unit text-xs text-gray-500">({unit})</span>
+		{#if slotUnit}
+			<span class="slot-unit text-xs text-gray-500">({slotUnit})</span>
 		{/if}
 
 		<!-- Time button -->
@@ -1306,51 +1352,19 @@
 					onchange={handleSlotUpdate}
 				>
 					{#each recurrenceOptions as option}
-						<option value={option}>{option}</option>
+						<option value={option.value}>{option.label}</option>
 					{/each}
 				</select>
 				<div class="mt-2 text-xs text-gray-500">
 					This determines how often the slot repeats within the date range below
 				</div>
-
-				<!-- Custom recurrence -->
-				{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
-					<div class="custom-recurrence mt-3">
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-xs text-gray-500">Repeat every</span>
-							<input
-								type="number"
-								min="1"
-								class="slot-input w-16 text-center"
-								bind:value={slotCustomRecurrenceRepeatEvery}
-								onfocus={() =>
-									handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-								onblur={() =>
-									handleBlurIfChanged(
-										'customRecurrenceRepeatEvery',
-										slotCustomRecurrenceRepeatEvery
-									)}
-							/>
-							<select
-								class="slot-select w-20"
-								bind:value={slotCustomRecurrenceRepeatUnit}
-								onchange={handleSlotUpdate}
-							>
-								<option value="days">days</option>
-								<option value="weeks">weeks</option>
-								<option value="months">months</option>
-								<option value="years">years</option>
-							</select>
-						</div>
-					</div>
-				{/if}
 			</div>
 
 			<!-- Pattern Window (Start/End Dates) -->
 			<div class="pattern-window-section mb-6">
 				<h6 class="mb-3 text-sm font-medium text-gray-700">Pattern Window</h6>
 				<div class="mb-2 text-xs text-gray-500">
-					{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+					{#if slotRecurrence}
 						Define when this recurrence pattern starts and ends
 					{:else}
 						Define the specific date(s) for this one-time availability
@@ -1360,7 +1374,7 @@
 				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<label for="slot-start-date" class="mb-1 block text-xs text-gray-500">
-							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+							{#if slotRecurrence}
 								Pattern Start Date
 							{:else}
 								Start Date
@@ -1389,7 +1403,7 @@
 					</div>
 					<div>
 						<label for="slot-end-date" class="mb-1 block text-xs text-gray-500">
-							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+							{#if slotRecurrence}
 								Pattern End Date (optional)
 							{:else}
 								End Date (optional)
@@ -1400,9 +1414,9 @@
 							type="date"
 							class="slot-input w-full"
 							bind:value={slotEndDate}
-							placeholder={slotRecurrence && slotRecurrence !== 'Does not repeat'
-								? 'Infinite if empty'
-								: 'Same day if empty'}
+						placeholder={slotRecurrence
+							? 'Infinite if empty'
+							: 'Same day if empty'}
 							onfocus={() => handleFocus('endDate', slotEndDate)}
 							onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
 							onchange={() => {
@@ -1419,33 +1433,20 @@
 							}}
 						/>
 					</div>
-				</div>
-
-				<!-- Total calculation display -->
-				{#if calculateTotalOccurrences()}
-					{@const totalCalculation = calculateTotalOccurrences()}
-					<div class="total-calculation mt-3 rounded p-3">
-						<div class="text-sm font-medium">
-							Total Availability: {totalCalculation?.totalQuantity}
-							{unit || 'units'}
-						</div>
-						<div class="text-xs">
-							{totalCalculation?.occurrences} occurrences × {slotQuantity}
-							{unit || 'units'} each
-							{#if totalCalculation?.isInfinite}
-								(infinite pattern - showing first year)
-							{/if}
-						</div>
-					</div>
-				{/if}
 			</div>
+
+		<!-- V5 REMOVED: Total calculation display -->
+		<!-- calculateTotalOccurrences() removed - occurrence tracking handled by allocation algorithm -->
+		<!-- If needed, occurrence info will be computed by allocation algorithm based on availability_window -->
+		
+		</div>
 
 			<!-- Time of Day Settings -->
 			<div class="mb-4">
 				<label class="inline-flex items-center">
 					<input
 						type="checkbox"
-						bind:checked={slotAllDay}
+						bind:checked={legacyAllDay}
 						class="mr-2"
 						onchange={handleSlotUpdate}
 					/>
@@ -1453,7 +1454,7 @@
 				</label>
 			</div>
 
-			{#if !slotAllDay}
+			{#if !legacyAllDay}
 				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<label for="slot-start-time" class="mb-1 block text-xs text-gray-500">Start Time</label>
@@ -1465,7 +1466,7 @@
 							onfocus={() => handleFocus('startTime', displayStartTime())}
 							onchange={(e) => {
 								const target = e.target as HTMLInputElement;
-								slotStartTime = target.value; // Store as HH:MM format
+								legacyStartTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
 						/>
@@ -1480,7 +1481,7 @@
 							onfocus={() => handleFocus('endTime', displayEndTime())}
 							onchange={(e) => {
 								const target = e.target as HTMLInputElement;
-								slotEndTime = target.value; // Store as HH:MM format
+								legacyEndTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
 						/>
@@ -1957,28 +1958,6 @@
 		border: 1px solid rgba(229, 231, 235, 0.6);
 		border-radius: 6px;
 		padding: 12px;
-	}
-
-	.custom-recurrence {
-		background: rgba(249, 250, 251, 0.8);
-		border: 1px solid rgba(209, 213, 219, 0.6);
-		border-radius: 4px;
-		padding: 8px;
-	}
-
-	/* Total calculation styling - matches existing info pattern */
-	.total-calculation {
-		background: rgba(239, 246, 255, 0.8);
-		border: 1px solid rgba(219, 234, 254, 0.8);
-		color: #1e40af;
-	}
-
-	.total-calculation .text-sm {
-		color: #1d4ed8;
-	}
-
-	.total-calculation .text-xs {
-		color: #3730a3;
 	}
 
 	@keyframes slideDown {

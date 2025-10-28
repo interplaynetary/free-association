@@ -90,13 +90,15 @@
 	});
 
 	let sourceSlot = $derived(() => {
-		return sourceCapacity()?.availability_slots?.find((s: any) => s.id === sourceSlotId);
+		// V5: Use capacity_slots instead of availability_slots
+		return sourceCapacity()?.capacity_slots?.find((s: any) => s.id === sourceSlotId);
 	});
 
 	let targetSlot = $derived(() => {
 		// Only lookup slot if target is a capacity
 		if (targetType() === 'capacity' && targetCapacity()) {
-			return targetCapacity()?.availability_slots?.find((s: any) => s.id === targetSlotId);
+			// V5: Use capacity_slots instead of availability_slots
+			return targetCapacity()?.capacity_slots?.find((s: any) => s.id === targetSlotId);
 		}
 		return null;
 	});

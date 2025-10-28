@@ -3,9 +3,15 @@
  *
  * Shows ALL available capacities on the map, regardless of current allocation status.
  * This allows users to discover new capacities and express desires for unallocated ones.
+ * 
+ * V5: Uses Commitment type (capacities are commitments with capacity_slots)
  */
-import type { Capacity, CapacitiesCollection } from '$lib/schema';
+import type { Commitment } from '$lib/commons/v5/schemas';
 import { geocodeCapacityAddress, formatAddress } from './geocoding';
+
+// V5: Type aliases for legacy compatibility
+type Capacity = Commitment;
+type CapacitiesCollection = Record<string, Commitment>;
 
 export interface CapacityMarkerData {
 	id: string;
@@ -26,13 +32,13 @@ export function getCapacitiesWithCoordinates(
 		// Handle both timestamped and direct capacity data
 		const actualCapacity = (capacity as any)?.data || capacity;
 
-		// Safety check: ensure availability_slots exists and is an array
-		if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
+		// Safety check: ensure capacity_slots exists and is an array
+		if (!actualCapacity.capacity_slots || !Array.isArray(actualCapacity.capacity_slots)) {
 			return; // Skip this capacity if it doesn't have properly initialized slots
 		}
 
 		// Find the first slot with valid coordinates
-		const slotWithCoords = actualCapacity.availability_slots.find(
+		const slotWithCoords = actualCapacity.capacity_slots.find(
 			(slot: any) =>
 				typeof slot.latitude === 'number' &&
 				typeof slot.longitude === 'number' &&
@@ -67,15 +73,15 @@ export function getCapacitiesWithAddresses(
 		// Handle both timestamped and direct capacity data
 		const actualCapacity = (capacity as any)?.data || capacity;
 
-		// Safety check: ensure availability_slots exists and is an array
-		if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
+		// Safety check: ensure capacity_slots exists and is an array
+		if (!actualCapacity.capacity_slots || !Array.isArray(actualCapacity.capacity_slots)) {
 			return; // Skip this capacity if it doesn't have properly initialized slots
 		}
 
 		// Only include if has address but no valid coordinates
 		if (!hasValidCoordinates(actualCapacity) && hasValidAddress(actualCapacity)) {
 			// Find the first slot with address information
-			const slotWithAddress = actualCapacity.availability_slots.find(
+			const slotWithAddress = actualCapacity.capacity_slots.find(
 				(slot: any) =>
 					!!(
 						slot.street_address ||
@@ -98,7 +104,7 @@ export function getCapacitiesWithAddresses(
 				if (address.trim()) {
 					addressCapacities.push({
 						id,
-						capacity: actualCapacity,
+						capacity: actualCapacity as Capacity,
 						address
 					});
 				}
@@ -123,14 +129,14 @@ export async function geocodeCapacitiesWithAddresses(
 		try {
 			console.log(`[Geocoding] Attempting to geocode: ${address}`);
 
-			// Safety check: ensure availability_slots exists and is an array
-			if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+			// Safety check: ensure capacity_slots exists and is an array
+			if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 				console.warn(`[Geocoding] Skipping capacity ${id} - no valid slots`);
 				continue;
 			}
 
 			// Find the first slot with address information
-			const slotWithAddress = capacity.availability_slots.find(
+			const slotWithAddress = capacity.capacity_slots.find(
 				(slot) =>
 					!!(
 						slot.street_address ||
@@ -159,14 +165,20 @@ export async function geocodeCapacitiesWithAddresses(
 					lnglat: { lng: result.longitude, lat: result.latitude },
 					source: 'geocoded'
 				});
+				// V5: Get name from first slot
+				const capacityName = capacity.capacity_slots?.[0]?.name || 'Unknown capacity';
 				console.log(
-					`[Geocoding] Success for ${capacity.name}: ${result.latitude}, ${result.longitude}`
+					`[Geocoding] Success for ${capacityName}: ${result.latitude}, ${result.longitude}`
 				);
 			} else {
-				console.warn(`[Geocoding] No results for ${capacity.name}: ${address}`);
+				// V5: Get name from first slot
+				const capacityName = capacity.capacity_slots?.[0]?.name || 'Unknown capacity';
+				console.warn(`[Geocoding] No results for ${capacityName}: ${address}`);
 			}
 		} catch (error) {
-			console.warn(`[Geocoding] Failed for ${capacity.name}: ${address}`, error);
+			// V5: Get name from first slot
+			const capacityName = capacity.capacity_slots?.[0]?.name || 'Unknown capacity';
+			console.warn(`[Geocoding] Failed for ${capacityName}: ${address}`, error);
 		}
 	}
 
@@ -196,12 +208,12 @@ export function hasValidCoordinates(capacity: Capacity): boolean {
 	// Handle both timestamped and direct capacity data
 	const actualCapacity = (capacity as any)?.data || capacity;
 
-	// Safety check: ensure availability_slots exists and is an array
-	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
+	// Safety check: ensure capacity_slots exists and is an array
+	if (!actualCapacity.capacity_slots || !Array.isArray(actualCapacity.capacity_slots)) {
 		return false; // No valid coordinates if slots aren't properly initialized
 	}
 
-	return actualCapacity.availability_slots.some(
+	return actualCapacity.capacity_slots.some(
 		(slot: any) =>
 			typeof slot.latitude === 'number' &&
 			typeof slot.longitude === 'number' &&
@@ -219,12 +231,12 @@ export function hasValidAddress(capacity: Capacity): boolean {
 	// Handle both timestamped and direct capacity data
 	const actualCapacity = (capacity as any)?.data || capacity;
 
-	// Safety check: ensure availability_slots exists and is an array
-	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
+	// Safety check: ensure capacity_slots exists and is an array
+	if (!actualCapacity.capacity_slots || !Array.isArray(actualCapacity.capacity_slots)) {
 		return false; // No valid address if slots aren't properly initialized
 	}
 
-	return actualCapacity.availability_slots.some(
+	return actualCapacity.capacity_slots.some(
 		(slot: any) =>
 			!!(
 				slot.street_address ||
@@ -244,14 +256,17 @@ export function updateCapacityCoordinates(
 	capacity: Capacity,
 	lnglat: { lng: number; lat: number }
 ): Capacity {
-	// Safety check: ensure availability_slots exists and is an array
-	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+	// Safety check: ensure capacity_slots exists and is an array
+	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		// If no slots exist, create a default slot with the coordinates
+		// V5: Slots require name and need_type_id
 		return {
 			...capacity,
-			availability_slots: [
+			capacity_slots: [
 				{
 					id: `slot-${Date.now()}`,
+					name: 'Default Slot',  // V5: Required field
+					need_type_id: 'default',  // V5: Required field
 					quantity: 1,
 					longitude: lnglat.lng,
 					latitude: lnglat.lat,
@@ -262,7 +277,7 @@ export function updateCapacityCoordinates(
 	}
 
 	// Find the first slot with coordinates or create updated slots
-	const updatedSlots = capacity.availability_slots.map((slot, index) => {
+	const updatedSlots = capacity.capacity_slots.map((slot, index) => {
 		// Update the first slot that has coordinates, or the first slot if none have coordinates
 		if (index === 0 || (slot.latitude !== undefined && slot.longitude !== undefined)) {
 			return {
@@ -276,7 +291,7 @@ export function updateCapacityCoordinates(
 
 	return {
 		...capacity,
-		availability_slots: updatedSlots
+		capacity_slots: updatedSlots
 	};
 }
 
@@ -292,11 +307,11 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	// Handle both timestamped and direct capacity data
 	const actualCapacity = (capacity as any)?.data || capacity;
 
-	// Safety check: ensure availability_slots exists and is an array
-	if (!actualCapacity.availability_slots || !Array.isArray(actualCapacity.availability_slots)) {
+	// Safety check: ensure capacity_slots exists and is an array
+	if (!actualCapacity.capacity_slots || !Array.isArray(actualCapacity.capacity_slots)) {
 		// Return basic info if no slots are initialized
 		return {
-			title: actualCapacity.name || 'Capacity',
+			title: 'Capacity',
 			details: [
 				{
 					label: 'Status',
@@ -306,20 +321,26 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 		};
 	}
 
+	// V5: Get metadata from first slot (slots have individual metadata)
+	const firstSlot = actualCapacity.capacity_slots[0];
+	const slotName = firstSlot?.name || 'Capacity';
+	const slotEmoji = firstSlot?.emoji || '📍';
+	const slotUnit = firstSlot?.unit || '';
+
 	// Show total quantity across all slots
-	const totalQuantity = actualCapacity.availability_slots.reduce(
+	const totalQuantity = actualCapacity.capacity_slots.reduce(
 		(sum: number, slot: any) => sum + slot.quantity,
 		0
 	);
 	if (totalQuantity > 0) {
 		details.push({
 			label: 'Total Quantity',
-			value: `${totalQuantity}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
+			value: `${totalQuantity}${slotUnit ? ' ' + slotUnit : ''}`
 		});
 	}
 
 	// Show location information from first slot with location data
-	const slotWithLocation = actualCapacity.availability_slots.find(
+	const slotWithLocation = actualCapacity.capacity_slots.find(
 		(slot: any) => slot.location_type
 	);
 	if (slotWithLocation?.location_type) {
@@ -357,7 +378,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	}
 
 	// Show time information from slots (aggregate or show multiple if different)
-	const slotsWithTime = actualCapacity.availability_slots.filter(
+	const slotsWithTime = actualCapacity.capacity_slots.filter(
 		(slot: any) => slot.start_date || slot.start_time || slot.end_date || slot.end_time
 	);
 
@@ -408,7 +429,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 
 	// Show allocation status from efficient algorithm
 	const slotsWithAllocations =
-		actualCapacity.availability_slots?.filter(
+		actualCapacity.capacity_slots?.filter(
 			(slot: any) => slot.allocated_quantity && slot.allocated_quantity > 0
 		) || [];
 
@@ -419,7 +440,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	);
 
 	const totalAvailable =
-		actualCapacity.availability_slots?.reduce(
+		actualCapacity.capacity_slots?.reduce(
 			(sum: number, slot: any) => sum + (slot.available_quantity || slot.quantity || 0),
 			0
 		) || 0;
@@ -428,7 +449,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	if (totalAvailable > 0) {
 		details.push({
 			label: 'Total Available',
-			value: `${totalAvailable}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
+			value: `${totalAvailable}${slotUnit ? ' ' + slotUnit : ''}`
 		});
 	}
 
@@ -436,7 +457,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 	if (totalAllocated > 0) {
 		details.push({
 			label: 'Your Current Allocation',
-			value: `${totalAllocated}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
+			value: `${totalAllocated}${slotUnit ? ' ' + slotUnit : ''}`
 		});
 
 		// Show remaining available
@@ -444,7 +465,7 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 		if (remaining > 0) {
 			details.push({
 				label: 'Still Available',
-				value: `${remaining}${actualCapacity.unit ? ' ' + actualCapacity.unit : ''}`
+				value: `${remaining}${slotUnit ? ' ' + slotUnit : ''}`
 			});
 		}
 	} else {
@@ -455,8 +476,9 @@ export function formatCapacityPopupContent(capacity: Capacity): {
 		});
 	}
 
+	// V5: Use metadata from first slot
 	return {
-		title: `${actualCapacity.emoji || '📍'} ${actualCapacity.name}`,
+		title: `${slotEmoji} ${slotName}`,
 		details
 	};
 }

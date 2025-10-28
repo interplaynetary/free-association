@@ -9,8 +9,8 @@
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	import { userTree, userSogf, generalShares } from '$lib/state/core.svelte';
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
-	import type { Node, RootNode } from '$lib/schema';
-	import { normalizeShareMap } from '$lib/protocol';
+	import type { Node, RootNode } from '$lib/commons/v5/schemas';
+	import { normalizeShareMap } from '$lib/commons/v5/protocol';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data

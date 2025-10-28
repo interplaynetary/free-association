@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { ProviderCapacity, CapacitiesCollection } from '$lib/schema';
+	import type { Commitment, AvailabilitySlot } from '$lib/commons/v5/schemas';
 	import {
 		findNodeById,
-		addCapacity as addCapacityToCollection,
 		updateNodeById
-	} from '$lib/protocol';
+	} from '$lib/commons/v5/protocol';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
@@ -19,224 +18,123 @@
 	} from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
 	import { t } from '$lib/translations';
+	
+	// V5 Pure Types - No Backward Compatibility
+	type CommitmentWithId = Commitment & { id: string };
+	type CommitmentsCollection = Record<string, Commitment>;
+
+	// Helper to extract searchable text from commitment's slots
+	function getSearchableText(commitment: Commitment): string {
+		const slots = commitment.capacity_slots || [];
+		return slots.map(slot => 
+			`${slot.name} ${slot.emoji || ''} ${slot.unit || ''} ${slot.description || ''} ${slot.need_type_id || ''}`
+		).join(' ').toLowerCase();
+	}
 
 	// Reactive derived values
 	const capacityEntries = $derived(() => {
 		let entries = Object.entries($userCapacities || {})
-			.filter(([id, capacity]) => id && capacity)
-			.map(([id, capacity]) => ({ ...capacity, id }));
+			.filter(([id, commitment]) => id && commitment)
+			.map(([id, commitment]) => ({ ...commitment, id } as CommitmentWithId));
 		
 		// Apply search filter from global state
 		if (globalState.inventorySearchQuery.trim()) {
 			const query = globalState.inventorySearchQuery.toLowerCase().trim();
-			entries = entries.filter(
-				(entry) =>
-					entry.name?.toLowerCase().includes(query) ||
-					entry.unit?.toLowerCase().includes(query) ||
-					entry.emoji?.includes(query) ||
-					entry.description?.toLowerCase().includes(query)
+			entries = entries.filter((entry) =>
+				getSearchableText(entry).includes(query)
 			);
 		}
 		
 		return entries;
 	});
 
-	// Add a new capacity to the userCapacities store
-	function addCapacity(capacity: ProviderCapacity) {
+	// Add a new commitment to the userCapacities store
+	function addCommitment(commitment: CommitmentWithId) {
 		if (!$userAlias || !$userPub) return false;
 
-		// 🚨 DEBUG: Log incoming new capacity with location data
-		console.log('[CAPACITIES] 🚨 DEBUG: addCapacity called with capacity:', capacity.id);
-		console.log(
-			'[CAPACITIES] 🚨 DEBUG: New capacity availability_slots:',
-			capacity.availability_slots
-		);
-		if (capacity.availability_slots) {
-			capacity.availability_slots.forEach((slot: any, index: number) => {
-				console.log(`[CAPACITIES] 🚨 DEBUG: New slot ${index} (${slot.id}) location data:`, {
+		console.log('[CAPACITIES] Adding commitment:', commitment.id);
+		console.log('[CAPACITIES] Capacity slots:', commitment.capacity_slots);
+		
+		if (commitment.capacity_slots) {
+			commitment.capacity_slots.forEach((slot, index) => {
+				console.log(`[CAPACITIES] Slot ${index} (${slot.id}):`, {
+					need_type_id: slot.need_type_id,
+					name: slot.name,
+					quantity: slot.quantity,
 					location_type: slot.location_type,
-					latitude: slot.latitude,
-					longitude: slot.longitude,
-					street_address: slot.street_address,
 					city: slot.city,
-					state_province: slot.state_province,
-					postal_code: slot.postal_code,
 					country: slot.country
 				});
 			});
 		}
 
-		// Create a deep clone of current capacities
-		const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
+		// Create a deep clone and add the new commitment
+		const newCommitments: CommitmentsCollection = structuredClone($userCapacities || {});
+		newCommitments[commitment.id] = commitment;
 
-		// Create a plain object copy of the capacity
-		const plainCapacity = { ...capacity };
+		// Update store
+		userCapacities.set(newCommitments);
 
-		// 🚨 DEBUG: Log capacity after shallow copy
-		console.log(
-			'[CAPACITIES] 🚨 DEBUG: After shallow copy, plainCapacity availability_slots:',
-			plainCapacity.availability_slots
-		);
-		if (plainCapacity.availability_slots) {
-			plainCapacity.availability_slots.forEach((slot: any, index: number) => {
-				console.log(
-					`[CAPACITIES] 🚨 DEBUG: After copy - New slot ${index} (${slot.id}) location data:`,
-					{
-						location_type: slot.location_type,
-						latitude: slot.latitude,
-						longitude: slot.longitude,
-						street_address: slot.street_address,
-						city: slot.city,
-						state_province: slot.state_province,
-						postal_code: slot.postal_code,
-						country: slot.country
-					}
-				);
-			});
-		}
+		// Highlight the new commitment
+		globalState.highlightCapacity(commitment.id);
 
-		// Add capacity to the collection
-		addCapacityToCollection(newCapacities, plainCapacity);
-
-		// 🚨 DEBUG: Log what's in the collection after addCapacityToCollection
-		const addedCapacity = newCapacities[plainCapacity.id];
-		console.log(
-			'[CAPACITIES] 🚨 DEBUG: After addCapacityToCollection, capacity in collection:',
-			addedCapacity
-		);
-		if (addedCapacity?.availability_slots) {
-			addedCapacity.availability_slots.forEach((slot: any, index: number) => {
-				console.log(
-					`[CAPACITIES] 🚨 DEBUG: Final collection - New slot ${index} (${slot.id}) location data:`,
-					{
-						location_type: slot.location_type,
-						latitude: slot.latitude,
-						longitude: slot.longitude,
-						street_address: slot.street_address,
-						city: slot.city,
-						state_province: slot.state_province,
-						postal_code: slot.postal_code,
-						country: slot.country
-					}
-				);
-			});
-		}
-
-		// Update store (Gun handles timestamps natively now)
-		userCapacities.set(newCapacities);
-
-		// Add to highlighted capacities using global state
-		globalState.highlightCapacity(capacity.id);
-
-		globalState.showToast($t('inventory.capacity_created', { name: capacity.name }), 'success');
+		// Show success toast with first slot name or generic message
+		const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
+		globalState.showToast($t('inventory.capacity_created', { name: firstName }), 'success');
 		return true;
 	}
 
-	// Update capacity in the userCapacities store
-	function updateCapacity(capacity: ProviderCapacity) {
+	// Update an existing commitment in the userCapacities store
+	function updateCommitment(commitment: CommitmentWithId) {
 		try {
 			if (!$userAlias || !$userPub) return false;
 
-			// 🚨 DEBUG: Log incoming capacity with location data
-			console.log('[CAPACITIES] 🚨 DEBUG: updateCapacity called with capacity:', capacity.id);
-			console.log(
-				'[CAPACITIES] 🚨 DEBUG: Capacity availability_slots:',
-				capacity.availability_slots
-			);
-			if (capacity.availability_slots) {
-				capacity.availability_slots.forEach((slot: any, index: number) => {
-					console.log(`[CAPACITIES] 🚨 DEBUG: Slot ${index} (${slot.id}) location data:`, {
+			console.log('[CAPACITIES] Updating commitment:', commitment.id);
+			console.log('[CAPACITIES] Capacity slots:', commitment.capacity_slots);
+			
+			if (commitment.capacity_slots) {
+				commitment.capacity_slots.forEach((slot, index) => {
+					console.log(`[CAPACITIES] Slot ${index} (${slot.id}):`, {
+						need_type_id: slot.need_type_id,
+						name: slot.name,
+						quantity: slot.quantity,
 						location_type: slot.location_type,
-						latitude: slot.latitude,
-						longitude: slot.longitude,
-						street_address: slot.street_address,
 						city: slot.city,
-						state_province: slot.state_province,
-						postal_code: slot.postal_code,
 						country: slot.country
 					});
 				});
 			}
 
-			// Create a deep clone of current capacities
-			const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
+			// Create a deep clone and update the commitment
+			const newCommitments: CommitmentsCollection = structuredClone($userCapacities || {});
+			newCommitments[commitment.id] = structuredClone(commitment);
 
-			// Create a deep copy of the capacity to ensure store updates
-			const plainCapacity = structuredClone(capacity);
+			// Update store
+			userCapacities.set(newCommitments);
 
-			// 🚨 DEBUG: Log capacity after structuredClone
-			console.log(
-				'[CAPACITIES] 🚨 DEBUG: After structuredClone, plainCapacity availability_slots:',
-				plainCapacity.availability_slots
-			);
-			if (plainCapacity.availability_slots) {
-				plainCapacity.availability_slots.forEach((slot: any, index: number) => {
-					console.log(
-						`[CAPACITIES] 🚨 DEBUG: After clone - Slot ${index} (${slot.id}) location data:`,
-						{
-							location_type: slot.location_type,
-							latitude: slot.latitude,
-							longitude: slot.longitude,
-							street_address: slot.street_address,
-							city: slot.city,
-							state_province: slot.state_province,
-							postal_code: slot.postal_code,
-							country: slot.country
-						}
-					);
-				});
-			}
-
-			// Add capacity to the collection
-			newCapacities[plainCapacity.id] = plainCapacity;
-
-			// 🚨 DEBUG: Log what's actually being set in the store
-			console.log(
-				'[CAPACITIES] 🚨 DEBUG: About to set userCapacities store with:',
-				newCapacities[plainCapacity.id]
-			);
-			if (newCapacities[plainCapacity.id]?.availability_slots) {
-				newCapacities[plainCapacity.id].availability_slots.forEach((slot: any, index: number) => {
-					console.log(
-						`[CAPACITIES] 🚨 DEBUG: Final store data - Slot ${index} (${slot.id}) location data:`,
-						{
-							location_type: slot.location_type,
-							latitude: slot.latitude,
-							longitude: slot.longitude,
-							street_address: slot.street_address,
-							city: slot.city,
-							state_province: slot.state_province,
-							postal_code: slot.postal_code,
-							country: slot.country
-						}
-					);
-				});
-			}
-
-			// Update store (Gun handles timestamps natively now)
-			userCapacities.set(newCapacities);
-
-			globalState.showToast($t('inventory.capacity_updated', { name: plainCapacity.name }), 'success');
+			// Show success toast with first slot name or generic message
+			const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
+			globalState.showToast($t('inventory.capacity_updated', { name: firstName }), 'success');
 			return true;
 		} catch (error) {
-			console.error('Error updating capacity:', error);
+			console.error('[CAPACITIES] Error updating commitment:', error);
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
 	}
 
-	// Comprehensive slot composition cleanup when deleting a capacity
+	// Comprehensive slot composition cleanup when deleting a commitment
 	function cleanupCapacitySlotData(capacityId: string) {
-		console.log(`🧹 [CLEANUP] Starting comprehensive cleanup for capacity: ${capacityId}`);
+		console.log(`🧹 [CLEANUP] Starting comprehensive cleanup for commitment: ${capacityId}`);
 
-		// Get the capacity to find all its slot IDs before deletion
-		const capacity = $userCapacities?.[capacityId];
-		if (!capacity) {
-			console.warn(`[CLEANUP] Capacity ${capacityId} not found, skipping slot cleanup`);
+		// Get the commitment to find all its slot IDs before deletion
+		const commitment = $userCapacities?.[capacityId];
+		if (!commitment) {
+			console.warn(`[CLEANUP] Commitment ${capacityId} not found, skipping slot cleanup`);
 			return;
 		}
 
-		const slotIds = capacity.availability_slots?.map((slot: any) => slot.id) || [];
+		const slotIds = commitment.capacity_slots?.map((slot) => slot.id) || [];
 		console.log(`[CLEANUP] Found ${slotIds.length} slots to clean up:`, slotIds);
 
 		// 1. Clean up userDesiredSlotComposeFrom (where deleted capacity is SOURCE)
@@ -312,28 +210,28 @@
 		console.log(`✅ [CLEANUP] Completed comprehensive cleanup for capacity: ${capacityId}`);
 	}
 
-	// Delete capacity from the userCapacities store with comprehensive cleanup
-	function deleteCapacity(capacityId: string) {
+	// Delete commitment from the userCapacities store with comprehensive cleanup
+	function deleteCommitment(commitmentId: string) {
 		try {
 			if (!$userAlias || !$userPub) return false;
 
-			// STEP 1: Clean up all slot composition data BEFORE deleting the capacity
-			cleanupCapacitySlotData(capacityId);
+			// STEP 1: Clean up all slot composition data BEFORE deleting the commitment
+			cleanupCapacitySlotData(commitmentId);
 
-			// STEP 2: Remove the capacity itself
-			const currentCaps = get(userCapacities) || {};
-			const newCaps: CapacitiesCollection = { ...currentCaps };
-			if (newCaps[capacityId]) {
-				delete newCaps[capacityId];
+			// STEP 2: Remove the commitment itself
+			const currentCommitments = get(userCapacities) || {};
+			const newCommitments: CommitmentsCollection = { ...currentCommitments };
+			if (newCommitments[commitmentId]) {
+				delete newCommitments[commitmentId];
 			}
 
-			// Update store (Gun handles timestamps natively now)
-			userCapacities.set(newCaps);
+			// Update store
+			userCapacities.set(newCommitments);
 
 			globalState.showToast($t('inventory.capacity_deleted', { name: '' }), 'success');
 			return true;
 		} catch (error) {
-			console.error('Error deleting capacity:', error);
+			console.error('[CAPACITIES] Error deleting commitment:', error);
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
@@ -690,8 +588,8 @@
 		return { allDay, recurrence, startTime, endTime };
 	}
 
-	// Generate a random capacity with interesting verb + unit combination
-	function generateRandomCapacity(): ProviderCapacity {
+	// Generate a random commitment with interesting verb + unit combination (v5)
+	function generateRandomCommitment(): CommitmentWithId {
 		if (!$userAlias || !$userPub) throw new Error('No user logged in');
 
 		const verb = CAPACITY_VERBS[Math.floor(Math.random() * CAPACITY_VERBS.length)];
@@ -708,129 +606,121 @@
 
 		const todayString = today(getLocalTimeZone()).toString();
 		const timePattern = generateTimePattern();
+		const id = crypto.randomUUID();
 
+		// V5 Structure with capacity_slots
 		return {
-			id: crypto.randomUUID(),
-			name: verb,
-			emoji: emoji,
-			unit: unit,
-			description: '', // Leave blank for auto-generated capacities
-			max_natural_div: maxNaturalDiv,
-			max_percentage_div: maxPercentageDiv,
-			hidden_until_request_accepted: false,
-			owner_id: $userPub,
-			filter_rule: null,
-			members: [$userPub], // Default to current user as the only member
-			availability_slots: [
+			id,
+			capacity_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: quantity,
+					need_type_id: 'need_type_general', // Default need type - should be selectable in UI
+					name: verb,
+					emoji: emoji,
+					unit: unit,
+					description: '', // Leave blank for auto-generated commitments
 					location_type: 'Specific',
 					city: city.name,
 					country: city.country,
-					all_day: timePattern.allDay,
 					start_date: todayString,
-					start_time: timePattern.startTime,
+					start_time: timePattern.allDay ? undefined : timePattern.startTime,
 					end_date: null,
-					end_time: timePattern.endTime,
+					end_time: timePattern.allDay ? undefined : timePattern.endTime,
 					time_zone: getLocalTimeZone(),
-					recurrence: timePattern.recurrence,
-					custom_recurrence_repeat_every: null,
-					custom_recurrence_repeat_unit: null,
-					custom_recurrence_end_type: null,
-					custom_recurrence_end_value: null
+					recurrence: timePattern.recurrence as any,
+					max_natural_div: maxNaturalDiv,
+					max_percentage_div: maxPercentageDiv,
+					filter_rule: null
 				}
-			]
+			],
+			timestamp: Date.now(),
+			itcStamp: {id: 1, event: 0} as any // Placeholder ITC stamp
 		};
 	}
 
-	// Create a new capacity
-	function createDefaultCapacity(): ProviderCapacity {
+	// Create a new commitment with default values (v5)
+	function createDefaultCommitment(): CommitmentWithId {
 		if (!$userAlias || !$userPub) throw new Error('No user logged in');
 
 		const todayString = today(getLocalTimeZone()).toString();
+		const id = crypto.randomUUID();
+		
 		return {
-			id: crypto.randomUUID(),
-			name: '',
-			emoji: '',
-			unit: '',
-			description: '',
-			max_natural_div: 1,
-			max_percentage_div: 1.0,
-			hidden_until_request_accepted: false,
-			owner_id: $userPub,
-			filter_rule: null,
-			members: [$userPub], // Default to current user as the only member
-			availability_slots: [
+			id,
+			capacity_slots: [
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: 1,
+					need_type_id: 'need_type_general', // Default need type
+					name: '',
+					emoji: '',
+					unit: '',
+					description: '',
 					location_type: 'Undefined',
-					all_day: true,
 					start_date: todayString,
-					start_time: null,
 					end_date: null,
-					end_time: null,
 					time_zone: getLocalTimeZone(),
-					recurrence: 'Daily',
-					custom_recurrence_repeat_every: null,
-					custom_recurrence_repeat_unit: null,
-					custom_recurrence_end_type: null,
-					custom_recurrence_end_value: null
+					recurrence: 'daily',
+					max_natural_div: 1,
+					max_percentage_div: 1.0,
+					filter_rule: null
 				}
-			]
+			],
+			timestamp: Date.now(),
+			itcStamp: {id: 1, event: 0} as any // Placeholder ITC stamp
 		};
 	}
 
-	// Add a new capacity row
-	function addCapacityRow() {
+	// Add a new commitment row
+	function addCommitmentRow() {
 		if (!$userAlias || !$userPub) return;
 
-		const newCapacity = createDefaultCapacity();
+		const newCommitment = createDefaultCommitment();
 
-		// Use the addCapacity function to properly add the capacity
-		const success = addCapacity(newCapacity);
+		// Use the addCommitment function to properly add the commitment
+		const success = addCommitment(newCommitment);
 		if (!success) {
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 	}
 
-	// Add a random capacity with interesting verb + unit combination
-	function addRandomCapacity() {
+	// Add a random commitment with interesting verb + unit combination
+	function addRandomCommitment() {
 		if (!$userAlias || !$userPub) return;
 
-		const newCapacity = generateRandomCapacity();
+		const newCommitment = generateRandomCommitment();
 
-		// Use the addCapacity function to properly add the capacity
-		const success = addCapacity(newCapacity);
+		// Use the addCommitment function to properly add the commitment
+		const success = addCommitment(newCommitment);
 		if (!success) {
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return;
 		}
 
-		// Extract location info for toast
-		const slot = newCapacity.availability_slots[0];
+		// Extract location info for toast from first capacity slot
+		const slot = newCommitment.capacity_slots![0];
 		const locationInfo = slot.location_type === 'Online' ? 'online' : `in ${slot.city}`;
-		const quantityInfo = `${slot.quantity} ${newCapacity.unit}`;
+		const quantityInfo = `${slot.quantity} ${slot.unit}`;
 
 		globalState.showToast(
-			`🎲 ${newCapacity.name} ${quantityInfo} ${locationInfo}!`,
+			`🎲 ${slot.name} ${quantityInfo} ${locationInfo}!`,
 			'success'
 		);
 	}
 
-	// Handle capacity update from child component
-	function handleCapacityUpdate(capacity: ProviderCapacity) {
-		const success = updateCapacity(capacity);
+	// Handle commitment update from child component
+	function handleCommitmentUpdate(commitment: CommitmentWithId) {
+		const success = updateCommitment(commitment);
 		if (!success) {
 			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
 	}
 
-	// Handle capacity delete from child component
-	function handleCapacityDelete(id: string) {
-		const success = deleteCapacity(id);
+	// Handle commitment delete from child component
+	function handleCommitmentDelete(id: string) {
+		const success = deleteCommitment(id);
 		if (!success) {
 			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
@@ -844,10 +734,10 @@
 			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}
 		>
 			<Capacity
-				capacity={entry as ProviderCapacity}
+				capacity={entry}
 				canDelete={true}
-				onupdate={handleCapacityUpdate}
-				ondelete={handleCapacityDelete}
+				onupdate={handleCommitmentUpdate}
+				ondelete={handleCommitmentDelete}
 			/>
 		</div>
 	{/each}
@@ -855,14 +745,14 @@
 		<button
 			type="button"
 			class="add-btn h-10 w-10"
-			onclick={addCapacityRow}
-			title="Add blank capacity">+</button
+			onclick={addCommitmentRow}
+			title="Add blank commitment">+</button
 		>
 		<button
 			type="button"
 			class="dice-btn h-10 w-10"
-			onclick={addRandomCapacity}
-			title="Generate random capacity">🎲</button
+			onclick={addRandomCommitment}
+			title="Generate random commitment">🎲</button
 		>
 	</div>
 </div>

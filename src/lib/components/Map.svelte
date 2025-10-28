@@ -651,7 +651,7 @@
 			>();
 
 			// Process slots in this capacity - IMMEDIATE ONLY (no geocoding)
-			for (const slot of capacity.availability_slots || []) {
+			for (const slot of capacity.capacity_slots || []) {
 				// Show ALL slots for discovery and desire expression (no allocation filtering)
 
 				// Check location type
@@ -757,7 +757,7 @@
 			>();
 
 			// Process slots that need geocoding
-			for (const slot of capacity.availability_slots || []) {
+			for (const slot of capacity.capacity_slots || []) {
 				// Show ALL slots for discovery and desire expression (no allocation filtering)
 
 				// Check location type
@@ -1009,13 +1009,13 @@
 		// Classify capacities based on whether they need geocoding
 		capacityIds.forEach((capacityId) => {
 			const capacity = sharedCapacities[capacityId];
-			if (!capacity || !capacity.availability_slots) return;
+			if (!capacity || !capacity.capacity_slots) return;
 
 			let hasDirectCoordinates = false;
 			let hasAddresses = false;
 
 			// Check if any slots have direct coordinates or addresses
-			for (const slot of capacity.availability_slots) {
+			for (const slot of capacity.capacity_slots) {
 				if (slot.latitude !== undefined && slot.longitude !== undefined) {
 					hasDirectCoordinates = true;
 				}

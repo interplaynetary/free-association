@@ -1,8 +1,5 @@
-import { gun, user, userPub, GUN } from '$lib/state/gun.svelte';
 import { writable, get, type Writable, derived } from 'svelte/store';
-import SEA from 'gun/sea';
-import type { ChatReadStates, ChatReadState } from '$lib/schema';
-import { USE_HOLSTER_CHAT } from '$lib/config';
+import type { ChatReadStates, ChatReadState } from '$lib/commons/v5/schemas';
 import * as HolsterChat from './chat-holster.svelte';
 
 // Conditionally import browser - gracefully handle test environment
@@ -53,8 +50,9 @@ export const unreadCounts = derived([chatReadStates], ([$chatReadStates]) => {
 			// If no read state, all messages are unread
 			counts[chatId] = messages.length;
 		} else {
-			// Count messages newer than last read timestamp
-			counts[chatId] = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+			// Count messages newer than last read timestamp (use lastReadTimestamp if available, otherwise lastRead)
+			const lastRead = readState.lastReadTimestamp || readState.lastRead;
+			counts[chatId] = messages.filter((msg) => msg.when > lastRead).length;
 		}
 	}
 
@@ -65,7 +63,8 @@ export const unreadCounts = derived([chatReadStates], ([$chatReadStates]) => {
 			if (subscription) {
 				const messages = get(subscription.store);
 				const readState = $chatReadStates[chatId];
-				counts[chatId] = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+				const lastRead = readState.lastReadTimestamp || readState.lastRead;
+				counts[chatId] = messages.filter((msg) => msg.when > lastRead).length;
 			}
 		}
 	});
@@ -139,54 +138,18 @@ export function unsubscribeFromChat(chatId: string) {
 
 /**
  * Get messages store for a specific chat (subscribes if not already subscribed)
+ * V5: Uses Holster-only backend
  */
 export function getChatMessages(chatId: string): Writable<Message[]> {
-	if (USE_HOLSTER_CHAT) {
-		return HolsterChat.getHolsterChatMessages(chatId) as Writable<Message[]>;
-	}
-
-	const subscription = chatSubscriptions.get(chatId) || subscribeToChat(chatId);
-	return subscription.store;
+	return HolsterChat.getHolsterChatMessages(chatId) as Writable<Message[]>;
 }
 
 /**
  * Send a message to a chat
+ * V5: Uses Holster-only backend
  */
 export async function sendMessage(chatId: string, messageText: string): Promise<void> {
-	if (USE_HOLSTER_CHAT) {
-		return HolsterChat.sendHolsterMessage(chatId, messageText);
-	}
-
-	if (!messageText.trim()) {
-		throw new Error('Message cannot be empty');
-	}
-
-	if (!user.is?.pub) {
-		throw new Error('You must be logged in to send messages');
-	}
-
-	try {
-		const encryptionKey = '#foo';
-
-		//console.log(`[Chat State] Sending message to ${chatId}:`, messageText);
-
-		const secret = await SEA.encrypt(messageText.trim(), encryptionKey);
-		if (!secret) {
-			throw new Error('Failed to encrypt message');
-		}
-
-		// Store message in user space and reference it in chat
-		const message = user.get('all').set({ what: secret });
-		const index = new Date().toISOString();
-
-		// Put the message reference in the chat
-		await gun.get(chatId).get(index).put(message);
-
-		//console.log(`[Chat State] Message sent successfully to ${chatId}`);
-	} catch (error) {
-		console.error(`[Chat State] Error sending message to ${chatId}:`, error);
-		throw error;
-	}
+	return HolsterChat.sendHolsterMessage(chatId, messageText);
 }
 
 /**
@@ -209,14 +172,12 @@ export function clearAllChatSubscriptions() {
 
 /**
  * Clear all chat subscriptions and read states (useful for logout)
+ * V5: Holster-only
  */
 export function clearAllChatData() {
 	clearAllChatSubscriptions();
 	clearChatReadStates();
-
-	if (USE_HOLSTER_CHAT) {
-		HolsterChat.clearAllHolsterChatSubscriptions();
-	}
+	HolsterChat.clearAllHolsterChatSubscriptions();
 
 	//console.log('[Chat State] Cleared all chat data');
 }
@@ -236,13 +197,14 @@ export function markChatAsRead(chatId: string, timestamp?: number): void {
 	const existingState = currentStates[chatId];
 
 	// Only update if the new timestamp is newer than the existing one
-	if (!existingState || readTimestamp > existingState.lastReadTimestamp) {
+	if (!existingState || readTimestamp > (existingState.lastReadTimestamp || existingState.lastRead)) {
 		const updatedStates = {
 			...currentStates,
 			[chatId]: {
-				chatId,
-				lastReadTimestamp: readTimestamp,
-				updatedAt: Date.now()
+				lastRead: readTimestamp,  // Required field
+				lastReadTimestamp: readTimestamp,  // Alias for compatibility
+				updatedAt: Date.now(),
+				_updatedAt: Date.now()  // Holster timestamp
 			}
 		};
 
@@ -271,10 +233,11 @@ export function getUnreadMessageCount(chatId: string): number {
 		return messages.length;
 	}
 
-	// Count messages newer than last read timestamp
-	const unreadCount = messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+	// Count messages newer than last read timestamp (use lastReadTimestamp if available, otherwise lastRead)
+	const lastRead = readState.lastReadTimestamp || readState.lastRead;
+	const unreadCount = messages.filter((msg) => msg.when > lastRead).length;
 	//console.log(
-	//	`[Chat State] Unread count for ${chatId}: ${unreadCount} (last read: ${readState.lastReadTimestamp})`
+	//	`[Chat State] Unread count for ${chatId}: ${unreadCount} (last read: ${lastRead})`
 	//);
 
 	return unreadCount;
@@ -297,8 +260,9 @@ export function getReactiveUnreadCount(chatId: string) {
 			return $messages.length;
 		}
 
-		// Count messages newer than last read timestamp
-		return $messages.filter((msg) => msg.when > readState.lastReadTimestamp).length;
+		// Count messages newer than last read timestamp (use lastReadTimestamp if available, otherwise lastRead)
+		const lastRead = readState.lastReadTimestamp || readState.lastRead;
+		return $messages.filter((msg) => msg.when > lastRead).length;
 	});
 }
 

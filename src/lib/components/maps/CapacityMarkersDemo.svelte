@@ -19,7 +19,10 @@
 		formatCapacityPopupContent,
 		type CapacityMarkerData
 	} from '$lib/utils/capacityMarkers';
-	import type { Capacity } from '$lib/schema';
+	import type { Commitment } from '$lib/commons/v5/schemas';
+	
+	// Legacy type alias
+	type Capacity = Commitment;
 
 	interface Props {
 		onCapacityUpdate?: (id: string, lnglat: { lng: number; lat: number }) => void;

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { ProviderCapacity, AvailabilitySlot } from '$lib/schema';
+	import type { Commitment, AvailabilitySlot } from '$lib/commons/v5/schemas';
+	import { CommitmentSchema, AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
@@ -12,23 +13,21 @@
 	import { browser } from '$app/environment';
 	import { createSubtreesDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { ProviderCapacitySchema } from '$lib/schema';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { t } from '$lib/translations';
 	import { userPub } from '$lib/state/gun.svelte';
-	import { createUsersDataProvider } from '$lib/utils/ui-providers.svelte';
+	
+	// V5 Pure Types - No Backward Compatibility
+	type CommitmentWithId = Commitment & { id: string };
 
 	interface Props {
-		capacity: ProviderCapacity;
+		capacity: CommitmentWithId;
 		canDelete: boolean;
-		onupdate?: (capacity: ProviderCapacity) => void;
+		onupdate?: (capacity: CommitmentWithId) => void;
 		ondelete?: (id: string) => void;
 	}
 
 	let { capacity, canDelete, onupdate, ondelete }: Props = $props();
-
-	// UI state for expanded capacity editing
-	let expanded = $state(false);
 
 	// UI state for expanded chat
 	let chatExpanded = $state(false);
@@ -56,27 +55,18 @@
 	let showSubtreeDropdown = $state(false);
 	let dropdownPosition = $state({ x: 0, y: 0 });
 
-	// Emoji picker state
-	let showEmojiPicker = $state(false);
-
 	// Create subtrees data provider for the dropdown
 	let subtreesDataProvider = createSubtreesDataProvider();
-
-	// Member management state
-	let showMembersDropdown = $state(false);
-	let membersDataProvider = createUsersDataProvider();
 	
-	// Reactive capacity properties for proper binding (matching schema types)
-	let capacityName = $state(capacity.name);
-	let capacityEmoji = $state(capacity.emoji);
-	let capacityUnit = $state(capacity.unit);
-	let capacityDescription = $state(capacity.description);
-	let capacityMaxNaturalDiv = $state(capacity.max_natural_div);
-	let capacityMaxPercentageDiv = $state(capacity.max_percentage_div);
-	let capacityMembers = $state(capacity.members || []);
-	let capacityAutoUpdateMRD = $state(capacity.auto_update_members_by_mrd || false);
-	let capacityMRDThreshold = $state(capacity.mrd_threshold || 0.5);
-	let capacityMembershipFrequency = $state(capacity.membership_update_frequency_ms || 7 * 24 * 60 * 60 * 1000);
+	// V5 Structure: Metadata is per-slot, not per-commitment
+	// For display purposes, we'll use the first slot's metadata as the "commitment name"
+	// This is a UI convenience - in v5, each slot is independent
+	const firstSlot = $derived(capacity.capacity_slots?.[0]);
+	const displayName = $derived(firstSlot?.name || 'Unnamed');
+	const displayEmoji = $derived(firstSlot?.emoji || '');
+	
+	// Slots accessor (v5 uses capacity_slots not availability_slots)
+	const slots = $derived(capacity.capacity_slots || []);
 
 	// Derived filter rule - automatically updates when selectedSubtrees changes
 	let filterRule = $derived(() => {
@@ -101,79 +91,40 @@
 		return names;
 	});
 
-	const handleEmojiClick = (emoji: string) => {
-		capacityEmoji = emoji;
-		handleCapacityUpdate();
-	}
-
 	// Note: Recipient shares are no longer displayed as bars in the new efficient allocation system
 	// Recipients can see their allocations directly in the shares view
 
-	// Recurrence options
-	const recurrenceOptions = [
-		'Does not repeat',
-		'Daily',
-		'Weekly',
-		'Monthly',
-		'Annually',
-		'Every weekday (Monday to Friday)',
-		'Every 4 days',
-		'Custom...'
-	];
-
-	// Helper to track original value on focus
-	function handleFocus(fieldName: string, currentValue: any) {
-		originalValues[fieldName] = currentValue;
-	}
-
-	// Helper to save only if value changed on blur
-	function handleBlurIfChanged(fieldName: string, currentValue: any) {
-		if (originalValues[fieldName] !== currentValue) {
-			handleCapacityUpdate();
-		}
-	}
-
-	// Handler for input events that updates capacity
-	function handleCapacityUpdate() {
-		// Create updated capacity with current filter rule and member settings
-		const updatedCapacity = {
-			...capacity,
-			name: capacityName,
-			emoji: capacityEmoji,
-			unit: capacityUnit,
-			description: capacityDescription,
-			max_natural_div: capacityMaxNaturalDiv,
-			max_percentage_div: capacityMaxPercentageDiv,
-			filter_rule: filterRule(),
-			members: capacityMembers,
-			auto_update_members_by_mrd: capacityAutoUpdateMRD,
-			mrd_threshold: capacityMRDThreshold,
-			membership_update_frequency_ms: capacityMembershipFrequency
-		};
-
+	// V5: Commitment updates are passed through
+	// In v5, metadata (name, emoji, etc.) is on individual slots, not commitment
+	// Slot updates are handled by the Slot component
+	function handleCommitmentUpdate(updatedCommitment: CommitmentWithId) {
 		// Validate using schema
-		const validationResult = ProviderCapacitySchema.safeParse(updatedCapacity);
+		const validationResult = CommitmentSchema.safeParse(updatedCommitment);
 
 		if (!validationResult.success) {
-			// Check for specific validation errors and show appropriate messages
-			const errors = validationResult.error.issues;
-			const unitErrors = errors.filter((issue) => issue.path.includes('unit'));
-
-			if (unitErrors.length > 0) {
-				globalState.showToast(unitErrors[0].message, 'warning');
-				// Revert unit to previous valid value
-				capacityUnit = capacity.unit || '';
-				return;
-			}
-
-			// Handle other validation errors
-			globalState.showToast('Invalid capacity data', 'error');
-			console.error('Capacity validation failed:', validationResult.error);
+			globalState.showToast('Invalid commitment data', 'error');
+			console.error('[CAPACITY] Commitment validation failed:', validationResult.error);
 			return;
 		}
 
 		// Validation passed, proceed with update
-		onupdate?.(validationResult.data);
+		onupdate?.(validationResult.data as CommitmentWithId);
+	}
+	
+	// Handler when a slot is updated from the Slot component
+	function handleSlotUpdate(updatedSlot: AvailabilitySlot) {
+		// Update the commitment with the modified slot
+		const updatedSlots = (capacity.capacity_slots || []).map(slot =>
+			slot.id === updatedSlot.id ? updatedSlot : slot
+		);
+		
+		const updatedCommitment: CommitmentWithId = {
+			...capacity,
+			capacity_slots: updatedSlots,
+			timestamp: Date.now()
+		};
+		
+		handleCommitmentUpdate(updatedCommitment);
 	}
 
 	// Delete this capacity
@@ -181,22 +132,11 @@
 		ondelete?.(capacity.id);
 	}
 
-	// Toggle expanded state
-	function toggleExpanded() {
-		expanded = !expanded;
-		// If we're expanding settings, close chat and slots
-		if (expanded) {
-			chatExpanded = false;
-			slotsExpanded = false;
-		}
-	}
-
 	// Toggle chat state
 	function toggleChat() {
 		chatExpanded = !chatExpanded;
-		// If we're expanding chat, close settings and slots
+		// If we're expanding chat, close slots
 		if (chatExpanded) {
-			expanded = false;
 			slotsExpanded = false;
 		}
 	}
@@ -204,9 +144,8 @@
 	// Toggle slots state
 	function toggleSlots() {
 		slotsExpanded = !slotsExpanded;
-		// If we're expanding slots, close settings and chat
+		// If we're expanding slots, close chat
 		if (slotsExpanded) {
-			expanded = false;
 			chatExpanded = false;
 		}
 	}
@@ -238,8 +177,8 @@
 		// Add to selected subtrees
 		selectedSubtrees = [...selectedSubtrees, subtreeId];
 
-		// Update capacity
-		handleCapacityUpdate();
+		// Note: Filter rule updates happen automatically via $derived filterRule
+		// No need to manually update commitment here
 
 		// Close dropdown
 		showSubtreeDropdown = false;
@@ -248,91 +187,14 @@
 	// Handle removing a subtree filter
 	function handleRemoveSubtree(subtreeId: string) {
 		selectedSubtrees = selectedSubtrees.filter((id) => id !== subtreeId);
-		handleCapacityUpdate();
+		
+		// Note: Filter rule updates happen automatically via $derived filterRule
+		// No need to manually update commitment here
 	}
 
 	// Close dropdown
 	function handleDropdownClose() {
 		showSubtreeDropdown = false;
-	}
-
-	// === MEMBER MANAGEMENT ===
-
-	// Handle adding a member
-	function handleAddMember(event: MouseEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-
-		const rect = (event.target as HTMLElement).getBoundingClientRect();
-		dropdownPosition = {
-			x: rect.left,
-			y: rect.bottom + 5
-		};
-
-		showMembersDropdown = true;
-	}
-
-	// Handle member selection from dropdown
-	function handleMemberSelect(detail: { id: string; name: string; metadata?: any }) {
-		const { id: memberId } = detail;
-
-		// Don't add if already a member
-		if (capacityMembers.includes(memberId)) {
-			showMembersDropdown = false;
-			globalState.showToast(`${detail.name} is already a member`, 'info');
-			return;
-		}
-
-		// Add to members
-		capacityMembers = [...capacityMembers, memberId];
-
-		// Update capacity
-		handleCapacityUpdate();
-
-		// Close dropdown
-		showMembersDropdown = false;
-		
-		globalState.showToast(`Added ${detail.name} as member`, 'success');
-	}
-
-	// Handle removing a member
-	function handleRemoveMember(memberId: string) {
-		// Don't allow removing the last member (owner)
-		if (capacityMembers.length === 1 && capacityMembers[0] === $userPub) {
-			globalState.showToast('Cannot remove the only member (you)', 'warning');
-			return;
-		}
-
-		capacityMembers = capacityMembers.filter((id) => id !== memberId);
-		handleCapacityUpdate();
-		
-		globalState.showToast('Member removed', 'success');
-	}
-
-	// Close members dropdown
-	function handleMembersDropdownClose() {
-		showMembersDropdown = false;
-	}
-
-	// Handle manual membership recomputation
-	// TODO: Implement network-wide recognition data subscription first
-	// MRD computation requires recognition data between ALL network participants,
-	// not just our direct connections. Currently blocked on proper data architecture.
-	async function handleRecomputeMembers() {
-		globalState.showToast(
-			'Manual recomputation requires network-wide recognition data. Feature coming soon!',
-			'info'
-		);
-		
-		// For now, auto-update will work when allocations are computed
-		// (which happens server-side with full network data)
-	}
-
-	// Handle emoji picker
-	function handleEmojiPickerToggle(event: MouseEvent) {
-		event.preventDefault();
-		event.stopPropagation();
-		showEmojiPicker = !showEmojiPicker;
 	}
 
 	// Format date for input
@@ -467,8 +329,9 @@
 	}
 
 	// Categorize and sort slots
+	// V5: Use capacity_slots instead of availability_slots
 	let categorizedSlots = $derived(() => {
-		if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
+		if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 			return { past: [], recurring: [], currentFuture: [] };
 		}
 
@@ -477,7 +340,7 @@
 		const currentFuture: any[] = [];
 
 		// Categorize slots
-		capacity.availability_slots.forEach((slot) => {
+		capacity.capacity_slots.forEach((slot) => {
 			if (isSlotRecurring(slot)) {
 				recurring.push(slot);
 			} else if (isSlotInPast(slot)) {
@@ -520,103 +383,43 @@
 	// Track original values for change detection
 	let originalValues = $state<Record<string, any>>({});
 
-	// Handle slot updates
-	function handleSlotUpdate(updatedSlot: AvailabilitySlot) {
-		// 🚨 DEBUG: Log the incoming updated slot
-		console.log('[CAPACITY] 🚨 DEBUG: handleSlotUpdate called with slot:', updatedSlot.id);
-		console.log('[CAPACITY] 🚨 DEBUG: Updated slot location data:', {
-			location_type: updatedSlot.location_type,
-			latitude: updatedSlot.latitude,
-			longitude: updatedSlot.longitude,
-			street_address: updatedSlot.street_address,
-			city: updatedSlot.city,
-			state_province: updatedSlot.state_province,
-			postal_code: updatedSlot.postal_code,
-			country: updatedSlot.country
-		});
-
-		const updatedSlots = capacity.availability_slots.map((slot) =>
-			slot.id === updatedSlot.id ? updatedSlot : slot
-		);
-
-		// 🚨 DEBUG: Log the updated slots array
-		console.log('[CAPACITY] 🚨 DEBUG: Updated slots array:');
-		updatedSlots.forEach((slot, index) => {
-			if (slot.id === updatedSlot.id) {
-				console.log(`[CAPACITY] 🚨 DEBUG: Updated slot ${index} (${slot.id}) location data:`, {
-					location_type: slot.location_type,
-					latitude: slot.latitude,
-					longitude: slot.longitude,
-					street_address: slot.street_address,
-					city: slot.city,
-					state_province: slot.state_province,
-					postal_code: slot.postal_code,
-					country: slot.country
-				});
-			}
-		});
-
-		const updatedCapacity = {
-			...capacity,
-			availability_slots: updatedSlots
-		};
-
-		// 🚨 DEBUG: Log the final updated capacity
-		console.log('[CAPACITY] 🚨 DEBUG: Final updated capacity availability_slots:');
-		updatedCapacity.availability_slots.forEach((slot, index) => {
-			if (slot.id === updatedSlot.id) {
-				console.log(
-					`[CAPACITY] 🚨 DEBUG: Final capacity slot ${index} (${slot.id}) location data:`,
-					{
-						location_type: slot.location_type,
-						latitude: slot.latitude,
-						longitude: slot.longitude,
-						street_address: slot.street_address,
-						city: slot.city,
-						state_province: slot.state_province,
-						postal_code: slot.postal_code,
-						country: slot.country
-					}
-				);
-			}
-		});
-
-		onupdate?.(updatedCapacity);
-	}
-
 	// Handle slot deletion
 	function handleSlotDelete(slotId: string) {
-		const updatedSlots = capacity.availability_slots.filter((slot) => slot.id !== slotId);
+		const updatedSlots = (capacity.capacity_slots || []).filter((slot) => slot.id !== slotId);
 
-		const updatedCapacity = {
+		const updatedCommitment: CommitmentWithId = {
 			...capacity,
-			availability_slots: updatedSlots
+			capacity_slots: updatedSlots,
+			timestamp: Date.now()
 		};
 
-		onupdate?.(updatedCapacity);
+		handleCommitmentUpdate(updatedCommitment);
 	}
 
-	// Add new slot
+	// Add new slot (v5)
 	function handleAddSlot() {
 		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
 		const newSlotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		const newSlot = {
+		
+		// V5: All fields required, including need_type_id
+		const newSlot: AvailabilitySlot = {
 			id: newSlotId,
 			quantity: 1,
+			need_type_id: 'need_type_general', // Default need type
+			name: '',
 			location_type: 'Undefined',
-			all_day: true,
 			start_date: todayString,
-			start_time: null,
 			end_date: null,
-			end_time: null,
-			recurrence: 'Daily' // Default to Daily recurrence
+			time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			recurrence: 'daily'
 		};
 
-		const updatedSlots = [...capacity.availability_slots, newSlot];
+		const updatedSlots = [...(capacity.capacity_slots || []), newSlot];
 
-		const updatedCapacity = {
+		const updatedCommitment: CommitmentWithId = {
 			...capacity,
-			availability_slots: updatedSlots
+			capacity_slots: updatedSlots,
+			timestamp: Date.now()
 		};
 
 		// Ensure slots section is expanded so user can see the new slot
@@ -630,91 +433,34 @@
 		// Add to highlighted slots using global state
 		globalState.highlightSlot(newSlotId);
 
-		onupdate?.(updatedCapacity);
+		handleCommitmentUpdate(updatedCommitment);
 	}
 </script>
 
 <div class="capacity-item" class:chat-expanded={chatExpanded} data-capacity-id={capacity.id}>
 	<!-- Note: Recipient shares bars removed - recipients see allocations in shares view via efficient algorithm -->
 
-	<div class="capacity-row flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow-sm">
-		<!-- Emoji picker button -->
-		<div class="relative">
-			<button
-				type="button"
-				class="emoji-btn"
-				onclick={handleEmojiPickerToggle}
-				title={$t('inventory.select_emoji')}
-			>
-				{capacityEmoji || '🎁'}
-			</button>
-			<!-- Emoji picker container -->
-			{#if showEmojiPicker}
-				<div
-					use:outsideClick={() => (showEmojiPicker = false)}
-					use:emojiPicker={{ onClick: handleEmojiClick }}
-					class="emoji-picker-container"
-				></div>
-			{/if}
+	<!-- V5: Clean, Slot-Centric Design -->
+	<div class="capacity-row flex flex-wrap items-center gap-2 rounded bg-white p-3 shadow-sm">
+		<!-- Commitment Display (Read-Only) -->
+		<div class="commitment-display flex flex-1 items-center gap-2">
+			<!-- Display first slot's emoji or default -->
+			<span class="text-2xl" title="First slot emoji">
+				{displayEmoji || '📦'}
+			</span>
+			
+			<!-- Display first slot's name or placeholder -->
+			<div class="flex flex-col">
+				<span class="text-base font-medium text-gray-800">
+					{displayName || 'Unnamed Commitment'}
+				</span>
+				<span class="text-xs text-gray-500">
+					{slots.length} {slots.length === 1 ? 'slot' : 'slots'}
+				</span>
+			</div>
 		</div>
 
-		<!-- Main capacity inputs -->
-		<input
-			type="text"
-			class="capacity-input name auto-size"
-			bind:value={capacityName}
-			placeholder={$t('inventory.name')}
-			onfocus={() => handleFocus('name', capacityName)}
-			onblur={() => handleBlurIfChanged('name', capacityName)}
-			style="width: {Math.max(capacityName?.length || 0, $t('inventory.name').length) +
-				3}ch; min-width: {Math.max(6, $t('inventory.name').length + 2)}ch;"
-		/>
-		<input
-			type="text"
-			class="capacity-input unit auto-size"
-			bind:value={capacityUnit}
-			placeholder={$t('inventory.unit')}
-			onfocus={() => handleFocus('unit', capacityUnit)}
-			onblur={() => handleBlurIfChanged('unit', capacityUnit)}
-			style="width: {Math.max(capacityUnit?.length || 0, $t('inventory.unit').length) +
-				3}ch; min-width: {Math.max(6, $t('inventory.unit').length + 2)}ch;"
-		/>
-		<!-- Description field with integrated toggle -->
-		<div class="description-field-container">
-			{#if descriptionExpanded}
-				<textarea
-					class="capacity-input description-textarea auto-size"
-					bind:value={capacityDescription}
-					placeholder={$t('inventory.description')}
-					onfocus={() => handleFocus('description', capacityDescription)}
-					onblur={() => handleBlurIfChanged('description', capacityDescription)}
-					rows="3"
-				></textarea>
-			{:else}
-				<input
-					type="text"
-					class="capacity-input description auto-size"
-					bind:value={capacityDescription}
-					placeholder={$t('inventory.description')}
-					onfocus={() => handleFocus('description', capacityDescription)}
-					onblur={() => handleBlurIfChanged('description', capacityDescription)}
-					style="width: {Math.max(capacityDescription?.length || 0, $t('inventory.description').length) +
-						3}ch; min-width: {Math.max(12, $t('inventory.description').length + 2)}ch;"
-				/>
-			{/if}
-			{#if capacityDescription}
-				<button
-					type="button"
-					class="description-expand-btn"
-					onclick={() => (descriptionExpanded = !descriptionExpanded)}
-					title={descriptionExpanded ? $t('common.collapse') : $t('common.expand')}
-				>
-					{descriptionExpanded ? '▼' : '▲'}
-				</button>
-			{/if}
-		</div>
-
-		<!-- Action buttons -->
+		<!-- Action Buttons -->
 		<button
 			type="button"
 			class="chat-btn relative ml-1"
@@ -733,12 +479,17 @@
 			onclick={toggleSlots}
 			title={$t('inventory.manage_slots')}
 		>
-			🕒
+			🕒 {$t('inventory.slots')}
 		</button>
-		<button type="button" class="settings-btn ml-1" onclick={toggleExpanded}> ⚙️ </button>
-		<button type="button" class="remove-btn ml-1" onclick={handleDelete} disabled={!canDelete}
-			>✖️</button
+		<button 
+			type="button" 
+			class="remove-btn ml-1" 
+			onclick={handleDelete} 
+			disabled={!canDelete}
+			title={$t('inventory.delete_capacity')}
 		>
+			✖️
+		</button>
 	</div>
 
 	<!-- Filter tags section (always visible, like contributors in Child.svelte) -->
@@ -786,14 +537,13 @@
 		<div class="chat-container rounded border border-gray-200 bg-gray-50 p-3">
 			<div class="chat-header mb-2">
 				<h4 class="text-sm font-medium text-gray-700">
-					💬 {$t('inventory.chat_about_capacity')} {capacity.emoji || '🎁'}
-					{capacity.name}
+					💬 {$t('inventory.chat_about_capacity')} {displayEmoji || '📦'} {displayName}
 				</h4>
 				<p class="mt-1 text-xs text-gray-500">
 					{$t('inventory.discuss_capacity')}
 				</p>
 			</div>
-			<Chat chatId={capacity.id} placeholder={`${$t('inventory.discuss')} ${capacity.name}...`} maxLength={200} />
+			<Chat chatId={capacity.id} placeholder={`${$t('inventory.discuss')} ${displayName}...`} maxLength={200} />
 		</div>
 	{/if}
 
@@ -863,8 +613,7 @@
 												<Slot
 													{slot}
 													capacityId={capacity.id}
-													unit={capacity.unit}
-													canDelete={capacity.availability_slots.length > 1}
+													canDelete={slots.length > 1}
 													onupdate={handleSlotUpdate}
 													ondelete={handleSlotDelete}
 												/>
@@ -900,8 +649,7 @@
 												<Slot
 													{slot}
 													capacityId={capacity.id}
-													unit={capacity.unit}
-													canDelete={capacity.availability_slots.length > 1}
+													canDelete={slots.length > 1}
 													onupdate={handleSlotUpdate}
 													ondelete={handleSlotDelete}
 												/>
@@ -937,8 +685,7 @@
 												<Slot
 													{slot}
 													capacityId={capacity.id}
-													unit={capacity.unit}
-													canDelete={capacity.availability_slots.length > 1}
+													canDelete={slots.length > 1}
 													onupdate={handleSlotUpdate}
 													ondelete={handleSlotDelete}
 												/>
@@ -958,166 +705,7 @@
 		</div>
 	{/if}
 
-	<!-- Expanded settings (other options only) -->
-	{#if expanded}
-		<div class="expanded-settings mt-2 rounded-md bg-white shadow-sm">
-			<div class="settings-content">
-				<div class="other-options mb-4">
-					<div class="max-divisibility-section mb-6">
-						<h4 class="mb-4 text-sm font-medium text-gray-700">{$t('inventory.max_divisibility')}</h4>
-						<div class="grid grid-cols-2 gap-8">
-							<div>
-								<input
-									type="number"
-									min="1"
-									step="1"
-									class="capacity-input qty w-full text-right"
-									bind:value={capacityMaxNaturalDiv}
-									placeholder={$t('inventory.natural')}
-									onfocus={() => handleFocus('maxNaturalDiv', capacityMaxNaturalDiv)}
-									onblur={() => handleBlurIfChanged('maxNaturalDiv', capacityMaxNaturalDiv)}
-								/>
-							</div>
-							<div>
-								<input
-									type="number"
-									min="0"
-									max="1"
-									step="0.01"
-									class="capacity-input qty w-full text-right"
-									bind:value={capacityMaxPercentageDiv}
-									placeholder={$t('inventory.percentage')}
-									onfocus={() => handleFocus('maxPercentageDiv', capacityMaxPercentageDiv)}
-									onblur={() => handleBlurIfChanged('maxPercentageDiv', capacityMaxPercentageDiv)}
-								/>
-							</div>
-						</div>
-					</div>
-
-					<!-- Member Management Section -->
-					<div class="member-management-section mb-6">
-						<h4 class="mb-4 text-sm font-medium text-gray-700">👥 Members</h4>
-						
-						<!-- Current Members -->
-						<div class="members-list mb-4">
-							<div class="flex flex-wrap items-center gap-2 mb-3">
-								<button type="button" class="add-member-btn" onclick={handleAddMember}>
-									<span class="add-icon">+</span>
-									<span class="add-text">Add Member</span>
-								</button>
-								{#each capacityMembers as memberId}
-									<TagPill
-										userId={memberId}
-										truncateLength={15}
-										removable={true}
-										onClick={() => {}}
-										onRemove={() => handleRemoveMember(memberId)}
-									/>
-								{/each}
-							</div>
-							<p class="text-xs text-gray-500 italic">
-								{capacityMembers.length} member{capacityMembers.length !== 1 ? 's' : ''} can receive allocations from this capacity
-							</p>
-						</div>
-
-						<!-- Auto-Update Toggle -->
-						<div class="auto-update-section p-4 rounded border border-gray-200 bg-gray-50 mb-4">
-							<label class="flex items-center gap-2 mb-3 cursor-pointer">
-								<input
-									type="checkbox"
-									class="form-checkbox h-4 w-4 text-blue-600 rounded"
-									bind:checked={capacityAutoUpdateMRD}
-									onchange={handleCapacityUpdate}
-								/>
-								<span class="text-sm font-medium text-gray-700">
-									🔄 Auto-update members by MRD
-								</span>
-							</label>
-							
-							{#if capacityAutoUpdateMRD}
-								<div class="auto-update-config space-y-3 pl-6 border-l-2 border-blue-200">
-									<!-- MRD Threshold -->
-									<div>
-										<label class="block text-xs text-gray-600 mb-1">
-											MRD Threshold
-										</label>
-										<input
-											type="number"
-											min="0"
-											max="2"
-											step="0.1"
-											class="capacity-input w-full text-sm"
-											bind:value={capacityMRDThreshold}
-											onfocus={() => handleFocus('mrdThreshold', capacityMRDThreshold)}
-											onblur={() => handleBlurIfChanged('mrdThreshold', capacityMRDThreshold)}
-										/>
-										<p class="text-xs text-gray-500 mt-1">
-											Members need MRD ≥ {capacityMRDThreshold} to stay in collective
-										</p>
-									</div>
-
-									<!-- Update Frequency -->
-									<div>
-										<label class="block text-xs text-gray-600 mb-1">
-											Update Frequency
-										</label>
-										<select
-											class="capacity-input w-full text-sm"
-											bind:value={capacityMembershipFrequency}
-											onchange={handleCapacityUpdate}
-										>
-											<option value={60 * 60 * 1000}>Hourly</option>
-											<option value={24 * 60 * 60 * 1000}>Daily</option>
-											<option value={7 * 24 * 60 * 60 * 1000}>Weekly (Default)</option>
-											<option value={30 * 24 * 60 * 60 * 1000}>Monthly</option>
-										</select>
-										<p class="text-xs text-gray-500 mt-1">
-											How often to automatically recompute membership
-										</p>
-									</div>
-
-									<!-- Last Update Info -->
-									{#if capacity.last_membership_update}
-										<div class="text-xs text-gray-500">
-											Last updated: {new Date(capacity.last_membership_update).toLocaleString()}
-										</div>
-									{/if}
-								</div>
-							{/if}
-						</div>
-
-						<!-- Manual Recompute Button (Disabled - needs network-wide data) -->
-						<button
-							type="button"
-							class="recompute-btn w-full"
-							onclick={handleRecomputeMembers}
-							title="Requires network-wide recognition data subscription"
-						>
-							<span>🔄 Recompute Members Now</span>
-						</button>
-						<p class="text-xs text-gray-500 mt-2 italic">
-							Note: Manual recomputation requires network-wide recognition data. Auto-update will work during allocation computation.
-						</p>
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
 </div>
-
-<!-- Members dropdown for adding new members -->
-{#if showMembersDropdown}
-	<DropDown
-		position={dropdownPosition}
-		show={showMembersDropdown}
-		title="Select Member"
-		searchPlaceholder="Search users..."
-		dataProvider={membersDataProvider}
-		select={handleMemberSelect}
-		updatePosition={(newPosition) => (dropdownPosition = newPosition)}
-		close={handleMembersDropdownClose}
-	/>
-{/if}
 
 <!-- Subtree dropdown for adding filters -->
 {#if showSubtreeDropdown}

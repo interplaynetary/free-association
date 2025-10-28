@@ -17,6 +17,8 @@
  * V5 UPDATE: Now using global recognition model with event-driven allocation
  */
 
+import './v5/holster.svelte'; // This initializes Holster (migration Phase 1)
+
 // Schemas and types (V5) - Safe for SSR
 export * from './v5/schemas';
 
