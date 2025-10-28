@@ -1,8 +1,8 @@
 <script lang="ts">
   import {onMount} from "svelte"
-  import StatsOverview from "./StatsOverview.svelte"
-  import TypeSelector from "./TypeSelector.svelte"
-  import DataViewer from "./DataViewer.svelte"
+  import StatsOverview from "$lib/components/relay-dashboard/StatsOverview.svelte"
+  import TypeSelector from "$lib/components/relay-dashboard/TypeSelector.svelte"
+  import DataViewer from "$lib/components/relay-dashboard/DataViewer.svelte"
 
   let stats: any = null
   let selectedType: string | null = null

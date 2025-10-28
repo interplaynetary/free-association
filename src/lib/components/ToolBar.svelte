@@ -1,16 +1,21 @@
 <script lang="ts">
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { userTree } from '$lib/state/core.svelte';
-	import { findNodeById, addChild, calculateNodePoints } from '$lib/commons/v5/protocol';
+	// V5: Import from v5 stores
+	import { 
+		myRecognitionTreeStore as userTree,
+		myCapacitySlotsStore,
+		networkCommitments,
+		getNetworkCommitmentsRecord
+	} from '$lib/commons/v5/stores.svelte';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/commons/v5/protocol';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	import { userCapacities, mutualContributors, userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/commons/v5/schemas';
-	import { collectiveForest } from '$lib/collective-tree.svelte';
+	import { collectiveForest } from '$lib/commons/v5/collective/collective-tree.svelte';
 	
 	// V5: Wrap Commitment with id for collection storage
 	type CommitmentWithId = Commitment & { id: string };
@@ -32,6 +37,39 @@
 		getContrastTextColor
 	} from '$lib/utils/colorUtils';
 	import { t } from '$lib/translations';
+
+	// V5: Create derived stores for backward compatibility
+	const userCapacities = derived([myCapacitySlotsStore], ([$slots]) => {
+		// V5: Convert slots array to a collection (for compatibility)
+		// Each slot becomes a commitment with capacity_slots
+		const collection: CapacitiesCollection = {};
+		if ($slots) {
+			$slots.forEach(slot => {
+				const commitment: CommitmentWithId = {
+					id: slot.id,
+					capacity_slots: [slot],
+					need_slots: [],
+					timestamp: Date.now(),
+					itcStamp: { id: 0, event: 0 }  // Placeholder ITC stamp
+				};
+				collection[slot.id] = commitment;
+			});
+		}
+		return collection;
+	});
+
+	// V5: Compute mutual contributors from tree
+	const mutualContributors = derived([userTree], ([$tree]) => {
+		if (!$tree) return [];
+		return getAllContributorsFromTree($tree);
+	});
+
+	// V5: Network capacities from commitments
+	const userNetworkCapacitiesWithSlotQuantities = derived([networkCommitments], ([$networkCommitments]) => {
+		// V5: Return all network commitments as-is (they have capacity_slots)
+		const allCommitments = getNetworkCommitmentsRecord();
+		return allCommitments;
+	});
 
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
@@ -544,66 +582,72 @@
 		if (!alias || !pub) throw new Error('No user logged in');
 
 		const todayString = today(getLocalTimeZone()).toString();
+		const slotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		
+		// V5: Create a proper Commitment structure
 		return {
 			id: crypto.randomUUID(),
-			name: '',
-			emoji: '',
-			unit: '',
-			description: '',
-			max_natural_div: 1,
-			max_percentage_div: 1.0,
-			hidden_until_request_accepted: false,
-		owner_id: pub,
-		filter_rule: null,
-		members: [pub], // Default to current user as the only member
-		capacity_slots: [  // V5: Use capacity_slots with required fields only
-			{
-				id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-				name: '',  // V5: Required field
-				need_type_id: 'default',  // V5: Required field
-				quantity: 1,
-				location_type: 'Undefined',
-				start_date: todayString,
-				end_date: null,
-				time_zone: getLocalTimeZone(),
-				recurrence: 'daily',  // V5: lowercase enum value
-				// Optional fields
-				latitude: undefined,
-				longitude: undefined,
-				street_address: undefined,
-				city: undefined,
-				state_province: undefined,
-				postal_code: undefined,
-				country: undefined
-			}
-		]
+			timestamp: Date.now(),
+			itcStamp: { id: 0, event: 0 },  // Placeholder ITC stamp
+			capacity_slots: [  // V5: Metadata lives on the slot, not the commitment
+				{
+					id: slotId,
+					name: '',  // V5: Required field (user will fill this in)
+					need_type_id: 'default',  // V5: Required field
+					quantity: 1,
+					emoji: '',
+					unit: '',
+					description: '',
+					max_natural_div: 1,
+					max_percentage_div: 1.0,
+					hidden_until_request_accepted: false,
+					filter_rule: null,
+					location_type: 'Undefined',
+					start_date: todayString,
+					end_date: null,
+					time_zone: getLocalTimeZone(),
+					recurrence: 'daily',  // V5: lowercase enum value
+					// Optional fields
+					latitude: undefined,
+					longitude: undefined,
+					street_address: undefined,
+					city: undefined,
+					state_province: undefined,
+					postal_code: undefined,
+					country: undefined
+				}
+			],
+			need_slots: []
 		};
 	}
 
-	// Add capacity to the store - following exact pattern from Capacities component
+	// Add capacity to the store - V5: Add slot to myCapacitySlotsStore
 	function addCapacity(capacity: ProviderCapacity) {
 		const alias = $userAlias;
 		const pub = $userPub;
 		if (!alias || !pub) return false;
 
 		try {
-			// Create a deep clone of current capacities
-			const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
-
-			// Create a plain object copy of the capacity
-			const plainCapacity = { ...capacity };
-
-			// Add capacity to the collection using the protocol function
-			addCapacityToCollection(newCapacities, plainCapacity);
-
-			// Update store (Gun handles timestamps natively now)
-			userCapacities.set(newCapacities);
-
-			// Add to highlighted capacities using global state
-			globalState.highlightCapacity(capacity.id);
-
-			console.log('[TOOLBAR] Successfully added new capacity:', capacity.id);
-			return true;
+			// V5: Get current slots and add the new one
+			const currentSlots = get(myCapacitySlotsStore) || [];
+			
+			// Extract the first capacity slot from the commitment (v5 structure)
+			if (capacity.capacity_slots && capacity.capacity_slots.length > 0) {
+				const newSlot = capacity.capacity_slots[0];
+				const updatedSlots = [...currentSlots, newSlot];
+				
+				// Update v5 store (Holster auto-persists)
+				myCapacitySlotsStore.set(updatedSlots);
+				
+				// Add to highlighted capacities using global state
+				globalState.highlightCapacity(capacity.id);
+				
+				console.log('[TOOLBAR] Successfully added new capacity slot:', capacity.id);
+				return true;
+			} else {
+				console.error('[TOOLBAR] Capacity has no capacity_slots');
+				return false;
+			}
 		} catch (error) {
 			console.error('[TOOLBAR] Error adding capacity:', error);
 			return false;

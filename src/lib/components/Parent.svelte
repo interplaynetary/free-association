@@ -2,7 +2,11 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	import { userTree, isLoadingTree } from '$lib/state/core.svelte';
+	// V5: Import from v5 stores
+	import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
+	import { writable } from 'svelte/store';
+	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
+	const isLoadingTree = writable(false);
 	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode } from '$lib/commons/v5/schemas';

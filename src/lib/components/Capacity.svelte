@@ -15,7 +15,8 @@
 	import { globalState } from '$lib/global.svelte';
 	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
 	import { t } from '$lib/translations';
-	import { userPub } from '$lib/state/gun.svelte';
+	// V5: Import from auth.svelte (already v5/Holster-only)
+	import { userPub } from '$lib/state/auth.svelte';
 	
 	// V5 Pure Types - No Backward Compatibility
 	type CommitmentWithId = Commitment & { id: string };

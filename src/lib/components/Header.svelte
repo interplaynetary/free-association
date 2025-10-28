@@ -5,39 +5,23 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
+	// V5: Import from auth.svelte (already v5/Holster-only)
 	import {
-		userAlias as gunUserAlias,
-		userPub as gunUserPub,
-		login as gunLogin,
-		signup as gunSignup,
-		signout as gunSignout,
-		isAuthenticating as gunIsAuthenticating,
-		changePassword as gunChangePassword
-	} from '$lib/state/gun.svelte';
-	import {
-		holsterUserAlias,
-		holsterUserPub,
-		login as holsterLogin,
-		signup as holsterSignup,
-		signout as holsterSignout,
-		isHolsterAuthenticating,
-		changePassword as holsterChangePassword
-	} from '$lib/state/holster.svelte';
-	import { USE_HOLSTER_AUTH, USE_HOLSTER_TREE } from '$lib/config';
+		userAlias,
+		userPub,
+		login,
+		signup,
+		signout,
+		isAuthenticating,
+		changePassword
+	} from '$lib/state/auth.svelte';
 	// Track tree persistence state
 	let isTreePersisting = $state(false);
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import { t } from '$lib/translations';
 
-	// Conditionally use Gun or Holster based on feature flag
-	const userAlias = USE_HOLSTER_AUTH ? holsterUserAlias : gunUserAlias;
-	const userPub = USE_HOLSTER_AUTH ? holsterUserPub : gunUserPub;
-	const isAuthenticating = USE_HOLSTER_AUTH ? isHolsterAuthenticating : gunIsAuthenticating;
-	const login = USE_HOLSTER_AUTH ? holsterLogin : gunLogin;
-	const signup = USE_HOLSTER_AUTH ? holsterSignup : gunSignup;
-	const signout = USE_HOLSTER_AUTH ? holsterSignout : gunSignout;
-	const changePassword = USE_HOLSTER_AUTH ? holsterChangePassword : gunChangePassword;
-	import { userTree } from '$lib/state/core.svelte';
+	// V5: Import from v5 stores
+	import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
 	import { findNodeById } from '$lib/commons/v5/protocol';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/commons/v5/schemas';
@@ -248,21 +232,8 @@
 
 	// Check auth status and show login automatically
 	onMount(() => {
-		// Set up persistence status checking for tree holster
-		let persistenceInterval: number | null = null;
-
-		if (browser && USE_HOLSTER_TREE) {
-			const checkPersistence = async () => {
-				try {
-					const { isTreePersisting: checkFn } = await import('$lib/state/tree-holster.svelte');
-					isTreePersisting = checkFn();
-				} catch (err) {
-					console.error('[HEADER] Error checking tree persistence:', err);
-				}
-			};
-
-			persistenceInterval = setInterval(checkPersistence, 100) as any;
-		}
+		// V5: Holster auto-persists, no need for manual persistence checking
+		// isTreePersisting state is maintained for UI purposes but doesn't need polling
 
 		// Add click/touch outside handler
 		function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -331,9 +302,7 @@
 			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('touchstart', handleClickOutside);
 			clearLoginPanelTimer();
-			if (persistenceInterval) {
-				clearInterval(persistenceInterval);
-			}
+			// V5: No persistence interval to clean up (Holster auto-persists)
 		};
 	});
 
