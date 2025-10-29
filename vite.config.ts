@@ -4,26 +4,11 @@ import { defineConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// GUN module exclusion function for text-encoding
-const moduleExclude = (match: string): Plugin => {
-	const m = (id: string): boolean => id.indexOf(match) > -1;
-	return {
-		name: `exclude-${match}`,
-		resolveId(id: string) {
-			if (m(id)) return id;
-		},
-		load(id: string) {
-			if (m(id)) return `export default {}`;
-		}
-	};
-};
-
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
-		moduleExclude('text-encoding'),
 		VitePWA({
 			strategies: 'injectManifest',
 			srcDir: 'src',
@@ -79,25 +64,6 @@ export default defineConfig({
 	// Service worker configuration
 	worker: {
 		format: 'es'
-	},
-	optimizeDeps: {
-		include: [
-			'gun',
-			//'gun/gun',
-			'gun/sea',
-			'gun/sea.js',
-			'gun/axe',
-			'gun/lib/then',
-			'gun/lib/webrtc',
-			'gun/lib/radix',
-			'gun/lib/radisk',
-			'gun/lib/store',
-			'gun/lib/rindexed',
-			'gun/lib/yson.js'
-		],
-		esbuildOptions: {
-			target: 'esnext'
-		}
 	},
 	// Vitest configuration
 	test: {

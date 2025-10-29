@@ -24,7 +24,9 @@ import {
 	myRecognitionTreeStore as userTree,
 	myRecognitionWeights,
 	myCapacitySlotsStore,
-	myNeedSlotsStore
+	myNeedSlotsStore,
+	setMyCapacitySlots,
+	setMyNeedSlots
 } from '$lib/commons/v5/stores.svelte';
 import { userContacts } from '$lib/state/users.svelte';
 
@@ -202,14 +204,14 @@ export async function importUserState(
 		// V5: Import capacity slots (Holster auto-persists)
 		if (!options.skipCapacitySlots && importData.data.capacity_slots) {
 			console.log('[USER-STATE-IMPORT] Importing capacity slots...');
-			myCapacitySlotsStore.set(importData.data.capacity_slots);
+			setMyCapacitySlots(importData.data.capacity_slots);
 			console.log('[USER-STATE-IMPORT] ✓ Capacity slots imported (Holster auto-persisting)');
 		}
 
 		// V5: Import need slots (Holster auto-persists)
 		if (!options.skipNeedSlots && importData.data.need_slots) {
 			console.log('[USER-STATE-IMPORT] Importing need slots...');
-			myNeedSlotsStore.set(importData.data.need_slots);
+			setMyNeedSlots(importData.data.need_slots);
 			console.log('[USER-STATE-IMPORT] ✓ Need slots imported (Holster auto-persisting)');
 		}
 

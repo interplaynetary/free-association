@@ -55,7 +55,7 @@ import {
 	applyCapacityFilter,
 	Rules,
 	type FilterContext
-} from '$lib/filters';
+} from '$lib/utils/filters';
 
 // Slot matching utilities (v5 - multi-dimensional with hierarchical availability windows)
 import {

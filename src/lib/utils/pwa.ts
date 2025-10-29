@@ -58,29 +58,48 @@ export function registerServiceWorker() {
  * Show update prompt to user
  */
 function showUpdatePrompt() {
-	toast(
-		(t: { id: string }) => {
-			return `
-				<div style="display: flex; flex-direction: column; gap: 8px;">
-					<div style="font-weight: 600;">New Version Available</div>
-					<div style="font-size: 14px; color: #666;">A new version of Playnet is ready to install.</div>
-					<div style="display: flex; gap: 8px; margin-top: 8px;">
-						<button 
-							onclick="window.pwaUpdate()"
-							style="padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;"
-						>
-							Update Now
-						</button>
-						<button 
-							onclick="window.pwaDismiss(${t.id})"
-							style="padding: 8px 16px; background: #f3f4f6; color: #374151; border: none; border-radius: 6px; cursor: pointer;"
-						>
-							Later
-						</button>
-					</div>
-				</div>
-			`;
-		},
+	let currentToastId: string;
+	
+	// Create a container for the custom toast UI
+	const createToastContent = () => {
+		const container = document.createElement('div');
+		container.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+		container.innerHTML = `
+			<div style="font-weight: 600;">New Version Available</div>
+			<div style="font-size: 14px; color: #666;">A new version of Playnet is ready to install.</div>
+			<div style="display: flex; gap: 8px; margin-top: 8px;">
+				<button 
+					id="pwa-update-btn"
+					style="padding: 8px 16px; background: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;"
+				>
+					Update Now
+				</button>
+				<button 
+					id="pwa-dismiss-btn"
+					style="padding: 8px 16px; background: #f3f4f6; color: #374151; border: none; border-radius: 6px; cursor: pointer;"
+				>
+					Later
+				</button>
+			</div>
+		`;
+		
+		// Attach event listeners
+		setTimeout(() => {
+			container.querySelector('#pwa-update-btn')?.addEventListener('click', () => {
+				updateServiceWorker();
+				if (currentToastId) toast.dismiss(currentToastId);
+			});
+			container.querySelector('#pwa-dismiss-btn')?.addEventListener('click', () => {
+				if (currentToastId) toast.dismiss(currentToastId);
+			});
+		}, 0);
+		
+		return container;
+	};
+	
+	// Show toast with custom HTML element
+	currentToastId = toast.custom(
+		createToastContent() as any,
 		{
 			duration: Infinity,
 			position: 'top-center'

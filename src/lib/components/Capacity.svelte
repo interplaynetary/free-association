@@ -8,7 +8,7 @@
 	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
-	import { Rules } from '$lib/filters';
+	import { Rules } from '$lib/utils/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { createSubtreesDataProvider } from '$lib/utils/ui-providers.svelte';
