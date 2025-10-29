@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // GUN module exclusion function for text-encoding
 const moduleExclude = (match: string): Plugin => {
@@ -19,8 +20,31 @@ const moduleExclude = (match: string): Plugin => {
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), moduleExclude('text-encoding')],
-	// Required for Gun in service worker
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		moduleExclude('text-encoding'),
+		VitePWA({
+			strategies: 'injectManifest',
+			srcDir: 'src',
+			filename: 'service-worker.ts',
+			injectManifest: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
+			},
+			manifest: false, // We'll use the existing manifest.json
+			devOptions: {
+				enabled: true,
+				type: 'module',
+				navigateFallback: 'index.html'
+			},
+			workbox: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+				cleanupOutdatedCaches: true,
+				clientsClaim: true,
+				skipWaiting: true
+			}
+		})
+	],
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
 	},
@@ -56,8 +80,7 @@ export default defineConfig({
 	},
 	// Service worker configuration
 	worker: {
-		format: 'es',
-		plugins: () => [tailwindcss(), moduleExclude('text-encoding')]
+		format: 'es'
 	},
 	optimizeDeps: {
 		include: [

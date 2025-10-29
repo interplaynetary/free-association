@@ -12,8 +12,7 @@ const config = {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
 		},
 		serviceWorker: {
-			register: true,
-			files: (filepath) => !/\.DS_Store/.test(filepath)
+			register: false // Using vite-plugin-pwa instead
 		}
 	},
 	extensions: ['.svelte', '.svx']
