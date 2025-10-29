@@ -12,6 +12,12 @@ export function registerServiceWorker() {
 		return;
 	}
 
+	// Only register in production or if service-worker.js exists
+	if (import.meta.env.DEV) {
+		console.log('Service Worker disabled in development mode');
+		return;
+	}
+
 	// Create a new Workbox instance
 	wb = new Workbox('/service-worker.js', {
 		scope: '/',

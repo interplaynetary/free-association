@@ -33,9 +33,7 @@ export default defineConfig({
 			},
 			manifest: false, // We'll use the existing manifest.json
 			devOptions: {
-				enabled: true,
-				type: 'module',
-				navigateFallback: 'index.html'
+				enabled: false // Disable in dev to avoid caching issues with HMR
 			},
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],

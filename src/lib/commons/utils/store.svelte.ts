@@ -40,6 +40,7 @@ import type { Writable, Readable } from 'svelte/store';
 import { holsterUser } from '$lib/commons/v5/holster.svelte';
 import * as z from 'zod';
 import { shouldPersist } from '$lib/utils/holsterTimestamp';
+import { fastExtractTimestamp, fastParse } from '$lib/utils/fastJsonParser';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -128,29 +129,36 @@ export function createStore<T extends z.ZodTypeAny>(
 	// Network Update Processing
 	// ────────────────────────────────────────────────────────────────
 	
-	function processNetworkUpdate(data: any) {
+	async function processNetworkUpdate(data: any) {
 		// Skip null/undefined/empty
 		if (!data) return;
 		
 		// Debug: ALWAYS log what we received to diagnose issues
 		console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 LOADING - Raw:`, typeof data, data);
 		
-		// Step 1: Parse JSON string
+		if (typeof data !== 'string') {
+			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Expected string, got ${typeof data}:`, data);
+			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  This is OLD FORMAT data! Run: await window.clearAllV5Stores()`);
+			return;
+		}
+		
+		// Step 1: Fast timestamp extraction (avoids full parse if data is stale)
+		const networkTimestamp = await fastExtractTimestamp(data, '_updatedAt').catch(() => null);
+		
+		// Early return if data is older than what we have
+		if (lastNetworkTimestamp && networkTimestamp && networkTimestamp <= lastNetworkTimestamp) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏭️  Stale data - skipping (network: ${networkTimestamp}, local: ${lastNetworkTimestamp})`);
+			return;
+		}
+		
+		// Step 2: Parse JSON string (only if timestamp check passed)
 		let parsedData: any;
 		try {
-			if (typeof data !== 'string') {
-				console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Expected string, got ${typeof data}:`, data);
-				console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  This is OLD FORMAT data! Run: await window.clearAllV5Stores()`);
-				return;
-			}
-			parsedData = JSON.parse(data);
+			parsedData = fastParse(data);
 		} catch (error) {
 			console.error(`[HOLSTER-STORE:${config.holsterPath}] ❌ JSON parse failed:`, error);
 			return;
 		}
-		
-		// Step 2: Extract timestamp
-		const networkTimestamp = parsedData._updatedAt;
 		
 		// Debug
 		if (config.holsterPath.includes('tree') || config.holsterPath.includes('commitment')) {
@@ -167,7 +175,7 @@ export function createStore<T extends z.ZodTypeAny>(
 		
 		// Step 4: Only update if different/newer
 		const current = get(store);
-		if (config.isEqual && current && config.isEqual(current, validation.data)) {
+		if (current && isEqual(current, validation.data)) {
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏭️  Data unchanged - skipping`);
 			return;
 		}
@@ -214,21 +222,20 @@ export function createStore<T extends z.ZodTypeAny>(
 			
 			// Queue updates during persistence
 			if (isPersisting) {
-				try {
-					// Try to extract timestamp to detect external updates
-					if (typeof data === 'string') {
-						const parsed = JSON.parse(data);
-						const networkTimestamp = parsed._updatedAt;
-						
-						// Only queue if different timestamp (external update)
-						if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
-							console.log(`[HOLSTER-STORE:${config.holsterPath}] External update during persistence - queueing`);
+				// Fast timestamp extraction without full parsing
+				if (typeof data === 'string') {
+					fastExtractTimestamp(data, '_updatedAt')
+						.then((networkTimestamp) => {
+							// Only queue if different timestamp (external update)
+							if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
+								console.log(`[HOLSTER-STORE:${config.holsterPath}] External update during persistence - queueing`);
+								queuedNetworkUpdate = data;
+							}
+						})
+						.catch(() => {
+							// If extraction fails, queue it anyway to be safe
 							queuedNetworkUpdate = data;
-						}
-					}
-				} catch {
-					// If parsing fails, queue it anyway to be safe
-					queuedNetworkUpdate = data;
+						});
 				}
 				return;
 			}

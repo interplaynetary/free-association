@@ -410,28 +410,28 @@
 			return;
 		}
 
-		// If we're clicking on the root node (index 0) and we're on the soul route:
-		// - If we're already at the root (path length 1), toggle the login panel
-		// - If we're deeper in the tree (path length > 1), navigate back to root
-		if (index === 0 && isSoulRoute) {
-			if (currentPathInfo.length === 1) {
-				// We're at the root node, toggle login panel
-				console.log('[DEBUG] At root, toggling login panel');
-				showLoginPanel = !showLoginPanel;
-				if (showLoginPanel) {
-					startLoginPanelTimer();
-				} else {
-					clearLoginPanelTimer();
-					isPanelClosing = false;
-				}
-				return;
+	// If we're clicking on the root node (index 0) and we're on the soul route:
+	// - If we're already at the root (path length 0 or 1), toggle the login panel
+	// - If we're deeper in the tree (path length > 1), navigate back to root
+	if (index === 0 && isSoulRoute) {
+		if (currentPathInfo.length <= 1) {
+			// We're at the root node or have no tree yet, toggle login panel
+			console.log('[DEBUG] At root, toggling login panel');
+			showLoginPanel = !showLoginPanel;
+			if (showLoginPanel) {
+				startLoginPanelTimer();
 			} else {
-				// We're deeper in the tree, navigate to root
-				console.log('[DEBUG] Navigating to root from deeper level');
-				globalState.navigateToPathIndex(index);
-				return;
+				clearLoginPanelTimer();
+				isPanelClosing = false;
 			}
+			return;
+		} else {
+			// We're deeper in the tree, navigate to root
+			console.log('[DEBUG] Navigating to root from deeper level');
+			globalState.navigateToPathIndex(index);
+			return;
 		}
+	}
 
 		console.log('[DEBUG] Navigating to path index:', index);
 		// Simply update the path using the globalState function

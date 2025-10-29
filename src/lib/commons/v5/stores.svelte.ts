@@ -1440,6 +1440,41 @@ export function enableAutoCommitmentComposition(): () => void {
 				return;
 			}
 			
+			// ✅ CRITICAL FIX: Check if commitment actually changed before calling set()
+			// This prevents infinite loop where loading triggers recompose triggers save triggers load...
+			const currentCommitment = get(myCommitmentStore);
+			if (currentCommitment) {
+				// Compare only the meaningful data fields, skip metadata (ITC, timestamp)
+				// Metadata always changes, but we only care if recognition/slots changed
+				try {
+					const currentData = {
+						need_slots: currentCommitment.need_slots,
+						capacity_slots: currentCommitment.capacity_slots,
+						global_recognition_weights: currentCommitment.global_recognition_weights,
+						global_mr_values: currentCommitment.global_mr_values,
+						multi_dimensional_damping: currentCommitment.multi_dimensional_damping
+					};
+					const newData = {
+						need_slots: newCommitment.need_slots,
+						capacity_slots: newCommitment.capacity_slots,
+						global_recognition_weights: newCommitment.global_recognition_weights,
+						global_mr_values: newCommitment.global_mr_values,
+						multi_dimensional_damping: newCommitment.multi_dimensional_damping
+					};
+					
+					const currentJson = JSON.stringify(currentData);
+					const newJson = JSON.stringify(newData);
+					
+					if (currentJson === newJson) {
+						console.log(`[AUTO-COMPOSE] ⏭️  Skipped: commitment data unchanged (${reason})`);
+						isRecomposing = false;
+						return;
+					}
+				} catch (error) {
+					console.warn(`[AUTO-COMPOSE] ⚠️  Equality check failed, proceeding with update:`, error);
+				}
+			}
+			
 			// Apply the update
 			// NOTE: This preserves existing slots and only updates recognition data
 			myCommitmentStore.set(newCommitment);

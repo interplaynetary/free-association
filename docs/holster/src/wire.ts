@@ -155,7 +155,9 @@ const safeJSONParse = (
     if (typeof data === "string" && data.length > maxSize) {
       throw new Error("Message too large")
     }
-    return {success: true, data: JSON.parse(data.toString())}
+    // Fast JSON parsing with size check
+    const jsonString = data.toString();
+    return {success: true, data: JSON.parse(jsonString)}
   } catch (error: any) {
     return {success: false, error: error.message}
   }
