@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ReactiveP2PDecider } from '../decider/decider.svelte';
+	import { ReactiveP2PDecider } from '../commons/decider/decider.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	
 	// Props

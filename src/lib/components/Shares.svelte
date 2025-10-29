@@ -1,21 +1,27 @@
 <script lang="ts">
-	import { userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
+	// V5: Import commitments from v5 stores
+	import { getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
-	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/commons/v5/protocol';
 	import { t } from '$lib/translations';
 	import type {
 		Node,
 		RootNode,
 		NonRootNode,
-		Capacity,
-		CapacitiesCollection,
 		ShareMap,
-		ProviderCapacity,
-		RecipientCapacity,
-		BaseCapacity
-	} from '$lib/schema';
+		Commitment,
+		AvailabilitySlot,
+		NeedSlot
+	} from '$lib/commons/v5/schemas';
+	
+	// V5: Use Commitment types directly (already have capacity_slots and need_slots)
+	type Capacity = Commitment;
+	type ProviderCapacity = Commitment;  // V5: Already has capacity_slots
+	type RecipientCapacity = Commitment;  // V5: Already has need_slots
+	type BaseCapacity = Commitment;
+	type CapacitiesCollection = Record<string, Commitment>;
 
 	async function handleProviderClick(provider: string) {
 		// This function will be implemented later to navigate to the provider
@@ -39,11 +45,13 @@
 
 	// Base shares data - ALL available network capacities (for discovery and desire expression)
 	let allShares = $derived(() => {
-		if (!$userNetworkCapacitiesWithSlotQuantities) {
+		// V5: Get all commitments
+		const allCommitments = getAllCommitmentsRecord();
+		if (!allCommitments) {
 			return [];
 		}
 
-		const sharesList = Object.entries($userNetworkCapacitiesWithSlotQuantities).map(
+		const sharesList = Object.entries(allCommitments).map(
 			([capacityId, capacity]) =>
 				({
 					...capacity,
@@ -54,48 +62,6 @@
 		// Show ALL capacities with names - don't filter by allocation status
 		// This allows users to discover and express desire for unallocated capacities
 		return sharesList.filter((share) => share.name && share.name.trim() !== '');
-	});
-
-	// Cache for provider names
-	let providerNames = $state<Record<string, string>>({});
-
-	// Load provider names asynchronously
-	$effect(() => {
-		void (async () => {
-			const uniqueProviders = [...new Set(allShares().map((share) => share.provider_id))];
-
-			for (const providerId of uniqueProviders) {
-				if (providerId && !providerNames[providerId]) {
-					try {
-						const name = await getUserName(providerId);
-						if (name) {
-							providerNames = {
-								...providerNames,
-								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to get provider name:', providerId, error);
-					}
-				}
-			}
-		})();
-	});
-
-	// Get providers with resolved names
-	let providersWithNames = $derived(() => {
-		const providerMap = new Map<string, string>();
-
-		allShares().forEach((share) => {
-			if (share.provider_id && !providerMap.has(share.provider_id)) {
-				const displayName = providerNames[share.provider_id] || share.provider_id;
-				providerMap.set(share.provider_id, displayName);
-			}
-		});
-
-		return Array.from(providerMap.entries())
-			.map(([id, name]) => ({ id, name }))
-			.sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	// Filtered and sorted shares
@@ -147,7 +113,6 @@
 	let stats = $derived(() => ({
 		total: allShares().length,
 		filtered: filteredShares().length,
-		providers: providersWithNames().length
 	}));
 
 	function clearFilters() {

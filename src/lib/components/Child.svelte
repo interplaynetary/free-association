@@ -10,15 +10,18 @@
 	import { t } from '$lib/translations';
 
 	// Define interface for node data
+	// V5 NOTE: This interface uses string[] for contributors/antiContributors for visualization purposes.
+	// Parent.svelte extracts contributor IDs from the v5 Contributor[] arrays (which contain {id, points})
+	// before passing to this component. This keeps the visualization component simple and focused on rendering.
 	interface NodeData {
 		id: string;
 		name: string;
 		points: number;
-		contributors: string[];
-		antiContributors?: string[];
+		contributors: string[];         // Contributor IDs for display (extracted from v5 Contributor[])
+		antiContributors?: string[];    // Anti-contributor IDs for display (extracted from v5 Contributor[])
 		fulfillment?: number;
-		manualFulfillment?: number; // Add manual fulfillment to interface
-		hasChildren?: boolean; // Flag to indicate if this node has children
+		manualFulfillment?: number;     // Manual fulfillment override
+		hasChildren?: boolean;          // Flag to indicate if this node has children
 	}
 
 	// Define interface for node dimensions
@@ -59,18 +62,14 @@
 	// shouldEdit prop is no longer used for auto-edit functionality
 
 	// Editing state - now synced with global state
-	let isEditing = $state(false);
+	let isEditing = $derived(globalState.editMode && globalState.editingNodeId === node.id);
 	let editValue = $state('');
 	let editInput: HTMLInputElement | null = $state(null);
 
-	// Sync local editing state with global state
+	// Reset edit value when node is being edited
 	$effect(() => {
-		const isThisNodeBeingEdited = globalState.editMode && globalState.editingNodeId === node.id;
-		if (isThisNodeBeingEdited !== isEditing) {
-			isEditing = isThisNodeBeingEdited;
-			if (isEditing) {
-				editValue = node.name || '';
-			}
+		if (isEditing) {
+			editValue = node.name || '';
 		}
 	});
 
@@ -565,10 +564,6 @@
 		console.log('[DEBUG CHILD] $effect triggered, isEditing:', isEditing, 'editInput:', editInput);
 
 		if (isEditing) {
-			// Add global event listeners for both mouse and touch interactions outside
-			document.addEventListener('mousedown', handleOutsideInteraction);
-			document.addEventListener('touchstart', handleOutsideInteraction);
-
 			// iOS-compatible focus handling with user interaction detection
 			const focusInput = () => {
 				if (editInput) {
@@ -631,36 +626,19 @@
 				// Input not ready, wait for DOM update
 				setTimeout(focusInput, 150);
 			}
-		} else {
-			// Remove the event listeners when not editing
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
 		}
-
-		// Clean up function
-		return () => {
-			document.removeEventListener('mousedown', handleOutsideInteraction);
-			document.removeEventListener('touchstart', handleOutsideInteraction);
-		};
-	});
-
-	// Set up global listeners for slider dragging state
-	$effect(() => {
-		// Always add these listeners to handle slider drag state cleanup
-		document.addEventListener('mouseup', handleGlobalMouseUp);
-		document.addEventListener('touchend', handleGlobalTouchEnd);
-		document.addEventListener('touchcancel', handleGlobalTouchEnd);
-
-		// Clean up function
-		return () => {
-			document.removeEventListener('mouseup', handleGlobalMouseUp);
-			document.removeEventListener('touchend', handleGlobalTouchEnd);
-			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
-		};
 	});
 
 	// Auto-edit functionality removed - users must manually tap to edit
 </script>
+
+<svelte:document
+	onmousedown={isEditing ? handleOutsideInteraction : undefined}
+	onmouseup={handleGlobalMouseUp}
+	ontouchstart={isEditing ? handleOutsideInteraction : undefined}
+	ontouchend={handleGlobalTouchEnd}
+	ontouchcancel={handleGlobalTouchEnd}
+/>
 
 <div
 	class="treemap-node"

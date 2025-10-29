@@ -1,5 +1,5 @@
 import { writable, get, type Writable } from 'svelte/store';
-import { holster, holsterUser } from './holster.svelte';
+import { holster, holsterUser } from '$lib/commons/v5/holster.svelte';
 
 export type MessageStatus = 'pending' | 'sent' | 'failed';
 

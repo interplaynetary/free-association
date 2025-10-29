@@ -1,14 +1,16 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
-import { findNodeById, isContribution, reorderNode, wouldCreateCycle } from '$lib/protocol';
+// V5: Import from v5 protocol and stores
+import { 
+	findNodeById, 
+	isContribution, 
+	reorderNode, 
+	wouldCreateCycle,
+	createRootNode
+} from '$lib/commons/v5/protocol';
 import { userPub } from '$lib/state/auth.svelte';
-import { userTree } from '$lib/state/core.svelte';
-
-// 🚨 CRITICAL FIX: Import subscriptions to initialize store persistence
-// This sets up the userCapacities.subscribe() and other store subscriptions
-// that trigger persistence functions when data changes
-import '$lib/state/subscriptions.svelte';
+import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
@@ -61,12 +63,14 @@ export const globalState = $state({
 	currentView: 'tree' as 'tree' | 'map' | 'inventory',
 
 	// Inventory search and filter state (shared between toolbar and components)
+	// V5: Works with Commitments (which contain capacity_slots arrays)
 	inventorySearchQuery: '',
 	inventorySelectedProvider: 'all',
 	inventorySortBy: 'name' as 'name' | 'allocated_slots' | 'total_slots' | 'provider',
 	inventorySortDirection: 'asc' as 'asc' | 'desc',
 
 	// Unified highlighting state for newly created items
+	// V5: capacityId = pubKey (for Commitment), slotId = AvailabilitySlot.id
 	highlightedCapacities: new Set<string>(),
 	highlightedSlots: new Set<string>(),
 
@@ -163,8 +167,10 @@ export const globalState = $state({
 		return path.length > 1;
 	},
 	// Reset all state (logout)
+	// V5: Create empty root node instead of null
 	resetState: () => {
-		userTree.set(null);
+		const emptyTree = createRootNode('root', 'My Values');
+		userTree.set(emptyTree);
 		currentPath.set([]);
 		globalState.editMode = false;
 		globalState.editingNodeId = '';
@@ -567,6 +573,11 @@ export const globalState = $state({
 
 	/**
 	 * Unified Highlighting System
+	 * 
+	 * V5 Architecture:
+	 * - Capacity highlighting: Works with Commitment IDs (pubKeys)
+	 * - Slot highlighting: Works with AvailabilitySlot IDs or NeedSlot IDs
+	 * - Generic implementation: Works with any data-*-id attributes
 	 */
 
 	// Generic scroll function for any element with data attribute
@@ -602,11 +613,13 @@ export const globalState = $state({
 	},
 
 	// Scroll to a specific capacity element
+	// V5: capacityId is the user's pubKey (Commitments are indexed by pubKey)
 	scrollToCapacity: (capacityId: string) => {
 		globalState.scrollToElement(`[data-capacity-id="${capacityId}"]`, 'capacity');
 	},
 
 	// Scroll to a specific slot element
+	// V5: slotId is the AvailabilitySlot.id or NeedSlot.id
 	scrollToSlot: (slotId: string) => {
 		globalState.scrollToElement(`[data-slot-id="${slotId}"]`, 'slot');
 	},
@@ -677,8 +690,4 @@ export const globalState = $state({
 	setView: (view: 'tree' | 'map' | 'inventory') => {
 		globalState.currentView = view;
 	}
-
-	/**
-	 * Map fullscreen is now handled by FullScreenControl component
-	 */
 });

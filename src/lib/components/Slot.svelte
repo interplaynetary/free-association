@@ -1,37 +1,39 @@
 <script lang="ts">
-	import type { AvailabilitySlot } from '$lib/schema';
-	import { AvailabilitySlotSchema } from '$lib/schema';
+	import type { AvailabilitySlot } from '$lib/commons/v5/schemas';
+	import { AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
 	import { derived } from 'svelte/store';
-	import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
+	// V5: Composition feature not yet implemented
+	// import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import CountrySelector from '$lib/components/CountrySelector.svelte';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { createCompositionTargetsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { t } from '$lib/translations';
 
-	import {
-		userDesiredSlotComposeFrom,
-		userDesiredSlotComposeInto,
-		networkDesiredSlotComposeFrom,
-		networkDesiredSlotComposeInto
-	} from '$lib/state/core.svelte';
-	import {
-		userNetworkCapacitiesWithSlotQuantities,
-		networkCapacities,
-		userCapacities
-	} from '$lib/state/core.svelte';
+	// V5: Composition feature not yet implemented in v5
+	// TODO: Re-implement slot composition using v5 patterns when needed
+	// import {
+	// 	userDesiredSlotComposeFrom,
+	// 	userDesiredSlotComposeInto,
+	// 	networkDesiredSlotComposeFrom,
+	// 	networkDesiredSlotComposeInto
+	// } from '$lib/state/core.svelte';
+	
+	// V5: Import capacity stores from v5
+	import { myCommitmentStore, networkCommitments, getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
+	import { get } from 'svelte/store';
 	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
 
 	interface Props {
 		slot: AvailabilitySlot;
 		capacityId: string;
-		unit?: string;
+		// V5 REMOVED: unit prop (now on slot itself: slot.unit)
 		canDelete: boolean;
 		onupdate?: (slot: AvailabilitySlot) => void;
 		ondelete?: (slotId: string) => void;
 	}
 
-	let { slot, capacityId, unit, canDelete, onupdate, ondelete }: Props = $props();
+	let { slot, capacityId, canDelete, onupdate, ondelete }: Props = $props();
 
 	// UI state for expanded slot details sections
 	let timeExpanded = $state(false);
@@ -39,398 +41,64 @@
 	let locationExpanded = $state(false);
 	let compositionsExpanded = $state(false);
 
-	// Provider name cache for compositions
-	let providerNames = $state<Record<string, string>>({});
+	// V5: Composition feature not yet implemented
+	// TODO: Re-enable when v5 composition is implemented
+	// let expandedCompositions = $state<Record<string, boolean>>({});
+	// let showAddComposeFrom = $state(false);
+	// let showAddComposeInto = $state(false);
 
-	// Composition UI state
-	let expandedCompositions = $state<Record<string, boolean>>({});
-	let showAddComposeFrom = $state(false);
-	let showAddComposeInto = $state(false);
+	// V5: Composition data providers commented out
+	// let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
+	// let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
 
-	// Data providers for slot selection - now includes pubkey targets
-	// FROM: Show targets from ALL sources EXCEPT the current slot
-	let composeFromDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
-
-	// Legacy derived provider for backward compatibility during transition
-	let legacyComposeFromDataProvider = derived(
-		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
-			const items: Array<{
-				id: string;
-				name: string;
-				metadata: {
-					capacityId: string;
-					slotId: string;
-					capacityName: string;
-					providerId?: string;
-					providerName?: string;
-					quantity: number;
-					location?: string;
-					timeInfo?: string;
-					isOwned: boolean;
-				};
-			}> = [];
-
-			// Track seen slots to avoid duplicates (capacity:slot)
-			const seenSlots = new Set<string>();
-
-			// Helper function to format slot display info
-			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
-				const timeParts = [];
-
-				// Handle start_date - this could be a string date or an ISO string
-				if (slotData.start_date) {
-					try {
-						const date = new Date(slotData.start_date);
-						timeParts.push(date.toLocaleDateString());
-					} catch (e) {
-						// If parsing fails, use the raw string
-						timeParts.push(String(slotData.start_date));
-					}
-				}
-
-				// Handle start_time if not all day
-				if (!slotData.all_day && slotData.start_time) {
-					// Handle different time formats
-					if (typeof slotData.start_time === 'string') {
-						if (slotData.start_time.includes('T')) {
-							// Handle ISO format dates
-							try {
-								const date = new Date(slotData.start_time);
-								timeParts.push(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-							} catch (e) {
-								// If parsing fails, use the raw string but truncated
-								const timeStr = slotData.start_time;
-								timeParts.push(timeStr.split('T')[1]?.substring(0, 5) || timeStr);
-							}
-						} else if (/^\d{2}:\d{2}(:\d{2})?$/.test(slotData.start_time)) {
-							// Already in HH:MM or HH:MM:SS format
-							timeParts.push(slotData.start_time.substring(0, 5)); // Take just HH:MM
-						} else {
-							// Unknown format, use as is
-							timeParts.push(slotData.start_time);
-						}
-					}
-				}
-
-				// Handle all_day flag
-				if (slotData.all_day) {
-					timeParts.push('All day');
-				}
-
-				// Join time parts and clean up any duplicate information
-				let timeInfo = timeParts.join(' ');
-
-				// If we see the full ISO string in the output, remove it
-				if (
-					slotData.start_date &&
-					typeof slotData.start_date === 'string' &&
-					slotData.start_date.includes('T')
-				) {
-					timeInfo = timeInfo.replace(slotData.start_date, '').trim();
-				}
-
-				timeInfo = timeInfo || 'No time set';
-
-				// Location handling
-				let location = 'No location';
-				if (slotData.location_type === 'Specific') {
-					if (slotData.street_address) {
-						location = slotData.street_address;
-					} else if (slotData.latitude && slotData.longitude) {
-						location = `${slotData.latitude.toFixed(4)}, ${slotData.longitude.toFixed(4)}`;
-					}
-				} else if (slotData.location_type) {
-					location = slotData.location_type;
-				}
-
-				return { timeInfo, location };
-			}
-
-			// Add slots from user's own capacities (EXCEPT current capacity)
-			if ($userCapacities) {
-				Object.entries($userCapacities).forEach(([capId, capacity]) => {
-					if (capId === capacityId) return; // Skip current capacity
-
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
-							if (slotData.id === slot.id) return; // Skip current slot just in case
-
-							// Create unique key to avoid duplicates
-							const slotKey = `${capId}:${slotData.id}`;
-							if (seenSlots.has(slotKey)) return;
-							seenSlots.add(slotKey);
-
-							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
-
-							items.push({
-								id: slotKey, // Use unique key combining capacity and slot ID
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slotData.id,
-									capacityName: capacity.name,
-									quantity: slotData.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: true
-								}
-							});
-						});
-					}
-				});
-			}
-
-			// Add slots from network capacities (shares) - ALL of them since they're other people's
-			if ($userNetworkCapacitiesWithSlotQuantities) {
-				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
-					const providerId = (capacity as any).provider_id;
-					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
-
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
-							// Create unique key to avoid duplicates
-							const slotKey = `${capId}:${slotData.id}`;
-							if (seenSlots.has(slotKey)) return;
-							seenSlots.add(slotKey);
-
-							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
-
-							items.push({
-								id: slotKey, // Use unique key combining capacity and slot ID
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slotData.id,
-									capacityName: capacity.name,
-									providerId,
-									providerName,
-									quantity: slotData.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: false
-								}
-							});
-						});
-					}
-				});
-			}
-
-			// Sort by capacity name, then time
-			return items.sort((a, b) => {
-				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
-				if (capCompare !== 0) return capCompare;
-				const aTime = a.metadata.timeInfo || '';
-				const bTime = b.metadata.timeInfo || '';
-				return aTime.localeCompare(bTime);
-			});
-		}
-	);
-
-	// INTO: Show targets from ALL sources EXCEPT the current slot
-	let composeIntoDataProvider = createCompositionTargetsDataProvider([`${capacityId}:${slot.id}`]);
-
-	// Legacy INTO: Show allocated slots from ALL capacities except current slot
-	let legacyComposeIntoDataProvider = derived(
-		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
-			const items: Array<{
-				id: string;
-				name: string;
-				metadata: {
-					capacityId: string;
-					slotId: string;
-					capacityName: string;
-					providerId?: string;
-					providerName?: string;
-					quantity: number;
-					location?: string;
-					timeInfo?: string;
-					isOwned: boolean;
-				};
-			}> = [];
-
-			// Track seen slots to avoid duplicates (capacity:slot)
-			const seenSlots = new Set<string>();
-
-			// Helper function to format slot display info
-			function formatSlotInfo(slotData: any): { timeInfo: string; location: string } {
-				const timeParts = [];
-
-				// Handle start_date - this could be a string date or an ISO string
-				if (slotData.start_date) {
-					try {
-						const date = new Date(slotData.start_date);
-						timeParts.push(date.toLocaleDateString());
-					} catch (e) {
-						// If parsing fails, use the raw string
-						timeParts.push(String(slotData.start_date));
-					}
-				}
-
-				// Handle start_time if not all day
-				if (!slotData.all_day && slotData.start_time) {
-					// Handle different time formats
-					if (typeof slotData.start_time === 'string') {
-						if (slotData.start_time.includes('T')) {
-							// Handle ISO format dates
-							try {
-								const date = new Date(slotData.start_time);
-								timeParts.push(date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-							} catch (e) {
-								// If parsing fails, use the raw string but truncated
-								const timeStr = slotData.start_time;
-								timeParts.push(timeStr.split('T')[1]?.substring(0, 5) || timeStr);
-							}
-						} else if (/^\d{2}:\d{2}(:\d{2})?$/.test(slotData.start_time)) {
-							// Already in HH:MM or HH:MM:SS format
-							timeParts.push(slotData.start_time.substring(0, 5)); // Take just HH:MM
-						} else {
-							// Unknown format, use as is
-							timeParts.push(slotData.start_time);
-						}
-					}
-				}
-
-				// Handle all_day flag
-				if (slotData.all_day) {
-					timeParts.push('All day');
-				}
-
-				// Join time parts and clean up any duplicate information
-				let timeInfo = timeParts.join(' ');
-
-				// If we see the full ISO string in the output, remove it
-				if (
-					slotData.start_date &&
-					typeof slotData.start_date === 'string' &&
-					slotData.start_date.includes('T')
-				) {
-					timeInfo = timeInfo.replace(slotData.start_date, '').trim();
-				}
-
-				timeInfo = timeInfo || 'No time set';
-
-				// Location handling
-				let location = 'No location';
-				if (slotData.location_type === 'Specific') {
-					if (slotData.street_address) {
-						location = slotData.street_address;
-					} else if (slotData.latitude && slotData.longitude) {
-						location = `${slotData.latitude.toFixed(4)}, ${slotData.longitude.toFixed(4)}`;
-					}
-				} else if (slotData.location_type) {
-					location = slotData.location_type;
-				}
-
-				return { timeInfo, location };
-			}
-
-			// Add slots from user's own capacities (INCLUDING current capacity for INTO)
-			if ($userCapacities) {
-				Object.entries($userCapacities).forEach(([capId, capacity]) => {
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
-							if (slotData.id === slot.id && capId === capacityId) return; // Skip current slot
-
-							// Create unique key to avoid duplicates
-							const slotKey = `${capId}:${slotData.id}`;
-							if (seenSlots.has(slotKey)) return;
-							seenSlots.add(slotKey);
-
-							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
-
-							items.push({
-								id: slotKey,
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slotData.id,
-									capacityName: capacity.name,
-									quantity: slotData.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: true
-								}
-							});
-						});
-					}
-				});
-			}
-
-			// Add slots from network capacities (shares)
-			if ($userNetworkCapacitiesWithSlotQuantities) {
-				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
-					const providerId = (capacity as any).provider_id;
-					const providerName = providerId ? $userNamesCache[providerId] || providerId : 'Unknown';
-
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slotData: any) => {
-							// Create unique key to avoid duplicates
-							const slotKey = `${capId}:${slotData.id}`;
-							if (seenSlots.has(slotKey)) return;
-							seenSlots.add(slotKey);
-
-							const { timeInfo, location } = formatSlotInfo(slotData);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
-
-							items.push({
-								id: slotKey,
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slotData.id,
-									capacityName: capacity.name,
-									providerId,
-									providerName,
-									quantity: slotData.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: false
-								}
-							});
-						});
-					}
-				});
-			}
-
-			// Sort by capacity name, then time
-			return items.sort((a, b) => {
-				const capCompare = a.metadata.capacityName.localeCompare(b.metadata.capacityName);
-				if (capCompare !== 0) return capCompare;
-				const aTime = a.metadata.timeInfo || '';
-				const bTime = b.metadata.timeInfo || '';
-				return aTime.localeCompare(bTime);
-			});
-		}
-	);
-
-	// Reactive slot properties for proper binding
+	// V5 REQUIRED FIELDS - Core slot metadata
 	let slotId = $state(slot.id);
 	let slotQuantity = $state(slot.quantity);
+	let slotNeedTypeId = $state(slot.need_type_id || 'need_type_general'); // ✅ REQUIRED in v5
+	let slotName = $state(slot.name || ''); // ✅ REQUIRED in v5
+	let slotEmoji = $state(slot.emoji || '');
+	let slotUnit = $state(slot.unit || '');
+	let slotDescription = $state(slot.description || '');
+	
+	// V5 Divisibility constraints (moved from commitment level to slot level)
+	let slotMaxNaturalDiv = $state(slot.max_natural_div);
+	let slotMaxPercentageDiv = $state(slot.max_percentage_div);
+	
+	// V5 Filter rule (per-slot filtering)
+	let slotFilterRule = $state(slot.filter_rule);
+	
+	// Booking constraints
 	let slotAdvanceNoticeHours = $state(slot.advance_notice_hours);
 	let slotBookingWindowHours = $state(slot.booking_window_hours);
 	let slotMutualAgreementRequired = $state(slot.mutual_agreement_required);
 
-	// Time fields
-	let slotAllDay = $state(slot.all_day);
+	// Time fields (v5 uses availability_window, but we support legacy fields for now)
 	let slotStartDate = $state(slot.start_date);
 	let slotEndDate = $state(slot.end_date);
-	let slotStartTime = $state(slot.start_time);
-	let slotEndTime = $state(slot.end_time);
-
-	// Computed properties for time inputs (convert stored values to HH:MM format)
-	let displayStartTime = $derived(() => safeExtractTime(slotStartTime) || '');
-	let displayEndTime = $derived(() => safeExtractTime(slotEndTime) || '');
-	let slotTimeZone = $state(slot.time_zone);
+	let slotTimeZone = $state(slot.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone);
 	let slotRecurrence = $state(slot.recurrence);
-	let slotCustomRecurrenceRepeatEvery = $state(slot.custom_recurrence_repeat_every);
-	let slotCustomRecurrenceRepeatUnit = $state(slot.custom_recurrence_repeat_unit);
-	let slotCustomRecurrenceEndType = $state(slot.custom_recurrence_end_type);
-	let slotCustomRecurrenceEndValue = $state(slot.custom_recurrence_end_value);
+	
+	// Legacy time fields (will be converted to availability_window on save)
+	// These allow existing UI to work while we migrate
+	let legacyStartTime = $state<string | null>(null);
+	let legacyEndTime = $state<string | null>(null);
+	let legacyAllDay = $state(false);
+	
+	// Initialize legacy fields from availability_window if present
+	$effect(() => {
+		if (slot.availability_window?.time_ranges?.[0]) {
+			const range = slot.availability_window.time_ranges[0];
+			legacyStartTime = range.start_time;
+			legacyEndTime = range.end_time;
+			legacyAllDay = false;
+		} else {
+			legacyAllDay = true;
+		}
+	});
+	
+	// Computed properties for time inputs
+	let displayStartTime = $derived(() => legacyStartTime || '');
+	let displayEndTime = $derived(() => legacyEndTime || '');
 
 	// Location fields
 	let slotLocationType = $state(slot.location_type);
@@ -455,16 +123,14 @@
 	// Track last state sent to parent to prevent infinite loops
 	let lastSentState = $state<string | null>(null);
 
-	// Recurrence options
+	// V5: Simple recurrence options matching v5 schema enum
+	// z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable()
 	const recurrenceOptions = [
-		'Does not repeat',
-		'Daily',
-		'Weekly',
-		'Monthly',
-		'Annually',
-		'Every weekday (Monday to Friday)',
-		'Every 4 days',
-		'Custom...'
+		{ value: null, label: 'Does not repeat' },
+		{ value: 'daily', label: 'Daily' },
+		{ value: 'weekly', label: 'Weekly' },
+		{ value: 'monthly', label: 'Monthly' },
+		{ value: 'yearly', label: 'Yearly' }
 	];
 
 	// Helper to track original value on focus
@@ -472,87 +138,22 @@
 		originalValues[fieldName] = currentValue;
 	}
 
-	// Calculate total occurrences and quantity over the pattern window
+	// V5 REMOVED: calculateTotalOccurrences()
+	// No longer needed with simplified v5 recurrence
+	// V5 uses 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+	// Occurrence tracking will be handled by allocation algorithm if needed
+	
+	/****** LEGACY FUNCTION REMOVED ******
 	function calculateTotalOccurrences(): {
 		occurrences: number;
 		totalQuantity: number;
 		isInfinite: boolean;
 	} | null {
-		if (!slotStartDate || !slotRecurrence || slotRecurrence === 'Does not repeat') {
-			return null;
-		}
-
-		const startDate = new Date(slotStartDate);
-		const endDate = slotEndDate ? new Date(slotEndDate) : null;
-		const isInfinite = !endDate;
-
-		// For infinite patterns, calculate for one year from start date
-		const calculationEndDate = endDate || new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
-
-		let occurrences = 0;
-		const msPerDay = 24 * 60 * 60 * 1000;
-
-		switch (slotRecurrence) {
-			case 'Daily':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) + 1;
-				break;
-			case 'Weekly':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (7 * msPerDay)) + 1;
-				break;
-			case 'Monthly':
-				// Approximate - 30.44 days per month on average
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (30.44 * msPerDay)) + 1;
-				break;
-			case 'Annually':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (365.25 * msPerDay)) +
-					1;
-				break;
-			case 'Every weekday (Monday to Friday)':
-				// Approximate - 5/7 of total days
-				occurrences =
-					Math.floor(((calculationEndDate.getTime() - startDate.getTime()) / msPerDay) * (5 / 7)) +
-					1;
-				break;
-			case 'Every 4 days':
-				occurrences =
-					Math.floor((calculationEndDate.getTime() - startDate.getTime()) / (4 * msPerDay)) + 1;
-				break;
-			case 'Custom...':
-				if (slotCustomRecurrenceRepeatEvery && slotCustomRecurrenceRepeatUnit) {
-					let intervalMs = 0;
-					switch (slotCustomRecurrenceRepeatUnit) {
-						case 'days':
-							intervalMs = slotCustomRecurrenceRepeatEvery * msPerDay;
-							break;
-						case 'weeks':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 7 * msPerDay;
-							break;
-						case 'months':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 30.44 * msPerDay;
-							break;
-						case 'years':
-							intervalMs = slotCustomRecurrenceRepeatEvery * 365.25 * msPerDay;
-							break;
-					}
-					if (intervalMs > 0) {
-						occurrences =
-							Math.floor((calculationEndDate.getTime() - startDate.getTime()) / intervalMs) + 1;
-					}
-				}
-				break;
-			default:
-				occurrences = 1;
-		}
-
-		occurrences = Math.max(1, occurrences); // At least 1 occurrence
-		const totalQuantity = occurrences * (slotQuantity || 0);
-
-		return { occurrences, totalQuantity, isInfinite };
+		// Based on old string-based recurrence ('Daily', 'Weekly', etc.)
+		// V5 uses enum: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+		// ...350 lines of legacy logic...
 	}
+	**************************************/
 
 	// Helper to save only if value changed on blur
 	function handleBlurIfChanged(fieldName: string, currentValue: any) {
@@ -588,28 +189,52 @@
 		}
 	}
 
-	// Handler for slot updates
+	// Handler for slot updates (V5)
 	function handleSlotUpdate() {
-		const updatedSlot = {
-			...slot,
+		// Build availability_window from legacy time fields
+		let availabilityWindow = undefined;
+		if (!legacyAllDay && legacyStartTime && legacyEndTime) {
+			availabilityWindow = {
+				time_ranges: [
+					{
+						start_time: legacyStartTime,
+						end_time: legacyEndTime
+					}
+				]
+			};
+		}
+		
+		// Create v5-compliant AvailabilitySlot
+		const updatedSlot: AvailabilitySlot = {
+			// V5 REQUIRED FIELDS
 			id: slotId,
 			quantity: slotQuantity,
+			need_type_id: slotNeedTypeId, // ✅ Required
+			name: slotName,                 // ✅ Required
+			
+			// Optional metadata
+			emoji: slotEmoji,
+			unit: slotUnit,
+			description: slotDescription,
+			
+			// Divisibility constraints
+			max_natural_div: slotMaxNaturalDiv,
+			max_percentage_div: slotMaxPercentageDiv,
+			
+			// Filter rule
+			filter_rule: slotFilterRule,
+			
+			// Booking constraints
 			advance_notice_hours: slotAdvanceNoticeHours,
 			booking_window_hours: slotBookingWindowHours,
 			mutual_agreement_required: slotMutualAgreementRequired,
 
-			// Time fields
-			all_day: slotAllDay,
+			// Time fields (v5 structure)
 			start_date: slotStartDate,
 			end_date: slotEndDate,
-			start_time: slotStartTime,
-			end_time: slotEndTime,
 			time_zone: slotTimeZone,
 			recurrence: slotRecurrence,
-			custom_recurrence_repeat_every: slotCustomRecurrenceRepeatEvery,
-			custom_recurrence_repeat_unit: slotCustomRecurrenceRepeatUnit,
-			custom_recurrence_end_type: slotCustomRecurrenceEndType,
-			custom_recurrence_end_value: slotCustomRecurrenceEndValue,
+			availability_window: availabilityWindow,
 
 			// Location fields
 			location_type: slotLocationType,
@@ -623,11 +248,11 @@
 			online_link: slotOnlineLink
 		};
 
-		// Validate using schema
+		// Validate using v5 schema
 		const validationResult = AvailabilitySlotSchema.safeParse(updatedSlot);
 
 		if (!validationResult.success) {
-			console.error('Slot validation failed:', validationResult.error);
+			console.error('[SLOT] V5 validation failed:', validationResult.error);
 			return;
 		}
 
@@ -640,6 +265,7 @@
 
 		// Update last sent state and notify parent
 		lastSentState = currentState;
+		console.log('[SLOT] ✅ Sending v5-compliant slot update');
 		onupdate?.(validationResult.data);
 	}
 
@@ -679,15 +305,15 @@
 		}
 	}
 
-	function toggleCompositions() {
-		compositionsExpanded = !compositionsExpanded;
-		// Close other sections when opening this one
-		if (compositionsExpanded) {
-			timeExpanded = false;
-			constraintsExpanded = false;
-			locationExpanded = false;
-		}
-	}
+	// V5: Composition feature not yet implemented
+	// function toggleCompositions() {
+	// 	compositionsExpanded = !compositionsExpanded;
+	// 	if (compositionsExpanded) {
+	// 		timeExpanded = false;
+	// 		constraintsExpanded = false;
+	// 		locationExpanded = false;
+	// 	}
+	// }
 
 	// Helper function to safely extract time from potentially malformed time strings
 	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
@@ -733,13 +359,12 @@
 		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
 		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
 
-		// Get recurrence display and total calculation
-		const recurrenceDisplay =
-			slotRecurrence && slotRecurrence !== 'Does not repeat' ? slotRecurrence : '';
-		const totalCalc = calculateTotalOccurrences();
+		// Get recurrence display
+		const recurrenceDisplay = slotRecurrence || '';
+		// V5 REMOVED: totalCalc = calculateTotalOccurrences() - no longer needed
 
 		// Handle "All day" case first
-		if (slotAllDay) {
+		if (legacyAllDay) {
 			const startDate = slotStartDate ? new Date(slotStartDate) : null;
 			const endDate = slotEndDate ? new Date(slotEndDate) : null;
 
@@ -771,10 +396,8 @@
 				}
 			}
 
-			// Add total quantity if available
-			if (totalCalc && recurrenceDisplay) {
-				timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
-			}
+			// V5 REMOVED: Total quantity calculation (was based on legacy calculateTotalOccurrences)
+			// Quantity tracking now handled by allocation algorithm
 
 			return timeStr;
 		}
@@ -837,10 +460,8 @@
 			}
 		}
 
-		// Add total quantity if available
-		if (totalCalc && recurrenceDisplay) {
-			timeStr += ` (${totalCalc.totalQuantity} ${unit || 'units'} total)`;
-		}
+		// V5 REMOVED: Total quantity calculation
+		// (was based on legacy calculateTotalOccurrences)
 
 		return timeStr;
 	}
@@ -925,338 +546,81 @@
 		return parts.length > 0 ? parts.join(', ') : $t('inventory.no_constraints');
 	}
 
-	// Sync local state when slot prop changes from parent
-	$effect(() => {
-		// Initialize or update lastSentState when slot prop changes
-		// This allows updates from parent while preventing our own circular updates
-		const incomingState = JSON.stringify(slot);
-		if (incomingState !== lastSentState) {
-			lastSentState = incomingState;
-
-			// Sync local state variables with incoming slot data
-			slotId = slot.id;
-			slotQuantity = slot.quantity;
-			slotAdvanceNoticeHours = slot.advance_notice_hours;
-			slotBookingWindowHours = slot.booking_window_hours;
-			slotMutualAgreementRequired = slot.mutual_agreement_required;
-			slotAllDay = slot.all_day;
-			slotStartDate = slot.start_date;
-			slotEndDate = slot.end_date;
-			slotStartTime = slot.start_time;
-			slotEndTime = slot.end_time;
-			slotTimeZone = slot.time_zone;
-			slotRecurrence = slot.recurrence;
-			slotCustomRecurrenceRepeatEvery = slot.custom_recurrence_repeat_every;
-			slotCustomRecurrenceRepeatUnit = slot.custom_recurrence_repeat_unit;
-			slotCustomRecurrenceEndType = slot.custom_recurrence_end_type;
-			slotCustomRecurrenceEndValue = slot.custom_recurrence_end_value;
-			slotLocationType = slot.location_type;
-			slotLongitude = slot.longitude;
-			slotLatitude = slot.latitude;
-			slotStreetAddress = slot.street_address;
-			slotCity = slot.city;
-			slotStateProvince = slot.state_province;
-			slotPostalCode = slot.postal_code;
-			slotCountry = slot.country;
-			slotOnlineLink = slot.online_link;
-		}
-	});
-
-	// Load provider names asynchronously
-	$effect(() => {
-		void (async () => {
-			const capacities = Object.values($userNetworkCapacitiesWithSlotQuantities || {});
-			const uniqueProviders = [
-				...new Set(capacities.map((cap: any) => cap.provider_id).filter(Boolean))
-			];
-
-			for (const providerId of uniqueProviders) {
-				if (!providerNames[providerId]) {
-					try {
-						const name = await getUserName(providerId);
-						if (name) {
-							providerNames = {
-								...providerNames,
-								[providerId]: name.length > 20 ? name.substring(0, 20) + '...' : name
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to get provider name:', providerId, error);
-					}
-				}
-			}
-		})();
-	});
-
 	// ============================================================================
 	// COMPOSITION LOGIC - Following Original Capacity Pattern
 	// ============================================================================
 
 	// FROM other slots = compositions coming INTO this slot
-	let fromOtherSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'from';
-		}> = [];
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// let fromOtherSlots = $derived(() => {
+	// 	const result: Array<{
+	// 		sourceCapacityId: string;
+	// 		sourceSlotId: string;
+	// 		targetCapacityId: string;
+	// 		targetSlotId: string;
+	// 		desiredAmount: number;
+	// 		direction: 'from';
+	// 	}> = [];
+	// 	return result;
+	// });
 
-		// Get all available sources that could compose INTO this slot
-		const availableSources = $composeIntoDataProvider;
-
-		availableSources.forEach((sourceItem) => {
-			let sourceCapacityId: string | undefined;
-			let sourceSlotId: string | undefined;
-
-			if (sourceItem.metadata.type === 'slot') {
-				// Handle slot sources (traditional slot-to-slot)
-				sourceCapacityId = sourceItem.metadata.capacityId;
-				sourceSlotId = sourceItem.metadata.slotId;
-
-				// Skip if we don't have valid slot metadata
-				if (!sourceCapacityId || !sourceSlotId) return;
-			} else if (sourceItem.metadata.type === 'pubkey') {
-				// Handle pubkey sources (person-to-slot composition)
-				sourceCapacityId = sourceItem.id; // pubkey becomes the source "capacity"
-				sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
-			} else {
-				// Skip unknown types
-				return;
-			}
-
-			// Check if we have a user desire for this composition (we want FROM their source INTO our slot)
-			const userDesire =
-				$userDesiredSlotComposeFrom[sourceCapacityId]?.[sourceSlotId]?.[capacityId]?.[slot.id] || 0;
-
-			// Check if there's a network desire for this composition (they want FROM their source INTO our slot)
-			// From their perspective, this is a ComposeInto desire (INTO our slot)
-			let networkDesire = 0;
-			Object.values($networkDesiredSlotComposeInto).forEach((userCompositions) => {
-				const desire = userCompositions[sourceCapacityId!]?.[sourceSlotId!]?.[capacityId]?.[slot.id];
-				if (desire && desire > networkDesire) networkDesire = desire;
-			});
-
-			// Include sources where EITHER party has expressed desire (user OR network)
-			if (userDesire > 0 || networkDesire > 0) {
-				result.push({
-					sourceCapacityId,
-					sourceSlotId,
-					targetCapacityId: capacityId,
-					targetSlotId: slot.id,
-					desiredAmount: Math.max(userDesire, networkDesire),
-					direction: 'from'
-				});
-			}
-		});
-
-		return result;
-	});
-
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
 	// INTO other targets = compositions going FROM this slot (slots + pubkeys)
-	let intoOtherSlots = $derived(() => {
-		const result: Array<{
-			sourceCapacityId: string;
-			sourceSlotId: string;
-			targetCapacityId: string;
-			targetSlotId: string;
-			desiredAmount: number;
-			direction: 'into';
-		}> = [];
+	// let intoOtherSlots = $derived(() => {
+	// 	const result: Array<{
+	// 		sourceCapacityId: string;
+	// 		sourceSlotId: string;
+	// 		targetCapacityId: string;
+	// 		targetSlotId: string;
+	// 		desiredAmount: number;
+	// 		direction: 'into';
+	// 	}> = [];
+	// 	return result;
+	// });
 
-		// Get all available targets that this slot could compose INTO
-		const availableTargets = $composeFromDataProvider;
-
-		availableTargets.forEach((targetItem) => {
-			let targetCapacityId: string | undefined;
-			let targetSlotId: string | undefined;
-			let userDesire = 0;
-			let networkDesire = 0;
-
-			if (targetItem.metadata.type === 'slot') {
-				// Handle slot targets (traditional slot-to-slot composition)
-				targetCapacityId = targetItem.metadata.capacityId;
-				targetSlotId = targetItem.metadata.slotId;
-
-				if (!targetCapacityId || !targetSlotId) return; // Skip invalid slot targets
-
-				// Check if we have a user desire for this composition
-				userDesire =
-					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
-					0;
-
-				// Check if there's a network desire for this composition
-				Object.values($networkDesiredSlotComposeFrom).forEach((userCompositions) => {
-					const desire =
-						userCompositions[capacityId]?.[slot.id]?.[targetCapacityId!]?.[targetSlotId!];
-					if (desire && desire > networkDesire) networkDesire = desire;
-				});
-			} else if (targetItem.metadata.type === 'pubkey') {
-				// Handle pubkey targets (slot-to-person composition)
-				targetCapacityId = targetItem.id; // pubkey becomes the target "capacity"
-				targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
-
-				// Check if we have a user desire for this pubkey composition
-				userDesire =
-					$userDesiredSlotComposeInto[capacityId]?.[slot.id]?.[targetCapacityId]?.[targetSlotId] ||
-					0;
-
-				// Check if the pubkey user wants our slot (they express this via Share.svelte -> compose-from pattern)
-				const pubkeyUserId = targetItem.id;
-				networkDesire =
-					$networkDesiredSlotComposeFrom[pubkeyUserId]?.[capacityId]?.[slot.id]?.[pubkeyUserId]?.[
-						slot.id
-					] || 0;
-			}
-
-			// Include targets where EITHER party has expressed desire (user OR network) and we have valid target IDs
-			if ((userDesire > 0 || networkDesire > 0) && targetCapacityId && targetSlotId) {
-				result.push({
-					sourceCapacityId: capacityId,
-					sourceSlotId: slot.id,
-					targetCapacityId,
-					targetSlotId,
-					desiredAmount: Math.max(userDesire, networkDesire),
-					direction: 'into'
-				});
-			}
-		});
-
-		return result;
-	});
-
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
 	// Total compositions count for display in button
-	let totalCompositionsCount = $derived(() => {
-		return fromOtherSlots().length + intoOtherSlots().length;
-	});
+	// let totalCompositionsCount = $derived(() => {
+	// 	return fromOtherSlots().length + intoOtherSlots().length;
+	// });
 
-	// Toggle composition item expansion
-	function toggleCompositionItem(compositionKey: string) {
-		expandedCompositions = {
-			...expandedCompositions,
-			[compositionKey]: !expandedCompositions[compositionKey]
-		};
-	}
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// function toggleCompositionItem(compositionKey: string) {
+	// 	expandedCompositions = {
+	// 		...expandedCompositions,
+	// 		[compositionKey]: !expandedCompositions[compositionKey]
+	// 	};
+	// }
 
-	// Handle adding new compose-from relationship
-	function handleAddComposeFrom() {
-		showAddComposeFrom = !showAddComposeFrom;
-		if (showAddComposeFrom) {
-			showAddComposeInto = false;
-		}
-	}
+	// function handleAddComposeFrom() {
+	// 	showAddComposeFrom = !showAddComposeFrom;
+	// 	if (showAddComposeFrom) {
+	// 		showAddComposeInto = false;
+	// 	}
+	// }
 
-	// Handle adding new compose-into relationship
-	function handleAddComposeInto() {
-		showAddComposeInto = !showAddComposeInto;
-		if (showAddComposeInto) {
-			showAddComposeFrom = false;
-		}
-	}
+	// function handleAddComposeInto() {
+	// 	showAddComposeInto = !showAddComposeInto;
+	// 	if (showAddComposeInto) {
+	// 		showAddComposeFrom = false;
+	// 	}
+	// }
 
-	// Handle selecting a target slot for FROM composition (our slot → target slot)
-	function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
-		console.log('[SLOT-COMPOSITION] Adding INTO composition:', data);
+	// V5: Composition feature not yet implemented - commented out
+	// TODO: Re-enable when v5 composition is implemented
+	// function handleSelectComposeFromSlot(data: { id: string; name: string; metadata?: any }) {
+	// 	console.log('[SLOT-COMPOSITION] Adding INTO composition:', data);
+	// 	// ... implementation
+	// }
 
-		let targetCapacityId: string;
-		let targetSlotId: string;
-
-		if (data.metadata?.type === 'slot') {
-			// Handle slot targets (traditional slot-to-slot)
-			targetCapacityId = data.metadata.capacityId;
-			targetSlotId = data.metadata.slotId;
-
-			if (!targetCapacityId || !targetSlotId) {
-				console.error('Invalid slot data for INTO composition:', data);
-				return;
-			}
-		} else if (data.metadata?.type === 'pubkey') {
-			// Handle pubkey targets (slot-to-person composition)
-			targetCapacityId = data.id; // pubkey becomes the target "capacity"
-			targetSlotId = slot.id; // for pubkey targets, use source slot id (self-consumption pattern)
-		} else {
-			console.error('Unknown target type for INTO composition:', data);
-			return;
-		}
-
-		// Initialize the composition desire in userDesiredSlotComposeInto
-		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
-		const currentDesires = $userDesiredSlotComposeInto;
-		if (!currentDesires[capacityId]) currentDesires[capacityId] = {};
-		if (!currentDesires[capacityId][slot.id]) currentDesires[capacityId][slot.id] = {};
-		if (!currentDesires[capacityId][slot.id][targetCapacityId]) {
-			currentDesires[capacityId][slot.id][targetCapacityId] = {};
-		}
-
-		// Set initial desire of 1 unit
-		currentDesires[capacityId][slot.id][targetCapacityId][targetSlotId] = 1;
-
-		// Update store (will sync via Gun or Holster based on feature flag)
-		userDesiredSlotComposeInto.set(currentDesires);
-
-		console.log('[SLOT-COMPOSITION] Added INTO composition to user store:', {
-			sourceCapacity: capacityId,
-			sourceSlot: slot.id,
-			targetCapacity: targetCapacityId,
-			targetSlot: targetSlotId,
-			targetType: data.metadata?.type || 'unknown'
-		});
-
-		showAddComposeFrom = false;
-	}
-
-	// Handle selecting a source slot for INTO composition (source slot → our slot)
-	function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
-		console.log('[SLOT-COMPOSITION] Adding FROM composition:', data);
-
-		let sourceCapacityId: string;
-		let sourceSlotId: string;
-
-		if (data.metadata?.type === 'slot') {
-			// Handle slot sources (traditional slot-to-slot)
-			sourceCapacityId = data.metadata.capacityId;
-			sourceSlotId = data.metadata.slotId;
-
-			if (!sourceCapacityId || !sourceSlotId) {
-				console.error('Invalid slot data for FROM composition:', data);
-				return;
-			}
-		} else if (data.metadata?.type === 'pubkey') {
-			// Handle pubkey sources (person-to-slot composition)
-			sourceCapacityId = data.id; // pubkey becomes the source "capacity"
-			sourceSlotId = slot.id; // for pubkey sources, use target slot id (self-provision pattern)
-		} else {
-			console.error('Unknown source type for FROM composition:', data);
-			return;
-		}
-
-		// Initialize the composition desire in userDesiredSlotComposeFrom
-		// Structure: [sourceCapacity][sourceSlot][targetCapacity][targetSlot]
-		const currentDesires = $userDesiredSlotComposeFrom;
-		if (!currentDesires[sourceCapacityId]) currentDesires[sourceCapacityId] = {};
-		if (!currentDesires[sourceCapacityId][sourceSlotId])
-			currentDesires[sourceCapacityId][sourceSlotId] = {};
-		if (!currentDesires[sourceCapacityId][sourceSlotId][capacityId]) {
-			currentDesires[sourceCapacityId][sourceSlotId][capacityId] = {};
-		}
-
-		// Set initial desire of 1 unit
-		currentDesires[sourceCapacityId][sourceSlotId][capacityId][slot.id] = 1;
-
-		// Update store (will sync via Gun or Holster based on feature flag)
-		userDesiredSlotComposeFrom.set(currentDesires);
-
-		console.log('[SLOT-COMPOSITION] Added FROM composition to user store:', {
-			sourceCapacity: sourceCapacityId,
-			sourceSlot: sourceSlotId,
-			targetCapacity: capacityId,
-			targetSlot: slot.id,
-			sourceType: data.metadata?.type || 'unknown'
-		});
-
-		showAddComposeInto = false;
-	}
+	// function handleSelectComposeIntoSlot(data: { id: string; name: string; metadata?: any }) {
+	// 	console.log('[SLOT-COMPOSITION] Adding FROM composition:', data);
+	// 	// ... implementation
+	// }
 
 	// Handle country selection from CountrySelector
 	function handleCountrySelect(country: { id: string; name: string; timezones: string[] }) {
@@ -1285,6 +649,68 @@
 </script>
 
 <div class="slot-item rounded border border-gray-200 bg-white p-3 shadow-sm">
+	<!-- V5 Required Fields Row -->
+	<div class="slot-metadata mb-3 flex flex-wrap items-center gap-2 rounded bg-gray-50 p-2">
+		<!-- Emoji (optional but helpful) -->
+		<input
+			type="text"
+			class="slot-input emoji w-12 text-center"
+			bind:value={slotEmoji}
+			placeholder="📦"
+			maxlength="2"
+			onfocus={() => handleFocus('emoji', slotEmoji)}
+			onblur={() => handleBlurIfChanged('emoji', slotEmoji)}
+			title="Emoji"
+		/>
+		
+		<!-- Name (REQUIRED) -->
+		<input
+			type="text"
+			class="slot-input name flex-1"
+			bind:value={slotName}
+			placeholder="Slot name (required)"
+			onfocus={() => handleFocus('name', slotName)}
+			onblur={() => handleBlurIfChanged('name', slotName)}
+			required
+		/>
+		
+		<!-- Unit (optional) -->
+		<input
+			type="text"
+			class="slot-input unit w-20"
+			bind:value={slotUnit}
+			placeholder="units"
+			onfocus={() => handleFocus('unit', slotUnit)}
+			onblur={() => handleBlurIfChanged('unit', slotUnit)}
+			title="Unit of measurement"
+		/>
+		
+		<!-- Need Type (REQUIRED) -->
+		<select
+			class="slot-input need-type w-40"
+			bind:value={slotNeedTypeId}
+			onchange={handleSlotUpdate}
+			required
+			title="Need type category"
+		>
+			<option value="need_type_general">General</option>
+			<option value="need_type_food">Food</option>
+			<option value="need_type_housing">Housing</option>
+			<option value="need_type_healthcare">Healthcare</option>
+			<option value="need_type_education">Education</option>
+			<option value="need_type_transportation">Transportation</option>
+			<option value="need_type_childcare">Childcare</option>
+			<option value="need_type_other">Other</option>
+		</select>
+	</div>
+	
+	<!-- Description (optional, expandable) -->
+	{#if slotDescription}
+		<div class="slot-description mb-2 text-sm text-gray-600 italic">
+			{slotDescription}
+		</div>
+	{/if}
+
 	<!-- Slot header row -->
 	<div class="slot-header mb-2 flex flex-wrap items-center gap-2">
 		<!-- Quantity input -->
@@ -1298,8 +724,8 @@
 			onfocus={() => handleFocus('quantity', slotQuantity)}
 			onblur={() => handleBlurIfChanged('quantity', slotQuantity)}
 		/>
-		{#if unit}
-			<span class="slot-unit text-xs text-gray-500">({unit})</span>
+		{#if slotUnit}
+			<span class="slot-unit text-xs text-gray-500">({slotUnit})</span>
 		{/if}
 
 		<!-- Time button -->
@@ -1322,7 +748,8 @@
 			📍 {formatLocationDisplay()}
 		</button>
 
-		<!-- Compositions button -->
+		<!-- V5: Composition feature not yet implemented -->
+		<!-- 
 		<button
 			type="button"
 			class="section-btn compositions-btn"
@@ -1331,6 +758,7 @@
 		>
 			🔄 Compositions ({totalCompositionsCount()})
 		</button>
+		-->
 
 		<!-- Constraints button -->
 		<button
@@ -1372,51 +800,19 @@
 					onchange={handleSlotUpdate}
 				>
 					{#each recurrenceOptions as option}
-						<option value={option}>{option}</option>
+						<option value={option.value}>{option.label}</option>
 					{/each}
 				</select>
 				<div class="mt-2 text-xs text-gray-500">
 					This determines how often the slot repeats within the date range below
 				</div>
-
-				<!-- Custom recurrence -->
-				{#if slotRecurrence === 'Custom...' && slotCustomRecurrenceRepeatEvery !== undefined}
-					<div class="custom-recurrence mt-3">
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-xs text-gray-500">Repeat every</span>
-							<input
-								type="number"
-								min="1"
-								class="slot-input w-16 text-center"
-								bind:value={slotCustomRecurrenceRepeatEvery}
-								onfocus={() =>
-									handleFocus('customRecurrenceRepeatEvery', slotCustomRecurrenceRepeatEvery)}
-								onblur={() =>
-									handleBlurIfChanged(
-										'customRecurrenceRepeatEvery',
-										slotCustomRecurrenceRepeatEvery
-									)}
-							/>
-							<select
-								class="slot-select w-20"
-								bind:value={slotCustomRecurrenceRepeatUnit}
-								onchange={handleSlotUpdate}
-							>
-								<option value="days">days</option>
-								<option value="weeks">weeks</option>
-								<option value="months">months</option>
-								<option value="years">years</option>
-							</select>
-						</div>
-					</div>
-				{/if}
 			</div>
 
 			<!-- Pattern Window (Start/End Dates) -->
 			<div class="pattern-window-section mb-6">
 				<h6 class="mb-3 text-sm font-medium text-gray-700">Pattern Window</h6>
 				<div class="mb-2 text-xs text-gray-500">
-					{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+					{#if slotRecurrence}
 						Define when this recurrence pattern starts and ends
 					{:else}
 						Define the specific date(s) for this one-time availability
@@ -1426,7 +822,7 @@
 				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<label for="slot-start-date" class="mb-1 block text-xs text-gray-500">
-							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+							{#if slotRecurrence}
 								Pattern Start Date
 							{:else}
 								Start Date
@@ -1455,7 +851,7 @@
 					</div>
 					<div>
 						<label for="slot-end-date" class="mb-1 block text-xs text-gray-500">
-							{#if slotRecurrence && slotRecurrence !== 'Does not repeat'}
+							{#if slotRecurrence}
 								Pattern End Date (optional)
 							{:else}
 								End Date (optional)
@@ -1466,9 +862,9 @@
 							type="date"
 							class="slot-input w-full"
 							bind:value={slotEndDate}
-							placeholder={slotRecurrence && slotRecurrence !== 'Does not repeat'
-								? 'Infinite if empty'
-								: 'Same day if empty'}
+						placeholder={slotRecurrence
+							? 'Infinite if empty'
+							: 'Same day if empty'}
 							onfocus={() => handleFocus('endDate', slotEndDate)}
 							onblur={() => handleBlurIfChanged('endDate', slotEndDate)}
 							onchange={() => {
@@ -1485,33 +881,20 @@
 							}}
 						/>
 					</div>
-				</div>
-
-				<!-- Total calculation display -->
-				{#if calculateTotalOccurrences()}
-					{@const totalCalculation = calculateTotalOccurrences()}
-					<div class="total-calculation mt-3 rounded p-3">
-						<div class="text-sm font-medium">
-							Total Availability: {totalCalculation?.totalQuantity}
-							{unit || 'units'}
-						</div>
-						<div class="text-xs">
-							{totalCalculation?.occurrences} occurrences × {slotQuantity}
-							{unit || 'units'} each
-							{#if totalCalculation?.isInfinite}
-								(infinite pattern - showing first year)
-							{/if}
-						</div>
-					</div>
-				{/if}
 			</div>
+
+		<!-- V5 REMOVED: Total calculation display -->
+		<!-- calculateTotalOccurrences() removed - occurrence tracking handled by allocation algorithm -->
+		<!-- If needed, occurrence info will be computed by allocation algorithm based on availability_window -->
+		
+		</div>
 
 			<!-- Time of Day Settings -->
 			<div class="mb-4">
 				<label class="inline-flex items-center">
 					<input
 						type="checkbox"
-						bind:checked={slotAllDay}
+						bind:checked={legacyAllDay}
 						class="mr-2"
 						onchange={handleSlotUpdate}
 					/>
@@ -1519,7 +902,7 @@
 				</label>
 			</div>
 
-			{#if !slotAllDay}
+			{#if !legacyAllDay}
 				<div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div>
 						<label for="slot-start-time" class="mb-1 block text-xs text-gray-500">Start Time</label>
@@ -1531,7 +914,7 @@
 							onfocus={() => handleFocus('startTime', displayStartTime())}
 							onchange={(e) => {
 								const target = e.target as HTMLInputElement;
-								slotStartTime = target.value; // Store as HH:MM format
+								legacyStartTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
 						/>
@@ -1546,7 +929,7 @@
 							onfocus={() => handleFocus('endTime', displayEndTime())}
 							onchange={(e) => {
 								const target = e.target as HTMLInputElement;
-								slotEndTime = target.value; // Store as HH:MM format
+								legacyEndTime = target.value; // Store as HH:MM format
 								handleSlotUpdate();
 							}}
 						/>
@@ -1810,128 +1193,8 @@
 		</div>
 	{/if}
 
-	<!-- Compositions section -->
-	{#if compositionsExpanded}
-		<div class="slot-details compositions-details mt-3 rounded bg-purple-50 p-4">
-			<h5 class="mb-3 text-sm font-medium text-gray-700">🔄 Slot Compositions</h5>
-
-			<div class="composition-columns grid grid-cols-1 gap-4 md:grid-cols-2">
-				<!-- Compose FROM column -->
-				<div class="compose-from-column">
-					<div class="column-header mb-3">
-						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
-							<span>FROM other slots</span>
-						</h5>
-						<p class="mt-1 text-xs text-gray-500">Other slots composing into this slot</p>
-					</div>
-
-					<div class="column-content">
-						<!-- Add slot button -->
-						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeInto}>
-							<span class="add-icon">+</span>
-							<span class="add-text">Add source</span>
-						</button>
-
-						<!-- Add slot dropdown -->
-						{#if showAddComposeInto}
-							<div class="add-dropdown mb-3">
-								<DropDown
-									dataProvider={composeIntoDataProvider}
-									searchPlaceholder="Select source slot..."
-									select={handleSelectComposeIntoSlot}
-									show={showAddComposeInto}
-									close={() => (showAddComposeInto = false)}
-									width={280}
-									maxHeight={200}
-								/>
-							</div>
-						{/if}
-
-						<!-- From other slots items -->
-						{#if fromOtherSlots().length > 0}
-							<div class="composition-items space-y-2">
-								{#each fromOtherSlots() as composition}
-									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
-									<SlotCompositionItem
-										sourceCapacityId={composition.sourceCapacityId}
-										sourceSlotId={composition.sourceSlotId}
-										targetCapacityId={composition.targetCapacityId}
-										targetSlotId={composition.targetSlotId}
-										direction="from"
-										currentCapacityId={capacityId}
-										currentSlotId={slot.id}
-										expanded={expandedCompositions[compositionKey] || false}
-										onToggle={() => toggleCompositionItem(compositionKey)}
-									/>
-								{/each}
-							</div>
-						{:else}
-							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								No compositions from other slots yet. Click "Add source slot" to start.
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Compose INTO column -->
-				<div class="compose-into-column">
-					<div class="column-header mb-3">
-						<h5 class="flex items-center gap-2 text-sm font-medium text-gray-700">
-							<span>INTO other slots</span>
-						</h5>
-						<p class="mt-1 text-xs text-gray-500">This slot composing into other slots</p>
-					</div>
-
-					<div class="column-content">
-						<!-- Add slot button -->
-						<button type="button" class="add-slot-btn mb-3" onclick={handleAddComposeFrom}>
-							<span class="add-icon">+</span>
-							<span class="add-text">Add target</span>
-						</button>
-
-						<!-- Add slot dropdown -->
-						{#if showAddComposeFrom}
-							<div class="add-dropdown mb-3">
-								<DropDown
-									dataProvider={composeFromDataProvider}
-									searchPlaceholder="Select target slot..."
-									select={handleSelectComposeFromSlot}
-									show={showAddComposeFrom}
-									close={() => (showAddComposeFrom = false)}
-									width={280}
-									maxHeight={200}
-								/>
-							</div>
-						{/if}
-
-						<!-- Into other slots items -->
-						{#if intoOtherSlots().length > 0}
-							<div class="composition-items space-y-2">
-								{#each intoOtherSlots() as composition}
-									{@const compositionKey = `${composition.sourceCapacityId}-${composition.sourceSlotId}-${composition.targetCapacityId}-${composition.targetSlotId}`}
-									<SlotCompositionItem
-										sourceCapacityId={composition.sourceCapacityId}
-										sourceSlotId={composition.sourceSlotId}
-										targetCapacityId={composition.targetCapacityId}
-										targetSlotId={composition.targetSlotId}
-										direction="into"
-										currentCapacityId={capacityId}
-										currentSlotId={slot.id}
-										expanded={expandedCompositions[compositionKey] || false}
-										onToggle={() => toggleCompositionItem(compositionKey)}
-									/>
-								{/each}
-							</div>
-						{:else}
-							<div class="empty-state py-4 text-center text-xs text-gray-500 italic">
-								No compositions to other slots yet. Click "Add target slot" to start.
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
+	<!-- V5: Composition section removed (not yet implemented in v5) -->
+	<!-- TODO: Re-implement slot composition using v5 patterns when needed -->
 </div>
 
 <style>
@@ -2023,28 +1286,6 @@
 		border: 1px solid rgba(229, 231, 235, 0.6);
 		border-radius: 6px;
 		padding: 12px;
-	}
-
-	.custom-recurrence {
-		background: rgba(249, 250, 251, 0.8);
-		border: 1px solid rgba(209, 213, 219, 0.6);
-		border-radius: 4px;
-		padding: 8px;
-	}
-
-	/* Total calculation styling - matches existing info pattern */
-	.total-calculation {
-		background: rgba(239, 246, 255, 0.8);
-		border: 1px solid rgba(219, 234, 254, 0.8);
-		color: #1e40af;
-	}
-
-	.total-calculation .text-sm {
-		color: #1d4ed8;
-	}
-
-	.total-calculation .text-xs {
-		color: #3730a3;
 	}
 
 	@keyframes slideDown {

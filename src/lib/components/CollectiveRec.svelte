@@ -310,7 +310,11 @@
 
           <div class="space-y-3">
             {#each participants as p}
-              {#let isMember = members.includes(p)}
+              {#if members.includes(p)}
+                {#let isMember = true}
+              {:else}
+                {#let isMember = false}
+              {/if}
               {#let mrs = mrsByPerson[p] || 0}
               <div class={`rounded-2xl p-5 transition-all duration-500 ${
                 isMember

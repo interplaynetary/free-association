@@ -1,20 +1,39 @@
-import { derived } from 'svelte/store';
-import {
-	userTree,
-	nodesMap,
-	userNetworkCapacitiesWithSlotQuantities,
-	networkCapacities,
-	userCapacities
-} from '$lib/state/core.svelte';
+import { derived, get } from 'svelte/store';
+// V5: Import from v5 stores and protocol
+import { 
+	myRecognitionTreeStore as userTree,
+	myCapacitySlotsStore,
+	networkCommitments,
+	networkCapacitySlots,
+	getNetworkCommitmentsRecord
+} from '$lib/commons/v5/stores.svelte';
+import { findNodeById, getDescendants } from '$lib/commons/v5/protocol';
 import {
 	userPubKeys,
 	userNamesOrAliasesCache,
 	userContacts,
 	getUserAlias
 } from '$lib/state/users.svelte';
-import { allocatedSlotAmounts } from '$lib/state/core.svelte';
-import { findNodeById } from '$lib/protocol';
 import { userAliasesCache } from '$lib/state/users.svelte';
+import type { Commitment, Node } from '$lib/commons/v5/schemas';
+
+// V5: Helper to create nodesMap from tree
+function createNodesMap(tree: Node | null): Record<string, Node> {
+	if (!tree) return {};
+	
+	const map: Record<string, Node> = {};
+	map[tree.id] = tree;
+	
+	const descendants = getDescendants(tree);
+	descendants.forEach(node => {
+		map[node.id] = node;
+	});
+	
+	return map;
+}
+
+// V5: Derived nodesMap from userTree
+const nodesMap = derived(userTree, ($tree) => createNodesMap($tree));
 
 // Helper function to get display name for a user
 function getDisplayName(userId: string, namesCache: Record<string, string>): string {
@@ -194,28 +213,23 @@ export function createSubtreesDataProvider() {
 }
 
 // Simple reactive capacities data provider
+// V5: Uses myCapacitySlotsStore (slots are the new capacities)
 export function createCapacitiesDataProvider(excludeCapacityId?: string) {
 	return derived(
-		[userNetworkCapacitiesWithSlotQuantities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithSlotQuantities, $userNamesCache]) => {
-			if (!$userNetworkCapacitiesWithSlotQuantities) {
+		[myCapacitySlotsStore, userNamesOrAliasesCache],
+		([$myCapacitySlots, $userNamesCache]) => {
+			if (!$myCapacitySlots || $myCapacitySlots.length === 0) {
 				return [];
 			}
 
-			// Convert to dropdown items
-			const items = Object.entries($userNetworkCapacitiesWithSlotQuantities)
-				.filter(([capacityId]) => capacityId !== excludeCapacityId)
-				.map(([capacityId, capacity]) => {
-					// Get provider name from capacity metadata
-					const providerId = (capacity as any).owner_id || (capacity as any).provider_id;
-					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
-
-					return {
-						id: capacityId,
-						name: `${capacity.emoji || '🎁'} ${capacity.name} (${providerName})`,
-						metadata: capacity
-					};
-				});
+			// V5: Each slot is essentially a capacity
+			const items = $myCapacitySlots
+				.filter((slot) => slot.id !== excludeCapacityId)
+				.map((slot) => ({
+					id: slot.id,
+					name: `${slot.emoji || '🎁'} ${slot.name}`,
+					metadata: slot
+				}));
 
 			return items;
 		}
@@ -223,29 +237,35 @@ export function createCapacitiesDataProvider(excludeCapacityId?: string) {
 }
 
 // Simple reactive all network capacities data provider
+// V5: Uses networkCapacitySlots from v5 stores
 export function createAllNetworkCapacitiesDataProvider(excludeCapacityId?: string) {
 	return derived(
-		[networkCapacities, userNamesOrAliasesCache],
-		([$networkCapacities, $userNamesCache]) => {
-			if (!$networkCapacities) {
+		[networkCapacitySlots, userNamesOrAliasesCache],
+		([$networkCapacitySlots, $userNamesCache]) => {
+			if (!$networkCapacitySlots) {
 				return [];
 			}
 
-			// Flatten all capacities from all users
+			// V5: networkCapacitySlots is a map of pubKey -> capacity_slots[]
 			const items: Array<{ id: string; name: string; metadata: any }> = [];
 
-			Object.entries($networkCapacities).forEach(([userId, userCapacities]) => {
+			// Get all commitments to access capacity slots
+			const commitments = getNetworkCommitmentsRecord();
+			
+			Object.entries(commitments).forEach(([userId, commitment]) => {
+				if (!commitment.capacity_slots) return;
+				
 				const providerName = getDisplayName(userId, $userNamesCache);
 
-				Object.entries(userCapacities).forEach(([capacityId, capacity]) => {
+				commitment.capacity_slots.forEach((slot) => {
 					// Skip excluded capacity
-					if (capacityId === excludeCapacityId) return;
+					if (slot.id === excludeCapacityId) return;
 
 					items.push({
-						id: capacityId,
-						name: `${capacity.emoji || '🎁'} ${capacity.name} (${providerName})`,
+						id: slot.id,
+						name: `${slot.emoji || '🎁'} ${slot.name} (${providerName})`,
 						metadata: {
-							...capacity,
+							...slot,
 							owner_id: userId,
 							provider_id: userId
 						}
@@ -301,11 +321,12 @@ export function createChildContributorsDataProvider(
 
 	return derived([baseProvider, userTree], ([$baseItems, $userTree]) => {
 		// Get the contributors of the specific child node
+		// V5: contributors are now {id, points} objects
 		let childContributors: string[] = [];
 		if ($userTree && childNodeId) {
 			const childNode = findNodeById($userTree, childNodeId);
 			if (childNode && childNode.type === 'NonRootNode') {
-				childContributors = (childNode as any).contributor_ids || [];
+				childContributors = (childNode as any).contributors?.map((c: any) => c.id) || [];
 			}
 		}
 
@@ -336,10 +357,11 @@ export function createChildContributorsDataProvider(
 }
 
 // Simple reactive slots data provider for composition
+// V5: Uses myCapacitySlotsStore (slots are first-class in v5)
 export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: string[] = []) {
 	return derived(
-		[userNetworkCapacitiesWithSlotQuantities, userCapacities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithSlotQuantities, $userCapacities, $userNamesCache]) => {
+		[myCapacitySlotsStore, userNamesOrAliasesCache],
+		([$myCapacitySlots, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -388,70 +410,34 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 				return { timeInfo, location };
 			}
 
-			// Add slots from user's own capacities
-			if ($userCapacities) {
-				Object.entries($userCapacities).forEach(([capId, capacity]) => {
-					if (capacityId && capId !== capacityId) return;
+			// V5: Add slots from user's own capacity slots
+			if ($myCapacitySlots && $myCapacitySlots.length > 0) {
+				$myCapacitySlots.forEach((slot) => {
+					if (capacityId && slot.id !== capacityId) return;
+					if (excludeSlotIds.includes(slot.id)) return;
 
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slot: any) => {
-							if (excludeSlotIds.includes(slot.id)) return;
+					const { timeInfo, location } = formatSlotInfo(slot);
+					const displayName = `${slot.emoji || '🎁'} ${slot.name} - ${timeInfo}`;
 
-							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
-
-							items.push({
-								id: slot.id,
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slot.id,
-									capacityName: capacity.name,
-									quantity: slot.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: true
-								}
-							});
-						});
-					}
+					items.push({
+						id: slot.id,
+						name: displayName,
+						metadata: {
+							capacityId: slot.id,  // V5: slot is the capacity
+							slotId: slot.id,
+							capacityName: slot.name,
+							quantity: slot.quantity || 0,
+							location,
+							timeInfo,
+							isOwned: true
+						}
+					});
 				});
 			}
 
-			// Add slots from network capacities (shares)
-			if ($userNetworkCapacitiesWithSlotQuantities) {
-				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
-					if (capacityId && capId !== capacityId) return;
-
-					const providerId = (capacity as any).provider_id;
-					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
-
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slot: any) => {
-							if (excludeSlotIds.includes(slot.id)) return;
-
-							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
-
-							items.push({
-								id: slot.id,
-								name: displayName,
-								metadata: {
-									capacityId: capId,
-									slotId: slot.id,
-									capacityName: capacity.name,
-									providerId,
-									providerName,
-									quantity: slot.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: false
-								}
-							});
-						});
-					}
-				});
-			}
+			// V5 TODO: Add slots from network capacities (allocated shares)
+			// This should be integrated when v5 allocation algorithm is implemented
+			// For now, only showing own capacity slots
 
 			// Sort by capacity name, then time
 			return items.sort((a, b) => {
@@ -466,10 +452,11 @@ export function createSlotsDataProvider(capacityId?: string, excludeSlotIds: str
 }
 
 // Get all allocated slots for a user (for compose-from scenarios)
+// V5: TODO - integrate with v5 allocation algorithm
 export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) {
 	return derived(
-		[userNetworkCapacitiesWithSlotQuantities, userNamesOrAliasesCache],
-		([$userNetworkCapacitiesWithSlotQuantities, $userNamesCache]) => {
+		[myCapacitySlotsStore, userNamesOrAliasesCache],
+		([$myCapacitySlots, $userNamesCache]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -484,72 +471,9 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 				};
 			}> = [];
 
-			if (!$userNetworkCapacitiesWithSlotQuantities) return items;
-
-			// Helper function to format slot display info (same as above)
-			function formatSlotInfo(slot: any): { timeInfo: string; location: string } {
-				const timeParts = [];
-
-				if (slot.start_date) {
-					timeParts.push(new Date(slot.start_date).toLocaleDateString());
-				}
-
-				if (!slot.all_day && slot.start_time) {
-					timeParts.push(slot.start_time);
-				}
-
-				if (slot.all_day) {
-					timeParts.push('All day');
-				}
-
-				const timeInfo = timeParts.length > 0 ? timeParts.join(' ') : 'No time set';
-
-				let location = 'No location';
-				if (slot.location_type === 'Specific') {
-					if (slot.street_address) {
-						location = slot.street_address;
-					} else if (slot.latitude && slot.longitude) {
-						location = `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
-					}
-				} else if (slot.location_type) {
-					location = slot.location_type;
-				}
-
-				return { timeInfo, location };
-			}
-
-			// Only include slots that are allocated (we have claimed amounts from efficient algorithm)
-			Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
-				if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-					const providerId = (capacity as any).provider_id;
-					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
-
-					capacity.availability_slots.forEach((slot: any) => {
-						if (excludeSlotIds.includes(slot.id)) return;
-
-						// Check if this slot is allocated (we have some amount from efficient algorithm)
-						const allocatedAmount = slot.allocated_quantity || 0;
-						if (allocatedAmount <= 0) return;
-
-						const { timeInfo, location } = formatSlotInfo(slot);
-						const displayName = `${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo} (${allocatedAmount} available)`;
-
-						items.push({
-							id: slot.id,
-							name: displayName,
-							metadata: {
-								capacityId: capId,
-								slotId: slot.id,
-								capacityName: capacity.name,
-								quantity: slot.available_quantity || slot.quantity || 0,
-								allocatedAmount,
-								location,
-								timeInfo
-							}
-						});
-					});
-				}
-			});
+			// V5 TODO: This function needs v5 allocation algorithm integration
+			// For now, return empty array (allocated slots will be shown when allocation is implemented)
+			if (!$myCapacitySlots) return items;
 
 			// Sort by capacity name, then time
 			return items.sort((a, b) => {
@@ -564,18 +488,17 @@ export function createAllocatedSlotsDataProvider(excludeSlotIds: string[] = []) 
 }
 
 // Create composition targets data provider (slots + pubkeys + collectives)
+// V5: Updated to use myCapacitySlotsStore
 export function createCompositionTargetsDataProvider(excludeTargets: string[] = []) {
 	return derived(
 		[
-			userNetworkCapacitiesWithSlotQuantities,
-			userCapacities,
+			myCapacitySlotsStore,
 			userNamesOrAliasesCache,
 			userAliasesCache,
 			userPubKeys
 		],
 		([
-			$userNetworkCapacitiesWithSlotQuantities,
-			$userCapacities,
+			$myCapacitySlots,
 			$userNamesCache,
 			$userAliasesCache,
 			$userPubKeys
@@ -633,78 +556,36 @@ export function createCompositionTargetsDataProvider(excludeTargets: string[] = 
 				return { timeInfo, location };
 			}
 
-			// Add slots from user's own capacities
-			if ($userCapacities) {
-				Object.entries($userCapacities).forEach(([capId, capacity]) => {
-					if (excludeTargets.includes(capId)) return;
+			// V5: Add slots from user's own capacity slots
+			if ($myCapacitySlots && $myCapacitySlots.length > 0) {
+				$myCapacitySlots.forEach((slot) => {
+					const slotKey = slot.id;
+					if (excludeTargets.includes(slotKey) || seenItems.has(slotKey)) return;
 
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slot: any) => {
-							const slotKey = `${capId}:${slot.id}`;
-							if (excludeTargets.includes(slotKey) || seenItems.has(slotKey)) return;
+					seenItems.add(slotKey);
 
-							seenItems.add(slotKey);
+					const { timeInfo, location } = formatSlotInfo(slot);
+					const displayName = `🕒 ${slot.emoji || '🎁'} ${slot.name} - ${timeInfo}`;
 
-							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `🕒 ${capacity.emoji || '🎁'} ${capacity.name} - ${timeInfo}`;
-
-							items.push({
-								id: slotKey,
-								name: displayName,
-								metadata: {
-									type: 'slot',
-									capacityId: capId,
-									slotId: slot.id,
-									capacityName: capacity.name,
-									quantity: slot.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: true
-								}
-							});
-						});
-					}
+					items.push({
+						id: slotKey,
+						name: displayName,
+						metadata: {
+							type: 'slot',
+							capacityId: slot.id,  // V5: slot is the capacity
+							slotId: slot.id,
+							capacityName: slot.name,
+							quantity: slot.quantity || 0,
+							location,
+							timeInfo,
+							isOwned: true
+						}
+					});
 				});
 			}
 
-			// Add slots from network capacities (shares)
-			if ($userNetworkCapacitiesWithSlotQuantities) {
-				Object.entries($userNetworkCapacitiesWithSlotQuantities).forEach(([capId, capacity]) => {
-					if (excludeTargets.includes(capId)) return;
-
-					const providerId = (capacity as any).provider_id;
-					const providerName = providerId ? getDisplayName(providerId, $userNamesCache) : 'Unknown';
-
-					if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-						capacity.availability_slots.forEach((slot: any) => {
-							const slotKey = `${capId}:${slot.id}`;
-							if (excludeTargets.includes(slotKey) || seenItems.has(slotKey)) return;
-
-							seenItems.add(slotKey);
-
-							const { timeInfo, location } = formatSlotInfo(slot);
-							const displayName = `🕒 ${capacity.emoji || '🎁'} ${capacity.name} (${providerName}) - ${timeInfo}`;
-
-							items.push({
-								id: slotKey,
-								name: displayName,
-								metadata: {
-									type: 'slot',
-									capacityId: capId,
-									slotId: slot.id,
-									capacityName: capacity.name,
-									providerId,
-									providerName,
-									quantity: slot.quantity || 0,
-									location,
-									timeInfo,
-									isOwned: false
-								}
-							});
-						});
-					}
-				});
-			}
+			// V5 TODO: Add slots from network capacities (allocated shares)
+			// This should be integrated when v5 allocation algorithm is implemented
 
 			// Add pubkey targets (users/people)
 			if ($userPubKeys) {

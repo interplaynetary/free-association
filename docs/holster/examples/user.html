@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Holster.user - test examples</title>
+  </head>
+  <body>
+    <h2>Holster.user - test examples</h2>
+    <p>
+      This file loads <code>user.js</code> which contains examples that test the
+      Holster.user API. See the console log for test output.
+    </p>
+    <p>
+      The tests create two users, Alice and Bob. They both write data to their
+      own user space. Bob writes secret data that can only be read by Alice,
+      then Alice logs in again to read the message.
+    </p>
+    <p>
+      These tests also show how to use the SEA API (Security, Encryption, and
+      Authorization), which can be loaded on it's own, but it made available via
+      holster.SEA. The holster.user API uses the SEA API internally for creating
+      and authenticating users.
+    </p>
+    <p>
+      The <code>user.js</code> file is loaded as a module, which allows it to
+      import the development build of Holster. You can switch to the production
+      build by changing the import path at the top of the file.
+    </p>
+    <script type="module" src="./user.js"></script>
+  </body>
+</html>

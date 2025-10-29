@@ -2,7 +2,9 @@
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
 	import { handleAddressClick } from '$lib/utils/mapUtils';
 	import { globalState } from '$lib/global.svelte';
-	import { mutualRecognition } from '$lib/state/core.svelte';
+	// V5: Import mutual recognition from v5 stores
+	import { myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	import { get } from 'svelte/store';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -45,18 +47,11 @@
 	// Track fullscreen state for responsive panel sizing
 	let isFullscreen = $state(false);
 
-	// Listen for fullscreen changes
-	$effect(() => {
-		if (typeof document === 'undefined') return;
-
-		const handleFullscreenChange = () => {
-			isFullscreen = !!document.fullscreenElement;
-			console.log('[MapSidePanel] Fullscreen changed:', isFullscreen);
-		};
-
-		document.addEventListener('fullscreenchange', handleFullscreenChange);
-		return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-	});
+	// Handle fullscreen changes
+	const handleFullscreenChange = () => {
+		isFullscreen = !!document.fullscreenElement;
+		console.log('[MapSidePanel] Fullscreen changed:', isFullscreen);
+	};
 
 	// Prevent scroll events from bubbling to parent page
 	function handlePanelScroll(event: Event) {
@@ -206,20 +201,20 @@
 	// Get allocated quantity for a specific slot (your share from efficient algorithm)
 	function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
 		// Use the new efficient allocation data structure
-		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 		return slot?.allocated_quantity || 0;
 	}
 
 	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
 	function getSlotMutualRecognitionShare(capacity: any, slotId: string): number {
-		const slot = capacity.availability_slots?.find((s: any) => s.id === slotId);
+		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
 		if (!slot) return 0;
 
 		const providerId = capacity.provider_id;
 		if (!providerId) return 0;
 
-		// Get the user's mutual recognition share with this provider
-		const userMutualRecShare = $mutualRecognition[providerId] || 0;
+		// Get the user's mutual recognition share with this provider (v5)
+		const userMutualRecShare = $myMutualRecognition[providerId] || 0;
 
 		// Calculate: slot total quantity * mutual recognition share
 		const totalQuantity = slot.quantity || 0;
@@ -516,6 +511,8 @@
 		}
 	}
 </script>
+
+<svelte:document onfullscreenchange={handleFullscreenChange} />
 
 <!-- Fixed search input that never moves -->
 <div

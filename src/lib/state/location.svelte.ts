@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import { userCapacities, computedProviderAllocations } from './core.svelte';
+// V5: Import from v5 stores
+import { myCapacitySlotsStore } from '$lib/commons/v5/stores.svelte';
 
 // Live location data interface
 export interface LiveLocationData {
@@ -67,38 +68,24 @@ export const currentLocationText = derived(currentLocation, ($location) => {
 });
 
 // Derived store of those who have access to our live-location:
-// those who have allocations in our provider capacities from the efficient algorithm.
+// V5: Based on capacity slots (simplified until v5 allocation algorithm is fully integrated)
+// TODO: Integrate with v5 allocation algorithm when available
 export const liveLocationAccessList = derived(
-	[userCapacities, computedProviderAllocations],
-	([$userCapacities, $computedProviderAllocations]) => {
-		if (!$userCapacities || !$computedProviderAllocations) {
+	[myCapacitySlotsStore],
+	([$myCapacitySlots]) => {
+		if (!$myCapacitySlots || $myCapacitySlots.length === 0) {
 			return [];
 		}
 
-		const accessList: string[] = [];
-
-		// Iterate through all our provider capacities
-		Object.entries($userCapacities).forEach(([capacityId, capacity]) => {
-			// If this is a provider capacity (our capacity), check allocations
-			if ('recipient_shares' in capacity) {
-				// Get allocation results for this capacity from the efficient algorithm
-				const capacityAllocations = $computedProviderAllocations[capacityId];
-				if (capacityAllocations) {
-					// Check all slots for recipients with final allocations
-					Object.values(capacityAllocations).forEach((slotAllocation) => {
-						Object.keys(slotAllocation.final_allocations || {}).forEach((recipientId) => {
-							const allocation = slotAllocation.final_allocations[recipientId] || 0;
-							if (allocation > 0 && !accessList.includes(recipientId)) {
-								accessList.push(recipientId);
-							}
-						});
-					});
-				}
-			}
-		});
-
-		console.log('[LIVE-LOCATION-ACCESS] Recipients with live-location access:', accessList);
-		return accessList;
+		// V5 TODO: This should be computed from allocation results
+		// For now, return empty array (access control disabled until v5 allocation integration)
+		// When v5 allocation is integrated, this should check:
+		// 1. Who received allocations from my capacity slots
+		// 2. Filter to only those with active/valid allocations
+		// 3. Return their public keys
+		
+		console.log('[LIVE-LOCATION-ACCESS] V5 allocation integration pending - access list empty');
+		return [];
 	}
 );
 

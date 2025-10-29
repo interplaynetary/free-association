@@ -1,27 +1,15 @@
 /**
- * Unified Authentication Module
+ * Authentication Module - V5 (Holster-Only)
  *
- * This module provides a single interface for authentication that works
- * with either Gun or Holster based on the USE_HOLSTER_AUTH flag.
+ * This module provides authentication using Holster.
+ * Migrated from Gun/Holster dual support to Holster-only.
  *
- * UI components should import from this module instead of directly from
- * gun.svelte.ts or holster.svelte.ts to ensure they work with both systems.
+ * UI components should import from this module for authentication.
  */
 
-import { USE_HOLSTER_AUTH } from '$lib/config';
-import { derived, type Readable } from 'svelte/store';
+import type { Readable } from 'svelte/store';
 
-// Import from both systems
-import {
-	userAlias as gunUserAlias,
-	userPub as gunUserPub,
-	isAuthenticating as gunIsAuthenticating,
-	usersList as gunUsersList,
-	login as gunLogin,
-	signup as gunSignup,
-	signout as gunSignout
-} from './gun.svelte';
-
+// V5: Import from Holster (in v5 commons)
 import {
 	holsterUserAlias,
 	holsterUserPub,
@@ -30,83 +18,58 @@ import {
 	login as holsterLogin,
 	signup as holsterSignup,
 	signout as holsterSignout
-} from './holster.svelte';
+} from '$lib/commons/v5/holster.svelte';
 
 // ============================================================================
-// Unified Stores
+// Exported Stores (V5: Holster-Only)
 // ============================================================================
 
 /**
  * Current user's alias (username)
- * Returns the appropriate store based on USE_HOLSTER_AUTH flag
  */
-export const userAlias: Readable<string> = derived(
-	USE_HOLSTER_AUTH ? holsterUserAlias : gunUserAlias,
-	($alias) => $alias
-);
+export const userAlias: Readable<string> = holsterUserAlias;
 
 /**
  * Current user's public key
- * Returns the appropriate store based on USE_HOLSTER_AUTH flag
  */
-export const userPub: Readable<string> = derived(
-	USE_HOLSTER_AUTH ? holsterUserPub : gunUserPub,
-	($pub) => $pub
-);
+export const userPub: Readable<string> = holsterUserPub;
 
 /**
  * Authentication loading state
- * Returns the appropriate store based on USE_HOLSTER_AUTH flag
  */
-export const isAuthenticating: Readable<boolean> = derived(
-	USE_HOLSTER_AUTH ? isHolsterAuthenticating : gunIsAuthenticating,
-	($auth) => $auth
-);
+export const isAuthenticating: Readable<boolean> = isHolsterAuthenticating;
+
+/**
+ * List of all users
+ */
+export const usersList = holsterUsersList;
 
 // ============================================================================
-// Unified Functions
+// Exported Functions (V5: Holster-Only)
 // ============================================================================
 
 /**
  * Login with username and password
- * Routes to the appropriate implementation based on USE_HOLSTER_AUTH flag
  */
 export async function login(alias: string, password: string): Promise<void> {
-	console.log(`[AUTH] Using ${USE_HOLSTER_AUTH ? 'Holster' : 'Gun'} for login`);
-
-	if (USE_HOLSTER_AUTH) {
-		return holsterLogin(alias, password);
-	} else {
-		return gunLogin(alias, password);
-	}
+	console.log('[AUTH-V5] Logging in with Holster');
+	return holsterLogin(alias, password);
 }
 
 /**
  * Signup (create new account) with username and password
- * Routes to the appropriate implementation based on USE_HOLSTER_AUTH flag
  */
 export async function signup(alias: string, password: string): Promise<void> {
-	console.log(`[AUTH] Using ${USE_HOLSTER_AUTH ? 'Holster' : 'Gun'} for signup`);
-
-	if (USE_HOLSTER_AUTH) {
-		return holsterSignup(alias, password);
-	} else {
-		return gunSignup(alias, password);
-	}
+	console.log('[AUTH-V5] Signing up with Holster');
+	return holsterSignup(alias, password);
 }
 
 /**
  * Sign out the current user
- * Routes to the appropriate implementation based on USE_HOLSTER_AUTH flag
  */
 export async function signout(): Promise<void> {
-	console.log(`[AUTH] Using ${USE_HOLSTER_AUTH ? 'Holster' : 'Gun'} for signout`);
-
-	if (USE_HOLSTER_AUTH) {
-		return holsterSignout();
-	} else {
-		return gunSignout();
-	}
+	console.log('[AUTH-V5] Signing out from Holster');
+	return holsterSignout();
 }
 
 // ============================================================================
@@ -115,9 +78,9 @@ export async function signout(): Promise<void> {
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
 	(window as any).authDebug = {
-		system: USE_HOLSTER_AUTH ? 'Holster' : 'Gun',
+		system: 'Holster',
 		checkAuth: () => {
-			console.log('[AUTH-DEBUG] Current auth system:', USE_HOLSTER_AUTH ? 'Holster' : 'Gun');
+			console.log('[AUTH-DEBUG] Current auth system: Holster (v5)');
 			console.log('[AUTH-DEBUG] userAlias store:', userAlias);
 			console.log('[AUTH-DEBUG] userPub store:', userPub);
 			console.log('[AUTH-DEBUG] isAuthenticating store:', isAuthenticating);
@@ -142,7 +105,6 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 		}
 	};
 
-	console.log('[AUTH] Unified auth module loaded');
-	console.log(`[AUTH] Using ${USE_HOLSTER_AUTH ? 'Holster' : 'Gun'} for authentication`);
-	console.log('[AUTH] Debug utilities available: window.authDebug');
+	console.log('[AUTH-V5] Holster-only auth module loaded');
+	console.log('[AUTH-V5] Debug utilities available: window.authDebug');
 }

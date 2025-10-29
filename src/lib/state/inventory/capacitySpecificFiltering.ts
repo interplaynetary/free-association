@@ -1,6 +1,6 @@
 import { derived } from 'svelte/store';
 import { userNetworkCapacitiesWithSlotQuantities } from '../core.svelte';
-import type { CapacitiesCollection, ProviderCapacity, BaseCapacity } from '$lib/schema';
+import type { CapacitiesCollection, ProviderCapacity, BaseCapacity } from '$lib/commons/v5/schemas';
 
 // Import from the three modular systems
 import {
@@ -112,7 +112,7 @@ export interface CapacityCriteria {
 // ===== CAPACITY-SPECIFIC HELPER FUNCTIONS =====
 
 const hasLocationInfo = (capacity: any) =>
-	capacity.availability_slots?.some(
+	capacity.capacity_slots?.some(
 		(slot: any) =>
 			!!(
 				slot.location_type ||
@@ -126,18 +126,18 @@ const hasLocationInfo = (capacity: any) =>
 	) ?? false;
 
 const hasScheduleInfo = (capacity: any) =>
-	capacity.availability_slots?.some(
+	capacity.capacity_slots?.some(
 		(slot: any) =>
 			!!(slot.start_date || slot.start_time || slot.end_date || slot.end_time || slot.all_day)
 	) ?? false;
 
 const hasRecurrenceInfo = (capacity: any) =>
-	capacity.availability_slots?.some(
+	capacity.capacity_slots?.some(
 		(slot: any) => !!(slot.recurrence || slot.custom_recurrence_repeat_every)
 	) ?? false;
 
 const hasQuantityInfo = (capacity: any) =>
-	capacity.availability_slots?.some((slot: any) => slot.quantity != null) ?? false;
+	capacity.capacity_slots?.some((slot: any) => slot.quantity != null) ?? false;
 
 // ===== CAPACITY-SPECIFIC FUNCTIONS =====
 
@@ -156,7 +156,7 @@ export function createCapacityLookups(
 		let totalAllocated = 0;
 		let totalAvailable = 0;
 
-		actualCapacity.availability_slots?.forEach((slot: any) => {
+		actualCapacity.capacity_slots?.forEach((slot: any) => {
 			totalAllocated += slot.allocated_quantity || 0;
 			totalAvailable += slot.available_quantity || slot.quantity || 0;
 		});

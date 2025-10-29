@@ -8,9 +8,10 @@
  */
 
 import { writable, get } from 'svelte/store';
-import { holsterUser } from './holster.svelte';
-import type { ChatReadStates } from '$lib/schema';
-import { parseChatReadStates } from '$lib/validation';
+import { holsterUser } from '$lib/commons/v5/holster.svelte';
+// V5: Use Zod schemas for validation
+import type { ChatReadStates } from '$lib/commons/v5/schemas';
+import { ChatReadStatesSchema } from '$lib/commons/v5/schemas';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ============================================================================
@@ -64,14 +65,14 @@ function subscribeToChatReadStates() {
 		const networkTimestamp = getTimestamp(data);
 		const { _updatedAt, ...dataOnly } = data;
 
-		// Parse and validate
-		const parsed = parseChatReadStates(dataOnly);
-		if (!parsed) {
-			console.error('[CHAT-READ-STATES-HOLSTER] Invalid chat read states data');
+		// V5: Parse and validate with Zod
+		const parseResult = ChatReadStatesSchema.safeParse(dataOnly);
+		if (!parseResult.success) {
+			console.error('[CHAT-READ-STATES-HOLSTER] Invalid chat read states data:', parseResult.error);
 			return;
 		}
 
-		const networkReadStates = parsed;
+		const networkReadStates = parseResult.data;
 
 		// Only update if newer or first time
 		if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {

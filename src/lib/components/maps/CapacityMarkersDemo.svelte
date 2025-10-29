@@ -13,13 +13,17 @@
 		Projection
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
-	import { userCapacitiesWithShares } from '$lib/state/core.svelte';
+	// V5: Import commitments from v5 stores
+	import { getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
 	import {
 		getCapacitiesWithCoordinates,
 		formatCapacityPopupContent,
 		type CapacityMarkerData
 	} from '$lib/utils/capacityMarkers';
-	import type { Capacity } from '$lib/schema';
+	import type { Commitment } from '$lib/commons/v5/schemas';
+	
+	// Legacy type alias
+	type Capacity = Commitment;
 
 	interface Props {
 		onCapacityUpdate?: (id: string, lnglat: { lng: number; lat: number }) => void;
@@ -35,9 +39,11 @@
 
 	// Convert capacities to markers with reactive coordinates
 	const capacityMarkers = $derived(() => {
-		if (!$userCapacitiesWithShares) return [];
+		// V5: Get all commitments
+		const allCommitments = getAllCommitmentsRecord();
+		if (!allCommitments) return [];
 
-		return getCapacitiesWithCoordinates($userCapacitiesWithShares).map((marker) => {
+		return getCapacitiesWithCoordinates(allCommitments).map((marker) => {
 			// Create reactive state for each marker's coordinates
 			const lnglat = $state({ lng: marker.lnglat.lng, lat: marker.lnglat.lat });
 			return {

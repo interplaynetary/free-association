@@ -1,17 +1,33 @@
 <script lang="ts">
 	import { globalState, currentPath } from '$lib/global.svelte';
-	import { userTree } from '$lib/state/core.svelte';
-	import { findNodeById, addChild, calculateNodePoints } from '$lib/protocol';
+	// V5: Import from v5 stores
+	import { 
+		myRecognitionTreeStore as userTree,
+		myCapacitySlotsStore,
+		networkCommitments,
+		getNetworkCommitmentsRecord
+	} from '$lib/commons/v5/stores.svelte';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/commons/v5/protocol';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	import { userCapacities, mutualContributors, userNetworkCapacitiesWithSlotQuantities } from '$lib/state/core.svelte';
-	import { addCapacity as addCapacityToCollection } from '$lib/protocol';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import type { ProviderCapacity, Node, NonRootNode, CapacitiesCollection } from '$lib/schema';
-	import { collectiveForest } from '$lib/collective-tree.svelte';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/commons/v5/schemas';
+	import { collectiveForest } from '$lib/commons/v5/collective/collective-tree.svelte';
+	
+	// V5: Wrap Commitment with id for collection storage
+	type CommitmentWithId = Commitment & { id: string };
+	type ProviderCapacity = CommitmentWithId;
+	type CapacitiesCollection = Record<string, CommitmentWithId>;
+	
+	// Simple helper to add capacity to collection
+	function addCapacityToCollection(collection: CapacitiesCollection, capacity: CommitmentWithId): void {
+		if (capacity.id) {
+			collection[capacity.id] = capacity;
+		}
+	}
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
 	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
@@ -21,6 +37,39 @@
 		getContrastTextColor
 	} from '$lib/utils/colorUtils';
 	import { t } from '$lib/translations';
+
+	// V5: Create derived stores for backward compatibility
+	const userCapacities = derived([myCapacitySlotsStore], ([$slots]) => {
+		// V5: Convert slots array to a collection (for compatibility)
+		// Each slot becomes a commitment with capacity_slots
+		const collection: CapacitiesCollection = {};
+		if ($slots) {
+			$slots.forEach(slot => {
+				const commitment: CommitmentWithId = {
+					id: slot.id,
+					capacity_slots: [slot],
+					need_slots: [],
+					timestamp: Date.now(),
+					itcStamp: { id: 0, event: 0 }  // Placeholder ITC stamp
+				};
+				collection[slot.id] = commitment;
+			});
+		}
+		return collection;
+	});
+
+	// V5: Compute mutual contributors from tree
+	const mutualContributors = derived([userTree], ([$tree]) => {
+		if (!$tree) return [];
+		return getAllContributorsFromTree($tree);
+	});
+
+	// V5: Network capacities from commitments
+	const userNetworkCapacitiesWithSlotQuantities = derived([networkCommitments], ([$networkCommitments]) => {
+		// V5: Return all network commitments as-is (they have capacity_slots)
+		const allCommitments = getNetworkCommitmentsRecord();
+		return allCommitments;
+	});
 
 	// Reactive store subscriptions
 	const tree = $derived($userTree);
@@ -127,29 +176,15 @@
 	});
 
 	// Handle click outside to close view menu
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-
-		function handleClickOutside(event: MouseEvent | TouchEvent) {
-			const target = event.target as HTMLElement;
-			if (showViewMenu && viewMenuRef && !viewMenuRef.contains(target)) {
-				const viewButton = document.querySelector('.view-cycle-button');
-				if (!viewButton?.contains(target)) {
-					showViewMenu = false;
-				}
+	function handleClickOutside(event: MouseEvent | TouchEvent) {
+		const target = event.target as HTMLElement;
+		if (showViewMenu && viewMenuRef && !viewMenuRef.contains(target)) {
+			const viewButton = document.querySelector('.view-cycle-button');
+			if (!viewButton?.contains(target)) {
+				showViewMenu = false;
 			}
 		}
-
-		if (showViewMenu) {
-			document.addEventListener('mousedown', handleClickOutside);
-			document.addEventListener('touchstart', handleClickOutside);
-		}
-
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-			document.removeEventListener('touchstart', handleClickOutside);
-		};
-	});
+	}
 
 	// Helper function to get the sequence of node names from our current path
 	function getPathNodeNames(ourTree: Node | null, path: string[]): string[] {
@@ -195,12 +230,16 @@
 	}> {
 		return node.children.map((child) => ({
 			id: child.id,
-			name: child.name,
-			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
-			contributors: child.type === 'NonRootNode' ? (child as NonRootNode).contributor_ids : [],
-			antiContributors:
-				child.type === 'NonRootNode' ? (child as NonRootNode).anti_contributors_ids : [],
-			subtree: child
+		name: child.name,
+		points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
+		// V5: Extract IDs from Contributor[] arrays {id, points}
+		contributors: child.type === 'NonRootNode' 
+			? (child as NonRootNode).contributors.map(c => c.id) 
+			: [],
+		antiContributors: child.type === 'NonRootNode' 
+			? ((child as NonRootNode).anti_contributors || []).map(c => c.id) 
+			: [],
+		subtree: child
 		}));
 	}
 
@@ -429,29 +468,39 @@
 				.filter((id): id is string => id !== null); // Remove null entries
 		}
 
-		// Recursive function to process the tree
+		// V5: Recursive function to process the tree with Contributor[] arrays
 		function processNode(currentNode: Node): void {
 			// Only NonRootNodes have contributor arrays
 			if (currentNode.type === 'NonRootNode') {
 				const nonRootNode = currentNode as NonRootNode;
 
-				// Resolve contributor IDs
-				if (nonRootNode.contributor_ids && nonRootNode.contributor_ids.length > 0) {
-					const originalCount = nonRootNode.contributor_ids.length;
-					nonRootNode.contributor_ids = resolveContributorArray(nonRootNode.contributor_ids);
+				// V5: Resolve contributor IDs (extract from Contributor[] objects, resolve, reconstruct)
+				if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+					const originalCount = nonRootNode.contributors.length;
+					const contributorIds = nonRootNode.contributors.map(c => c.id);
+					const resolvedIds = resolveContributorArray(contributorIds);
+					// Reconstruct Contributor[] array with resolved IDs, preserving points
+					nonRootNode.contributors = resolvedIds.map((id, index) => ({
+						id,
+						points: nonRootNode.contributors[index]?.points || 100
+					}));
 					console.log(
-						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.contributor_ids.length} contributor IDs for node '${currentNode.name}'`
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.contributors.length} contributor IDs for node '${currentNode.name}'`
 					);
 				}
 
-				// Resolve anti-contributor IDs
-				if (nonRootNode.anti_contributors_ids && nonRootNode.anti_contributors_ids.length > 0) {
-					const originalCount = nonRootNode.anti_contributors_ids.length;
-					nonRootNode.anti_contributors_ids = resolveContributorArray(
-						nonRootNode.anti_contributors_ids
-					);
+				// V5: Resolve anti-contributor IDs
+				if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+					const originalCount = nonRootNode.anti_contributors.length;
+					const antiContributorIds = nonRootNode.anti_contributors.map(c => c.id);
+					const resolvedIds = resolveContributorArray(antiContributorIds);
+					// Reconstruct Contributor[] array with resolved IDs, preserving points
+					nonRootNode.anti_contributors = resolvedIds.map((id, index) => ({
+						id,
+						points: nonRootNode.anti_contributors![index]?.points || 100
+					}));
 					console.log(
-						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.anti_contributors_ids.length} anti-contributor IDs for node '${currentNode.name}'`
+						`[NETWORK-SUBTREE] Processed ${originalCount} → ${nonRootNode.anti_contributors.length} anti-contributor IDs for node '${currentNode.name}'`
 					);
 				}
 			}
@@ -533,34 +582,32 @@
 		if (!alias || !pub) throw new Error('No user logged in');
 
 		const todayString = today(getLocalTimeZone()).toString();
+		const slotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		
+		// V5: Create a proper Commitment structure
 		return {
 			id: crypto.randomUUID(),
-			name: '',
-			emoji: '',
-			unit: '',
-			description: '',
-			max_natural_div: 1,
-			max_percentage_div: 1.0,
-			hidden_until_request_accepted: false,
-			owner_id: pub,
-			filter_rule: null,
-			members: [pub], // Default to current user as the only member
-			availability_slots: [
+			timestamp: Date.now(),
+			itcStamp: { id: 0, event: 0 },  // Placeholder ITC stamp
+			capacity_slots: [  // V5: Metadata lives on the slot, not the commitment
 				{
-					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+					id: slotId,
+					name: '',  // V5: Required field (user will fill this in)
+					need_type_id: 'default',  // V5: Required field
 					quantity: 1,
+					emoji: '',
+					unit: '',
+					description: '',
+					max_natural_div: 1,
+					max_percentage_div: 1.0,
+					hidden_until_request_accepted: false,
+					filter_rule: null,
 					location_type: 'Undefined',
-					all_day: true,
 					start_date: todayString,
-					start_time: null,
 					end_date: null,
-					end_time: null,
 					time_zone: getLocalTimeZone(),
-					recurrence: 'Daily',
-					custom_recurrence_repeat_every: null,
-					custom_recurrence_repeat_unit: null,
-					custom_recurrence_end_type: null,
-					custom_recurrence_end_value: null,
+					recurrence: 'daily',  // V5: lowercase enum value
+					// Optional fields
 					latitude: undefined,
 					longitude: undefined,
 					street_address: undefined,
@@ -569,34 +616,38 @@
 					postal_code: undefined,
 					country: undefined
 				}
-			]
+			],
+			need_slots: []
 		};
 	}
 
-	// Add capacity to the store - following exact pattern from Capacities component
+	// Add capacity to the store - V5: Add slot to myCapacitySlotsStore
 	function addCapacity(capacity: ProviderCapacity) {
 		const alias = $userAlias;
 		const pub = $userPub;
 		if (!alias || !pub) return false;
 
 		try {
-			// Create a deep clone of current capacities
-			const newCapacities: CapacitiesCollection = structuredClone($userCapacities || {});
-
-			// Create a plain object copy of the capacity
-			const plainCapacity = { ...capacity };
-
-			// Add capacity to the collection using the protocol function
-			addCapacityToCollection(newCapacities, plainCapacity);
-
-			// Update store (Gun handles timestamps natively now)
-			userCapacities.set(newCapacities);
-
-			// Add to highlighted capacities using global state
-			globalState.highlightCapacity(capacity.id);
-
-			console.log('[TOOLBAR] Successfully added new capacity:', capacity.id);
-			return true;
+			// V5: Get current slots and add the new one
+			const currentSlots = get(myCapacitySlotsStore) || [];
+			
+			// Extract the first capacity slot from the commitment (v5 structure)
+			if (capacity.capacity_slots && capacity.capacity_slots.length > 0) {
+				const newSlot = capacity.capacity_slots[0];
+				const updatedSlots = [...currentSlots, newSlot];
+				
+				// Update v5 store (Holster auto-persists)
+				myCapacitySlotsStore.set(updatedSlots);
+				
+				// Add to highlighted capacities using global state
+				globalState.highlightCapacity(capacity.id);
+				
+				console.log('[TOOLBAR] Successfully added new capacity slot:', capacity.id);
+				return true;
+			} else {
+				console.error('[TOOLBAR] Capacity has no capacity_slots');
+				return false;
+			}
 		} catch (error) {
 			console.error('[TOOLBAR] Error adding capacity:', error);
 			return false;
@@ -636,6 +687,8 @@
 		globalState.showToast(`Navigated to "${result.node.name}"`, 'success');
 	}
 </script>
+
+<svelte:document onmousedown={handleClickOutside} ontouchstart={handleClickOutside} />
 
 {#if shouldShowToolbar}
 	<div class="toolbar-container">

@@ -101,6 +101,21 @@ export type ResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Contributor - Represents a person who contributed to a node
+ * 
+ * Points determine the contributor's share of recognition from this node.
+ * If a node has contributors [Alice: 50pts, Bob: 30pts], Alice gets 50/80 = 62.5% of the node's recognition.
+ * 
+ * This is analogous to how child node points work, but for contributors instead of subtasks.
+ */
+export const ContributorSchema = z.object({
+	id: IdSchema,
+	points: PointsSchema
+});
+
+export type Contributor = z.infer<typeof ContributorSchema>;
+
+/**
  * Node Data Storage - Reactive Store Pattern for Tree Nodes
  * 
  * Each node becomes a mini-store that can:
@@ -147,6 +162,13 @@ export const NodeDataStorageSchema = z.object({
 
 /**
  * Non-Root Node - Represents a node in a recognition/priority tree
+ * 
+ * V5 WEIGHTED CONTRIBUTORS:
+ * - contributors: Array of {id, points} - each contributor has weighted share
+ * - anti_contributors: Array of {id, points} - each anti-contributor has weighted share
+ * - Share = contributor.points / sum(all contributor points)
+ * 
+ * Example: contributors: [{alice, 50}, {bob, 30}] → alice gets 50/80, bob gets 30/80
  */
 export const NonRootNodeSchema = z.object({
 	id: IdSchema,
@@ -156,8 +178,8 @@ export const NonRootNodeSchema = z.object({
 	children: z.array(z.any()), // Recursive reference
 	points: PointsSchema,
 	parent_id: IdSchema,
-	contributor_ids: z.array(IdSchema),
-	anti_contributors_ids: z.array(IdSchema),
+	contributors: z.array(ContributorSchema).default([]),
+	anti_contributors: z.array(ContributorSchema).default([]),
 	storage: z.optional(NodeDataStorageSchema)
 });
 
@@ -522,7 +544,7 @@ export const MultiDimensionalDampingSchema = z.object({
 	damping_history: z.record(z.string(), z.array(PerTypeDampingHistoryEntrySchema)),
 	
 	// Global damping factor (backward compatibility)
-	global_damping_factor: z.number().min(0).max(1).default(1.0)
+	global_damping_factor: z.number().min(0).max(1)
 });
 
 export type MultiDimensionalDamping = z.infer<typeof MultiDimensionalDampingSchema>;
@@ -547,15 +569,16 @@ export const CommitmentSchema = z.object({
 	
 	// Global recognition: MR(A, B) = min(R_A(B), R_B(A))
 	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
-	global_recognition_weights: GlobalRecognitionWeightsSchema.optional(),
-	global_mr_values: GlobalRecognitionWeightsSchema.optional(),
+	// Note: .nullable() allows null from Holster (empty objects → null)
+	global_recognition_weights: GlobalRecognitionWeightsSchema.nullable().optional(),
+	global_mr_values: GlobalRecognitionWeightsSchema.nullable().optional(),
 	
 	// Causality tracking (ITC)
 	itcStamp: z.any(), // ITCStampSchema
 	timestamp: z.number().int().positive(),
 	
 	// Per-type adaptive damping (α_k)
-	multi_dimensional_damping: MultiDimensionalDampingSchema.optional()
+	multi_dimensional_damping: MultiDimensionalDampingSchema.nullable().optional()
 });
 
 export type Commitment = z.infer<typeof CommitmentSchema>;
@@ -876,5 +899,67 @@ export function validateGlobalRecognitionWeights(
 	const sum = Object.values(weights).reduce((a, b) => a + b, 0);
 	return Math.abs(sum - 1.0) < epsilon;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// CONTACTS SCHEMA (Legacy Compatibility)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Contact - Represents a user contact
+ */
+export const ContactSchema = z.object({
+	contact_id: z.string(),
+	name: z.string(),
+	public_key: z.string().optional(),
+	emoji: z.string().optional(),
+	notes: z.string().optional(),
+	created_at: z.number().optional(),  // Gun timestamp
+	updated_at: z.number().optional(),  // Gun timestamp
+	_updatedAt: z.number().optional()   // Holster timestamp
+});
+
+export type Contact = z.infer<typeof ContactSchema>;
+
+/**
+ * Contacts Collection - Map of contact_id to Contact
+ */
+export const ContactsCollectionSchema = z.record(z.string(), ContactSchema);
+export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
+export type ContactsCollectionData = ContactsCollection;  // Alias for compatibility
+
+// ═══════════════════════════════════════════════════════════════════
+// CHAT SCHEMA (Legacy Compatibility)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Chat Read State - Tracks read status for a chat with another user
+ */
+export const ChatReadStateSchema = z.object({
+	lastRead: z.number().int().positive(),
+	lastReadTimestamp: z.number().int().positive().optional(),  // Alias for Gun compatibility
+	updatedAt: z.number().optional(),   // Gun timestamp
+	_updatedAt: z.number().optional()   // Holster timestamp
+});
+
+export type ChatReadState = z.infer<typeof ChatReadStateSchema>;
+
+/**
+ * Chat Read States - Map of user public key to read state
+ */
+export const ChatReadStatesSchema = z.record(z.string(), ChatReadStateSchema);
+export type ChatReadStates = z.infer<typeof ChatReadStatesSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// LEGACY TYPE ALIASES (For backward compatibility during migration)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Legacy type aliases - Components use Commitment, but some state files
+ * may still reference these old names during migration
+ */
+export type BaseCapacity = Commitment;
+export type ProviderCapacity = Commitment & { id?: string };  // Some legacy code expects id
+export type RecipientCapacity = Commitment;
+export type CapacitiesCollection = Record<string, Commitment>;
 
 

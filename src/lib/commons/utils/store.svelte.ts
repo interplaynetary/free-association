@@ -31,9 +31,9 @@
 
 import { writable, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
-import { holsterUser } from '$lib/state/holster.svelte';
+import { holsterUser } from '$lib/commons/v5/holster.svelte';
 import * as z from 'zod';
-import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
+import { getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -51,6 +51,12 @@ export interface StoreConfig<T extends z.ZodTypeAny> {
 	
 	/** Debounce persistence (ms, default: 0 = immediate) */
 	persistDebounce?: number;
+	
+	/** Convert data to Holster format before persistence (arrays → Records) */
+	toHolsterFormat?: (data: z.infer<T>) => any;
+	
+	/** Convert data from Holster format after reading (Records → arrays) */
+	fromHolsterFormat?: (data: any) => z.infer<T>;
 }
 
 export interface HolsterStore<T> extends Readable<T | null> {
@@ -125,8 +131,11 @@ export function createStore<T extends z.ZodTypeAny>(
 		// Remove timestamp wrapper
 		const { _updatedAt, ...actualData } = data;
 		
+		// Convert from Holster format if converter provided
+		const convertedData = config.fromHolsterFormat ? config.fromHolsterFormat(actualData) : actualData;
+		
 		// Validate with schema
-		const validation = config.schema.safeParse(actualData);
+		const validation = config.schema.safeParse(convertedData);
 		if (!validation.success) {
 			console.warn(`[HOLSTER-STORE:${config.holsterPath}] Invalid network data:`, validation.error);
 			return;
@@ -231,9 +240,12 @@ export function createStore<T extends z.ZodTypeAny>(
 			// Update lastNetworkTimestamp NOW (before writing)
 			lastNetworkTimestamp = localTimestamp;
 			
+			// Convert to Holster format if converter provided
+			const HolsterData = config.toHolsterFormat ? config.toHolsterFormat(dataToSave) : dataToSave;
+			
 			// Wrap with timestamp
 			const dataWithTimestamp = {
-				...dataToSave,
+				...HolsterData,
 				_updatedAt: localTimestamp
 			};
 			
@@ -351,8 +363,11 @@ export function createStore<T extends z.ZodTypeAny>(
 				// Remove timestamp wrapper
 				const { _updatedAt, ...actualData } = data;
 				
+				// Convert from Holster format if converter provided
+				const convertedData = config.fromHolsterFormat ? config.fromHolsterFormat(actualData) : actualData;
+				
 				// Validate with schema
-				const validation = config.schema.safeParse(actualData);
+				const validation = config.schema.safeParse(convertedData);
 				if (!validation.success) {
 					console.warn(
 						`[HOLSTER-STORE:${config.holsterPath}] Invalid data from ${pubKey.slice(0, 20)}...`,

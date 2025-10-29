@@ -1,5 +1,5 @@
-import { addChild, findNodeById } from '$lib/protocol';
-import type { RootNode } from '$lib/schema';
+import { addChild, findNodeById } from '$lib/commons/v5/protocol';
+import type { RootNode } from '$lib/commons/v5/schemas';
 
 /**
  * Populate tree with Universal Basic Needs (NVC-style) categories

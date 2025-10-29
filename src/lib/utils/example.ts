@@ -1,6 +1,6 @@
-import { addCapacity as addCapacityToCollection } from '$lib/protocol';
-import type { RootNode, ProviderCapacity, CapacitiesCollection } from '$lib/schema';
-import { userTree, userCapacities } from '$lib/state/core.svelte';
+// V5: Import from v5 stores and schemas
+import type { RootNode, AvailabilitySlot, Commitment } from '$lib/commons/v5/schemas';
+import { myRecognitionTreeStore, myCommitmentStore, myCapacitySlotsStore } from '$lib/commons/v5/stores.svelte';
 import { get } from 'svelte/store';
 import { getLocalTimeZone } from '@internationalized/date';
 import { populateSDGTree } from '../templates/sdg';
@@ -139,14 +139,15 @@ const GLOBAL_CITIES = [
 ];
 
 /**
- * 100 SDG-focused capacities with realistic locations and time patterns
+ * V5: 100 SDG-focused capacity slots with realistic locations and time patterns
+ * Returns AvailabilitySlot[] (v5 schema)
  */
-export function createExampleCapacities(userPubKey: string): ProviderCapacity[] {
-	const capacities: ProviderCapacity[] = [];
+export function createExampleCapacitySlots(): AvailabilitySlot[] {
+	const slots: AvailabilitySlot[] = [];
 	const timezone = getLocalTimeZone();
 
-	// Helper to create a capacity
-	const createCapacity = (
+	// Helper to create a capacity slot (v5 schema)
+	const createCapacitySlot = (
 		name: string,
 		emoji: string,
 		unit: string,
@@ -154,12 +155,20 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 		city: { name: string; country: string; lat: number; lng: number },
 		locationType: string = 'In-Person',
 		timePattern: any = null
-	): ProviderCapacity => {
+	): AvailabilitySlot => {
 		const time = timePattern || {
 			allDay: true,
-			recurrence: 'Weekly',
+			recurrence: 'weekly',
 			startTime: null,
 			endTime: null
+		};
+
+		// V5: Use availability_window for time ranges if not all-day
+		const availability_window = (time.allDay || !time.startTime || !time.endTime) ? undefined : {
+			time_ranges: [{
+				start_time: time.startTime,
+				end_time: time.endTime
+			}]
 		};
 
 		return {
@@ -168,53 +177,43 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			emoji,
 			unit,
 			description: '',
+			quantity,
+			// V5 REQUIRED: need_type_id for multi-dimensional allocation
+			need_type_id: 'general', // Default need type
 			max_natural_div: Math.min(quantity, 10),
 			max_percentage_div: 0.8,
 			hidden_until_request_accepted: false,
-			owner_id: userPubKey,
 			filter_rule: null,
-			members: [userPubKey], // Default to owner as the only member
-			availability_slots: [
-				{
-					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-					quantity,
-					location_type: locationType,
-					latitude: city.lat,
-					longitude: city.lng,
-					city: city.name,
-					country: city.country,
-					all_day: time.allDay,
-					start_date: new Date().toISOString().split('T')[0],
-					start_time: time.startTime,
-					end_date: null,
-					end_time: time.endTime,
-					time_zone: timezone,
-					recurrence: time.recurrence,
-					custom_recurrence_repeat_every: null,
-					custom_recurrence_repeat_unit: null,
-					custom_recurrence_end_type: null,
-					custom_recurrence_end_value: null
-				}
-			]
+			location_type: locationType,
+			latitude: city.lat,
+			longitude: city.lng,
+			city: city.name,
+			country: city.country,
+			start_date: new Date().toISOString().split('T')[0],
+			end_date: null,
+			time_zone: timezone,
+			recurrence: time.recurrence as any,
+			// V5: Use availability_window instead of start_time/end_time
+			availability_window
 		};
 	};
 
 	// ============ SOUTH AMERICA CAPACITIES (50+) ============
 
 	// Brazil (15 capacities)
-	capacities.push(
-		createCapacity('Community Lunch', '🍲', 'meals', 120, SOUTH_AMERICA_CITIES[0], 'In-Person', {
+	slots.push(
+		createCapacitySlot('Community Lunch', '🍲', 'meals', 120, SOUTH_AMERICA_CITIES[0], 'In-Person', {
 			allDay: false,
-			recurrence: 'Daily',
+			recurrence: 'daily',
 			startTime: '12:00',
 			endTime: '14:00'
 		})
 	);
-	capacities.push(
-		createCapacity('Water Filtration', '💧', 'liters', 5000, SOUTH_AMERICA_CITIES[1], 'In-Person')
+	slots.push(
+		createCapacitySlot('Water Filtration', '💧', 'liters', 5000, SOUTH_AMERICA_CITIES[1], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Solar Panel Installation',
 			'☀️',
 			'panels',
@@ -223,33 +222,33 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Literacy Classes', '📚', 'students', 30, SOUTH_AMERICA_CITIES[3], 'In-Person', {
+	slots.push(
+		createCapacitySlot('Literacy Classes', '📚', 'students', 30, SOUTH_AMERICA_CITIES[3], 'In-Person', {
 			allDay: false,
-			recurrence: 'Weekdays',
+			recurrence: 'weekly',
 			startTime: '09:00',
 			endTime: '12:00'
 		})
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Medical Consultation',
 			'🏥',
 			'appointments',
 			40,
 			SOUTH_AMERICA_CITIES[4],
 			'In-Person',
-			{ allDay: false, recurrence: 'Weekdays', startTime: '08:00', endTime: '17:00' }
+			{ allDay: false, recurrence: 'weekly', startTime: '08:00', endTime: '17:00' }
 		)
 	);
-	capacities.push(
-		createCapacity('Tree Planting', '🌳', 'saplings', 500, SOUTH_AMERICA_CITIES[5], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Tree Planting', '🌳', 'saplings', 500, SOUTH_AMERICA_CITIES[5], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Waste Collection', '♻️', 'kg', 2000, SOUTH_AMERICA_CITIES[6], 'Mobile')
+	slots.push(
+		createCapacitySlot('Waste Collection', '♻️', 'kg', 2000, SOUTH_AMERICA_CITIES[6], 'Mobile')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Fishing Training',
 			'🐟',
 			'participants',
@@ -258,28 +257,28 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Coding Bootcamp', '💻', 'students', 25, SOUTH_AMERICA_CITIES[8], 'Hybrid')
+	slots.push(
+		createCapacitySlot('Coding Bootcamp', '💻', 'students', 25, SOUTH_AMERICA_CITIES[8], 'Hybrid')
 	);
-	capacities.push(
-		createCapacity('Microfinance Loans', '💰', 'USD', 10000, SOUTH_AMERICA_CITIES[9], 'In-Person')
+	slots.push(
+		createCapacitySlot('Microfinance Loans', '💰', 'USD', 10000, SOUTH_AMERICA_CITIES[9], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Urban Garden', '🥬', 'plots', 50, SOUTH_AMERICA_CITIES[0], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Urban Garden', '🥬', 'plots', 50, SOUTH_AMERICA_CITIES[0], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Women Empowerment',
 			'👩',
 			'workshops',
 			8,
 			SOUTH_AMERICA_CITIES[1],
 			'In-Person',
-			{ allDay: false, recurrence: 'Weekly', startTime: '15:00', endTime: '18:00' }
+			{ allDay: false, recurrence: 'weekly', startTime: '15:00', endTime: '18:00' }
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Clean Energy Access',
 			'⚡',
 			'households',
@@ -288,21 +287,21 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Child Care', '👶', 'children', 20, SOUTH_AMERICA_CITIES[3], 'In-Person', {
+	slots.push(
+		createCapacitySlot('Child Care', '👶', 'children', 20, SOUTH_AMERICA_CITIES[3], 'In-Person', {
 			allDay: false,
-			recurrence: 'Weekdays',
+			recurrence: 'weekly',
 			startTime: '07:00',
 			endTime: '18:00'
 		})
 	);
-	capacities.push(
-		createCapacity('Mental Health Support', '🧠', 'sessions', 30, SOUTH_AMERICA_CITIES[4], 'Hybrid')
+	slots.push(
+		createCapacitySlot('Mental Health Support', '🧠', 'sessions', 30, SOUTH_AMERICA_CITIES[4], 'Hybrid')
 	);
 
 	// Argentina (10 capacities)
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Cooperative Bakery',
 			'🍞',
 			'loaves',
@@ -312,11 +311,11 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			{ allDay: false, recurrence: 'Daily', startTime: '06:00', endTime: '14:00' }
 		)
 	);
-	capacities.push(
-		createCapacity('Legal Aid', '⚖️', 'consultations', 15, SOUTH_AMERICA_CITIES[11], 'In-Person')
+	slots.push(
+		createCapacitySlot('Legal Aid', '⚖️', 'consultations', 15, SOUTH_AMERICA_CITIES[11], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Agricultural Training',
 			'🚜',
 			'farmers',
@@ -325,14 +324,14 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Bike Sharing', '🚲', 'bikes', 80, SOUTH_AMERICA_CITIES[13], 'Mobile')
+	slots.push(
+		createCapacitySlot('Bike Sharing', '🚲', 'bikes', 80, SOUTH_AMERICA_CITIES[13], 'Mobile')
 	);
-	capacities.push(
-		createCapacity('Youth Sports', '⚽', 'participants', 60, SOUTH_AMERICA_CITIES[14], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Youth Sports', '⚽', 'participants', 60, SOUTH_AMERICA_CITIES[14], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Artisan Market',
 			'🎨',
 			'vendor spots',
@@ -342,11 +341,11 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			{ allDay: false, recurrence: 'Weekends', startTime: '10:00', endTime: '18:00' }
 		)
 	);
-	capacities.push(
-		createCapacity('Housing Renovation', '🏠', 'homes', 5, SOUTH_AMERICA_CITIES[16], 'In-Person')
+	slots.push(
+		createCapacitySlot('Housing Renovation', '🏠', 'homes', 5, SOUTH_AMERICA_CITIES[16], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Community Radio',
 			'📻',
 			'broadcast hours',
@@ -355,34 +354,34 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'Online'
 		)
 	);
-	capacities.push(
-		createCapacity('Textile Recycling', '👕', 'kg', 1000, SOUTH_AMERICA_CITIES[11], 'In-Person')
+	slots.push(
+		createCapacitySlot('Textile Recycling', '👕', 'kg', 1000, SOUTH_AMERICA_CITIES[11], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Elder Care', '👴', 'seniors', 25, SOUTH_AMERICA_CITIES[12], 'In-Person')
+	slots.push(
+		createCapacitySlot('Elder Care', '👴', 'seniors', 25, SOUTH_AMERICA_CITIES[12], 'In-Person')
 	);
 
 	// Colombia (8 capacities)
-	capacities.push(
-		createCapacity('Peace Mediation', '🕊️', 'sessions', 20, SOUTH_AMERICA_CITIES[17], 'In-Person')
+	slots.push(
+		createCapacitySlot('Peace Mediation', '🕊️', 'sessions', 20, SOUTH_AMERICA_CITIES[17], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Coffee Cooperative', '☕', 'kg', 500, SOUTH_AMERICA_CITIES[18], 'In-Person')
+	slots.push(
+		createCapacitySlot('Coffee Cooperative', '☕', 'kg', 500, SOUTH_AMERICA_CITIES[18], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Music Education', '🎵', 'students', 35, SOUTH_AMERICA_CITIES[19], 'In-Person')
+	slots.push(
+		createCapacitySlot('Music Education', '🎵', 'students', 35, SOUTH_AMERICA_CITIES[19], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('River Cleanup', '🌊', 'kg removed', 3000, SOUTH_AMERICA_CITIES[20], 'Outdoor')
+	slots.push(
+		createCapacitySlot('River Cleanup', '🌊', 'kg removed', 3000, SOUTH_AMERICA_CITIES[20], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Ecotourism', '🌴', 'visitors', 40, SOUTH_AMERICA_CITIES[21], 'In-Person')
+	slots.push(
+		createCapacitySlot('Ecotourism', '🌴', 'visitors', 40, SOUTH_AMERICA_CITIES[21], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Digital Library', '📱', 'devices', 50, SOUTH_AMERICA_CITIES[17], 'In-Person')
+	slots.push(
+		createCapacitySlot('Digital Library', '📱', 'devices', 50, SOUTH_AMERICA_CITIES[17], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Organic Market',
 			'🥑',
 			'vendor spots',
@@ -392,8 +391,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			{ allDay: false, recurrence: 'Weekly', startTime: '08:00', endTime: '14:00' }
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Craft Workshop',
 			'🧶',
 			'participants',
@@ -404,19 +403,19 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 	);
 
 	// Peru (6 capacities)
-	capacities.push(
-		createCapacity('Quinoa Farming', '🌾', 'hectares', 20, SOUTH_AMERICA_CITIES[23], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Quinoa Farming', '🌾', 'hectares', 20, SOUTH_AMERICA_CITIES[23], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Tourism Guiding', '🗺️', 'tours', 10, SOUTH_AMERICA_CITIES[24], 'Outdoor', {
+	slots.push(
+		createCapacitySlot('Tourism Guiding', '🗺️', 'tours', 10, SOUTH_AMERICA_CITIES[24], 'Outdoor', {
 			allDay: true,
-			recurrence: 'Daily',
+			recurrence: 'daily',
 			startTime: null,
 			endTime: null
 		})
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Weaving Collective',
 			'🧵',
 			'textiles',
@@ -425,8 +424,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Water Infrastructure',
 			'🚰',
 			'connections',
@@ -435,8 +434,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Indigenous Knowledge',
 			'📜',
 			'workshops',
@@ -445,8 +444,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Rainforest Conservation',
 			'🌲',
 			'hectares',
@@ -457,8 +456,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 	);
 
 	// Chile (5 capacities)
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Earthquake Preparedness',
 			'🏗️',
 			'trainings',
@@ -467,14 +466,14 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Marine Research', '🐋', 'expeditions', 8, SOUTH_AMERICA_CITIES[28], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Marine Research', '🐋', 'expeditions', 8, SOUTH_AMERICA_CITIES[28], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Wine Cooperative', '🍷', 'bottles', 2000, SOUTH_AMERICA_CITIES[29], 'In-Person')
+	slots.push(
+		createCapacitySlot('Wine Cooperative', '🍷', 'bottles', 2000, SOUTH_AMERICA_CITIES[29], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Tech Innovation Hub',
 			'🚀',
 			'workspaces',
@@ -483,8 +482,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Mountain Conservation',
 			'⛰️',
 			'hectares',
@@ -495,11 +494,11 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 	);
 
 	// Ecuador (4 capacities)
-	capacities.push(
-		createCapacity('Cacao Production', '🍫', 'kg', 800, SOUTH_AMERICA_CITIES[31], 'In-Person')
+	slots.push(
+		createCapacitySlot('Cacao Production', '🍫', 'kg', 800, SOUTH_AMERICA_CITIES[31], 'In-Person')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Biodiversity Study',
 			'🦜',
 			'researchers',
@@ -508,8 +507,8 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'Outdoor'
 		)
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Indigenous Medicine',
 			'🌿',
 			'treatments',
@@ -518,19 +517,19 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Volcano Monitoring', '🌋', 'sensors', 15, SOUTH_AMERICA_CITIES[31], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Volcano Monitoring', '🌋', 'sensors', 15, SOUTH_AMERICA_CITIES[31], 'Outdoor')
 	);
 
 	// Bolivia (3 capacities)
-	capacities.push(
-		createCapacity('Llama Wool Collective', '🦙', 'kg', 300, SOUTH_AMERICA_CITIES[34], 'In-Person')
+	slots.push(
+		createCapacitySlot('Llama Wool Collective', '🦙', 'kg', 300, SOUTH_AMERICA_CITIES[34], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Salt Flat Tours', '✨', 'tours', 15, SOUTH_AMERICA_CITIES[35], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Salt Flat Tours', '✨', 'tours', 15, SOUTH_AMERICA_CITIES[35], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Mining Alternative',
 			'💎',
 			'participants',
@@ -541,16 +540,16 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 	);
 
 	// Venezuela (2 capacities)
-	capacities.push(
-		createCapacity('Food Distribution', '🥫', 'kg', 5000, SOUTH_AMERICA_CITIES[37], 'In-Person')
+	slots.push(
+		createCapacitySlot('Food Distribution', '🥫', 'kg', 5000, SOUTH_AMERICA_CITIES[37], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Community Currency', '🪙', 'credits', 10000, SOUTH_AMERICA_CITIES[38], 'Online')
+	slots.push(
+		createCapacitySlot('Community Currency', '🪙', 'credits', 10000, SOUTH_AMERICA_CITIES[38], 'Online')
 	);
 
 	// Rest of South America (3 capacities)
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Cross-Border Trade',
 			'🤝',
 			'transactions',
@@ -559,11 +558,11 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 			'In-Person'
 		)
 	);
-	capacities.push(
-		createCapacity('Beach Cleanup', '🏖️', 'kg removed', 2000, SOUTH_AMERICA_CITIES[43], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Beach Cleanup', '🏖️', 'kg removed', 2000, SOUTH_AMERICA_CITIES[43], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity(
+	slots.push(
+		createCapacitySlot(
 			'Indigenous Radio',
 			'📡',
 			'broadcast hours',
@@ -576,249 +575,230 @@ export function createExampleCapacities(userPubKey: string): ProviderCapacity[] 
 	// ============ GLOBAL CAPACITIES (50) ============
 
 	// Africa (15 capacities)
-	capacities.push(
-		createCapacity('Mobile Banking', '📱', 'accounts', 1000, GLOBAL_CITIES[0], 'Online')
+	slots.push(
+		createCapacitySlot('Mobile Banking', '📱', 'accounts', 1000, GLOBAL_CITIES[0], 'Online')
 	);
-	capacities.push(
-		createCapacity('Solar Kiosk', '☀️', 'charging stations', 10, GLOBAL_CITIES[1], 'In-Person')
+	slots.push(
+		createCapacitySlot('Solar Kiosk', '☀️', 'charging stations', 10, GLOBAL_CITIES[1], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Maternal Health', '🤰', 'checkups', 50, GLOBAL_CITIES[2], 'In-Person')
+	slots.push(
+		createCapacitySlot('Maternal Health', '🤰', 'checkups', 50, GLOBAL_CITIES[2], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Drought Relief', '💧', 'liters', 10000, GLOBAL_CITIES[3], 'Mobile')
+	slots.push(
+		createCapacitySlot('Drought Relief', '💧', 'liters', 10000, GLOBAL_CITIES[3], 'Mobile')
 	);
-	capacities.push(
-		createCapacity('School Meals', '🍽️', 'meals', 500, GLOBAL_CITIES[4], 'In-Person', {
+	slots.push(
+		createCapacitySlot('School Meals', '🍽️', 'meals', 500, GLOBAL_CITIES[4], 'In-Person', {
 			allDay: false,
-			recurrence: 'Weekdays',
+			recurrence: 'weekly',
 			startTime: '12:00',
 			endTime: '13:00'
 		})
 	);
-	capacities.push(
-		createCapacity('Livestock Vaccination', '🐄', 'animals', 200, GLOBAL_CITIES[5], 'Mobile')
+	slots.push(
+		createCapacitySlot('Livestock Vaccination', '🐄', 'animals', 200, GLOBAL_CITIES[5], 'Mobile')
 	);
-	capacities.push(
-		createCapacity('Malaria Prevention', '🦟', 'bed nets', 1000, GLOBAL_CITIES[6], 'In-Person')
+	slots.push(
+		createCapacitySlot('Malaria Prevention', '🦟', 'bed nets', 1000, GLOBAL_CITIES[6], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Women Literacy', '✍️', 'students', 40, GLOBAL_CITIES[7], 'In-Person')
+	slots.push(
+		createCapacitySlot('Women Literacy', '✍️', 'students', 40, GLOBAL_CITIES[7], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Desert Greening', '🌱', 'hectares', 100, GLOBAL_CITIES[0], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Desert Greening', '🌱', 'hectares', 100, GLOBAL_CITIES[0], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Handicraft Export', '🏺', 'products', 500, GLOBAL_CITIES[1], 'Online')
+	slots.push(
+		createCapacitySlot('Handicraft Export', '🏺', 'products', 500, GLOBAL_CITIES[1], 'Online')
 	);
-	capacities.push(
-		createCapacity('Clean Cookstoves', '🔥', 'stoves', 300, GLOBAL_CITIES[2], 'In-Person')
+	slots.push(
+		createCapacitySlot('Clean Cookstoves', '🔥', 'stoves', 300, GLOBAL_CITIES[2], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Elephant Conservation', '🐘', 'hectares', 5000, GLOBAL_CITIES[3], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Elephant Conservation', '🐘', 'hectares', 5000, GLOBAL_CITIES[3], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Fishing Rights', '🎣', 'licenses', 100, GLOBAL_CITIES[4], 'In-Person')
+	slots.push(
+		createCapacitySlot('Fishing Rights', '🎣', 'licenses', 100, GLOBAL_CITIES[4], 'In-Person')
 	);
-	capacities.push(createCapacity('Mobile Clinics', '🚑', 'visits', 30, GLOBAL_CITIES[5], 'Mobile'));
-	capacities.push(
-		createCapacity('Storytelling Circle', '📖', 'sessions', 12, GLOBAL_CITIES[6], 'In-Person')
+	slots.push(createCapacitySlot('Mobile Clinics', '🚑', 'visits', 30, GLOBAL_CITIES[5], 'Mobile'));
+	slots.push(
+		createCapacitySlot('Storytelling Circle', '📖', 'sessions', 12, GLOBAL_CITIES[6], 'In-Person')
 	);
 
 	// Asia (15 capacities)
-	capacities.push(
-		createCapacity('Monsoon Preparedness', '🌧️', 'households', 200, GLOBAL_CITIES[8], 'In-Person')
+	slots.push(
+		createCapacitySlot('Monsoon Preparedness', '🌧️', 'households', 200, GLOBAL_CITIES[8], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Street Vendor Support', '🛒', 'vendors', 80, GLOBAL_CITIES[9], 'In-Person')
+	slots.push(
+		createCapacitySlot('Street Vendor Support', '🛒', 'vendors', 80, GLOBAL_CITIES[9], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Textile Worker Rights', '👗', 'workers', 150, GLOBAL_CITIES[10], 'In-Person')
+	slots.push(
+		createCapacitySlot('Textile Worker Rights', '👗', 'workers', 150, GLOBAL_CITIES[10], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Mangrove Restoration', '🌊', 'hectares', 50, GLOBAL_CITIES[11], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Mangrove Restoration', '🌊', 'hectares', 50, GLOBAL_CITIES[11], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Typhoon Shelter', '🏠', 'people', 300, GLOBAL_CITIES[12], 'In-Person')
+	slots.push(
+		createCapacitySlot('Typhoon Shelter', '🏠', 'people', 300, GLOBAL_CITIES[12], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Rice Cooperative', '🍚', 'kg', 5000, GLOBAL_CITIES[13], 'In-Person')
+	slots.push(
+		createCapacitySlot('Rice Cooperative', '🍚', 'kg', 5000, GLOBAL_CITIES[13], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Coral Reef Protection', '🪸', 'hectares', 20, GLOBAL_CITIES[14], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Coral Reef Protection', '🪸', 'hectares', 20, GLOBAL_CITIES[14], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Mountain Trails', '🥾', 'trails maintained', 10, GLOBAL_CITIES[15], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Mountain Trails', '🥾', 'trails maintained', 10, GLOBAL_CITIES[15], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Tea Garden Collective', '🍵', 'kg', 1000, GLOBAL_CITIES[8], 'In-Person')
+	slots.push(
+		createCapacitySlot('Tea Garden Collective', '🍵', 'kg', 1000, GLOBAL_CITIES[8], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Flood Warning System', '📢', 'villages', 50, GLOBAL_CITIES[9], 'In-Person')
+	slots.push(
+		createCapacitySlot('Flood Warning System', '📢', 'villages', 50, GLOBAL_CITIES[9], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Spice Market', '🌶️', 'vendor spots', 40, GLOBAL_CITIES[10], 'In-Person')
+	slots.push(
+		createCapacitySlot('Spice Market', '🌶️', 'vendor spots', 40, GLOBAL_CITIES[10], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Tiger Conservation', '🐅', 'hectares', 10000, GLOBAL_CITIES[11], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Tiger Conservation', '🐅', 'hectares', 10000, GLOBAL_CITIES[11], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Coconut Processing', '🥥', 'kg', 2000, GLOBAL_CITIES[12], 'In-Person')
+	slots.push(
+		createCapacitySlot('Coconut Processing', '🥥', 'kg', 2000, GLOBAL_CITIES[12], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Meditation Center', '🧘', 'sessions', 20, GLOBAL_CITIES[13], 'In-Person')
+	slots.push(
+		createCapacitySlot('Meditation Center', '🧘', 'sessions', 20, GLOBAL_CITIES[13], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Earthquake Recovery', '🏗️', 'buildings', 15, GLOBAL_CITIES[14], 'In-Person')
+	slots.push(
+		createCapacitySlot('Earthquake Recovery', '🏗️', 'buildings', 15, GLOBAL_CITIES[14], 'In-Person')
 	);
 
 	// Europe (8 capacities)
-	capacities.push(
-		createCapacity('Refugee Integration', '🤝', 'participants', 50, GLOBAL_CITIES[16], 'In-Person')
+	slots.push(
+		createCapacitySlot('Refugee Integration', '🤝', 'participants', 50, GLOBAL_CITIES[16], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Zero Waste Workshop', '♻️', 'participants', 30, GLOBAL_CITIES[17], 'In-Person')
+	slots.push(
+		createCapacitySlot('Zero Waste Workshop', '♻️', 'participants', 30, GLOBAL_CITIES[17], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Community Garden', '🌻', 'plots', 40, GLOBAL_CITIES[18], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Community Garden', '🌻', 'plots', 40, GLOBAL_CITIES[18], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Bike Repair Collective', '🔧', 'repairs', 100, GLOBAL_CITIES[19], 'In-Person')
+	slots.push(
+		createCapacitySlot('Bike Repair Collective', '🔧', 'repairs', 100, GLOBAL_CITIES[19], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Climate Strike', '📢', 'participants', 5000, GLOBAL_CITIES[20], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Climate Strike', '📢', 'participants', 5000, GLOBAL_CITIES[20], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Cooperative Housing', '🏘️', 'units', 20, GLOBAL_CITIES[21], 'In-Person')
+	slots.push(
+		createCapacitySlot('Cooperative Housing', '🏘️', 'units', 20, GLOBAL_CITIES[21], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Language Exchange', '🗣️', 'sessions', 25, GLOBAL_CITIES[16], 'Hybrid')
+	slots.push(
+		createCapacitySlot('Language Exchange', '🗣️', 'sessions', 25, GLOBAL_CITIES[16], 'Hybrid')
 	);
-	capacities.push(
-		createCapacity('Permaculture Design', '🌿', 'projects', 12, GLOBAL_CITIES[17], 'In-Person')
+	slots.push(
+		createCapacitySlot('Permaculture Design', '🌿', 'projects', 12, GLOBAL_CITIES[17], 'In-Person')
 	);
 
 	// Central America & Caribbean (6 capacities)
-	capacities.push(
-		createCapacity('Hurricane Relief', '🌀', 'families', 100, GLOBAL_CITIES[22], 'In-Person')
+	slots.push(
+		createCapacitySlot('Hurricane Relief', '🌀', 'families', 100, GLOBAL_CITIES[22], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Indigenous Crafts', '🎭', 'artisans', 30, GLOBAL_CITIES[23], 'In-Person')
+	slots.push(
+		createCapacitySlot('Indigenous Crafts', '🎭', 'artisans', 30, GLOBAL_CITIES[23], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Coral Restoration', '🪸', 'coral pieces', 1000, GLOBAL_CITIES[24], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Coral Restoration', '🪸', 'coral pieces', 1000, GLOBAL_CITIES[24], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Agroforestry', '🌳', 'hectares', 80, GLOBAL_CITIES[25], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Agroforestry', '🌳', 'hectares', 80, GLOBAL_CITIES[25], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Rainwater Harvesting', '💧', 'systems', 40, GLOBAL_CITIES[26], 'In-Person')
+	slots.push(
+		createCapacitySlot('Rainwater Harvesting', '💧', 'systems', 40, GLOBAL_CITIES[26], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Traditional Dance', '💃', 'classes', 20, GLOBAL_CITIES[27], 'In-Person')
+	slots.push(
+		createCapacitySlot('Traditional Dance', '💃', 'classes', 20, GLOBAL_CITIES[27], 'In-Person')
 	);
 
 	// Oceania (3 capacities)
-	capacities.push(
-		createCapacity('Aboriginal Art', '🎨', 'workshops', 15, GLOBAL_CITIES[28], 'In-Person')
+	slots.push(
+		createCapacitySlot('Aboriginal Art', '🎨', 'workshops', 15, GLOBAL_CITIES[28], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Bushfire Recovery', '🔥', 'hectares', 500, GLOBAL_CITIES[29], 'Outdoor')
+	slots.push(
+		createCapacitySlot('Bushfire Recovery', '🔥', 'hectares', 500, GLOBAL_CITIES[29], 'Outdoor')
 	);
-	capacities.push(
-		createCapacity('Māori Language', '📚', 'students', 25, GLOBAL_CITIES[30], 'In-Person')
+	slots.push(
+		createCapacitySlot('Māori Language', '📚', 'students', 25, GLOBAL_CITIES[30], 'In-Person')
 	);
 
 	// Middle East (3 capacities)
-	capacities.push(
-		createCapacity('Water Desalination', '💧', 'liters', 8000, GLOBAL_CITIES[31], 'In-Person')
+	slots.push(
+		createCapacitySlot('Water Desalination', '💧', 'liters', 8000, GLOBAL_CITIES[31], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Conflict Mediation', '☮️', 'sessions', 15, GLOBAL_CITIES[32], 'In-Person')
+	slots.push(
+		createCapacitySlot('Conflict Mediation', '☮️', 'sessions', 15, GLOBAL_CITIES[32], 'In-Person')
 	);
-	capacities.push(
-		createCapacity('Historic Preservation', '🏛️', 'sites', 5, GLOBAL_CITIES[33], 'In-Person')
+	slots.push(
+		createCapacitySlot('Historic Preservation', '🏛️', 'sites', 5, GLOBAL_CITIES[33], 'In-Person')
 	);
 
 	console.log(
-		`[EXAMPLE] Created ${capacities.length} example capacities (${capacities.filter((c, i) => i < 56).length} in South America)`
+		`[EXAMPLE] Created ${slots.length} example capacity slots (${slots.filter((c, i) => i < 56).length} in South America)`
 	);
-	return capacities;
+	return slots;
 }
 
 /**
- * Populate both tree and capacities with example data
+ * V5: Populate both tree and capacity slots with example data
  */
-export function populateWithFullExampleData(userPubKey: string): void {
-	console.log('[EXAMPLE] Populating with full SDG example data...');
+export function populateWithFullExampleData(): void {
+	console.log('[EXAMPLE] Populating with full SDG example data (v5)...');
 
-	// Populate tree
-	const currentTree = get(userTree);
+	// V5: Populate recognition tree
+	const currentTree = get(myRecognitionTreeStore);
 	if (currentTree) {
 		const populatedTree = populateWithExampleData(currentTree);
-		userTree.set(populatedTree);
+		myRecognitionTreeStore.set(populatedTree);
 	}
 
-	// Populate capacities
-	const exampleCapacities = createExampleCapacities(userPubKey);
-	const currentCapacities = get(userCapacities) || {};
-	const newCapacities: CapacitiesCollection = { ...currentCapacities };
+	// V5: Populate capacity slots
+	const exampleSlots = createExampleCapacitySlots();
+	const currentSlots = get(myCapacitySlotsStore) || [];
+	const newSlots: AvailabilitySlot[] = [...currentSlots, ...exampleSlots];
 
-	exampleCapacities.forEach((capacity) => {
-		addCapacityToCollection(newCapacities, capacity);
-	});
-
-	userCapacities.set(newCapacities);
+	myCapacitySlotsStore.set(newSlots);
 
 	console.log(
-		`[EXAMPLE] Full example data populated: tree + ${exampleCapacities.length} capacities`
+		`[EXAMPLE] Full example data populated (v5): tree + ${exampleSlots.length} capacity slots`
 	);
 }
 
-// Expose to window for debugging
+// V5: Expose to window for debugging
 if (typeof window !== 'undefined') {
 	(window as any).populateWithExampleData = populateWithExampleData;
-	(window as any).createExampleCapacities = createExampleCapacities;
+	(window as any).createExampleCapacitySlots = createExampleCapacitySlots;
 	(window as any).populateWithFullExampleData = populateWithFullExampleData;
 
-	// Add wrapper that uses current userTree
+	// V5: Add wrapper that uses current recognition tree
 	(window as any).populateCurrentTreeWithExampleData = () => {
-		const currentTree = get(userTree);
+		const currentTree = get(myRecognitionTreeStore);
 		if (!currentTree) {
-			console.error('[DEBUG] No userTree available to populate with example data');
+			console.error('[DEBUG] No myRecognitionTreeStore available to populate with example data');
 			return null;
 		}
-		console.log('[DEBUG] Populating current userTree with example data');
+		console.log('[DEBUG] Populating current recognition tree with example data (v5)');
 		const populatedTree = populateWithExampleData(currentTree);
-		userTree.set(populatedTree);
+		myRecognitionTreeStore.set(populatedTree);
 		return populatedTree;
 	};
 
-	// Add wrapper to populate everything
+	// V5: Add wrapper to populate everything (no userPubKey needed!)
 	(window as any).populateEverything = () => {
-		// Try multiple ways to get the user pub key
-		let userPubKey = (window as any).user?.is?.pub;
-
-		// Fallback: try getting from stores
-		if (!userPubKey) {
-			const { userPub } = require('$lib/state/gun.svelte');
-			const { get: getStore } = require('svelte/store');
-			userPubKey = getStore(userPub);
-		}
-
-		if (!userPubKey) {
-			console.error('[DEBUG] No user logged in. Please log in first.');
-			return;
-		}
-
-		console.log(`[DEBUG] Populating data for user: ${userPubKey.substring(0, 20)}...`);
-		populateWithFullExampleData(userPubKey);
+		console.log(`[DEBUG] Populating v5 data (tree + capacity slots)...`);
+		populateWithFullExampleData();
 	};
 
-	console.log('[DEBUG] Example functions exposed to window:');
+	console.log('[DEBUG] V5 Example functions exposed to window:');
 	console.log('  - populateWithExampleData(rootNode)');
-	console.log('  - createExampleCapacities(userPubKey)');
-	console.log('  - populateWithFullExampleData(userPubKey)');
+	console.log('  - createExampleCapacitySlots()');
+	console.log('  - populateWithFullExampleData()');
 	console.log('  - populateCurrentTreeWithExampleData()');
 	console.log('  - populateEverything()');
 }

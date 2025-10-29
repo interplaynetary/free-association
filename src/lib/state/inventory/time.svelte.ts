@@ -306,8 +306,8 @@ export function createSlotAwareTimeIndex(
 
 	// Expand each capacity into separate entries for each availability slot
 	Object.entries(capacities).forEach(([capacityId, capacity]) => {
-		if (capacity.availability_slots && Array.isArray(capacity.availability_slots)) {
-			capacity.availability_slots.forEach((slot: any, index: number) => {
+		if (capacity.capacity_slots && Array.isArray(capacity.capacity_slots)) {
+			capacity.capacity_slots.forEach((slot: any, index: number) => {
 				const slotKey = `${capacityId}:slot:${slot.id || index}`;
 
 				// Create a virtual object for this slot with time properties at the top level
@@ -357,13 +357,13 @@ export function getCapacityAvailableSlots(
 	timeRange: { start: string; end: string },
 	config: TimeIndexConfig = {}
 ): any[] {
-	if (!capacity.availability_slots) return [];
+	if (!capacity.capacity_slots) return [];
 
 	const startDate = new Date(timeRange.start);
 	const endDate = new Date(timeRange.end);
 	const slotMinutes = config.timeSlotMinutes || 30;
 
-	return capacity.availability_slots.filter((slot: any) => {
+	return capacity.capacity_slots.filter((slot: any) => {
 		// Check if this slot overlaps with the time range
 		// Create virtual time slots for this slot
 		const slotStart = new Date(startDate.getTime());

@@ -18,30 +18,37 @@ You can interact with an interface implementing this logic at [interplaynetary.g
    - Always represents a share/portion/percentage of one's total recognition (100%)
    - Non-transferable (unlike shares or equity that can be traded)
    - Dynamically (re)adjustable as relationships and contributions evolve
-   - Not limited to direct personal consumption - recognition can be given to those contributing to broader social values and needs you care about.
+   - Not limited to direct personal consumption - recognition can be given to those contributing to broader social values and needs you care about
+   - Organized as a **contribution tree** that tracks who helps you with what
 
 3. Your **Mutual Recognition** with another is the minimum of your recognition of each other.
    - For example: If you are 50% of my _total-recognition_, and I am 10% of your _total-recognition_, our mutual-recognition is 10%, the minimum of the both.
      - _Taking the minimum of both shares ensures reciprocity in proportion._
      - This is _mutual-recognition of contribution towards each other's self-actualization_.
+   - **Self-recognition is valid**: You can have mutual recognition with yourself for time-shifting resources
 
-4. **Shares of Capacities** are distributed across networks of _mutual-recognition of contribution_.
-   - Shares are percentages of 100%. They are dynamically _(re)attributed_ and _non-transferable_.
-   - Shares of a particular surplus are shares of a _capacity-to-provide_ (they are shares of _verbs_, not shares of _objects_).
-   - Determinate quantities (natural numbers 0,1,2,3 ...) can be (re)declared dynamically (today you have the capacity to provide 2 rooms, tomorrow 40, the day after 40 etc.)
-   - Optionally declare max-divisibility (either amount or %) to reflect real-world limitations.
+4. **Contribution Trees**: Your recognition emerges from a tree structure tracking contributions
+   - Each branch represents a type of contribution (healthcare, food, etc.)
+   - Each branch has points distributed among contributors
+   - Your global recognition of each person is calculated from their weighted contributions across all branches
+   - Example: If 70% of your tree is healthcare (where Dr. Smith has 80 points out of 100), Dr. Smith gets 56% of your total recognition
 
-5. Your **general-share** in another's **capacities** equals _your mutual recognition with them, divided by their total-mutual-recognition with all others_.
-   - For example: If we have 10% of _mutual-recognition_, and you are my only _mutual-relationship_, you would have 100% of my **total-mutual-recognition** (100% of my **general-share**). If I have two _mutual-relationships_ each with 10% mutual-recognition, each would have 50% of my **total-mutual-recognition** (50% of my **general-share**).
+5. **Two-Tier Allocation System**: When someone has capacity to give:
+   - **Tier 1 - Mutual Recognition First**: People with mutual recognition get priority based on their declared needs
+   - **Tier 2 - Generous Giving Second**: Remaining capacity goes to others you recognize (even without mutual recognition)
+   - This enables both reciprocity and solidarity
 
-6. Your **specific-share** in another's _capacity_ is your **general-share** with _capacity's_ **filters** applied and then the result is normalized to 100%.
-   - This is useful for example to provide to mutual-contributors to general-self-actualization, who satisfy a _specific_ criteria.
-     For example, a filter could distribute shares only to people who you recognize as contributing in a particular category, or all those except those in a block-list.
+6. **Your Allocation** from a provider's capacity is calculated through filtered normalization:
+   - **Step 1**: Filter for compatible slots (time, location, type must match)
+   - **Step 2**: Calculate your mutual recognition share among filtered recipients
+   - **Step 3**: Weight by your active need (declared need × damping factor)
+   - **Step 4**: Cap at your actual declared need (no accumulation possible)
 
-7. Your **allocation** from another's _capacity_ is your **specific-share** with **mutual fulfillment** applied.
-   - Only recipients with mutual desires (both parties express interest) receive allocations
-   - MR proportions are normalized among mutually interested recipients only
-   - Unused capacity from non-mutual interests is redistributed to mutual interests
+7. **Needs Update Dynamically**: 
+   - Your remaining need = maximum(0, Your-Declared-Need - Total-You-Received)
+   - The system learns to prevent oscillation through adaptive damping factors
+   - Each need type (food, healthcare, housing) tracks independently
+   - Needs always decrease or stay the same, never increase from allocation
 
 **Mathematically defined:**
 
@@ -49,101 +56,33 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 Your Recognition = your acknowledgment of contributions towards your own self-actualization
 Your Total-Recognition = 100%
 
-Mutual-Recognition(You, Them) = MR(You, Them) = minimum(Their-share-of-Your-total-recognition, Your-share-of-Their-total-recognition)
-
-General-Share(You, Provider) = MR(You, Provider) / Σ MR(Provider, Each-of-Those-Provider-Recognizes)
-
-Specific-Share(You, Provider, Capacity) = General-Share(You, Provider) × Filter(You, Capacity) / Σ (General-Share(Each-Filtered-Participant, Provider) × Filter(Each-Filtered-Participant, Capacity))
-
-where Filter(Participant, Capacity) = 1 if Participant satisfies Capacity's filter criteria, 0 otherwise
-
-Allocation(You, Provider, Capacity) = Mutual-Fulfillment-Allocation(You, Provider, Capacity)
-
-where Mutual-Fulfillment-Allocation is calculated as:
-1. Mutual-Desire(Provider-Capacity, You) = minimum(Your-Desire-From-Provider, Provider-Desire-Into-You)
-2. Mutually-Desiring-Recipients = {Recipient | Mutual-Desire(Provider-Capacity, Recipient) > 0}
-3. Normalized-MR-Share(You, Provider) = MR(Provider, You) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
-4. Raw-Allocation(You, Provider, Capacity) = Capacity.quantity × Normalized-MR-Share(You, Provider)
-5. Final-Allocation(You, Provider, Capacity) = minimum(Raw-Allocation(You, Provider, Capacity), Mutual-Desire(Provider-Capacity, You))
-6. Redistribute any unused capacity among unsatisfied mutually-desiring recipients
-
-
-```
-
-<details>
-  <summary><b><i>Slot-to-Slot Capacity Composition</i></b></summary>
-
-This allows us to compose specific **time-bound, location-aware slots** into gift-economy based supply chains and higher-order collective capacities **while retaining mutual-recognition proportions**.
-
-Unlike generic capacity composition, slot-aware composition enables time-coordinated cooperation: your Tuesday morning cooking slot can compose directly with someone's Tuesday afternoon ingredients slot, creating precise temporal and spatial coordination.
-
-The network effects are particularly powerful because slot composition preserves **context**. A cooking capacity might compose specific morning prep slots with specific ingredient delivery slots, which compose with specific farming harvest slots, which compose with specific transportation availability slots—all operating with precise timing and location awareness. This creates supply chains that are not just economically efficient but temporally and spatially coordinated.
-
-### How Slot-to-Slot Composition Works:
-
-1. **Manual Desire Expression**: Recipients express desires for specific provider slots
-   - In Shares.svelte: "I want X units FROM provider-slot INTO my-target"
-   - Targets can be: self-consumption, own-capacity, or collective sharing
-
-2. **Provider Counter-Desires**: Providers see receiver desires and express their own preferences
-   - In Capacities.svelte: "I want Y units FROM my-slot INTO recipient-targets"
-   - Providers can express different amounts for different recipients
-
-3. **Mutual Desire Calculation**: System finds intersections of both parties' desires
-   - Mutual-Desire = minimum(receiver-desire, provider-desire)
-   - Only mutual interests get fulfilled (zero allocation for non-mutual interests)
-
-4. **MR Normalization Among Mutual**: MR proportions apply only among mutually interested parties
-   - Normalized-MR-Share = MR(Provider, Recipient) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
-   - Ensures proportional fairness within interested parties
-
-5. **Zero-Waste Distribution**: Unused capacity redistributed to mutual interests
-   - Non-mutual interests get zero allocation regardless of MR
-   - Remaining capacity goes to mutual interests up to their desires
-   - Preserves temporal and spatial context (time, location, quantity)
-
-**Mathematically defined:**
-
-```
-**Phase 1: Manual Desire Expression**
-Compose-From-Desire(Recipient, Provider-Slot, Target) = recipient's desired amount to compose FROM provider-slot INTO target
-Compose-Into-Desire(Provider, Provider-Slot, Target) = provider's desired amount to compose FROM provider-slot INTO target
-
-**Phase 2: Mutual Desire Calculation**
-Mutual-Desire(Provider-Slot, Recipient) = minimum(
-    Compose-From-Desire(Recipient, Provider-Slot, Any-Target),
-    Compose-Into-Desire(Provider, Provider-Slot, Recipient-Targets)
+Mutual-Recognition(You, Them) = MR(You, Them) = minimum(
+    Their-share-of-Your-total-recognition, 
+    Your-share-of-Their-total-recognition
 )
 
-**Phase 3: MR Normalization Among Mutual**
-Mutually-Desiring-Recipients(Provider, Slot) = {Recipient | Mutual-Desire(Provider-Slot, Recipient) > 0}
-Normalized-MR-Share(Recipient, Provider, Slot) = MR(Provider, Recipient) / Σ MR(Provider, Each-Mutually-Desiring-Recipient)
+Your-Mutual-Recognition-Share(You, Provider, FilteredSet) = 
+    MR(You, Provider) / Σ MR(Provider, Each-Person-In-FilteredSet)
 
-**Phase 4: Zero-Waste Distribution**
-Raw-Allocation(Recipient, Provider, Slot) = Slot.quantity × Normalized-MR-Share(Recipient, Provider, Slot)
-Final-Allocation(Recipient, Provider, Slot) = minimum(Raw-Allocation(Recipient, Provider, Slot), Mutual-Desire(Provider-Slot, Recipient))
-Redistribute unused capacity among unsatisfied mutually-desiring recipients
+Your-Active-Need = Your-Declared-Need × Damping-Factor
+    where Damping-Factor ∈ {0.5, 0.8, 1.0} based on oscillation detection
 
-**Context Preservation:**
-Each composition maintains:
-- Temporal context: start_date, end_date, time_zone, recurrence
-- Spatial context: location_type, longitude, latitude, street_address
-- Quantity context: specific units being composed
-- Constraint context: advance_notice_hours, booking_window_hours
+Your-Raw-Allocation(You, Provider) = 
+    Provider's-Available-Capacity 
+    × Your-Mutual-Recognition-Share
+    × Your-Active-Need 
+    / Σ (Each-Filtered-Person's-Active-Need × Their-Mutual-Recognition-Share)
+
+Your-Final-Allocation(You, Provider) = minimum(
+    Your-Raw-Allocation, 
+    Your-Declared-Need
+)
+
+Your-Remaining-Need(tomorrow) = maximum(
+    0, 
+    Your-Declared-Need - Total-You-Received
+)
 ```
-
-**Key Advantages of Manual Mutual Fulfillment:**
-
-- **Time Coordination**: "Tuesday 2pm cooking" + "Tuesday 1pm ingredients" = coordinated meal preparation
-- **Location Awareness**: Compose slots based on proximity and travel time
-- **Context Preservation**: Each composition retains when, where, and how much
-- **Mutual Fulfillment**: Only mutual interests get fulfilled - no wasted capacity
-- **Transparent Desires**: Both parties see each other's desires and mutual status
-- **Zero Waste**: Unused capacity redistributed to mutual interests
-
-This enables supply chains that coordinate in **space and time** through **mutual fulfillment**, not just economically!
-
-</details>
 
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>
@@ -160,7 +99,6 @@ Surplus would distribute according to mutual-fulfillment exactly the same as occ
 We can also imagine a mechanism by which citizens could delegate a portion of their proportion-setting-power to another agent, within a particular category. So for example delegating 10% of your proportion-setting-power in the category of "environmental protection" to an ecologist.
 
 The design space is vast, especially for all those decisions that do not concern proportions, for example:
-
 - how is membership determined
 - do all members get equal shares of proportion-setting-power (at which levels?) How is this determined?
 - How are contributors added to nodes? How is this determined?
@@ -178,21 +116,25 @@ This computational advantage could make organizational-level Free-Association mo
 
 ## Why does any of that matter?
 
-With your **capacity-distribution**, you aren't just giving away surplus randomly, you give _precisely_ to your own direct/transitive **_mutual_** fulfillment.
+With your **capacity-distribution**, you aren't just giving away surplus randomly—you give _precisely_ to those with whom you have **_mutual recognition_**, prioritizing those who recognize your contributions to their self-actualization just as you recognize theirs.
 
-Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms surplus-capacity.
+**The Two-Tier System Creates Natural Reciprocity and Solidarity:**
 
-**_Now who would you want to share space with?_**
+**Tier 1 - Mutual First**: Imagine you have 4 rooms in your apartment and you are using 1: you have 3 rooms surplus-capacity. **Who would you want to share space with?** Those who **mutually recognize** your contributions—people who help you realize your values, goals, and needs, and who you help in turn. That's **exactly** who gets priority in Tier 1 allocation.
 
-Well ideally, \*those that **satisfy your needs** (who contribution to the realization of your values, goals, etc.) in the **_widest_** sense of the term.\*
+**Tier 2 - Generosity Second**: After meeting mutual needs, remaining capacity flows to others you recognize (even if they don't recognize you back). This enables solidarity with newcomers or those who haven't yet built recognition networks—preventing isolation while maintaining incentives for genuine contribution.
 
-And even more than that, it is even _more satisfying_ **_when the feeling is mutual!_**
+**The system is needs-based**: You declare what you need (food, housing, skills, time), and allocations are calculated automatically based on:
+- Your mutual recognition relationships
+- Others' available capacity
+- Your actual declared needs (never more)
+- Compatible slots (time, location, type must match)
 
-And that is **_exactly_** who is attributed _shares_ of your surplus-capacity!
+**Example**: Imagine a community kitchen with 100 meals. Alice, Bob, and Carol all need food and have mutual recognition with the kitchen based on their contributions (food prep, equipment, etc.). The kitchen's capacity flows to them proportionally based on mutual recognition and their actual needs. No money. No prices. No accumulation beyond need. Just mathematical fairness.
 
 ---
 
-To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) helps a neighbor spend less time cooking, _freeing their time_ to fix their oven — the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus doesn't vanish — is shared with those who directly/indirectly align with your needs/desires/values/goals, creating a ripple effect of mutual-support that comes back to you in unexpected ways while strengthening the network.
+To illustrate with another example: Imagine a potluck where pies you bake that you don't need (surplus) automatically flow to neighbors who have mutual recognition with you and who _actually need food_. This helps them spend less time cooking, _freeing their time_ to fix their oven—the same oven that later bakes bread for your community garden party. That's mutual-fulfillment: Your surplus flows to those who contribute to your self-actualization (directly or indirectly), creating ripple effects of mutual-support while strengthening the network. **And it all happens automatically based on needs and recognition—no negotiation required.**
 
 This effectively moves us from _time as money_ to _time as mutual-fulfillment_!
 
@@ -200,15 +142,17 @@ This effectively moves us from _time as money_ to _time as mutual-fulfillment_!
 
 When you contribute surplus to Free Association:
 
-1. 🤝 **Your surplus flows to direct contributors** - Those you recognize as contributing to your self-actualization receive proportional shares of your surplus
+1. 🤝 **Your surplus flows via mutual recognition** - Those with whom you have mutual recognition receive priority based on their declared needs and your available capacity
 
-2. 🌐 **Your surplus flows to transitive contributors** - Those who support your direct contributors also benefit, creating ripple effects through the network
+2. 💝 **Tier 1 ensures reciprocity** - People who recognize your contributions AND whom you recognize get first priority, creating natural incentives for genuine mutual support
 
-3. 🔄 **Effects return to you in unexpected ways** - As others you've supported gain capacity, they can contribute to your self-actualization in ways you couldn't predict.
+3. 🤲 **Tier 2 enables solidarity** - After meeting mutual needs, remaining capacity flows to others you recognize (even without mutual recognition), helping newcomers and those building their networks
 
-4. 🌍 **Your values shape broader society** - Recognition can be given to those working on causes you value (climate action, community spaces, education) regardless of whether you directly benefit, allowing your influence to flow toward your social values.
+4. 🔄 **The system converges rapidly** - Mathematical properties guarantee that if there's sufficient capacity, everyone's needs converge to zero in seconds (typically 5-20 iterations, ~0.5-2 seconds)
 
-5. ⚖️ **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
+5. 🌍 **Your values shape broader society** - Recognition can be given to those working on causes you value (climate action, community spaces, education) regardless of whether you directly benefit, allowing your surplus to flow toward your social values
+
+6. ⚖️ **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
 
 Self-actualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
 
@@ -236,11 +180,11 @@ Total Recognition = True-Recognition + False-Recognition
                by processual social-material negation of False-Recognition
 ```
 
-This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to actually-beneficial-contributors and their surplus-capacities.
+This mathematical property ensures that inflating recognition or maintaining false-recognition only decreases your connection to actually-beneficial-contributors and their capacities.
 
 Systems built on falsehood eventually collapse, they can't sustain themselves because they starve the very thing that makes them thrive, genuine connection and collaboration.
 
-# Collective-Recognition
+# Collective-Recognition: Applying Free-Association to Collective Resources
 We use free-association to apportion and distribute collective-capacities such as the funds in the playnet open collective!
 
 ## How do we prioritize needs?
@@ -254,28 +198,30 @@ We use free-association to apportion and distribute collective-capacities such a
 * Bob: { needs $500/month }
 * Charlie: { needs $200/month }
 
-2\) Players (via free-association interface) recognize the contributions of others towards the satisfaction of their needs/realization of their priorities (in the widest sense - as they define them)
+2\) Players (via free-association interface) recognize the contributions of others towards the realization of their priorities (in the widest sense - as they define them)
 
-* When players mutually-validate each others' contributions by recognizing eachother, they automatically apportion eachother a percentage % of their total-mutual-fulfillment&#x20;
+* When players mutually recognize each others' contributions, they establish mutual-recognition percentages that determine allocation shares
 
-3\) Derive **total-collective-mutual-fulfillment** by *adding up* all the **total-mutual-fulfillment** percentages across **all members of the collective**.
+3\) Derive **total-collective-mutual-recognition** by adding up all the **mutual-recognition** values across **all members of the collective**
 
-3\) Derive **each player's share of the total-collective-mutual-fulfillment.**
+4\) Derive **each player's share of the total-collective-mutual-recognition**
 
-This is now the **collective-priority-distribution** of needs
+This becomes the **collective-priority-distribution** of needs
 
-We then take the needs of each member, and try to fulfill them as much as possible while respecting the collective-prioritization of needs
+5\) Allocate the collective's capacity (e.g., funds) according to these shares, capped at each member's declared need
+
+The same mathematical properties apply:
+- **Needs-based**: No one receives more than their declared need
+- **Recognition-weighted**: Those with stronger mutual recognition receive proportionally more
+- **Convergent**: The system finds a stable allocation rapidly
+- **Non-accumulative**: Excess recognition doesn't enable accumulation beyond need
 
 ## Advantages
 * **No centralized definition of what is a meaningful contribution**
 * **Distributed determination of value**
-* **No centralized registry of a capacities collective-membership**
+* **No centralized registry of a capacity's collective-membership**
 * No centralized registry of capacity availability space-time quantity
-* **Each player attributes their own membership-list to a their view of a collective-capacity and its availability  / space-time quantities (potentially subscribing to data sources to feed into their view).**
-
-## Remaining Issues to be Solved
-* For some of the collective-capacities of Playnet, how is its collective-membership determined/changed?
-* For Playnet Open Collective: What about people who are members but can not invoice themselves?
+* **Each player attributes their own membership-list to their view of a collective-capacity and its availability / space-time quantities (potentially subscribing to data sources to feed into their view)**
 
 ## Current Needs for Free Association Development 🚀
 
@@ -302,7 +248,7 @@ A basic interface for free association is almost complete but we are seeking sup
 
 ---
 
-Remember: In contributing to Free Association, you're not donating to charity or investing for return. You're participating in a network where **the free development of each is the condition for the free development of all**. Your contributions help build a system where "individuals freely contribute to each other's self-actualization, where surplus flows according to mutual-recognition of real contributions towards each other's self-actualization, where relations activate only through mutual desire and participation."
+Remember: In contributing to Free Association, you're not donating to charity or investing for return. You're participating in a network where **the free development of each is the condition for the free development of all**. Your contributions help build a system where individuals freely contribute to each other's self-actualization, where capacity flows according to mutual-recognition of real contributions toward each other's self-actualization, automatically allocated based on declared needs and compatible slots.
 
 Your surplus becomes part of a living network of mutual-fulfillment that transcends both charity and investment—it becomes a concrete expression of truly free association.
 
@@ -343,7 +289,7 @@ Total Recognition = 100%
 Total Recognition = True-Recognition + False-Recognition
    ∴ ↑False-Recognition = ↓True-Recognition
       ∴ ↓Mutual-Recognition with Actually-Beneficial-Contributors
-         ∴ ↓Shares of Actually-Beneficial-Surplus 
+         ∴ ↓Shares of Actually-Beneficial-Capacities 
          from Actually-Beneficial-Contributors
             ∴ ↓Real-Social-Material-Basis for Self-Actualization
                ∴ Social-Material-Truth is processually realized in Free-Association 
@@ -380,7 +326,7 @@ bun run dev
 
 We use [vitest](https://vitest.dev/) and [playwright](https://playwright.dev/) for testing:
 ```
-bun test
+npm test
 ```
 
 ### For production:
