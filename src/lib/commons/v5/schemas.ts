@@ -544,7 +544,7 @@ export const MultiDimensionalDampingSchema = z.object({
 	damping_history: z.record(z.string(), z.array(PerTypeDampingHistoryEntrySchema)),
 	
 	// Global damping factor (backward compatibility)
-	global_damping_factor: z.number().min(0).max(1).default(1.0)
+	global_damping_factor: z.number().min(0).max(1)
 });
 
 export type MultiDimensionalDamping = z.infer<typeof MultiDimensionalDampingSchema>;
@@ -569,15 +569,16 @@ export const CommitmentSchema = z.object({
 	
 	// Global recognition: MR(A, B) = min(R_A(B), R_B(A))
 	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
-	global_recognition_weights: GlobalRecognitionWeightsSchema.optional(),
-	global_mr_values: GlobalRecognitionWeightsSchema.optional(),
+	// Note: .nullable() allows null from Holster (empty objects → null)
+	global_recognition_weights: GlobalRecognitionWeightsSchema.nullable().optional(),
+	global_mr_values: GlobalRecognitionWeightsSchema.nullable().optional(),
 	
 	// Causality tracking (ITC)
 	itcStamp: z.any(), // ITCStampSchema
 	timestamp: z.number().int().positive(),
 	
 	// Per-type adaptive damping (α_k)
-	multi_dimensional_damping: MultiDimensionalDampingSchema.optional()
+	multi_dimensional_damping: MultiDimensionalDampingSchema.nullable().optional()
 });
 
 export type Commitment = z.infer<typeof CommitmentSchema>;

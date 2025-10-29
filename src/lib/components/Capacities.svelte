@@ -10,8 +10,13 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { get } from 'svelte/store';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
-	// V5: Import from v5 stores
-	import { myRecognitionTreeStore as userTree, myCommitmentStore } from '$lib/commons/v5/stores.svelte';
+	// V5: Import from v5 stores - CORRECT PATTERN: Use source stores + composition
+	import { 
+		myRecognitionTreeStore as userTree, 
+		myCommitmentStore, 
+		myCapacitySlotsStore,
+		composeCommitmentFromSources 
+	} from '$lib/commons/v5/stores.svelte';
 	// V5: Composition features not yet implemented
 	// import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';
@@ -29,15 +34,65 @@
 		).join(' ').toLowerCase();
 	}
 
-	// V5: Create a compatibility wrapper for userCapacities
-	// In v5, there's one commitment with capacity_slots, but this component expects multiple "capacity" objects
-	// For now, wrap the single commitment as a collection
+	// ═══════════════════════════════════════════════════════════════════
+	// V5 VIRTUAL GROUPING (Option 1B): Group Slots by capacity_group_id
+	// ═══════════════════════════════════════════════════════════════════
+	// 
+	// ARCHITECTURE SHIFT:
+	// - Data Model: ONE commitment with ALL capacity_slots (array)
+	// - UI Layer: Slots grouped by capacity_group_id into "capacity" cards
+	// - Virtual "capacity" ID = capacity_group_id (or slot.id if no group)
+	// 
+	// This allows users to:
+	// - Have multiple separate "capacity" cards
+	// - Add multiple slots within each card
+	// - Slots with same capacity_group_id stay grouped together
+	// ═══════════════════════════════════════════════════════════════════
 	const userCapacities = $derived(() => {
 		const commitment = get(myCommitmentStore);
 		const pub = get(userPub);
 		if (!commitment || !pub) return {};
-		// Wrap as a collection with the pubkey as ID
-		return { [pub]: commitment };
+		
+		const slots = commitment.capacity_slots || [];
+		
+		// Special case: No slots yet - show one empty "capacity" card
+		if (slots.length === 0) {
+			return {
+				[`${pub}-empty`]: {
+					...commitment,
+					capacity_slots: []
+				}
+			};
+		}
+		
+		// ✅ Group slots by capacity_group_id (or individual slot.id if no group)
+		const virtualCapacities: Record<string, CommitmentWithId> = {};
+		
+		slots.forEach(slot => {
+			// Use capacity_group_id if available, otherwise slot.id (for ungrouped slots)
+			const groupId = (slot as any).capacity_group_id || slot.id;
+			const virtualCapacityId = `${pub}-${groupId}`;
+			
+			if (!virtualCapacities[virtualCapacityId]) {
+				virtualCapacities[virtualCapacityId] = {
+					...commitment,
+					id: virtualCapacityId,
+					capacity_slots: [],
+					// Preserve all other commitment data
+					need_slots: commitment.need_slots,
+					global_recognition_weights: commitment.global_recognition_weights,
+					global_mr_values: commitment.global_mr_values,
+					multi_dimensional_damping: commitment.multi_dimensional_damping,
+					itcStamp: commitment.itcStamp,
+					timestamp: commitment.timestamp
+				};
+			}
+			
+			// Add this slot to the group
+			virtualCapacities[virtualCapacityId].capacity_slots!.push(slot);
+		});
+		
+		return virtualCapacities;
 	});
 
 	// Reactive derived values
@@ -57,12 +112,16 @@
 		return entries;
 	});
 
-	// Add a new commitment to the userCapacities store
+	// ═══════════════════════════════════════════════════════════════════
+	// CREATE: Add new "capacity" (append slot(s) to array)
+	// ═══════════════════════════════════════════════════════════════════
+	// In v5 virtual grouping, creating a "capacity" means adding slot(s) to the
+	// single capacity_slots array. Each new slot will appear as its own "capacity" card.
+	// ═══════════════════════════════════════════════════════════════════
 	function addCommitment(commitment: CommitmentWithId) {
 		if (!$userAlias || !$userPub) return false;
 
-		console.log('[CAPACITIES] Adding commitment:', commitment.id);
-		console.log('[CAPACITIES] Capacity slots:', commitment.capacity_slots);
+		console.log('[CAPACITIES] Adding capacity slots:', commitment.capacity_slots);
 		
 		if (commitment.capacity_slots) {
 			commitment.capacity_slots.forEach((slot, index) => {
@@ -77,26 +136,42 @@
 			});
 		}
 
-		// V5: Update the single commitment store
-		// In v5, we just update myCommitmentStore directly
-		myCommitmentStore.set(commitment);
+		// ✅ SAFE: Append to existing slots array
+		const currentSlots = get(myCapacitySlotsStore) || [];
+		const newSlots = [...currentSlots, ...(commitment.capacity_slots || [])];
+		myCapacitySlotsStore.set(newSlots);
 
-		// Highlight the new commitment
-		globalState.highlightCapacity(commitment.id);
+		// Recompose commitment from all sources
+		const newCommitment = composeCommitmentFromSources();
+		if (newCommitment) {
+			myCommitmentStore.set(newCommitment);
+		}
+
+		// Highlight the new capacity slots
+		if (commitment.capacity_slots) {
+			commitment.capacity_slots.forEach(slot => {
+				globalState.highlightSlot(slot.id);
+			});
+		}
 
 		// Show success toast with first slot name or generic message
-		const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
+		const firstName = commitment.capacity_slots?.[0]?.name || 'Capacity';
 		globalState.showToast(`Created: ${firstName}`, 'success');
 		return true;
 	}
 
-	// Update an existing commitment in the userCapacities store
+	// ═══════════════════════════════════════════════════════════════════
+	// UPDATE: Update existing "capacity" (update specific slot(s), preserve others)
+	// ═══════════════════════════════════════════════════════════════════
+	// ⚠️ CRITICAL: Must preserve slots from other virtual "capacities"!
+	// This virtual "capacity" contains only the slot(s) being updated.
+	// We need to keep all OTHER slots unchanged in the array.
+	// ═══════════════════════════════════════════════════════════════════
 	function updateCommitment(commitment: CommitmentWithId) {
 		try {
 			if (!$userAlias || !$userPub) return false;
 
-			console.log('[CAPACITIES] Updating commitment:', commitment.id);
-			console.log('[CAPACITIES] Capacity slots:', commitment.capacity_slots);
+			console.log('[CAPACITIES] Updating capacity slots:', commitment.capacity_slots);
 			
 			if (commitment.capacity_slots) {
 				commitment.capacity_slots.forEach((slot, index) => {
@@ -111,16 +186,32 @@
 				});
 			}
 
-			// V5: Update the single commitment store
-			// In v5, we just update myCommitmentStore directly
-			myCommitmentStore.set(structuredClone(commitment));
+			// ✅ SAFE: Update specific slots while preserving others
+			const allSlots = get(myCapacitySlotsStore) || [];
+			const updatedSlotIds = new Set(
+				(commitment.capacity_slots || []).map(s => s.id)
+			);
+			
+			// Keep slots that aren't being updated
+			const unchangedSlots = allSlots.filter(s => !updatedSlotIds.has(s.id));
+			
+			// Merge unchanged + updated slots
+			const newSlots = [...unchangedSlots, ...(commitment.capacity_slots || [])];
+			
+			myCapacitySlotsStore.set(newSlots);
+
+			// Recompose commitment from all sources
+			const newCommitment = composeCommitmentFromSources();
+			if (newCommitment) {
+				myCommitmentStore.set(newCommitment);
+			}
 
 			// Show success toast with first slot name or generic message
-			const firstName = commitment.capacity_slots?.[0]?.name || 'Commitment';
+			const firstName = commitment.capacity_slots?.[0]?.name || 'Capacity';
 			globalState.showToast(`Updated: ${firstName}`, 'success');
 			return true;
 		} catch (error) {
-			console.error('[CAPACITIES] Error updating commitment:', error);
+			console.error('[CAPACITIES] Error updating capacity slots:', error);
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
@@ -146,31 +237,49 @@
 		console.log(`✅ [CLEANUP] Completed cleanup for capacity: ${capacityId}`);
 	}
 
-	// Delete commitment from the store with comprehensive cleanup
+	// ═══════════════════════════════════════════════════════════════════
+	// DELETE: Remove "capacity" (filter out slot(s) from array, preserve others)
+	// ═══════════════════════════════════════════════════════════════════
+	// ⚠️ CRITICAL: Must only remove slots from THIS virtual "capacity"!
+	// This virtual "capacity" contains only specific slot(s).
+	// We need to keep all OTHER slots unchanged in the array.
+	// ═══════════════════════════════════════════════════════════════════
 	function deleteCommitment(commitmentId: string) {
 		try {
 			if (!$userAlias || !$userPub) return false;
 
-			// STEP 1: Clean up all slot composition data BEFORE deleting the commitment
+			// STEP 1: Clean up slot composition data BEFORE deleting
 			cleanupCapacitySlotData(commitmentId);
 
-			// STEP 2: Remove the commitment itself (V5: clear the commitment store)
-			// In v5, we have a single commitment, so "deleting" means clearing it
-			// or setting it to an empty commitment
-			const emptyCommitment: Commitment = {
-				capacity_slots: [],
-				need_slots: [],
-				global_recognition_weights: {},
-				global_mr_values: {},
-				itcStamp: null as any,
-				timestamp: Date.now()
-			};
-			myCommitmentStore.set(emptyCommitment);
+			// STEP 2: Get the virtual capacity to find which slots to remove
+			const virtualCapacity = userCapacities()[commitmentId];
+			if (!virtualCapacity) {
+				console.warn(`[CAPACITIES] Virtual capacity ${commitmentId} not found`);
+				return false;
+			}
 
-			globalState.showToast('Capacity deleted', 'success');
+			// STEP 3: ✅ SAFE: Remove only the slots from this virtual capacity
+			const allSlots = get(myCapacitySlotsStore) || [];
+			const slotIdsToRemove = new Set(
+				(virtualCapacity.capacity_slots || []).map(s => s.id)
+			);
+			
+			// Filter out the slots being deleted, keep all others
+			const remainingSlots = allSlots.filter(s => !slotIdsToRemove.has(s.id));
+			
+			myCapacitySlotsStore.set(remainingSlots);
+
+			// Recompose commitment from all sources
+			const newCommitment = composeCommitmentFromSources();
+			if (newCommitment) {
+				myCommitmentStore.set(newCommitment);
+			}
+
+			const slotName = virtualCapacity.capacity_slots?.[0]?.name || 'Capacity';
+			globalState.showToast(`Deleted: ${slotName}`, 'success');
 			return true;
 		} catch (error) {
-			console.error('[CAPACITIES] Error deleting commitment:', error);
+			console.error('[CAPACITIES] Error deleting capacity slots:', error);
 			globalState.showToast($t('errors.error_occurred'), 'error');
 			return false;
 		}
@@ -546,6 +655,9 @@
 		const todayString = today(getLocalTimeZone()).toString();
 		const timePattern = generateTimePattern();
 		const id = crypto.randomUUID();
+		
+		// ✅ Generate unique group ID for this new capacity
+		const capacityGroupId = `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 		// V5 Structure with capacity_slots
 		return {
@@ -575,8 +687,9 @@
 			},
 				max_natural_div: maxNaturalDiv,
 				max_percentage_div: maxPercentageDiv,
-				filter_rule: null
-				}
+				filter_rule: null,
+				capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
+				} as any
 			],
 			timestamp: Date.now(),
 			itcStamp: {id: 1, event: 0} as any // Placeholder ITC stamp
@@ -589,6 +702,9 @@
 
 		const todayString = today(getLocalTimeZone()).toString();
 		const id = crypto.randomUUID();
+		
+		// ✅ Generate unique group ID for this new capacity
+		const capacityGroupId = `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		
 		return {
 			id,
@@ -608,8 +724,9 @@
 					recurrence: 'daily',
 					max_natural_div: 1,
 					max_percentage_div: 1.0,
-					filter_rule: null
-				}
+					filter_rule: null,
+					capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
+				} as any
 			],
 			timestamp: Date.now(),
 			itcStamp: {id: 1, event: 0} as any // Placeholder ITC stamp

@@ -140,6 +140,9 @@ export interface VersionedStoreConfig<T> {
     [fieldName: string]: (a: any, b: any) => boolean;
   };
   
+  /** Zod schema for defensive validation (optional but recommended) */
+  schema?: z.ZodType<T>;
+  
   /** Log updates? (default: true) */
   enableLogging?: boolean;
 }
@@ -154,6 +157,7 @@ interface NormalizedStoreConfig<T> {
   fieldEqualityCheckers: {
     [fieldName: string]: (a: any, b: any) => boolean;
   };
+  schema?: z.ZodType<T>;
   enableLogging: boolean;
 }
 
@@ -197,6 +201,7 @@ export class VersionedStore<T, K extends string = string> {
       itcExtractor: config.itcExtractor,
       timestampExtractor: config.timestampExtractor,
       fieldEqualityCheckers: config.fieldEqualityCheckers || {},
+      schema: config.schema,
       enableLogging: config.enableLogging ?? true
     };
     this.fieldNames = Object.keys(config.fields);
@@ -262,6 +267,26 @@ export class VersionedStore<T, K extends string = string> {
   update(key: K, entity: T): UpdateResult {
     const currentMap = get(this.dataStore);
     const existing = currentMap.get(key);
+    
+    // ═══════════════════════════════════════════════════════════════
+    // STEP 0: DEFENSIVE SCHEMA VALIDATION (Optional but recommended)
+    // ═══════════════════════════════════════════════════════════════
+    
+    if (this.config.schema) {
+      const validation = this.config.schema.safeParse(entity);
+      if (!validation.success) {
+        if (this.config.enableLogging) {
+          console.error(
+            `[VERSIONED-STORE] ❌ Schema validation failed for ${key.slice(0, 20)}:`,
+            validation.error.format()
+          );
+        }
+        return { 
+          applied: false, 
+          reason: 'Schema validation failed: ' + validation.error.issues.map(i => i.message).join(', ')
+        };
+      }
+    }
     
     // ═══════════════════════════════════════════════════════════════
     // STEP 1: ITC CAUSALITY CHECK (Entity-level)

@@ -28,6 +28,7 @@
 import { get, derived, readable, writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { createStore } from '../utils/store.svelte';
+import { toHolsterFormat, fromHolsterFormat } from '../utils/holster-converters';
 import {
 	CommitmentSchema,
 	RootNodeSchema,
@@ -44,6 +45,7 @@ import * as z from 'zod';
 import { holsterUserPub } from './holster.svelte';
 import { getTimeBucketKey, getLocationBucketKey } from './match.svelte';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from './protocol';
+import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '../utils/itc';
 
 export { holsterUserPub }
 
@@ -74,7 +76,9 @@ export { holsterUserPub }
 export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
-	persistDebounce: 200 // Debounce tree edits
+	persistDebounce: 200, // Debounce tree edits
+	toHolsterFormat,
+	fromHolsterFormat
 });
 
 /**
@@ -88,7 +92,9 @@ export const myRecognitionTreeStore = createStore({
 export const myNeedSlotsStore = createStore({
 	holsterPath: 'allocation/need_slots',
 	schema: z.array(NeedSlotSchema),
-	persistDebounce: 100
+	persistDebounce: 100,
+	toHolsterFormat,
+	fromHolsterFormat
 });
 
 /**
@@ -102,7 +108,9 @@ export const myNeedSlotsStore = createStore({
 export const myCapacitySlotsStore = createStore({
 	holsterPath: 'allocation/capacity_slots',
 	schema: z.array(AvailabilitySlotSchema),
-	persistDebounce: 100
+	persistDebounce: 100,
+	toHolsterFormat,
+	fromHolsterFormat
 });
 
 /**
@@ -153,7 +161,9 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 export const myCommitmentStore = createStore({
 	holsterPath: 'allocation/commitment',
 	schema: CommitmentSchema,
-	persistDebounce: 100 // Debounce rapid updates
+	persistDebounce: 100, // Debounce rapid updates
+	toHolsterFormat,
+	fromHolsterFormat
 });
 
 // V5: NO ROUND STATE STORE (event-driven, no rounds!)
@@ -248,6 +258,7 @@ export const networkCommitments: VersionedStore<Commitment, string> = createVers
 		needs: jsonEquals,
 		capacity: jsonEquals
 	},
+	schema: CommitmentSchema, // ✅ Defensive validation for network data
 	itcExtractor: (c) => c.itcStamp,
 	timestampExtractor: (c) => c.timestamp,
 	enableLogging: true
@@ -289,6 +300,7 @@ export const networkRecognitionTrees: VersionedStore<RootNode, string> = createV
 		},
 		fulfillment: (tree) => tree.manual_fulfillment
 	},
+	schema: RootNodeSchema, // ✅ Defensive validation for network tree data
 	timestampExtractor: (tree) => new Date(tree.updated_at).getTime(),
 	enableLogging: false
 });
@@ -1206,6 +1218,47 @@ export function enableAutoSubscriptionSync(): () => void {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Merge all network ITC stamps with local ITC
+ * 
+ * ✅ CRITICAL FIX: Prevents data loss from stale ITC stamps!
+ * 
+ * This ensures your published commitment includes the causal history
+ * of ALL network updates you've seen, preventing other users from
+ * rejecting your updates as stale.
+ * 
+ * Algorithm:
+ * 1. Start with your local ITC (if any)
+ * 2. Join with every network commitment's ITC
+ * 3. Increment for this new local event
+ * 
+ * Returns: Merged ITC stamp ready for publishing
+ */
+function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
+	// Start with local ITC or create new seed
+	let mergedITC: ITCStamp = localITC || itcSeed();
+	
+	// Merge with all network commitments
+	const networkCommitMap = networkCommitments.get();
+	let networkMergeCount = 0;
+	
+	for (const [pubKey, versionedEntity] of networkCommitMap.entries()) {
+		if (versionedEntity.metadata.itcStamp) {
+			mergedITC = itcJoin(mergedITC, versionedEntity.metadata.itcStamp);
+			networkMergeCount++;
+		}
+	}
+	
+	// Increment for this local event
+	mergedITC = itcEvent(mergedITC);
+	
+	if (networkMergeCount > 0) {
+		console.log(`[ITC-MERGE] ✅ Merged ${networkMergeCount} network ITC stamps into local commitment`);
+	}
+	
+	return mergedITC;
+}
+
+/**
  * Compose commitment from source stores
  * 
  * Call this to build a fresh commitment from:
@@ -1214,7 +1267,7 @@ export function enableAutoSubscriptionSync(): () => void {
  * - Capacity slots
  * - Mutual recognition (computed from my weights + network commitments)
  * - Current damping state (from existing commitment)
- * - Current ITC stamp (from existing commitment)
+ * - ITC stamp (merged with all network ITCs) ← ✅ FIXED!
  * 
  * Returns a complete commitment ready to publish
  */
@@ -1232,6 +1285,9 @@ export function composeCommitmentFromSources(): Commitment | null {
 		return null;
 	}
 	
+	// ✅ CRITICAL FIX: Merge network ITCs to prevent data loss!
+	const mergedITC = getMergedITCStamp(existingCommitment?.itcStamp);
+	
 	// Compose the commitment
 	const commitment: Commitment = {
 		// From source stores
@@ -1245,8 +1301,8 @@ export function composeCommitmentFromSources(): Commitment | null {
 		// Preserve stateful data from existing commitment
 		multi_dimensional_damping: existingCommitment?.multi_dimensional_damping,
 		
-		// Metadata (will be updated on publish)
-		itcStamp: existingCommitment?.itcStamp || null as any,
+		// Metadata with merged ITC
+		itcStamp: mergedITC,  // ✅ Now includes all network history!
 		timestamp: Date.now()
 	};
 	
@@ -1430,6 +1486,194 @@ export function getV5Diagnostics() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// DATA MIGRATION & VALIDATION (Defensive)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Migrate/fix corrupted network commitments
+ * 
+ * Handles scenarios:
+ * - Legacy data with wrong format (Records instead of arrays)
+ * - Invalid enum values (uppercase instead of lowercase)
+ * - Missing required fields
+ * - Corrupted data structures
+ * 
+ * Returns: { fixed: number, deleted: number, errors: string[] }
+ */
+export function migrateNetworkCommitments(): {
+	fixed: number;
+	deleted: number;
+	errors: string[];
+} {
+	console.log('[MIGRATION] Starting network commitments migration...');
+	
+	let fixed = 0;
+	let deleted = 0;
+	const errors: string[] = [];
+	const commitMap = networkCommitments.get();
+	
+	for (const [pubKey, versionedEntity] of commitMap.entries()) {
+		const shortKey = pubKey.slice(0, 20);
+		
+		// Re-validate against schema
+		const validation = CommitmentSchema.safeParse(versionedEntity.data);
+		
+		if (!validation.success) {
+			console.warn(`[MIGRATION] Invalid commitment for ${shortKey}:`, validation.error.format());
+			
+			try {
+				// Try to fix by round-tripping through converters
+				const holsterFormat = toHolsterFormat(versionedEntity.data);
+				const fixedData = fromHolsterFormat(holsterFormat);
+				
+				// Re-validate fixed data
+				const revalidation = CommitmentSchema.safeParse(fixedData);
+				
+				if (revalidation.success) {
+					// Success! Update with fixed data
+					networkCommitments.update(pubKey, revalidation.data);
+					fixed++;
+					console.log(`[MIGRATION] ✅ Fixed commitment for ${shortKey}`);
+				} else {
+					// Still invalid - delete it
+					networkCommitments.delete(pubKey);
+					deleted++;
+					const errorMsg = `Deleted unfixable commitment for ${shortKey}: ${revalidation.error.issues.map(i => i.message).join(', ')}`;
+					errors.push(errorMsg);
+					console.error(`[MIGRATION] ❌ ${errorMsg}`);
+				}
+			} catch (error) {
+				// Conversion failed - delete it
+				networkCommitments.delete(pubKey);
+				deleted++;
+				const errorMsg = `Deleted unconvertible commitment for ${shortKey}: ${error}`;
+				errors.push(errorMsg);
+				console.error(`[MIGRATION] ❌ ${errorMsg}`);
+			}
+		}
+	}
+	
+	const result = { fixed, deleted, errors };
+	console.log('[MIGRATION] Complete:', result);
+	return result;
+}
+
+/**
+ * Validate all stores (debugging helper)
+ * 
+ * Checks schema validity of:
+ * - Own commitment
+ * - All network commitments
+ * - Own recognition tree
+ * - All network recognition trees (if any)
+ * 
+ * Returns: { valid: boolean, errors: Array<{ store: string, error: any }> }
+ */
+export function validateAllStores(): {
+	myCommitment: { valid: boolean; error?: any };
+	myTree: { valid: boolean; error?: any };
+	networkCommitments: Record<string, { valid: boolean; error?: any }>;
+	networkTrees: Record<string, { valid: boolean; error?: any }>;
+	summary: {
+		totalValid: number;
+		totalInvalid: number;
+		stores: string[];
+	};
+} {
+	console.log('[VALIDATION] Validating all stores...');
+	
+	const result = {
+		myCommitment: { valid: true } as { valid: boolean; error?: any },
+		myTree: { valid: true } as { valid: boolean; error?: any },
+		networkCommitments: {} as Record<string, { valid: boolean; error?: any }>,
+		networkTrees: {} as Record<string, { valid: boolean; error?: any }>,
+		summary: {
+			totalValid: 0,
+			totalInvalid: 0,
+			stores: [] as string[]
+		}
+	};
+	
+	// Validate own commitment
+	const myCommit = get(myCommitmentStore);
+	if (myCommit) {
+		const validation = CommitmentSchema.safeParse(myCommit);
+		result.myCommitment = {
+			valid: validation.success,
+			error: validation.success ? undefined : validation.error.format()
+		};
+		if (validation.success) {
+			result.summary.totalValid++;
+		} else {
+			result.summary.totalInvalid++;
+			result.summary.stores.push('myCommitment');
+			console.error('[VALIDATION] ❌ Invalid myCommitment:', validation.error.format());
+		}
+	}
+	
+	// Validate own recognition tree
+	const myTree = get(myRecognitionTreeStore);
+	if (myTree) {
+		const validation = RootNodeSchema.safeParse(myTree);
+		result.myTree = {
+			valid: validation.success,
+			error: validation.success ? undefined : validation.error.format()
+		};
+		if (validation.success) {
+			result.summary.totalValid++;
+		} else {
+			result.summary.totalInvalid++;
+			result.summary.stores.push('myTree');
+			console.error('[VALIDATION] ❌ Invalid myTree:', validation.error.format());
+		}
+	}
+	
+	// Validate network commitments
+	const commitMap = networkCommitments.get();
+	for (const [pubKey, versionedEntity] of commitMap.entries()) {
+		const shortKey = pubKey.slice(0, 20);
+		const validation = CommitmentSchema.safeParse(versionedEntity.data);
+		result.networkCommitments[pubKey] = {
+			valid: validation.success,
+			error: validation.success ? undefined : validation.error.format()
+		};
+		if (validation.success) {
+			result.summary.totalValid++;
+		} else {
+			result.summary.totalInvalid++;
+			result.summary.stores.push(`network:${shortKey}`);
+			console.error(`[VALIDATION] ❌ Invalid commitment from ${shortKey}:`, validation.error.format());
+		}
+	}
+	
+	// Validate network recognition trees (if any)
+	const treeMap = networkRecognitionTrees.get();
+	for (const [pubKey, versionedEntity] of treeMap.entries()) {
+		const shortKey = pubKey.slice(0, 20);
+		const validation = RootNodeSchema.safeParse(versionedEntity.data);
+		result.networkTrees[pubKey] = {
+			valid: validation.success,
+			error: validation.success ? undefined : validation.error.format()
+		};
+		if (validation.success) {
+			result.summary.totalValid++;
+		} else {
+			result.summary.totalInvalid++;
+			result.summary.stores.push(`networkTree:${shortKey}`);
+			console.error(`[VALIDATION] ❌ Invalid tree from ${shortKey}:`, validation.error.format());
+		}
+	}
+	
+	console.log('[VALIDATION] Complete:', {
+		valid: result.summary.totalValid,
+		invalid: result.summary.totalInvalid,
+		invalidStores: result.summary.stores
+	});
+	
+	return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // WINDOW DEBUGGING (V5)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -1439,5 +1683,7 @@ if (typeof window !== 'undefined') {
 	};
 	(window as any).getConvergenceStatsV5 = getConvergenceStats;
 	(window as any).getSubscriptionStatsV5 = getSubscriptionStats;
+	(window as any).migrateNetworkCommitments = migrateNetworkCommitments;
+	(window as any).validateAllStores = validateAllStores;
 }
 

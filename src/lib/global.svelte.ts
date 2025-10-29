@@ -12,11 +12,6 @@ import {
 import { userPub } from '$lib/state/auth.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
 
-// 🚨 CRITICAL FIX: Import subscriptions to initialize store persistence
-// This sets up the userCapacities.subscribe() and other store subscriptions
-// that trigger persistence functions when data changes
-import '$lib/state/subscriptions.svelte';
-
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
 
@@ -68,12 +63,14 @@ export const globalState = $state({
 	currentView: 'tree' as 'tree' | 'map' | 'inventory',
 
 	// Inventory search and filter state (shared between toolbar and components)
+	// V5: Works with Commitments (which contain capacity_slots arrays)
 	inventorySearchQuery: '',
 	inventorySelectedProvider: 'all',
 	inventorySortBy: 'name' as 'name' | 'allocated_slots' | 'total_slots' | 'provider',
 	inventorySortDirection: 'asc' as 'asc' | 'desc',
 
 	// Unified highlighting state for newly created items
+	// V5: capacityId = pubKey (for Commitment), slotId = AvailabilitySlot.id
 	highlightedCapacities: new Set<string>(),
 	highlightedSlots: new Set<string>(),
 
@@ -576,6 +573,11 @@ export const globalState = $state({
 
 	/**
 	 * Unified Highlighting System
+	 * 
+	 * V5 Architecture:
+	 * - Capacity highlighting: Works with Commitment IDs (pubKeys)
+	 * - Slot highlighting: Works with AvailabilitySlot IDs or NeedSlot IDs
+	 * - Generic implementation: Works with any data-*-id attributes
 	 */
 
 	// Generic scroll function for any element with data attribute
@@ -611,11 +613,13 @@ export const globalState = $state({
 	},
 
 	// Scroll to a specific capacity element
+	// V5: capacityId is the user's pubKey (Commitments are indexed by pubKey)
 	scrollToCapacity: (capacityId: string) => {
 		globalState.scrollToElement(`[data-capacity-id="${capacityId}"]`, 'capacity');
 	},
 
 	// Scroll to a specific slot element
+	// V5: slotId is the AvailabilitySlot.id or NeedSlot.id
 	scrollToSlot: (slotId: string) => {
 		globalState.scrollToElement(`[data-slot-id="${slotId}"]`, 'slot');
 	},

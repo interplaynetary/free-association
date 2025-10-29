@@ -22,6 +22,7 @@
   "add_slot": "Add new slot",
   "edit_slot": "Edit Slot",
   "delete_slot": "Delete Slot",
+  "slots": "Slots",
   "slot_date": "Date",
   "slot_time": "Time",
   "slot_duration": "Duration",

@@ -31,7 +31,7 @@ function getHolsterConfig() {
 			peers: (
 				import.meta.env.VITE_HOLSTER_PEERS ||
 				(typeof localStorage !== 'undefined' ? localStorage.getItem('holster_peers') : null) ||
-				'https://gun-relay1.herokuapp.com/gun,https://gun-relay2.herokuapp.com/gun'
+				'wss://holster.haza.website'
 			).split(','),
 			indexedDB: import.meta.env.VITE_HOLSTER_INDEXEDDB !== 'false',
 			file: import.meta.env.VITE_HOLSTER_FILE || undefined
@@ -39,7 +39,7 @@ function getHolsterConfig() {
 	} catch (error) {
 		console.warn('[CONFIG-V5] Error accessing config, using defaults:', error);
 		return {
-			peers: ['https://gun-relay1.herokuapp.com/gun'],
+			peers: ['wss://holster.haza.website'],
 			indexedDB: true,
 			file: undefined
 		};

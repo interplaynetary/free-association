@@ -402,8 +402,51 @@
 		const todayString = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
 		const newSlotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		
+		// ✅ Determine capacity_group_id to keep slots grouped together
+		// If this capacity already has slots, use their group ID
+		// Otherwise, create a new group ID for this capacity
+		const existingSlots = capacity.capacity_slots || [];
+		const capacityGroupId = existingSlots.length > 0 
+			? (existingSlots[0] as any).capacity_group_id || existingSlots[0].id
+			: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		
+		// ✅ CRITICAL: Normalize existing slots to fix old invalid enum values
+		// AND ensure all slots have the same capacity_group_id for proper grouping
+		const normalizedExistingSlots = existingSlots.map(slot => {
+			const normalized = { ...slot } as any;
+			
+			// ✅ CRITICAL: Ensure all existing slots have the same capacity_group_id
+			// This fixes the issue where old slots don't have a group ID and new ones do
+			if (!normalized.capacity_group_id) {
+				normalized.capacity_group_id = capacityGroupId;
+				console.log(`[CAPACITY] Added group ID "${capacityGroupId}" to slot "${slot.id}"`);
+			}
+			
+			// Normalize recurrence enum
+			if (typeof slot.recurrence === 'string') {
+				const lower = slot.recurrence.toLowerCase();
+				const validValues = ['daily', 'weekly', 'monthly', 'yearly'];
+				
+				if (validValues.includes(lower)) {
+					normalized.recurrence = lower as any;
+				} else {
+					// Map legacy values to valid schema values
+					const legacyMap: Record<string, string> = {
+						'bi-weekly': 'weekly',
+						'biweekly': 'weekly',
+						'weekends': 'weekly',
+						'weekdays': 'weekly',
+					};
+					normalized.recurrence = (legacyMap[lower] || 'weekly') as any;
+					console.log(`[CAPACITY] Normalized recurrence from "${slot.recurrence}" to "${normalized.recurrence}"`);
+				}
+			}
+			
+			return normalized;
+		});
+		
 		// V5: All fields required, including need_type_id
-		const newSlot: AvailabilitySlot = {
+		const newSlot: AvailabilitySlot & { capacity_group_id?: string } = {
 			id: newSlotId,
 			quantity: 1,
 			need_type_id: 'need_type_general', // Default need type
@@ -412,10 +455,11 @@
 			start_date: todayString,
 			end_date: null,
 			time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			recurrence: 'daily'
+			recurrence: 'daily',
+			capacity_group_id: capacityGroupId // ✅ Add group ID for virtual grouping
 		};
 
-		const updatedSlots = [...(capacity.capacity_slots || []), newSlot];
+		const updatedSlots = [...normalizedExistingSlots, newSlot];
 
 		const updatedCommitment: CommitmentWithId = {
 			...capacity,
@@ -480,7 +524,7 @@
 			onclick={toggleSlots}
 			title={$t('inventory.manage_slots')}
 		>
-			🕒 {$t('inventory.slots')}
+			🕒
 		</button>
 		<button 
 			type="button" 

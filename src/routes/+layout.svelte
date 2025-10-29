@@ -10,6 +10,11 @@
 	import { browser } from '$app/environment';
 	import { base } from '$app/paths';
 	import { loading } from '$lib/translations';
+	// V5: Import v5 stores initialization and auto-composition
+	import { 
+		initializeAllocationStores, 
+		enableAutoCommitmentComposition 
+	} from '$lib/commons/v5/stores.svelte';
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
 	import '$lib/services';
@@ -17,14 +22,34 @@
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Handle notification permission request (layout-appropriate functionality)
+	// V5: Auto-composition cleanup function
+	let unsubscribeAutoCompose: (() => void) | null = null;
+
+	// Handle notification permission request + V5 initialization
 	onMount(() => {
+		// V5: Initialize allocation stores (Holster stores)
+		initializeAllocationStores();
+		console.log('[V5] ✅ Initialized allocation stores');
+
+		// V5: Enable automatic commitment composition
+		// This keeps myCommitmentStore in sync with source stores automatically
+		unsubscribeAutoCompose = enableAutoCommitmentComposition();
+		console.log('[V5] ✅ Enabled auto-commitment composition');
+
 		// Request notification permission if supported
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
 				console.log('Notification permission:', permission);
 			});
 		}
+
+		// Cleanup on unmount
+		return () => {
+			if (unsubscribeAutoCompose) {
+				unsubscribeAutoCompose();
+				console.log('[V5] 🧹 Disabled auto-commitment composition');
+			}
+		};
 	});
 </script>
 
