@@ -953,11 +953,13 @@ describe('Realistic Scenario - Multi-User Allocation', () => {
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST 11: HOLSTER CONVERTERS - ARRAY/RECORD CONVERSION
+// NOTE: These tests are now obsolete! We use JSON.stringify/parse instead.
+// Tests kept for reference only - they will fail if run.
 // ═══════════════════════════════════════════════════════════════════
 
-import { toHolsterFormat, fromHolsterFormat } from '../../utils/holster-converters';
+// import { toHolsterFormat, fromHolsterFormat } from '../../utils/holster-converters';
 
-describe('Holster Converters - Array to Record Conversion', () => {
+describe.skip('Holster Converters - Array to Record Conversion (OBSOLETE - using JSON now)', () => {
 	it('should convert arrays with id field to id-keyed records', () => {
 		const data = [
 			{ id: 'slot-1', name: 'Food', quantity: 10 },
@@ -1050,7 +1052,7 @@ describe('Holster Converters - Array to Record Conversion', () => {
 	});
 });
 
-describe('Holster Converters - Record to Array Conversion', () => {
+describe.skip('Holster Converters - Record to Array Conversion (OBSOLETE - using JSON now)', () => {
 	it('should convert numeric-keyed records back to arrays', () => {
 		const data = {
 			'0': 'red',
@@ -1128,7 +1130,7 @@ describe('Holster Converters - Record to Array Conversion', () => {
 	});
 });
 
-describe('Holster Converters - Enum Normalization', () => {
+describe.skip('Holster Converters - Enum Normalization (OBSOLETE - using JSON now)', () => {
 	it('should normalize valid enum values to lowercase', () => {
 		const data = {
 			slot: {
@@ -1228,7 +1230,7 @@ describe('Holster Converters - Enum Normalization', () => {
 	});
 });
 
-describe('Holster Converters - Round Trip Conversion', () => {
+describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON now)', () => {
 	it('should preserve data through round trip for slots', () => {
 		const original = {
 			capacity_slots: [
@@ -1283,7 +1285,7 @@ describe('Holster Converters - Round Trip Conversion', () => {
 	});
 });
 
-describe('Holster Converters - Edge Cases', () => {
+describe.skip('Holster Converters - Edge Cases (OBSOLETE - using JSON now)', () => {
 	it('should handle empty objects', () => {
 		const result = toHolsterFormat({});
 		expect(result).toBeNull();
@@ -1389,7 +1391,7 @@ describe('Holster Converters - Edge Cases', () => {
 	});
 });
 
-describe('Holster Converters - Integration with Stores', () => {
+describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JSON now)', () => {
 	beforeEach(() => {
 		mockAuth(TEST_USER_PUB, 'test-user');
 	});

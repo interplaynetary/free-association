@@ -15,7 +15,8 @@
 		myRecognitionTreeStore as userTree, 
 		myCommitmentStore, 
 		myCapacitySlotsStore,
-		composeCommitmentFromSources 
+		composeCommitmentFromSources,
+		setMyCapacitySlots // ✅ NEW: Helper to update capacity slots
 	} from '$lib/commons/v5/stores.svelte';
 	// V5: Composition features not yet implemented
 	// import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
@@ -139,13 +140,7 @@
 		// ✅ SAFE: Append to existing slots array
 		const currentSlots = get(myCapacitySlotsStore) || [];
 		const newSlots = [...currentSlots, ...(commitment.capacity_slots || [])];
-		myCapacitySlotsStore.set(newSlots);
-
-		// Recompose commitment from all sources
-		const newCommitment = composeCommitmentFromSources();
-		if (newCommitment) {
-			myCommitmentStore.set(newCommitment);
-		}
+		setMyCapacitySlots(newSlots); // ✅ NEW: Use helper instead of store.set()
 
 		// Highlight the new capacity slots
 		if (commitment.capacity_slots) {
@@ -198,13 +193,7 @@
 			// Merge unchanged + updated slots
 			const newSlots = [...unchangedSlots, ...(commitment.capacity_slots || [])];
 			
-			myCapacitySlotsStore.set(newSlots);
-
-			// Recompose commitment from all sources
-			const newCommitment = composeCommitmentFromSources();
-			if (newCommitment) {
-				myCommitmentStore.set(newCommitment);
-			}
+			setMyCapacitySlots(newSlots); // ✅ NEW: Use helper instead of store.set()
 
 			// Show success toast with first slot name or generic message
 			const firstName = commitment.capacity_slots?.[0]?.name || 'Capacity';
@@ -267,13 +256,7 @@
 			// Filter out the slots being deleted, keep all others
 			const remainingSlots = allSlots.filter(s => !slotIdsToRemove.has(s.id));
 			
-			myCapacitySlotsStore.set(remainingSlots);
-
-			// Recompose commitment from all sources
-			const newCommitment = composeCommitmentFromSources();
-			if (newCommitment) {
-				myCommitmentStore.set(newCommitment);
-			}
+			setMyCapacitySlots(remainingSlots); // ✅ NEW: Use helper instead of store.set()
 
 			const slotName = virtualCapacity.capacity_slots?.[0]?.name || 'Capacity';
 			globalState.showToast(`Deleted: ${slotName}`, 'success');

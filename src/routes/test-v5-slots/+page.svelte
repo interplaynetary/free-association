@@ -3,35 +3,33 @@
 	 * V5 Slots Test Page
 	 * 
 	 * Tests reactive CRUD operations on:
-	 * - myNeedSlotsStore
-	 * - myCapacitySlotsStore
-	 * - myCommitmentStore (composed from slots)
+	 * - myNeedSlotsStore (DERIVED from commitment)
+	 * - myCapacitySlotsStore (DERIVED from commitment)
+	 * - myCommitmentStore (THE source of truth - contains slots!)
 	 * - networkCommitments (sync verification)
 	 * 
-	 * Architecture Trace:
+	 * ✅ ARCHITECTURAL SIMPLIFICATION:
 	 * 
-	 * SOURCE STORES (user edits):
-	 * - myNeedSlotsStore → array of NeedSlot
-	 * - myCapacitySlotsStore → array of AvailabilitySlot
-	 * - myRecognitionTreeStore → RootNode (generates weights)
+	 * OLD ARCHITECTURE (redundant):
+	 * - myNeedSlotsStore → persisted separately
+	 * - myCapacitySlotsStore → persisted separately  
+	 * - myCommitmentStore → composed from above (slots duplicated!)
 	 * 
-	 * DERIVED STORE:
-	 * - myRecognitionWeights (from tree via protocol)
+	 * NEW ARCHITECTURE (single source of truth):
+	 * - myCommitmentStore → THE ONLY persistent store (contains slots!)
+	 *   ↓
+	 * - myNeedSlotsStore → DERIVED (read-only)
+	 * - myCapacitySlotsStore → DERIVED (read-only)
 	 * 
-	 * COMPOSED STORE (published to network):
-	 * - myCommitmentStore = {
-	 *     need_slots: from myNeedSlotsStore,
-	 *     capacity_slots: from myCapacitySlotsStore,
-	 *     global_recognition_weights: from myRecognitionWeights,
-	 *     global_mr_values: from myMutualRecognition,
-	 *     damping, itcStamp, timestamp
-	 *   }
+	 * TO UPDATE SLOTS:
+	 * - Use setMyNeedSlots(slots) helper
+	 * - Use setMyCapacitySlots(slots) helper
 	 * 
 	 * REACTIVITY FLOW:
-	 * 1. Edit myNeedSlotsStore or myCapacitySlotsStore
-	 * 2. enableAutoCommitmentComposition() detects change
-	 * 3. composeCommitmentFromSources() creates new commitment
-	 * 4. myCommitmentStore.set() → persists to Holster
+	 * 1. Call setMyNeedSlots() or setMyCapacitySlots()
+	 * 2. Helper updates myCommitmentStore directly (single write!)
+	 * 3. myCommitmentStore.set() → persists to Holster
+	 * 4. Derived stores (myNeedSlotsStore, myCapacitySlotsStore) update automatically
 	 * 5. Other participants receive via subscribeToCommitment()
 	 * 6. networkCommitments.update() (versioned store with ITC)
 	 * 7. Field stores update (networkNeedSlots, networkCapacitySlots)
@@ -52,7 +50,9 @@
 		holsterUserPub,
 		initializeAllocationStores,
 		enableAutoCommitmentComposition,
-		composeCommitmentFromSources
+		composeCommitmentFromSources,
+		setMyNeedSlots,        // ✅ NEW: Helper to update need slots
+		setMyCapacitySlots     // ✅ NEW: Helper to update capacity slots
 	} from '$lib/commons/v5/stores.svelte';
 	import type { NeedSlot, AvailabilitySlot, Commitment } from '$lib/commons/v5/schemas';
 	
@@ -155,6 +155,7 @@
 	});
 	
 	// CRUD Operations - Needs
+	// ✅ Now using setMyNeedSlots() helper (single source of truth!)
 	
 	function addNeedSlot() {
 		if (!newNeedName.trim()) return;
@@ -167,7 +168,7 @@
 			unit: 'units'
 		};
 		
-		myNeedSlotsStore.set([...needSlots, newSlot]);
+		setMyNeedSlots([...needSlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
 		
 		// Reset form
 		newNeedName = '';
@@ -177,7 +178,7 @@
 	}
 	
 	function removeNeedSlot(id: string) {
-		myNeedSlotsStore.set(needSlots.filter(s => s.id !== id));
+		setMyNeedSlots(needSlots.filter(s => s.id !== id)); // ✅ NEW: Use helper
 		console.log('[TEST-V5] ➖ Removed need slot:', id);
 	}
 	
@@ -185,11 +186,12 @@
 		const updated = needSlots.map(s =>
 			s.id === id ? { ...s, quantity } : s
 		);
-		myNeedSlotsStore.set(updated);
+		setMyNeedSlots(updated); // ✅ NEW: Use helper
 		console.log('[TEST-V5] ✏️  Updated need quantity:', id, quantity);
 	}
 	
 	// CRUD Operations - Capacity
+	// ✅ Now using setMyCapacitySlots() helper (single source of truth!)
 	
 	function addCapacitySlot() {
 		if (!newCapacityName.trim()) return;
@@ -202,7 +204,7 @@
 			unit: 'units'
 		};
 		
-		myCapacitySlotsStore.set([...capacitySlots, newSlot]);
+		setMyCapacitySlots([...capacitySlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
 		
 		// Reset form
 		newCapacityName = '';
@@ -212,7 +214,7 @@
 	}
 	
 	function removeCapacitySlot(id: string) {
-		myCapacitySlotsStore.set(capacitySlots.filter(s => s.id !== id));
+		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id)); // ✅ NEW: Use helper
 		console.log('[TEST-V5] ➖ Removed capacity slot:', id);
 	}
 	
@@ -220,7 +222,7 @@
 		const updated = capacitySlots.map(s =>
 			s.id === id ? { ...s, quantity } : s
 		);
-		myCapacitySlotsStore.set(updated);
+		setMyCapacitySlots(updated); // ✅ NEW: Use helper
 		console.log('[TEST-V5] ✏️  Updated capacity quantity:', id, quantity);
 	}
 	
@@ -463,22 +465,24 @@
 	</div>
 	
 	<footer>
-		<h3>Architecture Trace</h3>
+		<h3>Architecture Trace (✅ SIMPLIFIED)</h3>
 		<div class="trace">
 			<div class="trace-step">
-				<div class="trace-label">SOURCE</div>
+				<div class="trace-label">HELPERS</div>
+				<code>setMyNeedSlots()</code>
+				<code>setMyCapacitySlots()</code>
+			</div>
+			<div class="trace-arrow">→</div>
+			<div class="trace-step">
+				<div class="trace-label">SOURCE OF TRUTH</div>
+				<code>myCommitmentStore</code>
+				<small>(persisted to Holster)</small>
+			</div>
+			<div class="trace-arrow">→</div>
+			<div class="trace-step">
+				<div class="trace-label">DERIVED (LOCAL)</div>
 				<code>myNeedSlotsStore</code>
 				<code>myCapacitySlotsStore</code>
-			</div>
-			<div class="trace-arrow">→</div>
-			<div class="trace-step">
-				<div class="trace-label">COMPOSE</div>
-				<code>composeCommitmentFromSources()</code>
-			</div>
-			<div class="trace-arrow">→</div>
-			<div class="trace-step">
-				<div class="trace-label">PUBLISH</div>
-				<code>myCommitmentStore</code>
 			</div>
 			<div class="trace-arrow">→</div>
 			<div class="trace-step">
@@ -487,10 +491,13 @@
 			</div>
 			<div class="trace-arrow">→</div>
 			<div class="trace-step">
-				<div class="trace-label">DERIVED</div>
+				<div class="trace-label">DERIVED (NETWORK)</div>
 				<code>networkNeedSlots</code>
 				<code>networkCapacitySlots</code>
 			</div>
+		</div>
+		<div class="trace-note">
+			<strong>Key:</strong> 1 persistent store (commitment), 2 local derived stores, 2 network derived stores = SIMPLE! 🎯
 		</div>
 	</footer>
 </div>
@@ -736,6 +743,22 @@
 	.trace-arrow {
 		font-size: 1.5rem;
 		color: #95a5a6;
+	}
+	
+	.trace-note {
+		margin-top: 1rem;
+		padding: 0.75rem;
+		background: #e8f4f8;
+		border-radius: 6px;
+		border-left: 4px solid #3498db;
+		font-size: 0.85rem;
+		color: #2c3e50;
+	}
+	
+	.trace-step small {
+		font-size: 0.65rem;
+		color: #95a5a6;
+		font-style: italic;
 	}
 	
 	.btn-primary {

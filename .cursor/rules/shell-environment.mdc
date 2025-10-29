@@ -1,0 +1,73 @@
+---
+description: Shell environment configuration for terminal commands
+globs: 
+alwaysApply: true
+---
+
+# Shell Environment Configuration
+
+## Terminal Commands
+
+**CRITICAL**: When running terminal commands, ALWAYS source the user's shell configuration first to access their PATH and environment variables.
+
+### Required Command Pattern
+
+```bash
+source ~/.bashrc && <your_command>
+```
+
+### Why This Is Needed
+
+The AI's terminal starts a **non-interactive, non-login shell** that doesn't automatically load:
+- User's PATH modifications
+- Environment variables
+- Aliases and functions
+- Tool installations (bun, npm, nvm, guix, etc.)
+
+### Examples
+
+**Good:**
+```bash
+source ~/.bashrc && npm install
+source ~/.bashrc && bun run dev
+source ~/.bashrc && npm test
+```
+
+**Bad:**
+```bash
+npm install  # ❌ May fail if npm not in system PATH
+bun dev      # ❌ May fail if bun not in system PATH
+```
+
+### Current User Environment
+
+This project uses:
+- **Shell**: `/bin/bash`
+- **Package Manager**: `bun` (installed at `~/.bun/bin/bun`)
+- **Node**: via `nvm` (at `~/.nvm/versions/node/v25.0.0/bin/node`)
+- **Additional**: `guix`, `pipx` in `~/.local/bin`
+
+### Testing Access
+
+To verify environment access:
+```bash
+source ~/.bashrc && which bun npm node
+```
+
+Expected output:
+```
+/home/ruzgar/.bun/bin/bun
+/home/ruzgar/.nvm/versions/node/v25.0.0/bin/npm
+/home/ruzgar/.nvm/versions/node/v25.0.0/bin/node
+```
+
+## Alternative Approaches
+
+If sourcing doesn't work:
+1. Use explicit paths: `~/.bun/bin/bun install`
+2. Check shell config: `cat ~/.bashrc | grep PATH`
+3. Use system-wide tools only (if available)
+
+---
+
+**Remember**: Always prefix commands with `source ~/.bashrc &&` to ensure consistent access to user's development environment!

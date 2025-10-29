@@ -1,31 +1,37 @@
 /**
  * Generic Holster Store Utility
  * 
- * Extracted pattern from tree-holster.svelte.ts to work with ANY data structure.
+ * Simple, reliable store backed by Holster with JSON serialization.
+ * 
+ * Core Flow:
+ * 1. SAVE: JSON.stringify({ ...data, _updatedAt }) → Store string in Holster
+ * 2. LOAD: Get string → JSON.parse() → Validate with Zod → Update if valid & different
+ * 3. VALIDATION: Only valid data reaches the store (invalid data is rejected)
  * 
  * Features:
- * - Zod schema validation
- * - Automatic timestamp management
- * - Conflict resolution (network wins if newer)
- * - Incremental updates (only persist what changed)
+ * - JSON serialization (simple, standard, reliable!)
+ * - Zod validation (only valid data gets through)
+ * - Timestamp tracking (conflict resolution)
+ * - Equality checking (skip duplicate updates)
  * - Queue management (handle updates during persistence)
  * - Cross-user subscriptions (for mutual contributors)
  * 
+ * Storage Format:
+ * ```typescript
+ * holsterUser.get(path).put('{"field":"value",...,"_updatedAt":1234567890}')
+ * // ↑ Just a JSON string, nothing fancy!
+ * ```
+ * 
  * Usage:
  * ```typescript
- * const commitmentStore = createStore({
- *   holsterPath: 'commitment',
+ * const store = createStore({
+ *   holsterPath: 'allocation/commitment',
  *   schema: CommitmentSchema
  * });
  * 
- * // Initialize (subscribes to network)
- * commitmentStore.initialize();
- * 
- * // Update local data (triggers persistence)
- * commitmentStore.set(newCommitment);
- * 
- * // Subscribe to changes
- * commitmentStore.subscribe(data => console.log(data));
+ * store.initialize();  // Subscribe to network
+ * store.set(data);     // Update & persist
+ * store.subscribe(data => ...);  // React to changes
  * ```
  */
 
@@ -33,7 +39,7 @@ import { writable, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
 import { holsterUser } from '$lib/commons/v5/holster.svelte';
 import * as z from 'zod';
-import { getTimestamp, shouldPersist } from '$lib/utils/holsterTimestamp';
+import { shouldPersist } from '$lib/utils/holsterTimestamp';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -52,11 +58,8 @@ export interface StoreConfig<T extends z.ZodTypeAny> {
 	/** Debounce persistence (ms, default: 0 = immediate) */
 	persistDebounce?: number;
 	
-	/** Convert data to Holster format before persistence (arrays → Records) */
-	toHolsterFormat?: (data: z.infer<T>) => any;
-	
-	/** Convert data from Holster format after reading (Records → arrays) */
-	fromHolsterFormat?: (data: any) => z.infer<T>;
+	// NOTE: Converters removed! We now use JSON.stringify/parse for simplicity and reliability.
+	// This eliminates 400+ lines of complex conversion logic and entire classes of bugs.
 }
 
 export interface HolsterStore<T> extends Readable<T | null> {
@@ -94,6 +97,9 @@ export function createStore<T extends z.ZodTypeAny>(
 ): HolsterStore<z.infer<T>> {
 	type DataType = z.infer<T>;
 	
+	// Debug: Log store creation
+	console.log(`[HOLSTER-STORE] 🏗️  Creating store for: ${config.holsterPath}`);
+	
 	// Internal state
 	const store = writable<DataType | null>(null);
 	const isLoading = writable(false);
@@ -123,31 +129,56 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 	
 	function processNetworkUpdate(data: any) {
+		// Skip null/undefined/empty
 		if (!data) return;
 		
-		// Extract timestamp
-		const networkTimestamp = getTimestamp(data);
+		// Debug: ALWAYS log what we received to diagnose issues
+		console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 LOADING - Raw:`, typeof data, data);
 		
-		// Remove timestamp wrapper
-		const { _updatedAt, ...actualData } = data;
-		
-		// Convert from Holster format if converter provided
-		const convertedData = config.fromHolsterFormat ? config.fromHolsterFormat(actualData) : actualData;
-		
-		// Validate with schema
-		const validation = config.schema.safeParse(convertedData);
-		if (!validation.success) {
-			console.warn(`[HOLSTER-STORE:${config.holsterPath}] Invalid network data:`, validation.error);
+		// Step 1: Parse JSON string
+		let parsedData: any;
+		try {
+			if (typeof data !== 'string') {
+				console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Expected string, got ${typeof data}:`, data);
+				console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  This is OLD FORMAT data! Run: await window.clearAllV5Stores()`);
+				return;
+			}
+			parsedData = JSON.parse(data);
+		} catch (error) {
+			console.error(`[HOLSTER-STORE:${config.holsterPath}] ❌ JSON parse failed:`, error);
 			return;
 		}
 		
-		// Only update if newer
-		if (!lastNetworkTimestamp || (networkTimestamp && networkTimestamp > lastNetworkTimestamp)) {
+		// Step 2: Extract timestamp
+		const networkTimestamp = parsedData._updatedAt;
+		
+		// Debug
+		if (config.holsterPath.includes('tree') || config.holsterPath.includes('commitment')) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 Parsed:`, parsedData);
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] 📥 Timestamp:`, networkTimestamp);
+		}
+		
+		// Step 3: Validate with Zod (auto-strips _updatedAt)
+		const validation = config.schema.safeParse(parsedData);
+		if (!validation.success) {
+			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ Validation failed:`, validation.error);
+			return;
+		}
+		
+		// Step 4: Only update if different/newer
+		const current = get(store);
+		if (config.isEqual && current && config.isEqual(current, validation.data)) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏭️  Data unchanged - skipping`);
+			return;
+		}
+		
+		// Update if newer (or no timestamp tracking)
+		if (!lastNetworkTimestamp || !networkTimestamp || networkTimestamp > lastNetworkTimestamp) {
 			store.set(validation.data);
-			
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Updated from network`);
 		}
 	}
 	
@@ -183,11 +214,20 @@ export function createStore<T extends z.ZodTypeAny>(
 			
 			// Queue updates during persistence
 			if (isPersisting) {
-				const networkTimestamp = getTimestamp(data);
-				
-				// Only queue if different timestamp (external update)
-				if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] External update during persistence - queueing`);
+				try {
+					// Try to extract timestamp to detect external updates
+					if (typeof data === 'string') {
+						const parsed = JSON.parse(data);
+						const networkTimestamp = parsed._updatedAt;
+						
+						// Only queue if different timestamp (external update)
+						if (networkTimestamp && networkTimestamp !== lastNetworkTimestamp) {
+							console.log(`[HOLSTER-STORE:${config.holsterPath}] External update during persistence - queueing`);
+							queuedNetworkUpdate = data;
+						}
+					}
+				} catch {
+					// If parsing fails, queue it anyway to be safe
 					queuedNetworkUpdate = data;
 				}
 				return;
@@ -205,21 +245,38 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 	
 	async function persistNow(): Promise<void> {
+		// Debug: Log persistence attempt
+		if (config.holsterPath.includes('tree')) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] 🚀 persistNow called`);
+		}
+		
 		if (!holsterUser.is) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated, skipping persistence`);
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ❌ Not authenticated, skipping persistence`);
 			return;
 		}
 		
 		// Check if already persisting
 		if (isPersisting) {
+			if (config.holsterPath.includes('tree')) {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏸️  Already persisting, queuing...`);
+			}
 			hasPendingLocalChanges = true;
 			return;
 		}
 		
 		const dataToSave = get(store);
 		if (!dataToSave) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] No data to persist`);
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ❌ No data to persist`);
 			return;
+		}
+		
+		// Debug: Log data about to be saved
+		if (config.holsterPath.includes('tree')) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Data ready to persist:`, {
+				hasId: 'id' in dataToSave,
+				hasChildren: 'children' in dataToSave,
+				childrenType: Array.isArray((dataToSave as any).children) ? 'array' : typeof (dataToSave as any).children
+			});
 		}
 		
 		// Set lock
@@ -240,18 +297,24 @@ export function createStore<T extends z.ZodTypeAny>(
 			// Update lastNetworkTimestamp NOW (before writing)
 			lastNetworkTimestamp = localTimestamp;
 			
-			// Convert to Holster format if converter provided
-			const HolsterData = config.toHolsterFormat ? config.toHolsterFormat(dataToSave) : dataToSave;
-			
-			// Wrap with timestamp
+			// FULL JSON: Everything in one JSON string (including timestamp!)
 			const dataWithTimestamp = {
-				...HolsterData,
+				...dataToSave,
 				_updatedAt: localTimestamp
 			};
 			
-			// Persist to Holster
+			const jsonString = JSON.stringify(dataWithTimestamp);
+			
+			// Debug: Log serialization for trees and commitments
+			if (config.holsterPath.includes('tree') || config.holsterPath.includes('commitment')) {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - Data:`, dataToSave);
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - Timestamp:`, localTimestamp);
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVING - JSON size:`, jsonString.length, 'bytes');
+			}
+			
+			// Persist to Holster as a single JSON string
 			await new Promise<void>((resolve, reject) => {
-				holsterUser.get(config.holsterPath).put(dataWithTimestamp, (err: any) => {
+				holsterUser.get(config.holsterPath).put(jsonString, (err: any) => {
 					if (err) {
 						console.error(`[HOLSTER-STORE:${config.holsterPath}] Error persisting:`, err);
 						isPersisting = false;
@@ -259,6 +322,7 @@ export function createStore<T extends z.ZodTypeAny>(
 						return reject(err);
 					}
 					
+					console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Saved successfully`);
 					isPersisting = false;
 					processQueuedUpdate();
 					resolve();
@@ -273,6 +337,11 @@ export function createStore<T extends z.ZodTypeAny>(
 	}
 	
 	function persistDebounced(): void {
+		// Debug: Log persistence trigger
+		if (config.holsterPath.includes('tree')) {
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏱️  persistDebounced called, debounce=${config.persistDebounce}ms`);
+		}
+		
 		if (persistDebounceTimeout) {
 			clearTimeout(persistDebounceTimeout);
 		}
@@ -360,14 +429,17 @@ export function createStore<T extends z.ZodTypeAny>(
 			}
 			
 			try {
-				// Remove timestamp wrapper
-				const { _updatedAt, ...actualData } = data;
+				// Parse JSON string
+				if (typeof data !== 'string') {
+					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Expected string from ${pubKey.slice(0, 20)}...`);
+					callback(null);
+					return;
+				}
 				
-				// Convert from Holster format if converter provided
-				const convertedData = config.fromHolsterFormat ? config.fromHolsterFormat(actualData) : actualData;
+				const parsedData = JSON.parse(data);
 				
-				// Validate with schema
-				const validation = config.schema.safeParse(convertedData);
+				// Validate with Zod (auto-strips _updatedAt)
+				const validation = config.schema.safeParse(parsedData);
 				if (!validation.success) {
 					console.warn(
 						`[HOLSTER-STORE:${config.holsterPath}] Invalid data from ${pubKey.slice(0, 20)}...`,
@@ -380,7 +452,7 @@ export function createStore<T extends z.ZodTypeAny>(
 				callback(validation.data);
 			} catch (error) {
 				console.error(
-					`[HOLSTER-STORE:${config.holsterPath}] Error processing data from ${pubKey.slice(0, 20)}...`,
+					`[HOLSTER-STORE:${config.holsterPath}] Error from ${pubKey.slice(0, 20)}...`,
 					error
 				);
 				callback(null);
@@ -398,6 +470,17 @@ export function createStore<T extends z.ZodTypeAny>(
 		
 		// Writable interface
 		set: (value: DataType) => {
+			// Debug: ALWAYS log when set is called (to catch ALL stores)
+			console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔄 SET called`);
+			
+			// Debug: Log tree details
+			if (config.holsterPath.includes('tree')) {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔄 SET data:`, {
+					value,
+					hasId: value && typeof value === 'object' && 'id' in value,
+					hasChildren: value && typeof value === 'object' && 'children' in value
+				});
+			}
 			store.set(value);
 			persistDebounced();
 		},

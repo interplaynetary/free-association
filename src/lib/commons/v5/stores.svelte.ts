@@ -28,7 +28,8 @@
 import { get, derived, readable, writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { createStore } from '../utils/store.svelte';
-import { toHolsterFormat, fromHolsterFormat } from '../utils/holster-converters';
+// NOTE: Converters removed! We now use JSON.stringify/parse for simplicity and reliability.
+// This eliminates 400+ lines of complex conversion logic and entire classes of bugs.
 import {
 	CommitmentSchema,
 	RootNodeSchema,
@@ -42,7 +43,7 @@ import {
 	type GlobalRecognitionWeights
 } from './schemas';
 import * as z from 'zod';
-import { holsterUserPub } from './holster.svelte';
+import { holsterUserPub, holsterUser } from './holster.svelte';
 import { getTimeBucketKey, getLocationBucketKey } from './match.svelte';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from './protocol';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '../utils/itc';
@@ -76,41 +77,8 @@ export { holsterUserPub }
 export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
-	persistDebounce: 200, // Debounce tree edits
-	toHolsterFormat,
-	fromHolsterFormat
-});
-
-/**
- * My Need Slots Store (V5) - SOURCE
- * 
- * What I need from the commons (e.g., food, housing, healthcare)
- * Each slot specifies quantity, type, time, location constraints
- * 
- * Stored separately for easy editing, then composed into commitment
- */
-export const myNeedSlotsStore = createStore({
-	holsterPath: 'allocation/need_slots',
-	schema: z.array(NeedSlotSchema),
-	persistDebounce: 100,
-	toHolsterFormat,
-	fromHolsterFormat
-});
-
-/**
- * My Capacity Slots Store (V5) - SOURCE
- * 
- * What I can provide to the commons (e.g., meals, tutoring, rides)
- * Each slot specifies quantity, type, time, location constraints
- * 
- * Stored separately for easy editing, then composed into commitment
- */
-export const myCapacitySlotsStore = createStore({
-	holsterPath: 'allocation/capacity_slots',
-	schema: z.array(AvailabilitySlotSchema),
-	persistDebounce: 100,
-	toHolsterFormat,
-	fromHolsterFormat
+	persistDebounce: 200 // Debounce tree edits
+	// NOTE: No converters needed! JSON handles everything perfectly.
 });
 
 /**
@@ -139,32 +107,67 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 );
 
 /**
- * My Commitment Store (V5) - COMPOSED & PUBLISHED
+ * My Commitment Store (V5) - PRIMARY SOURCE OF TRUTH
  * 
- * This is what gets published to the network!
+ * ✅ ARCHITECTURAL SIMPLIFICATION: This is THE ONLY persistent store for my data!
+ * 
+ * This is what gets published to the network AND what all derived stores read from!
  * 
  * Contains EVERYTHING:
- * - Capacity slots (from myCapacitySlotsStore)
- * - Need slots (from myNeedSlotsStore)
+ * - Capacity slots (derived stores read from here!)
+ * - Need slots (derived stores read from here!)
  * - Global recognition weights (from myRecognitionWeights - computed from tree!)
  * - Global MR values (mutual recognition with others)
  * - Adaptive damping state (time-based history)
  * - ITC stamp (causality tracking)
  * 
- * NOTE: This is still a writable store (not fully derived) because:
- * - We need to add damping history (stateful)
- * - We need to add ITC stamps (incremental)
- * - We want explicit publish control
- * 
- * But we can use helper functions to compose it from source stores!
+ * To update slots: Use setMyNeedSlots() or setMyCapacitySlots() helpers
  */
 export const myCommitmentStore = createStore({
 	holsterPath: 'allocation/commitment',
 	schema: CommitmentSchema,
-	persistDebounce: 100, // Debounce rapid updates
-	toHolsterFormat,
-	fromHolsterFormat
+	persistDebounce: 100 // Debounce rapid updates
+	// NOTE: No converters needed! JSON handles everything perfectly.
 });
+
+/**
+ * My Need Slots Store (V5) - DERIVED FROM COMMITMENT
+ * 
+ * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from commitment (single source of truth!)
+ * 
+ * Before: Persisted separately → composed into commitment (data duplication, sync issues)
+ * After: Derived from commitment (single source of truth, always consistent)
+ * 
+ * What I need from the commons (e.g., food, housing, healthcare)
+ * Each slot specifies quantity, type, time, location constraints
+ * 
+ * To update: Use setMyNeedSlots() helper function
+ */
+export const myNeedSlotsStore: Readable<NeedSlot[] | null> = derived(
+	[myCommitmentStore],
+	([$commitment]) => $commitment?.need_slots || null
+);
+
+/**
+ * My Capacity Slots Store (V5) - DERIVED FROM COMMITMENT
+ * 
+ * ✅ ARCHITECTURAL SIMPLIFICATION: Derived from commitment (single source of truth!)
+ * 
+ * Before: Persisted separately → composed into commitment (data duplication, sync issues)
+ * After: Derived from commitment (single source of truth, always consistent)
+ * 
+ * What I can provide to the commons (e.g., meals, tutoring, rides)
+ * Each slot specifies quantity, type, time, location constraints
+ * 
+ * To update: Use setMyCapacitySlots() helper function
+ */
+export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived(
+	[myCommitmentStore],
+	([$commitment]) => $commitment?.capacity_slots || null
+);
+
+// NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
+// because they reference myMutualRecognition which is defined later
 
 // V5: NO ROUND STATE STORE (event-driven, no rounds!)
 // V5: NO ALLOCATION STATE STORE (commitments capture allocation results!)
@@ -178,36 +181,35 @@ export const myCommitmentStore = createStore({
 /**
  * Initialize all allocation stores (V5)
  * Call this after holster authentication
+ * 
+ * ✅ SIMPLIFIED: Only 2 persistent stores now (tree + commitment)!
+ * Slots are derived from commitment (single source of truth)
  */
 export function initializeAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-V5] Initializing stores...');
 	
-	// Source stores
+	// Source stores (persistent)
 	myRecognitionTreeStore.initialize();
-	myNeedSlotsStore.initialize();
-	myCapacitySlotsStore.initialize();
-	
-	// Commitment store (composed from sources)
-	myCommitmentStore.initialize();
+	myCommitmentStore.initialize(); // THE source of truth for slots!
 	
 	console.log('[ALLOCATION-HOLSTER-V5] Stores initialized:');
-	console.log('  - Recognition tree (source)');
-	console.log('  - Need slots (source)');
-	console.log('  - Capacity slots (source)');
-	console.log('  - Recognition weights (auto-derived from tree)');
-	console.log('  - Commitment (composed & published)');
+	console.log('  - Recognition tree (persistent)');
+	console.log('  - Commitment (persistent - contains slots!)');
+	console.log('  - Need slots (derived from commitment)');
+	console.log('  - Capacity slots (derived from commitment)');
+	console.log('  - Recognition weights (derived from tree)');
 }
 
 /**
  * Cleanup all allocation stores (V5)
  * Call this before logout
+ * 
+ * ✅ SIMPLIFIED: Only 2 persistent stores to clean up now!
  */
 export async function cleanupAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-V5] Cleaning up stores...');
 	
 	await myRecognitionTreeStore.cleanup();
-	await myNeedSlotsStore.cleanup();
-	await myCapacitySlotsStore.cleanup();
 	await myCommitmentStore.cleanup();
 	
 	console.log('[ALLOCATION-HOLSTER-V5] Stores cleaned up');
@@ -217,7 +219,23 @@ export async function cleanupAllocationStores() {
 // NETWORK DATA STORES (OTHER PARTICIPANTS) - V5 WITH VERSIONED STORES
 // ═══════════════════════════════════════════════════════════════════
 
+// V5: NO ROUND STATE STORE (event-driven, no rounds!)
+// V5: NO ALLOCATION STATE STORE (commitments capture allocation results!)
+// V5: NO SEPARATE RECOGNITION STORE (recognition in commitment!)
+// V5: Recognition tree generates the weights that go into commitment!
+
+// NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) defined below
+// after myMutualRecognition and getMergedITCStamp are available
+
+// ═══════════════════════════════════════════════════════════════════
+// INITIALIZATION (V5)
+// ═══════════════════════════════════════════════════════════════════
+
 import { createVersionedStore, type VersionedStore } from './v-store.svelte';
+
+// ═══════════════════════════════════════════════════════════════════
+// NETWORK DATA STORES (OTHER PARTICIPANTS) - V5 WITH VERSIONED STORES
+// ═══════════════════════════════════════════════════════════════════
 
 /**
  * Network Commitments (V5) - VERSIONED STORE 🚀
@@ -420,6 +438,66 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 		return mutualRec;
 	}
 );
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS (Slot Updates) ✅
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Helper: Set my need slots
+ * Updates the commitment with new need slots
+ * 
+ * ✅ This is how you update slots now (commitment is the source of truth!)
+ */
+export function setMyNeedSlots(needSlots: NeedSlot[]) {
+	const current = get(myCommitmentStore);
+	const recognitionWeights = get(myRecognitionWeights);
+	const mutualRecognition = get(myMutualRecognition);
+	
+	// Merge ITC with network
+	const mergedITC = getMergedITCStamp(current?.itcStamp);
+	
+	const updated: Commitment = {
+		need_slots: needSlots,
+		capacity_slots: current?.capacity_slots || [],
+		global_recognition_weights: recognitionWeights,
+		global_mr_values: mutualRecognition,
+		multi_dimensional_damping: current?.multi_dimensional_damping,
+		itcStamp: mergedITC,
+		timestamp: Date.now()
+	};
+	
+	myCommitmentStore.set(updated);
+	console.log('[SET-NEED-SLOTS] Updated:', needSlots.length, 'slots');
+}
+
+/**
+ * Helper: Set my capacity slots
+ * Updates the commitment with new capacity slots
+ * 
+ * ✅ This is how you update slots now (commitment is the source of truth!)
+ */
+export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
+	const current = get(myCommitmentStore);
+	const recognitionWeights = get(myRecognitionWeights);
+	const mutualRecognition = get(myMutualRecognition);
+	
+	// Merge ITC with network
+	const mergedITC = getMergedITCStamp(current?.itcStamp);
+	
+	const updated: Commitment = {
+		need_slots: current?.need_slots || [],
+		capacity_slots: capacitySlots,
+		global_recognition_weights: recognitionWeights,
+		global_mr_values: mutualRecognition,
+		multi_dimensional_damping: current?.multi_dimensional_damping,
+		itcStamp: mergedITC,
+		timestamp: Date.now()
+	};
+	
+	myCommitmentStore.set(updated);
+	console.log('[SET-CAPACITY-SLOTS] Updated:', capacitySlots.length, 'slots');
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // SUBSCRIPTION MANAGEMENT (V5)
@@ -1261,26 +1339,24 @@ function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
 /**
  * Compose commitment from source stores
  * 
- * Call this to build a fresh commitment from:
+ * ✅ SIMPLIFIED: Slots already in commitment! Only updates recognition data.
+ * 
+ * Call this to update commitment with fresh recognition data:
  * - Recognition tree (→ weights)
- * - Need slots
- * - Capacity slots
  * - Mutual recognition (computed from my weights + network commitments)
- * - Current damping state (from existing commitment)
+ * - Preserves existing slots, damping state
  * - ITC stamp (merged with all network ITCs) ← ✅ FIXED!
  * 
  * Returns a complete commitment ready to publish
  */
 export function composeCommitmentFromSources(): Commitment | null {
 	const tree = get(myRecognitionTreeStore);
-	const needSlots = get(myNeedSlotsStore);
-	const capacitySlots = get(myCapacitySlotsStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const mutualRecognition = get(myMutualRecognition);
 	const existingCommitment = get(myCommitmentStore);
 	
-	// Need at least some data to compose
-	if (!tree && !needSlots && !capacitySlots) {
+	// Need at least tree or existing commitment
+	if (!tree && !existingCommitment) {
 		console.warn('[COMPOSE-COMMITMENT] No source data available');
 		return null;
 	}
@@ -1288,14 +1364,14 @@ export function composeCommitmentFromSources(): Commitment | null {
 	// ✅ CRITICAL FIX: Merge network ITCs to prevent data loss!
 	const mergedITC = getMergedITCStamp(existingCommitment?.itcStamp);
 	
-	// Compose the commitment
+	// Compose the commitment - PRESERVE existing slots!
 	const commitment: Commitment = {
-		// From source stores
-		need_slots: needSlots || [],
-		capacity_slots: capacitySlots || [],
-		global_recognition_weights: recognitionWeights,
+		// Preserve existing slots (updated via setMyNeedSlots/setMyCapacitySlots)
+		need_slots: existingCommitment?.need_slots || [],
+		capacity_slots: existingCommitment?.capacity_slots || [],
 		
-		// From derived mutual recognition (my weights + network commitments)
+		// Update recognition data (from tree + network)
+		global_recognition_weights: recognitionWeights,
 		global_mr_values: mutualRecognition,
 		
 		// Preserve stateful data from existing commitment
@@ -1319,8 +1395,11 @@ export function composeCommitmentFromSources(): Commitment | null {
 /**
  * Auto-update commitment when source stores change (V5)
  * 
- * Call this to enable reactive commitment updates.
- * Whenever tree/needs/capacity/mutual-recognition changes, commitment auto-updates.
+ * ✅ SIMPLIFIED: Only reacts to recognition changes now!
+ * Slots are updated directly via setMyNeedSlots/setMyCapacitySlots helpers.
+ * 
+ * Call this to enable reactive commitment updates for recognition data.
+ * Whenever tree or network recognition changes, commitment auto-updates.
  * 
  * PERFORMANCE: 
  * - Debounces rapid updates (100ms - same tick batching)
@@ -1330,7 +1409,7 @@ export function composeCommitmentFromSources(): Commitment | null {
  * Returns unsubscribe function
  */
 export function enableAutoCommitmentComposition(): () => void {
-	console.log('[AUTO-COMPOSE] Enabling reactive commitment composition');
+	console.log('[AUTO-COMPOSE] Enabling reactive commitment composition (recognition only)');
 	
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let isRecomposing = false; // Prevent cascading updates
@@ -1362,39 +1441,31 @@ export function enableAutoCommitmentComposition(): () => void {
 			}
 			
 			// Apply the update
-			// NOTE: Fine-grained reactivity ensures this only triggers when sources actually change
+			// NOTE: This preserves existing slots and only updates recognition data
 			myCommitmentStore.set(newCommitment);
-			console.log(`[AUTO-COMPOSE] ✅ Updated commitment (${reason})`);
+			console.log(`[AUTO-COMPOSE] ✅ Updated commitment recognition (${reason})`);
 			
 			isRecomposing = false;
 		}, 100); // 100ms debounce (same-tick batching)
 	};
 	
-	// Subscribe to source stores
+	// Subscribe to recognition tree (generates weights)
 	const unsubTree = myRecognitionTreeStore.subscribe(() => {
 		debouncedRecompose('tree changed');
 	});
 	
-	const unsubNeeds = myNeedSlotsStore.subscribe(() => {
-		debouncedRecompose('needs changed');
-	});
-	
-	const unsubCapacity = myCapacitySlotsStore.subscribe(() => {
-		debouncedRecompose('capacity changed');
-	});
-	
-	// Subscribe to mutual recognition (recomposes when network commitments arrive)
-	const unsubMutualRec = myMutualRecognition.subscribe(() => {
-		debouncedRecompose('mutual recognition changed');
+	// Subscribe to network recognition weights (from OTHERS only - not our own commitment!)
+	// This prevents infinite loop: myMutualRecognition includes myCommitmentStore,
+	// so subscribing to it would create circular dependency!
+	const unsubNetworkRec = networkRecognitionWeights.subscribe(() => {
+		debouncedRecompose('network recognition changed');
 	});
 	
 	// Return cleanup function
 	return () => {
 		if (debounceTimer) clearTimeout(debounceTimer);
 		unsubTree();
-		unsubNeeds();
-		unsubCapacity();
-		unsubMutualRec();
+		unsubNetworkRec();
 		console.log('[AUTO-COMPOSE] Disabled reactive commitment composition');
 	};
 }
@@ -1521,35 +1592,13 @@ export function migrateNetworkCommitments(): {
 		if (!validation.success) {
 			console.warn(`[MIGRATION] Invalid commitment for ${shortKey}:`, validation.error.format());
 			
-			try {
-				// Try to fix by round-tripping through converters
-				const holsterFormat = toHolsterFormat(versionedEntity.data);
-				const fixedData = fromHolsterFormat(holsterFormat);
-				
-				// Re-validate fixed data
-				const revalidation = CommitmentSchema.safeParse(fixedData);
-				
-				if (revalidation.success) {
-					// Success! Update with fixed data
-					networkCommitments.update(pubKey, revalidation.data);
-					fixed++;
-					console.log(`[MIGRATION] ✅ Fixed commitment for ${shortKey}`);
-				} else {
-					// Still invalid - delete it
-					networkCommitments.delete(pubKey);
-					deleted++;
-					const errorMsg = `Deleted unfixable commitment for ${shortKey}: ${revalidation.error.issues.map(i => i.message).join(', ')}`;
-					errors.push(errorMsg);
-					console.error(`[MIGRATION] ❌ ${errorMsg}`);
-				}
-			} catch (error) {
-				// Conversion failed - delete it
-				networkCommitments.delete(pubKey);
-				deleted++;
-				const errorMsg = `Deleted unconvertible commitment for ${shortKey}: ${error}`;
-				errors.push(errorMsg);
-				console.error(`[MIGRATION] ❌ ${errorMsg}`);
-			}
+			// NOTE: We can't auto-fix corrupted data anymore (no converters).
+			// Just delete invalid entries - they'll be regenerated from source.
+			networkCommitments.delete(pubKey);
+			deleted++;
+			const errorMsg = `Deleted invalid commitment for ${shortKey}: ${validation.error.issues.map(i => i.message).join(', ')}`;
+			errors.push(errorMsg);
+			console.error(`[MIGRATION] ❌ ${errorMsg}`);
 		}
 	}
 	
@@ -1673,6 +1722,75 @@ export function validateAllStores(): {
 	return result;
 }
 
+/**
+ * Clear all V5 stores (use when migrating to new JSON format)
+ * 
+ * ✅ SIMPLIFIED: Only 2 persistent stores now (tree + commitment)!
+ * 
+ * This deletes all data from Holster storage for V5 stores.
+ * After running this, reload the page to start fresh with JSON format.
+ */
+export async function clearAllV5Stores() {
+	console.log('[V5-MIGRATION] 🧹 Clearing all V5 stores...');
+	
+	const paths = [
+		'trees/recognition_tree',
+		'allocation/commitment' // THE source of truth (contains slots!)
+		// NOTE: 'allocation/need_slots' and 'allocation/capacity_slots' are derived, not persisted!
+	];
+	
+	// Step 1: Clear via Holster API
+	for (const path of paths) {
+		try {
+			await new Promise<void>((resolve) => {
+				holsterUser.get(path).put(null, () => {
+					console.log(`[V5-MIGRATION] ✅ Cleared ${path} via Holster API`);
+					resolve();
+				});
+			});
+		} catch (error) {
+			console.error(`[V5-MIGRATION] ❌ Failed to clear ${path}:`, error);
+		}
+	}
+	
+	// Step 2: Clear IndexedDB directly (Gun/Holster cache)
+	try {
+		const dbs = await indexedDB.databases();
+		console.log('[V5-MIGRATION] 📦 Found IndexedDB databases:', dbs.map(db => db.name));
+		
+		// Clear radata (Gun's default DB name)
+		const radataExists = dbs.some(db => db.name === 'radata');
+		if (radataExists) {
+			await new Promise<void>((resolve, reject) => {
+				const deleteRequest = indexedDB.deleteDatabase('radata');
+				deleteRequest.onsuccess = () => {
+					console.log('[V5-MIGRATION] ✅ Cleared IndexedDB: radata');
+					resolve();
+				};
+				deleteRequest.onerror = () => {
+					console.warn('[V5-MIGRATION] ⚠️  Failed to clear IndexedDB: radata');
+					resolve(); // Don't fail if this doesn't work
+				};
+				deleteRequest.onblocked = () => {
+					console.warn('[V5-MIGRATION] ⚠️  IndexedDB deletion blocked (close other tabs)');
+					resolve();
+				};
+			});
+		}
+	} catch (error) {
+		console.warn('[V5-MIGRATION] ⚠️  Could not clear IndexedDB:', error);
+	}
+	
+	console.log('[V5-MIGRATION] ✅ All stores cleared!');
+	console.log('[V5-MIGRATION] 🔄 Reload page NOW to start fresh with JSON format.');
+	
+	// Give user 3 seconds to see the message, then auto-reload
+	setTimeout(() => {
+		console.log('[V5-MIGRATION] 🔄 Auto-reloading...');
+		window.location.reload();
+	}, 3000);
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // WINDOW DEBUGGING (V5)
 // ═══════════════════════════════════════════════════════════════════
@@ -1685,5 +1803,12 @@ if (typeof window !== 'undefined') {
 	(window as any).getSubscriptionStatsV5 = getSubscriptionStats;
 	(window as any).migrateNetworkCommitments = migrateNetworkCommitments;
 	(window as any).validateAllStores = validateAllStores;
+	(window as any).clearAllV5Stores = clearAllV5Stores;
+	
+	console.log('[V5-DEBUG] 🛠️  Migration & debug utilities available:');
+	console.log('  • window.clearAllV5Stores() - Clear all stores (use when migrating to JSON format)');
+	console.log('  • window.migrateNetworkCommitments() - Validate and clean network commitments');
+	console.log('  • window.validateAllStores() - Check store health');
+	console.log('  • window.debugStoresV5() - Show diagnostics');
 }
 

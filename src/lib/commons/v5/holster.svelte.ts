@@ -57,6 +57,10 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 					import('./stores.svelte').then(m => {
 						m.initializeAllocationStores();
 						console.log('[HOLSTER RECALL] ✅ V5 stores initialized');
+						
+						// Enable auto-composition AFTER stores are initialized
+						m.enableAutoCommitmentComposition();
+						console.log('[HOLSTER RECALL] ✅ Auto-composition enabled');
 					}).catch(err => {
 						console.error('[HOLSTER RECALL] Failed to initialize stores:', err);
 					});
@@ -167,6 +171,10 @@ export async function login(alias: string, password: string): Promise<void> {
 						import('./stores.svelte').then(m => {
 							m.initializeAllocationStores();
 							console.log('[HOLSTER LOGIN] ✅ V5 stores initialized');
+							
+							// Enable auto-composition AFTER stores are initialized
+							m.enableAutoCommitmentComposition();
+							console.log('[HOLSTER LOGIN] ✅ Auto-composition enabled');
 						}).catch(err => {
 							console.error('[HOLSTER LOGIN] Failed to initialize stores:', err);
 						});
