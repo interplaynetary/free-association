@@ -1,6 +1,7 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import { writable, get } from 'svelte/store';
-import { config } from './config';
+import { initializeHolsterDataStreams } from './network.svelte';
+import { config } from '../config';
 
 // Initialize Holster - now uses config from environment variables
 export const holster = Holster({
@@ -25,8 +26,7 @@ export const holsterUserPub = writable('');
 export const holsterUsersList = holster.get('freely-associating-players');
 
 // Check if user is already authenticated after recall
-// Only in browser, not in tests
-if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
+if (typeof window !== 'undefined') {
 	const checkAuth = async () => {
 		try {
 			// Set authenticating state
@@ -51,15 +51,9 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 							console.error('[HOLSTER RECALL] Error writing to users list:', err);
 						}
 
-					// Initialize Holster data streams after authentication
-					console.log('[HOLSTER RECALL] Initializing Holster data streams...');
-					// ✅ FIX: Initialize v5 stores after authentication!
-					import('./stores.svelte').then(m => {
-						m.initializeAllocationStores();
-						console.log('[HOLSTER RECALL] ✅ V5 stores initialized');
-					}).catch(err => {
-						console.error('[HOLSTER RECALL] Failed to initialize stores:', err);
-					});
+						// Initialize Holster data streams (Phase 10 function) after write completes
+						console.log('[HOLSTER RECALL] Initializing Holster data streams...');
+						initializeHolsterDataStreams();
 					});
 				} else {
 					console.log('[HOLSTER RECALL] No authenticated user found');
@@ -79,9 +73,6 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 
 	// Start the authentication check
 	checkAuth();
-} else if (import.meta.env.VITEST) {
-	// Test environment - set to not authenticating
-	isHolsterAuthenticating.set(false);
 }
 
 // Custom error classes for better error handling
@@ -158,20 +149,14 @@ export async function login(alias: string, password: string): Promise<void> {
 								console.error('[HOLSTER LOGIN] Error writing to users list:', putErr);
 							}
 
-						// Store credentials in localStorage for cross-tab access
-						holsterUser.store(true);
+							// Store credentials in localStorage for cross-tab access
+							holsterUser.store(true);
 
-						// Initialize Holster data streams after login
-						console.log('[HOLSTER LOGIN] Initializing Holster data streams...');
-						// ✅ FIX: Initialize v5 stores after login!
-						import('./stores.svelte').then(m => {
-							m.initializeAllocationStores();
-							console.log('[HOLSTER LOGIN] ✅ V5 stores initialized');
-						}).catch(err => {
-							console.error('[HOLSTER LOGIN] Failed to initialize stores:', err);
-						});
+							// Initialize Holster data streams (Phase 10 function) after write completes
+							console.log('[HOLSTER LOGIN] Initializing Holster data streams...');
+							initializeHolsterDataStreams();
 
-						resolve();
+							resolve();
 						});
 					}
 				});
@@ -236,11 +221,29 @@ export async function signup(alias: string, password: string): Promise<void> {
  * Cleanup all Holster subscriptions
  * Call this on logout to prevent memory leaks
  */
+export function cleanupAllHolsterSubscriptions() {
+	console.log('[HOLSTER] Cleaning up all subscriptions...');
 
+	// Import cleanup functions dynamically to avoid circular dependencies
+	return Promise.all([
+		import('./contacts-holster.svelte').then(m => m.cleanupHolsterContacts()),
+		import('./capacities-holster.svelte').then(m => m.cleanupHolsterCapacities()),
+		import('./tree-holster.svelte').then(m => m.cleanupHolsterTree()),
+		import('./recognition-holster.svelte').then(m => m.cleanupHolsterSogf()),
+		import('./allocation-states-holster.svelte').then(m => m.clearHolsterAllocationStates()),
+		import('./compose-holster.svelte').then(m => m.cleanupHolsterCompose()),
+		import('./chat-read-states-holster.svelte').then(m => m.cleanupHolsterChatReadStates()),
+		import('./chat-holster.svelte').then(m => m.cleanupHolsterChat())
+	]).then(() => {
+		console.log('[HOLSTER] All subscriptions cleaned up');
+	}).catch(err => {
+		console.error('[HOLSTER] Error during cleanup:', err);
+	});
+}
 
 export async function signout() {
 	// Clean up all Holster subscriptions BEFORE leaving (while still authenticated)
-	//await cleanupAllHolsterSubscriptions();
+	await cleanupAllHolsterSubscriptions();
 
 	// Now safely destroy the session
 	holsterUser.leave();
@@ -261,59 +264,25 @@ export function changePassword(currentPassword: string, newPassword: string) {
 	});
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// TEST UTILITIES
-// ═══════════════════════════════════════════════════════════════════
+// Log initialization
+console.log('[HOLSTER] Peers:', config.holster.peers);
+console.log('[HOLSTER] IndexedDB:', config.holster.indexedDB);
+console.log('[HOLSTER] File:', config.holster.file);
 
-/**
- * Mock authentication for tests
- * 
- * Example:
- * ```typescript
- * import { mockAuth } from './holster.svelte';
- * mockAuth('test_pub_key', 'test_user');
- * ```
- */
-export function mockAuth(pub: string, alias: string = 'test_user') {
-	holsterUserPub.set(pub);
-	holsterUserAlias.set(alias);
-	isHolsterAuthenticating.set(false);
-	if (import.meta.env.VITEST) {
-		console.log(`[HOLSTER-V5] 🧪 Mock auth: ${alias} (${pub.slice(0, 20)}...)`);
-	}
-}
-
-/**
- * Clear authentication (for tests)
- */
-export function clearAuth() {
-	holsterUserPub.set('');
-	holsterUserAlias.set('');
-	isHolsterAuthenticating.set(false);
-	if (import.meta.env.VITEST) {
-		console.log('[HOLSTER-V5] 🧪 Auth cleared');
-	}
-}
-
-/**
- * Check if user is authenticated
- */
-export function isAuthenticated(): boolean {
-	return get(holsterUserPub) !== '';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// DEBUGGING (Browser Only)
-// ═══════════════════════════════════════════════════════════════════
-
-// Log initialization (browser only, not in tests)
-if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
-	console.log('[HOLSTER] Peers:', config.holster.peers);
-	console.log('[HOLSTER] IndexedDB:', config.holster.indexedDB);
-	console.log('[HOLSTER] File:', config.holster.file);
-	
-	// Expose for debugging
+// Expose for debugging (browser only)
+if (typeof window !== 'undefined') {
 	(window as any).holster = holster;
 	(window as any).holsterUser = holsterUser;
 	console.log('[HOLSTER] Exposed to window.holster and window.holsterUser for debugging');
+}
+
+// Initialize test utilities in development mode
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	import('./holster-tests')
+		.then((module) => {
+			module.initializeHolsterTests();
+		})
+		.catch((err) => {
+			console.error('[HOLSTER] Failed to load test utilities:', err);
+		});
 }
