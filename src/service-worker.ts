@@ -5,10 +5,9 @@ import { build, files, prerendered, version } from '$service-worker';
 import { NotificationManager } from './lib/notification-manager';
 import {
 	cleanupOutdatedCaches,
-	createHandlerBoundToURL,
 	precacheAndRoute
 } from 'workbox-precaching';
-import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { registerRoute } from 'workbox-routing';
 import {
 	CacheFirst,
 	NetworkFirst,
@@ -35,12 +34,8 @@ const manifest = [
 
 precacheAndRoute(manifest);
 
-// Workbox: Cache strategy for navigation requests (app shell)
-const handler = createHandlerBoundToURL('/index.html');
-const navigationRoute = new NavigationRoute(handler, {
-	denylist: [/^\/api\//, /\.json$/, /\.xml$/]
-});
-registerRoute(navigationRoute);
+// Note: SvelteKit handles navigation internally, no need for NavigationRoute
+// Navigation requests will be handled by the network-first strategy below
 
 // Workbox: Cache strategy for static assets (CSS, JS, Fonts)
 registerRoute(

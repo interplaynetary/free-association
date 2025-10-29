@@ -18,7 +18,8 @@ import {
 	networkCommitments,
 	composeCommitmentFromSources,
 	myCommitmentStore,
-	myNeedSlotsStore
+	myNeedSlotsStore,
+	setMyNeedSlots // ✅ NEW: Helper to update need slots
 } from '../stores.svelte';
 import type { Commitment, NeedSlot } from '../schemas';
 
@@ -63,7 +64,7 @@ describe('ITC Merge Fix - Data Loss Prevention', () => {
 		}));
 		
 		// Add local need slots so composition has data to work with
-		myNeedSlotsStore.set([
+		setMyNeedSlots([
 			{ 
 				id: 'local_need', 
 				name: 'Local Need', 
@@ -114,7 +115,7 @@ describe('ITC Merge Fix - Data Loss Prevention', () => {
 		}));
 		
 		// t=100: Alice edits locally (adds need)
-		myNeedSlotsStore.set([
+		setMyNeedSlots([
 			{
 				id: 'alice_need',
 				name: 'Alice Housing',
@@ -178,7 +179,7 @@ describe('ITC Merge Fix - Data Loss Prevention', () => {
 		}));
 		
 		// User edits
-		myNeedSlotsStore.set([
+		setMyNeedSlots([
 			{ 
 				id: 'housing', 
 				name: 'Housing', 

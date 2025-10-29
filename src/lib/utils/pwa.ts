@@ -14,7 +14,8 @@ export function registerServiceWorker() {
 
 	// Create a new Workbox instance
 	wb = new Workbox('/service-worker.js', {
-		scope: '/'
+		scope: '/',
+		type: 'module'
 	});
 
 	// Show a prompt when a service worker has installed but is waiting to activate
