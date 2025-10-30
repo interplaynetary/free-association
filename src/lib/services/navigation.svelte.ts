@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { pushState } from '$app/navigation';
 import { globalState } from '$lib/global.svelte';
 
 /**
@@ -79,7 +80,7 @@ class NavigationService {
 
 			// Push a new state to maintain the current position
 			// This prevents the browser from actually going back
-			history.pushState(null, '', window.location.href);
+			pushState(window.location.href, {});
 		}
 		// If we can't handle the back action, let the browser handle it normally
 	};
@@ -107,7 +108,7 @@ class NavigationService {
 	private setupInitialHistory() {
 		if (!this.initialHistoryPushed) {
 			// Push initial state to ensure back button can be intercepted
-			history.pushState(null, '', window.location.href);
+			pushState(window.location.href, {});
 			this.initialHistoryPushed = true;
 			console.log('[NAVIGATION-SERVICE] Initial history state pushed');
 		}

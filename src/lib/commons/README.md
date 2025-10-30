@@ -1,8 +1,6 @@
 # Free-Association:
 How Mutual Aid Can Work at Scale Without Markets or States
 
-# The Commons: A Revolutionary System for Fair Resource Allocation
-
 We have created a decentralized system that fundamentally reimagines how communities share resources and recognize each other's contributions. At its core, this system solves a critical economic problem: how do people in a community fairly distribute resources like time, money, housing, or expertise without needing centralized control, complex contracts, or traditional market pricing? The system operates on a simple but powerful principle called "mutual recognition" - when two people mutually acknowledge each other's value and contributions, they receive priority access to each other's resources. This creates natural economic incentives for genuine relationship-building and reciprocity, rather than purely transactional exchanges.
 
 Our architecture enables communities to coordinate at internet scale while maintaining fairness and responsiveness. The system responds to changes in real-time, allowing participants to see allocation results in under a tenth of a second. It can support global-scale communities of 10,000+ participants, making it infrastructure that scales from neighborhood mutual aid networks to city-wide resource sharing or even global commons for digital resources. This combination of speed and scale creates entirely new possibilities for how communities can organize and share resources without centralized intermediaries.

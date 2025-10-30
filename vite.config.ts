@@ -10,28 +10,113 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit(),
 		VitePWA({
-			strategies: 'injectManifest',
-			srcDir: 'src',
-			filename: 'service-worker.ts',
-			injectManifest: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}']
-			},
-			manifest: false, // We'll use the existing manifest.json
-			devOptions: {
-				enabled: false // Disable in dev to avoid caching issues with HMR
+			registerType: 'autoUpdate',
+			manifest: {
+				name: 'Playnet',
+				short_name: 'Playnet',
+				description: 'Free association network platform',
+				theme_color: '#000000',
+				background_color: '#ffffff',
+				display: 'standalone',
+				scope: '/',
+				start_url: '/',
+				orientation: 'any',
+				icons: [
+					{
+						src: '/favicon.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'any maskable'
+					},
+					{
+						src: '/favicon.png',
+						sizes: '512x512',
+						type: 'image/png',
+						purpose: 'any maskable'
+					}
+				]
 			},
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
 				cleanupOutdatedCaches: true,
 				clientsClaim: true,
-				skipWaiting: true
-			}
+				skipWaiting: true,
+				navigateFallback: null,
+				runtimeCaching: [
+					{
+						urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'google-fonts-cache',
+							expiration: {
+								maxEntries: 10,
+								maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+							},
+							cacheableResponse: {
+								statuses: [0, 200]
+							}
+						}
+					},
+					{
+						urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'gstatic-fonts-cache',
+							expiration: {
+								maxEntries: 10,
+								maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+							},
+							cacheableResponse: {
+								statuses: [0, 200]
+							}
+						}
+					},
+					{
+						urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+						handler: 'NetworkFirst',
+						options: {
+							cacheName: 'api-cache',
+							expiration: {
+								maxEntries: 50,
+								maxAgeSeconds: 60 * 5 // 5 minutes
+							},
+							cacheableResponse: {
+								statuses: [0, 200]
+							}
+						}
+					},
+					{
+						urlPattern: ({ request }) => request.destination === 'image',
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'images-cache',
+							expiration: {
+								maxEntries: 100,
+								maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+							},
+							cacheableResponse: {
+								statuses: [0, 200]
+							}
+						}
+					}
+				]
+			},
+			devOptions: {
+				enabled: false,
+				type: 'module'
+			},
+			injectRegister: false // We handle registration manually
 		})
 	],
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
 	},
 	// Support top-level await for Holster
+	optimizeDeps: {
+		esbuildOptions: {
+			target: 'esnext'
+		}
+	},
 	build: {
 		target: 'esnext'
 	},

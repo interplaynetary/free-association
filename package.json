@@ -5,10 +5,10 @@
 	"type": "module",
 	"author": "playnet",
 	"scripts": {
-		"dev": "node scripts/generate-manifest.js --dev && vite dev",
-		"build": "node scripts/generate-manifest.js && vite build",
+		"dev": "vite dev",
+		"build": "vite build",
 		"build:server": "cp svelte.config.server.js svelte.config.js.tmp && mv svelte.config.js.tmp svelte.config.js && bun run build && mv svelte.config.js.tmp svelte.config.js || true",
-		"build:capacitor": "node scripts/generate-manifest.js && vite build && npx cap sync",
+		"build:capacitor": "vite build && npx cap sync",
 		"preview": "vite preview",
 		"preview:server": "node build-server/index.js",
 		"prepare": "svelte-kit sync || echo ''",

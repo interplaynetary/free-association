@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Service Worker - Playnet</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .button {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #333;
+        }
+        .success { color: #16a34a; font-weight: 600; }
+        .error { color: #dc2626; font-weight: 600; }
+        .info { 
+            background: #f0f9ff; 
+            border-left: 4px solid #0284c7;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        #status { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🧹 Clear Service Worker</h1>
+    
+    <div class="info">
+        <p><strong>Use this page to:</strong></p>
+        <ul>
+            <li>Unregister all service workers</li>
+            <li>Clear all caches</li>
+            <li>Reset to a clean state</li>
+        </ul>
+        <p><em>This is useful when the service worker is caching development resources.</em></p>
+    </div>
+
+    <button class="button" onclick="unregisterServiceWorkers()">🗑️ Unregister Service Workers</button>
+    <button class="button" onclick="clearAllCaches()">🧹 Clear All Caches</button>
+    <button class="button" onclick="doFullClean()">🔥 Full Clean + Reload</button>
+    
+    <div id="status"></div>
+
+    <script>
+        const status = document.getElementById('status');
+        
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.className = type;
+            p.textContent = message;
+            status.appendChild(p);
+        }
+
+        async function unregisterServiceWorkers() {
+            status.innerHTML = '';
+            log('Starting service worker unregistration...');
+            
+            if (!('serviceWorker' in navigator)) {
+                log('Service Workers not supported in this browser', 'error');
+                return;
+            }
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                log(`Found ${registrations.length} service worker(s)`);
+                
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    log(`✓ Unregistered: ${registration.scope}`, 'success');
+                }
+                
+                if (registrations.length === 0) {
+                    log('No service workers to unregister', 'info');
+                } else {
+                    log('All service workers unregistered successfully!', 'success');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearAllCaches() {
+            status.innerHTML = '';
+            log('Clearing all caches...');
+            
+            if (!('caches' in window)) {
+                log('Cache API not supported', 'error');
+                return;
+            }
+            
+            try {
+                const cacheNames = await caches.keys();
+                log(`Found ${cacheNames.length} cache(s)`);
+                
+                for (const cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    log(`✓ Deleted cache: ${cacheName}`, 'success');
+                }
+                
+                if (cacheNames.length === 0) {
+                    log('No caches to clear', 'info');
+                } else {
+                    log('All caches cleared successfully!', 'success');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function doFullClean() {
+            status.innerHTML = '';
+            log('🔥 Starting full clean...');
+            
+            await unregisterServiceWorkers();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await clearAllCaches();
+            
+            log('');
+            log('Full clean complete! Reloading in 2 seconds...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', async () => {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const cacheNames = await caches.keys();
+                
+                log(`Current state: ${registrations.length} service worker(s), ${cacheNames.length} cache(s)`);
+            }
+        });
+    </script>
+</body>
+</html>
+

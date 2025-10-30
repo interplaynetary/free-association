@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { writeAtPath, readAtPath, listenAtPath } from '../utils/holsterData';
+import { writeAtPath, readAtPath, listenAtPath } from '$lib/utils/holsterData';
 import { 
   setNodeId, 
   toVersioned, 
@@ -7,7 +7,7 @@ import {
   updateFields, 
   fromVersioned,
   type VersionedData 
-} from '../utils/crdt';
+} from '$lib/utils/crdt';
 
 // ============================================================================
 // BASE ZOD SCHEMAS (without CRDT metadata)
