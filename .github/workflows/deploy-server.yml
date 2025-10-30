@@ -80,6 +80,21 @@ jobs:
             APP_DIR="/var/www/free-association"
             DATA_BACKUP="/var/backups/free-association-data"
             
+            # Stop conflicting services (old gun-relay if exists)
+            echo "Checking for port conflicts..."
+            if pm2 list | grep -q "gun-relay"; then
+              echo "Stopping PM2 gun-relay..."
+              pm2 delete gun-relay || true
+              pm2 save --force || true
+            fi
+            
+            # Stop conflicting Docker containers
+            for container_id in $(docker ps -q --filter "ancestor=gun-relay" 2>/dev/null); do
+              echo "Stopping Docker gun-relay container: $container_id"
+              docker stop $container_id || true
+              docker rm $container_id || true
+            done
+            
             # Create directories if they don't exist
             sudo mkdir -p $APP_DIR
             sudo mkdir -p $DATA_BACKUP

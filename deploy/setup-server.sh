@@ -80,14 +80,19 @@ echo ""
 
 # Setup Nginx reverse proxy
 echo "🌐 Setting up Nginx..."
+
+# First, add rate limiting to main nginx config if not present
+if ! grep -q "limit_req_zone" /etc/nginx/nginx.conf; then
+    sudo sed -i '/http {/a \    # Rate limiting\n    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;' /etc/nginx/nginx.conf
+fi
+
 sudo tee /etc/nginx/sites-available/free-association > /dev/null << 'EOF'
 # Free Association API Server
 server {
     listen 80;
     server_name api.your-domain.com;  # Change this!
 
-    # Rate limiting
-    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    # Apply rate limiting
     limit_req zone=api_limit burst=20 nodelay;
 
     # Logging
