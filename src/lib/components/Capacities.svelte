@@ -8,7 +8,6 @@
 	} from '$lib/commons/v5/protocol';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { get } from 'svelte/store';
 	import { userAlias, userPub } from '$lib/state/auth.svelte';
 	// V5: Import from v5 stores - CORRECT PATTERN: Use source stores + composition
 	import { 
@@ -50,8 +49,8 @@
 	// - Slots with same capacity_group_id stay grouped together
 	// ═══════════════════════════════════════════════════════════════════
 	const userCapacities = $derived(() => {
-		const commitment = get(myCommitmentStore);
-		const pub = get(userPub);
+		const commitment = $myCommitmentStore;
+		const pub = $userPub;
 		if (!commitment || !pub) return {};
 		
 		const slots = commitment.capacity_slots || [];
@@ -138,7 +137,7 @@
 		}
 
 		// ✅ SAFE: Append to existing slots array
-		const currentSlots = get(myCapacitySlotsStore) || [];
+		const currentSlots = $myCapacitySlotsStore || [];
 		const newSlots = [...currentSlots, ...(commitment.capacity_slots || [])];
 		setMyCapacitySlots(newSlots); // ✅ NEW: Use helper instead of store.set()
 
@@ -182,7 +181,7 @@
 			}
 
 			// ✅ SAFE: Update specific slots while preserving others
-			const allSlots = get(myCapacitySlotsStore) || [];
+			const allSlots = $myCapacitySlotsStore || [];
 			const updatedSlotIds = new Set(
 				(commitment.capacity_slots || []).map(s => s.id)
 			);
@@ -248,7 +247,7 @@
 			}
 
 			// STEP 3: ✅ SAFE: Remove only the slots from this virtual capacity
-			const allSlots = get(myCapacitySlotsStore) || [];
+			const allSlots = $myCapacitySlotsStore || [];
 			const slotIdsToRemove = new Set(
 				(virtualCapacity.capacity_slots || []).map(s => s.id)
 			);
