@@ -310,12 +310,8 @@
 
           <div class="space-y-3">
             {#each participants as p}
-              {#if members.includes(p)}
-                {#let isMember = true}
-              {:else}
-                {#let isMember = false}
-              {/if}
-              {#let mrs = mrsByPerson[p] || 0}
+              {@const isMember = members.includes(p)}
+              {@const mrs = mrsByPerson[p] || 0}
               <div class={`rounded-2xl p-5 transition-all duration-500 ${
                 isMember
                   ? 'bg-gradient-to-br from-emerald-100 to-teal-100 border-2 border-emerald-300'
