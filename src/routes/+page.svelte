@@ -16,29 +16,47 @@
 	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
 	// Recognition weights are automatically computed from the tree in v5!
 	const barSegments = derived(myRecognitionWeights, ($weights) => {
+		console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
+		
 		if (!$weights || Object.keys($weights).length === 0) {
+			console.log('[📊 UI-YR] ❌ No recognition weights available');
 			return [];
 		}
 
+		const totalEntries = Object.keys($weights).length;
+		const nonZeroEntries = Object.values($weights).filter(v => v > 0).length;
+		console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+
 		// Transform recognition weights into segments for Bar
-		return Object.entries($weights)
+		const segments = Object.entries($weights)
 			.filter(([_, value]) => value > 0) // Only include non-zero values
 			.map(([id, value]) => ({
 				id,
 				value: value * 100 // Convert from decimal to percentage
 			}))
 			.sort((a, b) => b.value - a.value); // Sort by value descending
+		
+		console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
+		segments.forEach(seg => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+		
+		return segments;
 	});
 
 	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
 	// Mutual recognition is automatically computed from recognition weights + network data in v5!
 	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
-		console.log('[UI] myMutualRecognition changed:', $mutualRec);
+		console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
 
 		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
-			console.log('[UI] No mutual recognition data for segments');
+			console.log('[📊 UI-MR] ❌ No mutual recognition data available');
 			return [];
 		}
+
+		const totalEntries = Object.keys($mutualRec).length;
+		const nonZeroEntries = Object.values($mutualRec).filter(v => v > 0).length;
+		console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
 
 		// Transform mutual recognition data into segments for Bar
 		const segments = Object.entries($mutualRec)
@@ -49,7 +67,11 @@
 			}))
 			.sort((a, b) => b.value - a.value); // Sort by value descending
 
-		console.log('[UI] Generated mutual recognition segments:', segments);
+		console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
+		segments.forEach(seg => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+		
 		return segments;
 	});
 

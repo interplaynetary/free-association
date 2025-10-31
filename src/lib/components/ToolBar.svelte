@@ -7,7 +7,7 @@
 		networkCommitments,
 		getNetworkCommitmentsRecord
 	} from '$lib/commons/v5/stores.svelte';
-	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/commons/v5/protocol';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/commons/v5/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';

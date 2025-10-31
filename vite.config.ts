@@ -1,15 +1,27 @@
-import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
+import devtoolsJson from 'vite-plugin-devtools-json';
 
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
-		tailwindcss(),
+		devtoolsJson(),
 		sveltekit(),
 		VitePWA({
+			strategies: 'injectManifest',
+			srcDir: 'src',
+			filename: 'service-worker.ts',
+			injectManifest: {
+				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+				globIgnores: ['**/node_modules/**/*'],
+				// Vite PWA docs recommend specifying manifest injection point
+				injectionPoint: undefined
+			},
+			// Include specific assets (vite-pwa docs pattern)
+			includeAssets: ['favicon.png', 'robots.txt'],
+			// Register type for cleaner auto-update behavior
 			registerType: 'autoUpdate',
 			manifest: {
 				name: 'Playnet',
@@ -21,6 +33,7 @@ export default defineConfig({
 				scope: '/',
 				start_url: '/',
 				orientation: 'any',
+				// Vite PWA docs pattern for icons
 				icons: [
 					{
 						src: '/favicon.png',
@@ -34,78 +47,54 @@ export default defineConfig({
 						type: 'image/png',
 						purpose: 'any maskable'
 					}
-				]
-			},
-			workbox: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-				cleanupOutdatedCaches: true,
-				clientsClaim: true,
-				skipWaiting: true,
-				navigateFallback: null,
-				runtimeCaching: [
+				],
+				// Categories help app stores categorize your PWA
+				categories: ['productivity', 'social', 'collaboration'],
+				shortcuts: [
 					{
-						urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-						handler: 'CacheFirst',
-						options: {
-							cacheName: 'google-fonts-cache',
-							expiration: {
-								maxEntries: 10,
-								maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-							},
-							cacheableResponse: {
-								statuses: [0, 200]
-							}
-						}
+						name: 'Recognition Tree',
+						short_name: 'Tree',
+						description: 'View your recognition tree',
+						url: '/',
+						icons: [{ src: '/favicon.png', sizes: '192x192' }]
 					},
 					{
-						urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-						handler: 'CacheFirst',
-						options: {
-							cacheName: 'gstatic-fonts-cache',
-							expiration: {
-								maxEntries: 10,
-								maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-							},
-							cacheableResponse: {
-								statuses: [0, 200]
-							}
-						}
+						name: 'Collective View',
+						short_name: 'Collective',
+						description: 'View collective allocations',
+						url: '/collective',
+						icons: [{ src: '/favicon.png', sizes: '192x192' }]
 					},
 					{
-						urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-						handler: 'NetworkFirst',
-						options: {
-							cacheName: 'api-cache',
-							expiration: {
-								maxEntries: 50,
-								maxAgeSeconds: 60 * 5 // 5 minutes
-							},
-							cacheableResponse: {
-								statuses: [0, 200]
-							}
-						}
-					},
-					{
-						urlPattern: ({ request }) => request.destination === 'image',
-						handler: 'CacheFirst',
-						options: {
-							cacheName: 'images-cache',
-							expiration: {
-								maxEntries: 100,
-								maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-							},
-							cacheableResponse: {
-								statuses: [0, 200]
-							}
-						}
+						name: 'Map View',
+						short_name: 'Map',
+						description: 'View on map',
+						url: '/map',
+						icons: [{ src: '/favicon.png', sizes: '192x192' }]
 					}
-				]
+				],
+				share_target: {
+					action: '/share',
+					method: 'POST',
+					enctype: 'multipart/form-data',
+					params: {
+						title: 'title',
+						text: 'text',
+						url: 'url'
+					}
+				}
 			},
+			// Dev options - vite-pwa docs pattern for development
 			devOptions: {
 				enabled: false,
-				type: 'module'
+				type: 'module',
+				// Suppress warnings during development
+				suppressWarnings: true
 			},
-			injectRegister: false // We handle registration manually
+			// Manual registration for more control (vite-pwa docs pattern)
+			injectRegister: false,
+			// Vite PWA docs recommend setting this for SvelteKit
+			selfDestroying: false
 		})
 	],
 	define: {

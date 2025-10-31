@@ -4,7 +4,7 @@
 	import { getUserName } from '$lib/state/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
-	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/commons/v5/protocol';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/commons/v5/tree';
 	import { t } from '$lib/translations';
 	import type {
 		Node,

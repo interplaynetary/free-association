@@ -248,6 +248,169 @@ export const chatFlow: FlowDefinition = {
 };
 
 /**
+ * Quest Generation Flow
+ * Generates personalized quests based on user's recognition tree, capacities, needs, and location
+ */
+export const questGenerationFlow: FlowDefinition = {
+  name: 'Quest Generation',
+  requestType: 'quest-generation',
+  description: 'Generates personalized quests based on user values, capacities, and needs',
+  preferredModels: ['anthropic/claude-3-opus', 'openai/gpt-4', 'anthropic/claude-3-sonnet'],
+  
+  promptTemplate: (request: any) => {
+    const tree = request.recognitionTree;
+    const capacities = request.capacities || [];
+    const needs = request.needs || [];
+    const locations = request.locations || [];
+    const peerQuests = request.peerQuests || [];
+    const maxQuests = request.maxQuests || 5;
+    
+    // Extract tree structure for context
+    const treeContext = tree ? `
+Recognition Tree Structure:
+Root: ${tree.name}
+Children: ${tree.children?.length || 0} value categories
+Total Points: ${tree.points}
+
+Value Categories:
+${tree.children?.map((child: any) => `- ${child.name} (${child.points} points)`).join('\n') || 'None'}
+` : 'No recognition tree provided';
+
+    // Extract capacity context
+    const capacityContext = capacities.length > 0 ? `
+Available Capacities:
+${capacities.map((c: any) => `- ${c.name} (${c.quantity} ${c.unit || 'units'}): ${c.description || 'No description'}`).join('\n')}
+` : 'No capacities declared yet';
+
+    // Extract need context
+    const needContext = needs.length > 0 ? `
+Stated Needs:
+${needs.map((n: any) => `- ${n.name} (${n.quantity} ${n.unit || 'units'}): ${n.description || 'No description'}`).join('\n')}
+` : 'No needs declared yet';
+
+    // Extract location context
+    const locationContext = locations.length > 0 ? `
+Locations:
+${locations.map((l: any) => `- ${l.city || 'Unknown city'}, ${l.state_province || ''} ${l.country || ''}`).join('\n')}
+` : 'No location data available';
+
+    // Peer quest context
+    const peerQuestContext = peerQuests.length > 0 ? `
+Other Players' Quests (for inspiration and collaboration):
+${peerQuests.slice(0, 5).map((q: any) => `- ${q.title} (${q.scale} scale, ${q.difficulty} difficulty)`).join('\n')}
+` : 'No peer quests available';
+
+    const systemPrompt = `You are an AI Quest Generator for the Free Association platform - a system where people coordinate based on mutual recognition and shared values.
+
+Your role is to analyze a user's recognition tree (their value hierarchy), capacities (what they can offer), needs (what they need), and location to generate personalized, actionable quests.
+
+KEY PRINCIPLES:
+1. **Scale Inference**: Analyze the recognition tree node names to determine if the user values local or global change:
+   - Personal/individual language ("my housing", "personal health", "my education") → local scale
+   - Community/social language ("community housing", "public health", "education for all") → community/regional/global scale
+   
+2. **Quest Alignment**: Generate quests that:
+   - Align with their highest-valued recognition tree nodes
+   - Leverage their existing capacities
+   - Help fulfill their stated needs
+   - Are actionable in their geographic location(s)
+   - Build on "the more capacities you can build from the more wild the quests"
+   
+3. **Quest Diversity**: Mix of:
+   - Main quests: Major, transformative actions (1-2)
+   - Side quests: Smaller, achievable actions (3-4)
+   
+4. **Difficulty Scaling**: 
+   - Easy: Simple, immediate actions
+   - Medium: Requires planning and coordination
+   - Hard: Significant commitment and resources
+   - Epic: Transformative, long-term projects
+
+5. **Collaboration**: Reference peer quests where collaboration makes sense
+
+RECOGNITION TREE CONTEXT:
+Free Association uses recognition trees where:
+- Nodes represent values/priorities
+- Points indicate relative importance
+- Contributors on nodes show who helps fulfill each value
+- The tree structure reveals whether someone values personal vs collective change`;
+
+    const userPrompt = `Generate ${maxQuests} personalized quests for this user:
+
+${treeContext}
+
+${capacityContext}
+
+${needContext}
+
+${locationContext}
+
+${peerQuestContext}
+
+INSTRUCTIONS:
+1. Analyze the recognition tree to infer the user's scale preference (local vs global)
+2. Generate ${maxQuests} quests as a JSON array
+3. Each quest must have this exact structure:
+{
+  "id": "unique-id",
+  "title": "Quest Title",
+  "description": "Detailed description of what the user should do and why it matters",
+  "type": "main" or "side",
+  "difficulty": "easy" | "medium" | "hard" | "epic",
+  "scale": "local" | "community" | "regional" | "global",
+  "location": {
+    "city": "City Name",
+    "country": "Country",
+    "online": true/false
+  },
+  "rewards": [
+    {
+      "description": "What the user gains from completing this"
+    }
+  ],
+  "tags": ["relevant", "tags"],
+  "relatedCapacities": ["capacity-ids"],
+  "relatedNeeds": ["need-ids"],
+  "relatedTreeNodes": ["tree-node-ids"]
+}
+
+RESPOND WITH ONLY THE JSON ARRAY, NO OTHER TEXT.`;
+
+    return {
+      system: systemPrompt,
+      user: userPrompt,
+      temperature: 0.7, // Creative but focused
+      maxTokens: request.maxTokens || 2000
+    };
+  },
+  
+  postProcess: (response: any) => {
+    // Extract JSON from response
+    try {
+      const content = response.choices?.[0]?.message?.content || response.content || '';
+      
+      // Try to extract JSON array from response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const quests = JSON.parse(jsonMatch[0]);
+        return { quests };
+      }
+      
+      // If no JSON found, return error
+      return { 
+        error: 'Failed to parse quest JSON from AI response',
+        rawResponse: content
+      };
+    } catch (err: any) {
+      return {
+        error: 'Failed to process quest generation response: ' + err.message,
+        rawResponse: response
+      };
+    }
+  }
+};
+
+/**
  * Flow Registry - maps request types to flow definitions
  */
 export const flowRegistry: Record<string, FlowDefinition> = {
@@ -255,6 +418,7 @@ export const flowRegistry: Record<string, FlowDefinition> = {
   'capacity-recommendation': capacityRecommendationFlow,
   'code-generation': codeGenerationFlow,
   'data-analysis': dataAnalysisFlow,
+  'quest-generation': questGenerationFlow,
   'chat': chatFlow
 };
 

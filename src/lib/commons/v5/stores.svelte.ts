@@ -44,8 +44,8 @@ import {
 } from './schemas';
 import * as z from 'zod';
 import { holsterUserPub, holsterUser } from './holster.svelte';
-import { getTimeBucketKey, getLocationBucketKey } from './match.svelte';
-import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from './protocol';
+import { getTimeBucketKey, getLocationBucketKey } from './match';
+import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from './tree';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '../utils/itc';
 
 export { holsterUserPub }
@@ -92,15 +92,29 @@ export const myRecognitionTreeStore = createStore({
 export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 	[myRecognitionTreeStore],
 	([$tree]) => {
-		if (!$tree) return {};
+		console.log('[🌳 RECOGNITION-WEIGHTS] Computing from tree...');
+		
+		if (!$tree) {
+			console.log('[🌳 RECOGNITION-WEIGHTS] ❌ No tree available');
+			return {};
+		}
 		
 		try {
 			// Run protocol calculation: tree → recognition shares
 			const weights = sharesOfGeneralFulfillmentMap($tree, {});
-			console.log('[RECOGNITION-WEIGHTS] Computed from tree:', Object.keys(weights).length, 'contributors');
+			const contributorCount = Object.keys(weights).length;
+			const nonZeroCount = Object.values(weights).filter(w => w > 0).length;
+			
+			console.log(`[🌳 RECOGNITION-WEIGHTS] ✅ Computed ${contributorCount} contributors (${nonZeroCount} non-zero):`);
+			Object.entries(weights).forEach(([id, weight]) => {
+				if (weight > 0) {
+					console.log(`  • ${id.slice(0, 20)}... → ${(weight * 100).toFixed(2)}%`);
+				}
+			});
+			
 			return weights;
 		} catch (error) {
-			console.error('[RECOGNITION-WEIGHTS] Error computing from tree:', error);
+			console.error('[🌳 RECOGNITION-WEIGHTS] ❌ Error computing from tree:', error);
 			return {};
 		}
 	}
@@ -403,10 +417,20 @@ export const networkCapacitySlots = networkCommitments.deriveField<AvailabilityS
 export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 	[holsterUserPub, myCommitmentStore, networkRecognitionWeights],
 	([$myPub, $myCommitment, $networkRecWeights]) => {
-		if (!$myPub) return {};
+		console.log('[🤝 MUTUAL-REC] Computing mutual recognition...');
+		
+		if (!$myPub) {
+			console.log('[🤝 MUTUAL-REC] ❌ No user pub key available');
+			return {};
+		}
 		
 		// Get my recognition weights from commitment (authoritative source)
 		const myWeights = $myCommitment?.global_recognition_weights || {};
+		const myRecCount = Object.keys(myWeights).length;
+		const myNonZeroCount = Object.values(myWeights).filter(w => w > 0).length;
+		
+		console.log(`[🤝 MUTUAL-REC] My recognition: ${myRecCount} entries (${myNonZeroCount} non-zero)`);
+		console.log(`[🤝 MUTUAL-REC] Network has ${$networkRecWeights.size} users' recognition data`);
 		
 		const mutualRec: GlobalRecognitionWeights = {};
 		
@@ -419,7 +443,12 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
 			
 			// Mutual recognition is the minimum
-			mutualRec[theirPub] = Math.min(myRecOfThem, theirRecOfMe);
+			const mr = Math.min(myRecOfThem, theirRecOfMe);
+			mutualRec[theirPub] = mr;
+			
+			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
+				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}...: I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
+			}
 		}
 		
 		// Also check people who recognize me (but I might not recognize them)
@@ -429,11 +458,16 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
 			const myRecOfThem = myWeights[theirPub] || 0;
 			
-			mutualRec[theirPub] = Math.min(myRecOfThem, theirRecOfMe);
+			const mr = Math.min(myRecOfThem, theirRecOfMe);
+			mutualRec[theirPub] = mr;
+			
+			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
+				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (they recognize me): I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
+			}
 		}
 		
 		const mutualCount = Object.values(mutualRec).filter(mr => mr > 0).length;
-		console.log('[MUTUAL-REC] ✅ Computed mutual recognition:', mutualCount, 'mutual relationships (fine-grained)');
+		console.log(`[🤝 MUTUAL-REC] ✅ Computed ${mutualCount} mutual relationships`);
 		
 		return mutualRec;
 	}
@@ -543,42 +577,50 @@ export function subscribeToCommitment(pubKey: string) {
 	if (activeSubscriptions.has(`${pubKey}:commitment`)) return;
 	
 	myCommitmentStore.subscribeToUser(pubKey, (commitment) => {
+		console.log(`[📡 NETWORK-SUB] Received commitment from ${pubKey.slice(0, 20)}...`);
+		
 		// Handle deletion
 		if (!commitment) {
 			const deleted = networkCommitments.delete(pubKey);
 			if (deleted) {
-				console.log(`[ALLOCATION-HOLSTER-V5] 🗑️  Removed commitment from ${pubKey.slice(0, 20)}...`);
+				console.log(`[📡 NETWORK-SUB] 🗑️  Removed commitment from ${pubKey.slice(0, 20)}...`);
 			} else {
-				console.log(`[ALLOCATION-HOLSTER-V5] ⏭️  Skipped: ${pubKey.slice(0, 20)}... already absent`);
+				console.log(`[📡 NETWORK-SUB] ⏭️  Skipped: ${pubKey.slice(0, 20)}... already absent`);
 			}
 			return;
 		}
 		
-				// CRITICAL: Normalize their recognition weights before storing
-				// This ensures that when we compute MR, their recognition of us is a proper fraction
-				let normalizedCommitment = commitment;
-				if (commitment.global_recognition_weights) {
-					normalizedCommitment = {
-						...commitment,
-						global_recognition_weights: normalizeGlobalRecognitionWeights(
-							commitment.global_recognition_weights
-						)
-					};
-				}
+		// Log what we received
+		const recognitionCount = Object.keys(commitment.global_recognition_weights || {}).length;
+		const nonZeroRec = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
+		console.log(`[📡 NETWORK-SUB] Commitment contains ${recognitionCount} recognition entries (${nonZeroRec} non-zero)`);
+		
+		// CRITICAL: Normalize their recognition weights before storing
+		// This ensures that when we compute MR, their recognition of us is a proper fraction
+		let normalizedCommitment = commitment;
+		if (commitment.global_recognition_weights) {
+			normalizedCommitment = {
+				...commitment,
+				global_recognition_weights: normalizeGlobalRecognitionWeights(
+					commitment.global_recognition_weights
+				)
+			};
+			console.log(`[📡 NETWORK-SUB] Normalized recognition weights for ${pubKey.slice(0, 20)}...`);
+		}
 				
 		// Update via versioned store - handles ITC, timestamps, and field change detection!
 		const result = networkCommitments.update(pubKey, normalizedCommitment);
 		
 		if (result.applied) {
 			const changedFields = Array.from(result.changedFields!).join(', ');
-			console.log(`[ALLOCATION-HOLSTER-V5] ✅ Updated [${changedFields}] from ${pubKey.slice(0, 20)}...`);
+			console.log(`[📡 NETWORK-SUB] ✅ Updated [${changedFields}] from ${pubKey.slice(0, 20)}...`);
 		} else {
-			console.log(`[ALLOCATION-HOLSTER-V5] ⏭️  Skipped from ${pubKey.slice(0, 20)}... (${result.reason})`);
+			console.log(`[📡 NETWORK-SUB] ⏭️  Skipped from ${pubKey.slice(0, 20)}... (${result.reason})`);
 		}
 	});
 	
 	activeSubscriptions.add(`${pubKey}:commitment`);
-	console.log(`[ALLOCATION-HOLSTER-V5] Subscribed to ${pubKey.slice(0, 20)}... commitment`);
+	console.log(`[📡 NETWORK-SUB] ✅ Subscribed to ${pubKey.slice(0, 20)}... commitment`);
 }
 
 /**
@@ -1219,8 +1261,13 @@ export function getMyContributors(): string[] {
  * Call this whenever tree changes (or enable auto-sync below)
  */
 export function syncSubscriptionsWithTree() {
+	console.log('[🔄 AUTO-SUB] Syncing subscriptions with tree...');
+	
 	const currentContributors = getMyContributors();
 	const currentSubscriptions = getSubscribedParticipants();
+	
+	console.log(`[🔄 AUTO-SUB] Tree has ${currentContributors.length} contributors`);
+	console.log(`[🔄 AUTO-SUB] Currently subscribed to ${currentSubscriptions.length} users`);
 	
 	// Find who to subscribe to (new contributors)
 	const toSubscribe = currentContributors.filter(
@@ -1234,17 +1281,17 @@ export function syncSubscriptionsWithTree() {
 	
 	// Subscribe to new contributors
 	for (const contributor of toSubscribe) {
-		console.log(`[AUTO-SUB] ➕ Subscribing to: ${contributor.slice(0, 20)}...`);
+		console.log(`[🔄 AUTO-SUB] ➕ Subscribing to: ${contributor.slice(0, 20)}... (will receive their commitment)`);
 		subscribeToCommitment(contributor);
 	}
 	
 	// Unsubscribe from removed contributors
 	for (const removed of toUnsubscribe) {
-		console.log(`[AUTO-SUB] ➖ Unsubscribing from: ${removed.slice(0, 20)}...`);
+		console.log(`[🔄 AUTO-SUB] ➖ Unsubscribing from: ${removed.slice(0, 20)}...`);
 		unsubscribeFromParticipant(removed);
 	}
 	
-	console.log(`[SYNC-SUBS] Synced: +${toSubscribe.length} new, -${toUnsubscribe.length} removed, =${currentContributors.length} total`);
+	console.log(`[🔄 AUTO-SUB] ✅ Sync complete: +${toSubscribe.length} new, -${toUnsubscribe.length} removed, =${currentContributors.length} total`);
 }
 
 /**
@@ -1350,6 +1397,8 @@ function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
  * Returns a complete commitment ready to publish
  */
 export function composeCommitmentFromSources(): Commitment | null {
+	console.log('[📝 COMPOSE] Composing commitment from sources...');
+	
 	const tree = get(myRecognitionTreeStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const mutualRecognition = get(myMutualRecognition);
@@ -1357,7 +1406,7 @@ export function composeCommitmentFromSources(): Commitment | null {
 	
 	// Need at least tree or existing commitment
 	if (!tree && !existingCommitment) {
-		console.warn('[COMPOSE-COMMITMENT] No source data available');
+		console.warn('[📝 COMPOSE] ❌ No source data available');
 		return null;
 	}
 	
@@ -1382,12 +1431,26 @@ export function composeCommitmentFromSources(): Commitment | null {
 		timestamp: Date.now()
 	};
 	
-	console.log('[COMPOSE-COMMITMENT] Composed from sources:', {
-		needSlots: commitment.need_slots?.length || 0,
-		capacitySlots: commitment.capacity_slots?.length || 0,
-		recognitionWeights: Object.keys(commitment.global_recognition_weights || {}).length,
-		mutualRecognition: Object.keys(commitment.global_mr_values || {}).length
-	});
+	const recCount = Object.keys(commitment.global_recognition_weights || {}).length;
+	const recNonZero = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
+	const mrCount = Object.keys(commitment.global_mr_values || {}).length;
+	const mrNonZero = Object.values(commitment.global_mr_values || {}).filter(w => w > 0).length;
+	
+	console.log(`[📝 COMPOSE] ✅ Composed commitment:`);
+	console.log(`  • Recognition: ${recCount} entries (${recNonZero} non-zero)`);
+	console.log(`  • Mutual Recognition: ${mrCount} entries (${mrNonZero} non-zero)`);
+	console.log(`  • Need Slots: ${commitment.need_slots?.length || 0}`);
+	console.log(`  • Capacity Slots: ${commitment.capacity_slots?.length || 0}`);
+	
+	// Log details of recognition
+	if (recNonZero > 0) {
+		console.log('[📝 COMPOSE] Recognition weights being published:');
+		Object.entries(commitment.global_recognition_weights || {}).forEach(([id, weight]) => {
+			if (weight > 0) {
+				console.log(`    • ${id.slice(0, 20)}... → ${(weight * 100).toFixed(2)}%`);
+			}
+		});
+	}
 	
 	return commitment;
 }
@@ -1477,8 +1540,9 @@ export function enableAutoCommitmentComposition(): () => void {
 			
 			// Apply the update
 			// NOTE: This preserves existing slots and only updates recognition data
+			console.log(`[💾 AUTO-COMPOSE] Publishing updated commitment to network (${reason})...`);
 			myCommitmentStore.set(newCommitment);
-			console.log(`[AUTO-COMPOSE] ✅ Updated commitment recognition (${reason})`);
+			console.log(`[💾 AUTO-COMPOSE] ✅ Updated commitment recognition (${reason}) - now persisting to Holster`);
 			
 			isRecomposing = false;
 		}, 100); // 100ms debounce (same-tick batching)

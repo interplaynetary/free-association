@@ -3,7 +3,7 @@ import { userPub, userAlias } from '$lib/state/auth.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/state/users.svelte';
 // V5: Import from v5 stores
 import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
-import { createRootNode } from '$lib/commons/v5/protocol';
+import { createRootNode } from '$lib/commons/v5/tree';
 import { populateWithExampleData } from '$lib/utils/example';
 import type { Node, NonRootNode } from '$lib/commons/v5/schemas';
 

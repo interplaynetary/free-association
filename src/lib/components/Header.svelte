@@ -22,7 +22,7 @@
 
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
-	import { findNodeById } from '$lib/commons/v5/protocol';
+	import { findNodeById } from '$lib/commons/v5/tree';
 	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
 	import { type Node, type RootNode } from '$lib/commons/v5/schemas';
 	import { gunAvatar } from 'gun-avatar';
@@ -944,7 +944,17 @@
 		<div class="header-controls">
 			<LanguageSwitcher />
 			
-			<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
+		{#if $userAlias}
+			<a href="{base}/quests" class="icon-button quest-button" title="View your quests">
+				<span>🎯</span>
+			</a>
+		{/if}
+		
+		<a href="{base}/donate-key" class="icon-button donate-button" title="Donate OpenRouter API Key">
+			<span>🎁</span>
+		</a>
+		
+		<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
 				<span>❓</span>
 			</button>
 

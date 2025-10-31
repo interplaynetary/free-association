@@ -16,7 +16,7 @@
 	const generalShares = writable({});
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
 	import type { Node, RootNode } from '$lib/commons/v5/schemas';
-	import { normalizeShareMap } from '$lib/commons/v5/protocol';
+	import { normalizeShareMap } from '$lib/commons/v5/tree';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data

@@ -1,8 +1,9 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import 'driver.js/dist/driver.css';
 @import '@fontsource/fira-mono';
-@plugin '@tailwindcss/forms';
-@plugin '@tailwindcss/typography';
 
 /* ===== Enhanced Reset & Base for Cross-Browser Compatibility ===== */
 * {

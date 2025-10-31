@@ -801,6 +801,65 @@ export const ConvergenceMetricsSchema = z.object({
 export type ConvergenceMetrics = z.infer<typeof ConvergenceMetricsSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
+// ALLOCATION RESULT SCHEMA (for pure algorithm output)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Simplified Convergence Summary Schema
+ * Used by pure algorithm - simpler than full ConvergenceMetrics
+ */
+export const ConvergenceSummarySchema = z.object({
+	totalNeedMagnitude: z.number().nonnegative(),
+	previousNeedMagnitude: z.number().nonnegative(),
+	contractionRate: z.number().nonnegative(),
+	isConverged: z.boolean(),
+	percentNeedsMet: z.number().min(0).max(100), // % of people fully satisfied (binary)
+	percentNeedReduction: z.number().min(0).max(100).optional(), // % of need magnitude reduced
+	universalSatisfaction: z.boolean(),
+	iterationsToConvergence: z.number().int().nullable(),
+	currentIteration: z.number().int().nonnegative(),
+	responseLatency: z.number().nonnegative(),
+	maxPersonNeed: z.number().nonnegative().optional(),
+	needVariance: z.number().nonnegative().optional(),
+	peopleStuck: z.number().int().nonnegative().optional()
+});
+
+export type ConvergenceSummary = z.infer<typeof ConvergenceSummarySchema>;
+
+/**
+ * Allocation Result - Output from allocation computation
+ * Contains all computed allocations, denominators, and convergence metrics
+ * 
+ * Note: Uses simplified ConvergenceSummary (not full ConvergenceMetrics)
+ * for the pure algorithm. Can be converted to full ConvergenceMetrics if needed.
+ */
+export const AllocationResultSchema = z.object({
+	/** Computed slot allocations */
+	allocations: z.array(SlotAllocationRecordSchema),
+	
+	/** Denominator for each capacity slot (for transparency) */
+	slotDenominators: z.record(
+		z.string(),
+		z.object({
+			mutual: z.number().nonnegative(),
+			nonMutual: z.number().nonnegative(),
+			need_type_id: z.string().min(1)
+		})
+	),
+	
+	/** Total allocated by type and recipient (for tracking) */
+	totalsByTypeAndRecipient: z.record(
+		z.string(), // need_type_id
+		z.record(z.string(), z.number().nonnegative()) // pubKey -> total
+	),
+	
+	/** Simplified convergence summary for this iteration */
+	convergence: ConvergenceSummarySchema
+});
+
+export type AllocationResult = z.infer<typeof AllocationResultSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
 // VALIDATION HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -847,6 +906,18 @@ export function parseConvergenceMetrics(data: unknown): ConvergenceMetrics | nul
 	const result = ConvergenceMetricsSchema.safeParse(data);
 	if (!result.success) {
 		console.warn('[SCHEMA-V4] Invalid convergence metrics:', result.error);
+		return null;
+	}
+	return result.data;
+}
+
+/**
+ * Validate and parse allocation result
+ */
+export function parseAllocationResult(data: unknown): AllocationResult | null {
+	const result = AllocationResultSchema.safeParse(data);
+	if (!result.success) {
+		console.warn('[SCHEMA-V4] Invalid allocation result:', result.error);
 		return null;
 	}
 	return result.data;

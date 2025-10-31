@@ -1,8 +1,8 @@
 /**
- * Free Association Protocol v5 - Global Recognition Model
+ * Free Association Protocol v5 - Recognition Tree Operations
  *
- * This protocol implements a clean, intuitive node architecture:
- *
+ * This module contains tree-specific operations for the recognition system.
+ * 
  * CONTRIBUTION NODES: Represent actual work done by people
  * - Have positive contributors who delivered the work
  * - Can have manual_fulfillment to assess work quality (defaults to 100%)
@@ -17,15 +17,16 @@
  *
  * This clean separation preserves both semantic clarity and mathematical elegance.
  *
- * V5 ARCHITECTURE:
- * - All schemas imported from ./schemas.ts (Multi-dimensional slots, ITC-based)
- * - Tree operations for recognition/priority calculations
- * - Multi-dimensional slot-native two-tier allocation
- * - GLOBAL recognition (same MR for all types, tree structure encodes type preferences)
- * - Hierarchical availability windows (yearly → monthly → weekly → daily)
- * - Filter utilities for capacity/need constraints
- * - No round coordination (event-driven)
- * - ITC causality tracking
+ * TREE OPERATIONS:
+ * - Tree navigation (find, path, parent, descendants)
+ * - Weight and fulfillment calculations
+ * - Recognition calculations (shares, mutual recognition)
+ * - Tree mutations (add, update, delete nodes)
+ * 
+ * NON-TREE UTILITIES (moved to utils/):
+ * - Contributor utilities → utils/contributors.ts
+ * - Slot utilities → utils/slots.ts
+ * - Commitment utilities → utils/commitments.ts
  */
 
 // All types from v5 schemas
@@ -62,7 +63,15 @@ import {
 	timeRangesOverlap,
 	locationsCompatible,
 	slotsCompatible
-} from './match.svelte';
+} from './match';
+
+// Utility functions (extracted from protocol.ts for better modularity)
+import {
+	resolveContributorId,
+	getUniqueResolvedIds,
+	totalContributorPoints,
+	findContributor
+} from './utils/contributors';
 
 /**
  * Tree Navigation Functions
@@ -239,40 +248,9 @@ export function desire(node: Node, tree: Node): number {
 
 /**
  * Helper Functions for Recognition Calculation
+ * Note: resolveContributorId, getUniqueResolvedIds, totalContributorPoints, 
+ * and findContributor are now imported from './utils/contributors'
  */
-
-// Resolve contributor ID to public key if resolver provided
-function resolveContributorId(
-	contributorId: string,
-	resolveToPublicKey?: (id: string) => string | undefined
-): string {
-	return resolveToPublicKey ? resolveToPublicKey(contributorId) || contributorId : contributorId;
-}
-
-// Get unique resolved contributor IDs from a list (V5: works with Contributor objects)
-function getUniqueResolvedIds(
-	contributors: Contributor[],
-	resolveToPublicKey?: (id: string) => string | undefined
-): string[] {
-	const resolvedIds = contributors.map((c) => resolveContributorId(c.id, resolveToPublicKey));
-	return [...new Set(resolvedIds)];
-}
-
-// Calculate total points for a set of contributors
-function totalContributorPoints(contributors: Contributor[]): number {
-	return contributors.reduce((sum, c) => sum + c.points, 0);
-}
-
-// Find a contributor in a list and return their entry (V5: works with Contributor objects)
-function findContributor(
-	targetContributorId: string,
-	contributors: Contributor[],
-	resolveToPublicKey?: (id: string) => string | undefined
-): Contributor | undefined {
-	return contributors.find(
-		(c) => resolveContributorId(c.id, resolveToPublicKey) === targetContributorId
-	);
-}
 
 // Calculate contributor share for a single node (V5: weighted by contributor points)
 function calculateNodeContributorShare(
@@ -547,19 +525,6 @@ export function providerShares(
 /**
  * Utility Functions
  */
-
-// Helper to convert a recurrence end object to a string value
-export function getRecurrenceEndValue(recurrenceEnd: any): string | null {
-	if (!recurrenceEnd) return null;
-
-	if (recurrenceEnd.type === 'EndsOn' && recurrenceEnd.date) {
-		return new Date(recurrenceEnd.date).toISOString().split('T')[0];
-	} else if (recurrenceEnd.type === 'EndsAfter' && recurrenceEnd.count) {
-		return recurrenceEnd.count.toString();
-	}
-
-	return null;
-}
 
 /**
  * Tree Modification API (Mutable)
@@ -1042,507 +1007,62 @@ export function calculateNodePoints(parentNode: Node): number {
 export { filter, normalizeShareMap, applyCapacityFilter, Rules };
 
 /**
- * CAPACITY ANALYSIS UTILITIES
- *
- * Functions for analyzing capacity allocations, slot quantities, and availability.
- * These utilities work with the efficient allocation algorithm data.
- */
-
-/**
- * Get allocated quantity for a specific slot from the efficient algorithm
- */
-export function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
-	const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
-	return slot?.allocated_quantity || 0;
-}
-
-/**
- * Get available quantity for a specific slot
- */
-export function getSlotAvailableQuantity(capacity: any, slotId: string): number {
-	const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
-	return slot?.available_quantity || slot?.quantity || 0;
-}
-
-/**
- * Get count of slots with allocated quantities
- */
-export function getAllocatedSlotCount(capacity: any): number {
-	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
-		return 0;
-	}
-	return capacity.capacity_slots.filter((slot: any) => (slot.allocated_quantity || 0) > 0)
-		.length;
-}
-
-/**
- * Get total number of slots available
- */
-export function getTotalSlotCount(capacity: any): number {
-	return capacity.capacity_slots?.length || 0;
-}
-
-/**
- * Calculate total allocated quantity across all slots
- */
-export function getTotalAllocated(capacity: any): number {
-	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
-		return 0;
-	}
-	return capacity.capacity_slots.reduce((total: number, slot: any) => {
-		return total + (slot.allocated_quantity || 0);
-	}, 0);
-}
-
-/**
- * Calculate total available quantity across all slots
- */
-export function getTotalAvailable(capacity: any): number {
-	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
-		return 0;
-	}
-	return capacity.capacity_slots.reduce((total: number, slot: any) => {
-		return total + (slot.available_quantity || slot.quantity || 0);
-	}, 0);
-}
-
-/**
- * SLOT UTILITY FUNCTIONS
- *
- * General utilities for working with availability slots.
- */
-
-/**
- * Check if a slot is recurring (v5 - considers availability_window)
- */
-export function isSlotRecurring(slot: any): boolean {
-	// V5: Check for recurrence field or presence of availability_window
-	if (slot.availability_window) {
-		return true; // Availability windows are used for recurring patterns
-	}
-	return slot.recurrence && slot.recurrence !== 'Does not repeat' && slot.recurrence !== null;
-}
-
-/**
- * Get display string for slot recurrence
- */
-export function getRecurrenceDisplay(slot: any): string {
-	return slot.recurrence || 'Does not repeat';
-}
-
-/**
- * Check if a slot is in the past
- */
-export function isSlotInPast(slot: any): boolean {
-	if (!slot.start_date) return false;
-
-	const now = new Date();
-	const slotDate = new Date(slot.start_date);
-
-	// If it's all day, compare dates only
-	if (slot.all_day) {
-		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-		const slotDateOnly = new Date(slotDate.getFullYear(), slotDate.getMonth(), slotDate.getDate());
-		return slotDateOnly < today;
-	}
-
-	// If it has time, create full datetime
-	if (slot.start_time) {
-		const [hours, minutes] = slot.start_time.split(':');
-		slotDate.setHours(parseInt(hours), parseInt(minutes));
-	}
-
-	return slotDate < now;
-}
-
-/**
- * TIME AND DATE FORMATTING UTILITIES
- *
- * Functions for formatting time and date displays in slot information.
- */
-
-/**
- * Safely extract time from potentially malformed time strings
- */
-export function safeExtractTime(timeValue: string | null | undefined): string | undefined {
-	if (!timeValue) return undefined;
-
-	// If it's already in HH:MM format, return as-is
-	if (/^\d{2}:\d{2}$/.test(timeValue)) {
-		return timeValue;
-	}
-
-	// If it's an ISO datetime string, extract just the time part
-	if (timeValue.includes('T')) {
-		try {
-			const date = new Date(timeValue);
-			return date.toTimeString().substring(0, 5); // Get HH:MM from "HH:MM:SS GMT..."
-		} catch (e) {
-			console.warn('Failed to parse time:', timeValue);
-			return undefined;
-		}
-	}
-
-	// If it's some other format, try to extract time
-	console.warn('Unknown time format:', timeValue);
-	return undefined;
-}
-
-/**
- * Format time without leading zeros (08:30 → 8:30)
- */
-export function formatTimeClean(timeStr: string): string {
-	if (!timeStr) return timeStr;
-
-	const [hours, minutes] = timeStr.split(':');
-	const cleanHours = parseInt(hours).toString(); // Remove leading zero
-	return `${cleanHours}:${minutes}`;
-}
-
-/**
- * Format date for display with smart labels
- */
-export function formatDateForDisplay(date: Date): string {
-	const today = new Date();
-	const tomorrow = new Date(today);
-	tomorrow.setDate(tomorrow.getDate() + 1);
-
-	if (date.toDateString() === today.toDateString()) {
-		return 'Today';
-	} else if (date.toDateString() === tomorrow.toDateString()) {
-		return 'Tomorrow';
-	} else {
-		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-	}
-}
-
-/**
- * Format slot time display - comprehensive time formatting for slots
- */
-export function formatSlotTimeDisplay(slot: any): string {
-	// Clean the time values
-	const rawStartTime = safeExtractTime(slot.start_time);
-	const rawEndTime = safeExtractTime(slot.end_time);
-
-	// Format times without leading zeros
-	const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
-	const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
-
-	// Get recurrence display
-	const recurrenceDisplay =
-		slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
-
-	// Handle "All day" case first
-	if (slot.all_day) {
-		const startDate = slot.start_date ? new Date(slot.start_date) : null;
-		const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-		let timeStr = '';
-		if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
-			// Multi-day all-day event
-			const startStr = formatDateForDisplay(startDate);
-			const endStr = formatDateForDisplay(endDate);
-			timeStr = `${startStr} - ${endStr}, All day`;
-		} else if (startDate) {
-			// Single day all-day event
-			const dateStr = formatDateForDisplay(startDate);
-			timeStr = `${dateStr}, All day`;
-		} else {
-			timeStr = 'All day';
-		}
-
-		// Add recurrence if present
-		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
-	}
-
-	// Handle timed slots
-	const startDate = slot.start_date ? new Date(slot.start_date) : null;
-	const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-	let timeStr = '';
-	if (startDate) {
-		const startDateStr = formatDateForDisplay(startDate);
-
-		// Check if we have an end date and it's different from start date
-		if (endDate && startDate.getTime() !== endDate.getTime()) {
-			// Multi-day timed event
-			const endDateStr = formatDateForDisplay(endDate);
-			const startTimeStr = cleanStartTime || '';
-			const endTimeStr = cleanEndTime || '';
-
-			if (startTimeStr && endTimeStr) {
-				timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-			} else if (startTimeStr) {
-				timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
-			} else {
-				timeStr = `${startDateStr} - ${endDateStr}`;
-			}
-		} else {
-			// Single day or no end date
-			if (cleanStartTime) {
-				const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-				timeStr = `${startDateStr}, ${timeRange}`;
-			} else {
-				timeStr = startDateStr;
-			}
-		}
-	} else if (cleanStartTime) {
-		// Just time, no date
-		timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-	} else {
-		timeStr = 'No time set';
-	}
-
-	// Add recurrence if present
-	return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
-}
-
-/**
- * Format slot location display - show complete address
- */
-export function formatSlotLocationDisplay(slot: any): string {
-	if (slot.location_type === 'Specific') {
-		// Build complete address from components
-		const addressParts = [];
-
-		if (slot.street_address) {
-			addressParts.push(slot.street_address);
-		}
-
-		if (slot.city) {
-			addressParts.push(slot.city);
-		}
-
-		if (slot.state_province) {
-			addressParts.push(slot.state_province);
-		}
-
-		if (slot.postal_code) {
-			addressParts.push(slot.postal_code);
-		}
-
-		if (slot.country) {
-			addressParts.push(slot.country);
-		}
-
-		// If we have address components, join them with commas
-		if (addressParts.length > 0) {
-			return addressParts.join(', ');
-		}
-
-		// Fall back to coordinates if no address components
-		if (slot.latitude && slot.longitude) {
-			return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
-		}
-	} else if (slot.location_type === 'Online') {
-		// Show online link or generic "Online" text
-		if (slot.online_link) {
-			// If it looks like a URL, show a shortened version
-			if (slot.online_link.startsWith('http')) {
-				try {
-					const url = new URL(slot.online_link);
-					return `Online (${url.hostname})`;
-				} catch {
-					return 'Online (link provided)';
-				}
-			}
-			// If it's text, show truncated version
-			return `Online (${slot.online_link.length > 30 ? slot.online_link.substring(0, 30) + '...' : slot.online_link})`;
-		}
-		return 'Online';
-	}
-
-	return slot.location_type || 'No location';
-}
-
-/**
- * Get slot sort value for different sort criteria
- */
-export function getSlotSortValue(slot: any, sortBy: string): number | string {
-	switch (sortBy) {
-		case 'time':
-			if (!slot.start_date) return '9999-12-31';
-			return slot.start_date;
-		case 'location':
-			return formatSlotLocationDisplay(slot).toLowerCase();
-		case 'quantity':
-			return slot.allocated_quantity || 0;
-		default:
-			return 0;
-	}
-}
-
-/**
  * ═══════════════════════════════════════════════════════════════════════
- * ADVANCED SCHEMA UTILITIES (v2)
+ * UTILITY FUNCTIONS LOCATION & RE-EXPORTS
+ * ═══════════════════════════════════════════════════════════════════════
  * 
- * Functions for working with the advanced ResourceMetadata-based schemas
- * from schema-v2.ts. These complement the tree-based functions
- * for slot-native two-tier allocation.
+ * Non-tree-specific utility functions have been moved to separate modules:
+ * 
+ * - Contributor utilities → utils/contributors.ts
+ *   (resolveContributorId, getUniqueResolvedIds, totalContributorPoints, etc.)
+ * 
+ * - Slot utilities → utils/slots.ts
+ *   (getSlotAllocatedQuantity, formatSlotTimeDisplay, areSlotsTimeCompatible, etc.)
+ * 
+ * - Commitment utilities → utils/commitments.ts
+ *   (createCommitment, getAllocationRecordsForRecipient, getMutualTierTotal, etc.)
+ * 
+ * Import from utils/ for pure, reusable functions.
+ * tree.ts focuses on tree navigation and recognition calculations.
+ * 
+ * RE-EXPORTS: For convenience, commonly used utilities are re-exported below.
  * ═══════════════════════════════════════════════════════════════════════
  */
 
-/**
- * Extract resource metadata from a slot (v5 - slot-native)
- * Works with AvailabilitySlot and NeedSlot types
- */
-export function extractResourceMetadata(
-	resource: AvailabilitySlot | NeedSlot | any
-): ResourceMetadata {
-	return {
-		name: resource.name || '',
-		emoji: resource.emoji,
-		unit: resource.unit,
-		description: resource.description,
-		resource_type: resource.resource_type,
-		filter_rule: resource.filter_rule,
-		hidden_until_request_accepted: resource.hidden_until_request_accepted
-	};
-}
+// Re-export slot utilities for convenience (backward compatibility)
+export {
+	getSlotAllocatedQuantity,
+	getSlotAvailableQuantity,
+	getAllocatedSlotCount,
+	getTotalSlotCount,
+	getTotalAllocated,
+	getTotalAvailable,
+	isSlotRecurring,
+	getRecurrenceDisplay,
+	isSlotInPast,
+	safeExtractTime,
+	formatTimeClean,
+	formatDateForDisplay,
+	formatSlotTimeDisplay,
+	formatSlotLocationDisplay,
+	getSlotSortValue,
+	extractResourceMetadata,
+	hasFilterRule,
+	getEffectiveFilterRule,
+	areSlotsTimeCompatible,
+	areSlotsLocationCompatible
+} from './utils/slots';
 
-/**
- * Check if a slot has a filter rule (v5 - slot-native only)
- */
-export function hasFilterRule(
-	slot: AvailabilitySlot | NeedSlot
-): boolean {
-	return slot.filter_rule !== undefined && slot.filter_rule !== null;
-}
-
-/**
- * Get effective filter rule for a slot (v5 - slot-native only)
- */
-export function getEffectiveFilterRule(
-	slot: AvailabilitySlot | NeedSlot
-): any | null {
-	return slot.filter_rule !== undefined && slot.filter_rule !== null 
-		? slot.filter_rule 
-		: null;
-}
-
-/**
- * Check if two slots have compatible time constraints (v5)
- * Delegates to match.svelte.ts for hierarchical availability window support
- */
-export function areSlotsTimeCompatible(
-	availabilitySlot: AvailabilitySlot,
-	needSlot: NeedSlot
-): boolean {
-	return timeRangesOverlap(availabilitySlot, needSlot);
-}
-
-/**
- * Check if two slots have compatible location constraints (v5)
- * Delegates to match.svelte.ts for comprehensive location matching
- */
-export function areSlotsLocationCompatible(
-	availabilitySlot: AvailabilitySlot,
-	needSlot: NeedSlot
-): boolean {
-	return locationsCompatible(availabilitySlot, needSlot);
-}
-
-/**
- * Create a commitment from recognition shares and capacity/need declarations (v5)
- * Helper for building Commitment objects for the multi-dimensional allocation system
- * 
- * V5 uses GLOBAL recognition: same MR value for all need types
- * Type preferences are encoded in recognition tree structure, not in separate MR values
- */
-export function createCommitment(
-	globalRecognitionWeights: GlobalRecognitionWeights,
-	capacitySlots?: AvailabilitySlot[],
-	needSlots?: NeedSlot[],
-	itcStamp?: ITCStamp
-): Commitment {
-	return {
-		capacity_slots: capacitySlots,
-		need_slots: needSlots,
-		global_recognition_weights: globalRecognitionWeights,
-		timestamp: Date.now(),
-		itcStamp: itcStamp!  // Required in v5
-	};
-}
-
-/**
- * Extract allocation records for a specific recipient from allocation state
- * Useful for analyzing what a recipient received across all slots
- */
-export function getAllocationRecordsForRecipient(
-	allocationState: TwoTierAllocationState,
-	recipientPubkey: string
-): SlotAllocationRecord[] {
-	return allocationState.slot_allocations.filter(
-		(record) => record.recipient_pubkey === recipientPubkey
-	);
-}
-
-/**
- * Extract allocation records for a specific availability slot
- * Useful for analyzing how a slot was distributed
- */
-export function getAllocationRecordsForSlot(
-	allocationState: TwoTierAllocationState,
-	slotId: string
-): SlotAllocationRecord[] {
-	return allocationState.slot_allocations.filter(
-		(record) => record.availability_slot_id === slotId
-	);
-}
-
-/**
- * Calculate total quantity allocated in mutual tier for a slot
- */
-export function getMutualTierTotal(
-	allocationState: TwoTierAllocationState,
-	slotId: string
-): number {
-	return allocationState.slot_allocations
-		.filter((record) => record.availability_slot_id === slotId && record.tier === 'mutual')
-		.reduce((sum, record) => sum + record.quantity, 0);
-}
-
-/**
- * Calculate total quantity allocated in non-mutual tier for a slot
- */
-export function getNonMutualTierTotal(
-	allocationState: TwoTierAllocationState,
-	slotId: string
-): number {
-	return allocationState.slot_allocations
-		.filter((record) => record.availability_slot_id === slotId && record.tier === 'non-mutual')
-		.reduce((sum, record) => sum + record.quantity, 0);
-}
-
-/**
- * Get mutual tier recipients for a slot
- */
-export function getMutualTierRecipients(
-	allocationState: TwoTierAllocationState,
-	slotId: string
-): string[] {
-	const recipients = new Set<string>();
-	allocationState.slot_allocations
-		.filter((record) => record.availability_slot_id === slotId && record.tier === 'mutual')
-		.forEach((record) => recipients.add(record.recipient_pubkey));
-	return Array.from(recipients);
-}
-
-/**
- * Check if a recipient is in the mutual tier for a slot
- */
-export function isRecipientMutual(
-	allocationState: TwoTierAllocationState,
-	slotId: string,
-	recipientPubkey: string
-): boolean {
-	return allocationState.slot_allocations.some(
-		(record) =>
-			record.availability_slot_id === slotId &&
-			record.recipient_pubkey === recipientPubkey &&
-			record.tier === 'mutual'
-	);
-}
+// Re-export commitment utilities for convenience (backward compatibility)
+export {
+	createCommitment,
+	getAllocationRecordsForRecipient,
+	getAllocationRecordsForSlot,
+	getMutualTierTotal,
+	getNonMutualTierTotal,
+	getMutualTierRecipients,
+	isRecipientMutual
+} from './utils/commitments';
 
 /**
  * Re-export schema types for convenience (v5 - global recognition model)
@@ -1565,4 +1085,14 @@ export type {
 	AvailabilityWindow,
 	Contributor
 };
+
+/**
+ * Note: Utility functions are now organized in separate modules:
+ * - Contributor utilities → utils/contributors.ts
+ * - Slot utilities → utils/slots.ts
+ * - Commitment utilities → utils/commitments.ts
+ * 
+ * Some functions in tree.ts have similar names but work with Node objects
+ * rather than raw data structures. Import from utils/ for the pure versions.
+ */
 

@@ -28,13 +28,8 @@ import type {
 	AvailabilitySlot,
 	NeedSlot
 } from '../schemas';
-import { mutualFulfillment } from '../protocol';
-import {
-	slotsCompatible as slotsCompatibleV5,
-	timeRangesOverlap,
-	locationsCompatible,
-	haversineDistance
-} from '../match.svelte';
+import { mutualFulfillment } from '../tree';
+import { slotsCompatible } from '../match';
 import {
 	shouldUpdateCapacityMembership,
 	updateCapacityMembership,
@@ -134,25 +129,6 @@ export interface NeedSlotState {
 
 // === SLOT MATCHING UTILITIES (V5) ===
 
-/**
- * Check if a need slot can be fulfilled by an availability slot (v5)
- * 
- * V5 CRITICAL: Includes need_type_id matching for multi-dimensional framework!
- * Delegates to match.svelte.ts for comprehensive slot compatibility checking.
- * 
- * Checks:
- * - Type compatibility (need_type_id must match)
- * - Time compatibility (hierarchical availability windows + timezone support)
- * - Location compatibility (city/country/coordinates/online)
- */
-export function slotsCompatible(
-	needSlot: NeedSlot,
-	availabilitySlot: AvailabilitySlot
-): boolean {
-	// Use v5's comprehensive slot compatibility checker
-	// This includes need_type_id matching, time/location, and recurrence logic
-	return slotsCompatibleV5(needSlot, availabilitySlot);
-}
 
 /**
  * Match need slots to availability slots and calculate possible allocations
@@ -164,21 +140,21 @@ export function slotsCompatible(
  */
 export function matchNeedToCapacitySlots(
 	need: BaseNeed,
-	capacity: import('$lib/schema').BaseCapacity,
+	capacity: BaseCapacity,
 	maxAmount: number
 ): {
 	compatible_pairs: Array<{
-		need_slot: import('$lib/schema').NeedSlot;
-		availability_slot: import('$lib/schema').AvailabilitySlot;
+		need_slot: NeedSlot;
+		availability_slot: AvailabilitySlot;
 		matchable_quantity: number;
 	}>;
 	total_matchable: number;
-	unmatched_need_slots: import('$lib/schema').NeedSlot[];
-	unmatched_capacity_slots: import('$lib/schema').AvailabilitySlot[];
+	unmatched_need_slots: NeedSlot[];
+	unmatched_capacity_slots: AvailabilitySlot[];
 } {
 	const compatible_pairs: Array<{
-		need_slot: import('$lib/schema').NeedSlot;
-		availability_slot: import('$lib/schema').AvailabilitySlot;
+		need_slot: NeedSlot;
+		availability_slot: AvailabilitySlot;
 		matchable_quantity: number;
 	}> = [];
 	const matched_need_slot_ids = new Set<string>();
@@ -248,7 +224,7 @@ export function matchNeedToCapacitySlots(
  */
 export function calculateSlotCompatibleAmount(
 	need: BaseNeed | undefined,
-	capacity: import('$lib/schema').BaseCapacity,
+	capacity: BaseCapacity,
 	maxAmount: number
 ): number {
 	if (!need) return 0;
@@ -279,7 +255,7 @@ export function calculateSlotCompatibleAmount(
  * @returns Detailed slot-level allocation result
  */
 export function allocateSlotsToRecipients(
-	capacity: import('$lib/schema').BaseCapacity,
+	capacity: BaseCapacity,
 	needs: Map<string, BaseNeed>,
 	recognitionShares: Map<string, number>,
 	filters: Map<string, ComplianceFilter>

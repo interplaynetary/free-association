@@ -38,7 +38,7 @@ import {
 } from './stores.svelte';
 
 import { normalizeGlobalRecognitionWeights } from './schemas';
-import { slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from './match.svelte';
+import { slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from './match';
 
 // Import ITC functions for causal consistency
 import {

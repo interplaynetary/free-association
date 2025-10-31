@@ -85,7 +85,23 @@ export const TypedFlowFieldsSchema = z.object({
   
   // Data analysis fields
   data: z.any().optional(),
-  question: z.string().optional()
+  question: z.string().optional(),
+  
+  // Quest generation fields
+  recognitionTree: z.any().optional(), // RootNodeSchema from v5/schemas
+  capacities: z.array(z.any()).optional(), // AvailabilitySlotSchema array
+  needs: z.array(z.any()).optional(), // NeedSlotSchema array
+  locations: z.array(z.object({
+    city: z.string().optional(),
+    state_province: z.string().optional(),
+    country: z.string().optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+    online: z.boolean().optional()
+  })).optional(),
+  peerQuests: z.array(z.any()).optional(), // QuestSchema array
+  maxQuests: z.number().int().positive().optional(),
+  preferredTypes: z.array(z.string()).optional()
 });
 
 export const ExtendedCompletionRequestSchema = BaseCompletionRequestSchema.and(TypedFlowFieldsSchema);

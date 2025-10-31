@@ -23,7 +23,7 @@ import './v5/holster.svelte'; // This initializes Holster (migration Phase 1)
 export * from './v5/schemas';
 
 // Protocol functions (V5) - Safe for SSR
-export * from './v5/protocol';
+export * from './v5/tree';
 
 // Interval Tree Clocks (ITC) - Safe for SSR
 export * from './utils/itc';

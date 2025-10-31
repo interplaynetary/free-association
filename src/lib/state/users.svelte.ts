@@ -16,6 +16,82 @@ import {
 } from './contacts-holster.svelte';
 
 // ================================
+// USERS LIST SUBSCRIPTION (Holster)
+// ================================
+
+import { holster } from '$lib/commons/v5/holster.svelte';
+
+let usersListCallback: ((data: any) => void) | null = null;
+let isUsersListInitialized = false;
+
+/**
+ * Subscribe to freely-associating-players list from Holster
+ */
+function subscribeToUsersList() {
+	if (isUsersListInitialized) {
+		console.log('[USERS-LIST] Already subscribed');
+		return;
+	}
+
+	usersListCallback = (data: any) => {
+		if (!data) return;
+
+		// Filter out metadata fields and deleted entries
+		const usersData: Record<string, {alias: string, lastSeen: number}> = {};
+		for (const [key, value] of Object.entries(data)) {
+			if (value && typeof value === 'object' && !key.startsWith('_')) {
+				usersData[key] = value as any;
+			}
+		}
+
+		// Extract pub keys and aliases
+		const pubKeys = Object.keys(usersData);
+		const aliases: Record<string, string> = {};
+		
+		pubKeys.forEach(pubKey => {
+			const userData = usersData[pubKey];
+			if (userData?.alias) {
+				aliases[pubKey] = userData.alias;
+			}
+		});
+
+		// Update stores
+		userPubKeys.set(pubKeys);
+		userAliasesCache.set(aliases);
+		
+		console.log('[USERS-LIST] Updated:', {
+			count: pubKeys.length,
+			aliases: Object.keys(aliases).length
+		});
+	};
+
+	holster.get('freely-associating-players').on(usersListCallback, true);
+	isUsersListInitialized = true;
+}
+
+/**
+ * Initialize users list subscription
+ */
+export function initializeUsersList() {
+	console.log('[USERS-LIST] Initializing...');
+	subscribeToUsersList();
+}
+
+/**
+ * Cleanup users list subscription
+ */
+export function cleanupUsersList() {
+	if (usersListCallback) {
+		holster.get('freely-associating-players').off(usersListCallback);
+		usersListCallback = null;
+	}
+	userPubKeys.set([]);
+	userAliasesCache.set({});
+	isUsersListInitialized = false;
+	console.log('[USERS-LIST] Cleaned up');
+}
+
+// ================================
 // CORE USER & CONTACT STORES (V5: Holster-Only)
 // ================================
 

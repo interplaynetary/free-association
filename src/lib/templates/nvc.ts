@@ -1,4 +1,4 @@
-import { addChild, findNodeById } from '$lib/commons/v5/protocol';
+import { addChild, findNodeById } from '$lib/commons/v5/tree';
 import type { RootNode } from '$lib/commons/v5/schemas';
 
 /**

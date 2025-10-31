@@ -7,7 +7,7 @@ import {
 	networkCapacitySlots,
 	getNetworkCommitmentsRecord
 } from '$lib/commons/v5/stores.svelte';
-import { findNodeById, getDescendants } from '$lib/commons/v5/protocol';
+import { findNodeById, getDescendants } from '$lib/commons/v5/tree';
 import {
 	userPubKeys,
 	userNamesOrAliasesCache,

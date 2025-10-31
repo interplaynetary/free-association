@@ -58,6 +58,11 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 						m.initializeAllocationStores();
 						console.log('[HOLSTER RECALL] ✅ V5 stores initialized');
 						
+						// Initialize users list
+						import('$lib/state/users.svelte').then(usersModule => {
+							usersModule.initializeUsersList();
+						});
+						
 						// Enable auto-composition AFTER stores are initialized
 						m.enableAutoCommitmentComposition();
 						console.log('[HOLSTER RECALL] ✅ Auto-composition enabled');
@@ -172,6 +177,11 @@ export async function login(alias: string, password: string): Promise<void> {
 							m.initializeAllocationStores();
 							console.log('[HOLSTER LOGIN] ✅ V5 stores initialized');
 							
+							// Initialize users list
+							import('$lib/state/users.svelte').then(usersModule => {
+								usersModule.initializeUsersList();
+							});
+							
 							// Enable auto-composition AFTER stores are initialized
 							m.enableAutoCommitmentComposition();
 							console.log('[HOLSTER LOGIN] ✅ Auto-composition enabled');
@@ -249,6 +259,10 @@ export async function signup(alias: string, password: string): Promise<void> {
 export async function signout() {
 	// Clean up all Holster subscriptions BEFORE leaving (while still authenticated)
 	//await cleanupAllHolsterSubscriptions();
+
+	// Cleanup users list
+	const { cleanupUsersList } = await import('$lib/state/users.svelte');
+	cleanupUsersList();
 
 	// Now safely destroy the session
 	holsterUser.leave();

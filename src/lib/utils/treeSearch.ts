@@ -1,6 +1,6 @@
 // V5: Import from v5 commons
 import { type Node } from '$lib/commons/v5/schemas';
-import { getDescendants, findNodeById, getPathToNode } from '$lib/commons/v5/protocol';
+import { getDescendants, findNodeById, getPathToNode } from '$lib/commons/v5/tree';
 
 /**
  * Tree Search Functions

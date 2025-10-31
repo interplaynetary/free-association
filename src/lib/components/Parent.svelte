@@ -22,7 +22,7 @@
 		calculateNodePoints,
 		getPathToNode,
 		updateManualFulfillment
-	} from '$lib/commons/v5/protocol';
+	} from '$lib/commons/v5/tree';
 	import { get } from 'svelte/store';
 	import {
 		createContact,

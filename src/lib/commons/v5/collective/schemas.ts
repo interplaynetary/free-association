@@ -10,10 +10,24 @@
  */
 
 import * as z from 'zod';
-import { NeedSlotSchema, AvailabilitySlotSchema } from '../schemas';
+import { 
+	NeedSlotSchema, 
+	AvailabilitySlotSchema,
+	type Node,
+	type NonRootNode,
+	type RootNode,
+	type AvailabilitySlot,
+	type NeedSlot
+} from '../schemas';
 
-// Re-export v5 core schemas
-export * from '../schemas';
+// Re-export commonly used v5 types (but not legacy aliases that we override)
+export type { 
+	Node, 
+	NonRootNode, 
+	RootNode,
+	AvailabilitySlot,
+	NeedSlot
+} from '../schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // COMPLIANCE FILTERS
@@ -76,7 +90,7 @@ export const BaseCapacitySchema = z.object({
 	name: z.string().min(1), // Required: capacity name/description
 	provider_id: z.string().optional(), // Provider's pubkey
 	owner_id: z.string().optional(),    // Alternative to provider_id
-	availability_slots: z.array(AvailabilitySlotSchema), // Array of AvailabilitySlot (from v5 schemas)
+	capacity_slots: z.array(AvailabilitySlotSchema), // Array of AvailabilitySlot (from v5 schemas)
 	
 	// Collective capacity fields
 	members: z.array(z.string()).optional(), // Member pubkeys
@@ -239,25 +253,26 @@ export type EntityID = string;
  * Capacities Collection - Maps capacity types to their declarations
  */
 export type CapacitiesCollection = Record<string, {
-	availability_slots?: Array<any>;
+	capacity_slots?: Array<any>;
 	[key: string]: any;
 }>;
 
 /**
  * Entity - Either an individual (Node) or a Collective
  */
-export type Entity = any; // Node | Collective (defined below)
+export type Entity = Node | Collective;
 
 /**
  * Forest - Collection of entity trees indexed by entity ID
  */
-export type Forest = Map<EntityID, any>; // Map<EntityID, Entity>
+export type Forest = Map<EntityID, Entity>;
 
 /**
  * Collective - Synthetic entity composed of multiple members
  */
 export interface Collective {
 	id: EntityID;
+	type: 'Collective';
 	members: Entity[];
 	weights: Map<string, number>;
 	[key: string]: any;
@@ -267,7 +282,7 @@ export interface Collective {
  * Node Data for Merging - Tracks contributor node with weights
  */
 export interface ContributorNodeData {
-	originalNode: any; // Node from v5 schemas
+	originalNode: Node;
 	weightInParent: number;
 	contributorWeight: number;
 }
@@ -284,46 +299,148 @@ export interface NodeMergeData {
 }
 
 /**
- * Proportional Node - Node with proportional allocation weights
+ * Proportional Node Analysis - Detailed contributor percentage breakdown
  */
 export interface ProportionalNode {
+	contributor_id: string;
+	percentage_of_node: number;
+	individual_node_percentage: number;
+	contributor_collective_weight: number;
+	path_weight_contribution: number;
+	derivation_steps: Array<{
+		level: number;
+		node_id: string;
+		individual_percentage: number;
+		collective_weight: number;
+		cumulative_path_weight: number;
+	}>;
+}
+
+/**
+ * Collective Node - Base type for nodes in a collective tree
+ */
+export type CollectiveNode = CollectiveRootNode | CollectiveNonRootNode;
+
+/**
+ * Collective Root Node - Root of a merged collective tree
+ */
+export interface CollectiveRootNode {
 	id: string;
 	name: string;
-	proportion: number;
-	contributors?: string[];
-	children?: ProportionalNode[];
-	[key: string]: any;
+	type: 'CollectiveRootNode';
+	manual_fulfillment: number | null;
+	children: CollectiveNode[];
+	created_at: string;
+	updated_at: string;
+	contributors: string[];
+	contributor_weights: Record<string, number>;
+	source_trees: Record<string, Node>;
 }
 
 /**
- * Collective Capacity Allocation - Result of capacity allocation
+ * Collective Non-Root Node - Child node in a merged collective tree
+ */
+export interface CollectiveNonRootNode {
+	id: string;
+	name: string;
+	type: 'CollectiveNonRootNode';
+	manual_fulfillment: number | null;
+	children: CollectiveNode[];
+	weight_percentage: number;
+	parent_id: string;
+	contributor_ids: string[];
+	source_contributors: Record<string, number>;
+	merged_from_nodes: string[];
+}
+
+/**
+ * Collective Tree - Complete merged tree with metadata
+ */
+export interface CollectiveTree {
+	id: string;
+	root: CollectiveRootNode;
+	contributors: string[];
+	recognition_matrix: Record<string, Record<string, number>>;
+	creation_timestamp: string;
+	last_updated: string;
+	merge_algorithm_version: string;
+	total_nodes_merged: number;
+	merge_conflicts: Array<{
+		node_id: string;
+		conflict_type: string;
+		resolution: string;
+	}>;
+}
+
+/**
+ * Tree Merge Configuration
+ */
+export interface TreeMergeConfig {
+	contributor_trees: Record<string, Node>;
+	recognition_shares?: Record<string, number>;
+	merge_strategy: 'weighted_average' | 'union' | 'intersection';
+	conflict_resolution: 'merge' | 'keep_first' | 'keep_last' | 'manual';
+	name_collision_strategy: 'append_contributor' | 'weighted_priority' | 'manual_resolve';
+}
+
+/**
+ * Tree Merge Result
+ */
+export interface TreeMergeResult {
+	collective_tree: CollectiveTree;
+	merge_stats: {
+		total_contributors: number;
+		nodes_merged: number;
+		conflicts_resolved: number;
+		execution_time_ms: number;
+	};
+	warnings: string[];
+	errors: string[];
+}
+
+/**
+ * Collective Capacity Allocation - Result of capacity allocation computation
  */
 export interface CollectiveCapacityAllocation {
-	capacity_id: string;
-	allocations: Record<string, number>; // member_id -> allocated_amount
-	total_capacity: number;
-	total_allocated: number;
-	[key: string]: any;
+	collective_tree_id: string;
+	total_collective_capacity: Record<string, number>;
+	node_capacity_allocations: Record<string, Record<string, number>>;
+	contributor_capacity_shares: Record<string, Record<string, number>>;
+	allocation_efficiency: number;
+	allocation_fairness: number;
 }
 
 /**
- * Tree Filter Config - Configuration for filtering trees
+ * Tree Filter Config - Configuration for filtering collective trees
  */
 export interface TreeFilterConfig {
-	recognition_shares?: Record<string, number>;
-	min_contribution_threshold?: number;
-	merge_strategy?: 'proportional' | 'weighted' | 'equal';
-	[key: string]: any;
+	minimum_percentage?: number;
+	minimum_quorum?: number;
+	minimum_collective_recognition?: number;
+	contributor_whitelist?: string[];
+	contributor_blacklist?: string[];
+	preserve_paths?: boolean;
 }
 
 /**
  * Filtered Tree Result - Result of tree filtering operation
  */
 export interface FilteredTreeResult {
-	tree: any; // Node or Collective
-	filtered_contributors: string[];
-	total_weight: number;
-	[key: string]: any;
+	filtered_tree: CollectiveTree;
+	removed_nodes: Array<{
+		node_id: string;
+		node_name: string;
+		reason: string;
+		original_weight: number;
+		contributor_count: number;
+	}>;
+	filter_stats: {
+		original_node_count: number;
+		filtered_node_count: number;
+		nodes_removed: number;
+		total_weight_removed: number;
+		contributors_affected: string[];
+	};
 }
 
 // ═══════════════════════════════════════════════════════════════════

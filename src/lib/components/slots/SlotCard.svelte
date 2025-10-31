@@ -14,7 +14,7 @@
 
 <script lang="ts">
   import type { NeedSlot, AvailabilitySlot } from '$lib/commons/v5/schemas';
-  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/commons/v5/protocol';
+  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/commons/v5/tree';
   
   interface Props {
     slot: NeedSlot | AvailabilitySlot;

@@ -28,7 +28,7 @@ import type {
 	TreeFilterConfig,
 	FilteredTreeResult
 } from './schemas';
-import { mutualFulfillment as originalMutualFulfillment } from '../protocol';
+import { mutualFulfillment as originalMutualFulfillment } from '../tree';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 
@@ -84,7 +84,13 @@ function getNodeCapacities(node: Node): CapacitiesCollection {
 function collectiveMF(ci: Forest, a: Entity, b: Entity): number {
 	// If both are individuals, use original calculation
 	if (!isCollective(a) && !isCollective(b)) {
-		const nodesMap = Object.fromEntries(ci);
+		// Filter to only Node types for the original function
+		const nodesMap: Record<string, Node> = {};
+		for (const [key, entity] of ci.entries()) {
+			if (!isCollective(entity)) {
+				nodesMap[key] = entity as Node;
+			}
+		}
 		return originalMutualFulfillment(a as Node, b as Node, nodesMap);
 	}
 
@@ -150,7 +156,13 @@ function mutualFulfillment(ci: Forest, a: Entity, b: Entity): number {
 	let result = 0;
 
 	if (!isCollective(a) && !isCollective(b)) {
-		const nodesMap = Object.fromEntries(ci);
+		// Filter to only Node types for the original function
+		const nodesMap: Record<string, Node> = {};
+		for (const [key, entity] of ci.entries()) {
+			if (!isCollective(entity)) {
+				nodesMap[key] = entity as Node;
+			}
+		}
 		result = originalMutualFulfillment(a as Node, b as Node, nodesMap);
 	} else {
 		result = collectiveMF(ci, a, b);
@@ -282,7 +294,7 @@ import type {
 	TreeMergeConfig,
 	TreeMergeResult
 } from './schemas';
-import { shareOfParent } from '../protocol';
+import { shareOfParent } from '../tree';
 import crypto from 'crypto';
 
 // Hash function for creating collective IDs

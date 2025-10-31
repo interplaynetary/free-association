@@ -86,11 +86,37 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       throw error(500, 'Invalid provider - Only OpenRouter is supported');
     }
     
+    // Use promptConfig from flow if available (typed flows)
+    // Otherwise fall back to raw messages/prompt (legacy/chat)
+    let requestMessages;
+    let requestTemperature;
+    let requestMaxTokens;
+    
+    if (routing.promptConfig) {
+      // Typed flow: use the flow's generated prompt
+      requestMessages = [];
+      if (routing.promptConfig.system) {
+        requestMessages.push({ role: 'system', content: routing.promptConfig.system });
+      }
+      requestMessages.push({ role: 'user', content: routing.promptConfig.user });
+      requestTemperature = routing.promptConfig.temperature || 0.7;
+      requestMaxTokens = routing.promptConfig.maxTokens || normalizedMaxTokens;
+      
+      console.log('[AI-COMPLETION] Using flow-generated prompt:', routing.flow?.name);
+    } else {
+      // Legacy/chat: use raw messages or prompt
+      requestMessages = messages || [{ role: 'user', content: prompt }];
+      requestTemperature = temperature || 0.7;
+      requestMaxTokens = normalizedMaxTokens;
+      
+      console.log('[AI-COMPLETION] Using raw messages/prompt');
+    }
+    
     const requestBody = {
       model: routing.model,
-      messages: messages || [{ role: 'user', content: prompt }],
-      max_tokens: normalizedMaxTokens,
-      temperature: temperature || 0.7
+      messages: requestMessages,
+      max_tokens: requestMaxTokens,
+      temperature: requestTemperature
     };
     
     const headers = {

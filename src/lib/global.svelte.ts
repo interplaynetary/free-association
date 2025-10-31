@@ -8,7 +8,7 @@ import {
 	reorderNode, 
 	wouldCreateCycle,
 	createRootNode
-} from '$lib/commons/v5/protocol';
+} from '$lib/commons/v5/tree';
 import { userPub } from '$lib/state/auth.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
 
