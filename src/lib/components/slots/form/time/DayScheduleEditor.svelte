@@ -13,7 +13,7 @@
 -->
 
 <script lang="ts">
-  import type { DayOfWeek, TimeRange } from '$lib/commons/v5/schemas';
+  import type { DayOfWeek, TimeRange } from '$lib/protocol/schemas';
   import TimeRangeInput from './TimeRangeInput.svelte';
   
   interface Props {

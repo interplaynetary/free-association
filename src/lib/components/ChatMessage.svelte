@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { gunAvatar } from 'gun-avatar';
-	import { getColorForUserId, getContrastTextColor } from '$lib/utils/colorUtils';
+	import { getColorForUserId, getContrastTextColor } from '$lib/utils/ui/colorUtils';
 
 	type MessageStatus = 'pending' | 'sent' | 'failed';
 

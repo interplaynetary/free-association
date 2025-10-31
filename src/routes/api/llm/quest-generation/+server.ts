@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { QuestGenerationRequestSchema, QuestSchema, type Quest } from '$lib/commons/v5/quest-schemas';
+import { QuestGenerationRequestSchema, QuestSchema, type Quest } from '$lib/modules/quests/quest-schemas';
 import { checkGeneralRateLimit, checkAiRateLimit } from '$lib/server/middleware/rate-limit';
 
 // Import env vars for AI authentication

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getColorForUserId } from '../utils/colorUtils';
+	import { getColorForUserId } from '../utils/ui/colorUtils';
 	import {
 		resolveToPublicKey,
 		userAliasesCache,
 		updateContact as updateContactInStore,
-	} from '$lib/state/users.svelte';
+	} from '$lib/network/users.svelte';
 	import { browser } from '$app/environment';
 	import { t } from '$lib/translations';
 	import type { Readable } from 'svelte/store';

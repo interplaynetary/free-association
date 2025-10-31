@@ -14,25 +14,25 @@
 		signout,
 		isAuthenticating,
 		// changePassword
-	} from '$lib/state/auth.svelte';
+	} from '$lib/network/auth.svelte';
 	// Track tree persistence state
 	let isTreePersisting = $state(false);
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import { t } from '$lib/translations';
 
 	// V5: Import from v5 stores
-	import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
-	import { findNodeById } from '$lib/commons/v5/tree';
-	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
-	import { type Node, type RootNode } from '$lib/commons/v5/schemas';
+	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
+	import { findNodeById } from '$lib/protocol/tree';
+	import { searchTreeForNavigation } from '$lib/protocol/utils/filters/treeSearch';
+	import { type Node, type RootNode } from '$lib/protocol/schemas';
 	import { gunAvatar } from 'gun-avatar';
-	import { startTour } from '$lib/utils/tour';
+	import { startTour } from '$lib/utils/ui/tour';
 	import { browser } from '$app/environment';
 	import {
 		exportUserStateAsJSON,
 		importUserStateFromJSON,
 		type UserStateExport
-	} from '$lib/utils/userStateExport';
+	} from '$lib/utils/data/userStateExport';
 
 	// Helper function to truncate text
 	function truncateText(text: string, maxLength: number = 14): string {

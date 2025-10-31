@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { userAlias, userPub } from '$lib/state/auth.svelte';
+	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	// V5: Import from v5 stores
-	import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
+	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
 	import { writable } from 'svelte/store';
 	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
 	const isLoadingTree = writable(false);
-	import { createChildContributorsDataProvider } from '$lib/utils/ui-providers.svelte';
+	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode } from '$lib/commons/v5/schemas';
+	import { type Node, type NonRootNode } from '$lib/protocol/schemas';
 	import {
 		findNodeById,
 		getParentNode,
@@ -22,15 +22,15 @@
 		calculateNodePoints,
 		getPathToNode,
 		updateManualFulfillment
-	} from '$lib/commons/v5/tree';
+	} from '$lib/protocol/tree';
 	import { get } from 'svelte/store';
 	import {
 		createContact,
 		updateContact,
 		deleteContact,
 		resolveToPublicKey
-	} from '$lib/state/users.svelte';
-	import { createNewTree } from '$lib/utils/cleanUtils';
+	} from '$lib/network/users.svelte';
+	import { createNewTree } from '$lib/utils/data/cleanUtils';
 	import { getTemplates, applyTemplate } from '$lib/templates';
 	import Child from '$lib/components/Child.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';

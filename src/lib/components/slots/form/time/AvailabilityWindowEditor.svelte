@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { AvailabilityWindow, DaySchedule, TimeRange } from '$lib/commons/v5/schemas';
+  import type { AvailabilityWindow, DaySchedule, TimeRange } from '$lib/protocol/schemas';
   import DayScheduleEditor from './DayScheduleEditor.svelte';
   import TimeRangeInput from './TimeRangeInput.svelte';
   

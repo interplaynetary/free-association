@@ -24,3 +24,5 @@ export { default as Map } from './components/Map.svelte';
 export { default as MapSidePanel } from './components/MapSidePanel.svelte';
 
 export { default as TagPill } from './components/TagPill.svelte';
+
+export { default as Visualization } from './components/Visualization.svelte';

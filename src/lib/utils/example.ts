@@ -1,6 +1,6 @@
 // V5: Import from v5 stores and schemas
-import type { RootNode, AvailabilitySlot, Commitment } from '$lib/commons/v5/schemas';
-import { myRecognitionTreeStore, myCommitmentStore, myCapacitySlotsStore } from '$lib/commons/v5/stores.svelte';
+import type { RootNode, AvailabilitySlot, Commitment } from '$lib/protocol/schemas';
+import { myRecognitionTreeStore, myCommitmentStore, myCapacitySlotsStore } from '$lib/protocol/stores.svelte';
 import { get } from 'svelte/store';
 import { getLocalTimeZone } from '@internationalized/date';
 import { populateSDGTree } from '../templates/sdg';

@@ -1,9 +1,10 @@
+/* CSS @import statements must come BEFORE all other statements */
+@import 'driver.js/dist/driver.css';
+@import '@fontsource/fira-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import 'driver.js/dist/driver.css';
-@import '@fontsource/fira-mono';
 
 /* ===== Enhanced Reset & Base for Cross-Browser Compatibility ===== */
 * {

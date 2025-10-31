@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { holsterUserAlias } from '$lib/commons/v5/holster.svelte';
+	import { holsterUserAlias } from '$lib/network/holster.svelte';
 	
 	// State
 	let apiKey = '';

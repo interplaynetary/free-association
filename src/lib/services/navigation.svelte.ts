@@ -13,14 +13,21 @@ import { globalState } from '$lib/global.svelte';
 class NavigationService {
 	private isInitialized = false;
 	private initialHistoryPushed = false;
+	private routerReady = false;
 
 	constructor() {
 		if (browser && !this.isInitialized) {
-			this.initialize();
+			// Wait for SvelteKit router to be ready before initializing
+			// Use a longer delay to ensure router is mounted
+			setTimeout(() => {
+				this.initialize();
+			}, 1000);
 		}
 	}
 
 	private initialize() {
+		if (this.isInitialized) return;
+		
 		console.log('[NAVIGATION-SERVICE] Initializing navigation service');
 		this.isInitialized = true;
 
@@ -28,10 +35,11 @@ class NavigationService {
 		this.setupKeyboardListeners();
 		this.setupHistoryListeners();
 
-		// Delay initial history push to avoid interfering with focus events
+		// Delay initial history push further to ensure router is ready
 		setTimeout(() => {
+			this.routerReady = true;
 			this.setupInitialHistory();
-		}, 500);
+		}, 1500);
 	}
 
 	private handleGlobalKeydown = (event: KeyboardEvent) => {
@@ -80,7 +88,7 @@ class NavigationService {
 
 			// Push a new state to maintain the current position
 			// This prevents the browser from actually going back
-			pushState(window.location.href, {});
+			this.safePushState(window.location.href, {});
 		}
 		// If we can't handle the back action, let the browser handle it normally
 	};
@@ -105,10 +113,26 @@ class NavigationService {
 		console.log('[NAVIGATION-SERVICE] History listeners set up');
 	}
 
+	/**
+	 * Safely call pushState only when router is ready
+	 */
+	private safePushState(url: string, state: any) {
+		if (!this.routerReady) {
+			console.log('[NAVIGATION-SERVICE] Router not ready, skipping pushState');
+			return;
+		}
+		
+		try {
+			pushState(url, state);
+		} catch (error) {
+			console.warn('[NAVIGATION-SERVICE] Failed to pushState:', error);
+		}
+	}
+
 	private setupInitialHistory() {
 		if (!this.initialHistoryPushed) {
 			// Push initial state to ensure back button can be intercepted
-			pushState(window.location.href, {});
+			this.safePushState(window.location.href, {});
 			this.initialHistoryPushed = true;
 			console.log('[NAVIGATION-SERVICE] Initial history state pushed');
 		}

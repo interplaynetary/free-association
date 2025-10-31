@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
-	import { handleAddressClick } from '$lib/utils/mapUtils';
+	import { handleAddressClick } from '$lib/location/mapUtils';
 	import { globalState } from '$lib/global.svelte';
 	// V5: Import mutual recognition from v5 stores
-	import { myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	import { myMutualRecognition } from '$lib/protocol/stores.svelte';
 	import { get } from 'svelte/store';
 
 	interface Props {

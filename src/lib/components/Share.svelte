@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { getUserName } from '$lib/state/users.svelte';
-	import { getColorForUserId } from '$lib/utils/colorUtils';
+	import { getUserName } from '$lib/network/users.svelte';
+	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 	import Chat from '$lib/components/Chat.svelte';
-	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
-	import { handleAddressClick } from '$lib/utils/mapUtils';
+	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
+	import { handleAddressClick } from '$lib/location/mapUtils';
 	// V5: Import mutual recognition from v5 stores
-	import { myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	import { myMutualRecognition } from '$lib/protocol/stores.svelte';
 	// V5: Composition feature not yet implemented
 	// import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
-	import { userPub } from '$lib/state/auth.svelte';
+	import { userPub } from '$lib/network/auth.svelte';
 	import { get } from 'svelte/store';
 	// V5: Import slot utility functions from v5 protocol
 	import {
@@ -24,7 +24,7 @@
 		formatSlotTimeDisplay,
 		formatSlotLocationDisplay,
 		getSlotSortValue
-	} from '$lib/commons/v5/tree';
+	} from '$lib/protocol/tree';
 
 	interface Props {
 		share: any; // Using any since we're now working with inventory data, not RecipientCapacity

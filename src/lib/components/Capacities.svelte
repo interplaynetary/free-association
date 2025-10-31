@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { Commitment, AvailabilitySlot } from '$lib/commons/v5/schemas';
+	import type { Commitment, AvailabilitySlot } from '$lib/protocol/schemas';
 	import {
 		findNodeById,
 		updateNodeById
-	} from '$lib/commons/v5/tree';
+	} from '$lib/protocol/tree';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import { userAlias, userPub } from '$lib/state/auth.svelte';
+	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	// V5: Import from v5 stores - CORRECT PATTERN: Use source stores + composition
 	import {
 		myRecognitionTreeStore as userTree,
@@ -16,7 +16,7 @@
 		myCapacitySlotsStore,
 		composeCommitmentFromSources,
 		setMyCapacitySlots // ✅ NEW: Helper to update capacity slots
-	} from '$lib/commons/v5/stores.svelte';
+	} from '$lib/protocol/stores.svelte';
 	// V5: Composition features not yet implemented
 	// import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';

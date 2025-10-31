@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import { onMount, onDestroy } from 'svelte';
-	import { userAlias, userPub } from '$lib/state/auth.svelte';
+	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import {
 		subscribeToChat,
@@ -11,7 +11,7 @@
 		markChatAsRead,
 		getLastMessageTimestamp,
 		getUnreadMessageCount
-	} from '$lib/state/chat.svelte';
+	} from '$lib/chat/chat.svelte';
 	import { t } from '$lib/translations';
 
 	interface ChatProps {

@@ -1,7 +1,5 @@
-/// <reference types="@sveltejs/kit" />
 /// <reference lib="webworker" />
 
-import { build, files, prerendered, version } from '$service-worker';
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
@@ -10,26 +8,24 @@ import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 import { NotificationManager } from './lib/notification-manager';
 
-declare const self: ServiceWorkerGlobalScope;
+// This is injected by vite-plugin-pwa
+declare let self: ServiceWorkerGlobalScope & {
+	__WB_MANIFEST: Array<{ url: string; revision: string | null }>;
+};
 
-const SW_VERSION = version;
+const SW_VERSION = '1.0.0';
 const notificationManager = new NotificationManager();
 
 console.log(`[Service Worker] v${SW_VERSION} initializing...`);
 
 // ============================================================================
-// PRECACHING - SvelteKit build assets
+// PRECACHING - Build assets via Workbox
 // ============================================================================
 
 cleanupOutdatedCaches();
 
-const manifest = [
-	...build.map((file: string) => ({ url: file, revision: SW_VERSION })),
-	...files.map((file: string) => ({ url: file, revision: SW_VERSION })),
-	...prerendered.map((file: string) => ({ url: file, revision: SW_VERSION }))
-];
-
-precacheAndRoute(manifest);
+// self.__WB_MANIFEST is injected by vite-plugin-pwa with injectManifest
+precacheAndRoute(self.__WB_MANIFEST);
 
 // ============================================================================
 // RUNTIME CACHING STRATEGIES

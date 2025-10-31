@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getColorForNameHash } from '$lib/utils/colorUtils';
+	import { getColorForNameHash } from '$lib/utils/ui/colorUtils';
 
 	// Props
 	let {

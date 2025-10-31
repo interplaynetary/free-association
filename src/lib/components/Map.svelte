@@ -19,18 +19,18 @@
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 	// V5: Import commitments (contains capacity slots) from v5 stores
-	import { getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
+	import { getAllCommitmentsRecord } from '$lib/protocol/stores.svelte';
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
 	import { t } from '$lib/translations';
-	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
+	import { getUserName, userNamesOrAliasesCache } from '$lib/network/users.svelte';
 	import {
 		reverseGeocode,
 		parseAddressComponents,
 		geocodeCapacityAddress,
 		type ReverseGeocodeResult
-	} from '$lib/utils/geocoding';
+	} from '$lib/location/geocoding';
 	import {
 		updateLocation,
 		setLocationTracking,
@@ -38,7 +38,7 @@
 		currentLocation,
 		currentLocationText,
 		isLocationTracking
-	} from '$lib/state/location.svelte';
+	} from '$lib/location/location.svelte';
 	import MapSidePanel from './MapSidePanel.svelte';
 
 	interface Props {

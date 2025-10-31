@@ -14,7 +14,7 @@
 -->
 
 <script lang="ts">
-  import type { AvailabilityWindow } from '$lib/commons/v5/schemas';
+  import type { AvailabilityWindow } from '$lib/protocol/schemas';
   import AvailabilityWindowEditor from './time/AvailabilityWindowEditor.svelte';
   
   interface Props {

@@ -3,12 +3,7 @@ import type {RequestHandler} from "./$types"
 import {
   requestStats,
   dbStats,
-  processingStats,
   inviteCodes,
-  removeDays,
-  cleanupQueue,
-  contentHashCache,
-  pendingRequests,
 } from "$lib/server/holster/core"
 import {checkAuth} from "$lib/server/holster/auth"
 
@@ -48,15 +43,8 @@ export const GET: RequestHandler = async (event) => {
           ? Math.round((dbStats.errorCount / dbStats.totalOps) * 100)
           : 0,
     },
-    processing: {
-      ...processingStats,
-      pendingRequests: pendingRequests.size,
-    },
     caches: {
       inviteCodes: inviteCodes.size,
-      removeDays: removeDays.size,
-      cleanupQueue: cleanupQueue.size,
-      contentHash: contentHashCache.size,
     },
     process: {
       pid: process.pid,

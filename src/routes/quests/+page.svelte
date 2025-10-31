@@ -10,9 +10,9 @@
 		networkQuestsStore,
 		initializeQuestSharing,
 		updateSharedQuests
-	} from '$lib/commons/v5/quest-stores.svelte';
+	} from '$lib/modules/quests/quest-stores.svelte';
 	import { generateQuests } from '$lib/services/quest-service';
-	import type { Quest as QuestType, QuestType as QuestTypeEnum } from '$lib/commons/v5/quest-schemas';
+	import type { Quest as QuestType, QuestType as QuestTypeEnum } from '$lib/modules/quests/quest-schemas';
 	
 	// State
 	let generating = false;

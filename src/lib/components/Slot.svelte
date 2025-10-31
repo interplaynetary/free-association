@@ -1,13 +1,12 @@
 <script lang="ts">
-	import type { AvailabilitySlot } from '$lib/commons/v5/schemas';
-	import { AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
+	import type { AvailabilitySlot } from '$lib/protocol/schemas';
+	import { AvailabilitySlotSchema } from '$lib/protocol/schemas';
 	import { derived } from 'svelte/store';
 	// V5: Composition feature not yet implemented
 	// import SlotCompositionItem from '$lib/components/SlotCompositionItem.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import CountrySelector from '$lib/components/CountrySelector.svelte';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
-	import { createCompositionTargetsDataProvider } from '$lib/utils/ui-providers.svelte';
 	import { t } from '$lib/translations';
 
 	// V5: Composition feature not yet implemented in v5
@@ -20,9 +19,9 @@
 	// } from '$lib/state/core.svelte';
 	
 	// V5: Import capacity stores from v5
-	import { myCommitmentStore, networkCommitments, getAllCommitmentsRecord } from '$lib/commons/v5/stores.svelte';
+	import { myCommitmentStore, networkCommitments, getAllCommitmentsRecord } from '$lib/protocol/stores.svelte';
 	import { get } from 'svelte/store';
-	import { getUserName, userNamesOrAliasesCache } from '$lib/state/users.svelte';
+	import { getUserName, userNamesOrAliasesCache } from '$lib/network/users.svelte';
 
 	interface Props {
 		slot: AvailabilitySlot;

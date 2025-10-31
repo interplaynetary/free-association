@@ -38,6 +38,7 @@
 	 */
 	
 	import { onMount } from 'svelte';
+	import { holsterUserPub } from '$lib/network/holster.svelte'
 	import {
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
@@ -47,14 +48,13 @@
 		networkCommitments,
 		networkNeedSlots,
 		networkCapacitySlots,
-		holsterUserPub,
 		initializeAllocationStores,
 		enableAutoCommitmentComposition,
 		composeCommitmentFromSources,
 		setMyNeedSlots,        // ✅ NEW: Helper to update need slots
 		setMyCapacitySlots     // ✅ NEW: Helper to update capacity slots
-	} from '$lib/commons/v5/stores.svelte';
-	import type { NeedSlot, AvailabilitySlot, Commitment } from '$lib/commons/v5/schemas';
+	} from '$lib/protocol/stores.svelte';
+	import type { NeedSlot, AvailabilitySlot, Commitment } from '$lib/protocol/schemas';
 	
 	// Reactive state (Svelte 5 runes)
 	let needSlots = $state<NeedSlot[]>([]);

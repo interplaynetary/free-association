@@ -6,16 +6,16 @@
 		myCapacitySlotsStore,
 		networkCommitments,
 		getNetworkCommitmentsRecord
-	} from '$lib/commons/v5/stores.svelte';
-	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/commons/v5/tree';
+	} from '$lib/protocol/stores.svelte';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	import { searchTreeForNavigation } from '$lib/utils/treeSearch';
-	import { userAlias, userPub } from '$lib/state/auth.svelte';
+	import { searchTreeForNavigation } from '$lib/protocol/utils/filters/treeSearch';
+	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
-	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/commons/v5/schemas';
-	import { collectiveForest } from '$lib/commons/v5/collective/collective-tree.svelte';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/protocol/schemas';
+	import { collectiveForest } from '$lib/protocol/collective/collective-tree.svelte';
 	
 	// V5: Wrap Commitment with id for collection storage
 	type CommitmentWithId = Commitment & { id: string };
@@ -28,14 +28,14 @@
 			collection[capacity.id] = capacity;
 		}
 	}
-	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/state/users.svelte';
+	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/network/users.svelte';
 	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 	import {
 		getColorForUserId,
 		getColorForNameHash,
 		getContrastTextColor
-	} from '$lib/utils/colorUtils';
+	} from '$lib/utils/ui/colorUtils';
 	import { t } from '$lib/translations';
 
 	// V5: Create derived stores for backward compatibility

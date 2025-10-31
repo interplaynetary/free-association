@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { holsterUser, isHolsterAuthenticating, holsterUserAlias } from '$lib/commons/v5/holster.svelte';
-	import { DeciderWidget } from '$lib/commons/decider/components';
+	import { holsterUser, isHolsterAuthenticating, holsterUserAlias } from '$lib/network/holster.svelte';
+	import { DeciderWidget } from '$lib/modules/decider/components';
 	
 	// Unique identifier for this decision game
 	let gameId = 'dinner-decision-2024';

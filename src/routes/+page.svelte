@@ -5,7 +5,7 @@
 	import Capacities from '$lib/components/Capacities.svelte';
 	import Shares from '$lib/components/Shares.svelte';
 	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
-	import { myRecognitionTreeStore, myRecognitionWeights, myMutualRecognition } from '$lib/commons/v5/stores.svelte';
+	import { myRecognitionTreeStore, myRecognitionWeights, myMutualRecognition } from '$lib/protocol/stores.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';

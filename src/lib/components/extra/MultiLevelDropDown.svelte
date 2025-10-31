@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { getColorForUserId } from '../../utils/colorUtils';
+	import { getColorForUserId } from '../../utils/ui/colorUtils';
 	import { browser } from '$app/environment';
 	import type { Readable } from 'svelte/store';
 

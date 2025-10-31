@@ -8,9 +8,9 @@ import {
 	reorderNode, 
 	wouldCreateCycle,
 	createRootNode
-} from '$lib/commons/v5/tree';
-import { userPub } from '$lib/state/auth.svelte';
-import { myRecognitionTreeStore as userTree } from '$lib/commons/v5/stores.svelte';
+} from '$lib/protocol/tree';
+import { userPub } from '$lib/network/auth.svelte';
+import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
@@ -198,7 +198,7 @@ export const globalState = $state({
 
 		// Clear chat subscriptions on logout
 		if (browser) {
-			import('$lib/state/chat.svelte').then(({ clearAllChatSubscriptions }) => {
+			import('$lib/chat/chat.svelte').then(({ clearAllChatSubscriptions }) => {
 				clearAllChatSubscriptions();
 			});
 		}

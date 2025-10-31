@@ -1,7 +1,6 @@
 <script lang="ts">
-	import type { Quest } from '$lib/commons/v5/quest-schemas';
+	import type { Quest } from '$lib/modules/quests/quest-schemas';
 	import { completeQuest, archiveQuest, deleteQuest, updateQuestProgress } from '$lib/services/quest-service';
-	import { holsterUserAlias } from '$lib/commons/v5/holster.svelte';
 	import { get } from 'svelte/store';
 	
 	export let quest: Quest;

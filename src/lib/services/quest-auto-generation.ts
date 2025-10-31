@@ -6,7 +6,7 @@
  */
 
 import { get } from 'svelte/store';
-import { myRecognitionTreeStore, myCommitmentStore } from '$lib/commons/v5/stores.svelte';
+import { myRecognitionTreeStore, myCommitmentStore } from '$lib/protocol/stores.svelte';
 import { generateQuests } from './quest-service';
 
 export interface AutoGenerationSettings {

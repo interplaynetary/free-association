@@ -4,7 +4,7 @@
 		currentLocationText,
 		isLocationTracking,
 		locationError
-	} from '$lib/state/location.svelte';
+	} from '$lib/location/location.svelte';
 </script>
 
 <div class="location-demo">

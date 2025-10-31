@@ -3,8 +3,8 @@
 		getColorForNameHash,
 		getColorForUserId,
 		getDarkerColorForNameHash
-	} from '$lib/utils/colorUtils';
-	import { getUserName } from '$lib/state/users.svelte';
+	} from '$lib/utils/ui/colorUtils';
+	import { getUserName } from '$lib/network/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { pie, arc } from 'd3-shape';
 	import { t } from '$lib/translations';

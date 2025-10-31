@@ -12,7 +12,7 @@ import { get } from 'svelte/store';
 import { 
 	myRecognitionTreeStore,
 	myCommitmentStore
-} from '$lib/commons/v5/stores.svelte';
+} from '$lib/protocol/stores.svelte';
 import {
 	myMainQuestsStore,
 	mySideQuestsStore,
@@ -20,11 +20,11 @@ import {
 	questSharingSettingsStore,
 	networkQuestsStore,
 	updateSharedQuests
-} from '$lib/commons/v5/quest-stores.svelte';
-import { aggregateLocations } from '$lib/utils/location-service';
-import type { Quest, QuestType } from '$lib/commons/v5/quest-schemas';
-import type { AvailabilitySlot, NeedSlot } from '$lib/commons/v5/schemas';
-import { seed as itcSeed, event as itcEvent } from '$lib/commons/utils/itc';
+} from '$lib/modules/quests/quest-stores.svelte';
+import { aggregateLocations } from '$lib/modules/quests/location-service';
+import type { Quest, QuestType } from '$lib/modules/quests/quest-schemas';
+import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/schemas';
+import { seed as itcSeed, event as itcEvent } from '$lib/utils/primitives/itc';
 
 export interface QuestGenerationOptions {
 	maxQuests?: number;

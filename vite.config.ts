@@ -15,9 +15,7 @@ export default defineConfig({
 			filename: 'service-worker.ts',
 			injectManifest: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-				globIgnores: ['**/node_modules/**/*'],
-				// Vite PWA docs recommend specifying manifest injection point
-				injectionPoint: undefined
+				globIgnores: ['**/node_modules/**/*']
 			},
 			// Include specific assets (vite-pwa docs pattern)
 			includeAssets: ['favicon.png', 'robots.txt'],

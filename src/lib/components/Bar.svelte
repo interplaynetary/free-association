@@ -27,8 +27,8 @@
 </script>
 
 <script lang="ts">
-	import { userNamesOrAliasesCache, getUserName } from '$lib/state/users.svelte';
-	import { getColorForUserId } from '$lib/utils/colorUtils';
+	import { userNamesOrAliasesCache, getUserName } from '$lib/network/users.svelte';
+	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 
 	// Define the interface for bar segments
 	interface BarSegment {

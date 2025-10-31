@@ -1,17 +1,70 @@
 import Holster from "@mblaney/holster/src/holster.js"
-import {env} from "$env/dynamic/private"
 import type {AccountData, InviteCode} from "$lib/server/schemas/holster"
+import { building, dev } from '$app/environment';
 
 // ============================================================================
-// Holster Instance
+// Lazy Holster Initialization (avoid startup during build/prerender)
 // ============================================================================
 
-export const holster = Holster({secure: true, memoryLimit: 1536})
-export const user = holster.user()
+let _holster: any = null;
+let _user: any = null;
+let _initialized = false;
 
-export const username = env.HOLSTER_USER_NAME ?? "host"
-export const password = env.HOLSTER_USER_PASSWORD ?? "password"
-export const host = env.APP_HOST ?? "http://localhost:3000"
+function initializeHolsterIfNeeded() {
+  if (building) return; // Skip during build/prerender
+  if (_initialized) return;
+  
+  _holster = Holster({secure: true, memoryLimit: 1536});
+  _user = _holster.user();
+  _initialized = true;
+}
+
+// Lazy getters that initialize on first access
+export const holster = new Proxy({} as any, {
+  get(_, prop) {
+    if (building) {
+      // During build/prerender, return no-op functions
+      return typeof prop === 'string' && prop !== 'then' ? () => {} : undefined;
+    }
+    initializeHolsterIfNeeded();
+    const value = _holster?.[prop];
+    // Bind functions to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(_holster);
+    }
+    return value;
+  }
+});
+
+export const user = new Proxy({} as any, {
+  get(_, prop) {
+    if (building) {
+      // During build/prerender, return no-op functions
+      return typeof prop === 'string' && prop !== 'then' ? () => {} : undefined;
+    }
+    initializeHolsterIfNeeded();
+    const value = _user?.[prop];
+    // Bind functions to preserve 'this' context
+    if (typeof value === 'function') {
+      return value.bind(_user);
+    }
+    return value;
+  }
+});
+
+// Get env vars at runtime (not during build/prerender)
+function getEnvVar(name: string, defaultValue: string): string {
+  if (building) return defaultValue;
+  try {
+    return process.env[name] ?? defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+export const username = getEnvVar('HOLSTER_USER_NAME', 'host')
+export const password = getEnvVar('HOLSTER_USER_PASSWORD', 'password')
+export const host = getEnvVar('APP_HOST', 'http://localhost:3000')
 
 // ============================================================================
 // Account Management Caches

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Commitment, AvailabilitySlot } from '$lib/commons/v5/schemas';
-	import { CommitmentSchema, AvailabilitySlotSchema } from '$lib/commons/v5/schemas';
+	import type { Commitment, AvailabilitySlot } from '$lib/protocol/schemas';
+	import { CommitmentSchema, AvailabilitySlotSchema } from '$lib/protocol/schemas';
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
@@ -8,15 +8,15 @@
 	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
-	import { Rules } from '$lib/utils/filters';
+	import { Rules } from '$lib/protocol/utils/filters/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { createSubtreesDataProvider } from '$lib/utils/ui-providers.svelte';
+	import { createSubtreesDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { getReactiveUnreadCount } from '$lib/state/chat.svelte';
+	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
 	import { t } from '$lib/translations';
 	// V5: Import from auth.svelte (already v5/Holster-only)
-	import { userPub } from '$lib/state/auth.svelte';
+	import { userPub } from '$lib/network/auth.svelte';
 	
 	// V5 Pure Types - No Backward Compatibility
 	type CommitmentWithId = Commitment & { id: string };

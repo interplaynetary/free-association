@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { NeedType } from '$lib/commons/v5/schemas';
+  import type { NeedType } from '$lib/protocol/schemas';
   
   interface Props {
     /** Currently selected need type ID */
