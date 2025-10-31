@@ -97,20 +97,20 @@
 		}
 	});
 
-	// Growth state
+	// Resizing state
 	let touchStartTime = $state(0);
 	let isTouching = $state(false);
-	let activeGrowthNodeId = $state<string | null>(null);
-	let isGrowing = $state(false);
-	let isShrinkingActive = $state(false);
-	let growthInterval = $state<number | null>(null);
-	let growthTimeout = $state<number | null>(null);
+	let resizeNodeId = $state<string | null>(null);
+	let resizeInterval = $state<number>(0);
+	let resizeTimeout = $state<number>(0);
+	let isResizing = $state(false);
+	let initialTouchY = $state(0);
+	let currentTouchY = $state(0);
 
-	// Growth constants
-	const GROWTH_DELAY = 350;
-	const GROWTH_TICK = 16;
-	const BASE_GROWTH_RATE = 0.03;
-	const BASE_SHRINK_RATE = -0.03;
+	// Resize constants
+	const RESIZE_DELAY = 250;
+	const RESIZE_TICK = 16;
+	const RESIZE_RATE_PER_PIXEL = 0.003;
 	const TAP_THRESHOLD = 250;
 
 	// Drag state (now using global state)
@@ -285,47 +285,12 @@
 	// Track active interaction to prevent duplicate events
 	let activePointerId: number | null = $state(null);
 	let interactionHandled = $state(false);
-	let isMultiTouch = $state(false);
-
-	// Global touch tracking for multi-touch shrinking
-	function handleGlobalTouchStart(event: TouchEvent) {
-		// Update global multi-touch state
-		const wasMultiTouch = isMultiTouch;
-		isMultiTouch = event.touches.length === 2;
-		console.log(
-			'[DEBUG] Global TouchStart - touches:',
-			event.touches.length,
-			'Multi-touch detected:',
-			isMultiTouch,
-			'was:',
-			wasMultiTouch
-		);
-
-		// If we're currently growing and multi-touch is detected, switch to shrinking
-		if (isMultiTouch && !wasMultiTouch && isGrowing && !isShrinkingActive) {
-			console.log('[DEBUG] Switching from growing to shrinking due to multi-touch');
-			isShrinkingActive = true;
-		}
-	}
-
-	function handleGlobalMultiTouchEnd(event: TouchEvent) {
-		// Reset multi-touch state when fingers are lifted globally
-		if (event.touches.length < 2) {
-			const wasMultiTouch = isMultiTouch;
-			isMultiTouch = false;
-			console.log('[DEBUG] Global TouchEnd - Multi-touch ended, was:', wasMultiTouch);
-		}
-	}
 
 	onMount(() => {
 		// Set up event listeners
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
 		document.addEventListener('touchcancel', handleGlobalTouchEnd);
-
-		// Global touch tracking for multi-touch shrinking
-		document.addEventListener('touchstart', handleGlobalTouchStart);
-		document.addEventListener('touchend', handleGlobalMultiTouchEnd);
 
 		// Start label cycling interval
 		const interval = setInterval(() => {
@@ -342,15 +307,12 @@
 
 		return () => {
 			// Clean up timers and event listeners
-			if (growthInterval !== null) clearInterval(growthInterval);
-			if (growthTimeout !== null) clearTimeout(growthTimeout);
+			clearTimeout(resizeTimeout);
+			clearInterval(resizeInterval);
 			clearInterval(interval);
 			document.removeEventListener('mouseup', handleGlobalTouchEnd);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
 			document.removeEventListener('touchcancel', handleGlobalTouchEnd);
-			// Clean up global multi-touch listeners
-			document.removeEventListener('touchstart', handleGlobalTouchStart);
-			document.removeEventListener('touchend', handleGlobalMultiTouchEnd);
 			// Clean up drag listeners
 			document.removeEventListener('pointermove', handleDragMove);
 			document.removeEventListener('pointerup', handleDragEnd);
@@ -1313,93 +1275,82 @@
 		return hasChanges;
 	}
 
-	// Growth handlers
-	function startGrowth(node: d3.HierarchyRectangularNode<VisualizationNode>, isShrinking = false) {
-		// Don't allow growth in delete mode
-		if (globalState.deleteMode) return;
+	function applyResize(node: d3.HierarchyRectangularNode<VisualizationNode>) {
+		// Stop if no longer touching
+		if (!isTouching) {
+			stopResizing();
+			return;
+		}
 
-		// Don't allow growth in recompose mode
-		if (globalState.recomposeMode) return;
+		// Calculate resize rate based on current size
+		const pointerDistance = initialTouchY - currentTouchY;
+		const rate = pointerDistance * RESIZE_RATE_PER_PIXEL;
+		const currentPoints = node.data.points;
 
-		// Don't allow growth when dragging
-		if (globalState.isDragging) return;
+		const newPoints = Math.max(1, currentPoints + rate);
 
-		// Clear existing growth state
-		if (growthInterval !== null) clearInterval(growthInterval);
-		if (growthTimeout !== null) clearTimeout(growthTimeout);
-		isGrowing = false;
-		isShrinkingActive = false;
+		if (isNaN(newPoints)) {
+			console.error('Resize calculation resulted in NaN:', {
+				currentPoints,
+				rate,
+			});
+			return;
+		}
 
-		// Only run timeouts in browser environment
-		if (!browser) return;
-
-		// Set growth delay
-		growthTimeout = window.setTimeout(() => {
-			// Only start growing if still touching same node
-			if (isTouching && activeGrowthNodeId === node.data.id) {
-				isGrowing = true;
-				isShrinkingActive = isShrinking;
-
-				growthInterval = window.setInterval(() => {
-					// Stop if no longer touching
-					if (!isTouching) {
-						stopGrowth();
-						return;
-					}
-
-					// Calculate growth rate based on current size
-					let rate;
-					const currentPoints = node.data.points;
-					if (isShrinking) {
-						// For consistent relative change, use current points * constant rate
-						// This means it takes the same time to halve in size regardless of starting size
-						rate = currentPoints * BASE_SHRINK_RATE;
-					} else {
-						// For consistent relative change, use current points * constant rate
-						// This means it takes the same time to double in size regardless of starting size
-						rate = currentPoints * BASE_GROWTH_RATE;
-					}
-
-					const newPoints = Math.max(1, currentPoints + rate);
-
-					if (isNaN(newPoints)) {
-						console.error('Growth calculation resulted in NaN:', {
-							currentPoints,
-							rate,
-							isShrinking
-						});
-						return;
-					}
-
-					// Always update to ensure animation runs smoothly
-					updateNodePoints(node, newPoints);
-				}, GROWTH_TICK);
-			}
-		}, GROWTH_DELAY);
+		// Always update to ensure animation runs smoothly
+		updateNodePoints(node, newPoints);
 	}
 
-	function stopGrowth() {
-		isTouching = false;
+	function startResizing(node: d3.HierarchyRectangularNode<VisualizationNode>) {
+		// Don't allow resize in delete mode or when dragging
+		if (globalState.deleteMode || globalState.isDragging) return;
 
-		// Save final points if growing
-		if (isGrowing && activeGrowthNodeId && hierarchyData) {
+		// Don't allow resize in recompose mode
+		if (globalState.recomposeMode) return;
+
+		// Clear existing resize state
+		clearInterval(resizeInterval);
+		clearTimeout(resizeTimeout);
+		isResizing = false;
+
+		// Only run in browser environment
+		if (!browser) return;
+
+		// Set initial position
+		initialTouchY = currentTouchY;
+
+		// Set resize delay
+		resizeTimeout = window.setTimeout(() => {
+			// Only start resize if still touching same node
+			if (isTouching && resizeNodeId === node.data.id) {
+				isResizing = true;
+				// Set resize delay
+				resizeInterval = window.setInterval(() => applyResize(node), RESIZE_TICK)
+			}
+		}, RESIZE_DELAY);
+	}
+
+	function stopResizing() {
+		// Save final points if we were resizing
+		if (isResizing && resizeNodeId && hierarchyData) {
 			const nodeToUpdate = hierarchyData.children?.find(
 				(child: d3.HierarchyRectangularNode<VisualizationNode>) =>
-					child.data.id === activeGrowthNodeId
+					child.data.id === resizeNodeId
 			);
 
-			if (nodeToUpdate && nodeToUpdate.data && nodeToUpdate.data.id) {
+			if (nodeToUpdate?.data?.id) {
 				saveNodePoints(nodeToUpdate.data.id, nodeToUpdate.data.points);
 			}
 		}
 
-		// Reset growth state
-		activeGrowthNodeId = null;
-		if (growthTimeout !== null) clearTimeout(growthTimeout);
-		if (growthInterval !== null) clearInterval(growthInterval);
-		growthInterval = null;
-		isGrowing = false;
-		isShrinkingActive = false;
+		// Reset all states
+		isTouching = false;
+		isResizing = false;
+		resizeNodeId = null;
+		
+		// Clear any active timeouts/intervals
+		clearInterval(resizeInterval);
+		resizeInterval = 0;
 	}
 
 	function updateNodePoints(node: d3.HierarchyRectangularNode<VisualizationNode>, points: number) {
@@ -1442,44 +1393,12 @@
 		const isInTreemap = target?.closest('.treemap-container') !== null;
 
 		if (isTouching && isInTreemap) {
-			stopGrowth();
+			stopResizing();
 			resetInteractionState();
 		}
 	}
 
-	// Handle touch start to detect multi-touch gestures
-	function handleTouchStart(
-		event: TouchEvent,
-		node: d3.HierarchyRectangularNode<VisualizationNode>
-	) {
-		// Detect multi-touch for shrinking
-		const wasMultiTouch = isMultiTouch;
-		isMultiTouch = event.touches.length === 2;
-
-		console.log(
-			'[DEBUG] TouchStart - touches:',
-			event.touches.length,
-			'isMultiTouch:',
-			isMultiTouch,
-			'wasMultiTouch:',
-			wasMultiTouch
-		);
-
-		// If we just detected multi-touch, make sure we're in shrinking mode
-		if (isMultiTouch && !wasMultiTouch) {
-			console.log('[DEBUG] Multi-touch detected - will trigger shrinking');
-		}
-	}
-
-	// Handle touch end to reset multi-touch state
-	function handleTouchEnd(event: TouchEvent) {
-		// Reset multi-touch state when fingers are lifted
-		if (event.touches.length < 2) {
-			isMultiTouch = false;
-		}
-	}
-
-	function handleGrowthStart(
+	function handleResizeStart(
 		event: PointerEvent,
 		node: d3.HierarchyRectangularNode<VisualizationNode>
 	) {
@@ -1490,8 +1409,6 @@
 			event.button,
 			'pointerType:',
 			event.pointerType,
-			'isMultiTouch:',
-			isMultiTouch
 		);
 
 		const target = event.target as HTMLElement;
@@ -1499,9 +1416,9 @@
 		// Only handle primary pointer to prevent duplicates (for non-fulfillment events)
 		if (!event.isPrimary) return;
 
-		// Don't handle growth interactions when in edit mode
+		// Don't handle resize interactions when in edit mode
 		if (globalState.editMode) {
-			console.log('[DEBUG PARENT] Ignoring growth start - in edit mode');
+			console.log('[DEBUG PARENT] Ignoring resizing start - in edit mode');
 			return;
 		}
 
@@ -1552,7 +1469,7 @@
 		// Set interaction state
 		isTouching = true;
 		touchStartTime = Date.now();
-		activeGrowthNodeId = node.data.id;
+		resizeNodeId = node.data.id;
 
 		// Track initial position for movement detection
 		initialPointerX = event.clientX;
@@ -1570,44 +1487,29 @@
 			setTimeout(() => {
 				if (!interactionHandled) return; // Interaction was cancelled
 
-				// Unified processing - support both right-click and multi-touch for shrinking
-				const isShrinking = event.button === 2 || isMultiTouch;
-				console.log(
-					'[DEBUG] Touch processing (delayed) - isShrinking:',
-					isShrinking,
-					'button:',
-					event.button,
-					'isMultiTouch:',
-					isMultiTouch
-				);
-
-				// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+				// In recompose mode, don't start resizing - we'll handle drag vs navigation in handleResizeEnd
 				if (!globalState.recomposeMode) {
-					// Start growth with proper shrinking detection
-					startGrowth(node, isShrinking);
+					// Start resizing
+					startResizing(node);
 				}
 			}, 50); // 50ms delay to allow touch events to complete
 		} else {
 			// For mouse events, process immediately
-			const isShrinking = event.button === 2 || isMultiTouch;
 			console.log(
-				'[DEBUG] Mouse processing (immediate) - isShrinking:',
-				isShrinking,
+				'[DEBUG] Mouse processing (immediate):',
 				'button:',
-				event.button,
-				'isMultiTouch:',
-				isMultiTouch
+				event.button
 			);
 
-			// In recompose mode, don't start growth - we'll handle drag vs navigation in handleGrowthEnd
+			// In recompose mode, don't start resizing - we'll handle drag vs navigation in handleResizeEnd
 			if (!globalState.recomposeMode) {
-				// Start growth immediately for mouse
-				startGrowth(node, isShrinking);
+				// Start resizing immediately for mouse
+				startResizing(node);
 			}
 		}
 	}
 
-	function handleGrowthEnd(event: PointerEvent) {
+	function handleResizeEnd(event: PointerEvent) {
 		// Only handle if this is our active pointer
 		if (!event.isPrimary || event.pointerId !== activePointerId) return;
 
@@ -1644,18 +1546,18 @@
 			return;
 		}
 
-		// Check if this was a short tap (for navigation) or long press (for growth)
+		// Check if this was a short tap (for navigation) or long press (for resizing)
 		const touchDuration = Date.now() - touchStartTime;
-		const wasGrowthEvent = touchDuration >= TAP_THRESHOLD || isGrowing;
+		const wasResizeEvent = touchDuration >= TAP_THRESHOLD || isResizing;
 
-		// Get the nodeId before stopping growth
-		const nodeId = activeGrowthNodeId;
+		// Get the nodeId before stopping resizing
+		const nodeId = resizeNodeId;
 
-		// Always stop growth
-		stopGrowth();
+		// Always stop resizing
+		stopResizing();
 
 		// For short taps, trigger navigation, deletion, or recompose
-		if (!wasGrowthEvent && nodeId) {
+		if (!wasResizeEvent && nodeId) {
 			if (globalState.deleteMode) {
 				// Handle deletion
 				handleNodeDeletion(nodeId);
@@ -1680,7 +1582,6 @@
 	function resetInteractionState() {
 		activePointerId = null;
 		interactionHandled = false;
-		isMultiTouch = false;
 		hasMovedSignificantly = false;
 
 		// Remove recompose movement listener if it exists
@@ -1704,8 +1605,8 @@
 			hasMovedSignificantly = true;
 
 			// Find the node to start dragging
-			if (activeGrowthNodeId) {
-				const node = hierarchyData?.children?.find((child) => child.data.id === activeGrowthNodeId);
+			if (resizeNodeId) {
+				const node = hierarchyData?.children?.find((child) => child.data.id === resizeNodeId);
 				if (node) {
 					console.log('[RECOMPOSE] Movement detected, starting drag');
 					// Remove the movement listener since we're starting a drag
@@ -1951,8 +1852,7 @@
 							globalState.draggedNodeId !== child.data.id}
 						class:being-dragged={globalState.isDragging &&
 							globalState.draggedNodeId === child.data.id}
-						class:growing={isGrowing && activeGrowthNodeId === child.data.id && !isShrinkingActive}
-						class:shrinking={isGrowing && activeGrowthNodeId === child.data.id && isShrinkingActive}
+						class:resizing={isResizing && resizeNodeId === child.data.id}
 						data-node-id={child.data.id}
 						role="button"
 						tabindex="0"
@@ -1964,10 +1864,15 @@
 							height: {(child.y1 - child.y0) * 100}%;
 							box-sizing: border-box;
 						"
-						onpointerdown={(e) => handleGrowthStart(e, child)}
-						onpointerup={(e) => handleGrowthEnd(e)}
-						ontouchstart={(e) => handleTouchStart(e, child)}
-						ontouchend={(e) => handleTouchEnd(e)}
+						onpointerdown={(e) => {
+							handleResizeStart(e, child);
+							initialTouchY = e.clientY;
+							currentTouchY = e.clientY;
+						}}
+						onpointerup={(e) => handleResizeEnd(e)}
+						onpointermove={(e) => {
+							currentTouchY = e.clientY;
+						}}
 						oncontextmenu={(e) => e.preventDefault()}
 					>
 						<Child
@@ -2107,16 +2012,10 @@
 		pointer-events: none;
 	}
 
-	:global(.clickable.growing) {
+	:global(.clickable.resizing) {
 		z-index: 10;
 		box-shadow: 0 0 12px rgba(0, 100, 255, 0.5);
 		border: 2px solid rgba(0, 100, 255, 0.7);
-	}
-
-	:global(.clickable.shrinking) {
-		z-index: 10;
-		box-shadow: 0 0 12px rgba(255, 60, 60, 0.5);
-		border: 2px solid rgba(255, 60, 60, 0.7);
 	}
 
 	.empty-state {
