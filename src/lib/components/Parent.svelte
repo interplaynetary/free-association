@@ -90,10 +90,10 @@
 
 		if (contributorMode === 'anti-contributor') {
 			// V5: anti_contributors is Contributor[], extract IDs
-			return (nonRootNode.anti_contributors || []).map(c => c.id);
+			return (nonRootNode.anti_contributors || []).map((c) => c.id);
 		} else {
 			// V5: contributors is Contributor[], extract IDs
-			return (nonRootNode.contributors || []).map(c => c.id);
+			return (nonRootNode.contributors || []).map((c) => c.id);
 		}
 	});
 
@@ -165,12 +165,12 @@
 			id: child.id,
 			points: child.type === 'NonRootNode' ? (child as NonRootNode).points : 0,
 			nodeName: child.name,
-			contributors: child.type === 'NonRootNode' 
-				? (child as NonRootNode).contributors.map(c => c.id) 
-				: [],
-			antiContributors: child.type === 'NonRootNode' 
-				? ((child as NonRootNode).anti_contributors || []).map(c => c.id) 
-				: [],
+			contributors:
+				child.type === 'NonRootNode' ? (child as NonRootNode).contributors.map((c) => c.id) : [],
+			antiContributors:
+				child.type === 'NonRootNode'
+					? ((child as NonRootNode).anti_contributors || []).map((c) => c.id)
+					: [],
 			children: [] as VisualizationNode[],
 			hasChildren: child.children.length > 0 // Check if this child has children in the full tree
 		}));
@@ -371,7 +371,9 @@
 					userTree.set(populated);
 					const chosen = availableTemplates.find((t) => t.id === selectedTemplateId);
 					globalState.showToast(
-						$t('tree.template_loaded', { template: chosen ? `${chosen.emoji} ${chosen.label}` : selectedTemplateId } as any),
+						$t('tree.template_loaded', {
+							template: chosen ? `${chosen.emoji} ${chosen.label}` : selectedTemplateId
+						} as any),
 						'success'
 					);
 				} else {
@@ -437,10 +439,7 @@
 			// Find the current node in our cloned tree
 			const updatedCurrentNode = findNodeById(updatedTree, currentNodeId);
 			if (!updatedCurrentNode) {
-				globalState.showToast(
-					$t('tree.error_node_not_found_tree'),
-					'error'
-				);
+				globalState.showToast($t('tree.error_node_not_found_tree'), 'error');
 				return;
 			}
 
@@ -497,10 +496,10 @@
 			// Force update
 			triggerUpdate();
 
-		// Clear edit mode
-		globalState.exitEditMode();
+			// Clear edit mode
+			globalState.exitEditMode();
 
-		globalState.showToast($t('tree.node_renamed', { name: newName } as any), 'success');
+			globalState.showToast($t('tree.node_renamed', { name: newName } as any), 'success');
 		} catch (err) {
 			console.error(`Error updating name for node ${nodeId}:`, err);
 			globalState.showToast($t('tree.error_updating_name'), 'error');
@@ -555,13 +554,16 @@
 			console.log(`[MANUAL-FULFILLMENT-DEBUG] Setting updated tree in store`);
 			userTree.set(updatedTree);
 
-		// Force update
-		triggerUpdate();
+			// Force update
+			triggerUpdate();
 
-		// Only show notification if requested (e.g., on drag end, not during drag)
-		if (showNotification) {
-			globalState.showToast($t('tree.fulfillment_set', { value: Math.round(value * 100) } as any), 'success');
-		}
+			// Only show notification if requested (e.g., on drag end, not during drag)
+			if (showNotification) {
+				globalState.showToast(
+					$t('tree.fulfillment_set', { value: Math.round(value * 100) } as any),
+					'success'
+				);
+			}
 		} catch (err) {
 			console.error(`Error updating manual fulfillment for node ${nodeId}:`, err);
 			if (showNotification) {
@@ -620,17 +622,17 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-		// Find the node to update
-		const node = findNodeById(updatedTree, nodeId);
-		if (!node || node.type !== 'NonRootNode') return;
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-		// V5: Filter out contributor from Contributor[] array {id, points}
-		const updatedContributors = ((node as NonRootNode).contributors || []).filter(
-			(contributor) => contributor.id !== contributorId
-		);
+			// V5: Filter out contributor from Contributor[] array {id, points}
+			const updatedContributors = ((node as NonRootNode).contributors || []).filter(
+				(contributor) => contributor.id !== contributorId
+			);
 
-		// Update the node's contributors
-		(node as NonRootNode).contributors = updatedContributors;
+			// Update the node's contributors
+			(node as NonRootNode).contributors = updatedContributors;
 
 			// Run deduplication to ensure no duplicates exist
 			deduplicateContributorsInTree(updatedTree);
@@ -657,17 +659,17 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-		// Find the node to update
-		const node = findNodeById(updatedTree, nodeId);
-		if (!node || node.type !== 'NonRootNode') return;
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-		// V5: Filter out anti-contributor from Contributor[] array {id, points}
-		const updatedAntiContributors = ((node as NonRootNode).anti_contributors || []).filter(
-			(contributor) => contributor.id !== contributorId
-		);
+			// V5: Filter out anti-contributor from Contributor[] array {id, points}
+			const updatedAntiContributors = ((node as NonRootNode).anti_contributors || []).filter(
+				(contributor) => contributor.id !== contributorId
+			);
 
-		// Update the node's anti-contributors
-		(node as NonRootNode).anti_contributors = updatedAntiContributors;
+			// Update the node's anti-contributors
+			(node as NonRootNode).anti_contributors = updatedAntiContributors;
 
 			// Run deduplication to ensure no duplicates exist
 			deduplicateContributorsInTree(updatedTree);
@@ -830,12 +832,12 @@
 					);
 					userTree.set(updatedTree);
 					triggerUpdate();
+				}
 			}
-		}
 
-		globalState.showToast($t('tree.contact_created', { name: detail.name } as any), 'success');
+			globalState.showToast($t('tree.contact_created', { name: detail.name } as any), 'success');
 
-		// Automatically add the new contact to the active node based on current mode
+			// Automatically add the new contact to the active node based on current mode
 			if (activeNodeId) {
 				if (contributorMode === 'anti-contributor') {
 					addAntiContributorToNode(activeNodeId, newContact.contact_id);
@@ -845,7 +847,10 @@
 			}
 		} catch (error) {
 			console.error('[CONTACT] Error creating contact:', error);
-			globalState.showToast($t('tree.error_creating_contact', { error: (error as Error).message } as any), 'error');
+			globalState.showToast(
+				$t('tree.error_creating_contact', { error: (error as Error).message } as any),
+				'error'
+			);
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -858,7 +863,10 @@
 			globalState.showToast($t('tree.contact_renamed', { name: detail.name } as any), 'success');
 		} catch (error) {
 			console.error('[CONTACT] Error updating contact:', error);
-			globalState.showToast($t('tree.error_updating_contact', { error: (error as Error).message } as any), 'error');
+			globalState.showToast(
+				$t('tree.error_updating_contact', { error: (error as Error).message } as any),
+				'error'
+			);
 			throw error; // Re-throw so the dropdown can handle it
 		}
 	}
@@ -974,7 +982,10 @@
 			console.log('[CONTACT] Contact deletion completed successfully');
 		} catch (error) {
 			console.error('[CONTACT] Error deleting contact:', error);
-			globalState.showToast($t('tree.error_deleting_contact', { error: (error as Error).message } as any), 'error');
+			globalState.showToast(
+				$t('tree.error_deleting_contact', { error: (error as Error).message } as any),
+				'error'
+			);
 		}
 	}
 
@@ -1022,23 +1033,23 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-		// Find the node to update
-		const node = findNodeById(updatedTree, nodeId);
-		if (!node || node.type !== 'NonRootNode') return;
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-		// V5: Check if contributor already exists in Contributor[] array {id, points}
-		const nonRootNode = node as NonRootNode;
-		const hasContributor = (nonRootNode.contributors || []).some(c => c.id === userId);
+			// V5: Check if contributor already exists in Contributor[] array {id, points}
+			const nonRootNode = node as NonRootNode;
+			const hasContributor = (nonRootNode.contributors || []).some((c) => c.id === userId);
 
-		if (!hasContributor) {
-			// V5: Get current contributor IDs and add the new one
-			const currentContributorIds = (nonRootNode.contributors || []).map(c => c.id);
-			const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map(c => c.id);
-			currentContributorIds.push(userId);
+			if (!hasContributor) {
+				// V5: Get current contributor IDs and add the new one
+				const currentContributorIds = (nonRootNode.contributors || []).map((c) => c.id);
+				const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map((c) => c.id);
+				currentContributorIds.push(userId);
 
-			// Use the protocol function to properly add contributors AND clear children
-			// This ensures the node becomes a proper leaf contribution node
-			addContributors(node, currentContributorIds, currentAntiContributorIds);
+				// Use the protocol function to properly add contributors AND clear children
+				// This ensures the node becomes a proper leaf contribution node
+				addContributors(node, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1064,23 +1075,23 @@
 			// Create a clone of the tree to ensure reactivity
 			const updatedTree = structuredClone(tree);
 
-		// Find the node to update
-		const node = findNodeById(updatedTree, nodeId);
-		if (!node || node.type !== 'NonRootNode') return;
+			// Find the node to update
+			const node = findNodeById(updatedTree, nodeId);
+			if (!node || node.type !== 'NonRootNode') return;
 
-		// V5: Check if anti-contributor already exists in Contributor[] array {id, points}
-		const nonRootNode = node as NonRootNode;
-		const hasAntiContributor = (nonRootNode.anti_contributors || []).some(c => c.id === userId);
+			// V5: Check if anti-contributor already exists in Contributor[] array {id, points}
+			const nonRootNode = node as NonRootNode;
+			const hasAntiContributor = (nonRootNode.anti_contributors || []).some((c) => c.id === userId);
 
-		if (!hasAntiContributor) {
-			// V5: Get current contributor IDs and add the new anti-contributor
-			const currentContributorIds = (nonRootNode.contributors || []).map(c => c.id);
-			const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map(c => c.id);
-			currentAntiContributorIds.push(userId);
+			if (!hasAntiContributor) {
+				// V5: Get current contributor IDs and add the new anti-contributor
+				const currentContributorIds = (nonRootNode.contributors || []).map((c) => c.id);
+				const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map((c) => c.id);
+				currentAntiContributorIds.push(userId);
 
-			// Use the protocol function to properly add both types AND clear children
-			// This ensures the node becomes a proper leaf contribution node
-			addContributors(node, currentContributorIds, currentAntiContributorIds);
+				// Use the protocol function to properly add both types AND clear children
+				// This ensures the node becomes a proper leaf contribution node
+				addContributors(node, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1212,52 +1223,52 @@
 			return deduplicatedContributors;
 		}
 
-	// V5: Recursive function to deduplicate contributors in Contributor[] arrays {id, points}
-	function deduplicateNodeContributors(node: Node): void {
-		// Only NonRootNodes have contributors and anti_contributors
-		if (node.type === 'NonRootNode') {
-			const nonRootNode = node as NonRootNode;
+		// V5: Recursive function to deduplicate contributors in Contributor[] arrays {id, points}
+		function deduplicateNodeContributors(node: Node): void {
+			// Only NonRootNodes have contributors and anti_contributors
+			if (node.type === 'NonRootNode') {
+				const nonRootNode = node as NonRootNode;
 
-			// Deduplicate regular contributors (V5: keep first occurrence, preserve points)
-			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
-				const seen = new Set<string>();
-				const originalLength = nonRootNode.contributors.length;
-				nonRootNode.contributors = nonRootNode.contributors.filter(contributor => {
-					if (seen.has(contributor.id)) {
-						return false; // Duplicate, remove it
+				// Deduplicate regular contributors (V5: keep first occurrence, preserve points)
+				if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {
+					const seen = new Set<string>();
+					const originalLength = nonRootNode.contributors.length;
+					nonRootNode.contributors = nonRootNode.contributors.filter((contributor) => {
+						if (seen.has(contributor.id)) {
+							return false; // Duplicate, remove it
+						}
+						seen.add(contributor.id);
+						return true;
+					});
+
+					if (nonRootNode.contributors.length !== originalLength) {
+						hasChanges = true;
+						console.log(
+							`[DEDUP] Node '${node.name}' (${node.id}) contributors: ${originalLength} → ${nonRootNode.contributors.length}`
+						);
 					}
-					seen.add(contributor.id);
-					return true;
-				});
-				
-				if (nonRootNode.contributors.length !== originalLength) {
-					hasChanges = true;
-					console.log(
-						`[DEDUP] Node '${node.name}' (${node.id}) contributors: ${originalLength} → ${nonRootNode.contributors.length}`
-					);
+				}
+
+				// Deduplicate anti-contributors (V5: keep first occurrence, preserve points)
+				if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
+					const seen = new Set<string>();
+					const originalLength = nonRootNode.anti_contributors.length;
+					nonRootNode.anti_contributors = nonRootNode.anti_contributors.filter((contributor) => {
+						if (seen.has(contributor.id)) {
+							return false; // Duplicate, remove it
+						}
+						seen.add(contributor.id);
+						return true;
+					});
+
+					if (nonRootNode.anti_contributors.length !== originalLength) {
+						hasChanges = true;
+						console.log(
+							`[DEDUP] Node '${node.name}' (${node.id}) anti-contributors: ${originalLength} → ${nonRootNode.anti_contributors.length}`
+						);
+					}
 				}
 			}
-
-			// Deduplicate anti-contributors (V5: keep first occurrence, preserve points)
-			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
-				const seen = new Set<string>();
-				const originalLength = nonRootNode.anti_contributors.length;
-				nonRootNode.anti_contributors = nonRootNode.anti_contributors.filter(contributor => {
-					if (seen.has(contributor.id)) {
-						return false; // Duplicate, remove it
-					}
-					seen.add(contributor.id);
-					return true;
-				});
-				
-				if (nonRootNode.anti_contributors.length !== originalLength) {
-					hasChanges = true;
-					console.log(
-						`[DEDUP] Node '${node.name}' (${node.id}) anti-contributors: ${originalLength} → ${nonRootNode.anti_contributors.length}`
-					);
-				}
-			}
-		}
 
 			// Recursively deduplicate all child nodes
 			if (node.children && node.children.length > 0) {
@@ -1292,7 +1303,7 @@
 		if (isNaN(newPoints)) {
 			console.error('Resize calculation resulted in NaN:', {
 				currentPoints,
-				rate,
+				rate
 			});
 			return;
 		}
@@ -1325,7 +1336,7 @@
 			if (isTouching && resizeNodeId === node.data.id) {
 				isResizing = true;
 				// Set resize delay
-				resizeInterval = window.setInterval(() => applyResize(node), RESIZE_TICK)
+				resizeInterval = window.setInterval(() => applyResize(node), RESIZE_TICK);
 			}
 		}, RESIZE_DELAY);
 	}
@@ -1334,8 +1345,7 @@
 		// Save final points if we were resizing
 		if (isResizing && resizeNodeId && hierarchyData) {
 			const nodeToUpdate = hierarchyData.children?.find(
-				(child: d3.HierarchyRectangularNode<VisualizationNode>) =>
-					child.data.id === resizeNodeId
+				(child: d3.HierarchyRectangularNode<VisualizationNode>) => child.data.id === resizeNodeId
 			);
 
 			if (nodeToUpdate?.data?.id) {
@@ -1347,7 +1357,7 @@
 		isTouching = false;
 		isResizing = false;
 		resizeNodeId = null;
-		
+
 		// Clear any active timeouts/intervals
 		clearInterval(resizeInterval);
 		resizeInterval = 0;
@@ -1408,7 +1418,7 @@
 			'button:',
 			event.button,
 			'pointerType:',
-			event.pointerType,
+			event.pointerType
 		);
 
 		const target = event.target as HTMLElement;
@@ -1495,11 +1505,7 @@
 			}, 50); // 50ms delay to allow touch events to complete
 		} else {
 			// For mouse events, process immediately
-			console.log(
-				'[DEBUG] Mouse processing (immediate):',
-				'button:',
-				event.button
-			);
+			console.log('[DEBUG] Mouse processing (immediate):', 'button:', event.button);
 
 			// In recompose mode, don't start resizing - we'll handle drag vs navigation in handleResizeEnd
 			if (!globalState.recomposeMode) {
@@ -1833,13 +1839,13 @@
 						<button class="play-button" onclick={handleCreateNewTree}>
 							<span class="play-text">Play! ✨</span>
 						</button>
-					<div class="template-select">
-						<select class="template-select-input" bind:value={selectedTemplateId}>
-							{#each availableTemplates as t}
-								<option value={t.id}>{t.emoji} {t.label}</option>
-							{/each}
-						</select>
-					</div>
+						<div class="template-select">
+							<select class="template-select-input" bind:value={selectedTemplateId}>
+								{#each availableTemplates as t}
+									<option value={t.id}>{t.emoji} {t.label}</option>
+								{/each}
+							</select>
+						</div>
 					</div>
 				</div>
 			{:else if hierarchyData && hierarchyData.children && hierarchyData.children.length > 0}
