@@ -83,7 +83,7 @@
 		"@capacitor/core": "^7.4.0",
 		"@capacitor/ios": "^7.4.0",
 		"@jsonquerylang/jsonquery": "^5.0.4",
-		"@mblaney/holster": "^1.0.21",
+		"@mblaney/holster": "1.0.22",
 		"@peerbit/document": "^9.6.2",
 		"@types/bcryptjs": "^3.0.0",
 		"@types/d3": "^7.4.3",
