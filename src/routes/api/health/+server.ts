@@ -1,17 +1,36 @@
-import {json} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
-import {requestStats} from "$lib/server/holster/core"
+/**
+ * Unified Health Check Endpoint
+ * 
+ * GET /api/health - Check health of all services
+ * GET /api/health?services=ai,llm - Check specific services
+ */
 
-export const GET: RequestHandler = async () => {
-  const uptime = process.uptime()
-  const memUsage = process.memoryUsage()
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from '@sveltejs/kit';
+import { checkHealth, getAvailableServices } from '$lib/server/health';
 
-  return json({
-    status: "ok",
-    uptime: Math.round(uptime),
-    memory: Math.round(memUsage.rss / 1024 / 1024),
-    requests: requestStats.totalRequests,
-    timestamp: Date.now(),
-  })
-}
-
+export const GET: RequestHandler = async ({ url }) => {
+  const servicesParam = url.searchParams.get('services');
+  const services = servicesParam
+    ? servicesParam.split(',').map(s => s.trim())
+    : undefined;
+  
+  // Validate requested services
+  if (services) {
+    const available = getAvailableServices();
+    const invalid = services.filter(s => !available.includes(s));
+    
+    if (invalid.length > 0) {
+      return json({
+        error: `Unknown services: ${invalid.join(', ')}`,
+        available
+      }, { status: 400 });
+    }
+  }
+  
+  const health = await checkHealth(services);
+  
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  
+  return json(health, { status: statusCode });
+};

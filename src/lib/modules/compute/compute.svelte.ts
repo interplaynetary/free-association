@@ -945,8 +945,14 @@ export class ComputationGraphRuntime {
 	setVariable(name: string, value: any): void {
 		const variable = this.variables.get(name);
 		if (variable && variable.type === 'value') {
-			(variable.store as any).set(value);
-			console.log(`[REACTIVE-COMPUTE] Updated variable: ${name}`);
+			// Value variables use writable stores
+			const writableStore = variable.store as Writable<any>;
+			if ('set' in writableStore) {
+				writableStore.set(value);
+				console.log(`[REACTIVE-COMPUTE] Updated variable: ${name}`);
+			} else {
+				console.error(`[REACTIVE-COMPUTE] Store for ${name} is not writable`);
+			}
 		} else {
 			console.warn(`[REACTIVE-COMPUTE] Cannot set non-value variable: ${name}`);
 		}

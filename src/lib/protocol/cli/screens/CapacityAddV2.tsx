@@ -109,7 +109,7 @@ export const CapacityAddV2: React.FC<CapacityAddProps> = ({ existingCapacity, on
 					options: RECURRENCE_OPTIONS,
 					onExit: (state, value: string) => ({
 						...state,
-						recurrence: value === 'none' ? null : value as any
+						recurrence: value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly'
 					})
 				},
 				// Conditional schedule node (only if recurrence is not null)

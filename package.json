@@ -95,6 +95,7 @@
 		"autoprefixer": "^10.4.21",
 		"bcryptjs": "^3.0.2",
 		"bits-ui": "^1.4.6",
+		"caniuse-lite": "^1.0.30001752",
 		"countries-and-timezones": "^3.8.0",
 		"d3": "^7.9.0",
 		"d3-shape": "^3.2.0",

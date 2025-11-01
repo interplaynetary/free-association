@@ -1,47 +1,33 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {createInviteCodesSchema} from "$lib/server/schemas/holster"
-import {user} from "$lib/server/holster/core"
 import {createInviteCodes} from "$lib/server/holster/invite-codes"
-import {checkAuth} from "$lib/server/holster/auth"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import {getAccountByCodeOrFail} from "$lib/server/holster/db"
 
-export const POST: RequestHandler = async (event) => {
-  const authError = checkAuth(event)
-  if (authError) return authError
+export const POST = createPOSTHandler(
+  createInviteCodesSchema,
+  async ({data}) => {
+    const {code, count} = data
 
-  const body = await event.request.json()
-  const result = createInviteCodesSchema.safeParse(body)
+    const account = await getAccountByCodeOrFail(code)
 
-  if (!result.success) {
-    const firstError = result.error.errors[0]
-    error(400, firstError.message)
+    if ((account as any).validate) {
+      error(400, "Email not validated")
+    }
+
+    if (await createInviteCodes(count, code, account as any)) {
+      return ""
+    }
+
+    error(
+      500,
+      "Error creating codes. Please check logs for errors and try again",
+    )
+  },
+  {
+    requireAuth: true,
+    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    emptyResponse: true
   }
-
-  const {code, count} = result.data
-
-  if (!user.is) {
-    error(500, "Host error")
-  }
-
-  const account = await new Promise(res => {
-    user.get("accounts").next(code, res)
-  })
-
-  if (!account || !(account as any).epub) {
-    error(404, "Account not found")
-  }
-
-  if ((account as any).validate) {
-    error(400, "Email not validated")
-  }
-
-  if (await createInviteCodes(count, code, account as any)) {
-    return text("")
-  }
-
-  error(
-    500,
-    "Error creating codes. Please check logs for errors and try again",
-  )
-}
+)
 

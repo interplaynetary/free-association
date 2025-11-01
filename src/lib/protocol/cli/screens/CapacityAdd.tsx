@@ -148,7 +148,7 @@ export const CapacityAdd: React.FC<CapacityAddProps> = ({ existingCapacity, onSa
 	};
 
 	const handleRecurrenceSelect = (value: string) => {
-		const rec = value === 'none' ? null : value as any;
+		const rec = value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly';
 		setCapacity({
 			...capacity,
 			recurrence: rec
@@ -270,7 +270,7 @@ export const CapacityAdd: React.FC<CapacityAddProps> = ({ existingCapacity, onSa
 
 		{step === 'schedule' && capacity.recurrence && (
 			<TimeScheduleBuilder
-				recurrence={capacity.recurrence as any}
+				recurrence={capacity.recurrence}
 				existingSchedule={capacity.availability_window}
 				onComplete={handleScheduleComplete}
 				onCancel={onCancel}

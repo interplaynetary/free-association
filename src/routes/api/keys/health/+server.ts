@@ -4,6 +4,8 @@ import { getPoolStatus } from '$lib/server/key-pool/manager';
 
 /**
  * GET /api/keys/health - Service health check
+ * 
+ * @deprecated Use GET /api/health?services=key-pool instead
  */
 export const GET: RequestHandler = async () => {
   const poolStatus = getPoolStatus();

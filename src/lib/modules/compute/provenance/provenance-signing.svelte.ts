@@ -103,7 +103,9 @@ export function hashString(str: string): Hash {
  * @returns Canonical event body
  */
 export function extractEventBody(event: Partial<ProvenanceEvent>): EventBody {
-	const { id, sig, ...body } = event as any;
+	// Extract id and sig if they exist, keeping only the body fields
+	const eventRecord = event as Record<string, unknown>;
+	const { id, sig, ...body } = eventRecord;
 	return body as EventBody;
 }
 

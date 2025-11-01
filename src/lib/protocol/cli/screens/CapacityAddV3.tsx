@@ -93,7 +93,7 @@ export const CapacityAddV3: React.FC<CapacityAddProps> = ({ existingCapacity, on
 			.options(RECURRENCE_OPTIONS)
 			.update((state, value) => ({
 				...state,
-				recurrence: value === 'none' ? null : value as any
+				recurrence: value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly'
 			}))
 			.build(),
 

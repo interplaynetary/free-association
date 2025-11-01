@@ -1,99 +1,73 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {updatePasswordSchema} from "$lib/server/schemas/holster"
 import {user, holster} from "$lib/server/holster/core"
+import {holsterNext, holsterNextPut, holsterDecrypt, ensureAuthenticated} from "$lib/server/holster/db"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
 
-export const POST: RequestHandler = async ({request}) => {
-  const body = await request.json()
-  const result = updatePasswordSchema.safeParse(body)
+export const POST = createPOSTHandler(
+  updatePasswordSchema,
+  async ({data: requestData}) => {
+    const {code, reset, pub, epub, username: userName, name} = requestData
 
-  if (!result.success) {
-    const firstError = result.error.errors[0]
-    error(400, firstError.message)
-  }
+    ensureAuthenticated()
 
-  const {code, reset, pub, epub, username: userName, name} = result.data
+    const account = await holsterNext("accounts", code)
 
-  if (!user.is) {
-    error(500, "Host error")
-  }
+    if (!account) {
+      error(404, "Account not found")
+    }
 
-  const account = await new Promise(res => {
-    user.get("accounts").next(code, res)
-  })
+    if (!(account as any).reset) {
+      error(404, "Reset code not found")
+    }
 
-  if (!account) {
-    error(404, "Account not found")
-  }
+    if (!(account as any).expiry || (account as any).expiry < Date.now()) {
+      error(400, "Reset code has expired")
+    }
 
-  if (!(account as any).reset) {
-    error(404, "Reset code not found")
-  }
+    const resetCode = await holsterDecrypt((account as any).reset, user.is)
+    if (resetCode !== reset) {
+      error(400, "Reset code does not match")
+    }
 
-  if (!(account as any).expiry || (account as any).expiry < Date.now()) {
-    error(400, "Reset code has expired")
-  }
+    const accountData = {
+      pub,
+      epub,
+      username: userName,
+      name,
+      prev: (account as any).pub,
+    }
 
-  const resetCode = await holster.SEA.decrypt((account as any).reset, user.is)
-  if (resetCode !== reset) {
-    error(400, "Reset code does not match")
-  }
+    // Update account
+    await holsterNextPut("accounts", code, accountData)
 
-  const data = {
-    pub,
-    epub,
-    username: userName,
-    name,
-    prev: (account as any).pub,
-  }
+    // Update account map
+    await holsterNextPut("map", "account:" + pub, code)
 
-  return new Promise((resolve, reject) => {
+    // Update shared invite codes for this account (async operation)
     user
-      .get("accounts")
-      .next(code)
-      .put(data, (err: any) => {
-        if (err) {
-          console.log(err)
-          error(500, "Host error")
-        }
+      .get("shared")
+      .next("invite_codes")
+      .next(code, async (codes: any) => {
+        if (codes) {
+          const oldSecret = await holster.SEA.secret(account, user.is)
+          const newSecret = await holster.SEA.secret(accountData, user.is)
+          
+          for (const [key, encrypted] of Object.entries(codes)) {
+            if (!key || !encrypted) continue
 
-        user
-          .get("map")
-          .next("account:" + pub)
-          .put(code, (err: any) => {
-            if (err) {
-              console.log(err)
-              error(500, "Host error")
+            try {
+              const dec = await holster.SEA.decrypt(encrypted, oldSecret)
+              const shared = await holster.SEA.encrypt(dec, newSecret)
+              await holsterNextPut("shared", ["invite_codes", code, key].join('/'), shared)
+            } catch (err) {
+              console.log('Error re-encrypting shared code:', err)
             }
-
-            // Also update shared invite codes for this account.
-            user
-              .get("shared")
-              .next("invite_codes")
-              .next(code, async (codes: any) => {
-                if (codes) {
-                  const oldSecret = await holster.SEA.secret(account, user.is)
-                  const newSecret = await holster.SEA.secret(data, user.is)
-                  for (const [key, encrypted] of Object.entries(codes)) {
-                    if (!key || !encrypted) continue
-
-                    const dec = await holster.SEA.decrypt(encrypted, oldSecret)
-                    const shared = await holster.SEA.encrypt(dec, newSecret)
-                    const err = await new Promise(res => {
-                      user
-                        .get("shared")
-                        .next("invite_codes")
-                        .next(code)
-                        .next(key)
-                        .put(shared, res)
-                    })
-                    if (err) console.log(err)
-                  }
-                }
-                resolve(text((account as any).pub))
-              })
-          })
+          }
+        }
       })
-  })
-}
+
+    return {previousPub: (account as any).pub}
+  }
+)
 

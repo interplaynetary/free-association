@@ -1,118 +1,93 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {claimInviteCodeSchema} from "$lib/server/schemas/holster"
 import {user, holster, inviteCodes, host} from "$lib/server/holster/core"
+import {holsterNext, holsterNextPut, holsterEncrypt, ensureAuthenticated, holsterDelete} from "$lib/server/holster/db"
 import {newCode, validateEmail} from "$lib/server/holster/utils"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
 
-export const POST: RequestHandler = async ({request}) => {
-  const body = await request.json()
-  const result = claimInviteCodeSchema.safeParse(body)
+export const POST = createPOSTHandler(
+  claimInviteCodeSchema,
+  async ({data: requestData}) => {
+    const {code, pub, epub, username: userName, email} = requestData
+    const invite = inviteCodes.get(code)
 
-  if (!result.success) {
-    const firstError = result.error.errors[0]
-    error(400, firstError.message)
-  }
+    if (!invite) {
+      error(404, "Invite code not found")
+    }
 
-  const {code, pub, epub, username: userName, email} = result.data
-  const invite = inviteCodes.get(code)
+    ensureAuthenticated()
 
-  if (!invite) {
-    error(404, "Invite code not found")
-  }
+    // Prepare account data
+    const validate = newCode()
+    const encValidate = await holsterEncrypt(validate, user.is)
+    const encEmail = await holsterEncrypt(email, user.is)
+    
+    const accountData = {
+      pub,
+      epub,
+      username: userName,
+      name: userName,
+      email: encEmail,
+      validate: encValidate,
+      ref: invite.owner,
+      host: host,
+      feeds: 10,
+      subscribed: 0,
+    }
 
-  if (!user.is) {
-    error(500, "Host error")
-  }
+    // Create account
+    await holsterNextPut("accounts", code, accountData)
 
-  const validate = newCode()
-  const encValidate = await holster.SEA.encrypt(validate, user.is)
-  const encEmail = await holster.SEA.encrypt(email, user.is)
-  const data = {
-    pub,
-    epub,
-    username: userName,
-    name: userName,
-    email: encEmail,
-    validate: encValidate,
-    ref: invite.owner,
-    host: host,
-    feeds: 10,
-    subscribed: 0,
-  }
+    // Map code to user's public key for easier login
+    await holsterNextPut("map", "account:" + pub, code)
 
-  let err = await new Promise(res => {
-    user.get("accounts").next(code).put(data, res)
-  })
-  if (err) {
-    console.log(err)
-    error(500, "Host error")
-  }
+    // Send validation email
+    validateEmail(userName, email, code, validate)
 
-  // Also map the code to the user's public key to make login easier.
-  err = await new Promise(res => {
+    // Remove invite code from available codes
+    await holsterDelete("available", ["invite_codes", invite.key].join('/'))
+
+    // Remove from in-memory cache
+    inviteCodes.delete(code)
+    
+    if (code === "admin") {
+      return ""
+    }
+
+    // Clean up shared codes from invite owner (async operation)
+    const ownerAccount = await holsterNext("accounts", invite.owner)
+    
+    if (!ownerAccount || !(ownerAccount as any).epub) {
+      console.log(`Account not found for invite.owner: ${invite.owner}`)
+      return ""
+    }
+
+    // Remove from shared codes asynchronously
     user
-      .get("map")
-      .next("account:" + pub)
-      .put(code, res)
-  })
-  if (err) {
-    console.log(err)
-    error(500, "Host error")
-  }
+      .get("shared")
+      .next("invite_codes")
+      .next(invite.owner, async (codes: any) => {
+        if (!codes) return
 
-  validateEmail(userName, email, code, validate)
+        try {
+          const secret = await holster.SEA.secret(ownerAccount, user.is)
+          
+          for (const [key, encrypted] of Object.entries(codes)) {
+            if (!key || !encrypted) continue
 
-  // Remove invite code as it's no longer available.
-  err = await new Promise(res => {
-    user.get("available").next("invite_codes").next(invite.key).put(null, res)
-  })
-  if (err) {
-    console.log(err)
-    error(500, "Host error")
-  }
-
-  inviteCodes.delete(code)
-  if (code === "admin") {
-    return text("")
-  }
-
-  // Also remove from shared codes of the invite owner.
-  const account = await new Promise(res => {
-    user.get("accounts").next(invite.owner, res)
-  })
-  if (!account || !(account as any).epub) {
-    console.log(`Account not found for invite.owner: ${invite.owner}`)
-    return text("")
-  }
-
-  user
-    .get("shared")
-    .next("invite_codes")
-    .next(invite.owner, async (codes: any) => {
-      if (!codes) return
-
-      const secret = await holster.SEA.secret(account, user.is)
-      let found = false
-      for (const [key, encrypted] of Object.entries(codes)) {
-        if (found) break
-
-        if (!key || !encrypted) continue
-
-        let shared = await holster.SEA.decrypt(encrypted, secret)
-        if (code === shared) {
-          found = true
-          user
-            .get("shared")
-            .next("invite_codes")
-            .next(invite.owner)
-            .next(key)
-            .put(null, (err: any) => {
-              if (err) console.log(err)
-            })
+            const shared = await holster.SEA.decrypt(encrypted, secret)
+            if (code === shared) {
+              await holsterDelete("shared", ["invite_codes", invite.owner, key].join('/'))
+              break
+            }
+          }
+        } catch (err) {
+          console.log('Error cleaning up shared invite code:', err)
         }
-      }
-    })
+      })
 
-  return text("")
-}
+    return ""
+  },
+  {emptyResponse: true}
+)
 

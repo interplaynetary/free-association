@@ -148,7 +148,7 @@ export const NeedAdd: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCancel
 	};
 
 	const handleRecurrenceSelect = (value: string) => {
-		const rec = value === 'none' ? null : value as any;
+		const rec = value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly';
 		setNeed({
 			...need,
 			recurrence: rec
@@ -270,7 +270,7 @@ export const NeedAdd: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCancel
 
 		{step === 'schedule' && need.recurrence && (
 			<TimeScheduleBuilder
-				recurrence={need.recurrence as any}
+				recurrence={need.recurrence}
 				existingSchedule={need.availability_window}
 				onComplete={handleScheduleComplete}
 				onCancel={onCancel}

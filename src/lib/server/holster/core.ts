@@ -52,19 +52,11 @@ export const user = new Proxy({} as any, {
   }
 });
 
-// Get env vars at runtime (not during build/prerender)
-function getEnvVar(name: string, defaultValue: string): string {
-  if (building) return defaultValue;
-  try {
-    return process.env[name] ?? defaultValue;
-  } catch {
-    return defaultValue;
-  }
-}
+import { config } from '../config';
 
-export const username = getEnvVar('HOLSTER_USER_NAME', 'host')
-export const password = getEnvVar('HOLSTER_USER_PASSWORD', 'password')
-export const host = getEnvVar('APP_HOST', 'http://localhost:3000')
+export const username = config.holsterUsername
+export const password = config.holsterPassword
+export const host = config.appHost
 
 // ============================================================================
 // Account Management Caches

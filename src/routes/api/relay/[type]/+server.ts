@@ -1,8 +1,9 @@
 import {json, error} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import type {RequestHandler} from "@sveltejs/kit"
 import {getRegistry} from "$lib/server/data-relay"
 import {user} from "$lib/server/holster/core"
-import {checkAuth} from "$lib/server/holster/auth"
+import {createGETHandler} from "$lib/server/middleware/request-handler"
+import {requireAuthEvent} from "$lib/server/middleware/unified-auth"
 
 /**
  * Generic Data Relay Endpoint
@@ -19,9 +20,8 @@ import {checkAuth} from "$lib/server/holster/auth"
  * - POST /api/relay/iot-sensor
  */
 export const POST: RequestHandler = async (event) => {
-  // Check for authentication (customize based on your needs)
-  const authError = checkAuth(event)
-  if (authError) return authError
+  // Check for authentication
+  requireAuthEvent(event, {allowBasic: true, allowJwt: false, allowApiKey: false})
 
   const {type} = event.params
   const data = await event.request.json()
@@ -64,20 +64,22 @@ export const POST: RequestHandler = async (event) => {
  *
  * GET /api/relay/{type}
  */
-export const GET: RequestHandler = async (event) => {
-  // Check for authentication
-  const authError = checkAuth(event)
-  if (authError) return authError
+export const GET = createGETHandler(
+  async ({event}) => {
+    const {type} = event.params
 
-  const {type} = event.params
+    const registry = getRegistry(user)
+    const stats = registry.getEngineStats(type)
 
-  const registry = getRegistry(user)
-  const stats = registry.getEngineStats(type)
+    if (!stats) {
+      error(404, `Unknown relay type: ${type}`)
+    }
 
-  if (!stats) {
-    error(404, `Unknown relay type: ${type}`)
+    return stats
+  },
+  {
+    requireAuth: true,
+    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false}
   }
-
-  return json(stats)
-}
+)
 

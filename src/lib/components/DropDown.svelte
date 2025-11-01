@@ -880,7 +880,15 @@
 								<div
 									class="member-item"
 									class:selected={isMemberInCollective(item.id)}
+									role="button"
+									tabindex="0"
 									onclick={() => handleToggleMemberInCollective(item.id)}
+									onkeydown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											handleToggleMemberInCollective(item.id);
+										}
+									}}
 								>
 									<div
 										class="color-dot"

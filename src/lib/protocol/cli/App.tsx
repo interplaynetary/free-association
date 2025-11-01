@@ -44,7 +44,7 @@ export const App: React.FC = () => {
 				'bob-pub-key': 0.6,
 				'carol-pub-key': 0.4
 			},
-			itcStamp: null as any,
+			itcStamp: { id: 1, event: 0 },
 			timestamp: Date.now()
 		},
 		'bob-pub-key': {
@@ -68,7 +68,7 @@ export const App: React.FC = () => {
 				'alice-pub-key': 0.7,
 				'carol-pub-key': 0.3
 			},
-			itcStamp: null as any,
+			itcStamp: { id: 1, event: 0 },
 			timestamp: Date.now()
 		},
 		'carol-pub-key': {
@@ -112,7 +112,7 @@ export const App: React.FC = () => {
 				'alice-pub-key': 0.5,
 				'bob-pub-key': 0.5
 			},
-			itcStamp: null as any,
+			itcStamp: { id: 1, event: 0 },
 			timestamp: Date.now()
 		}
 	};

@@ -1,25 +1,20 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {checkCodesSchema} from "$lib/server/schemas/holster"
-import {user} from "$lib/server/holster/core"
 import {checkCodes} from "$lib/server/holster/invite-codes"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import {ensureAuthenticated} from "$lib/server/holster/db"
 
-export const POST: RequestHandler = async ({request}) => {
-  const body = await request.json()
-  const result = checkCodesSchema.safeParse(body)
+export const POST = createPOSTHandler(
+  checkCodesSchema,
+  async ({data}) => {
+    ensureAuthenticated()
 
-  if (!result.success) {
-    error(400, "codes required")
-  }
+    if (await checkCodes(data.codes)) {
+      return ""
+    }
 
-  if (!user.is) {
-    error(500, "Host error")
-  }
-
-  if (await checkCodes(result.data.codes)) {
-    return text("") // ok
-  }
-
-  error(400, "duplicate code found")
-}
+    error(400, "duplicate code found")
+  },
+  {emptyResponse: true}
+)
 

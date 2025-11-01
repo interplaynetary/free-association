@@ -1,51 +1,26 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {updateFeedLimitSchema} from "$lib/server/schemas/holster"
-import {user} from "$lib/server/holster/core"
-import {checkAuth} from "$lib/server/holster/auth"
+import {getAccountByCodeOrFail, holsterNextPut} from "$lib/server/holster/db"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
 
-export const POST: RequestHandler = async (event) => {
-  const authError = checkAuth(event)
-  if (authError) return authError
+export const POST = createPOSTHandler(
+  updateFeedLimitSchema,
+  async ({data}) => {
+    const {code, limit} = data
 
-  const body = await event.request.json()
-  const result = updateFeedLimitSchema.safeParse(body)
+    const account = await getAccountByCodeOrFail(code)
 
-  if (!result.success) {
-    const firstError = result.error.errors[0]
-    error(400, firstError.message)
+    if ((account as any).validate) {
+      error(400, "Email not validated")
+    }
+
+    await holsterNextPut("accounts", code, {feeds: limit})
+    return ""
+  },
+  {
+    requireAuth: true,
+    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    emptyResponse: true
   }
-
-  const {code, limit} = result.data
-
-  if (!user.is) {
-    error(500, "Host error")
-  }
-
-  const account = await new Promise(res => {
-    user.get("accounts").next(code, res)
-  })
-
-  if (!account) {
-    error(404, "Account not found")
-  }
-
-  if ((account as any).validate) {
-    error(400, "Email not validated")
-  }
-
-  return new Promise((resolve, reject) => {
-    user
-      .get("accounts")
-      .next(code)
-      .put({feeds: limit}, (err: any) => {
-        if (err) {
-          console.log(err)
-          error(500, "Error updating feed limit")
-        }
-
-        resolve(text(""))
-      })
-  })
-}
+)
 

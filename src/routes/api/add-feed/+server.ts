@@ -2,11 +2,12 @@ import {error, json} from "@sveltejs/kit"
 import type {RequestHandler} from "./$types"
 import {addFeedSchema, addFeedResponseSchema} from "$lib/server/schemas/holster"
 import {user, holster} from "$lib/server/holster/core"
-import {env} from "$env/dynamic/private"
+import {config} from "$lib/server/config"
+import {holsterNext, holsterNextPut, holsterVerify} from "$lib/server/holster/db"
 
-const addFeedUrl = env.ADD_FEED_URL
-const addFeedID = env.ADD_FEED_ID
-const addFeedApiKey = env.ADD_FEED_API_KEY
+const addFeedUrl = config.addFeedUrl
+const addFeedID = config.addFeedId
+const addFeedApiKey = config.addFeedApiKey
 
 export const POST: RequestHandler = async ({request}) => {
   const body = await request.json()
@@ -23,15 +24,13 @@ export const POST: RequestHandler = async ({request}) => {
     error(500, "Host error")
   }
 
-  const account = await new Promise(res => {
-    user.get("accounts").next(code, res)
-  })
+  const account = await holsterNext("accounts", code)
 
   if (!account) {
     return json({error: "Account not found"}, {status: 404})
   }
 
-  const url = await holster.SEA.verify(signedUrl, account)
+  const url = await holsterVerify(signedUrl, account)
   if (!url) {
     return json({error: "Could not verify signed url"}, {status: 400})
   }
@@ -83,31 +82,14 @@ export const POST: RequestHandler = async ({request}) => {
       subscriber_count: 1,
     }
 
-    return new Promise((resolve, reject) => {
-      user
-        .get("feeds")
-        .next(feed.add.url)
-        .put(data, (err: any) => {
-          if (err) {
-            console.log(err)
-            resolve(json({error: "Error saving feed"}, {status: 500}))
-            return
-          }
-
-          user
-            .get("accounts")
-            .next(code)
-            .put({subscribed: (account as any).subscribed + 1}, (err: any) => {
-              if (err) {
-                console.log(err)
-                resolve(json({error: "Error adding to account subscribed"}, {status: 500}))
-                return
-              }
-
-              resolve(json(feed))
-            })
-        })
-    })
+    try {
+      await holsterNextPut("feeds", feed.add.url, data)
+      await holsterNextPut("accounts", code, {subscribed: (account as any).subscribed + 1})
+      return json(feed)
+    } catch (err) {
+      console.log(err)
+      return json({error: "Error saving feed"}, {status: 500})
+    }
   } catch (err) {
     console.log(err)
     return json({error: "Error adding feed"}, {status: 500})

@@ -2,16 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { QuestGenerationRequestSchema, QuestSchema, type Quest } from '$lib/modules/quests/quest-schemas';
 import { checkGeneralRateLimit, checkAiRateLimit } from '$lib/server/middleware/rate-limit';
-
-// Import env vars for AI authentication
-let MASTER_API_KEY: string | undefined;
-
-try {
-	const env = await import('$env/static/private');
-	MASTER_API_KEY = env.MASTER_API_KEY;
-} catch (e) {
-	MASTER_API_KEY = undefined;
-}
+import { config } from '$lib/server/config';
 
 /**
  * POST /api/llm/quest-generation - Generate personalized quests
@@ -50,7 +41,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		
 		// Call unified AI completion endpoint
 		// The flow system handles everything: routing, prompts, execution, health
-		const masterKey = MASTER_API_KEY || 'dev-key-12345-change-me';
+		const masterKey = config.masterApiKey || 'dev-key-12345-change-me';
 		const aiResponse = await fetch('/api/ai/completion', {
 			method: 'POST',
 			headers: {

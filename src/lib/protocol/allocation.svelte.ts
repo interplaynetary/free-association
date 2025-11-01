@@ -503,14 +503,14 @@ export const myAllocationsAsProvider: Readable<{
 					pubKey: $myPub,
 					commitment: $myCommitment,
 					mutualRecognition: providerMR,
-					attributes: ($myCommitment as any)?.attributes || {}
+					attributes: ('attributes' in $myCommitment && $myCommitment.attributes) ? $myCommitment.attributes : {}
 				};
 				
 				const recipientContext: FilterContext = {
 					pubKey: recipientPub,
 					commitment: recipientCommitment,
 					mutualRecognition: providerMR,
-					attributes: (recipientCommitment as any)?.attributes || {}
+					attributes: ('attributes' in recipientCommitment && recipientCommitment.attributes) ? recipientCommitment.attributes : {}
 				};
 				
 				// Filter out slots that don't pass bilateral filters

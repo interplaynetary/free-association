@@ -455,13 +455,17 @@ class ReactiveP2PDecider {
 						return;
 					}
 
-					// Convert Gun-stored objects back to arrays
-					const gunData = data as any;
-					const normalizedData = {
-						...gunData,
-						participants: this.objectToArray(gunData.participants),
-						agenda: this.objectToArray(gunData.agenda),
-					};
+				// Convert Gun-stored objects back to arrays
+				// Gun stores arrays as objects with numeric keys
+				const gunData = data as Record<string, unknown> & {
+					participants?: Record<string, string> | string[];
+					agenda?: Record<string, string> | string[];
+				};
+				const normalizedData = {
+					...gunData,
+					participants: this.objectToArray(gunData.participants),
+					agenda: this.objectToArray(gunData.agenda),
+				};
 
 					const config = GameConfigSchema.parse(normalizedData);
 					

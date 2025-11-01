@@ -1,6 +1,6 @@
 import { derived } from 'svelte/store';
 import { userNetworkCapacitiesWithSlotQuantities } from '../core.svelte';
-import type { CapacitiesCollection, ProviderCapacity, BaseCapacity } from '$lib/protocol/schemas';
+import type { CapacitiesCollection, ProviderCapacity, BaseCapacity, AvailabilitySlot } from '$lib/protocol/schemas';
 
 // Import from the three modular systems
 import {
@@ -125,19 +125,19 @@ const hasLocationInfo = (capacity: any) =>
 			)
 	) ?? false;
 
-const hasScheduleInfo = (capacity: any) =>
+const hasScheduleInfo = (capacity: BaseCapacity) =>
 	capacity.capacity_slots?.some(
-		(slot: any) =>
-			!!(slot.start_date || slot.start_time || slot.end_date || slot.end_time || slot.all_day)
+		(slot) =>
+			!!(slot.start_date || slot.end_date || slot.availability_window)
 	) ?? false;
 
-const hasRecurrenceInfo = (capacity: any) =>
+const hasRecurrenceInfo = (capacity: BaseCapacity) =>
 	capacity.capacity_slots?.some(
-		(slot: any) => !!(slot.recurrence || slot.custom_recurrence_repeat_every)
+		(slot) => !!(slot.recurrence)
 	) ?? false;
 
-const hasQuantityInfo = (capacity: any) =>
-	capacity.capacity_slots?.some((slot: any) => slot.quantity != null) ?? false;
+const hasQuantityInfo = (capacity: BaseCapacity) =>
+	capacity.capacity_slots?.some((slot) => slot.quantity != null) ?? false;
 
 // ===== CAPACITY-SPECIFIC FUNCTIONS =====
 
@@ -146,19 +146,28 @@ export function createCapacityLookups(
 	customRanges?: Partial<Record<NumericProperty, RangeDefinition[]>>
 ): CapacityLookups {
 	// First, augment capacities with aggregated quantities for filtering
-	const augmentedCapacities: Record<string, any> = {};
+	const augmentedCapacities: Record<string, BaseCapacity & {
+		total_allocated_quantity?: number;
+		total_available_quantity?: number;
+	}> = {};
 
 	Object.entries(capacities).forEach(([capacityId, capacity]) => {
 		// Handle both timestamped and direct capacity data
-		const actualCapacity = (capacity as any)?.data || capacity;
+		// Capacity might be wrapped with a 'data' property or be the direct object
+		const actualCapacity = ('data' in capacity && capacity.data) ? capacity.data : capacity;
 
 		// Calculate total allocated and available quantities across all slots
 		let totalAllocated = 0;
 		let totalAvailable = 0;
 
-		actualCapacity.capacity_slots?.forEach((slot: any) => {
-			totalAllocated += slot.allocated_quantity || 0;
-			totalAvailable += slot.available_quantity || slot.quantity || 0;
+		actualCapacity.capacity_slots?.forEach((slot) => {
+			// Note: allocated_quantity and available_quantity may be added at runtime
+			const slotWithQuantities = slot as AvailabilitySlot & { 
+				allocated_quantity?: number; 
+				available_quantity?: number; 
+			};
+			totalAllocated += slotWithQuantities.allocated_quantity || 0;
+			totalAvailable += slotWithQuantities.available_quantity || slotWithQuantities.quantity || 0;
 		});
 
 		augmentedCapacities[capacityId] = {

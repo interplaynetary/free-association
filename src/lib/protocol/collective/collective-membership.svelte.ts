@@ -59,10 +59,10 @@ export class MRDMembershipModule {
         };
 
         // Initialize membership from provided seed
-        const membershipStatus: Record<string, boolean> = {};
+        const membershipStatus: Record<string, 'member' | 'candidate' | 'removed'> = {};
         const seedMembers: Set<string> = new Set(Array.isArray(currentMembers) ? currentMembers : Array.from(currentMembers));
         for (const p of participants) {
-            membershipStatus[p] = seedMembers.has(p);
+            membershipStatus[p] = seedMembers.has(p) ? 'member' : 'candidate';
         }
 
         let iterations = 0;
@@ -79,7 +79,7 @@ export class MRDMembershipModule {
             const previousStatus = { ...membershipStatus };
 
             const currentMembersIter: Set<string> = new Set(
-                Object.keys(membershipStatus).filter((p) => membershipStatus[p])
+                Object.keys(membershipStatus).filter((p) => membershipStatus[p] === 'member')
             );
 
             // Compute MRS per participant relative to current members
@@ -118,21 +118,71 @@ export class MRDMembershipModule {
             for (const p of participants) {
                 const value = averageMrs > 0 ? (mrs[p] ?? 0) / averageMrs : 0;
                 mrdScores[p] = value;
-                membershipStatus[p] = value >= (this.threshold - EPSILON);
+                membershipStatus[p] = value >= (this.threshold - EPSILON) ? 'member' : 'candidate';
             }
 
             // Detect change
             changed = Object.keys(membershipStatus).some((k) => membershipStatus[k] !== previousStatus[k]);
         }
 
+        // Compute members list, added, and removed
+        const members: string[] = Object.keys(membershipStatus).filter((p) => membershipStatus[p] === 'member');
+        const added: string[] = [];
+        const removed: string[] = [];
+        
+        // Compare with previous membership to determine added/removed
+        if (this.history.length > 0) {
+            const previousMembers = this.history[this.history.length - 1].members;
+            const previousMemberSet = new Set(previousMembers);
+            const currentMemberSet = new Set(members);
+            
+            for (const member of members) {
+                if (!previousMemberSet.has(member)) {
+                    added.push(member);
+                }
+            }
+            
+            for (const prevMember of previousMembers) {
+                if (!currentMemberSet.has(prevMember)) {
+                    removed.push(prevMember);
+                }
+            }
+        } else {
+            // First computation - all current members are "added"
+            added.push(...members);
+        }
+
+        // Compute health metrics
+        const mrdScoresArray = Object.values(mrdScores);
+        const mrsScoresArray = Object.values(mrs);
+        
+        const recognitionDensity = participants.size > 0 ? members.length / participants.size : 0;
+        const averageMRD = mrdScoresArray.length > 0 ? mrdScoresArray.reduce((a, b) => a + b, 0) / mrdScoresArray.length : 0;
+        
+        const mrdVariance = mrdScoresArray.length > 0
+            ? mrdScoresArray.reduce((sum, score) => sum + Math.pow(score - averageMRD, 2), 0) / mrdScoresArray.length
+            : 0;
+        
+        const memberStability = this.history.length > 0
+            ? 1 - (added.length + removed.length) / Math.max(this.history[this.history.length - 1].members.length, 1)
+            : 1;
+
         const output: MembershipOutput = {
-            membershipStatus,
+            timestamp: new Date(),
+            members,
+            added,
+            removed,
             mrdScores,
+            membershipStatus,
             mutualRecognitionScores: mrs,
             networkAverage: averageMrs,
-            threshold: this.threshold,
-            timestamp: new Date(),
-            iterations,
+            healthMetrics: {
+                recognitionDensity,
+                averageMRD,
+                mrdVariance,
+                memberStability,
+                memberCount: members.length
+            }
         };
 
         this.history.push(output);
@@ -142,7 +192,7 @@ export class MRDMembershipModule {
     isMember(participantId: string): boolean {
         if (this.history.length === 0) return false;
         const last = this.history[this.history.length - 1];
-        return !!last.membershipStatus[participantId];
+        return last.membershipStatus[participantId] === 'member';
     }
 
     getMrd(participantId: string): number {
@@ -198,48 +248,34 @@ export class MRDMembershipModule {
 
 // TypeScript health metrics helpers replacing prior Python examples
 export function calculateHealthMetrics(output: MembershipOutput): HealthMetrics {
-    const membershipValues: number[] = Object.values(output.membershipStatus).map(v => (v ? 1 : 0));
-    const mrsScores = Object.values(output.mutualRecognitionScores);
     const mrdScores = Object.values(output.mrdScores);
+    const memberCount = output.members.length;
+    const participantCount = Object.keys(output.membershipStatus).length;
 
-    const memberCount = membershipValues.reduce((a, b) => a + b, 0);
-    const participantCount = membershipValues.length;
-    const membershipRate = participantCount > 0 ? memberCount / participantCount : 0;
+    // Calculate averageMRD
+    const averageMRD = mrdScores.length > 0 
+        ? mrdScores.reduce((a, b) => a + b, 0) / mrdScores.length 
+        : 0;
 
-    const mean = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
-    const stdDev = (arr: number[]) => {
-        if (arr.length < 2) return 0;
-        const m = mean(arr);
-        const variance = arr.reduce((acc, v) => acc + (v - m) * (v - m), 0) / (arr.length - 1);
-        return Math.sqrt(variance);
-    };
-    const median = (arr: number[]) => {
-        if (!arr.length) return 0;
-        const sorted = [...arr].sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    };
+    // Calculate mrdVariance
+    const mrdVariance = mrdScores.length > 0
+        ? mrdScores.reduce((sum, score) => sum + Math.pow(score - averageMRD, 2), 0) / mrdScores.length
+        : 0;
 
-    const sumMrs = mrsScores.reduce((a, b) => a + b, 0);
-    const maxMrs = mrsScores.length ? Math.max(...mrsScores) : 0;
-    const concentration = sumMrs > 0 ? maxMrs / sumMrs : 0;
+    // Calculate recognitionDensity (how many participants are members)
+    const recognitionDensity = participantCount > 0 ? memberCount / participantCount : 0;
 
-    const nearThresholdCount = mrdScores.filter((mrd) => mrd > 0.4 && mrd < 0.6).length;
-    const stronglyIntegratedCount = mrdScores.filter((mrd) => mrd > 1.5).length;
-    const peripheralCount = mrdScores.filter((mrd) => mrd > 0 && mrd < 0.3).length;
+    // Calculate memberStability (based on added/removed)
+    const memberStability = memberCount > 0
+        ? 1 - (output.added.length + output.removed.length) / memberCount
+        : 1;
 
     return {
-        memberCount,
-        participantCount,
-        membershipRate,
-        mrsStdDev: stdDev(mrsScores),
-        mrdStdDev: stdDev(mrdScores),
-        mrsMedian: median(mrsScores),
-        mrdMedian: median(mrdScores),
-        concentration,
-        nearThresholdCount,
-        stronglyIntegratedCount,
-        peripheralCount,
+        recognitionDensity,
+        averageMRD,
+        mrdVariance,
+        memberStability,
+        memberCount
     };
 }
 

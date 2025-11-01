@@ -1,37 +1,32 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
+import {error} from "@sveltejs/kit"
 import {checkInviteCodeSchema} from "$lib/server/schemas/holster"
 import {user, inviteCodes} from "$lib/server/holster/core"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
+import {ensureAuthenticated, holsterNext} from "$lib/server/holster/db"
 
-export const POST: RequestHandler = async ({request}) => {
-  const body = await request.json()
-  const result = checkInviteCodeSchema.safeParse(body)
+export const POST = createPOSTHandler(
+  checkInviteCodeSchema,
+  async ({data}) => {
+    const {code} = data
 
-  if (!result.success) {
-    error(400, result.error.message)
-  }
+    if (inviteCodes.has(code)) {
+      return "" // ok
+    }
 
-  const code = result.data.code
+    ensureAuthenticated()
 
-  if (inviteCodes.has(code)) {
-    return text("") // ok
-  }
-
-  if (!user.is) {
-    error(500, "Host error")
-  }
-
-  // This just provides relevant errors.
-  return new Promise((resolve, reject) => {
-    user.get("accounts").next(code, (used: any) => {
-      if (used) {
-        if (code === "admin") {
-          error(400, "Please provide an invite code")
-        }
-        error(400, "Invite code already used")
+    // Check if code is already used
+    const used = await holsterNext("accounts", code)
+    
+    if (used) {
+      if (code === "admin") {
+        error(400, "Please provide an invite code")
       }
-      error(404, "Invite code not found")
-    })
-  })
-}
+      error(400, "Invite code already used")
+    }
+    
+    error(404, "Invite code not found")
+  },
+  {emptyResponse: true}
+)
 

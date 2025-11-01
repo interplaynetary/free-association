@@ -29,15 +29,16 @@ function setPath<T>(obj: T, path: string, value: any): T {
 	}
 	
 	const [first, ...rest] = keys;
+	const objRecord = obj as Record<string, any>;
 	return {
 		...obj,
-		[first]: setPath((obj as any)[first] || {}, rest.join('.'), value)
+		[first]: setPath(objRecord[first] || {}, rest.join('.'), value)
 	};
 }
 
 function getPath<T>(obj: T, path: string): any {
 	const keys = path.split('.');
-	return keys.reduce((acc, key) => acc?.[key], obj as any);
+	return keys.reduce((acc, key) => acc?.[key], obj as Record<string, any>);
 }
 
 // ═══════════════════════════════════════════════════════════════════

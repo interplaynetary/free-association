@@ -109,7 +109,7 @@ export const NeedAddV2: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 					options: RECURRENCE_OPTIONS,
 					onExit: (state, value: string) => ({
 						...state,
-						recurrence: value === 'none' ? null : value as any
+						recurrence: value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly'
 					})
 				},
 				// Conditional schedule node (only if recurrence is not null)

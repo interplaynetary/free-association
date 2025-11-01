@@ -94,7 +94,7 @@ export const NeedAddV3: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 			.options(RECURRENCE_OPTIONS)
 			.update((state, value) => ({
 				...state,
-				recurrence: value === 'none' ? null : value as any
+				recurrence: value === 'none' ? null : value as 'daily' | 'weekly' | 'monthly' | 'yearly'
 			}))
 			.build(),
 

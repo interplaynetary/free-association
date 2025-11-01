@@ -1,23 +1,24 @@
-import {json} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
 import {getRegistry} from "$lib/server/data-relay"
 import {user} from "$lib/server/holster/core"
-import {checkAuth} from "$lib/server/holster/auth"
+import {createGETHandler} from "$lib/server/middleware/request-handler"
 
 /**
  * Get statistics and information for all registered data relays
  *
  * GET /api/relay
  */
-export const GET: RequestHandler = async (event) => {
-  const authError = checkAuth(event)
-  if (authError) return authError
+export const GET = createGETHandler(
+  async () => {
+    const registry = getRegistry(user)
 
-  const registry = getRegistry(user)
-
-  return json({
-    types: registry.getTypes(),
-    stats: registry.getStats(),
-  })
-}
+    return {
+      types: registry.getTypes(),
+      stats: registry.getStats(),
+    }
+  },
+  {
+    requireAuth: true,
+    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false}
+  }
+)
 

@@ -767,34 +767,8 @@
 {/if}
 
 <style>
-	/* Make sure inputs and selects match our design */
-	.capacity-input {
-		font-size: 1rem;
-		padding: 6px 8px;
-		border: none;
-		border-bottom: 1.5px solid #e5e7eb;
-		background: transparent;
-		outline: none;
-		transition: all 0.2s ease;
-		min-width: 0;
-		flex-shrink: 0;
-	}
-
-	.capacity-input.auto-size {
-		max-width: 200px; /* Prevent inputs from becoming too wide */
-	}
-
-	.capacity-input::placeholder {
-		color: #cbd5e1;
-	}
-	.capacity-input:focus {
-		border-bottom: 1.5px solid #3b82f6;
-		box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.2);
-	}
-
 	/* Icon buttons */
 	.remove-btn,
-	.settings-btn,
 	.chat-btn,
 	.slots-btn {
 		background: none;
@@ -811,41 +785,6 @@
 		justify-content: center;
 		width: 24px;
 		height: 24px;
-	}
-
-	.emoji-btn {
-		background: none;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 4px 6px;
-		font-size: 1.2em;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 32px;
-		height: 32px;
-	}
-
-	.emoji-btn:hover {
-		background: #f9fafb;
-		border-color: #3b82f6;
-		transform: scale(1.05);
-	}
-
-	.emoji-picker-container {
-		position: absolute;
-		top: 100%;
-		left: 0;
-		z-index: 1000;
-		margin-top: 4px;
-	}
-
-	.settings-btn:hover {
-		background: #f3f4f6;
-		color: #4b5563;
-		transform: scale(1.05);
 	}
 
 	.chat-btn:hover {
@@ -981,20 +920,6 @@
 		font-style: italic;
 	}
 
-	/* Expanded settings styling */
-	.expanded-settings {
-		font-size: 0.875rem;
-		animation: slideDown 0.25s ease-out;
-		border-top: 1px solid rgba(229, 231, 235, 0.5);
-		box-shadow:
-			0 4px 6px -1px rgba(0, 0, 0, 0.05),
-			0 2px 4px -1px rgba(0, 0, 0, 0.03);
-	}
-
-	.settings-content {
-		padding: 1.5rem;
-	}
-
 	/* Animation for expanding the settings */
 	@keyframes slideDown {
 		from {
@@ -1028,49 +953,6 @@
 	/* Ensure buttons don't wrap unnecessarily */
 	.capacity-row button {
 		flex-shrink: 0;
-	}
-
-	/* Description field with integrated toggle */
-	.description-field-container {
-		position: relative;
-		display: flex;
-		align-items: flex-start;
-	}
-
-	.description-expand-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
-		background: none;
-		border: none;
-		color: #9ca3af;
-		font-size: 0.75rem;
-		cursor: pointer;
-		padding: 2px 4px;
-		border-radius: 2px;
-		transition: all 0.2s ease;
-		z-index: 1;
-		line-height: 1;
-	}
-
-	.description-expand-btn:hover {
-		background: #f3f4f6;
-		color: #6b7280;
-	}
-
-	.description-textarea {
-		resize: vertical;
-		min-height: 60px;
-		padding-right: 24px; /* Make room for the button */
-		font-family: inherit;
-		font-size: 1rem;
-		line-height: 1.4;
-	}
-
-	/* Adjust input padding when there's a toggle button */
-	.description-field-container input {
-		padding-right: 24px;
 	}
 
 	/* Slots section styling */
@@ -1290,88 +1172,5 @@
 	div[data-slot-id].newly-created :global(.slot-item) {
 		background: rgba(240, 253, 244, 0.8) !important;
 		border-color: rgba(34, 197, 94, 0.2) !important;
-	}
-
-	/* Member Management Styles */
-	.member-management-section {
-		border-top: 1px solid #e5e7eb;
-		padding-top: 1.5rem;
-	}
-
-	.add-member-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		padding: 3px 10px;
-		border: 1px dashed #d1d5db;
-		border-radius: 12px;
-		background: rgba(249, 250, 251, 0.8);
-		color: #6b7280;
-		font-size: 12px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		height: 22px;
-		line-height: 1;
-	}
-
-	.add-member-btn:hover {
-		border-color: #3b82f6;
-		color: #3b82f6;
-		background: rgba(248, 250, 252, 0.9);
-		transform: scale(1.02);
-	}
-
-	.add-member-btn .add-icon {
-		font-size: 0.875rem;
-		font-weight: bold;
-		line-height: 1;
-	}
-
-	.add-member-btn .add-text {
-		font-weight: 500;
-	}
-
-	.members-list {
-		padding: 1rem;
-		background: rgba(249, 250, 251, 0.5);
-		border-radius: 6px;
-		border: 1px solid rgba(229, 231, 235, 0.6);
-	}
-
-	.auto-update-section {
-		animation: slideDown 0.2s ease-out;
-	}
-
-	.auto-update-config {
-		animation: slideDown 0.2s ease-out;
-	}
-
-	.recompute-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-		padding: 10px 16px;
-		border: 2px solid #3b82f6;
-		border-radius: 6px;
-		background: white;
-		color: #3b82f6;
-		font-size: 0.875rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-	}
-
-	.recompute-btn:hover:not(:disabled) {
-		background: #3b82f6;
-		color: white;
-		transform: scale(1.02);
-	}
-
-	.recompute-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		border-color: #9ca3af;
-		color: #9ca3af;
 	}
 </style>

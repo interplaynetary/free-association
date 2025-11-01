@@ -1,48 +1,30 @@
-import {error, text} from "@sveltejs/kit"
-import type {RequestHandler} from "./$types"
 import {removeFeedSchema} from "$lib/server/schemas/holster"
-import {user} from "$lib/server/holster/core"
-import {checkAuth} from "$lib/server/holster/auth"
+import {holsterNextPut, ensureAuthenticated} from "$lib/server/holster/db"
+import {createPOSTHandler} from "$lib/server/middleware/request-handler"
 
-export const POST: RequestHandler = async (event) => {
-  const authError = checkAuth(event)
-  if (authError) return authError
+export const POST = createPOSTHandler(
+  removeFeedSchema,
+  async ({data}) => {
+    const {url} = data
 
-  const body = await event.request.json()
-  const result = removeFeedSchema.safeParse(body)
+    ensureAuthenticated()
 
-  if (!result.success) {
-    const firstError = result.error.errors[0]
-    error(400, firstError.message)
+    // Don't modify subscriber_count so users can still call remove-subscriber.
+    const feedData = {
+      title: "",
+      description: "",
+      html_url: "",
+      language: "",
+      image: "",
+    }
+
+    await holsterNextPut("feeds", url, feedData)
+    return ""
+  },
+  {
+    requireAuth: true,
+    authOptions: {allowBasic: true, allowJwt: false, allowApiKey: false},
+    emptyResponse: true
   }
-
-  const {url} = result.data
-
-  if (!user.is) {
-    error(500, "Host error")
-  }
-
-  // Don't modify subscriber_count so users can still call remove-subscriber.
-  const data = {
-    title: "",
-    description: "",
-    html_url: "",
-    language: "",
-    image: "",
-  }
-
-  return new Promise((resolve, reject) => {
-    user
-      .get("feeds")
-      .next(url)
-      .put(data, (err: any) => {
-        if (err) {
-          console.log(err)
-          error(500, "Error removing feed")
-        }
-
-        resolve(text(""))
-      })
-  })
-}
+)
 

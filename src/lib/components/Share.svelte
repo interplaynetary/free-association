@@ -1110,12 +1110,6 @@
 		cursor: not-allowed;
 	}
 
-	.desire-unit {
-		font-weight: 500;
-		color: #6b7280;
-		white-space: nowrap;
-	}
-
 	/* Remove spinner arrows from number input */
 	.desire-input::-webkit-outer-spin-button,
 	.desire-input::-webkit-inner-spin-button {
