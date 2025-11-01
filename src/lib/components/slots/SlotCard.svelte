@@ -15,6 +15,7 @@
 <script lang="ts">
   import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
   import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/protocol/tree';
+  import AllocationDetails from './AllocationDetails.svelte';
   
   interface Props {
     slot: NeedSlot | AvailabilitySlot;
@@ -23,6 +24,8 @@
     onDelete?: (id: string) => void;
     readonly?: boolean;
     compact?: boolean;
+    myPubKey?: string;
+    showAllocations?: boolean;
   }
   
   let { 
@@ -31,7 +34,9 @@
     onEdit, 
     onDelete, 
     readonly = false,
-    compact = false
+    compact = false,
+    myPubKey = '',
+    showAllocations = true
   }: Props = $props();
   
   // Format time display
@@ -151,6 +156,15 @@
           {/if}
         </span>
       </div>
+    {/if}
+    
+    <!-- Allocation Details -->
+    {#if showAllocations && !compact && myPubKey}
+      <AllocationDetails 
+        slot={slot}
+        isCapacity={slotType === 'capacity'}
+        myPubKey={myPubKey}
+      />
     {/if}
   </div>
 </article>

@@ -550,6 +550,33 @@ export const MultiDimensionalDampingSchema = z.object({
 export type MultiDimensionalDamping = z.infer<typeof MultiDimensionalDampingSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
+// SLOT ALLOCATION RECORD (Must be defined before Commitment)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Slot Allocation Record - Extended with need type
+ * 
+ * Represents a single allocation from a provider's capacity slot to a recipient's need slot
+ * This is published in commitments for transparency
+ */
+export const SlotAllocationRecordSchema = z.object({
+	availability_slot_id: z.string().min(1),
+	recipient_pubkey: z.string(),
+	recipient_need_slot_id: z.string().optional(),
+	quantity: z.number().nonnegative(),
+	
+	// MULTI-DIMENSIONAL: Type information
+	need_type_id: z.string().min(1),
+	
+	// Compatibility
+	time_compatible: z.boolean(),
+	location_compatible: z.boolean(),
+	tier: z.enum(['mutual', 'non-mutual'])
+});
+
+export type SlotAllocationRecord = z.infer<typeof SlotAllocationRecordSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
 // COMMITMENT SCHEMA (v4 - Multi-Dimensional)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -566,6 +593,10 @@ export const CommitmentSchema = z.object({
 	// Multi-dimensional capacity & needs (slot-native)
 	capacity_slots: z.array(AvailabilitySlotSchema).optional(),
 	need_slots: z.array(NeedSlotSchema).optional(),
+	
+	// Allocation records (what I'm giving to others from my capacity)
+	// Published so recipients can see incoming allocations for transparency
+	slot_allocations: z.array(SlotAllocationRecordSchema).optional(),
 	
 	// Global recognition: MR(A, B) = min(R_A(B), R_B(A))
 	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
@@ -586,26 +617,6 @@ export type Commitment = z.infer<typeof CommitmentSchema>;
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-DIMENSIONAL ALLOCATION STATE
 // ═══════════════════════════════════════════════════════════════════
-
-/**
- * Slot Allocation Record - Extended with need type
- */
-export const SlotAllocationRecordSchema = z.object({
-	availability_slot_id: z.string().min(1),
-	recipient_pubkey: z.string(),
-	recipient_need_slot_id: z.string().optional(),
-	quantity: z.number().nonnegative(),
-	
-	// MULTI-DIMENSIONAL: Type information
-	need_type_id: z.string().min(1),
-	
-	// Compatibility
-	time_compatible: z.boolean(),
-	location_compatible: z.boolean(),
-	tier: z.enum(['mutual', 'non-mutual'])
-});
-
-export type SlotAllocationRecord = z.infer<typeof SlotAllocationRecordSchema>;
 
 /**
  * Per-Type Allocation Totals

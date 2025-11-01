@@ -54,6 +54,7 @@
 		setMyNeedSlots,        // ✅ NEW: Helper to update need slots
 		setMyCapacitySlots     // ✅ NEW: Helper to update capacity slots
 	} from '$lib/protocol/stores.svelte';
+	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
 	import type { NeedSlot, AvailabilitySlot, Commitment } from '$lib/protocol/schemas';
 	
 	// Reactive state (Svelte 5 runes)
@@ -81,6 +82,7 @@
 	
 	// Cleanup functions
 	let cleanupComposition: (() => void) | null = null;
+	let cleanupAllocationPublishing: (() => void) | null = null;
 	
 	onMount(() => {
 		console.log('[TEST-V5] Initializing stores...');
@@ -138,6 +140,9 @@
 			cleanupComposition = enableAutoCommitmentComposition();
 		}
 		
+		// Enable auto-allocation publishing (always on for transparency)
+		cleanupAllocationPublishing = enableAutoAllocationPublishing();
+		
 		console.log('[TEST-V5] ✅ Initialized and subscribed');
 		
 		return () => {
@@ -151,6 +156,7 @@
 			unsubNetworkNeeds();
 			unsubNetworkCapacity();
 			if (cleanupComposition) cleanupComposition();
+			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
 	});
 	
@@ -461,6 +467,143 @@
 					No commitment yet. Add some slots above!
 				</div>
 			{/if}
+		</section>
+		
+		<!-- Allocation Flow Section -->
+		<section class="allocation-section">
+			<h2>🔄 Allocation Flow</h2>
+			
+			<!-- Outgoing Allocations -->
+			<div class="allocation-subsection">
+				<h3>🎁 My Outgoing Allocations (Capacity → Recipients)</h3>
+				{#if commitment?.slot_allocations && commitment.slot_allocations.length > 0}
+					<div class="allocation-summary">
+						<div class="summary-stats">
+							<div class="stat">
+								<strong>Total Allocations:</strong> {commitment.slot_allocations.length}
+							</div>
+							<div class="stat">
+								<strong>Mutual:</strong> {commitment.slot_allocations.filter(a => a.tier === 'mutual').length}
+							</div>
+							<div class="stat">
+								<strong>Generous:</strong> {commitment.slot_allocations.filter(a => a.tier === 'non-mutual').length}
+							</div>
+						</div>
+						
+						<div class="allocation-table">
+							<table>
+								<thead>
+									<tr>
+										<th>Capacity Slot</th>
+										<th>Recipient</th>
+										<th>Need Slot</th>
+										<th>Quantity</th>
+										<th>Type</th>
+										<th>Tier</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each commitment.slot_allocations as alloc}
+										<tr class="allocation-row {alloc.tier}">
+											<td class="slot-id">{alloc.availability_slot_id.slice(0, 8)}...</td>
+											<td class="pubkey" title={alloc.recipient_pubkey}>
+												{alloc.recipient_pubkey.slice(0, 12)}...{alloc.recipient_pubkey.slice(-4)}
+											</td>
+											<td class="slot-id">
+												{alloc.recipient_need_slot_id ? alloc.recipient_need_slot_id.slice(0, 8) + '...' : 'N/A'}
+											</td>
+											<td class="quantity">{alloc.quantity.toFixed(2)}</td>
+											<td class="type-badge">{alloc.need_type_id}</td>
+											<td class="tier-badge {alloc.tier}">
+												{alloc.tier === 'mutual' ? '🤝 Mutual' : '💝 Generous'}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{:else}
+					<div class="empty-state">
+						No allocations computed yet. Add capacity slots and wait for algorithm to run.
+					</div>
+				{/if}
+			</div>
+			
+			<!-- Incoming Allocations -->
+			<div class="allocation-subsection">
+				<h3>📥 My Incoming Allocations (Providers → My Needs)</h3>
+				{#if myPub}
+					{@const incomingAllocations = Array.from($networkCommitments.entries())
+						.flatMap(([pubKey, versionedEntity]) => {
+							const commitment = versionedEntity.data;
+							if (!commitment.slot_allocations) return [];
+							return commitment.slot_allocations
+								.filter(alloc => alloc.recipient_pubkey === myPub)
+								.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
+						})}
+					
+					{#if incomingAllocations.length > 0}
+					<div class="allocation-summary">
+						<div class="summary-stats">
+							<div class="stat">
+								<strong>Total Incoming:</strong> {incomingAllocations.length}
+							</div>
+							<div class="stat">
+								<strong>Mutual:</strong> {incomingAllocations.filter(a => a.tier === 'mutual').length}
+							</div>
+							<div class="stat">
+								<strong>Generous:</strong> {incomingAllocations.filter(a => a.tier === 'non-mutual').length}
+							</div>
+							<div class="stat">
+								<strong>Total Quantity:</strong> {incomingAllocations.reduce((sum, a) => sum + a.quantity, 0).toFixed(2)}
+							</div>
+						</div>
+						
+						<div class="allocation-table">
+							<table>
+								<thead>
+									<tr>
+										<th>Provider</th>
+										<th>Their Capacity</th>
+										<th>My Need Slot</th>
+										<th>Quantity</th>
+										<th>Type</th>
+										<th>Tier</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each incomingAllocations as alloc}
+										<tr class="allocation-row {alloc.tier}">
+											<td class="pubkey" title={alloc.providerPubKey}>
+												{alloc.providerPubKey.slice(0, 12)}...{alloc.providerPubKey.slice(-4)}
+											</td>
+											<td class="slot-id">{alloc.availability_slot_id.slice(0, 8)}...</td>
+											<td class="slot-id">
+												{alloc.recipient_need_slot_id ? alloc.recipient_need_slot_id.slice(0, 8) + '...' : 'N/A'}
+											</td>
+											<td class="quantity">{alloc.quantity.toFixed(2)}</td>
+											<td class="type-badge">{alloc.need_type_id}</td>
+											<td class="tier-badge {alloc.tier}">
+												{alloc.tier === 'mutual' ? '🤝 Mutual' : '💝 Generous'}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+					{:else}
+						<div class="empty-state">
+							No incoming allocations yet. Add need slots and wait for others to allocate.
+						</div>
+					{/if}
+				{:else}
+					<div class="empty-state">
+						Not authenticated. Log in to see incoming allocations.
+					</div>
+				{/if}
+			</div>
 		</section>
 	</div>
 	
@@ -810,6 +953,140 @@
 		cursor: pointer;
 	}
 	
+	/* Allocation Section Styles */
+	.allocation-section {
+		background: white;
+		padding: 1.5rem;
+		border-radius: 8px;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		grid-column: 1 / -1;
+	}
+	
+	.allocation-subsection {
+		margin-top: 2rem;
+	}
+	
+	.allocation-subsection:first-child {
+		margin-top: 1rem;
+	}
+	
+	.allocation-subsection h3 {
+		color: #2c3e50;
+		margin: 0 0 1rem 0;
+		font-size: 1.1rem;
+	}
+	
+	.allocation-summary {
+		margin-top: 1rem;
+	}
+	
+	.summary-stats {
+		display: flex;
+		gap: 2rem;
+		margin-bottom: 1rem;
+		padding: 1rem;
+		background: #f8f9fa;
+		border-radius: 6px;
+		flex-wrap: wrap;
+	}
+	
+	.stat {
+		color: #555;
+		font-size: 0.9rem;
+	}
+	
+	.stat strong {
+		color: #2c3e50;
+		margin-right: 0.5rem;
+	}
+	
+	.allocation-table {
+		overflow-x: auto;
+	}
+	
+	.allocation-table table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9rem;
+	}
+	
+	.allocation-table thead {
+		background: #34495e;
+		color: white;
+	}
+	
+	.allocation-table th {
+		padding: 0.75rem;
+		text-align: left;
+		font-weight: 600;
+	}
+	
+	.allocation-table td {
+		padding: 0.75rem;
+		border-bottom: 1px solid #e1e8ed;
+	}
+	
+	.allocation-row {
+		transition: background 0.2s;
+	}
+	
+	.allocation-row:hover {
+		background: #f8f9fa;
+	}
+	
+	.allocation-row.mutual {
+		border-left: 3px solid #3498db;
+	}
+	
+	.allocation-row.non-mutual {
+		border-left: 3px solid #f39c12;
+	}
+	
+	.slot-id {
+		font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+		font-size: 0.85rem;
+		color: #7f8c8d;
+	}
+	
+	.pubkey {
+		font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+		font-size: 0.85rem;
+		color: #2c3e50;
+		font-weight: 500;
+	}
+	
+	.quantity {
+		font-weight: 600;
+		color: #27ae60;
+		text-align: right;
+	}
+	
+	.type-badge {
+		display: inline-block;
+		padding: 0.25rem 0.5rem;
+		background: #ecf0f1;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		color: #34495e;
+	}
+	
+	.tier-badge {
+		padding: 0.3rem 0.6rem;
+		border-radius: 4px;
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+	
+	.tier-badge.mutual {
+		background: #e3f2fd;
+		color: #1976d2;
+	}
+	
+	.tier-badge.non-mutual {
+		background: #fff3e0;
+		color: #f57c00;
+	}
+	
 	@media (max-width: 1024px) {
 		.content {
 			grid-template-columns: 1fr;
@@ -817,6 +1094,24 @@
 		
 		.commitment-section {
 			grid-column: 1;
+		}
+		
+		.allocation-section {
+			grid-column: 1;
+		}
+		
+		.summary-stats {
+			flex-direction: column;
+			gap: 0.75rem;
+		}
+		
+		.allocation-table {
+			font-size: 0.8rem;
+		}
+		
+		.allocation-table th,
+		.allocation-table td {
+			padding: 0.5rem;
 		}
 	}
 </style>

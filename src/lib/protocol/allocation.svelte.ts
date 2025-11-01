@@ -1076,6 +1076,90 @@ export async function updateCommitmentWithDampingHistory(
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// AUTO-PUBLISH ALLOCATIONS TO NETWORK
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Auto-update commitment with computed allocations
+ * 
+ * Watches myAllocationsAsProvider and publishes slot_allocations to commitment
+ * This enables recipients to see incoming allocations for transparency
+ * 
+ * WHY THIS MATTERS:
+ * - Recipients can see who's allocating to their needs
+ * - Audit trail for allocation flows
+ * - Debugging and trust building
+ * - Complete transparency in the network
+ */
+export function enableAutoAllocationPublishing(): () => void {
+	console.log('[AUTO-PUBLISH-ALLOC] 🚀 Enabling automatic allocation publishing');
+	
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let isPublishing = false; // Prevent cascading updates
+	
+	const unsubAllocations = myAllocationsAsProvider.subscribe((allocResult) => {
+		if (isPublishing) {
+			console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already publishing');
+			return;
+		}
+		
+		// Debounce rapid changes
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
+		
+		debounceTimer = setTimeout(() => {
+			isPublishing = true;
+			
+			const currentCommitment = get(myCommitmentStore);
+			if (!currentCommitment) {
+				console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: no commitment available');
+				isPublishing = false;
+				return;
+			}
+			
+			// Check if allocations actually changed
+			const currentAllocs = currentCommitment.slot_allocations || [];
+			const newAllocs = allocResult.allocations;
+			
+			try {
+				const currentJson = JSON.stringify(currentAllocs);
+				const newJson = JSON.stringify(newAllocs);
+				
+				if (currentJson === newJson) {
+					console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged');
+					isPublishing = false;
+					return;
+				}
+			} catch (error) {
+				console.warn('[AUTO-PUBLISH-ALLOC] ⚠️  Equality check failed, proceeding with update:', error);
+			}
+			
+			// Update commitment with new allocations
+			const updatedCommitment: Commitment = {
+				...currentCommitment,
+				slot_allocations: newAllocs,
+				timestamp: Date.now()
+			};
+			
+			myCommitmentStore.set(updatedCommitment);
+			
+			const mutualCount = newAllocs.filter(a => a.tier === 'mutual').length;
+			const nonMutualCount = newAllocs.filter(a => a.tier === 'non-mutual').length;
+			console.log(`[AUTO-PUBLISH-ALLOC] ✅ Published ${newAllocs.length} allocations to network (${mutualCount} mutual, ${nonMutualCount} non-mutual)`);
+			
+			isPublishing = false;
+		}, 100); // 100ms debounce
+	});
+	
+	return () => {
+		if (debounceTimer) clearTimeout(debounceTimer);
+		unsubAllocations();
+		console.log('[AUTO-PUBLISH-ALLOC] ⏸️  Disabled automatic allocation publishing');
+	};
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // EXPORTS FOR DEBUGGING
 // ═══════════════════════════════════════════════════════════════════
 
