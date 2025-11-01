@@ -131,11 +131,11 @@ export async function recall(callbacks?: AuthCallbacks): Promise<AuthState> {
 
 	return new Promise((resolve) => {
 		holsterUser.recall();
-		
+
 		if (holsterUser.is && holsterUser.is.username) {
 			console.log('[HOLSTER RECALL] User authenticated:', holsterUser.is.username);
 			const authState = getAuthState();
-			
+
 			initializeAfterAuth(callbacks).then(() => {
 				resolve(authState);
 			});
@@ -168,8 +168,8 @@ export async function login(alias: string, password: string, callbacks?: AuthCal
 				});
 			});
 
-			// Store credentials for cross-tab access
-			holsterUser.store(true);
+			// Store credentials in sessionStorage (cleared when tab closes)
+			holsterUser.store();
 
 			// Get auth state
 			const authState = getAuthState();
@@ -306,7 +306,7 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 	console.log('[HOLSTER] Peers:', config.holster.peers);
 	console.log('[HOLSTER] IndexedDB:', config.holster.indexedDB);
 	console.log('[HOLSTER] File:', config.holster.file);
-	
+
 	// Expose for debugging
 	(window as any).holster = holster;
 	(window as any).holsterUser = holsterUser;

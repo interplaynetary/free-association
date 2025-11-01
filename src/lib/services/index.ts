@@ -8,6 +8,7 @@
 import { viewportService } from './viewport.svelte';
 import { navigationService } from './navigation.svelte';
 import { initializeGeocodingCache } from '$lib/location/geocodingCache';
+import '$lib/config'; // Initialize config and expose toggleHolster in dev mode
 
 // Services are auto-initialized when imported
 console.log('[SERVICES] Global services initialized');
