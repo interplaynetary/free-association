@@ -101,8 +101,8 @@
 	let touchStartTime = $state(0);
 	let isTouching = $state(false);
 	let resizeNodeId = $state<string | null>(null);
-	let resizeInterval = $state<number>(0);
-	let resizeTimeout = $state<number>(0);
+	let resizeInterval: number | null = $state(null);
+	let resizeTimeout: number | null = $state(null);
 	let isResizing = $state(false);
 	let initialTouchY = $state(0);
 	let currentTouchY = $state(0);
@@ -112,6 +112,8 @@
 	const RESIZE_TICK = 16;
 	const RESIZE_RATE_PER_PIXEL = 0.003;
 	const TAP_THRESHOLD = 250;
+	const POINTER_DEADZONE = 2; // pixels - ignore small movements
+	const MAX_RESIZE_RATE_PERCENT = 0.05; // 5% of current points per tick - scale-invariant cap
 
 	// Drag state (now using global state)
 	let dragStartTime = $state(0);
@@ -307,8 +309,8 @@
 
 		return () => {
 			// Clean up timers and event listeners
-			clearTimeout(resizeTimeout);
-			clearInterval(resizeInterval);
+			if (resizeTimeout !== null) clearTimeout(resizeTimeout);
+			if (resizeInterval !== null) clearInterval(resizeInterval);
 			clearInterval(interval);
 			document.removeEventListener('mouseup', handleGlobalTouchEnd);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
@@ -1286,6 +1288,12 @@
 		return hasChanges;
 	}
 
+	/**
+	 * Applies resize transformation to a node based on pointer movement.
+	 * Moving pointer up increases size, moving down decreases it.
+	 * Uses scale-invariant rate limiting proportional to current node size.
+	 * @param node - The hierarchy node to resize
+	 */
 	function applyResize(node: d3.HierarchyRectangularNode<VisualizationNode>) {
 		// Stop if no longer touching
 		if (!isTouching) {
@@ -1293,17 +1301,33 @@
 			return;
 		}
 
-		// Calculate resize rate based on current size
+		// Calculate resize rate based on pointer distance
 		const pointerDistance = initialTouchY - currentTouchY;
-		const rate = pointerDistance * RESIZE_RATE_PER_PIXEL;
-		const currentPoints = node.data.points;
+		
+		// Apply deadzone to ignore small movements
+		if (Math.abs(pointerDistance) < POINTER_DEADZONE) {
+			return;
+		}
 
-		const newPoints = Math.max(1, currentPoints + rate);
+		const currentPoints = node.data.points;
+		const rate = pointerDistance * RESIZE_RATE_PER_PIXEL;
+		
+		// Cap the maximum rate as a percentage of current points (scale-invariant)
+		// This ensures resize speed feels consistent regardless of node size
+		const maxAbsoluteRate = currentPoints * MAX_RESIZE_RATE_PERCENT;
+		const clampedRate = Math.max(-maxAbsoluteRate, Math.min(maxAbsoluteRate, rate));
+		
+		const newPoints = Math.max(1, currentPoints + clampedRate);
 
 		if (isNaN(newPoints)) {
 			console.error('Resize calculation resulted in NaN:', {
 				currentPoints,
-				rate
+				rate,
+				clampedRate,
+				maxAbsoluteRate,
+				pointerDistance,
+				initialTouchY,
+				currentTouchY
 			});
 			return;
 		}
@@ -1312,6 +1336,11 @@
 		updateNodePoints(node, newPoints);
 	}
 
+	/**
+	 * Initiates node resizing after a delay threshold.
+	 * Resizing is directional: moving pointer up increases size, down decreases it.
+	 * @param node - The hierarchy node to resize
+	 */
 	function startResizing(node: d3.HierarchyRectangularNode<VisualizationNode>) {
 		// Don't allow resize in delete mode or when dragging
 		if (globalState.deleteMode || globalState.isDragging) return;
@@ -1320,8 +1349,8 @@
 		if (globalState.recomposeMode) return;
 
 		// Clear existing resize state
-		clearInterval(resizeInterval);
-		clearTimeout(resizeTimeout);
+		if (resizeInterval !== null) clearInterval(resizeInterval);
+		if (resizeTimeout !== null) clearTimeout(resizeTimeout);
 		isResizing = false;
 
 		// Only run in browser environment
@@ -1335,13 +1364,27 @@
 			// Only start resize if still touching same node
 			if (isTouching && resizeNodeId === node.data.id) {
 				isResizing = true;
-				// Set resize delay
+				// Start resize interval
 				resizeInterval = window.setInterval(() => applyResize(node), RESIZE_TICK);
 			}
 		}, RESIZE_DELAY);
 	}
 
+	/**
+	 * Stops the resize operation and persists the final points value.
+	 * Cleans up all resize-related state and timers.
+	 */
 	function stopResizing() {
+		// Clear any active timeouts/intervals first to prevent race conditions
+		if (resizeTimeout !== null) {
+			clearTimeout(resizeTimeout);
+			resizeTimeout = null;
+		}
+		if (resizeInterval !== null) {
+			clearInterval(resizeInterval);
+			resizeInterval = null;
+		}
+
 		// Save final points if we were resizing
 		if (isResizing && resizeNodeId && hierarchyData) {
 			const nodeToUpdate = hierarchyData.children?.find(
@@ -1357,12 +1400,13 @@
 		isTouching = false;
 		isResizing = false;
 		resizeNodeId = null;
-
-		// Clear any active timeouts/intervals
-		clearInterval(resizeInterval);
-		resizeInterval = 0;
 	}
 
+	/**
+	 * Updates a node's points value in the hierarchy and triggers a reactive update.
+	 * @param node - The hierarchy node to update
+	 * @param points - The new points value
+	 */
 	function updateNodePoints(node: d3.HierarchyRectangularNode<VisualizationNode>, points: number) {
 		// Update node's points in hierarchy
 		node.data.points = points;
@@ -1371,6 +1415,11 @@
 		updateCounter++;
 	}
 
+	/**
+	 * Persists the resized points value to the tree store.
+	 * @param nodeId - The ID of the node to save
+	 * @param points - The new points value to persist
+	 */
 	function saveNodePoints(nodeId: string, points: number) {
 		try {
 			if (!tree) return;
@@ -1519,6 +1568,12 @@
 		// Only handle if this is our active pointer
 		if (!event.isPrimary || event.pointerId !== activePointerId) return;
 
+		// Release pointer capture to prevent stuck pointer states
+		const target = event.target as HTMLElement;
+		if (target && target.hasPointerCapture(event.pointerId)) {
+			target.releasePointerCapture(event.pointerId);
+		}
+
 		// Don't handle interactions when in edit mode
 		if (globalState.editMode) {
 			console.log('[DEBUG PARENT] Ignoring interaction - in edit mode');
@@ -1527,7 +1582,6 @@
 		}
 
 		// Check if the click target is a text edit field, node-text element, contributor element, or slider element
-		const target = event.target as HTMLElement;
 		const isForwardedFromSlider = (event as any).isForwardedFromSlider;
 		if (
 			target &&
@@ -1859,6 +1913,7 @@
 						class:being-dragged={globalState.isDragging &&
 							globalState.draggedNodeId === child.data.id}
 						class:resizing={isResizing && resizeNodeId === child.data.id}
+						class:resizing-dimmed={isResizing && resizeNodeId !== child.data.id}
 						data-node-id={child.data.id}
 						role="button"
 						tabindex="0"
@@ -2022,6 +2077,11 @@
 		z-index: 10;
 		box-shadow: 0 0 12px rgba(0, 100, 255, 0.5);
 		border: 2px solid rgba(0, 100, 255, 0.7);
+	}
+
+	:global(.clickable.resizing-dimmed) {
+		opacity: 0.7;
+		transition: opacity 0.15s ease, filter 0.15s ease;
 	}
 
 	.empty-state {
