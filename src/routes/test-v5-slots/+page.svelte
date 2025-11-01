@@ -48,6 +48,7 @@
 		networkCommitments,
 		networkNeedSlots,
 		networkCapacitySlots,
+		networkAllocations,    // ✅ NEW: Fine-grained allocations field store
 		initializeAllocationStores,
 		enableAutoCommitmentComposition,
 		composeCommitmentFromSources,
@@ -534,11 +535,10 @@
 			<div class="allocation-subsection">
 				<h3>📥 My Incoming Allocations (Providers → My Needs)</h3>
 				{#if myPub}
-					{@const incomingAllocations = Array.from($networkCommitments.entries())
-						.flatMap(([pubKey, versionedEntity]) => {
-							const commitment = versionedEntity.data;
-							if (!commitment.slot_allocations) return [];
-							return commitment.slot_allocations
+					{@const incomingAllocations = Array.from($networkAllocations.entries())
+						.flatMap(([pubKey, allocations]) => {
+							if (!allocations || allocations.length === 0) return [];
+							return allocations
 								.filter(alloc => alloc.recipient_pubkey === myPub)
 								.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
 						})}

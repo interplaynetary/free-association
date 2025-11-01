@@ -14,7 +14,7 @@
 	 */
 	
 	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
-	import { networkCommitments, myCommitmentStore } from '$lib/protocol/stores.svelte';
+	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores.svelte';
 	
 	interface Props {
 		slot: NeedSlot | AvailabilitySlot;
@@ -50,11 +50,12 @@
 			}
 		} else {
 			// INCOMING: Who is allocating to this need?
-			for (const [pubKey, versionedEntity] of $networkCommitments.entries()) {
-				const commitment = versionedEntity.data;
-				if (!commitment.slot_allocations) continue;
+			// ✅ Uses networkAllocations field store (fine-grained reactivity!)
+			// Only updates when allocations change, not on every commitment field change
+			for (const [pubKey, allocations] of $networkAllocations.entries()) {
+				if (!allocations || allocations.length === 0) continue;
 				
-				for (const alloc of commitment.slot_allocations) {
+				for (const alloc of allocations) {
 					if (alloc.recipient_pubkey === myPubKey && 
 					    alloc.recipient_need_slot_id === slot.id) {
 						allocs.push({

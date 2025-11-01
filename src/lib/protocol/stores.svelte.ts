@@ -40,7 +40,8 @@ import {
 	type RootNode,
 	type AvailabilitySlot,
 	type NeedSlot,
-	type GlobalRecognitionWeights
+	type GlobalRecognitionWeights,
+	type SlotAllocationRecord
 } from './schemas';
 import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
@@ -279,12 +280,14 @@ export const networkCommitments: VersionedStore<Commitment, string> = createVers
 		needs: (c) => c.need_slots,
 		capacity: (c) => c.capacity_slots,
 		damping: (c) => c.multi_dimensional_damping,
-		mr: (c) => c.global_mr_values
+		mr: (c) => c.global_mr_values,
+		allocations: (c) => c.slot_allocations // ✅ Track allocations for fine-grained reactivity
 	},
 	fieldEqualityCheckers: {
 		// Use deep equality for array fields (arrays of objects)
 		needs: jsonEquals,
-		capacity: jsonEquals
+		capacity: jsonEquals,
+		allocations: jsonEquals // ✅ Deep equality for allocation records
 	},
 	schema: CommitmentSchema, // ✅ Defensive validation for network data
 	itcExtractor: (c) => c.itcStamp,
@@ -386,6 +389,24 @@ export const networkNeedSlots = networkCommitments.deriveField<NeedSlot[]>('need
  * - Allocation computation
  */
 export const networkCapacitySlots = networkCommitments.deriveField<AvailabilitySlot[]>('capacity');
+
+/**
+ * Network Allocations - FIELD STORE
+ * 
+ * Fine-grained store for just the allocations field!
+ * 
+ * ✅ Only updates when allocations change
+ * ✅ NOT triggered by recognition/needs/capacity/damping changes
+ * 
+ * Use this for:
+ * - Displaying incoming allocations (who's providing to my needs)
+ * - Allocation auditing and transparency
+ * - Network flow visualization
+ * 
+ * Maps pubKey → SlotAllocationRecord[]
+ * Each provider's published allocations from their capacity to recipients' needs
+ */
+export const networkAllocations = networkCommitments.deriveField<SlotAllocationRecord[]>('allocations');
 
 /**
  * My Mutual Recognition (V5) - DERIVED WITH FINE-GRAINED REACTIVITY 🚀
