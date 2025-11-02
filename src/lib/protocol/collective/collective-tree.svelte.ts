@@ -2166,4 +2166,4 @@ function renormalizeCollectiveTree(tree: CollectiveTree): CollectiveTree {
 	};
 }
 
-// === UPDATED FILTERING FUNCTIONS WITH RENORMALIZATION ===
+export {type CollectiveTree }
