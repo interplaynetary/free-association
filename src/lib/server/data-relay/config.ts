@@ -1,5 +1,126 @@
 import {z} from "zod"
-import type {User} from "@mblaney/holster/src/holster.js"
+
+// Type for Gun/Holster user instance
+type User = any
+
+// ============================================================================
+// Subscription Types
+// ============================================================================
+
+export interface SubscriptionContext {
+  /** Account code for the subscribing user */
+  accountCode: string
+  /** Full account object */
+  account: any
+  /** Optional signed URL for verification */
+  signedUrl?: string
+  /** Optional additional context data */
+  metadata?: Record<string, any>
+}
+
+export interface SubscriptionResult {
+  success: boolean
+  error?: string
+  data?: any
+}
+
+export interface LimitCheckResult {
+  allowed: boolean
+  error?: string
+  current?: number
+  limit?: number
+}
+
+export interface ResourceMetadata {
+  [key: string]: any
+}
+
+/**
+ * Optional subscription/resource lifecycle configuration
+ * Enables users to subscribe to specific resources before receiving data
+ */
+export interface SubscriptionConfig {
+  /** Whether subscription is required before accepting items */
+  required: boolean
+
+  /** Zod schema for subscription requests (separate from item schema) */
+  subscriptionSchema: z.ZodSchema
+
+  /** Collection name for resource metadata (e.g., "feeds", "sensors", "endpoints") */
+  resourceCollection: string
+
+  /** Extract resource identifier from subscription data */
+  getResourceId: (subscriptionData: any) => string
+
+  /** Optional: Verify and transform resource identifier (e.g., signed URL verification) */
+  verifyResourceId?: (resourceId: string, account: any) => Promise<string | null>
+
+  /** Optional: Fetch initial metadata from external service */
+  fetchResourceMetadata?: (resourceId: string) => Promise<ResourceMetadata | null>
+
+  /** Optional: External service integration for subscription lifecycle */
+  externalService?: {
+    /** Called when subscribing to a resource */
+    subscribe?: (resourceId: string) => Promise<SubscriptionResult>
+    /** Called when unsubscribing from a resource */
+    unsubscribe?: (resourceId: string) => Promise<SubscriptionResult>
+  }
+
+  /** Subscription limits configuration */
+  limits: {
+    /** Maximum subscriptions per account (null = unlimited) */
+    maxPerAccount: number | null
+
+    /** Field in account object tracking current subscription count */
+    accountCountField: string
+
+    /** Field in account object defining the limit */
+    accountLimitField: string
+
+    /** Optional: Custom limit validation function */
+    checkLimit?: (account: any, resourceId: string) => Promise<LimitCheckResult>
+  }
+
+  /** Lifecycle hook implementations */
+  lifecycle: {
+    /**
+     * Called when user subscribes to a resource
+     * Should handle:
+     * - Creating/updating resource metadata
+     * - Incrementing subscriber counts
+     * - Updating account subscription count
+     */
+    onSubscribe: (
+      user: User,
+      resourceId: string,
+      context: SubscriptionContext,
+      resourceMetadata?: ResourceMetadata,
+    ) => Promise<SubscriptionResult>
+
+    /**
+     * Called when user unsubscribes from a resource
+     * Should handle:
+     * - Decrementing subscriber counts
+     * - Updating account subscription count
+     * - Cleanup if no subscribers remain
+     */
+    onUnsubscribe: (
+      user: User,
+      resourceId: string,
+      context: SubscriptionContext,
+    ) => Promise<SubscriptionResult>
+
+    /**
+     * Optional: Validate subscription exists before processing items
+     * If not provided, subscription is not validated during item processing
+     */
+    validateSubscription?: (user: User, resourceId: string, accountCode?: string) => Promise<boolean>
+  }
+}
+
+// ============================================================================
+// Main Configuration Interface
+// ============================================================================
 
 /**
  * Generic data relay configuration for different data types
@@ -98,6 +219,9 @@ export interface DataRelayConfig<TInput = any, TStored = any> {
       currentMetadata: any,
     ) => Promise<any>
   }
+
+  /** Optional: Subscription/Resource lifecycle management */
+  subscription?: SubscriptionConfig
 
   /** Optional: Custom throttling strategy */
   throttling?: {

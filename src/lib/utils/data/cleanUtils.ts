@@ -8,45 +8,6 @@ import { populateWithExampleData } from '$lib/utils/example';
 import type { Node, NonRootNode } from '$lib/protocol/schemas';
 
 /**
- * Convert a string duration like '30m', '2h', '1d', '1w', '3mo' to milliseconds
- * @param {string} durationStr
- * @returns {number} Duration in milliseconds
- */
-function parseDuration(durationStr: string): number {
-	const durationRegex = /^(\d+)(s|m|h|d|w|mo)$/i;
-	const match = durationStr.match(durationRegex);
-
-	if (!match) {
-		throw new Error(`Invalid duration format: '${durationStr}'`);
-	}
-
-	const value = parseInt(match[1], 10);
-	const unit = match[2].toLowerCase();
-
-	const unitToMs: Record<string, number> = {
-		s: 1000,
-		m: 60 * 1000,
-		h: 60 * 60 * 1000,
-		d: 24 * 60 * 60 * 1000,
-		w: 7 * 24 * 60 * 60 * 1000,
-		mo: 30 * 24 * 60 * 60 * 1000 // Approximate month as 30 days
-	};
-
-	return value * unitToMs[unit];
-}
-
-/**
- * Prune users from the usersList who haven't been seen within the specified duration
- * @param {string} inactivityThreshold - Duration string like '30m', '1h', '2d', etc.
- *
- * @deprecated V5: This utility only worked with Gun. Holster users list management is different.
- */
-export function clearUsersList(inactivityThreshold: string = '30m') {
-	console.error('[PRUNE] clearUsersList() is deprecated in v5. Holster users list management uses different patterns.');
-	console.error('[PRUNE] This function is no longer supported. Please use Holster-specific user management.');
-}
-
-/**
  * Change the name of the user's tree root node
  * @param {string} newName - The new name for the tree
  */
@@ -69,17 +30,6 @@ export function changeTreeName(newName: string) {
 	userTree.set(updatedTree);
 
 	console.log(`[TREE-NAME] Tree name changed to: ${newName}`);
-}
-
-/**
- * Fix corrupted names in the usersList where names were saved as public keys
- * This function checks each user in the usersList and corrects names that match their pubkey
- *
- * @deprecated V5: This utility only worked with Gun. Holster users list management is different.
- */
-export function fixCorruptedUserListNames() {
-	console.error('[USERS-FIX] fixCorruptedUserListNames() is deprecated in v5. Holster uses different user management.');
-	console.error('[USERS-FIX] This function is no longer supported. Please use Holster-specific user management.');
 }
 
 /**
@@ -393,7 +343,7 @@ export function deduplicateContributors() {
 				if (nonRootNode.contributors.length < originalLength) {
 					hasChanges = true;
 					console.log(
-						`[TREE-DEDUP] Node '${node.name}' (${node.id}): ${originalLength} → ${nonRootNode.contributors.length} contributors`
+						`[TREE-DEDUP] Node '${node.name}' (${node.id}): ${originalLength} ? ${nonRootNode.contributors.length} contributors`
 					);
 				}
 			}
@@ -496,14 +446,12 @@ export function deduplicateContributors() {
 
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
-	(window as any).clearUsersList = clearUsersList;
 	(window as any).changeTreeName = changeTreeName;
-	(window as any).fixCorruptedUserListNames = fixCorruptedUserListNames;
 	(window as any).createNewTree = createNewTree;
 	(window as any).updateTreeFromJson = updateTreeFromJson;
 	(window as any).cleanOrphanedContactIds = cleanOrphanedContactIds;
 	(window as any).deduplicateContributors = deduplicateContributors;
 	console.log(
-		'[DEBUG] clearUsersList, changeTreeName, fixCorruptedUserListNames, createNewTree, updateTreeFromJson, cleanOrphanedContactIds, and deduplicateContributors functions exposed to window'
+		'[DEBUG] changeTreeName, createNewTree, updateTreeFromJson, cleanOrphanedContactIds, and deduplicateContributors functions exposed to window'
 	);
 }

@@ -1,6 +1,9 @@
 import type {DataRelayConfig} from "./config"
 import {computeTimeKey, createContentHash, DEFAULT_THROTTLING} from "./config"
-import type {User} from "@mblaney/holster/src/holster.js"
+import {SubscriptionManager} from "./subscription-manager"
+
+// Type for Gun/Holster user instance
+type User = any
 
 /**
  * Generic data relay engine for processing and storing data to Holster
@@ -8,6 +11,7 @@ import type {User} from "@mblaney/holster/src/holster.js"
 export class DataRelayEngine<TInput = any, TStored = any> {
   private config: DataRelayConfig<TInput, TStored>
   private user: User
+  private subscriptionManager: SubscriptionManager | null = null
 
   // In-memory caches (per instance)
   private pendingRequests = new Map<string, {startTime: number}>()
@@ -37,6 +41,15 @@ export class DataRelayEngine<TInput = any, TStored = any> {
   constructor(config: DataRelayConfig<TInput, TStored>, user: User) {
     this.config = config
     this.user = user
+
+    // Initialize subscription manager if configured
+    if (config.subscription) {
+      this.subscriptionManager = new SubscriptionManager(
+        config.subscription,
+        user,
+        config.type,
+      )
+    }
   }
 
   /**
@@ -44,9 +57,10 @@ export class DataRelayEngine<TInput = any, TStored = any> {
    */
   async processItem(
     rawData: unknown,
+    accountCode?: string,
   ): Promise<
     | {success: true; status: "stored" | "unchanged"}
-    | {success: false; error: string; status: "duplicate" | "invalid" | "age_filtered" | "error"}
+    | {success: false; error: string; status: "duplicate" | "invalid" | "age_filtered" | "error" | "no_subscription"}
   > {
     const startTime = Date.now()
 
@@ -66,6 +80,21 @@ export class DataRelayEngine<TInput = any, TStored = any> {
     const resourceId = this.config.storage.getResourceId(data)
     const itemId = this.config.storage.getItemId(data)
     const timestamp = this.config.storage.getTimestamp(data)
+
+    // Validate subscription if required
+    if (this.subscriptionManager && this.config.subscription?.required) {
+      const hasSubscription = await this.subscriptionManager.validateSubscription(
+        resourceId,
+        accountCode,
+      )
+      if (!hasSubscription) {
+        return {
+          success: false,
+          error: "No active subscription for this resource",
+          status: "no_subscription",
+        }
+      }
+    }
 
     // Build deduplication key
     const dedupKey = this.config.deduplication.buildKey(data)
@@ -371,8 +400,8 @@ export class DataRelayEngine<TInput = any, TStored = any> {
   /**
    * Get current statistics
    */
-  getStats() {
-    return {
+  async getStats() {
+    const baseStats = {
       ...this.stats,
       caches: {
         pending: this.pendingRequests.size,
@@ -381,6 +410,24 @@ export class DataRelayEngine<TInput = any, TStored = any> {
         processingCleanup: this.processingCleanup.size,
       },
     }
+
+    // Add subscription stats if available
+    if (this.subscriptionManager) {
+      const subscriptionStats = await this.subscriptionManager.getStats()
+      return {
+        ...baseStats,
+        subscriptions: subscriptionStats,
+      }
+    }
+
+    return baseStats
+  }
+
+  /**
+   * Get subscription manager (if configured)
+   */
+  getSubscriptionManager(): SubscriptionManager | null {
+    return this.subscriptionManager
   }
 
   /**

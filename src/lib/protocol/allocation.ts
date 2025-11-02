@@ -463,10 +463,17 @@ export function updateOverAllocationHistory(
  * MR(A,B) = min(A's recognition of B, B's recognition of A)
  * Special case: MR(me, me) = my recognition of myself
  * 
+ * This function computes MR for:
+ * 1. Everyone I recognize (Loop 1)
+ * 2. Everyone who recognizes me (Loop 2) - even if I don't recognize them (MR will be 0)
+ * 
+ * This ensures complete network awareness: we know about everyone who has any recognition
+ * relationship with us, making the MR map informative for transparency and debugging.
+ * 
  * @param myRecognition - My recognition weights: { alice: 0.3, bob: 0.4, me: 0.5 }
  * @param othersRecognition - Others' recognition of me: { alice: { me: 0.5 }, bob: { me: 0.6 } }
  * @param myPubKey - My public key
- * @returns Mutual recognition: { alice: 0.3, bob: 0.4, me: 0.5 }
+ * @returns Mutual recognition: { alice: 0.3, bob: 0.4, me: 0.5, carol: 0 (if she recognizes me but I don't recognize her) }
  */
 export function computeMutualRecognition(
 	myRecognition: GlobalRecognitionWeights,
@@ -475,6 +482,7 @@ export function computeMutualRecognition(
 ): Record<string, number> {
 	const mutual: Record<string, number> = {};
 	
+	// Loop 1: For everyone I recognize (including myself!)
 	for (const [otherPubKey, myRecOfThem] of Object.entries(myRecognition)) {
 		// Special case: Self-recognition
 		// For mutual recognition with myself, "their recognition of me" IS "my recognition of myself"
@@ -485,6 +493,19 @@ export function computeMutualRecognition(
 		
 		// Regular case: Mutual recognition with others
 		const theirRecOfMe = othersRecognition[otherPubKey]?.[myPubKey] || 0;
+		mutual[otherPubKey] = Math.min(myRecOfThem, theirRecOfMe);
+	}
+	
+	// Loop 2: Also check people who recognize me (but I might not recognize them)
+	// This ensures complete network awareness - we know about everyone
+	for (const [otherPubKey, theirWeights] of Object.entries(othersRecognition)) {
+		if (mutual[otherPubKey] !== undefined) continue; // Already computed in Loop 1
+		
+		const theirRecOfMe = theirWeights?.[myPubKey] || 0;
+		const myRecOfThem = myRecognition[otherPubKey] || 0;
+		
+		// MR will be 0 if I don't recognize them, but we still include them
+		// This shows "I've seen their recognition of me, but I don't mutually recognize them"
 		mutual[otherPubKey] = Math.min(myRecOfThem, theirRecOfMe);
 	}
 	

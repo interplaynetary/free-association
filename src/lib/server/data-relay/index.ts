@@ -8,11 +8,22 @@
  * - Retention policies and cleanup
  * - Throttling and performance optimization
  * - Data transformation and validation
+ * - Optional subscription management
  */
 
 export {DataRelayEngine} from "./engine"
 export {DataRelayRegistry, getRegistry, resetRegistry} from "./registry"
-export type {DataRelayConfig} from "./config"
+export {SubscriptionManager} from "./subscription-manager"
+
+export type {
+  DataRelayConfig,
+  SubscriptionConfig,
+  SubscriptionContext,
+  SubscriptionResult,
+  LimitCheckResult,
+  ResourceMetadata,
+} from "./config"
+
 export {
   computeTimeKey,
   createContentHash,
@@ -21,6 +32,20 @@ export {
   DEFAULT_THROTTLING,
   DEFAULT_RETENTION,
 } from "./config"
+
+export {
+  buildSimpleSubscriptionConfig,
+  createFieldBasedLimitChecker,
+  createStandardSubscribeHandler,
+  createStandardUnsubscribeHandler,
+  createStandardValidationHandler,
+  trackAccountSubscription,
+  isAccountSubscribed,
+  updateSubscriberCount,
+  updateAccountSubscriptionCount,
+  standardSubscriptionSchema,
+  simpleSubscriptionSchema,
+} from "./subscription-helpers"
 
 // Export all preset configurations
 export * from "./presets/rss-feed"

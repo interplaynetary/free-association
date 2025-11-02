@@ -69,13 +69,16 @@ export const GET = createGETHandler(
     const {type} = event.params
 
     const registry = getRegistry(user)
-    const stats = registry.getEngineStats(type)
+    const stats = await registry.getEngineStats(type)
 
     if (!stats) {
       error(404, `Unknown relay type: ${type}`)
     }
 
-    return stats
+    return {
+      ...stats,
+      supportsSubscriptions: registry.supportsSubscriptions(type),
+    }
   },
   {
     requireAuth: true,
