@@ -13,7 +13,8 @@ export const GET = createGETHandler(
 
     return {
       types: registry.getTypes(),
-      stats: registry.getStats(),
+      subscribableTypes: registry.getSubscribableTypes(),
+      stats: await registry.getStats(),
     }
   },
   {

@@ -1,7 +1,12 @@
 import {z} from "zod"
 import type {DataRelayConfig} from "../config"
 import {buildFlatPath, DEFAULT_RETENTION, DEFAULT_THROTTLING} from "../config"
-import type {User} from "@mblaney/holster/src/holster.js"
+import {buildSimpleSubscriptionConfig} from "../subscription-helpers"
+import {holsterVerify} from "$lib/server/holster/db"
+import {config} from "$lib/server/config"
+
+// Type for Gun/Holster user instance
+type User = any
 
 // ============================================================================
 // RSS Feed Schema
@@ -54,7 +59,7 @@ interface RSSFeedItemStored {
 // Data Mappers
 // ============================================================================
 
-function mapEnclosure(e: z.infer<typeof enclosureSchema>): RSSFeedItemStored["enclosure"] | undefined {
+function mapEnclosure(e: z.infer<typeof enclosureSchema> | undefined): RSSFeedItemStored["enclosure"] | undefined {
   if (!e) return undefined
 
   let found = false
@@ -168,11 +173,137 @@ export const rssFeedConfig: DataRelayConfig<RSSFeedItemInput, RSSFeedItemStored>
     collection: "feeds",
     getKey: data => data.url,
     onItemAdd: async (user: User, feedUrl: string, currentMetadata: any) => {
-      // Feed metadata is managed separately via add-feed endpoint
-      // This could be used to track item counts if needed
+      // Metadata is now managed through subscription system
       return null
     },
   },
+
+  subscription: buildSimpleSubscriptionConfig("rss-feed", "feeds", {
+    required: true,
+    countField: "subscribed",
+    limitField: "feeds",
+    verifyResourceId: async (resourceId: string, account: any) => {
+      // Verify signed URL
+      return await holsterVerify(resourceId, account)
+    },
+    fetchMetadata: async (feedUrl: string) => {
+      // Fetch feed metadata from external RSS service
+      const addFeedUrl = config.addFeedUrl
+      const addFeedID = config.addFeedId
+      const addFeedApiKey = config.addFeedApiKey
+
+      if (!addFeedUrl || !addFeedID || !addFeedApiKey) {
+        console.error("RSS feed service not configured")
+        return null
+      }
+
+      try {
+        const response = await fetch(addFeedUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `id=${addFeedID}&key=${addFeedApiKey}&action=add-feed&xmlUrl=${encodeURIComponent(feedUrl)}`,
+        })
+
+        if (!response.ok) {
+          console.error("Failed to fetch feed metadata:", response.statusText)
+          return null
+        }
+
+        const result = await response.json()
+        if (result.error || !result.add) {
+          console.error("Invalid feed metadata response:", result.error)
+          return null
+        }
+
+        return {
+          title: result.add.title,
+          description: result.add.description ?? "",
+          html_url: result.add.html_url ?? "",
+          language: result.add.language ?? "",
+          image: result.add.image ?? "",
+        }
+      } catch (error) {
+        console.error("Error fetching feed metadata:", error)
+        return null
+      }
+    },
+    externalService: {
+      subscribe: async (feedUrl: string) => {
+        const addFeedUrl = config.addFeedUrl
+        const addFeedID = config.addFeedId
+        const addFeedApiKey = config.addFeedApiKey
+
+        if (!addFeedUrl || !addFeedID || !addFeedApiKey) {
+          return {
+            success: false,
+            error: "RSS feed service not configured",
+          }
+        }
+
+        try {
+          const response = await fetch(addFeedUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: `id=${addFeedID}&key=${addFeedApiKey}&action=add-feed&xmlUrl=${encodeURIComponent(feedUrl)}`,
+          })
+
+          if (!response.ok) {
+            return {
+              success: false,
+              error: "External RSS service error",
+            }
+          }
+
+          return {success: true}
+        } catch (error) {
+          return {
+            success: false,
+            error: "Failed to contact RSS service",
+          }
+        }
+      },
+      unsubscribe: async (feedUrl: string) => {
+        const addFeedUrl = config.addFeedUrl
+        const addFeedID = config.addFeedId
+        const addFeedApiKey = config.addFeedApiKey
+
+        if (!addFeedUrl || !addFeedID || !addFeedApiKey) {
+          return {
+            success: false,
+            error: "RSS feed service not configured",
+          }
+        }
+
+        try {
+          const response = await fetch(addFeedUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: `id=${addFeedID}&key=${addFeedApiKey}&action=remove-feed&xmlUrl=${encodeURIComponent(feedUrl)}`,
+          })
+
+          if (!response.ok) {
+            return {
+              success: false,
+              error: "External RSS service error",
+            }
+          }
+
+          return {success: true}
+        } catch (error) {
+          return {
+            success: false,
+            error: "Failed to contact RSS service",
+          }
+        }
+      },
+    },
+  }),
 
   throttling: DEFAULT_THROTTLING,
 

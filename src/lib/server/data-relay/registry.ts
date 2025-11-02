@@ -1,6 +1,8 @@
-import type {User} from "@mblaney/holster/src/holster.js"
 import {DataRelayEngine} from "./engine"
 import type {DataRelayConfig} from "./config"
+
+// Type for Gun/Holster user instance
+type User = any
 
 // Import all preset configurations
 import {rssFeedConfig} from "./presets/rss-feed"
@@ -58,7 +60,11 @@ export class DataRelayRegistry {
   /**
    * Process data through the appropriate relay
    */
-  async process(type: string, data: unknown): Promise<ReturnType<DataRelayEngine["processItem"]>> {
+  async process(
+    type: string,
+    data: unknown,
+    accountCode?: string,
+  ): Promise<ReturnType<DataRelayEngine["processItem"]>> {
     const engine = this.engines.get(type)
     if (!engine) {
       return {
@@ -68,16 +74,16 @@ export class DataRelayRegistry {
       }
     }
 
-    return engine.processItem(data)
+    return engine.processItem(data, accountCode)
   }
 
   /**
    * Get statistics for all engines
    */
-  getStats() {
+  async getStats() {
     const stats: Record<string, any> = {}
     for (const [type, engine] of this.engines.entries()) {
-      stats[type] = engine.getStats()
+      stats[type] = await engine.getStats()
     }
     return stats
   }
@@ -85,9 +91,9 @@ export class DataRelayRegistry {
   /**
    * Get statistics for a specific engine
    */
-  getEngineStats(type: string) {
+  async getEngineStats(type: string) {
     const engine = this.engines.get(type)
-    return engine ? engine.getStats() : null
+    return engine ? await engine.getStats() : null
   }
 
   /**
@@ -168,6 +174,73 @@ export class DataRelayRegistry {
   clear(): void {
     this.stopCacheCleanup()
     this.engines.clear()
+  }
+
+  /**
+   * Subscribe to a resource for a specific relay type
+   */
+  async subscribe(type: string, subscriptionData: any, accountCode: string) {
+    const engine = this.engines.get(type)
+    if (!engine) {
+      return {
+        success: false,
+        error: `Unknown data relay type: ${type}`,
+      }
+    }
+
+    const subscriptionManager = engine.getSubscriptionManager()
+    if (!subscriptionManager) {
+      return {
+        success: false,
+        error: `Relay type "${type}" does not support subscriptions`,
+      }
+    }
+
+    return await subscriptionManager.subscribe(subscriptionData, accountCode)
+  }
+
+  /**
+   * Unsubscribe from a resource for a specific relay type
+   */
+  async unsubscribe(type: string, subscriptionData: any, accountCode: string) {
+    const engine = this.engines.get(type)
+    if (!engine) {
+      return {
+        success: false,
+        error: `Unknown data relay type: ${type}`,
+      }
+    }
+
+    const subscriptionManager = engine.getSubscriptionManager()
+    if (!subscriptionManager) {
+      return {
+        success: false,
+        error: `Relay type "${type}" does not support subscriptions`,
+      }
+    }
+
+    return await subscriptionManager.unsubscribe(subscriptionData, accountCode)
+  }
+
+  /**
+   * Check if a relay type supports subscriptions
+   */
+  supportsSubscriptions(type: string): boolean {
+    const engine = this.engines.get(type)
+    return engine?.getSubscriptionManager() !== null
+  }
+
+  /**
+   * Get list of relay types that support subscriptions
+   */
+  getSubscribableTypes(): string[] {
+    const types: string[] = []
+    for (const [type, engine] of this.engines.entries()) {
+      if (engine.getSubscriptionManager()) {
+        types.push(type)
+      }
+    }
+    return types
   }
 }
 
