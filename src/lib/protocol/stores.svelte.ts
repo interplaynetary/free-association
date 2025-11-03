@@ -517,11 +517,21 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 		}
 		
 		// ✅ CACHE PRESERVATION: Include people from cache who aren't in current calculations
+		// BUT ONLY if they're still in my current recognition weights!
 		// This handles case where network is completely unavailable but we had previous relationships
+		// 
+		// CRITICAL: Do NOT preserve cached MR for people I've removed from my tree!
+		// If someone is no longer in $myWeights, that's an intentional removal.
 		for (const cachedPub in cachedMR) {
-			if (mutualRec[cachedPub] === undefined && cachedMR[cachedPub] > 0) {
+			// Only preserve cache if:
+			// 1. Not already computed (undefined in mutualRec)
+			// 2. Still in my current recognition (I didn't remove them!)
+			// 3. Had cached MR > 0
+			if (mutualRec[cachedPub] === undefined && 
+			    cachedMR[cachedPub] > 0 && 
+			    $myWeights[cachedPub] !== undefined) {
 				mutualRec[cachedPub] = cachedMR[cachedPub];
-				console.log(`[🤝 MUTUAL-REC]   ${cachedPub.slice(0, 20)}... (CACHE-ONLY): MR=${(cachedMR[cachedPub] * 100).toFixed(2)}% (no fresh data)`);
+				console.log(`[🤝 MUTUAL-REC]   ${cachedPub.slice(0, 20)}... (CACHE-ONLY): MR=${(cachedMR[cachedPub] * 100).toFixed(2)}% (no fresh data, but I still recognize them)`);
 			}
 		}
 		
