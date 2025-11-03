@@ -494,7 +494,12 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			
 			// Mutual recognition is the minimum
 			const mr = Math.min(myRecOfThem, theirRecOfMe);
-			mutualRec[theirPub] = mr;
+			
+			// ✅ ONLY add non-zero MR values to the result
+			// This ensures the commitment only contains active relationships
+			if (mr > 0) {
+				mutualRec[theirPub] = mr;
+			}
 			
 			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
 				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}...: I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
@@ -509,7 +514,13 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			const myRecOfThem = $myWeights[theirPub] || 0;
 			
 			const mr = Math.min(myRecOfThem, theirRecOfMe);
-			mutualRec[theirPub] = mr;
+			
+			// ✅ ONLY add non-zero MR values to the result
+			// This ensures clean diffs when someone is removed from tree
+			// If I no longer recognize them, MR = 0, don't include in commitment
+			if (mr > 0) {
+				mutualRec[theirPub] = mr;
+			}
 			
 			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
 				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (they recognize me): I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
