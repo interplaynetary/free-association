@@ -28,7 +28,7 @@ export const POST: RequestHandler = async (event) => {
 
   try {
     const registry = getRegistry(user)
-    const result = await registry.process(type, data)
+    const result = await registry.process(type!, data)
 
     if (!result.success) {
       // Map status to HTTP status codes
@@ -37,6 +37,7 @@ export const POST: RequestHandler = async (event) => {
         duplicate: 202,
         age_filtered: 400,
         error: 500,
+        no_subscription: 403,
       }[result.status] || 500
 
       return json(
@@ -69,7 +70,7 @@ export const GET = createGETHandler(
     const {type} = event.params
 
     const registry = getRegistry(user)
-    const stats = await registry.getEngineStats(type)
+    const stats = await registry.getEngineStats(type!)
 
     if (!stats) {
       error(404, `Unknown relay type: ${type}`)
@@ -77,7 +78,7 @@ export const GET = createGETHandler(
 
     return {
       ...stats,
-      supportsSubscriptions: registry.supportsSubscriptions(type),
+      supportsSubscriptions: registry.supportsSubscriptions(type!),
     }
   },
   {
