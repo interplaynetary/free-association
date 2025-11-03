@@ -32,12 +32,12 @@ describe('ITC Merge Fix - Data Loss Prevention', () => {
 	
 	function createTestCommitment(partial: Partial<Commitment>): Commitment {
 		return {
-			need_slots: [],
-			capacity_slots: [],
-			global_recognition_weights: {},
-			global_mr_values: {},
-			timestamp: Date.now(),
-			itcStamp: itcSeed(),
+		need_slots: [],
+		capacity_slots: [],
+		global_recognition_weights: {},
+		others_recognition_of_me: {},
+		timestamp: Date.now(),
+		itcStamp: itcSeed(),
 			...partial
 		};
 	}

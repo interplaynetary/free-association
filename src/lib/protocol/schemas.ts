@@ -602,7 +602,14 @@ export const CommitmentSchema = z.object({
 	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
 	// Note: .nullable() allows null from Holster (empty objects → null)
 	global_recognition_weights: GlobalRecognitionWeightsSchema.nullable().optional(),
-	global_mr_values: GlobalRecognitionWeightsSchema.nullable().optional(),
+	
+	// LOCAL CACHE: Others' recognition of me (cached from network commitments)
+	// Updated when network proves otherwise (local-first!)
+	// Format: { theirPubKey: { myPubKey: weight } }
+	others_recognition_of_me: z.record(
+		z.string(), // theirPubKey
+		GlobalRecognitionWeightsSchema // Their full recognition weights
+	).nullable().optional(),
 	
 	// Causality tracking (ITC)
 	itcStamp: z.any(), // ITCStampSchema

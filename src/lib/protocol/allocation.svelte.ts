@@ -948,9 +948,19 @@ export async function publishMyCommitment(commitment: Commitment): Promise<void>
 		return;
 	}
 	
-	// Get current mutual recognition and normalized recognition weights
-	const mrValues = get(myMutualRecognition);
-	const recWeights = get(myRecognitionOfOthers);
+	// Get fresh recognition weights
+	const freshRecWeights = get(myRecognitionOfOthers);
+	
+	// FALLBACK STRATEGY: Trust previous values until network proves otherwise
+	// If network is slow/incomplete, preserve previous recognition data
+	const recWeights = Object.keys(freshRecWeights).length > 0
+		? freshRecWeights
+		: (commitment.global_recognition_weights || {});
+	
+	// Log fallback usage for debugging
+	if (Object.keys(freshRecWeights).length === 0 && commitment.global_recognition_weights && Object.keys(commitment.global_recognition_weights).length > 0) {
+		console.log(`[PUBLISH] Network slow - preserving ${Object.keys(commitment.global_recognition_weights).length} previous recognition weights`);
+	}
 	
 	// Normalize recognition weights before publishing
 	const normalizedWeights = normalizeGlobalRecognitionWeights(recWeights);
@@ -958,8 +968,9 @@ export async function publishMyCommitment(commitment: Commitment): Promise<void>
 	// Enrich commitment with stamps and recognition
 	const enrichedCommitment: Commitment = {
 		...commitment,
-		global_mr_values: mrValues,
 		global_recognition_weights: normalizedWeights,
+		// Preserve cache (updated by network subscriber in stores.svelte.ts)
+		others_recognition_of_me: commitment.others_recognition_of_me,
 		itcStamp: getMyITCStamp(),
 		timestamp: Date.now()
 	};
@@ -967,7 +978,8 @@ export async function publishMyCommitment(commitment: Commitment): Promise<void>
 	// Publish to network
 	await myCommitmentStore.set(enrichedCommitment);
 	
-	console.log(`[PUBLISH] Published commitment with ITC stamp ${itcToString(getMyITCStamp())}`);
+	const cacheCount = Object.keys(commitment.others_recognition_of_me || {}).length;
+	console.log(`[PUBLISH] Published commitment with ITC stamp ${itcToString(getMyITCStamp())}, Rec count: ${Object.keys(normalizedWeights).length}, Cache: ${cacheCount}`);
 }
 
 /**

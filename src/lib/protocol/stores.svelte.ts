@@ -280,8 +280,8 @@ export const networkCommitments: VersionedStore<Commitment, string> = createVers
 		needs: (c) => c.need_slots,
 		capacity: (c) => c.capacity_slots,
 		damping: (c) => c.multi_dimensional_damping,
-		mr: (c) => c.global_mr_values,
 		allocations: (c) => c.slot_allocations // ✅ Track allocations for fine-grained reactivity
+		// NOTE: 'mr' field removed - MR is now computed from recognition weights (not stored)
 	},
 	fieldEqualityCheckers: {
 		// Use deep equality for array fields (arrays of objects)
@@ -409,101 +409,139 @@ export const networkCapacitySlots = networkCommitments.deriveField<AvailabilityS
 export const networkAllocations = networkCommitments.deriveField<SlotAllocationRecord[]>('allocations');
 
 /**
- * My Mutual Recognition (V5) - DERIVED WITH FINE-GRAINED REACTIVITY 🚀
+ * My Mutual Recognition - LOCAL-FIRST ARCHITECTURE ✨
  * 
- * Computes mutual recognition with everyone by combining:
- * 1. My recognition of them (from myRecognitionWeights - CURRENT tree data!)
- * 2. Their recognition of me (from networkRecognitionWeights - FIELD STORE!)
+ * Computes mutual recognition from MY COMMITMENT ONLY:
+ * 1. My recognition of them: commitment.global_recognition_weights (from tree)
+ * 2. Their recognition of me: commitment.others_recognition_of_me (cached from network)
  * 
  * Formula: MR(me, them) = min(myRec[them], theirRec[me])
  * Special case: MR(me, me) = myRec[me] (self-recognition becomes self-MR)
  * 
- * This is what goes into my commitment as `global_mr_values`
+ * ✨ ELEGANT LOCAL-FIRST:
+ * - Everything needed is in MY commitment (single source!)
+ * - No network dependency for computation
+ * - Works offline with cached data
+ * - Updates immediately when tree changes
+ * - Cache updates when network proves otherwise
  * 
- * CRITICAL FIX: Derives from myRecognitionWeights, NOT myCommitmentStore!
- * ✅ Uses current tree data (not stale commitment)
- * ✅ Includes self-recognition
- * ✅ Computed at composition time with fresh data
+ * Examples:
+ * - I recognize Alice 40%, cached: Alice recognizes me 60% → MR = 40%
+ * - I recognize Bob 70%, cached: Bob recognizes me 50% → MR = 50%
+ * - I recognize myself 10% → MR(me, me) = 10%
  * 
- * WHY NOT myCommitmentStore?
- * - During composition, commitment is being created
- * - Reading from it would give STALE data (old commitment)
- * - Creates circular dependency: compose needs MR, MR needs commitment
- * 
- * PERFORMANCE BOOST: Uses networkRecognitionWeights field store!
- * ✅ Only recalculates when recognition changes
- * ✅ NOT triggered by needs/capacity/damping changes
- * 
- * KEY INSIGHT: This is the "incoming" recognition bridge!
- * - My recognition weights → who I recognize (from tree, includes self!)
- * - Network recognition weights → their weights (who they recognize, including me!)
- * - Mutual recognition = intersection of both
+ * KEY INSIGHT: Commitment-as-cache!
+ * - global_recognition_weights: Source (from tree)
+ * - others_recognition_of_me: Cache (from network, updated when proven otherwise)
+ * - MR: Purely computed (not stored!)
  */
 export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
-	[holsterUserPub, myRecognitionWeights, networkRecognitionWeights],  // ✅ Use current tree data!
-	([$myPub, $myWeights, $networkRecWeights]) => {
-		console.log('[🤝 MUTUAL-REC] Computing mutual recognition...');
+	[holsterUserPub, myCommitmentStore],  // ✅ Only my commitment! Truly local-first!
+	([$myPub, $myCommitment]) => {
+		console.log('[🤝 MUTUAL-REC] Computing mutual recognition (local-first)...');
 		
-		if (!$myPub) {
-			console.log('[🤝 MUTUAL-REC] ❌ No user pub key available');
+		if (!$myPub || !$myCommitment) {
+			console.log('[🤝 MUTUAL-REC] ❌ No pub key or commitment available');
 			return {};
 		}
 		
-		// Use current recognition weights from tree (includes self!)
-		const myRecCount = Object.keys($myWeights).length;
-		const myNonZeroCount = Object.values($myWeights).filter(w => w > 0).length;
+		// Source: Who I recognize (from tree)
+		const myWeights = $myCommitment.global_recognition_weights || {};
 		
-		console.log(`[🤝 MUTUAL-REC] My recognition: ${myRecCount} entries (${myNonZeroCount} non-zero)`);
-		console.log(`[🤝 MUTUAL-REC] Network has ${$networkRecWeights.size} users' recognition data`);
+		// Cache: Others' recognition of me (from network, updated when proven otherwise)
+		const othersRecCache = $myCommitment.others_recognition_of_me || {};
 		
 		const mutualRec: GlobalRecognitionWeights = {};
 		
+		const myRecCount = Object.keys(myWeights).length;
+		const cacheCount = Object.keys(othersRecCache).length;
+		
+		console.log(`[🤝 MUTUAL-REC] My recognition: ${myRecCount} entries`);
+		console.log(`[🤝 MUTUAL-REC] Cached others' rec: ${cacheCount} entries`);
+		
 		// For everyone I recognize (including myself!)
-		for (const theirPub in $myWeights) {
-			const myRecOfThem = $myWeights[theirPub] || 0;
+		for (const theirPub in myWeights) {
+			const myRecOfThem = myWeights[theirPub] || 0;
 			
 			// ✅ SPECIAL CASE: Self-recognition
-			// For mutual recognition with myself, "their recognition of me" IS "my recognition of myself"
 			if (theirPub === $myPub) {
 				mutualRec[theirPub] = myRecOfThem;  // MR(me, me) = myRec[me]
-				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (SELF): I→me=${(myRecOfThem * 100).toFixed(2)}%, MR=${(myRecOfThem * 100).toFixed(2)}%`);
+				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (SELF): MR=${(myRecOfThem * 100).toFixed(2)}%`);
 				continue;
 			}
 			
-			// Get their recognition of me from field store
-			const theirWeights = $networkRecWeights.get(theirPub);
+			// Get their recognition of me from cache
+			const theirWeights = othersRecCache[theirPub];
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
 			
-			// Mutual recognition is the minimum
+			// Compute MR
 			const mr = Math.min(myRecOfThem, theirRecOfMe);
 			mutualRec[theirPub] = mr;
 			
 			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
-				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}...: I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
-			}
-		}
-		
-		// Also check people who recognize me (but I might not recognize them)
-		for (const [theirPub, theirWeights] of $networkRecWeights.entries()) {
-			if (mutualRec[theirPub] !== undefined) continue; // Already computed
-			
-			const theirRecOfMe = theirWeights?.[$myPub] || 0;
-			const myRecOfThem = $myWeights[theirPub] || 0;
-			
-			const mr = Math.min(myRecOfThem, theirRecOfMe);
-			mutualRec[theirPub] = mr;
-			
-			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
-				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (they recognize me): I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
+				const source = theirWeights ? 'CACHED' : 'AWAITING';
+				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}...: I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}% [${source}]`);
 			}
 		}
 		
 		const mutualCount = Object.values(mutualRec).filter(mr => mr > 0).length;
-		console.log(`[🤝 MUTUAL-REC] ✅ Computed ${mutualCount} mutual relationships`);
+		console.log(`[🤝 MUTUAL-REC] ✅ Computed ${mutualCount} mutual relationships (local-first!)`);
 		
 		return mutualRec;
 	}
 );
+
+// ═══════════════════════════════════════════════════════════════════
+// NETWORK CACHE UPDATER (LOCAL-FIRST)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Local-First Cache Updater: "Trust Until Proven Otherwise"
+ * 
+ * Listens to incoming network commitments and updates our local cache
+ * (others_recognition_of_me) ONLY when network data proves a change.
+ * 
+ * This ensures MR calculations remain stable and local-first, updating
+ * reactively only when new information arrives from the network.
+ */
+networkCommitments.subscribe(($networkCommitsVersioned) => {
+	const myPub = get(holsterUserPub);
+	const myCommitment = get(myCommitmentStore);
+	
+	if (!myPub || !myCommitment) return;
+	
+	const cache = myCommitment.others_recognition_of_me || {};
+	const updates: Record<string, GlobalRecognitionWeights> = {};
+	
+	// Check each network commitment for changes
+	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
+		// Skip own commitment (prevents infinite loop when our data syncs back)
+		if (theirPub === myPub) continue;
+		
+		const theirWeights = versionedEntity.data.global_recognition_weights;
+		if (!theirWeights) continue;
+		
+		// Normalize and extract their recognition of me
+		const normalized = normalizeGlobalRecognitionWeights(theirWeights);
+		const networkRecOfMe = normalized[myPub] || 0;
+		const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
+		
+		// Network proved otherwise? Update cache!
+		if (networkRecOfMe !== cachedRecOfMe) {
+			updates[theirPub] = normalized;
+			console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
+		}
+	}
+	
+	// Apply updates if any changes detected
+	if (Object.keys(updates).length > 0) {
+		console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
+		myCommitmentStore.set({
+			...myCommitment,
+			others_recognition_of_me: { ...cache, ...updates }
+		});
+	}
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS (Slot Updates) ✅
@@ -518,7 +556,6 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 export function setMyNeedSlots(needSlots: NeedSlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
-	const mutualRecognition = get(myMutualRecognition);
 	
 	// Merge ITC with network
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
@@ -527,7 +564,7 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 		need_slots: needSlots,
 		capacity_slots: current?.capacity_slots || [],
 		global_recognition_weights: recognitionWeights,
-		global_mr_values: mutualRecognition,
+		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
 		multi_dimensional_damping: current?.multi_dimensional_damping,
 		itcStamp: mergedITC,
 		timestamp: Date.now()
@@ -546,7 +583,6 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
-	const mutualRecognition = get(myMutualRecognition);
 	
 	// Merge ITC with network
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
@@ -555,7 +591,7 @@ export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 		need_slots: current?.need_slots || [],
 		capacity_slots: capacitySlots,
 		global_recognition_weights: recognitionWeights,
-		global_mr_values: mutualRecognition,
+		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
 		multi_dimensional_damping: current?.multi_dimensional_damping,
 		itcStamp: mergedITC,
 		timestamp: Date.now()
@@ -1433,7 +1469,6 @@ export function composeCommitmentFromSources(): Commitment | null {
 	
 	const tree = get(myRecognitionTreeStore);
 	const recognitionWeights = get(myRecognitionWeights);
-	const mutualRecognition = get(myMutualRecognition);
 	const existingCommitment = get(myCommitmentStore);
 	const myPub = get(holsterUserPub);
 	
@@ -1446,24 +1481,24 @@ export function composeCommitmentFromSources(): Commitment | null {
 	// ✅ CRITICAL FIX: Merge network ITCs to prevent data loss!
 	const mergedITC = getMergedITCStamp(existingCommitment?.itcStamp);
 	
-	// ✅ EXPERIMENT: Try publishing self-recognition (it's JSON, Gun shouldn't care!)
-	// If we get the "wire check" error, we'll know the cause. If not, self-recognition works!
+	// Include self-recognition (it's JSON, perfectly valid!)
 	const recognitionWeightsForNetwork = { ...recognitionWeights }; // Include self!
-	const mutualRecognitionForNetwork = { ...mutualRecognition }; // Include self!
 	
 	if (myPub && recognitionWeightsForNetwork[myPub] !== undefined) {
 		console.log(`[📝 COMPOSE] ✅ Including self-recognition (${(recognitionWeightsForNetwork[myPub] * 100).toFixed(2)}%) in commitment`);
 	}
 	
-	// Compose the commitment - PRESERVE existing slots!
+	// Compose the commitment - PRESERVE existing slots AND cache!
 	const commitment: Commitment = {
 		// Preserve existing slots (updated via setMyNeedSlots/setMyCapacitySlots)
 		need_slots: existingCommitment?.need_slots || [],
 		capacity_slots: existingCommitment?.capacity_slots || [],
 		
-		// Update recognition data (from tree + network) - WITHOUT self-recognition
+		// Update recognition data (from tree) - source of truth!
 		global_recognition_weights: recognitionWeightsForNetwork,
-		global_mr_values: mutualRecognitionForNetwork,
+		
+		// Preserve cache (updated by network subscriber)
+		others_recognition_of_me: existingCommitment?.others_recognition_of_me,
 		
 		// Preserve stateful data from existing commitment
 		multi_dimensional_damping: existingCommitment?.multi_dimensional_damping,
@@ -1475,12 +1510,11 @@ export function composeCommitmentFromSources(): Commitment | null {
 	
 	const recCount = Object.keys(commitment.global_recognition_weights || {}).length;
 	const recNonZero = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
-	const mrCount = Object.keys(commitment.global_mr_values || {}).length;
-	const mrNonZero = Object.values(commitment.global_mr_values || {}).filter(w => w > 0).length;
+	const cacheCount = Object.keys(commitment.others_recognition_of_me || {}).length;
 	
 	console.log(`[📝 COMPOSE] ✅ Composed commitment:`);
 	console.log(`  • Recognition: ${recCount} entries (${recNonZero} non-zero) [includes self if present in tree]`);
-	console.log(`  • Mutual Recognition: ${mrCount} entries (${mrNonZero} non-zero)`);
+	console.log(`  • Others' rec cache: ${cacheCount} entries`);
 	console.log(`  • Need Slots: ${commitment.need_slots?.length || 0}`);
 	console.log(`  • Capacity Slots: ${commitment.capacity_slots?.length || 0}`);
 	
@@ -1557,14 +1591,14 @@ export function enableAutoCommitmentComposition(): () => void {
 						need_slots: currentCommitment.need_slots,
 						capacity_slots: currentCommitment.capacity_slots,
 						global_recognition_weights: currentCommitment.global_recognition_weights,
-						global_mr_values: currentCommitment.global_mr_values,
+						others_recognition_of_me: currentCommitment.others_recognition_of_me,
 						multi_dimensional_damping: currentCommitment.multi_dimensional_damping
 					};
 					const newData = {
 						need_slots: newCommitment.need_slots,
 						capacity_slots: newCommitment.capacity_slots,
 						global_recognition_weights: newCommitment.global_recognition_weights,
-						global_mr_values: newCommitment.global_mr_values,
+						others_recognition_of_me: newCommitment.others_recognition_of_me,
 						multi_dimensional_damping: newCommitment.multi_dimensional_damping
 					};
 					

@@ -75,12 +75,12 @@ const TEST_USER_PUB = 'test-user-pub-key';
 function createTestCommitment(overrides: Partial<Commitment> = {}): Commitment {
 	return {
 		timestamp: Date.now(),
-		need_slots: [],
-		capacity_slots: [],
-		global_recognition_weights: {},
-		global_mr_values: {},
-		itcStamp: itcSeed(),
-		...overrides
+	need_slots: [],
+	capacity_slots: [],
+	global_recognition_weights: {},
+	others_recognition_of_me: {},
+	itcStamp: itcSeed(),
+	...overrides
 	};
 }
 
