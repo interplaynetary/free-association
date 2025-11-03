@@ -414,6 +414,7 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
  * Computes mutual recognition with everyone by combining:
  * 1. My recognition of them (from myRecognitionWeights - CURRENT tree data!)
  * 2. Their recognition of me (from networkRecognitionWeights - FIELD STORE!)
+ * 3. **CACHED MR from my previous commitment (for slow networks!)**
  * 
  * Formula: MR(me, them) = min(myRec[them], theirRec[me])
  * Special case: MR(me, me) = myRec[me] (self-recognition becomes self-MR)
@@ -424,11 +425,12 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
  * ✅ Uses current tree data (not stale commitment)
  * ✅ Includes self-recognition
  * ✅ Computed at composition time with fresh data
+ * ✅ Falls back to cached MR values when network is slow
  * 
- * WHY NOT myCommitmentStore?
- * - During composition, commitment is being created
- * - Reading from it would give STALE data (old commitment)
- * - Creates circular dependency: compose needs MR, MR needs commitment
+ * SLOW NETWORK HANDLING:
+ * - If network data isn't available yet, use cached MR from previous commitment
+ * - Only update MR when we have fresh network data (trust until proven otherwise!)
+ * - Prevents losing MR values on reload when network is slow
  * 
  * PERFORMANCE BOOST: Uses networkRecognitionWeights field store!
  * ✅ Only recalculates when recognition changes
@@ -437,11 +439,12 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
  * KEY INSIGHT: This is the "incoming" recognition bridge!
  * - My recognition weights → who I recognize (from tree, includes self!)
  * - Network recognition weights → their weights (who they recognize, including me!)
- * - Mutual recognition = intersection of both
+ * - Cached MR → fallback when network is slow
+ * - Mutual recognition = intersection of all sources
  */
 export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
-	[holsterUserPub, myRecognitionWeights, networkRecognitionWeights],  // ✅ Use current tree data!
-	([$myPub, $myWeights, $networkRecWeights]) => {
+	[holsterUserPub, myRecognitionWeights, networkRecognitionWeights, myCommitmentStore],  // ✅ Include commitment for cache!
+	([$myPub, $myWeights, $networkRecWeights, $myCommitment]) => {
 		console.log('[🤝 MUTUAL-REC] Computing mutual recognition...');
 		
 		if (!$myPub) {
@@ -449,12 +452,18 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			return {};
 		}
 		
+		// Get cached MR values from previous commitment (fallback for slow network!)
+		const cachedMR = $myCommitment?.global_mr_values || {};
+		const cacheCount = Object.keys(cachedMR).length;
+		const cacheNonZero = Object.values(cachedMR).filter(mr => mr > 0).length;
+		
 		// Use current recognition weights from tree (includes self!)
 		const myRecCount = Object.keys($myWeights).length;
 		const myNonZeroCount = Object.values($myWeights).filter(w => w > 0).length;
 		
 		console.log(`[🤝 MUTUAL-REC] My recognition: ${myRecCount} entries (${myNonZeroCount} non-zero)`);
 		console.log(`[🤝 MUTUAL-REC] Network has ${$networkRecWeights.size} users' recognition data`);
+		console.log(`[🤝 MUTUAL-REC] Cached MR: ${cacheCount} entries (${cacheNonZero} non-zero) - used when network unavailable`);
 		
 		const mutualRec: GlobalRecognitionWeights = {};
 		
@@ -473,6 +482,15 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			// Get their recognition of me from field store
 			const theirWeights = $networkRecWeights.get(theirPub);
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
+			
+			// ✅ SLOW NETWORK FIX: If network data unavailable, use cached MR value!
+			// This prevents losing MR on reload when network is slow
+			if (theirRecOfMe === 0 && cachedMR[theirPub] !== undefined && cachedMR[theirPub] > 0) {
+				// Network data not available yet, trust cached value
+				mutualRec[theirPub] = cachedMR[theirPub];
+				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (CACHED): Using cached MR=${(cachedMR[theirPub] * 100).toFixed(2)}% (network slow)`);
+				continue;
+			}
 			
 			// Mutual recognition is the minimum
 			const mr = Math.min(myRecOfThem, theirRecOfMe);
@@ -495,6 +513,15 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 			
 			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
 				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (they recognize me): I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}%`);
+			}
+		}
+		
+		// ✅ CACHE PRESERVATION: Include people from cache who aren't in current calculations
+		// This handles case where network is completely unavailable but we had previous relationships
+		for (const cachedPub in cachedMR) {
+			if (mutualRec[cachedPub] === undefined && cachedMR[cachedPub] > 0) {
+				mutualRec[cachedPub] = cachedMR[cachedPub];
+				console.log(`[🤝 MUTUAL-REC]   ${cachedPub.slice(0, 20)}... (CACHE-ONLY): MR=${(cachedMR[cachedPub] * 100).toFixed(2)}% (no fresh data)`);
 			}
 		}
 		
