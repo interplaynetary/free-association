@@ -244,7 +244,9 @@
 			state_province: slotStateProvince,
 			postal_code: slotPostalCode,
 			country: slotCountry,
-			online_link: slotOnlineLink
+			online_link: slotOnlineLink,
+
+			capacity_group_id: slot.capacity_group_id
 		};
 
 		// Validate using v5 schema
