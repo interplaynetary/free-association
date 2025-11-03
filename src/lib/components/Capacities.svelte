@@ -52,7 +52,7 @@
 	// - Add multiple slots within each card
 	// - Slots with same capacity_group_id stay grouped together
 	// ═══════════════════════════════════════════════════════════════════
-	const userCapacities = $derived(() => {
+	const userCapacities = $derived.by(() => {
 		const commitment = $myCommitmentStore;
 		const pub = $userPub;
 		if (!commitment || !pub) return {};
@@ -74,7 +74,7 @@
 
 		slots.forEach((slot) => {
 			// Use capacity_group_id if available, otherwise slot.id (for ungrouped slots)
-			const groupId = (slot as any).capacity_group_id || slot.id;
+			const groupId = slot.capacity_group_id || slot.id;
 			const virtualCapacityId = `${pub}-${groupId}`;
 
 			if (!virtualCapacities[virtualCapacityId]) {
@@ -100,10 +100,10 @@
 	});
 
 	// Reactive derived values
-	const capacityEntries = $derived(() => {
-		let entries = Object.entries(userCapacities() || {})
+	const capacityEntries = $derived.by(() => {
+		let entries = Object.entries(userCapacities || {})
 			.filter(([id, commitment]) => id && commitment)
-			.map(([id, commitment]) => ({ ...commitment, id }) as CommitmentWithId);
+			.map<CommitmentWithId>(([id, commitment]) => ({ ...commitment, id }));
 
 		// Apply search filter from global state
 		if (globalState.inventorySearchQuery.trim()) {
@@ -210,7 +210,7 @@
 		console.log(`🧹 [CLEANUP] Starting comprehensive cleanup for commitment: ${capacityId}`);
 
 		// V5: Get the commitment to find all its slot IDs before deletion
-		const commitment = userCapacities()[capacityId];
+		const commitment = userCapacities[capacityId];
 		if (!commitment) {
 			console.warn(`[CLEANUP] Commitment ${capacityId} not found, skipping slot cleanup`);
 			return;
@@ -240,7 +240,7 @@
 			cleanupCapacitySlotData(commitmentId);
 
 			// STEP 2: Get the virtual capacity to find which slots to remove
-			const virtualCapacity = userCapacities()[commitmentId];
+			const virtualCapacity = userCapacities[commitmentId];
 			if (!virtualCapacity) {
 				console.warn(`[CAPACITIES] Virtual capacity ${commitmentId} not found`);
 				return false;
@@ -771,7 +771,7 @@
 </script>
 
 <div class="capacities-list grid grid-cols-1 gap-3 p-2 md:grid-cols-2 lg:grid-cols-3">
-	{#each capacityEntries() as entry (entry.id)}
+	{#each capacityEntries as entry (entry.id)}
 		<div
 			class="capacity-wrapper"
 			class:newly-created-capacity={globalState.highlightedCapacities.has(entry.id)}

@@ -109,7 +109,7 @@
 		}
 
 		// Validation passed, proceed with update
-		onupdate?.(validationResult.data as CommitmentWithId);
+		onupdate?.({ ...validationResult.data, id: capacity.id });
 	}
 	
 	// Handler when a slot is updated from the Slot component
@@ -407,7 +407,7 @@
 		// Otherwise, create a new group ID for this capacity
 		const existingSlots = capacity.capacity_slots || [];
 		const capacityGroupId = existingSlots.length > 0 
-			? (existingSlots[0] as any).capacity_group_id || existingSlots[0].id
+			? existingSlots[0].capacity_group_id || existingSlots[0].id
 			: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 		
 		// ✅ CRITICAL: Normalize existing slots to fix old invalid enum values

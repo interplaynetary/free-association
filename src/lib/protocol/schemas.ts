@@ -421,7 +421,9 @@ export const AvailabilitySlotSchema = z.object({
 	// Hierarchical & coordination
 	parent_slot_id: z.string().optional(),
 	mutual_agreement_required: z.boolean().default(false).optional(),
-	priority: z.number().optional()
+	priority: z.number().optional(),
+
+	capacity_group_id: z.string().default(() => Math.random().toString(36).substr(2, 9)),
 });
 
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
