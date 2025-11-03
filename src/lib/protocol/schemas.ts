@@ -603,12 +603,13 @@ export const CommitmentSchema = z.object({
 	// Note: .nullable() allows null from Holster (empty objects → null)
 	global_recognition_weights: GlobalRecognitionWeightsSchema.nullable().optional(),
 	
-	// LOCAL CACHE: Others' recognition of me (cached from network commitments)
+	// LOCAL CACHE: Others' full recognition weights (cached from network commitments)
 	// Updated when network proves otherwise (local-first!)
-	// Format: { theirPubKey: { myPubKey: weight } }
+	// Format: { theirPubKey: { allPubKeys: weights, ... } }
+	// We store their FULL weights, then extract their recognition of me when computing MR
 	others_recognition_of_me: z.record(
 		z.string(), // theirPubKey
-		GlobalRecognitionWeightsSchema // Their full recognition weights
+		GlobalRecognitionWeightsSchema // Their full recognition weights (normalized)
 	).nullable().optional(),
 	
 	// Causality tracking (ITC)
