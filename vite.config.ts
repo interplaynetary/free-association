@@ -1,26 +1,23 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';
-import { VitePWA } from 'vite-plugin-pwa';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import devtoolsJson from 'vite-plugin-devtools-json';
+import process from 'node:process';
 
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
 		devtoolsJson(),
 		sveltekit(),
-		VitePWA({
+		SvelteKitPWA({
+			srcDir: './src',
 			strategies: 'injectManifest',
-			srcDir: 'src',
 			filename: 'service-worker.ts',
-			injectManifest: {
-				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-				globIgnores: ['**/node_modules/**/*']
-			},
-			// Include specific assets (vite-pwa docs pattern)
+			scope: '/',
+			base: '/',
+			selfDestroying: process.env.SELF_DESTROYING_SW === 'true',
 			includeAssets: ['favicon.png', 'robots.txt'],
-			// Register type for cleaner auto-update behavior
-			registerType: 'autoUpdate',
 			manifest: {
 				name: 'Playnet',
 				short_name: 'Playnet',
@@ -82,17 +79,21 @@ export default defineConfig({
 					}
 				}
 			},
-			// Dev options - vite-pwa docs pattern for development
+			injectManifest: {
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
+			},
+			workbox: {
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
+			},
 			devOptions: {
 				enabled: false,
-				type: 'module',
-				// Suppress warnings during development
-				suppressWarnings: true
+				suppressWarnings: process.env.SUPPRESS_WARNING === 'true',
+				type: 'module'
 			},
-			// Manual registration for more control (vite-pwa docs pattern)
-			injectRegister: false,
-			// Vite PWA docs recommend setting this for SvelteKit
-			selfDestroying: false
+			kit: {
+				includeVersionFile: true
+			},
+			injectRegister: false
 		})
 	],
 	define: {

@@ -8,9 +8,8 @@
 	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { base } from '$app/paths';
 	import { loading } from '$lib/translations';
-	import { registerServiceWorker } from '$lib/utils/pwa';
+	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
@@ -19,25 +18,23 @@
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Handle notification permission request and PWA setup (layout-appropriate functionality)
-	// Note: Store initialization AND auto-composition happen in holster.svelte.ts after authentication
-	onMount(() => {
-		if (browser) {
-			// Request notification permission if supported
-			if ('Notification' in window && Notification.permission === 'default') {
-				Notification.requestPermission().then((permission) => {
-					console.log('Notification permission:', permission);
-				});
-			}
+	// PWA manifest link tag (injected dynamically by @vite-pwa/sveltekit)
+	// See: https://vite-pwa-org.netlify.app/frameworks/sveltekit.html
+	const webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
-			// Register service worker for PWA functionality
-			registerServiceWorker();
+	// Request notification permission on mount
+	// Note: SW registration is handled by ReloadPrompt component
+	onMount(() => {
+		if (browser && 'Notification' in window && Notification.permission === 'default') {
+			Notification.requestPermission().then((permission) => {
+				console.log('Notification permission:', permission);
+			});
 		}
 	});
 </script>
 
 <svelte:head>
-	<link rel="manifest" href="{base}/manifest.json" />
+	{@html webManifestLink}
 </svelte:head>
 
 <main>
@@ -69,6 +66,13 @@
 	x={globalState.dragX}
 	y={globalState.dragY}
 />
+
+<!-- PWA Reload Prompt - dynamically imported only when PWA is active -->
+{#if browser && pwaInfo}
+	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
+		<ReloadPrompt />
+	{/await}
+{/if}
 
 <style>
 	main {

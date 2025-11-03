@@ -12,7 +12,10 @@ const config = {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
 		},
 		serviceWorker: {
-			register: false // Using vite-plugin-pwa instead
+			register: false
+		},
+		files: {
+			serviceWorker: 'src/service-worker.ts'
 		}
 	},
 	extensions: ['.svelte', '.svx']

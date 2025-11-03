@@ -92,6 +92,7 @@
 		"@types/jsonwebtoken": "^9.0.7",
 		"@types/node": "^22.10.7",
 		"@types/nodemailer": "^6.4.17",
+		"@vite-pwa/sveltekit": "^1.0.1",
 		"autoprefixer": "^10.4.21",
 		"bcryptjs": "^3.0.2",
 		"bits-ui": "^1.4.6",
