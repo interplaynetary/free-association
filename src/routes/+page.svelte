@@ -1,17 +1,177 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
-	import Capacities from '$lib/components/Capacities.svelte';
-	import Shares from '$lib/components/Shares.svelte';
+	import Type from '$lib/components/Type.svelte';
 	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
-	import { myRecognitionTreeStore, myRecognitionWeights, myMutualRecognition } from '$lib/protocol/stores.svelte';
+	import { 
+		myRecognitionTreeStore, 
+		myRecognitionWeights, 
+		myMutualRecognition,
+		myNeedSlotsStore,
+		myCapacitySlotsStore,
+		myNeedTypesStore,
+		myCapacityTypesStore,
+		myCommitmentStore,
+		initializeAllocationStores,
+		enableAutoCommitmentComposition,
+		setMyNeedSlots,
+		setMyCapacitySlots
+	} from '$lib/protocol/stores.svelte';
+	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
+	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
+
+	// Reactive state for inventory view (Svelte 5 runes)
+	let needSlots = $state<NeedSlot[]>([]);
+	let capacitySlots = $state<AvailabilitySlot[]>([]);
+
+	// Form state for adding new slots
+	let newNeedName = $state('');
+	let newNeedType = $state('food');
+	let newNeedQuantity = $state(10);
+
+	let newCapacityName = $state('');
+	let newCapacityType = $state('food');
+	let newCapacityQuantity = $state(5);
+
+	let showRawData = $state(false);
+
+	// Cleanup functions
+	let cleanupComposition: (() => void) | null = null;
+	let cleanupAllocationPublishing: (() => void) | null = null;
+
+	onMount(() => {
+		console.log('[HOME] Initializing stores for inventory view...');
+		
+		// Initialize stores
+		initializeAllocationStores();
+		
+		// Subscribe to stores (reactive)
+		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
+			needSlots = slots || [];
+		});
+		
+		const unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
+			capacitySlots = slots || [];
+		});
+		
+		// Enable auto-composition
+		cleanupComposition = enableAutoCommitmentComposition();
+		
+		// Enable auto-allocation publishing
+		cleanupAllocationPublishing = enableAutoAllocationPublishing();
+		
+		console.log('[HOME] ✅ Initialized and subscribed');
+		
+		return () => {
+			unsubNeeds();
+			unsubCapacity();
+			if (cleanupComposition) cleanupComposition();
+			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
+		};
+	});
+
+	// CRUD Operations - Needs
+	function addNeedSlot() {
+		if (!newNeedName.trim()) return;
+		
+		const newSlot: NeedSlot = {
+			id: `need_${Date.now()}_${Math.random()}`,
+			name: newNeedName,
+			need_type_id: newNeedType,
+			quantity: newNeedQuantity,
+			unit: 'units',
+			max_natural_div: 1,
+			max_percentage_div: 0.01
+		};
+		
+		setMyNeedSlots([...needSlots, newSlot]);
+		
+		// Reset form
+		newNeedName = '';
+		newNeedQuantity = 10;
+	}
+	
+	function removeNeedSlot(id: string) {
+		setMyNeedSlots(needSlots.filter(s => s.id !== id));
+	}
+	
+	function updateNeedQuantity(id: string, quantity: number) {
+		const updated = needSlots.map(s =>
+			s.id === id ? { ...s, quantity } : s
+		);
+		setMyNeedSlots(updated);
+	}
+
+	// CRUD Operations - Capacity
+	function addCapacitySlot() {
+		if (!newCapacityName.trim()) return;
+		
+		const newSlot: AvailabilitySlot = {
+			id: `capacity_${Date.now()}_${Math.random()}`,
+			name: newCapacityName,
+			need_type_id: newCapacityType,
+			quantity: newCapacityQuantity,
+			unit: 'units',
+			max_natural_div: 1,
+			max_percentage_div: 0.01
+		};
+		
+		setMyCapacitySlots([...capacitySlots, newSlot]);
+		
+		// Reset form
+		newCapacityName = '';
+		newCapacityQuantity = 5;
+	}
+	
+	function removeCapacitySlot(id: string) {
+		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id));
+	}
+	
+	function updateCapacityQuantity(id: string, quantity: number) {
+		const updated = capacitySlots.map(s =>
+			s.id === id ? { ...s, quantity } : s
+		);
+		setMyCapacitySlots(updated);
+	}
+
+	// Batch update handlers for Type component
+	function handleNeedTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
+		const updated = needSlots.map(slot =>
+			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+		);
+		setMyNeedSlots(updated);
+	}
+	
+	function handleCapacityTypeBatchUpdate(typeId: string, updates: Partial<AvailabilitySlot>) {
+		const updated = capacitySlots.map(slot =>
+			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+		);
+		setMyCapacitySlots(updated);
+	}
+
+	// Individual slot update handlers (for full slot editing with new editors)
+	function handleNeedSlotUpdate(updatedSlot: NeedSlot) {
+		const updated = needSlots.map(s =>
+			s.id === updatedSlot.id ? updatedSlot : s
+		);
+		setMyNeedSlots(updated);
+	}
+	
+	function handleCapacitySlotUpdate(updatedSlot: AvailabilitySlot) {
+		const updated = capacitySlots.map(s =>
+			s.id === updatedSlot.id ? updatedSlot : s
+		);
+		setMyCapacitySlots(updated);
+	}
 
 	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
 	// Recognition weights are automatically computed from the tree in v5!
@@ -88,11 +248,157 @@
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
-				<h2 class="text-center text-2xl font-bold">{$t('home.capacities')}</h2>
-				<Capacities />
-
-				<h2 class="text-center text-2xl font-bold">{$t('home.shares')}</h2>
-				<Shares />
+				<!-- Need Slots Section -->
+				<section class="slots-section needs">
+					<h2>🙏 My Need Slots ({needSlots.length})</h2>
+					
+					<div class="add-form">
+						<input
+							type="text"
+							bind:value={newNeedName}
+							placeholder="Need name..."
+							onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
+						/>
+						<select bind:value={newNeedType}>
+							{#each NEED_TYPES as type}
+								<option value={type.id}>{formatNeedType(type.id)}</option>
+							{/each}
+						</select>
+						<input
+							type="number"
+							bind:value={newNeedQuantity}
+							min="0"
+							step="0.1"
+						/>
+						<button onclick={addNeedSlot} class="btn-primary">
+							➕ Add Need
+						</button>
+					</div>
+					
+					<div class="slots-list">
+						{#if needSlots.length === 0}
+							<div class="empty-state">
+								No need slots yet. Add one above!
+							</div>
+						{:else}
+							<!-- Organize need slots by type -->
+							{#each $myNeedTypesStore as typeId (typeId)}
+								<Type 
+									{typeId} 
+									typeName={formatNeedType(typeId)}
+									slots={$myNeedSlotsStore} 
+									kind="need"
+									capacityId="need-{typeId}"
+									onBatchUpdate={handleNeedTypeBatchUpdate}
+									onSlotUpdate={handleNeedSlotUpdate}
+									onSlotDelete={removeNeedSlot}
+								>
+									{#snippet children({ slot }: { slot: NeedSlot })}
+										<div class="slot-actions-row">
+											<div class="quantity-control">
+												<label for="need-qty-{slot.id}">Quantity:</label>
+												<input
+													id="need-qty-{slot.id}"
+													type="number"
+													value={slot.quantity}
+													min="0"
+													step="0.1"
+													onchange={(e) => updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
+												/>
+												<span>{slot.unit || 'units'}</span>
+											</div>
+											<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
+												🗑️ Delete
+											</button>
+										</div>
+										{#if showRawData}
+											<details class="raw-data">
+												<summary>Raw data</summary>
+												<pre>{JSON.stringify(slot, null, 2)}</pre>
+											</details>
+										{/if}
+									{/snippet}
+								</Type>
+							{/each}
+						{/if}
+					</div>
+				</section>
+				
+				<!-- Capacity Slots Section -->
+				<section class="slots-section capacity">
+					<h2>🎁 My Capacity Slots ({capacitySlots.length})</h2>
+					
+					<div class="add-form">
+						<input
+							type="text"
+							bind:value={newCapacityName}
+							placeholder="Capacity name..."
+							onkeydown={(e) => e.key === 'Enter' && addCapacitySlot()}
+						/>
+						<select bind:value={newCapacityType}>
+							{#each NEED_TYPES as type}
+								<option value={type.id}>{formatNeedType(type.id)}</option>
+							{/each}
+						</select>
+						<input
+							type="number"
+							bind:value={newCapacityQuantity}
+							min="0"
+							step="0.1"
+						/>
+						<button onclick={addCapacitySlot} class="btn-primary">
+							➕ Add Capacity
+						</button>
+					</div>
+					
+					<div class="slots-list">
+						{#if capacitySlots.length === 0}
+							<div class="empty-state">
+								No capacity slots yet. Add one above!
+							</div>
+						{:else}
+							<!-- Organize capacity slots by type -->
+							{#each $myCapacityTypesStore as typeId (typeId)}
+								<Type 
+									{typeId} 
+									typeName={formatNeedType(typeId)}
+									slots={$myCapacitySlotsStore} 
+									kind="capacity"
+									capacityId="capacity-{typeId}"
+									onBatchUpdate={handleCapacityTypeBatchUpdate}
+									onSlotUpdate={handleCapacitySlotUpdate}
+									onSlotDelete={removeCapacitySlot}
+								>
+									{#snippet children({ slot }: { slot: AvailabilitySlot })}
+										<div class="slot-actions-row">
+											<div class="quantity-control">
+												<label for="capacity-qty-{slot.id}">Quantity:</label>
+												<input
+													id="capacity-qty-{slot.id}"
+													type="number"
+													value={slot.quantity}
+													min="0"
+													step="0.1"
+													onchange={(e) => updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
+												/>
+												<span>{slot.unit || 'units'}</span>
+											</div>
+											<button onclick={() => removeCapacitySlot(slot.id)} class="btn-danger-small">
+												🗑️ Delete
+											</button>
+										</div>
+										{#if showRawData}
+											<details class="raw-data">
+												<summary>Raw data</summary>
+												<pre>{JSON.stringify(slot, null, 2)}</pre>
+											</details>
+										{/if}
+									{/snippet}
+								</Type>
+							{/each}
+						{/if}
+					</div>
+				</section>
 			</div>
 		{/if}
 	</div>
@@ -301,14 +607,154 @@
 		padding: 1rem;
 		overflow-y: auto;
 		height: 100%;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.5rem;
 	}
 
 	.inventory-view h2 {
-		margin: 1.5rem 0 1rem 0;
+		margin: 0 0 1rem 0;
+		color: #2c3e50;
 	}
 
-	.inventory-view h2:first-child {
-		margin-top: 0;
+	/* Slots Section Styles */
+	.slots-section {
+		background: white;
+		border-radius: 8px;
+		padding: 1.5rem;
+		box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.slots-section.needs {
+		border-top: 4px solid #3498db;
+	}
+
+	.slots-section.capacity {
+		border-top: 4px solid #2ecc71;
+	}
+
+	.add-form {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.add-form input[type="text"] {
+		flex: 1;
+		min-width: 150px;
+	}
+
+	.add-form input,
+	.add-form select {
+		padding: 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 0.95rem;
+	}
+
+	.add-form input[type="number"] {
+		width: 80px;
+	}
+
+	.slots-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		overflow-y: auto;
+	}
+
+	.quantity-control {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.quantity-control input {
+		width: 80px;
+		padding: 0.25rem 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 2rem;
+		color: #999;
+		font-style: italic;
+	}
+
+	.raw-data {
+		margin-top: 0.75rem;
+		font-size: 0.85rem;
+	}
+
+	.raw-data pre {
+		background: #282c34;
+		color: #abb2bf;
+		padding: 1rem;
+		border-radius: 4px;
+		overflow-x: auto;
+		max-height: 300px;
+		overflow-y: auto;
+	}
+
+	.btn-primary {
+		background: #3498db;
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-weight: 500;
+	}
+
+	.btn-primary:hover {
+		background: #2980b9;
+	}
+
+	.btn-danger-small {
+		background: #e74c3c;
+		color: white;
+		border: none;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.85rem;
+	}
+
+	.btn-danger-small:hover {
+		background: #c0392b;
+	}
+
+	/* Slot Actions Row (used in Type component snippet) */
+	.slot-actions-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.slot-actions-row .quantity-control {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.slot-actions-row .quantity-control label {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: #666;
+	}
+
+	.slot-actions-row .quantity-control input {
+		width: 80px;
+		padding: 0.4rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
 	}
 
 	/* Responsive layout for mobile */
@@ -327,6 +773,19 @@
 		.placeholder {
 			padding: 0.5rem;
 			font-size: 0.8em;
+		}
+
+		.inventory-view {
+			grid-template-columns: 1fr;
+			gap: 1rem;
+		}
+
+		.add-form {
+			flex-direction: column;
+		}
+
+		.add-form input[type="number"] {
+			width: 100%;
 		}
 	}
 </style>
