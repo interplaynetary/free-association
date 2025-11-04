@@ -1,8 +1,9 @@
 /**
- * V5 Configuration - Test-Friendly
- * 
- * Provides minimal config needed for V5 stores and Holster integration.
- * Safe to import in test environments.
+ * Configuration for Holster peer connections and data API
+ * Uses environment variables from .env files
+ *
+ * Test-friendly: Provides safe defaults in test environments (no localStorage access)
+ * Browser-friendly: Uses environment variables or localStorage overrides in browser
  */
 
 // ═══════════════════════════════════════════════════════════════════
@@ -11,7 +12,7 @@
 
 /**
  * Get Holster configuration
- * 
+ *
  * In tests: Returns safe defaults (no localStorage access)
  * In browser: Uses environment variables or localStorage overrides
  */
@@ -24,7 +25,7 @@ function getHolsterConfig() {
 			file: undefined
 		};
 	}
-	
+
 	// Browser environment - use env vars with localStorage overrides
 	try {
 		return {
@@ -37,7 +38,7 @@ function getHolsterConfig() {
 			file: import.meta.env.VITE_HOLSTER_FILE || undefined
 		};
 	} catch (error) {
-		console.warn('[CONFIG-V5] Error accessing config, using defaults:', error);
+		console.warn('[CONFIG] Error accessing config, using defaults:', error);
 		return {
 			peers: ['wss://holster.haza.website'],
 			indexedDB: true,
@@ -47,8 +48,11 @@ function getHolsterConfig() {
 }
 
 /**
- * V5 Configuration Object
+ * Configuration Object
  */
 export const config = {
-	holster: getHolsterConfig()
+	holster: getHolsterConfig(),
+	dataApi: {
+		url: import.meta.env.VITE_DATA_API_URL || 'http://localhost:8767'
+	}
 };
