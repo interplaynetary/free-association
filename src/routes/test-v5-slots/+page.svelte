@@ -42,6 +42,8 @@
 	import {
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
+		myNeedTypesStore,        // ✅ NEW: Derived type stores
+		myCapacityTypesStore,    // ✅ NEW: Derived type stores
 		myCommitmentStore,
 		myRecognitionWeights,
 		myMutualRecognition,
@@ -56,7 +58,9 @@
 		setMyCapacitySlots     // ✅ NEW: Helper to update capacity slots
 	} from '$lib/protocol/stores.svelte';
 	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
+	import Type from '$lib/components/Type.svelte';
 	import type { NeedSlot, AvailabilitySlot, Commitment } from '$lib/protocol/schemas';
+	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
 	
 	// Reactive state (Svelte 5 runes)
 	let needSlots = $state<NeedSlot[]>([]);
@@ -172,7 +176,10 @@
 			name: newNeedName,
 			need_type_id: newNeedType,
 			quantity: newNeedQuantity,
-			unit: 'units'
+			unit: 'units',
+			// Default divisibility constraints
+			max_natural_div: 1,
+			max_percentage_div: 0.01
 		};
 		
 		setMyNeedSlots([...needSlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
@@ -208,7 +215,10 @@
 			name: newCapacityName,
 			need_type_id: newCapacityType,
 			quantity: newCapacityQuantity,
-			unit: 'units'
+			unit: 'units',
+			// Default divisibility constraints
+			max_natural_div: 1,
+			max_percentage_div: 0.01
 		};
 		
 		setMyCapacitySlots([...capacitySlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
@@ -233,6 +243,41 @@
 		console.log('[TEST-V5] ✏️  Updated capacity quantity:', id, quantity);
 	}
 	
+	// Batch update handlers for Type component
+	function handleNeedTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
+		const updated = needSlots.map(slot =>
+			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+		);
+		setMyNeedSlots(updated);
+		console.log('[TEST-V5] 🔄 Batch updated need slots for type:', typeId, updates);
+	}
+	
+	function handleCapacityTypeBatchUpdate(typeId: string, updates: Partial<AvailabilitySlot>) {
+		const updated = capacitySlots.map(slot =>
+			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+		);
+		setMyCapacitySlots(updated);
+		console.log('[TEST-V5] 🔄 Batch updated capacity slots for type:', typeId, updates);
+	}
+	
+	// Individual slot update handlers (for full slot editing with new editors)
+	function handleNeedSlotUpdate(updatedSlot: NeedSlot) {
+		const updated = needSlots.map(s =>
+			s.id === updatedSlot.id ? updatedSlot : s
+		);
+		setMyNeedSlots(updated);
+		console.log('[TEST-V5] ✏️  Updated need slot:', updatedSlot.id);
+	}
+	
+	function handleCapacitySlotUpdate(updatedSlot: AvailabilitySlot) {
+		const updated = capacitySlots.map(s =>
+			s.id === updatedSlot.id ? updatedSlot : s
+		);
+		setMyCapacitySlots(updated);
+		console.log('[TEST-V5] ✏️  Updated capacity slot:', updatedSlot.id);
+	}
+
+	
 	// Manual composition (for testing)
 	function manualCompose() {
 		const composed = composeCommitmentFromSources();
@@ -254,15 +299,6 @@
 		}
 	}
 	
-	// Need type options
-	const needTypes = [
-		{ id: 'food', label: '🍎 Food' },
-		{ id: 'housing', label: '🏠 Housing' },
-		{ id: 'healthcare', label: '🏥 Healthcare' },
-		{ id: 'education', label: '📚 Education' },
-		{ id: 'transportation', label: '🚗 Transportation' },
-		{ id: 'childcare', label: '👶 Childcare' }
-	];
 </script>
 
 <div class="test-page">
@@ -314,8 +350,8 @@
 					onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
 				/>
 				<select bind:value={newNeedType}>
-					{#each needTypes as type}
-						<option value={type.id}>{type.label}</option>
+					{#each NEED_TYPES as type}
+						<option value={type.id}>{formatNeedType(type.id)}</option>
 					{/each}
 				</select>
 				<input
@@ -335,34 +371,44 @@
 						No need slots yet. Add one above!
 					</div>
 				{:else}
-					{#each needSlots as slot (slot.id)}
-						<div class="slot-card">
-							<div class="slot-header">
-								<strong>{slot.name}</strong>
-								<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
-									🗑️
-								</button>
-							</div>
-							<div class="slot-details">
-								<span class="badge">{needTypes.find(t => t.id === slot.need_type_id)?.label || slot.need_type_id}</span>
-								<div class="quantity-control">
-									<input
-										type="number"
-										value={slot.quantity}
-										min="0"
-										step="0.1"
-										onchange={(e) => updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
-									/>
-									<span>{slot.unit || 'units'}</span>
+					<!-- Organize need slots by type -->
+					{#each $myNeedTypesStore as typeId (typeId)}
+						<Type 
+							{typeId} 
+							typeName={formatNeedType(typeId)}
+							slots={$myNeedSlotsStore} 
+							kind="need"
+							capacityId="need-{typeId}"
+							onBatchUpdate={handleNeedTypeBatchUpdate}
+							onSlotUpdate={handleNeedSlotUpdate}
+							onSlotDelete={removeNeedSlot}
+						>
+							{#snippet children({ slot }: { slot: NeedSlot })}
+								<div class="slot-actions-row">
+									<div class="quantity-control">
+										<label for="need-qty-{slot.id}">Quantity:</label>
+										<input
+											id="need-qty-{slot.id}"
+											type="number"
+											value={slot.quantity}
+											min="0"
+											step="0.1"
+											onchange={(e) => updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
+										/>
+										<span>{slot.unit || 'units'}</span>
+									</div>
+									<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
+										🗑️ Delete
+									</button>
 								</div>
-							</div>
-							{#if showRawData}
-								<details class="raw-data">
-									<summary>Raw data</summary>
-									<pre>{JSON.stringify(slot, null, 2)}</pre>
-								</details>
-							{/if}
-						</div>
+								{#if showRawData}
+									<details class="raw-data">
+										<summary>Raw data</summary>
+										<pre>{JSON.stringify(slot, null, 2)}</pre>
+									</details>
+								{/if}
+							{/snippet}
+						</Type>
 					{/each}
 				{/if}
 			</div>
@@ -380,8 +426,8 @@
 					onkeydown={(e) => e.key === 'Enter' && addCapacitySlot()}
 				/>
 				<select bind:value={newCapacityType}>
-					{#each needTypes as type}
-						<option value={type.id}>{type.label}</option>
+					{#each NEED_TYPES as type}
+						<option value={type.id}>{formatNeedType(type.id)}</option>
 					{/each}
 				</select>
 				<input
@@ -401,34 +447,44 @@
 						No capacity slots yet. Add one above!
 					</div>
 				{:else}
-					{#each capacitySlots as slot (slot.id)}
-						<div class="slot-card">
-							<div class="slot-header">
-								<strong>{slot.name}</strong>
-								<button onclick={() => removeCapacitySlot(slot.id)} class="btn-danger-small">
-									🗑️
-								</button>
-							</div>
-							<div class="slot-details">
-								<span class="badge">{needTypes.find(t => t.id === slot.need_type_id)?.label || slot.need_type_id}</span>
-								<div class="quantity-control">
-									<input
-										type="number"
-										value={slot.quantity}
-										min="0"
-										step="0.1"
-										onchange={(e) => updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
-									/>
-									<span>{slot.unit || 'units'}</span>
+					<!-- Organize capacity slots by type -->
+					{#each $myCapacityTypesStore as typeId (typeId)}
+						<Type 
+							{typeId} 
+							typeName={formatNeedType(typeId)}
+							slots={$myCapacitySlotsStore} 
+							kind="capacity"
+							capacityId="capacity-{typeId}"
+							onBatchUpdate={handleCapacityTypeBatchUpdate}
+							onSlotUpdate={handleCapacitySlotUpdate}
+							onSlotDelete={removeCapacitySlot}
+						>
+							{#snippet children({ slot }: { slot: AvailabilitySlot })}
+								<div class="slot-actions-row">
+									<div class="quantity-control">
+										<label for="capacity-qty-{slot.id}">Quantity:</label>
+										<input
+											id="capacity-qty-{slot.id}"
+											type="number"
+											value={slot.quantity}
+											min="0"
+											step="0.1"
+											onchange={(e) => updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
+										/>
+										<span>{slot.unit || 'units'}</span>
+									</div>
+									<button onclick={() => removeCapacitySlot(slot.id)} class="btn-danger-small">
+										🗑️ Delete
+									</button>
 								</div>
-							</div>
-							{#if showRawData}
-								<details class="raw-data">
-									<summary>Raw data</summary>
-									<pre>{JSON.stringify(slot, null, 2)}</pre>
-								</details>
-							{/if}
-						</div>
+								{#if showRawData}
+									<details class="raw-data">
+										<summary>Raw data</summary>
+										<pre>{JSON.stringify(slot, null, 2)}</pre>
+									</details>
+								{/if}
+							{/snippet}
+						</Type>
 					{/each}
 				{/if}
 			</div>
@@ -450,7 +506,10 @@
 						<strong>Recognition Weights:</strong> {Object.keys(commitment.global_recognition_weights || {}).length}
 					</div>
 					<div class="summary-item">
-						<strong>MR Values:</strong> {Object.keys(commitment.global_mr_values || {}).length}
+						<strong>Others' Recognition Cache:</strong> {Object.keys(commitment.others_recognition_of_me || {}).length}
+					</div>
+					<div class="summary-item">
+						<strong>Slot Allocations:</strong> {commitment.slot_allocations?.length || 0}
 					</div>
 					<div class="summary-item">
 						<strong>Timestamp:</strong> {new Date(commitment.timestamp).toLocaleString()}
@@ -951,6 +1010,34 @@
 		align-items: center;
 		gap: 0.5rem;
 		cursor: pointer;
+	}
+	
+	/* Slot Actions Row (used in Type component snippet) */
+	.slot-actions-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+	
+	.slot-actions-row .quantity-control {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	
+	.slot-actions-row .quantity-control label {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: #666;
+	}
+	
+	.slot-actions-row .quantity-control input {
+		width: 80px;
+		padding: 0.4rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
 	}
 	
 	/* Allocation Section Styles */

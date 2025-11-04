@@ -449,14 +449,17 @@
 		const newSlot: AvailabilitySlot & { capacity_group_id?: string } = {
 			id: newSlotId,
 			quantity: 1,
-			need_type_id: 'need_type_general', // Default need type
+			need_type_id: 'general', // Default need type
 			name: '',
 			location_type: 'Undefined',
 			start_date: todayString,
 			end_date: null,
 			time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			recurrence: 'daily',
-			capacity_group_id: capacityGroupId // ✅ Add group ID for virtual grouping
+			capacity_group_id: capacityGroupId, // ✅ Add group ID for virtual grouping
+			// Default divisibility constraints
+			max_natural_div: 1,
+			max_percentage_div: 0.01
 		};
 
 		const updatedSlots = [...normalizedExistingSlots, newSlot];

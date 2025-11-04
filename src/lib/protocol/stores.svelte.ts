@@ -179,6 +179,66 @@ export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived
 	([$commitment]) => $commitment?.capacity_slots || null
 );
 
+/**
+ * My Need Types Store (V5) - DERIVED FROM NEED SLOTS
+ * 
+ * Extracts unique need_type_ids from my need slots for UI organization
+ * Returns array of type IDs that I have needs for
+ * 
+ * Use for:
+ * - Organizing need slots by type in UI
+ * - Filtering/grouping needs
+ * - Quick type existence checks
+ */
+export const myNeedTypesStore: Readable<string[]> = derived(
+	[myNeedSlotsStore],
+	([$needSlots]) => {
+		if (!$needSlots || $needSlots.length === 0) {
+			return [];
+		}
+		
+		// Extract unique need_type_ids
+		const typeIds = new Set<string>();
+		for (const slot of $needSlots) {
+			if (slot.need_type_id) {
+				typeIds.add(slot.need_type_id);
+			}
+		}
+		
+		return Array.from(typeIds).sort();
+	}
+);
+
+/**
+ * My Capacity Types Store (V5) - DERIVED FROM CAPACITY SLOTS
+ * 
+ * Extracts unique need_type_ids from my capacity slots for UI organization
+ * Returns array of type IDs that I can provide
+ * 
+ * Use for:
+ * - Organizing capacity slots by type in UI
+ * - Filtering/grouping capacity
+ * - Quick type existence checks
+ */
+export const myCapacityTypesStore: Readable<string[]> = derived(
+	[myCapacitySlotsStore],
+	([$capacitySlots]) => {
+		if (!$capacitySlots || $capacitySlots.length === 0) {
+			return [];
+		}
+		
+		// Extract unique need_type_ids
+		const typeIds = new Set<string>();
+		for (const slot of $capacitySlots) {
+			if (slot.need_type_id) {
+				typeIds.add(slot.need_type_id);
+			}
+		}
+		
+		return Array.from(typeIds).sort();
+	}
+);
+
 // NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
 // because they reference myMutualRecognition which is defined later
 
@@ -407,6 +467,72 @@ export const networkCapacitySlots = networkCommitments.deriveField<AvailabilityS
  * Each provider's published allocations from their capacity to recipients' needs
  */
 export const networkAllocations = networkCommitments.deriveField<SlotAllocationRecord[]>('allocations');
+
+/**
+ * Network Need Types Store (V5) - DERIVED FROM NETWORK NEED SLOTS
+ * 
+ * Extracts unique need_type_ids from all network participants' need slots
+ * Returns array of type IDs that exist across the network
+ * 
+ * ✅ Fine-grained reactivity: Only updates when network needs change
+ * 
+ * Use for:
+ * - Organizing network needs by type in UI
+ * - Filtering/grouping network needs
+ * - Discovering what types are needed in the network
+ */
+export const networkNeedTypesStore: Readable<string[]> = derived(
+	[networkNeedSlots],
+	([$networkNeedSlots]) => {
+		const typeIds = new Set<string>();
+		
+		// Iterate through all participants' need slots
+		for (const [pubKey, needSlots] of $networkNeedSlots.entries()) {
+			if (needSlots && Array.isArray(needSlots)) {
+				for (const slot of needSlots) {
+					if (slot.need_type_id) {
+						typeIds.add(slot.need_type_id);
+					}
+				}
+			}
+		}
+		
+		return Array.from(typeIds).sort();
+	}
+);
+
+/**
+ * Network Capacity Types Store (V5) - DERIVED FROM NETWORK CAPACITY SLOTS
+ * 
+ * Extracts unique need_type_ids from all network participants' capacity slots
+ * Returns array of type IDs that can be provided across the network
+ * 
+ * ✅ Fine-grained reactivity: Only updates when network capacity changes
+ * 
+ * Use for:
+ * - Organizing network capacity by type in UI
+ * - Filtering/grouping network capacity
+ * - Discovering what types are available in the network
+ */
+export const networkCapacityTypesStore: Readable<string[]> = derived(
+	[networkCapacitySlots],
+	([$networkCapacitySlots]) => {
+		const typeIds = new Set<string>();
+		
+		// Iterate through all participants' capacity slots
+		for (const [pubKey, capacitySlots] of $networkCapacitySlots.entries()) {
+			if (capacitySlots && Array.isArray(capacitySlots)) {
+				for (const slot of capacitySlots) {
+					if (slot.need_type_id) {
+						typeIds.add(slot.need_type_id);
+					}
+				}
+			}
+		}
+		
+		return Array.from(typeIds).sort();
+	}
+);
 
 /**
  * My Mutual Recognition - LOCAL-FIRST ARCHITECTURE ✨
