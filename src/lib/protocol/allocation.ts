@@ -581,10 +581,15 @@ function meetsMinimumAllocation(
  * Redistribute remainder capacity using Largest Remainder Method
  * 
  * When divisibility constraints cause rounding, we lose fractional capacity.
- * This function redistributes leftover units to recipients with largest remainders.
+ * This function redistributes leftover units to recipients with largest remainders,
+ * and distributes proportionally across each recipient's slots.
  * 
  * Example: 10 rooms, recipients get 4.7, 3.2, 2.1 → floor to 4, 3, 2 = 9 rooms
  * Remainder: 1 room left. Give to recipient with largest fraction (0.7) → 5, 3, 2 = 10 ✅
+ * 
+ * If recipient has multiple slots, distribute proportionally:
+ * - Slot A: 6 units (60%), Slot B: 4 units (40%)
+ * - Gets 5 extra units → Slot A gets 3 (60% of 5), Slot B gets 2 (40% of 5)
  * 
  * @param allocations - Array of allocation records to potentially increase
  * @param remainders - Map of recipient -> remainder (fractional part lost to rounding)
@@ -617,7 +622,7 @@ function redistributeRemainders(
 	
 	let unitsDistributed = 0;
 	
-	// Give one unit at a time to recipients with largest remainders
+	// Give units to recipients with largest remainders
 	for (const [recipientPub, remainder] of recipientsByRemainder) {
 		if (unitsDistributed >= unitsToDistribute) break;
 		
@@ -626,21 +631,62 @@ function redistributeRemainders(
 		
 		if (recipientAllocations.length === 0) continue;
 		
-		// Add one natural unit to the first slot (arbitrary choice)
-		// In practice, this could be distributed across slots, but one unit is typically small
-		recipientAllocations[0].quantity += maxNatural;
-		unitsDistributed++;
+		// Count how many units this recipient should get
+		// (They get at least 1, but might get more if we have many leftover units)
+		const recipientUnits = Math.min(
+			Math.floor(unitsToDistribute / recipientsByRemainder.length),
+			unitsToDistribute - unitsDistributed
+		);
+		const actualUnits = Math.max(1, recipientUnits);
+		
+		// Distribute units proportionally across recipient's slots
+		if (recipientAllocations.length === 1) {
+			// Simple case: only one slot
+			recipientAllocations[0].quantity += actualUnits * maxNatural;
+		} else {
+			// Multiple slots: distribute proportionally using Largest Remainder Method again!
+			const totalAllocated = recipientAllocations.reduce((sum, a) => sum + a.quantity, 0);
+			
+			// Calculate ideal fractional allocation per slot
+			const slotRemainders: Array<{ alloc: SlotAllocationRecord; remainder: number; ideal: number }> = [];
+			let integerUnitsDistributed = 0;
+			
+			for (const alloc of recipientAllocations) {
+				const proportion = alloc.quantity / totalAllocated;
+				const idealUnits = actualUnits * proportion;
+				const integerUnits = Math.floor(idealUnits);
+				const remainderFraction = idealUnits - integerUnits;
+				
+				// Give integer part immediately
+				alloc.quantity += integerUnits * maxNatural;
+				integerUnitsDistributed += integerUnits;
+				
+				slotRemainders.push({ alloc, remainder: remainderFraction, ideal: idealUnits });
+			}
+			
+			// Distribute remaining units by largest remainder
+			const leftoverUnits = actualUnits - integerUnitsDistributed;
+			if (leftoverUnits > 0) {
+				slotRemainders.sort((a, b) => b.remainder - a.remainder);
+				
+				for (let i = 0; i < leftoverUnits && i < slotRemainders.length; i++) {
+					slotRemainders[i].alloc.quantity += maxNatural;
+				}
+			}
+		}
+		
+		unitsDistributed += actualUnits;
 		
 		console.log(
-			`[REMAINDER-REDISTRIBUTION] Gave ${maxNatural} unit(s) to ${recipientPub} ` +
-			`(remainder: ${remainder.toFixed(3)})`
+			`[REMAINDER-REDISTRIBUTION] Gave ${actualUnits * maxNatural} unit(s) to ${recipientPub} ` +
+			`across ${recipientAllocations.length} slot(s) (remainder: ${remainder.toFixed(3)})`
 		);
 	}
 	
 	const redistributedCapacity = unitsDistributed * maxNatural;
 	console.log(
 		`[REMAINDER-REDISTRIBUTION] Distributed ${redistributedCapacity} leftover capacity ` +
-		`across ${unitsDistributed} recipients`
+		`across ${unitsDistributed / maxNatural} recipients`
 	);
 	
 	return capacityUsed + redistributedCapacity;

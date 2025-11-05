@@ -1895,5 +1895,89 @@ describe('Divisibility Constraints', () => {
 		// Verify capacity is maximally utilized
 		expect(totalAllocated).toBeGreaterThanOrEqual(9); // At least 90% utilization
 	});
+	
+	it('should distribute remainder proportionally across recipient slots', async () => {
+		// Provider has 10 rooms
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1,
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Recipient has TWO need slots with different quantities
+		const recipient1 = createTestCommitment([
+			{
+				id: 'need-room-1a',
+				quantity: 60, // 60% of their total need
+				need_type_id: 'rooms',
+				name: 'Main Housing Need',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as NeedSlot,
+			{
+				id: 'need-room-1b',
+				quantity: 40, // 40% of their total need
+				need_type_id: 'rooms',
+				name: 'Secondary Housing Need',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as NeedSlot
+		]);
+		
+		// Recognition that gives fractional allocation
+		// Would naturally give 10 rooms, but slots would get fractional amounts
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 1.0
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Find allocations for each slot
+		const allocSlotA = result.allocations.find(a => a.recipient_need_slot_id === 'need-room-1a');
+		const allocSlotB = result.allocations.find(a => a.recipient_need_slot_id === 'need-room-1b');
+		
+		expect(allocSlotA).toBeDefined();
+		expect(allocSlotB).toBeDefined();
+		
+		const totalAllocated = allocSlotA!.quantity + allocSlotB!.quantity;
+		
+		console.log(`\nProportional Slot Distribution:`);
+		console.log(`Slot A (60% of need): ${allocSlotA!.quantity} rooms`);
+		console.log(`Slot B (40% of need): ${allocSlotB!.quantity} rooms`);
+		console.log(`Total: ${totalAllocated}/10 rooms`);
+		
+		// Should allocate proportionally (roughly 60/40 split)
+		// Slot A should get ~6 rooms, Slot B should get ~4 rooms
+		expect(allocSlotA!.quantity).toBeGreaterThanOrEqual(5);
+		expect(allocSlotA!.quantity).toBeLessThanOrEqual(7);
+		expect(allocSlotB!.quantity).toBeGreaterThanOrEqual(3);
+		expect(allocSlotB!.quantity).toBeLessThanOrEqual(5);
+		
+		// Total should be 10 (full utilization)
+		expect(totalAllocated).toBe(10);
+		
+		// Verify proportionality (should be close to 60/40)
+		const slotARatio = allocSlotA!.quantity / totalAllocated;
+		const slotBRatio = allocSlotB!.quantity / totalAllocated;
+		
+		console.log(`Slot A ratio: ${(slotARatio * 100).toFixed(1)}% (expected ~60%)`);
+		console.log(`Slot B ratio: ${(slotBRatio * 100).toFixed(1)}% (expected ~40%)`);
+		
+		// Ratios should be close to 60/40 (within 10% tolerance due to rounding)
+		expect(slotARatio).toBeGreaterThan(0.5);
+		expect(slotARatio).toBeLessThan(0.7);
+	});
 });
 
