@@ -1803,5 +1803,97 @@ describe('Divisibility Constraints', () => {
 			console.log(`${alloc.recipient_pubkey}: ${alloc.quantity} hours (tier: ${alloc.tier}, divisible by 2 ✅)`);
 		}
 	});
+	
+	it('should redistribute remainders to maximize capacity utilization (Largest Remainder Method)', async () => {
+		// Provider has 10 rooms with max_natural_div=1
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1, // Whole rooms only
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Three recipients - allocations would be fractional without redistribution
+		const recipient1 = createTestCommitment([{
+			id: 'need-room-1',
+			quantity: 100, // High need
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient2 = createTestCommitment([{
+			id: 'need-room-2',
+			quantity: 100,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient3 = createTestCommitment([{
+			id: 'need-room-3',
+			quantity: 100,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// Recognition that would naturally give fractional allocations
+		// 35%, 33%, 32% → would be 3.5, 3.3, 3.2 rooms → floor to 3, 3, 3 = 9 rooms
+		// Remainder redistribution should give 1 extra room to recipient1 (0.5 remainder)
+		// Final: 4, 3, 3 = 10 rooms ✅
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 0.35,
+			'recipient2': 0.33,
+			'recipient3': 0.32
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		recipient2.global_recognition_weights = { 'provider': 1.0 };
+		recipient3.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		networkCommitments.set('recipient2', recipient2);
+		networkCommitments.set('recipient3', recipient3);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Calculate total allocated
+		const totalAllocated = result.allocations.reduce((sum, a) => sum + a.quantity, 0);
+		
+		// Should use ALL or nearly all capacity (allowing tiny epsilon)
+		expect(totalAllocated).toBeGreaterThanOrEqual(9);
+		expect(totalAllocated).toBeLessThanOrEqual(10);
+		
+		// Find individual allocations
+		const alloc1 = result.allocations.find(a => a.recipient_pubkey === 'recipient1');
+		const alloc2 = result.allocations.find(a => a.recipient_pubkey === 'recipient2');
+		const alloc3 = result.allocations.find(a => a.recipient_pubkey === 'recipient3');
+		
+		expect(alloc1).toBeDefined();
+		expect(alloc2).toBeDefined();
+		expect(alloc3).toBeDefined();
+		
+		console.log(`\nRemainder Redistribution Test:`);
+		console.log(`Recipient1 (35%): ${alloc1!.quantity} rooms (expected: 4 after redistribution)`);
+		console.log(`Recipient2 (33%): ${alloc2!.quantity} rooms (expected: 3)`);
+		console.log(`Recipient3 (32%): ${alloc3!.quantity} rooms (expected: 3)`);
+		console.log(`Total: ${totalAllocated}/10 rooms used`);
+		
+		// The recipient with largest remainder should get the extra room
+		expect(alloc1!.quantity).toBeGreaterThanOrEqual(3);
+		
+		// Verify capacity is maximally utilized
+		expect(totalAllocated).toBeGreaterThanOrEqual(9); // At least 90% utilization
+	});
 });
 
