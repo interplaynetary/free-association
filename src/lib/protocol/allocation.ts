@@ -517,6 +517,60 @@ export function computeMutualRecognition(
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Apply divisibility constraints to an allocation quantity
+ * 
+ * @param rawQuantity - The calculated allocation amount
+ * @param sharePercentage - What percentage of total capacity this represents
+ * @param capacitySlot - The capacity slot with divisibility constraints
+ * @returns Constrained quantity respecting both natural and percentage divisibility
+ */
+function applyDivisibilityConstraints(
+	rawQuantity: number,
+	sharePercentage: number,
+	capacitySlot: AvailabilitySlot
+): number {
+	const maxNatural = capacitySlot.max_natural_div || 1;
+	const maxPercent = capacitySlot.max_percentage_div || 1.0;
+	
+	// 1. Apply percentage constraint (prevent tiny slivers)
+	// If this recipient's share exceeds max allowed percentage, cap it
+	if (sharePercentage > maxPercent) {
+		const maxAllowedQuantity = capacitySlot.quantity * maxPercent;
+		rawQuantity = Math.min(rawQuantity, maxAllowedQuantity);
+	}
+	
+	// 2. Apply natural divisibility constraint (round to whole units)
+	// e.g., if max_natural_div=1 (whole rooms), 2.7 becomes 2
+	const naturalConstrained = Math.floor(rawQuantity / maxNatural) * maxNatural;
+	
+	return naturalConstrained;
+}
+
+/**
+ * Check if a recipient's allocation would be too small given divisibility constraints
+ * 
+ * @param allocation - The proposed allocation quantity
+ * @param capacitySlot - The capacity slot with divisibility constraints
+ * @returns true if allocation meets minimum thresholds
+ */
+function meetsMinimumAllocation(
+	allocation: number,
+	capacitySlot: AvailabilitySlot
+): boolean {
+	const maxNatural = capacitySlot.max_natural_div || 1;
+	const maxPercent = capacitySlot.max_percentage_div || 1.0;
+	
+	// Must be at least one natural unit
+	if (allocation < maxNatural) return false;
+	
+	// Must meet minimum percentage threshold
+	const sharePercentage = allocation / capacitySlot.quantity;
+	const minPercentage = maxPercent / 10; // 10% of max allowed (heuristic)
+	
+	return sharePercentage >= minPercentage || allocation >= maxNatural;
+}
+
+/**
  * Find compatible recipients for a capacity slot
  * Returns map of pubKey -> compatible need slots
  */
@@ -685,6 +739,25 @@ export function computeAllocations(
 					);
 					
 					if (yourFinalAllocation > 0) {
+						// Calculate share percentage for divisibility checks
+						const recipientSharePercentage = yourFinalAllocation / providersAvailableCapacity;
+						
+						// Apply divisibility constraints to final allocation
+						const constrainedAllocation = applyDivisibilityConstraints(
+							yourFinalAllocation,
+							recipientSharePercentage,
+							capacitySlot
+						);
+						
+						// Check if allocation meets minimum threshold
+						if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+							console.warn(
+								`[ALLOCATION-TIER1-DIVISIBILITY] Skipping ${recipient.pubKey}: ` +
+								`allocation ${constrainedAllocation.toFixed(2)} below minimum threshold`
+							);
+							continue; // Skip this recipient
+						}
+						
 						// Proportional distribution across need slots
 						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
 						let actuallyAllocated = 0;
@@ -693,7 +766,7 @@ export function computeAllocations(
 							const proportion = needSlot.quantity / totalCompatibleNeed;
 							let slotAllocation = Math.min(
 								needSlot.quantity,
-								yourFinalAllocation * proportion
+								constrainedAllocation * proportion
 							);
 							
 							// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
@@ -702,6 +775,10 @@ export function computeAllocations(
 								console.warn(`[ALLOCATION-TIER1-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
 								slotAllocation = Math.max(0, slotRemainingCapacity);
 							}
+							
+							// ✅ DIVISIBILITY: Apply natural unit rounding to slot allocation
+							const maxNatural = capacitySlot.max_natural_div || 1;
+							slotAllocation = Math.floor(slotAllocation / maxNatural) * maxNatural;
 							
 							if (slotAllocation > 0) {
 								allocations.push({
@@ -823,23 +900,46 @@ export function computeAllocations(
 							tier2RemainingCapacity
 						);
 						
-						if (yourFinalAllocation > 0) {
-							const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
-							let actuallyAllocated = 0;
-							
-						for (const needSlot of recipient.needSlots) {
-							const proportion = needSlot.quantity / totalCompatibleNeed;
-							let slotAllocation = Math.min(
-								needSlot.quantity,
-								yourFinalAllocation * proportion
+					if (yourFinalAllocation > 0) {
+						// Calculate share percentage for divisibility checks
+						const recipientSharePercentage = yourFinalAllocation / remainingCapacity;
+						
+						// Apply divisibility constraints to final allocation
+						const constrainedAllocation = applyDivisibilityConstraints(
+							yourFinalAllocation,
+							recipientSharePercentage,
+							capacitySlot
+						);
+						
+						// Check if allocation meets minimum threshold
+						if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+							console.warn(
+								`[ALLOCATION-TIER2-DIVISIBILITY] Skipping ${recipient.pubKey}: ` +
+								`allocation ${constrainedAllocation.toFixed(2)} below minimum threshold`
 							);
+							continue; // Skip this recipient
+						}
+						
+						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+						let actuallyAllocated = 0;
+						
+					for (const needSlot of recipient.needSlots) {
+						const proportion = needSlot.quantity / totalCompatibleNeed;
+						let slotAllocation = Math.min(
+							needSlot.quantity,
+							constrainedAllocation * proportion
+						);
 							
-							// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
-							const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
-							if (slotAllocation > slotRemainingCapacity) {
-								console.warn(`[ALLOCATION-TIER2-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
-								slotAllocation = Math.max(0, slotRemainingCapacity);
-							}
+						// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
+						const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
+						if (slotAllocation > slotRemainingCapacity) {
+							console.warn(`[ALLOCATION-TIER2-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
+							slotAllocation = Math.max(0, slotRemainingCapacity);
+						}
+						
+						// ✅ DIVISIBILITY: Apply natural unit rounding to slot allocation
+						const maxNatural = capacitySlot.max_natural_div || 1;
+						slotAllocation = Math.floor(slotAllocation / maxNatural) * maxNatural;
 							
 							if (slotAllocation > 0) {
 								allocations.push({
