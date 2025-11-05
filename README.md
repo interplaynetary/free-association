@@ -45,7 +45,7 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
 **Mathematically defined:**
 
-```
+```,,
 Your Recognition = your acknowledgment of contributions towards your own self-actualization
 Your Total-Recognition = 100%
 
