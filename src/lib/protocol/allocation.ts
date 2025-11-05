@@ -593,6 +593,16 @@ export function meetsMinimumAllocation(
  * - Slot A: 6 units (60%), Slot B: 4 units (40%)
  * - Gets 5 extra units → Slot A gets 3 (60% of 5), Slot B gets 2 (40% of 5)
  * 
+ * **Complexity Analysis**:
+ * - Time: O(r log r + r×s) where r = recipients with remainders, s = avg slots per recipient
+ *   - Phase 1 (remainder-based): O(r log r) for sorting + O(r×s) for distribution
+ *   - Phase 2 (recognition-based fallback): O(r log r) for sorting + O(r×s) for distribution
+ *   - Overall: O(r log r + r×s) which is efficient for typical client-side values
+ * - Space: O(r + s) for temporary arrays and maps
+ * - **Client-Side Performance**: Acceptable with typical values (r < 100, s < 10)
+ * 
+ * **Future Optimization**: If allocation runs multiple times with same inputs, consider memoization.
+ * 
  * @param allocations - Array of allocation records to potentially increase
  * @param remainders - Map of recipient -> remainder (fractional part lost to rounding)
  * @param capacityUsed - How much capacity has been allocated so far
@@ -812,6 +822,28 @@ function findCompatibleRecipients(
 
 /**
  * Compute allocations for my capacity slots
+ * 
+ * **Algorithm Overview**:
+ * 1. For each capacity slot, find compatible recipients
+ * 2. Tier 1: Allocate based on mutual recognition
+ * 3. Tier 2: Allocate remaining capacity based on one-way recognition
+ * 4. Apply divisibility constraints (natural units + percentage limits)
+ * 5. Redistribute remainders using Largest Remainder Method
+ * 
+ * **Complexity Analysis**:
+ * - Time: O(C × R × S) where C = capacity slots, R = recipients, S = avg slots per recipient
+ *   - Finding compatible recipients: O(C × R)
+ *   - Two-tier allocation: O(R × S) per capacity slot
+ *   - Remainder redistribution: O(R log R + R×S) per capacity slot
+ *   - Overall: O(C × R × S) which is expected for multi-party allocation
+ * - Space: O(C × R × S) for allocation records
+ * - **Client-Side Performance**: Acceptable with typical values (C < 20, R < 100, S < 10)
+ * 
+ * **Performance Notes**:
+ * - Spatial/temporal indexing reduces effective R for compatibility checks
+ * - Divisibility constraints prevent over-fragmentation
+ * - Remainder redistribution ensures near-100% capacity utilization
+ * - Future optimization: Memoization if allocation runs multiple times with same inputs
  * 
  * @param myPubKey - My public key
  * @param myCapacitySlots - My available capacity slots
