@@ -8,7 +8,7 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
 
-### Here's how it works:
+#### Here's how it works:
 
 **Self-actualization** is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
 
@@ -371,7 +371,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 [Install bun](https://fenilsonani.com/articles/installation-step-of-bun)
 
-### For development:
+### For developments:
 
 ```V
 bun install
