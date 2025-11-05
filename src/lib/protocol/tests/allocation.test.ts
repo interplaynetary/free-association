@@ -1468,3 +1468,340 @@ describe('Publishing Functions (Network Communication)', () => {
 	});
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// DIVISIBILITY CONSTRAINTS TESTS
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Divisibility Constraints', () => {
+	beforeEach(() => {
+		// Clear all stores before each test
+		myCommitmentStore.set(null as any);
+		networkCommitments.clear();
+	});
+	
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+	
+	it('should respect max_natural_div (whole rooms constraint)', async () => {
+		// Provider has 10 rooms with max_natural_div=1 (can't allocate fractional rooms)
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity-1',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1, // ✅ Must allocate whole rooms
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Three recipients need rooms
+		const recipient1 = createTestCommitment([{
+			id: 'need-room-1',
+			quantity: 3.7, // Would naturally get 3.7 rooms
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient2 = createTestCommitment([{
+			id: 'need-room-2',
+			quantity: 2.3, // Would naturally get 2.3 rooms
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient3 = createTestCommitment([{
+			id: 'need-room-3',
+			quantity: 4.5, // Would naturally get 4.5 rooms
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// Set up mutual recognition
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 0.4,
+			'recipient2': 0.3,
+			'recipient3': 0.3
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		recipient2.global_recognition_weights = { 'provider': 1.0 };
+		recipient3.global_recognition_weights = { 'provider': 1.0 };
+		
+		// Publish commitments
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		networkCommitments.set('recipient2', recipient2);
+		networkCommitments.set('recipient3', recipient3);
+		
+		// Wait for reactive computation
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Check allocations respect whole room constraint
+		for (const alloc of result.allocations) {
+			// Each allocation must be a whole number
+			expect(alloc.quantity % 1).toBe(0);
+			console.log(`Allocation to ${alloc.recipient_pubkey}: ${alloc.quantity} rooms (whole units ✅)`);
+		}
+		
+		// Total should not exceed capacity
+		const totalAllocated = result.allocations.reduce((sum, a) => sum + a.quantity, 0);
+		expect(totalAllocated).toBeLessThanOrEqual(10);
+	});
+	
+	it('should respect max_percentage_div (prevent over-fragmentation)', async () => {
+		// Provider has 100 hours with max_percentage_div=0.1 (min 10% per recipient, max 10 recipients)
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'tutoring-capacity',
+				quantity: 100,
+				need_type_id: 'tutoring',
+				max_natural_div: 1,
+				max_percentage_div: 0.1, // ✅ Min 10% per recipient (10 hours minimum)
+				name: 'Tutoring Hours',
+				location: { type: 'online' }
+			} as AvailabilitySlot]
+		);
+		
+		// Create 20 recipients who each want 5 hours (would fragment into tiny pieces)
+		const recipients: Record<string, Commitment> = {};
+		const recognitionWeights: GlobalRecognitionWeights = {};
+		
+		for (let i = 0; i < 20; i++) {
+			const recipientId = `student${i}`;
+			recipients[recipientId] = createTestCommitment([{
+				id: `need-${i}`,
+				quantity: 5,
+				need_type_id: 'tutoring',
+				name: 'Learning Support',
+				location: { type: 'online' }
+			} as NeedSlot]);
+			
+			recipients[recipientId].global_recognition_weights = { 'provider': 1.0 };
+			recognitionWeights[recipientId] = 0.05; // 5% each
+			networkCommitments.set(recipientId, recipients[recipientId]);
+		}
+		
+		providerCommitment.global_recognition_weights = recognitionWeights;
+		myCommitmentStore.set(providerCommitment);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Check that each recipient gets at least 10% (10 hours) OR nothing
+		for (const alloc of result.allocations) {
+			if (alloc.quantity > 0) {
+				expect(alloc.quantity).toBeGreaterThanOrEqual(10);
+				console.log(`Allocation to ${alloc.recipient_pubkey}: ${alloc.quantity} hours (≥10% ✅)`);
+			}
+		}
+		
+		// Should have at most 10 recipients (100 hours / 10 hours min)
+		const uniqueRecipients = new Set(result.allocations.map(a => a.recipient_pubkey));
+		expect(uniqueRecipients.size).toBeLessThanOrEqual(10);
+		console.log(`Total recipients: ${uniqueRecipients.size} (≤10 ✅)`);
+	});
+	
+	it('should round down to natural units (CPU cores example)', async () => {
+		// Provider has 8 CPU cores, max_natural_div=1 (whole cores only)
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'cpu-capacity',
+				quantity: 8,
+				need_type_id: 'compute',
+				max_natural_div: 1, // Whole cores only
+				max_percentage_div: 1.0,
+				name: 'CPU Cores',
+				location: { type: 'online' }
+			} as AvailabilitySlot]
+		);
+		
+		// Two recipients with mutual recognition
+		const recipient1 = createTestCommitment([{
+			id: 'need-compute-1',
+			quantity: 5,
+			need_type_id: 'compute',
+			name: 'ML Training',
+			location: { type: 'online' }
+		} as NeedSlot]);
+		
+		const recipient2 = createTestCommitment([{
+			id: 'need-compute-2',
+			quantity: 5,
+			need_type_id: 'compute',
+			name: 'Data Processing',
+			location: { type: 'online' }
+		} as NeedSlot]);
+		
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 0.55, // Would get 4.4 cores -> rounds to 4
+			'recipient2': 0.45  // Would get 3.6 cores -> rounds to 3
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		recipient2.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		networkCommitments.set('recipient2', recipient2);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Find allocations
+		const alloc1 = result.allocations.find(a => a.recipient_pubkey === 'recipient1');
+		const alloc2 = result.allocations.find(a => a.recipient_pubkey === 'recipient2');
+		
+		expect(alloc1).toBeDefined();
+		expect(alloc2).toBeDefined();
+		
+		// Both should be whole numbers
+		expect(alloc1!.quantity % 1).toBe(0);
+		expect(alloc2!.quantity % 1).toBe(0);
+		
+		// Total should be ≤ 8 (some cores may be unused due to rounding)
+		const total = alloc1!.quantity + alloc2!.quantity;
+		expect(total).toBeLessThanOrEqual(8);
+		
+		console.log(`Recipient1: ${alloc1!.quantity} cores (whole ✅)`);
+		console.log(`Recipient2: ${alloc2!.quantity} cores (whole ✅)`);
+		console.log(`Total: ${total}/8 cores allocated`);
+	});
+	
+	it('should skip recipients below minimum allocation threshold', async () => {
+		// Provider has 100 meals with max_percentage_div=0.05 (5% min = 5 meals)
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'meal-capacity',
+				quantity: 100,
+				need_type_id: 'meals',
+				max_natural_div: 1,
+				max_percentage_div: 0.05, // Min 5% (5 meals)
+				name: 'Community Meals',
+				location: { type: 'specific', address: { city: 'Portland' } }
+			} as AvailabilitySlot]
+		);
+		
+		// One recipient with very low mutual recognition (would get <5 meals)
+		const lowRecognitionRecipient = createTestCommitment([{
+			id: 'need-meal-low',
+			quantity: 2,
+			need_type_id: 'meals',
+			name: 'Food Need',
+			location: { type: 'specific', address: { city: 'Portland' } }
+		} as NeedSlot]);
+		
+		// One recipient with adequate recognition
+		const highRecognitionRecipient = createTestCommitment([{
+			id: 'need-meal-high',
+			quantity: 20,
+			need_type_id: 'meals',
+			name: 'Food Need',
+			location: { type: 'specific', address: { city: 'Portland' } }
+		} as NeedSlot]);
+		
+		providerCommitment.global_recognition_weights = {
+			'lowRecipient': 0.02,  // Would get 2 meals -> below 5% min -> SKIP
+			'highRecipient': 0.98  // Would get 98 meals -> OK
+		};
+		
+		lowRecognitionRecipient.global_recognition_weights = { 'provider': 1.0 };
+		highRecognitionRecipient.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('lowRecipient', lowRecognitionRecipient);
+		networkCommitments.set('highRecipient', highRecognitionRecipient);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Low recognition recipient should be skipped
+		const lowAlloc = result.allocations.find(a => a.recipient_pubkey === 'lowRecipient');
+		expect(lowAlloc).toBeUndefined();
+		
+		// High recognition recipient should get allocation
+		const highAlloc = result.allocations.find(a => a.recipient_pubkey === 'highRecipient');
+		expect(highAlloc).toBeDefined();
+		expect(highAlloc!.quantity).toBeGreaterThanOrEqual(5);
+		
+		console.log(`Low recognition recipient: skipped ✅`);
+		console.log(`High recognition recipient: ${highAlloc!.quantity} meals ✅`);
+	});
+	
+	it('should work with both tier 1 (mutual) and tier 2 (non-mutual)', async () => {
+		// Provider with divisibility constraints
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'workshop-capacity',
+				quantity: 20,
+				need_type_id: 'workshops',
+				max_natural_div: 2, // Workshops come in pairs (2-hour blocks)
+				max_percentage_div: 0.2, // Min 20% (4 hours minimum)
+				name: 'Workshop Sessions',
+				location: { type: 'specific', address: { city: 'NYC' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Mutual recipient
+		const mutualRecipient = createTestCommitment([{
+			id: 'need-workshop-mutual',
+			quantity: 10,
+			need_type_id: 'workshops',
+			name: 'Skill Development',
+			location: { type: 'specific', address: { city: 'NYC' } }
+		} as NeedSlot]);
+		
+		// Non-mutual recipient (I recognize them, they don't recognize me)
+		const nonMutualRecipient = createTestCommitment([{
+			id: 'need-workshop-nonmutual',
+			quantity: 10,
+			need_type_id: 'workshops',
+			name: 'Skill Development',
+			location: { type: 'specific', address: { city: 'NYC' } }
+		} as NeedSlot]);
+		
+		providerCommitment.global_recognition_weights = {
+			'mutualRecipient': 0.6,
+			'nonMutualRecipient': 0.4
+		};
+		
+		mutualRecipient.global_recognition_weights = { 'provider': 1.0 }; // Mutual ✅
+		nonMutualRecipient.global_recognition_weights = {}; // Non-mutual ❌
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('mutualRecipient', mutualRecipient);
+		networkCommitments.set('nonMutualRecipient', nonMutualRecipient);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		// Both should respect divisibility
+		for (const alloc of result.allocations) {
+			// Must be multiple of 2 (max_natural_div)
+			expect(alloc.quantity % 2).toBe(0);
+			// Must be at least 4 (20% of 20)
+			if (alloc.quantity > 0) {
+				expect(alloc.quantity).toBeGreaterThanOrEqual(4);
+			}
+			
+			console.log(`${alloc.recipient_pubkey}: ${alloc.quantity} hours (tier: ${alloc.tier}, divisible by 2 ✅)`);
+		}
+	});
+});
+
