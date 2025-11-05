@@ -683,10 +683,91 @@ function redistributeRemainders(
 		);
 	}
 	
+	// If we still have leftover capacity but ran out of recipients with remainders,
+	// distribute remaining capacity proportionally by recognition shares
+	if (unitsDistributed < unitsToDistribute && allocations.length > 0) {
+		const remainingUnits = unitsToDistribute - unitsDistributed;
+		
+		console.log(
+			`[REMAINDER-REDISTRIBUTION] Still have ${remainingUnits * maxNatural} units left ` +
+			`after exhausting remainders. Distributing by allocation proportion...`
+		);
+		
+		// Calculate total allocated (as proxy for recognition share)
+		const recipientTotals = new Map<string, number>();
+		for (const alloc of allocations) {
+			const current = recipientTotals.get(alloc.recipient_pubkey) || 0;
+			recipientTotals.set(alloc.recipient_pubkey, current + alloc.quantity);
+		}
+		
+		const totalAllocated = Array.from(recipientTotals.values()).reduce((sum, val) => sum + val, 0);
+		
+		// Sort recipients by their allocation size (proportional to recognition)
+		const recipientsByAllocation = Array.from(recipientTotals.entries())
+			.sort((a, b) => b[1] - a[1]); // Largest allocation first
+		
+		// Distribute remaining units proportionally using Largest Remainder Method
+		const recipientShares: Array<{ pubKey: string; ideal: number; integer: number; remainder: number }> = [];
+		let extraUnitsDistributed = 0;
+		
+		for (const [recipientPub, allocated] of recipientsByAllocation) {
+			const proportion = allocated / totalAllocated;
+			const idealUnits = remainingUnits * proportion;
+			const integerUnits = Math.floor(idealUnits);
+			const remainderFraction = idealUnits - integerUnits;
+			
+			// Find this recipient's allocations
+			const recipientAllocations = allocations.filter(a => a.recipient_pubkey === recipientPub);
+			
+			if (recipientAllocations.length > 0 && integerUnits > 0) {
+				// Distribute integer part proportionally across slots
+				if (recipientAllocations.length === 1) {
+					recipientAllocations[0].quantity += integerUnits * maxNatural;
+				} else {
+					// Distribute across multiple slots proportionally
+					const recipientTotal = recipientAllocations.reduce((sum, a) => sum + a.quantity, 0);
+					for (const alloc of recipientAllocations) {
+						const slotProportion = alloc.quantity / recipientTotal;
+						const slotUnits = Math.floor(integerUnits * slotProportion);
+						alloc.quantity += slotUnits * maxNatural;
+					}
+				}
+				extraUnitsDistributed += integerUnits;
+			}
+			
+			if (remainderFraction > 0) {
+				recipientShares.push({ pubKey: recipientPub, ideal: idealUnits, integer: integerUnits, remainder: remainderFraction });
+			}
+		}
+		
+		// Distribute final fractional units by largest remainder
+		const leftoverExtraUnits = remainingUnits - extraUnitsDistributed;
+		if (leftoverExtraUnits > 0 && recipientShares.length > 0) {
+			recipientShares.sort((a, b) => b.remainder - a.remainder);
+			
+			for (let i = 0; i < leftoverExtraUnits && i < recipientShares.length; i++) {
+				const recipientAllocations = allocations.filter(a => a.recipient_pubkey === recipientShares[i].pubKey);
+				if (recipientAllocations.length > 0) {
+					// Give to the recipient's largest slot
+					recipientAllocations.sort((a, b) => b.quantity - a.quantity);
+					recipientAllocations[0].quantity += maxNatural;
+					extraUnitsDistributed++;
+				}
+			}
+		}
+		
+		unitsDistributed += extraUnitsDistributed;
+		
+		console.log(
+			`[REMAINDER-REDISTRIBUTION] Distributed ${extraUnitsDistributed * maxNatural} additional units ` +
+			`based on recognition-proportional allocation`
+		);
+	}
+	
 	const redistributedCapacity = unitsDistributed * maxNatural;
 	console.log(
-		`[REMAINDER-REDISTRIBUTION] Distributed ${redistributedCapacity} leftover capacity ` +
-		`across ${unitsDistributed / maxNatural} recipients`
+		`[REMAINDER-REDISTRIBUTION] Total distributed: ${redistributedCapacity} leftover capacity ` +
+		`across ${Math.ceil(unitsDistributed / maxNatural)} recipient grants`
 	);
 	
 	return capacityUsed + redistributedCapacity;

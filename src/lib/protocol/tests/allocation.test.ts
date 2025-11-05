@@ -1979,5 +1979,162 @@ describe('Divisibility Constraints', () => {
 		expect(slotARatio).toBeGreaterThan(0.5);
 		expect(slotARatio).toBeLessThan(0.7);
 	});
+	
+	it('should distribute excess capacity by recognition shares when no remainders exist', async () => {
+		// Provider has 10 rooms
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1,
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Two recipients with low needs (exact allocations, no remainders)
+		const recipient1 = createTestCommitment([{
+			id: 'need-room-1',
+			quantity: 2,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient2 = createTestCommitment([{
+			id: 'need-room-2',
+			quantity: 2,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// Equal recognition (50/50 split)
+		// Would naturally give 2 rooms each = 4 total
+		// Leftover: 6 rooms with NO remainders!
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 0.5,
+			'recipient2': 0.5
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		recipient2.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		networkCommitments.set('recipient2', recipient2);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		const alloc1 = result.allocations.find(a => a.recipient_pubkey === 'recipient1');
+		const alloc2 = result.allocations.find(a => a.recipient_pubkey === 'recipient2');
+		
+		expect(alloc1).toBeDefined();
+		expect(alloc2).toBeDefined();
+		
+		const totalAllocated = alloc1!.quantity + alloc2!.quantity;
+		
+		console.log(`\nExcess Capacity Distribution (No Remainders):`);
+		console.log(`Recipient1 (50% MR, 2 need): ${alloc1!.quantity} rooms`);
+		console.log(`Recipient2 (50% MR, 2 need): ${alloc2!.quantity} rooms`);
+		console.log(`Total: ${totalAllocated}/10 rooms`);
+		
+		// Should distribute ALL 10 rooms, not just the 4 needed
+		expect(totalAllocated).toBeGreaterThanOrEqual(9);
+		expect(totalAllocated).toBeLessThanOrEqual(10);
+		
+		// Should be roughly equal (50/50 recognition)
+		const diff = Math.abs(alloc1!.quantity - alloc2!.quantity);
+		expect(diff).toBeLessThanOrEqual(1); // At most 1 room difference due to rounding
+		
+		console.log(`Difference: ${diff} room(s) (expected ≤1 due to equal recognition)`);
+	});
+	
+	it('should respect recognition shares when distributing excess capacity', async () => {
+		// Provider has 10 rooms
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1,
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Two recipients with low needs
+		const recipient1 = createTestCommitment([{
+			id: 'need-room-1',
+			quantity: 2,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const recipient2 = createTestCommitment([{
+			id: 'need-room-2',
+			quantity: 2,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// UNEQUAL recognition: 70/30 split
+		// Initial: 2.8 and 1.2 rooms → floor to 2 and 1 = 3 rooms
+		// Leftover: 7 rooms to distribute by recognition (70/30)
+		providerCommitment.global_recognition_weights = {
+			'recipient1': 0.7,
+			'recipient2': 0.3
+		};
+		
+		recipient1.global_recognition_weights = { 'provider': 1.0 };
+		recipient2.global_recognition_weights = { 'provider': 1.0 };
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('recipient1', recipient1);
+		networkCommitments.set('recipient2', recipient2);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		const alloc1 = result.allocations.find(a => a.recipient_pubkey === 'recipient1');
+		const alloc2 = result.allocations.find(a => a.recipient_pubkey === 'recipient2');
+		
+		expect(alloc1).toBeDefined();
+		expect(alloc2).toBeDefined();
+		
+		const totalAllocated = alloc1!.quantity + alloc2!.quantity;
+		
+		console.log(`\nExcess Capacity with Unequal Recognition:`);
+		console.log(`Recipient1 (70% MR): ${alloc1!.quantity} rooms (expected ~7)`);
+		console.log(`Recipient2 (30% MR): ${alloc2!.quantity} rooms (expected ~3)`);
+		console.log(`Total: ${totalAllocated}/10 rooms`);
+		
+		// Should use nearly all capacity
+		expect(totalAllocated).toBeGreaterThanOrEqual(9);
+		
+		// Recipient1 should get significantly more (70% vs 30%)
+		expect(alloc1!.quantity).toBeGreaterThan(alloc2!.quantity);
+		
+		// Should be roughly 70/30 split
+		const ratio1 = alloc1!.quantity / totalAllocated;
+		const ratio2 = alloc2!.quantity / totalAllocated;
+		
+		console.log(`Recipient1 ratio: ${(ratio1 * 100).toFixed(1)}% (expected ~70%)`);
+		console.log(`Recipient2 ratio: ${(ratio2 * 100).toFixed(1)}% (expected ~30%)`);
+		
+		// Allow 20% tolerance due to rounding and small numbers
+		expect(ratio1).toBeGreaterThan(0.6);
+		expect(ratio1).toBeLessThan(0.8);
+	});
 });
 
