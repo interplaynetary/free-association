@@ -53,7 +53,12 @@ import {
 	type AllocationResult,
 	
 	// Need Update
-	applyNeedUpdateLaw
+	applyNeedUpdateLaw,
+	
+	// Divisibility Constraints (Pure Functions - Single Source of Truth)
+	applyDivisibilityConstraints,
+	meetsMinimumAllocation,
+	redistributeRemainders
 } from '$lib/protocol/allocation';
 
 // Import v5 schemas and stores
@@ -353,6 +358,11 @@ export {
 };
 
 // ═══════════════════════════════════════════════════════════════════
+// NOTE: Divisibility constraint functions are imported from allocation.ts
+// See imports at top of file - following Single Source of Truth architecture
+// ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
 // SPATIAL/TEMPORAL OPTIMIZATION (Using Reactive Indexes)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -551,9 +561,13 @@ export const myAllocationsAsProvider: Readable<{
 				totalMutualRecognition += mutualRec;
 			}
 			
+			const CAPACITY_EPSILON = 0.0001;
 			let capacityUsedInTier1 = 0;
 			
 			if (totalMutualRecognition > 0) {
+				// Track remainders for redistribution
+				const tier1Remainders = new Map<string, number>();
+				
 				// Calculate shares and numerators
 				for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
 					const mutualRec = $myMR[recipientPub] || 0;
@@ -601,9 +615,9 @@ export const myAllocationsAsProvider: Readable<{
 				
 			// Step 3: Allocate to each recipient (TIER 1: MUTUAL)
 			for (const recipient of eligibleRecipients) {
-				// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
-				const tier1RemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
-				if (tier1RemainingCapacity <= 0.0001) {
+					// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
+					const tier1RemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
+					if (tier1RemainingCapacity <= CAPACITY_EPSILON) {
 					console.warn(`[ALLOCATION-TIER1-PROTECTION] No remaining capacity for ${recipient.pubKey}`);
 					break; // Stop allocating in Tier 1
 				}
@@ -615,12 +629,38 @@ export const myAllocationsAsProvider: Readable<{
 				
 				// ✅ CAPACITY PROTECTION: Cap at remaining capacity AND recipient need
 				const yourFinalAllocation = Math.min(
-					yourRawAllocation,
-					recipient.need,
-					tier1RemainingCapacity
-				);
-					
-					if (yourFinalAllocation > 0) {
+						yourRawAllocation,
+						recipient.need,
+						tier1RemainingCapacity
+					);
+						
+						if (yourFinalAllocation > 0) {
+							// Calculate share percentage for divisibility checks
+							const recipientSharePercentage = yourFinalAllocation / providersAvailableCapacity;
+							
+						// Apply divisibility constraints to final allocation
+						const constrainedAllocation = applyDivisibilityConstraints(
+							yourFinalAllocation,
+							recipientSharePercentage,
+							capacitySlot
+						);
+						
+						// Track remainder lost to rounding for redistribution
+						const maxNatural = capacitySlot.max_natural_div || 1;
+						const remainder = (yourFinalAllocation - constrainedAllocation) / maxNatural;
+						if (remainder > 0) {
+							tier1Remainders.set(recipient.pubKey, remainder);
+						}
+						
+						// Check if allocation meets minimum threshold
+						if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+							console.warn(
+								`[ALLOCATION-TIER1-DIVISIBILITY] Skipping ${recipient.pubKey}: ` +
+								`allocation ${constrainedAllocation.toFixed(2)} below minimum threshold`
+							);
+							continue; // Skip this recipient
+						}
+							
 						// PROPORTIONAL DISTRIBUTION across compatible need slots
 						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
 						let actuallyAllocated = 0;
@@ -629,15 +669,19 @@ export const myAllocationsAsProvider: Readable<{
 						const proportion = needSlot.quantity / totalCompatibleNeed;
 						let slotAllocation = Math.min(
 							needSlot.quantity,
-							yourFinalAllocation * proportion
+							constrainedAllocation * proportion
 						);
 						
 						// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
 						const slotRemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
-						if (slotAllocation > slotRemainingCapacity) {
-							console.warn(`[ALLOCATION-TIER1-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
-							slotAllocation = Math.max(0, slotRemainingCapacity);
-						}
+				if (slotAllocation > slotRemainingCapacity) {
+					console.warn(`[ALLOCATION-TIER1-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
+					slotAllocation = Math.max(0, slotRemainingCapacity);
+				}
+				
+				// ✅ DIVISIBILITY: Apply natural unit rounding to slot allocation
+				const maxNatural = capacitySlot.max_natural_div || 1;
+				slotAllocation = Math.floor(slotAllocation / maxNatural) * maxNatural;
 						
 						if (slotAllocation > 0) {
 							allocations.push({
@@ -664,6 +708,17 @@ export const myAllocationsAsProvider: Readable<{
 					}
 				}
 				
+				// ✅ REMAINDER REDISTRIBUTION: Distribute leftover units to recipients with largest remainders
+				const maxNatural = capacitySlot.max_natural_div || 1;
+				capacityUsedInTier1 = redistributeRemainders(
+					allocations,
+					tier1Remainders,
+					capacityUsedInTier1,
+					providersAvailableCapacity,
+					maxNatural,
+					capacitySlot
+				);
+				
 				tier1Denominator = denominator;
 			}
 			
@@ -673,8 +728,9 @@ export const myAllocationsAsProvider: Readable<{
 			
 			const remainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
 			let tier2Denominator = 0;
+			let capacityUsedInTier2 = 0;
 			
-			if (remainingCapacity > 0.0001) {
+			if (remainingCapacity > CAPACITY_EPSILON) {
 				const nonMutualEligibleRecipients: Array<{
 					pubKey: string;
 					need: number;
@@ -746,13 +802,14 @@ export const myAllocationsAsProvider: Readable<{
 					}
 					
 				if (tier2Denominator > 0) {
-					let capacityUsedInTier2 = 0;
+					// Track remainders for redistribution
+					const tier2Remainders = new Map<string, number>();
 					
 					// Step 3: Allocate from remaining capacity
 					for (const recipient of nonMutualEligibleRecipients) {
 						// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
 						const tier2RemainingCapacity = remainingCapacity - capacityUsedInTier2;
-						if (tier2RemainingCapacity <= 0.0001) {
+						if (tier2RemainingCapacity <= CAPACITY_EPSILON) {
 							console.warn(`[ALLOCATION-TIER2-PROTECTION] No remaining capacity for ${recipient.pubKey}`);
 							break; // Stop allocating in Tier 2
 						}
@@ -764,29 +821,59 @@ export const myAllocationsAsProvider: Readable<{
 						
 						// ✅ CAPACITY PROTECTION: Cap at remaining capacity AND recipient need
 						const yourFinalAllocation = Math.min(
-							yourRawAllocation,
-							recipient.need,
-							tier2RemainingCapacity
-						);
+					yourRawAllocation,
+					recipient.need,
+					tier2RemainingCapacity
+				);
+					
+						if (yourFinalAllocation > 0) {
+							// Calculate share percentage for divisibility checks
+							const recipientSharePercentage = yourFinalAllocation / remainingCapacity;
 							
-							if (yourFinalAllocation > 0) {
-								// PROPORTIONAL DISTRIBUTION across compatible need slots (Tier 2)
-								const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
-								let actuallyAllocated = 0;
-								
-							for (const needSlot of recipient.needSlots) {
-								const proportion = needSlot.quantity / totalCompatibleNeed;
-								let slotAllocation = Math.min(
-									needSlot.quantity,
-									yourFinalAllocation * proportion
-								);
-								
-								// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
-								const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
-								if (slotAllocation > slotRemainingCapacity) {
-									console.warn(`[ALLOCATION-TIER2-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
-									slotAllocation = Math.max(0, slotRemainingCapacity);
-								}
+						// Apply divisibility constraints to final allocation
+						const constrainedAllocation = applyDivisibilityConstraints(
+							yourFinalAllocation,
+							recipientSharePercentage,
+							capacitySlot
+						);
+						
+						// Track remainder lost to rounding for redistribution
+						const maxNatural = capacitySlot.max_natural_div || 1;
+						const remainder = (yourFinalAllocation - constrainedAllocation) / maxNatural;
+						if (remainder > 0) {
+							tier2Remainders.set(recipient.pubKey, remainder);
+						}
+						
+						// Check if allocation meets minimum threshold
+						if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+							console.warn(
+								`[ALLOCATION-TIER2-DIVISIBILITY] Skipping ${recipient.pubKey}: ` +
+								`allocation ${constrainedAllocation.toFixed(2)} below minimum threshold`
+							);
+							continue; // Skip this recipient
+						}
+						
+						// PROPORTIONAL DISTRIBUTION across compatible need slots (Tier 2)
+						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+						let actuallyAllocated = 0;
+						
+					for (const needSlot of recipient.needSlots) {
+						const proportion = needSlot.quantity / totalCompatibleNeed;
+						let slotAllocation = Math.min(
+							needSlot.quantity,
+							constrainedAllocation * proportion
+						);
+						
+						// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
+						const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
+					if (slotAllocation > slotRemainingCapacity) {
+						console.warn(`[ALLOCATION-TIER2-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
+						slotAllocation = Math.max(0, slotRemainingCapacity);
+					}
+					
+					// ✅ DIVISIBILITY: Apply natural unit rounding to slot allocation
+					const maxNatural = capacitySlot.max_natural_div || 1;
+					slotAllocation = Math.floor(slotAllocation / maxNatural) * maxNatural;
 								
 								if (slotAllocation > 0) {
 									allocations.push({
@@ -813,12 +900,23 @@ export const myAllocationsAsProvider: Readable<{
 							}
 						}
 					}
+					
+					// ✅ REMAINDER REDISTRIBUTION: Distribute leftover units to recipients with largest remainders
+					const maxNatural = capacitySlot.max_natural_div || 1;
+					capacityUsedInTier2 = redistributeRemainders(
+						allocations,
+						tier2Remainders,
+						capacityUsedInTier2,
+						remainingCapacity,
+						maxNatural,
+						capacitySlot
+					);
 				}
 			}
 			
 			// ✅ CAPACITY PROTECTION: Final safety check for this slot
-			const totalCapacityUsed = capacityUsedInTier1;
-			if (totalCapacityUsed > providersAvailableCapacity + 0.0001) {
+			const totalCapacityUsed = capacityUsedInTier1 + capacityUsedInTier2;
+			if (totalCapacityUsed > providersAvailableCapacity + CAPACITY_EPSILON) {
 				console.error(
 					`[ALLOCATION-PROTECTION-ERROR] Over-allocated! Capacity: ${providersAvailableCapacity.toFixed(2)}, ` +
 					`Used: ${totalCapacityUsed.toFixed(2)}, ` +
@@ -826,7 +924,7 @@ export const myAllocationsAsProvider: Readable<{
 					`for type ${typeId}, slot ${capacitySlot.id.slice(0, 8)}`
 				);
 				throw new Error(`Over-allocation detected: ${totalCapacityUsed.toFixed(2)} > ${providersAvailableCapacity.toFixed(2)}`);
-			} else if (totalCapacityUsed > providersAvailableCapacity - 0.0001) {
+			} else if (totalCapacityUsed > providersAvailableCapacity - CAPACITY_EPSILON) {
 				// Log successful full allocation
 				console.log(
 					`[ALLOCATION-PROTECTION] ✅ Fully allocated capacity for type ${typeId}: ` +
