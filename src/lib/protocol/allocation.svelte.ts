@@ -551,6 +551,7 @@ export const myAllocationsAsProvider: Readable<{
 				totalMutualRecognition += mutualRec;
 			}
 			
+			const CAPACITY_EPSILON = 0.0001;
 			let capacityUsedInTier1 = 0;
 			
 			if (totalMutualRecognition > 0) {
@@ -601,9 +602,9 @@ export const myAllocationsAsProvider: Readable<{
 				
 			// Step 3: Allocate to each recipient (TIER 1: MUTUAL)
 			for (const recipient of eligibleRecipients) {
-				// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
-				const tier1RemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
-				if (tier1RemainingCapacity <= 0.0001) {
+					// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
+					const tier1RemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
+					if (tier1RemainingCapacity <= CAPACITY_EPSILON) {
 					console.warn(`[ALLOCATION-TIER1-PROTECTION] No remaining capacity for ${recipient.pubKey}`);
 					break; // Stop allocating in Tier 1
 				}
@@ -673,8 +674,9 @@ export const myAllocationsAsProvider: Readable<{
 			
 			const remainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
 			let tier2Denominator = 0;
+			let capacityUsedInTier2 = 0;
 			
-			if (remainingCapacity > 0.0001) {
+			if (remainingCapacity > CAPACITY_EPSILON) {
 				const nonMutualEligibleRecipients: Array<{
 					pubKey: string;
 					need: number;
@@ -746,13 +748,11 @@ export const myAllocationsAsProvider: Readable<{
 					}
 					
 				if (tier2Denominator > 0) {
-					let capacityUsedInTier2 = 0;
-					
 					// Step 3: Allocate from remaining capacity
 					for (const recipient of nonMutualEligibleRecipients) {
 						// ✅ CAPACITY PROTECTION: Check remaining capacity before allocating
 						const tier2RemainingCapacity = remainingCapacity - capacityUsedInTier2;
-						if (tier2RemainingCapacity <= 0.0001) {
+						if (tier2RemainingCapacity <= CAPACITY_EPSILON) {
 							console.warn(`[ALLOCATION-TIER2-PROTECTION] No remaining capacity for ${recipient.pubKey}`);
 							break; // Stop allocating in Tier 2
 						}
@@ -817,8 +817,8 @@ export const myAllocationsAsProvider: Readable<{
 			}
 			
 			// ✅ CAPACITY PROTECTION: Final safety check for this slot
-			const totalCapacityUsed = capacityUsedInTier1;
-			if (totalCapacityUsed > providersAvailableCapacity + 0.0001) {
+			const totalCapacityUsed = capacityUsedInTier1 + capacityUsedInTier2;
+			if (totalCapacityUsed > providersAvailableCapacity + CAPACITY_EPSILON) {
 				console.error(
 					`[ALLOCATION-PROTECTION-ERROR] Over-allocated! Capacity: ${providersAvailableCapacity.toFixed(2)}, ` +
 					`Used: ${totalCapacityUsed.toFixed(2)}, ` +
@@ -826,7 +826,7 @@ export const myAllocationsAsProvider: Readable<{
 					`for type ${typeId}, slot ${capacitySlot.id.slice(0, 8)}`
 				);
 				throw new Error(`Over-allocation detected: ${totalCapacityUsed.toFixed(2)} > ${providersAvailableCapacity.toFixed(2)}`);
-			} else if (totalCapacityUsed > providersAvailableCapacity - 0.0001) {
+			} else if (totalCapacityUsed > providersAvailableCapacity - CAPACITY_EPSILON) {
 				// Log successful full allocation
 				console.log(
 					`[ALLOCATION-PROTECTION] ✅ Fully allocated capacity for type ${typeId}: ` +
