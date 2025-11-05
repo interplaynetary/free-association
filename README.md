@@ -208,9 +208,7 @@ When you contribute surplus to Free Association:
 
 4. 🌍 **Your values shape broader society** - Recognition can be given to those working on causes you value (climate action, community spaces, education) regardless of whether you directly benefit, allowing your influence to flow toward your social values.
 
-5. ⚖️ **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
-
-Self-actualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
+5. ⚖️ **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition stAppendix....kualization is self-defined (subjective), but its realization depends on objective access to capacities (food, skills, etc.).
 
 Let:
 True is not False, False is not True
