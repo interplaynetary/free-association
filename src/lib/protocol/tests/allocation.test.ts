@@ -2136,5 +2136,110 @@ describe('Divisibility Constraints', () => {
 		expect(ratio1).toBeGreaterThan(0.6);
 		expect(ratio1).toBeLessThan(0.8);
 	});
+	
+	it('should not over-allocate when Tier 2 redistribution occurs after Tier 1', async () => {
+		// CRITICAL TEST: Verify that Tier 2 remainder redistribution respects Tier 1 capacity consumption
+		// This addresses the code review concern about potential over-allocation risk
+		
+		// Provider has 10 rooms
+		const providerCommitment = createTestCommitment(
+			[],
+			[{
+				id: 'room-capacity',
+				quantity: 10,
+				need_type_id: 'rooms',
+				max_natural_div: 1,
+				max_percentage_div: 1.0,
+				name: 'Co-living Rooms',
+				location: { type: 'specific', address: { city: 'Berlin' } }
+			} as AvailabilitySlot]
+		);
+		
+		// Two Tier 1 (mutual) recipients with fractional allocations
+		const tier1Recipient1 = createTestCommitment([{
+			id: 'need-room-t1-1',
+			quantity: 3,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		const tier1Recipient2 = createTestCommitment([{
+			id: 'need-room-t1-2',
+			quantity: 3,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// One Tier 2 (non-mutual) recipient
+		const tier2Recipient = createTestCommitment([{
+			id: 'need-room-t2',
+			quantity: 5,
+			need_type_id: 'rooms',
+			name: 'Housing Need',
+			location: { type: 'specific', address: { city: 'Berlin' } }
+		} as NeedSlot]);
+		
+		// Setup: Tier 1 gets 60% recognition (3 rooms each = 6 total)
+		// Tier 2 gets 40% recognition (4 rooms left)
+		providerCommitment.global_recognition_weights = {
+			'tier1-r1': 0.3,
+			'tier1-r2': 0.3,
+			'tier2-r': 0.0 // Non-mutual (will get leftovers in Tier 2)
+		};
+		
+		tier1Recipient1.global_recognition_weights = { 'provider': 1.0 };
+		tier1Recipient2.global_recognition_weights = { 'provider': 1.0 };
+		tier2Recipient.global_recognition_weights = {}; // No mutual recognition
+		
+		// Provider recognizes Tier 2 recipient one-way
+		providerCommitment.global_recognition_weights = {
+			'tier1-r1': 0.3,
+			'tier1-r2': 0.3,
+			'tier2-r': 0.4 // One-way recognition (provider → recipient)
+		};
+		
+		myCommitmentStore.set(providerCommitment);
+		networkCommitments.set('tier1-r1', tier1Recipient1);
+		networkCommitments.set('tier1-r2', tier1Recipient2);
+		networkCommitments.set('tier2-r', tier2Recipient);
+		
+		await new Promise(resolve => setTimeout(resolve, 10));
+		
+		const result = get(myAllocationsAsProvider);
+		
+		const allocT1R1 = result.allocations.find(a => a.recipient_pubkey === 'tier1-r1');
+		const allocT1R2 = result.allocations.find(a => a.recipient_pubkey === 'tier1-r2');
+		const allocT2R = result.allocations.find(a => a.recipient_pubkey === 'tier2-r');
+		
+		expect(allocT1R1).toBeDefined();
+		expect(allocT1R2).toBeDefined();
+		expect(allocT2R).toBeDefined();
+		
+		const totalAllocated = (allocT1R1?.quantity || 0) + (allocT1R2?.quantity || 0) + (allocT2R?.quantity || 0);
+		
+		console.log(`\nTier 1+2 Capacity Protection Test:`);
+		console.log(`Tier 1 Recipient 1 (30% MR): ${allocT1R1!.quantity} rooms`);
+		console.log(`Tier 1 Recipient 2 (30% MR): ${allocT1R2!.quantity} rooms`);
+		console.log(`Tier 2 Recipient (40% 1-way): ${allocT2R!.quantity} rooms`);
+		console.log(`Total: ${totalAllocated}/10 rooms`);
+		
+		// CRITICAL ASSERTION: Total allocation must NEVER exceed available capacity
+		expect(totalAllocated).toBeLessThanOrEqual(10);
+		
+		// Should allocate most/all capacity
+		expect(totalAllocated).toBeGreaterThanOrEqual(9);
+		
+		// Tier 1 recipients should get roughly equal amounts (both have 30% MR)
+		const tier1Diff = Math.abs(allocT1R1!.quantity - allocT1R2!.quantity);
+		expect(tier1Diff).toBeLessThanOrEqual(1);
+		
+		// Tier 2 should get roughly the remainder (40% of total ≈ 4 rooms)
+		expect(allocT2R!.quantity).toBeGreaterThanOrEqual(3);
+		expect(allocT2R!.quantity).toBeLessThanOrEqual(5);
+		
+		console.log(`✅ No over-allocation: ${totalAllocated} <= 10`);
+	});
 });
 

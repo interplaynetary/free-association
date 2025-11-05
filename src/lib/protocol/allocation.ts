@@ -524,17 +524,18 @@ export function computeMutualRecognition(
  * @param capacitySlot - The capacity slot with divisibility constraints
  * @returns Constrained quantity respecting both natural and percentage divisibility
  */
-function applyDivisibilityConstraints(
+export function applyDivisibilityConstraints(
 	rawQuantity: number,
 	sharePercentage: number,
 	capacitySlot: AvailabilitySlot
 ): number {
+	const PERCENTAGE_EPSILON = 0.0001; // Tolerance for floating-point percentage comparisons
 	const maxNatural = capacitySlot.max_natural_div || 1;
 	const maxPercent = capacitySlot.max_percentage_div || 1.0;
 	
 	// 1. Apply percentage constraint (prevent tiny slivers)
 	// If this recipient's share exceeds max allowed percentage, cap it
-	if (sharePercentage > maxPercent) {
+	if (sharePercentage > maxPercent + PERCENTAGE_EPSILON) {
 		const maxAllowedQuantity = capacitySlot.quantity * maxPercent;
 		rawQuantity = Math.min(rawQuantity, maxAllowedQuantity);
 	}
@@ -553,10 +554,11 @@ function applyDivisibilityConstraints(
  * @param capacitySlot - The capacity slot with divisibility constraints
  * @returns true if allocation meets minimum thresholds
  */
-function meetsMinimumAllocation(
+export function meetsMinimumAllocation(
 	allocation: number,
 	capacitySlot: AvailabilitySlot
 ): boolean {
+	const PERCENTAGE_EPSILON = 0.0001; // Tolerance for floating-point percentage comparisons
 	const maxNatural = capacitySlot.max_natural_div || 1;
 	const maxPercent = capacitySlot.max_percentage_div || 1.0;
 	
@@ -570,8 +572,8 @@ function meetsMinimumAllocation(
 	
 	// If max_percentage_div is set, enforce it as the true minimum
 	// Otherwise, accept any allocation ≥ 1 natural unit
-	if (maxPercent < 1.0) {
-		return sharePercentage >= maxPercent;
+	if (maxPercent < 1.0 - PERCENTAGE_EPSILON) {
+		return sharePercentage >= maxPercent - PERCENTAGE_EPSILON;
 	}
 	
 	return allocation >= maxNatural;
@@ -599,7 +601,7 @@ function meetsMinimumAllocation(
  * @param capacitySlot - The capacity slot being allocated
  * @returns Updated capacity used after redistribution
  */
-function redistributeRemainders(
+export function redistributeRemainders(
 	allocations: SlotAllocationRecord[],
 	remainders: Map<string, number>,
 	capacityUsed: number,
