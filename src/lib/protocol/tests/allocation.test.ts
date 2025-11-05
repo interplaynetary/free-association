@@ -1189,6 +1189,221 @@ describe('System State Tracking (Multi-Iteration Convergence)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// SUITE 14.5: CAPACITY PROTECTION (Over-Allocation Safety)
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Capacity Protection (Over-Allocation Safety)', () => {
+	beforeEach(() => {
+		mockAuth(mockUserPub, 'test-user');
+		myCommitmentStore.set(createEmptyCommitment());
+		clearNetworkCommitments();
+	});
+	
+	afterEach(() => {
+		clearAuth();
+	});
+	
+	it('should never allocate more than provider capacity', () => {
+		// I have limited capacity
+		const myCommitment = createTestCommitment([], [
+			createCapacitySlot('food', 10)
+		], {
+			'alice': 0.5,
+			'bob': 0.5
+		});
+		
+		myCommitmentStore.set(myCommitment);
+		
+		// Alice and Bob both have huge needs
+		const aliceCommitment = createTestCommitment([
+			createNeedSlot('food', 100)
+		], [], {
+			[mockUserPub]: 1.0
+		});
+		
+		const bobCommitment = createTestCommitment([
+			createNeedSlot('food', 100)
+		], [], {
+			[mockUserPub]: 1.0
+		});
+		
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		
+		const aliceTotal = allocations.totalsByTypeAndRecipient?.food?.alice || 0;
+		const bobTotal = allocations.totalsByTypeAndRecipient?.food?.bob || 0;
+		const total = aliceTotal + bobTotal;
+		
+		// ✅ CRITICAL: Total allocation must not exceed capacity
+		expect(total).toBeLessThanOrEqual(10);
+		expect(total).toBeGreaterThan(0); // But should allocate something
+	});
+	
+	it('should respect capacity across tiers (mutual + non-mutual)', () => {
+		// I have limited capacity
+		const myCommitment = createTestCommitment([], [
+			createCapacitySlot('healthcare', 20)
+		], {
+			'alice': 0.6,
+			'bob': 0.4
+		});
+		
+		myCommitmentStore.set(myCommitment);
+		
+		// Alice has mutual recognition (Tier 1)
+		const aliceCommitment = createTestCommitment([
+			createNeedSlot('healthcare', 15)
+		], [], {
+			[mockUserPub]: 0.7
+		});
+		
+		// Bob has no mutual recognition (Tier 2)
+		const bobCommitment = createTestCommitment([
+			createNeedSlot('healthcare', 10)
+		], [], {
+			'charlie': 1.0 // Doesn't recognize me
+		});
+		
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		
+		const aliceTotal = allocations.totalsByTypeAndRecipient?.healthcare?.alice || 0;
+		const bobTotal = allocations.totalsByTypeAndRecipient?.healthcare?.bob || 0;
+		const total = aliceTotal + bobTotal;
+		
+		// ✅ CRITICAL: Total across both tiers must not exceed capacity
+		expect(total).toBeLessThanOrEqual(20);
+		
+		// Alice should get priority (Tier 1)
+		expect(aliceTotal).toBeGreaterThan(0);
+		
+		// If Bob gets anything, it should be from remaining capacity
+		if (bobTotal > 0) {
+			expect(aliceTotal + bobTotal).toBeLessThanOrEqual(20);
+		}
+	});
+	
+	it('should cap slot allocations at remaining capacity', () => {
+		// I have multiple capacity slots of same type
+		const myCommitment = createTestCommitment([], [
+			createCapacitySlot('tutoring', 5, 'slot-1'),
+			createCapacitySlot('tutoring', 5, 'slot-2')
+		], {
+			'student': 1.0
+		});
+		
+		myCommitmentStore.set(myCommitment);
+		
+		// Student needs more than any single slot
+		const studentCommitment = createTestCommitment([
+			createNeedSlot('tutoring', 100)
+		], [], {
+			[mockUserPub]: 1.0
+		});
+		
+		networkCommitments.update('student', studentCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		
+		// Check each slot doesn't over-allocate
+		const slot1Allocs = allocations.allocations.filter(a => a.availability_slot_id === 'slot-1');
+		const slot2Allocs = allocations.allocations.filter(a => a.availability_slot_id === 'slot-2');
+		
+		const slot1Total = slot1Allocs.reduce((sum, a) => sum + a.quantity, 0);
+		const slot2Total = slot2Allocs.reduce((sum, a) => sum + a.quantity, 0);
+		
+		// ✅ Each slot must respect its capacity
+		expect(slot1Total).toBeLessThanOrEqual(5);
+		expect(slot2Total).toBeLessThanOrEqual(5);
+		
+		// Total should not exceed combined capacity
+		expect(slot1Total + slot2Total).toBeLessThanOrEqual(10);
+	});
+	
+	it('should handle edge case with very small remaining capacity', () => {
+		// I have small capacity
+		const myCommitment = createTestCommitment([], [
+			createCapacitySlot('food', 0.001)
+		], {
+			'alice': 1.0
+		});
+		
+		myCommitmentStore.set(myCommitment);
+		
+		// Alice needs more
+		const aliceCommitment = createTestCommitment([
+			createNeedSlot('food', 10)
+		], [], {
+			[mockUserPub]: 1.0
+		});
+		
+		networkCommitments.update('alice', aliceCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		
+		const aliceTotal = allocations.totalsByTypeAndRecipient?.food?.alice || 0;
+		
+		// ✅ Should handle tiny capacity correctly
+		expect(aliceTotal).toBeLessThanOrEqual(0.001);
+	});
+	
+	it('should stop allocating when capacity is exhausted in Tier 1', () => {
+		// I have limited capacity
+		const myCommitment = createTestCommitment([], [
+			createCapacitySlot('food', 10)
+		], {
+			'alice': 0.4,
+			'bob': 0.3,
+			'charlie': 0.3
+		});
+		
+		myCommitmentStore.set(myCommitment);
+		
+		// All three have mutual recognition and high needs
+		const aliceCommitment = createTestCommitment([
+			createNeedSlot('food', 50)
+		], [], {
+			[mockUserPub]: 0.5
+		});
+		
+		const bobCommitment = createTestCommitment([
+			createNeedSlot('food', 50)
+		], [], {
+			[mockUserPub]: 0.4
+		});
+		
+		const charlieCommitment = createTestCommitment([
+			createNeedSlot('food', 50)
+		], [], {
+			[mockUserPub]: 0.3
+		});
+		
+		networkCommitments.update('alice', aliceCommitment);
+		networkCommitments.update('bob', bobCommitment);
+		networkCommitments.update('charlie', charlieCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		
+		const aliceTotal = allocations.totalsByTypeAndRecipient?.food?.alice || 0;
+		const bobTotal = allocations.totalsByTypeAndRecipient?.food?.bob || 0;
+		const charlieTotal = allocations.totalsByTypeAndRecipient?.food?.charlie || 0;
+		const total = aliceTotal + bobTotal + charlieTotal;
+		
+		// ✅ CRITICAL: Must not exceed capacity even with many recipients
+		expect(total).toBeLessThanOrEqual(10);
+		
+		// All three should get something (proportional)
+		expect(aliceTotal).toBeGreaterThan(0);
+		expect(bobTotal).toBeGreaterThan(0);
+		expect(charlieTotal).toBeGreaterThan(0);
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // SUITE 15: PUBLISHING FUNCTIONS (Network Communication)
 // ═══════════════════════════════════════════════════════════════════
 
