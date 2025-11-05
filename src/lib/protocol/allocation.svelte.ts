@@ -404,10 +404,17 @@ function meetsMinimumAllocation(
 	if (allocation < maxNatural) return false;
 	
 	// Must meet minimum percentage threshold
+	// Use the ACTUAL max_percentage_div as the minimum (not a fraction of it)
+	// This ensures we don't fragment capacity beyond the provider's preference
 	const sharePercentage = allocation / capacitySlot.quantity;
-	const minPercentage = maxPercent / 10; // 10% of max allowed (heuristic)
 	
-	return sharePercentage >= minPercentage || allocation >= maxNatural;
+	// If max_percentage_div is set, enforce it as the true minimum
+	// Otherwise, accept any allocation ≥ 1 natural unit
+	if (maxPercent < 1.0) {
+		return sharePercentage >= maxPercent;
+	}
+	
+	return allocation >= maxNatural;
 }
 
 /**
@@ -778,20 +785,19 @@ export const myAllocationsAsProvider: Readable<{
 							continue; // Skip this recipient
 						}
 							
-							// PROPORTIONAL DISTRIBUTION across compatible need slots
-							const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
-							let actuallyAllocated = 0;
-							
-						for (const needSlot of recipient.needSlots) {
-							const proportion = needSlot.quantity / totalCompatibleNeed;
-							let slotAllocation = Math.min(
-								needSlot.quantity,
-								constrainedAllocation * proportion
-					yourFinalAllocation * proportion
-				);
-				
-				// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
-				const slotRemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
+						// PROPORTIONAL DISTRIBUTION across compatible need slots
+						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+						let actuallyAllocated = 0;
+						
+					for (const needSlot of recipient.needSlots) {
+						const proportion = needSlot.quantity / totalCompatibleNeed;
+						let slotAllocation = Math.min(
+							needSlot.quantity,
+							constrainedAllocation * proportion
+						);
+						
+						// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
+						const slotRemainingCapacity = providersAvailableCapacity - capacityUsedInTier1;
 				if (slotAllocation > slotRemainingCapacity) {
 					console.warn(`[ALLOCATION-TIER1-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
 					slotAllocation = Math.max(0, slotRemainingCapacity);
@@ -972,19 +978,18 @@ export const myAllocationsAsProvider: Readable<{
 						}
 						
 						// PROPORTIONAL DISTRIBUTION across compatible need slots (Tier 2)
-							const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
-							let actuallyAllocated = 0;
-							
-						for (const needSlot of recipient.needSlots) {
-							const proportion = needSlot.quantity / totalCompatibleNeed;
-							let slotAllocation = Math.min(
-								needSlot.quantity,
-								constrainedAllocation * proportion
-						yourFinalAllocation * proportion
-					);
-					
-					// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
-					const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
+						const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+						let actuallyAllocated = 0;
+						
+					for (const needSlot of recipient.needSlots) {
+						const proportion = needSlot.quantity / totalCompatibleNeed;
+						let slotAllocation = Math.min(
+							needSlot.quantity,
+							constrainedAllocation * proportion
+						);
+						
+						// ✅ CAPACITY PROTECTION: Ensure we don't exceed slot capacity
+						const slotRemainingCapacity = remainingCapacity - capacityUsedInTier2;
 					if (slotAllocation > slotRemainingCapacity) {
 						console.warn(`[ALLOCATION-TIER2-PROTECTION] Capping slot allocation from ${slotAllocation.toFixed(2)} to remaining ${slotRemainingCapacity.toFixed(2)}`);
 						slotAllocation = Math.max(0, slotRemainingCapacity);

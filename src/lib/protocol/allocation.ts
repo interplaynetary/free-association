@@ -564,10 +564,17 @@ function meetsMinimumAllocation(
 	if (allocation < maxNatural) return false;
 	
 	// Must meet minimum percentage threshold
+	// Use the ACTUAL max_percentage_div as the minimum (not a fraction of it)
+	// This ensures we don't fragment capacity beyond the provider's preference
 	const sharePercentage = allocation / capacitySlot.quantity;
-	const minPercentage = maxPercent / 10; // 10% of max allowed (heuristic)
 	
-	return sharePercentage >= minPercentage || allocation >= maxNatural;
+	// If max_percentage_div is set, enforce it as the true minimum
+	// Otherwise, accept any allocation ≥ 1 natural unit
+	if (maxPercent < 1.0) {
+		return sharePercentage >= maxPercent;
+	}
+	
+	return allocation >= maxNatural;
 }
 
 /**
