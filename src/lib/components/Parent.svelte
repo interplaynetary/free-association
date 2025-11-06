@@ -343,13 +343,23 @@
 			isAuthenticated,
 			hasExistingTree,
 			currentTree: demoTreeStore.current,
-			children: demoTreeStore.current?.children?.length || 0
+			children: demoTreeStore.current?.children?.length || 0,
+			currentPath: $currentPath
 		});
 		
 		if (!isAuthenticated && !hasExistingTree) {
 			console.log('[DEMO TREE] User not authenticated - initializing with SDG template');
 			demoTreeStore.initializeWithSDG();
 			triggerUpdate();
+		}
+		
+		// Initialize path for demo tree if needed
+		if (!isAuthenticated && demoTreeStore.current) {
+			const needsPathInit = $currentPath.length === 0 || !$currentPath.includes(demoTreeStore.current.id);
+			if (needsPathInit) {
+				console.log('[DEMO TREE] Initializing path with demo tree root:', demoTreeStore.current.id);
+				currentPath.set([demoTreeStore.current.id]);
+			}
 		}
 
 		// Set up event listeners

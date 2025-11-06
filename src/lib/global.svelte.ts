@@ -11,6 +11,7 @@ import {
 } from '$lib/protocol/tree';
 import { userPub } from '$lib/network/auth.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
+import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 
 // GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
@@ -27,7 +28,7 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  */
 export const currentPath: Writable<string[]> = writable([]);
 
-// Initialize currentPath when user logs in
+// Initialize currentPath when user logs in or demo tree loads
 if (browser) {
 	// Watch for user authentication state changes
 	let lastPub = '';
@@ -36,16 +37,70 @@ if (browser) {
 			// User has logged in or changed - initialize path with user's pub
 			currentPath.set([pub]);
 			lastPub = pub;
-			console.log('Initialized currentPath with user public key:', pub);
+			console.log('[GLOBAL] Initialized currentPath with user public key:', pub);
 		} else if (!pub && lastPub) {
-			// User has logged out - clear path
-			currentPath.set([]);
+			// User has logged out - initialize path with demo tree if available
 			lastPub = '';
+			console.log('[GLOBAL] User logged out - checking for demo tree');
+			
+			// Small delay to ensure demo tree is initialized
+			setTimeout(() => {
+				const demoTree = demoTreeStore.current;
+				if (demoTree) {
+					console.log('[GLOBAL] Setting path to demo tree root:', demoTree.id);
+					currentPath.set([demoTree.id]);
+				} else {
+					console.log('[GLOBAL] No demo tree available - clearing path');
+					currentPath.set([]);
+				}
+			}, 100);
 		}
 	});
 }
 
 // We will use the persist/manifest functions from state.ts for sync
+
+// Helper function to get current tree (user or demo)
+function getCurrentTree() {
+	const pub = get(userPub);
+	if (pub) {
+		// User is authenticated - use userTree
+		return get(userTree);
+	} else {
+		// User is not authenticated - use demoTree
+		return demoTreeStore.current;
+	}
+}
+
+// Helper function to clone tree safely (handles demo tree proxy issues)
+function cloneTreeGlobal(treeToClone: any) {
+	const pub = get(userPub);
+	if (pub) {
+		// Authenticated users: use structuredClone for proper cloning
+		return structuredClone(treeToClone);
+	} else {
+		// Demo tree: use JSON serialization to avoid proxy/clone issues
+		return JSON.parse(JSON.stringify(treeToClone));
+	}
+}
+
+// Helper function to update the appropriate tree store
+function updateTreeStore(updatedTree: any) {
+	const pub = get(userPub);
+	if (pub) {
+		// Authenticated users: update userTree
+		userTree.set(updatedTree);
+	} else {
+		// Demo users: update demoTree with JSON serialization
+		try {
+			const serialized = JSON.parse(JSON.stringify(updatedTree));
+			demoTreeStore.set(serialized);
+		} catch (err) {
+			console.error('[GLOBAL] Failed to serialize demo tree:', err);
+			demoTreeStore.set(updatedTree);
+		}
+	}
+}
 
 export const globalState = $state({
 	// UI state
@@ -106,7 +161,8 @@ export const globalState = $state({
 		}
 
 		console.log('Navigating to path', newPath);
-		if (!newPath.length || !get(userTree)) return;
+		const tree = getCurrentTree();
+		if (!newPath.length || !tree) return;
 		currentPath.set(newPath);
 	},
 	navigateToPathIndex: (index: number) => {
@@ -130,7 +186,7 @@ export const globalState = $state({
 		}
 
 		const path = get(currentPath);
-		const tree = get(userTree);
+		const tree = getCurrentTree();
 
 		if (!tree) return;
 
@@ -447,7 +503,7 @@ export const globalState = $state({
 	// Node reordering function
 	handleNodeReorder: (sourceNodeId: string, targetNodeId: string) => {
 		try {
-			const tree = get(userTree);
+			const tree = getCurrentTree();
 			if (!tree) {
 				globalState.showToast('No tree available for reordering', 'error');
 				return false;
@@ -460,7 +516,7 @@ export const globalState = $state({
 			}
 
 			// Create a deep clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTreeGlobal(tree);
 
 			// Check if this would create a cycle
 			if (wouldCreateCycle(updatedTree, sourceNodeId, targetNodeId)) {
@@ -500,7 +556,7 @@ export const globalState = $state({
 			}
 
 			// Update the store with the new tree to trigger reactivity
-			userTree.set(updatedTree);
+			updateTreeStore(updatedTree);
 
 			globalState.showToast(`Moved "${sourceNode.name}" to "${targetNode.name}"`, 'success');
 			console.log(`[REORDER] Successfully moved ${sourceNode.name} to ${targetNode.name}`);
