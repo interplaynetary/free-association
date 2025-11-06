@@ -84,6 +84,7 @@ import {
 	type SpaceTimeIndex
 } from '$lib/protocol/stores.svelte';
 import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
+import { deepEqual } from '$lib/protocol/utils/memoize';
 
 // Import../../commons/v5/matchnctions for causal consistency
 import {
@@ -422,6 +423,25 @@ export function getCandidateRecipients(
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Memoization cache for myAllocationsAsProvider
+ * Stores last inputs and result to avoid recomputing when inputs haven't changed
+ */
+let lastAllocationInputs: {
+	myPub: string | null;
+	myMR: Record<string, number>;
+	myRec: GlobalRecognitionWeights;
+	myCommitment: Commitment | null;
+	allCommitments: Record<string, Commitment>;
+} | null = null;
+
+let lastAllocationResult: {
+	allocations: SlotAllocationRecord[];
+	totalsByTypeAndRecipient: Record<string, Record<string, number>>;
+	convergence: ConvergenceSummary | null;
+	slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }>;
+} | null = null;
+
+/**
  * Compute allocations when I'm the provider
  * 
  * ✅ REACTIVE WRAPPER around computeAllocations from allocation.ts
@@ -430,6 +450,7 @@ export function getCandidateRecipients(
  * - Monitors my mutual recognition, recognition, and commitment
  * - Calls pure allocation function when inputs change
  * - Includes spatial/temporal filtering via indexes
+ * - ✅ MEMOIZED: Uses deep equality checks to avoid recomputing when inputs haven't changed
  * 
  * The actual allocation logic is in allocation.ts (single source of truth!)
  */
@@ -458,15 +479,39 @@ export const myAllocationsAsProvider: Readable<{
 			return { allocations: [], totalsByTypeAndRecipient: {}, convergence: null, slotDenominators: {} };
 		}
 		
+		// Get ALL commitments (including our own for potential self-allocation)
+		const allCommitments = getAllCommitmentsRecord();
+		
+		// ✅ MEMOIZATION: Check if inputs actually changed using deep equality
+		const currentInputs = {
+			myPub: $myPub,
+			myMR: $myMR,
+			myRec: $myRec,
+			myCommitment: $myCommitment,
+			allCommitments: allCommitments
+		};
+		
+		if (lastAllocationInputs && lastAllocationResult) {
+			// Check if inputs are deeply equal
+			if (
+				lastAllocationInputs.myPub === currentInputs.myPub &&
+				deepEqual(lastAllocationInputs.myMR, currentInputs.myMR) &&
+				deepEqual(lastAllocationInputs.myRec, currentInputs.myRec) &&
+				deepEqual(lastAllocationInputs.myCommitment, currentInputs.myCommitment) &&
+				deepEqual(lastAllocationInputs.allCommitments, currentInputs.allCommitments)
+			) {
+				console.log('[MEMOIZATION] ✅ Reusing allocation result (inputs unchanged)');
+				return lastAllocationResult;
+			}
+		}
+		
 		// Track iteration start time for convergence metrics
 		const iterationStartTime = Date.now();
 		
+		// Initialize allocation result variables
 		const allocations: SlotAllocationRecord[] = [];
 		const totalsByTypeAndRecipient: Record<string, Record<string, number>> = {};
 		const slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }> = {};
-		
-		// Get ALL commitments (including our own for potential self-allocation)
-		const allCommitments = getAllCommitmentsRecord();
 		
 		// OPTIMIZATION: Use spatial/temporal index for O(k) candidate lookup
 		const needsIndexValue = get(networkNeedsIndex);
@@ -976,7 +1021,12 @@ export const myAllocationsAsProvider: Readable<{
 			).join(', ')
 		);
 		
-		return { allocations, totalsByTypeAndRecipient, convergence, slotDenominators };
+		// ✅ MEMOIZATION: Store result for next time
+		const result = { allocations, totalsByTypeAndRecipient, convergence, slotDenominators };
+		lastAllocationInputs = currentInputs;
+		lastAllocationResult = result;
+		
+		return result;
 	}
 );
 

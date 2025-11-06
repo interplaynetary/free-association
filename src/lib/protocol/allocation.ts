@@ -33,6 +33,7 @@ import type {
 } from '$lib/protocol/schemas';
 
 import { slotsCompatible } from '$lib/protocol/utils/match';
+import { createMemoCache, createMemoCacheWithKey, hashObject } from '$lib/protocol/utils/memoize';
 
 // Import ITC for causality tracking
 import {
@@ -121,7 +122,7 @@ export function createInitialState(): SystemStateSnapshot {
  * @param previousState - Previous state (for iteration tracking)
  * @returns New system state snapshot
  */
-export function buildSystemState(
+function _buildSystemState(
 	commitments: Record<string, Commitment>,
 	previousState?: SystemStateSnapshot
 ): SystemStateSnapshot {
@@ -158,6 +159,23 @@ export function buildSystemState(
 		itcStamp: previousState?.itcStamp || itcSeed()
 	};
 }
+
+// Memoized version of buildSystemState
+// Note: timestamp and iteration are excluded from cache key since they're time-dependent
+export const buildSystemState = createMemoCacheWithKey(
+	(commitments: Record<string, Commitment>, previousState?: SystemStateSnapshot) => {
+		// Call original function but regenerate timestamp/iteration
+		const state = _buildSystemState(commitments, previousState);
+		return {
+			...state,
+			timestamp: Date.now(),
+			iteration: previousState ? previousState.iteration + 1 : 0
+		};
+	},
+	(commitments, previousState) => 
+		`${hashObject(commitments)}:${previousState ? `${previousState.iteration}:${hashObject(previousState.needsByPersonAndType)}:${hashObject(previousState.capacityByPersonAndType)}` : 'null'}`,
+	20 // Cache up to 20 system state builds
+);
 
 // ═══════════════════════════════════════════════════════════════════
 // CONVERGENCE METRICS (PURE FUNCTIONS)
@@ -397,7 +415,7 @@ export function computeConvergenceSummary(
  * @param history - Over-allocation history per type
  * @returns Damping factors per type (0.5 = slow, 0.8 = medium, 1.0 = full speed)
  */
-export function computeDampingFactors(
+function _computeDampingFactors(
 	history: Record<string, number[]>
 ): Record<string, number> {
 	const factors: Record<string, number> = {};
@@ -423,6 +441,12 @@ export function computeDampingFactors(
 	
 	return factors;
 }
+
+// Memoized version of computeDampingFactors
+export const computeDampingFactors = createMemoCache(
+	_computeDampingFactors,
+	50 // Cache up to 50 damping factor computations
+);
 
 /**
  * Update over-allocation history with new received amounts
@@ -475,7 +499,7 @@ export function updateOverAllocationHistory(
  * @param myPubKey - My public key
  * @returns Mutual recognition: { alice: 0.3, bob: 0.4, me: 0.5, carol: 0 (if she recognizes me but I don't recognize her) }
  */
-export function computeMutualRecognition(
+function _computeMutualRecognition(
 	myRecognition: GlobalRecognitionWeights,
 	othersRecognition: Record<string, GlobalRecognitionWeights>,
 	myPubKey: string
@@ -511,6 +535,14 @@ export function computeMutualRecognition(
 	
 	return mutual;
 }
+
+// Memoized version of computeMutualRecognition
+export const computeMutualRecognition = createMemoCacheWithKey(
+	_computeMutualRecognition,
+	(myRecognition, othersRecognition, myPubKey) => 
+		`${hashObject(myRecognition)}:${hashObject(othersRecognition)}:${myPubKey}`,
+	100 // Cache up to 100 recognition computations
+);
 
 // ═══════════════════════════════════════════════════════════════════
 // ALLOCATION COMPUTATION (TWO-TIER SYSTEM)
@@ -789,7 +821,7 @@ export function redistributeRemainders(
  * Find compatible recipients for a capacity slot
  * Returns map of pubKey -> compatible need slots
  */
-function findCompatibleRecipients(
+function _findCompatibleRecipients(
 	capacitySlot: AvailabilitySlot,
 	allCommitments: Record<string, Commitment>,
 	myPubKey: string
@@ -820,6 +852,14 @@ function findCompatibleRecipients(
 	return compatible;
 }
 
+// Memoized version of findCompatibleRecipients
+const findCompatibleRecipients = createMemoCacheWithKey(
+	_findCompatibleRecipients,
+	(capacitySlot, allCommitments, myPubKey) => 
+		`${capacitySlot.id}:${hashObject(allCommitments)}:${myPubKey}`,
+	50 // Cache up to 50 capacity slot lookups
+);
+
 /**
  * Compute allocations for my capacity slots
  * 
@@ -843,7 +883,7 @@ function findCompatibleRecipients(
  * - Spatial/temporal indexing reduces effective R for compatibility checks
  * - Divisibility constraints prevent over-fragmentation
  * - Remainder redistribution ensures near-100% capacity utilization
- * - Future optimization: Memoization if allocation runs multiple times with same inputs
+ * - ✅ Memoization: findCompatibleRecipients is memoized for repeated calls
  * 
  * @param myPubKey - My public key
  * @param myCapacitySlots - My available capacity slots

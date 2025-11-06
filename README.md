@@ -32,6 +32,11 @@ You can interact with an interface implementing this logic at [interplaynetary.g
    - Each branch has points distributed among contributors
    - Your global recognition of each person is calculated from their weighted contributions across all branches
    - Example: If 70% of your tree is healthcare (where Dr. Smith has 80 points out of 100), Dr. Smith gets 56% of your total recognition
+   
+   **Important: Values vs Need Types**
+   - **Values** (like "good vibes", "love", "creative freedom") don't require common definitions — you can recognize contributions to your values even if others use different terms or meanings. You value "love" and recognize someone's contribution to your value of "love", while they value "l'amour" and recognize your contribution to their value of "l'amour" — no shared definition needed!
+   - **Need Types** (like "food", "healthcare", "housing") require a common language for coordinating specific material resources. These are useful when you need to match concrete capacities (meals, consultations, shelter) with concrete needs.
+   - Your recognition tree can include both: values that capture subjective experiences and need types that coordinate material resources. Recognition flows from contributions to both, creating a unified system that handles both the intangible (vibes, love) and the tangible (food, housing).
 
 5. **Two-Tier Allocation System**: When someone has capacity to give:
    - **Tier 1 - Mutual Recognition First**: People with mutual recognition get priority based on their declared needs

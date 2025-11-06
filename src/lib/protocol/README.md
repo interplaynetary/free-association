@@ -86,9 +86,27 @@ The system calculates each person's share based on their contribution points:
 
 **This is global recognition** - these percentages stay the same whether you're allocating food, healthcare, or housing. The tree structure naturally encodes that Dr. Smith contributes more to your self-actualization (mostly through healthcare), so they get a higher share of your recognition overall.
 
+### Values vs Need Types: A Critical Distinction
+
+**Values (No Common Definition Needed):**
+- Values like "good vibes", "love", "creative freedom", "spatial beauty" don't require common definitions
+- You can recognize contributions to your values even if others use different terms or have different understandings
+- Example: You value "love" and recognize someone's contribution to your value of "love", while they value "l'amour" and recognize your contribution to their value of "l'amour"—no shared definition needed!
+- Your recognition tree captures your subjective values, and contributions to those values flow into global recognition weights regardless of whether others share your definitions or language
+
+**Need Types (Common Language Required):**
+- Need types like "food", "healthcare", "housing" require a common language for coordinating specific material resources
+- These are useful when you need to match concrete capacities (meals, consultations, shelter) with concrete needs
+- Example: "Food" requires agreement on what food is (meals, groceries, calories) to enable matching between providers offering meals and recipients needing meals
+
+**How They Work Together:**
+- Your recognition tree can include both: values that capture subjective experiences (vibes, love, beauty) and need types that coordinate material resources (food, healthcare, housing)
+- Recognition flows from contributions to both, creating a unified system that handles both the intangible (vibes, love) and the tangible (food, housing)
+- Your global recognition of people is the same regardless of whether their contributions are to your values or need types—it all flows into the same recognition weights
+
 ### Types of Needs
 
-Not all needs are the same. The system tracks different **Need-Types**:
+Not all needs are the same. The system tracks different **Need-Types** for coordinating material resources:
 - Food (meals, groceries, calories)
 - Healthcare (consultations, therapy, medication)
 - Housing (shelter, utilities)

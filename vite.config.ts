@@ -11,11 +11,10 @@ export default defineConfig({
 		devtoolsJson(),
 		sveltekit(),
 		SvelteKitPWA({
-			srcDir: './src',
+			srcDir: 'src',
 			strategies: 'injectManifest',
 			filename: 'service-worker.ts',
 			scope: '/',
-			base: '/',
 			selfDestroying: process.env.SELF_DESTROYING_SW === 'true',
 			includeAssets: ['favicon.png', 'robots.txt'],
 			manifest: {
@@ -80,10 +79,10 @@ export default defineConfig({
 				}
 			},
 			injectManifest: {
-				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}', 'prerendered/**/*.{html,json}']
 			},
 			workbox: {
-				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}']
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}', 'prerendered/**/*.{html,json}']
 			},
 			devOptions: {
 				enabled: false,
@@ -91,7 +90,8 @@ export default defineConfig({
 				type: 'module'
 			},
 			kit: {
-				includeVersionFile: true
+				includeVersionFile: true,
+				adapterFallback: 'index.html'
 			},
 			injectRegister: false
 		})
