@@ -7,9 +7,11 @@
 	import { writable } from 'svelte/store';
 	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
 	const isLoadingTree = writable(false);
+	// Demo tree for unauthenticated users (local storage only)
+	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode } from '$lib/protocol/schemas';
+	import { type Node, type NonRootNode, type RootNode } from '$lib/protocol/schemas';
 	import {
 		findNodeById,
 		getParentNode,
@@ -125,18 +127,32 @@
 	const MOVEMENT_THRESHOLD = 10; // pixels
 
 	// Reactive store subscriptions
-	const tree = $derived($userTree);
+	// Use demo tree for unauthenticated users, user tree for authenticated users
+	const isAuthenticated = $derived(!!$userPub);
+	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const pub = $derived($userPub);
 
 	// Helper function to get current node ID
 	const currentNodeId = $derived.by(() => {
-		// If the path is empty but we have a user pub, use that as the root
-		if (path.length === 0 && pub) {
-			return pub;
+		// If the path is not empty, use the last path element
+		if (path.length > 0) {
+			return path[path.length - 1];
 		}
-
-		return path.length > 0 ? path[path.length - 1] : null;
+		
+		// For empty path, use the root ID based on authentication
+		if (isAuthenticated && pub) {
+			// Authenticated user - use their public key as root
+			console.log('[CURRENT-NODE-ID] Using authenticated user pub:', pub);
+			return pub;
+		} else if (!isAuthenticated && tree) {
+			// Unauthenticated user with demo tree - use demo tree's root ID
+			console.log('[CURRENT-NODE-ID] Using demo tree root ID:', tree.id);
+			return tree.id;
+		}
+		
+		console.log('[CURRENT-NODE-ID] No valid root - returning null');
+		return null;
 	});
 
 	// Get the current node
@@ -288,7 +304,54 @@
 	let activePointerId: number | null = $state(null);
 	let interactionHandled = $state(false);
 
+	// Helper function to clone tree safely (handles demo tree proxy issues)
+	function cloneTree(treeToClone: Node): Node {
+		if (isAuthenticated) {
+			// Authenticated users: use structuredClone for proper cloning
+			return structuredClone(treeToClone);
+		} else {
+			// Demo tree: use JSON serialization to avoid proxy/clone issues
+			return JSON.parse(JSON.stringify(treeToClone));
+		}
+	}
+
+	// Helper function to update the appropriate tree store based on authentication
+	function updateTreeStore(updatedTree: Node) {
+		if (isAuthenticated) {
+			userTree.set(updatedTree as RootNode);
+		} else {
+			// For demo tree, ensure it's serializable by using JSON round-trip
+			// This avoids structuredClone errors with proxy objects
+			try {
+				const serialized = JSON.parse(JSON.stringify(updatedTree));
+				demoTreeStore.set(serialized as RootNode);
+			} catch (err) {
+				console.error('[DEMO TREE] Failed to serialize tree:', err);
+				// Fallback: try to set anyway
+				demoTreeStore.set(updatedTree as RootNode);
+			}
+		}
+		// Force UI update
+		triggerUpdate();
+	}
+
+	// Initialize demo tree on mount if needed
 	onMount(() => {
+		// Initialize demo tree with SDG template if not authenticated and no tree exists
+		const hasExistingTree = demoTreeStore.hasTree();
+		console.log('[DEMO TREE] Mount check:', {
+			isAuthenticated,
+			hasExistingTree,
+			currentTree: demoTreeStore.current,
+			children: demoTreeStore.current?.children?.length || 0
+		});
+		
+		if (!isAuthenticated && !hasExistingTree) {
+			console.log('[DEMO TREE] User not authenticated - initializing with SDG template');
+			demoTreeStore.initializeWithSDG();
+			triggerUpdate();
+		}
+
 		// Set up event listeners
 		document.addEventListener('mouseup', handleGlobalTouchEnd);
 		document.addEventListener('touchend', handleGlobalTouchEnd);
@@ -357,8 +420,8 @@
 	function handleCreateNewTree() {
 		console.log('[UI FLOW] handleCreateNewTree started');
 
-		// Check if user is authenticated
-		if (!$userAlias || !$userPub) {
+		// This function is only for authenticated users creating a Holster-synced tree
+		if (!isAuthenticated || !$userAlias || !$userPub) {
 			console.log('[UI FLOW] User not authenticated, prompting to log in');
 			globalState.showToast($t('tree.please_login'), 'info');
 			return;
@@ -370,6 +433,7 @@
 			if (newTree) {
 				const populated = applyTemplate(newTree, selectedTemplateId);
 				if (populated) {
+					// For authenticated users, always use userTree (Holster-synced)
 					userTree.set(populated);
 					const chosen = availableTemplates.find((t) => t.id === selectedTemplateId);
 					globalState.showToast(
@@ -436,7 +500,7 @@
 			console.log('[UI FLOW] Current path:', path);
 
 			// Create a deep clone of the current tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the current node in our cloned tree
 			const updatedCurrentNode = findNodeById(updatedTree, currentNodeId);
@@ -449,10 +513,7 @@
 			addChild(updatedCurrentNode, newNodeId, newNodeName, newPoints);
 
 			// Update the store with the new tree to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update counter to trigger redraw
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 
 			console.log('[UI FLOW] addNode successful');
 			globalState.showToast($t('tree.node_created'), 'success');
@@ -485,7 +546,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Update the node name in memory
 			updateNodeById(updatedTree, nodeId, (node) => {
@@ -493,10 +554,7 @@
 			});
 
 			// Update store to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 
 			// Clear edit mode
 			globalState.exitEditMode();
@@ -527,7 +585,7 @@
 			}
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Check the node before update
 			const nodeBefore = findNodeById(updatedTree, nodeId);
@@ -554,10 +612,7 @@
 
 			// Update store to trigger reactivity
 			console.log(`[MANUAL-FULFILLMENT-DEBUG] Setting updated tree in store`);
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 
 			// Only show notification if requested (e.g., on drag end, not during drag)
 			if (showNotification) {
@@ -622,7 +677,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the node to update
 			const node = findNodeById(updatedTree, nodeId);
@@ -640,10 +695,7 @@
 			deduplicateContributorsInTree(updatedTree);
 
 			// Update the store to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 
 			globalState.showToast($t('tree.contributor_removed_success'), 'success');
 		} catch (err) {
@@ -659,7 +711,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the node to update
 			const node = findNodeById(updatedTree, nodeId);
@@ -677,10 +729,7 @@
 			deduplicateContributorsInTree(updatedTree);
 
 			// Update the store to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 
 			globalState.showToast($t('tree.anti_contributor_removed'), 'success');
 		} catch (err) {
@@ -815,7 +864,7 @@
 				});
 
 				// Create a clone of the tree to ensure reactivity
-				const updatedTree = structuredClone(tree);
+				const updatedTree = cloneTree(tree);
 
 				// Run specific substitution for this public key -> contact ID
 				const substitutionChanges = replacePublicKeyWithContactId(
@@ -832,8 +881,7 @@
 					console.log(
 						`[CONTACT] Tree updated: ${substitutionChanges} substitutions, deduplication: ${deduplicationChanges}`
 					);
-					userTree.set(updatedTree);
-					triggerUpdate();
+					updateTreeStore(updatedTree);
 				}
 			}
 
@@ -884,7 +932,7 @@
 			console.log('[CONTACT] Deleting contact:', { contactId, name, publicKey });
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// First, replace the specific contact_id with public key or remove it
 			let substitutionCount = 0;
@@ -963,8 +1011,7 @@
 				console.log(
 					`[CONTACT] Tree updated: ${substitutionCount} substitutions, ${removalCount} removals${deduplicationChanges ? ', plus deduplication' : ''}`
 				);
-				userTree.set(updatedTree);
-				triggerUpdate();
+				updateTreeStore(updatedTree);
 			}
 
 			// Delete the contact from userContacts
@@ -1033,7 +1080,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the node to update
 			const node = findNodeById(updatedTree, nodeId);
@@ -1057,10 +1104,7 @@
 				deduplicateContributorsInTree(updatedTree);
 
 				// Update the store to trigger reactivity
-				userTree.set(updatedTree);
-
-				// Force update
-				triggerUpdate();
+				updateTreeStore(updatedTree);
 
 				globalState.showToast($t('tree.contributor_added'), 'success');
 			}
@@ -1075,7 +1119,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the node to update
 			const node = findNodeById(updatedTree, nodeId);
@@ -1099,10 +1143,7 @@
 				deduplicateContributorsInTree(updatedTree);
 
 				// Update the store to trigger reactivity
-				userTree.set(updatedTree);
-
-				// Force update
-				triggerUpdate();
+				updateTreeStore(updatedTree);
 
 				globalState.showToast($t('tree.anti_contributor_added'), 'success');
 			}
@@ -1425,7 +1466,7 @@
 			if (!tree) return;
 
 			// Create a clone of the tree to ensure reactivity
-			const updatedTree = structuredClone(tree);
+			const updatedTree = cloneTree(tree);
 
 			// Find the node and directly update it
 			const node = findNodeById(updatedTree, nodeId);
@@ -1435,10 +1476,7 @@
 			updatePoints(node as NonRootNode, points);
 
 			// Update the store to trigger reactivity
-			userTree.set(updatedTree);
-
-			// Force update
-			triggerUpdate();
+			updateTreeStore(updatedTree);
 		} catch (err) {
 			console.error(`Error saving points for node ${nodeId}:`, err);
 			globalState.showToast($t('tree.error_saving_points'), 'error');
@@ -1691,7 +1729,7 @@
 				if (!tree) return;
 
 				// Create a clone of the tree to ensure reactivity
-				const updatedTree = structuredClone(tree);
+				const updatedTree = cloneTree(tree);
 
 				// Find the parent node first
 				const parentNode = getParentNode(updatedTree, nodeId);
@@ -1734,10 +1772,7 @@
 				}
 
 				// Update the store
-				userTree.set(updatedTree);
-
-				// Force update
-				triggerUpdate();
+				updateTreeStore(updatedTree);
 
 				globalState.showToast('Node deleted successfully', 'success');
 			} catch (err) {
@@ -1887,7 +1922,8 @@
 						<p>Loading...</p>
 					</div>
 				</div>
-			{:else if !tree || (tree.children && tree.children.length === 0)}
+			{:else if isAuthenticated && (!tree || (tree.children && tree.children.length === 0))}
+				<!-- Show "Play!" button only for authenticated users without a tree -->
 				<div class="empty-state">
 					<div class="add-node-prompt">
 						<button class="play-button" onclick={handleCreateNewTree}>

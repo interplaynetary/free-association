@@ -289,14 +289,8 @@
 		document.addEventListener('mousedown', handleClickOutside);
 		document.addEventListener('touchstart', handleClickOutside);
 
-		// If not authenticated, automatically show login panel
-		if (!user) {
-			// A small delay to ensure the component is fully mounted
-			setTimeout(() => {
-				showLoginPanel = true;
-				startLoginPanelTimer();
-			}, 100);
-		}
+		// Don't auto-show login panel - let users explore demo tree first
+		// Users can click "Login" in the breadcrumb to sign in when ready
 
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
