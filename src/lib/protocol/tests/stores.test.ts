@@ -29,12 +29,15 @@ vi.mock('$lib/state/gun.svelte', () => ({
 	default: null
 }));
 
-vi.mock('$lib/config', () => ({
+vi.mock('$lib/protocol/config', () => ({
 	config: {
 		holster: {
 			peers: [],
 			indexedDB: false,
 			file: undefined
+		},
+		dataApi: {
+			url: 'http://localhost:8767'
 		}
 	}
 }));

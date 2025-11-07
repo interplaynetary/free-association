@@ -13,8 +13,8 @@ import { userPub } from '$lib/network/auth.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
 import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 
-// GunDB user data types from gunSetup
 // User identification is handled via username (alias) and userpub (public key)
+// Authentication and data persistence managed through Holster
 
 type ToastType = 'info' | 'success' | 'warning' | 'error';
 
@@ -22,7 +22,7 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  * Core Reactive Stores
  *
  * These stores form the foundation of our state management:
- * - username & userpub: The authenticated user from Gun (imported from gunSetup)
+ * - userPub: The authenticated user's public key from Holster
  * - userTree: The complete tree structure for the current user (imported from state)
  * - currentPath: The navigation path (array of node IDs) in the tree
  */
