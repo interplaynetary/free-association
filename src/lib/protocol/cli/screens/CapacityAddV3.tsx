@@ -161,7 +161,7 @@ export const CapacityAddV3: React.FC<CapacityAddProps> = ({ existingCapacity, on
 						onSave({
 							...state,
 							max_natural_div: 1,
-							max_percentage_div: 0.01
+							min_allocation_percentage: 0.01
 						} as AvailabilitySlot);
 					}}
 					onCancel={onCancel}

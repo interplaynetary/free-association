@@ -378,7 +378,7 @@ export const AvailabilitySlotSchema = z.object({
 	
 	// Divisibility constraints (prevents over-fragmentation)
 	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
-	max_percentage_div: PercentageSchema.optional(), // Max % divisibility (e.g., can't give less than 10%)
+	min_allocation_percentage: PercentageSchema.optional(), // Min % per allocation (e.g., don't allocate less than 10%)
 	
 	// Resource metadata
 	name: z.string(),
@@ -444,7 +444,7 @@ export const NeedSlotSchema = z.object({
 	
 	// Divisibility constraints (prevents over-fragmentation)
 	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
-	max_percentage_div: PercentageSchema.optional(), // Max % divisibility (e.g., can't accept less than 10%)
+	min_allocation_percentage: PercentageSchema.optional(), // Min % per allocation (e.g., don't accept less than 10%)
 	
 	// Resource metadata
 	name: z.string(),

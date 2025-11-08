@@ -953,9 +953,20 @@ export function getAllCommitmentsRecord(): Record<string, Commitment> {
 	const myCommitment = get(myCommitmentStore);
 	const myPub = get(holsterUserPub);
 	
+	console.log('[GET-ALL-COMMITMENTS] Network commitments:', Object.keys(record).length);
+	console.log('[GET-ALL-COMMITMENTS] My commitment:', myCommitment ? 'yes' : 'no');
+	console.log('[GET-ALL-COMMITMENTS] My pub:', myPub ? myPub.slice(0, 20) + '...' : 'none');
+	
 	if (myCommitment && myPub) {
+		console.log('[GET-ALL-COMMITMENTS] ✅ Including my commitment with', 
+			myCommitment.need_slots?.length || 0, 'needs,', 
+			myCommitment.capacity_slots?.length || 0, 'capacity');
 		record[myPub] = myCommitment;
+	} else {
+		console.log('[GET-ALL-COMMITMENTS] ⚠️ NOT including my commitment');
 	}
+	
+	console.log('[GET-ALL-COMMITMENTS] Returning', Object.keys(record).length, 'total commitments');
 	
 	return record;
 }

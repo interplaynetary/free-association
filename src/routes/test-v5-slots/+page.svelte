@@ -179,7 +179,7 @@
 			unit: 'units',
 			// Default divisibility constraints
 			max_natural_div: 1,
-			max_percentage_div: 0.01
+			min_allocation_percentage: 0.01 // Minimum 1% per allocation
 		};
 		
 		setMyNeedSlots([...needSlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
@@ -218,7 +218,7 @@
 			unit: 'units',
 			// Default divisibility constraints
 			max_natural_div: 1,
-			max_percentage_div: 0.01
+			min_allocation_percentage: 0.01 // Minimum 1% per allocation
 		};
 		
 		setMyCapacitySlots([...capacitySlots, newSlot]); // ✅ NEW: Use helper instead of store.set()
@@ -533,6 +533,13 @@
 		<section class="allocation-section">
 			<h2>🔄 Allocation Flow</h2>
 			
+			<div class="info-box">
+				<strong>ℹ️ About Allocations:</strong>
+				<p><strong>Self-care is valid care!</strong> The algorithm supports self-allocation - you can allocate your own capacity to your own needs.</p>
+				<p>Mutual recognition with yourself is valid recognition. Self-allocation uses the same algorithm as allocating to others.</p>
+				<p>Current algorithm: <strong>V5 Multi-Dimensional Allocation</strong> with unified schemas (SlotFilter, SlotSubscriptions, Members)</p>
+			</div>
+			
 			<!-- Outgoing Allocations -->
 			<div class="allocation-subsection">
 				<h3>🎁 My Outgoing Allocations (Capacity → Recipients)</h3>
@@ -585,7 +592,14 @@
 					</div>
 				{:else}
 					<div class="empty-state">
-						No allocations computed yet. Add capacity slots and wait for algorithm to run.
+						<p><strong>No outgoing allocations yet.</strong></p>
+						<p>To see allocations here, you need:</p>
+						<ul>
+							<li>✅ Capacity slots (you give)</li>
+							<li>✅ Need slots (yours or others' in the network)</li>
+							<li>✅ Recognition relationships (including self-recognition)</li>
+						</ul>
+						<p><em>Tip: You can allocate to yourself! Add both capacity AND need slots to test self-care allocation.</em></p>
 					</div>
 				{/if}
 			</div>
@@ -594,13 +608,20 @@
 			<div class="allocation-subsection">
 				<h3>📥 My Incoming Allocations (Providers → My Needs)</h3>
 				{#if myPub}
-					{@const incomingAllocations = Array.from($networkAllocations.entries())
-						.flatMap(([pubKey, allocations]) => {
-							if (!allocations || allocations.length === 0) return [];
-							return allocations
-								.filter(alloc => alloc.recipient_pubkey === myPub)
-								.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
-						})}
+					{@const incomingAllocations = [
+						// Include allocations from OTHER people's commitments
+						...Array.from($networkAllocations.entries())
+							.flatMap(([pubKey, allocations]) => {
+								if (!allocations || allocations.length === 0) return [];
+								return allocations
+									.filter(alloc => alloc.recipient_pubkey === myPub)
+									.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
+							}),
+						// Include SELF-ALLOCATIONS from my own commitment (self-care is valid care!)
+						...(commitment?.slot_allocations || [])
+							.filter(alloc => alloc.recipient_pubkey === myPub)
+							.map(alloc => ({ ...alloc, providerPubKey: myPub }))
+					]}
 					
 					{#if incomingAllocations.length > 0}
 					<div class="allocation-summary">
@@ -654,7 +675,14 @@
 					</div>
 					{:else}
 						<div class="empty-state">
-							No incoming allocations yet. Add need slots and wait for others to allocate.
+							<p><strong>No incoming allocations yet.</strong></p>
+							<p>To see allocations here, you need:</p>
+							<ul>
+								<li>✅ Need slots (you receive)</li>
+								<li>✅ Capacity slots (yours or others' in the network)</li>
+								<li>✅ Recognition relationships (including self-recognition)</li>
+							</ul>
+							<p><em>Tip: You can receive from yourself! Add both need AND capacity slots to test self-care allocation.</em></p>
 						</div>
 					{/if}
 				{:else}
@@ -864,7 +892,37 @@
 		text-align: center;
 		padding: 2rem;
 		color: #999;
+	}
+	
+	.empty-state p {
+		margin: 0.75rem 0;
+		color: #666;
+	}
+	
+	.empty-state p strong {
+		color: #333;
+	}
+	
+	.empty-state ul {
+		list-style: none;
+		padding: 0;
+		margin: 1rem auto;
+		text-align: left;
+		display: inline-block;
+		max-width: 400px;
+	}
+	
+	.empty-state li {
+		margin: 0.5rem 0;
+		color: #555;
+	}
+	
+	.empty-state em {
+		display: block;
+		margin-top: 1rem;
+		font-size: 0.9rem;
 		font-style: italic;
+		color: #7f8c8d;
 	}
 	
 	.commitment-summary {
@@ -1047,6 +1105,32 @@
 		border-radius: 8px;
 		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 		grid-column: 1 / -1;
+	}
+	
+	.info-box {
+		background: #e3f2fd;
+		border-left: 4px solid #2196f3;
+		padding: 1rem;
+		margin-bottom: 1.5rem;
+		border-radius: 4px;
+	}
+	
+	.info-box strong {
+		display: block;
+		color: #1976d2;
+		margin-bottom: 0.5rem;
+	}
+	
+	.info-box p {
+		margin: 0.5rem 0;
+		color: #424242;
+		font-size: 0.95rem;
+		line-height: 1.5;
+	}
+	
+	.info-box em {
+		font-style: italic;
+		color: #1976d2;
 	}
 	
 	.allocation-subsection {

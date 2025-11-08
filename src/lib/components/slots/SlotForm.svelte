@@ -58,7 +58,7 @@
     online_link: slot?.online_link,
     filter_rule: slot?.filter_rule,
     max_natural_div: slot?.max_natural_div,
-    max_percentage_div: slot?.max_percentage_div,
+    min_allocation_percentage: slot?.min_allocation_percentage,
     advance_notice_hours: slot?.advance_notice_hours,
     booking_window_hours: slot?.booking_window_hours,
     mutual_agreement_required: slot?.mutual_agreement_required,

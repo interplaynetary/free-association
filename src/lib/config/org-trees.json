@@ -1,0 +1,555 @@
+{
+  "unicef": {
+    "slug": "unicef",
+    "name": "UNICEF",
+    "description": "UNICEF Priority Areas - Children's Rights and Wellbeing",
+    "tree": {
+      "id": "unicef_root",
+      "name": "UNICEF",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "unicef_health",
+          "name": "Child Health & Nutrition",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "unicef_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unicef_health_immunization",
+              "name": "Immunization Programs",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "unicef_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_health_nutrition",
+              "name": "Nutrition & Food Security",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "unicef_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_health_maternal",
+              "name": "Maternal & Newborn Care",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "unicef_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unicef_education",
+          "name": "Education & Learning",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "unicef_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unicef_edu_access",
+              "name": "Access to Quality Education",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "unicef_education",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_edu_girls",
+              "name": "Girls' Education",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 30,
+              "parent_id": "unicef_education",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_edu_emergency",
+              "name": "Education in Emergencies",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 20,
+              "parent_id": "unicef_education",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unicef_protection",
+          "name": "Child Protection",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "unicef_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unicef_protect_violence",
+              "name": "Protection from Violence",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "unicef_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_protect_exploitation",
+              "name": "End Child Exploitation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "unicef_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_protect_justice",
+              "name": "Child-Friendly Justice",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "unicef_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unicef_wash",
+          "name": "Water, Sanitation & Hygiene",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 10,
+          "parent_id": "unicef_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unicef_wash_water",
+              "name": "Safe Water Access",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "unicef_wash",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unicef_wash_sanitation",
+              "name": "Sanitation Facilities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "unicef_wash",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "world-bank": {
+    "slug": "world-bank",
+    "name": "World Bank",
+    "description": "World Bank Development Goals - Economic Growth and Poverty Reduction",
+    "tree": {
+      "id": "wb_root",
+      "name": "World Bank",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "wb_poverty",
+          "name": "End Extreme Poverty",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "wb_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wb_poverty_income",
+              "name": "Income Support Programs",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "wb_poverty",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_poverty_social",
+              "name": "Social Protection Systems",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "wb_poverty",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_poverty_jobs",
+              "name": "Job Creation & Livelihoods",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 30,
+              "parent_id": "wb_poverty",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wb_prosperity",
+          "name": "Promote Shared Prosperity",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "wb_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wb_prosperity_growth",
+              "name": "Inclusive Economic Growth",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 45,
+              "parent_id": "wb_prosperity",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_prosperity_equity",
+              "name": "Reduce Inequality",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 30,
+              "parent_id": "wb_prosperity",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_prosperity_opportunity",
+              "name": "Equal Opportunity Access",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "wb_prosperity",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wb_infrastructure",
+          "name": "Infrastructure Development",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "wb_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wb_infra_transport",
+              "name": "Transportation Networks",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "wb_infrastructure",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_infra_energy",
+              "name": "Energy Infrastructure",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "wb_infrastructure",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_infra_digital",
+              "name": "Digital Connectivity",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "wb_infrastructure",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wb_climate",
+          "name": "Climate Action & Sustainability",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 10,
+          "parent_id": "wb_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wb_climate_adaptation",
+              "name": "Climate Adaptation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "wb_climate",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wb_climate_green",
+              "name": "Green Development",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "wb_climate",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "red-cross": {
+    "slug": "red-cross",
+    "name": "Red Cross / Red Crescent",
+    "description": "International Red Cross Humanitarian Priorities",
+    "tree": {
+      "id": "rc_root",
+      "name": "Red Cross",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "rc_emergency",
+          "name": "Emergency Response",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "rc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rc_emergency_disaster",
+              "name": "Disaster Relief",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "rc_emergency",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_emergency_conflict",
+              "name": "Conflict Zone Support",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "rc_emergency",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_emergency_search",
+              "name": "Search & Rescue",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "rc_emergency",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "rc_health",
+          "name": "Health Services",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "rc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rc_health_first",
+              "name": "First Aid & Primary Care",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 45,
+              "parent_id": "rc_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_health_blood",
+              "name": "Blood Donation Services",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 30,
+              "parent_id": "rc_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_health_epidemic",
+              "name": "Epidemic Preparedness",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "rc_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "rc_protection",
+          "name": "Protection & IHL",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "rc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rc_protection_ihl",
+              "name": "International Humanitarian Law",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "rc_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_protection_family",
+              "name": "Restoring Family Links",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "rc_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_protection_detainees",
+              "name": "Support for Detainees",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "rc_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "rc_community",
+          "name": "Community Resilience",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 15,
+          "parent_id": "rc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rc_community_prep",
+              "name": "Disaster Preparedness",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "rc_community",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "rc_community_training",
+              "name": "Community Training",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "rc_community",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+

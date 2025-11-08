@@ -171,7 +171,7 @@ export const NeedAddV3: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 						onSave({
 							...state,
 							max_natural_div: 1,
-							max_percentage_div: 0.01
+							min_allocation_percentage: 0.01
 						} as Need);
 					}}
 					onCancel={onCancel}

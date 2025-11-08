@@ -150,12 +150,30 @@ export function isPeerUpdateStale(peerStamp: ITCStamp): boolean {
 export function getCausallyConsistentCommitments(): Record<string, Commitment> {
 	const allCommitments = getAllCommitmentsRecord();
 	const snapshot: Record<string, Commitment> = {};
+	const myPub = get(myPublicKey);
+	
+	console.log('[CAUSALLY-CONSISTENT] Processing', Object.keys(allCommitments).length, 'commitments, my pub:', myPub ? myPub.slice(0,20)+'...' : 'none');
 	
 	for (const [pubKey, commitment] of Object.entries(allCommitments)) {
-		if (!commitment.itcStamp || itcLeq(commitment.itcStamp, myITCStamp)) {
+		// Always include our own commitment (self-trust)
+		// This prevents the "commitment from future" issue where stored commitment
+		// has itcStamp > myITCStamp after fresh initialization
+		if (pubKey === myPub) {
+			console.log('[CAUSALLY-CONSISTENT] ✅ Including MY commitment (self-trust bypass)');
 			snapshot[pubKey] = commitment;
+			continue;
+		}
+		
+		// For others, enforce ITC causality
+		if (!commitment.itcStamp || itcLeq(commitment.itcStamp, myITCStamp)) {
+			console.log('[CAUSALLY-CONSISTENT] ✅ Including', pubKey.slice(0,20)+'...', '(causally consistent)');
+			snapshot[pubKey] = commitment;
+		} else {
+			console.log('[CAUSALLY-CONSISTENT] ⏭️  Skipping', pubKey.slice(0,20)+'...', '(from future)');
 		}
 	}
+	
+	console.log('[CAUSALLY-CONSISTENT] Returning', Object.keys(snapshot).length, 'commitments');
 	
 	return snapshot;
 }

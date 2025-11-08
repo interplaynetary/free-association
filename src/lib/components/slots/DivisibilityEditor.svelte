@@ -4,55 +4,55 @@
 	 * 
 	 * Allows setting constraints on how much a slot can be divided:
 	 * - max_natural_div: Maximum number of natural divisions (e.g., can't split a person)
-	 * - max_percentage_div: Minimum percentage of slot that can be allocated
+	 * - min_allocation_percentage: Minimum percentage of slot that can be allocated
 	 * 
 	 * @example
 	 * <DivisibilityEditor 
 	 *   maxNaturalDiv={4}
-	 *   maxPercentageDiv={0.25}
+	 *   minAllocationPercentage={0.25}
 	 *   onUpdate={(natural, percentage) => {...}}
 	 * />
 	 */
 	
 	interface Props {
 		maxNaturalDiv?: number;
-		maxPercentageDiv?: number;
-		onUpdate: (maxNaturalDiv?: number, maxPercentageDiv?: number) => void;
+		minAllocationPercentage?: number;
+		onUpdate: (maxNaturalDiv?: number, minAllocationPercentage?: number) => void;
 	}
 	
 	let {
 		maxNaturalDiv,
-		maxPercentageDiv,
+		minAllocationPercentage,
 		onUpdate
 	}: Props = $props();
 	
 	// Default values: 1 natural division, 1% minimum percentage
 	let localMaxNaturalDiv = $state(maxNaturalDiv ?? 1);
-	let localMaxPercentageDiv = $state(maxPercentageDiv ?? 0.01);
+	let localMinAllocationPercentage = $state(minAllocationPercentage ?? 0.01);
 	
 	// Sync with props (but keep defaults if undefined)
 	$effect(() => {
 		localMaxNaturalDiv = maxNaturalDiv ?? 1;
-		localMaxPercentageDiv = maxPercentageDiv ?? 0.01;
+		localMinAllocationPercentage = minAllocationPercentage ?? 0.01;
 	});
 	
 	function handleNaturalDivChange(e: Event) {
 		const value = (e.target as HTMLInputElement).value;
 		const numValue = value ? parseInt(value) : undefined;
 		localMaxNaturalDiv = numValue;
-		onUpdate(numValue, localMaxPercentageDiv);
+		onUpdate(numValue, localMinAllocationPercentage);
 	}
 	
 	function handlePercentageDivChange(e: Event) {
 		const value = (e.target as HTMLInputElement).value;
 		const numValue = value ? parseFloat(value) / 100 : undefined;
-		localMaxPercentageDiv = numValue;
+		localMinAllocationPercentage = numValue;
 		onUpdate(localMaxNaturalDiv, numValue);
 	}
 	
 	// Convert to percentage for display (default 1%)
 	const displayPercentage = $derived(() => {
-		return Math.round((localMaxPercentageDiv ?? 0.01) * 100);
+		return Math.round((localMinAllocationPercentage ?? 0.01) * 100);
 	});
 </script>
 

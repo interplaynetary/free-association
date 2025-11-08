@@ -33,11 +33,12 @@ class DemoTreeStore {
 	}
 
 	/**
-	 * Set the tree and persist to localStorage
+	 * Set the tree and optionally persist to localStorage
+	 * @param persist - Whether to save to localStorage (default: true)
 	 */
-	set(newTree: RootNode | null) {
+	set(newTree: RootNode | null, persist: boolean = true) {
 		this.tree = newTree;
-		if (typeof window !== 'undefined') {
+		if (typeof window !== 'undefined' && persist) {
 			if (newTree) {
 				localStorage.setItem(DEMO_TREE_KEY, JSON.stringify(newTree));
 			} else {
@@ -85,11 +86,26 @@ class DemoTreeStore {
 		if (!this.tree) {
 			console.log('[DEMO TREE] Initializing with SDG template');
 			// Create a demo root node without authentication
-			const demoRootNode = createRootNode('demo_user', 'Demo User');
+			const demoRootNode = createRootNode('demo_user', 'Log In');
 			const populated = applyTemplate(demoRootNode, 'sdg');
 			if (populated) {
 				this.set(populated);
 			}
+		}
+	}
+
+	/**
+	 * Initialize with a custom tree (for org-specific routes)
+	 * @param tree - Pre-configured RootNode tree structure
+	 * @param force - If true, replace existing tree even if one exists
+	 * @param persist - If true, save to localStorage (default: false for org routes)
+	 */
+	initializeWithCustomTree(tree: RootNode, force: boolean = false, persist: boolean = false) {
+		if (!this.tree || force) {
+			console.log('[DEMO TREE] Initializing with custom tree:', tree.name, '| persist:', persist);
+			this.set(tree, persist);
+		} else {
+			console.log('[DEMO TREE] Tree already exists, skipping custom initialization (use force=true to override)');
 		}
 	}
 

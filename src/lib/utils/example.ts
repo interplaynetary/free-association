@@ -181,7 +181,7 @@ export function createExampleCapacitySlots(): AvailabilitySlot[] {
 			// V5 REQUIRED: need_type_id for multi-dimensional allocation
 			need_type_id: 'general', // Default need type
 			max_natural_div: Math.min(quantity, 10),
-			max_percentage_div: 0.8,
+			min_allocation_percentage: 0.8,
 			hidden_until_request_accepted: false,
 			filter_rule: null,
 			location_type: locationType,

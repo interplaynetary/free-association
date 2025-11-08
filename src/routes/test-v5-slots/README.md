@@ -174,6 +174,22 @@ Navigate to: `/test-v5-slots`
 5. Edit on Device B
 6. Observe changes on Device A
 
+### Scenario 5: Self-Care Allocation (Single User)
+1. **Self-care is valid care!** The algorithm supports self-allocation
+2. Add a capacity slot (e.g., "Meal Prep" - Food - 50 meals)
+3. Add a need slot (e.g., "Weekly Food" - Food - 30 meals)
+4. Ensure you have self-recognition in your recognition tree
+5. Observe allocation appears in both "Outgoing" and "Incoming" sections
+6. You allocate to yourself based on your self-recognition weight
+
+### Scenario 6: Multi-User Allocation Testing
+1. User A adds capacity slots
+2. User B adds need slots (same type)
+3. User A recognizes User B
+4. Observe allocations appear in User A's "Outgoing" section
+5. Observe allocations appear in User B's "Incoming" section
+6. Both self-allocation and allocating to others use the same algorithm
+
 ## Performance Metrics
 
 ### Before V5 (V4)
@@ -216,7 +232,7 @@ Navigate to: `/test-v5-slots`
   
   // Constraints
   max_natural_div?: number,
-  max_percentage_div?: number,
+  min_allocation_percentage?: number,
   advance_notice_hours?: number,
   mutual_agreement_required?: boolean
 }

@@ -105,10 +105,10 @@
 	}
 
 	// Divisibility handler
-	function handleDivisibilityUpdate(maxNaturalDiv?: number, maxPercentageDiv?: number) {
+	function handleDivisibilityUpdate(maxNaturalDiv?: number, minAllocationPercentage?: number) {
 		updateSlot({
 			max_natural_div: maxNaturalDiv,
-			max_percentage_div: maxPercentageDiv
+			min_allocation_percentage: minAllocationPercentage
 		});
 	}
 
@@ -195,8 +195,8 @@
 			parts.push(`Max ${slot.max_natural_div} divisions`);
 		}
 		
-		if (slot.max_percentage_div) {
-			parts.push(`Min ${Math.round(slot.max_percentage_div * 100)}%`);
+		if (slot.min_allocation_percentage) {
+			parts.push(`Min ${Math.round(slot.min_allocation_percentage * 100)}%`);
 		}
 		
 		if (slot.advance_notice_hours) {
@@ -363,11 +363,11 @@
 	<!-- Constraints Section -->
 	{#if constraintsExpanded}
 		<div class="slot-details constraints-details">
-			<DivisibilityEditor
-				maxNaturalDiv={slot.max_natural_div}
-				maxPercentageDiv={slot.max_percentage_div}
-				onUpdate={handleDivisibilityUpdate}
-			/>
+		<DivisibilityEditor
+			maxNaturalDiv={slot.max_natural_div}
+			minAllocationPercentage={slot.min_allocation_percentage}
+			onUpdate={handleDivisibilityUpdate}
+		/>
 		</div>
 	{/if}
 </div>

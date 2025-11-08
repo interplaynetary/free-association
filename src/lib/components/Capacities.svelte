@@ -630,7 +630,7 @@
 
 		// Generate some variety in divisibility - make it more interesting
 		const maxNaturalDiv = Math.floor(Math.random() * Math.min(quantity, 10)) + 1;
-		const maxPercentageDiv = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
+		const minAllocationPercentage = Math.random() * 0.8 + 0.2; // 0.2 to 1.0
 
 		const todayString = today(getLocalTimeZone()).toString();
 		const timePattern = generateTimePattern();
@@ -671,7 +671,7 @@
 									]
 								},
 					max_natural_div: maxNaturalDiv,
-					max_percentage_div: maxPercentageDiv,
+					min_allocation_percentage: minAllocationPercentage,
 					filter_rule: null,
 					capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
 				} as any
@@ -708,7 +708,7 @@
 					time_zone: getLocalTimeZone(),
 					recurrence: 'daily',
 					max_natural_div: 1,
-					max_percentage_div: 1.0,
+					min_allocation_percentage: 1.0,
 					filter_rule: null,
 					capacity_group_id: capacityGroupId // ✅ Group ID for virtual grouping
 				} as any

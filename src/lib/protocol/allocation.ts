@@ -589,13 +589,12 @@ export function applyDivisibilityConstraints(
 ): number {
 	const PERCENTAGE_EPSILON = 0.0001; // Tolerance for floating-point percentage comparisons
 	const maxNatural = capacitySlot.max_natural_div || 1;
-	const maxPercent = capacitySlot.max_percentage_div || 1.0;
+	const minPercent = capacitySlot.min_allocation_percentage || 0.0;
 	
-	// 1. Apply percentage constraint (prevent tiny slivers)
-	// If this recipient's share exceeds max allowed percentage, cap it
-	if (sharePercentage > maxPercent + PERCENTAGE_EPSILON) {
-		const maxAllowedQuantity = capacitySlot.quantity * maxPercent;
-		rawQuantity = Math.min(rawQuantity, maxAllowedQuantity);
+	// 1. Apply percentage constraint (prevent over-fragmentation)
+	// If this recipient's share is below the minimum threshold, reject it
+	if (minPercent > PERCENTAGE_EPSILON && sharePercentage < minPercent - PERCENTAGE_EPSILON) {
+		return 0;
 	}
 	
 	// 2. Apply natural divisibility constraint (round to whole units)
@@ -618,20 +617,19 @@ export function meetsMinimumAllocation(
 ): boolean {
 	const PERCENTAGE_EPSILON = 0.0001; // Tolerance for floating-point percentage comparisons
 	const maxNatural = capacitySlot.max_natural_div || 1;
-	const maxPercent = capacitySlot.max_percentage_div || 1.0;
+	const minPercent = capacitySlot.min_allocation_percentage || 0.0;
 	
 	// Must be at least one natural unit
 	if (allocation < maxNatural) return false;
 	
 	// Must meet minimum percentage threshold
-	// Use the ACTUAL max_percentage_div as the minimum (not a fraction of it)
 	// This ensures we don't fragment capacity beyond the provider's preference
 	const sharePercentage = allocation / capacitySlot.quantity;
 	
-	// If max_percentage_div is set, enforce it as the true minimum
+	// If min_allocation_percentage is set, enforce it as the threshold
 	// Otherwise, accept any allocation ≥ 1 natural unit
-	if (maxPercent < 1.0 - PERCENTAGE_EPSILON) {
-		return sharePercentage >= maxPercent - PERCENTAGE_EPSILON;
+	if (minPercent > PERCENTAGE_EPSILON) {
+		return sharePercentage >= minPercent - PERCENTAGE_EPSILON;
 	}
 	
 	return allocation >= maxNatural;
@@ -910,6 +908,8 @@ function _findCompatibleRecipients(
 	const compatible = new Map<string, NeedSlot[]>();
 	const typeId = capacitySlot.need_type_id;
 	
+	console.log(`[FIND-COMPATIBLE] Searching for recipients for capacity slot ${capacitySlot.id.slice(0,20)}... (type: ${typeId})`);
+	
 	// Get candidate recipients from index (O(k)) or full scan (O(N))
 	const candidates = getCandidateRecipients(capacitySlot, needsIndex);
 	
@@ -918,26 +918,44 @@ function _findCompatibleRecipients(
 		? Array.from(candidates)
 		: Object.keys(allCommitments);
 	
+	console.log(`[FIND-COMPATIBLE] Checking ${recipientsToCheck.length} potential recipients`);
+	
 	for (const recipientPub of recipientsToCheck) {
-		if (recipientPub === myPubKey) continue; // Don't allocate to myself
+		// NOTE: Self-allocation is ALLOWED! Self-care is valid care.
+		// Mutual recognition with yourself is valid recognition.
 		
 		const commitment = allCommitments[recipientPub];
-		if (!commitment?.need_slots) continue;
+		if (!commitment?.need_slots) {
+			console.log(`[FIND-COMPATIBLE]   ${recipientPub.slice(0,20)}... - SKIP: no need slots`);
+			continue;
+		}
+		
+		console.log(`[FIND-COMPATIBLE]   ${recipientPub.slice(0,20)}... - checking ${commitment.need_slots.length} need slots`);
 		
 		const compatibleSlots: NeedSlot[] = [];
 		for (const needSlot of commitment.need_slots) {
-			if (needSlot.need_type_id !== typeId) continue;
+			if (needSlot.need_type_id !== typeId) {
+				console.log(`[FIND-COMPATIBLE]     ${needSlot.id.slice(0,20)}... - SKIP: type mismatch (${needSlot.need_type_id} !== ${typeId})`);
+				continue;
+			}
 			
 			// Check slot compatibility (time, location, etc.)
-			if (slotsCompatible(capacitySlot, needSlot)) {
+			const isCompatible = slotsCompatible(capacitySlot, needSlot);
+			console.log(`[FIND-COMPATIBLE]     ${needSlot.id.slice(0,20)}... - slotsCompatible: ${isCompatible}`);
+			if (isCompatible) {
 				compatibleSlots.push(needSlot);
 			}
 		}
 		
 		if (compatibleSlots.length > 0) {
+			console.log(`[FIND-COMPATIBLE]   ✅ ${recipientPub.slice(0,20)}... - FOUND ${compatibleSlots.length} compatible slots`);
 			compatible.set(recipientPub, compatibleSlots);
+		} else {
+			console.log(`[FIND-COMPATIBLE]   ❌ ${recipientPub.slice(0,20)}... - NO compatible slots`);
 		}
 	}
+	
+	console.log(`[FIND-COMPATIBLE] Result: ${compatible.size} recipients with compatible needs`);
 	
 	return compatible;
 }
@@ -1021,6 +1039,9 @@ export function computeAllocations(
 		
 		if (compatibleRecipients.size === 0) continue;
 		
+		console.log(`[TIER-1] Starting allocation for capacity slot ${capacitySlot.id.slice(0,20)}...`);
+		console.log(`[TIER-1] Compatible recipients: ${compatibleRecipients.size}`);
+		
 		// ────────────────────────────────────────────────────────────
 		// TIER 1: MUTUAL RECOGNITION (PROPORTIONAL MULTI-PASS)
 		// ────────────────────────────────────────────────────────────
@@ -1044,12 +1065,16 @@ export function computeAllocations(
 		// Calculate mutual recognition shares
 		for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
 			const mutualRec = mutualRecognition[recipientPub] || 0;
+			console.log(`[TIER-1]   Recipient ${recipientPub.slice(0,20)}...: MR = ${mutualRec}`);
 			if (mutualRec <= 0) continue;
 			
 			totalMutualRecognition += mutualRec;
 		}
 		
+		console.log(`[TIER-1] Total mutual recognition: ${totalMutualRecognition}`);
+		
 		if (totalMutualRecognition > 0) {
+			console.log(`[TIER-1] Building eligible recipients list...`);
 			// Build initial recipient list with needs and recognition shares
 			for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
 				const mutualRec = mutualRecognition[recipientPub] || 0;
@@ -1070,6 +1095,8 @@ export function computeAllocations(
 				
 				const activeNeed = totalNeed * dampingFactor;
 				
+				console.log(`[TIER-1]     ${recipientPub.slice(0,20)}...: need=${totalNeed}, share=${mutualRecShare.toFixed(3)}, damping=${dampingFactor}, activeNeed=${activeNeed}`);
+				
 				mutualEligibleRecipients.push({
 					pubKey: recipientPub,
 					totalNeed,
@@ -1080,6 +1107,8 @@ export function computeAllocations(
 				});
 			}
 			
+			console.log(`[TIER-1] Eligible recipients: ${mutualEligibleRecipients.length}`);
+			
 			// ═══════════════════════════════════════════════════════════════
 			// MULTI-PASS PROPORTIONAL ALLOCATION
 			// ═══════════════════════════════════════════════════════════════
@@ -1089,8 +1118,11 @@ export function computeAllocations(
 			let passCount = 0;
 			const maxPasses = 10;
 			
+			console.log(`[TIER-1] Starting multi-pass allocation: capacity=${remainingCapacity}, recipients=${unsatisfiedRecipients.length}`);
+			
 			while (remainingCapacity > CAPACITY_EPSILON && unsatisfiedRecipients.length > 0 && passCount < maxPasses) {
 				passCount++;
+				console.log(`[TIER-1] Pass ${passCount}: capacity=${remainingCapacity.toFixed(2)}, unsatisfied=${unsatisfiedRecipients.length}`);
 				
 				// PHASE 1: Calculate denominator with only unsatisfied recipients
 				// FIX: Use recognition ONLY for proportional split (need only caps, doesn't affect proportion)
@@ -1098,6 +1130,8 @@ export function computeAllocations(
 					(sum, r) => sum + r.mutualRecShare,
 					0
 				);
+				
+				console.log(`[TIER-1]   Denominator: ${denominator.toFixed(4)}`);
 				
 				if (denominator < CAPACITY_EPSILON) break;
 				
@@ -1120,6 +1154,8 @@ export function computeAllocations(
 					const rawAllocation = remainingCapacity * 
 						recipient.mutualRecShare / denominator;
 					
+					console.log(`[TIER-1]     ${recipient.pubKey.slice(0,20)}...: raw=${rawAllocation.toFixed(2)}, cap at ${recipient.remainingNeed}`);
+					
 					return {
 						recipient,
 						rawAllocation,
@@ -1127,13 +1163,19 @@ export function computeAllocations(
 					};
 				});
 				
+				console.log(`[TIER-1]   Calculated ${proportionalAllocations.length} allocations`);
+				
 				// PHASE 3: Apply allocations and track satisfaction
 				let capacityUsedThisPass = 0;
 				const nowSatisfied: typeof unsatisfiedRecipients = [];
 				const tier1Remainders = new Map<string, number>();
 				
 				for (const { recipient, rawAllocation, cappedAllocation } of proportionalAllocations) {
-					if (cappedAllocation <= CAPACITY_EPSILON) continue;
+					console.log(`[TIER-1]     Processing ${recipient.pubKey.slice(0,20)}...: capped=${cappedAllocation.toFixed(2)}`);
+					if (cappedAllocation <= CAPACITY_EPSILON) {
+						console.log(`[TIER-1]       SKIP: too small (${cappedAllocation} <= ${CAPACITY_EPSILON})`);
+						continue;
+					}
 					
 					// Calculate share percentage for divisibility checks
 					const recipientSharePercentage = cappedAllocation / providersAvailableCapacity;
@@ -1145,6 +1187,8 @@ export function computeAllocations(
 						capacitySlot
 					);
 					
+					console.log(`[TIER-1]       After divisibility: constrained=${constrainedAllocation.toFixed(2)} (from ${cappedAllocation.toFixed(2)})`);
+					
 					// Track remainder for redistribution
 					const maxNatural = capacitySlot.max_natural_div || 1;
 					const remainder = (cappedAllocation - constrainedAllocation) / maxNatural;
@@ -1153,13 +1197,18 @@ export function computeAllocations(
 					}
 					
 					// Check if allocation meets minimum threshold
-					if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+					const meetsMin = meetsMinimumAllocation(constrainedAllocation, capacitySlot);
+					console.log(`[TIER-1]       Meets minimum: ${meetsMin}`);
+					if (!meetsMin) {
+						console.log(`[TIER-1]       SKIP: doesn't meet minimum allocation threshold`);
 						continue;
 					}
 					
 					// Proportional distribution across need slots
 					const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
 					let actuallyAllocated = 0;
+					
+					console.log(`[TIER-1]       Distributing ${constrainedAllocation.toFixed(2)} across ${recipient.needSlots.length} need slots`);
 					
 					for (const needSlot of recipient.needSlots) {
 						const proportion = needSlot.quantity / totalCompatibleNeed;
@@ -1168,10 +1217,15 @@ export function computeAllocations(
 							constrainedAllocation * proportion
 						);
 						
+						console.log(`[TIER-1]         Slot ${needSlot.id.slice(0,20)}...: before rounding=${slotAllocation.toFixed(2)}`);
+						
 						// Apply natural unit rounding
 						slotAllocation = Math.floor(slotAllocation / maxNatural) * maxNatural;
 						
+						console.log(`[TIER-1]         After rounding (maxNatural=${maxNatural}): ${slotAllocation.toFixed(2)}`);
+						
 						if (slotAllocation > 0) {
+							console.log(`[TIER-1]         ✅ ALLOCATED ${slotAllocation.toFixed(2)} to slot!`);
 							allocations.push({
 								availability_slot_id: capacitySlot.id,
 								recipient_pubkey: recipient.pubKey,
@@ -1184,8 +1238,12 @@ export function computeAllocations(
 							});
 							
 							actuallyAllocated += slotAllocation;
+						} else {
+							console.log(`[TIER-1]         ❌ SKIP: slotAllocation is 0 after rounding`);
 						}
 					}
+					
+					console.log(`[TIER-1]       Total actually allocated: ${actuallyAllocated.toFixed(2)}`);
 					
 					if (actuallyAllocated > 0) {
 						capacityUsedThisPass += actuallyAllocated;

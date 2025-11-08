@@ -599,7 +599,7 @@
 					unit: '',
 					description: '',
 					max_natural_div: 1,
-					max_percentage_div: 1.0,
+					min_allocation_percentage: 1.0,
 					hidden_until_request_accepted: false,
 					filter_rule: null,
 					location_type: 'Undefined',

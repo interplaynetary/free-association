@@ -146,7 +146,7 @@ export function ruleToFilter(rule: JsonLogicRule): ShareFilter {
  * Apply capacity-level filter rules to a share map.
  *
  * IMPORTANT: This function ONLY handles logical filtering (e.g., include/exclude nodes, thresholds).
- * For slot-based divisibility constraints (e.g., max_percentage_div, max_natural_div),
+ * For slot-based divisibility constraints (e.g., min_allocation_percentage, max_natural_div),
  * use applySlotConstraints() in slots.svelte.ts instead.
  *
  * This separation ensures:

@@ -22,6 +22,7 @@
 
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
+	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { findNodeById } from '$lib/protocol/tree';
 	import { searchTreeForNavigation } from '$lib/protocol/utils/filters/treeSearch';
 	import { type Node, type RootNode } from '$lib/protocol/schemas';
@@ -73,7 +74,9 @@
 	}
 
 	// Reactive store subscriptions
-	const tree = $derived($userTree);
+	// Use demo tree for unauthenticated users, user tree for authenticated users
+	const isAuthenticated = $derived(!!$userPub);
+	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const pub = $derived($userPub);
 	const user = $derived($userAlias);
@@ -393,12 +396,14 @@
 			path,
 			isSoulRoute,
 			user: !!user,
+			hasTree: !!tree,
 			routeWithoutBase,
 			currentRoute
 		});
 
-		// If user is not authenticated, show login panel
-		if (!user) {
+		// Allow navigation even when not authenticated (demo tree exists)
+		// Only show login panel if no tree exists at all
+		if (!user && !tree) {
 			showLoginPanel = true;
 			startLoginPanelTimer();
 			return;
@@ -758,7 +763,8 @@
 		displayPath: string;
 		score: number;
 	}) {
-		if (!user) {
+		// Allow navigation even when not authenticated (demo tree exists)
+		if (!user && !tree) {
 			showLoginPanel = true;
 			startLoginPanelTimer();
 			return;
@@ -898,6 +904,7 @@
 							href="{base}/"
 							class="breadcrumb-item"
 							class:current={index === currentPathInfo.length - 1}
+							class:unauthenticated-root={!user && index === 0}
 							class:auth-root={index === 0}
 							class:drop-target={globalState.isDragging}
 							data-node-id={segment.id}
@@ -1527,6 +1534,11 @@
 	.breadcrumb-item.current {
 		font-weight: bold;
 		color: #2196f3;
+	}
+	
+	/* Unauthenticated root should be grey to indicate not logged in */
+	.breadcrumb-item.unauthenticated-root {
+		color: #666;
 	}
 
 	.breadcrumb-item.auth-root {

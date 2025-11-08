@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/stores';
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import Type from '$lib/components/Type.svelte';
-	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
 	import { 
 		myRecognitionTreeStore, 
 		myRecognitionWeights, 
@@ -21,10 +21,16 @@
 	} from '$lib/protocol/stores.svelte';
 	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
+	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+	import { currentPath } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
 	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
+	import type { PageData } from './$types';
+
+	// Get page data (tree configuration)
+	const { data }: { data: PageData } = $props();
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -49,9 +55,22 @@
 	let cleanupAllocationPublishing: (() => void) | null = null;
 
 	onMount(() => {
-		console.log('[HOME] Initializing stores for inventory view...');
+		console.log('[ORG-PAGE] Mounting org page for:', data.orgName);
+		console.log('[ORG-PAGE] Initializing with custom tree:', data.tree.name);
 		
-		// Initialize stores
+		// Initialize demo tree with organization-specific tree
+		// Force initialization to ensure we load the org tree even if another tree exists
+		// persist=false means this tree won't be saved to localStorage
+		demoTreeStore.initializeWithCustomTree(data.tree, true, false);
+		
+		// Initialize path with the org tree root
+		if (data.tree) {
+			currentPath.set([data.tree.id]);
+			console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
+		}
+		
+		// Initialize stores for inventory view
+		console.log('[ORG-PAGE] Initializing stores for inventory view...');
 		initializeAllocationStores();
 		
 		// Subscribe to stores (reactive)
@@ -69,7 +88,7 @@
 		// Enable auto-allocation publishing
 		cleanupAllocationPublishing = enableAutoAllocationPublishing();
 		
-		console.log('[HOME] ✅ Initialized and subscribed');
+		console.log('[ORG-PAGE] ✅ Initialized and subscribed');
 		
 		return () => {
 			unsubNeeds();
@@ -77,6 +96,14 @@
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
+	});
+
+	// Clean up org tree when leaving this route
+	onDestroy(() => {
+		console.log('[ORG-PAGE] Destroying - clearing org tree and reinitializing with SDG');
+		// Clear the org tree from memory and reinitialize with default SDG tree
+		demoTreeStore.clear();
+		demoTreeStore.initializeWithSDG();
 	});
 
 	// CRUD Operations - Needs
@@ -240,7 +267,12 @@
 	// Mutual recognition auto-updates when recognition weights or network data changes
 </script>
 
-<div class="layout root-page" class:full-width={currentView !== 'tree'}>
+<svelte:head>
+	<title>{data.orgName} - Free Association</title>
+	<meta name="description" content={data.orgDescription} />
+</svelte:head>
+
+<div class="layout org-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
 			<Parent />
@@ -480,8 +512,8 @@
 		grid-template-columns: 1fr;
 	}
 
-	/* Root page specific: ensure it doesn't scroll */
-	.layout.root-page {
+	/* Org page specific: ensure it doesn't scroll */
+	.layout.org-page {
 		overflow: hidden;
 		height: 100%;
 		max-height: 100%;
@@ -789,3 +821,4 @@
 		}
 	}
 </style>
+

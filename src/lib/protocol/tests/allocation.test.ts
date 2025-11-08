@@ -981,6 +981,77 @@ describe('Self-Allocation (Time-Shifting)', () => {
 		// Self-allocation is allowed
 		expect(selfAllocs.length).toBeGreaterThanOrEqual(0); // May or may not match depending on time overlap
 	});
+	
+	it('should support self-allocation - self-care is valid care', () => {
+		// Philosophy: Self-care is valid care! Mutual recognition with yourself is valid.
+		
+		const myCommitment = createTestCommitment(
+			[createNeedSlot('food', 30, 'my-need')],
+			[createCapacitySlot('food', 50, 'my-capacity')],
+			{ [mockUserPub]: 1.0 } // 100% self-recognition
+		);
+		
+		myCommitmentStore.set(myCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		const toMyself = allocations.totalsByTypeAndRecipient?.food?.[mockUserPub] || 0;
+		
+		console.log(`\nSelf-Care: I allocate ${toMyself} meals to myself (capacity: 50, need: 30)`);
+		
+		expect(toMyself).toBeGreaterThan(0);
+		expect(toMyself).toBeLessThanOrEqual(30); // Capped at my need
+		
+		// Check incoming allocations (I receive from myself)
+		const selfAllocs = allocations.allocations.filter(a => a.recipient_pubkey === mockUserPub);
+		expect(selfAllocs.length).toBeGreaterThan(0);
+		
+		const totalIncoming = selfAllocs.reduce((sum, a) => sum + a.quantity, 0);
+		expect(totalIncoming).toBe(toMyself);
+	});
+	
+	it('should split capacity between self and others based on mutual recognition', () => {
+		// I have capacity
+		const myCommitment = createTestCommitment(
+			[createNeedSlot('food', 30, 'my-need')],
+			[createCapacitySlot('food', 60, 'my-capacity')],
+			{
+				[mockUserPub]: 0.5, // 50% self-recognition
+				'alice': 0.5        // 50% to Alice
+			}
+		);
+		myCommitmentStore.set(myCommitment);
+		
+		// Alice has needs and recognizes me back
+		const aliceCommitment = createTestCommitment(
+			[createNeedSlot('food', 30, 'alice-need')],
+			[],
+			{
+				[mockUserPub]: 0.5, // Alice recognizes me 50%
+				'alice': 0.5        // Alice recognizes herself 50%
+			}
+		);
+		networkCommitments.update('alice', aliceCommitment);
+		
+		const allocations = get(myAllocationsAsProvider);
+		const toMyself = allocations.totalsByTypeAndRecipient?.food?.[mockUserPub] || 0;
+		const toAlice = allocations.totalsByTypeAndRecipient?.food?.alice || 0;
+		
+		console.log(`\nSelf + Other: I allocate ${toMyself} to myself, ${toAlice} to Alice (total capacity: 60)`);
+		
+		// Both should receive allocations
+		expect(toMyself).toBeGreaterThan(0);
+		expect(toAlice).toBeGreaterThan(0);
+		
+		// With equal MR (50%/50%) and equal needs (30/30), should split equally
+		expect(toMyself).toBeCloseTo(toAlice, 1);
+		
+		// Total should not exceed capacity
+		expect(toMyself + toAlice).toBeLessThanOrEqual(60);
+		
+		// Each should be capped at their need
+		expect(toMyself).toBeLessThanOrEqual(30);
+		expect(toAlice).toBeLessThanOrEqual(30);
+	});
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2125,7 +2196,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1, // ✅ Must allocate whole rooms
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -2190,8 +2261,8 @@ describe('Divisibility Constraints', () => {
 		expect(totalAllocated).toBeLessThanOrEqual(10);
 	});
 	
-	it('should respect max_percentage_div (prevent over-fragmentation)', async () => {
-		// Provider has 100 hours with max_percentage_div=0.1 (min 10% per recipient, max 10 recipients)
+	it('should respect min_allocation_percentage (prevent over-fragmentation)', async () => {
+		// Provider has 100 hours with min_allocation_percentage=0.1 (min 10% per recipient, max 10 recipients)
 		const providerCommitment = createTestCommitment(
 			[],
 			[{
@@ -2199,7 +2270,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 100,
 				need_type_id: 'tutoring',
 				max_natural_div: 1,
-				max_percentage_div: 0.1, // ✅ Min 10% per recipient (10 hours minimum)
+				min_allocation_percentage: 0.1, // ✅ Min 10% per recipient (10 hours minimum)
 				name: 'Tutoring Hours',
 				location: { type: 'online' }
 			} as AvailabilitySlot]
@@ -2254,7 +2325,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 8,
 				need_type_id: 'compute',
 				max_natural_div: 1, // Whole cores only
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'CPU Cores',
 				location: { type: 'online' }
 			} as AvailabilitySlot]
@@ -2314,7 +2385,7 @@ describe('Divisibility Constraints', () => {
 	});
 	
 	it('should skip recipients below minimum allocation threshold', async () => {
-		// Provider has 100 meals with max_percentage_div=0.05 (5% min = 5 meals)
+		// Provider has 100 meals with min_allocation_percentage=0.05 (5% min = 5 meals)
 		const providerCommitment = createTestCommitment(
 			[],
 			[{
@@ -2322,7 +2393,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 100,
 				need_type_id: 'meals',
 				max_natural_div: 1,
-				max_percentage_div: 0.05, // Min 5% (5 meals)
+				min_allocation_percentage: 0.05, // Min 5% (5 meals)
 				name: 'Community Meals',
 				location: { type: 'specific', address: { city: 'Portland' } }
 			} as AvailabilitySlot]
@@ -2384,7 +2455,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 20,
 				need_type_id: 'workshops',
 				max_natural_div: 2, // Workshops come in pairs (2-hour blocks)
-				max_percentage_div: 0.2, // Min 20% (4 hours minimum)
+				min_allocation_percentage: 0.2, // Min 20% (4 hours minimum)
 				name: 'Workshop Sessions',
 				location: { type: 'specific', address: { city: 'NYC' } }
 			} as AvailabilitySlot]
@@ -2446,7 +2517,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1, // Whole rooms only
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -2538,7 +2609,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1,
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -2622,7 +2693,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1,
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -2697,7 +2768,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1,
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -2775,7 +2846,7 @@ describe('Divisibility Constraints', () => {
 				quantity: 10,
 				need_type_id: 'rooms',
 				max_natural_div: 1,
-				max_percentage_div: 1.0,
+				min_allocation_percentage: 0.0, // No minimum (accept any allocation)
 				name: 'Co-living Rooms',
 				location: { type: 'specific', address: { city: 'Berlin' } }
 			} as AvailabilitySlot]
@@ -4109,4 +4180,3 @@ describe('Multiple Slots of Same Type', () => {
 		expect(aliceTotal).toBeLessThanOrEqual(50); // Total of both needs
 	});
 });
-

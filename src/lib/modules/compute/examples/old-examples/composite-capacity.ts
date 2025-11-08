@@ -291,7 +291,7 @@ export class CompositeCapacityManager {
 
 		// Apply divisibility constraints
 		const maxNatural = capacity.max_natural_div || 1;
-		const maxPercent = capacity.max_percentage_div || 1;
+		const maxPercent = capacity.min_allocation_percentage || 1;
 
 		const percentConstrained =
 			ourShare > maxPercent ? Math.round(baseQuantity * maxPercent) : ourQuantity;

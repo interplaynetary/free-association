@@ -459,7 +459,7 @@
 			capacity_group_id: capacityGroupId, // ✅ Add group ID for virtual grouping
 			// Default divisibility constraints
 			max_natural_div: 1,
-			max_percentage_div: 0.01
+			min_allocation_percentage: 0.01
 		};
 
 		const updatedSlots = [...normalizedExistingSlots, newSlot];
