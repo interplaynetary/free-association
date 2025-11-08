@@ -47,6 +47,10 @@ import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
 import {getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
+import { myMembershipLists, myMembershipSubscriptions, membershipCache } from '$lib/network/membership.svelte';
+import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
+import { applyFiltersUnion, mergeSlots } from '$lib/protocol/utils/capacity-filters';
+import { resolveContributorWithOrgs } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1529,6 +1533,389 @@ export function enableAutoSubscriptionSync(): () => void {
 	return () => {
 		unsubTree();
 		console.log('[AUTO-SYNC] ⏸️  Disabled automatic subscription syncing');
+	};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-MEMBERSHIP SUBSCRIPTION LOGIC (V5)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Enable automatic membership subscription syncing
+ * 
+ * Watches myMembershipSubscriptions and auto-subscribes to source users' membership lists.
+ * Same pattern as recognition tree auto-subscription.
+ * 
+ * Flow:
+ * 1. User sets: subscribeMembershipList(org_id, source_pubkey)
+ * 2. myMembershipSubscriptions updates
+ * 3. This function detects the change
+ * 4. Subscribes to source_pubkey's membership lists via Holster
+ * 5. When their list arrives, updates membershipCache (local-first)
+ * 6. Membership resolved on-demand via getMembershipList()
+ * 
+ * Returns unsubscribe function to disable auto-syncing
+ */
+export function enableAutoMembershipSync(): () => void {
+	console.log('[AUTO-MEMBERSHIP-SYNC] 🔄 Enabling automatic membership syncing');
+	
+	// Track active subscriptions to avoid duplicates
+	const activeSubscriptions = new Map<string, () => void>();
+	
+	// Subscribe to changes in membership subscriptions
+	const unsubMembership = myMembershipSubscriptions.subscribe(($subs: any) => {
+		if (!$subs) return;
+		
+		console.log(`[AUTO-MEMBERSHIP-SYNC] Processing ${Object.keys($subs).length} subscription mappings`);
+		
+		// Subscribe to new sources
+		for (const [org_id, source_pubkey] of Object.entries($subs)) {
+			const key = `${org_id}:${source_pubkey}`;
+			
+			// Skip if already subscribed
+			if (activeSubscriptions.has(key)) {
+				continue;
+			}
+			
+		console.log(`[AUTO-MEMBERSHIP-SYNC] ➕ Subscribing to ${(source_pubkey as string).slice(0, 20)}...'s membership list for ${org_id}`);
+		
+		// Use myMembershipLists.subscribeToUser() - provided by createStore()!
+		myMembershipLists.subscribeToUser(source_pubkey as string, (theirLists: any) => {
+				if (!theirLists) {
+					console.log(
+						`[AUTO-MEMBERSHIP-SYNC] No lists from ${(source_pubkey as string).slice(0, 20)}... for ${org_id}`
+					);
+					return;
+				}
+				
+				// Check if they have this org's membership list
+				if (!theirLists[org_id]) {
+					return;
+				}
+				
+				// Update cache (local-first pattern - trust until proven otherwise)
+				membershipCache.update((cache: any) => {
+					const currentCache = cache || {};
+					return {
+						...currentCache,
+						[source_pubkey as string]: {
+							...(currentCache[source_pubkey as string] || {}),
+							[org_id]: theirLists[org_id]
+						}
+					};
+				});
+				
+				console.log(
+					`[AUTO-MEMBERSHIP-SYNC] ✅ Cached ${theirLists[org_id].length} members from ${(source_pubkey as string).slice(0, 20)}... for ${org_id}`
+				);
+			});
+			
+			// Track this subscription
+			activeSubscriptions.set(key, () => {
+				console.log(`[AUTO-MEMBERSHIP-SYNC] ⏸️  Unsubscribed ${key}`);
+			});
+		}
+		
+		// Cleanup removed subscriptions
+		const currentKeys = new Set(
+			Object.entries($subs).map(([org_id, source_pubkey]) => `${org_id}:${source_pubkey}`)
+		);
+		
+		for (const [key, cleanup] of activeSubscriptions.entries()) {
+			if (!currentKeys.has(key)) {
+				console.log(`[AUTO-MEMBERSHIP-SYNC] ➖ Removing subscription: ${key}`);
+				cleanup();
+				activeSubscriptions.delete(key);
+			}
+		}
+	});
+	
+	return () => {
+		unsubMembership();
+		activeSubscriptions.clear();
+		console.log('[AUTO-MEMBERSHIP-SYNC] ⏸️  Disabled automatic membership syncing');
+	};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-CAPACITY SUBSCRIPTION LOGIC (V5)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Enable automatic capacity subscription syncing - UNIFIED!
+ * 
+ * Watches slotSubscriptions (unified!) and auto-subscribes to users' capacity_slots.
+ * When their slots arrive, applies filters and merges matching slots into your own.
+ * 
+ * Flow:
+ * 1. User subscribes: subscribeToSlots(pubkey, { capacity: true })
+ * 2. slotSubscriptions updates
+ * 3. This function subscribes to their commitment via networkCapacitySlots
+ * 4. When their capacity_slots arrive, caches them
+ * 5. Applies all enabled filters with applies_to='capacity' or 'both' (union - match ANY filter)
+ * 6. Merges matching slots with your declared capacities
+ * 7. Updates myCapacitySlots via setMyCapacitySlots()
+ * 
+ * Returns unsubscribe function
+ */
+export function enableAutoCapacitySync(): () => void {
+	console.log('[AUTO-CAPACITY-SYNC] 🔄 Enabling automatic capacity syncing (unified v2)');
+	
+	// Track active subscriptions
+	const activeSubs = new Map<string, () => void>();
+	
+	/**
+	 * Apply filters and update slots
+	 * Called when filters change or new capacity data arrives
+	 */
+	const applyFiltersAndUpdateSlots = () => {
+		const myPub = get(holsterUserPub);
+		if (!myPub) return;
+		
+		// Get current state
+		const cache = get(capacityCache) as Record<string, any[]>;
+		const allFilters = Object.values(get(slotFilters) || {});
+		const currentCommitment = get(myCommitmentStore);
+		
+		if (!currentCommitment) return;
+		
+		// My declared capacity slots (user-defined, take priority)
+		const myDeclaredSlots = currentCommitment.capacity_slots || [];
+		
+		// Helper function to resolve members (org_ids → pubkeys)
+		const resolveMembers = (id: string): string[] => {
+			return resolveContributorWithOrgs(id);
+		};
+		
+		// Apply filters to cached slots (union across all sources)
+		// Pass 'capacity' as slotType to filter only capacity-relevant filters
+		const filteredNetworkSlots = applyFiltersUnion(
+			cache,
+			'capacity', // NEW: slot type parameter
+			allFilters,
+			myPub,
+			resolveMembers
+		);
+		
+		console.log(`[AUTO-CAPACITY-SYNC] Filtered ${filteredNetworkSlots.length} slots from ${Object.keys(cache || {}).length} sources`);
+		
+		// Merge: declared slots + filtered network slots (declared takes priority)
+		const mergedSlots = mergeSlots(myDeclaredSlots, filteredNetworkSlots);
+		
+		console.log(`[AUTO-CAPACITY-SYNC] Merged: ${myDeclaredSlots.length} declared + ${filteredNetworkSlots.length} network = ${mergedSlots.length} total`);
+		
+		// Update capacity slots if changed
+		if (JSON.stringify(myDeclaredSlots) !== JSON.stringify(mergedSlots)) {
+			setMyCapacitySlots(mergedSlots);
+			console.log('[AUTO-CAPACITY-SYNC] ✅ Updated capacity slots');
+		}
+	};
+	
+	// Subscribe to unified slot subscription changes - check .capacity field
+	const unsubCapacitySubs = slotSubscriptions.subscribe(($subs: any) => {
+		if (!$subs) return;
+		
+		// Filter for capacity subscriptions only
+		const capacitySubKeys = Object.entries($subs)
+			.filter(([_, sub]: [string, any]) => sub?.capacity === true)
+			.map(([pubkey, _]) => pubkey);
+		
+		console.log(`[AUTO-CAPACITY-SYNC] Processing ${capacitySubKeys.length} capacity subscriptions`);
+		
+		// Subscribe to new sources
+		for (const pubkey of capacitySubKeys) {
+			if (activeSubs.has(pubkey)) continue;
+			
+			console.log(`[AUTO-CAPACITY-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s capacity slots`);
+			
+			// Subscribe to their commitment (if not already subscribed)
+			subscribeToCommitment(pubkey);
+			
+			// Track this subscription
+			activeSubs.set(pubkey, () => {
+				console.log(`[AUTO-CAPACITY-SYNC] ⏸️  Unsubscribed from ${pubkey.slice(0, 20)}...`);
+			});
+		}
+		
+		// Cleanup removed subscriptions
+		const currentKeys = new Set(capacitySubKeys);
+		
+		for (const [key, cleanup] of activeSubs.entries()) {
+			if (!currentKeys.has(key)) {
+				console.log(`[AUTO-CAPACITY-SYNC] ➖ Removing subscription: ${key.slice(0, 20)}...`);
+				cleanup();
+				activeSubs.delete(key);
+			}
+		}
+	});
+	
+	// Watch network capacity slots for changes
+	const unsubNetworkCapacity = networkCapacitySlots.subscribe((slotsMap) => {
+		const subs = (get(slotSubscriptions) || {}) as Record<string, { capacity?: boolean; needs?: boolean }>;
+		
+		// Update cache for subscribed sources (check .capacity field)
+		for (const [pubkey, slots] of slotsMap.entries()) {
+			if (subs[pubkey]?.capacity) {
+				capacityCache.update((cache: any) => ({
+					...cache,
+					[pubkey]: slots
+				}));
+			}
+		}
+		
+		// Reapply filters whenever network data changes
+		applyFiltersAndUpdateSlots();
+	});
+	
+	// Watch unified filter changes
+	const unsubFilters = slotFilters.subscribe(() => {
+		console.log('[AUTO-CAPACITY-SYNC] Filters changed, reapplying...');
+		applyFiltersAndUpdateSlots();
+	});
+	
+	// Initial application
+	applyFiltersAndUpdateSlots();
+	
+	return () => {
+		unsubCapacitySubs();
+		unsubNetworkCapacity();
+		unsubFilters();
+		activeSubs.clear();
+		console.log('[AUTO-CAPACITY-SYNC] ⏸️  Disabled automatic capacity syncing');
+	};
+}
+
+/**
+ * Enable automatic need subscription syncing - UNIFIED!
+ * 
+ * Same pattern as capacity sync, but for need slots.
+ * Watches slotSubscriptions (unified!) and auto-subscribes to users' need_slots.
+ * 
+ * Returns unsubscribe function
+ */
+export function enableAutoNeedSync(): () => void {
+	console.log('[AUTO-NEED-SYNC] 🔄 Enabling automatic need syncing (unified v2)');
+	
+	// Track active subscriptions
+	const activeSubs = new Map<string, () => void>();
+	
+	/**
+	 * Apply filters and update slots
+	 */
+	const applyFiltersAndUpdateSlots = () => {
+		const myPub = get(holsterUserPub);
+		if (!myPub) return;
+		
+		// Get current state
+		const cache = get(needCache) as Record<string, any[]>;
+		const allFilters = Object.values(get(slotFilters) || {});
+		const currentCommitment = get(myCommitmentStore);
+		
+		if (!currentCommitment) return;
+		
+		// My declared need slots (user-defined, take priority)
+		const myDeclaredSlots = currentCommitment.need_slots || [];
+		
+		// Helper function to resolve members
+		const resolveMembers = (id: string): string[] => {
+			return resolveContributorWithOrgs(id);
+		};
+		
+		// Apply filters to cached slots
+		// Pass 'need' as slotType to filter only need-relevant filters
+		const filteredNetworkSlots = applyFiltersUnion(
+			cache,
+			'need', // NEW: slot type parameter
+			allFilters,
+			myPub,
+			resolveMembers
+		);
+		
+		console.log(`[AUTO-NEED-SYNC] Filtered ${filteredNetworkSlots.length} slots from ${Object.keys(cache || {}).length} sources`);
+		
+		// Merge: declared slots + filtered network slots
+		const mergedSlots = mergeSlots(myDeclaredSlots, filteredNetworkSlots);
+		
+		console.log(`[AUTO-NEED-SYNC] Merged: ${myDeclaredSlots.length} declared + ${filteredNetworkSlots.length} network = ${mergedSlots.length} total`);
+		
+		// Update need slots if changed
+		if (JSON.stringify(myDeclaredSlots) !== JSON.stringify(mergedSlots)) {
+			setMyNeedSlots(mergedSlots);
+			console.log('[AUTO-NEED-SYNC] ✅ Updated need slots');
+		}
+	};
+	
+	// Subscribe to unified slot subscription changes - check .needs field
+	const unsubNeedSubs = slotSubscriptions.subscribe(($subs: any) => {
+		if (!$subs) return;
+		
+		// Filter for need subscriptions only
+		const needSubKeys = Object.entries($subs)
+			.filter(([_, sub]: [string, any]) => sub?.needs === true)
+			.map(([pubkey, _]) => pubkey);
+		
+		console.log(`[AUTO-NEED-SYNC] Processing ${needSubKeys.length} need subscriptions`);
+		
+		// Subscribe to new sources
+		for (const pubkey of needSubKeys) {
+			if (activeSubs.has(pubkey)) continue;
+			
+			console.log(`[AUTO-NEED-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s need slots`);
+			
+			// Subscribe to their commitment
+			subscribeToCommitment(pubkey);
+			
+			// Track this subscription
+			activeSubs.set(pubkey, () => {
+				console.log(`[AUTO-NEED-SYNC] ⏸️  Unsubscribed from ${pubkey.slice(0, 20)}...`);
+			});
+		}
+		
+		// Cleanup removed subscriptions
+		const currentKeys = new Set(needSubKeys);
+		
+		for (const [key, cleanup] of activeSubs.entries()) {
+			if (!currentKeys.has(key)) {
+				console.log(`[AUTO-NEED-SYNC] ➖ Removing subscription: ${key.slice(0, 20)}...`);
+				cleanup();
+				activeSubs.delete(key);
+			}
+		}
+	});
+	
+	// Watch network need slots for changes
+	const unsubNetworkNeeds = networkNeedSlots.subscribe((slotsMap) => {
+		const subs = (get(slotSubscriptions) || {}) as Record<string, { capacity?: boolean; needs?: boolean }>;
+		
+		// Update cache for subscribed sources (check .needs field)
+		for (const [pubkey, slots] of slotsMap.entries()) {
+			if (subs[pubkey]?.needs) {
+				needCache.update((cache: any) => ({
+					...cache,
+					[pubkey]: slots
+				}));
+			}
+		}
+		
+		// Reapply filters whenever network data changes
+		applyFiltersAndUpdateSlots();
+	});
+	
+	// Watch unified filter changes
+	const unsubFilters = slotFilters.subscribe(() => {
+		console.log('[AUTO-NEED-SYNC] Filters changed, reapplying...');
+		applyFiltersAndUpdateSlots();
+	});
+	
+	// Initial application
+	applyFiltersAndUpdateSlots();
+	
+	return () => {
+		unsubNeedSubs();
+		unsubNetworkNeeds();
+		unsubFilters();
+		activeSubs.clear();
+		console.log('[AUTO-NEED-SYNC] ⏸️  Disabled automatic need syncing');
 	};
 }
 

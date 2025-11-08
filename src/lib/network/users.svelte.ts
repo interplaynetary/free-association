@@ -80,7 +80,7 @@ export function initializeUsersList() {
 /**
  * Cleanup users list subscription
  */
-export function cleanupUsersList() {
+export async function cleanupUsersList() {
 	if (usersListCallback) {
 		holster.get('freely-associating-players').off(usersListCallback);
 		usersListCallback = null;
@@ -89,6 +89,14 @@ export function cleanupUsersList() {
 	userAliasesCache.set({});
 	isUsersListInitialized = false;
 	console.log('[USERS-LIST] Cleaned up');
+	
+	// Also cleanup organizations and membership
+	const orgsModule = require('$lib/network/organizations.svelte');
+	orgsModule.cleanupOrganizations();
+	
+	const membershipModule = await import('$lib/network/membership.svelte');
+	membershipModule.cleanupMembership();
+	console.log('[USERS-LIST] Organizations and membership cleaned up');
 }
 
 // ================================
@@ -102,6 +110,29 @@ export const userPubKeys = writable<string[]>([]);
 export const userContacts: Writable<ContactsCollectionData> = holsterContacts;
 export const isLoadingContacts = isLoadingHolsterContacts;
 export const contactSearchQuery = writable('');
+
+// V5: Membership management (imports for internal use + re-exports)
+import {
+	getMembershipList,
+	hasMembershipList,
+	cleanupMembership
+} from './membership.svelte';
+
+export {
+	myMembershipLists,
+	myMembershipSubscriptions,
+	membershipCache,
+	initializeMembership,
+	cleanupMembership,
+	setMembershipList,
+	removeMembershipList,
+	addMemberToList,
+	removeMemberFromList,
+	subscribeMembershipList,
+	unsubscribeMembershipList,
+	getMembershipList,
+	hasMembershipList
+} from './membership.svelte';
 
 // User name/alias caching stores
 export const userAliasesCache = writable<Record<string, string>>({});
@@ -512,4 +543,109 @@ export function resolveContactIdsInTree(
 	processNode(resolvedNode);
 
 	return resolvedNode;
+}
+
+// ================================
+// ORGANIZATION MEMBERSHIP RESOLUTION
+// ================================
+
+/**
+ * Resolve organization ID to array of member public keys (recursive!)
+ * 
+ * Handles:
+ * - Direct members (pubkeys)
+ * - Nested organizations (org_ids) - resolved recursively
+ * - Circular references (prevented via visited set)
+ * 
+ * Resolution order:
+ * 1. Check declared membership lists
+ * 2. Check cached membership from subscriptions
+ * 3. Return empty if not found
+ * 
+ * @param org_id - Organization identifier
+ * @param visited - Set of already visited org_ids (prevents infinite loops)
+ * @returns Array of resolved public keys (deduplicated)
+ */
+export function resolveOrganizationMembers(
+	org_id: string,
+	visited: Set<string> = new Set()
+): string[] {
+	// Prevent infinite loops (circular organization references)
+	if (visited.has(org_id)) {
+		console.warn(`[ORG-RESOLVE] Circular reference detected: ${org_id}`);
+		return [];
+	}
+	visited.add(org_id);
+
+	// Get membership list (declared or cached)
+	const members = getMembershipList(org_id);
+	if (!members) {
+		console.log(`[ORG-RESOLVE] No membership list found for ${org_id}`);
+		return [];
+	}
+
+	const resolved: string[] = [];
+
+	// Process each member
+	for (const member of members) {
+		if (member.startsWith('org_')) {
+			// Nested organization - resolve recursively
+			const nestedMembers = resolveOrganizationMembers(member, visited);
+			resolved.push(...nestedMembers);
+		} else {
+			// Direct member (pubkey) - add as-is
+			resolved.push(member);
+		}
+	}
+
+	// Deduplicate
+	return [...new Set(resolved)];
+}
+
+/**
+ * Resolve contributor ID with organization support
+ * 
+ * Handles three types of identifiers:
+ * 1. org_id (starting with "org_") → resolves to array of pubkeys
+ * 2. contact_id (starting with "contact_") → resolves to single pubkey
+ * 3. pubkey (raw) → returns as-is
+ * 
+ * @param contributorId - The identifier to resolve
+ * @returns Array of public keys (may be empty if unresolvable)
+ */
+export function resolveContributorWithOrgs(contributorId: string): string[] {
+	// Case 1: Organization - expand to all members
+	if (contributorId.startsWith('org_')) {
+		return resolveOrganizationMembers(contributorId);
+	}
+
+	// Case 2: Contact ID - resolve to pubkey
+	if (contributorId.startsWith('contact_')) {
+		const pubkey = getPublicKeyFromContactId(contributorId);
+		return pubkey ? [pubkey] : [];
+	}
+
+	// Case 3: Already a pubkey - return as array
+	return [contributorId];
+}
+
+/**
+ * Resolve multiple contributor IDs (with org support)
+ * 
+ * Expands organizations and resolves contacts to public keys.
+ * Returns deduplicated array of all resolved public keys.
+ * 
+ * @param contributorIds - Array of contributor identifiers
+ * @returns Array of resolved public keys (deduplicated)
+ */
+export function resolveContributorsWithOrgs(contributorIds: string[]): string[] {
+	const allResolved: string[] = [];
+
+	for (const id of contributorIds) {
+		const resolved = resolveContributorWithOrgs(id);
+		allResolved.push(...resolved);
+	}
+
+	// Deduplicate
+	return [...new Set(allResolved)];
 }

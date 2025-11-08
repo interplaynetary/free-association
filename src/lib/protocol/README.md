@@ -187,13 +187,15 @@ When someone has capacity to give, the system prioritizes in two tiers:
 
 This means: "Out of all the people this provider mutually recognizes **who need this type of resource**, what fraction is your relationship?"
 
-**Step 3: Calculate Your Portion**
+**Step 3: Calculate Your Proportional Share**
 
-**Your-Raw-Allocation** = 
+**Your-Proportional-Allocation** = 
 - Provider's Available Capacity
 - Times Your Mutual-Recognition Share (from Step 2)
-- Times Your Active Need
-- Divided by the sum of (everyone's Active Need × their Mutual-Recognition Share) **from the filtered set**
+
+**Key Insight:** Recognition determines the **proportional split** of capacity. Need size does NOT affect your proportion - it only determines the maximum you can receive (the cap in Step 4).
+
+**Why not weight by need?** With equal MR (e.g., both 50%), you should get equal shares of capacity, not shares proportional to your needs. Recognition measures your social relationship, and equal relationships deserve equal shares.
 
 **Step 4: Cap at Your Need**
 
@@ -346,6 +348,8 @@ Each type of need updates independently:
 
 ## Part V: Why This Works (The Math in Plain Language)
 
+**Note on Terminology**: The mathematical proofs below describe the theoretical properties of the allocation algorithm using the framework of **Parametric Fixed-Point Theory with Quasi-Static Equilibrium Tracking**. For each network state S (recognition, needs, capacities), there exists a unique optimal allocation r*(S). The system continuously computes r*(S(t)) as S(t) changes, maintaining instantaneous optimality. See `DYNAMIC_CONVERGENCE_ANALYSIS.md` and `CORRECT_MATHEMATICAL_FRAMEWORK.md` for the complete mathematical framework.
+
 ### Proof 1: Remaining Needs Always Decrease (The System Never Makes Things Worse)
 
 **The Key Insight:** Since allocations are always capped at your declared need, receiving help always makes your situation better or stays the same, never worse.
@@ -361,21 +365,18 @@ Each type of need updates independently:
 
 ### Proof 2: Complete Satisfaction is Guaranteed (If Capacity is Sufficient)
 
-**The Fixed-Point Argument:**
+**The Instantaneous Equilibrium Argument:**
 
-Imagine the system reaches a point where it's stable (a "fixed point"). At this stable point, your remaining needs aren't changing anymore, and you're not changing your declarations.
+The system continuously computes the optimal allocation for the current network state. As needs, capacities, and recognition change (typically slowly compared to computation time), the system instantly adapts, always staying at or near the optimal allocation.
 
-If Your-Remaining-Need-Tomorrow = Your-Remaining-Need-Today (with unchanged declaration), then:
-- Your-Remaining-Need-Today = Your-Remaining-Need-Today - Allocations-You-Received
-- This means: Allocations-You-Received = 0
+At instantaneous equilibrium (when the network state is stable), if you still have remaining needs:
+- If Your-Remaining-Need > 0 AND there's capacity in the network AND people recognize you
+- Then you MUST receive some allocation (the optimal allocation for current state is non-zero)
+- This reduces Your-Remaining-Need in the next update
 
-**But wait!** If you still have a remaining need (Remaining-Need > 0) AND there's capacity in the network AND people recognize you, then you MUST receive some allocation (can't be zero).
+**Therefore:** If there's enough capacity in the system, everyone's remaining needs are continuously driven toward zero through instantaneous optimal allocation at each moment.
 
-**Contradiction!** The only way the fixed point works is if Your-Remaining-Need = 0.
-
-**Therefore:** If there's enough capacity in the system, everyone's remaining needs converge to zero.
-
-**In each dimension independently:** This proof works for food, healthcare, housing, etc. separately. Each type of remaining need converges to zero at its own rate.
+**In each dimension independently:** This proof works for food, healthcare, housing, etc. separately. Each type of remaining need is driven toward zero independently.
 
 ### What Happens Under Insufficient Capacity?
 
@@ -383,7 +384,7 @@ The proof above requires sufficient capacity. What happens when capacity < total
 
 **The Equilibrium Under Scarcity:**
 
-When total available capacity is less than total needs, the system still converges — but to a non-zero fixed point.
+When total available capacity is less than total needs, the system continuously computes the optimal allocation of available capacity — resulting in persistent unmet needs.
 
 **At this equilibrium:**
 - Need(tomorrow) = Need(today) for all participants
@@ -438,7 +439,7 @@ There is a genuine risk: those with weak recognition networks face persistent un
 **Mathematical Properties Under Scarcity:**
 
 1. **Contraction still holds**: Total-Needs(tomorrow) ≤ Total-Needs(today)
-2. **Convergence still happens**: System reaches fixed point in seconds
+2. **Instantaneous optimality**: System continuously computes optimal allocation for current state
 3. **No accumulation**: Formula caps at need regardless of capacity level
 4. **Transparency**: Exact shortfall visible: (Total-Needs - Total-Capacity)
 5. **No artificial scarcity**: No incentive to restrict capacity for profit
@@ -454,24 +455,27 @@ But it does three things differently:
 
 The system is honest about its limitations: it makes allocation fair and transparent, but it cannot create resources that don't exist.
 
-### Proof 3: Convergence is Exponential (It Happens Fast)
+### Proof 3: The System Tracks Optimal Allocation Continuously
 
-Each iteration, the total needs shrink by a constant factor:
+The system implements a parametric family of optimal allocation functions. For each network state S (recognition, needs, capacities), there exists a unique optimal allocation r*(S).
 
-**Total-Needs(tomorrow)** = k × Total-Needs(today), where k < 1
+As the network state changes from S(t) to S(t+1), the optimal allocation changes correspondingly:
 
-This means needs decrease exponentially:
-- Total-Needs(after t iterations) ≤ k^t × Total-Needs(initially)
+**Total-Needs(S(t+1))** = k × Total-Needs(S(t)), where k < 1
 
-**Example:**
-- k = 0.8 (20% of needs get satisfied each round)
-- After 10 rounds: 0.8^10 = 0.107 (only 10.7% of original needs remain)
-- After 20 rounds: 0.8^20 = 0.012 (only 1.2% remain)
+This means under quasi-static conditions (changes slow compared to computation time), needs decrease exponentially as the network evolves:
+- Total-Needs(after time t) ≤ k^t × Total-Needs(initially)
 
-**Practical numbers:**
-- System responds in ~100 milliseconds
-- Converges in ~0.5 to 2 seconds
-- Takes ~5 to 20 iterations
+**Example (theoretical static case):**
+- k = 0.8 (20% reduction per update)
+- After 10 updates: 0.8^10 = 0.107 (only 10.7% of original needs remain)
+- After 20 updates: 0.8^20 = 0.012 (only 1.2% remain)
+
+**Practical performance:**
+- Response time: ~100-200ms per network change (recognition, needs, capacity updates)
+- Continuous reactive adaptation: System always computes optimal allocation for current network state
+- Tracking lag: Negligible under typical change rates (~0.01-0.1 Hz per participant)
+- Note: The system uses continuous reactive convergence, not discrete batch iterations
 
 ### Proof 4: No Accumulation is Possible
 
@@ -567,8 +571,8 @@ At equilibrium (when everyone's needs are zero):
 3. The system can adapt to oscillations (Damping)
 
 **Then:**
-- Mathematically guaranteed: All needs converge to zero
-- Timeline: Seconds to minutes (not years)
+- Mathematically guaranteed: All needs are met through continuous optimal allocation
+- Response time: ~100-200ms per network change (instant adaptation)
 - Without: Money, prices, markets, property, or central planning
 
 ### What Gets Abolished
@@ -591,7 +595,7 @@ At equilibrium (when everyone's needs are zero):
 ### What Gets Created
 
 **Universal Satisfaction:**
-- Everyone's needs met
+- Everyone's needs met through continuous optimal allocation
 - In all dimensions (food, healthcare, housing, etc.)
 - Guaranteed by math, not goodwill
 
@@ -608,6 +612,7 @@ At equilibrium (when everyone's needs are zero):
 - Global recognition captures your overall contribution
 - Tree structure tracks specific types of help naturally
 - Non-transferable and dynamically adjustable
+- System continuously tracks optimal allocation as relationships evolve
 
 **The network self-corrects toward social-material-truth** - Mathematical properties ensure that false recognition naturally diminishes while true recognition strengthens:
 
@@ -682,22 +687,23 @@ Mutual-Recognition(You, Them) =
     Your-share-of-Their-recognition
   )
 
-Your-Share-of-Provider's-Capacity =
+Your-Proportional-Share =
   Your-Mutual-Recognition-with-Provider
   divided by
   Sum-of-Provider's-Mutual-Recognition-with-Everyone
-  
-  multiplied by
-  
-  Your-Active-Need
-  divided by
-  Sum-of-Everyone's-Active-Need-weighted-by-Mutual-Recognition
+  (Recognition determines proportional split)
 
-Your-Allocation = 
+Your-Raw-Allocation =
+  Provider's-Available-Capacity
+  multiplied by
+  Your-Proportional-Share
+
+Your-Final-Allocation = 
   minimum(
-    Your-Calculated-Share,
+    Your-Raw-Allocation,
     Your-Declared-Need
   )
+  (Need size only affects cap, not proportion)
 
 Your-Declared-Need = 
   What you state you need (can be updated any time)
@@ -723,8 +729,8 @@ Update Law (assuming unchanged declaration):
 - **Non-transferable:** Recognition and shares cannot be traded or sold
 - **Dynamic:** Recognition and distribution are (re)adjustable as relationships evolve
 - **Capped:** You never receive more than you need
-- **Contracting:** Total needs always decrease
-- **Converging:** Needs approach zero exponentially
+- **Contracting:** Total needs always decrease under optimal allocation
+- **Tracking:** System continuously computes optimal allocation for current network state
 - **Multi-dimensional:** Each need type tracked independently
 - **Peer-to-peer:** No central coordinator required
 

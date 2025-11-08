@@ -14,6 +14,7 @@ export const holster: HolsterInstance = Holster({
 
 export const holsterUser: HolsterUser = holster.user();
 export const holsterUsersList = holster.get('freely-associating-players');
+export const holsterOrganizationsList = holster.get('freely-associating-organizations');
 
 // ═══════════════════════════════════════════════════════════════════
 // ERROR HANDLING
@@ -107,17 +108,45 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 
-		// Initialize users list
-		const usersModule = await import('$lib/network/users.svelte');
-		usersModule.initializeUsersList();
+	// Initialize users list
+	const usersModule = await import('$lib/network/users.svelte');
+	usersModule.initializeUsersList();
 
-		// Enable auto-subscription
-		storesModule.enableAutoSubscriptionSync();
-		console.log('[HOLSTER] ✅ Auto-subscription enabled');
+	// Initialize organizations list
+	const orgsModule = await import('$lib/network/organizations.svelte');
+	orgsModule.initializeOrganizationsList();
+	orgsModule.initializeOrganizations();
+	console.log('[HOLSTER] ✅ Organizations initialized');
 
-		// Enable auto-composition
-		storesModule.enableAutoCommitmentComposition();
-		console.log('[HOLSTER] ✅ Auto-composition enabled');
+	// Initialize membership
+	const membershipModule = await import('$lib/network/membership.svelte');
+	membershipModule.initializeMembership();
+	console.log('[HOLSTER] ✅ Membership initialized');
+
+	// Initialize capacity subscriptions
+	const capacitySubsModule = await import('$lib/network/capacity-subscriptions.svelte');
+	capacitySubsModule.initializeCapacitySubscriptions();
+	console.log('[HOLSTER] ✅ Capacity subscriptions initialized');
+
+	// Enable auto-subscription
+	storesModule.enableAutoSubscriptionSync();
+	console.log('[HOLSTER] ✅ Auto-subscription enabled');
+
+	// Enable auto-composition
+	storesModule.enableAutoCommitmentComposition();
+	console.log('[HOLSTER] ✅ Auto-composition enabled');
+
+	// Enable auto-membership sync
+	storesModule.enableAutoMembershipSync();
+	console.log('[HOLSTER] ✅ Auto-membership sync enabled');
+
+	// Enable auto-capacity sync
+	storesModule.enableAutoCapacitySync();
+	console.log('[HOLSTER] ✅ Auto-capacity sync enabled');
+
+	// Enable auto-need sync
+	storesModule.enableAutoNeedSync();
+	console.log('[HOLSTER] ✅ Auto-need sync enabled');
 
 		callbacks?.onSuccess?.(authState);
 	} catch (error) {

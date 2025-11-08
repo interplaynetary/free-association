@@ -1179,7 +1179,15 @@ export function timeRangesOverlap(
 			);
 		}
 		
-		// CASE 3: Both one-time - fall through to legacy logic below
+		// CASE 3: Both one-time - check time_ranges overlap
+		if (track1 === 'onetime' && track2 === 'onetime') {
+			// Both one-time slots with availability_window
+			// Check if their time_ranges overlap (handles time-of-day matching)
+			if (!anyTimeRangesOverlap(slot1.availability_window.time_ranges, slot2.availability_window.time_ranges)) {
+				return false; // Time-of-day doesn't overlap
+			}
+			// Time ranges overlap, now check dates using legacy logic below
+		}
 	}
 	
 	// **LEGACY APPROACH: Use start_date/end_date if no availability_window**
@@ -1196,9 +1204,13 @@ export function timeRangesOverlap(
 	try {
 		// Parse dates (handle both date-only and datetime strings)
 		const start1 = slot1.start_date ? new Date(slot1.start_date) : new Date('1900-01-01');
-		const end1 = slot1.end_date ? new Date(slot1.end_date) : new Date('2100-12-31');
+		// FIX: For one-time slots without end_date, use start_date as end (same day)
+		// This prevents Tuesday (2024-03-05) from "overlapping" with Wednesday (2024-03-06)
+		const end1 = slot1.end_date ? new Date(slot1.end_date) : 
+		             (slot1.start_date ? new Date(slot1.start_date) : new Date('2100-12-31'));
 		const start2 = slot2.start_date ? new Date(slot2.start_date) : new Date('1900-01-01');
-		const end2 = slot2.end_date ? new Date(slot2.end_date) : new Date('2100-12-31');
+		const end2 = slot2.end_date ? new Date(slot2.end_date) : 
+		             (slot2.start_date ? new Date(slot2.start_date) : new Date('2100-12-31'));
 
 		// Check if date ranges overlap
 		// Range1: [start1, end1], Range2: [start2, end2]

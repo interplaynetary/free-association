@@ -45,8 +45,8 @@ You can interact with an interface implementing this logic at [interplaynetary.g
 
 6. **Your Allocation** from a provider's capacity is calculated through filtered normalization:
    - **Step 1**: Filter for compatible slots (time, location, type must match)
-   - **Step 2**: Calculate your mutual recognition share among filtered recipients
-   - **Step 3**: Weight by your active need (declared need × damping factor)
+   - **Step 2**: Calculate your proportional share based on mutual recognition alone
+   - **Step 3**: Recognition determines the split, need size only affects the cap
    - **Step 4**: Cap at your actual declared need (no accumulation possible)
 
 7. **Needs Update Dynamically**: 
@@ -73,15 +73,14 @@ Your-Active-Need = Your-Declared-Need × Damping-Factor
     where Damping-Factor ∈ {0.5, 0.8, 1.0} based on oscillation detection
 
 Your-Raw-Allocation(You, Provider) = 
-    Provider's-Available-Capacity 
-    × Your-Mutual-Recognition-Share
-    × Your-Active-Need 
-    / Σ (Each-Filtered-Person's-Active-Need × Their-Mutual-Recognition-Share)
+    Provider's-Available-Capacity × Your-Mutual-Recognition-Share
+    (Recognition determines proportional split)
 
 Your-Final-Allocation(You, Provider) = minimum(
     Your-Raw-Allocation, 
     Your-Declared-Need
 )
+    (Need size only affects cap, not proportion)
 
 Your-Remaining-Need(tomorrow) = maximum(
     0, 
@@ -153,7 +152,7 @@ When you contribute surplus to Free Association:
 
 3. 🤲 **Tier 2 enables solidarity** - After meeting mutual needs, remaining capacity flows to others you recognize (even without mutual recognition), helping newcomers and those building their networks
 
-4. 🔄 **The system converges rapidly** - Mathematical properties guarantee that if there's sufficient capacity, everyone's needs converge to zero in seconds (typically 5-20 iterations, ~0.5-2 seconds)
+4. 🔄 **The system adapts continuously** - Allocations recompute automatically when network state changes (recognition, needs, capacity), responding in ~100-200ms. Mathematical properties guarantee that if there's sufficient capacity, everyone's needs are met through continuous reactive tracking
 
 5. 🌍 **Your values shape broader society** - Recognition can be given to those working on causes you value (climate action, community spaces, education) regardless of whether you directly benefit, allowing your surplus to flow toward your social values
 
@@ -218,7 +217,7 @@ This becomes the **collective-priority-distribution** of needs
 The same mathematical properties apply:
 - **Needs-based**: No one receives more than their declared need
 - **Recognition-weighted**: Those with stronger mutual recognition receive proportionally more
-- **Convergent**: The system finds a stable allocation rapidly
+- **Optimal**: The system continuously computes optimal allocation for current network state
 - **Non-accumulative**: Excess recognition doesn't enable accumulation beyond need
 
 ## Advantages

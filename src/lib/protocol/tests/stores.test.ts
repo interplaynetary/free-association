@@ -18,11 +18,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // ═══════════════════════════════════════════════════════════════════
 
 // Mock old state modules to prevent localStorage access
-vi.mock('$lib/network/holster.svelte', () => ({
-	holsterUser: null,
-	holsterUserPub: { subscribe: () => () => {} },
-	default: {}
-}));
+// NOTE: Using real holster.svelte module (it has mockAuth/clearAuth for testing)
 
 vi.mock('$lib/state/gun.svelte', () => ({
 	gun: null,

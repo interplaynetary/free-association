@@ -421,7 +421,12 @@ export const AvailabilitySlotSchema = z.object({
 	// Hierarchical & coordination
 	parent_slot_id: z.string().optional(),
 	mutual_agreement_required: z.boolean().default(false).optional(),
-	priority: z.number().optional()
+	priority: z.number().optional(),
+	
+	// Collective capacity: Who can provide this (pubkeys or org_ids)
+	// Empty/undefined = just me, populated = collective effort
+	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
+	members: z.array(z.string()).optional()
 });
 
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
@@ -482,7 +487,12 @@ export const NeedSlotSchema = z.object({
 	// Hierarchical & coordination
 	parent_slot_id: z.string().optional(),
 	mutual_agreement_required: z.boolean().default(false).optional(),
-	priority: z.number().optional()
+	priority: z.number().optional(),
+	
+	// Collective need: Who needs this (pubkeys or org_ids)
+	// Empty/undefined = just me, populated = collective need
+	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
+	members: z.array(z.string()).optional()
 });
 
 export type NeedSlot = z.infer<typeof NeedSlotSchema>;
@@ -1016,6 +1026,168 @@ export type Contact = z.infer<typeof ContactSchema>;
 export const ContactsCollectionSchema = z.record(z.string(), ContactSchema);
 export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
 export type ContactsCollectionData = ContactsCollection;  // Alias for compatibility
+
+// ═══════════════════════════════════════════════════════════════════
+// ORGANIZATIONS SCHEMA
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Organization - Multi-language names, recursive membership support
+ * 
+ * Organizations provide a way to group people and reference them collectively.
+ * They support multi-language names and can contain other organizations (recursive).
+ * 
+ * Example:
+ * {
+ *   org_id: "org_abc123",
+ *   names: { en: "Community Garden", es: "Jardín Comunitario" },
+ *   emoji: "🌱",
+ *   description: "Local community garden collective"
+ * }
+ */
+export const OrganizationSchema = z.object({
+	org_id: z.string(), // UUID format: org_<uuid>
+	names: z.record(z.string(), z.string()), // Multi-language: { en: "Name", es: "Nombre", ... }
+	emoji: z.string().optional(),
+	description: z.string().optional(),
+	created_at: z.number().optional(),
+	updated_at: z.number().optional(),
+	_updatedAt: z.number().optional() // Holster timestamp
+});
+
+export type Organization = z.infer<typeof OrganizationSchema>;
+
+/**
+ * Organizations Collection - Map of org_id to Organization
+ */
+export const OrganizationsCollectionSchema = z.record(z.string(), OrganizationSchema);
+export type OrganizationsCollection = z.infer<typeof OrganizationsCollectionSchema>;
+
+/**
+ * Membership List - Array of member identifiers (pubkeys or org_ids)
+ * 
+ * Can contain:
+ * - Public keys (base64 strings) - individual members
+ * - org_ids (strings starting with "org_") - nested organizations (recursive!)
+ * 
+ * Example: ["pubkey123...", "org_abc456", "pubkey789..."]
+ */
+export const MembershipListSchema = z.array(z.string());
+export type MembershipList = z.infer<typeof MembershipListSchema>;
+
+/**
+ * User's Declared Membership Lists
+ * 
+ * Maps org_id to array of members.
+ * This is what YOU declare for organizations you manage/track.
+ * 
+ * Example:
+ * {
+ *   "org_abc123": ["pubkey1...", "pubkey2...", "org_def456"],
+ *   "org_xyz789": ["pubkey3...", "pubkey4..."]
+ * }
+ */
+export const UserMembershipListsSchema = z.record(z.string(), MembershipListSchema);
+export type UserMembershipLists = z.infer<typeof UserMembershipListsSchema>;
+
+/**
+ * Membership Subscriptions - Source mappings
+ * 
+ * Maps org_id to the pubkey you're subscribing to for that org's membership.
+ * Instead of declaring the membership yourself, you defer to someone else's list.
+ * 
+ * Example:
+ * {
+ *   "org_abc123": "pubkey_of_alice...",  // Subscribe to Alice's membership list for org_abc123
+ *   "org_xyz789": "pubkey_of_bob..."     // Subscribe to Bob's membership list for org_xyz789
+ * }
+ */
+export const MembershipSubscriptionsSchema = z.record(z.string(), z.string());
+export type MembershipSubscriptions = z.infer<typeof MembershipSubscriptionsSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// UNIFIED CORE CONCEPTS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Members - Unified array of identifiers
+ * 
+ * Used across multiple contexts:
+ * - Organization membership lists
+ * - Slot members (collective capacities/needs)
+ * - Filter conditions (who to include)
+ * 
+ * Can contain:
+ * - Public keys (base64 strings) - individual members
+ * - org_ids (strings starting with "org_") - organizations (recursive!)
+ * - contact_ids (strings starting with "contact_") - contacts
+ */
+export const MembersSchema = z.array(z.string());
+export type Members = z.infer<typeof MembersSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// UNIFIED SLOT FILTER & SUBSCRIPTION SCHEMAS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Slot Filter - Unified filter for capacity AND need slots
+ * 
+ * Single filter can apply to capacity slots, need slots, or both!
+ * Multiple filters are combined with OR (union) - match ANY enabled filter.
+ * 
+ * Examples:
+ * - Filter for capacities that include me: { applies_to: 'capacity', must_include_me: true }
+ * - Filter for food needs from Alice: { applies_to: 'need', source_pubkeys: ['alice...'], need_type_ids: ['food'] }
+ * - Filter for any slots with org involvement: { applies_to: 'both', must_include_ids: ['org_abc123'] }
+ */
+export const SlotFilterSchema = z.object({
+	filter_id: z.string(),
+	name: z.string(), // Human-readable name
+	enabled: z.boolean().default(true),
+	
+	// NEW: What type of slots this filter applies to
+	applies_to: z.enum(['capacity', 'need', 'both']).default('both'),
+	
+	// Filter conditions (all optional, undefined = don't filter on this)
+	source_pubkeys: z.array(z.string()).optional(), // Only from these users
+	need_type_ids: z.array(z.string()).optional(), // Only these types
+	must_include_me: z.boolean().optional(), // Only if I'm in members
+	must_include_ids: MembersSchema.optional(), // Only if includes these IDs (pubkeys, orgs, contacts) - UNIFIED!
+	location_max_distance_km: z.number().optional(), // Max distance from my location
+	min_quantity: z.number().optional(), // Minimum quantity
+	
+	created_at: z.number().optional(),
+	updated_at: z.number().optional()
+});
+
+export type SlotFilter = z.infer<typeof SlotFilterSchema>;
+
+/**
+ * Slot Filters Collection - Map of filter_id to SlotFilter
+ */
+export const SlotFiltersCollectionSchema = z.record(z.string(), SlotFilterSchema);
+export type SlotFiltersCollection = z.infer<typeof SlotFiltersCollectionSchema>;
+
+/**
+ * Slot Subscriptions - Unified subscriptions for capacity AND need slots
+ * 
+ * Maps pubkey → what to subscribe to from that user
+ * Can subscribe to their capacity, needs, or both!
+ * 
+ * Examples:
+ * - Subscribe to Alice's capacities only: { 'alice_pub': { capacity: true, needs: false } }
+ * - Subscribe to Bob's needs only: { 'bob_pub': { capacity: false, needs: true } }
+ * - Subscribe to Carol's both: { 'carol_pub': { capacity: true, needs: true } }
+ */
+export const SlotSubscriptionsSchema = z.record(
+	z.string(), // pubkey
+	z.object({
+		capacity: z.boolean().default(false),
+		needs: z.boolean().default(false)
+	})
+);
+export type SlotSubscriptions = z.infer<typeof SlotSubscriptionsSchema>;
+
 
 // ═══════════════════════════════════════════════════════════════════
 // CHAT SCHEMA (Legacy Compatibility)
