@@ -217,9 +217,9 @@ export async function persistContacts(contacts?: ContactsCollectionData) {
 /**
  * Create a new contact
  */
-export function createContact(
+export async function createContact(
 	contactData: Omit<Contact, 'contact_id' | 'created_at' | 'updated_at'>
-): Contact {
+): Promise<Contact> {
 	// Only check for duplicates if we have a meaningful public key
 	const hasValidPublicKey = contactData.public_key && contactData.public_key.trim() !== '';
 
@@ -242,13 +242,14 @@ export function createContact(
 	const validatedContact = ContactSchema.parse(newContact);
 
 	// Add to contacts collection
+	const currentContacts = get(userContacts) || {};
 	const updatedContacts = {
-		...get(userContacts),
+		...currentContacts,
 		[contact_id]: validatedContact
 	};
 
-	// V5: Update store and persist (Holster-only)
-	updateHolsterContactsStore(updatedContacts);
+	// V5: Update store and persist (Holster-only) - WAIT for persistence!
+	await updateHolsterContactsStore(updatedContacts);
 
 	// Force update the names cache immediately to ensure reactivity
 	if (hasValidPublicKey) {
@@ -266,6 +267,11 @@ export function createContact(
  */
 export function updateContact(contact_id: string, updates: Partial<Contact>): void {
 	const currentContacts = get(userContacts);
+	if (!currentContacts) {
+		console.warn(`[USERS] Cannot update contact: contacts not loaded`);
+		return;
+	}
+	
 	const existingContact = currentContacts[contact_id];
 
 	if (!existingContact) {
@@ -313,6 +319,7 @@ export async function deleteContact(contact_id: string): Promise<void> {
  */
 export function getContactByPublicKey(public_key: string): Contact | undefined {
 	const contacts = get(userContacts);
+	if (!contacts) return undefined;
 	return Object.values(contacts).find((contact) => contact.public_key === public_key);
 }
 
@@ -326,6 +333,7 @@ export function isPublicKeyInUse(public_key: string, excludeContactId?: string):
 	}
 
 	const contacts = get(userContacts);
+	if (!contacts) return false;
 	return Object.values(contacts).some(
 		(contact) => contact.public_key === public_key && contact.contact_id !== excludeContactId
 	);
@@ -347,6 +355,12 @@ export function getIdentifierType(identifier: string): 'contactId' | 'pubKey' {
  */
 export function getPublicKeyFromContactId(contactId: string): string | undefined {
 	const contacts = get(userContacts);
+	
+	// Handle null/undefined contacts (e.g., not loaded yet)
+	if (!contacts) {
+		return undefined;
+	}
+	
 	const contact = contacts[contactId];
 
 	if (!contact) {
@@ -367,6 +381,7 @@ export function getPublicKeyFromContactId(contactId: string): string | undefined
  */
 export function getContactIdFromPublicKey(pubKey: string): string | undefined {
 	const contacts = get(userContacts);
+	if (!contacts) return undefined;
 	const contact = Object.values(contacts).find((contact) => contact.public_key === pubKey);
 	return contact?.contact_id;
 }
@@ -445,14 +460,19 @@ export async function getUserName(identifier: string): Promise<string> {
 	// Check if this is a contactId
 	if (getIdentifierType(identifier) === 'contactId') {
 		const contacts = get(userContacts);
-		const contact = contacts[identifier];
-		if (contact) {
-			displayName = contact.name;
-			shouldCacheInNamesCache = true; // Contact names go in userNamesCache
+		if (contacts) {
+			const contact = contacts[identifier];
+			if (contact) {
+				displayName = contact.name;
+				shouldCacheInNamesCache = true; // Contact names go in userNamesCache
+			} else {
+				// If contactId not found, return the identifier itself as fallback
+				displayName = identifier;
+				shouldCacheInNamesCache = true; // Cache the fallback too
+			}
 		} else {
-			// If contactId not found, return the identifier itself as fallback
+			// Contacts not loaded yet - return identifier as fallback
 			displayName = identifier;
-			shouldCacheInNamesCache = true; // Cache the fallback too
 		}
 	} else {
 		// For pubKey-based lookup, check if we have a contact with this public key

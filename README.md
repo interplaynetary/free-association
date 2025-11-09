@@ -306,6 +306,8 @@ In Free Association, we are free! You don't own me, and I don't own you! We owe 
 
 This is Hegel's resolution of the master-slave dialectic realized in practice: mutual recognition without ownership or domination. Your contributions don't buy you permanent shares — they participate in an evolving network of mutual-recognition that continuously adjusts to reflect real social-material contributions.
 
+We have a world to win! Lets play! 🌍✨☺️
+
 ## Learn more 📚
 
 - [Playnet.lol](https://playnet.lol)
@@ -340,4 +342,52 @@ bun install
 bun run build
 ```
 
-We have a world to win! Lets play! 🌍✨☺️
+## License & Governance
+
+**License:** [GNU Affero General Public License v3.0](LICENSE) with 
+[Additional Terms](LICENSE-ADDITIONAL-TERMS.md)
+
+### Quick Summary
+
+✅ **Anyone can use Free Association** - individuals, cooperatives, non-profits, 
+governments, corporations
+
+✅ **You can modify and deploy it** - fork it, adapt it, run your own instance
+
+✅ **If you run it as a network service** - you must share your source code 
+(that's the AGPL requirement)
+
+✅ **You must give attribution** - credit where credit is due, prevents invisible use
+
+✅ **Modified versions must be clearly marked** - prevents protocol fragmentation
+
+### Why AGPL-3.0?
+
+We want **universal access without universal capture**. AGPL ensures:
+- Anyone can use it (no restrictions on who)
+- Network services must share improvements (prevents proprietary capture)
+- Modifications remain open (keeps the commons healthy)
+
+### Why Additional Terms?
+
+The additional terms (permitted by AGPL Section 7) add:
+- **Attribution requirement** - prevents invisible cooptation
+- **Protocol fidelity marking** - prevents trust-breaking fragmentation
+- **Interoperability commitment** - prevents vendor lock-in
+
+Together: Open for all, captured by none.
+
+### Reference Implementation
+
+This repository is the **canonical reference implementation** of the Free 
+Association protocol, maintained by the core development team.
+
+Other implementations are encouraged, but protocol conformance is measured 
+against this implementation. See [PROTOCOL.md](PROTOCOL.md) for the formal 
+specification.
+
+### Questions?
+
+- Licensing: ruzgar@playnet.lol
+- Protocol: See [PROTOCOL.md](PROTOCOL.md) or open an issue
+- Governance: See [GOVERNANCE.md](GOVERNANCE.md) (coming soon)

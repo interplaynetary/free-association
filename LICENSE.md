@@ -1,3 +1,8 @@
+Copyright © 2025 Playnet / Free Association Coalition / Free Association Development Team
+
+This software is licensed under the GNU Affero General Public License v3.0
+WITH additional terms as specified in LICENSE-ADDITIONAL-TERMS.md
+
 # GNU Affero General Public License
 
 _Version 3, 19 November 2007_

@@ -108,9 +108,13 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 
-		// Initialize users list
-		const usersModule = await import('$lib/network/users.svelte');
-		usersModule.initializeUsersList();
+	// Initialize users list
+	const usersModule = await import('$lib/network/users.svelte');
+	usersModule.initializeUsersList();
+	
+	// Initialize contacts
+	usersModule.initializeContacts();
+	console.log('[HOLSTER] ✅ Contacts initialized');
 
 	// Initialize organizations list
 	const orgsModule = await import('$lib/network/organizations.svelte');
@@ -268,8 +272,9 @@ export async function signout(): Promise<void> {
 
 	// Cleanup users list
 	try {
-		const { cleanupUsersList } = await import('$lib/network/users.svelte');
+		const { cleanupUsersList, cleanupContacts } = await import('$lib/network/users.svelte');
 		cleanupUsersList();
+		cleanupContacts();
 	} catch (error) {
 		console.error('[HOLSTER SIGNOUT] Error cleaning up users list:', error);
 	}

@@ -413,6 +413,8 @@
 		overflow: hidden;
 		width: 100%;
 		height: 100%;
+		max-width: 100%;
+		max-height: 100%;
 		box-sizing: border-box;
 		position: relative;
 		border-radius: 999px;
@@ -427,6 +429,7 @@
 		overflow: hidden;
 		min-width: 1px;
 		flex-shrink: 0;
+		box-sizing: border-box;
 	}
 
 	/* Mobile: Horizontal bars */
@@ -451,6 +454,14 @@
 		.bar-segment {
 			width: 100%;
 			height: calc(var(--segment-pct) * 1%);
+			min-height: 0;
+		}
+		
+		.segment-label,
+		.segment-value {
+			font-size: 0.5rem;
+			writing-mode: vertical-rl;
+			text-orientation: mixed;
 		}
 	}
 
@@ -485,18 +496,19 @@
 	.segment-label,
 	.segment-value {
 		color: #000;
-		font-size: 0.8rem;
+		font-size: 0.65rem;
 		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 		white-space: nowrap;
-		padding: 0 4px;
+		padding: 0 2px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-weight: 500;
+		max-width: 100%;
 	}
 
 	.segment-label.small,
 	.segment-value.small {
-		transform: scale(0.8);
+		font-size: 0.5rem;
 		opacity: 0.9;
 	}
 

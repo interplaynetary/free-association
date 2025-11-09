@@ -68,37 +68,8 @@
 	globalOrganizations.update(orgs => ({ ...orgs, ...DEMO_ORGANIZATIONS }));
 	console.log('[ORG-PAGE] Registered demo organizations');
 
-	// Clone tree and inject org contributors IMMEDIATELY
-	const orgTreeWithContributors = (() => {
-		const tree = structuredClone(data.tree);
-		if (data.recognizes && data.recognizes.length > 0) {
-			console.log('[ORG-PAGE] Injecting org contributors:', data.recognizes);
-			
-			// Recursively find all LEAF nodes (nodes with no children) and add org contributors
-			function injectIntoLeafNodes(node: any) {
-				if (node.type === 'NonRootNode') {
-					if (!node.children || node.children.length === 0) {
-						// This is a leaf node - add org contributors
-						const nonRoot = node as NonRootNode;
-						nonRoot.contributors = [
-							...nonRoot.contributors,
-							...data.recognizes
-						];
-						console.log('[ORG-PAGE] Added org contributors to leaf node:', node.name);
-					} else {
-						// This node has children - recurse into them
-						node.children.forEach((child: any) => injectIntoLeafNodes(child));
-					}
-				} else if (node.type === 'RootNode' && node.children) {
-					// Root node - recurse into children
-					node.children.forEach((child: any) => injectIntoLeafNodes(child));
-				}
-			}
-			
-			injectIntoLeafNodes(tree);
-		}
-		return tree;
-	})();
+	// Use the tree as-is - it already has node-specific contributors from the JSON config
+	const orgTreeWithContributors = structuredClone(data.tree);
 
 	// Initialize demo tree with organization-specific tree IMMEDIATELY
 	// Force initialization to ensure we load the org tree even if another tree exists
@@ -720,7 +691,8 @@
 						segments={$barSegments}
 						width="100%"
 						height="100%"
-						showLabelsOnSelect={true}
+						showLabels={true}
+						showLabelsAboveOnSelect={true}
 						showValues={false}
 						rounded={false}
 					/>
@@ -747,7 +719,8 @@
 						segments={$providerSegments}
 						width="100%"
 						height="100%"
-						showLabelsOnSelect={true}
+						showLabels={true}
+						showLabelsAboveOnSelect={true}
 						showValues={false}
 						rounded={false}
 					/>
@@ -954,17 +927,21 @@
 		position: relative;
 	}
 
-	.view-content,
-	.bars {
+	.view-content {
 		width: 100%;
 		height: 100%;
 		overflow: auto;
 	}
-
+	
 	.bars {
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
 		display: flex;
 		gap: 0.5rem;
 		padding: 0.5rem;
+		box-sizing: border-box;
+		min-width: 0;
 	}
 
 	/* Mobile: Horizontal bars stacked vertically */
@@ -981,15 +958,23 @@
 			align-items: center;
 			height: 2rem;
 			width: 100%;
+			min-width: 0;
+			overflow: hidden;
 		}
 
 		.bar-area {
 			height: 100%;
 			width: 100%;
+			min-width: 0;
+			max-width: 100%;
+			overflow: hidden;
 		}
 
 		.bar-label {
-			white-space: normal;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			flex-shrink: 0;
 		}
 
 		.label-mobile {
@@ -1012,11 +997,14 @@
 			display: flex;
 			flex-direction: column;
 			width: 2rem;
+			min-width: 2rem;
+			max-width: 2rem;
 			height: 100%;
 			min-height: 0;
 			max-height: 100%;
 			gap: 0.25rem;
 			overflow: hidden;
+			flex-shrink: 0;
 		}
 
 		.bar-area {
@@ -1026,6 +1014,8 @@
 			align-items: flex-end;
 			width: 100%;
 			min-height: 0;
+			max-width: 100%;
+			overflow: hidden;
 		}
 
 		.bar-label {
@@ -1033,7 +1023,11 @@
 			font-size: min(0.5em, 1vw);
 			padding: 0 0.25rem;
 			max-width: 100%;
+			width: 100%;
 			text-align: center;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.label-mobile {

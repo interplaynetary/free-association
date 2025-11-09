@@ -3,97 +3,361 @@
 	import { marked } from 'marked';
 
 	const privacyContent = `# Privacy Policy
-## P2P Location & Messaging Protocol (Beta)
+## Free-Association: Hybrid P2P/Centralized Service (Beta)
 
-**Last Updated:** 2025-06-04  
-**Effective Date:** 2025-06-04
----
-
-## ⚠️ Technical & Privacy Disclosures
-
-### How Your Data Flows
-- **Direct P2P Communication**: Your device connects directly to other protocol users' devices
-- **No Central Servers**: No company servers store or process your data
-- **Voluntary Participation**: Users voluntarily join the distributed network
-- **Autonomous Operation**: Each peer operates independently without central coordination
-- **Public Data Sharing**: ALL shared data is transmitted and stored publicly without encryption across the peer network
-
-### Data Storage & Processing
-- **Peer-to-Peer Only**: Data shared directly between user devices
-- **No Service Provider Storage**: We do not store, access, or control any user data
-- **User-Controlled**: Each user decides what data to share and with whom
-- **Distributed Replication**: Data may replicate to multiple peer devices based on protocol mechanics
-- **ALL DATA PUBLIC BY DEFAULT**: Location coordinates, messages, user interactions, and all shared content are transmitted and stored WITHOUT encryption
-- **No Privacy Guarantees**: Any data shared through the protocol should be considered permanently public and globally accessible
-
-### What We Do NOT Do
-- ❌ Operate servers or cloud infrastructure
-- ❌ Store or process user data
-- ❌ Monitor network activity
-- ❌ Control data distribution
-- ❌ Provide user support or services
-- ❌ Moderate content or behavior
-- ❌ Have access to user communications
-- ❌ Collect analytics or telemetry
-
-## 🌐 Data Protection & Privacy Laws
-
-### GDPR and Other Privacy Laws
-- **You are the Data Controller**: Users are data controllers for their own peer operations
-- **No Processing by Us**: We do not process personal data as defined by privacy laws
-- **User Responsibility**: Peer operators must comply with applicable privacy laws
-- **No Data Controller Role**: We are not data controllers or processors under GDPR
-
-### Data Collection & Usage
-- **No Collection by Us**: We do not collect any user data
-- **Peer Network Data**: All data is shared directly between peers
-- **Public Nature**: All shared data should be considered public and permanent
-- **User Control**: You control what data you share through the protocol
-
-### Data Security
-- **No Encryption**: Data is transmitted and stored WITHOUT encryption
-- **Public Network**: All peer communications are public
-- **User Responsibility**: Users are responsible for their own data security
-- **No Security Guarantees**: Protocol provides no built-in security features
-
-## 🔒 User Privacy Recommendations
-
-### Best Practices
-- Only share data you are comfortable being public
-- Do not share sensitive personal information
-- Be aware that all shared data may be permanent
-- Consider local privacy laws before sharing data
-
-### Data Sharing Considerations
-- Location data is public and unencrypted
-- Messages are public and unencrypted
-- User interactions are public and traceable
-- No deletion guarantees for shared data
-
-## 📝 Privacy Rights
-
-### Your Rights
-- Control what data you share
-- Choose when to participate in the network
-- Operate your peer independently
-- Comply with local privacy laws
-
-### Important Notes
-- We cannot assist with data access requests
-- We cannot delete or modify shared data
-- We have no access to user data
-- All privacy controls are user-managed
+**Last Updated:** 2025-11-09  
+**Effective Date:** 2025-11-09
 
 ---
 
-**PRIVACY ACKNOWLEDGMENT**
+## 📋 Overview
 
-By using this protocol, I acknowledge that:
+Free-Association operates as a **hybrid service** with both centralized and peer-to-peer components. This means:
+- We operate servers that process limited account data (we ARE a data controller)
+- Data you share in recognition trees enters a P2P network and becomes PUBLIC
+- We CANNOT delete or control data once it enters the P2P network
 
-1. All shared data will be PUBLIC and UNENCRYPTED
-2. The developers do not collect or control any user data
-3. I am responsible for my own data privacy
-4. Shared data may be permanent and globally accessible`;
+This policy describes what data we collect, how we use it, and the limitations of privacy in a hybrid P2P system.
+
+---
+
+## 🏢 Who We Are (Data Controller Information)
+
+**Service Name:** Free-Association  
+**Operator:** [LEGAL_ENTITY_NAME]  
+**Contact:** ruzgar@playnet.lol  
+**Website:** https://playnet.lol  
+**Data Controller:** [LEGAL_ENTITY_NAME] for centralized account data
+
+**Our Role Under Privacy Laws:**
+- ✅ **Data Controller**: We determine purposes and means of processing account data
+- ✅ **Service Provider**: We operate servers and provide centralized services
+- ❌ **NOT a Controller of P2P Data**: Once data enters the P2P network, we have no control over it
+
+---
+
+## 📊 What Data We Collect & Process
+
+### 1. Account Data (Centralized - We Control)
+
+**Data We Collect:**
+- **Username**: Your chosen display name (public identifier)
+- **Email Address**: Stored encrypted, used for validation and password reset
+- **Password**: Stored as a cryptographic hash (we never see your plain password)
+- **Public Key**: Your cryptographic public key (public identifier)
+- **Encrypted Public Key (epub)**: Used for encrypted communications
+- **Invite Code**: Code used to create your account (relationship tracking)
+- **Account Creation Date**: When you joined
+- **Feed Subscription Data**: Number and types of RSS feeds you subscribe to
+- **Validation Codes**: Temporary codes for email validation (deleted after use)
+
+**Legal Basis (GDPR):** Legitimate interest and contract performance
+
+**Storage Location:** Our servers (Gun/Holster relay servers)
+
+**Retention:** Until you request account deletion or service termination
+
+**Who Has Access:** 
+- Our system administrators (encrypted data)
+- You (via account access)
+
+### 2. Service Usage Data (Centralized)
+
+**Data We May Collect:**
+- **API Request Logs**: Authentication attempts, rate limiting data (retained 30 days)
+- **Error Logs**: Technical errors for debugging (retained 30 days)
+- **Health Monitoring**: Service availability metrics (no personal identifiers)
+
+**Legal Basis (GDPR):** Legitimate interest (security and service operation)
+
+### 3. P2P Network Data (Decentralized - We CANNOT Control)
+
+**Data That Enters P2P Network:**
+- **Recognition Trees**: Your declarations of who contributes to your self-actualization
+- **Capacity Declarations**: Resources you declare as available
+- **Allocation Data**: Calculated allocations and mutual recognition
+- **Public Messages/Interactions**: Any content you share
+- **Timestamps**: When data was created/modified
+- **Cryptographic Signatures**: Proof of authorship
+
+**⚠️ CRITICAL PRIVACY WARNINGS:**
+
+**Once data enters the P2P network:**
+1. ❌ **We CANNOT delete it** - Data replicates to other peers
+2. ❌ **We CANNOT modify it** - P2P protocol design prevents modification
+3. ❌ **We CANNOT control who sees it** - All P2P data is PUBLIC
+4. ❌ **We CANNOT prevent copies** - May be stored on thousands of devices
+5. ❌ **We CANNOT guarantee deletion** - Even if you request account deletion
+
+**Legal Basis:** Consent (by sharing data, you consent to public distribution)
+
+**Storage Location:** Distributed across all peer devices (worldwide)
+
+**Retention:** PERMANENT (may persist indefinitely, beyond our control)
+
+**Who Has Access:** EVERYONE (all P2P data is public and unencrypted)
+
+---
+
+## 🔒 How We Use Your Data
+
+### Account Data (Centralized)
+**We use your account data to:**
+- ✅ Authenticate you to the service
+- ✅ Send account validation emails
+- ✅ Process password reset requests
+- ✅ Manage invite code system
+- ✅ Track feed subscription limits
+- ✅ Provide core service functionality
+
+**We do NOT:**
+- ❌ Sell your data to third parties
+- ❌ Use your data for advertising
+- ❌ Share your email with others (stored encrypted)
+- ❌ Track your behavior for profiling
+- ❌ Use your data beyond service operation
+
+### P2P Network Data
+**We do NOT control P2P data usage because:**
+- Data is stored on peer devices (not our servers)
+- Peers operate independently
+- Protocol is decentralized by design
+- We have no technical ability to control P2P data
+
+---
+
+## 🌐 Data Sharing & Third Parties
+
+### Who We Share Data With
+
+**Account Data (Centralized):**
+- ❌ **We do NOT share** your email or encrypted account data with third parties
+
+**Optional Service Integrations:**
+- **OpenRouter (AI Service)**: Only if you use AI features, we proxy requests (no personal identifiers sent)
+- **SMTP Service**: For sending validation/password reset emails (standard email delivery)
+
+**Legal Requirements:**
+- ✅ We may disclose data if required by law (court orders, subpoenas)
+
+**P2P Network Data:**
+- ⚠️ **ALL P2P data is PUBLIC** - Shared with every peer in the network
+- ⚠️ **We have no control** over how peers use public P2P data
+
+---
+
+## 🔐 Data Security
+
+### Security Measures We Implement
+
+**For Centralized Account Data:**
+- ✅ Encrypted storage of email addresses
+- ✅ Password hashing (bcrypt/scrypt)
+- ✅ TLS/SSL encryption for data in transit
+- ✅ Authentication and access controls
+- ✅ Regular security updates
+
+**Limitations:**
+- ❌ **No system is 100% secure** - Breaches are possible
+- ❌ **P2P data is unencrypted** - Public by design
+- ❌ **We cannot secure P2P data** - It's public across thousands of devices
+
+---
+
+## 📝 Your Rights Under Privacy Laws (GDPR/CCPA)
+
+### Rights for CENTRALIZED Account Data ONLY
+
+**You have the right to:**
+
+1. ✅ **Access**: Request a copy of your account data we store
+2. ✅ **Rectification**: Correct inaccurate account information
+3. ✅ **Deletion**: Request deletion of your account from our servers
+4. ✅ **Data Portability**: Export your account data in structured format
+5. ✅ **Withdraw Consent**: Stop using the service and delete your account
+6. ✅ **Object**: Object to processing for legitimate interests
+7. ✅ **Lodge Complaint**: File complaint with supervisory authority
+
+**How to Exercise Rights:**
+- Email: ruzgar@playnet.lol
+- Subject: "Privacy Rights Request"
+- We will respond within 30 days (GDPR requirement)
+
+### Rights for P2P NETWORK Data - CRITICAL LIMITATIONS
+
+**⚠️ WE CANNOT fulfill these rights for P2P data:**
+
+1. ❌ **Right to Deletion**: We CANNOT delete data from P2P network
+2. ❌ **Right to Rectification**: We CANNOT modify data in P2P network
+3. ❌ **Right to Restrict Processing**: We CANNOT control peer processing
+4. ❌ **Right to Object**: We CANNOT stop peers from storing public data
+
+**Why?**
+- P2P data is distributed across thousands of independent peer devices
+- No central authority controls the P2P network
+- Data is replicated and stored independently by each peer
+- Protocol design prevents centralized deletion or modification
+
+**What This Means:**
+- Once data enters P2P network, it's PERMANENT
+- GDPR "right to be forgotten" CANNOT apply to P2P data
+- You must treat all P2P data as PUBLIC and PERMANENT before sharing
+
+---
+
+## ⚠️ CRITICAL PRIVACY WARNINGS
+
+### NO PRIVACY FOR P2P DATA
+
+**🚨 UNDERSTAND BEFORE USING:**
+
+1. **ALL P2P DATA IS PUBLIC**
+   - Recognition trees are public
+   - Capacity declarations are public
+   - Usernames and public keys are public
+   - All interactions are public and traceable
+
+2. **P2P DATA IS PERMANENT**
+   - May persist indefinitely on peer devices
+   - We CANNOT delete it
+   - May be archived, copied, analyzed by anyone
+
+3. **NO ENCRYPTION FOR P2P DATA**
+   - Data transmitted in clear text
+   - Anyone can read it
+   - No privacy guarantees
+
+4. **NO CONTROL AFTER SHARING**
+   - Cannot modify data once shared
+   - Cannot restrict who sees it
+   - Cannot prevent copies
+
+### What You Should NEVER Share
+
+**Do NOT share via Free-Association:** (unless you want them public forever)
+- Real names 
+- Physical addresses or locations
+- Phone numbers
+- Email addresses (other than encrypted account email)
+- Financial information
+- Government ID numbers
+- Health/medical information
+- Passwords or credentials
+- Private personal information
+- Data about others without their consent
+
+---
+
+## 🌍 International Data Transfers
+
+**Where Data Is Stored:**
+- **Centralized Account Data**: [SERVER_LOCATION/JURISDICTION]
+- **P2P Network Data**: Distributed globally across all peer devices
+
+**Cross-Border Transfers:**
+- P2P data automatically transfers globally (no control possible)
+- By using the service, you consent to global data distribution
+
+---
+
+## 👶 Children's Privacy
+
+**Age Requirement:** 18+ years old (or parental consent)
+
+**We do NOT knowingly collect data from children under 18 without consent.**
+
+If you believe a child has created an account without consent:
+- Contact: ruzgar@playnet.lol
+- We will delete the centralized account data
+- ⚠️ But we CANNOT delete P2P data they shared
+
+---
+
+## 🔄 Data Retention
+
+### Centralized Account Data
+- **Active Accounts**: Retained while account is active
+- **Deleted Accounts**: Removed from our servers within 30 days
+- **Logs**: API/error logs retained 30 days maximum
+
+### P2P Network Data
+- **Retention**: PERMANENT (indefinite, beyond our control)
+- **Deletion**: NOT POSSIBLE after data enters P2P network
+
+---
+
+## 📱 Cookies & Tracking
+
+**We Use:**
+- ✅ Essential session cookies (authentication)
+- ✅ Local storage (browser-side data only)
+
+**We do NOT use:**
+- ❌ Advertising cookies
+- ❌ Third-party tracking cookies
+- ❌ Analytics cookies (currently)
+
+---
+
+## 📞 Contact & Privacy Requests
+
+### Data Protection Contact
+**Email:** ruzgar@playnet.lol  
+**Subject Line:** "Privacy Request - [Your Request Type]"
+
+**For Privacy Requests, Include:**
+1. Your username
+2. Email associated with account
+3. Specific request (access, deletion, correction)
+4. Verification of identity
+
+**Response Time:** Within 30 days (GDPR requirement)
+
+### Supervisory Authority
+If you're in the EU, you have the right to lodge a complaint with your data protection authority:
+- Find your authority: https://edpb.europa.eu/about-edpb/board/members_en
+
+---
+
+## 🔄 Changes to This Privacy Policy
+
+**We may update this policy to:**
+- Reflect service changes
+- Comply with new laws
+- Improve clarity
+
+**When We Update:**
+- ✅ Post new version with updated "Last Updated" date
+- ✅ Notify via email for material changes (if we have your email)
+- ✅ Continue using service = acceptance of new policy
+
+---
+
+## ✅ PRIVACY ACKNOWLEDGMENT
+
+**BY USING FREE-ASSOCIATION, YOU ACKNOWLEDGE:**
+
+1. ✅ You understand the **hybrid architecture** (centralized account data + public P2P network)
+
+2. ✅ You understand **all P2P data is PUBLIC, UNENCRYPTED, and PERMANENT**
+
+3. ✅ You understand **we CANNOT delete P2P data** once shared
+
+4. ✅ You understand **GDPR rights do NOT apply** to P2P data (only to centralized account data)
+
+5. ✅ You consent to **account data processing** as described in this policy
+
+6. ✅ You consent to **global distribution** of any data you share in the P2P network
+
+7. ✅ You will **NOT share sensitive personal information** through the service
+
+8. ✅ You are **solely responsible** for privacy implications of data YOU share
+
+---
+
+**Last Updated:** 2025-11-09  
+**Version:** 2.0.0 (Hybrid Architecture Disclosure)  
+**Effective Date:** 2025-11-09`;
 
 	let htmlContent = '';
 

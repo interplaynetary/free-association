@@ -857,9 +857,9 @@
 		return substitutionCount;
 	}
 
-	function handleCreateContact(detail: { name: string; publicKey?: string }) {
+	async function handleCreateContact(detail: { name: string; publicKey?: string }) {
 		try {
-			const newContact = createContact({
+			const newContact = await createContact({
 				name: detail.name,
 				public_key: detail.publicKey
 			});

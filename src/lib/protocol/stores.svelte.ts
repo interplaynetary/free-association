@@ -50,7 +50,7 @@ import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/
 import { myMembershipLists, myMembershipSubscriptions, membershipCache } from '$lib/network/membership.svelte';
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
 import { applyFiltersUnion, mergeSlots } from '$lib/protocol/utils/capacity-filters';
-import { resolveContributorWithOrgs } from '$lib/network/users.svelte';
+import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1478,14 +1478,20 @@ export function syncSubscriptionsWithTree() {
 	console.log(`[🔄 AUTO-SUB] Tree has ${currentContributors.length} contributors`);
 	console.log(`[🔄 AUTO-SUB] Currently subscribed to ${currentSubscriptions.length} users`);
 	
+	// ✅ CRITICAL: Resolve contact IDs to public keys before subscribing!
+	// Network subscriptions only work with public keys, not local contact IDs
+	const resolvedContributors = currentContributors
+		.map(id => resolveToPublicKey(id) || id)
+		.filter((pubKey, index, self) => self.indexOf(pubKey) === index); // Deduplicate
+	
 	// Find who to subscribe to (new contributors)
-	const toSubscribe = currentContributors.filter(
+	const toSubscribe = resolvedContributors.filter(
 		contributor => !currentSubscriptions.includes(contributor)
 	);
 	
 	// Find who to unsubscribe from (removed contributors)
 	const toUnsubscribe = currentSubscriptions.filter(
-		subscribed => !currentContributors.includes(subscribed)
+		subscribed => !resolvedContributors.includes(subscribed)
 	);
 	
 	// Subscribe to new contributors
@@ -1500,7 +1506,7 @@ export function syncSubscriptionsWithTree() {
 		unsubscribeFromParticipant(removed);
 	}
 	
-	console.log(`[🔄 AUTO-SUB] ✅ Sync complete: +${toSubscribe.length} new, -${toUnsubscribe.length} removed, =${currentContributors.length} total`);
+	console.log(`[🔄 AUTO-SUB] ✅ Sync complete: +${toSubscribe.length} new, -${toUnsubscribe.length} removed, =${resolvedContributors.length} total`);
 }
 
 /**
@@ -2005,8 +2011,24 @@ export function composeCommitmentFromSources(): Commitment | null {
 	// ✅ CRITICAL FIX: Merge network ITCs to prevent data loss!
 	const mergedITC = getMergedITCStamp(existingCommitment?.itcStamp);
 	
-	// Include self-recognition (it's JSON, perfectly valid!)
-	const recognitionWeightsForNetwork = { ...recognitionWeights }; // Include self!
+	// ✅ CRITICAL: Resolve contact IDs to public keys before publishing!
+	// Contact IDs are local-only - the network only understands public keys
+	const recognitionWeightsForNetwork: Record<string, number> = {};
+	let resolvedCount = 0;
+	
+	for (const [identifier, weight] of Object.entries(recognitionWeights || {})) {
+		// Resolve contact IDs to public keys (leaves public keys unchanged)
+		const resolvedKey = resolveToPublicKey(identifier) || identifier;
+		if (resolvedKey !== identifier) {
+			console.log(`[📝 COMPOSE] 🔄 Resolved contact ID ${identifier} → ${resolvedKey.slice(0, 20)}...`);
+			resolvedCount++;
+		}
+		recognitionWeightsForNetwork[resolvedKey] = weight;
+	}
+	
+	if (resolvedCount > 0) {
+		console.log(`[📝 COMPOSE] ✅ Resolved ${resolvedCount} contact ID(s) to public keys for network`);
+	}
 	
 	if (myPub && recognitionWeightsForNetwork[myPub] !== undefined) {
 		console.log(`[📝 COMPOSE] ✅ Including self-recognition (${(recognitionWeightsForNetwork[myPub] * 100).toFixed(2)}%) in commitment`);

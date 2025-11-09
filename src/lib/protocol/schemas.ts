@@ -1027,8 +1027,20 @@ export type Contact = z.infer<typeof ContactSchema>;
 
 /**
  * Contacts Collection - Map of contact_id to Contact
+ * 
+ * Note: Uses preprocess to strip _updatedAt timestamp from createStore()
  */
-export const ContactsCollectionSchema = z.record(z.string(), ContactSchema);
+export const ContactsCollectionSchema = z.preprocess(
+	(data: any) => {
+		// Strip _updatedAt if present
+		if (data && typeof data === 'object') {
+			const { _updatedAt, ...rest } = data;
+			return rest;
+		}
+		return data;
+	},
+	z.record(z.string(), ContactSchema)
+);
 export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
 export type ContactsCollectionData = ContactsCollection;  // Alias for compatibility
 

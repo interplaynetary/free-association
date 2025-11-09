@@ -175,6 +175,7 @@
 	let showPassword = $state(false);
 	let showConfirmPassword = $state(false); // For registration confirm password
 	let agreedToTerms = $state(false); // Added for terms agreement
+	let agreedToDataPublic = $state(false); // Added for understanding data is public
 	let loginPanelTimer = $state<number | null>(null); // Timer for auto-closing login panel
 	let isPanelClosing = $state(false); // State for smooth fade-out transition
 	let shouldPreserveFormValues = $state(true); // Flag to control whether form values should be preserved
@@ -342,6 +343,7 @@
 			confirmPassword = '';
 			isRegisterMode = false;
 			agreedToTerms = false;
+			agreedToDataPublic = false;
 		}
 
 		// Always reset these UI state values
@@ -480,6 +482,7 @@
 		errorMessage = '';
 		authMessage = '';
 		agreedToTerms = false;
+		agreedToDataPublic = false;
 	}
 
 	// Validate the form data
@@ -492,6 +495,11 @@
 		if (isRegisterMode) {
 			if (!agreedToTerms) {
 				errorMessage = 'Please agree to the Privacy Policy and Terms of Use';
+				return false;
+			}
+
+			if (!agreedToDataPublic) {
+				errorMessage = 'Please confirm you understand that all data shared will be public and permanent';
 				return false;
 			}
 
@@ -942,26 +950,30 @@
 			</div>
 		</div>
 
-		<div class="header-controls">
-			<LanguageSwitcher />
-			
-					<!--
-
-		{#if $userAlias}
-			<a href="{base}/quests" class="icon-button quest-button" title="View your quests">
-				<span>🎯</span>
-			</a>
-		{/if}
+	<div class="header-controls">
+		<LanguageSwitcher />
 		
-		<a href="{base}/donate-key" class="icon-button donate-button" title="Donate OpenRouter API Key">
-			<span>🎁</span>
+		<a href="{base}/org" class="icon-button org-button" title="Climate Organizations Directory">
+			<span>🌿</span>
 		</a>
-		-->
-
 		
-		<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
-				<span>❓</span>
-			</button>
+				<!--
+
+	{#if $userAlias}
+		<a href="{base}/quests" class="icon-button quest-button" title="View your quests">
+			<span>🎯</span>
+		</a>
+	{/if}
+	
+	<a href="{base}/donate-key" class="icon-button donate-button" title="Donate OpenRouter API Key">
+		<span>🎁</span>
+	</a>
+	-->
+
+	
+	<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
+			<span>❓</span>
+		</button>
 
 			<!--
 			<button
@@ -1246,6 +1258,20 @@
 									</span>
 								</label>
 							</div>
+
+							<div class="form-group checkbox-group">
+								<label class="checkbox-label">
+									<input
+										type="checkbox"
+										id="agreedToDataPublic"
+										bind:checked={agreedToDataPublic}
+										disabled={isLoading}
+									/>
+									<span class="checkbox-text">
+										I understand that all data I share will be public and potentially permanent
+									</span>
+								</label>
+							</div>
 						{/if}
 
 						<div class="actions">
@@ -1255,7 +1281,7 @@
 								disabled={isLoading ||
 									!usernameInput ||
 									!password ||
-									(isRegisterMode && (!confirmPassword || !agreedToTerms))}
+									(isRegisterMode && (!confirmPassword || !agreedToTerms || !agreedToDataPublic))}
 							>
 								{#if isLoading}
 									<div class="spinner small"></div>

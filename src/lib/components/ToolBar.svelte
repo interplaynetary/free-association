@@ -868,6 +868,15 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- Footer links and copyright (right side) -->
+			<div class="toolbar-footer">
+				<a href="{base}/terms" class="footer-link">Terms</a>
+				<span class="footer-separator">•</span>
+				<a href="{base}/privacy" class="footer-link">Privacy</a>
+				<span class="footer-separator">•</span>
+				<span class="copyright">© Playnet</span>
+			</div>
 		</div>
 
 		<!-- Forest subtrees panel for main route -->
@@ -1067,7 +1076,7 @@
 
 	.toolbar {
 		display: flex;
-		justify-content: flex-start;
+		justify-content: space-between;
 		align-items: center;
 		padding: 8px 16px;
 		background: white;
@@ -1081,7 +1090,39 @@
 		gap: 8px;
 		align-items: center;
 		height: 100%;
-		width: 100%;
+		flex: 1;
+	}
+
+	.toolbar-footer {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 2px;
+		font-size: 9px;
+		color: #999;
+		flex-shrink: 0;
+	}
+
+	.footer-link {
+		color: #999;
+		text-decoration: none;
+		transition: color 0.2s ease;
+		line-height: 1.2;
+	}
+
+	.footer-link:hover {
+		color: #666;
+		text-decoration: underline;
+	}
+
+	.footer-separator {
+		display: none;
+	}
+
+	.copyright {
+		color: #bbb;
+		font-size: 8px;
+		line-height: 1.2;
 	}
 
 	/* View Switcher Container */
@@ -1737,6 +1778,15 @@
 
 		.search-panel {
 			width: 280px;
+		}
+
+		.toolbar-footer {
+			font-size: 7px;
+			gap: 4px;
+		}
+
+		.copyright {
+			font-size: 7px;
 		}
 	}
 </style>
