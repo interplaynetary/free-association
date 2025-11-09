@@ -5,19 +5,22 @@
 		TimePatternEditor, 
 		DivisibilityEditor, 
 		LocationEditor,
+		SlotAllocationDetails,
 		type LocationData
 	} from './slots';
 	import { t } from '$lib/translations';
+	import { holsterUserPub } from '$lib/network/holster.svelte';
 
 	interface Props {
 		slot: AvailabilitySlot;
 		capacityId: string;
 		canDelete: boolean;
+		isCapacity?: boolean; // Whether this is a capacity slot (vs need slot)
 		onupdate?: (slot: AvailabilitySlot) => void;
 		ondelete?: (slotId: string) => void;
 	}
 
-	let { slot, capacityId, canDelete, onupdate, ondelete }: Props = $props();
+	let { slot, capacityId, canDelete, isCapacity = false, onupdate, ondelete }: Props = $props();
 
 	// UI state for expanded sections
 	let timeExpanded = $state(false);
@@ -31,7 +34,6 @@
 	let localName = $state(slot.name);
 	let localQuantity = $state(slot.quantity);
 	let localUnit = $state(slot.unit || 'units');
-	let localNeedTypeId = $state(slot.need_type_id);
 	let localDescription = $state(slot.description || '');
 	
 	// Keep local state in sync with prop changes
@@ -39,7 +41,6 @@
 		localName = slot.name;
 		localQuantity = slot.quantity;
 		localUnit = slot.unit || 'units';
-		localNeedTypeId = slot.need_type_id;
 		localDescription = slot.description || '';
 	});
 
@@ -76,12 +77,6 @@
 	function handleUnitBlur() {
 		if (localUnit !== slot.unit) {
 			updateSlot({ unit: localUnit });
-		}
-	}
-
-	function handleNeedTypeChange() {
-		if (localNeedTypeId !== slot.need_type_id) {
-			updateSlot({ need_type_id: localNeedTypeId });
 		}
 	}
 
@@ -219,44 +214,9 @@
 			class="slot-input name"
 			bind:value={localName}
 			onblur={handleNameBlur}
-			placeholder="Slot name (required)"
+			placeholder="Slot name"
 			required
 		/>
-		
-		<!-- Unit (editable) -->
-		<div class="field-group">
-			<label for="slot-unit-{slot.id}" class="field-label">Unit:</label>
-			<input
-				id="slot-unit-{slot.id}"
-				type="text"
-				class="slot-input unit"
-				bind:value={localUnit}
-				onblur={handleUnitBlur}
-				placeholder="units"
-			/>
-		</div>
-		
-		<!-- Need Type (REQUIRED) -->
-		<div class="field-group">
-			<label for="slot-type-{slot.id}" class="field-label">Type:</label>
-			<select
-				id="slot-type-{slot.id}"
-				class="slot-input need-type"
-				bind:value={localNeedTypeId}
-				onchange={handleNeedTypeChange}
-				required
-			>
-				<option value="general">General</option>
-				<option value="food">Food</option>
-				<option value="housing">Housing</option>
-				<option value="healthcare">Healthcare</option>
-				<option value="education">Education</option>
-				<option value="transportation">Transportation</option>
-				<option value="childcare">Childcare</option>
-				<option value="money">Money</option>
-				<option value="other">Other</option>
-			</select>
-		</div>
 	</div>
 	
 	<!-- Description (optional) -->
@@ -282,6 +242,15 @@
 			bind:value={localQuantity}
 			onblur={handleQuantityBlur}
 			placeholder="Qty"
+		/>
+		
+		<!-- Unit (after quantity) -->
+		<input
+			type="text"
+			class="slot-input unit-inline"
+			bind:value={localUnit}
+			onblur={handleUnitBlur}
+			placeholder="units"
 		/>
 
 		<!-- Section Buttons -->
@@ -326,6 +295,15 @@
 			✖️
 		</button>
 	</div>
+
+	<!-- Allocation Details (integrated into slot) -->
+	{#if $holsterUserPub}
+		<SlotAllocationDetails 
+			{slot} 
+			{isCapacity} 
+			myPubKey={$holsterUserPub} 
+		/>
+	{/if}
 
 	<!-- Expanded Sections -->
 	
@@ -429,31 +407,14 @@
 		min-width: 150px;
 	}
 	
-	.slot-input.unit {
-		width: 5rem;
-	}
-	
-	.slot-input.need-type {
-		width: auto;
-		min-width: 120px;
-	}
-	
 	.slot-input.qty {
 		width: 5rem;
 		text-align: right;
 	}
 	
-	.field-group {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-	
-	.field-label {
-		font-size: 0.7rem;
-		font-weight: 600;
-		color: #6b7280;
-		white-space: nowrap;
+	.slot-input.unit-inline {
+		width: 5rem;
+		font-size: 0.9rem;
 	}
 	
 	.slot-description {

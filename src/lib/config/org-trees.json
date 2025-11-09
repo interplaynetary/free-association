@@ -1,8 +1,275 @@
 {
+  "unep": {
+    "slug": "unep",
+    "name": "UNEP",
+    "description": "UN Environment Programme - Global Environmental Authority",
+    "monthly_budget": 180000000,
+    "recognizes": [
+      {
+        "id": "org_demo_ipcc",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wwf",
+        "points": 20
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 15
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 15
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 10
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "unep_root",
+      "name": "UNEP",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "unep_climate_action",
+          "name": "Climate Action",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "unep_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unep_climate_action_emissions_reduction",
+              "name": "Emissions Reduction",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "unep_climate_action",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unep_climate_action_climate_adaptation",
+              "name": "Climate Adaptation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "unep_climate_action",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unep_biodiversity_and_ecosystems",
+          "name": "Biodiversity & Ecosystems",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "unep_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unep_biodiversity_and_ecosystems_species_conservation",
+              "name": "Species Conservation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "unep_biodiversity_and_ecosystems",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unep_environmental_governance",
+          "name": "Environmental Governance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "unep_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unep_environmental_governance_international_treaties",
+              "name": "International Treaties",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "unep_environmental_governance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "undp": {
+    "slug": "undp",
+    "name": "UNDP",
+    "description": "UN Development Programme - Sustainable Development & Climate Action",
+    "monthly_budget": 450000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unep",
+        "points": 30
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 25
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 20
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 10
+      },
+      {
+        "id": "org_demo_who",
+        "points": 10
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 5
+      }
+    ],
+    "tree": {
+      "id": "undp_root",
+      "name": "UNDP",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "undp_climate_and_energy",
+          "name": "Climate & Energy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "undp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "undp_climate_and_energy_ndc_implementation",
+              "name": "NDC Implementation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "undp_climate_and_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "undp_climate_and_energy_clean_energy_access",
+              "name": "Clean Energy Access",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "undp_climate_and_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "undp_naturebased_solutions",
+          "name": "Nature-Based Solutions",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "undp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "undp_naturebased_solutions_ecosystem_restoration",
+              "name": "Ecosystem Restoration",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "undp_naturebased_solutions",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "undp_sdg_integration",
+          "name": "SDG Integration",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "undp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "undp_sdg_integration_climatepoverty_nexus",
+              "name": "Climate-Poverty Nexus",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "undp_sdg_integration",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
   "unicef": {
     "slug": "unicef",
     "name": "UNICEF",
-    "description": "UNICEF Priority Areas - Children's Rights and Wellbeing",
+    "description": "UN Children's Fund - Climate-Affected Children & Communities",
+    "monthly_budget": 400000000,
+    "recognizes": [
+      {
+        "id": "org_demo_who",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wfp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_redcross",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 10
+      }
+    ],
     "tree": {
       "id": "unicef_root",
       "name": "UNICEF",
@@ -12,44 +279,33 @@
       "updated_at": "2025-01-01T00:00:00Z",
       "children": [
         {
-          "id": "unicef_health",
-          "name": "Child Health & Nutrition",
+          "id": "unicef_child_climate_vulnerability",
+          "name": "Child Climate Vulnerability",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 35,
+          "points": 40,
           "parent_id": "unicef_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "unicef_health_immunization",
-              "name": "Immunization Programs",
+              "id": "unicef_child_climate_vulnerability_health_impacts",
+              "name": "Health Impacts",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 40,
-              "parent_id": "unicef_health",
+              "points": 50,
+              "parent_id": "unicef_child_climate_vulnerability",
               "contributors": [],
               "anti_contributors": [],
               "children": []
             },
             {
-              "id": "unicef_health_nutrition",
-              "name": "Nutrition & Food Security",
+              "id": "unicef_child_climate_vulnerability_nutrition_security",
+              "name": "Nutrition Security",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "unicef_health",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_health_maternal",
-              "name": "Maternal & Newborn Care",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "unicef_health",
+              "points": 50,
+              "parent_id": "unicef_child_climate_vulnerability",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -57,8 +313,8 @@
           ]
         },
         {
-          "id": "unicef_education",
-          "name": "Education & Learning",
+          "id": "unicef_climate_education",
+          "name": "Climate Education",
           "type": "NonRootNode",
           "manual_fulfillment": null,
           "points": 30,
@@ -67,34 +323,12 @@
           "anti_contributors": [],
           "children": [
             {
-              "id": "unicef_edu_access",
-              "name": "Access to Quality Education",
+              "id": "unicef_climate_education_youth_engagement",
+              "name": "Youth Engagement",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "unicef_education",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_edu_girls",
-              "name": "Girls' Education",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 30,
-              "parent_id": "unicef_education",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_edu_emergency",
-              "name": "Education in Emergencies",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 20,
-              "parent_id": "unicef_education",
+              "points": 100,
+              "parent_id": "unicef_climate_education",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -102,78 +336,22 @@
           ]
         },
         {
-          "id": "unicef_protection",
-          "name": "Child Protection",
+          "id": "unicef_emergency_response",
+          "name": "Emergency Response",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 25,
+          "points": 30,
           "parent_id": "unicef_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "unicef_protect_violence",
-              "name": "Protection from Violence",
+              "id": "unicef_emergency_response_disaster_preparedness",
+              "name": "Disaster Preparedness",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 40,
-              "parent_id": "unicef_protection",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_protect_exploitation",
-              "name": "End Child Exploitation",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "unicef_protection",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_protect_justice",
-              "name": "Child-Friendly Justice",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "unicef_protection",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            }
-          ]
-        },
-        {
-          "id": "unicef_wash",
-          "name": "Water, Sanitation & Hygiene",
-          "type": "NonRootNode",
-          "manual_fulfillment": null,
-          "points": 10,
-          "parent_id": "unicef_root",
-          "contributors": [],
-          "anti_contributors": [],
-          "children": [
-            {
-              "id": "unicef_wash_water",
-              "name": "Safe Water Access",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "unicef_wash",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "unicef_wash_sanitation",
-              "name": "Sanitation Facilities",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "unicef_wash",
+              "points": 100,
+              "parent_id": "unicef_emergency_response",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -183,147 +361,69 @@
       ]
     }
   },
-  "world-bank": {
-    "slug": "world-bank",
-    "name": "World Bank",
-    "description": "World Bank Development Goals - Economic Growth and Poverty Reduction",
+  "unhcr": {
+    "slug": "unhcr",
+    "name": "UNHCR",
+    "description": "UN Refugee Agency - Climate Displacement & Migration",
+    "monthly_budget": 850000000,
+    "recognizes": [
+      {
+        "id": "org_demo_undp",
+        "points": 30
+      },
+      {
+        "id": "org_demo_redcross",
+        "points": 25
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 20
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 15
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 10
+      }
+    ],
     "tree": {
-      "id": "wb_root",
-      "name": "World Bank",
+      "id": "unhcr_root",
+      "name": "UNHCR",
       "type": "RootNode",
       "manual_fulfillment": null,
       "created_at": "2025-01-01T00:00:00Z",
       "updated_at": "2025-01-01T00:00:00Z",
       "children": [
         {
-          "id": "wb_poverty",
-          "name": "End Extreme Poverty",
+          "id": "unhcr_climate_displacement",
+          "name": "Climate Displacement",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 40,
-          "parent_id": "wb_root",
+          "points": 45,
+          "parent_id": "unhcr_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "wb_poverty_income",
-              "name": "Income Support Programs",
+              "id": "unhcr_climate_displacement_migration_support",
+              "name": "Migration Support",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "wb_poverty",
+              "points": 60,
+              "parent_id": "unhcr_climate_displacement",
               "contributors": [],
               "anti_contributors": [],
               "children": []
             },
             {
-              "id": "wb_poverty_social",
-              "name": "Social Protection Systems",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "wb_poverty",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "wb_poverty_jobs",
-              "name": "Job Creation & Livelihoods",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 30,
-              "parent_id": "wb_poverty",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            }
-          ]
-        },
-        {
-          "id": "wb_prosperity",
-          "name": "Promote Shared Prosperity",
-          "type": "NonRootNode",
-          "manual_fulfillment": null,
-          "points": 30,
-          "parent_id": "wb_root",
-          "contributors": [],
-          "anti_contributors": [],
-          "children": [
-            {
-              "id": "wb_prosperity_growth",
-              "name": "Inclusive Economic Growth",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 45,
-              "parent_id": "wb_prosperity",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "wb_prosperity_equity",
-              "name": "Reduce Inequality",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 30,
-              "parent_id": "wb_prosperity",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "wb_prosperity_opportunity",
-              "name": "Equal Opportunity Access",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "wb_prosperity",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            }
-          ]
-        },
-        {
-          "id": "wb_infrastructure",
-          "name": "Infrastructure Development",
-          "type": "NonRootNode",
-          "manual_fulfillment": null,
-          "points": 20,
-          "parent_id": "wb_root",
-          "contributors": [],
-          "anti_contributors": [],
-          "children": [
-            {
-              "id": "wb_infra_transport",
-              "name": "Transportation Networks",
+              "id": "unhcr_climate_displacement_resettlement",
+              "name": "Resettlement",
               "type": "NonRootNode",
               "manual_fulfillment": null,
               "points": 40,
-              "parent_id": "wb_infrastructure",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "wb_infra_energy",
-              "name": "Energy Infrastructure",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "wb_infrastructure",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "wb_infra_digital",
-              "name": "Digital Connectivity",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "wb_infrastructure",
+              "parent_id": "unhcr_climate_displacement",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -331,33 +431,45 @@
           ]
         },
         {
-          "id": "wb_climate",
-          "name": "Climate Action & Sustainability",
+          "id": "unhcr_refugee_protection",
+          "name": "Refugee Protection",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 10,
-          "parent_id": "wb_root",
+          "points": 35,
+          "parent_id": "unhcr_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "wb_climate_adaptation",
-              "name": "Climate Adaptation",
+              "id": "unhcr_refugee_protection_legal_protection",
+              "name": "Legal Protection",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "wb_climate",
+              "points": 100,
+              "parent_id": "unhcr_refugee_protection",
               "contributors": [],
               "anti_contributors": [],
               "children": []
-            },
+            }
+          ]
+        },
+        {
+          "id": "unhcr_durable_solutions",
+          "name": "Durable Solutions",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "unhcr_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
             {
-              "id": "wb_climate_green",
-              "name": "Green Development",
+              "id": "unhcr_durable_solutions_local_integration",
+              "name": "Local Integration",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "wb_climate",
+              "points": 100,
+              "parent_id": "unhcr_durable_solutions",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -367,12 +479,1258 @@
       ]
     }
   },
-  "red-cross": {
-    "slug": "red-cross",
-    "name": "Red Cross / Red Crescent",
-    "description": "International Red Cross Humanitarian Priorities",
+  "wfp": {
+    "slug": "wfp",
+    "name": "WFP",
+    "description": "World Food Programme - Climate & Food Security",
+    "monthly_budget": 750000000,
+    "recognizes": [
+      {
+        "id": "org_demo_fao",
+        "points": 35
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 20
+      },
+      {
+        "id": "org_demo_redcross",
+        "points": 10
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 10
+      }
+    ],
     "tree": {
-      "id": "rc_root",
+      "id": "wfp_root",
+      "name": "WFP",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "wfp_food_security",
+          "name": "Food Security",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "wfp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wfp_food_security_emergency_food_aid",
+              "name": "Emergency Food Aid",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "wfp_food_security",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wfp_food_security_nutrition_programs",
+              "name": "Nutrition Programs",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "wfp_food_security",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wfp_climate_adaptation",
+          "name": "Climate Adaptation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "wfp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wfp_climate_adaptation_resilient_agriculture",
+              "name": "Resilient Agriculture",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 70,
+              "parent_id": "wfp_climate_adaptation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wfp_climate_adaptation_early_warning_systems",
+              "name": "Early Warning Systems",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 30,
+              "parent_id": "wfp_climate_adaptation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wfp_livelihood_support",
+          "name": "Livelihood Support",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "wfp_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wfp_livelihood_support_smallholder_farmers",
+              "name": "Smallholder Farmers",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "wfp_livelihood_support",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "who": {
+    "slug": "who",
+    "name": "WHO",
+    "description": "World Health Organization - Climate Health Impacts",
+    "monthly_budget": 220000000,
+    "recognizes": [
+      {
+        "id": "org_demo_undp",
+        "points": 35
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 25
+      },
+      {
+        "id": "org_demo_unicef",
+        "points": 20
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 20
+      }
+    ],
+    "tree": {
+      "id": "who_root",
+      "name": "WHO",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "who_climate_health",
+          "name": "Climate Health",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "who_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "who_climate_health_heatrelated_illness",
+              "name": "Heat-Related Illness",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "who_climate_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "who_climate_health_vectorborne_disease",
+              "name": "Vector-Borne Disease",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 35,
+              "parent_id": "who_climate_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "who_climate_health_air_quality",
+              "name": "Air Quality",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 25,
+              "parent_id": "who_climate_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "who_health_systems_resilience",
+          "name": "Health Systems Resilience",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "who_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "who_health_systems_resilience_climateready_infrastructure",
+              "name": "Climate-Ready Infrastructure",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "who_health_systems_resilience",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "who_health_emergency_response",
+          "name": "Health Emergency Response",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "who_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "who_health_emergency_response_disaster_preparedness",
+              "name": "Disaster Preparedness",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "who_health_emergency_response",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "fao": {
+    "slug": "fao",
+    "name": "FAO",
+    "description": "Food & Agriculture Organization - Climate-Smart Agriculture",
+    "monthly_budget": 250000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unep",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wfp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 15
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "fao_root",
+      "name": "FAO",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "fao_climatesmart_agriculture",
+          "name": "Climate-Smart Agriculture",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "fao_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fao_climatesmart_agriculture_sustainable_farming",
+              "name": "Sustainable Farming",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "fao_climatesmart_agriculture",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "fao_climatesmart_agriculture_soil_health",
+              "name": "Soil Health",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "fao_climatesmart_agriculture",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "fao_forest_and_land_use",
+          "name": "Forest & Land Use",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "fao_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fao_forest_and_land_use_deforestation_prevention",
+              "name": "Deforestation Prevention",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "fao_forest_and_land_use",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "fao_forest_and_land_use_sustainable_forestry",
+              "name": "Sustainable Forestry",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "fao_forest_and_land_use",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "fao_fisheries_and_oceans",
+          "name": "Fisheries & Oceans",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "fao_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fao_fisheries_and_oceans_sustainable_fisheries",
+              "name": "Sustainable Fisheries",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "fao_fisheries_and_oceans",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "unhabitat": {
+    "slug": "unhabitat",
+    "name": "UN-Habitat",
+    "description": "UN Human Settlements - Sustainable Cities & Climate",
+    "monthly_budget": 95000000,
+    "recognizes": [
+      {
+        "id": "org_demo_c40cities",
+        "points": 35
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 20
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 20
+      }
+    ],
+    "tree": {
+      "id": "unhabitat_root",
+      "name": "UN-Habitat",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "unhabitat_climateresilient_cities",
+          "name": "Climate-Resilient Cities",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "unhabitat_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unhabitat_climateresilient_cities_urban_adaptation",
+              "name": "Urban Adaptation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "unhabitat_climateresilient_cities",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "unhabitat_climateresilient_cities_green_infrastructure",
+              "name": "Green Infrastructure",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "unhabitat_climateresilient_cities",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unhabitat_sustainable_urbanization",
+          "name": "Sustainable Urbanization",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "unhabitat_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unhabitat_sustainable_urbanization_affordable_housing",
+              "name": "Affordable Housing",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "unhabitat_sustainable_urbanization",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "unhabitat_local_climate_action",
+          "name": "Local Climate Action",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "unhabitat_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "unhabitat_local_climate_action_city_planning",
+              "name": "City Planning",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "unhabitat_local_climate_action",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "ipcc": {
+    "slug": "ipcc",
+    "name": "IPCC",
+    "description": "Intergovernmental Panel on Climate Change - Climate Science Authority",
+    "monthly_budget": 15000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unep",
+        "points": 50
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_who",
+        "points": 15
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "ipcc_root",
+      "name": "IPCC",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "ipcc_climate_science_research",
+          "name": "Climate Science Research",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "ipcc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "ipcc_climate_science_research_physical_science_basis",
+              "name": "Physical Science Basis",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "ipcc_climate_science_research",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "ipcc_climate_science_research_climate_impacts_assessment",
+              "name": "Climate Impacts Assessment",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "ipcc_climate_science_research",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "ipcc_assessment_reports",
+          "name": "Assessment Reports",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "ipcc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "ipcc_assessment_reports_ar7_preparation",
+              "name": "AR7 Preparation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "ipcc_assessment_reports",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "ipcc_science_communication",
+          "name": "Science Communication",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "ipcc_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "ipcc_science_communication_policy_briefings",
+              "name": "Policy Briefings",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "ipcc_science_communication",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "greenpeace": {
+    "slug": "greenpeace",
+    "name": "Greenpeace",
+    "description": "Greenpeace International - Climate Activism & Environmental Justice",
+    "monthly_budget": 35000000,
+    "recognizes": [
+      {
+        "id": "org_demo_threefiveozero",
+        "points": 35
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wwf",
+        "points": 20
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "greenpeace_root",
+      "name": "Greenpeace",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "greenpeace_end_fossil_fuels",
+          "name": "End Fossil Fuels",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "greenpeace_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "greenpeace_end_fossil_fuels_coal_phaseout",
+              "name": "Coal Phase-Out",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "greenpeace_end_fossil_fuels",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "greenpeace_end_fossil_fuels_oil_and_gas_transition",
+              "name": "Oil & Gas Transition",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "greenpeace_end_fossil_fuels",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "greenpeace_renewable_energy_revolution",
+          "name": "Renewable Energy Revolution",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "greenpeace_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "greenpeace_renewable_energy_revolution_solar_power_expansion",
+              "name": "Solar Power Expansion",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "greenpeace_renewable_energy_revolution",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "greenpeace_renewable_energy_revolution_wind_power_growth",
+              "name": "Wind Power Growth",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "greenpeace_renewable_energy_revolution",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "greenpeace_climate_justice",
+          "name": "Climate Justice",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "greenpeace_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "greenpeace_climate_justice_frontline_communities",
+              "name": "Frontline Communities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "greenpeace_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "wwf": {
+    "slug": "wwf",
+    "name": "WWF",
+    "description": "World Wildlife Fund - Conservation & Sustainable Development",
+    "monthly_budget": 75000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unep",
+        "points": 25
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 20
+      },
+      {
+        "id": "org_demo_natureconservancy",
+        "points": 20
+      },
+      {
+        "id": "org_demo_conservationinternational",
+        "points": 15
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 10
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "wwf_root",
+      "name": "WWF",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "wwf_forest_conservation",
+          "name": "Forest Conservation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "wwf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wwf_forest_conservation_amazon_protection",
+              "name": "Amazon Protection",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "wwf_forest_conservation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wwf_forest_conservation_stop_deforestation",
+              "name": "Stop Deforestation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "wwf_forest_conservation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wwf_ocean_conservation",
+          "name": "Ocean Conservation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "wwf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wwf_ocean_conservation_plastic_pollution",
+              "name": "Plastic Pollution",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "wwf_ocean_conservation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wwf_ocean_conservation_coral_reef_protection",
+              "name": "Coral Reef Protection",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "wwf_ocean_conservation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wwf_wildlife_protection",
+          "name": "Wildlife Protection",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "wwf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wwf_wildlife_protection_endangered_species",
+              "name": "Endangered Species",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "wwf_wildlife_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "natureconservancy": {
+    "slug": "natureconservancy",
+    "name": "Nature Conservancy",
+    "description": "The Nature Conservancy - Nature-Based Climate Solutions",
+    "monthly_budget": 120000000,
+    "recognizes": [
+      {
+        "id": "org_demo_wwf",
+        "points": 30
+      },
+      {
+        "id": "org_demo_conservationinternational",
+        "points": 25
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 20
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 15
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "natureconservancy_root",
+      "name": "Nature Conservancy",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "natureconservancy_naturebased_solutions",
+          "name": "Nature-Based Solutions",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "natureconservancy_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "natureconservancy_naturebased_solutions_forest_restoration",
+              "name": "Forest Restoration",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "natureconservancy_naturebased_solutions",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "natureconservancy_naturebased_solutions_wetland_conservation",
+              "name": "Wetland Conservation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "natureconservancy_naturebased_solutions",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "natureconservancy_climate_mitigation",
+          "name": "Climate Mitigation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "natureconservancy_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "natureconservancy_climate_mitigation_carbon_sequestration",
+              "name": "Carbon Sequestration",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "natureconservancy_climate_mitigation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "natureconservancy_biodiversity_protection",
+          "name": "Biodiversity Protection",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "natureconservancy_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "natureconservancy_biodiversity_protection_habitat_conservation",
+              "name": "Habitat Conservation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "natureconservancy_biodiversity_protection",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "conservationinternational": {
+    "slug": "conservationinternational",
+    "name": "Conservation International",
+    "description": "Conservation International - Biodiversity & Climate",
+    "monthly_budget": 90000000,
+    "recognizes": [
+      {
+        "id": "org_demo_natureconservancy",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wwf",
+        "points": 25
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 20
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 15
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "conservationinternational_root",
+      "name": "Conservation International",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "conservationinternational_biodiversity_hotspots",
+          "name": "Biodiversity Hotspots",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "conservationinternational_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "conservationinternational_biodiversity_hotspots_ecosystem_protection",
+              "name": "Ecosystem Protection",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "conservationinternational_biodiversity_hotspots",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "conservationinternational_climate_solutions",
+          "name": "Climate Solutions",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "conservationinternational_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "conservationinternational_climate_solutions_blue_carbon",
+              "name": "Blue Carbon",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "conservationinternational_climate_solutions",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "conservationinternational_climate_solutions_forest_carbon",
+              "name": "Forest Carbon",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "conservationinternational_climate_solutions",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "conservationinternational_indigenous_rights",
+          "name": "Indigenous Rights",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "conservationinternational_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "conservationinternational_indigenous_rights_community_conservation",
+              "name": "Community Conservation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "conservationinternational_indigenous_rights",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "oxfam": {
+    "slug": "oxfam",
+    "name": "Oxfam",
+    "description": "Oxfam International - Climate Justice & Equity",
+    "monthly_budget": 95000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenpeace",
+        "points": 25
+      },
+      {
+        "id": "org_demo_threefiveozero",
+        "points": 25
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 20
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "oxfam_root",
+      "name": "Oxfam",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "oxfam_climate_justice",
+          "name": "Climate Justice",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "oxfam_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "oxfam_climate_justice_loss_and_damage",
+              "name": "Loss & Damage",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "oxfam_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "oxfam_climate_justice_climate_reparations",
+              "name": "Climate Reparations",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "oxfam_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "oxfam_adaptation_support",
+          "name": "Adaptation Support",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "oxfam_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "oxfam_adaptation_support_vulnerable_communities",
+              "name": "Vulnerable Communities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "oxfam_adaptation_support",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "oxfam_advocacy",
+          "name": "Advocacy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "oxfam_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "oxfam_advocacy_policy_change",
+              "name": "Policy Change",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "oxfam_advocacy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "redcross": {
+    "slug": "redcross",
+    "name": "Red Cross",
+    "description": "Red Cross / Red Crescent - Humanitarian Climate Response",
+    "monthly_budget": 280000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unhcr",
+        "points": 30
+      },
+      {
+        "id": "org_demo_wfp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_unicef",
+        "points": 20
+      },
+      {
+        "id": "org_demo_who",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "redcross_root",
       "name": "Red Cross",
       "type": "RootNode",
       "manual_fulfillment": null,
@@ -380,44 +1738,56 @@
       "updated_at": "2025-01-01T00:00:00Z",
       "children": [
         {
-          "id": "rc_emergency",
-          "name": "Emergency Response",
+          "id": "redcross_disaster_response",
+          "name": "Disaster Response",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "redcross_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "redcross_disaster_response_emergency_relief",
+              "name": "Emergency Relief",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "redcross_disaster_response",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "redcross_disaster_response_early_warning",
+              "name": "Early Warning",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "redcross_disaster_response",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "redcross_climate_resilience",
+          "name": "Climate Resilience",
           "type": "NonRootNode",
           "manual_fulfillment": null,
           "points": 35,
-          "parent_id": "rc_root",
+          "parent_id": "redcross_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "rc_emergency_disaster",
-              "name": "Disaster Relief",
+              "id": "redcross_climate_resilience_community_preparedness",
+              "name": "Community Preparedness",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 40,
-              "parent_id": "rc_emergency",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "rc_emergency_conflict",
-              "name": "Conflict Zone Support",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "rc_emergency",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "rc_emergency_search",
-              "name": "Search & Rescue",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "rc_emergency",
+              "points": 100,
+              "parent_id": "redcross_climate_resilience",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -425,89 +1795,90 @@
           ]
         },
         {
-          "id": "rc_health",
+          "id": "redcross_health_services",
           "name": "Health Services",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 30,
-          "parent_id": "rc_root",
+          "points": 20,
+          "parent_id": "redcross_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "rc_health_first",
-              "name": "First Aid & Primary Care",
+              "id": "redcross_health_services_climate_health",
+              "name": "Climate Health",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 45,
-              "parent_id": "rc_health",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "rc_health_blood",
-              "name": "Blood Donation Services",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 30,
-              "parent_id": "rc_health",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "rc_health_epidemic",
-              "name": "Epidemic Preparedness",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "rc_health",
+              "points": 100,
+              "parent_id": "redcross_health_services",
               "contributors": [],
               "anti_contributors": [],
               "children": []
             }
           ]
-        },
+        }
+      ]
+    }
+  },
+  "threefiveozero": {
+    "slug": "threefiveozero",
+    "name": "350.org",
+    "description": "350.org - Fossil Fuel Divestment & Climate Action",
+    "monthly_budget": 18000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenpeace",
+        "points": 40
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 25
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 20
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "threefiveozero_root",
+      "name": "350.org",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
         {
-          "id": "rc_protection",
-          "name": "Protection & IHL",
+          "id": "threefiveozero_fossil_fuel_divestment",
+          "name": "Fossil Fuel Divestment",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 20,
-          "parent_id": "rc_root",
+          "points": 50,
+          "parent_id": "threefiveozero_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "rc_protection_ihl",
-              "name": "International Humanitarian Law",
+              "id": "threefiveozero_fossil_fuel_divestment_campus_campaigns",
+              "name": "Campus Campaigns",
               "type": "NonRootNode",
               "manual_fulfillment": null,
               "points": 40,
-              "parent_id": "rc_protection",
+              "parent_id": "threefiveozero_fossil_fuel_divestment",
               "contributors": [],
               "anti_contributors": [],
               "children": []
             },
             {
-              "id": "rc_protection_family",
-              "name": "Restoring Family Links",
+              "id": "threefiveozero_fossil_fuel_divestment_financial_institutions",
+              "name": "Financial Institutions",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 35,
-              "parent_id": "rc_protection",
-              "contributors": [],
-              "anti_contributors": [],
-              "children": []
-            },
-            {
-              "id": "rc_protection_detainees",
-              "name": "Support for Detainees",
-              "type": "NonRootNode",
-              "manual_fulfillment": null,
-              "points": 25,
-              "parent_id": "rc_protection",
+              "points": 60,
+              "parent_id": "threefiveozero_fossil_fuel_divestment",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -515,33 +1886,2056 @@
           ]
         },
         {
-          "id": "rc_community",
-          "name": "Community Resilience",
+          "id": "threefiveozero_grassroots_mobilization",
+          "name": "Grassroots Mobilization",
           "type": "NonRootNode",
           "manual_fulfillment": null,
-          "points": 15,
-          "parent_id": "rc_root",
+          "points": 30,
+          "parent_id": "threefiveozero_root",
           "contributors": [],
           "anti_contributors": [],
           "children": [
             {
-              "id": "rc_community_prep",
-              "name": "Disaster Preparedness",
+              "id": "threefiveozero_grassroots_mobilization_local_actions",
+              "name": "Local Actions",
               "type": "NonRootNode",
               "manual_fulfillment": null,
-              "points": 50,
-              "parent_id": "rc_community",
+              "points": 100,
+              "parent_id": "threefiveozero_grassroots_mobilization",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "threefiveozero_just_transition",
+          "name": "Just Transition",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "threefiveozero_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "threefiveozero_just_transition_renewable_energy_jobs",
+              "name": "Renewable Energy Jobs",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "threefiveozero_just_transition",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "greenclimatefund": {
+    "slug": "greenclimatefund",
+    "name": "Green Climate Fund",
+    "description": "Green Climate Fund - Climate Finance Mobilization",
+    "monthly_budget": 425000000,
+    "recognizes": [
+      {
+        "id": "org_demo_undp",
+        "points": 30
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 25
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 20
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 15
+      },
+      {
+        "id": "org_demo_africanunion",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "greenclimatefund_root",
+      "name": "Green Climate Fund",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "greenclimatefund_mitigation_funding",
+          "name": "Mitigation Funding",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 50,
+          "parent_id": "greenclimatefund_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "greenclimatefund_mitigation_funding_renewable_energy_projects",
+              "name": "Renewable Energy Projects",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "greenclimatefund_mitigation_funding",
               "contributors": [],
               "anti_contributors": [],
               "children": []
             },
             {
-              "id": "rc_community_training",
-              "name": "Community Training",
+              "id": "greenclimatefund_mitigation_funding_energy_efficiency",
+              "name": "Energy Efficiency",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "greenclimatefund_mitigation_funding",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "greenclimatefund_adaptation_funding",
+          "name": "Adaptation Funding",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 50,
+          "parent_id": "greenclimatefund_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "greenclimatefund_adaptation_funding_climate_resilience",
+              "name": "Climate Resilience",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "greenclimatefund_adaptation_funding",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "greenclimatefund_adaptation_funding_vulnerable_nations_support",
+              "name": "Vulnerable Nations Support",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "greenclimatefund_adaptation_funding",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "worldbank": {
+    "slug": "worldbank",
+    "name": "World Bank",
+    "description": "World Bank Group - Climate Finance & Development",
+    "monthly_budget": 2800000000,
+    "recognizes": [
+      {
+        "id": "org_demo_undp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 20
+      },
+      {
+        "id": "org_demo_imf",
+        "points": 20
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 15
+      },
+      {
+        "id": "org_demo_africanunion",
+        "points": 10
+      },
+      {
+        "id": "org_demo_asiandevbank",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "worldbank_root",
+      "name": "World Bank",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "worldbank_climate_finance",
+          "name": "Climate Finance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "worldbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "worldbank_climate_finance_green_bonds",
+              "name": "Green Bonds",
               "type": "NonRootNode",
               "manual_fulfillment": null,
               "points": 50,
-              "parent_id": "rc_community",
+              "parent_id": "worldbank_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "worldbank_climate_finance_climate_investment",
+              "name": "Climate Investment",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "worldbank_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "worldbank_sustainable_development",
+          "name": "Sustainable Development",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "worldbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "worldbank_sustainable_development_infrastructure",
+              "name": "Infrastructure",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "worldbank_sustainable_development",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "worldbank_sustainable_development_energy_transition",
+              "name": "Energy Transition",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "worldbank_sustainable_development",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "worldbank_technical_assistance",
+          "name": "Technical Assistance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "worldbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "worldbank_technical_assistance_capacity_building",
+              "name": "Capacity Building",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "worldbank_technical_assistance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "imf": {
+    "slug": "imf",
+    "name": "IMF",
+    "description": "International Monetary Fund - Climate Economic Transition",
+    "monthly_budget": 85000000,
+    "recognizes": [
+      {
+        "id": "org_demo_worldbank",
+        "points": 40
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 25
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_europeanunion",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "imf_root",
+      "name": "IMF",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "imf_climate_fiscal_policy",
+          "name": "Climate Fiscal Policy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "imf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "imf_climate_fiscal_policy_carbon_pricing",
+              "name": "Carbon Pricing",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "imf_climate_fiscal_policy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "imf_climate_fiscal_policy_green_fiscal_reform",
+              "name": "Green Fiscal Reform",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "imf_climate_fiscal_policy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "imf_economic_resilience",
+          "name": "Economic Resilience",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "imf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "imf_economic_resilience_transition_support",
+              "name": "Transition Support",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "imf_economic_resilience",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "imf_technical_assistance",
+          "name": "Technical Assistance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "imf_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "imf_technical_assistance_policy_advice",
+              "name": "Policy Advice",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "imf_technical_assistance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "asiandevbank": {
+    "slug": "asiandevbank",
+    "name": "Asian Development Bank",
+    "description": "Asian Development Bank - Climate Finance Asia-Pacific",
+    "monthly_budget": 380000000,
+    "recognizes": [
+      {
+        "id": "org_demo_worldbank",
+        "points": 35
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 30
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "asiandevbank_root",
+      "name": "Asian Development Bank",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "asiandevbank_climate_finance",
+          "name": "Climate Finance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "asiandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "asiandevbank_climate_finance_renewable_energy",
+              "name": "Renewable Energy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "asiandevbank_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "asiandevbank_climate_finance_adaptation_projects",
+              "name": "Adaptation Projects",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "asiandevbank_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "asiandevbank_regional_cooperation",
+          "name": "Regional Cooperation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "asiandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "asiandevbank_regional_cooperation_transboundary_solutions",
+              "name": "Trans-boundary Solutions",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "asiandevbank_regional_cooperation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "asiandevbank_private_sector",
+          "name": "Private Sector",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "asiandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "asiandevbank_private_sector_green_investment",
+              "name": "Green Investment",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "asiandevbank_private_sector",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "africandevbank": {
+    "slug": "africandevbank",
+    "name": "African Development Bank",
+    "description": "African Development Bank - Climate Finance Africa",
+    "monthly_budget": 290000000,
+    "recognizes": [
+      {
+        "id": "org_demo_worldbank",
+        "points": 30
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 30
+      },
+      {
+        "id": "org_demo_africanunion",
+        "points": 20
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      }
+    ],
+    "tree": {
+      "id": "africandevbank_root",
+      "name": "African Development Bank",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "africandevbank_climate_resilience",
+          "name": "Climate Resilience",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "africandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africandevbank_climate_resilience_adaptation_finance",
+              "name": "Adaptation Finance",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "africandevbank_climate_resilience",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "africandevbank_climate_resilience_infrastructure",
+              "name": "Infrastructure",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "africandevbank_climate_resilience",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "africandevbank_renewable_energy",
+          "name": "Renewable Energy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "africandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africandevbank_renewable_energy_solar_projects",
+              "name": "Solar Projects",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "africandevbank_renewable_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "africandevbank_renewable_energy_hydro_projects",
+              "name": "Hydro Projects",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "africandevbank_renewable_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "africandevbank_agriculture",
+          "name": "Agriculture",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "africandevbank_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africandevbank_agriculture_climatesmart_farming",
+              "name": "Climate-Smart Farming",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "africandevbank_agriculture",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "bezosearthfund": {
+    "slug": "bezosearthfund",
+    "name": "Bezos Earth Fund",
+    "description": "Bezos Earth Fund - Large-Scale Climate Solutions",
+    "monthly_budget": 850000000,
+    "recognizes": [
+      {
+        "id": "org_demo_natureconservancy",
+        "points": 25
+      },
+      {
+        "id": "org_demo_wwf",
+        "points": 20
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 15
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 15
+      },
+      {
+        "id": "org_demo_wemeanbus",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "bezosearthfund_root",
+      "name": "Bezos Earth Fund",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "bezosearthfund_nature_and_biodiversity",
+          "name": "Nature & Biodiversity",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "bezosearthfund_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bezosearthfund_nature_and_biodiversity_land_conservation",
+              "name": "Land Conservation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "bezosearthfund_nature_and_biodiversity",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "bezosearthfund_nature_and_biodiversity_ocean_protection",
+              "name": "Ocean Protection",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "bezosearthfund_nature_and_biodiversity",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "bezosearthfund_climate_science",
+          "name": "Climate Science",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "bezosearthfund_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bezosearthfund_climate_science_research_funding",
+              "name": "Research Funding",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "bezosearthfund_climate_science",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "bezosearthfund_transforming_systems",
+          "name": "Transforming Systems",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "bezosearthfund_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bezosearthfund_transforming_systems_energy_transition",
+              "name": "Energy Transition",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "bezosearthfund_transforming_systems",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "bezosearthfund_transforming_systems_food_systems",
+              "name": "Food Systems",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "bezosearthfund_transforming_systems",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "gatesfoundation": {
+    "slug": "gatesfoundation",
+    "name": "Gates Foundation",
+    "description": "Bill & Melinda Gates Foundation - Climate Innovation",
+    "monthly_budget": 380000000,
+    "recognizes": [
+      {
+        "id": "org_demo_undp",
+        "points": 25
+      },
+      {
+        "id": "org_demo_fao",
+        "points": 25
+      },
+      {
+        "id": "org_demo_wfp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_who",
+        "points": 15
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "gatesfoundation_root",
+      "name": "Gates Foundation",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "gatesfoundation_climate_agriculture",
+          "name": "Climate Agriculture",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "gatesfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "gatesfoundation_climate_agriculture_crop_resilience",
+              "name": "Crop Resilience",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "gatesfoundation_climate_agriculture",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "gatesfoundation_climate_agriculture_smallholder_adaptation",
+              "name": "Smallholder Adaptation",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "gatesfoundation_climate_agriculture",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "gatesfoundation_energy_innovation",
+          "name": "Energy Innovation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "gatesfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "gatesfoundation_energy_innovation_clean_energy_tech",
+              "name": "Clean Energy Tech",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "gatesfoundation_energy_innovation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "gatesfoundation_global_health",
+          "name": "Global Health",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "gatesfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "gatesfoundation_global_health_climate_health_impacts",
+              "name": "Climate Health Impacts",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "gatesfoundation_global_health",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rockefellerfoundation": {
+    "slug": "rockefellerfoundation",
+    "name": "Rockefeller Foundation",
+    "description": "Rockefeller Foundation - Climate Resilience",
+    "monthly_budget": 120000000,
+    "recognizes": [
+      {
+        "id": "org_demo_c40cities",
+        "points": 30
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 25
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_redcross",
+        "points": 15
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "rockefellerfoundation_root",
+      "name": "Rockefeller Foundation",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "rockefellerfoundation_urban_resilience",
+          "name": "Urban Resilience",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "rockefellerfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rockefellerfoundation_urban_resilience_city_climate_action",
+              "name": "City Climate Action",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "rockefellerfoundation_urban_resilience",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "rockefellerfoundation_energy_access",
+          "name": "Energy Access",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "rockefellerfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rockefellerfoundation_energy_access_distributed_energy",
+              "name": "Distributed Energy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "rockefellerfoundation_energy_access",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "rockefellerfoundation_food_security",
+          "name": "Food Security",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "rockefellerfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "rockefellerfoundation_food_security_resilient_food_systems",
+              "name": "Resilient Food Systems",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "rockefellerfoundation_food_security",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "bloombergphilanthropies": {
+    "slug": "bloombergphilanthropies",
+    "name": "Bloomberg Philanthropies",
+    "description": "Bloomberg Philanthropies - Cities & Climate",
+    "monthly_budget": 150000000,
+    "recognizes": [
+      {
+        "id": "org_demo_c40cities",
+        "points": 40
+      },
+      {
+        "id": "org_demo_unhabitat",
+        "points": 25
+      },
+      {
+        "id": "org_demo_wemeanbus",
+        "points": 20
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "bloombergphilanthropies_root",
+      "name": "Bloomberg Philanthropies",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "bloombergphilanthropies_city_climate_action",
+          "name": "City Climate Action",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "bloombergphilanthropies_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bloombergphilanthropies_city_climate_action_mayors'_initiatives",
+              "name": "Mayors' Initiatives",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "bloombergphilanthropies_city_climate_action",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "bloombergphilanthropies_coal_transition",
+          "name": "Coal Transition",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "bloombergphilanthropies_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bloombergphilanthropies_coal_transition_beyond_coal",
+              "name": "Beyond Coal",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "bloombergphilanthropies_coal_transition",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "bloombergphilanthropies_clean_energy",
+          "name": "Clean Energy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "bloombergphilanthropies_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "bloombergphilanthropies_clean_energy_renewable_cities",
+              "name": "Renewable Cities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "bloombergphilanthropies_clean_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "fordfoundation": {
+    "slug": "fordfoundation",
+    "name": "Ford Foundation",
+    "description": "Ford Foundation - Climate Justice & Equity",
+    "monthly_budget": 95000000,
+    "recognizes": [
+      {
+        "id": "org_demo_oxfam",
+        "points": 30
+      },
+      {
+        "id": "org_demo_greenpeace",
+        "points": 25
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 20
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 15
+      },
+      {
+        "id": "org_demo_threefiveozero",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "fordfoundation_root",
+      "name": "Ford Foundation",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "fordfoundation_climate_justice",
+          "name": "Climate Justice",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "fordfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fordfoundation_climate_justice_frontline_communities",
+              "name": "Frontline Communities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "fordfoundation_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "fordfoundation_climate_justice_indigenous_rights",
+              "name": "Indigenous Rights",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "fordfoundation_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "fordfoundation_just_transition",
+          "name": "Just Transition",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "fordfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fordfoundation_just_transition_worker_rights",
+              "name": "Worker Rights",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "fordfoundation_just_transition",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "fordfoundation_climate_democracy",
+          "name": "Climate Democracy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "fordfoundation_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "fordfoundation_climate_democracy_civic_engagement",
+              "name": "Civic Engagement",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "fordfoundation_climate_democracy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "climateworks": {
+    "slug": "climateworks",
+    "name": "ClimateWorks Foundation",
+    "description": "ClimateWorks Foundation - Climate Policy & Solutions",
+    "monthly_budget": 180000000,
+    "recognizes": [
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 30
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 25
+      },
+      {
+        "id": "org_demo_europeanunion",
+        "points": 20
+      },
+      {
+        "id": "org_demo_c40cities",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "climateworks_root",
+      "name": "ClimateWorks Foundation",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "climateworks_climate_policy",
+          "name": "Climate Policy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "climateworks_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateworks_climate_policy_ndc_enhancement",
+              "name": "NDC Enhancement",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "climateworks_climate_policy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "climateworks_climate_policy_carbon_pricing",
+              "name": "Carbon Pricing",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "climateworks_climate_policy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "climateworks_sectoral_decarbonization",
+          "name": "Sectoral Decarbonization",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "climateworks_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateworks_sectoral_decarbonization_industry",
+              "name": "Industry",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "climateworks_sectoral_decarbonization",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "climateworks_sectoral_decarbonization_transport",
+              "name": "Transport",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "climateworks_sectoral_decarbonization",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "climateworks_subnational_action",
+          "name": "Sub-National Action",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "climateworks_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateworks_subnational_action_state_and_city_policy",
+              "name": "State & City Policy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "climateworks_subnational_action",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "europeanunion": {
+    "slug": "europeanunion",
+    "name": "European Union",
+    "description": "European Union - Climate Policy & Finance Leader",
+    "monthly_budget": 3200000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 30
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 20
+      },
+      {
+        "id": "org_demo_c40cities",
+        "points": 20
+      },
+      {
+        "id": "org_demo_unep",
+        "points": 15
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "europeanunion_root",
+      "name": "European Union",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "europeanunion_green_deal",
+          "name": "Green Deal",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 40,
+          "parent_id": "europeanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "europeanunion_green_deal_net_zero_2050",
+              "name": "Net Zero 2050",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "europeanunion_green_deal",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "europeanunion_green_deal_carbon_border_adjustment",
+              "name": "Carbon Border Adjustment",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "europeanunion_green_deal",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "europeanunion_climate_finance",
+          "name": "Climate Finance",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "europeanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "europeanunion_climate_finance_international_support",
+              "name": "International Support",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "europeanunion_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "europeanunion_climate_finance_just_transition_fund",
+              "name": "Just Transition Fund",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "europeanunion_climate_finance",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "europeanunion_policy_leadership",
+          "name": "Policy Leadership",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 25,
+          "parent_id": "europeanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "europeanunion_policy_leadership_global_climate_diplomacy",
+              "name": "Global Climate Diplomacy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "europeanunion_policy_leadership",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "africanunion": {
+    "slug": "africanunion",
+    "name": "African Union",
+    "description": "African Union - Continental Climate Coordination",
+    "monthly_budget": 45000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 30
+      },
+      {
+        "id": "org_demo_africandevbank",
+        "points": 25
+      },
+      {
+        "id": "org_demo_undp",
+        "points": 20
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 15
+      },
+      {
+        "id": "org_demo_worldbank",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "africanunion_root",
+      "name": "African Union",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "africanunion_climate_adaptation",
+          "name": "Climate Adaptation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "africanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africanunion_climate_adaptation_regional_resilience",
+              "name": "Regional Resilience",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "africanunion_climate_adaptation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "africanunion_renewable_energy",
+          "name": "Renewable Energy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "africanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africanunion_renewable_energy_great_green_wall",
+              "name": "Great Green Wall",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "africanunion_renewable_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "africanunion_renewable_energy_solar_initiative",
+              "name": "Solar Initiative",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "africanunion_renewable_energy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "africanunion_loss_and_damage",
+          "name": "Loss & Damage",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "africanunion_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "africanunion_loss_and_damage_climate_justice",
+              "name": "Climate Justice",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "africanunion_loss_and_damage",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "aosis": {
+    "slug": "aosis",
+    "name": "AOSIS",
+    "description": "Alliance of Small Island States - Climate Vulnerable Nations",
+    "monthly_budget": 8000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 35
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 25
+      },
+      {
+        "id": "org_demo_europeanunion",
+        "points": 20
+      },
+      {
+        "id": "org_demo_unhcr",
+        "points": 20
+      }
+    ],
+    "tree": {
+      "id": "aosis_root",
+      "name": "AOSIS",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "aosis_loss_and_damage",
+          "name": "Loss & Damage",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 50,
+          "parent_id": "aosis_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "aosis_loss_and_damage_climate_reparations",
+              "name": "Climate Reparations",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "aosis_loss_and_damage",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "aosis_loss_and_damage_adaptation_finance",
+              "name": "Adaptation Finance",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "aosis_loss_and_damage",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "aosis_sea_level_rise",
+          "name": "Sea Level Rise",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 30,
+          "parent_id": "aosis_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "aosis_sea_level_rise_coastal_protection",
+              "name": "Coastal Protection",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "aosis_sea_level_rise",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "aosis_climate_diplomacy",
+          "name": "Climate Diplomacy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "aosis_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "aosis_climate_diplomacy_cop_advocacy",
+              "name": "COP Advocacy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "aosis_climate_diplomacy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "c40cities": {
+    "slug": "c40cities",
+    "name": "C40 Cities",
+    "description": "C40 Cities - Urban Climate Action Network",
+    "monthly_budget": 28000000,
+    "recognizes": [
+      {
+        "id": "org_demo_unhabitat",
+        "points": 30
+      },
+      {
+        "id": "org_demo_bloombergphilanthropies",
+        "points": 30
+      },
+      {
+        "id": "org_demo_europeanunion",
+        "points": 20
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 20
+      }
+    ],
+    "tree": {
+      "id": "c40cities_root",
+      "name": "C40 Cities",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "c40cities_city_climate_plans",
+          "name": "City Climate Plans",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "c40cities_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "c40cities_city_climate_plans_net_zero_cities",
+              "name": "Net Zero Cities",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "c40cities_city_climate_plans",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "c40cities_urban_innovation",
+          "name": "Urban Innovation",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "c40cities_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "c40cities_urban_innovation_green_buildings",
+              "name": "Green Buildings",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "c40cities_urban_innovation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "c40cities_urban_innovation_clean_transport",
+              "name": "Clean Transport",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 50,
+              "parent_id": "c40cities_urban_innovation",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "c40cities_knowledge_sharing",
+          "name": "Knowledge Sharing",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "c40cities_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "c40cities_knowledge_sharing_best_practices",
+              "name": "Best Practices",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "c40cities_knowledge_sharing",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "climateactionnetwork": {
+    "slug": "climateactionnetwork",
+    "name": "Climate Action Network",
+    "description": "Climate Action Network - NGO Coordination",
+    "monthly_budget": 12000000,
+    "recognizes": [
+      {
+        "id": "org_demo_greenpeace",
+        "points": 25
+      },
+      {
+        "id": "org_demo_threefiveozero",
+        "points": 25
+      },
+      {
+        "id": "org_demo_oxfam",
+        "points": 20
+      },
+      {
+        "id": "org_demo_wwf",
+        "points": 15
+      },
+      {
+        "id": "org_demo_aosis",
+        "points": 15
+      }
+    ],
+    "tree": {
+      "id": "climateactionnetwork_root",
+      "name": "Climate Action Network",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "climateactionnetwork_policy_advocacy",
+          "name": "Policy Advocacy",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "climateactionnetwork_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateactionnetwork_policy_advocacy_cop_engagement",
+              "name": "COP Engagement",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "climateactionnetwork_policy_advocacy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "climateactionnetwork_policy_advocacy_national_policy",
+              "name": "National Policy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "climateactionnetwork_policy_advocacy",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "climateactionnetwork_civil_society_coordination",
+          "name": "Civil Society Coordination",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "climateactionnetwork_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateactionnetwork_civil_society_coordination_network_building",
+              "name": "Network Building",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "climateactionnetwork_civil_society_coordination",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "climateactionnetwork_climate_justice",
+          "name": "Climate Justice",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "climateactionnetwork_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "climateactionnetwork_climate_justice_equity_advocacy",
+              "name": "Equity Advocacy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "climateactionnetwork_climate_justice",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "wemeanbus": {
+    "slug": "wemeanbus",
+    "name": "We Mean Business",
+    "description": "We Mean Business Coalition - Corporate Climate Action",
+    "monthly_budget": 15000000,
+    "recognizes": [
+      {
+        "id": "org_demo_europeanunion",
+        "points": 30
+      },
+      {
+        "id": "org_demo_climateactionnetwork",
+        "points": 25
+      },
+      {
+        "id": "org_demo_ipcc",
+        "points": 20
+      },
+      {
+        "id": "org_demo_c40cities",
+        "points": 15
+      },
+      {
+        "id": "org_demo_greenclimatefund",
+        "points": 10
+      }
+    ],
+    "tree": {
+      "id": "wemeanbus_root",
+      "name": "We Mean Business",
+      "type": "RootNode",
+      "manual_fulfillment": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z",
+      "children": [
+        {
+          "id": "wemeanbus_corporate_commitments",
+          "name": "Corporate Commitments",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 45,
+          "parent_id": "wemeanbus_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wemeanbus_corporate_commitments_sciencebased_targets",
+              "name": "Science-Based Targets",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 60,
+              "parent_id": "wemeanbus_corporate_commitments",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            },
+            {
+              "id": "wemeanbus_corporate_commitments_net_zero_pledges",
+              "name": "Net Zero Pledges",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 40,
+              "parent_id": "wemeanbus_corporate_commitments",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wemeanbus_private_sector_mobilization",
+          "name": "Private Sector Mobilization",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 35,
+          "parent_id": "wemeanbus_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wemeanbus_private_sector_mobilization_ceo_leadership",
+              "name": "CEO Leadership",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "wemeanbus_private_sector_mobilization",
+              "contributors": [],
+              "anti_contributors": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "wemeanbus_policy_engagement",
+          "name": "Policy Engagement",
+          "type": "NonRootNode",
+          "manual_fulfillment": null,
+          "points": 20,
+          "parent_id": "wemeanbus_root",
+          "contributors": [],
+          "anti_contributors": [],
+          "children": [
+            {
+              "id": "wemeanbus_policy_engagement_business_advocacy",
+              "name": "Business Advocacy",
+              "type": "NonRootNode",
+              "manual_fulfillment": null,
+              "points": 100,
+              "parent_id": "wemeanbus_policy_engagement",
               "contributors": [],
               "anti_contributors": [],
               "children": []
@@ -552,4 +3946,3 @@
     }
   }
 }
-

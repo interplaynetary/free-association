@@ -28,6 +28,7 @@
 
 <script lang="ts">
 	import { userNamesOrAliasesCache, getUserName } from '$lib/network/users.svelte';
+	import { globalOrganizations, getOrganizationName } from '$lib/network/organizations.svelte';
 	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 
 	// Define the interface for bar segments
@@ -46,7 +47,8 @@
 		showLabelsOnSelect = false,
 		showLabelsAboveOnSelect = false,
 		showValues = false,
-		backgroundColor = '#e0e0e0'
+		backgroundColor = '#e0e0e0',
+		forceHorizontal = false
 	} = $props<{
 		segments: BarSegment[];
 		height?: string;
@@ -57,6 +59,7 @@
 		showLabelsAboveOnSelect?: boolean;
 		showValues?: boolean;
 		backgroundColor?: string;
+		forceHorizontal?: boolean;
 	}>();
 
 	// State for tracking selected/hovered segment
@@ -76,24 +79,50 @@
 	const normalizedSegments = $derived(
 		segments
 			.map((segment: BarSegment) => {
-				// Get name from reactive cache (now includes contact names via fixed getUserName)
-				let displayName =
-					$userNamesOrAliasesCache[segment.id] || segment.id.substring(0, 8) + '...';
+				// Handle special segments (unsatisfied/unused)
+				if (segment.id === '__unsatisfied__') {
+					return {
+						...segment,
+						normalizedValue: totalValue ? (segment.value / totalValue) * 100 : 0,
+						label: 'Unsatisfied',
+						color: '#d1d5db', // Grey color for unsatisfied portion
+						isSpecial: true
+					};
+				}
+				
+			// Get name: check org names first, then fall back to user names cache
+			let displayName: string;
+			if (segment.id.startsWith('org_')) {
+				// This is an organization - get name from globalOrganizations
+				const org = $globalOrganizations[segment.id];
+				displayName = org ? getOrganizationName(org, 'en') : segment.id.substring(0, 8) + '...';
+			} else {
+				// Regular user/contact - get from cache
+				displayName = $userNamesOrAliasesCache[segment.id] || segment.id.substring(0, 8) + '...';
+			}
 
 				return {
 					...segment,
 					normalizedValue: totalValue ? (segment.value / totalValue) * 100 : 0,
 					label: displayName,
-					color: getColorForUserId(segment.id)
+					color: getColorForUserId(segment.id),
+					isSpecial: false
 				};
 			})
-			// Sort segments by value in descending order
-			.sort((a: BarSegment, b: BarSegment) => b.value - a.value)
+			// Sort segments: regular segments by value descending, special segments always last
+			.sort((a: any, b: any) => {
+				if (a.isSpecial && !b.isSpecial) return 1; // a goes after b
+				if (!a.isSpecial && b.isSpecial) return -1; // b goes after a
+				return b.value - a.value; // both regular: sort by value
+			})
 	);
 
 	// Trigger name lookups for all segments to ensure we get the best name (contact > alias)
 	$effect(() => {
 		segments.forEach((segment: BarSegment) => {
+			// Skip special segments like __unsatisfied__
+			if (segment.id.startsWith('__')) return;
+			
 			// Always call getUserName to ensure we get the best available name
 			// getUserName will check for contact names first, then fallback to aliases
 			getUserName(segment.id);
@@ -289,9 +318,20 @@
 			return;
 		}
 
-		// Get the name directly from reactive cache or fallback
-		const cachedName = $userNamesOrAliasesCache[selectedSegmentId];
-		popupLabel = cachedName || selectedSegmentId.substring(0, 8) + '...';
+		// Find the segment to get its label (handles special segments like __unsatisfied__)
+		const segment = normalizedSegments.find(s => s.id === selectedSegmentId);
+		if (segment?.label) {
+			popupLabel = segment.label;
+		} else {
+			// Fallback for regular segments - check orgs first
+			if (selectedSegmentId.startsWith('org_')) {
+				const org = $globalOrganizations[selectedSegmentId];
+				popupLabel = org ? getOrganizationName(org, 'en') : selectedSegmentId.substring(0, 8) + '...';
+			} else {
+			const cachedName = $userNamesOrAliasesCache[selectedSegmentId];
+			popupLabel = cachedName || selectedSegmentId.substring(0, 8) + '...';
+			}
+		}
 	});
 
 	// Clean up timeout when component is destroyed
@@ -305,6 +345,7 @@
 <div
 	bind:this={barContainer}
 	class="stacked-bar"
+	class:force-horizontal={forceHorizontal}
 	style:height
 	style:width
 	style:background-color={backgroundColor}
@@ -411,6 +452,17 @@
 			width: 100%;
 			height: calc(var(--segment-pct) * 1%);
 		}
+	}
+
+	/* Force horizontal mode (overrides media queries) */
+	.stacked-bar.force-horizontal {
+		flex-direction: row !important;
+	}
+
+	.stacked-bar.force-horizontal .bar-segment {
+		height: 100% !important;
+		min-height: unset !important;
+		width: calc(var(--segment-pct) * 1%) !important;
 	}
 
 	.bar-segment.interactive {

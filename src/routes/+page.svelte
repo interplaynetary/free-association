@@ -248,7 +248,7 @@
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
-				<!-- Need Slots Section -->
+				<!-- Need Slots Section (LEFT) -->
 				<section class="slots-section needs">
 					<h2>🙏 My Need Slots ({needSlots.length})</h2>
 					
@@ -294,23 +294,6 @@
 									onSlotDelete={removeNeedSlot}
 								>
 									{#snippet children({ slot }: { slot: NeedSlot })}
-										<div class="slot-actions-row">
-											<div class="quantity-control">
-												<label for="need-qty-{slot.id}">Quantity:</label>
-												<input
-													id="need-qty-{slot.id}"
-													type="number"
-													value={slot.quantity}
-													min="0"
-													step="0.1"
-													onchange={(e) => updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
-												/>
-												<span>{slot.unit || 'units'}</span>
-											</div>
-											<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
-												🗑️ Delete
-											</button>
-										</div>
 										{#if showRawData}
 											<details class="raw-data">
 												<summary>Raw data</summary>
@@ -324,7 +307,7 @@
 					</div>
 				</section>
 				
-				<!-- Capacity Slots Section -->
+				<!-- Capacity Slots Section (RIGHT) -->
 				<section class="slots-section capacity">
 					<h2>🎁 My Capacity Slots ({capacitySlots.length})</h2>
 					
@@ -370,23 +353,6 @@
 									onSlotDelete={removeCapacitySlot}
 								>
 									{#snippet children({ slot }: { slot: AvailabilitySlot })}
-										<div class="slot-actions-row">
-											<div class="quantity-control">
-												<label for="capacity-qty-{slot.id}">Quantity:</label>
-												<input
-													id="capacity-qty-{slot.id}"
-													type="number"
-													value={slot.quantity}
-													min="0"
-													step="0.1"
-													onchange={(e) => updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
-												/>
-												<span>{slot.unit || 'units'}</span>
-											</div>
-											<button onclick={() => removeCapacitySlot(slot.id)} class="btn-danger-small">
-												🗑️ Delete
-											</button>
-										</div>
 										{#if showRawData}
 											<details class="raw-data">
 												<summary>Raw data</summary>

@@ -20,6 +20,11 @@ export { default as MonthScheduleEditor } from './MonthScheduleEditor.svelte';
 // Visualization
 export { default as PatternPreview } from './PatternPreview.svelte';
 
+// Allocation details & visualization
+export { default as AllocationDetails } from './AllocationDetails.svelte';
+export { default as SlotAllocationBar } from './SlotAllocationBar.svelte';
+export { default as SlotAllocationDetails } from './SlotAllocationDetails.svelte';
+
 // Type exports
 export type { LocationData } from './LocationEditor.svelte';
 

@@ -108,9 +108,9 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 
-	// Initialize users list
-	const usersModule = await import('$lib/network/users.svelte');
-	usersModule.initializeUsersList();
+		// Initialize users list
+		const usersModule = await import('$lib/network/users.svelte');
+		usersModule.initializeUsersList();
 
 	// Initialize organizations list
 	const orgsModule = await import('$lib/network/organizations.svelte');
@@ -128,13 +128,13 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 	capacitySubsModule.initializeCapacitySubscriptions();
 	console.log('[HOLSTER] ✅ Capacity subscriptions initialized');
 
-	// Enable auto-subscription
-	storesModule.enableAutoSubscriptionSync();
-	console.log('[HOLSTER] ✅ Auto-subscription enabled');
+		// Enable auto-subscription
+		storesModule.enableAutoSubscriptionSync();
+		console.log('[HOLSTER] ✅ Auto-subscription enabled');
 
-	// Enable auto-composition
-	storesModule.enableAutoCommitmentComposition();
-	console.log('[HOLSTER] ✅ Auto-composition enabled');
+		// Enable auto-composition
+		storesModule.enableAutoCommitmentComposition();
+		console.log('[HOLSTER] ✅ Auto-composition enabled');
 
 	// Enable auto-membership sync
 	storesModule.enableAutoMembershipSync();

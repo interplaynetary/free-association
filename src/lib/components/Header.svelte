@@ -945,6 +945,8 @@
 		<div class="header-controls">
 			<LanguageSwitcher />
 			
+					<!--
+
 		{#if $userAlias}
 			<a href="{base}/quests" class="icon-button quest-button" title="View your quests">
 				<span>🎯</span>
@@ -954,6 +956,8 @@
 		<a href="{base}/donate-key" class="icon-button donate-button" title="Donate OpenRouter API Key">
 			<span>🎁</span>
 		</a>
+		-->
+
 		
 		<button class="icon-button help-button" title="Start guided tour" onclick={handleTourClick}>
 				<span>❓</span>

@@ -15,6 +15,9 @@ import {
 	deleteHolsterContact
 } from './contacts.svelte';
 
+// Import organizations module for org_id resolution
+import { globalOrganizations, getOrganizationName } from './organizations.svelte';
+
 // ================================
 // USERS LIST SUBSCRIPTION (Holster)
 // ================================
@@ -420,6 +423,16 @@ export async function getUserAlias(pubkey: string) {
  * Uses the combined cache for reactive components
  */
 export async function getUserName(identifier: string): Promise<string> {
+	// Handle org_ids (works for ANY org in globalOrganizations)
+	if (identifier.startsWith('org_')) {
+		const orgs = get(globalOrganizations);
+		const org = orgs[identifier];
+		if (org) {
+			return getOrganizationName(org, 'en'); // TODO: Use user's preferred language
+		}
+		return identifier; // Fallback if org not found
+	}
+
 	// First check the combined cache (contacts take priority over aliases)
 	const combinedCache = get(userNamesOrAliasesCache);
 	if (combinedCache[identifier]) {

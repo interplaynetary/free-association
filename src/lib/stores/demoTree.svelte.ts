@@ -8,6 +8,7 @@
 import type { RootNode } from '$lib/protocol/schemas';
 import { createRootNode } from '$lib/protocol/tree';
 import { applyTemplate } from '$lib/templates';
+import { writable, type Readable } from 'svelte/store';
 
 const DEMO_TREE_KEY = 'free-association-demo-tree';
 
@@ -17,6 +18,10 @@ const DEMO_TREE_KEY = 'free-association-demo-tree';
 class DemoTreeStore {
 	private tree = $state<RootNode | null>(null);
 	private initialized = false;
+	
+	// ✅ Svelte 4 writable store that's updated whenever tree changes
+	// This ensures proper reactivity for derived stores
+	private treeStore = writable<RootNode | null>(null);
 
 	constructor() {
 		// Load from localStorage on creation (browser only)
@@ -38,6 +43,9 @@ class DemoTreeStore {
 	 */
 	set(newTree: RootNode | null, persist: boolean = true) {
 		this.tree = newTree;
+		// ✅ Update the writable store to trigger reactivity
+		this.treeStore.set(newTree);
+		
 		if (typeof window !== 'undefined' && persist) {
 			if (newTree) {
 				localStorage.setItem(DEMO_TREE_KEY, JSON.stringify(newTree));
@@ -62,6 +70,8 @@ class DemoTreeStore {
 					// Check if tree has valid children array
 					if (parsed.children && Array.isArray(parsed.children) && parsed.children.length > 0) {
 						this.tree = parsed;
+						// ✅ Update the writable store
+						this.treeStore.set(parsed);
 						console.log('[DEMO TREE] Loaded from localStorage with', parsed.children.length, 'children');
 					} else {
 						// Tree exists but is empty - clear it
@@ -123,6 +133,15 @@ class DemoTreeStore {
 		if (!this.tree) return false;
 		// Check if tree has children - an empty tree should trigger re-initialization
 		return this.tree.children && this.tree.children.length > 0;
+	}
+
+	/**
+	 * ✅ Get a Svelte 4 store that reactively tracks tree changes
+	 * Returns the internal writable store as a Readable for subscription
+	 */
+	toStore(): Readable<RootNode | null> {
+		// Return the writable store (as Readable) - it's updated whenever set() is called
+		return { subscribe: this.treeStore.subscribe };
 	}
 }
 

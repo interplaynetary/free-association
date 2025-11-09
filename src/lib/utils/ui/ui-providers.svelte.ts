@@ -15,6 +15,7 @@ import {
 	getUserAlias
 } from '$lib/network/users.svelte';
 import { userAliasesCache } from '$lib/network/users.svelte';
+import { globalOrganizations, getOrganizationName } from '$lib/network/organizations.svelte';
 import type { Commitment, Node } from '$lib/protocol/schemas';
 
 // V5: Helper to create nodesMap from tree
@@ -46,26 +47,46 @@ function getDisplayName(userId: string, namesCache: Record<string, string>): str
 	return (parts[0]?.substring(0, 12) || userId.substring(0, 12)) + '...';
 }
 
-// Simplified contacts and users data provider - no more complex merging logic
+// Simplified contacts and users data provider - now includes organizations!
 export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
-		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache],
-		([$userContacts, $userIds, $userNamesCache, $userAliasesCache]) => {
+		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache, globalOrganizations],
+		([$userContacts, $userIds, $userNamesCache, $userAliasesCache, $globalOrgs]) => {
 			const items: Array<{
 				id: string;
 				name: string;
 				metadata: {
 					userId: string;
 					isContact: boolean;
+					isOrganization?: boolean;
 					contactName?: string;
 					gunAlias?: string;
 				};
 			}> = [];
 
-			// Simple approach: Just add all contacts and users in one unified way
+			// Simple approach: Just add all contacts, organizations, and users in one unified way
 			const processedIds = new Set<string>();
 
-			// Add all contacts first (they get priority)
+			// Add all organizations FIRST (highest priority for display)
+			if ($globalOrgs) {
+				Object.entries($globalOrgs).forEach(([orgId, org]) => {
+					if (excludeIds.includes(orgId)) return;
+					
+					items.push({
+						id: orgId,
+						name: getOrganizationName(org, 'en'), // TODO: Use user's preferred language
+						metadata: {
+							userId: orgId,
+							isContact: false,
+							isOrganization: true
+						}
+					});
+					
+					processedIds.add(orgId);
+				});
+			}
+
+			// Add all contacts second (they get priority over regular users)
 			if ($userContacts) {
 				Object.values($userContacts).forEach((contact) => {
 					if (excludeIds.includes(contact.contact_id)) return;
@@ -94,13 +115,13 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				});
 			}
 
-			// Add all users that aren't already added as contacts
+			// Add all users that aren't already added as contacts or orgs
 			if ($userIds) {
 				const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
 
 				allUserIds.forEach((userId) => {
 					if (excludeIds.includes(userId)) return;
-					if (processedIds.has(userId)) return; // Skip if already added as contact
+					if (processedIds.has(userId)) return; // Skip if already added as contact/org
 
 					items.push({
 						id: userId,
@@ -114,9 +135,13 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				});
 			}
 
-			// Sort so contacts appear first, then alphabetically
+			// Sort: organizations first, then contacts, then users, all alphabetically within groups
 			const sortedItems = items.sort((a, b) => {
-				// Contacts first
+				// Organizations first
+				if (a.metadata.isOrganization && !b.metadata.isOrganization) return -1;
+				if (!a.metadata.isOrganization && b.metadata.isOrganization) return 1;
+				
+				// Then contacts
 				if (a.metadata.isContact && !b.metadata.isContact) return -1;
 				if (!a.metadata.isContact && b.metadata.isContact) return 1;
 
@@ -129,7 +154,8 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				sortedItems.map((item) => ({
 					id: item.id.substring(0, 12) + '...',
 					name: item.name,
-					isContact: item.metadata.isContact
+					isContact: item.metadata.isContact,
+					isOrg: item.metadata.isOrganization
 				}))
 			);
 

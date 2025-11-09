@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { getOrgTree, getOrgMetadata } from '$lib/config/org-trees';
-import type { RootNode } from '$lib/protocol/schemas';
+import type { RootNode, Contributor } from '$lib/protocol/schemas';
 
 // Client-side only rendering (same as main app)
 export const prerender = false;
@@ -12,6 +12,8 @@ export interface PageData {
 	slug: string;
 	orgName: string;
 	orgDescription: string;
+	monthlyBudget?: number;
+	recognizes: Contributor[];
 }
 
 /** @type {import('./$types').PageLoad} */
@@ -39,7 +41,9 @@ export const load = async ({ params }): Promise<PageData> => {
 		tree,
 		slug,
 		orgName: metadata?.name || slug,
-		orgDescription: metadata?.description || ''
+		orgDescription: metadata?.description || '',
+		monthlyBudget: metadata?.monthly_budget,
+		recognizes: metadata?.recognizes || []
 	};
 };
 

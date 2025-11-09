@@ -611,11 +611,11 @@
 					{@const incomingAllocations = [
 						// Include allocations from OTHER people's commitments
 						...Array.from($networkAllocations.entries())
-							.flatMap(([pubKey, allocations]) => {
-								if (!allocations || allocations.length === 0) return [];
-								return allocations
-									.filter(alloc => alloc.recipient_pubkey === myPub)
-									.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
+						.flatMap(([pubKey, allocations]) => {
+							if (!allocations || allocations.length === 0) return [];
+							return allocations
+								.filter(alloc => alloc.recipient_pubkey === myPub)
+								.map(alloc => ({ ...alloc, providerPubKey: pubKey }));
 							}),
 						// Include SELF-ALLOCATIONS from my own commitment (self-care is valid care!)
 						...(commitment?.slot_allocations || [])

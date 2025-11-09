@@ -272,6 +272,7 @@
 						slot={slot as AvailabilitySlot}
 						capacityId={capacityId}
 						canDelete={filteredSlots.length > 1}
+						isCapacity={kind === 'capacity'}
 						onupdate={(updatedSlot: AvailabilitySlot) => onSlotUpdate?.(updatedSlot)}
 						ondelete={(slotId: string) => onSlotDelete?.(slotId)}
 					/>
@@ -525,11 +526,11 @@
 	}
 	
 	.slot-actions {
-		margin-top: 0.5rem;
+		margin-top: 0;
 		padding: 0.75rem;
-		background: #f8fafc;
-		border-radius: 6px;
-		border: 1px solid #e5e7eb;
+		background: transparent;
+		border-radius: 0;
+		border: none;
 	}
 	
 	.slot-actions:empty {

@@ -101,7 +101,12 @@ export type ResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Contributor - Represents a person who contributed to a node
+ * Contributor - Represents a person or organization who contributed to a node
+ * 
+ * The ID can be:
+ * - Public key (base64 string) - individual contributor
+ * - contact_id (string starting with "contact_") - named contact
+ * - org_id (string starting with "org_") - organization contributor
  * 
  * Points determine the contributor's share of recognition from this node.
  * If a node has contributors [Alice: 50pts, Bob: 30pts], Alice gets 50/80 = 62.5% of the node's recognition.
@@ -109,7 +114,7 @@ export type ResourceMetadata = z.infer<typeof ResourceMetadataSchema>;
  * This is analogous to how child node points work, but for contributors instead of subtasks.
  */
 export const ContributorSchema = z.object({
-	id: IdSchema,
+	id: IdSchema, // Can be pubkey, contact_id, or org_id
 	points: PointsSchema
 });
 

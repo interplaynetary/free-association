@@ -692,7 +692,7 @@ Your-Proportional-Share =
   divided by
   Sum-of-Provider's-Mutual-Recognition-with-Everyone
   (Recognition determines proportional split)
-
+  
 Your-Raw-Allocation =
   Provider's-Available-Capacity
   multiplied by

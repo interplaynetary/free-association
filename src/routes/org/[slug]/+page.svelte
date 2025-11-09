@@ -25,9 +25,13 @@
 	import { currentPath } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+	import type { NeedSlot, AvailabilitySlot, NonRootNode } from '$lib/protocol/schemas';
 	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
-	import type { PageData } from './$types';
+	import type { PageData } from './+page';
+	import { globalOrganizations } from '$lib/network/organizations.svelte';
+	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
+	import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
+	import { computeMutualRecognition } from '$lib/protocol/allocation';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();
@@ -54,14 +58,56 @@
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
 
+	// ✅ CRITICAL: Initialize org tree IMMEDIATELY (before component renders)
+	// This prevents the SDG tree from being loaded from localStorage first
+	console.log('[ORG-PAGE] Initializing org page for:', data.orgName);
+	console.log('[ORG-PAGE] Preparing custom tree:', data.tree.name);
+
+	// Bootstrap: Register demo orgs in globalOrganizations IMMEDIATELY
+	// (In production, orgs would come from Holster network)
+	globalOrganizations.update(orgs => ({ ...orgs, ...DEMO_ORGANIZATIONS }));
+	console.log('[ORG-PAGE] Registered demo organizations');
+
+	// Clone tree and inject org contributors IMMEDIATELY
+	const orgTreeWithContributors = (() => {
+		const tree = structuredClone(data.tree);
+		if (data.recognizes && data.recognizes.length > 0) {
+			console.log('[ORG-PAGE] Injecting org contributors:', data.recognizes);
+			
+			// Recursively find all LEAF nodes (nodes with no children) and add org contributors
+			function injectIntoLeafNodes(node: any) {
+				if (node.type === 'NonRootNode') {
+					if (!node.children || node.children.length === 0) {
+						// This is a leaf node - add org contributors
+						const nonRoot = node as NonRootNode;
+						nonRoot.contributors = [
+							...nonRoot.contributors,
+							...data.recognizes
+						];
+						console.log('[ORG-PAGE] Added org contributors to leaf node:', node.name);
+					} else {
+						// This node has children - recurse into them
+						node.children.forEach((child: any) => injectIntoLeafNodes(child));
+					}
+				} else if (node.type === 'RootNode' && node.children) {
+					// Root node - recurse into children
+					node.children.forEach((child: any) => injectIntoLeafNodes(child));
+				}
+			}
+			
+			injectIntoLeafNodes(tree);
+		}
+		return tree;
+	})();
+
+	// Initialize demo tree with organization-specific tree IMMEDIATELY
+	// Force initialization to ensure we load the org tree even if another tree exists
+	// persist=false means this tree won't be saved to localStorage
+	console.log('[ORG-PAGE] Initializing demo tree store with org tree NOW (before component renders)');
+	demoTreeStore.initializeWithCustomTree(orgTreeWithContributors, true, false);
+
 	onMount(() => {
-		console.log('[ORG-PAGE] Mounting org page for:', data.orgName);
-		console.log('[ORG-PAGE] Initializing with custom tree:', data.tree.name);
-		
-		// Initialize demo tree with organization-specific tree
-		// Force initialization to ensure we load the org tree even if another tree exists
-		// persist=false means this tree won't be saved to localStorage
-		demoTreeStore.initializeWithCustomTree(data.tree, true, false);
+		console.log('[ORG-PAGE] Component mounted - tree already initialized');
 		
 		// Initialize path with the org tree root
 		if (data.tree) {
@@ -200,71 +246,293 @@
 		setMyCapacitySlots(updated);
 	}
 
+	// ═══════════════════════════════════════════════════════════════════
+	// DEMO RECOGNITION STORES (Reuse Protocol Algorithms, Separate Data)
+	// ═══════════════════════════════════════════════════════════════════
+	
+	// V5: Compute recognition from demo tree (since stores require authentication)
+	// ✅ REUSES PROTOCOL: Same sharesOfGeneralFulfillmentMap algorithm
+	// ✅ SEPARATE DATA: Uses demoTreeStore instead of myRecognitionTreeStore
+	const demoRecognitionWeights = derived(
+		[demoTreeStore.toStore()],
+		([$tree]) => {
+			console.log('[📊 DEMO-REC] Tree changed - recomputing recognition weights');
+			
+			if (!$tree) {
+				console.log('[📊 DEMO-REC] ❌ No demo tree available');
+				return {};
+			}
+			
+			// DEBUG: Inspect tree structure
+			console.log('[📊 DEMO-REC]   Root ID:', $tree.id);
+			console.log('[📊 DEMO-REC]   Root name:', $tree.name);
+			console.log('[📊 DEMO-REC]   Children count:', $tree.children?.length || 0);
+			
+			// Find and log all contribution nodes (nodes with contributors)
+			const allNodes = [$tree];
+			const queue = [...($tree.children || [])];
+			while (queue.length > 0) {
+				const node = queue.shift()!;
+				allNodes.push(node);
+				queue.push(...(node.children || []));
+			}
+			
+			console.log('[📊 DEMO-REC]   Total nodes in tree:', allNodes.length);
+			
+			const contributionNodes = allNodes.filter(node => {
+				if (node.type === 'RootNode') return false;
+				const nonRoot = node as any;
+				return nonRoot.contributors && nonRoot.contributors.length > 0;
+			});
+			
+			console.log('[📊 DEMO-REC]   Contribution nodes (with contributors):', contributionNodes.length);
+			
+			contributionNodes.forEach((node: any) => {
+				console.log(`[📊 DEMO-REC]     • Node "${node.name}" (${node.id}): ${node.contributors.length} contributors`);
+				node.contributors.forEach((c: any) => {
+					console.log(`[📊 DEMO-REC]       - ${c.id} (${c.points} points)`);
+				});
+			});
+			
+			// Try to get contributors from tree using protocol function
+			console.log('[📊 DEMO-REC] Getting all contributors from tree via protocol...');
+			const allContributors = getAllContributorsFromTree($tree);
+			console.log('[📊 DEMO-REC]   Protocol found', allContributors.length, 'unique contributor IDs');
+			allContributors.forEach(id => {
+				console.log(`[📊 DEMO-REC]     • ${id}`);
+			});
+			
+			try {
+				console.log('[📊 DEMO-REC] Computing recognition weights...');
+				// ✅ REUSE PROTOCOL ALGORITHM
+				const weights = sharesOfGeneralFulfillmentMap($tree, {});
+				const nonZero = Object.values(weights).filter(w => w > 0).length;
+				console.log(`[📊 DEMO-REC] ✅ Computed ${Object.keys(weights).length} total, ${nonZero} non-zero recognition weights`);
+				
+				Object.entries(weights).forEach(([id, weight]) => {
+					if (weight > 0) {
+						console.log(`[📊 DEMO-REC]   • ${id}: ${(weight * 100).toFixed(2)}%`);
+					}
+				});
+				
+				return weights;
+			} catch (error) {
+				console.error('[📊 DEMO-REC] ❌ Error computing recognition:', error);
+				return {};
+			}
+		}
+	);
+	
+	// Load org recognition data from config (who recognizes whom in the demo ecosystem)
+	// This is the "others_recognition_of_me" equivalent for demo mode
+	import { readable } from 'svelte/store';
+	import type { GlobalRecognitionWeights } from '$lib/protocol/schemas';
+	import { getOrgTreesMap } from '$lib/config/org-trees';
+	
+	const demoOrgRecognitionMap = readable<Record<string, GlobalRecognitionWeights>>({}, (set) => {
+		// Load all org configs and compute their recognition weights
+		const orgTreesMap = getOrgTreesMap();
+		const recognitionMap: Record<string, GlobalRecognitionWeights> = {};
+		
+		console.log('[📊 DEMO-ORG-REC] Loading org recognition data from config...');
+		
+		for (const [slug, config] of Object.entries(orgTreesMap)) {
+			if (!config.recognizes || config.recognizes.length === 0) continue;
+			
+			// Compute recognition weights for this org
+			// Convert contributors array to weights (same as protocol does)
+			const totalPoints = config.recognizes.reduce((sum, c) => sum + c.points, 0);
+			const weights: GlobalRecognitionWeights = {};
+			
+			config.recognizes.forEach(contributor => {
+				weights[contributor.id] = contributor.points / totalPoints;
+			});
+			
+			// Map by org_id (not slug)
+			const orgId = `org_demo_${slug.replace(/-/g, '')}`;
+			recognitionMap[orgId] = weights;
+			
+			console.log(`[📊 DEMO-ORG-REC]   ${config.name} (${orgId}):`, weights);
+		}
+		
+		console.log(`[📊 DEMO-ORG-REC] ✅ Loaded ${Object.keys(recognitionMap).length} org recognition trees`);
+		set(recognitionMap);
+		
+		return () => {}; // No cleanup needed
+	});
+	
+	// V5: Compute mutual recognition for demo mode
+	// ✅ REUSES PROTOCOL: Same computeMutualRecognition algorithm from allocation.ts
+	// ✅ SEPARATE DATA: Uses demo recognition weights + org recognition data
+	const demoMutualRecognition = derived(
+		[demoRecognitionWeights, demoOrgRecognitionMap],
+		([$myRecognition, $orgRecognition]) => {
+			console.log('[🤝 DEMO-MR] Computing mutual recognition for demo mode...');
+			
+			if (!$myRecognition || Object.keys($myRecognition).length === 0) {
+				console.log('[🤝 DEMO-MR] ❌ No recognition weights available');
+				return {};
+			}
+			
+			const myRecCount = Object.keys($myRecognition).length;
+			const orgRecCount = Object.keys($orgRecognition).length;
+			console.log(`[🤝 DEMO-MR] My recognition: ${myRecCount} entries`);
+			console.log(`[🤝 DEMO-MR] Org recognition: ${orgRecCount} orgs`);
+			
+			// ✅ FIX: Use the org_demo_* format to match recognition data keys
+			// Convert slug → org_id (e.g., "unicef" → "org_demo_unicef")
+			const myOrgId = `org_demo_${data.slug.replace(/-/g, '')}`;
+			console.log(`[🤝 DEMO-MR] My org ID: ${myOrgId}`);
+			
+			// DEBUG: Log the inputs before calling the algorithm
+			console.log('[🤝 DEMO-MR] Inputs to computeMutualRecognition:');
+			console.log('[🤝 DEMO-MR]   myRecognition:', $myRecognition);
+			console.log('[🤝 DEMO-MR]   orgRecognition keys:', Object.keys($orgRecognition));
+			Object.entries($orgRecognition).forEach(([orgId, theirWeights]) => {
+				console.log(`[🤝 DEMO-MR]     ${orgId} recognizes:`, theirWeights);
+				if (theirWeights[myOrgId]) {
+					console.log(`[🤝 DEMO-MR]       → Recognizes ${myOrgId}: ${(theirWeights[myOrgId] * 100).toFixed(2)}%`);
+				}
+			});
+			
+			// ✅ REUSE PROTOCOL ALGORITHM - Same function as authenticated mode!
+			const mutualRec = computeMutualRecognition(
+				$myRecognition,      // Who I recognize
+				$orgRecognition,     // Who recognizes me (from config)
+				myOrgId              // My org ID (matches config format!)
+			);
+			
+			const mutualCount = Object.values(mutualRec).filter(mr => mr > 0).length;
+			console.log(`[🤝 DEMO-MR] ✅ Computed ${mutualCount} mutual recognition relationships`);
+			
+			// Detailed comparison logging
+			Object.entries(mutualRec).forEach(([id, mr]) => {
+				const myRec = $myRecognition[id] || 0;
+				const theirRec = $orgRecognition[id]?.[myOrgId] || 0;
+				const minValue = Math.min(myRec, theirRec);
+				const capped = myRec < theirRec ? 'MY_REC' : (theirRec < myRec ? 'THEIR_REC' : 'EQUAL');
+				
+				console.log(`[🤝 DEMO-MR]   ${id}:`);
+				console.log(`[🤝 DEMO-MR]     I→them: ${(myRec * 100).toFixed(2)}%`);
+				console.log(`[🤝 DEMO-MR]     them→me: ${(theirRec * 100).toFixed(2)}%`);
+				console.log(`[🤝 DEMO-MR]     MR: ${(mr * 100).toFixed(2)}% (capped by ${capped})`);
+				
+				if (mr > 0 && mr !== minValue) {
+					console.error(`[🤝 DEMO-MR]     ❌ ERROR: MR (${mr}) != min(${myRec}, ${theirRec}) = ${minValue}`);
+				}
+			});
+			
+			return mutualRec;
+		}
+	);
+	
 	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
 	// Recognition weights are automatically computed from the tree in v5!
-	const barSegments = derived(myRecognitionWeights, ($weights) => {
-		console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
-		
-		if (!$weights || Object.keys($weights).length === 0) {
-			console.log('[📊 UI-YR] ❌ No recognition weights available');
-			return [];
+	// In demo mode, use demoRecognitionWeights instead of store-based weights
+	// ✅ Subscribe to BOTH stores so changes in either trigger updates
+	const barSegments = derived(
+		[myRecognitionWeights, demoRecognitionWeights], 
+		([$authWeights, $demoWeights]) => {
+			console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
+			
+			// Use demo recognition if auth weights are empty (demo mode)
+			const weights = ($authWeights && Object.keys($authWeights).length > 0) 
+				? $authWeights 
+				: $demoWeights;
+			
+			if (!weights || Object.keys(weights).length === 0) {
+				console.log('[📊 UI-YR] ❌ No recognition weights available');
+				return [];
+			}
+
+			const totalEntries = Object.keys(weights).length;
+			const nonZeroEntries = Object.values(weights as Record<string, number>).filter(v => v > 0).length;
+			console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+
+			// Transform recognition weights into segments for Bar
+			const segments = Object.entries(weights as Record<string, number>)
+				.filter(([_, value]) => value > 0) // Only include non-zero values
+				.map(([id, value]) => ({
+					id,
+					value: value * 100 // Convert from decimal to percentage
+				}))
+				.sort((a, b) => b.value - a.value); // Sort by value descending
+			
+			console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
+			segments.forEach(seg => {
+				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+			});
+			
+			return segments;
 		}
-
-		const totalEntries = Object.keys($weights).length;
-		const nonZeroEntries = Object.values($weights).filter(v => v > 0).length;
-		console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-		// Transform recognition weights into segments for Bar
-		const segments = Object.entries($weights)
-			.filter(([_, value]) => value > 0) // Only include non-zero values
-			.map(([id, value]) => ({
-				id,
-				value: value * 100 // Convert from decimal to percentage
-			}))
-			.sort((a, b) => b.value - a.value); // Sort by value descending
-		
-		console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
-		segments.forEach(seg => {
-			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-		});
-		
-		return segments;
-	});
+	);
 
 	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
-	// Mutual recognition is automatically computed from recognition weights + network data in v5!
-	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
-		console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
+	// ✅ FALLBACK TO DEMO: Use demoMutualRecognition in demo mode (same algorithm, different data)
+	const providerSegments = derived(
+		[myMutualRecognition, demoMutualRecognition],
+		([$mutualRec, $demoMutualRec]) => {
+			console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
+			
+			// Use demo mutual recognition if auth MR is empty (demo mode)
+			const mutualRec = ($mutualRec && Object.keys($mutualRec).length > 0) 
+				? $mutualRec 
+				: $demoMutualRec;
 
-		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
-			console.log('[📊 UI-MR] ❌ No mutual recognition data available');
-			return [];
+			if (!mutualRec || Object.keys(mutualRec).length === 0) {
+				console.log('[📊 UI-MR] ❌ No mutual recognition data available');
+				return [];
+			}
+
+			const totalEntries = Object.keys(mutualRec).length;
+			const nonZeroEntries = Object.values(mutualRec as Record<string, number>).filter(v => v > 0).length;
+			console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+
+			// Transform mutual recognition data into segments for Bar
+			const segments = Object.entries(mutualRec as Record<string, number>)
+				.filter(([_, value]) => value > 0) // Only include non-zero values
+				.map(([id, value]) => ({
+					id,
+					value: value * 100 // Convert from decimal to percentage
+				}))
+				.sort((a, b) => b.value - a.value); // Sort by value descending
+
+			console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
+			segments.forEach(seg => {
+				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+			});
+			
+			return segments;
 		}
-
-		const totalEntries = Object.keys($mutualRec).length;
-		const nonZeroEntries = Object.values($mutualRec).filter(v => v > 0).length;
-		console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-		// Transform mutual recognition data into segments for Bar
-		const segments = Object.entries($mutualRec)
-			.filter(([_, value]) => value > 0) // Only include non-zero values
-			.map(([id, value]) => ({
-				id,
-				value: value * 100 // Convert from decimal to percentage
-			}))
-			.sort((a, b) => b.value - a.value); // Sort by value descending
-
-		console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
-		segments.forEach(seg => {
-			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-		});
-		
-		return segments;
-	});
+	);
 
 	// V5: No manual recalculation needed! Everything is reactive 🎉
 	// Recognition weights auto-update when tree changes
 	// Mutual recognition auto-updates when recognition weights or network data changes
+
+	import { formatBudget } from '$lib/config/org-trees';
+	
+	// Convert initial budget to display format
+	function convertToDisplay(fullAmount: number): { value: number; unit: 'K' | 'M' | 'B' } {
+		if (fullAmount >= 1_000_000_000) {
+			return { value: parseFloat((fullAmount / 1_000_000_000).toFixed(1)), unit: 'B' };
+		} else if (fullAmount >= 1_000_000) {
+			return { value: parseFloat((fullAmount / 1_000_000).toFixed(1)), unit: 'M' };
+		} else if (fullAmount >= 1_000) {
+			return { value: parseFloat((fullAmount / 1_000).toFixed(1)), unit: 'K' };
+		}
+		return { value: fullAmount, unit: 'K' };
+	}
+	
+	const initial = convertToDisplay(data.monthlyBudget || 0);
+	let budgetValue = $state(initial.value);
+	let budgetUnit = $state<'K' | 'M' | 'B'>(initial.unit);
+	
+	// Calculate full amount from display values
+	function getFullAmount(): number {
+		const multipliers = { K: 1_000, M: 1_000_000, B: 1_000_000_000 };
+		return budgetValue * multipliers[budgetUnit];
+	}
 </script>
 
 <svelte:head>
@@ -272,6 +540,7 @@
 	<meta name="description" content={data.orgDescription} />
 </svelte:head>
 
+<div class="org-page-container">
 <div class="layout org-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
@@ -494,15 +763,180 @@
 	{/if}
 </div>
 
+{#if data.monthlyBudget}
+<div class="org-capacity-footer">
+	<div class="capacity-info">
+		<span class="budget-label">Monthly Distribution:</span>
+		<div class="budget-input-wrapper">
+			<span class="currency">$</span>
+			<input
+				type="number"
+				bind:value={budgetValue}
+				min="0"
+				step="0.1"
+				class="budget-input"
+			/>
+			<select bind:value={budgetUnit} class="unit-select">
+				<option value="K">K</option>
+				<option value="M">M</option>
+				<option value="B">B</option>
+			</select>
+			<span class="formatted-display">= ${formatBudget(getFullAmount())}</span>
+		</div>
+		<span class="separator">•</span>
+		<span class="explainer">Allocated via mutual recognition</span>
+	</div>
+</div>
+{/if}
+</div>
+
 <style>
 	/* Removed conflicting :global(body) styles - handled by layout */
 
+	/* Org page container - no scroll needed */
+	.org-page-container {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	/* Org capacity footer - prominent and editable at bottom */
+	.org-capacity-footer {
+		border-top: 1px solid #e0e0e0;
+		background: #fafafa;
+		padding: 1rem 1.5rem;
+		flex-shrink: 0;
+	}
+
+	.capacity-info {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		font-size: 1.1rem;
+		color: #666;
+		flex-wrap: wrap;
+	}
+
+	.budget-label {
+		font-weight: 600;
+		font-size: 1.2rem;
+	}
+
+	.budget-input-wrapper {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: white;
+		padding: 0.5rem 1rem;
+		border-radius: 6px;
+		border: 2px solid #e0e0e0;
+		transition: border-color 0.2s;
+	}
+
+	.budget-input-wrapper:focus-within {
+		border-color: #2196f3;
+	}
+
+	.currency {
+		font-weight: 600;
+		color: #2196f3;
+		font-size: 1.3rem;
+	}
+
+	.budget-input {
+		border: none;
+		outline: none;
+		font-size: 1.3rem;
+		font-weight: 600;
+		color: #333;
+		width: 80px;
+		padding: 0;
+		background: transparent;
+	}
+
+	.budget-input::-webkit-inner-spin-button,
+	.budget-input::-webkit-outer-spin-button {
+		opacity: 1;
+	}
+
+	.unit-select {
+		border: none;
+		outline: none;
+		font-size: 1.2rem;
+		font-weight: 600;
+		color: #2196f3;
+		background: transparent;
+		cursor: pointer;
+		padding: 0;
+		margin-left: 0.25rem;
+	}
+
+	.unit-select:focus {
+		outline: none;
+	}
+
+	.formatted-display {
+		font-size: 1rem;
+		color: #888;
+		font-weight: 500;
+		padding-left: 0.5rem;
+		margin-left: 0.5rem;
+		border-left: 1px solid #e0e0e0;
+	}
+
+	.separator {
+		color: #ccc;
+		font-weight: bold;
+		font-size: 1.2rem;
+	}
+
+	.explainer {
+		font-style: italic;
+		color: #888;
+		font-size: 1rem;
+	}
+
+	@media (max-width: 768px) {
+		.org-capacity-footer {
+			padding: 0.75rem 1rem;
+		}
+
+		.capacity-info {
+			font-size: 1rem;
+			gap: 0.75rem;
+		}
+
+		.budget-label {
+			font-size: 1rem;
+		}
+
+		.budget-input {
+			width: 70px;
+			font-size: 1.1rem;
+		}
+
+		.unit-select {
+			font-size: 1rem;
+		}
+
+		.formatted-display {
+			font-size: 0.9rem;
+		}
+
+		.explainer {
+			font-size: 0.9rem;
+		}
+	}
+
 	.layout {
+		flex: 1;
+		min-height: 0;
 		display: grid;
 		grid-template-columns: 9fr 1fr;
 		width: 100%;
-		height: 100%;
-		max-height: 100%;
 		overflow: hidden;
 		user-select: none;
 	}
