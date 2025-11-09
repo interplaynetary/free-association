@@ -319,8 +319,23 @@ export async function deleteContact(contact_id: string): Promise<void> {
  */
 export function getContactByPublicKey(public_key: string): Contact | undefined {
 	const contacts = get(userContacts);
-	if (!contacts) return undefined;
-	return Object.values(contacts).find((contact) => contact.public_key === public_key);
+	if (!contacts) {
+		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ Contacts not loaded yet`);
+		return undefined;
+	}
+	
+	const contactsList = Object.values(contacts);
+	console.log(`[GET-CONTACT-BY-PUBKEY] Searching for pubkey ${public_key.slice(0, 20)}... among ${contactsList.length} contacts`);
+	
+	const found = contactsList.find((contact) => contact.public_key === public_key);
+	if (found) {
+		console.log(`[GET-CONTACT-BY-PUBKEY] ✅ Found contact: ${found.name} (${found.contact_id})`);
+	} else {
+		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ No contact found with this pubkey`);
+		console.log(`[GET-CONTACT-BY-PUBKEY] Available pubkeys:`, contactsList.map(c => c.public_key?.slice(0, 20) + '...'));
+	}
+	
+	return found;
 }
 
 /**
@@ -476,11 +491,14 @@ export async function getUserName(identifier: string): Promise<string> {
 		}
 	} else {
 		// For pubKey-based lookup, check if we have a contact with this public key
+		console.log(`[GET-USER-NAME] Looking up pubkey: ${identifier.slice(0, 20)}...`);
 		const contact = getContactByPublicKey(identifier);
 		if (contact) {
+			console.log(`[GET-USER-NAME] ✅ Found contact for pubkey: ${contact.name}`);
 			displayName = contact.name;
 			shouldCacheInNamesCache = true; // Contact names go in userNamesCache
 		} else {
+			console.log(`[GET-USER-NAME] ⚠️  No contact found for pubkey, falling back to alias`);
 			// If no contact found, fall back to Gun alias
 			displayName = await getUserAlias(identifier);
 			// Don't cache here - getUserAlias already handles userAliasesCache
