@@ -274,7 +274,7 @@ Presented To: Impact Networks, UN Agencies, and Potential Partners
 
 **`Contact:`**   
 [`playnet.lol`](http://playnet.lol)   
-[`ruzgar@playnet.lol`](mailto:ruzgar@playnet.lol) 
+[`info@openassociation.org`](mailto:info@openassociation.org) 
 
 ---
 

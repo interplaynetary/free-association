@@ -13,14 +13,10 @@
 
 **In both files**, replace these placeholders:
 
-#### Terms of Service (`src/routes/terms/+page.svelte`)
-- [ ] `[YOUR_JURISDICTION]` → e.g., "California, United States"
-- [ ] `[SUPPORT_EMAIL]` → e.g., "support@playnet.lol"
-
 #### Privacy Policy (`src/routes/privacy/+page.svelte`)
-- [ ] `[LEGAL_ENTITY_NAME]` → Your legal name or entity name
-- [ ] `[PRIVACY_CONTACT_EMAIL]` → e.g., "privacy@playnet.lol"
-- [ ] `[SERVER_LOCATION/JURISDICTION]` → e.g., "United States"
+- [ ] `Open Association` → Your legal name or entity name
+- [ ] `info@openassociation.org` → e.g., "privacy@playnet.lol"
+- [ ] `France` → e.g., "United States"
 
 ### 2. Set Up Privacy Request Handling
 

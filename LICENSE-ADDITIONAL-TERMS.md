@@ -78,7 +78,7 @@ These additional terms are part of the license and are enforceable under
 copyright law. Violation of these terms constitutes copyright infringement.
 
 We strongly prefer dialogue over litigation. If you're uncertain about 
-compliance, please contact: ruzgar@playnet.lol
+compliance, please contact: info@openassociation.org
 
 ---
 

@@ -52,8 +52,9 @@ vi.mock('$lib/protocol/config', () => ({
 // ═══════════════════════════════════════════════════════════════════
 
 import { get } from 'svelte/store';
-import type { Commitment, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights } from '../schemas';
+import type { Commitment, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights, Node, RootNode, NonRootNode } from '../schemas';
 import { seed as itcSeed, event as itcEvent } from '$lib/utils/primitives/itc';
+import { calculateCollectiveRecognitionDistribution } from '../distribution';
 
 // Import V5 holster auth utilities for tests
 import { mockAuth, clearAuth } from '$lib/network/holster.svelte';
@@ -4178,5 +4179,623 @@ describe('Multiple Slots of Same Type', () => {
 		// Should consider both need slots
 		expect(aliceTotal).toBeGreaterThan(0);
 		expect(aliceTotal).toBeLessThanOrEqual(50); // Total of both needs
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// COLLECTIVE RECOGNITION DISTRIBUTION TESTS
+// ═══════════════════════════════════════════════════════════════════
+
+describe('Collective Recognition Distribution', () => {
+	/**
+	 * Test the new calculateCollectiveRecognitionDistribution function
+	 * from the distribution module
+	 */
+	
+	it('Basic collective recognition shares calculation', () => {
+		// Create proper recognition trees with contributors
+		// Alice recognizes Bob (50%) and Carol (50%)
+		// Bob recognizes Alice (60%) and Carol (40%)
+		// Carol recognizes Alice (30%) and Bob (70%)
+		
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'alice-work1', 
+					name: 'Work 1',
+					parent_id: 'alice',
+					points: 50, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'bob', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				},
+				{ 
+					type: 'NonRootNode', 
+					id: 'alice-work2', 
+					name: 'Work 2',
+					parent_id: 'alice',
+					points: 50, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'carol', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			name: 'Bob',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'bob-work1', 
+					name: 'Work 1',
+					parent_id: 'bob',
+					points: 60, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'alice', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				},
+				{ 
+					type: 'NonRootNode', 
+					id: 'bob-work2', 
+					name: 'Work 2',
+					parent_id: 'bob',
+					points: 40, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'carol', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		const carolTree: Node = {
+			type: 'RootNode',
+			id: 'carol',
+			name: 'Carol',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'carol-work1', 
+					name: 'Work 1',
+					parent_id: 'carol',
+					points: 30, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'alice', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				},
+				{ 
+					type: 'NonRootNode', 
+					id: 'carol-work2', 
+					name: 'Work 2',
+					parent_id: 'carol',
+					points: 70, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'bob', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		const memberSet = ['alice', 'bob', 'carol'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree],
+			['carol', carolTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Verify distribution structure
+		expect(distribution.method).toBe('collective-recognition');
+		expect(distribution.shares).toBeDefined();
+		expect(distribution.metadata).toBeDefined();
+		
+		// Verify shares sum to 1.0 (or close to it)
+		const totalShares = Object.values(distribution.shares).reduce((sum, share) => sum + share, 0);
+		expect(totalShares).toBeCloseTo(1.0, 10);
+		
+		// All members should have shares
+		expect(distribution.shares['alice']).toBeGreaterThan(0);
+		expect(distribution.shares['bob']).toBeGreaterThan(0);
+		expect(distribution.shares['carol']).toBeGreaterThan(0);
+		
+		// Verify metadata
+		expect(distribution.metadata?.mutualRecognitionMatrix).toBeDefined();
+		expect(distribution.metadata?.memberRecognitionSums).toBeDefined();
+		expect(distribution.metadata?.totalPool).toBeGreaterThan(0);
+		expect(distribution.metadata?.timestamp).toBeDefined();
+		
+		console.log('\n=== Collective Recognition Distribution ===');
+		console.log('Alice share:', (distribution.shares['alice'] * 100).toFixed(2) + '%');
+		console.log('Bob share:', (distribution.shares['bob'] * 100).toFixed(2) + '%');
+		console.log('Carol share:', (distribution.shares['carol'] * 100).toFixed(2) + '%');
+		console.log('Total pool:', distribution.metadata?.totalPool);
+	});
+	
+	it('Collective recognition with asymmetric recognition', () => {
+		// Alice strongly recognizes Bob, Bob weakly recognizes Alice back
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			children: [
+				{ type: 'NonRootNode', id: 'bob', points: 90, children: [] },
+				{ type: 'NonRootNode', id: 'carol', points: 10, children: [] }
+			]
+		};
+		
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			children: [
+				{ type: 'NonRootNode', id: 'alice', points: 10, children: [] },
+				{ type: 'NonRootNode', id: 'carol', points: 90, children: [] }
+			]
+		};
+		
+		const carolTree: Node = {
+			type: 'RootNode',
+			id: 'carol',
+			children: [
+				{ type: 'NonRootNode', id: 'alice', points: 50, children: [] },
+				{ type: 'NonRootNode', id: 'bob', points: 50, children: [] }
+			]
+		};
+		
+		const memberSet = ['alice', 'bob', 'carol'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree],
+			['carol', carolTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Mutual recognition is MIN(Alice->Bob, Bob->Alice) = MIN(90, 10) = 10
+		// So even though Alice strongly recognizes Bob, the mutual recognition is weak
+		
+		// Verify transparency: check mutual recognition matrix
+		const mrMatrix = distribution.metadata?.mutualRecognitionMatrix;
+		expect(mrMatrix).toBeDefined();
+		
+		// Alice-Bob mutual recognition should be MIN(90, 10) = 10
+		expect(mrMatrix!['alice']['bob']).toBeLessThanOrEqual(10);
+		
+		console.log('\n=== Asymmetric Recognition ===');
+		console.log('Alice->Bob:', 90, 'Bob->Alice:', 10, 'Mutual:', mrMatrix!['alice']['bob']);
+		console.log('Shares:', {
+			alice: (distribution.shares['alice'] * 100).toFixed(2) + '%',
+			bob: (distribution.shares['bob'] * 100).toFixed(2) + '%',
+			carol: (distribution.shares['carol'] * 100).toFixed(2) + '%'
+		});
+	});
+	
+	it('Collective recognition with no mutual recognition (fallback to equal shares)', () => {
+		// No one recognizes anyone else
+		const aliceTree: Node = { type: 'RootNode', id: 'alice', children: [] };
+		const bobTree: Node = { type: 'RootNode', id: 'bob', children: [] };
+		const carolTree: Node = { type: 'RootNode', id: 'carol', children: [] };
+		
+		const memberSet = ['alice', 'bob', 'carol'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree],
+			['carol', carolTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Should fall back to equal shares
+		const equalShare = 1.0 / 3;
+		expect(distribution.shares['alice']).toBeCloseTo(equalShare, 10);
+		expect(distribution.shares['bob']).toBeCloseTo(equalShare, 10);
+		expect(distribution.shares['carol']).toBeCloseTo(equalShare, 10);
+		
+		// Total pool should be 0
+		expect(distribution.metadata?.totalPool).toBe(0);
+		
+		console.log('\n=== No Recognition (Equal Shares Fallback) ===');
+		console.log('Each member gets:', (equalShare * 100).toFixed(2) + '%');
+	});
+	
+	it('Collective recognition with single member', () => {
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: []
+		} as RootNode;
+		
+		const memberSet = ['alice'];
+		const memberTrees = new Map<string, Node>([['alice', aliceTree]]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Single member gets 100%
+		expect(distribution.shares['alice']).toBe(1.0);
+		expect(distribution.metadata?.totalPool).toBe(0);
+		
+		console.log('\n=== Single Member ===');
+		console.log('Alice gets 100%');
+	});
+	
+	it('Collective recognition with missing tree (graceful handling)', () => {
+		// Alice recognizes Bob
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'alice-work', 
+					name: 'Work',
+					parent_id: 'alice',
+					points: 100, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'bob', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		// Bob's tree is missing!
+		const memberSet = ['alice', 'bob'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Should handle gracefully - Alice gets some share, Bob gets some share
+		expect(distribution.shares['alice']).toBeDefined();
+		expect(distribution.shares['bob']).toBeDefined();
+		
+		// Bob with no tree should get 0 mutual recognition
+		expect(distribution.shares['bob']).toBe(0);
+		
+		// Alice should get all the share
+		expect(distribution.shares['alice']).toBeCloseTo(1.0, 10);
+		
+		console.log('\n=== Missing Tree ===');
+		console.log('Alice (with tree):', (distribution.shares['alice'] * 100).toFixed(2) + '%');
+		console.log('Bob (no tree):', (distribution.shares['bob'] * 100).toFixed(2) + '%');
+	});
+	
+	it('Collective recognition transparency data enables verification', () => {
+		// Create a specific scenario where we can manually verify
+		// Alice recognizes Bob 100%
+		// Bob recognizes Alice 100%
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'alice-work', 
+					name: 'Work',
+					parent_id: 'alice',
+					points: 100, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'bob', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			name: 'Bob',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ 
+					type: 'NonRootNode', 
+					id: 'bob-work', 
+					name: 'Work',
+					parent_id: 'bob',
+					points: 100, 
+					manual_fulfillment: 1.0,
+					contributors: [{ id: 'alice', points: 100 }],
+					anti_contributors: [],
+					children: [] 
+				}
+			]
+		} as RootNode;
+		
+		const memberSet = ['alice', 'bob'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Manual calculation:
+		// Alice recognizes Bob: 100% (1.0)
+		// Bob recognizes Alice: 100% (1.0)
+		// MR(Alice, Bob) = MIN(1.0, 1.0) = 1.0
+		// MR(Bob, Alice) = MIN(1.0, 1.0) = 1.0
+		// Alice's sum = 1.0
+		// Bob's sum = 1.0
+		// Total pool = 1.0 + 1.0 = 2.0
+		// Alice's share = 1.0 / 2.0 = 0.5
+		// Bob's share = 1.0 / 2.0 = 0.5
+		
+		const mrMatrix = distribution.metadata?.mutualRecognitionMatrix!;
+		const sums = distribution.metadata?.memberRecognitionSums!;
+		const pool = distribution.metadata?.totalPool!;
+		
+		// Verify intermediate calculations (normalized values ~1.0, not 100)
+		expect(mrMatrix['alice']['bob']).toBeCloseTo(1.0, 5);
+		expect(mrMatrix['bob']['alice']).toBeCloseTo(1.0, 5);
+		expect(sums['alice']).toBeCloseTo(1.0, 5);
+		expect(sums['bob']).toBeCloseTo(1.0, 5);
+		expect(pool).toBeCloseTo(2.0, 5);
+		
+		// Verify final shares
+		expect(distribution.shares['alice']).toBeCloseTo(0.5, 10);
+		expect(distribution.shares['bob']).toBeCloseTo(0.5, 10);
+		
+		console.log('\n=== Transparency Data Verification ===');
+		console.log('Mutual Recognition Matrix:', mrMatrix);
+		console.log('Member Sums:', sums);
+		console.log('Total Pool:', pool);
+		console.log('Final Shares:', distribution.shares);
+		console.log('✅ Manual calculation matches automated calculation');
+	});
+	
+	it('Collective recognition with complex network (4 members)', () => {
+		// More complex scenario with 4 members
+		// Alice recognizes: Bob (40%), Carol (30%), Dave (30%)
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'alice-work1', name: 'Work 1', parent_id: 'alice', points: 40, manual_fulfillment: 1.0, contributors: [{ id: 'bob', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'alice-work2', name: 'Work 2', parent_id: 'alice', points: 30, manual_fulfillment: 1.0, contributors: [{ id: 'carol', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'alice-work3', name: 'Work 3', parent_id: 'alice', points: 30, manual_fulfillment: 1.0, contributors: [{ id: 'dave', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		// Bob recognizes: Alice (50%), Carol (25%), Dave (25%)
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			name: 'Bob',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'bob-work1', name: 'Work 1', parent_id: 'bob', points: 50, manual_fulfillment: 1.0, contributors: [{ id: 'alice', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'bob-work2', name: 'Work 2', parent_id: 'bob', points: 25, manual_fulfillment: 1.0, contributors: [{ id: 'carol', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'bob-work3', name: 'Work 3', parent_id: 'bob', points: 25, manual_fulfillment: 1.0, contributors: [{ id: 'dave', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		// Carol recognizes: Alice (60%), Bob (20%), Dave (20%)
+		const carolTree: Node = {
+			type: 'RootNode',
+			id: 'carol',
+			name: 'Carol',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'carol-work1', name: 'Work 1', parent_id: 'carol', points: 60, manual_fulfillment: 1.0, contributors: [{ id: 'alice', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'carol-work2', name: 'Work 2', parent_id: 'carol', points: 20, manual_fulfillment: 1.0, contributors: [{ id: 'bob', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'carol-work3', name: 'Work 3', parent_id: 'carol', points: 20, manual_fulfillment: 1.0, contributors: [{ id: 'dave', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		// Dave recognizes: Alice (70%), Bob (15%), Carol (15%)
+		const daveTree: Node = {
+			type: 'RootNode',
+			id: 'dave',
+			name: 'Dave',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'dave-work1', name: 'Work 1', parent_id: 'dave', points: 70, manual_fulfillment: 1.0, contributors: [{ id: 'alice', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'dave-work2', name: 'Work 2', parent_id: 'dave', points: 15, manual_fulfillment: 1.0, contributors: [{ id: 'bob', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'dave-work3', name: 'Work 3', parent_id: 'dave', points: 15, manual_fulfillment: 1.0, contributors: [{ id: 'carol', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		const memberSet = ['alice', 'bob', 'carol', 'dave'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree],
+			['carol', carolTree],
+			['dave', daveTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Verify all members have shares
+		expect(distribution.shares['alice']).toBeGreaterThan(0);
+		expect(distribution.shares['bob']).toBeGreaterThan(0);
+		expect(distribution.shares['carol']).toBeGreaterThan(0);
+		expect(distribution.shares['dave']).toBeGreaterThan(0);
+		
+		// Verify shares sum to 1.0
+		const totalShares = Object.values(distribution.shares).reduce((sum, share) => sum + share, 0);
+		expect(totalShares).toBeCloseTo(1.0, 10);
+		
+		// Verify transparency data
+		const mrMatrix = distribution.metadata?.mutualRecognitionMatrix!;
+		const sums = distribution.metadata?.memberRecognitionSums!;
+		
+		// Alice has highest mutual recognition (everyone recognizes her strongly)
+		// So she should have the highest share
+		const aliceShare = distribution.shares['alice'];
+		const bobShare = distribution.shares['bob'];
+		const carolShare = distribution.shares['carol'];
+		const daveShare = distribution.shares['dave'];
+		
+		expect(aliceShare).toBeGreaterThan(bobShare);
+		expect(aliceShare).toBeGreaterThan(carolShare);
+		expect(aliceShare).toBeGreaterThan(daveShare);
+		
+		console.log('\n=== Complex Network (4 Members) ===');
+		console.log('Alice:', (aliceShare * 100).toFixed(2) + '% (highest - everyone recognizes her)');
+		console.log('Bob:', (bobShare * 100).toFixed(2) + '%');
+		console.log('Carol:', (carolShare * 100).toFixed(2) + '%');
+		console.log('Dave:', (daveShare * 100).toFixed(2) + '%');
+		console.log('\nMember Recognition Sums:', sums);
+		console.log('Total Pool:', distribution.metadata?.totalPool);
+	});
+	
+	it('Collective recognition can be used with allocation engine', () => {
+		// This tests that collective recognition distribution can be used
+		// in the broader allocation context (even though full allocation engine
+		// integration is in collective-recognition.ts)
+		
+		// Alice recognizes: Bob (60%), Carol (40%)
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			name: 'Alice',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'alice-work1', name: 'Work 1', parent_id: 'alice', points: 60, manual_fulfillment: 1.0, contributors: [{ id: 'bob', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'alice-work2', name: 'Work 2', parent_id: 'alice', points: 40, manual_fulfillment: 1.0, contributors: [{ id: 'carol', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		// Bob recognizes: Alice (70%), Carol (30%)
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			name: 'Bob',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'bob-work1', name: 'Work 1', parent_id: 'bob', points: 70, manual_fulfillment: 1.0, contributors: [{ id: 'alice', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'bob-work2', name: 'Work 2', parent_id: 'bob', points: 30, manual_fulfillment: 1.0, contributors: [{ id: 'carol', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		// Carol recognizes: Alice (50%), Bob (50%)
+		const carolTree: Node = {
+			type: 'RootNode',
+			id: 'carol',
+			name: 'Carol',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			manual_fulfillment: null,
+			children: [
+				{ type: 'NonRootNode', id: 'carol-work1', name: 'Work 1', parent_id: 'carol', points: 50, manual_fulfillment: 1.0, contributors: [{ id: 'alice', points: 100 }], anti_contributors: [], children: [] },
+				{ type: 'NonRootNode', id: 'carol-work2', name: 'Work 2', parent_id: 'carol', points: 50, manual_fulfillment: 1.0, contributors: [{ id: 'bob', points: 100 }], anti_contributors: [], children: [] }
+			]
+		} as RootNode;
+		
+		const memberSet = ['alice', 'bob', 'carol'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree],
+			['carol', carolTree]
+		]);
+		
+		// Calculate distribution
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Simulate using this distribution for allocation
+		// In real usage, this would be passed to an allocation engine
+		const totalCapacity = 1000;
+		
+		const aliceTarget = distribution.shares['alice'] * totalCapacity;
+		const bobTarget = distribution.shares['bob'] * totalCapacity;
+		const carolTarget = distribution.shares['carol'] * totalCapacity;
+		
+		expect(aliceTarget + bobTarget + carolTarget).toBeCloseTo(totalCapacity, 5);
+		
+		console.log('\n=== Allocation Target Calculation ===');
+		console.log('Total Capacity:', totalCapacity);
+		console.log('Alice target:', aliceTarget.toFixed(2), `(${(distribution.shares['alice'] * 100).toFixed(2)}%)`);
+		console.log('Bob target:', bobTarget.toFixed(2), `(${(distribution.shares['bob'] * 100).toFixed(2)}%)`);
+		console.log('Carol target:', carolTarget.toFixed(2), `(${(distribution.shares['carol'] * 100).toFixed(2)}%)`);
+		console.log('Sum:', (aliceTarget + bobTarget + carolTarget).toFixed(2));
+	});
+	
+	it('Distribution method is correctly identified', () => {
+		const aliceTree: Node = {
+			type: 'RootNode',
+			id: 'alice',
+			children: [
+				{ type: 'NonRootNode', id: 'bob', points: 100, children: [] }
+			]
+		};
+		
+		const bobTree: Node = {
+			type: 'RootNode',
+			id: 'bob',
+			children: [
+				{ type: 'NonRootNode', id: 'alice', points: 100, children: [] }
+			]
+		};
+		
+		const memberSet = ['alice', 'bob'];
+		const memberTrees = new Map<string, Node>([
+			['alice', aliceTree],
+			['bob', bobTree]
+		]);
+		
+		const distribution = calculateCollectiveRecognitionDistribution(memberSet, memberTrees);
+		
+		// Verify method identification
+		expect(distribution.method).toBe('collective-recognition');
+		
+		// This is important for allocation engines that might handle
+		// different distribution methods differently
+		expect(distribution.method).not.toBe('mutual-recognition');
+		expect(distribution.method).not.toBe('equal-shares');
+		expect(distribution.method).not.toBe('custom');
+		
+		console.log('\n=== Distribution Method ===');
+		console.log('Method:', distribution.method);
+		console.log('✅ Correctly identified as collective-recognition');
 	});
 });

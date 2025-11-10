@@ -76,7 +76,7 @@ Following our values of harm reduction and restorative justice:
 
 ### Reporting
 
-- Report violations to [ruzgar@playnet.lol] or through private channels
+- Report violations to [info@openassociation.org] or through private channels
 - All reports will be handled with confidentiality and care
 - Reporters will not face retaliation for good-faith reports
 - Community members experiencing harassment will receive support

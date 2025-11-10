@@ -32,49 +32,32 @@ import type {
 } from '$lib/protocol/schemas';
 import { mutualFulfillment } from '$lib/protocol/tree';
 import { slotsCompatible } from '$lib/protocol/utils/match';
+import { calculateCollectiveRecognitionDistribution } from '$lib/protocol/distribution';
 import {
 	shouldUpdateCapacityMembership,
 	updateCapacityMembership,
 	type BaseNeed,
 	type BaseCapacity,
-	type ComplianceFilter,
 	type Allocation,
 	type AllocationComputationResult,
 	type RecognitionData
 } from '$lib/protocol/collective/schemas';
+
+// Import unified filter system
+import {
+	type ComplianceFilter,
+	getFilterValue,
+	createFilter,
+	unionOfFilters
+} from '$lib/protocol/utils/filters';
 
 
 // ═══════════════════════════════════════════════════════════════════
 // FILTER UTILITIES
 // ═══════════════════════════════════════════════════════════════════
 
-/**
- * Get numeric value from filter for computation
- */
-export function getFilterValue(filter: ComplianceFilter): number {
-	if (filter.type === 'blocked') return 0;
-	if (filter.type === 'capped') return filter.value;
-	return Infinity; // Unlimited
-}
-
-/**
- * Create filter from numeric value
- */
-export function createFilter(value: number): ComplianceFilter {
-	if (value === 0) return { type: 'blocked', value: 0 };
-	if (value === Infinity || value < 0) return { type: 'unlimited' };
-	return { type: 'capped', value };
-}
-
-/**
- * Union of filters - most restrictive wins
- * Used when external provider uses entity as proxy
- */
-export function unionOfFilters(filter1: ComplianceFilter, filter2: ComplianceFilter): ComplianceFilter {
-	const val1 = getFilterValue(filter1);
-	const val2 = getFilterValue(filter2);
-	return createFilter(Math.min(val1, val2));
-}
+// Re-export filter utilities from unified filter system for backward compatibility
+export { getFilterValue, createFilter, unionOfFilters } from '$lib/protocol/utils/filters';
 
 // === NEED UTILITIES ===
 
@@ -642,72 +625,6 @@ export function extractRecognitionDataFromTrees(
 	return recognitionData;
 }
 
-// === COLLECTIVE RECOGNITION COMPUTATION ===
-
-/**
- * Calculate collective recognition shares within a provider's declared set
- * 
- * Mathematical Formula:
- * Pool = Σ MutualRecognition(i, j) for all pairs in set
- * Member's Share = (Σ MutualRecognition(Member, Others)) / Pool
- * 
- * @param memberSet - Array of member IDs in provider's declared set
- * @param memberTrees - Map of member ID to their recognition tree
- * @returns Map of member ID to their collective-recognition-share (0-1)
- */
-export function calculateCollectiveRecognitionShares(
-	memberSet: string[],
-	memberTrees: Map<string, Node>
-): Map<string, number> {
-	const shares = new Map<string, number>();
-
-	// Convert map to object for mutualFulfillment function
-	const nodesMap = Object.fromEntries(memberTrees);
-
-	// Calculate total mutual recognition pool
-	let totalPool = 0;
-	const memberRecognitionSums = new Map<string, number>();
-
-	// Calculate sum of mutual recognitions for each member
-	for (const memberId of memberSet) {
-		const memberTree = memberTrees.get(memberId);
-		if (!memberTree) {
-			shares.set(memberId, 0);
-			continue;
-		}
-
-		let memberSum = 0;
-		for (const otherId of memberSet) {
-			if (otherId === memberId) continue;
-
-			const otherTree = memberTrees.get(otherId);
-			if (!otherTree) continue;
-
-			const mutualRec = mutualFulfillment(memberTree, otherTree, nodesMap);
-			memberSum += mutualRec;
-		}
-
-		memberRecognitionSums.set(memberId, memberSum);
-		totalPool += memberSum;
-	}
-
-	// Normalize to shares
-	if (totalPool === 0) {
-		// Equal shares if no mutual recognition
-		const equalShare = 1.0 / memberSet.length;
-		for (const memberId of memberSet) {
-			shares.set(memberId, equalShare);
-		}
-	} else {
-		for (const memberId of memberSet) {
-			const memberSum = memberRecognitionSums.get(memberId) || 0;
-			shares.set(memberId, memberSum / totalPool);
-		}
-	}
-
-	return shares;
-}
-
 // === ALLOCATION COMPUTATION ===
 
 /**
@@ -776,9 +693,10 @@ export function computeAllocations(
 	// Use updated members list
 	const members = capacity.members || [];
 	
-	// Step 1: Calculate collective-recognition-shares
-	const recognitionShares = calculateCollectiveRecognitionShares(members, memberTrees);
-	const totalPool = Array.from(recognitionShares.values()).reduce((sum, share) => sum + share, 0);
+	// Step 1: Calculate collective-recognition-shares using distribution module
+	const distribution = calculateCollectiveRecognitionDistribution(members, memberTrees);
+	const recognitionShares = new Map(Object.entries(distribution.shares));
+	const totalPool = distribution.metadata?.totalPool || 0;
 
 	// Step 2: Prepare filters map
 	const filtersMap = new Map<string, ComplianceFilter>();
@@ -820,6 +738,10 @@ export function computeAllocations(
 	const totalAllocated = slotAllocationResult.total_allocated;
 	const unusedCapacity = totalCapacity - totalAllocated;
 
+	// Get transparency data from distribution
+	const mutualRecognitionMatrixRecord = distribution.metadata?.mutualRecognitionMatrix || {};
+	const memberRecognitionSumsRecord = distribution.metadata?.memberRecognitionSums || {};
+
 	return {
 		capacity_id: capacity.id,
 		provider_id: (capacity.provider_id || capacity.owner_id || 'unknown') as string,
@@ -828,6 +750,10 @@ export function computeAllocations(
 
 		collective_recognition_pool: totalPool,
 		collective_recognition_shares: Object.fromEntries(recognitionShares),
+
+		// Transparency: Pairwise mutual recognition for independent verification
+		mutual_recognition_matrix: mutualRecognitionMatrixRecord,
+		member_recognition_sums: memberRecognitionSumsRecord,
 
 		ideal_allocations: idealAllocations,
 
@@ -914,7 +840,7 @@ export function updateNeedFulfillment(
 	allocations: Allocation[]
 ): BaseNeed {
 	const totalFulfilled = allocations.reduce((sum, alloc) => {
-		return alloc.recipient_id === need.declarer_id ? sum + alloc.amount : sum;
+		return alloc.recipient_id === need.declarer_id ? sum + Number(alloc.amount) : sum;
 	}, need.fulfilled_amount);
 
 	let status: 'open' | 'partially-fulfilled' | 'fulfilled' = 'open';

@@ -782,7 +782,7 @@ In addition to Open Collective budget:
 
 **Collective Admins:**
 
-* Ruzgar Imski: <ruzgar@playnet.lol>
+* Ruzgar Imski: <info@openassociation.org>
 * Kern Mangan Walker: <kernmanganwalker@gmail.com>
 * David Rug: <david.rug98@icloud.com>
 

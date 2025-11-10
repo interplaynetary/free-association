@@ -388,6 +388,6 @@ specification.
 
 ### Questions?
 
-- Licensing: ruzgar@playnet.lol
+- Licensing: info@openassociation.org
 - Protocol: See [PROTOCOL.md](PROTOCOL.md) or open an issue
 - Governance: See [GOVERNANCE.md](GOVERNANCE.md) (coming soon)

@@ -30,20 +30,62 @@ export type {
 } from '../schemas';
 
 // ═══════════════════════════════════════════════════════════════════
-// COMPLIANCE FILTERS
+// COMPLIANCE FILTERS (JsonLogic-based)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Compliance Filter - Applied to individual members in collective allocations
+ * Compliance Filter Schema - JsonLogic-based
  * 
- * Types:
- * - blocked: $0 (member receives nothing)
- * - capped: $X (member receives max of X)
- * - unlimited: No limit (member receives according to recognition share)
+ * The filter system has been upgraded to use JsonLogic for maximum expressiveness.
  * 
- * Example: External provider may cap a risky member at $10K while others are unlimited
+ * NEW (JsonLogic-based):
+ * - Import from: $lib/protocol/utils/filters
+ * - Supports: JsonLogic rules, literal numbers, null (unlimited)
+ * - Examples:
+ *   - Simple cap: 50000
+ *   - Conditional: {"if": [{"==": [{"var": "tier"}, "premium"]}, 100000, 50000]}
+ *   - Dynamic: {"*": [{"var": "mutualRecognition"}, 100000]}
+ *   - Blocked: 0
+ *   - Unlimited: null
+ * 
+ * LEGACY (discriminated union) - DEPRECATED:
+ * - Old format: { type: 'blocked' | 'capped' | 'unlimited', value?: number }
+ * - Kept for backward compatibility only
+ * - Will be removed in future version
+ * 
+ * MIGRATION PATH:
+ * - Replace { type: 'blocked', value: 0 } with 0
+ * - Replace { type: 'capped', value: X } with X
+ * - Replace { type: 'unlimited' } with null
+ * 
+ * For full documentation, see: docs/UNIFIED_FILTER_SYSTEM.md
  */
-export const ComplianceFilterSchema = z.discriminatedUnion('type', [
+
+// Import the new JsonLogic-based schema from unified filter system
+import {
+	ComplianceFilterSchema,
+	type ComplianceFilter,
+	EligibilityFilterSchema,
+	type EligibilityFilter,
+	FilterContextSchema,
+	type FilterContext
+} from '$lib/protocol/utils/filters';
+
+// Re-export for convenience
+export {
+	ComplianceFilterSchema,
+	type ComplianceFilter,
+	EligibilityFilterSchema,
+	type EligibilityFilter,
+	FilterContextSchema,
+	type FilterContext
+};
+
+/**
+ * LEGACY: Old discriminated union format
+ * @deprecated Use the new JsonLogic-based ComplianceFilter instead
+ */
+export const LegacyComplianceFilterSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('blocked'),
 		value: z.literal(0)
@@ -57,7 +99,16 @@ export const ComplianceFilterSchema = z.discriminatedUnion('type', [
 	})
 ]);
 
-export type ComplianceFilter = z.infer<typeof ComplianceFilterSchema>;
+export type LegacyComplianceFilter = z.infer<typeof LegacyComplianceFilterSchema>;
+
+/**
+ * Convert legacy compliance filter to new JsonLogic format
+ */
+export function migrateLegacyComplianceFilter(legacy: LegacyComplianceFilter): ComplianceFilter {
+	if (legacy.type === 'blocked') return 0;
+	if (legacy.type === 'capped') return legacy.value;
+	return null; // unlimited
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // COLLECTIVE CAPACITY & NEED DECLARATIONS
@@ -146,6 +197,13 @@ export const AllocationComputationResultSchema = z.object({
 	collective_recognition_pool: z.number().nonnegative(),
 	collective_recognition_shares: z.record(z.string(), z.number().nonnegative()),
 	
+	// Transparency: Pairwise mutual recognition matrix (for independent verification)
+	// Format: { "alice": { "bob": 0.15, "charlie": 0.10 }, "bob": { "alice": 0.15, ... } }
+	mutual_recognition_matrix: z.record(z.string(), z.record(z.string(), z.number())).optional(),
+	
+	// Transparency: Member recognition sums (before normalization to shares)
+	member_recognition_sums: z.record(z.string(), z.number().nonnegative()).optional(),
+	
 	// Step 2: Ideal allocations (before filters)
 	ideal_allocations: z.record(z.string(), z.number().nonnegative()),
 	
@@ -214,6 +272,11 @@ export const MembershipOutputSchema = z.object({
 	membershipStatus: z.record(z.string(), z.enum(['member', 'candidate', 'removed'])),
 	mutualRecognitionScores: z.record(z.string(), z.number()),
 	networkAverage: z.number(),
+	
+	// Transparency: Pairwise mutual recognition matrix (for independent verification)
+	// Format: { "alice": { "bob": 0.15, "charlie": 0.10 }, "bob": { "alice": 0.15, ... } }
+	mutualRecognitionMatrix: z.record(z.string(), z.record(z.string(), z.number())).optional(),
+	
 	healthMetrics: z.object({
 		recognitionDensity: z.number(),
 		averageMRD: z.number(),

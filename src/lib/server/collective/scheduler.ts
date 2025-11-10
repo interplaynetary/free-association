@@ -9,10 +9,7 @@
  */
 
 import { MRDMembershipModule } from '$lib/protocol/collective/collective-membership.svelte';
-import { 
-	computeAllocations,
-	calculateCollectiveRecognitionShares
-} from '$lib/protocol/collective/collective-recognition.svelte';
+import { computeAllocations } from '$lib/protocol/collective/collective-recognition.svelte';
 import type { 
 	RecognitionData,
 	BaseCapacity, 

@@ -140,4 +140,4 @@ The technology exists. The code works. The need is undeniable. We have a rare wi
 **Documentation:** [playnet.gitbook.io/docs](http://playnet.gitbook.io/docs)  
 **Mathematical Proofs:** [github.com/interplaynetary/free-association](http://github.com/interplaynetary/free-association)  
 **Working Implementation:** [interplaynetary.github.io/free-association](http://interplaynetary.github.io/free-association)  
-**Questions:** Contact the development team: ruzgar@playnet.lol
+**Questions:** Contact the development team: info@openassociation.org

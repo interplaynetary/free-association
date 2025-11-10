@@ -35,6 +35,35 @@ import type {
 import { slotsCompatible, getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
 import { createMemoCache, createMemoCacheWithKey, hashObject } from '$lib/protocol/utils/memoize';
 
+// Import distribution calculation functions
+import {
+	type DistributionResult,
+	calculateTwoTierMutualRecognitionDistribution,
+	calculateMutualRecognitionDistribution,
+	calculateCollectiveRecognitionDistribution,
+	calculateEqualSharesDistribution,
+	createCustomDistribution,
+	computeMutualRecognition
+} from '$lib/protocol/distribution';
+
+// Import unified filter system for compliance filters
+import {
+	type ComplianceFilter,
+	evaluateComplianceFilter,
+	getRemainingRoom
+} from '$lib/protocol/utils/filters';
+
+// Re-export for backward compatibility
+export type { DistributionResult };
+export {
+	calculateTwoTierMutualRecognitionDistribution,
+	calculateMutualRecognitionDistribution,
+	calculateCollectiveRecognitionDistribution,
+	calculateEqualSharesDistribution,
+	createCustomDistribution,
+	computeMutualRecognition
+};
+
 // Import ITC for causality tracking
 import {
 	type Stamp as ITCStampType,
@@ -504,73 +533,6 @@ export function updateOverAllocationHistory(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MUTUAL RECOGNITION COMPUTATION
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * Compute mutual recognition between me and others (including self)
- * 
- * MR(A,B) = min(A's recognition of B, B's recognition of A)
- * Special case: MR(me, me) = my recognition of myself
- * 
- * This function computes MR for:
- * 1. Everyone I recognize (Loop 1)
- * 2. Everyone who recognizes me (Loop 2) - even if I don't recognize them (MR will be 0)
- * 
- * This ensures complete network awareness: we know about everyone who has any recognition
- * relationship with us, making the MR map informative for transparency and debugging.
- * 
- * @param myRecognition - My recognition weights: { alice: 0.3, bob: 0.4, me: 0.5 }
- * @param othersRecognition - Others' recognition of me: { alice: { me: 0.5 }, bob: { me: 0.6 } }
- * @param myPubKey - My public key
- * @returns Mutual recognition: { alice: 0.3, bob: 0.4, me: 0.5, carol: 0 (if she recognizes me but I don't recognize her) }
- */
-function _computeMutualRecognition(
-	myRecognition: GlobalRecognitionWeights,
-	othersRecognition: Record<string, GlobalRecognitionWeights>,
-	myPubKey: string
-): Record<string, number> {
-	const mutual: Record<string, number> = {};
-	
-	// Loop 1: For everyone I recognize (including myself!)
-	for (const [otherPubKey, myRecOfThem] of Object.entries(myRecognition)) {
-		// Special case: Self-recognition
-		// For mutual recognition with myself, "their recognition of me" IS "my recognition of myself"
-		if (otherPubKey === myPubKey) {
-			mutual[otherPubKey] = myRecOfThem;  // MR(me, me) = myRec[me]
-			continue;
-		}
-		
-		// Regular case: Mutual recognition with others
-		const theirRecOfMe = othersRecognition[otherPubKey]?.[myPubKey] || 0;
-		mutual[otherPubKey] = Math.min(myRecOfThem, theirRecOfMe);
-	}
-	
-	// Loop 2: Also check people who recognize me (but I might not recognize them)
-	// This ensures complete network awareness - we know about everyone
-	for (const [otherPubKey, theirWeights] of Object.entries(othersRecognition)) {
-		if (mutual[otherPubKey] !== undefined) continue; // Already computed in Loop 1
-		
-		const theirRecOfMe = theirWeights?.[myPubKey] || 0;
-		const myRecOfThem = myRecognition[otherPubKey] || 0;
-		
-		// MR will be 0 if I don't recognize them, but we still include them
-		// This shows "I've seen their recognition of me, but I don't mutually recognize them"
-		mutual[otherPubKey] = Math.min(myRecOfThem, theirRecOfMe);
-	}
-	
-	return mutual;
-}
-
-// Memoized version of computeMutualRecognition
-export const computeMutualRecognition = createMemoCacheWithKey(
-	_computeMutualRecognition,
-	(myRecognition, othersRecognition, myPubKey) => 
-		`${hashObject(myRecognition)}:${hashObject(othersRecognition)}:${myPubKey}`,
-	100 // Cache up to 100 recognition computations
-);
-
-// ═══════════════════════════════════════════════════════════════════
 // ALLOCATION COMPUTATION (TWO-TIER SYSTEM)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -1010,6 +972,348 @@ const findCompatibleRecipients = createMemoCacheWithKey(
  * @param needsIndex - Optional spatial/temporal index for O(k) recipient lookups
  * @returns Allocation result
  */
+/**
+ * Generic allocation engine that accepts pre-computed distribution
+ * 
+ * This is the unified allocation engine that works with any distribution strategy.
+ * It performs slot-level matching, applies compliance filters, handles divisibility
+ * constraints, and uses multi-pass proportional allocation.
+ * 
+ * @param myPubKey - Provider's public key
+ * @param myCapacitySlots - Provider's availability slots
+ * @param distribution - Pre-computed distribution (who gets what share)
+ * @param allCommitments - All participants' commitments
+ * @param needsIndex - Optional spatial/temporal index for efficient recipient lookup
+ * @param recipientFilters - Optional compliance filters per recipient
+ * @returns Allocation result with slot allocations and metadata
+ */
+export function allocateWithDistribution(
+	myPubKey: string,
+	myCapacitySlots: AvailabilitySlot[],
+	distribution: DistributionResult,
+	allCommitments: Record<string, Commitment>,
+	needsIndex?: SpaceTimeIndex,
+	recipientFilters?: Map<string, ComplianceFilter>
+): AllocationResult {
+	const iterationStartTime = Date.now();
+	const allocations: SlotAllocationRecord[] = [];
+	const slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }> = {};
+	const totalsByTypeAndRecipient: Record<string, Record<string, number>> = {};
+	
+	console.log(`[ALLOCATE-WITH-DISTRIBUTION] Starting allocation with ${distribution.method} distribution`);
+	console.log(`[ALLOCATE-WITH-DISTRIBUTION] Recipients:`, Object.keys(distribution.shares).length);
+	
+	// Process each capacity slot
+	for (const capacitySlot of myCapacitySlots) {
+		const typeId = capacitySlot.need_type_id;
+		const providersAvailableCapacity = capacitySlot.quantity;
+		
+		if (!totalsByTypeAndRecipient[typeId]) {
+			totalsByTypeAndRecipient[typeId] = {};
+		}
+		
+		// Find compatible recipients (using spatial/temporal index if provided)
+		const compatibleRecipients = findCompatibleRecipients(capacitySlot, allCommitments, myPubKey, needsIndex);
+		
+		if (compatibleRecipients.size === 0) continue;
+		
+		console.log(`[ALLOCATE-WITH-DISTRIBUTION] Slot ${capacitySlot.id.slice(0,20)}: ${compatibleRecipients.size} compatible recipients`);
+		
+		// ────────────────────────────────────────────────────────────
+		// SINGLE-PASS PROPORTIONAL ALLOCATION (DISTRIBUTION-BASED)
+		// ────────────────────────────────────────────────────────────
+		
+		const CAPACITY_EPSILON = 0.0001;
+		let capacityUsed = 0;
+		
+		// Build list of eligible recipients with distribution shares
+		const eligibleRecipients: Array<{
+			pubKey: string;
+			totalNeed: number;
+			remainingNeed: number;
+			distributionShare: number;
+			needSlots: NeedSlot[];
+			tier: 'mutual' | 'non-mutual';
+		}> = [];
+		
+		// Determine tiers from distribution metadata
+		const tier1Recipients = new Map<string, number>(); // recipientId -> share
+		const tier2Recipients = new Map<string, number>();
+		
+		if (distribution.tiers) {
+			// Two-tier distribution - use tier-specific shares
+			for (const recipientId in distribution.tiers.tier1) {
+				if (distribution.tiers.tier1[recipientId] > 0) {
+					tier1Recipients.set(recipientId, distribution.tiers.tier1[recipientId]);
+				}
+			}
+			for (const recipientId in distribution.tiers.tier2) {
+				if (distribution.tiers.tier2[recipientId] > 0) {
+					tier2Recipients.set(recipientId, distribution.tiers.tier2[recipientId]);
+				}
+			}
+			
+		}
+		
+		// Build eligible recipients with tier-aware shares
+		// For two-tier: allocate Tier 1 first, then Tier 2 gets remainder
+		for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
+			let totalNeed = 0;
+			for (const slot of needSlots) {
+				totalNeed += slot.quantity;
+			}
+			
+			// Check if in tier1 first (priority)
+			if (tier1Recipients.has(recipientPub)) {
+				eligibleRecipients.push({
+					pubKey: recipientPub,
+					totalNeed,
+					remainingNeed: totalNeed,
+					distributionShare: tier1Recipients.get(recipientPub)!,
+					needSlots,
+					tier: 'mutual'
+				});
+			} else if (tier2Recipients.has(recipientPub)) {
+				eligibleRecipients.push({
+					pubKey: recipientPub,
+					totalNeed,
+					remainingNeed: totalNeed,
+					distributionShare: tier2Recipients.get(recipientPub)!,
+					needSlots,
+					tier: 'non-mutual'
+				});
+			} else {
+				// No tier info - use combined share
+				const share = distribution.shares[recipientPub] || 0;
+				if (share > 0) {
+					eligibleRecipients.push({
+						pubKey: recipientPub,
+						totalNeed,
+						remainingNeed: totalNeed,
+						distributionShare: share,
+						needSlots,
+						tier: 'mutual'
+					});
+				}
+			}
+		}
+		
+		// Sort by tier (mutual first) to ensure Tier 1 gets priority
+		eligibleRecipients.sort((a, b) => {
+			if (a.tier === 'mutual' && b.tier === 'non-mutual') return -1;
+			if (a.tier === 'non-mutual' && b.tier === 'mutual') return 1;
+			return 0;
+		});
+		
+		if (eligibleRecipients.length === 0) continue;
+		
+		// ═══════════════════════════════════════════════════════════════
+		// MULTI-PASS PROPORTIONAL ALLOCATION
+		// ═══════════════════════════════════════════════════════════════
+		
+		let unsatisfiedRecipients = [...eligibleRecipients];
+		let remainingCapacity = providersAvailableCapacity;
+		let passCount = 0;
+		const maxPasses = 10;
+		
+		console.log(`[ALLOCATE-WITH-DISTRIBUTION] Starting multi-pass: capacity=${remainingCapacity}, recipients=${unsatisfiedRecipients.length}`);
+		
+		while (remainingCapacity > CAPACITY_EPSILON && unsatisfiedRecipients.length > 0 && passCount < maxPasses) {
+			passCount++;
+			console.log(`[ALLOCATE-WITH-DISTRIBUTION] Pass ${passCount}: capacity=${remainingCapacity.toFixed(2)}, unsatisfied=${unsatisfiedRecipients.length}`);
+			
+			// TWO-TIER LOGIC: Only allocate to current tier until exhausted
+			const currentTier = unsatisfiedRecipients[0]?.tier || 'mutual';
+			const currentTierRecipients = unsatisfiedRecipients.filter(r => r.tier === currentTier);
+			
+			console.log(`[ALLOCATE-WITH-DISTRIBUTION]   Current tier: ${currentTier}, recipients: ${currentTierRecipients.length}`);
+			
+			// PHASE 1: Calculate denominator with only current tier unsatisfied recipients
+			let denominator = currentTierRecipients.reduce(
+				(sum, r) => sum + r.distributionShare,
+				0
+			);
+			
+			if (denominator < CAPACITY_EPSILON) break;
+			
+			// Safety check for tiny denominators
+			const MIN_RELATIVE_DENOMINATOR = 0.001;
+			const minSafeDenominator = remainingCapacity * MIN_RELATIVE_DENOMINATOR;
+			if (denominator < minSafeDenominator) {
+				denominator = minSafeDenominator;
+			}
+			
+			// PHASE 2: Calculate ALL proportional allocations BEFORE capping (only current tier)
+			const proportionalAllocations = currentTierRecipients.map(recipient => {
+				const rawAllocation = remainingCapacity * 
+					recipient.distributionShare / denominator;
+				
+				// Apply compliance filter if present
+				let filterLimit = Infinity;
+				if (recipientFilters && recipientFilters.has(recipient.pubKey)) {
+					const filter = recipientFilters.get(recipient.pubKey)!;
+					const currentTotal = totalsByTypeAndRecipient[typeId]?.[recipient.pubKey] || 0;
+					const recipientCommitment = allCommitments[recipient.pubKey];
+					
+					filterLimit = evaluateComplianceFilter(filter, {
+						pubKey: recipient.pubKey,
+						currentTotal,
+						proposedAmount: rawAllocation,
+						commitment: recipientCommitment,
+						mutualRecognition: 0, // Not used in distribution-based allocation
+						attributes: (recipientCommitment as any)?.attributes || {}
+					});
+					
+					filterLimit = Math.max(0, filterLimit - currentTotal);
+				}
+				
+				return {
+					recipient,
+					rawAllocation,
+					cappedAllocation: Math.min(rawAllocation, recipient.remainingNeed, filterLimit)
+				};
+			});
+			
+			// PHASE 3: Apply allocations and track satisfaction
+			let capacityUsedThisPass = 0;
+			const nowSatisfied: typeof unsatisfiedRecipients = [];
+			
+			for (const { recipient, rawAllocation, cappedAllocation } of proportionalAllocations) {
+				if (cappedAllocation <= CAPACITY_EPSILON) continue;
+				
+				// Calculate share percentage for divisibility checks
+				const recipientSharePercentage = cappedAllocation / providersAvailableCapacity;
+				
+				// Apply divisibility constraints
+				const constrainedAllocation = applyDivisibilityConstraints(
+					cappedAllocation,
+					recipientSharePercentage,
+					capacitySlot
+				);
+				
+				// Check if allocation meets minimum threshold
+				if (!meetsMinimumAllocation(constrainedAllocation, capacitySlot)) {
+					continue;
+				}
+				
+				// Proportional distribution across need slots
+				const totalCompatibleNeed = recipient.needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+				let actuallyAllocated = 0;
+				
+				for (const needSlot of recipient.needSlots) {
+					const proportion = needSlot.quantity / totalCompatibleNeed;
+					let slotAllocation = Math.min(
+						needSlot.quantity,
+						constrainedAllocation * proportion
+					);
+					
+					// Apply natural unit rounding
+					const maxNaturalDiv = capacitySlot.max_natural_div || 1;
+					slotAllocation = Math.floor(slotAllocation / maxNaturalDiv) * maxNaturalDiv;
+					
+					if (slotAllocation > 0) {
+						allocations.push({
+							quantity: slotAllocation,
+							need_type_id: typeId,
+							availability_slot_id: capacitySlot.id,
+							recipient_pubkey: recipient.pubKey,
+							time_compatible: true,
+							location_compatible: true,
+							tier: recipient.tier,
+							recipient_need_slot_id: needSlot.id
+						});
+						
+						actuallyAllocated += slotAllocation;
+					}
+				}
+				
+				// Update tracking
+				capacityUsedThisPass += actuallyAllocated;
+				capacityUsed += actuallyAllocated;
+				
+				if (!totalsByTypeAndRecipient[typeId][recipient.pubKey]) {
+					totalsByTypeAndRecipient[typeId][recipient.pubKey] = 0;
+				}
+				totalsByTypeAndRecipient[typeId][recipient.pubKey] += actuallyAllocated;
+				
+				// Update remaining need
+				recipient.remainingNeed -= actuallyAllocated;
+				
+				// Check if satisfied
+				if (recipient.remainingNeed <= CAPACITY_EPSILON) {
+					nowSatisfied.push(recipient);
+				}
+			}
+			
+			// Update capacity and recipients for next pass
+			remainingCapacity -= capacityUsedThisPass;
+			unsatisfiedRecipients = unsatisfiedRecipients.filter(r => !nowSatisfied.includes(r));
+			
+			// Exit if no progress made in current tier
+			if (nowSatisfied.length === 0 && capacityUsedThisPass < CAPACITY_EPSILON) {
+				// If we're stuck in current tier, move to next tier (if any)
+				const remainingTiers = unsatisfiedRecipients.filter(r => r.tier !== currentTier);
+				if (remainingTiers.length === 0) {
+					break; // No more tiers, exit
+				}
+				// Continue to next tier in next pass
+			}
+		}
+		
+		// Store denominator for tracking
+		slotDenominators[capacitySlot.id] = {
+			mutual: tier1Recipients.size,
+			nonMutual: tier2Recipients.size,
+			need_type_id: typeId
+		};
+	}
+	
+	const executionTime = Date.now() - iterationStartTime;
+	
+	console.log(`[ALLOCATE-WITH-DISTRIBUTION] Complete: ${allocations.length} allocations in ${executionTime}ms`);
+	
+	// Compute empty convergence (allocateWithDistribution doesn't track state)
+	const emptyConvergence = {
+		totalNeedMagnitude: 0,
+		previousNeedMagnitude: 0,
+		contractionRate: 0,
+		isConverged: false,
+		percentNeedsMet: 0,
+		universalSatisfaction: false,
+		iterationsToConvergence: null,
+		maxPersonNeed: 0,
+		needVariance: 0,
+		peopleStuck: 0,
+		executionTimeMs: executionTime,
+		currentIteration: 0,
+		responseLatency: executionTime
+	};
+	
+	return {
+		allocations,
+		slotDenominators,
+		totalsByTypeAndRecipient,
+		convergence: emptyConvergence
+	};
+}
+
+/**
+ * Compute allocations with optional compliance filters
+ * 
+ * This function now delegates to allocateWithDistribution() after calculating
+ * the two-tier distribution (mutual + non-mutual recognition).
+ * 
+ * @param myPubKey - Provider's public key
+ * @param myCapacitySlots - Provider's availability slots
+ * @param myRecognition - Provider's recognition of others
+ * @param mutualRecognition - Mutual recognition scores
+ * @param allCommitments - All participants' commitments
+ * @param currentState - Current system state
+ * @param previousState - Previous system state (for convergence tracking)
+ * @param needsIndex - Optional spatial/temporal index for efficient recipient lookup
+ * @param recipientFilters - Optional compliance filters per recipient (blocked, capped, unlimited)
+ * @returns Allocation result with slot allocations and metadata
+ */
 export function computeAllocations(
 	myPubKey: string,
 	myCapacitySlots: AvailabilitySlot[],
@@ -1018,7 +1322,107 @@ export function computeAllocations(
 	allCommitments: Record<string, Commitment>,
 	currentState: SystemStateSnapshot,
 	previousState: SystemStateSnapshot | null,
-	needsIndex?: SpaceTimeIndex
+	needsIndex?: SpaceTimeIndex,
+	recipientFilters?: Map<string, ComplianceFilter>
+): AllocationResult {
+	const iterationStartTime = Date.now();
+	
+	// Calculate two-tier mutual recognition distribution manually
+	// We already have mutualRecognition computed, so build distribution directly
+	const tier1Shares: Record<string, number> = {};
+	const tier2Shares: Record<string, number> = {};
+	const allShares: Record<string, number> = {};
+	
+	let totalTier1Recognition = 0;
+	let totalTier2Recognition = 0;
+	
+	// Classify recipients into tiers based on mutual recognition
+	// Include self for self-allocation (time-shifting)
+	for (const [recipientId, mr] of Object.entries(mutualRecognition)) {
+		if (mr > 0) {
+			// Tier 1: Mutual recognition (including self)
+			tier1Shares[recipientId] = mr;
+			totalTier1Recognition += mr;
+		} else if (recipientId !== myPubKey) {
+			// Tier 2: Check if I recognize them (one-way, excluding self)
+			const myRecOfThem = myRecognition[recipientId] || 0;
+			if (myRecOfThem > 0) {
+				tier2Shares[recipientId] = myRecOfThem;
+				totalTier2Recognition += myRecOfThem;
+			}
+		}
+	}
+	
+	// Normalize tier 1 shares
+	if (totalTier1Recognition > 0) {
+		for (const recipientId in tier1Shares) {
+			const normalized = tier1Shares[recipientId] / totalTier1Recognition;
+			tier1Shares[recipientId] = normalized;
+			allShares[recipientId] = normalized;
+		}
+	}
+	
+	// Normalize tier 2 shares
+	if (totalTier2Recognition > 0) {
+		for (const recipientId in tier2Shares) {
+			const normalized = tier2Shares[recipientId] / totalTier2Recognition;
+			tier2Shares[recipientId] = normalized;
+			// Only add to allShares if not already in tier1
+			if (!(recipientId in allShares)) {
+				allShares[recipientId] = normalized;
+			}
+		}
+	}
+	
+	const distribution: DistributionResult = {
+		shares: allShares,
+		method: 'two-tier',
+		tiers: {
+			tier1: tier1Shares,
+			tier2: tier2Shares
+		},
+		metadata: {
+			timestamp: Date.now()
+		}
+	};
+	
+	// Delegate to generic allocation engine
+	const result = allocateWithDistribution(
+		myPubKey,
+		myCapacitySlots,
+		distribution,
+		allCommitments,
+		needsIndex,
+		recipientFilters
+	);
+	
+	// Compute convergence metrics
+	const convergence = computeConvergenceSummary(
+		currentState,
+		previousState,
+		iterationStartTime
+	);
+	
+	return {
+		allocations: result.allocations,
+		slotDenominators: result.slotDenominators,
+		totalsByTypeAndRecipient: result.totalsByTypeAndRecipient,
+		convergence
+	};
+}
+
+// OLD IMPLEMENTATION (PRESERVED FOR REFERENCE - CAN BE REMOVED)
+/*
+export function computeAllocationsOld(
+	myPubKey: string,
+	myCapacitySlots: AvailabilitySlot[],
+	myRecognition: GlobalRecognitionWeights,
+	mutualRecognition: Record<string, number>,
+	allCommitments: Record<string, Commitment>,
+	currentState: SystemStateSnapshot,
+	previousState: SystemStateSnapshot | null,
+	needsIndex?: SpaceTimeIndex,
+	recipientFilters?: Map<string, ComplianceFilter>
 ): AllocationResult {
 	const iterationStartTime = Date.now();
 	const allocations: SlotAllocationRecord[] = [];
@@ -1147,21 +1551,43 @@ export function computeAllocations(
 					tier1Denominator = denominator;
 				}
 				
-				// PHASE 2: Calculate ALL proportional allocations BEFORE capping
-				// KEY: Everyone calculated against SAME denominator = true proportionality
-				// Recognition determines proportion, activeNeed only used for capping
-				const proportionalAllocations = unsatisfiedRecipients.map(recipient => {
-					const rawAllocation = remainingCapacity * 
-						recipient.mutualRecShare / denominator;
+			// PHASE 2: Calculate ALL proportional allocations BEFORE capping
+			// KEY: Everyone calculated against SAME denominator = true proportionality
+			// Recognition determines proportion, activeNeed only used for capping
+			const proportionalAllocations = unsatisfiedRecipients.map(recipient => {
+				const rawAllocation = remainingCapacity * 
+					recipient.mutualRecShare / denominator;
+				
+				// Apply compliance filter if present (blocked, capped, unlimited)
+				let filterLimit = Infinity;
+				if (recipientFilters && recipientFilters.has(recipient.pubKey)) {
+					const filter = recipientFilters.get(recipient.pubKey)!;
+					const currentTotal = totalsByTypeAndRecipient[typeId]?.[recipient.pubKey] || 0;
+					const recipientCommitment = allCommitments[recipient.pubKey];
 					
+					filterLimit = evaluateComplianceFilter(filter, {
+						pubKey: recipient.pubKey,
+						currentTotal,
+						proposedAmount: rawAllocation,
+						commitment: recipientCommitment,
+						mutualRecognition: mutualRecognition[recipient.pubKey],
+						attributes: (recipientCommitment as any)?.attributes || {}
+					});
+					
+					// filterLimit is the TOTAL allowed, so subtract what's already allocated
+					filterLimit = Math.max(0, filterLimit - currentTotal);
+					
+					console.log(`[TIER-1]     ${recipient.pubKey.slice(0,20)}...: raw=${rawAllocation.toFixed(2)}, need cap=${recipient.remainingNeed}, filter cap=${filterLimit === Infinity ? 'unlimited' : filterLimit.toFixed(2)}`);
+				} else {
 					console.log(`[TIER-1]     ${recipient.pubKey.slice(0,20)}...: raw=${rawAllocation.toFixed(2)}, cap at ${recipient.remainingNeed}`);
-					
-					return {
-						recipient,
-						rawAllocation,
-						cappedAllocation: Math.min(rawAllocation, recipient.remainingNeed)
-					};
-				});
+				}
+				
+				return {
+					recipient,
+					rawAllocation,
+					cappedAllocation: Math.min(rawAllocation, recipient.remainingNeed, filterLimit)
+				};
+			});
 				
 				console.log(`[TIER-1]   Calculated ${proportionalAllocations.length} allocations`);
 				
@@ -1397,18 +1823,38 @@ export function computeAllocations(
 						tier2Denominator = denominator;
 					}
 					
-					// PHASE 2: Calculate ALL proportional allocations BEFORE capping
-					// Recognition determines proportion, activeNeed only used for capping
-					const proportionalAllocations = unsatisfiedRecipients.map(recipient => {
-						const rawAllocation = remainingCapacity * 
-							recipient.recognitionShare / denominator;
+				// PHASE 2: Calculate ALL proportional allocations BEFORE capping
+				// Recognition determines proportion, activeNeed only used for capping
+				const proportionalAllocations = unsatisfiedRecipients.map(recipient => {
+					const rawAllocation = remainingCapacity * 
+						recipient.recognitionShare / denominator;
+					
+					// Apply compliance filter if present (blocked, capped, unlimited)
+					let filterLimit = Infinity;
+					if (recipientFilters && recipientFilters.has(recipient.pubKey)) {
+						const filter = recipientFilters.get(recipient.pubKey)!;
+						const currentTotal = totalsByTypeAndRecipient[typeId]?.[recipient.pubKey] || 0;
+						const recipientCommitment = allCommitments[recipient.pubKey];
 						
-						return {
-							recipient,
-							rawAllocation,
-							cappedAllocation: Math.min(rawAllocation, recipient.remainingNeed)
-						};
-					});
+						filterLimit = evaluateComplianceFilter(filter, {
+							pubKey: recipient.pubKey,
+							currentTotal,
+							proposedAmount: rawAllocation,
+							commitment: recipientCommitment,
+							mutualRecognition: 0, // No mutual recognition in Tier 2
+							attributes: (recipientCommitment as any)?.attributes || {}
+						});
+						
+						// filterLimit is the TOTAL allowed, so subtract what's already allocated
+						filterLimit = Math.max(0, filterLimit - currentTotal);
+					}
+					
+					return {
+						recipient,
+						rawAllocation,
+						cappedAllocation: Math.min(rawAllocation, recipient.remainingNeed, filterLimit)
+					};
+				});
 					
 					// PHASE 3: Apply allocations and track satisfaction
 					let capacityUsedThisPass = 0;
@@ -1559,20 +2005,9 @@ export function computeAllocations(
 		};
 	}
 	
-	// Compute convergence metrics
-	const convergence = computeConvergenceSummary(
-		currentState,
-		previousState,
-		iterationStartTime
-	);
-	
-	return {
-		allocations,
-		slotDenominators,
-		totalsByTypeAndRecipient,
-		convergence
-	};
+	// (old implementation removed - see above)
 }
+*/
 
 // ═══════════════════════════════════════════════════════════════════
 // NEED UPDATE LAW (CONVERGENCE DYNAMICS)

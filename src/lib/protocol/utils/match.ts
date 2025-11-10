@@ -1367,21 +1367,33 @@ export function slotsCompatible(needSlot: NeedSlot, availabilitySlot: Availabili
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FILTER TYPES AND EVALUATION
+// FILTER TYPES AND EVALUATION (using Unified Filter System)
 // ═══════════════════════════════════════════════════════════════════
 
-/**
- * Filter context for evaluation
- */
-export interface FilterContext {
-	pubKey: string;
-	commitment?: any;
-	mutualRecognition?: number;
-	attributes?: Record<string, any>;
-}
+// Import from unified filter system
+import {
+	type EligibilityFilter,
+	type FilterContext as UnifiedFilterContext,
+	evaluateEligibilityFilter,
+	EligibilityFilters
+} from '$lib/protocol/utils/filters';
+
+// Re-export FilterContext from unified system
+export type FilterContext = UnifiedFilterContext;
 
 /**
- * Standard filter rule types
+ * Legacy filter rule types (DEPRECATED - use JsonLogic EligibilityFilter instead)
+ * 
+ * These discriminated union types are maintained for backward compatibility only.
+ * New code should use the JsonLogic-based EligibilityFilter from the unified filter system.
+ * 
+ * Migration examples:
+ * - { type: 'trust', min_mutual_recognition: 0.1 } → {">=": [{"var": "mutualRecognition"}, 0.1]}
+ * - { type: 'location', allowed_cities: ['SF'] } → {"in": [{"var": "commitment.city"}, ["SF"]]}
+ * - { type: 'allow_all' } → true
+ * - { type: 'deny_all' } → false
+ * 
+ * @deprecated Use EligibilityFilter (JsonLogic-based) instead
  */
 export type FilterRule =
 	| { type: 'trust'; min_mutual_recognition?: number; only_mutual?: boolean }
@@ -1395,169 +1407,152 @@ export type FilterRule =
 	| any; // Legacy/unknown filters
 
 /**
+ * Convert legacy FilterRule to JsonLogic EligibilityFilter
+ * 
+ * This converter enables backward compatibility while migrating to the
+ * JsonLogic-based unified filter system.
+ * 
+ * @param filter - Legacy filter rule
+ * @returns JsonLogic-based eligibility filter
+ */
+function convertLegacyFilter(filter: FilterRule): EligibilityFilter {
+	// Handle non-object filters (already JsonLogic or boolean)
+	if (typeof filter === 'boolean') return filter;
+	if (!filter || typeof filter !== 'object') return true;
+	if (!('type' in filter)) {
+		// Assume it's already a JsonLogic rule
+		return filter as EligibilityFilter;
+	}
+	
+	// Convert discriminated union to JsonLogic
+	switch (filter.type) {
+		case 'allow_all':
+			return true;
+		
+		case 'deny_all':
+			return false;
+		
+		case 'trust': {
+			const conditions: EligibilityFilter[] = [];
+			
+			if (filter.only_mutual) {
+				conditions.push({">": [{"var": "mutualRecognition"}, 0]});
+			}
+			
+			if (filter.min_mutual_recognition !== undefined) {
+				conditions.push({">=": [{"var": "mutualRecognition"}, filter.min_mutual_recognition]});
+			}
+			
+			return conditions.length === 0 ? true :
+			       conditions.length === 1 ? conditions[0] :
+			       {"and": conditions};
+		}
+		
+		case 'location': {
+			const conditions: EligibilityFilter[] = [];
+			
+			if (filter.allowed_cities && filter.allowed_cities.length > 0) {
+				conditions.push({"in": [{"var": "commitment.city"}, filter.allowed_cities]});
+			}
+			
+			if (filter.allowed_countries && filter.allowed_countries.length > 0) {
+				conditions.push({"in": [{"var": "commitment.country"}, filter.allowed_countries]});
+			}
+			
+			// max_distance_km not yet implemented in JsonLogic
+			if (filter.max_distance_km) {
+				console.log('[FILTER-WARN] max_distance_km not yet implemented in JsonLogic');
+			}
+			
+			return conditions.length === 0 ? true :
+			       conditions.length === 1 ? conditions[0] :
+			       {"and": conditions};
+		}
+		
+		case 'attribute': {
+			const conditions: EligibilityFilter[] = [];
+			
+			if (filter.required && filter.required.length > 0) {
+				for (const attr of filter.required) {
+					conditions.push({"!!": {"var": `attributes.${attr}`}});
+				}
+			}
+			
+			if (filter.forbidden && filter.forbidden.length > 0) {
+				for (const attr of filter.forbidden) {
+					conditions.push({"!": {"!!": {"var": `attributes.${attr}`}}});
+				}
+			}
+			
+			return conditions.length === 0 ? true :
+			       conditions.length === 1 ? conditions[0] :
+			       {"and": conditions};
+		}
+		
+		case 'certification': {
+			const conditions: EligibilityFilter[] = [];
+			
+			if (filter.required && filter.required.length > 0) {
+				for (const cert of filter.required) {
+					conditions.push({"in": [cert, {"var": "attributes.certifications"}]});
+				}
+			}
+			
+			if (filter.min_level !== undefined) {
+				conditions.push({">=": [{"var": "attributes.certification_level"}, filter.min_level]});
+			}
+			
+			return conditions.length === 0 ? true :
+			       conditions.length === 1 ? conditions[0] :
+			       {"and": conditions};
+		}
+		
+		case 'resource_type': {
+			const conditions: EligibilityFilter[] = [];
+			
+			if (filter.allowed_types && filter.allowed_types.length > 0) {
+				conditions.push({"in": [{"var": "commitment.resource_type"}, filter.allowed_types]});
+			}
+			
+			if (filter.forbidden_types && filter.forbidden_types.length > 0) {
+				conditions.push({"!": {"in": [{"var": "commitment.resource_type"}, filter.forbidden_types]}});
+			}
+			
+			return conditions.length === 0 ? true :
+			       conditions.length === 1 ? conditions[0] :
+			       {"and": conditions};
+		}
+		
+		case 'custom':
+			console.log('[FILTER-WARN] Custom filter functions not yet implemented for security');
+			return true;
+		
+		default:
+			console.log('[FILTER-WARN] Unknown filter type:', filter);
+			return true;
+	}
+}
+
+/**
  * Evaluate a single filter rule against a context
  * 
- * @param filter - The filter rule to evaluate
+ * This function now delegates to the unified filter system, which uses JsonLogic
+ * for maximum expressiveness and serializability. Legacy FilterRule format (discriminated
+ * unions) is automatically converted to JsonLogic for backward compatibility.
+ * 
+ * @param filter - The filter rule to evaluate (FilterRule or EligibilityFilter)
  * @param context - The context (person/entity) being evaluated
  * @returns true if filter passes, false if rejected
  */
-export function evaluateFilter(filter: FilterRule | null | undefined, context: FilterContext): boolean {
+export function evaluateFilter(filter: FilterRule | EligibilityFilter | null | undefined, context: FilterContext): boolean {
 	// No filter = pass by default (optimistic)
 	if (!filter) return true;
 	
-	try {
-		switch (filter.type) {
-			case 'allow_all':
-				return true;
-			
-			case 'deny_all':
-				return false;
-			
-			case 'trust': {
-				// Trust-based filter: require minimum mutual recognition
-				if (filter.only_mutual) {
-					// Require mutual recognition > 0
-					const mr = context.mutualRecognition || 0;
-					if (mr <= 0) {
-						console.log(`[FILTER-REJECT:TRUST] ${context.pubKey.slice(0,8)} - only_mutual required, MR=${mr}`);
-						return false;
-					}
-				}
-				
-				if (filter.min_mutual_recognition !== undefined) {
-					const mr = context.mutualRecognition || 0;
-					if (mr < filter.min_mutual_recognition) {
-						console.log(`[FILTER-REJECT:TRUST] ${context.pubKey.slice(0,8)} - requires MR>=${filter.min_mutual_recognition}, has ${mr}`);
-						return false;
-					}
-				}
-				
-				return true;
-			}
-			
-			case 'location': {
-				// Location-based filter
-				if (!context.commitment) return true; // Optimistic if no commitment data
-				
-				const commitment = context.commitment;
-				
-				// Check allowed cities
-				if (filter.allowed_cities && filter.allowed_cities.length > 0) {
-					const city = commitment.city?.toLowerCase();
-					if (!city || !filter.allowed_cities.some((c: string) => c.toLowerCase() === city)) {
-						console.log(`[FILTER-REJECT:LOCATION] ${context.pubKey.slice(0,8)} - city not in allowed list`);
-						return false;
-					}
-				}
-				
-				// Check allowed countries
-				if (filter.allowed_countries && filter.allowed_countries.length > 0) {
-					const country = commitment.country?.toLowerCase();
-					if (!country || !filter.allowed_countries.some((c: string) => c.toLowerCase() === country)) {
-						console.log(`[FILTER-REJECT:LOCATION] ${context.pubKey.slice(0,8)} - country not in allowed list`);
-						return false;
-					}
-				}
-				
-				// Check distance (if coordinates available)
-				if (filter.max_distance_km && context.commitment.latitude && context.commitment.longitude) {
-					// Distance checking would need reference coordinates from the other party
-					// For now, we'll pass this check
-					console.log(`[FILTER-INFO:LOCATION] Distance check not yet implemented`);
-				}
-				
-				return true;
-			}
-			
-			case 'attribute': {
-				// Attribute-based filter: require/forbid specific attributes
-				const attrs = context.attributes || {};
-				
-				// Check required attributes
-				if (filter.required && filter.required.length > 0) {
-					for (const requiredAttr of filter.required) {
-						if (!attrs[requiredAttr]) {
-							console.log(`[FILTER-REJECT:ATTRIBUTE] ${context.pubKey.slice(0,8)} - missing required attribute: ${requiredAttr}`);
-							return false;
-						}
-					}
-				}
-				
-				// Check forbidden attributes
-				if (filter.forbidden && filter.forbidden.length > 0) {
-					for (const forbiddenAttr of filter.forbidden) {
-						if (attrs[forbiddenAttr]) {
-							console.log(`[FILTER-REJECT:ATTRIBUTE] ${context.pubKey.slice(0,8)} - has forbidden attribute: ${forbiddenAttr}`);
-							return false;
-						}
-					}
-				}
-				
-				return true;
-			}
-			
-			case 'certification': {
-				// Certification-based filter
-				const attrs = context.attributes || {};
-				const certifications = attrs.certifications || [];
-				
-				if (filter.required && filter.required.length > 0) {
-					for (const requiredCert of filter.required) {
-						if (!certifications.includes(requiredCert)) {
-							console.log(`[FILTER-REJECT:CERTIFICATION] ${context.pubKey.slice(0,8)} - missing certification: ${requiredCert}`);
-							return false;
-						}
-					}
-				}
-				
-				if (filter.min_level !== undefined) {
-					const level = attrs.certification_level || 0;
-					if (level < filter.min_level) {
-						console.log(`[FILTER-REJECT:CERTIFICATION] ${context.pubKey.slice(0,8)} - level ${level} < ${filter.min_level}`);
-						return false;
-					}
-				}
-				
-				return true;
-			}
-			
-			case 'resource_type': {
-				// Resource type filter (for multi-type resources)
-				const resourceType = context.commitment?.resource_type;
-				
-				if (filter.allowed_types && filter.allowed_types.length > 0) {
-					if (!resourceType || !filter.allowed_types.includes(resourceType)) {
-						console.log(`[FILTER-REJECT:RESOURCE_TYPE] ${context.pubKey.slice(0,8)} - type "${resourceType}" not in allowed list`);
-						return false;
-					}
-				}
-				
-				if (filter.forbidden_types && filter.forbidden_types.length > 0) {
-					if (resourceType && filter.forbidden_types.includes(resourceType)) {
-						console.log(`[FILTER-REJECT:RESOURCE_TYPE] ${context.pubKey.slice(0,8)} - type "${resourceType}" is forbidden`);
-						return false;
-					}
-				}
-				
-				return true;
-			}
-			
-			case 'custom': {
-				// Custom filter function (serialized)
-				console.log(`[FILTER-WARN] Custom filter functions not yet implemented for security`);
-				return true; // Be optimistic until implemented
-			}
-			
-			default: {
-				// Unknown filter type - log and be optimistic
-				console.log(`[FILTER-WARN] Unknown filter type:`, filter);
-				return true;
-			}
-		}
-	} catch (error) {
-		console.error(`[FILTER-ERROR] Error evaluating filter:`, error, filter);
-		return false; // Be pessimistic on errors for safety
-	}
+	// Convert legacy format to JsonLogic if needed
+	const eligibilityFilter = convertLegacyFilter(filter as FilterRule);
+	
+	// Delegate to unified filter system
+	return evaluateEligibilityFilter(eligibilityFilter, context);
 }
 
 /**

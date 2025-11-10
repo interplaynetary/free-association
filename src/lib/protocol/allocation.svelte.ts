@@ -502,25 +502,48 @@ export const myAllocationsAsProvider: Readable<{
 		const allCommitments = getAllCommitmentsRecord();
 		
 		// ✅ MEMOIZATION: Check if inputs actually changed using deep equality
+		// NOTE: We exclude itcStamp, timestamp, and _updatedAt from commitment comparison
+		// because they're metadata, not allocation inputs. This prevents infinite loops
+		// where metadata changes trigger re-computation even when actual data is unchanged.
+		const commitmentWithoutMetadata = { ...$myCommitment };
+		delete commitmentWithoutMetadata.itcStamp;
+		delete commitmentWithoutMetadata.timestamp;
+		delete commitmentWithoutMetadata._updatedAt;
+		
+		// Also strip metadata from allCommitments for comparison
+		const allCommitmentsWithoutMetadata: Record<string, any> = {};
+		for (const [pubKey, commitment] of Object.entries(allCommitments)) {
+			const { itcStamp, timestamp, _updatedAt, ...rest } = commitment as any;
+			allCommitmentsWithoutMetadata[pubKey] = rest;
+		}
+		
 		const currentInputs = {
 			myPub: $myPub,
 			myMR: $myMR,
 			myRec: $myRec,
-			myCommitment: $myCommitment,
-			allCommitments: allCommitments
+			myCommitment: commitmentWithoutMetadata,
+			allCommitments: allCommitmentsWithoutMetadata
 		};
 		
 		if (lastAllocationInputs && lastAllocationResult) {
 			// Check if inputs are deeply equal
-			if (
-				lastAllocationInputs.myPub === currentInputs.myPub &&
-				deepEqual(lastAllocationInputs.myMR, currentInputs.myMR) &&
-				deepEqual(lastAllocationInputs.myRec, currentInputs.myRec) &&
-				deepEqual(lastAllocationInputs.myCommitment, currentInputs.myCommitment) &&
-				deepEqual(lastAllocationInputs.allCommitments, currentInputs.allCommitments)
-			) {
+			const pubEqual = lastAllocationInputs.myPub === currentInputs.myPub;
+			const mrEqual = deepEqual(lastAllocationInputs.myMR, currentInputs.myMR);
+			const recEqual = deepEqual(lastAllocationInputs.myRec, currentInputs.myRec);
+			const commitmentEqual = deepEqual(lastAllocationInputs.myCommitment, currentInputs.myCommitment);
+			const allCommitmentsEqual = deepEqual(lastAllocationInputs.allCommitments, currentInputs.allCommitments);
+			
+			if (pubEqual && mrEqual && recEqual && commitmentEqual && allCommitmentsEqual) {
 				console.log('[MEMOIZATION] ✅ Reusing allocation result (inputs unchanged)');
 				return lastAllocationResult;
+			} else {
+				console.log('[MEMOIZATION] ❌ Inputs changed:', {
+					pubEqual,
+					mrEqual,
+					recEqual,
+					commitmentEqual,
+					allCommitmentsEqual
+				});
 			}
 		}
 		
@@ -904,19 +927,21 @@ export function enableAutoAllocationPublishing(): () => void {
 	
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let isPublishing = false; // Prevent cascading updates
+	let lastPublishedHash: string | null = null; // Track what we last published to prevent re-publishing same data
 	
 	const unsubAllocations = myAllocationsAsProvider.subscribe((allocResult) => {
-		if (isPublishing) {
-			console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already publishing');
-			return;
-		}
-		
 		// Debounce rapid changes
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 		}
 		
 		debounceTimer = setTimeout(() => {
+			// Check INSIDE the callback to prevent multiple queued callbacks from running
+			if (isPublishing) {
+				console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already publishing');
+				return;
+			}
+			
 			isPublishing = true;
 			
 			const currentCommitment = get(myCommitmentStore);
@@ -926,16 +951,26 @@ export function enableAutoAllocationPublishing(): () => void {
 				return;
 			}
 			
-			// Check if allocations actually changed
-			const currentAllocs = currentCommitment.slot_allocations || [];
+			// Check if allocations actually changed using hash
 			const newAllocs = allocResult.allocations;
+			const newAllocsHash = JSON.stringify(newAllocs);
 			
+			// Fast check: Same as what we last published?
+			if (lastPublishedHash === newAllocsHash) {
+				console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: already published this exact allocation set');
+				isPublishing = false;
+				return;
+			}
+			
+			// Slower check: Same as what's in the commitment?
+			const currentAllocs = currentCommitment.slot_allocations || [];
 			try {
 				const currentJson = JSON.stringify(currentAllocs);
-				const newJson = JSON.stringify(newAllocs);
 				
-				if (currentJson === newJson) {
-					console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged');
+				if (currentJson === newAllocsHash) {
+					console.log('[AUTO-PUBLISH-ALLOC] ⏭️  Skipped: allocations unchanged in commitment');
+					// Update our hash to match current state
+					lastPublishedHash = newAllocsHash;
 					isPublishing = false;
 					return;
 				}
@@ -951,6 +986,9 @@ export function enableAutoAllocationPublishing(): () => void {
 			};
 			
 			myCommitmentStore.set(updatedCommitment);
+			
+			// Update hash to prevent re-publishing
+			lastPublishedHash = newAllocsHash;
 			
 			const mutualCount = newAllocs.filter(a => a.tier === 'mutual').length;
 			const nonMutualCount = newAllocs.filter(a => a.tier === 'non-mutual').length;

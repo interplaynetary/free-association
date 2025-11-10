@@ -24,10 +24,10 @@ This policy describes what data we collect, how we use it, and the limitations o
 ## 🏢 Who We Are (Data Controller Information)
 
 **Service Name:** Free-Association  
-**Operator:** [LEGAL_ENTITY_NAME]  
-**Contact:** ruzgar@playnet.lol  
+**Operator:** Open Association  
+**Contact:** info@openassociation.org  
 **Website:** https://playnet.lol  
-**Data Controller:** [LEGAL_ENTITY_NAME] for centralized account data
+**Data Controller:** Open Association for centralized account data
 
 **Our Role Under Privacy Laws:**
 - ✅ **Data Controller**: We determine purposes and means of processing account data
@@ -179,7 +179,7 @@ This policy describes what data we collect, how we use it, and the limitations o
 7. ✅ **Lodge Complaint**: File complaint with supervisory authority
 
 **How to Exercise Rights:**
-- Email: ruzgar@playnet.lol
+- Email: info@openassociation.org
 - Subject: "Privacy Rights Request"
 - We will respond within 30 days (GDPR requirement)
 
@@ -251,7 +251,7 @@ This policy describes what data we collect, how we use it, and the limitations o
 ## 🌍 International Data Transfers
 
 **Where Data Is Stored:**
-- **Centralized Account Data**: [SERVER_LOCATION/JURISDICTION]
+- **Centralized Account Data**: France
 - **P2P Network Data**: Distributed globally across all peer devices
 
 **Cross-Border Transfers:**
@@ -267,7 +267,7 @@ This policy describes what data we collect, how we use it, and the limitations o
 **We do NOT knowingly collect data from children under 18 without consent.**
 
 If you believe a child has created an account without consent:
-- Contact: ruzgar@playnet.lol
+- Contact: info@openassociation.org
 - We will delete the centralized account data
 - ⚠️ But we CANNOT delete P2P data they shared
 
@@ -302,7 +302,7 @@ If you believe a child has created an account without consent:
 ## 📞 Contact & Privacy Requests
 
 ### Data Protection Contact
-**Email:** ruzgar@playnet.lol  
+**Email:** info@openassociation.org  
 **Subject Line:** "Privacy Request - [Your Request Type]"
 
 **For Privacy Requests, Include:**

@@ -326,6 +326,6 @@ The reference implementation demonstrates one way to achieve conformance, not th
 ---
 
 _Protocol maintained by Free Association Development Team_  
-_Contact: ruzgar@playnet.lol_  
+_Contact: info@openassociation.org_  
 _License: This specification is CC0 (public domain)_  
 _Reference implementation: AGPL-3.0 with additional terms_

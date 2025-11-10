@@ -58,21 +58,21 @@ Both documents have placeholders you need to replace with actual information:
 
 ### Required Information
 
-1. **[LEGAL_ENTITY_NAME]**
+1. **Open Association**
    - Your legal entity name (individual, company, organization)
    - Appears in Privacy Policy
 
-2. **[PRIVACY_CONTACT_EMAIL]** or **[SUPPORT_EMAIL]**
+2. **info@openassociation.org** or **[SUPPORT_EMAIL]**
    - Email for privacy requests and support
    - Should be monitored regularly (GDPR requires 30-day response)
    - Consider: privacy@playnet.lol or support@playnet.lol
 
-3. **[YOUR_JURISDICTION]**
+3. **Zurich, Switzerland**
    - Legal jurisdiction (e.g., "California, United States" or "Germany")
    - Determines which laws apply
    - Appears in Terms of Service
 
-4. **[SERVER_LOCATION/JURISDICTION]**
+4. **France**
    - Where your servers are physically located
    - Important for data transfer regulations
    - Appears in Privacy Policy
@@ -83,13 +83,13 @@ Search and replace in both files:
 
 ```bash
 # In src/routes/terms/+page.svelte
-[YOUR_JURISDICTION] → "California, United States"
+Zurich, Switzerland → "California, United States"
 [SUPPORT_EMAIL] → "support@playnet.lol"
 
 # In src/routes/privacy/+page.svelte
-[LEGAL_ENTITY_NAME] → "Your Name" or "Your Company Name"
-[PRIVACY_CONTACT_EMAIL] → "privacy@playnet.lol"
-[SERVER_LOCATION/JURISDICTION] → "United States"
+Open Association → "Your Name" or "Your Company Name"
+info@openassociation.org → "privacy@playnet.lol"
+France → "United States"
 ```
 
 ---
@@ -183,10 +183,10 @@ Cost: Usually $500-2000 for review and minor adjustments
 ## 🔄 Next Steps
 
 ### 1. Fill in Placeholders (Required)
-- [ ] Replace `[LEGAL_ENTITY_NAME]`
-- [ ] Replace `[PRIVACY_CONTACT_EMAIL]` / `[SUPPORT_EMAIL]`
-- [ ] Replace `[YOUR_JURISDICTION]`
-- [ ] Replace `[SERVER_LOCATION/JURISDICTION]`
+- [ ] Replace `Open Association`
+- [ ] Replace `info@openassociation.org` / `[SUPPORT_EMAIL]`
+- [ ] Replace `Zurich, Switzerland`
+- [ ] Replace `France`
 
 ### 2. Review Content (Recommended)
 - [ ] Read through both documents completely

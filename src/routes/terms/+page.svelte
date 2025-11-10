@@ -209,13 +209,13 @@ We may discontinue the service at any time:
 ## 🌍 Jurisdiction & Disputes
 
 ### Governing Law
-These terms are governed by the laws of [YOUR_JURISDICTION] without regard to conflict of law provisions.
+These terms are governed by the laws of Zurich, Switzerland without regard to conflict of law provisions.
 
 ### Dispute Resolution
 Disputes will be resolved through:
 1. Good faith negotiation
 2. Mediation (if negotiation fails)
-3. Binding arbitration or courts in [YOUR_JURISDICTION]
+3. Binding arbitration or courts in Zurich, Switzerland
 
 ### Severability
 If any provision is found unenforceable, other provisions remain in effect.
@@ -225,8 +225,8 @@ If any provision is found unenforceable, other provisions remain in effect.
 ## 📞 Contact & Support
 
 ### Contact Information
-- Email: ruzgar@playnet.lol
-- Website: https://playnet.lol
+- Email: info@openassociation.org
+- Website: https://openassociation.org
 - GitHub: https://github.com/playnet-lol/free-association
 
 ### Support Limitations

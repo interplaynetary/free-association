@@ -330,7 +330,7 @@ We invite dialogue about how Free-Association might complement your impact strat
 
 **Contact:**
 - Website: playnet.lol
-- Email: ruzgar@playnet.lol  
+- Email: info@openassociation.org  
 - Live Demo: free.playnet.lol
 - Documentation: playnet.gitbook.io/organizations/protocol
 
