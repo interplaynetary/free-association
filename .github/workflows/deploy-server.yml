@@ -7,9 +7,8 @@ on:
     paths:
       - 'src/routes/api/**'
       - 'src/lib/server/**'
-      - 'server/**'
       - 'package.json'
-      - 'bun.lockb'
+      - 'bun.lock'
       - '.github/workflows/deploy-server.yml'
   workflow_dispatch:  # Allow manual triggers
 
@@ -49,12 +48,10 @@ jobs:
         run: |
           # Create archive with build output and necessary files
           tar -czf deploy.tar.gz \
+            --exclude='*.log' \
             build-server/ \
-            server/ \
             package.json \
-            bun.lockb \
-            --exclude='server/*/node_modules' \
-            --exclude='*.log'
+            bun.lock
 
       - name: Deploy to DigitalOcean
         uses: appleboy/scp-action@v0.1.7
