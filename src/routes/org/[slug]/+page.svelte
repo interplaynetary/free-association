@@ -522,7 +522,7 @@
 			<div class="inventory-view">
 				<!-- Need Slots Section -->
 				<section class="slots-section needs">
-					<h2>🙏 My Need Slots ({needSlots.length})</h2>
+					<h2>🎯 My Need Slots ({needSlots.length})</h2>
 					
 					<div class="add-form">
 						<input
