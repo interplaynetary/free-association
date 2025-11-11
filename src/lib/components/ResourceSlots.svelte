@@ -63,6 +63,44 @@
 	);
 	const isNeedMode = $derived(activeTab === 'needs');
 	
+	// Reactive allocation data - derived from stores
+	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
+	const allNetworkAllocations = $derived($networkAllocations);
+	const myPubKey = $derived($holsterUserPub);
+	
+	// Get allocations map for all slots (reactive)
+	const capacityAllocationsMap = $derived.by(() => {
+		const map = new Map<string, SlotAllocationRecord[]>();
+		for (const allocation of myAllocations) {
+			const slotId = allocation.availability_slot_id;
+			if (!map.has(slotId)) {
+				map.set(slotId, []);
+			}
+			map.get(slotId)!.push(allocation);
+		}
+		return map;
+	});
+	
+	const needAllocationsMap = $derived.by(() => {
+		const map = new Map<string, SlotAllocationRecord[]>();
+		if (!myPubKey) return map;
+		
+		for (const [providerPubKey, allocations] of allNetworkAllocations) {
+			if (allocations && Array.isArray(allocations)) {
+				for (const allocation of allocations) {
+					if (allocation.recipient_pubkey === myPubKey && allocation.recipient_need_slot_id) {
+						const slotId = allocation.recipient_need_slot_id;
+						if (!map.has(slotId)) {
+							map.set(slotId, []);
+						}
+						map.get(slotId)!.push(allocation);
+					}
+				}
+			}
+		}
+		return map;
+	});
+	
 	// Add slot handler
 	function handleAddSlot() {
 		if (!newName.trim()) return;
@@ -100,34 +138,6 @@
 		expandedAllocations = newSet;
 	}
 	
-	// Get outgoing allocations for a capacity slot
-	function getCapacityAllocations(slotId: string): SlotAllocationRecord[] {
-		const allocations = $myAllocationsAsProvider.allocations || [];
-		return allocations.filter(a => a.availability_slot_id === slotId);
-	}
-	
-	// Get incoming allocations for a need slot
-	function getNeedAllocations(slotId: string): SlotAllocationRecord[] {
-		const myPubKey = $holsterUserPub;
-		if (!myPubKey) return [];
-		
-		const allAllocations: SlotAllocationRecord[] = [];
-		
-		// Iterate through all providers' allocations
-		for (const [providerPubKey, allocations] of $networkAllocations) {
-			if (allocations && Array.isArray(allocations)) {
-				// Find allocations where I'm the recipient and it's for this slot
-				const relevantAllocations = allocations.filter(
-					a => a.recipient_pubkey === myPubKey && 
-					     a.recipient_need_slot_id === slotId
-				);
-				allAllocations.push(...relevantAllocations);
-			}
-		}
-		
-		return allAllocations;
-	}
-	
 	// Generic handlers (DRY)
 	function handleQuantityChange(slot: SlotType, quantity: number, isNeed: boolean) {
 		const updated = { ...slot, quantity };
@@ -156,7 +166,10 @@
 </script>
 
 {#snippet slotCard(slot: SlotType)}
-	{@const allocations = isNeedMode ? getNeedAllocations(slot.id) : getCapacityAllocations(slot.id)}
+	{@const allocations = isNeedMode 
+		? (needAllocationsMap.get(slot.id) || [])
+		: (capacityAllocationsMap.get(slot.id) || [])
+	}
 	{@const totalAllocated = allocations.reduce((sum, a) => sum + a.quantity, 0)}
 	{@const percentFilled = slot.quantity > 0 ? Math.min((totalAllocated / slot.quantity) * 100, 100) : 0}
 	
