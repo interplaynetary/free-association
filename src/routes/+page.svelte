@@ -17,7 +17,7 @@
 		setMyNeedSlots,
 		setMyCapacitySlots
 	} from '$lib/protocol/stores.svelte';
-	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
+	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
@@ -34,6 +34,7 @@
 	// Cleanup functions
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
+	let cleanupAutoNeedTracking: (() => void) | null = null;
 
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
@@ -56,6 +57,11 @@
 		// Enable auto-allocation publishing
 		cleanupAllocationPublishing = enableAutoAllocationPublishing();
 		
+		// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
+		// This enables the coordination mechanism: recipients automatically reduce needs
+		cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
+		console.log('[HOME] ✅ Enabled automatic remaining need tracking');
+		
 		console.log('[HOME] ✅ Initialized and subscribed');
 		
 		return () => {
@@ -63,6 +69,7 @@
 			unsubCapacity();
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
+			if (cleanupAutoNeedTracking) cleanupAutoNeedTracking();
 		};
 	});
 

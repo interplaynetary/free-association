@@ -1,0 +1,781 @@
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 64.3},<br/> {recipient: Bob, quantity: 85.7}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"
+
+    Note over Alice,Network: ═══════════ MATHEMATICAL GUARANTEES ═══════════
+
+    rect rgb(240, 248, 255)
+        Note over Alice,Network: 1. UNIVERSAL SATISFACTION CONDITION<br/><br/>if sum(all_capacities) >= sum(all_needs):<br/>    guarantee: all_needs → 0 at convergence<br/>else:<br/>    guarantee: allocations proportional to MR scores<br/><br/>2. MR PROPORTIONALITY PROOF<br/><br/>For any two recipients i and j:<br/>Allocation_i / Allocation_j ≈ Total_MR_i / Total_MR_j<br/>Where Total_MR_i = sum(MR(all_providers, recipient_i))<br/><br/>3. CONVERGENCE GUARANTEE<br/><br/>Total_Needs(t+1) ≤ Total_Needs(t) (monotonically decreasing)<br/>System converges to minimum possible needs given capacity constraints
+    end
+
+    rect rgb(255, 250, 240)
+        Note over Alice,Network: 💡 WHAT "UNIVERSAL NEED SATISFACTION" REALLY MEANS<br/><br/>✅ No Waste: All capacity is utilized when needs exist<br/>✅ Fair Distribution: Scarce resources allocated by MR proportionality<br/>✅ Maximum Possible Satisfaction: Given physical constraints<br/>✅ Stable Equilibrium: System doesn't oscillate when capacity fixed<br/><br/>🎯 THE PHILOSOPHICAL POINT:<br/>"You cannot distribute what you don't have"<br/><br/>The algorithm's brilliance is in achieving the optimal possible<br/>distribution given physical constraints, while respecting social<br/>relationships (MR scores).<br/><br/>Universal satisfaction of ALLOCATABLE resources while strictly<br/>respecting mutual recognition proportions.<br/>The "universal" is bounded by physical reality, but within<br/>those bounds, the distribution is both efficient and socially aware.
+    end
+
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 64.3},<br/> {recipient: Bob, quantity: 85.7}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<brsequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 64.3},<br/> {recipient: Bob, quantity: 85.7}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 64.3},<br/> {recipient: Bob, quantity: 85.7}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION ═══════════
+    
+    Alice->>Network: Publish Commitment {needs: {food: 100}, capacities: {...}, recognition: {...}}
+    Bob->>Network: Publish Commitment {needs: {food: 90}, capacities: {...}, recognition: {...}}
+    Carol->>Network: Publish Commitment {needs: {}, capacities: {food: 150}, recognition: {...}}
+    Kitchen->>Network: Publish Commitment {needs: {}, capacities: {food: 200}, recognition: {...}}
+
+    Network-->>Alice: Receives {Bob, Carol, Kitchen} commitments
+    Network-->>Bob: Receives {Alice, Carol, Kitchen} commitments
+    Network-->>Carol: Receives {Alice, Bob, Kitchen} commitments
+    Network-->>Kitchen: Receives {Alice, Bob, Carol} commitments
+
+    Note over Alice,Network: ═══════════ ITERATION 1: INDEPENDENT ALLOCATION ═══════════
+    
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice)=30%, MR(Carol,Bob)=40%<br/>Total MR = 70%
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × (30%/70%) = 64.3<br/>Bob: 150 × (40%/70%) = 85.7
+    Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(64.3, 100) = 64.3<br/>Bob: min(85.7, 90) = 85.7
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 64.3},<br/> {recipient: Bob, quantity: 85.7}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+    
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+    Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice)=30%, MR(Kitchen,Bob)=30%<br/>Total MR = 60%
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × (30%/60%) = 100<br/>Bob: 200 × (30%/60%) = 100
+    Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(100, 100) = 100<br/>Bob: min(100, 90) = 90
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 100},<br/> {recipient: Bob, quantity: 90}]
+
+    Network-->>Alice: Receives allocations: 64.3 from Carol, 100 from Kitchen
+    Network-->>Bob: Receives allocations: 85.7 from Carol, 90 from Kitchen
+
+    Note over Alice,Network: ═══════════ ITERATION 1: RECIPIENT UPDATE LAW ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 64.3<br/>Received from Kitchen: 100<br/>Total Received: 164.3<br/><br/>⚠️ OVER-ALLOCATION! (164.3 > 100)
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 100 - 164.3) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    rect rgb(200, 255, 200)
+        Note over Bob: BOB AS RECIPIENT:<br/>Declared Need: 90<br/>Received from Carol: 85.7<br/>Received from Kitchen: 90<br/>Total Received: 175.7<br/><br/>⚠️ OVER-ALLOCATION! (175.7 > 90)
+        
+        Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Received)<br/>= max(0, 90 - 175.7) = 0
+        
+        Bob->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}<br/><br/>✅ SATISFIED (no more food needed)
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: PROVIDERS SEE UPDATED NEEDS ═══════════
+
+    Network-->>Carol: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+    Network-->>Kitchen: Receives UPDATED commitments:<br/>Alice needs: 0, Bob needs: 0
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Carol->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 0, Bob needs 0<br/><br/>❌ NO RECIPIENTS with needs
+    
+    Kitchen->>Network: Publish slot_allocations: []<br/>(no allocations, everyone satisfied)
+
+    Note over Alice,Network: ═══════════ CONVERGENCE ACHIEVED ═══════════
+
+    rect rgb(200, 255, 255)
+        Note over Alice,Network: ✅ SYSTEM CONVERGED:<br/>- Alice: Need 0, Received 164.3 (capped at 100 actual need)<br/>- Bob: Need 0, Received 175.7 (capped at 90 actual need)<br/>- Carol: Allocated 150 (64.3 + 85.7)<br/>- Kitchen: Allocated 190 (100 + 90)<br/><br/><br/>"System converges to stable equilibrium in 5-10 calculation rounds"<br/><br/>In this example: Converged in 2 iterations
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 100}, ...}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Receives UPDATED commitment: Alice needs 100
+    Network-->>Kitchen: Receives UPDATED commitment: Alice needs 100
+
+    Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!<br/>Apply damping
+
+    Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Carol->>Carol: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Carol->>Carol: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+    Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+    Carol->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+
+    Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+    Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+    Kitchen->>Kitchen: Step 2: Filter recipients<br/>(Alice ✅, Bob ❌ no need)
+    Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>Only Alice has need → 100% to Alice
+    Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+    Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+    Kitchen->>Network: Publish slot_allocations:<br/>[{recipient: Alice, quantity: 70}]
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"
+        
+        Alice->>Network: Publish UPDATED Commitment:<br/>{needs: {food: 0}, ...}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Iteration 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 164.3 (64% over)<br/><br/>WITH DAMPING (Iteration 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law
+    end
+
+    Note over Alice,Network: ═══════════ KEY PROPERTIES ═══════════
+
+    Note over Alice,Network: 1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/><br/>2. UPDATE LAW<br/>   - Remaining_Need = max(0, Declared_Need - Total_Received)<br/>   - Applied by RECIPIENTS after receiving<br/>   - Can receive from MULTIPLE providers per iteration<br/><br/>3. OVER-ALLOCATION IS EXPECTED:<br/>   - "Allocations are capped at declared need *per provider*"<br/>   - "You might receive from multiple providers in one round"<br/>   - Total can exceed need → triggers update law<br/><br/>4. CONVERGENCE:<br/>   - Total-Needs(tomorrow) ≤ Total-Needs(today)<br/>   - System contracts toward zero remaining needs<br/>   - Guaranteed if capacity sufficient<br/><br/>5. NO ACCUMULATION:<br/>   - Need(tomorrow) = Need(today) - Allocation(today)<br/>   - Receiving decreases need, never increases wealth<br/>   - "Mathematical abolition of wealth accumulation"

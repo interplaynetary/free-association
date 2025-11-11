@@ -304,45 +304,115 @@ Sometimes the system can overshoot: it gives you more than you need, then less t
 
 ### How Needs Decrease
 
-**Important Distinction:**
-- **Declared-Need** = What you state you currently need (can be updated any time)
-- **Remaining-Need** = Declared-Need - Total-Already-Received
-- **The Update Law** = How the system suggests updating your declaration after receiving allocations
+**Critical Distinction:**
+- **Declared-Need** = What you initially state you need (manual user input)
+- **Remaining-Need** = Declared-Need - Total-Already-Received (automatic system computation)
+- **Published-Need** = What providers see in your commitment (always remaining need)
+
+**The Update Law (Applied Automatically):**
 
 **Your-Remaining-Need** = maximum(0, Your-Declared-Need - Total-You-Received)
 
-**In plain English:**
-- Whatever you receive reduces your remaining need
+**This is applied automatically by the system. Providers always see your remaining need, not stale declarations.**
+
+### How It Works in Practice
+
+**Step 1: You Declare (Manual)**
+```
+You declare: "I need 100 meals"
+Your commitment publishes: need = 100 (no allocations received yet)
+```
+
+**Step 2: System Tracks Allocations (Automatic)**
+```
+Carol allocates: 64.3 meals (published to network)
+Kitchen allocates: 100 meals (published to network)
+System detects: You received 164.3 total
+```
+
+**Step 3: System Applies Update Law (Automatic)**
+```
+Remaining need = max(0, 100 - 164.3) = 0
+Your commitment auto-updates: need = 0
+Providers see: You need 0 meals (won't allocate more)
+```
+
+**Step 4: You Can Override If Circumstances Change (Manual)**
+```
+New circumstances arise: You now need 50 more meals
+You declare: "I need 50 meals"
+System recomputes: remaining = max(0, 50 - 164.3) = 0 (still over-satisfied)
+OR if received tracking resets: remaining = 50
+Your commitment publishes: need = 50 (providers will allocate)
+```
+
+### Key Properties
+
+**Automatic Reduction (Prevents Accumulation):**
+- Whatever you receive automatically reduces your remaining need
 - Your remaining need can never go below zero
 - You never accumulate beyond your declared need
+- **Providers always see fresh remaining need, not stale declarations**
 
-**Example (assuming unchanged declaration):**
-- You declare you need 50 meals
-- You receive 30 meals in iteration 1
-- Your remaining need: maximum(0, 50 - 30) = 20 meals
-- If you don't change your declaration, next iteration you declare: 20 meals
-- You receive 25 meals in iteration 2
-- Your remaining need: maximum(0, 20 - 25) = 0 meals (you're satisfied)
+**Manual Increase (Preserves Autonomy):**
+- You can increase your declaration at any time if circumstances change
+- New needs, changing situations, emergencies - you control your declarations
+- System recomputes remaining need accounting for what you've already received
 
-**What if your declared need changes?**
+**Example Scenario:**
 
-You can update your declaration at any time (new circumstances, changing situation):
-- Initially declared: 40 meals
-- Received: 30 meals
-- Remaining: 10 meals
-- But then circumstances change, you now declare: 60 meals
-- New remaining need: 60 - 30 = 30 meals (accounting for what you already received)
+```
+Day 1, Morning:
+- You declare: 100 meals needed
+- Commitment publishes: need = 100
 
-**The update law assumes unchanged declarations between iterations.** In practice:
-- The system suggests: New-Declaration = Old-Declaration - Received
-- But you can override this with any new declaration
-- Your `fulfilled_amount` tracks total received regardless of declaration changes
+Day 1, Noon:
+- You receive: 60 meals from Carol
+- System auto-computes: remaining = max(0, 100 - 60) = 40
+- Commitment auto-updates: need = 40
 
-**Multi-Dimensional:**
-Each type of need updates independently:
-- Food-Remaining-Need = Food-Declared-Need - Food-Total-Received
-- Healthcare-Remaining-Need = Healthcare-Declared-Need - Healthcare-Total-Received
+Day 1, Evening:
+- You receive: 50 meals from Kitchen
+- System auto-computes: remaining = max(0, 40 - 50) = 0
+- Commitment auto-updates: need = 0
+
+Day 2, Morning:
+- New circumstances: You need 30 more meals
+- You declare: 30 meals needed
+- System computes: remaining = 30 (fresh declaration)
+- Commitment publishes: need = 30
+```
+
+### Why Automatic Application is Essential
+
+**Without automatic update law (coordination breaks):**
+```
+❌ You declare: 100 meals
+❌ You receive: 160 meals (over-allocated)
+❌ Commitment still shows: 100 meals (stale!)
+❌ Providers see: 100 meals needed
+❌ Providers allocate: Another 160 meals
+❌ You accumulate: 320 meals total (while others starve)
+```
+
+**With automatic update law (coordination works):**
+```
+✅ You declare: 100 meals
+✅ You receive: 160 meals (over-allocated, but temporary)
+✅ System updates: 0 meals remaining
+✅ Commitment publishes: 0 meals needed
+✅ Providers see: 0 meals needed
+✅ Providers allocate: 0 meals to you (resources go to others)
+```
+
+### Multi-Dimensional
+
+Each type of need updates independently and automatically:
+- Food-Remaining-Need = Food-Declared-Need - Food-Total-Received (automatic)
+- Healthcare-Remaining-Need = Healthcare-Declared-Need - Healthcare-Total-Received (automatic)
 - etc.
+
+**The system maintains separate tracking for each need type, ensuring coordination across all dimensions simultaneously.**
 
 ---
 
@@ -352,16 +422,24 @@ Each type of need updates independently:
 
 ### Proof 1: Remaining Needs Always Decrease (The System Never Makes Things Worse)
 
-**The Key Insight:** Since allocations are always capped at your declared need, receiving help always makes your situation better or stays the same, never worse.
+**The Key Insight:** Since the system automatically applies the update law, receiving help always decreases your remaining need, never increases it.
 
 **Formally:**
-- Before allocation: You have declared need X
-- After allocation: Your remaining need is (X - amount-received), which is less than or equal to X
-- Over the whole network (assuming no arbitrary declaration increases): Total-Remaining-Needs-Tomorrow ≤ Total-Remaining-Needs-Today
+- Before allocation: Your commitment shows remaining need X
+- Providers allocate: You receive amount A (where A ≤ total provider capacity)
+- System automatically computes: New remaining need = max(0, X - A)
+- After allocation: Your remaining need is (X - A), which is less than or equal to X
+- Over the whole network: Total-Remaining-Needs-Tomorrow ≤ Total-Remaining-Needs-Today
 
 **This is called "contraction"** - the system always moves toward zero remaining needs.
 
-**Note:** This assumes people declare what they actually need. If someone declares they need 100 meals when they only need 10, the system will still allocate based on mutual recognition and declared amounts, but this would be false declaration (covered in the Truth section).
+**Key Properties:**
+1. **Automatic application**: Users don't need to manually update - system enforces the update law
+2. **Prevents accumulation**: You can't hoard by keeping stale declarations - system auto-reduces
+3. **Preserves autonomy**: You can still increase declarations if circumstances change
+4. **Ensures coordination**: Providers always see fresh remaining need, not stale data
+
+**Note on False Declarations:** If someone declares inflated needs, they'll receive allocations once, but the system will automatically reduce their remaining need based on what they received. They can't perpetually receive more by maintaining false declarations - the update law is enforced automatically.
 
 ### Proof 2: Complete Satisfaction is Guaranteed (If Capacity is Sufficient)
 
@@ -706,20 +784,26 @@ Your-Final-Allocation =
   (Need size only affects cap, not proportion)
 
 Your-Declared-Need = 
-  What you state you need (can be updated any time)
+  What you state you need (manual user input)
 
 Your-Remaining-Need = 
   maximum(
     0,
     Your-Declared-Need - Total-You-Received
   )
+  (computed automatically by system)
 
-Update Law (assuming unchanged declaration):
-  Your-Declared-Need(tomorrow) = Your-Remaining-Need(today)
-  = maximum(
-      0,
-      Your-Declared-Need(today) - Your-Allocation(today)
-    )
+Your-Published-Need = 
+  Your-Remaining-Need
+  (what providers see in your commitment)
+
+Update Law (applied automatically):
+  System tracks: Total-You-Received (automatic)
+  System computes: Remaining-Need = max(0, Declared - Received) (automatic)
+  System publishes: Commitment.need = Remaining-Need (automatic)
+  
+  You can override: Declare-Need = New-Value (manual)
+  System recomputes: Remaining = max(0, New-Value - Received) (automatic)
     
 ```
 
@@ -728,11 +812,14 @@ Update Law (assuming unchanged declaration):
 - **Symmetric:** Mutual-Recognition(A,B) = Mutual-Recognition(B,A)
 - **Non-transferable:** Recognition and shares cannot be traded or sold
 - **Dynamic:** Recognition and distribution are (re)adjustable as relationships evolve
-- **Capped:** You never receive more than you need
-- **Contracting:** Total needs always decrease under optimal allocation
+- **Capped:** You never receive more than you need (per provider allocation)
+- **Auto-reducing:** System automatically reduces your published need based on what you receive
+- **Contracting:** Total needs always decrease under optimal allocation (enforced automatically)
 - **Tracking:** System continuously computes optimal allocation for current network state
-- **Multi-dimensional:** Each need type tracked independently
+- **Coordinating:** Providers always see fresh remaining need, not stale declarations
+- **Autonomous:** You can increase declarations if circumstances change (manual override)
+- **Multi-dimensional:** Each need type tracked independently with automatic updates
 - **Peer-to-peer:** No central coordinator required
 
-**The result: A computable, provably convergent, decentralized system for universal need satisfaction.**
+**The result: A computable, provably convergent, decentralized system for universal need satisfaction with automatic coordination and user autonomy.**
 

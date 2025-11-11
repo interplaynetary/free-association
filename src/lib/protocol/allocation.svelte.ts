@@ -68,6 +68,8 @@ import type {
 	AvailabilitySlot,
 	GlobalRecognitionWeights,
 	SlotAllocationRecord,
+	MultiDimensionalDamping,
+	PerTypeDampingHistoryEntry
 } from '$lib/protocol/schemas';
 
 import { normalizeGlobalRecognitionWeights } from '$lib/protocol/schemas';
@@ -81,6 +83,7 @@ import {
 	networkRecognitionWeights,
 	myRecognitionWeights,
 	myMutualRecognition as myMutualRecognitionFromStores,
+	networkAllocations,
 	type SpaceTimeIndex
 } from '$lib/protocol/stores.svelte';
 import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
@@ -269,10 +272,14 @@ export const myAvailableCapacity: Readable<Record<string, number>> = derived(
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Over-Allocation History (per type)
- * Tracks how much excess we received in the last 3 allocations
+ * Over-Allocation History (per type) - SCHEMA-ALIGNED
+ * 
+ * Uses PerTypeDampingHistoryEntry format for full schema compliance.
+ * Tracks over-allocation with timestamps for oscillation detection.
+ * 
+ * Format: Record<typeId, Array<{need_type_id, overAllocation, timestamp}>>
  */
-export const overAllocationHistory: Writable<Record<string, number[]>> = writable({});
+export const overAllocationHistory: Writable<Record<string, PerTypeDampingHistoryEntry[]>> = writable({});
 
 /**
  * Damping Factor (per type)
@@ -479,20 +486,22 @@ export const myAllocationsAsProvider: Readable<{
 	convergence: ConvergenceSummary | null;
 	slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }>;
 }> = derived<
-	[typeof myPublicKey, typeof myMutualRecognition, typeof myRecognitionOfOthers, typeof myCommitmentStore],
+	[typeof myPublicKey, typeof myMutualRecognition, typeof myRecognitionOfOthers, typeof myCommitmentStore, typeof networkCommitments],
 	{ allocations: SlotAllocationRecord[]; totalsByTypeAndRecipient: Record<string, Record<string, number>>; convergence: ConvergenceSummary | null; slotDenominators: Record<string, { mutual: number; nonMutual: number; need_type_id: string }> }
 >(
 	[
 		myPublicKey,
 		myMutualRecognition,
 		myRecognitionOfOthers,
-		myCommitmentStore
+		myCommitmentStore,
+		networkCommitments
 	],
 	([
 		$myPub,
 		$myMR,
 		$myRec,
-		$myCommitment
+		$myCommitment,
+		$networkCommitments
 	]) => {
 		if (!$myPub || !$myCommitment?.capacity_slots) {
 			return { allocations: [], totalsByTypeAndRecipient: {}, convergence: null, slotDenominators: {} };
@@ -501,14 +510,16 @@ export const myAllocationsAsProvider: Readable<{
 		// Get ALL commitments (including our own for potential self-allocation)
 		const allCommitments = getAllCommitmentsRecord();
 		
+		// Log network commitments count for debugging
+		const networkCommitmentCount = Object.keys(allCommitments).filter(k => k !== $myPub).length;
+		console.log(`[ALLOCATION-PROVIDER] Computing allocations with ${networkCommitmentCount} network commitments`);
+		
 		// ✅ MEMOIZATION: Check if inputs actually changed using deep equality
 		// NOTE: We exclude itcStamp, timestamp, and _updatedAt from commitment comparison
 		// because they're metadata, not allocation inputs. This prevents infinite loops
 		// where metadata changes trigger re-computation even when actual data is unchanged.
-		const commitmentWithoutMetadata = { ...$myCommitment };
-		delete commitmentWithoutMetadata.itcStamp;
-		delete commitmentWithoutMetadata.timestamp;
-		delete commitmentWithoutMetadata._updatedAt;
+		const { itcStamp: _, timestamp: __, ..._commitmentWithoutMetadata } = $myCommitment as any;
+		const commitmentWithoutMetadata = _commitmentWithoutMetadata;
 		
 		// Also strip metadata from allCommitments for comparison
 		const allCommitmentsWithoutMetadata: Record<string, any> = {};
@@ -685,7 +696,7 @@ export function applyNeedUpdateLawToCommitment() {
  * 
  * ✅ Uses pure function from allocation.ts
  */
-export function recordAllocationReceived(typeId: string, amount: number) {
+export function recordAllocationReceived(typeId: string, amount: number, providerPub?: string) {
 	const currentNeeds = get(myCurrentNeeds);
 	const currentNeed = currentNeeds[typeId] || 0;
 	
@@ -707,6 +718,177 @@ export function recordAllocationReceived(typeId: string, amount: number) {
 		...totals,
 		[typeId]: (totals[typeId] || 0) + amount
 	}));
+	
+	// Log tracking (optional provider info)
+	if (providerPub) {
+		console.log(
+			`[ALLOCATION-RECEIVED] ${amount.toFixed(2)} ${typeId} from ${providerPub.slice(0, 20)}...`
+		);
+	}
+}
+
+/**
+ * Update commitment with computed dampening state (SCHEMA-ALIGNED)
+ * 
+ * Computes damping factors from history and updates the commitment's
+ * multi_dimensional_damping field per MultiDimensionalDampingSchema.
+ * 
+ * This makes the dampening state transparent and portable across the network.
+ */
+export function updateCommitmentDampeningState() {
+	const history = get(overAllocationHistory);
+	
+	// Compute damping factors from history
+	const dampingFactors = computeDampingFactors(history);
+	
+	// Compute global damping factor (average of all types)
+	const factors = Object.values(dampingFactors);
+	const globalDampingFactor = factors.length > 0
+		? factors.reduce((sum, f) => sum + f, 0) / factors.length
+		: 1.0;
+	
+	// ✅ Build MultiDimensionalDamping object per schema
+	const dampingState: MultiDimensionalDamping = {
+		damping_factors: dampingFactors,
+		damping_history: history,
+		global_damping_factor: globalDampingFactor
+	};
+	
+	// Update commitment (preserve timestamp)
+	myCommitmentStore.update(c => {
+		if (!c) return c;
+		return {
+			...c,
+			multi_dimensional_damping: dampingState,
+			timestamp: c.timestamp || Date.now() // Preserve existing timestamp
+		};
+	});
+	
+	console.log(
+		`[DAMPENING-STATE] Updated commitment: ` +
+		`${Object.keys(dampingFactors).length} types, ` +
+		`global=${globalDampingFactor.toFixed(2)}`
+	);
+}
+
+/**
+ * Enable automatic remaining need tracking (README.md line 312)
+ * 
+ * ✅ PHASE 2: RECIPIENT-SIDE AUTO-UPDATE
+ * 
+ * Subscribes to network allocations and automatically:
+ * 1. Tracks allocations received (recordAllocationReceived)
+ * 2. Computes remaining need (myNeedsAtNextStep)
+ * 3. Updates and publishes commitment (applyNeedUpdateLawToCommitment)
+ * 
+ * This enables the coordination mechanism described in README.md:
+ * - Recipients automatically reduce their published need
+ * - Providers see updated (remaining) needs, not stale declared needs
+ * - Over-allocation is temporary and self-correcting
+ * - System converges through parallel, independent updates
+ * 
+ * Call this once during app initialization.
+ * 
+ * @returns Unsubscribe function
+ */
+export function enableAutoRemainingNeedTracking(): () => void {
+	console.log('[AUTO-NEED-TRACKING] 🚀 Enabling automatic remaining need tracking');
+	
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let isProcessing = false;
+	
+	/**
+	 * Debounced apply function
+	 * Batches multiple allocations received in short time window
+	 */
+	const debouncedApply = () => {
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
+		
+		debounceTimer = setTimeout(() => {
+			if (isProcessing) {
+				console.log('[AUTO-NEED-TRACKING] ⏭️  Skipped: already processing');
+				return;
+			}
+			
+			isProcessing = true;
+			
+			try {
+				// Get current remaining needs
+				const nextNeeds = get(myNeedsAtNextStep);
+				const needCount = Object.keys(nextNeeds).length;
+				const hasRemainingNeed = Object.values(nextNeeds).some(n => n > 0);
+				
+				console.log(
+					`[AUTO-NEED-TRACKING] 📊 Remaining needs: ${needCount} types, ` +
+					`has remaining: ${hasRemainingNeed}`
+				);
+				
+				// ✅ Update dampening state in commitment (schema-aligned)
+				updateCommitmentDampeningState();
+				
+				// Apply the update law to commitment
+				applyNeedUpdateLawToCommitment();
+				console.log('[AUTO-NEED-TRACKING] ✅ Applied need update law and published dampening state');
+			} catch (error) {
+				console.error('[AUTO-NEED-TRACKING] ❌ Error applying update law:', error);
+			} finally {
+				isProcessing = false;
+			}
+		}, 500); // 500ms debounce
+	};
+	
+	// Subscribe to network allocations field store (fine-grained reactivity!)
+	const unsubscribe = networkAllocations.subscribe(($allocationsMap) => {
+		const myPub = get(holsterUserPub);
+		if (!myPub) {
+			// Not logged in yet
+			return;
+		}
+		
+		let receivedCount = 0;
+		let totalReceived = 0;
+		
+		// Check each provider's allocations
+		for (const [providerPubKey, allocations] of $allocationsMap.entries()) {
+			if (!allocations || !Array.isArray(allocations)) continue;
+			
+			// Filter for allocations to me
+			for (const allocation of allocations) {
+				if (allocation.recipient_pubkey === myPub) {
+					// Track this allocation
+					recordAllocationReceived(
+						allocation.need_type_id,
+						allocation.quantity,
+						providerPubKey
+					);
+					
+					receivedCount++;
+					totalReceived += allocation.quantity;
+				}
+			}
+		}
+		
+		// If we received any allocations, trigger debounced update
+		if (receivedCount > 0) {
+			console.log(
+				`[AUTO-NEED-TRACKING] 📥 Processing ${receivedCount} allocations ` +
+				`(total: ${totalReceived.toFixed(2)})...`
+			);
+			debouncedApply();
+		}
+	});
+	
+	console.log('[AUTO-NEED-TRACKING] ✅ Enabled automatic need tracking');
+	
+	return () => {
+		unsubscribe();
+		if (debounceTimer) {
+			clearTimeout(debounceTimer);
+		}
+		console.log('[AUTO-NEED-TRACKING] ⏸️  Disabled automatic need tracking');
+	};
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -884,8 +1066,8 @@ export async function updateCommitmentWithDampingHistory(
 		damping.damping_history[typeId] = history.slice(-3);
 		
 		// ✅ Use pure function to compute damping factor (single source of truth!)
-		const historyValues = damping.damping_history[typeId].map(h => h.overAllocation);
-		const factors = computeDampingFactors({ [typeId]: historyValues });
+		// Pass structured history directly (schema-aligned)
+		const factors = computeDampingFactors({ [typeId]: damping.damping_history[typeId] });
 		damping.damping_factors[typeId] = factors[typeId];
 		
 		console.log(`[DAMPING] Type ${typeId}: factor=${damping.damping_factors[typeId].toFixed(2)}, over=${overAllocation.toFixed(2)}`);

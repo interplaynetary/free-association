@@ -465,13 +465,16 @@ export function computeConvergenceSummary(
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Compute damping factors from over-allocation history
+ * Compute damping factors from over-allocation history (SCHEMA-ALIGNED)
  * 
- * @param history - Over-allocation history per type
+ * Works with PerTypeDampingHistoryEntry format from schemas.ts.
+ * Analyzes oscillation patterns to determine appropriate dampening.
+ * 
+ * @param history - Structured history per type (with timestamps)
  * @returns Damping factors per type (0.5 = slow, 0.8 = medium, 1.0 = full speed)
  */
 function _computeDampingFactors(
-	history: Record<string, number[]>
+	history: Record<string, Array<{ need_type_id: string; overAllocation: number; timestamp: number }>>
 ): Record<string, number> {
 	const factors: Record<string, number> = {};
 	
@@ -481,13 +484,13 @@ function _computeDampingFactors(
 			continue;
 		}
 		
-		// Check last 3 entries for oscillation
-		const recent = hist.slice(-3);
+		// Check last 3 entries for oscillation (extract overAllocation values)
+		const recent = hist.slice(-3).map(entry => entry.overAllocation);
 		const upDownUp = recent[0] < recent[1] && recent[1] > recent[2];
 		const downUpDown = recent[0] > recent[1] && recent[1] < recent[2];
 		
 		if (upDownUp || downUpDown) {
-			factors[typeId] = 0.5; // Slow down (oscillation)
+			factors[typeId] = 0.5; // Slow down (oscillation detected)
 		} else {
 			const isSmooth = recent[0] >= recent[1] && recent[1] >= recent[2];
 			factors[typeId] = isSmooth ? 1.0 : 0.8;
@@ -504,19 +507,23 @@ export const computeDampingFactors = createMemoCache(
 );
 
 /**
- * Update over-allocation history with new received amounts
+ * Update over-allocation history with new received amounts (SCHEMA-ALIGNED)
  * 
- * @param history - Current history
+ * Uses PerTypeDampingHistoryEntry format from schemas.ts for full alignment.
+ * This enables proper timestamp tracking and structured history.
+ * 
+ * @param history - Current history (per-type arrays of structured entries)
  * @param received - Amount received this iteration per type
  * @param needs - Current needs per type
- * @returns Updated history
+ * @returns Updated history with structured entries
  */
 export function updateOverAllocationHistory(
-	history: Record<string, number[]>,
+	history: Record<string, Array<{ need_type_id: string; overAllocation: number; timestamp: number }>>,
 	received: Record<string, number>,
 	needs: Record<string, number>
-): Record<string, number[]> {
-	const newHistory: Record<string, number[]> = { ...history };
+): Record<string, Array<{ need_type_id: string; overAllocation: number; timestamp: number }>> {
+	const newHistory = { ...history };
+	const timestamp = Date.now();
 	
 	for (const [typeId, receivedAmount] of Object.entries(received)) {
 		const need = needs[typeId] || 0;
@@ -526,7 +533,14 @@ export function updateOverAllocationHistory(
 			newHistory[typeId] = [];
 		}
 		
-		newHistory[typeId] = [...newHistory[typeId], overAllocation].slice(-10); // Keep last 10
+		// ✅ Create structured entry per PerTypeDampingHistoryEntrySchema
+		const entry = {
+			need_type_id: typeId,
+			overAllocation,
+			timestamp
+		};
+		
+		newHistory[typeId] = [...newHistory[typeId], entry].slice(-10); // Keep last 10
 	}
 	
 	return newHistory;
@@ -979,12 +993,16 @@ const findCompatibleRecipients = createMemoCacheWithKey(
  * It performs slot-level matching, applies compliance filters, handles divisibility
  * constraints, and uses multi-pass proportional allocation.
  * 
+ * ✅ DAMPENING SUPPORT: Accepts activeNeedsByRecipient to use damped needs instead
+ * of declared needs. This prevents oscillation per README.md line 283-298.
+ * 
  * @param myPubKey - Provider's public key
  * @param myCapacitySlots - Provider's availability slots
  * @param distribution - Pre-computed distribution (who gets what share)
  * @param allCommitments - All participants' commitments
  * @param needsIndex - Optional spatial/temporal index for efficient recipient lookup
  * @param recipientFilters - Optional compliance filters per recipient
+ * @param activeNeedsByRecipient - Optional damped needs (activeNeed = declaredNeed × dampingFactor)
  * @returns Allocation result with slot allocations and metadata
  */
 export function allocateWithDistribution(
@@ -993,7 +1011,8 @@ export function allocateWithDistribution(
 	distribution: DistributionResult,
 	allCommitments: Record<string, Commitment>,
 	needsIndex?: SpaceTimeIndex,
-	recipientFilters?: Map<string, ComplianceFilter>
+	recipientFilters?: Map<string, ComplianceFilter>,
+	activeNeedsByRecipient?: Record<string, Record<string, number>>  // ✅ Damped needs (activeNeed = declaredNeed × dampingFactor)
 ): AllocationResult {
 	const iterationStartTime = Date.now();
 	const allocations: SlotAllocationRecord[] = [];
@@ -1058,9 +1077,17 @@ export function allocateWithDistribution(
 		// Build eligible recipients with tier-aware shares
 		// For two-tier: allocate Tier 1 first, then Tier 2 gets remainder
 		for (const [recipientPub, needSlots] of compatibleRecipients.entries()) {
+			// ✅ Use active (damped) needs if provided, otherwise use declared needs
 			let totalNeed = 0;
-			for (const slot of needSlots) {
-				totalNeed += slot.quantity;
+			if (activeNeedsByRecipient && activeNeedsByRecipient[recipientPub]) {
+				// Sum all active needs for this recipient for this type
+				const typeId = capacitySlot.need_type_id;
+				totalNeed = activeNeedsByRecipient[recipientPub][typeId] || 0;
+			} else {
+				// Fallback: use declared needs from slots
+				for (const slot of needSlots) {
+					totalNeed += slot.quantity;
+				}
 			}
 			
 			// Check if in tier1 first (priority)
@@ -1327,6 +1354,61 @@ export function computeAllocations(
 ): AllocationResult {
 	const iterationStartTime = Date.now();
 	
+	// ✅ PHASE 1: Extract dampening factors and compute active needs (README.md line 291)
+	// Formula: activeNeed = declaredNeed × dampingFactor
+	const activeNeedsByRecipient: Record<string, Record<string, number>> = {};
+	
+	console.log('[DAMPENING] Extracting dampening factors from commitments...');
+	
+	for (const [recipientPub, commitment] of Object.entries(allCommitments)) {
+		if (!commitment.need_slots || commitment.need_slots.length === 0) continue;
+		
+		const activeNeeds: Record<string, number> = {};
+		
+		// Get global damping factor (fallback)
+		const globalDamping = commitment.multi_dimensional_damping?.global_damping_factor || 1.0;
+		
+		// Get type-specific damping factors
+		const typeDampingFactors = commitment.multi_dimensional_damping?.damping_factors || {};
+		
+		// Apply dampening to each need slot
+		for (const needSlot of commitment.need_slots) {
+			const typeId = needSlot.need_type_id;
+			const declaredNeed = needSlot.quantity;
+			
+			// Type-specific takes precedence, fallback to global
+			const dampingFactor = typeDampingFactors[typeId] || globalDamping;
+			
+			// Apply dampening formula
+			const activeNeed = declaredNeed * dampingFactor;
+			
+			// Aggregate by type (in case of multiple slots of same type)
+			activeNeeds[typeId] = (activeNeeds[typeId] || 0) + activeNeed;
+			
+			// Log dampening when it's actually applied (factor < 1.0)
+			if (dampingFactor < 1.0) {
+				console.log(
+					`[DAMPENING] ${recipientPub.slice(0,20)}...[${typeId}]: ` +
+					`declared=${declaredNeed.toFixed(2)}, damping=${dampingFactor.toFixed(2)}, ` +
+					`active=${activeNeed.toFixed(2)}`
+				);
+			}
+		}
+		
+		activeNeedsByRecipient[recipientPub] = activeNeeds;
+	}
+	
+	const recipientsWithDampening = Object.values(activeNeedsByRecipient)
+		.filter(needs => Object.values(needs).some((_, idx, arr) => {
+			const commitment = allCommitments[Object.keys(activeNeedsByRecipient)[idx]];
+			return (commitment?.multi_dimensional_damping?.global_damping_factor || 1.0) < 1.0;
+		})).length;
+	
+	console.log(
+		`[DAMPENING] Processed ${Object.keys(activeNeedsByRecipient).length} recipients, ` +
+		`${recipientsWithDampening} with dampening applied`
+	);
+	
 	// Calculate two-tier mutual recognition distribution manually
 	// We already have mutualRecognition computed, so build distribution directly
 	const tier1Shares: Record<string, number> = {};
@@ -1386,14 +1468,15 @@ export function computeAllocations(
 		}
 	};
 	
-	// Delegate to generic allocation engine
+	// Delegate to generic allocation engine with active (damped) needs
 	const result = allocateWithDistribution(
 		myPubKey,
 		myCapacitySlots,
 		distribution,
 		allCommitments,
 		needsIndex,
-		recipientFilters
+		recipientFilters,
+		activeNeedsByRecipient  // ✅ Pass damped needs to allocation engine
 	);
 	
 	// Compute convergence metrics
