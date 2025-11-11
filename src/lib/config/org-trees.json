@@ -10315,20 +10315,7 @@
           "manual_fulfillment": null,
           "points": 40,
           "parent_id": "ilo_root",
-          "contributors": [
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -10574,20 +10561,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "iaea_root",
-          "contributors": [
-            {
-              "id": "org_demo_iaea",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wna",
-              "points": 30
-            },
-            {
-              "id": "org_demo_ens",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -10802,24 +10776,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "irena_root",
-          "contributors": [
-            {
-              "id": "org_demo_isa",
-              "points": 40
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -10878,20 +10835,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "irena_root",
-          "contributors": [
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 30
-            },
-            {
-              "id": "org_demo_threefiveozero",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11161,20 +11105,7 @@
           "manual_fulfillment": null,
           "points": 40,
           "parent_id": "iso_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 30
-            },
-            {
-              "id": "org_demo_wemeanbus",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11213,20 +11144,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "iso_root",
-          "contributors": [
-            {
-              "id": "org_demo_unhabitat",
-              "points": 30
-            },
-            {
-              "id": "org_demo_c40cities",
-              "points": 25
-            },
-            {
-              "id": "org_demo_iclei",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11420,24 +11338,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "iom_root",
-          "contributors": [
-            {
-              "id": "org_demo_unhcr",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_aosis",
-              "points": 25
-            },
-            {
-              "id": "org_demo_ldc_group",
-              "points": 20
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11513,20 +11414,7 @@
           "manual_fulfillment": null,
           "points": 25,
           "parent_id": "iom_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_who",
-              "points": 30
-            },
-            {
-              "id": "org_demo_wfp",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11684,20 +11572,7 @@
           "manual_fulfillment": null,
           "points": 40,
           "parent_id": "wmo_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 30
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11741,20 +11616,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "wmo_root",
-          "contributors": [
-            {
-              "id": "org_demo_fao",
-              "points": 35
-            },
-            {
-              "id": "org_demo_wfp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_cdri",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -11944,28 +11806,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "unfccc_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_europeanunion",
-              "points": 30
-            },
-            {
-              "id": "org_demo_ndc_partnership",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12013,20 +11854,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "unfccc_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_climate_funds",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12058,20 +11886,7 @@
           "manual_fulfillment": null,
           "points": 20,
           "parent_id": "unfccc_root",
-          "contributors": [
-            {
-              "id": "org_demo_aosis",
-              "points": 45
-            },
-            {
-              "id": "org_demo_ldc_group",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12293,20 +12108,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "nep_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_gatesfoundation",
-              "points": 35
-            },
-            {
-              "id": "org_demo_bezosearthfund",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12350,24 +12152,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "nep_root",
-          "contributors": [
-            {
-              "id": "org_demo_wwf",
-              "points": 40
-            },
-            {
-              "id": "org_demo_natureconservancy",
-              "points": 35
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 30
-            },
-            {
-              "id": "org_demo_cfrn",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12548,24 +12333,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "iclei_root",
-          "contributors": [
-            {
-              "id": "org_demo_c40cities",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unhabitat",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            },
-            {
-              "id": "org_demo_bloombergphilanthropies",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12613,20 +12381,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "iclei_root",
-          "contributors": [
-            {
-              "id": "org_demo_natureconservancy",
-              "points": 40
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 30
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12828,24 +12583,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "cdri_root",
-          "contributors": [
-            {
-              "id": "org_demo_worldbank",
-              "points": 45
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 30
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -12889,20 +12627,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "cdri_root",
-          "contributors": [
-            {
-              "id": "org_demo_wmo",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_redcross",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13088,20 +12813,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "icc_chamber_root",
-          "contributors": [
-            {
-              "id": "org_demo_wemeanbus",
-              "points": 45
-            },
-            {
-              "id": "org_demo_iso",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13145,20 +12857,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "icc_chamber_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_climate_funds",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13344,24 +13043,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "siwi_root",
-          "contributors": [
-            {
-              "id": "org_demo_wmo",
-              "points": 40
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 30
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13409,16 +13091,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "siwi_root",
-          "contributors": [
-            {
-              "id": "org_demo_unep",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13604,24 +13277,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "isa_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 50
-            },
-            {
-              "id": "org_demo_india",
-              "points": 40
-            },
-            {
-              "id": "org_demo_morocco",
-              "points": 30
-            },
-            {
-              "id": "org_demo_chile",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13665,20 +13321,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "isa_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -13912,20 +13555,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "intosai_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14133,24 +13763,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "ramsar_root",
-          "contributors": [
-            {
-              "id": "org_demo_unep",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 40
-            },
-            {
-              "id": "org_demo_natureconservancy",
-              "points": 35
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14198,16 +13811,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "ramsar_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14393,24 +13997,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "ndc_partnership_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 50
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14458,20 +14045,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "ndc_partnership_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14669,28 +14243,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "cfrn_root",
-          "contributors": [
-            {
-              "id": "org_demo_fao",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_brazil",
-              "points": 30
-            },
-            {
-              "id": "org_demo_indonesia",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14738,20 +14291,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "cfrn_root",
-          "contributors": [
-            {
-              "id": "org_demo_conservationinternational",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_indigenous_pavilion",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -14969,24 +14509,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "wwea_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 50
-            },
-            {
-              "id": "org_demo_denmark",
-              "points": 40
-            },
-            {
-              "id": "org_demo_uk",
-              "points": 35
-            },
-            {
-              "id": "org_demo_germany",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15058,16 +14581,7 @@
           "manual_fulfillment": null,
           "points": 20,
           "parent_id": "wwea_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15237,20 +14751,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "climate_registry_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_iso",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15294,16 +14795,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "climate_registry_root",
-          "contributors": [
-            {
-              "id": "org_demo_wemeanbus",
-              "points": 40
-            },
-            {
-              "id": "org_demo_iso",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15485,20 +14977,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "wgeo_root",
-          "contributors": [
-            {
-              "id": "org_demo_undp",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15546,16 +15025,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "wgeo_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 40
-            },
-            {
-              "id": "org_demo_gatesfoundation",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -15935,20 +15405,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "yle_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -16146,20 +15603,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "iync_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -16352,20 +15796,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "ycla_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -16563,20 +15994,7 @@
           "manual_fulfillment": null,
           "points": 40,
           "parent_id": "monterrey_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -16774,20 +16192,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "children_youth_pavilion_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -17170,20 +16575,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "yilaa_root",
-          "contributors": [
-            {
-              "id": "org_demo_unicef",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -17926,28 +17318,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "eac_root",
-          "contributors": [
-            {
-              "id": "org_demo_africanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_ethiopia",
-              "points": 25
-            },
-            {
-              "id": "org_demo_tanzania",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -18171,24 +17542,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "ethiopia_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -18232,20 +17586,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "ethiopia_root",
-          "contributors": [
-            {
-              "id": "org_demo_wfp",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -18447,24 +17788,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "namibia_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -18701,24 +18025,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "tanzania_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -18955,20 +18262,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "sweden_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19185,20 +18479,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "deval_root",
-          "contributors": [
-            {
-              "id": "org_demo_germany",
-              "points": 45
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19396,20 +18677,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "tsinghua_root",
-          "contributors": [
-            {
-              "id": "org_demo_ipcc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_china",
-              "points": 40
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19448,16 +18716,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "tsinghua_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 40
-            },
-            {
-              "id": "org_demo_china",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19626,20 +18885,7 @@
           "manual_fulfillment": null,
           "points": 45,
           "parent_id": "oif_root",
-          "contributors": [
-            {
-              "id": "org_demo_france",
-              "points": 45
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 40
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19678,16 +18924,7 @@
           "manual_fulfillment": null,
           "points": 35,
           "parent_id": "oif_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_ldc_group",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -19880,32 +19117,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "climate_funds_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 30
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 30
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -20307,20 +19519,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "finland_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -20537,20 +19736,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "france_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 50
-            },
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -20594,16 +19780,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "france_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 45
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -20789,20 +19966,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "spain_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -21223,20 +20387,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "ukraine_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -21453,24 +20604,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "liberia_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -21712,24 +20846,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "sierra_leone_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -21962,24 +21079,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "cote_ivoire_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -22221,24 +21321,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "mali_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -22475,24 +21558,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "afdb_root",
-          "contributors": [
-            {
-              "id": "org_demo_worldbank",
-              "points": 45
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_climate_funds",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -22536,20 +21602,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "afdb_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_isa",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -22731,24 +21784,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "malawi_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -22981,24 +22017,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "djibouti_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -23236,24 +22255,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "congo_drc_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -23490,24 +22492,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "peru_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -23733,24 +22718,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "can_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_climateactionnetwork",
-              "points": 40
-            },
-            {
-              "id": "org_demo_oxfam",
-              "points": 35
-            },
-            {
-              "id": "org_demo_greenpeace",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -23794,16 +22762,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "can_root",
-          "contributors": [
-            {
-              "id": "org_demo_threefiveozero",
-              "points": 45
-            },
-            {
-              "id": "org_demo_greenpeace",
-              "points": 40
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -23971,24 +22930,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "senegal_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -24229,20 +23171,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "ldc_group_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 50
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 45
-            },
-            {
-              "id": "org_demo_aosis",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -24286,20 +23215,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "ldc_group_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -24485,24 +23401,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "chad_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -24739,24 +23638,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "rwanda_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -25220,24 +24102,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "gabon_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -25688,20 +24553,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "oman_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 50
-            },
-            {
-              "id": "org_demo_germany",
-              "points": 40
-            },
-            {
-              "id": "org_demo_chile",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26164,20 +25016,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "qatar_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 40
-            },
-            {
-              "id": "org_demo_ipcc",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26398,20 +25237,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "denmark_root",
-          "contributors": [
-            {
-              "id": "org_demo_wwea",
-              "points": 50
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_europeanunion",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26455,16 +25281,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "denmark_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 40
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26646,24 +25463,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "iadb_root",
-          "contributors": [
-            {
-              "id": "org_demo_worldbank",
-              "points": 45
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_climate_funds",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26707,20 +25507,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "iadb_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_isa",
-              "points": 35
-            },
-            {
-              "id": "org_demo_brazil",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -26950,24 +25737,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "angola_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -27200,24 +25970,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "chile_root",
-          "contributors": [
-            {
-              "id": "org_demo_isa",
-              "points": 50
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 35
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -27442,20 +26195,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "pakistan_root",
-          "contributors": [
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -27672,20 +26412,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "luxembourg_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -27897,24 +26624,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "morocco_root",
-          "contributors": [
-            {
-              "id": "org_demo_isa",
-              "points": 50
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -27958,16 +26668,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "morocco_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 50
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -28153,24 +26854,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "colombia_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -28391,24 +27075,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "el_salvador_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -28630,20 +27297,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "iceland_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -28860,24 +27514,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "guinea_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -29110,24 +27747,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "uruguay_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -29353,24 +27973,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "mauritania_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -29603,20 +28206,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "india_root",
-          "contributors": [
-            {
-              "id": "org_demo_isa",
-              "points": 50
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -29660,20 +28250,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "india_root",
-          "contributors": [
-            {
-              "id": "org_demo_undp",
-              "points": 45
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 35
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -29854,20 +28431,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "italy_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30084,28 +28648,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "brazil_root",
-          "contributors": [
-            {
-              "id": "org_demo_fao",
-              "points": 50
-            },
-            {
-              "id": "org_demo_conservationinternational",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 40
-            },
-            {
-              "id": "org_demo_ipam",
-              "points": 35
-            },
-            {
-              "id": "org_demo_cfrn",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30149,20 +28692,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "brazil_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 35
-            },
-            {
-              "id": "org_demo_unica",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30376,20 +28906,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "portugal_root",
-          "contributors": [
-            {
-              "id": "org_demo_europeanunion",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 35
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30611,20 +29128,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "china_root",
-          "contributors": [
-            {
-              "id": "org_demo_unfccc",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unep",
-              "points": 40
-            },
-            {
-              "id": "org_demo_ipcc",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30668,20 +29172,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "china_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 50
-            },
-            {
-              "id": "org_demo_isa",
-              "points": 40
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30867,20 +29358,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "uk_root",
-          "contributors": [
-            {
-              "id": "org_demo_unep",
-              "points": 45
-            },
-            {
-              "id": "org_demo_unfccc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -30924,16 +29402,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "uk_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -31119,20 +29588,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "malaysia_root",
-          "contributors": [
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -31358,24 +29814,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "indonesia_root",
-          "contributors": [
-            {
-              "id": "org_demo_fao",
-              "points": 50
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 45
-            },
-            {
-              "id": "org_demo_cfrn",
-              "points": 40
-            },
-            {
-              "id": "org_demo_conservationinternational",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -31419,16 +29858,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "indonesia_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -31831,20 +30261,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "australia_root",
-          "contributors": [
-            {
-              "id": "org_demo_isa",
-              "points": 50
-            },
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -31916,20 +30333,7 @@
           "manual_fulfillment": null,
           "points": 20,
           "parent_id": "australia_root",
-          "contributors": [
-            {
-              "id": "org_demo_aosis",
-              "points": 50
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 40
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -32282,20 +30686,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "south_korea_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -32362,16 +30753,7 @@
           "manual_fulfillment": null,
           "points": 20,
           "parent_id": "south_korea_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_ipcc",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -32525,20 +30907,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "bangladesh_root",
-          "contributors": [
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -32764,20 +31133,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "saudi_arabia_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 45
-            },
-            {
-              "id": "org_demo_isa",
-              "points": 40
-            },
-            {
-              "id": "org_demo_ipcc",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -32993,20 +31349,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "singapore_root",
-          "contributors": [
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -33232,20 +31575,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "thailand_root",
-          "contributors": [
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 35
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -33467,20 +31797,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "germany_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 50
-            },
-            {
-              "id": "org_demo_wwea",
-              "points": 45
-            },
-            {
-              "id": "org_demo_europeanunion",
-              "points": 40
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -33524,20 +31841,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "germany_root",
-          "contributors": [
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 50
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_kfw",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -33735,24 +32039,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "venezuela_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_caf",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -33964,24 +32251,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "uganda_root",
-          "contributors": [
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_africanunion",
-              "points": 35
-            },
-            {
-              "id": "org_demo_undp",
-              "points": 30
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 25
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -34422,20 +32692,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "caf_root",
-          "contributors": [
-            {
-              "id": "org_demo_iadb",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -34474,16 +32731,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "caf_root",
-          "contributors": [
-            {
-              "id": "org_demo_cdri",
-              "points": 40
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -34681,24 +32929,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "ipam_root",
-          "contributors": [
-            {
-              "id": "org_demo_fao",
-              "points": 45
-            },
-            {
-              "id": "org_demo_ipcc",
-              "points": 40
-            },
-            {
-              "id": "org_demo_brazil",
-              "points": 35
-            },
-            {
-              "id": "org_demo_conservationinternational",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -34770,16 +33001,7 @@
           "manual_fulfillment": null,
           "points": 20,
           "parent_id": "ipam_root",
-          "contributors": [
-            {
-              "id": "org_demo_wwf",
-              "points": 40
-            },
-            {
-              "id": "org_demo_indigenous_pavilion",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -35325,28 +33547,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "multilateral_banks_root",
-          "contributors": [
-            {
-              "id": "org_demo_worldbank",
-              "points": 50
-            },
-            {
-              "id": "org_demo_africandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_asiandevbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_iadb",
-              "points": 40
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 35
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -35554,24 +33755,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "kfw_root",
-          "contributors": [
-            {
-              "id": "org_demo_germany",
-              "points": 50
-            },
-            {
-              "id": "org_demo_greenclimatefund",
-              "points": 45
-            },
-            {
-              "id": "org_demo_worldbank",
-              "points": 40
-            },
-            {
-              "id": "org_demo_climate_funds",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -35615,16 +33799,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "kfw_root",
-          "contributors": [
-            {
-              "id": "org_demo_irena",
-              "points": 40
-            },
-            {
-              "id": "org_demo_gatesfoundation",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -35995,24 +34170,7 @@
           "manual_fulfillment": null,
           "points": 50,
           "parent_id": "indigenous_pavilion_root",
-          "contributors": [
-            {
-              "id": "org_demo_conservationinternational",
-              "points": 45
-            },
-            {
-              "id": "org_demo_wwf",
-              "points": 40
-            },
-            {
-              "id": "org_demo_cfrn",
-              "points": 35
-            },
-            {
-              "id": "org_demo_wipo",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
@@ -36051,20 +34209,7 @@
           "manual_fulfillment": null,
           "points": 30,
           "parent_id": "indigenous_pavilion_root",
-          "contributors": [
-            {
-              "id": "org_demo_wwf",
-              "points": 45
-            },
-            {
-              "id": "org_demo_natureconservancy",
-              "points": 40
-            },
-            {
-              "id": "org_demo_fao",
-              "points": 30
-            }
-          ],
+          "contributors": [],
           "anti_contributors": [],
           "children": [
             {
