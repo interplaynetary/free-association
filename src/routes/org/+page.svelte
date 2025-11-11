@@ -65,7 +65,7 @@
 			const query = searchQuery.toLowerCase();
 			filtered = filtered.filter(org => 
 				org.name.toLowerCase().includes(query) ||
-				org.description.toLowerCase().includes(query) ||
+				org.description?.toLowerCase().includes(query) ||
 				org.slug.toLowerCase().includes(query)
 			);
 		}
@@ -96,8 +96,8 @@
 	<div class="container mx-auto px-4 py-8 max-w-7xl">
 		<!-- Header -->
 		<div class="text-center mb-12">
-			<h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-				🌍 Climate Organizations
+			<h1 class="text-5xl font-bold mb-4">
+				🌍 <span class="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Climate Organizations</span>
 			</h1>
 			<p class="text-xl text-gray-600 dark:text-gray-300 mb-2">
 				COP30 Demo Ecosystem - {data.organizations.length} Organizations

@@ -14,6 +14,8 @@
 	import { searchTreeForNavigation } from '$lib/protocol/utils/filters/treeSearch';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
+	// Demo tree for unauthenticated users
+	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/protocol/schemas';
 	import { collectiveForest } from '$lib/protocol/collective/collective-tree.svelte';
 	
@@ -72,7 +74,9 @@
 	});
 
 	// Reactive store subscriptions
-	const tree = $derived($userTree);
+	// Use demo tree for unauthenticated users, user tree for authenticated users
+	const isAuthenticated = $derived(!!$userPub);
+	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
@@ -100,6 +104,35 @@
 	const isInventoryRoute = $derived(currentRoute.startsWith('/inventory'));
 
 	const shouldShowToolbar = $derived(isMainRoute || isInventoryRoute);
+
+	// Helper function to clone tree safely (handles demo tree proxy issues)
+	function cloneTree(treeToClone: Node): Node {
+		if (isAuthenticated) {
+			// Authenticated users: use structuredClone for proper cloning
+			return structuredClone(treeToClone);
+		} else {
+			// Demo tree: use JSON serialization to avoid proxy/clone issues
+			return JSON.parse(JSON.stringify(treeToClone));
+		}
+	}
+
+	// Helper function to update the appropriate tree store based on authentication
+	function updateTreeStore(updatedTree: Node) {
+		if (isAuthenticated) {
+			userTree.set(updatedTree);
+		} else {
+			// For demo tree, ensure it's serializable by using JSON round-trip
+			// This avoids structuredClone errors with proxy objects
+			try {
+				const serialized = JSON.parse(JSON.stringify(updatedTree));
+				demoTreeStore.set(serialized);
+			} catch (err) {
+				console.error('[DEMO TREE] Failed to serialize tree:', err);
+				// Fallback: try to set anyway
+				demoTreeStore.set(updatedTree);
+			}
+		}
+	}
 
 	// Search state (for main route and inventory)
 	let showSearchPanel = $state(false);
@@ -305,7 +338,7 @@
 		const currentNodeId = path[path.length - 1];
 
 		// Create a deep clone of the tree to ensure reactivity
-		const updatedTree = structuredClone(tree);
+		const updatedTree = cloneTree(tree);
 
 		// Find the current node in the cloned tree
 		const currentNode = findNodeById(updatedTree, currentNodeId);
@@ -334,8 +367,8 @@
 				undefined // manual fulfillment
 			);
 
-			// Update the tree in the store
-			userTree.set(updatedTree);
+			// Update the tree in the appropriate store (demo or user tree)
+			updateTreeStore(updatedTree);
 
 			// Show success message
 			globalState.showToast($t('tree.node_created'), 'success');
@@ -525,7 +558,7 @@
 		const currentNodeId = path[path.length - 1];
 
 		// Create a deep clone of the tree to ensure reactivity
-		const updatedTree = structuredClone(tree);
+		const updatedTree = cloneTree(tree);
 
 		// Find the current node in the cloned tree
 		const currentNode = findNodeById(updatedTree, currentNodeId);
@@ -542,7 +575,7 @@
 
 		try {
 			// Clone the subtree to add, preserving all structure and contributor info
-			const clonedSubtree = structuredClone(subtreeToAdd);
+			const clonedSubtree = cloneTree(subtreeToAdd);
 
 			// IMPORTANT: Resolve any contact IDs to public keys for forest subtrees
 			// This ensures we only store public keys when adding subtrees from other users
@@ -559,8 +592,8 @@
 			// Add the resolved subtree as a child to the current node
 			currentNode.children.push(resolvedSubtree);
 
-			// Update the tree in the store
-			userTree.set(updatedTree);
+			// Update the tree in the appropriate store (demo or user tree)
+			updateTreeStore(updatedTree);
 
 			// Show success message
 			globalState.showToast($t('tree.node_created'), 'success');
