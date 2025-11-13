@@ -902,14 +902,16 @@
 				</div>
 			{/if}
 
-			<!-- Footer links and copyright (right side) -->
-			<div class="toolbar-footer">
-				<a href="{base}/terms" class="footer-link">Terms</a>
-				<span class="footer-separator">•</span>
-				<a href="{base}/privacy" class="footer-link">Privacy</a>
-				<span class="footer-separator">•</span>
-				<span class="copyright">© Playnet</span>
-			</div>
+		<!-- Footer links and copyright (right side) -->
+		<div class="toolbar-footer">
+			<span class="demo-version">Demo v 0.5.2</span>
+			<span class="demo-notice">Not all features may be working</span>
+			<a href="{base}/terms" class="footer-link">Terms</a>
+			<span class="footer-separator">•</span>
+			<a href="{base}/privacy" class="footer-link">Privacy</a>
+			<span class="footer-separator">•</span>
+			<span class="copyright">© Playnet</span>
+		</div>
 		</div>
 
 		<!-- Forest subtrees panel for main route -->
@@ -1134,6 +1136,21 @@
 		font-size: 9px;
 		color: #999;
 		flex-shrink: 0;
+	}
+
+	.demo-version {
+		color: #666;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 1.2;
+	}
+
+	.demo-notice {
+		color: #999;
+		font-size: 8px;
+		font-style: italic;
+		line-height: 1.2;
+		text-align: right;
 	}
 
 	.footer-link {
@@ -1815,7 +1832,15 @@
 
 		.toolbar-footer {
 			font-size: 7px;
-			gap: 4px;
+			gap: 1px;
+		}
+
+		.demo-version {
+			font-size: 9px;
+		}
+
+		.demo-notice {
+			font-size: 7px;
 		}
 
 		.copyright {
@@ -1823,3 +1848,4 @@
 		}
 	}
 </style>
+

@@ -96,8 +96,15 @@
 	<div class="container mx-auto px-4 py-8 max-w-7xl">
 		<!-- Header -->
 		<div class="text-center mb-12">
+			<div class="flex justify-center mb-6">
+				<img 
+					src="/logo.png" 
+					alt="Free Association Logo" 
+					class="h-32 w-auto md:h-40 lg:h-48 drop-shadow-2xl"
+				/>
+			</div>
 			<h1 class="text-5xl font-bold mb-4">
-				🌍 <span class="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Climate Organizations</span>
+				<span class="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Climate Organizations</span>
 			</h1>
 			<p class="text-xl text-gray-600 dark:text-gray-300 mb-2">
 				COP30 Demo Ecosystem - {data.organizations.length} Organizations
