@@ -97,7 +97,9 @@
 				? node.name
 				: (index === 0 && user)
 					? user
-					: 'Unknown';
+					: (index === 0 && !isAuthenticated)
+						? 'Log in!'
+						: 'Unknown';
 			return {
 				id,
 				name
@@ -953,9 +955,15 @@
 	<div class="header-controls">
 		<LanguageSwitcher />
 		
-		<a href="{base}/org" class="icon-button org-button" title="Climate Organizations Directory">
-			<span>🌿</span>
-		</a>
+		{#if routeWithoutBase.startsWith('/org')}
+			<a href="{base}/" class="icon-button home-button" title="Return to Home">
+				<span>🌈</span>
+			</a>
+		{:else}
+			<a href="{base}/org" class="icon-button org-button" title="Climate Organizations Directory">
+				<span>🌿</span>
+			</a>
+		{/if}
 		
 				<!--
 
