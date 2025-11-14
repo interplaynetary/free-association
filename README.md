@@ -391,10 +391,6 @@ This represents a resolution of traditional ownership/control tensions: mutual r
 - [Protocol Specification](PROTOCOL.md) - Formal protocol documentation
 - [Governance](GOVERNANCE.md) - Project governance structure
 
-**Philosophical Foundations:**
-- [Dialectics of Love (Hegel and Mutual Recognition)](docs/love.md) - Hegelian philosophical underpinnings
-- [Free-Association as the Psychoanalysis of the Economic Unconscious](docs/matheme.md) - Theoretical framework
-
 **Interface Demonstration:**
 
 [![Interface Overview](https://img.youtube.com/vi/gapy9mBpP5w/hqdefault.jpg)](https://youtu.be/gapy9mBpP5w?si=B2sbZpoaXStg4eKL)

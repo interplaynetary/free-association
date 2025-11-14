@@ -1,0 +1,165 @@
+FREE ASSOCIATION PROTOCOL v6: SATISFACTION-BASED LEARNING
+(Asynchronous, Event-Driven, Non-Blocking)
+
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ v6 INITIALIZATION (Bootstrap) ═══════════
+    Note over Alice,Network: 🔄 ASYNCHRONOUS: All entities publish independently
+    
+    par Parallel Tree Publications
+        Alice->>Network: Publish Tree {<br/>  tree_id: "alice_tree_v1",<br/>  needs: {food: 100},<br/>  capacities: {...},<br/>  recognition: {Carol: 30%, Kitchen: 20%}<br/>}
+    and
+        Bob->>Network: Publish Tree {<br/>  tree_id: "bob_tree_v1",<br/>  needs: {food: 90},<br/>  capacities: {...},<br/>  recognition: {Carol: 40%, Kitchen: 30%}<br/>}
+    and
+        Carol->>Network: Publish Tree {<br/>  tree_id: "carol_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 150},<br/>  recognition: {Alice: 30%, Bob: 40%}<br/>}
+    and
+        Kitchen->>Network: Publish Tree {<br/>  tree_id: "kitchen_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 200},<br/>  recognition: {Alice: 30%, Bob: 30%}<br/>}
+    end
+
+    Note over Network: 📡 Network stores all trees<br/>Each entity subscribes to relevant trees
+
+    Note over Alice,Network: ═══════════ CYCLE 1: ALLOCATION (Using Recognition) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs, compute allocations independently
+    
+    par Parallel Allocation Computation (Providers observe network)
+        Note over Carol: Observes: Alice needs 100, Bob needs 90<br/>Reactively computes allocations
+        Carol->>Carol: Compute Derived State:<br/>MR(Carol,Alice) = min(30%, 30%) = 30%<br/>MR(Carol,Bob) = min(40%, 40%) = 40%<br/>Total MR = 70%<br/><br/>Allocate: Alice: 64.3, Bob: 85.7
+        Carol->>Network: Publish Allocation Records {<br/>  allocation_id: "carol_alloc_1",<br/>  offers: [{to: Alice, qty: 64.3},<br/>           {to: Bob, qty: 85.7}]<br/>}
+    and
+        Note over Kitchen: Observes: Alice needs 100, Bob needs 90<br/>Reactively computes allocations
+        Kitchen->>Kitchen: Compute Derived State:<br/>MR(Kitchen,Alice) = min(30%, 30%) = 30%<br/>MR(Kitchen,Bob) = min(30%, 30%) = 30%<br/>Total MR = 60%<br/><br/>Allocate: Alice: 100, Bob: 90
+        Kitchen->>Network: Publish Allocation Records {<br/>  allocation_id: "kitchen_alloc_1",<br/>  offers: [{to: Alice, qty: 100},<br/>           {to: Bob, qty: 90}]<br/>}
+    end
+
+    Note over Network: 📡 Allocation records published<br/>Alice & Bob subscribe to offers
+
+    Note over Alice,Network: ═══════════ CYCLE 1: ACCEPT/DECLINE (v6 NEW) ═══════════
+    Note over Alice,Network: 🔄 NON-BLOCKING: Recipients independently decide, no coordination needed
+
+    par Parallel Accept/Decline Decisions (Recipients observe offers)
+        rect rgb(255, 240, 200)
+            Note over Alice: Observes: 64.3 from Carol + 100 from Kitchen<br/>Total offered: 164.3 (vs need: 100)
+            Alice->>Alice: Compute Decision (User Input):<br/>✅ Accept 64.3 from Carol<br/>✅ Accept 100 from Kitchen<br/><br/>Updates tree: accepted quantities
+            Alice->>Network: Publish Acceptance Records {<br/>  {alloc: carol_alloc_1, accepted: 64.3},<br/>  {alloc: kitchen_alloc_1, accepted: 100}<br/>}
+        end
+    and
+        rect rgb(255, 240, 200)
+            Note over Bob: Observes: 85.7 from Carol + 90 from Kitchen<br/>Total offered: 175.7 (vs need: 90)
+            Bob->>Bob: Compute Decision (User Input):<br/>✅ Accept 40 from Carol (partial)<br/>❌ Decline 45.7 from Carol<br/>✅ Accept 50 from Kitchen (partial)<br/>❌ Decline 40 from Kitchen
+            Bob->>Network: Publish Acceptance Records {<br/>  {alloc: carol_alloc_1, accepted: 40, declined: 45.7},<br/>  {alloc: kitchen_alloc_1, accepted: 50, declined: 40}<br/>}
+        end
+    end
+
+    Note over Network: 📡 Acceptance records published<br/>Providers subscribe to acceptance events
+
+    Note over Alice,Network: ═══════════ CYCLE 1: SATISFACTION RATING (v6 NEW) ═══════════
+    Note over Alice,Network: 🔄 ASYNCHRONOUS: Recipients rate over time (hours/days later)
+
+    par Parallel Satisfaction Rating (Recipients rate independently, anytime)
+        rect rgb(200, 255, 200)
+            Note over Alice: 🌟 Uses resources, then rates quality<br/>Time: T+hours or T+days (async!)
+            Alice->>Alice: Compute Satisfaction (User Input):<br/><br/>Carol's allocation:<br/>  Quality/Usefulness assessed<br/>  Rating: 0.85<br/><br/>Kitchen's allocation:<br/>  Quality/Usefulness assessed<br/>  Rating: 0.95
+            Alice->>Network: Publish Satisfaction Records {<br/>  {alloc: carol_alloc_1, satisfaction: 0.85},<br/>  {alloc: kitchen_alloc_1, satisfaction: 0.95}<br/>}
+        end
+    and
+        rect rgb(200, 255, 200)
+            Note over Bob: 🌟 Uses resources, then rates quality<br/>Time: T+hours or T+days (different timing!)
+            Bob->>Bob: Compute Satisfaction (User Input):<br/><br/>Carol's allocation:<br/>  Poor quality observed<br/>  Rating: 0.40<br/><br/>Kitchen's allocation:<br/>  High quality observed<br/>  Rating: 0.90
+            Bob->>Network: Publish Satisfaction Records {<br/>  {alloc: carol_alloc_1, satisfaction: 0.40},<br/>  {alloc: kitchen_alloc_1, satisfaction: 0.90}<br/>}
+        end
+    end
+
+    Note over Network: 📡 Satisfaction records published<br/>Providers subscribe to satisfaction events
+
+    Note over Alice,Network: ═══════════ SATISFACTION AGGREGATION (v6 NEW) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe satisfaction, recompute derived state
+
+    par Parallel Derived State Recomputation (Providers observe satisfaction)
+        rect rgb(220, 200, 255)
+            Note over Carol: Observes satisfaction ratings from network<br/>Reactively recomputes derived state
+            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (64.3×0.85 + 40×0.40) / (64.3+40)<br/>  = 0.68<br/><br/>💡 Derived state updated (tree unchanged)
+            Note over Carol: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.68
+        end
+    and
+        rect rgb(220, 200, 255)
+            Note over Kitchen: Observes satisfaction ratings from network<br/>Reactively recomputes derived state
+            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (100×0.95 + 50×0.90) / (100+50)<br/>  = 0.93<br/><br/>✅ Derived state updated (tree unchanged)
+            Note over Kitchen: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.93
+        end
+    end
+
+    Note over Alice,Network: ═══════════ SATISFACTION → SHARE CALCULATION (v6) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Recipients observe satisfaction, recompute derived state
+
+    par Parallel Share Recomputation (Recipients observe provider satisfaction)
+        rect rgb(255, 220, 255)
+            Note over Alice: Observes Carol satisfaction: 0.68<br/>Observes Kitchen satisfaction: 0.93<br/>Reactively recomputes shares
+            Alice->>Alice: Compute Derived State (Automatic):<br/><br/>ShareOfGeneralSatisfaction:<br/>  Carol: points×sat = 30×0.85 = 25.5<br/>  Kitchen: points×sat = 20×0.95 = 19<br/>  Total = 44.5<br/><br/>Normalized shares:<br/>  Carol: 25.5/44.5 = 0.57<br/>  Kitchen: 19/44.5 = 0.43
+            Note over Alice: DerivedStateMap updated:<br/>Carol share: 0.30 → 0.57<br/>Kitchen share: 0.20 → 0.43
+        end
+    and
+        rect rgb(255, 220, 255)
+            Note over Bob: Observes Carol satisfaction: 0.68<br/>Observes Kitchen satisfaction: 0.93<br/>Reactively recomputes shares
+            Bob->>Bob: Compute Derived State (Automatic):<br/><br/>ShareOfGeneralSatisfaction:<br/>  Carol: points×sat = 40×0.40 = 16<br/>  Kitchen: points×sat = 30×0.90 = 27<br/>  Total = 43<br/><br/>Normalized shares:<br/>  Carol: 16/43 = 0.37 (DOWN!)<br/>  Kitchen: 27/43 = 0.63 (UP!)
+            Note over Bob: DerivedStateMap updated:<br/>Carol share: 0.40 → 0.37<br/>Kitchen share: 0.30 → 0.63
+        end
+    end
+
+    Note over Alice,Network: ═══════════ CYCLE 2: NEW NEEDS ARISE ═══════════
+    Note over Alice,Network: 🔄 ASYNCHRONOUS: Time passes, needs arise independently
+
+    par Parallel Need Updates (Users update trees asynchronously)
+        Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v2",<br/>  needs: {food: 100}<br/>}
+    and
+        Bob->>Network: Publish Tree Update {<br/>  tree_id: "bob_tree_v2",<br/>  needs: {food: 90}<br/>}
+    end
+
+    Note over Network: 📡 Need updates published<br/>Providers observe new needs
+
+    Note over Alice,Network: ═══════════ CYCLE 2: ALLOCATION (Using Satisfaction!) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs + satisfaction, compute new allocations
+
+    par Parallel Allocation with Learning (Providers compute independently)
+        rect rgb(200, 220, 255)
+            Note over Carol: Observes new needs + satisfaction history<br/>Reactively computes satisfaction-weighted allocation
+            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>Mutual Satisfaction (now uses learned data!):<br/>  MS(Carol,Alice) with Alice's share: 0.57<br/>  MS(Carol,Bob) with Bob's share: 0.37<br/><br/>Effective shares:<br/>  Alice: 0.171, Bob: 0.148<br/><br/>Allocate: Alice: 80.4, Bob: 69.6<br/><br/>💡 Satisfaction feedback adjusted allocations!
+            Carol->>Network: Publish Allocation Records {<br/>  allocation_id: "carol_alloc_2",<br/>  offers: [{to: Alice, qty: 80.4},<br/>           {to: Bob, qty: 69.6}]<br/>}
+        end
+    and
+        rect rgb(200, 220, 255)
+            Note over Kitchen: Observes new needs + satisfaction history<br/>Reactively computes satisfaction-weighted allocation
+            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>Mutual Satisfaction (now uses learned data!):<br/>  MS(Kitchen,Alice) with Alice's share: 0.43<br/>  MS(Kitchen,Bob) with Bob's share: 0.63<br/><br/>Effective shares:<br/>  Alice: 0.129, Bob: 0.189<br/><br/>Allocate: Alice: 81.1, Bob: 90<br/><br/>✅ High-quality provider gets more demand!
+            Kitchen->>Network: Publish Allocation Records {<br/>  allocation_id: "kitchen_alloc_2",<br/>  offers: [{to: Alice, qty: 81.1},<br/>           {to: Bob, qty: 90}]<br/>}
+        end
+    end
+
+    Note over Network: 📡 Satisfaction-weighted allocations published<br/>System has learned from experience!
+
+    Note over Alice,Network: ═══════════ CYCLE 2: SYSTEM LEARNED! ═══════════
+
+    rect rgb(200, 255, 200)
+        Note over Alice,Network: 🎓 LEARNING OUTCOMES:<br/><br/>ALICE (Cycle 1 → Cycle 2):<br/>  From Carol: 64.3 → 80.4 (+25%)<br/>  From Kitchen: 100 → 81.1 (-19%)<br/>  Total: 164.3 → 161.5 (slightly less, closer to need!)<br/><br/>BOB (Cycle 1 → Cycle 2):<br/>  From Carol: 85.7 → 69.6 (-19%) ⚠️ Poor quality reduced!<br/>  From Kitchen: 90 → 90 (same) ✅ Good quality maintained!<br/>  Total: 175.7 → 159.6 (less waste, better allocation)<br/><br/>CAROL (Provider learning):<br/>  Total allocation: 150 → 150 (same capacity)<br/>  Average satisfaction: 0.68 (mediocre)<br/>  Signal: Improve food quality to increase future share!<br/><br/>KITCHEN (Provider learning):<br/>  Total allocation: 190 → 171.1<br/>  Average satisfaction: 0.93 (excellent)<br/>  Result: High-quality provider serving real needs
+    end
+
+    Note over Alice,Network: ═══════════ v6 KEY PROPERTIES ═══════════
+
+    rect rgb(255, 255, 200)
+        Note over Alice,Network: 🌟 v6 SATISFACTION-BASED FEATURES:<br/><br/>1. ASYNCHRONOUS EVENT-DRIVEN ARCHITECTURE:<br/>   - All entities operate independently<br/>   - No blocking, no coordination required<br/>   - Publish/subscribe pattern via network<br/>   - Reactive computation (Svelte stores)<br/><br/>2. SEPARATED USER INPUT & DERIVED STATE:<br/>   - Tree structure = user inputs (stable)<br/>   - DerivedStateMap = computed values (reactive)<br/>   - Nodes reference derived state (not contain it)<br/>   - Efficient recomputation on changes<br/><br/>3. BOOTSTRAP WITH RECOGNITION:<br/>   - Start with beliefs about contribution<br/>   - No satisfaction data needed initially<br/>   - Enables cold start<br/><br/>4. ACCEPT/DECLINE MECHANISM:<br/>   - Recipients independently control acceptance<br/>   - Asynchronous, no provider blocking<br/>   - Declined resources return to provider<br/>   - Prevents unwanted accumulation<br/><br/>5. SATISFACTION RATING (Async):<br/>   - Recipients rate over time (hours/days)<br/>   - No blocking on satisfaction<br/>   - Measures actual utility, not belief<br/>   - Creates accountability loop<br/><br/>6. AUTOMATIC LEARNING (Reactive):<br/>   - Satisfaction aggregates up tree (automatic)<br/>   - Future allocations reactively updated<br/>   - High satisfaction → larger share<br/>   - Low satisfaction → smaller share<br/><br/>7. PROVIDER QUALITY SIGNALS:<br/>   - Providers observe their satisfaction ratings<br/>   - Learn which recipients they serve well<br/>   - Can adjust offerings based on feedback<br/><br/>8. CONVERGENCE TO UTILITY:<br/>   - System learns what actually works<br/>   - Not just what people believe works<br/>   - Empirically grounded allocation
+    end
+
+    Note over Alice,Network: ═══════════ MATHEMATICAL GUARANTEES ═══════════
+
+    rect rgb(220, 255, 255)
+        Note over Alice,Network: ✅ STABILITY PROPERTIES (from test2.md):<br/><br/>1. NO INFINITE LOOPS:<br/>   - Time delay: satisfaction rated after allocation<br/>   - Hierarchical dampening: tree aggregation smooths<br/>   - Per-type damping: prevents oscillation<br/>   - Need caps: bounded allocation<br/>   - Asynchronous timing prevents instant feedback<br/><br/>2. GAMING RESISTANCE:<br/>   - Mutual satisfaction: min(S_A→B, S_B→A)<br/>   - Can't inflate unilaterally<br/>   - Recognition overrides satisfaction (eligibility)<br/>   - Network reputation effects<br/><br/>3. CONVERGENCE:<br/>   - Satisfaction → 0.0-1.0 (bounded)<br/>   - Shares sum to 1.0 (normalized)<br/>   - Allocations ≤ needs (capped)<br/>   - System converges to satisfaction equilibrium<br/><br/>4. SELF-CORRECTION:<br/>   - Poor providers → lower satisfaction → reduced share<br/>   - Good providers → higher satisfaction → increased share<br/>   - System optimizes toward actual utility<br/><br/>5. NO ACCUMULATION:<br/>   - Declined resources return immediately<br/>   - Update law: Need(t+1) = Need(t) - Received(t)<br/>   - Same as v5, now with satisfaction weighting<br/><br/>6. PARALLEL EXECUTION:<br/>   - All entities compute independently<br/>   - No sequential bottlenecks<br/>   - Scales horizontally (more entities = no slowdown)<br/>   - Event-driven = resilient to offline entities
+    end
+
+    Note over Alice,Network: ═══════════ ARCHITECTURE SUMMARY ═══════════
+
+    rect rgb(230, 230, 250)
+        Note over Alice,Network: 🏗️ v6 PARALLEL, EVENT-DRIVEN ARCHITECTURE:<br/><br/>📍 KEY INSIGHT:<br/>User inputs and derived values exist in SEPARATE,<br/>PARALLEL data structures.<br/><br/>🌲 TREE (User Inputs - Stable):<br/>  - Points, contributors, needs, capacities<br/>  - Only changes when user explicitly edits<br/>  - Contains REFERENCES to derived state<br/>  - Serializable, immutable structure<br/><br/>📊 DERIVED STATE MAP (Computed - Reactive):<br/>  - Weights, shares, satisfaction, allocations<br/>  - Recomputes automatically on changes<br/>  - Keyed by node_id for O(1) lookup<br/>  - Ephemeral, can be reconstructed<br/><br/>🔄 REACTIVE FLOW:<br/>  1. User edits tree (user input)<br/>  2. Tree published to network<br/>  3. Other entities observe change<br/>  4. Derived states recompute (automatic)<br/>  5. DerivedStateMap updated (reactive)<br/>  6. UI updates (Svelte $: reactivity)<br/><br/>📡 NETWORK PATTERN:<br/>  - Publish: Entity publishes state changes<br/>  - Subscribe: Others observe relevant changes<br/>  - No RPC, no blocking, no coordination<br/>  - Eventually consistent<br/><br/>✅ BENEFITS:<br/>  - Scalable: O(entities) not O(entities²)<br/>  - Resilient: Offline entities don't block others<br/>  - Efficient: Only recompute what changed<br/>  - Clear: User inputs separated from calculations<br/>  - Fast: Parallel computation where possible
+    end
