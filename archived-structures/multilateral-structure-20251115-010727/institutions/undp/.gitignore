@@ -1,0 +1,7 @@
+# Private organizational files (if any)
+private/
+.keys/private.*
+
+# Temporary files
+*.tmp
+*.bak

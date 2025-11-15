@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Holster - test examples</title>
+  </head>
+  <body>
+    <h2>Holster - test examples</h2>
+    <p>
+      This file loads <code>index.js</code> which contains examples that use the
+      Holster API. See the console log for test output.
+    </p>
+    <p>
+      The tests make two updates to the same data, but they occur in random
+      order. The "species" field is then logged and should match the update that
+      happened last.
+    </p>
+    <p>
+      The <code>index.js</code> file is loaded as a module, which allows it to
+      import the development build of Holster. You can switch to the production
+      build by changing the import path at the top of the file.
+    </p>
+    <p>
+      See <a href="/examples/user.html">user.html</a> for examples that test the
+      Holster.user API.
+    </p>
+    <p>
+      See <a href="/examples/wire.html">wire.html</a> for examples that test the
+      Holster.wire API.
+    </p>
+    <script type="module" src="/examples/index.js"></script>
+  </body>
+</html>

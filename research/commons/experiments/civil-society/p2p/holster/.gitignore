@@ -1,0 +1,10 @@
+# dependencies
+/node_modules
+
+# storage
+/radata
+
+# misc
+*~
+npm-debug.log
+.DS_Store

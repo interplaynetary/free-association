@@ -1,0 +1,53 @@
+{
+  "name": "@mblaney/holster",
+  "version": "1.0.21",
+  "description": "Holster is a service that allows synchronising data between devices using Node, Deno, Bun or the browser.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "tsx --test test-ts/**/*.test.ts",
+    "build": "tsc && esbuild dist/holster.js --bundle --format=esm --sourcemap \"--external:node:*\" \"--external:ws\" --minify --outdir=build",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "Malcolm Blaney",
+  "license": "Zlib, MIT, Apache-2.0",
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
+    "ws": "^8.18.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "0.25.3",
+    "mock-socket": "^9.3.1",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "prettier": {
+    "semi": false,
+    "bracketSpacing": false,
+    "arrowParens": "avoid"
+  },
+  "browser": {
+    "fs": false
+  },
+  "directories": {
+    "example": "examples",
+    "test": "test-ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mblaney/holster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mblaney/holster/issues"
+  },
+  "homepage": "https://github.com/mblaney/holster/wiki"
+}

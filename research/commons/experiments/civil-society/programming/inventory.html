@@ -1,0 +1,953 @@
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin: 5px 0;
+            font-size: 1.2em;
+        }
+
+        .inventory-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 5px 0;
+            gap: 5px;
+        }
+
+        .item-holder {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 2px;
+            padding: 8px;
+            width: 180px;
+            transition: transform 0.2s;
+        }
+
+        .item-holder:hover {
+            transform: scale(1.02);
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #2c3e50;
+            margin-bottom: 2px;
+        }
+
+        .item-quantity {
+            color: #7f8c8d;
+            font-size: 0.8em;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 3px;
+            margin-top: 3px;
+        }
+
+        .button {
+            background-color: #f8f9fa;
+            color: #333;
+            border: 1px solid #dee2e6;
+            border-radius: 3px;
+            padding: 2px 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1em;
+            min-width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button:hover {
+            background-color: #e9ecef;
+        }
+
+        .user-info {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            padding: 8px;
+            margin: 5px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-name {
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .equipment {
+            margin-top: 5px;
+            color: #34495e;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .equipment > div:first-child {
+            /* The "Equipment:" header */
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .equipment-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+
+// main
+
+function main()
+{
+	var itemCategories = 
+	[
+		new ItemCategory("Tools"),
+		new ItemCategory("Materials"),
+		new ItemCategory("Consumables"),
+		new ItemCategory("Equipment"),
+		new ItemCategory("Resources"),
+		new ItemCategory("Miscellaneous"),
+	];
+
+	var itemDefns = 
+	[	
+		new ItemDefn
+		(
+			"Hammer", 
+			1, 
+			[ "Tools" ], 	 
+			function(item)
+			{
+				alert("You use the hammer to drive a nail.");
+			}
+		),
+		new ItemDefn("Wood Plank", 1, [ "Materials" ], null ),
+		new ItemDefn("Iron Ore", 1, [ "Materials" ], null ),
+		new ItemDefn
+		(
+			"Health Potion", 
+			1, 
+			[ "Consumables" ],
+			function(item) 
+			{ 
+				alert("You drink the health potion and feel revitalized.");
+			}
+		),
+		new ItemDefn("Energy Drink", 1, [ "Consumables" ], null ),
+		new ItemDefn("Rope", 1, [ "Tools" ], null ),
+		new ItemDefn
+		(
+			"Mining Pick", 
+			1, 
+			[ "Tools" ],     
+			function(item)
+			{
+				alert("You swing the pick and break some rocks.");
+			}
+		),
+		new ItemDefn("Stone", 1, [ "Materials" ], null ),
+		new ItemDefn("Metal Ingot", 1, [ "Materials" ], null ),
+		new ItemDefn
+		(
+			"Blueprint", 
+			1, 
+			[ "Miscellaneous" ],
+			function (item) 
+			{ 
+				alert("You study the blueprint for your next project."); 
+			}
+		),
+		new ItemDefn("Crafting Table", 1, [ "Equipment" ], null ),
+		new ItemDefn
+		(
+			"Storage Chest", 
+			1, 
+			[ "Equipment" ],
+			function(item)
+			{
+				alert("You open the chest to store your items.");
+			}
+		),
+		new ItemDefn("Iron Shield", 1, [ "Equipment" ], null ),
+	];
+
+	var userEquipmentDefns =
+	[
+		new UserEquipmentDefn
+		(
+			"Workshop",
+			// slotDefns
+			[
+				new UserEquipmentSlotDefn("Main Tool", [ "Tools" ] ),
+				new UserEquipmentSlotDefn("Secondary Tool", [ "Tools" ] ),
+				new UserEquipmentSlotDefn("Storage", [ "Equipment" ] ),
+				new UserEquipmentSlotDefn("Crafting Area", [ "Equipment" ] ),
+			]
+		)
+	];
+
+	var user = new User
+	(
+		"Ruzgar",
+		new ItemHolder
+		(
+			"🧰 Inventory",
+			[
+				new Item("Hammer", 1),
+				new Item("Wood Plank", 5),
+				new Item("Iron Ore", 3),
+				new Item("Health Potion", 2),
+				new Item("Energy Drink", 1),
+				new Item("Mining Pick", 1),
+				new Item("Stone", 10),
+				new Item("Metal Ingot", 4),
+			]
+		),
+		new UserEquipment
+		(
+			"Workshop",
+			[
+				new UserEquipmentSlotAssignment
+				(
+					"Main Tool", "Hammer"
+				),
+			]
+		)
+	);
+
+	var world = new World
+	(
+		"Community",
+		itemDefns,
+		userEquipmentDefns,
+		user,
+		// itemsOnGround
+		[
+			new Item("Coins", 100),
+			new Item("Gem", 7),
+			new Item("Shield of Concealment", 1),
+		]
+	);
+
+	Globals.Instance.initialize(world);
+
+}
+
+// classes
+
+function Array_Extensions()
+{}
+{
+	Array.prototype.addLookups = function(keyName)
+	{
+		for (var i = 0; i < this.length; i++)
+		{
+			var item = this[i];
+			var keyValue = item[keyName];
+			this[keyValue] = item;
+		}
+	}
+}
+
+function DisplayHelper()
+{}
+{
+	DisplayHelper.prototype.drawItem = function(item, actionsAvailable, parentElement)
+	{
+		var divItem = document.createElement("div");
+		divItem.className = "item-holder";
+
+		var itemAsString = item.toString();
+
+		var divItemInfo = document.createElement("div");
+		var [name, quantity] = itemAsString.split(" (");
+		
+		var nameDiv = document.createElement("div");
+		nameDiv.className = "item-name";
+		nameDiv.textContent = name;
+		
+		var quantityDiv = document.createElement("div");
+		quantityDiv.className = "item-quantity";
+		quantityDiv.textContent = "Quantity: " + quantity.replace(")", "");
+		
+		divItemInfo.appendChild(nameDiv);
+		divItemInfo.appendChild(quantityDiv);
+		divItem.appendChild(divItemInfo);
+
+		for (var i = 0; i < actionsAvailable.length; i++)
+		{
+			var action = actionsAvailable[i];
+			this.drawItemAction(action, item, divItem);
+		}
+
+		parentElement.appendChild(divItem);
+	}
+
+	DisplayHelper.prototype.drawItemAction = function(action, item, parentElement)
+	{
+		// Create button container if it doesn't exist
+		if (!parentElement.querySelector('.button-container')) {
+			var buttonContainer = document.createElement("div");
+			buttonContainer.className = "button-container";
+			parentElement.appendChild(buttonContainer);
+		}
+		var buttonContainer = parentElement.querySelector('.button-container');
+
+		var buttonAction = document.createElement("button");
+		buttonAction.className = "button";
+		
+		// Map action names to emojis
+		const actionEmojis = {
+			'Use': '✨',
+			'Equip': '🔧',
+			'Drop': '⬇️',
+			'Split': '➗',
+			'Merge': '➕',
+			'Unequip': '🎒',
+			'Take': '⬆️'
+		};
+		
+		buttonAction.innerHTML = actionEmojis[action.name] || action.name;
+		buttonAction.title = action.name; // Add tooltip with action name
+		buttonAction.onclick = action.perform.bind(action, item);
+		buttonContainer.appendChild(buttonAction);
+	}
+
+	DisplayHelper.prototype.drawItemHolder = function(itemHolder, actionsAvailable, parentElement)
+	{
+		var divHolder = document.createElement("div");
+		divHolder.className = "inventory-container";
+
+		var pHolderName = document.createElement("h1");
+		pHolderName.innerHTML = itemHolder.name;
+		divHolder.appendChild(pHolderName);
+
+		var divItems = document.createElement("div");
+		divItems.className = "inventory-container";
+
+		var items = itemHolder.items;
+		for (var i = 0; i < items.length; i++)
+		{
+			var item = items[i];
+			this.drawItem(item, actionsAvailable, divItems);
+		}
+
+		divHolder.appendChild(divItems);
+		parentElement.appendChild(divHolder);
+	}
+
+	DisplayHelper.prototype.drawUser = function(user, parentElement)
+	{
+		var divUser = document.createElement("div");
+		divUser.className = "user-info";
+
+		var pUserName = document.createElement("div");
+		pUserName.className = "user-name";
+		pUserName.innerHTML = user.name;
+		divUser.appendChild(pUserName);
+
+		this.drawUserEquipment(user.equipment, divUser);
+
+		var actionsAvailable = 
+		[
+			ItemAction.Instances.Use,
+			ItemAction.Instances.Equip,
+			ItemAction.Instances.Drop,
+			ItemAction.Instances.Split,
+			ItemAction.Instances.Merge,
+		];
+		
+		this.drawItemHolder(user.itemHolder, actionsAvailable, divUser);
+
+		parentElement.appendChild(divUser);
+	}
+
+
+	DisplayHelper.prototype.drawUserEquipment = function(userEquipment, parentElement)
+	{
+		var divUserEquipment = document.createElement("div");
+		divUserEquipment.className = "equipment";
+
+		var pEquipment = document.createElement("div");
+		pEquipment.innerHTML = "🔧 Equipped:";
+		divUserEquipment.appendChild(pEquipment);
+
+		var slotsContainer = document.createElement("div");
+		slotsContainer.className = "equipment-slots";
+		
+		var equipmentDefn = userEquipment.defn();
+		var slots = userEquipment.slots;
+		var actions = [ItemAction.Instances.Use];
+
+		for (var i = 0; i < slots.length; i++)
+		{
+			var slot = slots[i];
+			this.drawUserEquipmentSlot(slot, actions, slotsContainer);
+		}
+
+		divUserEquipment.appendChild(slotsContainer);
+		parentElement.appendChild(divUserEquipment);
+	}	
+
+
+	DisplayHelper.prototype.drawUserEquipmentSlot = function(slot, actionsAvailable, parentElement)
+	{
+		var divSlot = document.createElement("div");
+		divSlot.className = "item-holder";
+		divSlot.style.marginTop = "10px";
+
+		var divSlotDefnName = document.createElement("div");
+		divSlotDefnName.className = "item-name";
+		divSlotDefnName.innerHTML = slot.defnName + ":";
+		divSlot.appendChild(divSlotDefnName);
+
+		var slotItem = slot.item;
+
+		if (slotItem == null)
+		{
+			var divEmpty = document.createElement("div");
+			divEmpty.className = "item-quantity";
+			divEmpty.innerHTML = "[empty]";
+			divSlot.appendChild(divEmpty);
+		}
+		else
+		{
+			var actionsAvailable = [ItemAction.Instances.Unequip];
+			this.drawItem(slot.item, actionsAvailable, divSlot);
+		}
+
+		parentElement.appendChild(divSlot);
+	}
+
+	DisplayHelper.prototype.drawWorld = function(world)
+	{
+		var divWorldID = "divWorld";
+		var divWorld = document.getElementById(divWorldID);
+
+		if (divWorld != null)
+		{
+			document.body.removeChild(divWorld);
+		}
+
+		divWorld = document.createElement("div");
+		divWorld.id = divWorldID;
+		divWorld.style.border = "1px solid";
+		divWorld.style.margin = "8px";
+
+		var pWorldName = document.createElement("p");
+		pWorldName.innerHTML = "Organization: " + world.name;
+		divWorld.appendChild(pWorldName);
+
+		this.drawUser(world.user, divWorld);
+
+		var actionsAvailableForGround =
+		[
+			ItemAction.Instances.Take,
+		];
+
+		this.drawItemHolder
+		(
+			world.itemHolderForGround, 
+			actionsAvailableForGround,
+			divWorld
+		);
+
+		document.body.appendChild(divWorld);
+	}
+}
+
+function Globals()
+{}
+{
+	Globals.Instance = new Globals();
+
+	Globals.prototype.initialize = function(world)
+	{
+		this.world = world;
+		this.displayHelper = new DisplayHelper();
+
+		this.world.initialize();
+
+		this.displayHelper.drawWorld(this.world);
+	}
+}
+
+function Image(filePath)
+{
+	this.filePath = filePath;
+}
+
+function Item(defnName, quantity)
+{
+	this.id = Item.IDNext++;
+	this.defnName = defnName;
+	this.quantity = quantity;
+}
+{
+	// static variables
+
+	Item.IDNext = 0;
+
+	// instance methods
+
+	Item.prototype.defn = function()
+	{
+		return Globals.Instance.world.itemDefns[this.defnName];
+	}
+
+	Item.prototype.use = function()
+	{
+		var use = this.defn().use;
+		if (use == null)
+		{
+			alert("Nothing happens.");
+		}
+		else
+		{
+			use(this);
+		}
+	}
+
+	// string 
+
+	Item.prototype.toString = function()
+	{
+		return this.defnName + " (" + this.quantity + ")";
+	}
+}
+
+function ItemAction(name, perform)
+{
+	this.name = name;
+	this.perform = perform;
+}
+{
+	ItemAction.Instances = new ItemAction_Instances();
+
+	function ItemAction_Instances()
+	{
+		this.Drop = new ItemAction
+		(
+			"Drop", 
+			function(item)
+			{
+				var world = Globals.Instance.world;
+				var user = world.user;
+				if (user.equipment.itemEquipped(item) == true)
+				{
+					alert("Cannot drop an equipped item!");
+				}
+				else
+				{
+					user.itemHolder.itemRemove(item);
+					world.itemHolderForGround.itemAdd(item);
+					Globals.Instance.displayHelper.drawWorld(world);
+				}
+			}
+		);
+
+		this.Equip = new ItemAction
+		(
+			"Equip",
+			function(item)
+			{ 
+				var world = Globals.Instance.world;
+				var user = world.user;
+				var equipment = user.equipment;
+				user.equipment.itemEquip(item);
+				Globals.Instance.displayHelper.drawWorld(world);
+			}
+		);
+
+		this.Merge = new ItemAction
+		(
+			"Merge", 
+			function(item)
+			{ 
+				var world = Globals.Instance.world;
+				var user = world.user;
+				var itemHolder = user.itemHolder;
+				var items = itemHolder.items;
+				for (var i = 0; i < items.length; i++)
+				{
+					var itemOther = items[i];
+					if (itemOther.defnName == item.defnName)
+					{
+						if (itemOther != item)
+						{
+							itemOther.quantity += item.quantity;
+							itemHolder.itemRemove(item);
+							break;
+						}
+					}
+				}
+				Globals.Instance.displayHelper.drawWorld(world);
+			}
+		);
+
+		this.Split = new ItemAction
+		(
+			"Split", 
+			function(item)
+			{ 
+				if (item.quantity > 1)
+				{
+					var world = Globals.Instance.world;
+					var user = world.user;
+					var quantityToSplit = Math.floor
+					(
+						item.quantity / 2
+					);
+					item.quantity -= quantityToSplit;
+					var itemNew = new Item
+					(
+						item.defnName, 
+						quantityToSplit
+					);
+					user.itemHolder.items.push(itemNew);
+				}
+				Globals.Instance.displayHelper.drawWorld(world);
+			}
+		);
+
+		this.Take = new ItemAction
+		(
+			"Take", 
+			function(item)
+			{ 
+				var world = Globals.Instance.world;
+				var user = world.user;
+				world.itemHolderForGround.itemRemove(item);
+				user.itemHolder.itemAdd(item);
+				Globals.Instance.displayHelper.drawWorld(world);
+			}
+		);
+
+		this.Unequip = new ItemAction
+		(
+			"Unequip", 
+			function(item)
+			{ 
+				var world = Globals.Instance.world;
+				var user = world.user;
+				var equipment = user.equipment;
+				user.equipment.itemUnequip(item);
+				Globals.Instance.displayHelper.drawWorld(world);
+			}
+		);
+
+		this.Use = new ItemAction
+		(
+			"Use", 
+			function(item)
+			{ 
+				item.use();
+			}
+		);
+	}
+}
+
+function ItemCategory(name)
+{
+	this.name = name;
+}
+
+function ItemDefn(name, weight, categoryNames, use)
+{
+	this.name = name;
+	this.weight = weight;
+	this.categoryNames = categoryNames;
+	this.use = use;
+}
+
+function ItemHolder(name, items)
+{
+	this.name = name;
+	this.items = items;
+}
+{
+	// instance methods
+
+	ItemHolder.prototype.itemAdd = function(itemToAdd)
+	{
+		var itemExisting = null;
+
+		for (var i = 0; i < this.items.length; i++)
+		{
+			var item = this.items[i];
+			if (item.defnName == itemToAdd.defnName)
+			{
+				itemExisting = item;
+				break;
+			}
+		}
+
+		if (itemExisting == null)
+		{
+			this.items.push(itemToAdd);
+		}
+		else
+		{
+			itemExisting.quantity += itemToAdd.quantity;
+		}
+	}
+
+	ItemHolder.prototype.itemRemove = function(item)
+	{
+		var itemIndex = this.items.indexOf(item);
+		this.items.splice
+		(
+			itemIndex, 1
+		);
+	}
+
+	ItemHolder.prototype.item = function(itemDefnNameToGet)
+	{
+		var returnValue = null;
+
+		for (var i = 0; i < this.items.length; i++)
+		{	
+			var item = this.items[i];
+			var itemDefnName = item.defnName;
+			if (itemDefnName == itemDefnNameToGet)
+			{
+				returnValue = item;
+				break;
+			}
+		}
+
+		return returnValue; 
+	}
+
+	ItemHolder.prototype.itemUse = function(item)
+	{
+		item.use(this);
+	}
+}
+
+function User(name, itemHolder, equipment)
+{
+	this.name = name;
+	this.itemHolder = itemHolder;
+	this.equipment = equipment;
+}
+{
+	User.prototype.initialize = function()
+	{
+		this.equipment.initialize(this);
+	}
+}
+
+function UserEquipment(defnName, slotAssignments)
+{
+	this.defnName = defnName;
+	this.slotAssignments = slotAssignments;
+}
+{
+
+	// instance methods
+
+	UserEquipment.prototype.defn = function()
+	{
+		return Globals.Instance.world.equipmentDefns[this.defnName];
+	}
+
+	UserEquipment.prototype.initialize = function(user)
+	{
+		var slotDefns = this.defn().slotDefns;
+
+		this.slots = [];
+
+		for (var i = 0; i < slotDefns.length; i++)
+		{
+			var slotDefn = slotDefns[i];
+			var slotDefnName = slotDefn.name;
+			var slot = new UserEquipmentSlot(slotDefnName, null);
+			this.slots.push(slot);
+		}
+
+		this.slots.addLookups("defnName");
+
+		for (var i = 0; i < this.slotAssignments.length; i++)
+		{
+			var slotAssignment = this.slotAssignments[i];
+			var slotDefnName = slotAssignment.slotDefnName;
+			var itemDefnName = slotAssignment.itemDefnName;
+
+			var slot = this.slots[slotDefnName];
+			var itemInSlot = user.itemHolder.item(itemDefnName);
+			slot.item = itemInSlot;
+		}
+	}
+
+	UserEquipment.prototype.itemEquip = function(itemToEquip)
+	{
+		var userEquipmentDefn = this.defn();
+		var itemDefn = itemToEquip.defn();
+		var itemDefnCategoryNames = itemDefn.categoryNames;
+
+		var slotToEquipItemIn = null;
+
+		for (var i = 0; i < this.slots.length; i++)
+		{
+			var slot = this.slots[i];
+			if (slot.item == itemToEquip)
+			{
+				slotToEquipItemIn = slot;
+				break;
+			}
+			else if (slot.item == null)
+			{
+				var slotDefn = slot.defn(userEquipmentDefn);
+				var itemCategoryNamesEquippable =
+					slotDefn.itemCategoryNamesEquippable;
+				for (var j = 0; j < itemCategoryNamesEquippable.length; j++)
+				{
+					var itemCategoryNameEquippable =
+						itemCategoryNamesEquippable[j];
+					var index = itemDefnCategoryNames.indexOf
+					(
+						itemCategoryNameEquippable
+					);
+	
+					if (index >= 0)
+					{
+						slotToEquipItemIn = slot;
+						break;
+					}
+				}
+			}
+		}
+
+		if (slotToEquipItemIn == null)
+		{
+			alert("No free slots!");
+		}
+		else
+		{
+			slotToEquipItemIn.item = itemToEquip;
+		}
+	}
+
+
+	UserEquipment.prototype.itemEquipped = function(itemToCheck)
+	{
+		var returnValue = false;
+
+		for (var i = 0; i < this.slots.length; i++)
+		{
+			var slot = this.slots[i];
+			var slotItem = slot.item;
+			if (slotItem == itemToCheck)
+			{
+				returnValue = true;
+				break;
+			}
+		}
+
+		return returnValue;
+	}
+
+
+
+	UserEquipment.prototype.itemUnequip = function(itemToUnequip)
+	{
+		for (var i = 0; i < this.slots.length; i++)
+		{
+			var slot = this.slots[i];
+			var slotItem = slot.item;
+			if (slotItem == itemToUnequip)
+			{
+				slot.item = null;
+				break;
+			}
+		}
+	}
+}
+
+function UserEquipmentDefn(name, slotDefns)
+{
+	this.name = name;
+	this.slotDefns = slotDefns;
+	this.slotDefns.addLookups("name");
+}
+
+function UserEquipmentSlot(defnName, item)
+{
+	this.defnName = defnName;
+	this.item = item;
+}
+{
+	UserEquipmentSlot.prototype.defn = function(userEquipmentDefn)
+	{
+		return userEquipmentDefn.slotDefns[this.defnName];
+	}
+}
+
+function UserEquipmentSlotAssignment(slotDefnName, itemDefnName)
+{
+	this.slotDefnName = slotDefnName;
+	this.itemDefnName = itemDefnName;
+}
+
+function UserEquipmentSlotDefn(name, itemCategoryNamesEquippable)
+{
+	this.name = name;
+	this.itemCategoryNamesEquippable = itemCategoryNamesEquippable;
+}
+
+function World(name, itemDefns, equipmentDefns, user, itemsOnGround)
+{
+	this.name = name;
+
+	this.itemDefns = itemDefns;
+	this.itemDefns.addLookups("name");
+
+	this.equipmentDefns = equipmentDefns;
+	this.equipmentDefns.addLookups("name");
+
+	this.user = user;
+	this.itemHolderForGround = new ItemHolder
+	(
+		"Ground",
+		itemsOnGround
+	);
+}
+{
+	World.prototype.initialize = function()
+	{
+		this.user.initialize();
+	}
+}
+
+// run
+
+main();
+
+</script>
+
+</body>
+</html>

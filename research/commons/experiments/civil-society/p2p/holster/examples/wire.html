@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Holster.wire - test examples</title>
+  </head>
+  <body>
+    <h2>Holster.wire - test examples</h2>
+    <p>
+      This file loads <code>wire.js</code> which contains examples that use the
+      Holster.wire API. These examples show how conflict resolution works, see
+      the console log for test output.
+    </p>
+    <p>
+      These tests also make two updates in random order, but the wire API can
+      set state vectors on updates to control which value should be applied.
+      This means when the "species" field is logged it will always be the same
+      no matter which order the tests run in.
+    </p>
+    <p>
+      The <code>wire.js</code> file is loaded as a module, which allows it to
+      import the development build of Holster. You can switch to the production
+      build by changing the import path at the top of the file.
+    </p>
+    <script type="module" src="./wire.js"></script>
+  </body>
+</html>

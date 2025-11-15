@@ -65,3 +65,11 @@ data-api/node_modules
 
 
 docs/trust-fund/finance
+# Private research spaces
+research/**/private/
+scripts/private/
+**/private/
+!**/private/README.md
+
+# Private research backups
+backups/private/

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>playnet</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        }
+
+        svg {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        #treemap-container {
+            width: 70vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #pie-container {
+            width: 30vw;
+            height: 100vh;
+            position: fixed;
+            right: 0;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        #qr-code {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 10px;
+        }
+
+        #public-key-text {
+            font-size: 14px;
+            color: #555;
+            text-align: center;
+            word-break: break-all;
+            max-width: 80%;
+            font-family: inherit;
+        }
+
+        .menu-bar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .menu-button {
+            padding: 8px 16px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .menu-button:hover {
+            background: #45a049;
+        }
+
+        .node-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .node-popup.active {
+            display: flex;
+        }
+
+        .node-popup-content {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-family: inherit;
+        }
+
+        .node-popup-content h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 500;
+            text-align: center;
+            width: 100%;
+            padding: 0 0 5px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .form-buttons button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-buttons button[type="submit"] {
+            background: #2196F3;
+            color: white;
+        }
+
+        .form-buttons button.cancel {
+            background: #ddd;
+        }
+
+        .qr-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .popup-form {
+            padding: 0 16px;
+        }
+
+        #total-social-labor-time {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 500;
+            color: #333;
+            font-family: inherit;
+            z-index: 999;
+            /* Just below menu bar */
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Menu bar at document level -->
+    <div class="menu-bar">
+        <button class="menu-button cycle-text" data-form="addNode">Add Context</button>
+        <button class="menu-button" data-form="revealQR">Add Contributor</button>
+    </div>
+
+    <!-- Main visualization containers -->
+    <div id="treemap-container"></div>
+    <div id="pie-container">
+        <div id="total-social-labor-time">
+            Total Social Labor Time: <span id="total-time-value">0</span>
+        </div>
+        <!-- pie chart will render here -->
+    </div>
+
+    <!-- Popup forms container at document level -->
+    <div class="node-popup">
+        <div class="node-popup-content">
+            <!-- Add Node Form -->
+            <form id="addNodeForm" class="popup-form">
+                <!-- ... form content ... -->
+            </form>
+
+            <!-- Reveal QR Form -->
+            <form id="revealQRForm" class="popup-form" style="display: none;">
+                <!-- ... form content ... -->
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="index.js"></script>
+    <script>
+        const environmentalist = new D3Node('environmentalist');  // most abstract
+        const activist = new D3Node('activist', null, [environmentalist]);  // type of environmentalist
+        const researcher = new D3Node('researcher', null, [environmentalist]);  // another type
+        const educator = new D3Node('educator', null, [environmentalist]);  // another type
+
+        // Our main nodes with multiple types
+        const whalewatch = new D3Node('whalewatch', null, [activist]);  // is a contributor
+        const greenpeace = new D3Node('greenpeace', null, [researcher]);  // is a contributor
+
+        const society = new D3Node('society', null, []);
+
+        // Adding each value as children of the society node
+        const replacingUsedUpMeansOfProduction = society.addChild("Replacing Used-up Means of Production", 80)
+
+        const expansionOfProduction = society.addChild("Expanding Production", 60)
+
+        const insuranceReserves = society.addChild("Hedging Risks", 90)
+
+        const socialServices = society.addChild("Common Satisfaction of Needs", 70)
+
+        const welfare = society.addChild("Welfare", 65)
+
+        const consumption = society.addChild("Individual Means of Consumption", 40)
+
+        console.log(society);
+
+        // 1. Replacing used up Means of Production (Basic Reproduction)
+        const naturalMaterials = replacingUsedUpMeansOfProduction.addChild("Natural Materials", 30);
+        const machineMaintenance = replacingUsedUpMeansOfProduction.addChild("Machine Maintenance", 25);
+        const infrastructureRepair = replacingUsedUpMeansOfProduction.addChild("Infrastructure Repair", 25);
+        const energyResources = replacingUsedUpMeansOfProduction.addChild("Energy Resources", 20);
+
+        // 2. Expansion of Production (Extended Reproduction)
+        const newTechnologies = expansionOfProduction.addChild("New Technologies", 15);
+        const additionalFacilities = expansionOfProduction.addChild("Additional Facilities", 12);
+        const researchAndDevelopment = expansionOfProduction.addChild("Research and Development", 13);
+        const trainingPrograms = expansionOfProduction.addChild("Training Programs", 10);
+
+        // 3. Insurance / Reserves
+        const naturalDisasters = insuranceReserves.addChild("Natural Disasters", 25);
+        const emergencySupplies = insuranceReserves.addChild("Emergency Supplies", 25);
+        const equipmentReplacement = insuranceReserves.addChild("Equipment Replacement", 25);
+        const strategicReserves = insuranceReserves.addChild("Strategic Reserves", 25);
+
+        // 5. Common Satisfaction of Needs
+        const healthcare = socialServices.addChild("Healthcare", 15);
+        const education = socialServices.addChild("Education", 15);
+        const publicTransport = socialServices.addChild("Public Transport", 12);
+        const culturalFacilities = socialServices.addChild("Cultural Facilities", 11);
+
+        // 6. Welfare
+        const disabilitySupport = welfare.addChild("Disability Support", 15);
+        const elderCare = welfare.addChild("Elder Care", 13);
+        const childSupport = welfare.addChild("Child Support", 13);
+        const emergencyAid = welfare.addChild("Emergency Aid", 12);
+
+        // 7. Consumption
+        const basicNecessities = consumption.addChild("Basic Necessities", 8);
+        const housing = consumption.addChild("Housing", 5);
+        const personalDevelopment = consumption.addChild("Personal Development", 4);
+        const leisureActivities = consumption.addChild("Leisure Activities", 3);
+
+        // Under Common Satisfaction of Needs (Education)
+        const whalewatchPrograms = education.addChild("Whalewatch Programs", 5, [whalewatch, educator])
+        const greenpeaceWorkshops = education.addChild("Greenpeace Workshops", 9, [greenpeace, educator]);
+
+        // Under Research and Development (within Expansion of Production)
+        const marineResearch = expansionOfProduction.addChild("Marine Research", 7, [whalewatch, researcher])
+        const environmentalImpactStudies = expansionOfProduction.addChild("Environmental Impact Studies", 6, [greenpeace, researcher]);
+
+        // Under Emergency Supplies (within Insurance/Reserves)
+        const marineEmergencyResponse = insuranceReserves.addChild("Marine Emergency Response", 10, [whalewatch, activist])
+        const environmentalCrisisResponse = insuranceReserves.addChild("Environmental Crisis Response", 15, [greenpeace, activist]);
+
+        const communitySupportedAgriculture = welfare.addChild("Community Supported Agriculture", 49, [whalewatch, activist]);
+
+        const cooperativeGroceryStores = basicNecessities.addChild("Cooperative Grocery Stores", 39, [greenpeace]);
+
+        const fillingPotholes = infrastructureRepair.addChild("Filling Potholes", 25, [activist]);
+
+        // whalewatch's recognition of society
+        const whalewatchgive = whalewatch.addChild('🌳 give', 80);
+        const whalewatchpotential = whalewatchgive.addChild('🔮 potential', 40);
+        const societyInwhalewatchpotential = whalewatchpotential.addChild('society', 15, [society]);
+
+        // greenpeace's recognition of society
+        const greenpeacegive = greenpeace.addChild('🌳 give', 80);
+        const greenpeacepotential = greenpeacegive.addChild('🔮 potential', 40);
+        const societyIngreenpeacepotential = greenpeacepotential.addChild('society', 15, [society]);
+
+        const activistgive = activist.addChild('🌳 give', 80);
+        const activistpotential = activistgive.addChild('🔮 potential', 40);
+        const societyInactivistpotential = activistpotential.addChild('society', 15, [society]);
+
+        // Calculate shares at different type levels
+        console.log('\nShares by type level:');
+        console.log('Environmentalist share:', society.shareOfGeneralContribution(environmentalist));
+        console.log('Activist share:', society.shareOfGeneralContribution(activist));
+        console.log('Educator share:', society.shareOfGeneralContribution(educator));
+        console.log('Researcher share:', society.shareOfGeneralContribution(researcher));
+        console.log('whalewatch specific share:', society.shareOfGeneralContribution(whalewatch));
+        console.log('greenpeace specific share:', society.shareOfGeneralContribution(greenpeace));
+
+        // Calculate mutual recognition and generalMutualContribution
+        console.log('\nMutual Recognition:');
+        console.log('With whalewatch:', society.mutualShareOfGeneralContribution(whalewatch));
+        console.log('\nFinal mutualGeneralContribution:');
+        console.log(society.mutualGeneralContribution());
+        console.log(society);
+        const treemap = TreeMap(society);
+        document.getElementById('treemap-container').appendChild(treemap);
+
+        // Update the total social labor time display
+        const totalTime = society.root.averageSocialLaborTime || society.root.averageTime;
+        document.getElementById('total-time-value').textContent = totalTime;
+    </script>
+</body>
+
+</html>
