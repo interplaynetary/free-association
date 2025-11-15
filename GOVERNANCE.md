@@ -59,7 +59,6 @@ derivative versions should be clearly marked as such.
 ## Contact
 
 Governance questions: info@openassociation.org  
-Community discussion: t.me/interplaynetary
 
 ---
 

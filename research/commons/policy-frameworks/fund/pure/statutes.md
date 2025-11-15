@@ -790,7 +790,6 @@ In addition to Open Collective budget:
 * Protocol Interface: [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association)
 * Documentation: [playnet.gitbook.io](https://playnet.gitbook.io)
 * GitHub: [github.com/interplaynetary](https://github.com/interplaynetary)
-* Chat: <https://t.me/interplaynetary>
 
 ***
 

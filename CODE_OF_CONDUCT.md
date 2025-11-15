@@ -52,7 +52,6 @@ The response will be proportionate to the violation. Decisions are made by proje
 ## Contact
 
 **Questions or Reports**: info@openassociation.org  
-**Community**: t.me/interplaynetary
 
 ---
 
