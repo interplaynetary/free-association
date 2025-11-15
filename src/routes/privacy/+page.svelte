@@ -5,8 +5,8 @@
 	const privacyContent = `# Privacy Policy
 ## Free-Association: Hybrid P2P/Centralized Service (Beta)
 
-**Last Updated:** 2025-11-09  
-**Effective Date:** 2025-11-09
+**Last Updated:** 2025-11-15  
+**Effective Date:** 2025-11-15
 
 ---
 
@@ -205,6 +205,182 @@ This policy describes what data we collect, how we use it, and the limitations o
 
 ---
 
+## ⚖️ Applicable Laws & Legal Compliance
+
+### Laws We Comply With
+
+**Data Protection & Privacy Laws:**
+- ✅ **General Data Protection Regulation (GDPR)** - European Union/EEA users
+- ✅ **California Consumer Privacy Act (CCPA)** - California residents
+- ✅ **Personal Information Protection and Electronic Documents Act (PIPEDA)** - Canadian users (where applicable)
+
+**Legal Basis for Data Processing (GDPR Article 6):**
+
+| Data Type | Legal Basis | GDPR Article |
+|-----------|-------------|--------------|
+| Account registration data | Contract performance | Article 6(1)(b) |
+| Authentication/session data | Contract performance | Article 6(1)(b) |
+| Service logs (security) | Legitimate interest | Article 6(1)(f) |
+| Email validation | Contract performance | Article 6(1)(b) |
+| P2P shared data | Consent (by voluntary sharing) | Article 6(1)(a) |
+
+**Our Legitimate Interests (Article 6(1)(f)):**
+- Service security and fraud prevention
+- Technical error debugging
+- Service availability monitoring
+- Compliance with legal obligations
+
+### Your Rights Under Each Law
+
+**Under GDPR (EU/EEA):**
+- ✅ Right to access (Article 15)
+- ✅ Right to rectification (Article 16)
+- ✅ Right to erasure/"Right to be forgotten" (Article 17) - *Limited by P2P architecture*
+- ✅ Right to data portability (Article 20) - See Data Export section below
+- ✅ Right to object (Article 21)
+- ✅ Right to restrict processing (Article 18) - *Limited by P2P architecture*
+- ✅ Right not to be subject to automated decision-making (Article 22) - *Not applicable*
+
+**Under CCPA (California):**
+- ✅ Right to know what personal information is collected
+- ✅ Right to know whether personal information is sold or disclosed
+- ✅ Right to opt-out of sale of personal information - *We do NOT sell data*
+- ✅ Right to deletion - *Limited by P2P architecture*
+- ✅ Right to non-discrimination for exercising rights
+
+**Under PIPEDA (Canada):**
+- ✅ Right to access personal information
+- ✅ Right to correct inaccuracies
+- ✅ Right to withdraw consent
+
+### Exercising Your Rights
+
+**Contact for Privacy Requests:**
+- **Email:** info@openassociation.org
+- **Subject Line:** "Privacy Rights Request - [GDPR/CCPA/PIPEDA]"
+
+**Required Information:**
+1. Your username
+2. Email associated with account
+3. Specific right you want to exercise
+4. Proof of identity
+
+**Response Time:**
+- GDPR: Within 30 days (Article 12)
+- CCPA: Within 45 days (extendable by 45 days)
+- PIPEDA: Within 30 days
+
+### Data Protection Authority
+
+**If you are in the EU/EEA:**
+You have the right to lodge a complaint with your Data Protection Authority:
+- Find your DPA: https://edpb.europa.eu/about-edpb/board/members_en
+
+**If you are in California:**
+- California Privacy Protection Agency: https://cppa.ca.gov/
+
+**If you are in Canada:**
+- Office of the Privacy Commissioner of Canada: https://www.priv.gc.ca/
+
+### Cross-Border Data Transfers
+
+**Data Transfer Mechanisms:**
+- Centralized account data: Stored in France (EU)
+- P2P network data: Distributed globally through decentralized architecture
+- By using the service, you consent to international data transfers via P2P network
+
+**GDPR Article 49:** P2P data transfers rely on explicit consent for international transfers (Article 49(1)(a)) - you consent by voluntarily sharing data to the P2P network.
+
+### Other Applicable Laws
+
+**Copyright & Intellectual Property:**
+- ✅ Software licensed under AGPL-3.0 (GNU Affero General Public License)
+- ✅ User-generated content remains user's intellectual property
+- ✅ P2P protocol respects copyright (users responsible for what they share)
+
+**Anti-Spam Compliance:**
+- ✅ **CAN-SPAM Act (U.S.)**: Emails only for service operation (validation, password reset)
+- ✅ **CASL (Canada)**: No commercial electronic messages
+- ✅ Users can unsubscribe from service emails
+
+**Age Restrictions:**
+- ✅ **COPPA (U.S.)**: Service requires 18+ or parental consent (no collection from children under 13 without consent)
+- ✅ **GDPR (EU)**: Minimum age 16 (or lower per member state), parental consent required below age
+
+**Accessibility:**
+- 🔄 Working toward WCAG 2.1 Level AA compliance
+- 🔄 Accessibility improvements ongoing
+
+### Law Enforcement & Legal Requests
+
+**We may disclose data when:**
+- Required by valid legal process (subpoena, court order)
+- Necessary to protect rights, property, or safety
+- Required to prevent fraud or abuse
+
+**What We Can Provide:**
+- ✅ Centralized account data (encrypted email, username, account creation date)
+- ✅ Service logs (if within 30-day retention)
+- ❌ P2P network data (we have no control or access)
+
+**Process:**
+1. We verify legitimacy of legal request
+2. We notify affected users unless legally prohibited
+3. We provide only data specifically requested and legally required
+
+### Data Protection Officer
+
+**Status:** Not required under GDPR Article 37 (we are not a public authority, our core activities do not require systematic monitoring at large scale)
+
+**Privacy Contact:** info@openassociation.org
+
+---
+
+## 💾 Data Export & Portability
+
+### How to Export Your Data
+
+You have the right to receive your personal data in a structured, commonly used, and machine-readable format (GDPR Article 20, CCPA Right to Know).
+
+**What You Can Export:**
+- ✅ Recognition trees
+- ✅ Recognition weights (computed from trees)
+- ✅ Capacity slots (resources you offer)
+- ✅ Need slots (resources you need)
+- ✅ Commitment data (full metadata)
+- ✅ Network subscriptions and filters
+- ✅ Membership lists
+- ✅ Contacts
+
+**Export Format:** 
+- Standard JSON (non-proprietary)
+- Human-readable and machine-parsable
+- No proprietary encoding
+
+**How to Export:**
+1. Log in to your account
+2. Click your username/avatar in top navigation
+3. Click the **Export Data button** (💾 icon)
+4. Your data will be:
+   - Copied to your clipboard
+   - Downloaded as free-association-export-[timestamp].json file
+
+**What's NOT Included in Export:**
+- ❌ Your password (encrypted, cannot be exported)
+- ❌ Private keys (stored separately)
+- ❌ Other users' data
+- ❌ Network-wide computations
+
+**Documentation:** 
+See detailed export guide at [docs/project/data-export.md](https://github.com/interplaynetary/free-association/blob/main/docs/project/data-export.md)
+
+**Technical Implementation:**
+- Export function: userStateExport.ts in utils/data directory
+- Schema: Validated against Zod schemas in protocol/schemas.ts
+- Protocol: Open specification in PROTOCOL.md
+
+---
+
 ## ⚠️ CRITICAL PRIVACY WARNINGS
 
 ### NO PRIVACY FOR P2P DATA
@@ -355,9 +531,11 @@ If you're in the EU, you have the right to lodge a complaint with your data prot
 
 ---
 
-**Last Updated:** 2025-11-09  
-**Version:** 2.0.0 (Hybrid Architecture Disclosure)  
-**Effective Date:** 2025-11-09`;
+**Last Updated:** 2025-11-15  
+**Version:** 2.1.0 (Added Legal Compliance & Data Portability Sections)  
+**Effective Date:** 2025-11-15  
+**Jurisdiction:** France (EU) for centralized services  
+**Governing Law:** French law and applicable EU regulations`;
 
 	let htmlContent = '';
 

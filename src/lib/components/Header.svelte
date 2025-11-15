@@ -680,12 +680,26 @@
 		}
 	}
 
-	// Export complete user state to clipboard
+	// Export complete user state to clipboard AND download as file
 	async function handleExportData() {
 		try {
 			const jsonData = exportUserStateAsJSON(true);
+			
+			// Copy to clipboard
 			await navigator.clipboard.writeText(jsonData);
-			globalState.showToast('User data exported to clipboard', 'success');
+			
+			// Also trigger file download
+			const blob = new Blob([jsonData], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `free-association-export-${Date.now()}.json`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+			
+			globalState.showToast('Data exported to clipboard and downloaded as file', 'success');
 		} catch (error) {
 			console.error('Error exporting user data:', error);
 			globalState.showToast('Failed to export user data', 'error');

@@ -70,7 +70,7 @@ Free Association governance is based on:
 
 ### Current Maintainers
 
-**Core Maintainer:** Ruzgar Imski
+**Core Maintainer:** Tom Guimberteau
 
 ### Responsibilities
 

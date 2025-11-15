@@ -25,7 +25,7 @@
 
 ## Maintainers
 
-Current core mantainer: Ruzgar Imski
+Current core mantainer: Tom Guimberteau
 
 Maintainer responsibilities:
 - Review contributions

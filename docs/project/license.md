@@ -143,7 +143,7 @@ Project governance ensures:
 - Documented rationale for decisions
 
 **Maintainership:**
-- Current core maintainer: Ruzgar Imski
+- Current core maintainer: Tom Guimberteau
 - Responsibilities: Review contributions, facilitate RFCs, maintain reference implementation
 
 **Community Participation:**
