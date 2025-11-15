@@ -1,4 +1,4 @@
-## Free Association: A Digital Public Infrastructure for Resource Coordination [![](https://img.shields.io/opencollective/backers/playnet)](https://opencollective.com/free-association#section-contributors) 
+## Free Association: A Digital Public Infrastructure for Resource Coordination
 
 **Free Association** is a mathematically-proven coordination infrastructure that enables organizations, communities, and individuals to allocate resources efficiently based on mutual recognition of contributions—without centralized control, bureaucratic overhead, or market exclusion.
 
