@@ -1,4 +1,4 @@
-## Free-Association: A Call for Mutual Self-Actualization 🌱 [![](https://img.shields.io/opencollective/backers/playnet)](https://opencollective.com/free-association#section-contributors)
+## Free-Association: A Call for Mutual Self-Actualization 🌱
 
 _Free-Association_ is literally an actual alternative to capitalism that allows for the _spontaneous self-actualization of all through each other_ without any centralized control, planning, private-property, state intervention!
 
