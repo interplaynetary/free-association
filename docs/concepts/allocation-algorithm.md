@@ -199,8 +199,8 @@ All capacity deployed. Allocations strictly proportional to mutual recognition. 
 
 ## Key Properties
 
-**Strategy-Proof:**
-Honest reporting of needs is the optimal strategy. Over-reporting doesn't increase allocation (capped at need), under-reporting reduces allocation.
+**Need Declaration Incentives:**
+Allocation capping creates incentives for honest need reporting. Over-reporting doesn't increase allocation (capped at need, non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget constraint creates self-correcting dynamics for ongoing participants. Protocol v6 (draft) adds satisfaction-based learning that automatically resolves provider non-delivery.
 
 **Proportional Fairness:**
 Allocations strictly proportional to mutual recognition strength. No arbitrary prioritization.

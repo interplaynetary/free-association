@@ -171,9 +171,9 @@ Once all entities have published their data:
 3. **Determine** proportional shares based on recognition strength
 4. **Allocate** resources (capped at declared needs)
 5. **Update** remaining needs automatically
-6. **Converge** to stable equilibrium in 5-10 rounds
+6. **Recompute** optimal allocation as network state changes (~100-200ms per update)
 
-The entire process happens automatically, in seconds.
+The entire process happens automatically. When state stabilizes, needs converge in O(log(1/ε)) rounds.
 
 Recognition determines the split. Need size sets the cap. No meetings. No applications. No bureaucracy.
 

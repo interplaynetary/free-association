@@ -22,8 +22,9 @@ Free Association delivers measurable improvements across four key dimensions:
 ### Target Metrics
 
 - **<48 hours** from need identification to resource commitment
-- **100-200ms** allocation calculation time
-- **5-10 rounds** to stable equilibrium (1-2 seconds total)
+- **100-200ms** allocation recomputation per state change
+- **O(log(1/ε)) rounds** to equilibrium when network state stabilizes
+- **Dynamic adaptation**: system continuously recomputes as conditions evolve
 
 ### Comparison
 

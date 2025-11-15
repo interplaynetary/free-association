@@ -96,8 +96,8 @@ Process of system reaching stable equilibrium state. Typically occurs in 5-10 ca
 ### Damping Factor
 Multiplier applied to declared need to prevent allocation oscillation. Values: 0.5 (conservative), 0.8 (balanced), 1.0 (responsive).
 
-### Strategy-Proof
-Property ensuring honest reporting is optimal strategy. Over/under-reporting needs provides no benefit.
+### Need Declaration Incentives
+Allocation capping mechanism creates incentives for honest need reporting. Over-reporting doesn't accumulate resources (non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget combined with outcome feedback creates self-correcting dynamics for ongoing participants. Protocol v6 (draft) adds satisfaction-based learning that automatically resolves provider non-delivery.
 
 ### Proportional Fairness
 Property ensuring allocations strictly proportional to mutual recognition strength.
@@ -106,7 +106,7 @@ Property ensuring allocations strictly proportional to mutual recognition streng
 Property preventing entities from receiving resources beyond declared needs.
 
 ### Contraction Property
-Guarantee that total network needs decrease or remain constant over time (assuming no arbitrary need increases).
+Guarantee that receiving resources always reduces remaining need. This holds unconditionally in every allocation round, regardless of how needs change between rounds.
 
 ### Determinism
 Property ensuring same network state always yields identical allocation results.

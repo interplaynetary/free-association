@@ -120,9 +120,9 @@ Excess from C and D caps redistributes to other members proportionally.
 This prevents:
 - Resource hoarding
 - Accumulation beyond requirements
-- Gaming through inflated need declarations (excess doesn't benefit you)
+- Gaming through inflated need declarations (excess doesn't benefit you - non-accumulation property applies)
 
-**Strategy-proof property:** Honest need reporting is optimal strategy.
+**Need declaration incentives:** Allocation capping combined with the 100% recognition budget creates self-correcting dynamics that prevent most gaming for ongoing participants. Provider non-delivery requires social/reputation mechanisms. See main documentation for full analysis.
 
 ### Recognition-Weighted Distribution
 

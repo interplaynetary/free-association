@@ -27,9 +27,9 @@ System recalculates allocations automatically when network state changes:
 - Participants join or leave
 
 **Response Time:**
-- 100-200ms for allocation convergence
-- 5-10 rounds to stable equilibrium
-- 1-2 seconds total for full recalculation
+- 100-200ms per allocation recomputation
+- O(log(1/ε)) rounds to equilibrium when state stabilizes
+- Dynamic equilibrium: system continuously adapts to changing needs/capacities
 
 **Mathematical Guarantee:**
 If sufficient capacity exists in the network, all needs are met through optimal allocation.

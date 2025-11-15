@@ -105,9 +105,11 @@ Any conformant implementation MUST demonstrate:
 
 ### Property 1: Contraction
 ```
-Σ(RemainingNeeds(t+1)) ≤ Σ(RemainingNeeds(t))
+For any allocation A(r) applied to need r:
+RemainingNeed(after) = max(0, Need(before) - A(r))
+                     ≤ Need(before)
 ```
-Under assumption: No arbitrary need declaration increases
+This holds unconditionally in every allocation round. Receiving resources always reduces remaining need.
 
 ### Property 2: No Accumulation
 ```

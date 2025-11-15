@@ -128,8 +128,8 @@ Members contributing more to community goals receive proportionally more access 
 **Needs-Based:**
 Allocation capped at declared needs. No accumulation beyond stated requirements.
 
-**Strategy-Proof:**
-Honest reporting optimal. No benefit from gaming the system.
+**Need Declaration Incentives:**
+Allocation capping creates incentives for honest need reporting. Over-reporting doesn't accumulate (non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget creates self-correcting dynamics that prevent most gaming for ongoing participants. See main documentation for strategic analysis.
 
 ### Adaptability
 

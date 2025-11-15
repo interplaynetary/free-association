@@ -2,7 +2,7 @@
 
 **Free Association** is a mathematically-proven coordination infrastructure that enables organizations, communities, and individuals to allocate resources efficiently based on mutual recognition of contributions—without centralized control, bureaucratic overhead, or market exclusion.
 
-**The Core Problem:** Traditional resource coordination relies on markets (which exclude those without purchasing power), charity (which creates dependency), or bureaucracy (which is slow and inflexible). None of these mechanisms are adequate for the speed and scale of challenges we face—from climate adaptation to humanitarian response.
+**The Core Problem:** Traditional resource coordination relies on markets (which exclude those without purchasing power), charity (which creates dependency), or bureaucracy (which is slow and inflexible). None of these mechanisms are adequate for the speed and scale of challenges we face — from climate adaptation to humanitarian response.
 
 **The Solution:** A fourth type of economic relationship based on **mutual recognition**—where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. This creates a self-organizing coordination system that is:
 
@@ -113,10 +113,388 @@ Remaining_Need = max(0, Declared_Need - Total_Received)
 ```
 
 **Key Properties:**
-- **Strategy-proof**: Honest reporting is the optimal strategy
+- **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
 - **Proportional fairness**: Allocations strictly proportional to mutual recognition
-- **Fast convergence**: System reaches stable equilibrium in 5-10 rounds
-- **Non-accumulative**: No entity receives more than declared needs
+- **Dynamic equilibrium**: System maintains instantaneous optimality as network state evolves
+- **Contraction guarantee**: Receiving resources always reduces remaining need (holds unconditionally)
+- **Deterministic algorithm**: Same inputs always produce same allocations
+
+**Note on performance:** Reference implementation recomputes allocations in 100-200ms per state change. When network state stabilizes, needs converge to zero in O(log(1/ε)) rounds. In dynamic environments, the system continuously adapts rather than converging to a fixed point.
+
+<details>
+  <summary><b>Formal Proofs of System Properties</b></summary>
+
+### Strategic Properties
+
+**Need Declaration Incentives:**
+
+The allocation capping mechanism creates incentives for honest need reporting:
+
+```
+Allocation(R, P) = min(Raw_Allocation(R, P), Declared_Need)
+```
+
+**Key observations:**
+- **Over-reporting** beyond actual need: Receives allocation but cannot utilize excess (Property 4: Non-Accumulative automatically reduces remaining need)
+- **Under-reporting** below actual need: Guaranteed to receive less than actual requirements
+- **Honest reporting**: Maximizes utility given current recognition network
+
+**Recognition Gaming:**
+The 100% recognition budget constraint creates self-correcting dynamics. False recognition automatically reduces recognition of beneficial partners, decreasing access to beneficial resources. For ongoing participants, the mathematics prevents gaming. See Recognition Gaming Analysis below for details.
+
+**Provider Gaming:**
+Provider non-delivery is resolved in Protocol v6 (draft) through satisfaction-based learning. See Provider Gaming Analysis below.
+
+### Property 2: Proportional Fairness
+
+**Theorem:** Allocations are strictly proportional to mutual recognition.
+
+**Formal Statement:**
+```
+∀ Recipients A, B with respect to Provider P:
+If MR(P, A) = MR(P, B)
+Then Raw_Allocation(A) = Raw_Allocation(B)
+```
+
+**Proof:**
+
+Given the allocation formula:
+```
+Share(Recipient, Provider) = MR(Recipient, Provider) / Total_MR
+
+Where Total_MR = Σ MR(Provider, All_Compatible_Recipients)
+```
+
+For recipients A and B:
+```
+Share(A) = MR(P, A) / Total_MR
+Share(B) = MR(P, B) / Total_MR
+
+If MR(P, A) = MR(P, B), then:
+Share(A) = Share(B)
+
+Raw allocation calculation:
+Raw_Allocation(A) = Provider_Capacity × Share(A)
+Raw_Allocation(B) = Provider_Capacity × Share(B)
+
+Since Share(A) = Share(B) and Provider_Capacity is constant:
+∴ Raw_Allocation(A) = Raw_Allocation(B)
+```
+
+**Generalization:** For any ratio r = MR(P, A) / MR(P, B):
+```
+Raw_Allocation(A) / Raw_Allocation(B) = r
+```
+
+Allocations are strictly proportional to mutual recognition ratios. □
+
+### Property 3: Dynamic Equilibrium and Contraction
+
+**Theorem:** The system maintains instantaneous optimality as network state evolves.
+
+**Framework:** The system computes optimal allocation r*(S) for current state S (recognition, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**, not convergence to a fixed point.
+
+**Formal Proof of Contraction:**
+
+**Step 1: Allocation capping ensures needs always decrease from receiving**
+
+For any recipient i in any round t:
+```
+φ_i(r) ≤ r_i  (allocation never exceeds need)
+```
+
+Therefore, receiving resources always reduces remaining need:
+```
+Remaining_Need(t+1) = Need(t) - φ(r(t))
+                    ≤ Need(t) - 0
+                    = Need(t)
+```
+
+**This holds regardless of whether needs change between rounds.**
+
+**Step 2: Per-round contraction with positive allocation**
+
+Define fill fraction: f = Σ φ_i(r) / Σ r_i (fraction of needs satisfied per round)
+
+When f > 0 (some allocation occurs):
+```
+||r(t+1)|| = ||r(t) - φ(r(t))||
+           ≤ (1 - f)·||r(t)||
+```
+
+Contraction constant: k = (1 - f) < 1
+
+**Step 3: Convergence to zero (static case only)**
+
+If network state becomes static (no new needs, stable recognition/capacity):
+```
+||r(t)|| ≤ k^t · ||r(0)|| → 0 as t → ∞
+```
+
+Rate: T_ε = O(log(||r(0)||/ε) / log(1/k))
+
+**Dynamic case:** When needs evolve, the system doesn't converge to zero but instead maintains **instantaneous optimality** - always computing the best allocation for current state.
+
+**Key insight:**
+- **Contraction property holds always**: Receiving reduces need
+- **Convergence to zero**: Only relevant when state stabilizes
+- **Real-world operation**: System continuously adapts to changing needs/capacities
+
+**Damping:** Oscillation detection (α = 0.5) prevents over-allocation cycles, improving stability without compromising responsiveness.
+
+**Implementation note:** Reference implementation recomputes allocations in 100-200ms per state change, achieving near-instantaneous adaptation to network evolution. □
+
+### Property 4: Non-Accumulative
+
+**Theorem:** No entity receives beyond declared needs.
+
+**Formal Statement:**
+```
+∀ Recipient R, ∀ Time t:
+Total_Received(R, t) ≤ Declared_Need(R, t)
+```
+
+**Proof:**
+
+By the allocation formula definition:
+```
+Final_Allocation(R, P) = min(Raw_Allocation(R, P), Declared_Need(R))
+```
+
+For any single provider P:
+```
+Final_Allocation(R, P) ≤ Declared_Need(R)
+```
+
+Total received from all providers:
+```
+Total_Received(R) = Σ Final_Allocation(R, All_Providers)
+```
+
+The system tracks cumulative allocations and updates remaining need:
+```
+Remaining_Need(R) = max(0, Declared_Need(R) - Total_Received(R))
+```
+
+Once Total_Received(R) ≥ Declared_Need(R):
+```
+Remaining_Need(R) = max(0, Declared_Need(R) - Total_Received(R))
+                  = 0
+```
+
+When Remaining_Need = 0:
+```
+No further allocations occur to R
+Total_Received cannot exceed Declared_Need
+```
+
+**System Guarantee:**
+```
+The min() capping function combined with remaining need tracking ensures:
+∀ R, ∀ t: Total_Received(R, t) ≤ Declared_Need(R, t)
+
+No accumulation beyond stated requirements is mathematically possible.
+```
+
+**Conclusion:** The allocation formula structurally prevents accumulation. □
+
+### Property 5: Contraction (Always Holds)
+
+**Theorem:** Receiving resources always reduces remaining need.
+
+**Formal Statement:**
+```
+For any recipient R receiving allocation A(R) in round t:
+Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
+                         ≤ Need(R, before)
+```
+
+**Proof:**
+
+By allocation capping (Property 1):
+```
+A(R) ≤ Need(R, before)
+```
+
+Therefore:
+```
+Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
+                         ≤ Need(R, before) - 0
+                         = Need(R, before)
+```
+
+Since A(R) ≥ 0 (allocations are non-negative) and max(0, ...) prevents negative needs:
+```
+Receiving resources strictly reduces need (when A(R) > 0)
+Receiving zero resources leaves need unchanged
+∴ Remaining_Need ≤ Need (contraction property)
+```
+
+**This holds in every allocation round, regardless of how needs change between rounds.**
+
+**Implication for dynamic systems:**
+
+Even when needs evolve over time:
+- Each allocation reduces the specific need it addresses
+- System continuously recomputes as new needs emerge
+- No accumulation beyond stated requirements possible
+- The system never "makes things worse" through allocation
+
+**Static equilibrium case:**
+
+When network state stabilizes (no new needs, constant recognition/capacity):
+```
+If Remaining_Need(R) > 0 and
+   Available_Capacity > 0 and
+   MR(R, Providers) > 0
+Then Received(R) > 0
+   ∴ Remaining_Need decreases
+
+The only stable equilibrium is Remaining_Need = 0 for all R
+(assuming sufficient network capacity)
+```
+
+**Conclusion:** The contraction property is unconditional - allocation always moves each specific need toward satisfaction, enabling the system to track evolving requirements while preventing accumulation. □
+
+### Property 6: Determinism (Algorithm-Level)
+
+**Theorem:** The allocation algorithm produces identical results for identical inputs.
+
+**Formal Statement:**
+```
+∀ Inputs I₁, I₂:
+If Recognition(I₁) = Recognition(I₂) AND
+   Capacity(I₁) = Capacity(I₂) AND
+   Needs(I₁) = Needs(I₂)
+Then allocate(I₁) = allocate(I₂)
+```
+
+**Proof:**
+
+The allocation function is defined as a pure mathematical operation:
+```
+φ(Recognition, Capacity, Needs) → Allocations
+```
+
+Each step is deterministic:
+```
+1. Mutual Recognition calculation:
+   MR(A, B) = min(Recognition_A→B, Recognition_B→A)
+   Pure function of Recognition weights → Deterministic ✓
+
+2. Share calculation:
+   Share(R, P) = MR(R, P) / Σ MR(P, All_R)
+   Pure arithmetic → Deterministic ✓
+
+3. Raw Allocation:
+   Raw_Alloc = Capacity × Share
+   Pure multiplication → Deterministic ✓
+
+4. Final Allocation:
+   Final_Alloc = min(Raw_Alloc, Need)
+   Pure function → Deterministic ✓
+```
+
+**Scope:** This property guarantees that the allocation algorithm itself is deterministic. It does NOT address:
+- Network-level consistency (different nodes may observe different states at different times)
+- Byzantine fault tolerance (malicious nodes may compute incorrectly)
+- Causal consistency guarantees (handled separately by ITC/vector clocks)
+
+**Implication:** Given complete and identical input data, any correct implementation of the algorithm will produce identical allocation results.
+
+**Conclusion:** The allocation algorithm is deterministic by construction. □
+
+---
+
+### Provider Gaming Analysis
+
+**Capacity Under-Declaration:**
+
+A provider might under-declare capacity to reserve resources or maintain optionality. However:
+- Under-declared capacity simply reduces provider's contribution
+- Provider loses influence proportional to withheld capacity
+- No benefit to provider from under-declaring
+
+**Non-Delivery (Current Protocol - v5):**
+
+In the current protocol, a provider could declare capacity but fail to deliver. Recognition updates are social/manual, requiring active community response.
+
+**Resolution (Protocol v6 - Draft):**
+
+Protocol v6 introduces **satisfaction-based learning** that automatically resolves non-delivery:
+- Recipients rate actual delivery quality/usefulness
+- Non-delivery receives 0.0 satisfaction rating
+- Future allocations automatically weighted: `share × satisfaction`
+- Non-delivering providers automatically removed from future allocations
+
+See `protocolv6.mmd` for complete specification. This transforms provider non-delivery from an algorithmic vulnerability to a self-correcting property.
+
+**Conditional Capacity:**
+
+The protocol supports `SlotFilter` specifications for time/location/type constraints. This is intentional design allowing legitimate targeting, though it cannot algorithmically distinguish between legitimate filtering and strategic preference.
+
+---
+
+### Recognition Gaming Analysis
+
+**Question:** Can entities manipulate outcomes through recognition weight gaming?
+
+**The Self-Correcting Mechanism:**
+
+The system has a fundamental mathematical property that prevents most recognition gaming:
+
+```
+Total Recognition = 100% (zero-sum constraint)
+Total Recognition = Effective Recognition + Ineffective Recognition
+
+Therefore:
+↑ Ineffective Recognition → ↓ Effective Recognition
+   → ↓ Mutual Recognition with Beneficial Partners
+      → ↓ Access to Beneficial Resources
+         → ↓ Goal Achievement
+```
+
+**Why this resolves most "gaming" attempts:**
+
+1. **Individual false recognition:** Giving recognition to non-contributors automatically reduces recognition of actual contributors. The entity starves itself of beneficial resources through its own choices.
+
+2. **Recognition "cartels":** 
+   - If cartel members genuinely meet each other's needs → this is a legitimate cooperative, not gaming
+   - If cartel members don't actually help each other → needs remain unmet, forcing recognition reallocation to external helpers or actual cooperation
+   - 100% budget forces tradeoff: high internal recognition = low external recognition = reduced access to external resources
+
+3. **Time-shifting recognition:** Reducing recognition after receiving decreases future mutual recognition, reducing future allocations. The bidirectional constraint makes this self-defeating over multiple periods.
+
+**The One Remaining Algorithmic Vulnerability: Single-Period Exit**
+
+An entity could:
+1. Build genuine recognition through contribution
+2. In final period before exit: declare maximal needs
+3. Receive allocation based on accumulated recognition
+4. Exit before any correction mechanisms operate
+
+**Why this works once:**
+- Non-accumulation property limits extraction to declared need per period
+- But entity can take one period's allocation and leave
+- No future period exists for correction mechanism
+
+**Mitigation:**
+- Non-accumulation caps extraction (can't stockpile)
+- Requires building genuine recognition first
+- Network can observe patterns
+- Social reputation effects
+
+**Conclusion:**
+
+The protocol is **self-correcting for ongoing participants** through:
+- 100% recognition budget constraint + outcome feedback (need gaming)
+- Satisfaction-based learning in v6 (provider gaming)
+
+The only remaining algorithmic vulnerability is **one-time exit after building trust**, which is fundamentally a trust/reputation problem that exists in any system requiring multi-period interaction.
+
+---
+
+</details>
 
 <details>
   <summary><b><i>Being Explored: What if Organizations/States Freely-Associated?</i></b></summary>

@@ -23,12 +23,12 @@ Free Association enables automatic resource allocation based on mutual recogniti
 - Peer-to-peer network
 - Published data: recognition weights, capacity, needs
 - Distributed calculation
-- Strategy-proof allocation algorithm
+- Need-capped allocation algorithm (prevents accumulation)
 
 ### Core Algorithm
 ```
 Recognition → Mutual Recognition → Proportional Share → Allocation (capped at need)
-Converges in 5-10 rounds
+Dynamic equilibrium: recomputes ~100-200ms per state change
 ```
 
 ### Implementation
@@ -43,10 +43,10 @@ Converges in 5-10 rounds
 ## For Researchers (5 minutes)
 
 ### Mathematical Properties
-- **Strategy-proof**: Honest reporting is optimal strategy
+- **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
 - **Proportional fairness**: Strict proportionality to mutual recognition
-- **Fast convergence**: Stable equilibrium in 5-10 rounds
-- **Non-accumulative**: No entity exceeds declared needs
+- **Dynamic equilibrium**: Maintains instantaneous optimality as network evolves
+- **Contraction guarantee**: Receiving resources always reduces remaining need (unconditional)
 
 ### Key Formula
 ```

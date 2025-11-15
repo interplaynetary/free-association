@@ -117,7 +117,6 @@ Welcome to the Free-Association project! We're building an alternative to capita
 
 - **GitHub Issues** - For bug reports, feature requests, and technical discussions
 - **Pull Requests** - For code reviews and collaborative development
-- **Telegram** - Join our community at [t.me/+jS7u3ZcKLoxmYWU5](https://t.me/+jS7u3ZcKLoxmYWU5)
 - **Email** - For private discussions or sensitive topics
 
 #### Collaboration Principles

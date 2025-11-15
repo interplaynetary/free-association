@@ -178,15 +178,16 @@ where Total_Received = Σ Final_Allocation(All_Providers)
 
 ## Formal Properties
 
-### Property 1: Strategy-Proofness
+### Property 1: Need Declaration Incentives
 
-**Theorem:** Honest need reporting is the optimal strategy.
+**Analysis:** The allocation capping mechanism creates partial incentives for honest need reporting.
 
-**Proof Sketch:**
-- Over-reporting need: Allocation capped at actual need, no benefit
-- Under-reporting need: Receives less than could receive, clear disadvantage
-- Accurate reporting: Receives optimal allocation given recognition network
-- ∴ Honest reporting dominates all other strategies
+**Key observations:**
+- Over-reporting need: Allocation capped at actual need, non-accumulation property (Property 4) automatically reduces remaining need
+- Under-reporting need: Receives less than actual requirements
+- Accurate reporting: Maximizes utility given recognition network
+
+**Limitations:** This analysis assumes single-period optimization and doesn't address multi-period strategies, recognition gaming, or provider gaming. See full strategic analysis in main documentation.
 
 ### Property 2: Proportional Fairness
 
@@ -211,16 +212,13 @@ Raw_Allocation(B) = Capacity × Share(B)
 ∴ Raw_Allocation(A) = Raw_Allocation(B)
 ```
 
-### Property 3: Fast Convergence
+### Property 3: Dynamic Equilibrium and Convergence
 
-**Theorem:** System reaches stable equilibrium in 5-10 rounds.
+**Theorem:** The system maintains instantaneous optimality as network state evolves.
 
-**Empirical Validation:**
-- Tested across 1000+ network configurations
-- Convergence achieved in ≤10 rounds for 99.7% of cases
-- Median convergence: 5 rounds
-- Each round: 100-200ms calculation time
-- Total convergence: 1-2 seconds
+**Framework:** The system computes optimal allocation r*(S) for current state S (recognition, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**.
+
+**Convergence guarantee:** When network state stabilizes, needs converge to zero in O(log(1/ε)) rounds.
 
 **Convergence Criterion:**
 ```
@@ -228,6 +226,8 @@ System stable when:
 ∀ Entities: |Need(t+1) - Need(t)| < ε
 where ε = 0.001 (0.1% threshold)
 ```
+
+**Performance note:** Reference implementation recomputes allocations in 100-200ms per state change. Actual performance depends on implementation, hardware, and network conditions.
 
 ### Property 4: Non-Accumulative
 
@@ -252,31 +252,35 @@ Since each allocation ≤ Declared_Need, and system tracks cumulative:
 Total_Received(R) ≤ Declared_Need(R)
 ```
 
-### Property 5: Contraction
+### Property 5: Contraction (Unconditional)
 
-**Theorem:** Total network needs decrease or remain constant.
+**Theorem:** Receiving resources always reduces remaining need.
 
 **Formal Statement:**
 ```
-Σ Remaining_Need(t+1) ≤ Σ Remaining_Need(t)
+For any allocation A(R) applied to need R:
+Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
+                         ≤ Need(R, before)
 ```
 
-**Assumption:** No arbitrary need increases between rounds.
+**This holds in every allocation round, regardless of how needs change between rounds.**
 
 **Proof:**
 ```
-For each recipient R:
-Remaining_Need(R, t+1) = max(0, Declared_Need(R, t) - Received(R, t))
+By allocation capping (Property 4):
+A(R) ≤ Need(R, before)
 
-Since Received(R, t) ≥ 0:
-Remaining_Need(R, t+1) ≤ Declared_Need(R, t)
+Therefore:
+Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
+                         ≤ Need(R, before) - 0
+                         = Need(R, before)
 
-Summing over all R:
-Σ Remaining_Need(t+1) ≤ Σ Declared_Need(t)
-
-And since allocations reduce needs:
-Σ Remaining_Need(t+1) ≤ Σ Remaining_Need(t)
+Since A(R) ≥ 0 and max(0, ...) prevents negative needs:
+Receiving resources strictly reduces need (when A(R) > 0)
+∴ Contraction property holds unconditionally
 ```
+
+**Implication:** The system continuously adapts to evolving needs while ensuring allocation always improves satisfaction, never worsens it.
 
 ### Property 6: Determinism
 
@@ -345,10 +349,11 @@ For N entities, E edges (recognition relationships):
 Total: O(E) per round
 ```
 
-**Full Convergence:**
+**Full Convergence (when state stabilizes):**
 ```
-With C convergence rounds (typically 5-10):
+With C convergence rounds:
 Total: O(C × E)
+where C = O(log(1/ε)) theoretically
 
 For sparse networks (E ≈ N):
 Total: O(C × N)
