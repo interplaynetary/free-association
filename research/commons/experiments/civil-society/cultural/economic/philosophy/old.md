@@ -249,7 +249,7 @@ It is being developed open-source at [interplaynetary-github](https://github.com
 
 **A basic interface for free association is almost complete but we are seeking support in user-interface-development as well as support in the form of housing, food etc.**
 
-**Support Financially:** [opencollective.com/playnet](https://opencollective.com/playnet)
+**Support Financially:** [opencollective.com/free-association](https://opencollective.com/free-association)
 
 ## (Re)-Compose/Import Templates
 - Drag and drop templates as children to the parent!

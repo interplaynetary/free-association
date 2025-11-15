@@ -72,7 +72,7 @@ Welcome to the Free-Association project! We're building an alternative to capita
 #### Resource Contributions
 
 - **Housing/workspace** - Supporting core contributors with space
-- **Financial support** - Through [OpenCollective](https://opencollective.com/playnet)
+- **Financial support** - Through [OpenCollective](https://opencollective.com/free-association)
 - **Skills sharing** - Teaching others, mentoring newcomers
 - **Network connections** - Introducing the project to relevant communities
 

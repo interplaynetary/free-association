@@ -309,5 +309,5 @@ See [DPI.md](../../DPI.md) in main repository for detailed coalition information
 - [Glossary](../technical/glossary.md)
 
 **Community:**
-- [OpenCollective](https://opencollective.com/playnet)
+- [OpenCollective](https://opencollective.com/free-association)
 

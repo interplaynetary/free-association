@@ -1,4 +1,4 @@
-## Free-Association: A Call for Mutual Self-Actualization 🌱 [![](https://img.shields.io/opencollective/backers/playnet)](https://opencollective.com/playnet#section-contributors)
+## Free-Association: A Call for Mutual Self-Actualization 🌱 [![](https://img.shields.io/opencollective/backers/playnet)](https://opencollective.com/free-association#section-contributors)
 
 _Free-Association_ is literally an actual alternative to capitalism that allows for the _spontaneous self-actualization of all through each other_ without any centralized control, planning, private-property, state intervention!
 
@@ -290,8 +290,8 @@ A basic interface for free association is almost complete but we are seeking sup
 
 ## How to Contribute 🤝
 
-<a href="https://opencollective.com/playnet">
-    <img width="300" src="https://opencollective.com/playnet/donate/button@2x.png?color=blue" />
+<a href="https://opencollective.com/free-association">
+    <img width="300" src="https://opencollective.com/free-association/donate/button@2x.png?color=blue" />
 </a>
 
 **Contribute Skills/Time:** Contact us to discuss how your skills align with current development needs

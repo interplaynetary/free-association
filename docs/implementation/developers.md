@@ -385,8 +385,8 @@ bun run build
 
 Support infrastructure and development:
 
-<a href="https://opencollective.com/playnet">
-    <img width="300" src="https://opencollective.com/playnet/donate/button@2x.png?color=blue" />
+<a href="https://opencollective.com/free-association">
+    <img width="300" src="https://opencollective.com/free-association/donate/button@2x.png?color=blue" />
 </a>
 
 ### Non-Code Contributions

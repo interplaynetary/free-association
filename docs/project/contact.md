@@ -48,7 +48,7 @@ For:
 
 ### OpenCollective
 
-**Support the Project:** [opencollective.com/playnet](https://opencollective.com/playnet)
+**Support the Project:** [opencollective.com/free-association](https://opencollective.com/free-association)
 
 For:
 - Financial contributions
@@ -209,7 +209,7 @@ For:
 
 ### OpenCollective
 
-**[opencollective.com/playnet](https://opencollective.com/playnet)**
+**[opencollective.com/free-association](https://opencollective.com/free-association)**
 
 ---
 
