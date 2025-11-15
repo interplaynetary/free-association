@@ -1,110 +1,59 @@
-# Playnet Free-Association Code of Conduct
+# Free Association Code of Conduct
 
-## Our Commitment
+## Purpose
 
-We are committed to creating a community where the free development of each is the condition for the free development of all. This Code of Conduct reflects our values of mutual recognition, voluntary participation, and harm reduction.
+This Code of Conduct establishes standards for participation in Free Association spaces to ensure an inclusive, respectful, and professional environment for all participants.
 
-## Core Principles
+## Scope
 
-### Enthusiastic Consent & Voluntary Participation
+This Code applies to all Free Association spaces, including:
+- Online platforms and communication channels
+- Code repositories and technical contributions
+- Community events and gatherings
+- External representations of the project
 
-- **Relations activate only through mutual desire and consent**
-- Active, ongoing agreement is valued over mere absence of refusal
-- All participation is voluntary - no coercion or pressure
-- Boundaries are respected immediately and without question
+## Expected Standards
 
-### Mutual Recognition & Non-Ownership
+All participants are expected to:
+- Engage professionally and respectfully
+- Respect differing viewpoints and experiences
+- Accept constructive feedback gracefully
+- Focus on what is best for the community
+- Show consideration for others
 
-- We recognize and acknowledge contributions to each other's development
-- **No one owns anyone else** - we each own 100% of ourselves
-- Recognition can be adjusted based on current contributions and changing relationships
-- We prioritize reciprocal relationships where recognition flows both ways
+## Unacceptable Behavior
 
-### Inclusivity & Self-Determination
+The following behaviors are not tolerated:
 
-- We embrace diverse bodies, identities, orientations, and relationship structures
-- Each person has the right to define their own identity and desires
-- We actively work to eliminate harmful social stigmas around desire and expression
-- Bodily autonomy and self-determination are fundamental rights
-
-### Honest Communication & Power Consciousness
-
-- We prioritize transparent expression of needs, desires, and boundaries
-- We acknowledge and address power differentials in all relationships
-- We communicate directly and kindly about conflicts or concerns
-- We focus on understanding rather than winning arguments
-
-### Harm Reduction & Shame Rejection
-
-- We focus on minimizing potential negative consequences without judgment
-- We actively work against systems of oppression and harmful power structures
-- We reject shame-based approaches to community standards
-- We prioritize learning and growth over punishment
-
-## Community Standards
-
-### Encouraged Behaviors
-
-- Contributing to others' self-actualization through skills, resources, or recognition
-- Sharing knowledge and resources according to your capacity
-- Engaging in stigmergic coordination - indirect collaboration through shared environments
-- Providing constructive feedback that helps others grow
-- Celebrating diverse approaches to the same problems
-- Acknowledging when you don't know something or make mistakes
-
-### Unacceptable Behaviors
-
-- Any form of harassment, discrimination, or targeted attacks
+- Harassment, intimidation, or discrimination in any form
 - Unwelcome sexual attention or advances
-- Trolling, insulting, or derogatory comments
-- Publishing private information without consent
-- Attempts to control or own others through debt, obligation, or coercion
-- Persistent disregard for clearly stated boundaries
-- Behavior that creates hostile environments for marginalized community members
+- Trolling, insulting comments, or personal attacks
+- Publishing others' private information without permission
+- Other conduct that could reasonably be considered inappropriate in a professional setting
+- Violation of applicable laws or regulations
+
+## Reporting
+
+Violations can be reported to: **info@openassociation.org**
+
+All reports will be handled confidentially. Retaliation against those who report violations in good faith is prohibited.
 
 ## Enforcement
 
-### Graduated Response System
+Participants asked to stop unacceptable behavior are expected to comply immediately.
 
-Following our values of harm reduction and restorative justice:
+Violations may result in:
+- Warning
+- Temporary suspension from community spaces
+- Permanent ban from community spaces
 
-1. **Direct Communication**: Community members are encouraged to address issues directly when safe and appropriate
-2. **Mediation**: Facilitated dialogue between parties when direct communication isn't sufficient
-3. **Temporary Limits**: Time-limited restrictions on participation to allow for reflection and learning
-4. **Community Decision**: Collective decision-making for serious or persistent violations
-5. **Separation**: Removal from community spaces as a last resort for safety
+The response will be proportionate to the violation. Decisions are made by project maintainers and may be appealed within 14 days.
 
-### Reporting
+## Contact
 
-- Report violations to [info@openassociation.org] or through private channels
-- All reports will be handled with confidentiality and care
-- Reporters will not face retaliation for good-faith reports
-- Community members experiencing harassment will receive support
+**Questions or Reports**: info@openassociation.org  
+**Community**: t.me/interplaynetary
 
-## Conflict Resolution
+---
 
-We believe in transformative rather than punitive approaches to conflict:
-
-- **Focus on needs/desires**: Understanding underlying needs rather than positions
-- **Restorative processes**: Repairing harm and rebuilding relationships when possible
-- **Community learning**: Using conflicts as opportunities for collective growth
-- **Multiple options**: Providing various pathways for resolution based on what works for those involved
-
-## Continuous Adaptation
-
-This Code of Conduct is a living document that evolves with our community. We regularly review and update it based on:
-
-- Community feedback and learning
-- Changing conditions and new challenges
-- Better understanding of how to create truly inclusive spaces
-- Alignment with our evolving values and practices
-
-## Connection to Free-Association Values
-
-This Code of Conduct embodies our commitment to creating systems where:
-
-- Individual freedom connects to collective liberation
-- Surplus flows to those who contribute to our mutual flourishing
-- Recognition remains dynamic and responsive to present reality
-- Power is distributed rather than concentrated
-- Communities self-organize around shared values rather than imposed rules
+*Version 2.0 | Last Updated: November 15, 2025*
