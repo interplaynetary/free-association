@@ -15,6 +15,7 @@
 ## Free Association Coalition
 
 * [Participation Framework](coalition/participation-framework.md)
+* [Appendix: Technical Details](coalition/appendix.md)
 * [Recognition Mathematics](coalition/recognition-mathematics.md)
 * [Coordination Sessions](coalition/coordination-sessions.md)
 * [Founding Process](coalition/founding-process.md)
