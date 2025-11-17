@@ -87,9 +87,20 @@ The key insight is separating:
         * Examples:
         
 **1. Recognition:**
-- Total Recognition per Entity = **100%**
-- Recognition allocated as percentages/portions
-- Non-transferable and dynamically adjustable
+
+Each entity distributes their total recognition budget:
+
+```
+Total Recognition per Entity = 100%
+
+For entity E recognizing contributors {C₁, C₂, C₃, ...}:
+Σ Recognition(E → Cᵢ) = 100%
+
+Properties:
+- Non-transferable (cannot be sold or traded)
+- Dynamically adjustable (update as relationships evolve)
+- Percentages/portions (allocate based on contribution value)
+```
 
 **2. Mutual Recognition:**
 

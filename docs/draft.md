@@ -66,7 +66,7 @@ The key insight is separating:
 * derive  
   * data from local and network-data  
     * examples:  
-      * \<derivations and their sources\>  
+      * sources for deriving 
       * filters and their applications  
 * derive  
   * data from local and network-data  
