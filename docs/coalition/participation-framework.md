@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="../../static/logo.png" alt="Free Association Coalition Logo" width="400"/>
+  <img src="../../static/logo.png" alt="Free Association Coalition Temporary Logo " width="400"/>
 </div>
 
 # **Free Association Coalition**
