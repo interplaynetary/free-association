@@ -132,6 +132,11 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 	capacitySubsModule.initializeCapacitySubscriptions();
 	console.log('[HOLSTER] ✅ Capacity subscriptions initialized');
 
+	// Initialize records
+	const recordsModule = await import('$lib/network/records.svelte');
+	recordsModule.initializeMyRecords();
+	console.log('[HOLSTER] ✅ Records initialized');
+
 		// Enable auto-subscription
 		storesModule.enableAutoSubscriptionSync();
 		console.log('[HOLSTER] ✅ Auto-subscription enabled');
@@ -277,6 +282,14 @@ export async function signout(): Promise<void> {
 		cleanupContacts();
 	} catch (error) {
 		console.error('[HOLSTER SIGNOUT] Error cleaning up users list:', error);
+	}
+
+	// Cleanup records
+	try {
+		const { cleanupRecords } = await import('$lib/network/records.svelte');
+		cleanupRecords();
+	} catch (error) {
+		console.error('[HOLSTER SIGNOUT] Error cleaning up records:', error);
 	}
 
 	// Destroy session

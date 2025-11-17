@@ -273,7 +273,7 @@ Presented To: Impact Networks, UN Agencies, and Potential Partners
 * `Resources can flow to genuine contribution, not grant-writing ability`
 
 **`Contact:`**   
-[`playnet.lol`](http://playnet.lol)   
+[`openassociation.org`](http://openassociation.org)   
 [`info@openassociation.org`](mailto:info@openassociation.org) 
 
 ---

@@ -171,7 +171,7 @@ For:
 - Public statements
 
 **Resources:**
-- [Project Website](https://playnet.lol)
+- [Project Website](https://openassociation.org)
 - [Interface Demo Video](https://youtu.be/gapy9mBpP5w?si=B2sbZpoaXStg4eKL)
 - [Live Demo](https://interplaynetary.github.io/free-association/)
 
@@ -201,7 +201,7 @@ For:
 
 ### Project Website
 
-**[playnet.lol](https://playnet.lol)**
+**[openassociation.org](https://openassociation.org)**
 
 ### GitHub
 

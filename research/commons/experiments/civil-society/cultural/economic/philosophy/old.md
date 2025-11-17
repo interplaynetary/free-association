@@ -203,7 +203,7 @@ The state fetish cannot persist when producers organize via Free Association, as
 
 With shared esteem & love,
 - Tom Guimberteau & Free Association
-   [Playnet.lol](https://playnet.lol)
+   [openassociation.org](https://openassociation.org)
 
 *"In a higher phase of communist society, after the enslaving subordination of the individual to the division of labor, and therewith also the antithesis between mental and physical labor, has vanished; after labor has become not only a means of life but life's prime desire; after the productive forces have also increased with the all-around development of the individual, and all the springs of co-operative wealth flow more abundantly—only then can the narrow horizon of bourgeois right be crossed in its entirety and society inscribe on its banners: From each according to his ability, to each according to his needs!"* (Marx)
 

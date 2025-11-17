@@ -1,12 +1,32 @@
 <script lang="ts">
 	import { holsterUser, isHolsterAuthenticating, holsterUserAlias } from '$lib/network/holster.svelte';
 	import { DeciderWidget } from '$lib/modules/decider/components';
+	import { TIME } from '$lib/modules/decider/constants';
 	
 	// Unique identifier for this decision game
-	let gameId = 'dinner-decision-2024';
+	let gameId = 'comprehensive-test-' + Date.now();
 	
-	// Optional: Set custom agenda
-	let agenda = ['What should we have for dinner?'];
+	// Comprehensive test agenda showcasing all time configuration features
+	let agenda = [
+		'Quick decision?', // Simple string (uses global defaults: 30s total)
+		{ 
+			text: 'Important decision with custom time',
+			timeWindow: 60000 // 60 seconds for this item
+		},
+		{
+			text: 'Complex decision with custom phases',
+			timeWindow: 90000, // 90 seconds total
+			phaseTimeConfig: {
+				proposing: 30000,   // 30s for proposing
+				challenging: 20000,  // 20s for challenging
+				commenting: 20000,   // 20s for commenting
+				supporting: 20000    // 20s for supporting
+			}
+		}
+	];
+	
+	// Global default: 30 seconds per round (divided into 4 phases: ~7.5s each)
+	let timeWindow = TIME.TEST_WINDOW;
 </script>
 
 <div class="decider-page">
@@ -21,13 +41,16 @@
 		</div>
 	{:else}
 		<div class="header">
-			<h1>🎯 Group Decision Making</h1>
+			<h1>🎯 Iterative Consensus Protocol</h1>
 			{#if $holsterUserAlias}
 				<p class="welcome">Welcome, {$holsterUserAlias}!</p>
 			{/if}
+			<p class="description">
+				Distributed decision-making with time-based phases and meta-governance
+			</p>
 		</div>
 		
-		<DeciderWidget user={holsterUser} {gameId} {agenda} variant="inline" />
+		<DeciderWidget user={holsterUser} {gameId} {agenda} {timeWindow} variant="inline" />
 	{/if}
 </div>
 
@@ -54,6 +77,13 @@
 		margin: 0;
 		font-size: 1.125rem;
 		color: #666;
+	}
+	
+	.description {
+		margin: 0.5rem 0 0 0;
+		font-size: 0.875rem;
+		color: #999;
+		font-style: italic;
 	}
 	
 	.loading-state,

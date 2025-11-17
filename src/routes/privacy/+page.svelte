@@ -26,7 +26,7 @@ This policy describes what data we collect, how we use it, and the limitations o
 **Service Name:** Free-Association  
 **Operator:** Open Association  
 **Contact:** info@openassociation.org  
-**Website:** https://playnet.lol  
+**Website:** https://openassociation.org  
 **Data Controller:** Open Association for centralized account data
 
 **Our Role Under Privacy Laws:**

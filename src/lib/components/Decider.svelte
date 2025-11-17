@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ReactiveP2PDecider } from '../modules/decider/decider.svelte';
 	import { onMount, onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
 	
 	// Props
 	export let user: any;
@@ -36,6 +37,15 @@
 			decider.destroy();
 		}
 	});
+	
+	// Reactive unwrapping of stores
+	$: currentPhase = decider ? get(decider.currentPhase) : 'proposing';
+	$: allProposals = decider ? get(decider.allProposals) : [];
+	$: allChallenges = decider ? get(decider.allChallenges) : new Map();
+	$: allComments = decider ? get(decider.allComments) : new Map();
+	$: allModifications = decider ? get(decider.allModifications) : new Map();
+	$: allSupport = decider ? get(decider.allSupport) : new Map();
+	$: consensusResults = decider ? get(decider.consensusResults) : new Map();
 	
 	// Actions
 	async function submitProposal() {
@@ -97,8 +107,10 @@
 	}
 	
 	function getProposalStatus(proposalAuthorPub: string): string {
-		const challenges = decider.allChallenges?.get(proposalAuthorPub);
-		const modifications = decider.allModifications?.get(proposalAuthorPub);
+		const allChallenges = get(decider.allChallenges);
+		const allModifications = get(decider.allModifications);
+		const challenges = allChallenges?.get(proposalAuthorPub);
+		const modifications = allModifications?.get(proposalAuthorPub);
 		
 		if (!challenges || challenges.length === 0) {
 			return 'passed-no-challenges';
@@ -181,27 +193,27 @@
 		<section class="process-flow">
 			<h2>Decision Process Flow</h2>
 			<div class="flow-steps">
-				<div class="flow-step" class:active={decider.currentPhase === 'proposing'} class:complete={['challenging', 'commenting', 'supporting', 'complete'].includes(decider.currentPhase)}>
+				<div class="flow-step" class:active={currentPhase === 'proposing'} class:complete={['challenging', 'commenting', 'supporting', 'complete'].includes(currentPhase)}>
 					<div class="step-number">1</div>
 					<div class="step-name">Propose</div>
 				</div>
 				<div class="flow-arrow">→</div>
-				<div class="flow-step" class:active={decider.currentPhase === 'challenging'} class:complete={['commenting', 'supporting', 'complete'].includes(decider.currentPhase)}>
+				<div class="flow-step" class:active={currentPhase === 'challenging'} class:complete={['commenting', 'supporting', 'complete'].includes(currentPhase)}>
 					<div class="step-number">2</div>
 					<div class="step-name">Challenge</div>
 				</div>
 				<div class="flow-arrow">→</div>
-				<div class="flow-step" class:active={decider.currentPhase === 'commenting'} class:complete={['supporting', 'complete'].includes(decider.currentPhase)}>
+				<div class="flow-step" class:active={currentPhase === 'commenting'} class:complete={['supporting', 'complete'].includes(currentPhase)}>
 					<div class="step-number">3</div>
 					<div class="step-name">Discuss</div>
 				</div>
 				<div class="flow-arrow">→</div>
-				<div class="flow-step" class:active={decider.currentPhase === 'supporting'} class:complete={decider.currentPhase === 'complete'}>
+				<div class="flow-step" class:active={currentPhase === 'supporting'} class:complete={currentPhase === 'complete'}>
 					<div class="step-number">4</div>
 					<div class="step-name">Support</div>
 				</div>
 				<div class="flow-arrow">→</div>
-				<div class="flow-step" class:complete={decider.currentPhase === 'complete'}>
+				<div class="flow-step" class:complete={currentPhase === 'complete'}>
 					<div class="step-number">✓</div>
 					<div class="step-name">Complete</div>
 				</div>
@@ -211,9 +223,9 @@
 		<!-- Current Phase Section -->
 		<section class="current-phase">
 			<div class="phase-header">
-				<h2>{getPhaseEmoji(decider.currentPhase)} {decider.currentPhase.toUpperCase()}</h2>
+				<h2>{getPhaseEmoji(currentPhase)} {currentPhase.toUpperCase()}</h2>
 			</div>
-			<p class="phase-instructions">{getPhaseInstructions(decider.currentPhase)}</p>
+			<p class="phase-instructions">{getPhaseInstructions(currentPhase)}</p>
 		</section>
 
 		<!-- Participants List -->
@@ -231,7 +243,7 @@
 		{/if}
 
 		<!-- Proposal Input (Proposing Phase) -->
-		{#if decider.currentPhase === 'proposing'}
+		{#if currentPhase === 'proposing'}
 			<section class="action-section">
 				<h3>📝 Submit Your Proposal</h3>
 				<div class="input-group">
@@ -247,15 +259,15 @@
 		{/if}
 
 		<!-- All Proposals Display -->
-		{#if decider.allProposals && decider.allProposals.length > 0}
+		{#if allProposals && allProposals.length > 0}
 			<section class="proposals-section">
-				<h2>🎯 All Proposals ({decider.allProposals.length})</h2>
+				<h2>🎯 All Proposals ({allProposals.length})</h2>
 				<div class="proposals-grid">
-					{#each decider.allProposals as proposal}
-						{@const challenges = decider.allChallenges?.get(proposal.authorPub) || []}
-						{@const comments = decider.allComments?.get(proposal.authorPub) || []}
-						{@const modifications = decider.allModifications?.get(proposal.authorPub) || []}
-						{@const support = decider.allSupport?.get(proposal.authorPub) || []}
+					{#each allProposals as proposal}
+						{@const challenges = allChallenges?.get(proposal.authorPub) || []}
+						{@const comments = allComments?.get(proposal.authorPub) || []}
+						{@const modifications = allModifications?.get(proposal.authorPub) || []}
+						{@const support = allSupport?.get(proposal.authorPub) || []}
 						{@const status = getProposalStatus(proposal.authorPub)}
 						
 						<div class="proposal-card" class:has-early-exit={status !== 'in-process'}>
@@ -316,10 +328,10 @@
 							{#if support.length > 0}
 								<div class="data-section support-summary">
 									<h4>👍 Support ({support.length} votes)</h4>
-									{#if decider.consensusResults && decider.consensusResults.get(proposal.authorPub)}
+									{#if consensusResults && consensusResults.get(proposal.authorPub)}
 										<div class="winner-box">
 											<strong>Most Supported:</strong>
-											<div class="winner-text">{decider.consensusResults.get(proposal.authorPub)}</div>
+											<div class="winner-text">{consensusResults.get(proposal.authorPub)}</div>
 										</div>
 									{/if}
 								</div>
@@ -327,7 +339,7 @@
 							
 							<!-- Actions -->
 							<div class="proposal-actions">
-								{#if decider.currentPhase === 'challenging' && proposal.authorPub !== user.is.pub}
+								{#if currentPhase === 'challenging' && proposal.authorPub !== user.is.pub}
 									<button 
 										onclick={() => selectedProposalForAction = proposal.authorPub}
 										class="btn-action btn-challenge"
@@ -336,7 +348,7 @@
 									</button>
 								{/if}
 								
-								{#if decider.currentPhase === 'commenting' && challenges.length > 0}
+								{#if currentPhase === 'commenting' && challenges.length > 0}
 									<button 
 										onclick={() => selectedProposalForAction = proposal.authorPub}
 										class="btn-action btn-comment"
@@ -351,7 +363,7 @@
 									</button>
 								{/if}
 								
-								{#if decider.currentPhase === 'supporting' && modifications.length > 0}
+								{#if currentPhase === 'supporting' && modifications.length > 0}
 									<button 
 										onclick={() => openSupportModal(proposal.authorPub, getCandidates(proposal, modifications))}
 										class="btn-action btn-support"
@@ -370,7 +382,7 @@
 		{#if selectedProposalForAction}
 			<div class="modal-overlay" onclick={() => selectedProposalForAction = null} onkeydown={(e) => e.key === 'Escape' && (selectedProposalForAction = null)} role="button" tabindex="0">
 				<div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === 'Escape' && (selectedProposalForAction = null)} role="dialog" tabindex="-1">
-					{#if decider.currentPhase === 'challenging'}
+					{#if currentPhase === 'challenging'}
 						<h3>⚠️ Challenge Proposal</h3>
 						<p class="modal-instruction">Raise a concern or identify an issue with this proposal.</p>
 						<textarea
@@ -384,7 +396,7 @@
 						</div>
 					{/if}
 					
-					{#if decider.currentPhase === 'commenting'}
+					{#if currentPhase === 'commenting'}
 						<h3>💬 Comment or Modify</h3>
 						<div class="modal-content">
 							<div class="modal-section">
@@ -464,14 +476,14 @@
 		{/if}
 
 		<!-- Final Results -->
-		{#if decider.currentPhase === 'complete' && decider.consensusResults}
+		{#if currentPhase === 'complete' && consensusResults}
 			<section class="results-section">
 				<h2>🏆 Final Decisions</h2>
 				<p class="results-intro">
 					The Decider process is complete! Here are the final decisions for each proposal:
 				</p>
 				<div class="results-grid">
-					{#each decider.allProposals as proposal}
+					{#each allProposals as proposal}
 						<div class="result-card">
 							<div class="result-header">
 								<h3>Proposal by {proposal.authorPub === user.is.pub ? 'You' : proposal.authorPub.slice(0, 8) + '...'}</h3>
@@ -479,7 +491,7 @@
 							</div>
 							<div class="final-decision">
 								<div class="decision-label">Final Decision:</div>
-								<div class="decision-text">{decider.consensusResults.get(proposal.authorPub)}</div>
+								<div class="decision-text">{consensusResults.get(proposal.authorPub)}</div>
 							</div>
 						</div>
 					{/each}

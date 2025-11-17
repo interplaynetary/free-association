@@ -152,6 +152,6 @@ Within free-association, money is recognized as a legitimate need/desire that ca
 Playnet exists wherever participants establish nodes, connected through mutual recognition interfaces. Each node becomes a testing ground for plays that make visible and transform our relationships. No central authority determines where resources flow - distribution emerges from the genuine mutual recognition of real contributions toward each other's self-actualization.
 
 **Join the Network:**
-Express your needs, surplus, and desire to participate through our free-association interface at [playnet.lol]
+Express your needs, surplus, and desire to participate through our free-association interface at [openassociation.org]
 
 **You?**

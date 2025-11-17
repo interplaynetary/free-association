@@ -329,7 +329,7 @@ Free-Association is open-source infrastructure for coordinating value-aligned re
 We invite dialogue about how Free-Association might complement your impact strategy or organizational needs. Whether you're exploring as a potential collaborator, considering protocol adoption, curious about the mathematics, or interested in supporting open-source infrastructure development, we'd welcome the conversation.
 
 **Contact:**
-- Website: playnet.lol
+- Website: openassociation.org
 - Email: info@openassociation.org  
 - Live Demo: free.playnet.lol
 - Documentation: playnet.gitbook.io/organizations/protocol

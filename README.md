@@ -764,7 +764,7 @@ This represents a resolution of traditional ownership/control tensions: mutual r
 
 ### Additional Resources
 
-- [Playnet.lol](https://playnet.lol) - Project website and additional context
+- [openassociation.org](https://openassociation.org) - Project website and additional context
 - [Glossary](GLOSSARY.md) - Technical terminology and definitions
 - [Protocol Specification](PROTOCOL.md) - Formal protocol documentation
 - [Governance](GOVERNANCE.md) - Project governance structure

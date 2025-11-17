@@ -358,7 +358,7 @@ This is Hegel's resolution of the master-slave dialectic realized in practice: m
 
 ## Learn more 📚
 
-- [Playnet.lol](https://playnet.lol)
+- [openassociation.org](https://openassociation.org)
 - [Glossary](GLOSSARY.md)
 - [Dialectics of Love (Hegel and Mutual Recognition)](resources/love.md) Free-Association can be seen as the social-material inversion of Hegel's dialectics of Desire, Recognition, and Love
 - [Free-Association as the Psychoanalysis of the Economic Unconscious](resources/matheme.md)
