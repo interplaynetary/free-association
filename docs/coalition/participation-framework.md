@@ -22,78 +22,107 @@ The key insight is separating:
 
 **Participants can:**
 
-* recognize  
-  * who/what is a member of which organization (ids: universal-unique-identifier)  
-    * subscribe to the membership recognitions of others to inform their perspective of organization membership  
-      * examples:  
-        * \<Org\> :  \<member-ids\>  
-        * WHO : \<member-ids\>  
-        * UNDP : \<memberids\>  
-        * …
+* **recognize membership**  
+  * Identify who/what is a member of which organization (using universal-unique-identifiers)  
+  * Subscribe to the membership recognitions of others to inform your perspective of organization membership  
+  * **Format:** `<Organization> : <member-ids>`
+  * **Examples:**
 
-* recognize  
-  * who contribute to the realization of your priorities and satisfaction of your needs  
-    * \[total-recognition to distribute across entities: 0 to 100%\]  
-      * examples:  
-        * \<recognizer\> : \<%-of-total-recognition\> \-\> \<attributed-to\>  
-        * WHO : 12% \-\> Doctors without Borders  
-        * UNDP : 5% \-\> UNICEF  
-        * …  
-  * capacities  
-    * examples:  
-      * \<Provider\> | \<Type\> | \<Quantity\> | \<Unit\> | \<Capacity-Source\>  
-      * WHO | Money | 50M | Dollars | Revenue   
-      * UNDP | Money | 10B | Dollars | Donations   
-      * UNICEF | Technical Support | 500 | Hours | Tech-Staff  
-      * …  
-  * needs  
-    * examples:  
-      * \<Recipient\> | \<Type\> | \<Quantity\> | \<Unit\> | \<Need-Source\>  
-      * Zimbabwe | Money | 50M | Dollars | Disaster-Relief   
-      * Tanzania | Money | 10B | Dollars | Climate-Transition  
-      * UNDP | Technical Support | 1000 | Hours | Tech-Staff  
-      * …  
-  * environmental data  
-    * examples:  
-      * \<Scope\> | \<Variable\> | \<Value\> | \<Unit\> | \<Source\>  
-      * Space-Time-Coord-A | Temperature | 30 | Celsius | Weather-Station-1   
-      * Space-Time-Coord-B | Sea-Level | 1.2 | Meters-Above-Mean | Tide-Gauge-3   
-      * …  
-  * qualities of entities/resources  
-    * examples:  
-      * \<Entity\> | \<Quality\> | \<Value\> | \<Assessment-Source\>  
-      * Solar-Panel-Project | Implementation-Readiness | High | Technical-Review  
-      * Community-Org-X | Local-Trust-Level | Verified | Community-Survey  
-      * Infrastructure-Asset | Climate-Resilience | Medium | Engineering-Assessment  
-* derive  
-  * data from local and network-data  
-    * examples:  
-      * \<derivations and their sources\>  
-      * filters and their applications  
-* derive  
-  * data from local and network-data  
-    * examples:  
-      * distributions  
-        * examples:  
-          1. recognition  
-             1. Total Recognition per Entity \= 100%  
-             2. Recognition allocated as percentages/portions, is non-transferable, and dynamically adjustable  
-          2. mutual-recognition  
-             1. Calculated as the lower of the recognition percentages that two entities assign to each other  
-             2. MR(entity-a, entity-b) \= min(  
-                recognition-a-attributes-to-b,  
-                recognition-b-attributes-to-a  
-                )  
-          3. organizational-recognition  
-             1. Each member's share \= their total-mutual-recognition across all mutual-relations with organization members / total-mutual-recognition-in-organization  
-      * capacities  
-      * needs  
-      * environmental estimates  
-      * goals  
-      * offers  
-      * any other data  
-* propose/offer/allocate  
-  * using protocols of your choice
+| Organization | Member IDs |
+|--------------|------------|
+| WHO | `uuid-1, uuid-2, uuid-3, ...` |
+| UNDP | `uuid-a, uuid-b, uuid-c, ...` |
+| Secretariat | `uuid-x, uuid-y, uuid-z, ...` |
+
+* **recognize contributions**  
+  * Identify who contributes to the realization of your priorities and satisfaction of your needs  
+  * **Total recognition to distribute:** 0 to 100%  
+  * **Format:** `<recognizer> : <%-of-total-recognition> → <attributed-to>`
+  * **Examples:**
+
+| Recognizer | Recognition | Attributed To |
+|------------|-------------|---------------|
+| WHO | 12% | Doctors without Borders |
+| UNDP | 5% | UNICEF |
+| … | … | … |  
+  * **capacities**  
+    * Examples:
+
+| Provider | Type | Quantity | Unit | Capacity Source |
+|----------|------|----------|------|-----------------|
+| WHO | Money | 50M | Dollars | Revenue |
+| UNDP | Money | 10B | Dollars | Donations |
+| UNICEF | Technical Support | 500 | Hours | Tech-Staff |  
+  * **needs**  
+    * Examples:
+
+| Recipient | Type | Quantity | Unit | Need Source |
+|-----------|------|----------|------|-------------|
+| Zimbabwe | Money | 50M | Dollars | Disaster-Relief |
+| Tanzania | Money | 10B | Dollars | Climate-Transition |
+| UNDP | Technical Support | 1000 | Hours | Tech-Staff |  
+  * **environmental data**  
+    * Examples:
+
+| Scope | Variable | Value | Unit | Source |
+|-------|----------|-------|------|--------|
+| Space-Time-Coord-A | Temperature | 30 | Celsius | Weather-Station-1 |
+| Space-Time-Coord-B | Sea-Level | 1.2 | Meters-Above-Mean | Tide-Gauge-3 |  
+  * **qualities of entities/resources**  
+    * Examples:
+
+| Entity | Quality | Value | Assessment Source |
+|--------|---------|-------|-------------------|
+| Solar-Panel-Project | Implementation-Readiness | High | Technical-Review |
+| Community-Org-X | Local-Trust-Level | Verified | Community-Survey |
+| Infrastructure-Asset | Climate-Resilience | Medium | Engineering-Assessment |  
+* **declare state**  
+  * Publish your organization's current state declarations
+  
+* **derive insights**  
+  * Calculate derived data from local and network-data  
+  * Apply filters and transformations
+  * Examples include:  
+      * **distributions**  
+        * Examples:
+        
+**1. Recognition:**
+- Total Recognition per Entity = **100%**
+- Recognition allocated as percentages/portions
+- Non-transferable and dynamically adjustable
+
+**2. Mutual Recognition:**
+
+Calculated as the lower of the recognition percentages that two entities assign to each other:
+
+```
+MR(entity-a, entity-b) = min(
+    recognition-a-attributes-to-b,
+    recognition-b-attributes-to-a
+)
+```
+
+**3. Organizational Recognition:**
+
+Each member's share calculation:
+
+```
+member-share = total-mutual-recognition-of-member-with-org-members
+               ──────────────────────────────────────────────────
+               total-mutual-recognition-in-organization
+```
+
+**Other derivable data includes:**
+- Aggregated capacities across networks
+- Unmet needs analysis
+- Environmental estimates
+- Goal alignment metrics  
+- Resource offers and matches
+- Any other computed insights
+
+* **propose/offer/allocate**  
+  * Use protocols of your choice to coordinate actions
+  * See [Decision-Making Protocols](secretariat/) for options
 
 **Secretariat Purpose & Governance:**
 
