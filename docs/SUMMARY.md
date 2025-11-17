@@ -12,6 +12,20 @@
 * [How It Works](concepts/how-it-works.md)
 * [The Allocation Algorithm](concepts/allocation-algorithm.md)
 
+## Free Association Coalition
+
+* [Participation Framework](coalition/participation-framework.md)
+* [Recognition Mathematics](coalition/recognition-mathematics.md)
+* [Coordination Sessions](coalition/coordination-sessions.md)
+* [Founding Process](coalition/founding-process.md)
+* [Implementation Mapping](coalition/implementation-mapping.md)
+* Secretariat
+  * [Iterative Consensus Protocol](coalition/secretariat/decision-making-protocol.md)
+  * [Node Protocol Delegation](coalition/secretariat/node-protocol-delegation.md)
+  * Record System
+    * [Format Specification](coalition/secretariat/record/format.md)
+    * [Record Log](coalition/secretariat/record/log.md)
+
 ## Real-World Application
 
 * [Use Cases Overview](use-cases/README.md)

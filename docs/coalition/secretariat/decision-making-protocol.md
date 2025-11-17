@@ -2,6 +2,11 @@
 
 ## **Iterative Consensus Protocol**
 
+**Status:** Draft v1.0 (November 2025)  
+**Part of:** Free Association Coalition Governance Framework
+
+> **Implementation Note:** This protocol is implemented in the codebase as the **Decider** module (`src/lib/modules/decider/`). The Decider provides a peer-to-peer implementation of this consensus process. The coalition documentation uses formal terminology ("members", "secretariat", "assembly") while the code uses accessible terminology ("players", "games"). The underlying protocol is identical.
+
 ### **Purpose**
 
 This protocol enables the Secretariat to reach consensus through structured deliberation that ensures all member perspectives are heard, concerns are systematically addressed, and proposals evolve through collaborative refinement rather than adversarial voting.

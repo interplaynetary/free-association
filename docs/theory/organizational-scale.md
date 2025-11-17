@@ -198,6 +198,8 @@ This remains an **exploratory concept**. Current Free Association development fo
 2. Use cases at proven scales
 3. Building evidence base through pilots
 
+**Note:** This theoretical exploration is distinct from the [Free Association Coalition](../coalition/participation-framework.md), which is a practical coordination mechanism for organizations using Free Association. The Coalition addresses organization-to-organization coordination (already implemented), while this document explores hypothetical state-level and multi-organizational governance (future research).
+
 Organizational-scale applications represent a potential future direction informed by:
 - Lessons from current implementations
 - Research into governance integration

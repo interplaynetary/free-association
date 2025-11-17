@@ -179,10 +179,15 @@ Larger networks increase:
 - Metric tracking and reporting
 
 **Governance:**
-- Decentralized decision-making
-- No central authority over resource allocation
-- Shared protocol development
-- Open participation
+- Decentralized decision-making via adopted protocols
+- No central authority over individual resource allocation
+- Coalition secretariat offers open-source solutions
+- Participants retain full autonomy
+- See [Coalition Participation Framework](../coalition/participation-framework.md) for details
+
+**Decision-Making Protocols:**
+- [Iterative Consensus Protocol](../coalition/secretariat/decision-making-protocol.md) - Structured deliberation and refinement
+- [Node Protocol Delegation](../coalition/secretariat/node-protocol-delegation.md) - Executable mandates with dynamic authority
 
 **Resources:**
 - Technical infrastructure
@@ -282,8 +287,9 @@ Larger networks increase:
 
 **Connect:**
 1. Contact coalition team: coalition@openassociation.org
-2. Join coalition as appropriate level
-3. Access implementation support
+2. Review [Coordination Sessions](../coalition/coordination-sessions.md) for upcoming opportunities
+3. Join coalition as appropriate level
+4. Access implementation support
 
 **Pilot:**
 1. Design pilot with support
@@ -296,7 +302,9 @@ Larger networks increase:
 ## Resources
 
 **Coalition Information:**
-See [DPI.md](../../DPI.md) in main repository for detailed coalition information and organizational pilot opportunities.
+- [Participation Framework](../coalition/participation-framework.md) - How the coalition operates
+- [Coordination Sessions](../coalition/coordination-sessions.md) - Upcoming sessions and contact points
+- [Founding Process](../coalition/founding-process.md) - How to participate in coalition formation
 
 **Contact:**
 - Coalition and partnerships: coalition@openassociation.org
