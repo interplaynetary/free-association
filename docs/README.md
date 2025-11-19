@@ -40,7 +40,7 @@ Browser-based, peer-to-peer, no installation required.
 
 ## Quick Links
 
-- **Organizations**: [Pilot programs and coalition membership](implementation/organizations.md)
+- **Organizations**: [Invitation to Coalition Coordination Sessions](coalition/invitation.md)
 - **Coalition**: [Free Association Coalition participation framework](coalition/participation-framework.md)
 - **Developers**: [Get started contributing](implementation/developers.md)
 - **Researchers**: [Mathematical foundations](technical/mathematics.md)

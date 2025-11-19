@@ -14,6 +14,7 @@
 
 ## Free Association Coalition
 
+* [Invitation to Coordination Sessions](coalition/invitation.md)
 * [Participation Framework](coalition/participation-framework.md)
 * [Appendix: Technical Details](coalition/appendix.md)
 * [Recognition Mathematics](coalition/recognition-mathematics.md)

@@ -15,9 +15,9 @@ The **Free Association Coalition** (FAC) proposes a radical re-engineering of ho
 
 The key insight is separating:
 
-1. **Recognition** (who/what contributes to my goals)  
-2. **State declaration** (what is, what I have/need)  
-3. **Derivation** (what we can infer collectively)  
+1. **Publishing** (what is, what I have/need)  
+2. **Derivation** (what we can infer collectively)  
+3. **Recognition** (who/what contributes to my goals)  
 4. **Allocation** (how we divide our capacities)
 
 **Participants can:**
@@ -199,7 +199,7 @@ This framework is emerging through iterative refinement during informal coordina
 * **Support Expression from Member 2 (Proposer)** \- Member 2 (the proposer) expresses full support (weight: 1.0) for their own proposal  
 * **Decision Outcome — Protocol Adoption** \- The protocol is adopted via unanimous support (3.0 aggregate weight, early adoption path)  
 * **Protocol Adoption Record (Formal)** \- Formal record of the Iterative Consensus Protocol v1.0.0 adoption with content hash  
-* **Framework Version Record \-** Records Participation Framework version b0v0.43 as the initial bootstrap version  
+* **Framework Version Record \-** Records Participation Framework version b1 v0.43 as the initial bootstrap version  
 * **Invitation to Founding Assembly \-** Member 3 invites all members to the founding assembly  
 * **Assembly Response — Member 1** \- Member 1 accepts the assembly invitation  
 * **Assembly Response — Member 2** \- Member 2 accepts the assembly invitation  
