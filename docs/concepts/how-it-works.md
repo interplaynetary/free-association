@@ -143,6 +143,46 @@ Ally E = 0.2 × 0.5 = 10%
 
 ---
 
+## Core Derivations
+
+**Total Recognition (100%):** Each participant has a fixed "budget" of recognition to distribute. This forces prioritization and trade-offs. Recognition is non-transferable and dynamically adjustable.
+
+**Mutual Recognition (MR):** Calculated as the lower of the recognition percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship (where A recognizes B highly, but B recognizes A little) is valued at the lower amount, discouraging free-riding and encouraging mutual engagement and support.
+
+When we **recognize** each other, we have **mutual-recognition of mutual-value** and **can choose to allocate our capacities to each-other in precise proportion to how mutually-fulfilling we are to each other.**
+
+**The system naturally promotes accurate recognition through mathematical necessity:**  
+
+Entities define their goals/priorities subjectively, but achieving them depends on objective access to capacities and partnerships.
+
+**FOR ANY PARTICIPANT:**  
+
+**GIVEN:**  
+
+  **• Total Recognition = 100%**  
+
+  **• Capacities distributed ∝ (Mutual)-Recognition**  
+
+  **• Goals require access to specific capacities/partnerships**  
+
+**THEN:**  
+
+  **↑ Recognition allocated to non-beneficial partners**  
+
+    **∴ ∝ ↓ Recognition available for beneficial partners [budget constraint]**  
+
+    **∴ ↓ Mutual-Recognition with beneficial partners**  
+
+    **∴ ↓ Access to needed capacities [proportional allocation]**  
+
+    **∴ ↓ Goal Achievement**  
+
+    **∴ Natural incentive to correct recognition allocation**
+
+**Key Implication:** The system creates natural incentives for accurate recognition. Inflating or misattributing recognition only decreases connection to beneficial partners and capacities. Entities that maintain accurate recognition patterns receive better-aligned capacities and achieve better outcomes.
+
+---
+
 ## Resource Types
 
 ### Mission-Aligned Values
