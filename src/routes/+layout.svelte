@@ -1,3 +1,14 @@
+<script lang="ts" module>
+	// Module-level imports - executed once
+	let pwaInfoPromise: Promise<any>;
+	try {
+		// @ts-expect-error - virtual:pwa-info is externalized in server builds
+		pwaInfoPromise = import('virtual:pwa-info').then(m => m.pwaInfo).catch(() => undefined);
+	} catch {
+		pwaInfoPromise = Promise.resolve(undefined);
+	}
+</script>
+
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
@@ -9,11 +20,14 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
-	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
 	import '$lib/services';
+	
+	// Get PWA info from module promise
+	let pwaInfo: any = $state(undefined);
+	pwaInfoPromise.then(info => pwaInfo = info);
 
 	// Layout props
 	let { children }: LayoutProps = $props();

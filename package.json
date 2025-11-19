@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:server": "cp svelte.config.server.js svelte.config.js.tmp && mv svelte.config.js.tmp svelte.config.js && npm run build && mv svelte.config.js.tmp svelte.config.js || true",
+		"build:server": "cp svelte.config.server.js svelte.config.js.tmp && mv svelte.config.js.tmp svelte.config.js && BUILD_TARGET=server npm run build && mv svelte.config.js.tmp svelte.config.js || true",
 		"build:capacitor": "vite build && npx cap sync",
 		"preview": "vite preview",
 		"preview:server": "node build-server/index.js",

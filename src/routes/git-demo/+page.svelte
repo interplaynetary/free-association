@@ -183,7 +183,7 @@
               bind:value={content}
               rows="4"
               class="w-full px-3 py-2 border rounded-md font-mono text-sm"
-              placeholder='{"key": "value"}'
+              placeholder={'{"key": "value"}'}
             ></textarea>
           </div>
           

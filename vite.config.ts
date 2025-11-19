@@ -5,12 +5,16 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import process from 'node:process';
 
+// Check if we're building for server (adapter-node)
+const isServerBuild = process.env.BUILD_TARGET === 'server';
+
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
 		devtoolsJson(),
 		sveltekit(),
-		SvelteKitPWA({
+		// Only include PWA plugin for static builds, not server builds
+		...(!isServerBuild ? [SvelteKitPWA({
 			srcDir: 'src',
 			strategies: 'injectManifest',
 			filename: 'service-worker.ts',
@@ -94,7 +98,7 @@ export default defineConfig({
 				adapterFallback: 'index.html'
 			},
 			injectRegister: false
-		})
+		})] : [])
 	],
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
@@ -106,7 +110,11 @@ export default defineConfig({
 		}
 	},
 	build: {
-		target: 'esnext'
+		target: 'esnext',
+		rollupOptions: {
+			// Externalize PWA virtual modules for server builds
+			external: isServerBuild ? ['virtual:pwa-info', 'virtual:pwa-register', 'virtual:pwa-register/svelte'] : []
+		}
 	},
 	esbuild: {
 		target: 'esnext'
