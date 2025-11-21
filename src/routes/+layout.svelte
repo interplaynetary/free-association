@@ -29,9 +29,6 @@
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
-
-	// Initialize global services (auto-initializes viewport and navigation handling)
-	import '$lib/services';
 	
 	// Get PWA info from module promise
 	let pwaInfo: any = $state(undefined);
@@ -47,6 +44,17 @@
 	// Request notification permission on mount
 	// Note: SW registration is handled by ReloadPrompt component
 	onMount(() => {
+		// Initialize global services after DOM is ready (fixes iOS Safari 500 error)
+		// This must happen before anything else to set up viewport and navigation handling
+		if (browser) {
+			console.log('[LAYOUT] Initializing services after mount...');
+			import('$lib/services').then(() => {
+				console.log('[LAYOUT] Services initialized successfully');
+			}).catch((err) => {
+				console.error('[LAYOUT] Failed to initialize services:', err);
+			});
+		}
+		
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
 				console.log('Notification permission:', permission);
