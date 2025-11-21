@@ -2,9 +2,17 @@
 	// Module-level imports - executed once
 	let pwaInfoPromise: Promise<any>;
 	try {
-		// @ts-expect-error - virtual:pwa-info is externalized in server builds
-		pwaInfoPromise = import('virtual:pwa-info').then(m => m.pwaInfo).catch(() => undefined);
-	} catch {
+		pwaInfoPromise = import('virtual:pwa-info')
+			.then(m => {
+				console.log('[LAYOUT] PWA info loaded successfully');
+				return m.pwaInfo;
+			})
+			.catch((err) => {
+				console.log('[LAYOUT] PWA info not available (expected in production):', err.message);
+				return undefined;
+			});
+	} catch (err) {
+		console.log('[LAYOUT] PWA module import failed:', err);
 		pwaInfoPromise = Promise.resolve(undefined);
 	}
 </script>

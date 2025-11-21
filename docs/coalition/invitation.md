@@ -208,21 +208,24 @@ Entities define their goals/priorities subjectively, but achieving them depends 
 **Total-MR** (including with others not listed):
 * **WHO 45%**, **Mozambique 35%**, **Doctors Without Borders 65%**, **Red Cross 55%**
 
-**Example Derived Allocations** (% of each entity's total capacity: (x's-mutual-with-entity / x's-total-mr)):
+**Example Derived Allocations** (Recommended % of each entity's total capacity: (x's-mutual-with-entity / x's-total-mr)):
 
-* **WHO** *allocates* (12 / 45) ≈ **26%** of medical supplies toward **Mozambique**
-* **Doctors Without Borders** (30 / 55) ≈ **54%** *allocates* of mobile units toward **Mozambique**
-* **Red Cross** *allocates* (8 / 55) ≈ **14%** of shelter toward **Mozambique**
+* **WHO** sees recommendation: (12 / 45) ≈ **26%** of medical supplies toward **Mozambique**
+* **Doctors Without Borders** sees recommendation: (30 / 65) ≈ **46%** of mobile units toward **Mozambique**
+* **Red Cross** sees recommendation: (8 / 55) ≈ **14%** of shelter toward **Mozambique**
+
+**These are recommended distributions that inform allocation decisions—each entity executes through their own systems while maintaining full control over final allocations.**
 
 ### What Happens Next
 
-* **WHO** and **Doctors Without Borders** see their 12% MR → natural coordination partners for joint operations
-* All actors see real-time gap updates as resources arrive
-* Logistics coordinated based on who's deploying what when
-* Response is **coordinated without meetings**
-* Gaps are **visible in real-time** as they're filled
-* Duplication is **avoided** through transparency
-* Recognition **adjusts** based on actual delivery
+* **WHO** and **Doctors Without Borders** see their 15% MR → identified as natural coordination partners for joint operations
+* All actors see real-time gap updates and recommended allocations
+* Each entity reviews recommendations, applies their constraints, and executes through existing systems
+* Logistics coordinated based on published deployment plans
+* Response is **coordinated through data visibility** rather than coordination meetings
+* Gaps are **visible in real-time** as capacities are committed and deployed
+* Duplication is **reduced** through transparency of commitments
+* Recognition **adjusts** based on actual delivery, improving future recommendations
 
 ---
 

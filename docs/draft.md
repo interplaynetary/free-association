@@ -266,7 +266,8 @@ This framework is emerging through iterative refinement during informal coordina
 
 # **Free Association**
 
-**Total Recognition (100%):** Each participant has a fixed "budget" of recognition to distribute. This forces prioritization and trade-offs.
+**Total Recognition (100%):** Each participant has a fixed "budget" of recognition to distribute. This forces prioritization and trade-offs. Recognition is non-transferable and dynamically-adjustable.
+
 
 **Mutual Recognition (MR):** The min() function creates a natural incentive for reciprocity and relationship-building. A one-sided relationship (where A recognizes B highly, but B does not recognize A) is valued at the lower amount, discouraging free-riding and encouraging mutual engagement.
 
