@@ -21,7 +21,7 @@ export default defineConfig({
 			scope: '/',
 			base: '/',
 			selfDestroying: process.env.SELF_DESTROYING_SW === 'true',
-			includeAssets: ['favicon.png', 'robots.txt'],
+			includeAssets: ['favicon.png', 'robots.txt', 'manifest.webmanifest'],
 			manifest: {
 				name: 'Playnet',
 				short_name: 'Playnet',
