@@ -72,12 +72,8 @@ export const unreadCounts = derived([chatReadStates], ([$chatReadStates]) => {
 	return counts;
 });
 
-// Deferred initialization for iOS Safari compatibility
-let chatInitialized = false;
-function initializeChatModule() {
-	if (!browser || chatInitialized) return;
-	chatInitialized = true;
-	
+// Initialize notification manager and window focus tracking
+if (browser) {
 	// Get notification manager from global window if available
 	if ((window as any).notificationManager) {
 		notificationManager = (window as any).notificationManager;
@@ -102,17 +98,11 @@ function initializeChatModule() {
 	window.addEventListener('blur', handleBlur);
 }
 
-// Auto-initialize on first chat subscription
-// This ensures it only runs when actually needed, not at module load
-
 /**
  * Subscribe to a chat and start listening for messages in the background
  * NOTE: This is now primarily used by the network module for stream management
  */
 export function subscribeToChat(chatId: string) {
-	// Initialize chat module on first use (iOS Safari safe)
-	initializeChatModule();
-	
 	// Don't create duplicate subscriptions
 	if (chatSubscriptions.has(chatId)) {
 		return chatSubscriptions.get(chatId)!;

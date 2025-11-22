@@ -29,14 +29,7 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
 export const currentPath: Writable<string[]> = writable([]);
 
 // Initialize currentPath when user logs in or demo tree loads
-// Wrapped in a function to defer execution until after DOM is ready (fixes iOS Safari 500 error)
-let globalStateInitialized = false;
-export function initializeGlobalState() {
-	if (!browser || globalStateInitialized) return;
-	
-	globalStateInitialized = true;
-	console.log('[GLOBAL] Initializing global state subscriptions...');
-	
+if (browser) {
 	// Watch for user authentication state changes
 	let lastPub = '';
 	userPub.subscribe((pub) => {

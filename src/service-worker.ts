@@ -13,25 +13,10 @@ declare let self: ServiceWorkerGlobalScope & {
 	__WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
-const SW_VERSION = '1.0.3';
+const SW_VERSION = '1.0.0';
 const notificationManager = new NotificationManager();
 
 console.log(`[Service Worker] v${SW_VERSION} initializing...`);
-
-/**
- * EMERGENCY CACHE CLEAR
- * If you're stuck with old cached content, run this in the browser console:
- * 
- * navigator.serviceWorker.getRegistration().then(reg => {
- *   if (reg) {
- *     reg.unregister().then(() => {
- *       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
- *         window.location.reload();
- *       });
- *     });
- *   }
- * });
- */
 
 // ============================================================================
 // PRECACHING - Build assets via Workbox
@@ -40,48 +25,16 @@ console.log(`[Service Worker] v${SW_VERSION} initializing...`);
 cleanupOutdatedCaches();
 
 // self.__WB_MANIFEST is injected by vite-plugin-pwa with injectManifest
-// Ensure it's an array before passing to precacheAndRoute
-const manifest = self.__WB_MANIFEST || [];
-if (Array.isArray(manifest)) {
-	console.log(`[Service Worker] Precaching ${manifest.length} assets`);
-	precacheAndRoute(manifest);
-} else {
-	console.warn('[Service Worker] __WB_MANIFEST is not an array:', manifest);
-	precacheAndRoute([]);
-}
+precacheAndRoute(self.__WB_MANIFEST);
 
 // ============================================================================
 // RUNTIME CACHING STRATEGIES
 // ============================================================================
 
-// JavaScript modules - NetworkFirst to ensure fresh chunks after deployments
+// Static assets (CSS, JS, Fonts) - CacheFirst with expiration
 registerRoute(
 	({ request, url }: { request: Request; url: URL }) => {
-		const isDev = url.pathname.includes('/@vite/') || 
-		              url.pathname.includes('/@fs/') ||
-		              url.pathname.includes('/.svelte-kit/generated/') ||
-		              url.search.includes('?v=') ||
-		              url.search.includes('?t=');
-		
-		const isScript = request.destination === 'script';
-		
-		return isScript && !isDev;
-	},
-	new NetworkFirst({
-		cacheName: 'scripts-v5',
-		plugins: [
-			new CacheableResponsePlugin({ statuses: [0, 200] }),
-			new ExpirationPlugin({
-				maxEntries: 60,
-				maxAgeSeconds: 24 * 60 * 60 // 24 hours
-			})
-		]
-	})
-);
-
-// Static assets (CSS, Fonts) - CacheFirst with expiration
-registerRoute(
-	({ request, url }: { request: Request; url: URL }) => {
+		// Only cache production assets, not dev resources
 		const isDev = url.pathname.includes('/@vite/') || 
 		              url.pathname.includes('/@fs/') ||
 		              url.pathname.includes('/.svelte-kit/generated/') ||
@@ -89,12 +42,13 @@ registerRoute(
 		              url.search.includes('?t=');
 		
 		const isStaticAsset = request.destination === 'style' ||
+		                      request.destination === 'script' ||
 		                      request.destination === 'font';
 		
 		return isStaticAsset && !isDev;
 	},
 	new CacheFirst({
-		cacheName: 'static-assets-v5',
+		cacheName: 'static-assets-v3',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -109,7 +63,7 @@ registerRoute(
 registerRoute(
 	({ request }: { request: Request }) => request.destination === 'image',
 	new CacheFirst({
-		cacheName: 'images-v5',
+		cacheName: 'images-v3',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -128,7 +82,7 @@ const apiSyncPlugin = new BackgroundSyncPlugin('api-queue', {
 registerRoute(
 	({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
 	new NetworkFirst({
-		cacheName: 'api-cache-v5',
+		cacheName: 'api-cache-v3',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -146,7 +100,7 @@ registerRoute(
 		url.origin === 'https://fonts.googleapis.com' ||
 		url.origin === 'https://fonts.gstatic.com',
 	new CacheFirst({
-		cacheName: 'google-fonts-v5',
+		cacheName: 'google-fonts-v3',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -157,7 +111,7 @@ registerRoute(
 	})
 );
 
-// Documents/Pages - NetworkFirst to ensure fresh HTML after deployments
+// Documents/Pages - StaleWhileRevalidate for fast loads + fresh content
 registerRoute(
 	({ request, url }: { request: Request; url: URL }) => {
 		const isDocument = request.destination === 'document' ||
@@ -167,16 +121,15 @@ registerRoute(
 		
 		return isDocument && isSameOrigin && notApi;
 	},
-	new NetworkFirst({
-		cacheName: 'pages-v5',
+	new StaleWhileRevalidate({
+		cacheName: 'pages-v3',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
 				maxEntries: 30,
-				maxAgeSeconds: 1 * 60 * 60 // 1 hour - shorter to prevent stale HTML
+				maxAgeSeconds: 24 * 60 * 60 // 24 hours
 			})
 		]
-		// No networkTimeout - always wait for network to prevent stale HTML
 	})
 );
 
@@ -323,14 +276,6 @@ self.addEventListener('message', async (event) => {
 			self.skipWaiting();
 			break;
 			
-		case 'CLEAR_ALL_CACHES':
-			// Emergency cache clear - useful for fixing stuck states
-			const allCaches = await caches.keys();
-			await Promise.all(allCaches.map(cache => caches.delete(cache)));
-			console.log('[Service Worker] All caches cleared');
-			event.ports[0]?.postMessage({ success: true });
-			break;
-			
 		case 'QUEUE_NOTIFICATION':
 			// Queue a notification via NotificationManager
 			await notificationManager.queueNotification(data);
@@ -371,7 +316,7 @@ self.addEventListener('message', async (event) => {
 });
 
 async function cacheUrls(urls: string[]): Promise<void> {
-	const cache = await caches.open('manual-cache-v5');
+	const cache = await caches.open('manual-cache-v3');
 	await cache.addAll(urls);
 	console.log('[Service Worker] Cached URLs:', urls);
 }
@@ -382,21 +327,8 @@ async function cacheUrls(urls: string[]): Promise<void> {
 
 self.addEventListener('install', (event) => {
 	console.log(`[Service Worker] v${SW_VERSION} installing...`);
-	// Force immediate activation and cache cleanup
-	event.waitUntil(
-		(async () => {
-			// Clear all old caches immediately on install
-			const cacheNames = await caches.keys();
-			await Promise.all(
-				cacheNames.filter(name => !name.includes('-v5')).map(name => {
-					console.log(`[Service Worker] Deleting old cache on install: ${name}`);
-					return caches.delete(name);
-				})
-			);
-			// Skip waiting to activate immediately
-			await self.skipWaiting();
-		})()
-	);
+	// Force immediate activation
+	self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -404,31 +336,20 @@ self.addEventListener('activate', (event) => {
 	
 	event.waitUntil(
 		(async () => {
-			// Delete ALL old caches to ensure fresh start
-			const cacheNames = await caches.keys();
-			const currentCaches = [
-				'scripts-v5',
-				'static-assets-v5',
-				'images-v5',
-				'api-cache-v5',
-				'google-fonts-v5',
-				'pages-v5',
-				'manual-cache-v5'
-			];
-			
-			// Delete any cache that's not in the current version list
-			await Promise.all(
-				cacheNames.map(async (cacheName) => {
-					if (!currentCaches.includes(cacheName)) {
-						console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
-						await caches.delete(cacheName);
-					}
-				})
-			);
-			
-			// Claim clients immediately
+			// Take control of all clients immediately
 			await self.clients.claim();
-			console.log(`[Service Worker] v${SW_VERSION} activated and claimed clients`);
+			
+			// Notify all clients that new service worker is active
+			const clients = await self.clients.matchAll();
+			for (const client of clients) {
+				client.postMessage({
+					type: 'SW_ACTIVATED',
+					version: SW_VERSION,
+					timestamp: Date.now()
+				});
+			}
+			
+			console.log(`[Service Worker] v${SW_VERSION} activated and controlling clients`);
 		})()
 	);
 });

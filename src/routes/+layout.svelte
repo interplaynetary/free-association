@@ -1,3 +1,14 @@
+<script lang="ts" module>
+	// Module-level imports - executed once
+	let pwaInfoPromise: Promise<any>;
+	try {
+		// @ts-expect-error - virtual:pwa-info is externalized in server builds
+		pwaInfoPromise = import('virtual:pwa-info').then(m => m.pwaInfo).catch(() => undefined);
+	} catch {
+		pwaInfoPromise = Promise.resolve(undefined);
+	}
+</script>
+
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
@@ -5,41 +16,40 @@
 	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { globalState, initializeGlobalState } from '$lib/global.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
+	// Initialize global services (auto-initializes viewport and navigation handling)
+	import '$lib/services';
+	
+	// Get PWA info from module promise
+	let pwaInfo: any = $state(undefined);
+	pwaInfoPromise.then(info => pwaInfo = info);
+
 	// Layout props
 	let { children }: LayoutProps = $props();
+
+	// PWA manifest link tag (injected dynamically by @vite-pwa/sveltekit)
+	// See: https://vite-pwa-org.netlify.app/frameworks/sveltekit.html
+	const webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
 	// Request notification permission on mount
 	// Note: SW registration is handled by ReloadPrompt component
 	onMount(() => {
-		if (!browser) return;
-		
-		// CRITICAL: Initialize globalState FIRST before anything else (fixes iOS 500 error)
-		// Must happen before services and before any $derived reactives fire
-		console.log('[LAYOUT] Initializing globalState...');
-		initializeGlobalState();
-		
-		// Initialize global services after DOM is ready
-		console.log('[LAYOUT] Initializing services...');
-		import('$lib/services').then(() => {
-			console.log('[LAYOUT] Services initialized successfully');
-		}).catch((err) => {
-			console.error('[LAYOUT] Failed to initialize services:', err);
-		});
-		
-		// Request notification permission
-		if ('Notification' in window && Notification.permission === 'default') {
+		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
 				console.log('Notification permission:', permission);
 			});
 		}
 	});
 </script>
+
+<svelte:head>
+	{@html webManifestLink}
+</svelte:head>
 
 <main>
 	{#if $loading}
@@ -71,8 +81,8 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - dynamically imported in browser -->
-{#if browser}
+<!-- PWA Reload Prompt - dynamically imported only when PWA is active -->
+{#if browser && pwaInfo}
 	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
 		<ReloadPrompt />
 	{/await}

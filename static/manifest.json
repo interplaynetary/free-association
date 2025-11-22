@@ -1,7 +1,7 @@
 {
-  "name": "Free-Association",
-  "short_name": "FA",
-  "description": "Free Association Coalition",
+  "name": "Playnet",
+  "short_name": "Playnet",
+  "description": "Free association network platform",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

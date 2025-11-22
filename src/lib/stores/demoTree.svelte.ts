@@ -24,25 +24,14 @@ class DemoTreeStore {
 	private treeStore = writable<RootNode | null>(null);
 
 	constructor() {
-		// Initialize immediately if in browser (safe, non-reactive context)
+		// Load from localStorage on creation (browser only)
 		if (typeof window !== 'undefined') {
 			this.loadFromStorage();
 		}
 	}
 
 	/**
-	 * Ensure the store is initialized (safe to call multiple times)
-	 * Useful for SSR scenarios where constructor didn't have window access
-	 */
-	initialize() {
-		if (!this.initialized && typeof window !== 'undefined') {
-			this.loadFromStorage();
-		}
-	}
-
-	/**
 	 * Get the current tree value
-	 * NOTE: Must call initialize() before using in $derived contexts
 	 */
 	get current(): RootNode | null {
 		return this.tree;
@@ -139,7 +128,6 @@ class DemoTreeStore {
 
 	/**
 	 * Check if demo tree exists and has content
-	 * NOTE: Must call initialize() before using in $derived contexts
 	 */
 	hasTree(): boolean {
 		if (!this.tree) return false;

@@ -1,8 +1,9 @@
+import { mdsvex } from 'mdsvex';
 import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 const config = {
-	preprocess: [vitePreprocess()],
+	preprocess: [vitePreprocess(), mdsvex()],
 	kit: {
 		adapter: adapter({
 			fallback: 'index.html'
@@ -12,9 +13,12 @@ const config = {
 		},
 		serviceWorker: {
 			register: false
+		},
+		files: {
+			serviceWorker: 'src/service-worker.ts'
 		}
 	},
-	extensions: ['.svelte']
+	extensions: ['.svelte', '.svx']
 };
 
 export default config;

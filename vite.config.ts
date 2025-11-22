@@ -15,13 +15,12 @@ export default defineConfig({
 		sveltekit(),
 		// Only include PWA plugin for static builds, not server builds
 		...(!isServerBuild ? [SvelteKitPWA({
-			srcDir: './src',
+			srcDir: 'src',
 			strategies: 'injectManifest',
 			filename: 'service-worker.ts',
 			scope: '/',
-			base: '/',
 			selfDestroying: process.env.SELF_DESTROYING_SW === 'true',
-			includeAssets: ['favicon.png', 'robots.txt', 'manifest.webmanifest'],
+			includeAssets: ['favicon.png', 'robots.txt'],
 			manifest: {
 				name: 'Playnet',
 				short_name: 'Playnet',
@@ -84,24 +83,21 @@ export default defineConfig({
 				}
 			},
 			injectManifest: {
-				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-				globIgnores: ['**/node_modules/**/*', 'sw.js', 'workbox-*.js']
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}', 'prerendered/**/*.{html,json}']
 			},
 			workbox: {
-				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-				globIgnores: ['**/node_modules/**/*', 'sw.js', 'workbox-*.js'],
-				navigateFallback: null
+				globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}', 'prerendered/**/*.{html,json}']
 			},
 			devOptions: {
-				enabled: true,
+				enabled: false,
 				suppressWarnings: process.env.SUPPRESS_WARNING === 'true',
-				type: 'module',
-				navigateFallback: '/'
+				type: 'module'
 			},
 			kit: {
 				includeVersionFile: true,
 				adapterFallback: 'index.html'
-			}
+			},
+			injectRegister: false
 		})] : [])
 	],
 	define: {

@@ -1,72 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
-	
-	const needRefresh = writable(false);
-	const offlineReady = writable(false);
-	let registration: ServiceWorkerRegistration | undefined;
+	import { useRegisterSW } from 'virtual:pwa-register/svelte';
 
-	onMount(() => {
-		if ('serviceWorker' in navigator) {
-			// Check if we just reloaded due to SW update
-			const isReloading = sessionStorage.getItem('sw-reloading');
-			if (isReloading === 'true') {
-				sessionStorage.removeItem('sw-reloading');
-				console.log('[PWA] Page reloaded after SW update');
-				return;
-			}
-
-			navigator.serviceWorker.register('/service-worker.js').then((reg) => {
-				registration = reg;
-				console.log('[PWA] SW Registered:', reg);
-				
-				// Check for updates periodically
-				setInterval(() => {
-					reg.update();
-				}, 60 * 60 * 1000); // Check every hour
-				
-				// Listen for updates
-				reg.addEventListener('updatefound', () => {
-					const newWorker = reg.installing;
-					if (newWorker) {
-						newWorker.addEventListener('statechange', () => {
-							if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-								console.log('[PWA] New service worker installed, update available');
-								needRefresh.set(true);
-							}
-						});
-					}
-				});
-				
-				// Show offline ready message only once
-				if (reg.active && !sessionStorage.getItem('sw-ready-shown')) {
-					offlineReady.set(true);
-					sessionStorage.setItem('sw-ready-shown', 'true');
-				}
-			}).catch((error) => {
-				console.log('[PWA] SW registration error:', error);
-			});
+	const {
+		needRefresh,
+		updateServiceWorker,
+		offlineReady
+	} = useRegisterSW({
+		onRegistered(r) {
+			console.log(`[PWA] SW Registered: ${r}`);
+		},
+		onRegisterError(error) {
+			console.log('[PWA] SW registration error', error);
 		}
 	});
-
-	const updateServiceWorker = async () => {
-		if (registration && registration.waiting) {
-			// Set flag to prevent re-showing notification after reload
-			sessionStorage.setItem('sw-reloading', 'true');
-			
-			// Tell the waiting SW to take control
-			registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-			
-			// Reload once after controller changes
-			let reloaded = false;
-			navigator.serviceWorker.addEventListener('controllerchange', () => {
-				if (!reloaded) {
-					reloaded = true;
-					window.location.reload();
-				}
-			});
-		}
-	};
 
 	const close = () => {
 		offlineReady.set(false);
@@ -86,7 +32,7 @@
 			{/if}
 		</div>
 		{#if $needRefresh}
-			<button on:click={updateServiceWorker}> Reload </button>
+			<button on:click={() => updateServiceWorker(true)}> Reload </button>
 		{/if}
 		<button on:click={close}> Close </button>
 	</div>
