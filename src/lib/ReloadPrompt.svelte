@@ -7,31 +7,33 @@
 	let registration: ServiceWorkerRegistration | undefined;
 
 	onMount(() => {
-		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker.register('/service-worker.js').then((reg) => {
-				registration = reg;
-				console.log('[PWA] SW Registered:', reg);
-				
-				// Check for updates
-				reg.addEventListener('updatefound', () => {
-					const newWorker = reg.installing;
-					if (newWorker) {
-						newWorker.addEventListener('statechange', () => {
-							if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-								needRefresh.set(true);
-							}
-						});
-					}
-				});
-				
-				// Show offline ready once
-				if (reg.active) {
-					setTimeout(() => offlineReady.set(true), 1000);
-				}
-			}).catch((error) => {
-				console.log('[PWA] SW registration error:', error);
-			});
-		}
+		console.log('[PWA] Service worker registration disabled');
+		// Service worker registration disabled
+		// if ('serviceWorker' in navigator) {
+		// 	navigator.serviceWorker.register('/service-worker.js').then((reg) => {
+		// 		registration = reg;
+		// 		console.log('[PWA] SW Registered:', reg);
+		// 		
+		// 		// Check for updates
+		// 		reg.addEventListener('updatefound', () => {
+		// 			const newWorker = reg.installing;
+		// 			if (newWorker) {
+		// 				newWorker.addEventListener('statechange', () => {
+		// 					if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+		// 						needRefresh.set(true);
+		// 					}
+		// 				});
+		// 			}
+		// 		});
+		// 		
+		// 		// Show offline ready once
+		// 		if (reg.active) {
+		// 			setTimeout(() => offlineReady.set(true), 1000);
+		// 		}
+		// 	}).catch((error) => {
+		// 		console.log('[PWA] SW registration error:', error);
+		// 	});
+		// }
 	});
 
 	const updateServiceWorker = async () => {

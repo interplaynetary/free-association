@@ -15,10 +15,11 @@ const config = {
 		// Server-side paths (no base path needed for DigitalOcean)
 		paths: {
 			base: ''
-		},
-		serviceWorker: {
-			register: false // Service worker not needed on server
 		}
+		// Service worker disabled
+		// serviceWorker: {
+		// 	register: false
+		// }
 	},
 	extensions: ['.svelte', '.svx']
 };

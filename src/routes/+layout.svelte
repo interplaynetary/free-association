@@ -18,7 +18,6 @@
 	let { children }: LayoutProps = $props();
 
 	// Request notification permission on mount
-	// Note: SW registration is handled by ReloadPrompt component
 	onMount(() => {
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
@@ -58,12 +57,12 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - dynamically imported -->
-{#if browser}
+<!-- PWA Reload Prompt - disabled -->
+<!-- {#if browser}
 	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
 		<ReloadPrompt />
 	{/await}
-{/if}
+{/if} -->
 
 <style>
 	main {
