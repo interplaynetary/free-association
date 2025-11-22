@@ -9,11 +9,26 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
-	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
 	// Layout props
 	let { children }: LayoutProps = $props();
+
+	// PWA info - dynamically loaded to avoid build errors when PWA is not configured
+	let pwaInfo: any = $state(undefined);
+	
+	// Load PWA info asynchronously
+	if (browser) {
+		import('virtual:pwa-info')
+			.then((module) => {
+				pwaInfo = module.pwaInfo;
+				console.log('[LAYOUT] PWA info loaded');
+			})
+			.catch(() => {
+				// PWA info not available - this is fine in development or non-PWA builds
+				console.log('[LAYOUT] PWA info not available');
+			});
+	}
 
 	// PWA manifest link tag (injected dynamically by @vite-pwa/sveltekit)
 	// See: https://vite-pwa-org.netlify.app/frameworks/sveltekit.html
@@ -80,10 +95,12 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - dynamically imported -->
-{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
-	<ReloadPrompt />
-{/await}
+<!-- PWA Reload Prompt - only load when PWA is available -->
+{#if browser && pwaInfo}
+	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
+		<ReloadPrompt />
+	{/await}
+{/if}
 
 <style>
 	main {

@@ -12,9 +12,6 @@ const config = {
 		},
 		serviceWorker: {
 			register: false
-		},
-		files: {
-			serviceWorker: 'src/service-worker.ts'
 		}
 	},
 	extensions: ['.svelte']

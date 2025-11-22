@@ -13,7 +13,7 @@ declare let self: ServiceWorkerGlobalScope & {
 	__WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.0.1';
 const notificationManager = new NotificationManager();
 
 console.log(`[Service Worker] v${SW_VERSION} initializing...`);
@@ -31,10 +31,34 @@ precacheAndRoute(self.__WB_MANIFEST);
 // RUNTIME CACHING STRATEGIES
 // ============================================================================
 
-// Static assets (CSS, JS, Fonts) - CacheFirst with expiration
+// JavaScript modules - NetworkFirst to ensure fresh chunks after deployments
 registerRoute(
 	({ request, url }: { request: Request; url: URL }) => {
-		// Only cache production assets, not dev resources
+		const isDev = url.pathname.includes('/@vite/') || 
+		              url.pathname.includes('/@fs/') ||
+		              url.pathname.includes('/.svelte-kit/generated/') ||
+		              url.search.includes('?v=') ||
+		              url.search.includes('?t=');
+		
+		const isScript = request.destination === 'script';
+		
+		return isScript && !isDev;
+	},
+	new NetworkFirst({
+		cacheName: 'scripts-v4',
+		plugins: [
+			new CacheableResponsePlugin({ statuses: [0, 200] }),
+			new ExpirationPlugin({
+				maxEntries: 60,
+				maxAgeSeconds: 24 * 60 * 60 // 24 hours
+			})
+		]
+	})
+);
+
+// Static assets (CSS, Fonts) - CacheFirst with expiration
+registerRoute(
+	({ request, url }: { request: Request; url: URL }) => {
 		const isDev = url.pathname.includes('/@vite/') || 
 		              url.pathname.includes('/@fs/') ||
 		              url.pathname.includes('/.svelte-kit/generated/') ||
@@ -42,13 +66,12 @@ registerRoute(
 		              url.search.includes('?t=');
 		
 		const isStaticAsset = request.destination === 'style' ||
-		                      request.destination === 'script' ||
 		                      request.destination === 'font';
 		
 		return isStaticAsset && !isDev;
 	},
 	new CacheFirst({
-		cacheName: 'static-assets-v3',
+		cacheName: 'static-assets-v4',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -63,7 +86,7 @@ registerRoute(
 registerRoute(
 	({ request }: { request: Request }) => request.destination === 'image',
 	new CacheFirst({
-		cacheName: 'images-v3',
+		cacheName: 'images-v4',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -82,7 +105,7 @@ const apiSyncPlugin = new BackgroundSyncPlugin('api-queue', {
 registerRoute(
 	({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
 	new NetworkFirst({
-		cacheName: 'api-cache-v3',
+		cacheName: 'api-cache-v4',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -100,7 +123,7 @@ registerRoute(
 		url.origin === 'https://fonts.googleapis.com' ||
 		url.origin === 'https://fonts.gstatic.com',
 	new CacheFirst({
-		cacheName: 'google-fonts-v3',
+		cacheName: 'google-fonts-v4',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -122,7 +145,7 @@ registerRoute(
 		return isDocument && isSameOrigin && notApi;
 	},
 	new StaleWhileRevalidate({
-		cacheName: 'pages-v3',
+		cacheName: 'pages-v4',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -316,7 +339,7 @@ self.addEventListener('message', async (event) => {
 });
 
 async function cacheUrls(urls: string[]): Promise<void> {
-	const cache = await caches.open('manual-cache-v3');
+	const cache = await caches.open('manual-cache-v4');
 	await cache.addAll(urls);
 	console.log('[Service Worker] Cached URLs:', urls);
 }
