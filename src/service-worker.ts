@@ -327,8 +327,7 @@ async function cacheUrls(urls: string[]): Promise<void> {
 
 self.addEventListener('install', (event) => {
 	console.log(`[Service Worker] v${SW_VERSION} installing...`);
-	// Don't force immediate activation on first install to avoid iOS Safari race conditions
-	// skipWaiting will be triggered by SKIP_WAITING message when update is needed
+	// Don't skipWaiting() - wait for user to click "Reload" button
 });
 
 self.addEventListener('activate', (event) => {
@@ -336,30 +335,9 @@ self.addEventListener('activate', (event) => {
 	
 	event.waitUntil(
 		(async () => {
-			// Only claim clients if this is an update, not first install
-			// This prevents iOS Safari from getting confused on first load
-			const clients = await self.clients.matchAll({ type: 'window' });
-			const hasClients = clients.length > 0;
-			
-			if (hasClients) {
-				// This is an update - take control immediately
-				await self.clients.claim();
-				console.log(`[Service Worker] v${SW_VERSION} claimed ${clients.length} existing clients`);
-				
-				// Notify all clients that new service worker is active
-				for (const client of clients) {
-					client.postMessage({
-						type: 'SW_ACTIVATED',
-						version: SW_VERSION,
-						timestamp: Date.now()
-					});
-				}
-			} else {
-				// First install - don't claim, let natural navigation handle it
-				console.log(`[Service Worker] v${SW_VERSION} first install - waiting for natural navigation`);
-			}
-			
-			console.log(`[Service Worker] v${SW_VERSION} activated`);
+			// Claim clients immediately - this only runs after skipWaiting() is called
+			await self.clients.claim();
+			console.log(`[Service Worker] v${SW_VERSION} activated and claimed clients`);
 		})()
 	);
 });
