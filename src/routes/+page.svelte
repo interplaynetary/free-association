@@ -132,7 +132,8 @@
 	const barSegments = derived(myRecognitionWeights, ($weights) => {
 		console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
 		
-		if (!$weights || Object.keys($weights).length === 0) {
+		// Defensive: Handle undefined/null weights (iOS Safari hydration timing)
+		if (!$weights || typeof $weights !== 'object' || Object.keys($weights).length === 0) {
 			console.log('[📊 UI-YR] ❌ No recognition weights available');
 			return [];
 		}
@@ -163,7 +164,8 @@
 	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
 		console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
 
-		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
+		// Defensive: Handle undefined/null mutual recognition (iOS Safari hydration timing)
+		if (!$mutualRec || typeof $mutualRec !== 'object' || Object.keys($mutualRec).length === 0) {
 			console.log('[📊 UI-MR] ❌ No mutual recognition data available');
 			return [];
 		}

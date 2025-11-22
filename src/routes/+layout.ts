@@ -1,11 +1,9 @@
 import { browser } from '$app/environment';
 import { loadTranslations, defaultLocale, locale } from '$lib/translations';
 
-// Enable prerendering for static site generation
-export const prerender = true;
+// Disable SSR - this is a client-only app (Holster/Gun requires browser environment)
+export const prerender = false;
 export const ssr = false;
-
-// Enable client-side routing
 export const csr = true;
 
 /** @type {import('./$types').LayoutLoad} */
