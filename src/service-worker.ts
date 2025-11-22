@@ -25,15 +25,7 @@ console.log(`[Service Worker] v${SW_VERSION} initializing...`);
 cleanupOutdatedCaches();
 
 // self.__WB_MANIFEST is injected by vite-plugin-pwa with injectManifest
-// Ensure it's an array before passing to precacheAndRoute
-const manifest = self.__WB_MANIFEST || [];
-if (Array.isArray(manifest)) {
-	console.log(`[Service Worker] Precaching ${manifest.length} assets`);
-	precacheAndRoute(manifest);
-} else {
-	console.warn('[Service Worker] __WB_MANIFEST is not an array:', manifest);
-	precacheAndRoute([]);
-}
+precacheAndRoute(self.__WB_MANIFEST);
 
 // ============================================================================
 // RUNTIME CACHING STRATEGIES

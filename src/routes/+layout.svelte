@@ -81,12 +81,12 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - DISABLED to prevent service worker issues -->
-<!-- {#if browser && pwaInfo}
+<!-- PWA Reload Prompt - dynamically imported only when PWA is active -->
+{#if browser && pwaInfo}
 	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
 		<ReloadPrompt />
 	{/await}
-{/if} -->
+{/if}
 
 <style>
 	main {
