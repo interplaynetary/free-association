@@ -1,14 +1,3 @@
-<script lang="ts" module>
-	// Module-level imports - executed once
-	let pwaInfoPromise: Promise<any>;
-	try {
-		// @ts-expect-error - virtual:pwa-info is externalized in server builds
-		pwaInfoPromise = import('virtual:pwa-info').then(m => m.pwaInfo).catch(() => undefined);
-	} catch {
-		pwaInfoPromise = Promise.resolve(undefined);
-	}
-</script>
-
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
@@ -24,17 +13,9 @@
 
 	// Initialize global services (auto-initializes viewport and navigation handling)
 	import '$lib/services';
-	
-	// Get PWA info from module promise
-	let pwaInfo: any = $state(undefined);
-	pwaInfoPromise.then(info => pwaInfo = info);
 
 	// Layout props
 	let { children }: LayoutProps = $props();
-
-	// PWA manifest link tag (injected dynamically by @vite-pwa/sveltekit)
-	// See: https://vite-pwa-org.netlify.app/frameworks/sveltekit.html
-	const webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
 	// Request notification permission on mount
 	// Note: SW registration is handled by ReloadPrompt component
@@ -46,10 +27,6 @@
 		}
 	});
 </script>
-
-<svelte:head>
-	{@html webManifestLink}
-</svelte:head>
 
 <main>
 	{#if $loading}
@@ -81,8 +58,8 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - dynamically imported only when PWA is active -->
-{#if browser && pwaInfo}
+<!-- PWA Reload Prompt - dynamically imported -->
+{#if browser}
 	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
 		<ReloadPrompt />
 	{/await}

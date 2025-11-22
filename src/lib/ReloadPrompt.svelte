@@ -1,18 +1,47 @@
 <script lang="ts">
-	import { useRegisterSW } from 'virtual:pwa-register/svelte';
+	import { onMount } from 'svelte';
+	import { writable } from 'svelte/store';
+	
+	const needRefresh = writable(false);
+	const offlineReady = writable(false);
+	let registration: ServiceWorkerRegistration | undefined;
 
-	const {
-		needRefresh,
-		updateServiceWorker,
-		offlineReady
-	} = useRegisterSW({
-		onRegistered(r) {
-			console.log(`[PWA] SW Registered: ${r}`);
-		},
-		onRegisterError(error) {
-			console.log('[PWA] SW registration error', error);
+	onMount(() => {
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/service-worker.js').then((reg) => {
+				registration = reg;
+				console.log('[PWA] SW Registered:', reg);
+				
+				// Check for updates
+				reg.addEventListener('updatefound', () => {
+					const newWorker = reg.installing;
+					if (newWorker) {
+						newWorker.addEventListener('statechange', () => {
+							if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+								needRefresh.set(true);
+							}
+						});
+					}
+				});
+				
+				// Show offline ready once
+				if (reg.active) {
+					setTimeout(() => offlineReady.set(true), 1000);
+				}
+			}).catch((error) => {
+				console.log('[PWA] SW registration error:', error);
+			});
 		}
 	});
+
+	const updateServiceWorker = async () => {
+		if (registration && registration.waiting) {
+			registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+			navigator.serviceWorker.addEventListener('controllerchange', () => {
+				window.location.reload();
+			});
+		}
+	};
 
 	const close = () => {
 		offlineReady.set(false);
@@ -32,7 +61,7 @@
 			{/if}
 		</div>
 		{#if $needRefresh}
-			<button on:click={() => updateServiceWorker(true)}> Reload </button>
+			<button on:click={updateServiceWorker}> Reload </button>
 		{/if}
 		<button on:click={close}> Close </button>
 	</div>
