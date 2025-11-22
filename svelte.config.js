@@ -11,10 +11,10 @@ const config = {
 		paths: {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
 		},
-		serviceWorker: {
-			register: false
-		}
-		// Service worker file configuration disabled
+		// Service worker completely disabled
+		// serviceWorker: {
+		// 	register: false
+		// },
 		// files: {
 		// 	serviceWorker: 'src/service-worker.ts'
 		// }
