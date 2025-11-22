@@ -24,19 +24,27 @@ class DemoTreeStore {
 	private treeStore = writable<RootNode | null>(null);
 
 	constructor() {
-		// Don't load from storage immediately to avoid iOS Safari race conditions
-		// Will be loaded lazily on first access
+		// Initialize immediately if in browser (safe, non-reactive context)
+		if (typeof window !== 'undefined') {
+			this.loadFromStorage();
+		}
+	}
+
+	/**
+	 * Ensure the store is initialized (safe to call multiple times)
+	 * Useful for SSR scenarios where constructor didn't have window access
+	 */
+	initialize() {
+		if (!this.initialized && typeof window !== 'undefined') {
+			this.loadFromStorage();
+		}
 	}
 
 	/**
 	 * Get the current tree value
-	 * Lazy-loads from localStorage on first access
+	 * NOTE: Must call initialize() before using in $derived contexts
 	 */
 	get current(): RootNode | null {
-		// Lazy load from storage on first access (iOS Safari safe)
-		if (!this.initialized && typeof window !== 'undefined') {
-			this.loadFromStorage();
-		}
 		return this.tree;
 	}
 
@@ -131,13 +139,9 @@ class DemoTreeStore {
 
 	/**
 	 * Check if demo tree exists and has content
-	 * Lazy-loads from localStorage on first access
+	 * NOTE: Must call initialize() before using in $derived contexts
 	 */
 	hasTree(): boolean {
-		// Lazy load from storage on first access (iOS Safari safe)
-		if (!this.initialized && typeof window !== 'undefined') {
-			this.loadFromStorage();
-		}
 		if (!this.tree) return false;
 		// Check if tree has children - an empty tree should trigger re-initialization
 		return this.tree.children && this.tree.children.length > 0;

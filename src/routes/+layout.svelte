@@ -1,22 +1,3 @@
-<script lang="ts" module>
-	// Module-level imports - executed once
-	let pwaInfoPromise: Promise<any>;
-	try {
-		pwaInfoPromise = import('virtual:pwa-info')
-			.then(m => {
-				console.log('[LAYOUT] PWA info loaded successfully');
-				return m.pwaInfo;
-			})
-			.catch((err) => {
-				console.log('[LAYOUT] PWA info not available (expected in production):', err.message);
-				return undefined;
-			});
-	} catch (err) {
-		console.log('[LAYOUT] PWA module import failed:', err);
-		pwaInfoPromise = Promise.resolve(undefined);
-	}
-</script>
-
 <script lang="ts">
 	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
@@ -28,11 +9,8 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
+	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
-	
-	// Get PWA info from module promise
-	let pwaInfo: any = $state(undefined);
-	pwaInfoPromise.then(info => pwaInfo = info);
 
 	// Layout props
 	let { children }: LayoutProps = $props();
@@ -102,12 +80,10 @@
 	y={globalState.dragY}
 />
 
-<!-- PWA Reload Prompt - dynamically imported only when PWA is active -->
-{#if browser && pwaInfo}
-	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
-		<ReloadPrompt />
-	{/await}
-{/if}
+<!-- PWA Reload Prompt - dynamically imported -->
+{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
+	<ReloadPrompt />
+{/await}
 
 <style>
 	main {
