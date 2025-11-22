@@ -24,16 +24,19 @@ class DemoTreeStore {
 	private treeStore = writable<RootNode | null>(null);
 
 	constructor() {
-		// Load from localStorage on creation (browser only)
-		if (typeof window !== 'undefined') {
-			this.loadFromStorage();
-		}
+		// Don't load from storage immediately to avoid iOS Safari race conditions
+		// Will be loaded lazily on first access
 	}
 
 	/**
 	 * Get the current tree value
+	 * Lazy-loads from localStorage on first access
 	 */
 	get current(): RootNode | null {
+		// Lazy load from storage on first access (iOS Safari safe)
+		if (!this.initialized && typeof window !== 'undefined') {
+			this.loadFromStorage();
+		}
 		return this.tree;
 	}
 
@@ -128,8 +131,13 @@ class DemoTreeStore {
 
 	/**
 	 * Check if demo tree exists and has content
+	 * Lazy-loads from localStorage on first access
 	 */
 	hasTree(): boolean {
+		// Lazy load from storage on first access (iOS Safari safe)
+		if (!this.initialized && typeof window !== 'undefined') {
+			this.loadFromStorage();
+		}
 		if (!this.tree) return false;
 		// Check if tree has children - an empty tree should trigger re-initialization
 		return this.tree.children && this.tree.children.length > 0;

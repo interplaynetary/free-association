@@ -24,7 +24,7 @@
 	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, initializeGlobalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
@@ -44,18 +44,23 @@
 	// Request notification permission on mount
 	// Note: SW registration is handled by ReloadPrompt component
 	onMount(() => {
-		// Initialize global services after DOM is ready (fixes iOS Safari 500 error)
-		// This must happen before anything else to set up viewport and navigation handling
-		if (browser) {
-			console.log('[LAYOUT] Initializing services after mount...');
-			import('$lib/services').then(() => {
-				console.log('[LAYOUT] Services initialized successfully');
-			}).catch((err) => {
-				console.error('[LAYOUT] Failed to initialize services:', err);
-			});
-		}
+		if (!browser) return;
 		
-		if (browser && 'Notification' in window && Notification.permission === 'default') {
+		// CRITICAL: Initialize globalState FIRST before anything else (fixes iOS 500 error)
+		// Must happen before services and before any $derived reactives fire
+		console.log('[LAYOUT] Initializing globalState...');
+		initializeGlobalState();
+		
+		// Initialize global services after DOM is ready
+		console.log('[LAYOUT] Initializing services...');
+		import('$lib/services').then(() => {
+			console.log('[LAYOUT] Services initialized successfully');
+		}).catch((err) => {
+			console.error('[LAYOUT] Failed to initialize services:', err);
+		});
+		
+		// Request notification permission
+		if ('Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
 				console.log('Notification permission:', permission);
 			});
