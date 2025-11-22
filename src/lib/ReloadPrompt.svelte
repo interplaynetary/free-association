@@ -8,25 +8,40 @@
 
 	onMount(() => {
 		if ('serviceWorker' in navigator) {
+			// Check if we just reloaded due to SW update
+			const isReloading = sessionStorage.getItem('sw-reloading');
+			if (isReloading === 'true') {
+				sessionStorage.removeItem('sw-reloading');
+				console.log('[PWA] Page reloaded after SW update');
+				return;
+			}
+
 			navigator.serviceWorker.register('/service-worker.js').then((reg) => {
 				registration = reg;
 				console.log('[PWA] SW Registered:', reg);
 				
-				// Check for updates
+				// Check for updates periodically
+				setInterval(() => {
+					reg.update();
+				}, 60 * 60 * 1000); // Check every hour
+				
+				// Listen for updates
 				reg.addEventListener('updatefound', () => {
 					const newWorker = reg.installing;
 					if (newWorker) {
 						newWorker.addEventListener('statechange', () => {
 							if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+								console.log('[PWA] New service worker installed, update available');
 								needRefresh.set(true);
 							}
 						});
 					}
 				});
 				
-				// Check if already offline ready
-				if (reg.active) {
+				// Show offline ready message only once
+				if (reg.active && !sessionStorage.getItem('sw-ready-shown')) {
 					offlineReady.set(true);
+					sessionStorage.setItem('sw-ready-shown', 'true');
 				}
 			}).catch((error) => {
 				console.log('[PWA] SW registration error:', error);
@@ -36,10 +51,19 @@
 
 	const updateServiceWorker = async () => {
 		if (registration && registration.waiting) {
+			// Set flag to prevent re-showing notification after reload
+			sessionStorage.setItem('sw-reloading', 'true');
+			
+			// Tell the waiting SW to take control
 			registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-			// Reload the page after the new SW takes control
+			
+			// Reload once after controller changes
+			let reloaded = false;
 			navigator.serviceWorker.addEventListener('controllerchange', () => {
-				window.location.reload();
+				if (!reloaded) {
+					reloaded = true;
+					window.location.reload();
+				}
 			});
 		}
 	};

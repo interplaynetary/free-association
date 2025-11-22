@@ -13,7 +13,7 @@ declare let self: ServiceWorkerGlobalScope & {
 	__WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
-const SW_VERSION = '1.0.1';
+const SW_VERSION = '1.0.2';
 const notificationManager = new NotificationManager();
 
 console.log(`[Service Worker] v${SW_VERSION} initializing...`);
@@ -53,7 +53,7 @@ registerRoute(
 		return isScript && !isDev;
 	},
 	new NetworkFirst({
-		cacheName: 'scripts-v4',
+		cacheName: 'scripts-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -79,7 +79,7 @@ registerRoute(
 		return isStaticAsset && !isDev;
 	},
 	new CacheFirst({
-		cacheName: 'static-assets-v4',
+		cacheName: 'static-assets-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -94,7 +94,7 @@ registerRoute(
 registerRoute(
 	({ request }: { request: Request }) => request.destination === 'image',
 	new CacheFirst({
-		cacheName: 'images-v4',
+		cacheName: 'images-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -113,7 +113,7 @@ const apiSyncPlugin = new BackgroundSyncPlugin('api-queue', {
 registerRoute(
 	({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
 	new NetworkFirst({
-		cacheName: 'api-cache-v4',
+		cacheName: 'api-cache-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -131,7 +131,7 @@ registerRoute(
 		url.origin === 'https://fonts.googleapis.com' ||
 		url.origin === 'https://fonts.gstatic.com',
 	new CacheFirst({
-		cacheName: 'google-fonts-v4',
+		cacheName: 'google-fonts-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
@@ -142,7 +142,7 @@ registerRoute(
 	})
 );
 
-// Documents/Pages - StaleWhileRevalidate for fast loads + fresh content
+// Documents/Pages - NetworkFirst to ensure fresh HTML after deployments
 registerRoute(
 	({ request, url }: { request: Request; url: URL }) => {
 		const isDocument = request.destination === 'document' ||
@@ -152,15 +152,16 @@ registerRoute(
 		
 		return isDocument && isSameOrigin && notApi;
 	},
-	new StaleWhileRevalidate({
-		cacheName: 'pages-v4',
+	new NetworkFirst({
+		cacheName: 'pages-v5',
 		plugins: [
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
 				maxEntries: 30,
 				maxAgeSeconds: 24 * 60 * 60 // 24 hours
 			})
-		]
+		],
+		networkTimeoutSeconds: 3
 	})
 );
 
@@ -347,7 +348,7 @@ self.addEventListener('message', async (event) => {
 });
 
 async function cacheUrls(urls: string[]): Promise<void> {
-	const cache = await caches.open('manual-cache-v4');
+	const cache = await caches.open('manual-cache-v5');
 	await cache.addAll(urls);
 	console.log('[Service Worker] Cached URLs:', urls);
 }
