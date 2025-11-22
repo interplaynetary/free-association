@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache - Playnet</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        button {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #333;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 12px;
+            border-radius: 4px;
+            background: #f0f0f0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clear Cache & Service Worker</h1>
+    <p>If you're experiencing issues with the app (404 errors, continuous reloading, etc.), this tool will help you start fresh.</p>
+    
+    <button onclick="clearEverything()">Clear All Caches & Reload</button>
+    
+    <div id="status" class="status info">
+        Ready to clear caches. Click the button above to proceed.
+    </div>
+    
+    <h2>What this does:</h2>
+    <ul>
+        <li>Unregisters the service worker</li>
+        <li>Deletes all cached data</li>
+        <li>Reloads the page</li>
+    </ul>
+    
+    <p><a href="/">← Back to App</a></p>
+    
+    <script>
+        async function clearEverything() {
+            const status = document.getElementById('status');
+            status.className = 'status info';
+            status.textContent = 'Clearing caches...';
+            
+            try {
+                // Unregister all service workers
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    console.log('Service worker unregistered:', registration);
+                }
+                
+                // Clear all caches
+                const cacheNames = await caches.keys();
+                for (const cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                    console.log('Cache deleted:', cacheName);
+                }
+                
+                status.className = 'status success';
+                status.textContent = 'Success! Reloading in 2 seconds...';
+                
+                // Reload after a short delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } catch (error) {
+                status.className = 'status';
+                status.style.background = '#f8d7da';
+                status.style.color = '#721c24';
+                status.textContent = 'Error: ' + error.message;
+                console.error('Clear cache error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+

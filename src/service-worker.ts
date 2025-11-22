@@ -13,10 +13,25 @@ declare let self: ServiceWorkerGlobalScope & {
 	__WB_MANIFEST: Array<{ url: string; revision: string | null }>;
 };
 
-const SW_VERSION = '1.0.2';
+const SW_VERSION = '1.0.3';
 const notificationManager = new NotificationManager();
 
 console.log(`[Service Worker] v${SW_VERSION} initializing...`);
+
+/**
+ * EMERGENCY CACHE CLEAR
+ * If you're stuck with old cached content, run this in the browser console:
+ * 
+ * navigator.serviceWorker.getRegistration().then(reg => {
+ *   if (reg) {
+ *     reg.unregister().then(() => {
+ *       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+ *         window.location.reload();
+ *       });
+ *     });
+ *   }
+ * });
+ */
 
 // ============================================================================
 // PRECACHING - Build assets via Workbox
@@ -158,10 +173,10 @@ registerRoute(
 			new CacheableResponsePlugin({ statuses: [0, 200] }),
 			new ExpirationPlugin({
 				maxEntries: 30,
-				maxAgeSeconds: 24 * 60 * 60 // 24 hours
+				maxAgeSeconds: 1 * 60 * 60 // 1 hour - shorter to prevent stale HTML
 			})
-		],
-		networkTimeoutSeconds: 3
+		]
+		// No networkTimeout - always wait for network to prevent stale HTML
 	})
 );
 
@@ -308,6 +323,14 @@ self.addEventListener('message', async (event) => {
 			self.skipWaiting();
 			break;
 			
+		case 'CLEAR_ALL_CACHES':
+			// Emergency cache clear - useful for fixing stuck states
+			const allCaches = await caches.keys();
+			await Promise.all(allCaches.map(cache => caches.delete(cache)));
+			console.log('[Service Worker] All caches cleared');
+			event.ports[0]?.postMessage({ success: true });
+			break;
+			
 		case 'QUEUE_NOTIFICATION':
 			// Queue a notification via NotificationManager
 			await notificationManager.queueNotification(data);
@@ -359,7 +382,21 @@ async function cacheUrls(urls: string[]): Promise<void> {
 
 self.addEventListener('install', (event) => {
 	console.log(`[Service Worker] v${SW_VERSION} installing...`);
-	// Don't skipWaiting() - wait for user to click "Reload" button
+	// Force immediate activation and cache cleanup
+	event.waitUntil(
+		(async () => {
+			// Clear all old caches immediately on install
+			const cacheNames = await caches.keys();
+			await Promise.all(
+				cacheNames.filter(name => !name.includes('-v5')).map(name => {
+					console.log(`[Service Worker] Deleting old cache on install: ${name}`);
+					return caches.delete(name);
+				})
+			);
+			// Skip waiting to activate immediately
+			await self.skipWaiting();
+		})()
+	);
 });
 
 self.addEventListener('activate', (event) => {
@@ -367,7 +404,29 @@ self.addEventListener('activate', (event) => {
 	
 	event.waitUntil(
 		(async () => {
-			// Claim clients immediately - this only runs after skipWaiting() is called
+			// Delete ALL old caches to ensure fresh start
+			const cacheNames = await caches.keys();
+			const currentCaches = [
+				'scripts-v5',
+				'static-assets-v5',
+				'images-v5',
+				'api-cache-v5',
+				'google-fonts-v5',
+				'pages-v5',
+				'manual-cache-v5'
+			];
+			
+			// Delete any cache that's not in the current version list
+			await Promise.all(
+				cacheNames.map(async (cacheName) => {
+					if (!currentCaches.includes(cacheName)) {
+						console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
+						await caches.delete(cacheName);
+					}
+				})
+			);
+			
+			// Claim clients immediately
 			await self.clients.claim();
 			console.log(`[Service Worker] v${SW_VERSION} activated and claimed clients`);
 		})()
