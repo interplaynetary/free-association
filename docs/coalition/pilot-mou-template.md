@@ -265,25 +265,68 @@ Both parties commit to:
 
 ### 5.1 Protocol License
 
-The Free Association Protocol is licensed under **[SPECIFY: Extended AGPL v3 or similar]** as a Digital Public Good. No entity owns or controls it. This means:
+The Free Association Protocol is licensed under **GNU Affero General Public License v3.0 (AGPL-3.0) with Additional Terms** as a Digital Public Good. No entity owns or controls it.
+
+**What This Means:**
 
 - **Free to use:** No licensing fees, subscription costs, or central authority
-- **Open source:** Full access to code and algorithms
+- **Open source:** Full access to code and algorithms at https://github.com/interplaynetary/free-association
 - **Modifiable:** Any organization may adapt for specific needs
 - **Self-hostable:** Any organization may deploy on own infrastructure
-- **White-label:** Any organization may rebrand
+- **White-label:** Any organization may rebrand (with attribution)
 - **Forkable:** Any organization may create derivative versions
+
+**AGPL-3.0 Requirements:**
+
+If Participant deploys the Protocol as a **network service** (e.g., self-hosted, white-label):
+
+1. **Source Code Availability:** Must provide source code to users of the network service (AGPL Section 13)
+2. **License Preservation:** Must maintain AGPL license and copyright notices
+3. **Modification Disclosure:** Must offer modified source code to network users
+
+If Participant uses Protocol via coalition member's hosting, the hosting provider bears AGPL compliance responsibility.
+
+**Additional Terms (AGPL Section 7):**
+
+1. **Attribution Requirement:**
+   - Must display: "Powered by Free Association coordination infrastructure - https://github.com/interplaynetary/free-association"
+   - Visible in: web interfaces (footer/about), API documentation, application credits
+   - Applies to: all deployments including white-label instances
+
+2. **Protocol Fidelity Notice:**
+   - Modified versions altering core algorithms must be marked as experimental/derivative
+   - Example: "This is a modified version of Free Association with experimental changes to [specify]. It may not be compatible with the canonical protocol."
+   - Prevents fragmentation and maintains trust
+
+3. **Interoperability Commitment:**
+   - Maintain data export/import in standard formats
+   - No artificial barriers to user data portability
+   - Use documented data formats
 
 **Freedom of Association:** The Protocol is infrastructure for voluntary coordination. No central entity controls its development, deployment, or use. Coalition members contribute to development voluntarily and coordinate under freedom of association principles.
 
-### 5.2 Participant Data and Contributions
+### 5.2 Compliance Responsibility
+
+**Participant's responsibility to ensure:**
+
+- Attribution is displayed in all interfaces/deployments (if self-hosting or white-labeling)
+- Source code is available to network users (if self-hosting as network service)
+- Modified versions are clearly marked and identified
+- Data remains portable and exportable in standard formats
+- AGPL license terms are preserved in distributed copies
+
+**If using coalition member hosting:** The hosting provider bears primary AGPL compliance responsibility for the hosted service.
+
+**Reference:** See Appendix F for detailed licensing compliance checklist.
+
+### 5.3 Participant Data and Contributions
 
 - Participant retains ownership of all published data
 - Contributions to protocol development (code, documentation) are voluntary
-- If Participant contributes code, it will be licensed under the same open-source terms
+- If Participant contributes code, it will be licensed under AGPL-3.0 with Additional Terms
 - Recognition frameworks and pilot documentation may be shared as templates with attribution
 
-### 5.3 No Vendor Lock-In
+### 5.4 No Vendor Lock-In
 
 Participant may:
 
@@ -291,6 +334,7 @@ Participant may:
 - Migrate to alternative systems at any time
 - Develop competing or complementary systems using public protocol specifications
 - Contract with third parties for support and development
+- Fork the Protocol codebase for own use (with AGPL compliance)
 
 ---
 
@@ -903,8 +947,8 @@ Date: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 
 **Deployment Model:**
 - [ ] Hosted by coalition member (specify which, document in bilateral agreement)
-- [ ] Self-hosted on Participant infrastructure
-- [ ] White-label deployment
+- [ ] Self-hosted on Participant infrastructure (see Appendix F for AGPL compliance)
+- [ ] White-label deployment (see Appendix F for attribution requirements)
 - [ ] Hybrid approach
 
 **Data Visibility:**
@@ -1065,7 +1109,18 @@ If applicable:
 - [ ] Escalation procedures established
 - [ ] Informal working group structure understood
 
-### D.7 Bilateral Agreements Review
+### D.7 Licensing Compliance Review
+
+- [ ] AGPL-3.0 license terms reviewed and understood
+- [ ] Attribution requirements understood (see Appendix F)
+- [ ] Deployment model determined (hosted vs self-hosted)
+- [ ] If self-hosting: source code availability plan documented
+- [ ] If white-labeling: attribution placement confirmed
+- [ ] If modifying: protocol fidelity notice plan documented
+- [ ] Data portability/export capabilities confirmed
+- [ ] Appendix F compliance checklist completed (if self-hosting)
+
+### D.8 Bilateral Agreements Review
 
 - [ ] Technical hosting agreement needed: Yes / No
 - [ ] Support services agreement needed: Yes / No
@@ -1087,7 +1142,7 @@ Free Association pilot: Testing whether mutual recognition-based coordination ca
 - Advisory recommendations, not automatic transfers
 - All existing controls and processes remain
 - Voluntary, experimental, with full exit rights
-- Open-source Digital Public Good (no vendor lock-in)
+- Open-source Digital Public Good under AGPL-3.0 (no vendor lock-in)
 - Coalition is informal working group, not a formal organization
 - We coordinate with other coalition members under freedom of association
 
@@ -1096,6 +1151,13 @@ Free Association pilot: Testing whether mutual recognition-based coordination ca
 - Use of open-source Protocol for coordination intelligence
 - Voluntary information sharing with coalition working group members
 - Support arrangements with specific coalition members (as needed)
+
+**Licensing:**
+- Protocol is AGPL-3.0 with Additional Terms (attribution, protocol fidelity)
+- Free to use commercially and non-commercially
+- If self-hosting: must provide source code access to users
+- If white-labeling: must maintain attribution
+- See Appendix F for full compliance requirements
 
 ### E.2 What Stays the Same
 
@@ -1164,7 +1226,256 @@ Free Association pilot: Testing whether mutual recognition-based coordination ca
 
 ---
 
-**END OF MOU TEMPLATE**
+## APPENDIX F: LICENSING COMPLIANCE CHECKLIST
+
+[For organizations self-hosting or white-labeling the Protocol]
+
+**If you are using coalition member hosting, most of these requirements are the hosting provider's responsibility. This checklist is primarily for self-hosted deployments.**
+
+---
+
+### F.1 AGPL-3.0 Compliance (If Self-Hosting as Network Service)
+
+**Source Code Availability (AGPL Section 13):**
+
+- [ ] Source code repository is accessible to network users
+- [ ] Instructions for accessing source code are provided in the interface
+- [ ] Modified source code (if any) is available in the same manner
+- [ ] Source includes all dependencies and build instructions
+- [ ] Source code version matches deployed version
+
+**Recommended Implementation:**
+- Link in footer: "Source Code: [URL]"
+- Or: "This service is powered by Free Association - [Source Code](https://github.com/your-org/your-fork)"
+
+**License Preservation:**
+
+- [ ] AGPL-3.0 license file included in source distribution
+- [ ] Additional terms file (LICENSE-ADDITIONAL-TERMS.md) included
+- [ ] Copyright notices preserved in all files
+- [ ] No additional restrictions added beyond AGPL Section 7 permitted terms
+
+---
+
+### F.2 Attribution Requirement Compliance
+
+**Required Attribution Display:**
+
+**Text:** "Powered by Free Association coordination infrastructure - https://github.com/interplaynetary/free-association"
+
+**Where to Display:**
+
+- [ ] **Web Interface:** Footer or About page (prominently visible)
+- [ ] **API Services:** API documentation and/or API response headers
+- [ ] **Mobile/Desktop Apps:** About or Credits section
+- [ ] **Command-Line Tools:** `--version` or `--about` output
+
+**Acceptable Variations:**
+
+✅ "Built on Free Association - [link]"
+✅ "Coordination by Free Association Protocol - [link]"
+✅ "Using Free Association Infrastructure - [link]"
+
+❌ NO attribution at all
+❌ Attribution without link to source
+❌ Attribution hidden or difficult to find
+
+---
+
+### F.3 Protocol Fidelity Notice (If Modified)
+
+**Did you modify core coordination algorithms?**
+- Recognition weight calculations
+- Mutual recognition derivation
+- Capacity allocation mechanisms
+- Convergence algorithms
+
+**If YES, you must display:**
+
+- [ ] Clear notice that this is a modified/experimental version
+- [ ] Specification of what was changed
+- [ ] Statement that it may not be compatible with canonical protocol
+- [ ] Notice displayed prominently to users
+
+**Example Notice:**
+
+"This is a modified version of Free Association with experimental changes to [describe modification]. This version may not be compatible with the canonical Free Association protocol. For standard protocol, see: https://github.com/interplaynetary/free-association"
+
+**If NO modifications to core algorithms:**
+- [ ] No special fidelity notice required (just standard attribution)
+
+---
+
+### F.4 Interoperability Commitment
+
+**Data Portability:**
+
+- [ ] Users can export all their data
+- [ ] Export available in standard formats (JSON, CSV, etc.)
+- [ ] Export includes: priorities, recognitions, capacities, transaction history
+- [ ] No artificial barriers to data export
+- [ ] Import from standard format supported (recommended)
+
+**Standards Compliance:**
+
+- [ ] Uses documented Free Association data schema
+- [ ] API endpoints (if any) follow standard protocol
+- [ ] No proprietary extensions that break interoperability
+- [ ] Federation/coordination with other instances possible
+
+---
+
+### F.5 White-Label Deployment Considerations
+
+**If you've rebranded the interface:**
+
+- [ ] Attribution still present (required even with white-label)
+- [ ] AGPL compliance maintained (source availability)
+- [ ] Protocol fidelity notice if modified
+- [ ] Users informed this is Free Association Protocol under the hood
+
+**Acceptable:** "This service uses Free Association Protocol - [link]"
+
+**Not Acceptable:** Completely hiding that it's Free Association (violates attribution)
+
+---
+
+### F.6 Contribution Compliance
+
+**If you contribute code back to the project:**
+
+- [ ] Understand contributions will be under AGPL-3.0 + Additional Terms
+- [ ] Have authority to contribute code (own copyright or have permission)
+- [ ] Contributions don't introduce incompatible licenses
+- [ ] Agree to community licensing terms
+
+**You may also:**
+- Keep modifications private (AGPL allows this for internal use)
+- Fork and never contribute back (AGPL allows this with attribution)
+- Offer support services commercially (encouraged!)
+
+---
+
+### F.7 Commercial Use Compliance
+
+**Commercial use is PERMITTED and ENCOURAGED under AGPL:**
+
+✅ Offering Free Association as a hosted service (with attribution + source)
+✅ Charging for implementation, customization, support services
+✅ Using Free Association in for-profit organizations
+✅ Integrating with commercial products
+✅ Building commercial services on top of Free Association
+
+**You must:**
+- [ ] Maintain AGPL compliance (source availability if network service)
+- [ ] Provide attribution
+- [ ] Mark modified versions appropriately
+
+**You cannot:**
+- ❌ Take the code proprietary (AGPL prevents this)
+- ❌ Use without attribution
+- ❌ Prevent users from accessing source code (if running as network service)
+
+---
+
+### F.8 Hosting Provider Responsibilities
+
+**If you are offering hosting to other organizations:**
+
+You bear primary compliance responsibility for:
+
+- [ ] AGPL source code availability for the hosted service
+- [ ] Attribution display in hosted interfaces
+- [ ] Protocol fidelity notices if you've modified the code
+- [ ] Data portability and export for hosted customers
+- [ ] Informing customers of the license terms
+
+**Your customers (hosted users) are generally NOT responsible for:**
+- Source code distribution (you provide this as host)
+- Technical AGPL compliance (you handle this)
+
+**Your customers ARE responsible for:**
+- Their own data and priorities
+- Recognition allocations they publish
+- Compliance with their own applicable laws
+
+---
+
+### F.9 Fork and Distribution Compliance
+
+**If you fork the repository:**
+
+- [ ] Maintain AGPL-3.0 license
+- [ ] Include LICENSE and LICENSE-ADDITIONAL-TERMS files
+- [ ] Provide attribution to original project
+- [ ] Mark as modified version if you change it
+- [ ] Make your fork source available (if deploying as network service)
+
+**Permitted Additional Terms (AGPL Section 7):**
+- You may ADD permissive terms (grant more freedoms)
+- You may REMOVE the additional terms from YOUR copies
+- You cannot ADD restrictions beyond AGPL Section 7 allowances
+
+**Fork-Friendly Project:**
+We encourage forks for experimentation, localization, and customization. Just follow the license terms!
+
+---
+
+### F.10 Compliance Resources
+
+**Need Help?**
+
+- **Licensing questions:** info@openassociation.org
+- **Technical compliance:** See implementation guides at https://docs.openassociation.org
+- **AGPL guidance:** https://www.gnu.org/licenses/agpl-3.0.html
+- **Protocol specification:** PROTOCOL.md in repository
+
+**Common Questions:**
+
+Q: Can I use this for free?
+A: Yes! Free as in freedom and free as in no cost.
+
+Q: Can I use this commercially?
+A: Yes! Commercial use is explicitly permitted.
+
+Q: Must I contribute improvements back?
+A: Only if you deploy as a network service (AGPL requirement). Internal modifications don't require sharing.
+
+Q: Can I remove the attribution?
+A: No, attribution is required by the additional terms. But you can customize the interface around it.
+
+Q: Can I offer this as a paid hosted service?
+A: Yes! Just maintain AGPL compliance (provide source to your users) and attribution.
+
+---
+
+### F.11 Self-Assessment Summary
+
+**Before deploying, confirm:**
+
+- [ ] I understand AGPL-3.0 requirements
+- [ ] I will provide source code access if running as network service
+- [ ] I will display required attribution
+- [ ] I will mark modifications appropriately if I've changed core algorithms
+- [ ] I will enable data export for users
+- [ ] I have consulted legal counsel if needed
+- [ ] I have reviewed LICENSE.md and LICENSE-ADDITIONAL-TERMS.md
+
+**Deployment Model (check one):**
+- [ ] Self-hosted network service (AGPL source requirements apply to me)
+- [ ] Internal use only (AGPL source requirements don't apply)
+- [ ] Using coalition member hosting (host bears AGPL compliance)
+- [ ] White-label deployment (AGPL + attribution apply)
+
+**If uncertain:** Contact coalition working group or consult qualified legal counsel familiar with AGPL licensing.
+
+---
+
+**END OF LICENSING COMPLIANCE CHECKLIST**
+
+---
+
+**END OF DECLARATION TEMPLATE**
 
 ---
 
@@ -1181,6 +1492,7 @@ This template should be reviewed and customized by qualified legal counsel based
 
 **Key customization points:**
 - Section 1.3: Specify actual pilot scope (amounts, partners, timeline)
+- Section 5.1: Review AGPL licensing requirements for your deployment model
 - Section 6.1: Confirm procurement law compatibility
 - Section 13.2: Specify governing law (if bilateral agreements needed)
 - Appendix A: Draft bilateral agreements with specific coalition members (if needed)
@@ -1188,6 +1500,7 @@ This template should be reviewed and customized by qualified legal counsel based
 - Appendix C: Complete data protection requirements
 - Appendix D: Legal review checklist completion
 - Appendix E: Internal briefing customization
+- Appendix F: Complete licensing compliance checklist (if self-hosting)
 
 **Structure Notes:**
 - This is a **declaration of participation**, not a bilateral agreement
