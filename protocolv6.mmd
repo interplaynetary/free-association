@@ -1,5 +1,21 @@
 FREE ASSOCIATION PROTOCOL v6: SATISFACTION-BASED LEARNING
 (Asynchronous, Event-Driven, Non-Blocking)
+(Manual Acceptance by Default, Optional Policy-Based Automation)
+
+💡 KEY PRINCIPLES:
+   1. MS Formula Throughout: MS(provider, recipient) = MR × recipient_share
+      Bootstrap: share = recognition (no satisfaction data yet)
+      Learned: share = (recognition × satisfaction) / Σ
+      Same formula, evolving shares = principled learning
+   
+   2. Allocation → Offer Separation: Allocation (derived) → Offer (commitment)
+      Providers compute allocations via MS formula (automatic)
+      Apply offering_policy to create offers (commitment_rate × allocation)
+      Creates provider optionality and convexity
+   
+   3. Flexible Acceptance: Manual (default) or Policy-Based (optional)
+      Strategies: manual, 1/N (antifragile), weighted, greedy
+      Set once in tree, executes automatically if enabled
 
 sequenceDiagram
     participant Alice
@@ -9,53 +25,118 @@ sequenceDiagram
     participant Network
 
     Note over Alice,Network: ═══════════ v6 INITIALIZATION (Bootstrap) ═══════════
-    Note over Alice,Network: 🔄 ASYNCHRONOUS: All entities publish independently
+    Note over Alice,Network: 🔄 ASYNCHRONOUS: All entities publish independently<br/>🕐 ITC CLOCKS: Distributed causality tracking (not simple timestamps)
     
-    par Parallel Tree Publications
-        Alice->>Network: Publish Tree {<br/>  tree_id: "alice_tree_v1",<br/>  needs: {food: 100},<br/>  capacities: {...},<br/>  recognition: {Carol: 30%, Kitchen: 20%}<br/>}
+    par Parallel ITC Initialization (Fork from seed)
+        rect rgb(250, 245, 255)
+            Note over Alice: Initialize ITC Clock
+            Alice->>Alice: ITC Fork from seed:<br/>  stamp_alice = {id: {l: 1, r: 0, 0, 0}, event: 0}<br/>  💡 Alice owns left quadrant of ID space
+        end
     and
-        Bob->>Network: Publish Tree {<br/>  tree_id: "bob_tree_v1",<br/>  needs: {food: 90},<br/>  capacities: {...},<br/>  recognition: {Carol: 40%, Kitchen: 30%}<br/>}
+        rect rgb(250, 245, 255)
+            Note over Bob: Initialize ITC Clock
+            Bob->>Bob: ITC Fork from seed:<br/>  stamp_bob = {id: {l: 0, r: 1, 0, 0}, event: 0}<br/>  💡 Bob owns right-left quadrant
+        end
     and
-        Carol->>Network: Publish Tree {<br/>  tree_id: "carol_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 150},<br/>  recognition: {Alice: 30%, Bob: 40%}<br/>}
+        rect rgb(250, 245, 255)
+            Note over Carol: Initialize ITC Clock
+            Carol->>Carol: ITC Fork from seed:<br/>  stamp_carol = {id: {l: 0, 0, r: 1, 0}, event: 0}<br/>  💡 Carol owns right-right-left quadrant
+        end
     and
-        Kitchen->>Network: Publish Tree {<br/>  tree_id: "kitchen_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 200},<br/>  recognition: {Alice: 30%, Bob: 30%}<br/>}
+        rect rgb(250, 245, 255)
+            Note over Kitchen: Initialize ITC Clock
+            Kitchen->>Kitchen: ITC Fork from seed:<br/>  stamp_kitchen = {id: {l: 0, 0, 0, r: 1}, event: 0}<br/>  💡 Kitchen owns right-right-right quadrant
+        end
+    end
+    
+    par Parallel Tree Publications (With ITC Stamps)
+        Alice->>Alice: Event++: stamp_alice.event = 1
+        Alice->>Network: Publish Tree {<br/>  tree_id: "alice_tree_v1",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 1},<br/>  needs: {food: 100},<br/>  capacities: {...},<br/>  recognition: {Carol: 30%, Kitchen: 20%},<br/>  acceptance_policy: {strategy: "1/N", auto_accept: true}<br/>}
+    and
+        Bob->>Bob: Event++: stamp_bob.event = 1
+        Bob->>Network: Publish Tree {<br/>  tree_id: "bob_tree_v1",<br/>  itc_stamp: {id: {l: 0, r: 1, 0, 0}, event: 1},<br/>  needs: {food: 90},<br/>  capacities: {...},<br/>  recognition: {Carol: 40%, Kitchen: 30%},<br/>  acceptance_policy: {strategy: "manual", auto_accept: false}<br/>}
+    and
+        Carol->>Carol: Event++: stamp_carol.event = 1
+        Carol->>Network: Publish Tree {<br/>  tree_id: "carol_tree_v1",<br/>  itc_stamp: {id: {l: 0, 0, r: 1, 0}, event: 1},<br/>  needs: {},<br/>  capacities: {food: 150},<br/>  recognition: {Alice: 30%, Bob: 40%},<br/>  offering_policy: {commitment_rate: 1.0, auto_publish: true}<br/>}
+    and
+        Kitchen->>Kitchen: Event++: stamp_kitchen.event = 1
+        Kitchen->>Network: Publish Tree {<br/>  tree_id: "kitchen_tree_v1",<br/>  itc_stamp: {id: {l: 0, 0, 0, r: 1}, event: 1},<br/>  needs: {},<br/>  capacities: {food: 200},<br/>  recognition: {Alice: 30%, Bob: 30%},<br/>  offering_policy: {commitment_rate: 1.0, auto_publish: true}<br/>}
     end
 
     Note over Network: 📡 Network stores all trees<br/>Each entity subscribes to relevant trees
 
-    Note over Alice,Network: ═══════════ CYCLE 1: ALLOCATION (Using Recognition) ═══════════
-    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs, compute allocations independently
+    Note over Alice,Network: ═══════════ CYCLE 1: ALLOCATION → OFFER (Using Recognition) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs, compute allocations, apply policy, publish offers<br/>💡 TWO-TIER ALLOCATION: Mutual priority (Tier 1), then Unilateral (Tier 2)
     
     par Parallel Allocation Computation (Providers observe network)
-        Note over Carol: Observes: Alice needs 100, Bob needs 90<br/>Reactively computes allocations
-        Carol->>Carol: Compute Derived State:<br/>MR(Carol,Alice) = min(30%, 30%) = 30%<br/>MR(Carol,Bob) = min(40%, 40%) = 40%<br/>Total MR = 70%<br/><br/>Allocate: Alice: 64.3, Bob: 85.7
-        Carol->>Network: Publish Allocation Records {<br/>  allocation_id: "carol_alloc_1",<br/>  offers: [{to: Alice, qty: 64.3},<br/>           {to: Bob, qty: 85.7}]<br/>}
+        Note over Carol: CAROL AS PROVIDER:<br/>Capacity: 150 food<br/>Sees: Alice needs 100, Bob needs 90
+        Carol->>Carol: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+        Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+        Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+        Carol->>Carol: Step 3: Calculate MS (Mutual Satisfaction)<br/>💡 MS = MR × recipient_share<br/><br/>MR(Carol,Alice) = min(30%, 30%) = 30%<br/>MR(Carol,Bob) = min(40%, 40%) = 40%<br/><br/>Bootstrap shares (no satisfaction yet):<br/>Alice's share of Carol = 30% (recognition)<br/>Bob's share of Carol = 40% (recognition)<br/><br/>MS(Carol,Alice) = 30% × 30% = 0.09<br/>MS(Carol,Bob) = 40% × 40% = 0.16<br/>Total MS = 0.25<br/><br/>✅ BOTH MUTUAL (MS > 0) → All Tier 1
+        Carol->>Carol: Step 4a: TIER 1 - Mutual Priority<br/>Recipients with MS > 0: Alice, Bob<br/><br/>Proportional allocation:<br/>Alice: 150 × (0.09/0.25) = 54<br/>Bob: 150 × (0.16/0.25) = 96
+        Carol->>Carol: Step 4b: TIER 2 - Unilateral Recognition<br/>RemainingCapacity = 150 - 144 = 6<br/>No unilateral recipients → skip Tier 2
+        Carol->>Carol: Step 5: Cap at active need<br/>Alice: min(54, 100) = 54<br/>Bob: min(96, 90) = 90<br/>Total allocated: 144 (6 unused)<br/><br/>💡 ALLOCATION → OFFER (Policy Applied)
+        Carol->>Carol: Apply Offering Policy:<br/>commitment_rate = 1.0 (100%)<br/>auto_publish = true<br/><br/>Offers (commitments):<br/>Alice: 54 × 1.0 = 54<br/>Bob: 90 × 1.0 = 90<br/><br/>💡 Policy creates provider optionality
+        Carol->>Carol: Event++: stamp_carol.event = 2
+        Carol->>Network: Publish Offer Records {<br/>  offer_id: "carol_offer_1",<br/>  itc_stamp: {id: {l: 0, 0, r: 1, 0}, event: 2},<br/>  offers: [{to: Alice, qty: 54, tier: "mutual"},<br/>           {to: Bob, qty: 90, tier: "mutual"}]<br/>}
     and
-        Note over Kitchen: Observes: Alice needs 100, Bob needs 90<br/>Reactively computes allocations
-        Kitchen->>Kitchen: Compute Derived State:<br/>MR(Kitchen,Alice) = min(30%, 30%) = 30%<br/>MR(Kitchen,Bob) = min(30%, 30%) = 30%<br/>Total MR = 60%<br/><br/>Allocate: Alice: 100, Bob: 90
-        Kitchen->>Network: Publish Allocation Records {<br/>  allocation_id: "kitchen_alloc_1",<br/>  offers: [{to: Alice, qty: 100},<br/>           {to: Bob, qty: 90}]<br/>}
+        Note over Kitchen: KITCHEN AS PROVIDER:<br/>Capacity: 200 food<br/>Sees: Alice needs 100, Bob needs 90
+        Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ No history yet → Damping = 1.0
+        Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 1.0 = 100<br/>Bob activeNeed = 90 × 1.0 = 90
+        Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ✅)
+        Kitchen->>Kitchen: Step 3: Calculate MS (Mutual Satisfaction)<br/>💡 MS = MR × recipient_share<br/><br/>MR(Kitchen,Alice) = min(20%, 20%) = 20%<br/>MR(Kitchen,Bob) = min(30%, 30%) = 30%<br/><br/>Bootstrap shares (no satisfaction yet):<br/>Alice's share of Kitchen = 20% (recognition)<br/>Bob's share of Kitchen = 30% (recognition)<br/><br/>MS(Kitchen,Alice) = 20% × 20% = 0.04<br/>MS(Kitchen,Bob) = 30% × 30% = 0.09<br/>Total MS = 0.13<br/><br/>✅ BOTH MUTUAL (MS > 0) → All Tier 1
+        Kitchen->>Kitchen: Step 4a: TIER 1 - Mutual Priority<br/>Recipients with MS > 0: Alice, Bob<br/><br/>Proportional allocation:<br/>Alice: 200 × (0.04/0.13) = 61.5<br/>Bob: 200 × (0.09/0.13) = 138.5
+        Kitchen->>Kitchen: Step 4b: TIER 2 - Unilateral Recognition<br/>RemainingCapacity = 200 - 200 = 0<br/>No capacity left → skip Tier 2
+        Kitchen->>Kitchen: Step 5: Cap at active need<br/>Alice: min(61.5, 100) = 61.5<br/>Bob: min(138.5, 90) = 90<br/>Total allocated: 151.5 (48.5 unused)<br/><br/>💡 ALLOCATION → OFFER (Policy Applied)
+        Kitchen->>Kitchen: Apply Offering Policy:<br/>commitment_rate = 1.0 (100%)<br/>auto_publish = true<br/><br/>Offers (commitments):<br/>Alice: 61.5 × 1.0 = 61.5<br/>Bob: 90 × 1.0 = 90<br/><br/>✅ Full allocation offered
+        Kitchen->>Kitchen: Event++: stamp_kitchen.event = 2
+        Kitchen->>Network: Publish Offer Records {<br/>  offer_id: "kitchen_offer_1",<br/>  itc_stamp: {id: {l: 0, 0, 0, r: 1}, event: 2},<br/>  offers: [{to: Alice, qty: 61.5, tier: "mutual"},<br/>           {to: Bob, qty: 90, tier: "mutual"}]<br/>}
     end
 
-    Note over Network: 📡 Allocation records published<br/>Alice & Bob subscribe to offers
+    Note over Network: 📡 Offer records published (allocation × policy)<br/>Alice & Bob subscribe to offers
 
     Note over Alice,Network: ═══════════ CYCLE 1: ACCEPT/DECLINE (v6 NEW) ═══════════
-    Note over Alice,Network: 🔄 NON-BLOCKING: Recipients independently decide, no coordination needed
+    Note over Alice,Network: 🔄 NON-BLOCKING: Recipients independently decide, no coordination needed<br/>💡 OPTIONAL: Can be manual (default) or policy-based (automated)
 
     par Parallel Accept/Decline Decisions (Recipients observe offers)
         rect rgb(255, 240, 200)
-            Note over Alice: Observes: 64.3 from Carol + 100 from Kitchen<br/>Total offered: 164.3 (vs need: 100)
-            Alice->>Alice: Compute Decision (User Input):<br/>✅ Accept 64.3 from Carol<br/>✅ Accept 100 from Kitchen<br/><br/>Updates tree: accepted quantities
-            Alice->>Network: Publish Acceptance Records {<br/>  {alloc: carol_alloc_1, accepted: 64.3},<br/>  {alloc: kitchen_alloc_1, accepted: 100}<br/>}
+            Note over Alice: 🤖 POLICY-BASED (Optional)<br/>Observes: 54 from Carol + 61.5 from Kitchen<br/>Total offered: 115.5 (vs need: 100)
+            Alice->>Alice: Apply Acceptance Policy (Automatic):<br/>strategy: "1/N" (antifragile diversification)<br/>auto_accept: true<br/><br/>🛡️ Execute 1/N Strategy:<br/>N = 2 providers<br/>target_each = 100 / 2 = 50<br/><br/>Carol: min(54, 50) = 50 ✓<br/>Kitchen: min(61.5, 50) = 50 ✓<br/><br/>Total: 100 (perfectly satisfied!)<br/>💡 Bounded downside, unbounded upside
+            Alice->>Alice: Event++: stamp_alice.event = 2
+            Alice->>Network: Publish Acceptance Records {<br/>  acceptance_id: "alice_accept_1",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 2},<br/>  acceptances: [<br/>    {offer: carol_offer_1, accepted: 50, declined: 4},<br/>    {offer: kitchen_offer_1, accepted: 50, declined: 11.5}<br/>  ]<br/>}
         end
     and
         rect rgb(255, 240, 200)
-            Note over Bob: Observes: 85.7 from Carol + 90 from Kitchen<br/>Total offered: 175.7 (vs need: 90)
-            Bob->>Bob: Compute Decision (User Input):<br/>✅ Accept 40 from Carol (partial)<br/>❌ Decline 45.7 from Carol<br/>✅ Accept 50 from Kitchen (partial)<br/>❌ Decline 40 from Kitchen
-            Bob->>Network: Publish Acceptance Records {<br/>  {alloc: carol_alloc_1, accepted: 40, declined: 45.7},<br/>  {alloc: kitchen_alloc_1, accepted: 50, declined: 40}<br/>}
+            Note over Bob: 👤 MANUAL (Default)<br/>Observes: 90 from Carol + 90 from Kitchen<br/>Total offered: 180 (vs need: 90)
+            Bob->>Bob: Compute Decision (User Input):<br/>strategy: "manual"<br/>auto_accept: false<br/><br/>User reviews each offer:<br/>✅ Accept 45 from Carol (partial)<br/>❌ Decline 45 from Carol<br/>✅ Accept 45 from Kitchen (partial)<br/>❌ Decline 45 from Kitchen<br/><br/>Total: 90 (satisfied!)
+            Bob->>Bob: Event++: stamp_bob.event = 2
+            Bob->>Network: Publish Acceptance Records {<br/>  acceptance_id: "bob_accept_1",<br/>  itc_stamp: {id: {l: 0, r: 1, 0, 0}, event: 2},<br/>  acceptances: [<br/>    {offer: carol_offer_1, accepted: 45, declined: 45},<br/>    {offer: kitchen_offer_1, accepted: 45, declined: 45}<br/>  ]<br/>}
         end
     end
 
     Note over Network: 📡 Acceptance records published<br/>Providers subscribe to acceptance events
+
+    Note over Alice,Network: ═══════════ CYCLE 1: RECIPIENT UPDATE LAW ═══════════
+    Note over Alice,Network: 🔄 SYNCHRONOUS: Recipients update their needs based on accepted quantities
+
+    par Parallel Need Updates (Recipients apply update law)
+        rect rgb(200, 255, 200)
+            Note over Alice: ALICE AS RECIPIENT (Policy-Based):<br/>Declared Need: 100<br/>Accepted from Carol: 50<br/>Accepted from Kitchen: 50<br/>Total Accepted: 100<br/><br/>✅ PERFECTLY SATISFIED (100 = 100)<br/>💡 1/N strategy achieved exact need!
+            Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Accepted)<br/>= max(0, 100 - 100) = 0
+            Alice->>Alice: Event++: stamp_alice.event = 3
+            Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v1.1",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 3},<br/>  needs: {food: 0}<br/>}<br/><br/>✅ SATISFIED (no more food needed)
+        end
+    and
+        rect rgb(200, 255, 200)
+            Note over Bob: BOB AS RECIPIENT (Manual):<br/>Declared Need: 90<br/>Accepted from Carol: 45<br/>Accepted from Kitchen: 45<br/>Total Accepted: 90<br/><br/>✅ EXACTLY SATISFIED (90 = 90)
+            Bob->>Bob: Apply Update Law:<br/>Remaining_Need = max(0, Declared_Need - Total_Accepted)<br/>= max(0, 90 - 90) = 0
+            Bob->>Bob: Event++: stamp_bob.event = 3
+            Bob->>Network: Publish Tree Update {<br/>  tree_id: "bob_tree_v1.1",<br/>  itc_stamp: {id: {l: 0, r: 1, 0, 0}, event: 3},<br/>  needs: {food: 0}<br/>}<br/><br/>✅ SATISFIED (no more food needed)
+        end
+    end
+
+    Note over Network: 📡 Updated needs published<br/>Both Alice & Bob satisfied (needs = 0)
 
     Note over Alice,Network: ═══════════ CYCLE 1: SATISFACTION RATING (v6 NEW) ═══════════
     Note over Alice,Network: 🔄 ASYNCHRONOUS: Recipients rate over time (hours/days later)
@@ -64,13 +145,15 @@ sequenceDiagram
         rect rgb(200, 255, 200)
             Note over Alice: 🌟 Uses resources, then rates quality<br/>Time: T+hours or T+days (async!)
             Alice->>Alice: Compute Satisfaction (User Input):<br/><br/>Carol's allocation:<br/>  Quality/Usefulness assessed<br/>  Rating: 0.85<br/><br/>Kitchen's allocation:<br/>  Quality/Usefulness assessed<br/>  Rating: 0.95
-            Alice->>Network: Publish Satisfaction Records {<br/>  {alloc: carol_alloc_1, satisfaction: 0.85},<br/>  {alloc: kitchen_alloc_1, satisfaction: 0.95}<br/>}
+            Alice->>Alice: Event++: stamp_alice.event = 4
+            Alice->>Network: Publish Satisfaction Records {<br/>  satisfaction_id: "alice_sat_1",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 4},<br/>  ratings: [<br/>    {offer: carol_offer_1, satisfaction: 0.85},<br/>    {offer: kitchen_offer_1, satisfaction: 0.95}<br/>  ]<br/>}
         end
     and
         rect rgb(200, 255, 200)
             Note over Bob: 🌟 Uses resources, then rates quality<br/>Time: T+hours or T+days (different timing!)
             Bob->>Bob: Compute Satisfaction (User Input):<br/><br/>Carol's allocation:<br/>  Poor quality observed<br/>  Rating: 0.40<br/><br/>Kitchen's allocation:<br/>  High quality observed<br/>  Rating: 0.90
-            Bob->>Network: Publish Satisfaction Records {<br/>  {alloc: carol_alloc_1, satisfaction: 0.40},<br/>  {alloc: kitchen_alloc_1, satisfaction: 0.90}<br/>}
+            Bob->>Bob: Event++: stamp_bob.event = 4
+            Bob->>Network: Publish Satisfaction Records {<br/>  satisfaction_id: "bob_sat_1",<br/>  itc_stamp: {id: {l: 0, r: 1, 0, 0}, event: 4},<br/>  ratings: [<br/>    {offer: carol_offer_1, satisfaction: 0.40},<br/>    {offer: kitchen_offer_1, satisfaction: 0.90}<br/>  ]<br/>}
         end
     end
 
@@ -82,14 +165,14 @@ sequenceDiagram
     par Parallel Derived State Recomputation (Providers observe satisfaction)
         rect rgb(220, 200, 255)
             Note over Carol: Observes satisfaction ratings from network<br/>Reactively recomputes derived state
-            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (64.3×0.85 + 40×0.40) / (64.3+40)<br/>  = 0.68<br/><br/>💡 Derived state updated (tree unchanged)
-            Note over Carol: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.68
+            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (50×0.85 + 45×0.40) / (50+45)<br/>  = (42.5 + 18) / 95<br/>  = 0.637<br/><br/>💡 Derived state updated (tree unchanged)
+            Note over Carol: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.637
         end
     and
         rect rgb(220, 200, 255)
             Note over Kitchen: Observes satisfaction ratings from network<br/>Reactively recomputes derived state
-            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (100×0.95 + 50×0.90) / (100+50)<br/>  = 0.93<br/><br/>✅ Derived state updated (tree unchanged)
-            Note over Kitchen: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.93
+            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>Food Capacity Satisfaction:<br/>  Σ(accepted_qty × satisfaction) / Σ(accepted_qty)<br/>  = (50×0.95 + 45×0.90) / (50+45)<br/>  = (47.5 + 40.5) / 95<br/>  = 0.926<br/><br/>✅ Derived state updated (tree unchanged)
+            Note over Kitchen: DerivedStateMap updated:<br/>food_capacity.satisfaction = 0.926
         end
     end
 
@@ -98,15 +181,15 @@ sequenceDiagram
 
     par Parallel Share Recomputation (Recipients observe provider satisfaction)
         rect rgb(255, 220, 255)
-            Note over Alice: Observes Carol satisfaction: 0.68<br/>Observes Kitchen satisfaction: 0.93<br/>Reactively recomputes shares
-            Alice->>Alice: Compute Derived State (Automatic):<br/><br/>ShareOfGeneralSatisfaction:<br/>  Carol: points×sat = 30×0.85 = 25.5<br/>  Kitchen: points×sat = 20×0.95 = 19<br/>  Total = 44.5<br/><br/>Normalized shares:<br/>  Carol: 25.5/44.5 = 0.57<br/>  Kitchen: 19/44.5 = 0.43
-            Note over Alice: DerivedStateMap updated:<br/>Carol share: 0.30 → 0.57<br/>Kitchen share: 0.20 → 0.43
+            Note over Alice: Observes Carol satisfaction: 0.637<br/>Observes Kitchen satisfaction: 0.926<br/>Reactively recomputes shares
+            Alice->>Alice: Compute Derived State (Automatic):<br/><br/>💡 MS Formula: Shares drive future allocations<br/><br/>Satisfaction-Weighted Recognition:<br/>  Carol: points×sat = 30×0.85 = 25.5<br/>  Kitchen: points×sat = 20×0.95 = 19<br/>  Total = 44.5<br/><br/>Normalized shares (for MS formula):<br/>  Carol: 25.5/44.5 = 0.573<br/>  Kitchen: 19/44.5 = 0.427<br/><br/>💡 These shares will be used in next MS calculation
+            Note over Alice: DerivedStateMap updated:<br/>Carol share: 0.30 → 0.573<br/>Kitchen share: 0.20 → 0.427
         end
     and
         rect rgb(255, 220, 255)
-            Note over Bob: Observes Carol satisfaction: 0.68<br/>Observes Kitchen satisfaction: 0.93<br/>Reactively recomputes shares
-            Bob->>Bob: Compute Derived State (Automatic):<br/><br/>ShareOfGeneralSatisfaction:<br/>  Carol: points×sat = 40×0.40 = 16<br/>  Kitchen: points×sat = 30×0.90 = 27<br/>  Total = 43<br/><br/>Normalized shares:<br/>  Carol: 16/43 = 0.37 (DOWN!)<br/>  Kitchen: 27/43 = 0.63 (UP!)
-            Note over Bob: DerivedStateMap updated:<br/>Carol share: 0.40 → 0.37<br/>Kitchen share: 0.30 → 0.63
+            Note over Bob: Observes Carol satisfaction: 0.637<br/>Observes Kitchen satisfaction: 0.926<br/>Reactively recomputes shares
+            Bob->>Bob: Compute Derived State (Automatic):<br/><br/>💡 MS Formula: Shares drive future allocations<br/><br/>Satisfaction-Weighted Recognition:<br/>  Carol: points×sat = 40×0.40 = 16<br/>  Kitchen: points×sat = 30×0.90 = 27<br/>  Total = 43<br/><br/>Normalized shares (for MS formula):<br/>  Carol: 16/43 = 0.372 (DOWN!)<br/>  Kitchen: 27/43 = 0.628 (UP!)<br/><br/>💡 Kitchen's quality → larger share in MS
+            Note over Bob: DerivedStateMap updated:<br/>Carol share: 0.40 → 0.372<br/>Kitchen share: 0.30 → 0.628
         end
     end
 
@@ -114,52 +197,160 @@ sequenceDiagram
     Note over Alice,Network: 🔄 ASYNCHRONOUS: Time passes, needs arise independently
 
     par Parallel Need Updates (Users update trees asynchronously)
-        Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v2",<br/>  needs: {food: 100}<br/>}
+        Alice->>Alice: Event++: stamp_alice.event = 5
+        Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v2",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 5},<br/>  needs: {food: 100}<br/>}
     and
-        Bob->>Network: Publish Tree Update {<br/>  tree_id: "bob_tree_v2",<br/>  needs: {food: 90}<br/>}
+        Bob->>Bob: Event++: stamp_bob.event = 5
+        Bob->>Network: Publish Tree Update {<br/>  tree_id: "bob_tree_v2",<br/>  itc_stamp: {id: {l: 0, r: 1, 0, 0}, event: 5},<br/>  needs: {food: 90}<br/>}
     end
 
     Note over Network: 📡 Need updates published<br/>Providers observe new needs
 
-    Note over Alice,Network: ═══════════ CYCLE 2: ALLOCATION (Using Satisfaction!) ═══════════
-    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs + satisfaction, compute new allocations
+    Note over Alice,Network: ═══════════ CYCLE 2: ALLOCATION → OFFER (Using Satisfaction!) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe needs + satisfaction, compute allocations, apply policy, publish offers
 
     par Parallel Allocation with Learning (Providers compute independently)
         rect rgb(200, 220, 255)
             Note over Carol: Observes new needs + satisfaction history<br/>Reactively computes satisfaction-weighted allocation
-            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>Mutual Satisfaction (now uses learned data!):<br/>  MS(Carol,Alice) with Alice's share: 0.57<br/>  MS(Carol,Bob) with Bob's share: 0.37<br/><br/>Effective shares:<br/>  Alice: 0.171, Bob: 0.148<br/><br/>Allocate: Alice: 80.4, Bob: 69.6<br/><br/>💡 Satisfaction feedback adjusted allocations!
-            Carol->>Network: Publish Allocation Records {<br/>  allocation_id: "carol_alloc_2",<br/>  offers: [{to: Alice, qty: 80.4},<br/>           {to: Bob, qty: 69.6}]<br/>}
+            Carol->>Carol: Compute Derived State (Automatic):<br/><br/>💡 MS Formula (same as before, but shares learned!):<br/>MS = MR × recipient_share<br/><br/>MR(Carol,Alice) = min(30%, 30%) = 30%<br/>MR(Carol,Bob) = min(40%, 40%) = 40%<br/><br/>Learned shares (from satisfaction):<br/>Alice's share of Carol = 0.573<br/>Bob's share of Carol = 0.372<br/><br/>MS(Carol,Alice) = 30% × 0.573 = 0.172<br/>MS(Carol,Bob) = 40% × 0.372 = 0.149<br/>Total MS = 0.321<br/><br/>Allocate: Alice: 150×(0.172/0.321) = 80.4<br/>          Bob: 150×(0.149/0.321) = 69.6<br/><br/>💡 ALLOCATION → OFFER (Policy Applied):<br/>commitment_rate = 1.0<br/>Offers: Alice: 80.4, Bob: 69.6<br/><br/>💡 Alice's higher satisfaction → more allocation!
+            Carol->>Carol: Event++: stamp_carol.event = 3
+            Carol->>Network: Publish Offer Records {<br/>  offer_id: "carol_offer_2",<br/>  itc_stamp: {id: {l: 0, 0, r: 1, 0}, event: 3},<br/>  offers: [{to: Alice, qty: 80.4},<br/>           {to: Bob, qty: 69.6}]<br/>}
         end
     and
         rect rgb(200, 220, 255)
             Note over Kitchen: Observes new needs + satisfaction history<br/>Reactively computes satisfaction-weighted allocation
-            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>Mutual Satisfaction (now uses learned data!):<br/>  MS(Kitchen,Alice) with Alice's share: 0.43<br/>  MS(Kitchen,Bob) with Bob's share: 0.63<br/><br/>Effective shares:<br/>  Alice: 0.129, Bob: 0.189<br/><br/>Allocate: Alice: 81.1, Bob: 90<br/><br/>✅ High-quality provider gets more demand!
-            Kitchen->>Network: Publish Allocation Records {<br/>  allocation_id: "kitchen_alloc_2",<br/>  offers: [{to: Alice, qty: 81.1},<br/>           {to: Bob, qty: 90}]<br/>}
+            Kitchen->>Kitchen: Compute Derived State (Automatic):<br/><br/>💡 MS Formula (same as before, but shares learned!):<br/>MS = MR × recipient_share<br/><br/>MR(Kitchen,Alice) = min(20%, 20%) = 20%<br/>MR(Kitchen,Bob) = min(30%, 30%) = 30%<br/><br/>Learned shares (from satisfaction):<br/>Alice's share of Kitchen = 0.427<br/>Bob's share of Kitchen = 0.628<br/><br/>MS(Kitchen,Alice) = 20% × 0.427 = 0.085<br/>MS(Kitchen,Bob) = 30% × 0.628 = 0.188<br/>Total MS = 0.273<br/><br/>Allocate: Alice: 200×(0.085/0.273) = 62.3<br/>          Bob: 200×(0.188/0.273) = 137.7<br/><br/>💡 ALLOCATION → OFFER (Policy Applied):<br/>commitment_rate = 1.0<br/>Offers: Alice: 62.3, Bob: 137.7<br/><br/>✅ Bob's high satisfaction → more allocation!
+            Kitchen->>Kitchen: Event++: stamp_kitchen.event = 3
+            Kitchen->>Network: Publish Offer Records {<br/>  offer_id: "kitchen_offer_2",<br/>  itc_stamp: {id: {l: 0, 0, 0, r: 1}, event: 3},<br/>  offers: [{to: Alice, qty: 62.3},<br/>           {to: Bob, qty: 137.7}]<br/>}
         end
     end
 
-    Note over Network: 📡 Satisfaction-weighted allocations published<br/>System has learned from experience!
+    Note over Network: 📡 Satisfaction-weighted offers published (allocation × policy)<br/>System has learned from experience!
 
     Note over Alice,Network: ═══════════ CYCLE 2: SYSTEM LEARNED! ═══════════
 
     rect rgb(200, 255, 200)
-        Note over Alice,Network: 🎓 LEARNING OUTCOMES:<br/><br/>ALICE (Cycle 1 → Cycle 2):<br/>  From Carol: 64.3 → 80.4 (+25%)<br/>  From Kitchen: 100 → 81.1 (-19%)<br/>  Total: 164.3 → 161.5 (slightly less, closer to need!)<br/><br/>BOB (Cycle 1 → Cycle 2):<br/>  From Carol: 85.7 → 69.6 (-19%) ⚠️ Poor quality reduced!<br/>  From Kitchen: 90 → 90 (same) ✅ Good quality maintained!<br/>  Total: 175.7 → 159.6 (less waste, better allocation)<br/><br/>CAROL (Provider learning):<br/>  Total allocation: 150 → 150 (same capacity)<br/>  Average satisfaction: 0.68 (mediocre)<br/>  Signal: Improve food quality to increase future share!<br/><br/>KITCHEN (Provider learning):<br/>  Total allocation: 190 → 171.1<br/>  Average satisfaction: 0.93 (excellent)<br/>  Result: High-quality provider serving real needs
+        Note over Alice,Network: 🎓 LEARNING OUTCOMES:<br/><br/>💡 MS FORMULA THROUGHOUT: Same formula, shares evolve<br/>💡 ACCEPTANCE STRATEGIES: Alice (1/N), Bob (manual)<br/><br/>ALICE (Cycle 1 → Cycle 2):<br/>  Strategy: 1/N (antifragile diversification)<br/>  From Carol: 50 → 80.4 (+61%) ⬆️ satisfaction drove share up<br/>  From Kitchen: 50 → 62.3 (+25%) ⬆️ both providers increased<br/>  Total: 100 → 142.7 (MS formula adjusting)<br/>  💡 1/N strategy: bounded downside, discovering quality<br/><br/>BOB (Cycle 1 → Cycle 2):<br/>  Strategy: Manual (per-cycle decisions)<br/>  From Carol: 45 → 69.6 (+55%) ⬆️ despite low satisfaction<br/>  From Kitchen: 45 → 137.7 (+206%) ⬆️ Good quality rewarded!<br/>  Total: 90 → 207.3 (MS formula learning)<br/>  💡 Manual strategy: full control, but requires attention<br/><br/>CAROL (Provider learning):<br/>  Total allocation: 95 → 150 (capacity utilized)<br/>  Average satisfaction: 0.637 (mediocre)<br/>  Signal: Improve food quality to increase future share!<br/>  MS impact: Alice's share up, Bob's down<br/><br/>KITCHEN (Provider learning):<br/>  Total allocation: 95 → 200 (full capacity!)<br/>  Average satisfaction: 0.926 (excellent)<br/>  Result: High-quality provider gets more demand!<br/>  MS impact: Both recipients increased shares
+    end
+
+    Note over Alice,Network: ═══════════ CYCLE 3: OSCILLATION SCENARIO ═══════════
+    Note over Alice,Network: (Circumstances change - Alice needs more again!)
+
+    Alice->>Alice: Circumstances change!<br/>Alice manually increases need declaration
+    Alice->>Alice: Event++: stamp_alice.event = 6
+    Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v3",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 6},<br/>  needs: {food: 100}<br/>}<br/>(from 0 back to 100)
+
+    Network-->>Carol: Observes: Alice need history: 100 → 0 → 100
+    Network-->>Kitchen: Observes: Alice need history: 100 → 0 → 100
+
+    Note over Alice,Network: ═══════════ CYCLE 3: OSCILLATION DAMPENING ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers detect oscillation and apply dampening
+
+    par Parallel Allocation with Dampening (Providers detect oscillation)
+        rect rgb(255, 240, 240)
+            Note over Carol: CAROL AS PROVIDER:<br/>Detects oscillation pattern:<br/>Alice: 100 → 0 → 100<br/><br/>⚠️ OSCILLATION DETECTED!
+            Carol->>Carol: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+            Carol->>Carol: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+            Carol->>Carol: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ❌ no need)
+            Carol->>Carol: Step 3: Calculate MR shares<br/>MR(Carol,Alice) = 30%<br/>Only Alice has need → 100% to Alice
+            Carol->>Carol: Step 4: Proportional allocation<br/>Alice: 150 × 1.0 = 150
+            Carol->>Carol: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(150, 70) = 70 ✓ (damped)
+            Carol->>Carol: Event++: stamp_carol.event = 4
+            Carol->>Network: Publish Offer Records {<br/>  offer_id: "carol_offer_3",<br/>  itc_stamp: {id: {l: 0, 0, r: 1, 0}, event: 4},<br/>  offers: [{to: Alice, qty: 70, tier: "mutual"}]<br/>}
+        end
+    and
+        rect rgb(255, 240, 240)
+            Note over Kitchen: KITCHEN AS PROVIDER:<br/>Also detects oscillation:<br/>Alice: 100 → 0 → 100
+            Kitchen->>Kitchen: Step 0: Check oscillation history<br/>→ Detected: 100→0→100 pattern<br/>→ Damping = 0.7 (reduced from 1.0)
+            Kitchen->>Kitchen: Step 1: Apply dampening<br/>Alice activeNeed = 100 × 0.7 = 70<br/>Bob activeNeed = 0 × 1.0 = 0
+            Kitchen->>Kitchen: Step 2: Filter compatible recipients<br/>(Alice ✅, Bob ❌ no need)
+            Kitchen->>Kitchen: Step 3: Calculate MR shares<br/>MR(Kitchen,Alice) = 30%<br/>Only Alice has need → 100% to Alice
+            Kitchen->>Kitchen: Step 4: Proportional allocation<br/>Alice: 200 × 1.0 = 200
+            Kitchen->>Kitchen: Step 5: Cap at active need (NOT declared!)<br/>Alice: min(200, 70) = 70 ✓ (damped)
+            Kitchen->>Kitchen: Event++: stamp_kitchen.event = 4
+            Kitchen->>Network: Publish Offer Records {<br/>  offer_id: "kitchen_offer_3",<br/>  itc_stamp: {id: {l: 0, 0, 0, r: 1}, event: 4},<br/>  offers: [{to: Alice, qty: 70, tier: "mutual"}]<br/>}
+        end
+    end
+
+    Network-->>Alice: Receives allocations: 70 from Carol, 70 from Kitchen
+
+    rect rgb(255, 255, 200)
+        Note over Alice: ALICE AS RECIPIENT:<br/>Declared Need: 100<br/>Received from Carol: 70<br/>Received from Kitchen: 70<br/>Total Received: 140<br/><br/>⚠️ Still over-allocated (140 > 100)<br/>BUT much closer than 164.3!
+        
+        Alice->>Alice: Apply Update Law:<br/>Remaining_Need = max(0, 100 - 140) = 0
+        
+        Alice->>Alice: Event++: stamp_alice.event = 7
+        Alice->>Network: Publish Tree Update {<br/>  tree_id: "alice_tree_v3.1",<br/>  itc_stamp: {id: {l: 1, r: 0, 0, 0}, event: 7},<br/>  needs: {food: 0}<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ DAMPENING EFFECT ═══════════
+
+    rect rgb(255, 220, 255)
+        Note over Alice,Network: 💡 HOW DAMPENING HELPS:<br/><br/>WITHOUT DAMPING (Cycle 1):<br/>- Providers allocated based on full need: 100<br/>- Alice received: 115.5 (15.5% over)<br/><br/>WITH DAMPING (Cycle 3):<br/>- Providers allocated based on damped need: 70<br/>- Alice received: 140 (40% over)<br/><br/>✅ Dampening reduces oscillation amplitude<br/>✅ System converges more smoothly<br/>✅ Still allows over-allocation (expected!)<br/>✅ Still self-correcting via update law<br/><br/>DAMPING ALGORITHM:<br/>- Detect pattern: Need(t-2) → 0 → Need(t)<br/>- If Need(t) ≈ Need(t-2): oscillation detected<br/>- Apply damping: activeNeed = declaredNeed × 0.7<br/>- Cap allocations at activeNeed (not declared)<br/>- Prevents rapid swings, smoother convergence
     end
 
     Note over Alice,Network: ═══════════ v6 KEY PROPERTIES ═══════════
 
     rect rgb(255, 255, 200)
-        Note over Alice,Network: 🌟 v6 SATISFACTION-BASED FEATURES:<br/><br/>1. ASYNCHRONOUS EVENT-DRIVEN ARCHITECTURE:<br/>   - All entities operate independently<br/>   - No blocking, no coordination required<br/>   - Publish/subscribe pattern via network<br/>   - Reactive computation (Svelte stores)<br/><br/>2. SEPARATED USER INPUT & DERIVED STATE:<br/>   - Tree structure = user inputs (stable)<br/>   - DerivedStateMap = computed values (reactive)<br/>   - Nodes reference derived state (not contain it)<br/>   - Efficient recomputation on changes<br/><br/>3. BOOTSTRAP WITH RECOGNITION:<br/>   - Start with beliefs about contribution<br/>   - No satisfaction data needed initially<br/>   - Enables cold start<br/><br/>4. ACCEPT/DECLINE MECHANISM:<br/>   - Recipients independently control acceptance<br/>   - Asynchronous, no provider blocking<br/>   - Declined resources return to provider<br/>   - Prevents unwanted accumulation<br/><br/>5. SATISFACTION RATING (Async):<br/>   - Recipients rate over time (hours/days)<br/>   - No blocking on satisfaction<br/>   - Measures actual utility, not belief<br/>   - Creates accountability loop<br/><br/>6. AUTOMATIC LEARNING (Reactive):<br/>   - Satisfaction aggregates up tree (automatic)<br/>   - Future allocations reactively updated<br/>   - High satisfaction → larger share<br/>   - Low satisfaction → smaller share<br/><br/>7. PROVIDER QUALITY SIGNALS:<br/>   - Providers observe their satisfaction ratings<br/>   - Learn which recipients they serve well<br/>   - Can adjust offerings based on feedback<br/><br/>8. CONVERGENCE TO UTILITY:<br/>   - System learns what actually works<br/>   - Not just what people believe works<br/>   - Empirically grounded allocation
+        Note over Alice,Network: 🌟 v6 SATISFACTION-BASED FEATURES:<br/><br/>1. MS FORMULA THROUGHOUT (Principled Consistency):<br/>   - ONE formula: MS = MR × recipient_share<br/>   - Bootstrap: share = recognition (cold start)<br/>   - Learned: share = (recognition × satisfaction) / Σ<br/>   - Same formula, evolving shares = elegant learning<br/>   - No awkward formula switching between cycles<br/><br/>2. ALLOCATION → OFFER SEPARATION (Provider Optionality):<br/>   - Allocation = derived state (MS formula, automatic)<br/>   - Offer = commitment (allocation × offering_policy)<br/>   - offering_policy: {commitment_rate, auto_publish}<br/>   - Default: commitment_rate = 1.0 (full commitment)<br/>   - Provider optionality creates convexity<br/>   - Can adjust policy without changing algorithm<br/><br/>3. ASYNCHRONOUS EVENT-DRIVEN ARCHITECTURE:<br/>   - All entities operate independently<br/>   - No blocking, no coordination required<br/>   - Publish/subscribe pattern via network<br/>   - Reactive computation (Svelte stores)<br/><br/>4. SEPARATED USER INPUT & DERIVED STATE:<br/>   - Tree structure = user inputs (stable)<br/>   - DerivedStateMap = computed values (reactive)<br/>   - Nodes reference derived state (not contain it)<br/>   - Efficient recomputation on changes<br/><br/>5. BOOTSTRAP WITH RECOGNITION:<br/>   - Start with beliefs about contribution<br/>   - MS formula works with recognition-only shares<br/>   - No satisfaction data needed initially<br/>   - Enables cold start<br/><br/>6. ACCEPT/DECLINE MECHANISM (Manual or Automated):<br/>   - DEFAULT: Manual per-cycle decisions (full control)<br/>   - OPTIONAL: Policy-based automation (scalable)<br/>   - Strategies: 1/N (antifragile), weighted, greedy, manual<br/>   - Recipients independently control acceptance<br/>   - Asynchronous, no provider blocking<br/>   - Declined resources return to provider<br/>   - Prevents unwanted accumulation<br/><br/>7. ACCEPTANCE STRATEGIES (Optional):<br/>   - 1/N: Diversify equally (bounded downside, unbounded upside)<br/>   - weighted: Proportional to reputation<br/>   - greedy: Accept from best first<br/>   - manual: Default per-cycle review<br/>   💡 Trade-off: automation vs control<br/><br/>8. SATISFACTION RATING (Async):<br/>   - Recipients rate over time (hours/days)<br/>   - No blocking on satisfaction<br/>   - Measures actual utility, not belief<br/>   - Creates accountability loop<br/><br/>9. AUTOMATIC LEARNING (Reactive):<br/>   - Satisfaction adjusts recipient shares<br/>   - MS formula uses updated shares<br/>   - High satisfaction → larger share → more allocation<br/>   - Low satisfaction → smaller share → less allocation<br/>   - Seamless learning without formula changes<br/><br/>10. PROVIDER QUALITY SIGNALS:<br/>   - Providers observe their satisfaction ratings<br/>   - Learn which recipients they serve well<br/>   - Can adjust offerings based on feedback<br/><br/>11. CONVERGENCE TO UTILITY:<br/>   - System learns what actually works<br/>   - Not just what people believe works<br/>   - Empirically grounded allocation
+    end
+
+    Note over Alice,Network: ═══════════ ACCEPTANCE STRATEGIES (Optional) ═══════════
+
+    rect rgb(250, 240, 255)
+        Note over Alice,Network: 💡 ACCEPTANCE STRATEGY COMPARISON:<br/><br/>DEFAULT: Manual acceptance (per-cycle decisions)<br/>OPTIONAL: Policy-based automation (set once, runs automatically)<br/><br/>1/N STRATEGY (Antifragile - Recommended for Automation):<br/>  target_each = need / N_providers<br/>  accept = min(offer, target_each) from each provider<br/>  <br/>  ✅ Bounded downside: max loss = need/N per failure<br/>  ✅ Unbounded upside: discover quality → adjust recognition<br/>  ✅ Diversification: reduces single-provider risk<br/>  ✅ Non-teleological: no prediction needed<br/>  ✅ Example: Alice accepts 50 from each (100/2)<br/>  ⚠️ May be "inefficient" with known quality differences<br/><br/>WEIGHTED STRATEGY (Reputation-Based):<br/>  weight_i = reputation_i / Σ reputation_j<br/>  accept_i = min(offer_i, need × weight_i)<br/>  <br/>  ✅ Uses learned reputation data<br/>  ✅ Allocates more to high-quality providers<br/>  ⚠️ Fragile: wrong reputation → large loss<br/>  ⚠️ Reduces discovery: low reputation → no trials<br/><br/>GREEDY STRATEGY (Maximize Expected Quality):<br/>  sort providers by reputation, accept best until satisfied<br/>  <br/>  ✅ Simple: accept from best first<br/>  ✅ "Efficient" with accurate reputation<br/>  ⚠️ Extremely fragile: best provider fails → disaster<br/>  ⚠️ No discovery: worse providers never tried<br/>  ⚠️ Winner-takes-all dynamics<br/><br/>MANUAL STRATEGY (Default - Human Judgment):<br/>  user reviews each offer and decides per-cycle<br/>  <br/>  ✅ Maximum flexibility and context<br/>  ✅ Can incorporate non-quantified factors<br/>  ⚠️ Requires per-cycle intervention (doesn't scale)<br/>  ⚠️ Subject to cognitive biases<br/><br/>💡 RECOMMENDATION:<br/>Start with manual to learn the system, then switch to 1/N<br/>for antifragile automation. Use weighted/greedy only if<br/>relationships are stable and you want to optimize.
+    end
+
+    Note over Alice,Network: ═══════════ OVER-ALLOCATION & CONVERGENCE ═══════════
+
+    rect rgb(255, 240, 240)
+        Note over Alice,Network: ⚠️ OVER-ALLOCATION IS EXPECTED AND CORRECT:<br/><br/>WHY IT HAPPENS:<br/>1. Multiple providers allocate INDEPENDENTLY<br/>2. Each provider caps at declared need (not coordinating)<br/>3. No central coordinator to prevent overlap<br/>4. Example: Alice needs 100<br/>   - Carol offers 54 (capped at 100)<br/>   - Kitchen offers 61.5 (capped at 100)<br/>   - Total offered: 115.5 > 100 ⚠️<br/><br/>WHY IT'S CORRECT:<br/>1. Accept/Decline gives recipient control<br/>   - Can accept all, some, or none<br/>   - Declined resources return to providers<br/>   - User decides what actually helps<br/><br/>2. ACCEPTANCE STRATEGIES HANDLE IT:<br/>   - 1/N strategy (Alice): Accepts 50 from each → exactly 100 ✓<br/>   - Manual strategy (Bob): Accepts 45 from each → exactly 90 ✓<br/>   - Weighted strategy: Accepts proportional to reputation<br/>   - Greedy strategy: Accepts from best until satisfied<br/>   💡 Strategies prevent over-acceptance automatically!<br/><br/>3. Update Law guarantees convergence<br/>   - Need(t+1) = max(0, Need(t) - Accepted(t))<br/>   - Monotonic decrease: Need(t+1) ≤ Need(t)<br/>   - Eventually: Need → 0 (satisfied)<br/><br/>4. Over-allocation decreases over cycles<br/>   - Cycle 1: Offered 115.5, Alice accepts 100 (policy)<br/>   - Providers observe: Declined amounts<br/>   - Cycle 2: Allocations adjust via MS formula<br/>   - System learns actual consumption patterns<br/><br/>CONVERGENCE GUARANTEE:<br/>  Total_Needs(t+1) = Σ max(0, Need_i(t) - Accepted_i(t))<br/>                   ≤ Σ Need_i(t)<br/>                   = Total_Needs(t)<br/><br/>  → Monotonic decrease → Converges to 0<br/>  → Typical convergence: 5-10 cycles<br/><br/>DAMPENING ACCELERATES CONVERGENCE:<br/>  - Detects oscillation patterns<br/>  - Reduces activeNeed on rapid changes<br/>  - Smoother convergence curve<br/>  - Still allows over-allocation (necessary!)
     end
 
     Note over Alice,Network: ═══════════ MATHEMATICAL GUARANTEES ═══════════
 
     rect rgb(220, 255, 255)
-        Note over Alice,Network: ✅ STABILITY PROPERTIES (from test2.md):<br/><br/>1. NO INFINITE LOOPS:<br/>   - Time delay: satisfaction rated after allocation<br/>   - Hierarchical dampening: tree aggregation smooths<br/>   - Per-type damping: prevents oscillation<br/>   - Need caps: bounded allocation<br/>   - Asynchronous timing prevents instant feedback<br/><br/>2. GAMING RESISTANCE:<br/>   - Mutual satisfaction: min(S_A→B, S_B→A)<br/>   - Can't inflate unilaterally<br/>   - Recognition overrides satisfaction (eligibility)<br/>   - Network reputation effects<br/><br/>3. CONVERGENCE:<br/>   - Satisfaction → 0.0-1.0 (bounded)<br/>   - Shares sum to 1.0 (normalized)<br/>   - Allocations ≤ needs (capped)<br/>   - System converges to satisfaction equilibrium<br/><br/>4. SELF-CORRECTION:<br/>   - Poor providers → lower satisfaction → reduced share<br/>   - Good providers → higher satisfaction → increased share<br/>   - System optimizes toward actual utility<br/><br/>5. NO ACCUMULATION:<br/>   - Declined resources return immediately<br/>   - Update law: Need(t+1) = Need(t) - Received(t)<br/>   - Same as v5, now with satisfaction weighting<br/><br/>6. PARALLEL EXECUTION:<br/>   - All entities compute independently<br/>   - No sequential bottlenecks<br/>   - Scales horizontally (more entities = no slowdown)<br/>   - Event-driven = resilient to offline entities
+        Note over Alice,Network: ✅ ALLOCATION ALGORITHM (Two-Tier with MS Formula):<br/><br/>FOR EACH PROVIDER with capacity C and resource type R:<br/><br/>STEP 0: Check Oscillation History<br/>  - Track recipient need history: N(t-2), N(t-1), N(t)<br/>  - IF (N(t-2) > 0 AND N(t-1) = 0 AND N(t) ≈ N(t-2)):<br/>    damping_factor = 0.7<br/>  - ELSE: damping_factor = 1.0<br/><br/>STEP 1: Apply Dampening<br/>  - FOR EACH recipient r:<br/>    activeNeed[r] = declaredNeed[r] × damping_factor[r]<br/><br/>STEP 2: Filter Compatible Recipients<br/>  - recipients = {r : activeNeed[r] > 0 AND compatible(provider, r)}<br/><br/>STEP 3: Calculate MS (Mutual Satisfaction)<br/>  💡 ONE FORMULA THROUGHOUT:<br/>  - MR(provider, recipient) = min(recognition[p→r], recognition[r→p])<br/>  - recipient_share[r] = learned share (from satisfaction data)<br/>    Bootstrap: share[r] = recognition[r→p] (no satisfaction yet)<br/>    Learned: share[r] = (recognition[r→p] × satisfaction[r]) / Σ<br/>  - MS(provider, recipient) = MR(provider, r) × recipient_share[r]<br/><br/>STEP 4a: TIER 1 - Mutual Priority Allocation<br/>  💡 TWO-TIER SYSTEM (matches structure.md):<br/>  - mutual_recipients = {r : MS(provider, r) > 0}<br/>  - total_mutual_MS = Σ MS(provider, r) for r in mutual_recipients<br/>  - FOR EACH r in mutual_recipients:<br/>    raw_allocation[r] = C × (MS(provider, r) / total_mutual_MS)<br/>    tier1_allocation[r] = min(raw_allocation[r], activeNeed[r])<br/>  - tier1_used = Σ tier1_allocation[r]<br/><br/>STEP 4b: TIER 2 - Unilateral Recognition (Remaining Capacity)<br/>  - remaining_capacity = C - tier1_used<br/>  - unilateral_recipients = {r : MS(provider, r) = 0 AND recognition[p→r] > 0}<br/>  - IF remaining_capacity > 0 AND unilateral_recipients not empty:<br/>    total_unilateral_share = Σ recognition[p→r] for r in unilateral<br/>    FOR EACH r in unilateral_recipients:<br/>      raw_allocation[r] = remaining_capacity × (recognition[p→r] / total)<br/>      tier2_allocation[r] = min(raw_allocation[r], activeNeed[r])<br/><br/>STEP 5: Combine Tiers & Apply Policy<br/>  - final_allocation[r] = tier1_allocation[r] + tier2_allocation[r]<br/>  - offer[r] = final_allocation[r] × commitment_rate<br/><br/>STEP 6: Publish with ITC Stamp<br/>  - Event++: stamp.event += 1<br/>  - PUBLISH: {offer_id, itc_stamp, offers: [(r, offer[r], tier)]}
+    end
+
+    rect rgb(255, 220, 220)
+        Note over Alice,Network: ✅ RECIPIENT UPDATE LAW:<br/><br/>FOR EACH RECIPIENT after receiving allocations:<br/><br/>STEP 1: Accept/Decline Decision<br/>  - User decides which offers to accept<br/>  - Can accept full, partial, or decline<br/>  - Declined resources return to provider<br/><br/>STEP 2: Calculate Total Accepted<br/>  - total_accepted = Σ accepted_qty[allocation_i]<br/><br/>STEP 3: Apply Update Law<br/>  - remaining_need = max(0, declared_need - total_accepted)<br/><br/>STEP 4: Publish Updated Need<br/>  - Publish tree with needs: {resource_type: remaining_need}<br/><br/>KEY PROPERTY: Over-allocation is expected!<br/>  - Multiple providers allocate independently<br/>  - Each caps at declared need, not coordinating<br/>  - Total can exceed need → update law handles it<br/>  - Recipient uses accept/decline to control intake<br/>  - Convergence: need(t+1) ≤ need(t)
+    end
+
+    rect rgb(220, 255, 220)
+        Note over Alice,Network: ✅ SATISFACTION LEARNING:<br/><br/>FOR EACH RECIPIENT after using resources:<br/><br/>STEP 1: Rate Satisfaction (Asynchronous)<br/>  - Time: hours/days after receiving<br/>  - satisfaction[allocation_i] ∈ [0.0, 1.0]<br/>  - Measures actual utility/quality<br/><br/>FOR EACH PROVIDER observing satisfaction:<br/><br/>STEP 2: Aggregate Capacity Satisfaction<br/>  - capacity_sat = Σ(accepted_qty × sat) / Σ(accepted_qty)<br/>  - Weighted average of all allocations<br/>  - Represents provider quality signal<br/><br/>FOR EACH RECIPIENT observing provider satisfaction:<br/><br/>STEP 3: Recompute Recognition Shares<br/>  - effective_points = recognition_points × provider_capacity_sat<br/>  - total_points = Σ effective_points for all providers<br/>  - new_share[p] = effective_points[p] / total_points<br/><br/>STEP 4: Future Allocations Use New Shares<br/>  - MS(p, r) now includes satisfaction weighting<br/>  - High satisfaction → increased future share<br/>  - Low satisfaction → decreased future share<br/>  - System learns from experience!
+    end
+
+    rect rgb(220, 220, 255)
+        Note over Alice,Network: ✅ STABILITY PROPERTIES:<br/><br/>1. NO INFINITE LOOPS:<br/>   - Time delay: satisfaction rated after allocation<br/>   - Oscillation dampening: 0.7× on detected patterns<br/>   - Need caps: allocations ≤ activeNeed ≤ declaredNeed<br/>   - Asynchronous timing prevents instant feedback<br/>   - Monotonic decrease: total_need(t+1) ≤ total_need(t)<br/><br/>2. GAMING RESISTANCE:<br/>   - Mutual recognition: min(R_A→B, R_B→A)<br/>   - Can't inflate unilaterally<br/>   - Recognition sets eligibility (binary threshold)<br/>   - Satisfaction adjusts within eligible set<br/>   - Network reputation effects<br/><br/>3. CONVERGENCE:<br/>   - Satisfaction ∈ [0.0, 1.0] (bounded)<br/>   - Shares sum to 1.0 (normalized)<br/>   - Allocations ≤ needs (capped)<br/>   - Needs decrease monotonically<br/>   - System converges to satisfaction equilibrium<br/>   - Typical convergence: 5-10 cycles<br/><br/>4. SELF-CORRECTION:<br/>   - Poor providers → lower satisfaction → reduced share<br/>   - Good providers → higher satisfaction → increased share<br/>   - System optimizes toward actual utility<br/>   - Empirically grounded allocation<br/><br/>5. NO ACCUMULATION:<br/>   - Declined resources return immediately<br/>   - Update law: Need(t+1) = max(0, Need(t) - Accepted(t))<br/>   - Receiving decreases need, never increases wealth<br/>   - Mathematical abolition of wealth accumulation<br/><br/>6. PARALLEL EXECUTION:<br/>   - All entities compute independently<br/>   - Same deterministic algorithm<br/>   - No coordination required<br/>   - No sequential bottlenecks<br/>   - Scales horizontally: O(entities) not O(entities²)<br/>   - Event-driven = resilient to offline entities
+    end
+
+    Note over Alice,Network: ═══════════ COMPLETE ALGORITHM INTEGRATION ═══════════
+
+    rect rgb(240, 255, 240)
+        Note over Alice,Network: 🔄 HOW ALL PIECES FIT TOGETHER:<br/><br/>💡 KEY PRINCIPLE: ONE FORMULA (MS) THROUGHOUT<br/>MS(provider, recipient) = MR × recipient_share<br/>Shares evolve from recognition-based → satisfaction-weighted<br/><br/>CYCLE N: ALLOCATION PHASE<br/><br/>1. PROVIDER observes network:<br/>   - Recipient declared needs (from trees)<br/>   - Recipient need history (for oscillation detection)<br/>   - Provider's own capacity<br/>   - Recognition/satisfaction data<br/><br/>2. PROVIDER runs 5-step algorithm:<br/>   Step 0: Check history → damping_factor<br/>   Step 1: activeNeed = declared × damping_factor<br/>   Step 2: Filter compatible recipients<br/>   Step 3: Calculate MS (MR × recipient_share)<br/>     Bootstrap: recipient_share = recognition<br/>     Learned: recipient_share = (recognition × satisfaction) / Σ<br/>   Step 4: Proportional allocation from capacity<br/>   Step 5: Cap at activeNeed<br/>   → Publish offers<br/><br/>3. RECIPIENT observes offers:<br/>   - Multiple providers may offer simultaneously<br/>   - Total offers may exceed need (expected!)<br/>   - User makes accept/decline decisions<br/>   → Publish acceptances<br/><br/>4. RECIPIENT applies update law:<br/>   - remaining_need = max(0, declared - Σ accepted)<br/>   - Publish updated tree with new need<br/>   - If remaining_need = 0: satisfied!<br/><br/>CYCLE N: SATISFACTION PHASE (Async)<br/><br/>5. RECIPIENT uses resources (hours/days):<br/>   - Observes actual quality/utility<br/>   - Rates satisfaction ∈ [0.0, 1.0]<br/>   → Publish satisfaction records<br/><br/>6. PROVIDER observes satisfaction:<br/>   - Aggregate: capacity_sat = Σ(qty×sat) / Σ(qty)<br/>   - Learn: which recipients, what quality<br/>   - Signal: improve offerings if satisfaction low<br/>   → Update derived state<br/><br/>7. RECIPIENT observes provider satisfaction:<br/>   - Recompute shares: recognition × provider_sat<br/>   - Normalize: share = effective_points / total<br/>   - Future MS calculations use new shares<br/>   → Update derived state<br/><br/>CYCLE N+1: LEARNING APPLIED<br/><br/>8. Next allocation cycle uses same MS formula:<br/>   - MS(provider, recipient) = MR × recipient_share<br/>   - Shares now satisfaction-weighted (not just recognition)<br/>   - High satisfaction → increased share → more allocation<br/>   - Low satisfaction → decreased share → less allocation<br/>   - Same formula, different shares = learning!<br/><br/>KEY INSIGHT:<br/>Recognition (user input) sets ELIGIBILITY (MR)<br/>Satisfaction (observed data) adjusts SHARES<br/>MS Formula (consistent) combines both<br/>Dampening (algorithm) ensures STABILITY<br/>Update Law (math) guarantees CONVERGENCE
     end
 
     Note over Alice,Network: ═══════════ ARCHITECTURE SUMMARY ═══════════
 
     rect rgb(230, 230, 250)
-        Note over Alice,Network: 🏗️ v6 PARALLEL, EVENT-DRIVEN ARCHITECTURE:<br/><br/>📍 KEY INSIGHT:<br/>User inputs and derived values exist in SEPARATE,<br/>PARALLEL data structures.<br/><br/>🌲 TREE (User Inputs - Stable):<br/>  - Points, contributors, needs, capacities<br/>  - Only changes when user explicitly edits<br/>  - Contains REFERENCES to derived state<br/>  - Serializable, immutable structure<br/><br/>📊 DERIVED STATE MAP (Computed - Reactive):<br/>  - Weights, shares, satisfaction, allocations<br/>  - Recomputes automatically on changes<br/>  - Keyed by node_id for O(1) lookup<br/>  - Ephemeral, can be reconstructed<br/><br/>🔄 REACTIVE FLOW:<br/>  1. User edits tree (user input)<br/>  2. Tree published to network<br/>  3. Other entities observe change<br/>  4. Derived states recompute (automatic)<br/>  5. DerivedStateMap updated (reactive)<br/>  6. UI updates (Svelte $: reactivity)<br/><br/>📡 NETWORK PATTERN:<br/>  - Publish: Entity publishes state changes<br/>  - Subscribe: Others observe relevant changes<br/>  - No RPC, no blocking, no coordination<br/>  - Eventually consistent<br/><br/>✅ BENEFITS:<br/>  - Scalable: O(entities) not O(entities²)<br/>  - Resilient: Offline entities don't block others<br/>  - Efficient: Only recompute what changed<br/>  - Clear: User inputs separated from calculations<br/>  - Fast: Parallel computation where possible
+        Note over Alice,Network: 🏗️ v6 PARALLEL, EVENT-DRIVEN ARCHITECTURE:<br/><br/>📍 KEY INSIGHT:<br/>User inputs and derived values exist in SEPARATE,<br/>PARALLEL data structures.<br/><br/>🌲 TREE (User Inputs - Stable):<br/>  - Points, contributors, needs, capacities<br/>  - Only changes when user explicitly edits<br/>  - Contains REFERENCES to derived state<br/>  - Serializable, immutable structure<br/><br/>📊 DERIVED STATE MAP (Computed - Reactive):<br/>  - Weights, shares, satisfaction, allocations<br/>  - Recomputes automatically on changes<br/>  - Keyed by node_id for O(1) lookup<br/>  - Ephemeral, can be reconstructed<br/><br/>🔄 REACTIVE FLOW:<br/>  1. User edits tree (user input)<br/>  2. Tree published to network<br/>  3. Other entities observe change<br/>  4. Derived states recompute (automatic)<br/>  5. DerivedStateMap updated (reactive)<br/>  6. UI updates (Svelte $: reactivity)<br/><br/>📡 NETWORK PATTERN:<br/>  - Publish: Entity publishes state changes<br/>  - Subscribe: Others observe relevant changes<br/>  - No RPC, no blocking, no coordination<br/>  - Eventually consistent<br/><br/>🔐 DETERMINISM:<br/>  - Same algorithm for all providers (5 steps)<br/>  - Same inputs → same outputs (reproducible)<br/>  - Network data is source of truth<br/>  - Any entity can verify allocations<br/>  - Transparent, auditable computation<br/><br/>✅ BENEFITS:<br/>  - Scalable: O(entities) not O(entities²)<br/>  - Resilient: Offline entities don't block others<br/>  - Efficient: Only recompute what changed<br/>  - Clear: User inputs separated from calculations<br/>  - Fast: Parallel computation where possible<br/>  - Trustless: Deterministic, verifiable results
+    end
+
+    Note over Alice,Network: ═══════════ ITC CAUSALITY TRACKING ═══════════
+
+    rect rgb(250, 245, 255)
+        Note over Alice,Network: 🕐 INTERVAL TREE CLOCKS (ITC) - Distributed Causality:<br/><br/>WHY ITC INSTEAD OF TIMESTAMPS:<br/>  Simple timestamps have problems:<br/>  ❌ Clock skew between entities<br/>  ❌ Can't detect concurrent updates<br/>  ❌ Can't resolve conflicts automatically<br/>  ❌ Vector clocks need O(n) space<br/><br/>ITC BENEFITS:<br/>  ✅ O(log n) space complexity (vs O(n) vector clocks)<br/>  ✅ Detects happens-before relationships<br/>  ✅ Detects concurrent updates (conflicts)<br/>  ✅ No clock synchronization needed<br/>  ✅ Fork/join for dynamic entity set<br/><br/>ITC STRUCTURE:<br/>  itc_stamp = {<br/>    id: ID_component,      // Fork/join operations<br/>    event: Event_component // Logical counter (tree)<br/>  }<br/><br/>  ID space examples:<br/>  - Alice: {l: 1, r: 0, 0, 0} (left quadrant)<br/>  - Bob:   {l: 0, r: 1, 0, 0} (right-left quadrant)<br/>  - Carol: {l: 0, 0, r: 1, 0} (right-right-left)<br/>  - Kitchen: {l: 0, 0, 0, r: 1} (right-right-right)<br/><br/>OPERATIONS:<br/><br/>1. FORK (New Entity Joins):<br/>   - Split ID space with existing entity<br/>   - Each gets portion of ID space<br/>   - Event counter starts at 0<br/><br/>2. EVENT (Local Update):<br/>   - Increment event counter: event++<br/>   - Publish with new stamp<br/>   - Establishes happens-after ordering<br/><br/>3. JOIN (Sync with Other Entity):<br/>   - Merge event counters<br/>   - Reunite ID spaces (optional)<br/>   - Creates happens-after relationship<br/><br/>CAUSALITY DETECTION:<br/><br/>  Compare stamps A and B:<br/>  <br/>  IF event_A dominates event_B:<br/>    → A happened-before B (causally ordered)<br/>    → B must incorporate A's changes<br/>    → No conflict<br/>  <br/>  IF event_B dominates event_A:<br/>    → B happened-before A<br/>    → A already incorporates B<br/>    → No conflict<br/>  <br/>  IF neither dominates:<br/>    → Concurrent updates detected!<br/>    → Conflict resolution needed<br/>    → Use merge strategy (semantic, LWW, etc.)<br/><br/>PROTOCOL USAGE:<br/><br/>  Every publish operation includes ITC stamp:<br/>  - Tree updates: stamp.event++<br/>  - Offer records: stamp.event++<br/>  - Acceptance records: stamp.event++<br/>  - Satisfaction records: stamp.event++<br/><br/>  Entities can:<br/>  ✅ Detect if update is stale (happened-before current)<br/>  ✅ Detect if update is new (happened-after current)<br/>  ✅ Detect if update is concurrent (conflict)<br/>  ✅ Resolve conflicts deterministically<br/><br/>EXAMPLE CONCURRENT UPDATE:<br/><br/>  Alice publishes tree: {event: 3}<br/>  Bob publishes tree: {event: 3} (concurrently)<br/>  <br/>  Neither event dominates → concurrent!<br/>  <br/>  Resolution strategy:<br/>  - Semantic merge (combine trees intelligently)<br/>  - ID-based ordering (deterministic tiebreaker)<br/>  - Last-Writer-Wins (use wall-clock as hint)<br/>  - User prompt (manual resolution)<br/><br/>💡 ITC enables truly distributed, conflict-aware protocol!
+    end
+
+    Note over Alice,Network: ═══════════ TWO-TIER ALLOCATION RATIONALE ═══════════
+
+    rect rgb(255, 250, 245)
+        Note over Alice,Network: 🎯 WHY TWO-TIER? (Matches structure.md)<br/><br/>TIER 1: MUTUAL PRIORITY (MS > 0)<br/>  Recipients where BOTH parties recognize each other<br/>  Gets first access to capacity<br/><br/>  Benefits:<br/>  ✅ Incentivizes mutual relationships<br/>  ✅ Rewards reciprocity<br/>  ✅ Priority to established partnerships<br/>  ✅ More stable allocations<br/><br/>  Example:<br/>  - Carol recognizes Alice (30%)<br/>  - Alice recognizes Carol (30%)<br/>  - MS(Carol, Alice) = 30% × 30% = 0.09 > 0<br/>  → Alice gets Tier 1 priority!<br/><br/>TIER 2: UNILATERAL RECOGNITION (MS = 0)<br/>  Recipients where only provider recognizes them<br/>  Gets remaining capacity after Tier 1<br/><br/>  Benefits:<br/>  ✅ Allows one-way generosity<br/>  ✅ Enables bootstrapping new relationships<br/>  ✅ Provider can help strangers<br/>  ✅ Still respects mutual relationships first<br/><br/>  Example:<br/>  - Carol recognizes Dave (20%)<br/>  - Dave doesn't recognize Carol yet (0%)<br/>  - MS(Carol, Dave) = 20% × 0% = 0<br/>  → Dave gets Tier 2 (if capacity remains)<br/><br/>KEY INSIGHT:<br/><br/>  Without two-tier:<br/>  - One-way recognition treated same as mutual<br/>  - No incentive for reciprocity<br/>  - Mutual relationships don't get priority<br/><br/>  With two-tier:<br/>  - Mutual relationships prioritized (Tier 1)<br/>  - One-way generosity still possible (Tier 2)<br/>  - System incentivizes building mutual trust<br/>  - More realistic social dynamics<br/><br/>MATHEMATICAL FORMULATION:<br/><br/>  Tier 1 (Mutual Priority):<br/>    mutual_recipients = {r : MS(p,r) > 0}<br/>    allocation[r] = capacity × (MS(p,r) / Σ MS)<br/>  <br/>  Tier 2 (Unilateral Recognition):<br/>    remaining = capacity - Σ tier1_allocations<br/>    unilateral = {r : MS(p,r) = 0 AND recognition[p→r] > 0}<br/>    allocation[r] = remaining × (recognition[p→r] / Σ recognition)<br/><br/>💡 Matches structure.md implementation exactly!<br/>   Protocol now reflects what implementations actually do!
+    end
+
+    Note over Alice,Network: ═══════════ IMPLEMENTATION NOTES ═══════════
+
+    rect rgb(250, 250, 230)
+        Note over Alice,Network: 💻 KEY IMPLEMENTATION DETAILS:<br/><br/>1. INDEPENDENT COMPUTATION:<br/>   - Each provider computes allocations independently<br/>   - Same deterministic algorithm (5 steps)<br/>   - No coordination, no central server<br/>   - Results should match if inputs match<br/><br/>2. ALLOCATION → OFFER SEPARATION:<br/>   - Allocation = derived state (MS formula)<br/>   - Offer = allocation × offering_policy<br/>   - offering_policy: {commitment_rate, auto_publish}<br/>   - commitment_rate: 0.0-1.0 (default 1.0 = full)<br/>   - auto_publish: true (automatic) | false (manual approval)<br/>   - Provider can adjust commitment without changing algorithm<br/>   - Creates convexity: option to commit less<br/><br/>3. ACCEPT/DECLINE MECHANICS:<br/>   - DEFAULT: Manual per-cycle decisions<br/>   - OPTIONAL: Policy-based automation<br/>   - Offers are proposals, not commitments<br/>   - Recipients have full control<br/>   - Partial acceptance allowed<br/>   - Declined amounts return to provider capacity<br/>   - Update law uses ACCEPTED amounts only<br/><br/>4. ACCEPTANCE POLICY (Optional):<br/>   - Part of tree structure (user input)<br/>   - acceptance_policy: {strategy, auto_accept}<br/>   - strategy: "manual" | "1/N" | "weighted" | "greedy"<br/>   - auto_accept: false (manual) | true (automatic)<br/>   - Can be updated anytime (part of tree)<br/><br/>5. ACCEPTANCE STRATEGY IMPLEMENTATION:<br/>   - 1/N: target = need/N, accept min(offer, target) each<br/>   - weighted: weight = reputation/Σ, accept need×weight<br/>   - greedy: sort by reputation, accept best first<br/>   - manual: user reviews each offer<br/><br/>6. OSCILLATION DETECTION:<br/>   - Track 3-point history: N(t-2), N(t-1), N(t)<br/>   - Pattern: N(t-2) > 0, N(t-1) = 0, N(t) ≈ N(t-2)<br/>   - Threshold: |N(t) - N(t-2)| / N(t-2) < 0.2<br/>   - Damping factor: 0.7 (tunable parameter)<br/>   - Per-recipient, per-resource-type<br/><br/>7. SATISFACTION WEIGHTING:<br/>   - Bootstrap: recognition only (share = recognition)<br/>   - With data: MS = MR × recipient_share<br/>   - recipient_share = learned from satisfaction<br/>   - Derived from: recognition × provider_capacity_sat<br/>   - Normalized across all eligible providers<br/><br/>8. CONVERGENCE MONITORING:<br/>   - Track: Σ all needs over time<br/>   - Should decrease monotonically<br/>   - Typical: 5-10 cycles to convergence<br/>   - With damping: smoother, faster convergence<br/>   - Alert if oscillation persists (tune damping)<br/><br/>9. DATA STRUCTURES:<br/>   - Tree: {recognition, offering_policy, acceptance_policy, needs, capacities}<br/>   - DerivedState: ephemeral, keyed by node_id<br/>   - ITCStamp: {id: ID_component, event: Event_component}<br/>   - OfferRecord: {id, itc_stamp, provider, offers: [{to, qty, tier}]}<br/>   - AcceptanceRecord: {id, itc_stamp, offer_id, acceptances: [{offer, accepted, declined}]}<br/>   - SatisfactionRecord: {id, itc_stamp, ratings: [{offer, satisfaction}]}<br/>   - TreeUpdate: {tree_id, itc_stamp, needs, capacities, ...}<br/>   - All records published to network (event stream with causality)<br/><br/>10. TWO-TIER ALLOCATION:<br/>   - Tier 1: Recipients with MS > 0 (mutual recognition)<br/>   - Tier 2: Recipients with MS = 0 but recognition[p→r] > 0<br/>   - Each offer tagged with tier: "mutual" or "unilateral"<br/>   - Incentivizes mutual relationships<br/>   - Allows one-way generosity with remaining capacity<br/><br/>11. ITC CLOCK MANAGEMENT:<br/>   - Initialize: Fork from seed or existing entity<br/>   - Each publish: Event++ before publishing<br/>   - Store stamp with each published record<br/>   - Compare stamps when observing updates<br/>   - Detect concurrency and resolve conflicts<br/>   - No wall-clock synchronization needed
     end

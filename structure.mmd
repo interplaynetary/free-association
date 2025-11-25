@@ -1,0 +1,466 @@
+ARCHITECTURE: TREE-BASED SATISFACTION AGGREGATION
+(From structure.md - Implementation Architecture)
+
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ INITIALIZATION: TREE PUBLICATION ═══════════
+    Note over Alice,Network: 🌲 TREE = User Inputs (Stable)<br/>📊 DERIVED STATE = Computed Values (Reactive)
+
+    par Parallel Tree Publications (User Inputs Only)
+        Alice->>Network: Publish Tree {<br/>  Root (entity_id: Alice)<br/>    Non-Slot Node: "Mission Alignment"<br/>      Contributors: [Carol: 30pts, Kitchen: 20pts]<br/>    Goal: "Food Security"<br/>      Need-Slot: {food, declared: 100}<br/>}
+    and
+        Bob->>Network: Publish Tree {<br/>  Root (entity_id: Bob)<br/>    Non-Slot Node: "Partnerships"<br/>      Contributors: [Carol: 40pts, Kitchen: 30pts]<br/>    Goal: "Nutrition"<br/>      Need-Slot: {food, declared: 90}<br/>}
+    and
+        Carol->>Network: Publish Tree {<br/>  Root (entity_id: Carol)<br/>    Goal: "Community Kitchen"<br/>      Capacity-Slot: {food, available: 150}<br/>        Contributors: [] (self only)
+    and
+        Kitchen->>Network: Publish Tree {<br/>  Root (entity_id: Kitchen)<br/>    Goal: "Food Distribution"<br/>      Capacity-Slot: {food, available: 200}<br/>        Contributors: [] (self only)<br/>}
+    end
+
+    Note over Network: 📡 Trees published to network<br/>Each tree contains USER INPUTS only<br/>Derived states computed locally
+
+    Note over Alice,Network: ═══════════ DERIVED STATE COMPUTATION ═══════════
+    Note over Alice,Network: 📐 Each entity computes their own derived state reactively
+
+    par Parallel Derived State Computation (Local, Automatic)
+        rect rgb(240, 248, 255)
+            Note over Alice: 📊 COMPUTE DERIVED STATE (Automatic)
+            Alice->>Alice: Compute ShareOfGeneralSatisfaction:<br/><br/>Step 1: Calculate influence pools<br/>  Non-Slot node weight: 1.0<br/>  Non-Slot satisfaction: 1.0 (bootstrap)<br/>  P_total = 1.0 × 1.0 = 1.0<br/><br/>Step 2: Calculate recognition pools<br/>  PositivePool = 1.0 / 1.0 = 1.0<br/><br/>Step 3: Calculate raw shares<br/>  Carol: (1.0 × 1.0) × (30/50) = 0.6<br/>  Kitchen: (1.0 × 1.0) × (20/50) = 0.4<br/><br/>Step 4: Apply pool-bounded recognition<br/>  Carol: (0.6 / 1.0) × 1.0 = 0.6<br/>  Kitchen: (0.4 / 1.0) × 1.0 = 0.4<br/><br/>💡 ShareOfTotal-Satisfaction_Alice→Carol = 0.6<br/>💡 ShareOfTotal-Satisfaction_Alice→Kitchen = 0.4
+            Note over Alice: DerivedStateMap[Alice] = {<br/>  shareMap: {Carol: 0.6, Kitchen: 0.4}<br/>}
+        end
+    and
+        rect rgb(240, 248, 255)
+            Note over Bob: 📊 COMPUTE DERIVED STATE (Automatic)
+            Bob->>Bob: Compute ShareOfGeneralSatisfaction:<br/><br/>Step 1: Calculate influence pools<br/>  Non-Slot node weight: 1.0<br/>  Non-Slot satisfaction: 1.0 (bootstrap)<br/>  P_total = 1.0 × 1.0 = 1.0<br/><br/>Step 2: Calculate recognition pools<br/>  PositivePool = 1.0 / 1.0 = 1.0<br/><br/>Step 3: Calculate raw shares<br/>  Carol: (1.0 × 1.0) × (40/70) = 0.571<br/>  Kitchen: (1.0 × 1.0) × (30/70) = 0.429<br/><br/>Step 4: Apply pool-bounded recognition<br/>  Carol: (0.571 / 1.0) × 1.0 = 0.571<br/>  Kitchen: (0.429 / 1.0) × 1.0 = 0.429<br/><br/>💡 ShareOfTotal-Satisfaction_Bob→Carol = 0.571<br/>💡 ShareOfTotal-Satisfaction_Bob→Kitchen = 0.429
+            Note over Bob: DerivedStateMap[Bob] = {<br/>  shareMap: {Carol: 0.571, Kitchen: 0.429}<br/>}
+        end
+    and
+        rect rgb(240, 248, 255)
+            Note over Carol: 📊 COMPUTE DERIVED STATE (Automatic)
+            Carol->>Carol: Observe network (Alice & Bob's trees):<br/><br/>Alice recognizes Carol: 30 pts (60%)<br/>Bob recognizes Carol: 40 pts (57.1%)<br/><br/>Calculate Mutual-Satisfaction:<br/>  MS(Carol,Alice) = min(ShareTotal_C→A, ShareTotal_A→C)<br/>  Need ShareTotal_Carol→Alice...<br/><br/>💡 Carol doesn't recognize anyone yet (no contributors)<br/>💡 Unilateral recognition only
+            Note over Carol: DerivedStateMap[Carol] = {<br/>  mutualSatisfactionMap: {}<br/>}
+        end
+    and
+        rect rgb(240, 248, 255)
+            Note over Kitchen: 📊 COMPUTE DERIVED STATE (Automatic)
+            Kitchen->>Kitchen: Observe network (Alice & Bob's trees):<br/><br/>Alice recognizes Kitchen: 20 pts (40%)<br/>Bob recognizes Kitchen: 30 pts (42.9%)<br/><br/>Calculate Mutual-Satisfaction:<br/>  MS(Kitchen,Alice) = min(ShareTotal_K→A, ShareTotal_A→K)<br/>  Need ShareTotal_Kitchen→Alice...<br/><br/>💡 Kitchen doesn't recognize anyone yet<br/>💡 Unilateral recognition only
+            Note over Kitchen: DerivedStateMap[Kitchen] = {<br/>  mutualSatisfactionMap: {}<br/>}
+        end
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 1: ALLOCATION (Two-Tier) ═══════════
+    Note over Alice,Network: 📐 structure.md uses TWO-TIER allocation:<br/>Tier 1 = Mutual relationships (priority)<br/>Tier 2 = Unilateral recognition (remaining capacity)
+
+    par Parallel Allocation (Providers compute independently)
+        rect rgb(255, 248, 240)
+            Note over Carol: 🔄 TWO-TIER ALLOCATION ALGORITHM
+            Carol->>Carol: Tier 1: Mutual Priority<br/>  Check for Mutual-Satisfaction > 0<br/>  → None! (Carol doesn't recognize anyone)<br/>  → No Tier 1 allocations<br/><br/>Tier 2: Unilateral Recognition<br/>  RemainingCapacity = 150 - 0 = 150<br/><br/>  Unilateral recipients:<br/>    Alice: ShareTotal_Carol→Alice = 0 (no recognition)<br/>    Bob: ShareTotal_Carol→Bob = 0 (no recognition)<br/><br/>  ⚠️ Carol can't allocate (no recognition of recipients)<br/>  💡 This is ONE-WAY recognition scenario
+            Carol->>Network: Publish Allocations: []<br/>(No allocations - Carol doesn't recognize recipients)
+        end
+    and
+        rect rgb(255, 248, 240)
+            Note over Kitchen: 🔄 TWO-TIER ALLOCATION ALGORITHM
+            Kitchen->>Kitchen: Tier 1: Mutual Priority<br/>  Check for Mutual-Satisfaction > 0<br/>  → None! (Kitchen doesn't recognize anyone)<br/>  → No Tier 1 allocations<br/><br/>Tier 2: Unilateral Recognition<br/>  RemainingCapacity = 200 - 0 = 200<br/><br/>  Unilateral recipients:<br/>    Alice: ShareTotal_Kitchen→Alice = 0<br/>    Bob: ShareTotal_Kitchen→Bob = 0<br/><br/>  ⚠️ Kitchen can't allocate (no recognition)<br/>  💡 Providers need to recognize recipients!
+            Kitchen->>Network: Publish Allocations: []<br/>(No allocations - Kitchen doesn't recognize recipients)
+        end
+    end
+
+    Note over Alice,Network: ⚠️ PROBLEM: Providers don't recognize recipients!<br/>Need MUTUAL recognition for allocations to work
+
+    Note over Alice,Network: ═══════════ UPDATE: PROVIDERS ADD RECOGNITION ═══════════
+    Note over Alice,Network: 👤 Providers update their trees to recognize recipients
+
+    par Providers Update Trees (Add Recognition)
+        Carol->>Network: Update Tree {<br/>  Root (entity_id: Carol)<br/>    Non-Slot Node: "Partnerships" (NEW!)<br/>      Contributors: [Alice: 30pts, Bob: 40pts]<br/>    Goal: "Community Kitchen"<br/>      Capacity-Slot: {food, available: 150}<br/>}
+    and
+        Kitchen->>Network: Update Tree {<br/>  Root (entity_id: Kitchen)<br/>    Non-Slot Node: "Network" (NEW!)<br/>      Contributors: [Alice: 20pts, Bob: 30pts]<br/>    Goal: "Food Distribution"<br/>      Capacity-Slot: {food, available: 200}<br/>}
+    end
+
+    Note over Network: 📡 Tree updates published<br/>All entities reactively recompute derived state
+
+    Note over Alice,Network: ═══════════ REACTIVE RECOMPUTATION ═══════════
+    Note over Alice,Network: 🔄 REACTIVE FLOW:<br/>Tree Update → Dependency Analysis → Mark Dirty → Recompute
+
+    par Parallel Reactive Recomputation (Triggered by Tree Updates)
+        rect rgb(240, 255, 240)
+            Note over Carol: 📊 RECOMPUTE DERIVED STATE (Reactive)
+            Carol->>Carol: Tree updated → Dependencies marked dirty<br/><br/>Recompute ShareOfGeneralSatisfaction:<br/><br/>Step 1: Calculate influence pools<br/>  Non-Slot node weight: 1.0<br/>  P_total = 1.0 × 1.0 = 1.0<br/><br/>Step 2-4: Calculate shares<br/>  Alice: 30/70 = 0.429<br/>  Bob: 40/70 = 0.571<br/><br/>Compute Mutual-Satisfaction:<br/>  MS(Carol,Alice) = min(0.429, 0.6) = 0.429<br/>  MS(Carol,Bob) = min(0.571, 0.571) = 0.571<br/>  Total MS = 1.0<br/><br/>✅ Now have mutual recognition!
+            Note over Carol: DerivedStateMap[Carol] = {<br/>  shareMap: {Alice: 0.429, Bob: 0.571},<br/>  mutualSatisfactionMap: {Alice: 0.429, Bob: 0.571}<br/>}
+        end
+    and
+        rect rgb(240, 255, 240)
+            Note over Kitchen: 📊 RECOMPUTE DERIVED STATE (Reactive)
+            Kitchen->>Kitchen: Tree updated → Dependencies marked dirty<br/><br/>Recompute ShareOfGeneralSatisfaction:<br/><br/>Step 1-4: Calculate shares<br/>  Alice: 20/50 = 0.4<br/>  Bob: 30/50 = 0.6<br/><br/>Compute Mutual-Satisfaction:<br/>  MS(Kitchen,Alice) = min(0.4, 0.4) = 0.4<br/>  MS(Kitchen,Bob) = min(0.6, 0.429) = 0.429<br/>  Total MS = 0.829<br/><br/>✅ Now have mutual recognition!
+            Note over Kitchen: DerivedStateMap[Kitchen] = {<br/>  shareMap: {Alice: 0.4, Bob: 0.6},<br/>  mutualSatisfactionMap: {Alice: 0.4, Bob: 0.429}<br/>}
+        end
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 2: ALLOCATION (With Mutual Recognition) ═══════════
+    Note over Alice,Network: 📐 Now both tiers will work!
+
+    par Parallel Two-Tier Allocation (With Mutual Recognition)
+        rect rgb(220, 240, 255)
+            Note over Carol: 🔄 TWO-TIER ALLOCATION (Complete)
+            Carol->>Carol: Tier 1: Mutual Priority<br/>  Recipients with MS > 0:<br/>    Alice: MS = 0.429<br/>    Bob: MS = 0.571<br/>  Total MS = 1.0<br/><br/>  RawShare_Alice = 0.429 / 1.0 = 0.429<br/>  RawShare_Bob = 0.571 / 1.0 = 0.571<br/><br/>  RawAllocation_Alice = 150 × 0.429 = 64.3<br/>  RawAllocation_Bob = 150 × 0.571 = 85.7<br/><br/>  FinalAllocation_Alice = min(64.3, 100) = 64.3<br/>  FinalAllocation_Bob = min(85.7, 90) = 85.7<br/><br/>Tier 2: Unilateral Recognition<br/>  RemainingCapacity = 150 - 150 = 0<br/>  → No Tier 2 allocations (all capacity used)<br/><br/>✅ Both recipients served via Tier 1!
+            Carol->>Network: Publish Allocations {<br/>  [{to: Alice, qty: 64.3, tier: "mutual"},<br/>   {to: Bob, qty: 85.7, tier: "mutual"}]<br/>}
+        end
+    and
+        rect rgb(220, 240, 255)
+            Note over Kitchen: 🔄 TWO-TIER ALLOCATION (Complete)
+            Kitchen->>Kitchen: Tier 1: Mutual Priority<br/>  Recipients with MS > 0:<br/>    Alice: MS = 0.4<br/>    Bob: MS = 0.429<br/>  Total MS = 0.829<br/><br/>  RawShare_Alice = 0.4 / 0.829 = 0.482<br/>  RawShare_Bob = 0.429 / 0.829 = 0.518<br/><br/>  RawAllocation_Alice = 200 × 0.482 = 96.4<br/>  RawAllocation_Bob = 200 × 0.518 = 103.6<br/><br/>  FinalAllocation_Alice = min(96.4, 100) = 96.4<br/>  FinalAllocation_Bob = min(103.6, 90) = 90<br/><br/>Tier 2: Unilateral Recognition<br/>  RemainingCapacity = 200 - 186.4 = 13.6<br/>  → No unilateral recipients<br/>  → 13.6 capacity remains unused<br/><br/>✅ All mutual recipients satisfied!
+            Kitchen->>Network: Publish Allocations {<br/>  [{to: Alice, qty: 96.4, tier: "mutual"},<br/>   {to: Bob, qty: 90, tier: "mutual"}]<br/>}
+        end
+    end
+
+    Note over Network: 📡 Allocations published<br/>Recipients observe offers
+
+    Note over Alice,Network: ═══════════ ACCEPT/DECLINE (structure.md mentions but not detailed) ═══════════
+    Note over Alice,Network: 👤 Recipients review and accept allocations
+
+    par Parallel Accept/Decline
+        rect rgb(255, 240, 200)
+            Note over Alice: Observes allocations:<br/>  Carol offers: 64.3<br/>  Kitchen offers: 96.4<br/>  Total: 160.7 (vs need: 100)<br/><br/>Decision (manual):<br/>  ✅ Accept 64.3 from Carol<br/>  ✅ Accept 35.7 from Kitchen (partial)<br/>  ❌ Decline 60.7 from Kitchen<br/><br/>Total accepted: 100 (exactly meets need!)
+            Alice->>Network: Publish Acceptances {<br/>  [{from: Carol, accepted: 64.3},<br/>   {from: Kitchen, accepted: 35.7, declined: 60.7}]<br/>}
+        end
+    and
+        rect rgb(255, 240, 200)
+            Note over Bob: Observes allocations:<br/>  Carol offers: 85.7<br/>  Kitchen offers: 90<br/>  Total: 175.7 (vs need: 90)<br/><br/>Decision (manual):<br/>  ✅ Accept 45 from Carol (partial)<br/>  ❌ Decline 40.7 from Carol<br/>  ✅ Accept 45 from Kitchen (partial)<br/>  ❌ Decline 45 from Kitchen<br/><br/>Total accepted: 90 (exactly meets need!)
+            Bob->>Network: Publish Acceptances {<br/>  [{from: Carol, accepted: 45, declined: 40.7},<br/>   {from: Kitchen, accepted: 45, declined: 45}]<br/>}
+        end
+    end
+
+    Note over Network: 📡 Acceptances published<br/>Satisfaction ratings can now be provided
+
+    Note over Alice,Network: ═══════════ SATISFACTION RATING ═══════════
+    Note over Alice,Network: ⭐ Recipients rate satisfaction after using resources
+
+    par Parallel Satisfaction Rating (Time: T+hours/days)
+        rect rgb(255, 230, 255)
+            Note over Alice: Uses resources, then rates satisfaction
+            Alice->>Alice: Carol's allocation:<br/>  Accepted: 64.3<br/>  Quality/usefulness: 0.85<br/><br/>Kitchen's allocation:<br/>  Accepted: 35.7<br/>  Quality/usefulness: 0.95
+            Alice->>Network: Publish Satisfaction {<br/>  [{from: Carol, accepted: 64.3, satisfaction: 0.85},<br/>   {from: Kitchen, accepted: 35.7, satisfaction: 0.95}]<br/>}
+        end
+    and
+        rect rgb(255, 230, 255)
+            Note over Bob: Uses resources, then rates satisfaction
+            Bob->>Bob: Carol's allocation:<br/>  Accepted: 45<br/>  Quality/usefulness: 0.40<br/><br/>Kitchen's allocation:<br/>  Accepted: 45<br/>  Quality/usefulness: 0.90
+            Bob->>Network: Publish Satisfaction {<br/>  [{from: Carol, accepted: 45, satisfaction: 0.40},<br/>   {from: Kitchen, accepted: 45, satisfaction: 0.90}]<br/>}
+        end
+    end
+
+    Note over Network: 📡 Satisfaction ratings published<br/>All entities observe and reactively update
+
+    Note over Alice,Network: ═══════════ TREE AGGREGATION: SATISFACTION FLOWS UP ═══════════
+    Note over Alice,Network: 📈 structure.md: Hierarchical satisfaction aggregation<br/>Need-Slot → Capacity-Slot → Goal → Root
+
+    par Parallel Satisfaction Aggregation (Automatic, Reactive)
+        rect rgb(230, 255, 230)
+            Note over Carol: 📊 HIERARCHICAL AGGREGATION (Automatic)
+            Carol->>Carol: Observe satisfaction from network:<br/><br/>Capacity-Slot satisfaction (weighted by child weights):<br/>  Alice allocation: 64.3 × 0.85 = 54.7<br/>  Bob allocation: 45 × 0.40 = 18<br/>  Total accepted: 64.3 + 45 = 109.3<br/>  <br/>  Capacity-Slot sat = (54.7 + 18) / 109.3 = 0.665<br/><br/>Goal satisfaction (from capacity slot):<br/>  Goal sat = 0.665 (propagated up)<br/><br/>Root satisfaction (from goal):<br/>  Root sat = 0.665<br/><br/>💡 Satisfaction propagates UP the tree!
+            Note over Carol: DerivedStateMap[Carol] updated:<br/>capacity_slot.satisfaction = 0.665<br/>goal.satisfaction = 0.665<br/>root.satisfaction = 0.665
+        end
+    and
+        rect rgb(230, 255, 230)
+            Note over Kitchen: 📊 HIERARCHICAL AGGREGATION (Automatic)
+            Kitchen->>Kitchen: Observe satisfaction from network:<br/><br/>Capacity-Slot satisfaction:<br/>  Alice: 35.7 × 0.95 = 33.9<br/>  Bob: 45 × 0.90 = 40.5<br/>  Total: 35.7 + 45 = 80.7<br/><br/>  Capacity-Slot sat = (33.9 + 40.5) / 80.7 = 0.921<br/><br/>Goal satisfaction:<br/>  Goal sat = 0.921<br/><br/>Root satisfaction:<br/>  Root sat = 0.921<br/><br/>✅ High satisfaction (excellent quality!)
+            Note over Kitchen: DerivedStateMap[Kitchen] updated:<br/>capacity_slot.satisfaction = 0.921<br/>goal.satisfaction = 0.921<br/>root.satisfaction = 0.921
+        end
+    end
+
+    Note over Alice,Network: ═══════════ RECIPIENTS OBSERVE PROVIDER SATISFACTION ═══════════
+    Note over Alice,Network: 🔄 Recipients reactively update their ShareOfGeneralSatisfaction
+
+    par Parallel Share Recomputation (Recipients observe provider satisfaction)
+        rect rgb(255, 240, 255)
+            Note over Alice: 📊 RECOMPUTE ShareOfGeneralSatisfaction
+            Alice->>Alice: Observe provider satisfaction from network:<br/>  Carol: root.satisfaction = 0.665<br/>  Kitchen: root.satisfaction = 0.921<br/><br/>Recompute ShareOfGeneralSatisfaction:<br/><br/>Step 1: Calculate influence pools<br/>  Non-Slot node weight: 1.0<br/>  Non-Slot satisfaction: (now uses slot data)<br/>  P_total = 1.0 × weighted_sat<br/><br/>Step 3: Calculate raw shares (satisfaction-weighted!)<br/>  Carol: (1.0 × 0.665) × (30/50) = 0.399<br/>  Kitchen: (1.0 × 0.921) × (20/50) = 0.368<br/>  Total = 0.767<br/><br/>Step 4: Normalize<br/>  Carol: 0.399 / 0.767 = 0.520<br/>  Kitchen: 0.368 / 0.767 = 0.480<br/><br/>💡 Shares adjusted based on satisfaction!
+            Note over Alice: DerivedStateMap[Alice] updated:<br/>Carol share: 0.6 → 0.520 (DOWN)<br/>Kitchen share: 0.4 → 0.480 (UP!)
+        end
+    and
+        rect rgb(255, 240, 255)
+            Note over Bob: 📊 RECOMPUTE ShareOfGeneralSatisfaction
+            Bob->>Bob: Observe provider satisfaction:<br/>  Carol: 0.665<br/>  Kitchen: 0.921<br/><br/>Recompute shares (satisfaction-weighted):<br/>  Carol: (1.0 × 0.665) × (40/70) = 0.379<br/>  Kitchen: (1.0 × 0.921) × (30/70) = 0.395<br/>  Total = 0.774<br/><br/>Normalize:<br/>  Carol: 0.379 / 0.774 = 0.490 (DOWN from 0.571!)<br/>  Kitchen: 0.395 / 0.774 = 0.510 (UP from 0.429!)<br/><br/>💡 Quality matters! Kitchen's high satisfaction<br/>increased their share despite lower recognition!
+            Note over Bob: DerivedStateMap[Bob] updated:<br/>Carol share: 0.571 → 0.490 (DOWN)<br/>Kitchen share: 0.429 → 0.510 (UP!)
+        end
+    end
+
+    Note over Alice,Network: ═══════════ ITERATION 3: LEARNED ALLOCATIONS ═══════════
+    Note over Alice,Network: 🎓 System has learned! Next allocations will reflect satisfaction
+
+    par New Needs Arise
+        Alice->>Network: Update Tree {needs: {food: 100}}
+        Bob->>Network: Update Tree {needs: {food: 90}}
+    end
+
+    par Parallel Allocation with Learning
+        rect rgb(200, 255, 220)
+            Note over Carol: 🔄 TWO-TIER ALLOCATION (With Learned Shares)
+            Carol->>Carol: Recompute Mutual-Satisfaction:<br/>  MS(Carol,Alice) = min(0.429, 0.520) = 0.429<br/>  MS(Carol,Bob) = min(0.571, 0.490) = 0.490<br/>  Total MS = 0.919<br/><br/>Tier 1 Allocation:<br/>  Alice: 150 × (0.429/0.919) = 70.0<br/>  Bob: 150 × (0.490/0.919) = 80.0<br/><br/>💡 Allocations shifted toward Bob slightly<br/>(Bob's satisfaction was lower, system adjusted)
+            Carol->>Network: Publish Allocations {<br/>  [{to: Alice, qty: 70.0},<br/>   {to: Bob, qty: 80.0}]<br/>}
+        end
+    and
+        rect rgb(200, 255, 220)
+            Note over Kitchen: 🔄 TWO-TIER ALLOCATION (With Learned Shares)
+            Kitchen->>Kitchen: Recompute Mutual-Satisfaction:<br/>  MS(Kitchen,Alice) = min(0.4, 0.480) = 0.4<br/>  MS(Kitchen,Bob) = min(0.6, 0.510) = 0.510<br/>  Total MS = 0.910<br/><br/>Tier 1 Allocation:<br/>  Alice: 200 × (0.4/0.910) = 87.9<br/>  Bob: 200 × (0.510/0.910) = 112.1<br/><br/>Cap at need:<br/>  Bob: min(112.1, 90) = 90<br/><br/>Final: Alice: 87.9, Bob: 90<br/><br/>✅ Kitchen's high satisfaction → more demand!
+            Kitchen->>Network: Publish Allocations {<br/>  [{to: Alice, qty: 87.9},<br/>   {to: Bob, qty: 90}]<br/>}
+        end
+    end
+
+    Note over Alice,Network: ═══════════ LEARNING OUTCOMES ═══════════
+
+    rect rgb(230, 255, 230)
+        Note over Alice,Network: 🎓 SYSTEM LEARNED FROM SATISFACTION:<br/><br/>ALICE (Iteration 2 → Iteration 3):<br/>  From Carol: 64.3 → 70.0 (+8.9%)<br/>  From Kitchen: 96.4 → 87.9 (-8.8%)<br/>  💡 Slight rebalancing based on satisfaction<br/><br/>BOB (Iteration 2 → Iteration 3):<br/>  From Carol: 85.7 → 80.0 (-6.7%) ⬇️ Low satisfaction reduced!<br/>  From Kitchen: 90 → 90 (same) ✅ High satisfaction maintained!<br/><br/>CAROL (Provider):<br/>  Average satisfaction: 0.665 (mediocre)<br/>  Signal: Improve quality to increase share<br/>  Impact: Both recipients reduced their shares of Carol<br/><br/>KITCHEN (Provider):<br/>  Average satisfaction: 0.921 (excellent!)<br/>  Result: Both recipients increased their shares of Kitchen<br/>  Impact: High-quality provider gets more recognition<br/><br/>KEY DIFFERENCE FROM protocolv6.mmd:<br/>  ✅ Hierarchical tree aggregation (satisfaction flows up)<br/>  ✅ Two-tier allocation (mutual priority, then unilateral)<br/>  ✅ ShareOfGeneralSatisfaction (complex 4-step calculation)<br/>  ✅ Anti-contributor support (not shown in this example)<br/>  ✅ Pool-bounded recognition (prevents gaming)
+    end
+
+    Note over Alice,Network: ═══════════ ARCHITECTURE PRINCIPLES ═══════════
+
+    rect rgb(240, 240, 255)
+        Note over Alice,Network: 🏗️ STRUCTURE.MD ARCHITECTURE:<br/><br/>1. SEPARATION OF USER-INPUT & DERIVED STATE:<br/>   📝 Tree = User inputs (stable, serializable)<br/>      - Points, contributors, needs, capacities<br/>      - Only changes when user explicitly edits<br/>   <br/>   📊 DerivedStateMap = Computed values (reactive, ephemeral)<br/>      - Weights, shares, satisfaction, allocations<br/>      - Recomputes automatically on tree changes<br/>      - Keyed by node_id for O(1) lookup<br/>      - Can be reconstructed from trees<br/><br/>2. REACTIVE COMPUTATION FLOW:<br/>   User Edit → Tree Update (inputs only)<br/>       ↓<br/>   Dependency Analysis<br/>       ↓<br/>   Mark Affected States Dirty<br/>       ↓<br/>   Parallel Recomputation<br/>       ↓<br/>   Update DerivedStateMap<br/>       ↓<br/>   UI Reactively Updates<br/><br/>3. HIERARCHICAL SATISFACTION AGGREGATION:<br/>   Allocation satisfaction (recipient rates)<br/>       ↓ (weighted by accepted quantity)<br/>   Need-Slot satisfaction<br/>       ↓ (weighted by child weights)<br/>   Capacity-Slot satisfaction<br/>       ↓ (weighted by child weights)<br/>   Goal satisfaction<br/>       ↓ (weighted by child weights)<br/>   Root satisfaction<br/>   <br/>   💡 Each level dampens individual variance<br/>   💡 Prevents single allocation from dominating<br/><br/>4. SHAREOFGENERALSATISFACTION (4 Steps):<br/>   Step 1: Calculate influence pools (weighted by tree)<br/>   Step 2: Calculate recognition pools (positive/anti)<br/>   Step 3: Calculate raw shares (per contributor)<br/>   Step 4: Apply pool-bounded recognition (normalize)<br/>   <br/>   Result: Comprehensive recognition across entire tree<br/>   Supports: Anti-contributors, weighted nodes, hierarchies<br/><br/>5. TWO-TIER ALLOCATION:<br/>   Tier 1: Mutual-Satisfaction > 0 (priority access)<br/>      - Both parties recognize each other<br/>      - Gets first pick of capacity<br/>   <br/>   Tier 2: Unilateral recognition (remaining capacity)<br/>      - One-way recognition<br/>      - Only gets leftovers after Tier 1<br/>   <br/>   💡 Incentivizes mutual relationships<br/><br/>6. STABILITY GUARANTEES:<br/>   ✓ Bounded state space (satisfaction ∈ [0,1])<br/>   ✓ Time delay (satisfaction after allocation)<br/>   ✓ Hierarchical dampening (tree aggregation)<br/>   ✓ Per-type adaptive damping (α_k)<br/>   ✓ Min function (conservative MS)<br/>   ✓ Need caps (no unbounded growth)<br/>   ✓ Network penalties (gaming resistance)
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 1: ANTI-CONTRIBUTORS ═══════════
+    Note over Alice,Network: ⚠️ Negative recognition for entities that harm goals
+
+    participant Eve
+
+    rect rgb(255, 240, 240)
+        Note over Alice: Alice discovers Eve is harmful
+        Alice->>Network: Update Tree {<br/>  Root (entity_id: Alice)<br/>    Non-Slot Node: "Mission Alignment"<br/>      Contributors: [Carol: 30pts, Kitchen: 20pts]<br/>      ANTI-Contributors: [Eve: 15pts] ⚠️ NEW!<br/>    Goal: "Food Security"<br/>      Need-Slot: {food, declared: 100}<br/>}
+    end
+
+    rect rgb(240, 255, 255)
+        Note over Alice: 📊 RECOMPUTE ShareOfGeneralSatisfaction (WITH ANTI)
+        Alice->>Alice: Step 1: Calculate influence pools<br/>  Positive nodes:<br/>    Contributors: Carol, Kitchen<br/>    P_total = 1.0 × 1.0 = 1.0<br/><br/>  Negative nodes:<br/>    Anti-Contributors: Eve<br/>    dissatisfaction = 1.0 - satisfaction = 1.0 - 1.0 = 0.0<br/>    N_total = 1.0 × 0.0 = 0.0 (bootstrap, no harm yet)<br/><br/>Step 2: Calculate recognition pools<br/>  TotalInfluence = 1.0 + 0.0 = 1.0<br/>  PositivePool = 1.0 / 1.0 = 1.0<br/>  AntiPool = 0.0 / 1.0 = 0.0<br/><br/>Step 3: Calculate raw shares<br/>  Positive:<br/>    Carol: (1.0 × 1.0) × (30/50) = 0.6<br/>    Kitchen: (1.0 × 1.0) × (20/50) = 0.4<br/>  Anti:<br/>    Eve: (1.0 × 0.0) × (15/15) = 0.0<br/><br/>Step 4: Apply pool-bounded recognition<br/>  Carol: (0.6 / 1.0) × 1.0 - 0 = 0.6<br/>  Kitchen: (0.4 / 1.0) × 1.0 - 0 = 0.4<br/>  Eve: 0 - (0.0 / 0.0) × 0.0 = 0.0<br/><br/>💡 At bootstrap, anti-contributor has no effect yet
+    end
+
+    Note over Alice,Network: ⏩ Later: Eve causes harm, satisfaction drops
+
+    rect rgb(255, 220, 220)
+        Note over Alice: Tree node satisfaction drops due to Eve's actions
+        Alice->>Alice: Node satisfaction updated (derived):<br/>  "Mission Alignment" satisfaction: 0.3 ⬇️<br/>  (down from 1.0 due to Eve's interference)<br/><br/>Recompute ShareOfGeneralSatisfaction:<br/><br/>Step 1: Calculate influence pools<br/>  P_total = 1.0 × 0.3 = 0.3<br/>  dissatisfaction = 1.0 - 0.3 = 0.7<br/>  N_total = 1.0 × 0.7 = 0.7 ⚠️ High dissatisfaction!<br/><br/>Step 2: Calculate recognition pools<br/>  TotalInfluence = 0.3 + 0.7 = 1.0<br/>  PositivePool = 0.3 / 1.0 = 0.3<br/>  AntiPool = 0.7 / 1.0 = 0.7<br/><br/>Step 3: Calculate raw shares<br/>  Positive:<br/>    Carol: (1.0 × 0.3) × (30/50) = 0.18<br/>    Kitchen: (1.0 × 0.3) × (20/50) = 0.12<br/>  Anti:<br/>    Eve: (1.0 × 0.7) × (15/15) = 0.7<br/><br/>Step 4: Apply pool-bounded recognition<br/>  Carol: (0.18 / 0.3) × 0.3 = 0.18<br/>  Kitchen: (0.12 / 0.3) × 0.3 = 0.12<br/>  Eve: 0 - (0.7 / 0.7) × 0.7 = -0.7 ⚠️ NEGATIVE!<br/><br/>💡 Eve's final share: -0.7 (penalty!)<br/>💡 Pool bounding prevents gaming:<br/>   Even if Carol had 100% positive recognition,<br/>   they'd only get 0.3 max (the positive pool size)
+    end
+
+    rect rgb(255, 240, 240)
+        Note over Alice,Network: 🎯 ANTI-CONTRIBUTOR OUTCOMES:<br/><br/>✓ Eve gets NEGATIVE share (-0.7)<br/>✓ In allocation: Negative MS → Zero allocation<br/>✓ Pool bounding prevents inflation:<br/>  - Positive contributions capped at PositivePool<br/>  - Negative contributions capped at AntiPool<br/>  - Can't game by adding many low-point contributors<br/><br/>✓ Dissatisfaction weighs anti-contribution:<br/>  - If node satisfaction high → anti has little effect<br/>  - If node satisfaction low → anti gets blamed<br/><br/>✓ Use cases:<br/>  - Harmful interference (Eve disrupting Alice's work)<br/>  - Sabotage (Eve actively blocking goals)<br/>  - Adversarial behavior in network
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 2: ORGANIZATIONS & COLLECTIVE CAPACITIES ═══════════
+    Note over Alice,Network: 🏢 Multiple entities co-providing resources
+
+    participant CommunityGarden as Community Garden (org_garden)
+
+    rect rgb(240, 255, 240)
+        Note over CommunityGarden: 🏢 ORGANIZATION DEFINITION
+        CommunityGarden->>Network: Publish Organization {<br/>  org_id: "org_garden",<br/>  names: {<br/>    en: "Community Garden",<br/>    es: "Jardín Comunitario",<br/>    fr: "Jardin Communautaire"<br/>  },<br/>  emoji: "🌱",<br/>  members: ["Carol", "Kitchen", "org_farmers"]<br/>  💡 Recursive: org_farmers contains more entities!<br/>}
+    end
+
+    rect rgb(240, 255, 240)
+        Note over CommunityGarden: Collective Capacity (Multiple Providers)
+        CommunityGarden->>Network: Publish Tree {<br/>  Root (entity_id: org_garden)<br/>    Goal: "Fresh Produce Distribution"<br/>      Capacity-Slot: {fresh_vegetables, available: 500}<br/>        Contributors: [<br/>          {id: "Carol", points: 40},<br/>          {id: "Kitchen", points: 30},<br/>          {id: "org_farmers", points: 30}<br/>        ] 💡 Multi-entity co-provision!<br/>}
+    end
+
+    rect rgb(240, 240, 255)
+        Note over CommunityGarden: 📊 COLLECTIVE-SATISFACTION CALCULATION
+        CommunityGarden->>CommunityGarden: When Alice needs vegetables:<br/><br/>Collective-Satisfaction Formula:<br/>  For each contributor C in capacity:<br/>    CollectiveShare_C = Σ(MS with other contributors)<br/><br/>Calculate mutual satisfaction between contributors:<br/>  MS(Carol, Kitchen) = 0.8<br/>  MS(Carol, org_farmers) = 0.6<br/>  MS(Kitchen, org_farmers) = 0.7<br/><br/>CollectiveShare_Carol = 0.8 + 0.6 = 1.4<br/>CollectiveShare_Kitchen = 0.8 + 0.7 = 1.5<br/>CollectiveShare_org_farmers = 0.6 + 0.7 = 1.3<br/>Total = 4.2<br/><br/>Normalize:<br/>  Carol: 1.4/4.2 = 33.3%<br/>  Kitchen: 1.5/4.2 = 35.7%<br/>  org_farmers: 1.3/4.2 = 31.0%<br/><br/>Allocation to Alice (assuming MS(org_garden,Alice) = 0.5):<br/>  Total allocation: 500 × 0.5 = 250<br/>  Carol provides: 250 × 0.333 = 83.3<br/>  Kitchen provides: 250 × 0.357 = 89.2<br/>  org_farmers provides: 250 × 0.310 = 77.5<br/><br/>💡 Collective capacity distributed by contributor harmony!
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 3: CONTACTS SYSTEM ═══════════
+    Note over Alice,Network: 📇 Pre-public-key relationships & smooth onboarding
+
+    participant Dave
+
+    rect rgb(255, 250, 240)
+        Note over Alice: Alice recognizes Dave before he joins network
+        Alice->>Alice: Create Contact:<br/>  contact_id: "contact_dave_123"<br/>  name: "Dave (friend from workshop)"<br/>  public_key: undefined ⚠️ Not on network yet!<br/>  emoji: "🔧"
+        Alice->>Network: Update Tree {<br/>  Root (entity_id: Alice)<br/>    Non-Slot Node: "Mission Alignment"<br/>      Contributors: [<br/>        Carol: 30pts,<br/>        Kitchen: 20pts,<br/>        contact_dave_123: 25pts ⚠️ Contact ID!<br/>      ]<br/>}
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Alice: 📊 COMPUTE WITH CONTACTS
+        Alice->>Alice: ShareOfGeneralSatisfaction:<br/><br/>Recognizes:<br/>  - Carol (pubkey) → can allocate ✓<br/>  - Kitchen (pubkey) → can allocate ✓<br/>  - Dave (contact_id only) → can't allocate yet ⚠️<br/><br/>💡 Dave gets recognition share but no allocations<br/>   until he publishes a public key
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Dave: ⏩ Later: Dave joins network!
+        Dave->>Network: Publish Tree {<br/>  Root (entity_id: dave_public_key_xyz)<br/>  ...initial tree...<br/>}
+        Alice->>Alice: Link contact to public key:<br/>  contact_dave_123.public_key = "dave_public_key_xyz"<br/><br/>💡 History preserved!<br/>   Dave's 25 recognition points now active<br/>   Can receive allocations immediately
+    end
+
+    rect rgb(240, 255, 255)
+        Note over Alice,Network: 🎯 CONTACTS SYSTEM BENEFITS:<br/><br/>✓ Recognize people before they join<br/>✓ No history loss when onboarding<br/>✓ Smooth transition: contact_id → public_key<br/>✓ Can build recognition gradually<br/>✓ Network effects start before joining<br/><br/>Use cases:<br/>  - Pre-network relationships (friends, colleagues)<br/>  - Gradual onboarding (learn system first)<br/>  - Offline coordination → online allocation
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 4: CONSTRAINTS & SCHEDULING ═══════════
+    Note over Alice,Network: 📅 Divisibility, availability windows, booking requirements
+
+    participant Dentist
+
+    rect rgb(255, 245, 235)
+        Note over Dentist: CONSTRAINT-RICH CAPACITY
+        Dentist->>Network: Publish Tree {<br/>  Root (entity_id: Dentist)<br/>    Goal: "Dental Services"<br/>      Capacity-Slot: {dental_checkup, available: 40hrs/month}<br/><br/>        ⚠️ DIVISIBILITY CONSTRAINT:<br/>        max_natural_div: 1<br/>        💡 Can't split Dentist's time across too many people<br/>        💡 Prevents 0.001hr allocations to 1000 recipients<br/><br/>        min_allocation_percentage: 0.05<br/>        💡 Each allocation must be ≥5% of capacity<br/>        💡 Minimum 2 hours per recipient<br/><br/>        ⏰ HIERARCHICAL AVAILABILITY:<br/>        month_schedules: [<br/>          {month: 9, week_schedules: [<br/>            {week: 2, day_schedules: [<br/>              {day: "Tuesday", time_ranges: [<br/>                {start: "09:00", end: "17:00"}<br/>              ]},<br/>              {day: "Thursday", time_ranges: [<br/>                {start: "09:00", end: "17:00"}<br/>              ]}<br/>            ]}<br/>          ]}<br/>        ]<br/>        💡 Complex: "September week 2, Tue/Thu 9am-5pm"<br/><br/>        🔔 BOOKING CONSTRAINTS:<br/>        advance_notice_hours: 48<br/>        💡 Must book 2+ days in advance<br/><br/>        booking_window_hours: 336 (14 days)<br/>        💡 Can only book within next 2 weeks<br/><br/>        🤝 MUTUAL AGREEMENT:<br/>        mutual_agreement_required: true<br/>        💡 Both parties must explicitly accept<br/>        💡 Critical for sensitive services (health, childcare)
+    end
+
+    rect rgb(240, 248, 255)
+        Note over Alice: Alice requests dental appointment
+        Alice->>Network: Update Tree {<br/>  Need-Slot: {dental_checkup, declared: 2hrs}
+    end
+
+    rect rgb(240, 248, 255)
+        Note over Dentist: 🔄 CONSTRAINED ALLOCATION ALGORITHM
+        Dentist->>Dentist: Calculate allocation to Alice:<br/><br/>Step 1: Check divisibility<br/>  2hrs / 40hrs = 5% ✓ Meets min_allocation_percentage<br/>  1 recipient → Within max_natural_div ✓<br/><br/>Step 2: Check availability window<br/>  Alice's need matches September week 2 Tuesday? ✓<br/>  (Requires Alice to specify time preferences)<br/><br/>Step 3: Check booking constraints<br/>  Is request >48hrs in advance? Check timestamp ✓<br/>  Is request within 14-day window? Check date ✓<br/><br/>Step 4: Apply mutual_agreement_required<br/>  → Don't auto-publish offer<br/>  → Send proposal instead<br/>  → Wait for Alice's explicit acceptance<br/>  → Dentist can review Alice's request<br/>  → Both parties confirm before commitment<br/><br/>💡 Result: PROPOSAL, not automatic allocation
+        Dentist->>Network: Publish Proposal {<br/>  to: Alice,<br/>  qty: 2hrs,<br/>  time_slot: "Sept 12, Tuesday 2pm-4pm",<br/>  status: "pending_mutual_agreement" ⚠️<br/>}
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Alice: Reviews proposal
+        Alice->>Network: Accept Proposal {<br/>  from: Dentist,<br/>  time_slot: "Sept 12, Tuesday 2pm-4pm",<br/>  status: "accepted"<br/>}
+        Note over Dentist: Reviews acceptance
+        Dentist->>Network: Confirm Acceptance {<br/>  to: Alice,<br/>  status: "confirmed" ✅<br/>}
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Alice,Network: 🎯 CONSTRAINTS OUTCOMES:<br/><br/>✓ Divisibility prevents over-fragmentation<br/>  - No 1000 tiny allocations to different people<br/>  - Respects natural units (person-hours, rooms, equipment)<br/><br/>✓ Hierarchical availability enables complex patterns<br/>  - "First Monday of each month"<br/>  - "Even weeks only"<br/>  - "September-May (academic year)"<br/><br/>✓ Booking windows balance flexibility & planning<br/>  - advance_notice: provider prep time<br/>  - booking_window: prevents indefinite future commitments<br/><br/>✓ Mutual agreement for sensitive allocations<br/>  - Healthcare (provider reviews patient)<br/>  - Childcare (safety screening)<br/>  - Housing (compatibility check)<br/>  - High-commitment volunteering
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 5: OSCILLATION DETECTION & PER-TYPE DAMPING ═══════════
+    Note over Alice,Network: 📉 Adaptive stability mechanisms
+
+    rect rgb(255, 245, 245)
+        Note over Alice: Alice's food need oscillates
+        Alice->>Network: Cycle 1: Need = 100<br/>Cycle 2: Need = 0 (over-received)<br/>Cycle 3: Need = 100 (under-received)<br/>Cycle 4: Need = 0 (over-received again)
+    end
+
+    rect rgb(255, 240, 240)
+        Note over Carol: 🔍 OSCILLATION DETECTION (Per Resource Type)
+        Carol->>Carol: Observe Alice's need history (food type):<br/><br/>History window (last 3 cycles):<br/>  t-2: 100<br/>  t-1: 0<br/>  t:   100<br/><br/>Calculate variance:<br/>  mean = (100 + 0 + 100) / 3 = 66.7<br/>  variance = [(33.3² + 66.7² + 33.3²) / 3] = 2222<br/>  std_dev = 47.1<br/><br/>Calculate mean absolute change:<br/>  changes: |0-100| = 100, |100-0| = 100<br/>  mean_change = 100<br/><br/>Thresholds:<br/>  VARIANCE_THRESHOLD = 1000<br/>  CHANGE_THRESHOLD = 50<br/><br/>Check:<br/>  variance (2222) > threshold (1000) ✓<br/>  mean_change (100) > threshold (50) ✓<br/><br/>⚠️ OSCILLATION DETECTED for resource_type: food!
+    end
+
+    rect rgb(255, 240, 235)
+        Note over Carol: 📉 APPLY PER-TYPE DAMPING
+        Carol->>Carol: Damping factors (per resource type):<br/>  α_food(t-1) = 1.0 (no damping previously)<br/><br/>Oscillation detected → Reduce damping:<br/>  α_food(t) = 0.5 ⬇️ (aggressive damping)<br/><br/>Allocation calculation WITH damping:<br/>  RawAllocation_Alice = 150 × 0.429 = 64.3<br/>  DampedAllocation_Alice = 64.3 × 0.5 = 32.2 ⬇️<br/><br/>💡 Carol provides 32.2 instead of 64.3<br/>💡 Reduces oscillation amplitude by 50%<br/><br/>Store damping history:<br/>  {<br/>    resource_type: "food",<br/>    overAllocation: 64.3 - 32.2 = 32.1,<br/>    timestamp: now,<br/>    dampingFactor: 0.5<br/>  }
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Alice: Next cycle: Receives less, need stabilizes
+        Alice->>Network: Cycle 5: Need = 68 (closer to equilibrium)
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Carol: 🔄 DAMPING RECOVERY
+        Carol->>Carol: Observe Alice's need history (updated):<br/><br/>History window:<br/>  t-2: 0<br/>  t-1: 100<br/>  t:   68<br/><br/>Calculate variance: 1689 (still high)<br/>Calculate mean_change: 34 (below threshold!)<br/><br/>Oscillation reducing but not resolved:<br/>  → Keep damping but increase slightly<br/>  α_food(t) = 0.7 (moderate damping)<br/><br/>💡 Damping adapts over time:<br/>  - Aggressive (0.5) when oscillating badly<br/>  - Moderate (0.7) when improving<br/>  - None (1.0) when stable
+    end
+
+    rect rgb(230, 250, 255)
+        Note over Alice,Network: 🎯 PER-TYPE DAMPING OUTCOMES:<br/><br/>✓ Each resource type has independent damping:<br/>  - Food might oscillate (α_food = 0.5)<br/>  - Housing stable (α_housing = 1.0)<br/>  - Equipment converging (α_equipment = 0.7)<br/><br/>✓ Adaptive responsiveness:<br/>  - System detects oscillation automatically<br/>  - Reduces allocation responsiveness temporarily<br/>  - Gradually recovers as stability improves<br/><br/>✓ Convergence tracking (Frobenius norm):<br/>  ||N⃗(t)||_F = √(Σ_i Σ_k (N_i^k)²)<br/>  - Multi-dimensional convergence metric<br/>  - Tracks all recipients × all resource types<br/>  - Goal: ||N⃗(t)||_F → 0 (universal satisfaction)<br/><br/>✓ Per-type metrics:<br/>  - Convergence_food: 85%<br/>  - Convergence_housing: 95%<br/>  - Convergence_equipment: 70%<br/>  - Overall: 83%
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 6: COEXISTENCE MODEL (DETAILED) ═══════════
+    Note over Alice,Network: 🤝 Non-slot & slot-based contributions working together
+
+    rect rgb(245, 255, 245)
+        Note over Alice: Alice's complex tree structure
+        Alice->>Network: Publish Tree {<br/>  Root (entity_id: Alice)<br/>    Weight: 1.0<br/><br/>    [70pts] Goal: "Mission Work" (70% of tree)<br/>      Weight: 0.7<br/>      <br/>      [100pts] Non-Slot Node: "Strategic Partners"<br/>        Weight: 0.7 × (100/100) = 0.7<br/>        Satisfaction: 1.0 (manual)<br/>        Contributors: [Carol: 40pts, Kitchen: 30pts]<br/>        💡 INTANGIBLE: mission alignment, advocacy<br/><br/>    [30pts] Goal: "Resource Management" (30% of tree)<br/>      Weight: 0.3<br/>      <br/>      [100pts] Capacity-Slot: "Food Provision"<br/>        Weight: 0.3 × (100/100) = 0.3<br/>        <br/>        Need-Slot: {food, declared: 100}<br/>          Allocations:<br/>            - Carol: 64.3, satisfaction: 0.85<br/>            - Kitchen: 35.7, satisfaction: 0.95<br/>        💡 TANGIBLE: actual resource allocations<br/>}
+    end
+
+    rect rgb(245, 250, 255)
+        Note over Alice: 📊 COMPUTE SHAREOFGENERALSATISFACTION (COEXISTENCE)
+        Alice->>Alice: Step 1: Calculate influence pools<br/><br/>Non-Slot contribution:<br/>  Node weight: 0.7<br/>  Node satisfaction: 1.0 (manual)<br/>  Contribution: 0.7 × 1.0 = 0.7<br/><br/>Slot-Based contribution:<br/>  Capacity-Slot weight: 0.3<br/>  Need-Slot satisfaction (from allocations):<br/>    = (64.3×0.85 + 35.7×0.95) / (64.3 + 35.7)<br/>    = (54.7 + 33.9) / 100<br/>    = 0.886<br/>  Capacity-Slot satisfaction: 0.886 (propagated)<br/>  Contribution: 0.3 × 0.886 = 0.266<br/><br/>P_total = 0.7 + 0.266 = 0.966<br/><br/>Step 3: Calculate raw shares<br/><br/>CAROL'S SHARES:<br/>  Non-Slot share (intangible):<br/>    (0.7 × 1.0) × (40/70) = 0.4<br/>  <br/>  Slot-Based share (tangible):<br/>    (0.3 × 0.886) × (64.3/100) = 0.171<br/>    💡 Weighted by accepted quantity!<br/>  <br/>  Carol's RawPositiveShare = 0.4 + 0.171 = 0.571<br/><br/>KITCHEN'S SHARES:<br/>  Non-Slot share:<br/>    (0.7 × 1.0) × (30/70) = 0.3<br/>  <br/>  Slot-Based share:<br/>    (0.3 × 0.886) × (35.7/100) = 0.095<br/>  <br/>  Kitchen's RawPositiveShare = 0.3 + 0.095 = 0.395<br/><br/>Step 4: Normalize (assuming PositivePool = 1.0)<br/>  Total = 0.571 + 0.395 = 0.966<br/>  Carol final: 0.571 / 0.966 = 59.1%<br/>  Kitchen final: 0.395 / 0.966 = 40.9%<br/><br/>💡 COEXISTENCE IN ACTION:<br/>  Carol: 70% strong in non-slot (mission alignment)<br/>         but only 64.3% of slot allocations<br/>         → Combined: 59.1%<br/><br/>  Kitchen: 43% in non-slot (less mission aligned)<br/>           but 35.7% of slots + higher satisfaction (0.95)<br/>           → Combined: 40.9%<br/><br/>Both dimensions matter!
+    end
+
+    rect rgb(240, 255, 245)
+        Note over Alice,Network: 🎯 COEXISTENCE MODEL OUTCOMES:<br/><br/>✓ TWO PARALLEL CONTRIBUTION STREAMS:<br/><br/>  1️⃣ Non-Slot (Intangible):<br/>     - Mission alignment, advocacy, coordination<br/>     - User explicitly sets points<br/>     - Represents strategic partnership value<br/>     - Doesn't decay or get replaced<br/><br/>  2️⃣ Slot-Based (Tangible):<br/>     - Actual resource allocations<br/>     - Automatically derived from outcomes<br/>     - Weighted by satisfaction ratings<br/>     - Objective feedback on utility<br/><br/>✓ ADDITIVE COMBINATION:<br/>  ShareOfTotal = Non-Slot contribution + Slot contribution<br/>  (Both weighted by their tree positions)<br/><br/>✓ ENABLES NUANCED RELATIONSHIPS:<br/>  - "Good partner, wrong resources"<br/>    → High non-slot, low slot → maintain relationship<br/>  <br/>  - "Resource provider only"<br/>    → Low non-slot, high slot → transactional<br/>  <br/>  - "Ideal partner"<br/>    → High both → strong relationship<br/>  <br/>  - "Not helpful"<br/>    → Low both → reduce recognition<br/><br/>✓ BOOTSTRAP TO OPERATIONAL:<br/>  - Start: Non-slot only (no allocation history)<br/>  - Develop: Both streams active<br/>  - Mature: Slot data validates non-slot recognition<br/><br/>✓ TREE STRUCTURE CONTROLS BALANCE:<br/>  - 70% mission goal → non-slot contributions weighted more<br/>  - 80% resource goal → slot contributions weighted more<br/>  - User controls the balance via tree structure!
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 7: ITC CAUSALITY TRACKING ═══════════
+    Note over Alice,Network: 🕐 Distributed conflict resolution with Interval Tree Clocks
+
+    rect rgb(250, 245, 255)
+        Note over Alice,Network: 💡 ITC vs Simple Timestamps:<br/><br/>SIMPLE TIMESTAMPS (current in basic examples):<br/>  updated_at: "2024-11-24T10:30:00Z"<br/>  <br/>  Problems:<br/>  - Clock skew between entities<br/>  - Can't detect concurrent updates<br/>  - Can't resolve conflicts automatically<br/>  - O(n) space for vector clocks<br/><br/>INTERVAL TREE CLOCKS (structure.md recommendation):<br/>  itc_stamp: {<br/>    id: {l: 0, r: 1},  // ID component (fork/join)<br/>    event: {n: 5, l: 2, r: 3}  // Event component (counter tree)<br/>  }<br/>  <br/>  Benefits:<br/>  ✓ O(log n) space (vs O(n) for vector clocks)<br/>  ✓ Detects causality: happens-before relationships<br/>  ✓ Detects concurrency: conflicting updates<br/>  ✓ Automatic conflict resolution<br/>  ✓ Fork/join operations for dynamic entities
+    end
+
+    rect rgb(245, 240, 255)
+        Note over Alice: ALICE: Creates initial tree
+        Alice->>Alice: Initialize ITC:<br/>  stamp_A = {id: 1, event: 0}<br/>  💡 Alice owns full ID space initially
+        Alice->>Network: Publish Tree {<br/>  itc_stamp: {id: 1, event: 0},<br/>  ... tree content ...<br/>}
+    end
+
+    rect rgb(245, 240, 255)
+        Note over Bob: BOB: Forks from seed
+        Bob->>Bob: Initialize ITC:<br/>  stamp_B = {id: 1, event: 0}<br/>  Fork: Split ID space<br/>    stamp_Alice = {id: {l: 1, r: 0}, event: 0}<br/>    stamp_Bob = {id: {l: 0, r: 1}, event: 0}<br/>  💡 ID space split: Alice left, Bob right
+        Bob->>Network: Publish Tree {<br/>  itc_stamp: {id: {l: 0, r: 1}, event: 0},<br/>  ... tree content ...<br/>}
+    end
+
+    par Concurrent Updates (Alice & Bob both update independently)
+        rect rgb(255, 245, 250)
+            Alice->>Alice: Update tree (event++):<br/>  stamp_A: {id: {l: 1, r: 0}, event: 1}
+            Alice->>Network: Publish Update {<br/>  itc_stamp: {id: {l: 1, r: 0}, event: 1}<br/>}
+        end
+    and
+        rect rgb(255, 245, 250)
+            Bob->>Bob: Update tree (event++):<br/>  stamp_B: {id: {l: 0, r: 1}, event: 1}
+            Bob->>Network: Publish Update {<br/>  itc_stamp: {id: {l: 0, r: 1}, event: 1}<br/>}
+        end
+    end
+
+    rect rgb(250, 240, 255)
+        Note over Alice,Network: 🔍 DETECTING CONCURRENCY
+        Alice->>Alice: Observe Bob's update:<br/>  Alice's stamp: {id: {l: 1, r: 0}, event: 1}<br/>  Bob's stamp: {id: {l: 0, r: 1}, event: 1}<br/><br/>Compare events:<br/>  Alice.event = 1, Bob.event = 1<br/>  Neither dominates the other<br/><br/>⚠️ CONCURRENT UPDATES DETECTED!<br/>💡 Both happened "at the same time" (causally)<br/>💡 Need conflict resolution strategy
+    end
+
+    rect rgb(245, 250, 255)
+        Note over Alice,Network: 🔄 CONFLICT RESOLUTION
+        Alice->>Alice: Merge strategy options:<br/><br/>1. Last-Writer-Wins (LWW):<br/>   Use wall-clock time as tiebreaker<br/>   ⚠️ Requires synchronized clocks<br/><br/>2. ID-Based Ordering:<br/>   Lexicographic comparison of IDs<br/>   ✓ Deterministic, no clock sync needed<br/>   💡 Alice's ID {l:1,r:0} < Bob's {l:0,r:1}<br/>   → Alice's update wins<br/><br/>3. Semantic Merge:<br/>   Application-specific logic<br/>   - Tree: Merge contributor lists<br/>   - Slots: Max of capacities<br/>   - Needs: Max of declared quantities<br/>   ✓ Most intelligent, preserves both intentions<br/><br/>4. User Prompt:<br/>   Show conflict to user, let them decide<br/>   ✓ Most flexible, manual
+    end
+
+    rect rgb(240, 250, 255)
+        Note over Alice: Alice merges Bob's update
+        Alice->>Alice: After merge, sync stamps:<br/>  stamp_merged = join(stamp_A, stamp_B)<br/>  = {id: 1, event: {n: 0, l: 1, r: 1}}<br/>  💡 Join reunites ID space<br/>  💡 Event tree preserves both updates<br/><br/>Next update:<br/>  stamp_A = {id: 1, event: {n: 0, l: 1, r: 2}}<br/>  💡 Now Alice's update clearly happens-after merge
+    end
+
+    rect rgb(240, 255, 250)
+        Note over Alice,Network: 🎯 ITC CAUSALITY OUTCOMES:<br/><br/>✓ HAPPENS-BEFORE DETECTION:<br/>  If event_A dominates event_B:<br/>    → A causally happened before B<br/>    → B must incorporate A's changes<br/>    → No conflict!<br/><br/>✓ CONCURRENCY DETECTION:<br/>  If neither event dominates:<br/>    → Concurrent updates<br/>    → Conflict resolution needed<br/>    → Both updates valid from their perspective<br/><br/>✓ O(log n) SPACE COMPLEXITY:<br/>  Event component is a tree, not a vector<br/>  Grows logarithmically with entities<br/>  Much better than vector clocks (O(n))<br/><br/>✓ FORK/JOIN OPERATIONS:<br/>  Fork: Split ID space (entity joins)<br/>  Join: Reunite ID space (entities sync)<br/>  Event: Increment counter (local update)<br/>  Supports dynamic entity set!<br/><br/>✓ USE CASES:<br/>  - Concurrent tree edits (multiple users editing)<br/>  - Offline operation (sync later)<br/>  - Partition tolerance (network splits)<br/>  - Distributed state synchronization
+    end
+
+    Note over Alice,Network: ═══════════ STABILITY ANALYSIS: 6 POTENTIAL LOOPS ═══════════
+    Note over Alice,Network: 🔬 Formal analysis of system stability (from structure.md lines 1075-1571)
+
+    rect rgb(255, 245, 245)
+        Note over Alice,Network: 🔄 LOOP 1: ALLOCATION-SATISFACTION OSCILLATION<br/><br/>SCENARIO:<br/>  Cycle t:   Provider allocates 100 → Recipient rates 0.4 (too much)<br/>  Cycle t+1: Provider allocates 40 → Recipient rates 1.0 (perfect!)<br/>  Cycle t+2: Provider allocates 100 → Recipient rates 0.4 (oscillates)<br/><br/>STABILIZERS:<br/>  1️⃣ Need Caps (Hard Bound):<br/>     FinalAllocation = min(RawAllocation, DeclaredNeed)<br/>     Can't exceed declared need even if satisfaction suggests more<br/><br/>  2️⃣ Declining Mechanism (Self-Regulation):<br/>     If Offered > ActualNeed:<br/>       Accept only ActualNeed<br/>       Decline remainder<br/>       Satisfaction still high (got what needed)<br/>     Result: No oscillation, exact fulfillment<br/><br/>  3️⃣ Weighted Aggregation (Smoothing):<br/>     Single allocation → small change in global share<br/>     Not 1:1 mapping, dampens oscillation<br/><br/>VERDICT: ✅ STABLE<br/>  Need caps prevent over-allocation<br/>  Decline mechanism self-regulates<br/>  Aggregation smooths variance
+    end
+
+    rect rgb(255, 245, 240)
+        Note over Alice,Network: 🔄 LOOP 2: MUTUAL SATISFACTION CIRCULAR DEPENDENCY<br/><br/>SCENARIO:<br/>  A's satisfaction with B depends on B→A allocations<br/>  B's satisfaction with A depends on A→B allocations<br/>  A's allocations to B depend on MS(A,B)<br/>  B's allocations to A depend on MS(B,A)<br/>  Circular: A→B depends on B→A depends on A→B...<br/><br/>ANALYSIS: Fixed-point problem, not infinite loop<br/><br/>STABILIZERS:<br/>  1️⃣ Min Function (Conservative):<br/>     MS(A,B) = min(S_A→B, S_B→A)<br/>     Taking minimum:<br/>       - Can't be gamed by one party inflating<br/>       - Converges to mutually agreed level<br/>       - Conservative estimate (underestimates)<br/><br/>  2️⃣ Satisfaction Is Retrospective (Breaks Simultaneity):<br/>     Cycle t:   Allocations (based on cycle t-1 satisfaction)<br/>     Cycle t:   Rate satisfaction (after receiving)<br/>     Cycle t+1: New allocations use cycle t satisfaction<br/>     Time delay breaks circular dependency<br/><br/>  3️⃣ Need Fulfillment Reduces Sensitivity:<br/>     As needs met → satisfaction stabilizes<br/>     DeclaredNeed ≈ TotalReceived → satisfaction ≈ 1.0<br/>     High satisfaction → stable allocations → stable loop<br/><br/>VERDICT: ✅ CONVERGES<br/>  Time delay breaks simultaneity<br/>  Min function prevents gaming<br/>  Converges to mutual satisfaction equilibrium
+    end
+
+    rect rgb(255, 240, 235)
+        Note over Alice,Network: 🔄 LOOP 3: TREE AGGREGATION FEEDBACK<br/><br/>SCENARIO:<br/>  Allocation satisfaction → Need-Slot satisfaction<br/>  Need-Slot satisfaction → Capacity-Slot satisfaction<br/>  Capacity-Slot satisfaction → Goal satisfaction<br/>  Goal satisfaction → ShareOfGeneralSatisfaction<br/>  ShareOfGeneralSatisfaction → Future allocation<br/>  Future allocation → Allocation satisfaction (loop)<br/><br/>ANALYSIS: Core learning loop (intended behavior)<br/><br/>STABILIZERS:<br/>  1️⃣ Hierarchical Aggregation (Dampening Factor):<br/>     Each level averages children with weights<br/>     <br/>     Single allocation satisfaction = 0.3<br/>       ↓ (averaged with 10 other allocations)<br/>     Need-Slot satisfaction = 0.7 (dampened)<br/>       ↓ (averaged with 5 sibling need-slots)<br/>     Capacity-Slot satisfaction = 0.75 (further dampened)<br/>       ↓ (averaged with other capacity slots)<br/>     Goal satisfaction = 0.80 (heavily dampened)<br/>     <br/>     Impact on global share: small<br/><br/>  2️⃣ Multiple Contributors Per Node:<br/>     If node has 10 contributors:<br/>       Single contributor affects their share: 1/10 = 10%<br/>     Not winner-take-all—proportional impact<br/><br/>  3️⃣ Per-Type Damping (from v4/v5):<br/>     α_k(t) ∈ {0.5, 0.8, 1.0}<br/>     If oscillation detected in type k:<br/>       Reduce α_k → reduce responsiveness<br/>     Adaptive damping prevents over-reaction<br/><br/>VERDICT: ✅ STABLE WITH DAMPING<br/>  Hierarchical aggregation provides natural dampening<br/>  Proportional impact (not binary)<br/>  Existing per-type damping applies
+    end
+
+    rect rgb(250, 240, 240)
+        Note over Alice,Network: 🔄 LOOP 4: DECLINE CASCADE<br/><br/>SCENARIO:<br/>  Cycle t:   Many recipients over-allocated<br/>             All decline excess simultaneously<br/>  Cycle t+1: Massive capacity surge (declined resources available)<br/>             System allocates even more<br/>  Cycle t+2: Even more declines, worse cascade<br/><br/>ANALYSIS: Declined resources return to capacity in SAME cycle<br/><br/>STABILIZERS:<br/>  1️⃣ Same-Cycle Reallocation:<br/>     Within Cycle t:<br/>       Step 1: Calculate allocations<br/>       Step 2: Recipients accept/decline<br/>       Step 3: Declined resources → back to available capacity<br/>       Step 4: Reallocate declined to other recipients<br/>     All in one calculation round—no cascade across cycles<br/><br/>  2️⃣ Need-Based Capping:<br/>     FinalAllocation = min(RawAllocation, RemainingNeed)<br/>     Even if capacity surges, can't force beyond need<br/>     Recipients don't have to actively decline—system auto-caps<br/><br/>  3️⃣ Learning From Decline Patterns:<br/>     If Provider A consistently over-allocates:<br/>       Recipients consistently decline<br/>       A's satisfaction ratings decrease<br/>       A's future allocation share decreases<br/>     System learns to allocate less from A<br/><br/>VERDICT: ✅ NO CASCADE<br/>  Same-cycle reallocation<br/>  Need caps prevent forced over-allocation<br/>  System learns from decline patterns
+    end
+
+    rect rgb(245, 240, 245)
+        Note over Alice,Network: 🔄 LOOP 5: STRATEGIC SATISFACTION GAMING<br/><br/>SCENARIO:<br/>  Recipient learns:<br/>    "If I rate low, I get more from others next cycle"<br/>    "If I rate high, I get less next cycle"<br/>  Strategic: Always rate low to maximize allocation<br/><br/>ANALYSIS: Not infinite loop, but gaming vector<br/><br/>PROTECTIONS:<br/>  1️⃣ Mutual Satisfaction Requirement:<br/>     MS(A,B) = min(S_A→B, S_B→A)<br/>     <br/>     If B strategically underrates A:<br/>       - A's allocation to B decreases (B's intention)<br/>       - But A sees B's low rating<br/>       - A can respond:<br/>         a) Reduce their satisfaction rating of B<br/>         b) Reduce recognition of B<br/>       - MS(A,B) stays low<br/>       - B doesn't gain advantage<br/><br/>  2️⃣ Recognition Controls Eligibility:<br/>     Satisfaction affects ALLOCATION WEIGHT (among eligible)<br/>     Recognition affects WHO IS ELIGIBLE<br/>     <br/>     If B games satisfaction:<br/>       A can remove B from recognition entirely<br/>       B gets zero allocation (regardless of satisfaction)<br/><br/>  3️⃣ Network Reputation Effects:<br/>     If B consistently dishonest:<br/>       - Other providers see pattern<br/>       - Other providers reduce recognition of B<br/>       - B becomes isolated<br/>       - Bad strategy long-term<br/><br/>  4️⃣ Self-Harm From Bad Data:<br/>     If B gives dishonest low satisfaction:<br/>       B's own decision-making suffers<br/>       B thinks A unhelpful when A helpful<br/>       B might reduce recognition of A<br/>       B loses access to helpful provider<br/>     Honest reporting = optimal for B's learning<br/><br/>VERDICT: ✅ GAMING-RESISTANT<br/>  Mutual satisfaction prevents one-sided manipulation<br/>  Recognition provides override control<br/>  Network effects punish dishonesty<br/>  Self-harm from bad data disincentivizes gaming
+    end
+
+    rect rgb(240, 240, 250)
+        Note over Alice,Network: 🔄 LOOP 6: RECOGNITION-SATISFACTION CONFLICT<br/><br/>SCENARIO:<br/>  Recognition tree: "A contributes 80% to my mission"<br/>  Satisfaction data: "A's allocations have 30% satisfaction"<br/>  Which wins? Does this create conflict/oscillation?<br/><br/>RESOLUTION: Recognition & Satisfaction serve different functions<br/><br/>ARCHITECTURE:<br/>  Recognition (Non-Slot):<br/>    - Intangible contributions (mission, advocacy, etc.)<br/>    - Manual input<br/>    - Controls eligibility and baseline share<br/>  <br/>  Satisfaction (Slot-Based):<br/>    - Tangible resource allocations<br/>    - Automatic feedback<br/>    - Modulates allocation weight within eligible set<br/>  <br/>  Combined Calculation:<br/>    ShareOfGeneralSatisfaction(Target, Contributor) =<br/>      Non-Slot contribution (recognition) +<br/>      Slot-Based contribution (satisfaction)<br/>    Both weighted by their tree positions<br/>    No conflict—they add together<br/><br/>EXAMPLE:<br/>  Entity A → Entity B:<br/>    Non-Slot Recognition: 40% (mission alignment)<br/>    Slot Satisfaction: 20% (resource allocations)<br/>    Total: 60% combined share<br/>  <br/>  If slot satisfaction drops to 5%:<br/>    Non-slot stays 40% (manual recognition unchanged)<br/>    Total drops to 45%<br/>  <br/>  Message: "B is mission-aligned but resources aren't helping"<br/>  Action: Keep relationship, adjust resource types<br/><br/>VERDICT: ✅ NO CONFLICT<br/>  Recognition and Satisfaction operate in different domains<br/>  Additive combination, not competitive<br/>  Allows nuanced relationships (good partner, wrong resources)
+    end
+
+    Note over Alice,Network: ═══════════ STABILITY GUARANTEES (FORMAL) ═══════════
+
+    rect rgb(245, 250, 255)
+        Note over Alice,Network: 🔬 THEOREM (v6 Stability):<br/><br/>The satisfaction-based feedback system converges to a stable<br/>equilibrium under the following conditions:<br/><br/>C1. BOUNDED ALLOCATIONS:<br/>    ∀ recipients i, resources k:<br/>      0 ≤ FinalAllocation_i^k ≤ DeclaredNeed_i^k<br/>    Hard bounds prevent unbounded growth.<br/><br/>C2. SATISFACTION DOMAIN:<br/>    ∀ satisfaction ratings S:<br/>      S ∈ [0, 1]<br/>    Bounded feedback signal.<br/><br/>C3. MIN FUNCTION IN MUTUAL SATISFACTION:<br/>    MS(A,B) = min(S_A→B, S_B→A)<br/>    Conservative aggregation prevents inflation.<br/><br/>C4. TEMPORAL SEPARATION:<br/>    Cycle t:   Allocations computed<br/>    Cycle t:   Satisfaction rated (after allocation)<br/>    Cycle t+1: Next allocations use cycle t satisfaction<br/>    Time delay breaks circular dependency.<br/><br/>C5. HIERARCHICAL DAMPENING:<br/>    Each aggregation level averages with weights:<br/>      Satisfaction_parent = Σ(w_i × Satisfaction_child_i) / Σ(w_i)<br/>    Propagation dampens with tree depth.<br/><br/>C6. PER-TYPE ADAPTIVE DAMPING:<br/>    For each resource type k:<br/>      α_k(t) ∈ {0.5, 0.8, 1.0}<br/>    If oscillation detected: α_k ← 0.5 (reduce responsiveness)<br/><br/>C7. NETWORK EFFECT PENALTIES:<br/>    Dishonest satisfaction reporting →<br/>      Reduced recognition from other entities →<br/>        Reduced total allocation →<br/>          Incentive for honest reporting<br/><br/>CONVERGENCE PROPERTY:<br/>  Under C1-C7, the system converges to satisfaction equilibrium:<br/>  <br/>  lim(t→∞) ||N⃗(t)||_F → 0  (if sufficient capacity)<br/>  <br/>  OR<br/>  <br/>  lim(t→∞) ||N⃗(t)||_F → constant  (capacity-limited equilibrium)<br/><br/>  Where:<br/>    N⃗(t) = vector of all needs across all recipients & types<br/>    ||·||_F = Frobenius norm = √(Σ_i Σ_k (N_i^k)²)<br/>    Satisfaction ratings stabilize at true utility values<br/><br/>PROOF SKETCH:<br/>  1. Need caps (C1) + Satisfaction bounds (C2) → Bounded state space<br/>  2. Time delay (C4) → No simultaneous circular dependency<br/>  3. Dampening (C5, C6) → Contraction mapping<br/>  4. Min function (C3) → Conservative convergence<br/>  5. Bounded state + Contraction → Fixed point exists (Banach)<br/>  6. Network penalties (C7) → Unique honest equilibrium optimal<br/>  ∎
+    end
+
+    Note over Alice,Network: ═══════════ COMPARISON: structure.md vs protocolv6.mmd ═══════════
+
+    rect rgb(255, 250, 240)
+        Note over Alice,Network: 📊 ARCHITECTURE COMPARISON:<br/><br/>┌─────────────────────────────────────────────────────────┐<br/>│ FEATURE              │ protocolv6.mmd  │ structure.md  │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Share Calculation    │ Simple formula  │ 4-step tree   │<br/>│                      │ recognition×sat │ aggregation   │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Allocation Tiers     │ Single-tier     │ Two-tier      │<br/>│                      │                 │ (mutual+uni)  │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Tree Structure       │ Implicit        │ Explicit      │<br/>│                      │                 │ hierarchy     │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Satisfaction Flow    │ Direct          │ Hierarchical  │<br/>│                      │                 │ aggregation   │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Anti-Contributors    │ Not supported   │ Supported ✓   │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Pool Bounding        │ No              │ Yes ✓         │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Organizations        │ No              │ Yes ✓         │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Contacts (pre-key)   │ No              │ Yes ✓         │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Constraints          │ Basic           │ Advanced ✓    │<br/>│                      │                 │ (scheduling)  │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Per-Type Damping     │ No              │ Yes ✓         │<br/>├─────────────────────────────────────────────────────────┤<br/>│ ITC Causality        │ No              │ Yes ✓         │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Stability Analysis   │ No              │ Formal ✓      │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Data Architecture    │ Tree only       │ Tree +        │<br/>│                      │                 │ DerivedState  │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Use Case             │ Protocol spec   │ Implementation│<br/>│                      │ (external)      │ (internal)    │<br/>└─────────────────────────────────────────────────────────┘<br/><br/>💡 KEY INSIGHT:<br/>protocolv6.mmd = SIMPLIFIED for protocol communication<br/>structure.md = COMPLETE for implementation architecture<br/><br/>Both are needed:<br/>- protocolv6.mmd: How entities communicate<br/>- structure.md: How entities organize internally<br/><br/>structure.md adds:<br/>✓ Anti-contributors (negative recognition)<br/>✓ Organizations (recursive, multi-language)<br/>✓ Contacts system (pre-key relationships)<br/>✓ Advanced constraints (scheduling, divisibility)<br/>✓ Per-type damping (oscillation detection)<br/>✓ ITC causality (distributed conflict resolution)<br/>✓ Formal stability analysis (6 loop analysis + proof)<br/>✓ Coexistence model (non-slot + slot detailed)<br/>✓ Tree/DerivedState separation (reactive architecture)
+    end
+

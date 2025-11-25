@@ -1,0 +1,232 @@
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Kitchen
+    participant Network
+
+    Note over Alice,Network: ═══════════ v6.1 PROTOCOL: CONTINUOUS & ASYNCHRONOUS ═══════════
+    Note over Alice,Network: ⚠️ IMPORTANT: No cycles/rounds! All events happen continuously.<br/>Entities operate independently, publish anytime, react to observations.<br/>This diagram shows "bootstrap" then "after learning" for illustration only.
+    
+    Note over Alice,Network: ═══════════ INITIALIZATION (Bootstrap State) ═══════════
+    Note over Alice,Network: 🔄 ASYNCHRONOUS: All entities publish independently<br/>💡 NEW: Provider offering policies set once, then run automatically
+    
+    par Parallel Tree + Policy Publications (Non-Blocking, Independent)
+        Alice->>Network: Publish Tree + Policies {<br/>  tree_id: "alice_tree_v1",<br/>  needs: {food: 100},<br/>  capacities: {...},<br/>  recognition: {Carol: 30%, Kitchen: 20%},<br/>  offering_policy: {auto_publish: true, commitment_rate: 1.0},<br/>  acceptance_policy: {strategy: "1/N", auto_accept: true}<br/>}
+    and
+        Bob->>Network: Publish Tree + Policies {<br/>  tree_id: "bob_tree_v1",<br/>  needs: {food: 90},<br/>  capacities: {...},<br/>  recognition: {Carol: 40%, Kitchen: 30%},<br/>  offering_policy: {auto_publish: true, commitment_rate: 1.0},<br/>  acceptance_policy: {strategy: "1/N", auto_accept: true}<br/>}
+    and
+        Carol->>Network: Publish Tree + Policies {<br/>  tree_id: "carol_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 150},<br/>  recognition: {Alice: 30%, Bob: 40%},<br/>  offering_policy: {auto_publish: true, commitment_rate: 1.0},<br/>  acceptance_policy: {strategy: "1/N", auto_accept: true}<br/>}
+    and
+        Kitchen->>Network: Publish Tree + Policies {<br/>  tree_id: "kitchen_tree_v1",<br/>  needs: {},<br/>  capacities: {food: 200},<br/>  recognition: {Alice: 30%, Bob: 30%},<br/>  offering_policy: {auto_publish: true, commitment_rate: 1.0},<br/>  acceptance_policy: {strategy: "1/N", auto_accept: true}<br/>}
+    end
+
+    Note over Network: 📡 Network stores all trees + policies<br/>Each entity subscribes to relevant events
+
+    Note over Alice,Network: ═══════════ ALLOCATION → OFFER (Bootstrap State) ═══════════
+    Note over Alice,Network: 🤖 AUTOMATIC: Providers observe needs, compute allocations, publish offers<br/>💡 KEY: Allocation (derived) → Offer (commitment via policy)<br/>⏰ TIMING: Happens anytime provider observes needs (continuous, async)
+    
+    par Parallel Automatic Offering (Providers compute & publish automatically)
+        rect rgb(230, 240, 255)
+            Note over Carol: 📊 AUTOMATIC COMPUTATION (Derived State)
+            Carol->>Carol: Observe: Alice needs 100, Bob needs 90<br/><br/>📐 MUTUAL RECOGNITION (Eligibility):<br/>  MR(Carol,Alice) = min(30%, 30%) = 30%<br/>  MR(Carol,Bob) = min(40%, 40%) = 40%<br/>  Total MR = 70%<br/><br/>📐 RECIPIENT SHARES (Bootstrap - no satisfaction yet):<br/>  Alice's share of Carol = 30% (recognition only)<br/>  Bob's share of Carol = 40% (recognition only)<br/><br/>📐 MUTUAL SATISFACTION (MS = MR × share):<br/>  MS(Carol,Alice) = 30% × 30% = 0.09<br/>  MS(Carol,Bob) = 40% × 40% = 0.16<br/>  Total MS = 0.25<br/><br/>📐 ALLOCATE (MS-based):<br/>  allocation_alice = 150 × (0.09/0.25) = 54<br/>  allocation_bob = 150 × (0.16/0.25) = 96
+            Carol->>Carol: 🎯 APPLY POLICY (User-Set, Stable):<br/>commitment_rate = 1.0 (offer 100%)<br/>auto_publish = true<br/><br/>offer_alice = 64.3 × 1.0 = 64.3<br/>offer_bob = 85.7 × 1.0 = 85.7<br/><br/>💡 These offers are COMMITMENTS
+            Carol->>Network: 🤖 AUTO-PUBLISH Offers {<br/>  offer_id: "carol_offer_1_alice",<br/>  to: Alice, amount: 54,<br/>  offer_id: "carol_offer_1_bob",<br/>  to: Bob, amount: 96<br/>}
+        end
+    and
+        rect rgb(230, 240, 255)
+            Note over Kitchen: 📊 AUTOMATIC COMPUTATION (Derived State)
+            Kitchen->>Kitchen: Observe: Alice needs 100, Bob needs 90<br/><br/>📐 MUTUAL RECOGNITION (Eligibility):<br/>  MR(Kitchen,Alice) = min(20%, 20%) = 20%<br/>  MR(Kitchen,Bob) = min(30%, 30%) = 30%<br/>  Total MR = 50%<br/><br/>📐 RECIPIENT SHARES (Bootstrap - no satisfaction yet):<br/>  Alice's share of Kitchen = 20% (recognition only)<br/>  Bob's share of Kitchen = 30% (recognition only)<br/><br/>📐 MUTUAL SATISFACTION (MS = MR × share):<br/>  MS(Kitchen,Alice) = 20% × 20% = 0.04<br/>  MS(Kitchen,Bob) = 30% × 30% = 0.09<br/>  Total MS = 0.13<br/><br/>📐 ALLOCATE (MS-based):<br/>  allocation_alice = 200 × (0.04/0.13) = 61.5<br/>  allocation_bob = 200 × (0.09/0.13) = 138.5
+            Kitchen->>Kitchen: 🎯 APPLY POLICY (User-Set, Stable):<br/>commitment_rate = 1.0<br/>auto_publish = true<br/><br/>offer_alice = 61.5 × 1.0 = 61.5<br/>offer_bob = 138.5 × 1.0 = 138.5<br/><br/>✅ Full allocation offered
+            Kitchen->>Network: 🤖 AUTO-PUBLISH Offers {<br/>  offer_id: "kitchen_offer_1_alice",<br/>  to: Alice, amount: 61.5,<br/>  offer_id: "kitchen_offer_1_bob",<br/>  to: Bob, amount: 138.5<br/>}
+        end
+    end
+
+    Note over Network: 📡 Offers published (these ARE the commitments)<br/>Alice & Bob subscribe to offers
+
+    Note over Alice,Network: ═══════════ ACCEPTANCE (Bootstrap State) ═══════════
+    Note over Alice,Network: 👤 v6 DEFAULT: Manual acceptance decisions per offer<br/>🤖 v6.1 ENHANCEMENT: Optional policy-based auto-acceptance<br/>🛡️ v6.1 STRATEGY: 1/N (antifragile), weighted, greedy, or manual<br/>⏰ TIMING: Happens anytime recipient observes offers (continuous, async)
+
+    par Parallel Acceptance (Recipients decide independently)
+        rect rgb(200, 255, 220)
+            Note over Alice: 🤖 v6.1 POLICY-BASED (Optional Enhancement)
+            Alice->>Alice: 📊 OBSERVE OFFERS:<br/>Carol offers: 54<br/>Kitchen offers: 61.5<br/>Total available: 115.5 (vs need: 100)<br/><br/>🎯 APPLY ACCEPTANCE POLICY (Optional):<br/>  strategy: "1/N" (user-configured)<br/>  auto_accept: true<br/><br/>🛡️ EXECUTE 1/N STRATEGY:<br/>  N = 2 providers<br/>  target_each = 100 / 2 = 50<br/><br/>  Carol: min(54, 50) = 50 ✓<br/>  Kitchen: min(61.5, 50) = 50 ✓<br/><br/>Total: 100 (meets need!)<br/><br/>💡 1/N = bounded downside, unbounded upside<br/>📝 v6 default: manual acceptance per offer
+            Alice->>Network: 🤖 AUTO-PUBLISH Acceptances {<br/>  {offer: carol_offer_1_alice, accepted: 50},<br/>  {offer: kitchen_offer_1_alice, accepted: 50}<br/>}
+        end
+    and
+        rect rgb(200, 255, 220)
+            Note over Bob: 🤖 v6.1 POLICY-BASED (Optional Enhancement)
+            Bob->>Bob: 📊 OBSERVE OFFERS:<br/>Carol offers: 96<br/>Kitchen offers: 138.5<br/>Total available: 234.5 (vs need: 90)<br/><br/>🎯 APPLY ACCEPTANCE POLICY (Optional):<br/>  strategy: "1/N" (user-configured)<br/>  auto_accept: true<br/><br/>🛡️ EXECUTE 1/N STRATEGY:<br/>  N = 2 providers<br/>  target_each = 90 / 2 = 45<br/><br/>  Carol: min(96, 45) = 45 ✓<br/>  Kitchen: min(138.5, 45) = 45 ✓<br/><br/>Total: 90 (meets need!)<br/><br/>🛡️ Diversification protects against failure<br/>📝 v6 default: manual acceptance per offer
+            Bob->>Network: 🤖 AUTO-PUBLISH Acceptances {<br/>  {offer: carol_offer_1_bob, accepted: 45},<br/>  {offer: kitchen_offer_1_bob, accepted: 45}<br/>}
+        end
+    end
+
+    Note over Network: 📡 Acceptance records published<br/>Providers subscribe to acceptance events
+
+    Note over Alice,Network: ═══════════ DELIVERY & SATISFACTION (Ongoing) ═══════════
+    Note over Alice,Network: 📦 DELIVERY: Providers deliver what they can<br/>⭐ SATISFACTION: Recipients rate quality (manual) + reliability (automatic)<br/>⏰ TIMING: Delivery anytime, satisfaction rated hours/days later (continuous, async)
+
+    par Parallel Deliveries (Providers deliver independently)
+        Carol->>Alice: Deliver 48 food (96% of accepted 50)
+        Carol->>Bob: Deliver 45 food (100% of accepted 45)
+        Kitchen->>Alice: Deliver 50 food (100% of accepted 50)
+        Kitchen->>Bob: Deliver 45 food (100% of accepted 45)
+    end
+
+    Note over Alice,Network: 📐 NEED UPDATE LAW (Automatic):<br/>Need(t+1) = Need(t) - Received(t)<br/><br/>Alice: Need(t) = 100, Received = 48+50 = 98<br/>  → Need(t+1) = 100 - 98 = 2 (nearly satisfied!)<br/><br/>Bob: Need(t) = 90, Received = 45+45 = 90<br/>  → Need(t+1) = 90 - 90 = 0 (fully satisfied!)<br/><br/>💡 Prevents accumulation, ensures convergence
+
+    par Parallel Satisfaction Rating (Recipients rate independently)
+        rect rgb(255, 240, 200)
+            Note over Alice: ⭐ SATISFACTION RATING<br/>(Manual quality + automatic reliability)
+            Alice->>Alice: Carol's delivery:<br/>  delivered: 48 / accepted: 50<br/>  quality_satisfaction: 0.85 (manual rating)<br/>  delivery_reliability: 48/50 = 0.96 (auto)<br/><br/>Kitchen's delivery:<br/>  delivered: 50 / accepted: 50<br/>  quality_satisfaction: 0.95 (manual rating)<br/>  delivery_reliability: 50/50 = 1.0 (auto)
+            Alice->>Network: Publish Satisfaction {<br/>  {offer: carol_offer_1_alice, delivered: 48,<br/>   quality: 0.85, reliability: 0.96},<br/>  {offer: kitchen_offer_1_alice, delivered: 50,<br/>   quality: 0.95, reliability: 1.0}<br/>}
+        end
+    and
+        rect rgb(255, 240, 200)
+            Note over Bob: ⭐ SATISFACTION RATING
+            Bob->>Bob: Carol's delivery:<br/>  delivered: 45 / accepted: 45<br/>  quality_satisfaction: 0.60 (manual rating)<br/>  delivery_reliability: 45/45 = 1.0 (auto)<br/><br/>Kitchen's delivery:<br/>  delivered: 45 / accepted: 45<br/>  quality_satisfaction: 0.90 (manual rating)<br/>  delivery_reliability: 45/45 = 1.0 (auto)
+            Bob->>Network: Publish Satisfaction {<br/>  {offer: carol_offer_1_bob, delivered: 45,<br/>   quality: 0.60, reliability: 1.0},<br/>  {offer: kitchen_offer_1_bob, delivered: 45,<br/>   quality: 0.90, reliability: 1.0}<br/>}
+        end
+    end
+
+    Note over Network: 📡 Satisfaction records published<br/>All entities subscribe to satisfaction events
+
+    Note over Alice,Network: ═══════════ PROVIDER SATISFACTION AGGREGATION (Automatic) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Providers observe satisfaction, recompute reputation<br/>📐 FORMULA: Weighted average across recipients + EMA smoothing
+
+    par Parallel Reputation Updates (Providers observe automatically)
+        rect rgb(230, 230, 250)
+            Note over Carol: 📊 AUTOMATIC REPUTATION UPDATE
+            Carol->>Carol: Observe satisfaction from network:<br/><br/>From Alice:<br/>  accepted: 50, delivered: 48<br/>  quality: 0.85 (manual rating)<br/>  reliability: 48/50 = 0.96 (automatic)<br/><br/>From Bob:<br/>  accepted: 45, delivered: 45<br/>  quality: 0.60 (manual rating)<br/>  reliability: 45/45 = 1.0 (automatic)<br/><br/>📐 WEIGHTED AVERAGE (across recipients):<br/>  quality_avg = (50×0.85 + 45×0.60) / (50+45)<br/>              = (42.5 + 27) / 95 = 0.731<br/>  reliability_avg = (50×0.96 + 45×1.0) / 95<br/>                  = 0.979<br/><br/>📐 EMA UPDATE (temporal smoothing, α=0.2):<br/>  quality_ema = 0.2×0.731 + 0.8×prev<br/>              = 0.731 (bootstrap, no previous)<br/>  reliability_ema = 0.2×0.979 + 0.8×prev<br/>                  = 0.979<br/><br/>effective_reputation = 0.731 × 0.979 = 0.72
+            Note over Carol: 💡 Two-stage aggregation:<br/>1. Weighted by accepted qty<br/>2. EMA smoothing over time
+        end
+    and
+        rect rgb(230, 230, 250)
+            Note over Kitchen: 📊 AUTOMATIC REPUTATION UPDATE
+            Kitchen->>Kitchen: Observe satisfaction from network:<br/><br/>From Alice:<br/>  accepted: 50, delivered: 50<br/>  quality: 0.95, reliability: 1.0<br/><br/>From Bob:<br/>  accepted: 45, delivered: 45<br/>  quality: 0.90, reliability: 1.0<br/><br/>📐 WEIGHTED AVERAGE:<br/>  quality_avg = (50×0.95 + 45×0.90) / 95<br/>              = 0.926<br/>  reliability_avg = (50×1.0 + 45×1.0) / 95<br/>                  = 1.0<br/><br/>📐 EMA UPDATE (α=0.2):<br/>  quality_ema = 0.926 (bootstrap, no previous)<br/>  reliability_ema = 1.0<br/><br/>✅ effective_reputation = 0.926 × 1.0 = 0.926
+            Note over Kitchen: ✅ Excellent reputation!<br/>High quality + perfect reliability
+        end
+    end
+
+    Note over Alice,Network: ═══════════ RECIPIENT SHARE CALCULATION (Automatic) ═══════════
+    Note over Alice,Network: 🔄 REACTIVE: Recipients observe provider reputation, recompute shares<br/>📐 FORMULA: recognition_points × effective_reputation (normalized)
+
+    par Parallel Share Recomputation (Recipients observe provider reputation)
+        rect rgb(255, 220, 255)
+            Note over Alice: 📊 AUTOMATIC SHARE RECOMPUTATION
+            Alice->>Alice: Observe provider reputations from network:<br/><br/>Carol: effective_reputation = 0.72<br/>Kitchen: effective_reputation = 0.926<br/><br/>📐 SATISFACTION-WEIGHTED RECOGNITION:<br/>  Carol: 30 × 0.72 = 21.6<br/>  Kitchen: 25 × 0.926 = 23.15<br/>  Total = 44.75<br/><br/>📐 NORMALIZED SHARES (sum to 1.0):<br/>  Carol: 21.6 / 44.75 = 0.483<br/>  Kitchen: 23.15 / 44.75 = 0.517<br/><br/>💡 Shares drive future MR calculations:<br/>  Higher reputation → larger share → more allocation
+            Note over Alice: DerivedStateMap updated:<br/>Carol share: 0.483<br/>Kitchen share: 0.517
+        end
+    and
+        rect rgb(255, 220, 255)
+            Note over Bob: 📊 AUTOMATIC SHARE RECOMPUTATION
+            Bob->>Bob: Observe provider reputations:<br/><br/>Carol: effective_reputation = 0.72<br/>Kitchen: effective_reputation = 0.926<br/><br/>📐 SATISFACTION-WEIGHTED RECOGNITION:<br/>  Carol: 30 × 0.72 = 21.6<br/>  Kitchen: 40 × 0.926 = 37.04<br/>  Total = 58.64<br/><br/>📐 NORMALIZED SHARES:<br/>  Carol: 21.6 / 58.64 = 0.368<br/>  Kitchen: 37.04 / 58.64 = 0.632<br/><br/>💡 Kitchen's higher reputation + recognition<br/>  → Much larger share for Bob!
+            Note over Bob: DerivedStateMap updated:<br/>Carol share: 0.368 (DOWN from 0.43)<br/>Kitchen share: 0.632 (UP from 0.57)
+        end
+    end
+
+    Note over Network: 📡 Shares recomputed automatically<br/>Drive future allocations (continuous)
+
+    Note over Alice,Network: ═══════════ TREE UPDATES (Periodic, Parallel, Non-Blocking) ═══════════
+    Note over Alice,Network: 👤 PERIODIC: Users adjust tree/policies based on experience<br/>⏰ FREQUENCY: Weekly/monthly (user chooses timing)<br/>🔄 PARALLEL: All updates independent, non-blocking, continuous
+
+    par Parallel Tree Updates (Users adjust independently, anytime)
+        rect rgb(255, 230, 230)
+            Note over Alice: 👤 PERIODIC TREE UPDATE<br/>(User reflects on experience)
+            Alice->>Alice: Reflect on recent experience:<br/><br/>Carol:<br/>  Good quality (0.85), reliable (0.96)<br/>  Decision: Keep recognition at 30% ✓<br/><br/>Kitchen:<br/>  Excellent quality (0.95), perfect delivery<br/>  Decision: Increase recognition 20% → 25% ↑<br/><br/>Policies: Keep unchanged (auto mode)
+            Alice->>Network: 🔄 Publish Tree Update {<br/>  tree_id: "alice_tree_v2",<br/>  recognition: {Carol: 30%, Kitchen: 25%},<br/>  offering_policy: {unchanged},<br/>  acceptance_policy: {unchanged}<br/>}
+        end
+    and
+        rect rgb(255, 230, 230)
+            Note over Bob: 👤 PERIODIC TREE UPDATE<br/>(Independent of Alice's timing!)
+            Bob->>Bob: Reflect on recent experience:<br/><br/>Carol:<br/>  Poor quality (0.60), but reliable delivery<br/>  Decision: Reduce recognition 40% → 30% ↓<br/><br/>Kitchen:<br/>  High quality (0.90), perfect delivery<br/>  Decision: Increase recognition 30% → 40% ↑<br/><br/>Policies: Keep unchanged (auto mode)
+            Bob->>Network: 🔄 Publish Tree Update {<br/>  tree_id: "bob_tree_v2",<br/>  recognition: {Carol: 30%, Kitchen: 40%},<br/>  offering_policy: {unchanged},<br/>  acceptance_policy: {unchanged}<br/>}
+        end
+    end
+
+    Note over Network: 📡 Tree updates published (parallel, non-blocking)<br/>System reactively recomputes allocations/offers
+
+    Note over Alice,Network: ═══════════ AFTER LEARNING: CONTINUOUS CONVERGENCE ═══════════
+    Note over Alice,Network: 🤖 AUTOMATIC: System converges continuously (no rounds/cycles)<br/>💡 Recognition changes → Allocations adjust → Offers auto-published<br/>⏰ TIMING: Happens anytime recognition updated (periodic, user-driven)
+
+    par Parallel Need Publications
+        Alice->>Network: Publish Need {needs: {food: 100}}
+        Bob->>Network: Publish Need {needs: {food: 90}}
+    end
+
+    par Parallel Automatic Re-Offering (No user intervention!)
+        rect rgb(220, 240, 220)
+            Note over Carol: 🤖 AUTOMATIC (Reacts to recognition + reputation)
+            Carol->>Carol: Observe updated state:<br/><br/>Recognition points (user updated):<br/>  Alice: 30% (unchanged)<br/>  Bob: 30% (reduced from 40%!)<br/><br/>Recipient shares (auto-computed from satisfaction):<br/>  Alice share of Carol: 0.483<br/>  Bob share of Carol: 0.368<br/><br/>📐 MUTUAL RECOGNITION:<br/>  MR(Carol,Alice) = min(30%, 30%) = 30%<br/>  MR(Carol,Bob) = min(30%, 30%) = 30%<br/><br/>📐 MUTUAL SATISFACTION (learned!):<br/>  MS(Carol,Alice) = 30% × 0.483 = 0.145<br/>  MS(Carol,Bob) = 30% × 0.368 = 0.110<br/>  Total MS = 0.255<br/><br/>📐 ALLOCATE (MS-based):<br/>  allocation_alice = 150 × (0.145/0.255) = 85.3<br/>  allocation_bob = 150 × (0.110/0.255) = 64.7<br/><br/>📐 APPLY POLICY:<br/>  offer_alice = 85.3 × 1.0 = 85.3<br/>  offer_bob = 64.7 × 1.0 = 64.7<br/><br/>💡 Alice's higher share → more allocation
+            Carol->>Network: 🤖 AUTO-PUBLISH New Offers {<br/>  to: Alice, amount: 85.3 (+31.3 from bootstrap),<br/>  to: Bob, amount: 64.7 (-31.3 from bootstrap)<br/>}
+        end
+    and
+        rect rgb(220, 240, 220)
+            Note over Kitchen: 🤖 AUTOMATIC (Reacts to recognition + reputation)
+            Kitchen->>Kitchen: Observe updated state:<br/><br/>Recognition points (user updated):<br/>  Alice: 25% (increased from 20%!)<br/>  Bob: 40% (increased from 30%!)<br/><br/>Recipient shares (auto-computed from satisfaction):<br/>  Alice share of Kitchen: 0.517<br/>  Bob share of Kitchen: 0.632<br/><br/>📐 MUTUAL RECOGNITION:<br/>  MR(Kitchen,Alice) = min(25%, 25%) = 25%<br/>  MR(Kitchen,Bob) = min(40%, 40%) = 40%<br/><br/>📐 MUTUAL SATISFACTION (learned!):<br/>  MS(Kitchen,Alice) = 25% × 0.517 = 0.129<br/>  MS(Kitchen,Bob) = 40% × 0.632 = 0.253<br/>  Total MS = 0.382<br/><br/>📐 ALLOCATE (MS-based):<br/>  allocation_alice = 200 × (0.129/0.382) = 67.5<br/>  allocation_bob = 200 × (0.253/0.382) = 132.5<br/><br/>📐 APPLY POLICY:<br/>  offer_alice = 67.5 × 1.0 = 67.5<br/>  offer_bob = 132.5 × 1.0 = 132.5<br/><br/>✅ High quality + recognition → major allocation shift
+            Kitchen->>Network: 🤖 AUTO-PUBLISH New Offers {<br/>  to: Alice, amount: 67.5 (+6.0 from bootstrap),<br/>  to: Bob, amount: 132.5 (-6.0 from bootstrap!)<br/>}
+        end
+    end
+
+    Note over Alice,Network: ═══════════ ACCEPTANCE (After Learning) ═══════════
+
+    par Parallel Automatic Acceptance (Policy executes independently)
+        rect rgb(200, 255, 220)
+            Note over Alice: 🤖 AUTOMATIC (Policy-Based)
+            Alice->>Alice: 📊 Offers: Carol 85.3, Kitchen 67.5<br/>Total: 152.8 (vs need: 100)<br/><br/>🎯 APPLY ACCEPTANCE POLICY:<br/>  strategy: "1/N"<br/>  auto_accept: true<br/><br/>🛡️ Execute: 100/2 = 50 each<br/>  Carol: 50, Kitchen: 50<br/><br/>Still diversified (antifragile!)
+            Alice->>Network: 🤖 AUTO-PUBLISH Acceptances {<br/>  Carol: 50, Kitchen: 50<br/>}
+        end
+    and
+        rect rgb(200, 255, 220)
+            Note over Bob: 🤖 AUTOMATIC (Policy-Based)
+            Bob->>Bob: 📊 Offers: Carol 64.7, Kitchen 132.5<br/>Total: 197.2 (vs need: 90)<br/><br/>🎯 APPLY ACCEPTANCE POLICY:<br/>  strategy: "1/N"<br/>  auto_accept: true<br/><br/>🛡️ Execute: 90/2 = 45 each<br/>  Carol: 45, Kitchen: 45<br/><br/>💡 Maintains diversification
+            Bob->>Network: 🤖 AUTO-PUBLISH Acceptances {<br/>  Carol: 45, Kitchen: 45<br/>}
+        end
+    end
+
+    Note over Alice,Network: ═══════════ LEARNING OUTCOMES (After Some Time) ═══════════
+
+    rect rgb(230, 255, 230)
+        Note over Alice,Network: 📊 DETAILED LEARNING OUTCOMES (After Some Time):<br/><br/>CAROL (Provider with mixed quality):<br/>  Bootstrap → After Learning:<br/>    To Alice: 54 → 85.3 (+58%, +31.3) ⬆️<br/>    To Bob: 96 → 64.7 (-32.6%, -31.3) ⬇️<br/>  Why: Alice's share increased (0.30→0.483), Bob's decreased (0.40→0.368)<br/>  Reputation: 0.72 (quality 0.731 × reliability 0.979)<br/>  Total capacity used: 150 → 150 (full both cycles)<br/>  Signal: MS formula rewards Alice's higher satisfaction<br/><br/>KITCHEN (Provider with high quality):<br/>  Bootstrap → After Learning:<br/>    To Alice: 61.5 → 67.5 (+9.8%, +6.0) ⬆️<br/>    To Bob: 138.5 → 132.5 (-4.3%, -6.0) ⬇️<br/>  Why: Bob's recognition increased (30%→40%) BUT Bob's share (0.632) balanced by Alice's share (0.517)<br/>  Reputation: 0.926 (quality 0.926 × reliability 1.0)<br/>  Total capacity used: 200 → 200 (full utilization)<br/>  Result: MS formula balances recognition + satisfaction<br/><br/>ALICE (Recipient with stable strategy):<br/>  Bootstrap → After Learning:<br/>    From Carol: 50 → 50 (stable, 1/N strategy)<br/>    From Kitchen: 50 → 50 (stable, 1/N strategy)<br/>    Total: 100 → 100 (need perfectly met consistently)<br/>  Strategy: Maintained 1/N diversification (antifragile)<br/>  Recognition: Slight increase to Kitchen (20% → 25%)<br/>  Outcome: Consistently satisfied, low risk<br/><br/>BOB (Recipient optimizing for quality):<br/>  Bootstrap → After Learning:<br/>    From Carol: 45 → 45 (stable, 1/N strategy)<br/>    From Kitchen: 45 → 45 (stable, 1/N strategy)<br/>    Total: 90 → 90 (need perfectly met both cycles)<br/>  Strategy: Maintained 1/N diversification (antifragile)<br/>  Recognition: Shifted toward Kitchen (30% → 40%, -10% from Carol)<br/>  Outcome: Consistently satisfied, discovered Kitchen quality<br/><br/>SYSTEM-WIDE CONVERGENCE:<br/>  ✅ Recognition flows to high-quality providers<br/>    (Kitchen gained +5% from Alice, +10% from Bob)<br/>  ✅ Recipients maintain antifragile diversification<br/>    (1/N strategy preserved throughout)<br/>  ✅ Providers adjust automatically<br/>    (No per-cycle intervention, policy-driven)<br/>  ✅ Periodic recognition updates drive convergence<br/>    (Weekly/monthly adjustments sufficient)<br/>  ✅ Bounded downside, unbounded upside<br/>    (Max loss = need/N, discovery leads to recognition ratchet)<br/>  ✅ Quality signal is clear<br/>    (Kitchen: 0.926 reputation, Carol: 0.72 reputation)<br/>  ✅ Resource utilization efficient<br/>    (All needs met, no waste, capacities utilized)
+    end
+
+    Note over Alice,Network: ═══════════ v6.1 KEY PROPERTIES ═══════════
+
+    rect rgb(255, 255, 230)
+        Note over Alice,Network: 🌟 v6.1 ANTIFRAGILE COMMITMENT-AWARE FEATURES:<br/><br/>1. POLICY-BASED AUTOMATIC OPERATION (Parallel, Non-Blocking):<br/>   - Providers set offering policy (commitment_rate, auto_publish)<br/>   - Recipients set acceptance policy (strategy, auto_accept)<br/>   - Policies are part of tree (updated anytime, parallel)<br/>   - System auto-publishes offers/acceptances per policy<br/>   - No per-offer intervention required<br/>   - Scales to 1000s of relationships<br/><br/>2. ALLOCATION → OFFER SEPARATION:<br/>   - Allocation = derived state (MS formula, automatic)<br/>   - Offer = commitment (allocation × policy, automatic)<br/>   - Provider optionality creates convexity<br/>   - Can adjust policy periodically<br/><br/>3. MUTUAL SATISFACTION (MS) FORMULA (v6.1 Enhancement):<br/>   - v6: Uses MR initially, switches to MS after learning<br/>   - v6.1: Uses MS throughout (simpler, consistent)<br/>   - MS = MR × recipient_share<br/>   - Bootstrap: share = recognition (no satisfaction yet)<br/>   - Learned: share = (recognition × satisfaction) / Σ<br/>   - Creates smooth satisfaction-weighted allocation<br/><br/>4. ACCEPTANCE POLICY STRATEGIES (v6.1 Enhancement - Optional):<br/>   - v6 DEFAULT: "manual" per-cycle acceptance decisions<br/>   - v6.1 ENHANCEMENT: Policy-based auto-acceptance<br/>   - "1/N": Diversify equally (RECOMMENDED - antifragile)<br/>   - "weighted": Accept proportional to reputation<br/>   - "greedy": Accept from best providers first<br/>   - "manual": Review each offer (v6 default)<br/>   - Recipients choose based on risk preference<br/><br/>5. ANTIFRAGILE 1/N STRATEGY (v6.1 Recommended):<br/>   - Recipients diversify across N providers<br/>   - Target: need / N from each<br/>   - Bounded downside: any single failure = need/N loss<br/>   - Unbounded upside: discover excellence → recognition ↑<br/>   - Gains from provider variability (disorder!)<br/><br/>6. DUAL-TRACK SATISFACTION:<br/>   - Quality satisfaction: manual recipient rating<br/>   - Delivery reliability: automatic (delivered/accepted)<br/>   - Both tracked via EMA (O(1), no history arrays)<br/>   - Effective reputation = quality × reliability<br/><br/>7. PERIODIC TREE/POLICY UPDATES (Parallel, Non-Blocking):<br/>   - Users adjust recognition/policies weekly/monthly<br/>   - Based on accumulated experience<br/>   - All updates are independent tree publications<br/>   - System reactively recomputes on changes<br/>   - Drives convergence toward quality<br/>   - Periodic by user choice (scalable!)<br/><br/>8. AUTOMATIC CONVERGENCE:<br/>   - Recognition changes → MS shares update (via recipient shares)<br/>   - Allocations recompute reactively (MS-based)<br/>   - Offers/acceptances auto-published per policy<br/>   - System ratchets toward optimal allocation<br/>   - No coordinator, no blocking, fully parallel<br/><br/>9. CONVEX PAYOFF STRUCTURE:<br/>   - Provider: adjust commitment via policy (option)<br/>   - Recipient: diversify acceptance via policy (option)<br/>   - Both layers create asymmetric payoffs<br/>   - Errors are bounded, discoveries are valuable<br/>   - "Understanding is a poor substitute for convexity"
+    end
+
+    Note over Alice,Network: ═══════════ ANTIFRAGILITY GUARANTEES ═══════════
+
+    rect rgb(255, 250, 240)
+        Note over Alice,Network: 📊 ACCEPTANCE STRATEGY COMPARISON:<br/><br/>📝 NOTE: v6 uses manual acceptance (per-cycle decisions).<br/>v6.1 adds policy-based options for automation.<br/><br/>1/N STRATEGY (Antifragile - v6.1 RECOMMENDED):<br/>  ✅ Bounded downside: max loss = need/N<br/>  ✅ Unbounded upside: discover quality → ratchet<br/>  ✅ Gains from disorder: variability → information<br/>  ✅ Non-teleological: no prediction needed<br/>  ⚠️ May be "inefficient" with known quality differences<br/><br/>WEIGHTED STRATEGY (Reputation-Based):<br/>  ✅ Uses learned reputation data<br/>  ✅ Allocates more to high-quality providers<br/>  ⚠️ Fragile: wrong reputation → large loss<br/>  ⚠️ Reduces discovery: low reputation → no trials<br/>  ⚠️ Can reinforce early luck (path dependence)<br/><br/>GREEDY STRATEGY (Maximize Expected Quality):<br/>  ✅ Simple: accept from best until need met<br/>  ✅ "Efficient" with accurate reputation<br/>  ⚠️ Extremely fragile: best provider fails → disaster<br/>  ⚠️ No discovery: worse providers never tried<br/>  ⚠️ Creates winner-takes-all dynamics<br/><br/>MANUAL STRATEGY (Human Judgment):<br/>  ✅ Maximum flexibility and context<br/>  ✅ Can incorporate non-quantified factors<br/>  ⚠️ Requires per-cycle intervention (doesn't scale)<br/>  ⚠️ Subject to cognitive biases<br/>  ⚠️ High coordination overhead<br/><br/>💡 RECOMMENDATION: Start with 1/N for antifragility,<br/>switch to weighted/greedy only if relationships stabilize<br/>and you want to optimize for known quality differences.
+    end
+
+    rect rgb(230, 250, 255)
+        Note over Alice,Network: 🛡️ ANTIFRAGILE PROPERTIES (from Taleb):<br/><br/>⚠️ NOTE: These properties apply when using 1/N acceptance strategy.<br/>Other strategies (weighted, greedy) may be fragile.<br/><br/>1. CONVEXITY BIAS:<br/>   - 1/N strategy creates asymmetric payoffs<br/>   - Downside: bounded (lose need/N per failure)<br/>   - Upside: unbounded (recognition ratchet)<br/>   - System gains from provider variability<br/><br/>2. OPTIONALITY (Two Layers):<br/>   - Provider option: allocation → offer adjustment<br/>   - Recipient option: diversified acceptance<br/>   - Both have option not obligation<br/>   - Creates "upper bound selection"<br/><br/>3. SERIAL OPTIONALITY (Ratcheting):<br/>   - Each interaction = new option<br/>   - Recognition adjusts upward for quality<br/>   - System locks in gains, discards losses<br/>   - "Sequential options > single option"<br/><br/>4. NON-TELEOLOGICAL LEARNING:<br/>   - Don't predict best provider<br/>   - Diversify exposure, observe outcomes<br/>   - Recognition emerges from experience<br/>   - "Convexity > knowledge"<br/><br/>5. 1/N OPTIMAL STRATEGY:<br/>   - Maximize trials, minimize cost per trial<br/>   - N providers = N parallel experiments<br/>   - Rare excellence discovered naturally<br/>   - Fat-tailed payoffs captured<br/><br/>6. GAINS FROM DISORDER:<br/>   - Provider variability = information<br/>   - High variance → faster discovery<br/>   - System improves under uncertainty<br/>   - Antifragile not just robust<br/><br/>7. CONVERGENCE TO QUALITY:<br/>   - Recognition flows to satisfaction<br/>   - High quality → more recognition → larger share<br/>   - Low quality → less recognition → smaller share<br/>   - Empirically grounded allocation
+    end
+
+    Note over Alice,Network: ═══════════ MATHEMATICAL GUARANTEES ═══════════
+
+    rect rgb(220, 255, 255)
+        Note over Alice,Network: ✅ STABILITY & CONVERGENCE PROPERTIES:<br/><br/>1. NO INFINITE LOOPS:<br/>   📐 Time delay: satisfaction rated after delivery<br/>   📐 EMA dampening: α=0.2 smooths rapid changes<br/>   📐 Need caps: allocations ≤ needs (bounded)<br/>   📐 Asynchronous timing prevents instant feedback<br/>   → Feedback loop is delayed and dampened<br/><br/>2. MUTUAL RECOGNITION (Gaming Resistance):<br/>   📐 MR(A,B) = min(recognition_A→B, recognition_B→A)<br/>   📐 Can't inflate unilaterally: both must agree<br/>   📐 Recognition overrides satisfaction (eligibility)<br/>   📐 Network reputation effects create accountability<br/>   → Gaming requires collusion, not unilateral action<br/><br/>3. BOUNDED CONVERGENCE:<br/>   📐 Satisfaction: 0.0 ≤ s ≤ 1.0 (bounded)<br/>   📐 Shares: Σ share_i = 1.0 (normalized)<br/>   📐 Allocations: 0 ≤ alloc_i ≤ need_i (capped)<br/>   📐 Reputation: quality × reliability ∈ [0,1]<br/>   → All values bounded, system converges to equilibrium<br/><br/>4. SELF-CORRECTION:<br/>   📐 Poor quality → lower satisfaction → reduced share<br/>   📐 High quality → higher satisfaction → increased share<br/>   📐 Under-offering → less accepted → lower utilization signal<br/>   📐 Over-offering → partial acceptance → learn demand<br/>   → System automatically optimizes toward utility<br/><br/>5. NO ACCUMULATION:<br/>   📐 Need update law: Need(t+1) = Need(t) - Received(t)<br/>   📐 Declined/excess resources return to provider<br/>   📐 Needs decrease as satisfied<br/>   📐 Allocations track actual needs<br/>   → Resources flow to where needed, no waste<br/><br/>6. PARALLEL EXECUTION SAFETY:<br/>   📐 All entities compute independently<br/>   📐 No sequential bottlenecks or race conditions<br/>   📐 Eventually consistent (CRDT-like)<br/>   📐 Tree updates are commutative (order-independent)<br/>   📐 Scales horizontally: O(entities) not O(entities²)<br/>   → Event-driven = resilient to offline/slow entities<br/><br/>7. POLICY STABILITY:<br/>   📐 Policies are stable user inputs (tree structure)<br/>   📐 Only change on explicit user update<br/>   📐 Derived state reacts to policy changes<br/>   📐 System auto-converges after policy change<br/>   → Set-and-forget operation, periodic adjustment only
+    end
+
+    Note over Alice,Network: ═══════════ FORMULAS REFERENCE ═══════════
+
+    rect rgb(245, 245, 255)
+        Note over Alice,Network: 📐 KEY MATHEMATICAL FORMULAS:<br/><br/>MUTUAL RECOGNITION (Eligibility):<br/>  MR(A,B) = min(recognition_A→B, recognition_B→A)<br/>  → Both parties must recognize for allocation<br/><br/>MUTUAL SATISFACTION (Allocation Weight):<br/>  MS(provider, recipient) = MR(provider, recipient) × share_recipient_of_provider<br/>  → Combines eligibility (MR) with learned quality (share)<br/>  → Bootstrap: share = recognition (no satisfaction data yet)<br/>  → Learned: share = (recognition × satisfaction) / Σ(recognition × satisfaction)<br/><br/>PROVIDER REPUTATION (Aggregation):<br/>  quality_avg = Σ(accepted_i × quality_i) / Σ(accepted_i)<br/>  reliability_avg = Σ(accepted_i × (delivered_i/accepted_i)) / Σ(accepted_i)<br/>  quality_ema = α × quality_avg + (1-α) × quality_ema_prev<br/>  reliability_ema = α × reliability_avg + (1-α) × reliability_ema_prev<br/>  effective_reputation = quality_ema × reliability_ema<br/>  → Weighted by acceptance quantity, smoothed over time<br/><br/>RECIPIENT SHARES (Satisfaction-Weighted Recognition):<br/>  weighted_recognition_i = recognition_points_i × reputation_i<br/>  share_i = weighted_recognition_i / Σ(weighted_recognition_j)<br/>  → Higher reputation amplifies recognition points<br/><br/>ALLOCATION (MS-Based Distribution):<br/>  MS(provider, recipient_i) = MR(provider, recipient_i) × share_i<br/>  MS_share_i = MS(provider, recipient_i) / Σ MS(provider, recipient_j)<br/>  allocation_i = capacity × MS_share_i<br/>  → Satisfaction-weighted distribution (v6.1 uses MS throughout)<br/>  → v6 uses MR in cycle 1, MS in cycle 2+ (v6.1 simplifies to always MS)<br/><br/>OFFER (Policy-Based Commitment):<br/>  offer_i = allocation_i × commitment_rate<br/>  → Provider controls commitment level via policy<br/><br/>ACCEPTANCE (Strategy-Based):<br/>  1/N: accept_i = min(offer_i, need / N)<br/>  weighted: accept_i = need × (reputation_i / Σ reputation_j)<br/>  greedy: accept from best until Σ accept_i ≥ need<br/>  → Strategy determines risk/discovery trade-off<br/><br/>NEED UPDATE (Convergence Law):<br/>  Need(t+1) = max(0, Need(t) - Received(t))<br/>  → Needs decrease as satisfied, ensuring convergence<br/><br/>EMA LEARNING RATE:<br/>  α = 0.2 (weights last ~5 observations)<br/>  Higher α = faster learning, more volatile<br/>  Lower α = slower learning, more stable<br/>  → Trade-off between responsiveness and stability
+    end
+
+    Note over Alice,Network: ═══════════ ARCHITECTURE SUMMARY ═══════════
+
+    rect rgb(240, 240, 250)
+        Note over Alice,Network: 🏗️ v6.1 POLICY-BASED AUTOMATIC ARCHITECTURE:<br/><br/>📍 KEY INSIGHTS:<br/>1. Stable policies + reactive computation = autonomous convergence<br/>2. All policy updates are parallel tree publications (non-blocking)<br/>3. Acceptance strategies are configurable (1/N recommended)<br/><br/>🌲 TREE (User Inputs - Stable, Infrequent, Parallel):<br/>  - Capacities, recognition points<br/>  - Offering policy (commitment_rate, auto_publish)<br/>  - Acceptance policy (strategy, auto_accept)<br/>  - Updated: weekly/monthly (user's choice of timing)<br/>  - Method: parallel tree publication (non-blocking)<br/><br/>📊 DERIVED STATE (Computed - Automatic, Reactive):<br/>  - Allocations (from MR formula)<br/>  - Offers (from allocations × offering_policy)<br/>  - Acceptances (from offers × acceptance_policy)<br/>  - Reputation (quality + reliability EMA)<br/>  - Recomputes on tree changes (reactive)<br/><br/>📡 PUBLISHED RECORDS (Network - Event-Driven, Parallel):<br/>  - Trees (user inputs, parallel updates)<br/>  - Offers (automatic per offering_policy)<br/>  - Acceptances (automatic per acceptance_policy)<br/>  - Deliveries + Satisfaction<br/>  - All parallel, non-blocking, eventually consistent<br/><br/>🔄 CONVERGENCE LOOP (Mostly Automatic):<br/>  1. Users set policies once (tree publication)<br/>  2. System auto-publishes offers continuously (offering_policy)<br/>  3. System auto-publishes acceptances continuously (acceptance_policy)<br/>  4. Providers deliver, recipients rate satisfaction<br/>  5. Users adjust recognition/policies periodically (tree publication)<br/>  6. System reactively recomputes allocations/offers<br/>  7. System ratchets toward quality (serial optionality)<br/><br/>✅ BENEFITS:<br/>  - Scalable: O(entities), no per-cycle intervention<br/>  - Parallel: all updates non-blocking, independent<br/>  - Antifragile: 1/N (optional) creates convex learning<br/>  - Autonomous: policies enable automatic operation<br/>  - Convergent: recognition drives quality selection<br/>  - Resilient: async, no blocking, no coordination<br/>  - Flexible: acceptance strategies configurable<br/>  - Simple: no complex prediction, policy executes
+    end
+
+    Note over Alice,Network: ═══════════ IMPLEMENTATION NOTES ═══════════
+
+    rect rgb(250, 245, 255)
+        Note over Alice,Network: 💻 IMPLEMENTATION CONSIDERATIONS:<br/><br/>DATA STRUCTURES:<br/>  Tree: { capacities, recognition, offering_policy, acceptance_policy }<br/>  DerivedState: { allocations, offers, reputation }<br/>  Offer: { from, to, amount }<br/>  Acceptance: { offer_id, accepted }<br/>  Satisfaction: { offer_id, delivered, quality }<br/><br/>OFFERING POLICY:<br/>  commitment_rate: 0.0-1.0 (% of allocation to offer)<br/>  auto_publish: bool (automatic or manual approval)<br/>  Updated anytime (parallel, non-blocking tree update)<br/><br/>ACCEPTANCE POLICY:<br/>  strategy: "1/N" | "weighted" | "greedy" | "manual"<br/>  auto_accept: bool (automatic or manual approval)<br/>  Updated anytime (parallel, non-blocking tree update)<br/><br/>ACCEPTANCE STRATEGIES:<br/>  1/N (antifragile, recommended):<br/>    target = need / offers.length<br/>    accept = offers.map(o => min(o.amount, target))<br/>    Adaptive: backfill from generous if shortfall<br/>  <br/>  weighted (reputation-based):<br/>    weight_i = reputation_i / Σ reputation_j<br/>    accept_i = need × weight_i<br/>  <br/>  greedy (maximize expected quality):<br/>    sort by reputation, accept best until need met<br/>  <br/>  manual:<br/>    user reviews and approves each cycle<br/><br/>REPUTATION UPDATE:<br/>  EMA (α=0.2): new = 0.2×observed + 0.8×old<br/>  quality_ema: from recipient ratings<br/>  reliability_ema: from delivered/accepted<br/>  effective = quality × reliability<br/><br/>TREE/POLICY UPDATES (Parallel, Non-Blocking):<br/>  Frequency: weekly/monthly (not per-cycle)<br/>  Method: publish tree update (like any user input)<br/>  Effect: system reactively recomputes derived state<br/>  Based on: accumulated satisfaction experience<br/>  Drives: MR share changes → allocation updates<br/><br/>CONVERGENCE:<br/>  Quality → Recognition → Allocation → Offers → Delivery<br/>  All automatic except user-initiated tree/policy updates<br/>  Parallel, non-blocking, fully event-driven<br/>  Scales to 1000s of relationships per entity
+    end
+

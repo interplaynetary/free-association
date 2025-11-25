@@ -33,4 +33,3 @@ export const load: PageLoad = async () => {
 		organizations
 	};
 };
-

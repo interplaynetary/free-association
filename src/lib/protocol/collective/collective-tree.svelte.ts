@@ -2166,4 +2166,1008 @@ function renormalizeCollectiveTree(tree: CollectiveTree): CollectiveTree {
 	};
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// DISTRIBUTION FRAMEWORK INTEGRATION
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Bridge between collective tree recognition and distribution framework.
+ * 
+ * This section provides functions to convert collective tree recognition metrics
+ * into DistributionResult objects that can be consumed by the allocation engine.
+ * 
+ * Architecture:
+ * ```
+ * Collective Tree Recognition → Distribution Shares → Slot Allocation
+ * ```
+ */
+
+import type { DistributionResult } from '$lib/protocol/distribution';
+import type { AllocationResult, AvailabilitySlot, Commitment } from '$lib/protocol/schemas';
+import type { ComplianceFilter } from '$lib/protocol/utils/filters';
+import type { JsonLogicRule } from '$lib/protocol/utils/filters/filters';
+import { ruleToFilter } from '$lib/protocol/utils/filters/filters';
+import { allocateWithDistribution } from '$lib/protocol/allocation';
+
+/**
+ * Node Recognition Metrics
+ * 
+ * Captures recognition data for a single node in the collective tree.
+ * Used as input to distribution calculation.
+ */
+export interface NodeRecognitionMetrics {
+	node_id: string;
+	node_name: string;
+	total_recognition: number;
+	average_mrd: number;
+	contributor_weights: Record<string, number>; // Normalized contributor shares
+	contributor_ids: string[];
+	path_from_root: string[];
+	depth: number;
+}
+
+/**
+ * Convert collective tree node recognition to distribution shares
+ * 
+ * **Mathematical Foundation:**
+ * 
+ * For a given node N in the collective tree:
+ * - contributor_weights already represents normalized shares: Σ weights = 1.0
+ * - These weights come from: w_i = (node_percentage_i × contributor_weight_i) / total
+ * 
+ * **Aggregation Modes:**
+ * 
+ * 1. **single-node**: Distribution for one specific node
+ *    - shares = node.contributor_weights (already normalized)
+ *    - Use case: Allocate based on one decision point
+ * 
+ * 2. **tree-wide**: Aggregate recognition across all nodes
+ *    - shares_i = Σ(node_weight_j × contributor_weight_ij) for all nodes j
+ *    - Use case: Allocate based on overall participation
+ * 
+ * 3. **weighted-path**: Weight by node depth/position
+ *    - shares_i = Σ(depth_weight_j × contributor_weight_ij)
+ *    - depth_weight = 1 / (depth + 1) (deeper nodes count less)
+ *    - Use case: Prioritize root-level decisions
+ * 
+ * **Normalization:**
+ * - sum-to-one: Ensure Σ shares = 1.0 (default)
+ * - proportional: Keep relative proportions but may not sum to 1.0
+ * 
+ * @param nodeRecognition - Map of node_id to recognition metrics
+ * @param options - Configuration for distribution calculation
+ * @returns Distribution result compatible with allocation engine
+ */
+function nodeRecognitionToDistribution(
+	nodeRecognition: Map<string, NodeRecognitionMetrics>,
+	options?: {
+		targetNodeId?: string;
+		aggregationMode?: 'single-node' | 'tree-wide' | 'weighted-path';
+		normalizationMethod?: 'sum-to-one' | 'proportional';
+	}
+): DistributionResult {
+	const mode = options?.aggregationMode || 'tree-wide';
+	const normMethod = options?.normalizationMethod || 'sum-to-one';
+	
+	console.log('[NODE-RECOGNITION-TO-DISTRIBUTION] Converting recognition to distribution');
+	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Mode: ${mode}, Normalization: ${normMethod}`);
+	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Processing ${nodeRecognition.size} nodes`);
+	
+	// Edge case: No recognition data
+	if (nodeRecognition.size === 0) {
+		console.warn('[NODE-RECOGNITION-TO-DISTRIBUTION] No recognition data provided');
+		return {
+			shares: {},
+			method: 'collective-recognition',
+			metadata: {
+				aggregation_mode: mode,
+				node_count: 0,
+				error: 'No recognition data',
+				timestamp: Date.now()
+			}
+		};
+	}
+	
+	let shares: Record<string, number> = {};
+	const metadata: {
+		timestamp: number;
+		aggregation_mode: string;
+		normalization_method: string;
+		node_count: number;
+		[key: string]: any;
+	} = {
+		timestamp: Date.now(),
+		aggregation_mode: mode,
+		normalization_method: normMethod,
+		node_count: nodeRecognition.size
+	};
+	
+	if (mode === 'single-node') {
+		// ═══════════════════════════════════════════════════════════════
+		// MODE 1: Single Node Distribution
+		// ═══════════════════════════════════════════════════════════════
+		
+		const targetId = options?.targetNodeId;
+		if (!targetId) {
+			throw new Error('targetNodeId required for single-node mode');
+		}
+		
+		const targetNode = nodeRecognition.get(targetId);
+		if (!targetNode) {
+			throw new Error(`Node ${targetId} not found in recognition data`);
+		}
+		
+		console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Single-node: ${targetNode.node_name} (${targetNode.contributor_ids.length} contributors)`);
+		
+		// contributor_weights already normalized
+		shares = { ...targetNode.contributor_weights };
+		
+		metadata.target_node_id = targetId;
+		metadata.target_node_name = targetNode.node_name;
+		metadata.total_recognition = targetNode.total_recognition;
+		metadata.average_mrd = targetNode.average_mrd;
+		
+	} else if (mode === 'tree-wide') {
+		// ═══════════════════════════════════════════════════════════════
+		// MODE 2: Tree-Wide Aggregation
+		// ═══════════════════════════════════════════════════════════════
+		
+		console.log('[NODE-RECOGNITION-TO-DISTRIBUTION] Tree-wide aggregation');
+		
+		// Collect all unique contributors
+		const allContributors = new Set<string>();
+		for (const node of nodeRecognition.values()) {
+			node.contributor_ids.forEach(id => allContributors.add(id));
+		}
+		
+		console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Found ${allContributors.size} unique contributors`);
+		
+		// Aggregate recognition across all nodes
+		// Each node contributes proportionally to overall shares
+		const nodeWeights = new Map<string, number>();
+		let totalNodeWeight = 0;
+		
+		// Calculate node weights (could be uniform or based on recognition)
+		for (const [nodeId, node] of nodeRecognition.entries()) {
+			const weight = node.total_recognition; // Weight by total recognition
+			nodeWeights.set(nodeId, weight);
+			totalNodeWeight += weight;
+		}
+		
+		// Normalize node weights
+		if (totalNodeWeight > 0) {
+			for (const [nodeId, weight] of nodeWeights.entries()) {
+				nodeWeights.set(nodeId, weight / totalNodeWeight);
+			}
+		}
+		
+		// Aggregate contributor shares across nodes
+		for (const contributorId of allContributors) {
+			let contributorShare = 0;
+			
+			for (const [nodeId, node] of nodeRecognition.entries()) {
+				const nodeWeight = nodeWeights.get(nodeId) || 0;
+				const contributorWeightInNode = node.contributor_weights[contributorId] || 0;
+				contributorShare += nodeWeight * contributorWeightInNode;
+			}
+			
+			shares[contributorId] = contributorShare;
+		}
+		
+		metadata.contributor_count = allContributors.size;
+		metadata.total_recognition = Array.from(nodeRecognition.values()).reduce(
+			(sum, n) => sum + n.total_recognition,
+			0
+		);
+		
+	} else if (mode === 'weighted-path') {
+		// ═══════════════════════════════════════════════════════════════
+		// MODE 3: Weighted by Path Depth
+		// ═══════════════════════════════════════════════════════════════
+		
+		console.log('[NODE-RECOGNITION-TO-DISTRIBUTION] Weighted-path: prioritizing root-level nodes');
+		
+		// Collect all unique contributors
+		const allContributors = new Set<string>();
+		for (const node of nodeRecognition.values()) {
+			node.contributor_ids.forEach(id => allContributors.add(id));
+		}
+		
+		// Calculate depth weights: 1 / (depth + 1)
+		// Root = depth 0 → weight = 1.0
+		// Level 1 → weight = 0.5
+		// Level 2 → weight = 0.33
+		const nodeDepthWeights = new Map<string, number>();
+		let totalDepthWeight = 0;
+		
+		for (const [nodeId, node] of nodeRecognition.entries()) {
+			const depthWeight = 1.0 / (node.depth + 1);
+			nodeDepthWeights.set(nodeId, depthWeight);
+			totalDepthWeight += depthWeight;
+		}
+		
+		// Normalize depth weights
+		if (totalDepthWeight > 0) {
+			for (const [nodeId, weight] of nodeDepthWeights.entries()) {
+				nodeDepthWeights.set(nodeId, weight / totalDepthWeight);
+			}
+		}
+		
+		// Aggregate contributor shares with depth weighting
+		for (const contributorId of allContributors) {
+			let contributorShare = 0;
+			
+			for (const [nodeId, node] of nodeRecognition.entries()) {
+				const depthWeight = nodeDepthWeights.get(nodeId) || 0;
+				const contributorWeightInNode = node.contributor_weights[contributorId] || 0;
+				contributorShare += depthWeight * contributorWeightInNode;
+			}
+			
+			shares[contributorId] = contributorShare;
+		}
+		
+		metadata.contributor_count = allContributors.size;
+		metadata.depth_weighting = 'inverse'; // 1 / (depth + 1)
+	}
+	
+	// Apply normalization
+	if (normMethod === 'sum-to-one') {
+		const total = Object.values(shares).reduce((sum, share) => sum + share, 0);
+		
+		if (total < 0.0001) {
+			console.warn('[NODE-RECOGNITION-TO-DISTRIBUTION] Total shares near zero, returning empty distribution');
+			return {
+				shares: {},
+				method: 'collective-recognition',
+				metadata: {
+					timestamp: Date.now(),
+					aggregation_mode: mode,
+					normalization_method: normMethod,
+					node_count: nodeRecognition.size,
+					error: 'Total shares near zero'
+				}
+			};
+		}
+		
+		// Normalize to sum to 1.0
+		for (const contributorId in shares) {
+			shares[contributorId] = shares[contributorId] / total;
+		}
+		
+		metadata.normalization_applied = true;
+		metadata.sum_before_normalization = total;
+	}
+	
+	// Verify sum (within floating point precision)
+	const finalSum = Object.values(shares).reduce((sum, share) => sum + share, 0);
+	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Final distribution: ${Object.keys(shares).length} recipients, sum=${finalSum.toFixed(4)}`);
+	
+	return {
+		shares,
+		method: 'collective-recognition',
+		metadata
+	};
+}
+
+/**
+ * Unified Filter Configuration
+ * 
+ * Combines multiple filter types:
+ * - Recognition thresholds (min_total_recognition, min_average_mrd)
+ * - Contributor quorum (min_contributor_count)
+ * - Node weight thresholds (min_percentage)
+ * - JSON Logic rules (logic_rule)
+ * - Custom filter functions (custom_filter)
+ */
+export interface UnifiedFilterConfig {
+	// Recognition-based filters
+	min_total_recognition?: number;
+	min_average_mrd?: number;
+	min_contributor_count?: number;
+	min_percentage?: number;
+	
+	// JSON Logic integration
+	logic_rule?: JsonLogicRule;
+	
+	// Custom function filter
+	custom_filter?: (node: CollectiveNode, recognition: NodeRecognitionMetrics) => boolean;
+	
+	// Path preservation
+	preserve_paths?: boolean;
+}
+
+/**
+ * Apply unified filter to collective tree with recognition data
+ * 
+ * **Filter Combination Logic:**
+ * All enabled filters are combined with AND:
+ * - Node passes if it meets ALL filter criteria
+ * - OR has valid children and preserve_paths=true
+ * 
+ * **Filter Evaluation Order:**
+ * 1. Recognition thresholds (min_total_recognition, min_average_mrd)
+ * 2. Contributor quorum (min_contributor_count)
+ * 3. Node weight threshold (min_percentage)
+ * 4. JSON Logic rule (logic_rule)
+ * 5. Custom filter function (custom_filter)
+ * 
+ * @param collectiveTree - The collective tree
+ * @param nodeRecognition - Recognition metrics per node
+ * @param config - Unified filter configuration
+ * @returns Filtered tree result with statistics
+ */
+function applyUnifiedFilter(
+	collectiveTree: CollectiveTree,
+	nodeRecognition: Map<string, NodeRecognitionMetrics>,
+	config: UnifiedFilterConfig
+): FilteredTreeResult {
+	console.log('[APPLY-UNIFIED-FILTER] Starting unified filtering');
+	console.log('[APPLY-UNIFIED-FILTER] Config:', JSON.stringify(config, null, 2));
+	
+	const removedNodes: Array<{
+		node_id: string;
+		node_name: string;
+		reason: string;
+		original_weight: number;
+		contributor_count: number;
+	}> = [];
+	
+	let totalWeightRemoved = 0;
+	const contributorsAffected = new Set<string>();
+	
+	// Check if node passes all filter criteria
+	function shouldKeepNode(node: CollectiveNode): { keep: boolean; reasons: string[] } {
+		const reasons: string[] = [];
+		let keep = true;
+		
+		const recognition = nodeRecognition.get(node.id);
+		
+		// Check recognition filters
+		if (config.min_total_recognition !== undefined) {
+			const totalRec = recognition?.total_recognition || 0;
+			if (totalRec < config.min_total_recognition) {
+				keep = false;
+				reasons.push(`total_recognition=${totalRec.toFixed(3)} < ${config.min_total_recognition}`);
+			}
+		}
+		
+		if (config.min_average_mrd !== undefined) {
+			const avgMrd = recognition?.average_mrd || 0;
+			if (avgMrd < config.min_average_mrd) {
+				keep = false;
+				reasons.push(`average_mrd=${avgMrd.toFixed(3)} < ${config.min_average_mrd}`);
+			}
+		}
+		
+		if (config.min_contributor_count !== undefined) {
+			const contributorCount = getNodeContributors(node).length;
+			if (contributorCount < config.min_contributor_count) {
+				keep = false;
+				reasons.push(`contributor_count=${contributorCount} < ${config.min_contributor_count}`);
+			}
+		}
+		
+		if (config.min_percentage !== undefined) {
+			const nodeWeight = node.type === 'CollectiveRootNode' ? 1.0 : node.weight_percentage;
+			if (nodeWeight < config.min_percentage) {
+				keep = false;
+				reasons.push(`weight=${nodeWeight.toFixed(3)} < ${config.min_percentage}`);
+			}
+		}
+		
+		// Check JSON Logic rule
+		if (config.logic_rule && recognition) {
+			const runtimeFilter = ruleToFilter(config.logic_rule);
+			const nodeShare = node.type === 'CollectiveRootNode' ? 1.0 : node.weight_percentage;
+			
+			// Create filter context with recognition data
+			const filterContext = {
+				subtreeContributors: {
+					[node.id]: Object.fromEntries(
+						recognition.contributor_ids.map(id => [id, true])
+					)
+				}
+			};
+			
+			const passesLogicRule = runtimeFilter(node.id, nodeShare, filterContext);
+			if (!passesLogicRule) {
+				keep = false;
+				reasons.push('failed JSON Logic rule');
+			}
+		}
+		
+		// Check custom filter
+		if (config.custom_filter && recognition) {
+			const passesCustom = config.custom_filter(node, recognition);
+			if (!passesCustom) {
+				keep = false;
+				reasons.push('failed custom filter');
+			}
+		}
+		
+		return { keep, reasons };
+	}
+	
+	// Recursive filtering with path preservation
+	function filterNodeRecursive(
+		node: CollectiveNode,
+		parentId: string | null
+	): CollectiveNode | null {
+		// Filter children first
+		const filteredChildren: CollectiveNode[] = [];
+		
+		for (const child of node.children) {
+			const filteredChild = filterNodeRecursive(child as CollectiveNode, node.id);
+			if (filteredChild) {
+				filteredChildren.push(filteredChild);
+			}
+		}
+		
+		// Check if current node should be kept
+		const { keep: keepNode, reasons } = shouldKeepNode(node);
+		const hasValidChildren = filteredChildren.length > 0;
+		
+		if (!keepNode && !hasValidChildren) {
+			// Node and all children fail criteria - remove entirely
+			removedNodes.push({
+				node_id: node.id,
+				node_name: node.name,
+				reason: reasons.join(', '),
+				original_weight: node.type === 'CollectiveRootNode' ? 1.0 : node.weight_percentage,
+				contributor_count: getNodeContributors(node).length
+			});
+			
+			if (node.type === 'CollectiveNonRootNode') {
+				totalWeightRemoved += node.weight_percentage;
+			}
+			
+			// Track affected contributors
+			const nodeContributors = getNodeContributors(node);
+			nodeContributors.forEach((id) => contributorsAffected.add(id));
+			
+			return null;
+		}
+		
+		if (!keepNode && hasValidChildren && config.preserve_paths) {
+			// Keep node as structural parent
+			console.log(`[APPLY-UNIFIED-FILTER] Preserving structural node: ${node.name}`);
+			return {
+				...node,
+				children: filteredChildren,
+				name: `${node.name} (filtered: ${reasons.join(', ')})`
+			};
+		}
+		
+		if (keepNode) {
+			// Keep node and update children
+			return {
+				...node,
+				children: filteredChildren
+			};
+		}
+		
+		return null;
+	}
+	
+	const originalNodeCount = countNodesInTree(collectiveTree.root);
+	const filteredRoot = filterNodeRecursive(collectiveTree.root, null);
+	
+	if (!filteredRoot) {
+		throw new Error('Cannot filter root node - tree would be empty');
+	}
+	
+	// Create filtered tree and renormalize
+	const preNormalizedTree: CollectiveTree = {
+		...collectiveTree,
+		root: filteredRoot as CollectiveRootNode,
+		last_updated: new Date().toISOString()
+	};
+	
+	const filteredTree = renormalizeCollectiveTree(preNormalizedTree);
+	const filteredNodeCount = countNodesInTree(filteredTree.root);
+	
+	console.log(`[APPLY-UNIFIED-FILTER] Filtered ${originalNodeCount} → ${filteredNodeCount} nodes (removed ${removedNodes.length})`);
+	
+	return {
+		filtered_tree: filteredTree,
+		removed_nodes: removedNodes,
+		filter_stats: {
+			original_node_count: originalNodeCount,
+			filtered_node_count: filteredNodeCount,
+			nodes_removed: removedNodes.length,
+			total_weight_removed: totalWeightRemoved,
+			contributors_affected: Array.from(contributorsAffected)
+		}
+	};
+}
+
+/**
+ * Allocate resources using collective tree recognition
+ * 
+ * **Pipeline:**
+ * 1. Convert node recognition to distribution shares
+ * 2. Apply distribution to capacity slots using allocation engine
+ * 3. Return standard allocation result
+ * 
+ * **Options:**
+ * - targetNodeId: Allocate based on single node
+ * - aggregationMode: How to combine recognition across nodes
+ * - complianceFilters: Per-recipient allocation constraints
+ * 
+ * @param collectiveTree - The collective tree
+ * @param nodeRecognition - Recognition metrics per node
+ * @param capacitySlots - Available capacity slots to allocate
+ * @param memberCommitments - All member commitments (for compatibility checking)
+ * @param options - Allocation configuration
+ * @returns Allocation result with slot-level allocations
+ */
+function allocateFromCollectiveTree(
+	collectiveTree: CollectiveTree,
+	nodeRecognition: Map<string, NodeRecognitionMetrics>,
+	capacitySlots: AvailabilitySlot[],
+	memberCommitments: Record<string, Commitment>,
+	options?: {
+		providerPubKey?: string;
+		targetNodeId?: string;
+		aggregationMode?: 'single-node' | 'tree-wide' | 'weighted-path';
+		complianceFilters?: Map<string, ComplianceFilter>;
+	}
+): AllocationResult {
+	console.log('[ALLOCATE-FROM-COLLECTIVE-TREE] Starting allocation');
+	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Capacity slots: ${capacitySlots.length}`);
+	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Member commitments: ${Object.keys(memberCommitments).length}`);
+	
+	// Step 1: Convert recognition to distribution
+	const distribution = nodeRecognitionToDistribution(nodeRecognition, {
+		targetNodeId: options?.targetNodeId,
+		aggregationMode: options?.aggregationMode || 'tree-wide',
+		normalizationMethod: 'sum-to-one'
+	});
+	
+	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Distribution calculated: ${Object.keys(distribution.shares).length} recipients`);
+	
+	// Step 2: Apply distribution to capacity slots
+	const providerPubKey = options?.providerPubKey || collectiveTree.id; // Use tree ID as fallback
+	
+	const allocationResult = allocateWithDistribution(
+		providerPubKey,
+		capacitySlots,
+		distribution,
+		memberCommitments,
+		undefined, // needsIndex (optional)
+		options?.complianceFilters
+	);
+	
+	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Allocation complete: ${allocationResult.allocations.length} allocations`);
+	
+	return allocationResult;
+}
+
+/**
+ * Complete governance and allocation pipeline
+ * 
+ * **One-Call Entry Point:**
+ * This function provides the complete pipeline from contributor trees
+ * through filtering and recognition calculation to final resource allocation.
+ * 
+ * **Pipeline Steps:**
+ * 1. Merge contributor trees with recognition tracking
+ * 2. Apply unified filters
+ * 3. Convert recognition to distribution
+ * 4. (Optional) Allocate capacity slots
+ * 
+ * **Note:** Since the file doesn't have `mergeTreesWithRecognitionTracking` yet,
+ * this function currently works with an already-merged collective tree.
+ * When merge tracking is added, update this function to include that step.
+ * 
+ * @param config - Complete governance and allocation configuration
+ * @returns All results: tree, recognition, distribution, and optional allocation
+ */
+function governAndAllocate(config: {
+	// Inputs (using pre-merged tree for now)
+	collectiveTree: CollectiveTree;
+	nodeRecognition: Map<string, NodeRecognitionMetrics>;
+	
+	// Filtering
+	filterConfig: UnifiedFilterConfig;
+	
+	// Distribution options
+	distributionOptions?: {
+		targetNodeId?: string;
+		aggregationMode?: 'single-node' | 'tree-wide' | 'weighted-path';
+	};
+	
+	// Allocation (optional)
+	capacitySlots?: AvailabilitySlot[];
+	memberCommitments?: Record<string, Commitment>;
+	providerPubKey?: string;
+	complianceFilters?: Map<string, ComplianceFilter>;
+}): {
+	// Tree results
+	filtered_tree: CollectiveTree;
+	node_recognition: Map<string, NodeRecognitionMetrics>;
+	removed_nodes: Array<any>;
+	filter_stats: any;
+	
+	// Distribution
+	distribution: DistributionResult;
+	
+	// Allocation (if capacity provided)
+	allocation?: AllocationResult;
+} {
+	console.log('[GOVERN-AND-ALLOCATE] Starting complete governance pipeline');
+	
+	// Step 1: Apply unified filter
+	console.log('[GOVERN-AND-ALLOCATE] Step 1: Applying filters');
+	const filterResult = applyUnifiedFilter(
+		config.collectiveTree,
+		config.nodeRecognition,
+		config.filterConfig
+	);
+	
+	console.log(`[GOVERN-AND-ALLOCATE] Filter complete: ${filterResult.filter_stats.filtered_node_count} nodes remaining`);
+	
+	// Step 2: Update recognition for filtered tree
+	// Filter recognition to only include nodes that remain
+	const filteredRecognition = new Map<string, NodeRecognitionMetrics>();
+	
+	function collectNodeIds(node: CollectiveNode, ids: Set<string>): void {
+		ids.add(node.id);
+		for (const child of node.children) {
+			collectNodeIds(child as CollectiveNode, ids);
+		}
+	}
+	
+	const remainingNodeIds = new Set<string>();
+	collectNodeIds(filterResult.filtered_tree.root, remainingNodeIds);
+	
+	for (const [nodeId, recognition] of config.nodeRecognition.entries()) {
+		if (remainingNodeIds.has(nodeId)) {
+			filteredRecognition.set(nodeId, recognition);
+		}
+	}
+	
+	console.log(`[GOVERN-AND-ALLOCATE] Recognition filtered: ${filteredRecognition.size} nodes`);
+	
+	// Step 3: Convert recognition to distribution
+	console.log('[GOVERN-AND-ALLOCATE] Step 2: Converting to distribution');
+	const distribution = nodeRecognitionToDistribution(filteredRecognition, {
+		targetNodeId: config.distributionOptions?.targetNodeId,
+		aggregationMode: config.distributionOptions?.aggregationMode || 'tree-wide',
+		normalizationMethod: 'sum-to-one'
+	});
+	
+	console.log(`[GOVERN-AND-ALLOCATE] Distribution complete: ${Object.keys(distribution.shares).length} recipients`);
+	
+	// Step 4: (Optional) Allocate capacity
+	let allocation: AllocationResult | undefined;
+	
+	if (config.capacitySlots && config.memberCommitments) {
+		console.log('[GOVERN-AND-ALLOCATE] Step 3: Allocating capacity');
+		
+		allocation = allocateFromCollectiveTree(
+			filterResult.filtered_tree,
+			filteredRecognition,
+			config.capacitySlots,
+			config.memberCommitments,
+			{
+				providerPubKey: config.providerPubKey,
+				targetNodeId: config.distributionOptions?.targetNodeId,
+				aggregationMode: config.distributionOptions?.aggregationMode,
+				complianceFilters: config.complianceFilters
+			}
+		);
+		
+		console.log(`[GOVERN-AND-ALLOCATE] Allocation complete: ${allocation.allocations.length} allocations`);
+	}
+	
+	console.log('[GOVERN-AND-ALLOCATE] Pipeline complete');
+	
+	return {
+		filtered_tree: filterResult.filtered_tree,
+		node_recognition: filteredRecognition,
+		removed_nodes: filterResult.removed_nodes,
+		filter_stats: filterResult.filter_stats,
+		distribution,
+		allocation
+	};
+}
+
+// Export the new bridge functions
+export {
+	nodeRecognitionToDistribution,
+	applyUnifiedFilter,
+	allocateFromCollectiveTree,
+	governAndAllocate
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// EXAMPLE USAGE AND HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Create example node recognition metrics for testing/demonstration
+ * 
+ * This helper function generates mock recognition data for a collective tree.
+ * In production, this data would come from actual tree merging and recognition calculation.
+ * 
+ * @param collectiveTree - The collective tree to generate metrics for
+ * @returns Map of node_id to recognition metrics
+ */
+export function createExampleNodeRecognition(
+	collectiveTree: CollectiveTree
+): Map<string, NodeRecognitionMetrics> {
+	const recognition = new Map<string, NodeRecognitionMetrics>();
+	
+	function processNode(node: CollectiveNode, path: string[], depth: number): void {
+		const contributorIds = getNodeContributors(node);
+		const contributorWeights: Record<string, number> = {};
+		
+		// For root nodes, use contributor_weights directly
+		if (node.type === 'CollectiveRootNode') {
+			Object.assign(contributorWeights, node.contributor_weights);
+		} else {
+			// For non-root nodes, use source_contributors
+			Object.assign(contributorWeights, node.source_contributors);
+		}
+		
+		// Calculate total recognition (sum of contributor weights)
+		const totalRecognition = Object.values(contributorWeights).reduce((sum, w) => sum + w, 0);
+		
+		// Calculate average MRD (mutual recognition density)
+		// For demonstration, use a simplified calculation
+		const avgMrd = contributorIds.length > 1 
+			? totalRecognition / contributorIds.length 
+			: totalRecognition;
+		
+		recognition.set(node.id, {
+			node_id: node.id,
+			node_name: node.name,
+			total_recognition: totalRecognition,
+			average_mrd: avgMrd,
+			contributor_weights: contributorWeights,
+			contributor_ids: contributorIds,
+			path_from_root: path,
+			depth: depth
+		});
+		
+		// Process children
+		for (const child of node.children) {
+			processNode(
+				child as CollectiveNode, 
+				[...path, child.id], 
+				depth + 1
+			);
+		}
+	}
+	
+	processNode(collectiveTree.root, [collectiveTree.root.id], 0);
+	
+	return recognition;
+}
+
+/**
+ * Example Usage: Complete Governance Pipeline
+ * 
+ * This demonstrates the full flow from collective tree through
+ * filtering, distribution calculation, and resource allocation.
+ */
+export function exampleGovernancePipeline() {
+	// Example setup (replace with real data in production)
+	const collectiveTree: CollectiveTree = {
+		id: 'collective-001',
+		root: {
+			id: 'root-001',
+			name: 'Community Projects',
+			type: 'CollectiveRootNode',
+			manual_fulfillment: null,
+			children: [],
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			contributors: ['alice', 'bob', 'carol'],
+			contributor_weights: {
+				'alice': 0.4,
+				'bob': 0.35,
+				'carol': 0.25
+			},
+			source_trees: {}
+		},
+		contributors: ['alice', 'bob', 'carol'],
+		recognition_matrix: {
+			'alice': { 'alice': 1.0, 'bob': 0.8, 'carol': 0.6 },
+			'bob': { 'alice': 0.8, 'bob': 1.0, 'carol': 0.7 },
+			'carol': { 'alice': 0.6, 'bob': 0.7, 'carol': 1.0 }
+		},
+		creation_timestamp: new Date().toISOString(),
+		last_updated: new Date().toISOString(),
+		merge_algorithm_version: '1.0.0',
+		total_nodes_merged: 1,
+		merge_conflicts: []
+	};
+	
+	// Step 1: Generate recognition metrics
+	const nodeRecognition = createExampleNodeRecognition(collectiveTree);
+	
+	// Step 2: Define filter configuration
+	const filterConfig: UnifiedFilterConfig = {
+		min_contributor_count: 2,      // At least 2 contributors
+		min_percentage: 0.1,            // At least 10% weight
+		preserve_paths: true            // Maintain tree structure
+	};
+	
+	// Step 3: Define capacity slots (optional - for allocation)
+	const capacitySlots: AvailabilitySlot[] = [
+		{
+			id: 'slot-001',
+			quantity: 100,
+			need_type_id: 'food',
+			name: 'Community Kitchen Meals',
+			max_natural_div: 1,
+			min_allocation_percentage: 0.1
+		}
+	];
+	
+	// Step 4: Define member commitments (optional - for allocation)
+	const memberCommitments: Record<string, Commitment> = {
+		'alice': {
+			need_slots: [{
+				id: 'need-alice-001',
+				quantity: 30,
+				need_type_id: 'food',
+				name: 'Weekly meals'
+			}],
+			itcStamp: { id: 1, event: 0 },
+			timestamp: Date.now()
+		},
+		'bob': {
+			need_slots: [{
+				id: 'need-bob-001',
+				quantity: 25,
+				need_type_id: 'food',
+				name: 'Weekly meals'
+			}],
+			itcStamp: { id: 1, event: 0 },
+			timestamp: Date.now()
+		},
+		'carol': {
+			need_slots: [{
+				id: 'need-carol-001',
+				quantity: 20,
+				need_type_id: 'food',
+				name: 'Weekly meals'
+			}],
+			itcStamp: { id: 1, event: 0 },
+			timestamp: Date.now()
+		}
+	};
+	
+	// USAGE EXAMPLE 1: Simple recognition → distribution
+	console.log('\n=== Example 1: Simple Recognition to Distribution ===');
+	const distribution1 = nodeRecognitionToDistribution(nodeRecognition, {
+		aggregationMode: 'tree-wide'
+	});
+	console.log('Distribution shares:', distribution1.shares);
+	
+	// USAGE EXAMPLE 2: Filtered tree → distribution
+	console.log('\n=== Example 2: Filtered Tree to Distribution ===');
+	const filterResult = applyUnifiedFilter(
+		collectiveTree,
+		nodeRecognition,
+		filterConfig
+	);
+	
+	const filteredRecognition = createExampleNodeRecognition(filterResult.filtered_tree);
+	const distribution2 = nodeRecognitionToDistribution(filteredRecognition, {
+		aggregationMode: 'tree-wide'
+	});
+	console.log('Filtered distribution shares:', distribution2.shares);
+	console.log('Nodes removed:', filterResult.removed_nodes.length);
+	
+	// USAGE EXAMPLE 3: Complete pipeline with allocation
+	console.log('\n=== Example 3: Complete Pipeline ===');
+	const result = governAndAllocate({
+		collectiveTree,
+		nodeRecognition,
+		filterConfig,
+		distributionOptions: {
+			aggregationMode: 'tree-wide'
+		},
+		capacitySlots,
+		memberCommitments,
+		providerPubKey: 'community-kitchen'
+	});
+	
+	console.log('Pipeline complete:');
+	console.log('- Filtered nodes:', result.filter_stats.filtered_node_count);
+	console.log('- Distribution recipients:', Object.keys(result.distribution.shares).length);
+	console.log('- Allocations:', result.allocation?.allocations.length || 0);
+	
+	// USAGE EXAMPLE 4: Custom filtering with JSON Logic
+	console.log('\n=== Example 4: Custom Filtering ===');
+	const customFilterConfig: UnifiedFilterConfig = {
+		min_contributor_count: 2,
+		logic_rule: {
+			'>=': [{ var: 'share' }, 0.15]  // At least 15% weight
+		},
+		custom_filter: (node, recog) => {
+			// Only keep nodes with high average MRD
+			return recog.average_mrd > 0.5;
+		}
+	};
+	
+	const customFiltered = applyUnifiedFilter(
+		collectiveTree,
+		nodeRecognition,
+		customFilterConfig
+	);
+	console.log('Custom filtered nodes:', customFiltered.filter_stats.filtered_node_count);
+	
+	return result;
+}
+
+/**
+ * Example Usage: Single Node Allocation
+ * 
+ * Demonstrates allocating based on a single decision node
+ * rather than aggregating across the entire tree.
+ */
+export function exampleSingleNodeAllocation(
+	collectiveTree: CollectiveTree,
+	nodeRecognition: Map<string, NodeRecognitionMetrics>,
+	targetNodeId: string,
+	capacitySlots: AvailabilitySlot[],
+	memberCommitments: Record<string, Commitment>
+) {
+	console.log('\n=== Single Node Allocation Example ===');
+	console.log(`Target node: ${targetNodeId}`);
+	
+	// Get distribution for single node
+	const distribution = nodeRecognitionToDistribution(nodeRecognition, {
+		targetNodeId: targetNodeId,
+		aggregationMode: 'single-node'
+	});
+	
+	console.log('Distribution from single node:', distribution.shares);
+	
+	// Allocate based on this distribution
+	const allocation = allocateFromCollectiveTree(
+		collectiveTree,
+		nodeRecognition,
+		capacitySlots,
+		memberCommitments,
+		{
+			targetNodeId: targetNodeId,
+			aggregationMode: 'single-node',
+			providerPubKey: 'provider-001'
+		}
+	);
+	
+	console.log('Allocations:', allocation.allocations.length);
+	
+	return { distribution, allocation };
+}
+
+/**
+ * Example Usage: Weighted Path Distribution
+ * 
+ * Demonstrates giving more weight to root-level decisions
+ * and less weight to deeply nested nodes.
+ */
+export function exampleWeightedPathDistribution(
+	collectiveTree: CollectiveTree,
+	nodeRecognition: Map<string, NodeRecognitionMetrics>
+) {
+	console.log('\n=== Weighted Path Distribution Example ===');
+	
+	// Distribution with depth weighting
+	const distribution = nodeRecognitionToDistribution(nodeRecognition, {
+		aggregationMode: 'weighted-path'
+	});
+	
+	console.log('Weighted path distribution:', distribution.shares);
+	console.log('Metadata:', distribution.metadata);
+	
+	return distribution;
+}
+
 export {type CollectiveTree }
