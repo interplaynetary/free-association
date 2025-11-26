@@ -35,26 +35,19 @@ jobs:
         run: bun install
 
       - name: Build server (Node.js adapter)
-        run: |
-          # Use the server-specific config
-          cp svelte.config.server.js svelte.config.js.backup
-          mv svelte.config.server.js svelte.config.js || true
-          bun run build
-          # Restore original config
-          mv svelte.config.js.backup svelte.config.js || true
+        run: bun run build:server
         env:
           NODE_ENV: production
 
       - name: Create deployment archive
         run: |
           # Create archive with build output and necessary files
-          tar -czf deploy.tar.gz \
+          # Note: --exclude flags must come before the files to archive
+          tar --exclude='*.log' \
+            -czf deploy.tar.gz \
             build-server/ \
-            server/ \
             package.json \
-            bun.lockb \
-            --exclude='server/*/node_modules' \
-            --exclude='*.log'
+            bun.lock
 
       - name: Deploy to DigitalOcean
         uses: appleboy/scp-action@v0.1.7
