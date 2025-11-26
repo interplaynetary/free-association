@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
+	import { page } from '$app/stores';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
@@ -127,9 +128,30 @@
 	const MOVEMENT_THRESHOLD = 10; // pixels
 
 	// Reactive store subscriptions
-	// Use demo tree for unauthenticated users, user tree for authenticated users
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
+	const pathname = $derived($page.url.pathname);
+	const isOrgRoute = $derived(pathname.startsWith('/org/'));
+	
+	// ✅ ROUTE-AWARE TREE SELECTION:
+	// 1. If we're on an org route (/org/[slug]) → Always use demoTreeStore (show org tree)
+	// 2. If we're on homepage AND authenticated → Use userTree (show user's tree)
+	// 3. If we're on homepage AND not authenticated → Use demoTreeStore (show SDG demo)
+	const tree = $derived.by(() => {
+		if (isOrgRoute) {
+			// On org routes, always show the demo tree (which contains the org tree)
+			console.log('[TREE-SELECT] Org route detected, using demoTreeStore');
+			return demoTreeStore.current;
+		} else if (isAuthenticated) {
+			// On homepage while authenticated, show user's tree
+			console.log('[TREE-SELECT] Homepage + authenticated, using userTree');
+			return $userTree;
+		} else {
+			// On homepage while not authenticated, show demo tree (SDG)
+			console.log('[TREE-SELECT] Homepage + not authenticated, using demoTreeStore');
+			return demoTreeStore.current;
+		}
+	});
+	
 	const path = $derived($currentPath);
 	const pub = $derived($userPub);
 
@@ -140,14 +162,19 @@
 			return path[path.length - 1];
 		}
 		
-		// For empty path, use the root ID based on authentication
-		if (isAuthenticated && pub) {
-			// Authenticated user - use their public key as root
-			console.log('[CURRENT-NODE-ID] Using authenticated user pub:', pub);
+		// ✅ ROUTE-AWARE ROOT ID SELECTION:
+		// For empty path, determine root ID based on route and authentication
+		if (isOrgRoute && tree) {
+			// On org routes, always use the demo tree's root ID (the org tree root)
+			console.log('[CURRENT-NODE-ID] Org route - using demo tree root ID:', tree.id);
+			return tree.id;
+		} else if (isAuthenticated && pub) {
+			// On homepage while authenticated - use their public key as root
+			console.log('[CURRENT-NODE-ID] Homepage + authenticated - using user pub:', pub);
 			return pub;
-		} else if (!isAuthenticated && tree) {
-			// Unauthenticated user with demo tree - use demo tree's root ID
-			console.log('[CURRENT-NODE-ID] Using demo tree root ID:', tree.id);
+		} else if (tree) {
+			// On homepage while not authenticated - use demo tree's root ID
+			console.log('[CURRENT-NODE-ID] Homepage + not authenticated - using demo tree root ID:', tree.id);
 			return tree.id;
 		}
 		
@@ -315,19 +342,33 @@
 		}
 	}
 
-	// Helper function to update the appropriate tree store based on authentication
+	// Helper function to update the appropriate tree store based on route and authentication
 	function updateTreeStore(updatedTree: Node) {
-		if (isAuthenticated) {
-			userTree.set(updatedTree as RootNode);
-		} else {
-			// For demo tree, ensure it's serializable by using JSON round-trip
-			// This avoids structuredClone errors with proxy objects
+		// ✅ ROUTE-AWARE TREE UPDATE:
+		// On org routes, always update demoTreeStore (regardless of authentication)
+		// On homepage, update based on authentication status
+		if (isOrgRoute) {
+			// Org route: always update demo tree
+			console.log('[TREE-UPDATE] Org route - updating demoTreeStore');
 			try {
 				const serialized = JSON.parse(JSON.stringify(updatedTree));
 				demoTreeStore.set(serialized as RootNode);
 			} catch (err) {
 				console.error('[DEMO TREE] Failed to serialize tree:', err);
-				// Fallback: try to set anyway
+				demoTreeStore.set(updatedTree as RootNode);
+			}
+		} else if (isAuthenticated) {
+			// Homepage + authenticated: update user tree
+			console.log('[TREE-UPDATE] Homepage + authenticated - updating userTree');
+			userTree.set(updatedTree as RootNode);
+		} else {
+			// Homepage + not authenticated: update demo tree
+			console.log('[TREE-UPDATE] Homepage + not authenticated - updating demoTreeStore');
+			try {
+				const serialized = JSON.parse(JSON.stringify(updatedTree));
+				demoTreeStore.set(serialized as RootNode);
+			} catch (err) {
+				console.error('[DEMO TREE] Failed to serialize tree:', err);
 				demoTreeStore.set(updatedTree as RootNode);
 			}
 		}
@@ -337,9 +378,43 @@
 
 	// Initialize demo tree on mount if needed
 	onMount(() => {
-		// Initialize demo tree with SDG template if not authenticated and no tree exists
+		// ✅ PATH CORRECTION: Watch for route changes and reset path when switching trees
+		// Using explicit subscription instead of $effect to avoid side-effect issues
+		const unsubscribePage = page.subscribe(($page) => {
+			const currentPathname = $page.url.pathname;
+			const currentIsOrgRoute = currentPathname.startsWith('/org/');
+			const currentIsAuthenticated = !!get(userPub);
+			const currentPub = get(userPub);
+			
+			// Determine which tree root should be active
+			let expectedRootId: string | null = null;
+			if (currentIsOrgRoute && demoTreeStore.current) {
+				expectedRootId = demoTreeStore.current.id;
+			} else if (currentIsAuthenticated && currentPub) {
+				expectedRootId = currentPub;
+			} else if (demoTreeStore.current) {
+				expectedRootId = demoTreeStore.current.id;
+			}
+			
+			// Check if path needs correction
+			const currentPathRootId = get(currentPath)[0];
+			const pathIsWrong = currentPathRootId && currentPathRootId !== expectedRootId;
+			
+			if (pathIsWrong && expectedRootId) {
+				console.log('[PATH-CORRECTION] Route changed - path points to wrong tree root!');
+				console.log('[PATH-CORRECTION]   Current path root:', currentPathRootId);
+				console.log('[PATH-CORRECTION]   Expected root:', expectedRootId);
+				console.log('[PATH-CORRECTION]   Resetting path to correct tree root');
+				currentPath.set([expectedRootId]);
+			}
+		});
+		// ✅ ROUTE-AWARE INITIALIZATION:
+		// Only initialize with SDG template if we're on homepage, not authenticated, and no tree exists
+		// On org routes, the tree is already initialized by the +page.svelte loader
 		const hasExistingTree = demoTreeStore.hasTree();
 		console.log('[DEMO TREE] Mount check:', {
+			pathname: $page.url.pathname,
+			isOrgRoute,
 			isAuthenticated,
 			hasExistingTree,
 			currentTree: demoTreeStore.current,
@@ -347,17 +422,27 @@
 			currentPath: $currentPath
 		});
 		
-		if (!isAuthenticated && !hasExistingTree) {
-			console.log('[DEMO TREE] User not authenticated - initializing with SDG template');
+		// Only initialize SDG on homepage (not on org routes)
+		if (!isOrgRoute && !isAuthenticated && !hasExistingTree) {
+			console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
 			demoTreeStore.initializeWithSDG();
 			triggerUpdate();
 		}
 		
-		// Initialize path for demo tree if needed
+		// Initialize path for demo tree if needed (for both homepage and org routes)
 		if (!isAuthenticated && demoTreeStore.current) {
 			const needsPathInit = $currentPath.length === 0 || !$currentPath.includes(demoTreeStore.current.id);
 			if (needsPathInit) {
 				console.log('[DEMO TREE] Initializing path with demo tree root:', demoTreeStore.current.id);
+				currentPath.set([demoTreeStore.current.id]);
+			}
+		}
+		
+		// Also initialize path for org routes even when authenticated
+		if (isOrgRoute && demoTreeStore.current) {
+			const needsPathInit = $currentPath.length === 0 || !$currentPath.includes(demoTreeStore.current.id);
+			if (needsPathInit) {
+				console.log('[ORG ROUTE] Initializing path with org tree root:', demoTreeStore.current.id);
 				currentPath.set([demoTreeStore.current.id]);
 			}
 		}
@@ -393,7 +478,9 @@
 			document.removeEventListener('pointerup', handleDragEnd);
 			// Clean up recompose movement listener
 			document.removeEventListener('pointermove', handleRecomposeMovement, { capture: true });
+			// Clean up subscriptions
 			unsubscribe();
+			unsubscribePage();
 		};
 	});
 

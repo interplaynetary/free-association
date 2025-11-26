@@ -19,7 +19,11 @@ const config = {
 		// 	serviceWorker: 'src/service-worker.ts'
 		// }
 	},
-	extensions: ['.svelte', '.svx']
+	extensions: ['.svelte', '.svx'],
+	vitePlugin: {
+		// Ensure .svelte.ts files are properly handled
+		inspector: false
+	}
 };
 
 export default config;
