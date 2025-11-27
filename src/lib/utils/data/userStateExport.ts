@@ -21,8 +21,6 @@ import type {
 	ContactsCollectionData,
 	SlotSubscriptions,
 	SlotFiltersCollection,
-	UserMembershipLists,
-	MembershipSubscriptions,
 	Commitment
 } from '$lib/protocol/schemas';
 import { 
@@ -36,7 +34,7 @@ import {
 } from '$lib/protocol/stores.svelte';
 import { userContacts } from '$lib/network/users.svelte';
 import { slotSubscriptions, slotFilters } from '$lib/network/capacity-subscriptions.svelte';
-import { myMembershipLists, myMembershipSubscriptions } from '$lib/network/membership.svelte';
+import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
 
 // V5 TODO: User slot composition types need to be defined in v5
 // For now, we'll use simplified types
@@ -65,8 +63,8 @@ export interface UserStateExport {
 		// Network configuration
 		slot_subscriptions: SlotSubscriptions | null;  // Who you subscribe to for slots
 		slot_filters: SlotFiltersCollection | null;  // Filters for auto-populating slots
-		membership_lists: UserMembershipLists | null;  // Organization memberships you declare
-		membership_subscriptions: MembershipSubscriptions | null;  // Membership lists you subscribe to
+		attribute_recognitions: any | null;  // Entity attribute recognitions (replaces membership_lists)
+		attribute_subscriptions: any | null;  // Attribute subscriptions (replaces membership_subscriptions)
 		
 		// Social data
 		contacts: ContactsCollectionData | null;
@@ -94,8 +92,8 @@ export function exportUserState(): UserStateExport {
 	// Network configuration stores
 	const slotSubs = get(slotSubscriptions);
 	const filters = get(slotFilters);
-	const membershipLists = get(myMembershipLists);
-	const membershipSubs = get(myMembershipSubscriptions);
+	const attributeRecognitions = get(myAttributeRecognitions);
+	const attributeSubs = get(myAttributeSubscriptions);
 	
 	// Social data
 	const contacts = get(userContacts);
@@ -114,8 +112,8 @@ export function exportUserState(): UserStateExport {
 			// Network configuration
 			slot_subscriptions: slotSubs,
 			slot_filters: filters,
-			membership_lists: membershipLists,
-			membership_subscriptions: membershipSubs,
+			attribute_recognitions: attributeRecognitions,
+			attribute_subscriptions: attributeSubs,
 			
 			// Social data
 			contacts,
@@ -134,8 +132,8 @@ export function exportUserState(): UserStateExport {
 		needSlotsCount: (exportData.data.need_slots || []).length,
 		slotSubscriptionsCount: Object.keys(exportData.data.slot_subscriptions || {}).length,
 		slotFiltersCount: Object.keys(exportData.data.slot_filters || {}).length,
-		membershipListsCount: Object.keys(exportData.data.membership_lists || {}).length,
-		membershipSubscriptionsCount: Object.keys(exportData.data.membership_subscriptions || {}).length,
+		attributeRecognitionsCount: Object.keys(exportData.data.attribute_recognitions || {}).length,
+		attributeSubscriptionsCount: Object.keys(exportData.data.attribute_subscriptions || {}).length,
 		contactsCount: Object.keys(exportData.data.contacts || {}).length
 	});
 
@@ -208,15 +206,15 @@ export function validateUserStateImport(data: any): { valid: boolean; errors: st
 		}
 	}
 
-	if (data.data.membership_lists !== null && data.data.membership_lists !== undefined) {
-		if (typeof data.data.membership_lists !== 'object') {
-			errors.push('Membership lists must be an object or null');
+	if (data.data.attribute_recognitions !== null && data.data.attribute_recognitions !== undefined) {
+		if (typeof data.data.attribute_recognitions !== 'object') {
+			errors.push('Attribute recognitions must be an object or null');
 		}
 	}
 
-	if (data.data.membership_subscriptions !== null && data.data.membership_subscriptions !== undefined) {
-		if (typeof data.data.membership_subscriptions !== 'object') {
-			errors.push('Membership subscriptions must be an object or null');
+	if (data.data.attribute_subscriptions !== null && data.data.attribute_subscriptions !== undefined) {
+		if (typeof data.data.attribute_subscriptions !== 'object') {
+			errors.push('Attribute subscriptions must be an object or null');
 		}
 	}
 
@@ -327,16 +325,16 @@ export async function importUserState(
 			console.log('[USER-STATE-IMPORT] ✓ Slot filters imported (Holster auto-persisting)');
 		}
 
-		if (!options.skipMembershipLists && importData.data.membership_lists) {
-			console.log('[USER-STATE-IMPORT] Importing membership lists...');
-			myMembershipLists.set(importData.data.membership_lists);
-			console.log('[USER-STATE-IMPORT] ✓ Membership lists imported (Holster auto-persisting)');
+		if (importData.data.attribute_recognitions) {
+			console.log('[USER-STATE-IMPORT] Importing attribute recognitions...');
+			myAttributeRecognitions.set(importData.data.attribute_recognitions);
+			console.log('[USER-STATE-IMPORT] ✓ Attribute recognitions imported (Holster auto-persisting)');
 		}
 
-		if (!options.skipMembershipSubscriptions && importData.data.membership_subscriptions) {
-			console.log('[USER-STATE-IMPORT] Importing membership subscriptions...');
-			myMembershipSubscriptions.set(importData.data.membership_subscriptions);
-			console.log('[USER-STATE-IMPORT] ✓ Membership subscriptions imported (Holster auto-persisting)');
+		if (importData.data.attribute_subscriptions) {
+			console.log('[USER-STATE-IMPORT] Importing attribute subscriptions...');
+			myAttributeSubscriptions.set(importData.data.attribute_subscriptions);
+			console.log('[USER-STATE-IMPORT] ✓ Attribute subscriptions imported (Holster auto-persisting)');
 		}
 
 		// V5 TODO: Composition desires need to be redesigned

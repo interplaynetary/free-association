@@ -122,10 +122,8 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 	orgsModule.initializeOrganizations();
 	console.log('[HOLSTER] ✅ Organizations initialized');
 
-	// Initialize membership
-	const membershipModule = await import('$lib/network/membership.svelte');
-	membershipModule.initializeMembership();
-	console.log('[HOLSTER] ✅ Membership initialized');
+	// Note: Membership is now handled by the unified entity/attribute system
+	// No separate initialization needed - attributes auto-initialize
 
 	// Initialize capacity subscriptions
 	const capacitySubsModule = await import('$lib/network/capacity-subscriptions.svelte');

@@ -93,13 +93,13 @@ export async function cleanupUsersList() {
 	isUsersListInitialized = false;
 	console.log('[USERS-LIST] Cleaned up');
 	
-	// Also cleanup organizations and membership
+	// Also cleanup organizations
 	const orgsModule = require('$lib/network/organizations.svelte');
 	orgsModule.cleanupOrganizations();
 	
-	const membershipModule = await import('$lib/network/membership.svelte');
-	membershipModule.cleanupMembership();
-	console.log('[USERS-LIST] Organizations and membership cleaned up');
+	// Note: Membership is now handled by the unified entity/attribute system
+	// Cleaned up with myAttributeRecognitions store
+	console.log('[USERS-LIST] Organizations cleaned up');
 }
 
 // ================================
@@ -110,32 +110,31 @@ export async function cleanupUsersList() {
 export const userPubKeys = writable<string[]>([]);
 
 // V5: Contact management stores (Holster-only)
-export const userContacts: Writable<ContactsCollectionData> = holsterContacts;
+export const userContacts: Writable<ContactsCollectionData> = holsterContacts as Writable<ContactsCollectionData>;
 export const isLoadingContacts = isLoadingHolsterContacts;
 export const contactSearchQuery = writable('');
 
-// V5: Membership management (imports for internal use + re-exports)
+// Unified entity system - membership is just an attribute now
 import {
-	getMembershipList,
-	hasMembershipList,
-	cleanupMembership
-} from './membership.svelte';
+	getEntityAttribute,
+	setEntityAttribute,
+	hasAttribute
+} from './entities.svelte';
 
-export {
-	myMembershipLists,
-	myMembershipSubscriptions,
-	membershipCache,
-	initializeMembership,
-	cleanupMembership,
-	setMembershipList,
-	removeMembershipList,
-	addMemberToList,
-	removeMemberFromList,
-	subscribeMembershipList,
-	unsubscribeMembershipList,
-	getMembershipList,
-	hasMembershipList
-} from './membership.svelte';
+/**
+ * Get organization membership (entity_id with 'membership' attribute)
+ */
+export function getOrgMembership(org_id: string): string[] | undefined {
+	const membership = getEntityAttribute(org_id, 'membership');
+	return Array.isArray(membership) ? membership : undefined;
+}
+
+/**
+ * Check if an organization has a membership list
+ */
+export function hasOrgMembership(org_id: string): boolean {
+	return hasAttribute(org_id, 'membership');
+}
 
 // User name/alias caching stores
 export const userAliasesCache = writable<Record<string, string>>({});
@@ -628,8 +627,8 @@ export function resolveOrganizationMembers(
 	}
 	visited.add(org_id);
 
-	// Get membership list (declared or cached)
-	const members = getMembershipList(org_id);
+	// Get membership list from attribute system
+	const members = getOrgMembership(org_id);
 	if (!members) {
 		console.log(`[ORG-RESOLVE] No membership list found for ${org_id}`);
 		return [];

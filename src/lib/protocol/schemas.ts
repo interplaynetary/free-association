@@ -1005,12 +1005,23 @@ export function validateGlobalRecognitionWeights(
 	return Math.abs(sum - 1.0) < epsilon;
 }
 
+
 // ═══════════════════════════════════════════════════════════════════
-// CONTACTS SCHEMA (Legacy Compatibility)
+// CONTACT SCHEMA (Simple Address Book)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Contact - Represents a user contact
+ * Contact Schema - Person entities
+ * 
+ * Contacts are UUIDs for people that include:
+ * - contact_id: UUID identifier (can be shared across network)
+ * - name: Display name
+ * - public_key: Optional link to network identity (pubkey)
+ * - emoji: Optional visual identifier
+ * - notes: Optional notes
+ * 
+ * Everything else (skills, location, email, etc.) is stored as attributes
+ * in the attribute recognition system.
  */
 export const ContactSchema = z.object({
 	contact_id: z.string(),
@@ -1018,21 +1029,15 @@ export const ContactSchema = z.object({
 	public_key: z.string().optional(),
 	emoji: z.string().optional(),
 	notes: z.string().optional(),
-	created_at: z.number().optional(),  // Gun timestamp
-	updated_at: z.number().optional(),  // Gun timestamp
-	_updatedAt: z.number().optional()   // Holster timestamp
+	created_at: z.number().optional(),
+	updated_at: z.number().optional(),
+	_updatedAt: z.number().optional()
 });
 
 export type Contact = z.infer<typeof ContactSchema>;
 
-/**
- * Contacts Collection - Map of contact_id to Contact
- * 
- * Note: Uses preprocess to strip _updatedAt timestamp from createStore()
- */
 export const ContactsCollectionSchema = z.preprocess(
 	(data: any) => {
-		// Strip _updatedAt if present
 		if (data && typeof data === 'object') {
 			const { _updatedAt, ...rest } = data;
 			return rest;
@@ -1041,86 +1046,166 @@ export const ContactsCollectionSchema = z.preprocess(
 	},
 	z.record(z.string(), ContactSchema)
 );
-export type ContactsCollection = z.infer<typeof ContactsCollectionSchema>;
-export type ContactsCollectionData = ContactsCollection;  // Alias for compatibility
+
+export type ContactsCollectionData = z.infer<typeof ContactsCollectionSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
-// ORGANIZATIONS SCHEMA
+// ORGANIZATION SCHEMA (Simple Entity with Names)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Organization - Multi-language names, recursive membership support
+ * Organization Schema - Group entities
  * 
- * Organizations provide a way to group people and reference them collectively.
- * They support multi-language names and can contain other organizations (recursive).
+ * Organizations are UUIDs for groups/collectives that include:
+ * - org_id: UUID identifier (can be shared across network)
+ * - names: Multi-language names (e.g., {en: "Community Garden", es: "Jardín Comunitario"})
+ * - emoji: Optional visual identifier
+ * - description: Optional description
  * 
- * Example:
- * {
- *   org_id: "org_abc123",
- *   names: { en: "Community Garden", es: "Jardín Comunitario" },
- *   emoji: "🌱",
- *   description: "Local community garden collective"
- * }
+ * Everything else (membership, location, website, etc.) is stored as attributes
+ * in the attribute recognition system.
  */
 export const OrganizationSchema = z.object({
-	org_id: z.string(), // UUID format: org_<uuid>
-	names: z.record(z.string(), z.string()), // Multi-language: { en: "Name", es: "Nombre", ... }
+	org_id: z.string(),
+	names: z.record(z.string(), z.string()),
 	emoji: z.string().optional(),
 	description: z.string().optional(),
 	created_at: z.number().optional(),
 	updated_at: z.number().optional(),
-	_updatedAt: z.number().optional() // Holster timestamp
+	_updatedAt: z.number().optional()
 });
 
 export type Organization = z.infer<typeof OrganizationSchema>;
 
-/**
- * Organizations Collection - Map of org_id to Organization
- */
 export const OrganizationsCollectionSchema = z.record(z.string(), OrganizationSchema);
+
 export type OrganizationsCollection = z.infer<typeof OrganizationsCollectionSchema>;
 
-/**
- * Membership List - Array of member identifiers (pubkeys or org_ids)
- * 
- * Can contain:
- * - Public keys (base64 strings) - individual members
- * - org_ids (strings starting with "org_") - nested organizations (recursive!)
- * 
- * Example: ["pubkey123...", "org_abc456", "pubkey789..."]
- */
-export const MembershipListSchema = z.array(z.string());
-export type MembershipList = z.infer<typeof MembershipListSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
+// ATTRIBUTE RECOGNITION SYSTEM
+// ═══════════════════════════════════════════════════════════════════
 
 /**
- * User's Declared Membership Lists
+ * Attribute Value - Single attribute recognition with metadata
  * 
- * Maps org_id to array of members.
- * This is what YOU declare for organizations you manage/track.
+ * Stores any attribute of any entity with provenance tracking and ITC causality.
+ * Subscription data is written INTO this structure with ITC conflict resolution.
+ * 
+ * Resolution Logic (via source_pubkey presence):
+ * - source_pubkey present + matches subscription config → came from subscription
+ * - source_pubkey present + matches entity_id → self-declaration
+ * - source_pubkey absent (undefined) → our local recognition
+ * 
+ * Examples:
+ * - Subscribed: { value: ["pubkey1", "pubkey2"], source_pubkey: "pubkey_alice", ... }
+ * - Self: { value: [...], source_pubkey: "pubkey_bob", ... } (where entity is pubkey_bob)
+ * - Local: { value: [...], source_pubkey: undefined, ... }
+ */
+export const AttributeValueSchema = z.object({
+	value: z.any(), // Flexible - array, object, primitive
+	source_pubkey: z.string().optional(), // Who declared this (undefined = our local recognition)
+	confidence: z.number().min(0).max(1).default(1.0), // 0-1, default 1.0
+	timestamp: z.number().int().positive(),
+	itcStamp: ITCStampSchema.optional() // ITC causality tracking per attribute
+});
+
+export type AttributeValue = z.infer<typeof AttributeValueSchema>;
+
+/**
+ * Attribute Recognitions Collection - User's attribute recognitions storage
+ * 
+ * UNIFIED STORAGE: Contains BOTH local recognitions AND subscribed data!
+ * Uses ITC conflict resolution (like others_recognition_of_me in stores.svelte.ts).
+ * 
+ * Nested structure: entity_id → attribute_name → AttributeValue
+ * Includes collection-level ITC for causality tracking across all attributes.
+ * 
+ * When subscription data arrives:
+ * - ITC check: Skip if causally stale
+ * - ITC merge: Join stamps if concurrent
+ * - Write with source_pubkey set to source
+ * 
+ * Manual edits win if causally newer (ITC handles this)!
  * 
  * Example:
  * {
- *   "org_abc123": ["pubkey1...", "pubkey2...", "org_def456"],
- *   "org_xyz789": ["pubkey3...", "pubkey4..."]
+ *   "org_abc123": {
+ *     "membership": { 
+ *       value: ["pubkey1", "pubkey2"], 
+ *       source_pubkey: "pubkey_alice",  // ← From subscription
+ *       itcStamp: {...}
+ *     }
+ *   },
+ *   "pubkey_bob": {
+ *     "need:housing": { 
+ *       value: {...}, 
+ *       source_pubkey: undefined,  // ← Our local recognition
+ *       itcStamp: {...}
+ *     }
+ *   },
+ *   _itcStamp: {...},
+ *   _timestamp: 1234567890
  * }
  */
-export const UserMembershipListsSchema = z.record(z.string(), MembershipListSchema);
-export type UserMembershipLists = z.infer<typeof UserMembershipListsSchema>;
+export const AttributeRecognitionsCollectionSchema = z.object({
+	// Entity attributes (dynamic keys)
+}).catchall(
+	z.union([
+		z.record(z.string(), AttributeValueSchema), // entity_id → attributes
+		ITCStampSchema, // _itcStamp
+		z.number().int().positive() // _timestamp
+	])
+).and(z.object({
+	_itcStamp: ITCStampSchema.optional(), // Collection-level ITC
+	_timestamp: z.number().int().positive().optional() // Collection-level timestamp
+}));
+
+export type AttributeRecognitionsCollection = z.infer<typeof AttributeRecognitionsCollectionSchema>;
 
 /**
- * Membership Subscriptions - Source mappings
+ * Attribute Subscriptions - Source mappings for attribute resolution
  * 
- * Maps org_id to the pubkey you're subscribing to for that org's membership.
- * Instead of declaring the membership yourself, you defer to someone else's list.
+ * Maps entity_id → attribute_name → source_pubkey
+ * Specifies where to subscribe for each entity's attributes.
+ * 
+ * Resolution priority (2b): specified_source → entity's_pubkey → our_manual_override
  * 
  * Example:
  * {
- *   "org_abc123": "pubkey_of_alice...",  // Subscribe to Alice's membership list for org_abc123
- *   "org_xyz789": "pubkey_of_bob..."     // Subscribe to Bob's membership list for org_xyz789
+ *   "org_abc123": {
+ *     "membership": "pubkey_alice"  // Subscribe to Alice's view of org membership
+ *   },
+ *   "pubkey_bob": {
+ *     "capacity:food": "pubkey_bob"  // Subscribe to Bob's own capacity declaration
+ *   }
  * }
  */
-export const MembershipSubscriptionsSchema = z.record(z.string(), z.string());
-export type MembershipSubscriptions = z.infer<typeof MembershipSubscriptionsSchema>;
+export const AttributeSubscriptionsSchema = z.record(
+	z.string(), // entity_id
+	z.record(z.string(), z.string()) // attribute_name → source_pubkey
+);
+
+export type AttributeSubscriptions = z.infer<typeof AttributeSubscriptionsSchema>;
+
+/**
+ * Entity ID Mappings - UUID/contact_id to pubkey resolution
+ * 
+ * Optional mapping for resolving local identifiers to public keys.
+ * Enables using friendly names/UUIDs locally while publishing to network with pubkeys.
+ * 
+ * Example:
+ * {
+ *   "contact_alice_123": "pubkey_abc...",
+ *   "uuid_def_456": "pubkey_xyz..."
+ * }
+ */
+export const EntityIdMappingsSchema = z.record(
+	z.string(), // uuid or contact_id
+	z.string() // resolved pubkey
+);
+
+export type EntityIdMappings = z.infer<typeof EntityIdMappingsSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // UNIFIED CORE CONCEPTS
