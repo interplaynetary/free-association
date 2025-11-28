@@ -9,9 +9,9 @@
 **Drafted by:** Initial working group convened at COP30 2025 coordination sessions  
 **Contributors:** Coalition secretariat members and early adopter organizations
 
-This coalition consists of entities experimenting with piloting **Free Association.**
+This coalition consists of entities experimenting with piloting new **Digital Public Goods (DPGs)** for voluntary coordination.
 
-The **Free Association Coalition** (FAC) proposes a radical re-engineering of how collective action (Mutirão) and resource allocation can be coordinated.
+The **Free Association Coalition** (FAC) proposes a re-engineering of how collective action and resource allocation can be coordinated.
 
 The key insight is separating:
 
@@ -20,13 +20,49 @@ The key insight is separating:
 3. **Recognition** (who/what contributes to my goals)  
 4. **Allocation** (how we divide our capacities)
 
-**Participants can:**
+## **Implications & Significance**
 
-* **recognize membership**  
-  * Identify who/what is a member of which organization (using universal-unique-identifiers)  
-  * Subscribe to the membership recognitions of others to inform your perspective of organization membership  
-  * **Format:** `<Organization> : <member-ids>`
-  * **Examples:**
+### **Sovereignty and Interoperability**
+
+Participants retain full control over their own data, recognitions, and priorities. They choose whose data to subscribe to. The system enables collaboration without requiring surrender of autonomy.
+
+### **Automation of Cooperation**
+
+The vision is to have a significant portion of capacity/resource allocation (funding, technical support) be automatically derived based on the state of network data, drastically reducing transaction costs and delays.
+
+## **What Participants Can Do**
+
+### **Publish Data**
+
+Participants may publish: recognitions, capacities, needs, organizational membership, environmental data, qualities of entities/resources, sources for deriving, filters and their applications, or any other data.
+
+**Examples:**
+
+**Recognitions** (contribution percentages, always portions of 100%):
+
+| Recognizer | Recognition | Attributed To |
+|------------|-------------|---------------|
+| WHO | 12% | Doctors without Borders |
+| UNDP | 5% | UNICEF |
+| … | … | … |
+
+**Capacities**:
+
+| Provider | Type | Quantity | Unit | Capacity Source |
+|----------|------|----------|------|-----------------|
+| WHO | Money | 50M | Dollars | Revenue |
+| UNDP | Money | 10B | Dollars | Donations |
+| UNICEF | Technical Support | 500 | Hours | Tech-Staff |
+
+**Needs**:
+
+| Recipient | Type | Quantity | Unit | Need Source |
+|-----------|------|----------|------|-------------|
+| Zimbabwe | Money | 50M | Dollars | Disaster-Relief |
+| Tanzania | Money | 10B | Dollars | Climate-Transition |
+| UNDP | Technical Support | 1000 | Hours | Tech-Staff |
+
+**Organizational Membership** (using universal-unique-identifiers):
 
 | Organization | Member IDs |
 |--------------|------------|
@@ -34,57 +70,26 @@ The key insight is separating:
 | UNDP | `uuid-a, uuid-b, uuid-c, ...` |
 | Secretariat | `uuid-x, uuid-y, uuid-z, ...` |
 
-* **recognize contributions**  
-  * Identify who contributes to the realization of your priorities and satisfaction of your needs  
-  * **Total recognition to distribute:** 0 to 100%  
-  * **Format:** `<recognizer> : <%-of-total-recognition> → <attributed-to>`
-  * **Examples:**
-
-| Recognizer | Recognition | Attributed To |
-|------------|-------------|---------------|
-| WHO | 12% | Doctors without Borders |
-| UNDP | 5% | UNICEF |
-| … | … | … |  
-  * **capacities**  
-    * Examples:
-
-| Provider | Type | Quantity | Unit | Capacity Source |
-|----------|------|----------|------|-----------------|
-| WHO | Money | 50M | Dollars | Revenue |
-| UNDP | Money | 10B | Dollars | Donations |
-| UNICEF | Technical Support | 500 | Hours | Tech-Staff |  
-  * **needs**  
-    * Examples:
-
-| Recipient | Type | Quantity | Unit | Need Source |
-|-----------|------|----------|------|-------------|
-| Zimbabwe | Money | 50M | Dollars | Disaster-Relief |
-| Tanzania | Money | 10B | Dollars | Climate-Transition |
-| UNDP | Technical Support | 1000 | Hours | Tech-Staff |  
-  * **environmental data**  
-    * Examples:
+**Environmental Data**:
 
 | Scope | Variable | Value | Unit | Source |
 |-------|----------|-------|------|--------|
 | Space-Time-Coord-A | Temperature | 30 | Celsius | Weather-Station-1 |
-| Space-Time-Coord-B | Sea-Level | 1.2 | Meters-Above-Mean | Tide-Gauge-3 |  
-  * **qualities of entities/resources**  
-    * Examples:
+| Space-Time-Coord-B | Sea-Level | 1.2 | Meters-Above-Mean | Tide-Gauge-3 |
+
+**Qualities of Entities/Resources**:
 
 | Entity | Quality | Value | Assessment Source |
 |--------|---------|-------|-------------------|
 | Solar-Panel-Project | Implementation-Readiness | High | Technical-Review |
 | Community-Org-X | Local-Trust-Level | Verified | Community-Survey |
-| Infrastructure-Asset | Climate-Resilience | Medium | Engineering-Assessment |  
-* **declare state**  
-  * Publish your organization's current state declarations
-  
-* **derive insights**  
-  * Calculate derived data from local and network-data  
-  * Apply filters and transformations
-  * Examples include:  
-      * **distributions**  
-        * Examples:
+| Infrastructure-Asset | Climate-Resilience | Medium | Engineering-Assessment |
+
+### **Derive Data**
+
+Participants derive data from local and network-data: distributions, goals, estimates, needs, capacities, organizational membership, sources for deriving, filters and their applications, or any other data.
+
+**Key distribution derivations:**
         
 **1. Recognition:**
 
@@ -131,9 +136,11 @@ member-share = total-mutual-recognition-of-member-with-org-members
 - Resource offers and matches
 - Any other computed insights
 
-* **propose/offer/allocate**  
-  * Use protocols of your choice to coordinate actions
-  * See [Decision-Making Protocols](secretariat/) for options
+### **Propose, Offer, Allocate**
+
+Participants can publish/propose/offer/allocate with the help of protocols of their choosing. See [Decision-Making Protocols](secretariat/) for options.
+
+---
 
 **Secretariat Purpose & Governance:**
 
@@ -180,7 +187,7 @@ member-share = total-mutual-recognition-of-member-with-org-members
 **Secretariat Record:** [record.openassociation.org](http://record.openassociation.org)
 
 **Drafting Process:**  
-This framework is emerging through iterative refinement during informal coordination sessions at COP30 2025. The structure prioritizes sovereignty, minimal coordination overhead, and interoperability. Feedback cycles are incorporating insights from potential member organizations spanning UN agencies, national governments, and civil society networks.
+This framework is emerging through iterative refinement during informal coordination sessions at COP30 2025. The structure prioritizes sovereignty, automation of cooperation, and interoperability. Feedback cycles are incorporating insights from potential member organizations spanning UN agencies, national governments, and civil society networks.
 
 **Next Steps:**
 

@@ -1,11 +1,12 @@
+/*
 import {initializeHolster, user} from "$lib/server/holster/core"
 import {initializeMonitoring} from "$lib/server/holster/monitoring"
 import {getRegistry} from "$lib/server/data-relay"
-import {env} from "$env/dynamic/private"
 import {startScheduler} from "$lib/server/collective"
 import {createCallbacks} from "$lib/server/collective/callbacks"
 import {startCollectiveTreeScheduler} from "$lib/server/collective-tree"
 import {createCollectiveTreeCallbacks} from "$lib/server/collective-tree/callbacks"
+
 
 // Initialize Holster on server startup
 let initialized = false
@@ -54,3 +55,4 @@ if (!initialized) {
     })
   initialized = true
 }
+*/

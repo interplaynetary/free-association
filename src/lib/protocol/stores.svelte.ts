@@ -47,7 +47,8 @@ import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
 import {getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
-import { myMembershipLists, myMembershipSubscriptions, membershipCache } from '$lib/network/membership.svelte';
+// Pure attribute-based membership
+import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
 import { applyFiltersUnion, mergeSlots } from '$lib/protocol/utils/capacity-filters';
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
@@ -1558,100 +1559,21 @@ export function enableAutoSubscriptionSync(): () => void {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Enable automatic membership subscription syncing
+ * Enable automatic membership subscription syncing (DEPRECATED)
  * 
- * Watches myMembershipSubscriptions and auto-subscribes to source users' membership lists.
- * Same pattern as recognition tree auto-subscription.
+ * @deprecated The pure attribute system now handles membership subscriptions automatically!
+ * When you call subscribeToOrgMembership(org_id, source_pubkey), the attribute
+ * system automatically subscribes to that user's attribute recognitions via Holster.
  * 
- * Flow:
- * 1. User sets: subscribeMembershipList(org_id, source_pubkey)
- * 2. myMembershipSubscriptions updates
- * 3. This function detects the change
- * 4. Subscribes to source_pubkey's membership lists via Holster
- * 5. When their list arrives, updates membershipCache (local-first)
- * 6. Membership resolved on-demand via getMembershipList()
+ * This function is now a NO-OP for backward compatibility.
+ * The attribute system's enableAutoAttributeSync() handles everything.
  * 
- * Returns unsubscribe function to disable auto-syncing
+ * @returns Empty unsubscribe function
  */
 export function enableAutoMembershipSync(): () => void {
-	console.log('[AUTO-MEMBERSHIP-SYNC] 🔄 Enabling automatic membership syncing');
-	
-	// Track active subscriptions to avoid duplicates
-	const activeSubscriptions = new Map<string, () => void>();
-	
-	// Subscribe to changes in membership subscriptions
-	const unsubMembership = myMembershipSubscriptions.subscribe(($subs: any) => {
-		if (!$subs) return;
-		
-		console.log(`[AUTO-MEMBERSHIP-SYNC] Processing ${Object.keys($subs).length} subscription mappings`);
-		
-		// Subscribe to new sources
-		for (const [org_id, source_pubkey] of Object.entries($subs)) {
-			const key = `${org_id}:${source_pubkey}`;
-			
-			// Skip if already subscribed
-			if (activeSubscriptions.has(key)) {
-				continue;
-			}
-			
-		console.log(`[AUTO-MEMBERSHIP-SYNC] ➕ Subscribing to ${(source_pubkey as string).slice(0, 20)}...'s membership list for ${org_id}`);
-		
-		// Use myMembershipLists.subscribeToUser() - provided by createStore()!
-		myMembershipLists.subscribeToUser(source_pubkey as string, (theirLists: any) => {
-				if (!theirLists) {
-					console.log(
-						`[AUTO-MEMBERSHIP-SYNC] No lists from ${(source_pubkey as string).slice(0, 20)}... for ${org_id}`
-					);
-					return;
-				}
-				
-				// Check if they have this org's membership list
-				if (!theirLists[org_id]) {
-					return;
-				}
-				
-				// Update cache (local-first pattern - trust until proven otherwise)
-				membershipCache.update((cache: any) => {
-					const currentCache = cache || {};
-					return {
-						...currentCache,
-						[source_pubkey as string]: {
-							...(currentCache[source_pubkey as string] || {}),
-							[org_id]: theirLists[org_id]
-						}
-					};
-				});
-				
-				console.log(
-					`[AUTO-MEMBERSHIP-SYNC] ✅ Cached ${theirLists[org_id].length} members from ${(source_pubkey as string).slice(0, 20)}... for ${org_id}`
-				);
-			});
-			
-			// Track this subscription
-			activeSubscriptions.set(key, () => {
-				console.log(`[AUTO-MEMBERSHIP-SYNC] ⏸️  Unsubscribed ${key}`);
-			});
-		}
-		
-		// Cleanup removed subscriptions
-		const currentKeys = new Set(
-			Object.entries($subs).map(([org_id, source_pubkey]) => `${org_id}:${source_pubkey}`)
-		);
-		
-		for (const [key, cleanup] of activeSubscriptions.entries()) {
-			if (!currentKeys.has(key)) {
-				console.log(`[AUTO-MEMBERSHIP-SYNC] ➖ Removing subscription: ${key}`);
-				cleanup();
-				activeSubscriptions.delete(key);
-			}
-		}
-	});
-	
-	return () => {
-		unsubMembership();
-		activeSubscriptions.clear();
-		console.log('[AUTO-MEMBERSHIP-SYNC] ⏸️  Disabled automatic membership syncing');
-	};
+	console.log('[AUTO-MEMBERSHIP-SYNC] ℹ️  DEPRECATED: Membership sync now handled by attribute system automatically');
+	console.log('[AUTO-MEMBERSHIP-SYNC] ℹ️  Use subscribeToOrgMembership() - it auto-subscribes via the attribute system');
+	return () => {}; // NO-OP - attribute system handles it
 }
 
 // ═══════════════════════════════════════════════════════════════════

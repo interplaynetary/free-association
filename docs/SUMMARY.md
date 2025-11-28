@@ -17,6 +17,7 @@
 * [Invitation to Coordination Sessions](coalition/invitation.md)
 * [Participation Framework](coalition/participation-framework.md)
 * [Appendix: Technical Details](coalition/appendix.md)
+* [Coalition Service Entity](coalition/service-entity.md)
 * [Recognition Mathematics](coalition/recognition-mathematics.md)
 * [Coordination Sessions](coalition/coordination-sessions.md)
 * [Founding Process](coalition/founding-process.md)
