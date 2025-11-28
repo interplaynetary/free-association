@@ -4,20 +4,6 @@
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
-	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
-	import { 
-		myRecognitionTreeStore, 
-		myRecognitionWeights, 
-		myMutualRecognition,
-		myNeedSlotsStore,
-		myCapacitySlotsStore,
-		myCommitmentStore,
-		initializeAllocationStores,
-		enableAutoCommitmentComposition,
-		setMyNeedSlots,
-		setMyCapacitySlots
-	} from '$lib/protocol/stores.svelte';
-	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
@@ -34,28 +20,53 @@
 	let providerSegments = $state<Array<{id: string, value: number}>>([]);
 
 
-	// Cleanup functions
+	// Cleanup functions and store references
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
 	let cleanupAutoNeedTracking: (() => void) | null = null;
+	let setMyNeedSlots: ((slots: NeedSlot[]) => void) | null = null;
+	let setMyCapacitySlots: ((slots: AvailabilitySlot[]) => void) | null = null;
+	let unsubNeeds: (() => void) | null = null;
+	let unsubCapacity: (() => void) | null = null;
+	let unsubBarSegments: (() => void) | null = null;
+	let unsubProviderSegments: (() => void) | null = null;
 
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
 		
-		// Initialize stores
-		initializeAllocationStores();
+		// V5: Dynamically import stores to avoid module-level initialization on iOS Safari
+		(async () => {
+			const { 
+				myRecognitionWeights, 
+				myMutualRecognition,
+				myNeedSlotsStore,
+				myCapacitySlotsStore,
+				initializeAllocationStores,
+				enableAutoCommitmentComposition,
+				setMyNeedSlots: _setMyNeedSlots,
+				setMyCapacitySlots: _setMyCapacitySlots
+			} = await import('$lib/protocol/stores.svelte');
+			
+			const { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } = await import('$lib/protocol/allocation.svelte');
+			
+			// Store setters for CRUD functions
+			setMyNeedSlots = _setMyNeedSlots;
+			setMyCapacitySlots = _setMyCapacitySlots;
+			
+			// Initialize stores
+			initializeAllocationStores();
 		
-		// Subscribe to stores (reactive)
-		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
-			needSlots = slots || [];
-		});
-		
-		const unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
-			capacitySlots = slots || [];
-		});
-		
-		// Subscribe to recognition weights for bar segments
-		const unsubBarSegments = myRecognitionWeights.subscribe((weights) => {
+			// Subscribe to stores (reactive)
+			unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
+				needSlots = slots || [];
+			});
+			
+			unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
+				capacitySlots = slots || [];
+			});
+			
+			// Subscribe to recognition weights for bar segments
+			unsubBarSegments = myRecognitionWeights.subscribe((weights) => {
 			console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
 			
 			// Defensive: Handle undefined/null weights
@@ -85,9 +96,9 @@
 			
 			barSegments = segments;
 		});
-		
-		// Subscribe to mutual recognition for provider segments
-		const unsubProviderSegments = myMutualRecognition.subscribe((mutualRec) => {
+			
+			// Subscribe to mutual recognition for provider segments
+			unsubProviderSegments = myMutualRecognition.subscribe((mutualRec) => {
 			console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
 
 			// Defensive: Handle undefined/null mutual recognition
@@ -117,25 +128,26 @@
 			
 			providerSegments = segments;
 		});
-		
-		// Enable auto-composition
-		cleanupComposition = enableAutoCommitmentComposition();
-		
-		// Enable auto-allocation publishing
-		cleanupAllocationPublishing = enableAutoAllocationPublishing();
-		
-		// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
-		// This enables the coordination mechanism: recipients automatically reduce needs
-		cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
-		console.log('[HOME] ✅ Enabled automatic remaining need tracking');
-		
-		console.log('[HOME] ✅ Initialized and subscribed');
+			
+			// Enable auto-composition
+			cleanupComposition = enableAutoCommitmentComposition();
+			
+			// Enable auto-allocation publishing
+			cleanupAllocationPublishing = enableAutoAllocationPublishing();
+			
+			// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
+			// This enables the coordination mechanism: recipients automatically reduce needs
+			cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
+			console.log('[HOME] ✅ Enabled automatic remaining need tracking');
+			
+			console.log('[HOME] ✅ Initialized and subscribed');
+		})();
 		
 		return () => {
-			unsubNeeds();
-			unsubCapacity();
-			unsubBarSegments();
-			unsubProviderSegments();
+			if (unsubNeeds) unsubNeeds();
+			if (unsubCapacity) unsubCapacity();
+			if (unsubBarSegments) unsubBarSegments();
+			if (unsubProviderSegments) unsubProviderSegments();
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 			if (cleanupAutoNeedTracking) cleanupAutoNeedTracking();
@@ -144,6 +156,7 @@
 
 	// CRUD Operations - Generalized for any need type
 	function addNeedSlot(name: string, quantity: number, needTypeId: string) {
+		if (!setMyNeedSlots) return;
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -159,10 +172,12 @@
 	}
 	
 	function removeNeedSlot(id: string) {
+		if (!setMyNeedSlots) return;
 		setMyNeedSlots(needSlots.filter(s => s.id !== id));
 	}
 	
 	function updateNeedSlot(updatedSlot: NeedSlot) {
+		if (!setMyNeedSlots) return;
 		const updated = needSlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);
@@ -171,6 +186,7 @@
 
 	// CRUD Operations - Generalized capacity for any need type
 	function addCapacitySlot(name: string, quantity: number, needTypeId: string) {
+		if (!setMyCapacitySlots) return;
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -186,10 +202,12 @@
 	}
 	
 	function removeCapacitySlot(id: string) {
+		if (!setMyCapacitySlots) return;
 		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id));
 	}
 	
 	function updateCapacitySlot(updatedSlot: AvailabilitySlot) {
+		if (!setMyCapacitySlots) return;
 		const updated = capacitySlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);

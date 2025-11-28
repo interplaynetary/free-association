@@ -1,32 +1,43 @@
 <script lang="ts">
 	/**
 	 * @component ProposingPhaseCard
-	 * Interface for submitting new proposals
+	 * Interface for submitting new proposals with auto-save
 	 * 
 	 * @prop {Function} onSubmit - Callback when proposal is submitted
 	 * @prop {string[]} participants - All participants
 	 * @prop {Set<string>} submittedParticipants - Participants who already submitted
+	 * @prop {string} gameId - Game identifier for draft key
 	 */
 	
-	let { onSubmit, participants, submittedParticipants = new Set() }: {
+	import { useDraft } from '../../composables/useDraft.svelte';
+	
+	let { onSubmit, participants, submittedParticipants = new Set(), gameId }: {
 		onSubmit: (content: string) => Promise<void>;
 		participants: string[];
 		submittedParticipants?: Set<string>;
+		gameId: string;
 	} = $props();
 	
-	let proposalInput = $state('');
+	// Elegant draft management with auto-save
+	const draft = useDraft({ 
+		key: `${gameId}:proposal`,
+		onRestore: (content) => {
+			console.log('📝 Restored draft proposal');
+		}
+	});
+	
 	let isSubmitting = $state(false);
 	
 	const remainingCount = $derived(participants.length - submittedParticipants.size);
 	const progress = $derived((submittedParticipants.size / participants.length) * 100);
 	
 	async function handleSubmit() {
-		if (!proposalInput.trim() || isSubmitting) return;
+		if (!draft.content.trim() || isSubmitting) return;
 		
 		isSubmitting = true;
 		try {
-			await onSubmit(proposalInput.trim());
-			proposalInput = '';
+			await onSubmit(draft.content.trim());
+			draft.clear(); // Clear draft after successful submit
 		} finally {
 			isSubmitting = false;
 		}
@@ -60,7 +71,7 @@
 	
 	<div class="input-section">
 		<textarea
-			bind:value={proposalInput}
+			bind:value={draft.content}
 			onkeypress={handleKeyPress}
 			placeholder="Enter your proposal..."
 			rows="3"
@@ -68,13 +79,20 @@
 		></textarea>
 		
 		<div class="actions">
-			<div class="char-count">
-				{proposalInput.length} characters
+			<div class="meta-info">
+				<span class="char-count">
+					{draft.content.length} characters
+				</span>
+				{#if draft.lastSaved}
+					<span class="draft-saved" title="Auto-saved">
+						💾 Saved
+					</span>
+				{/if}
 			</div>
 			<button 
 				class="submit-btn" 
 				onclick={handleSubmit}
-				disabled={!proposalInput.trim() || isSubmitting}
+				disabled={!draft.content.trim() || isSubmitting}
 			>
 				{isSubmitting ? 'Submitting...' : 'Submit Proposal'}
 			</button>
@@ -190,9 +208,27 @@
 		gap: 1rem;
 	}
 	
+	.meta-info {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+	
 	.char-count {
 		font-size: 0.8125rem;
 		color: var(--text-muted, #666);
+	}
+	
+	.draft-saved {
+		font-size: 0.75rem;
+		color: var(--success, #10b981);
+		opacity: 0.8;
+		animation: fadeIn 0.3s ease-in;
+	}
+	
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(-2px); }
+		to { opacity: 0.8; transform: translateY(0); }
 	}
 	
 	.submit-btn {
