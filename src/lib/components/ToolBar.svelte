@@ -1,12 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
-	// V5: Import from v5 stores
-	import { 
-		myRecognitionTreeStore as userTree,
-		myCapacitySlotsStore,
-		networkCommitments,
-		getNetworkCommitmentsRecord
-	} from '$lib/protocol/stores.svelte';
 	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
@@ -31,7 +25,6 @@
 		}
 	}
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/network/users.svelte';
-	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 	import {
 		getColorForUserId,
@@ -40,43 +33,62 @@
 	} from '$lib/utils/ui/colorUtils';
 	import { t } from '$lib/translations';
 
-	// V5: Create derived stores for backward compatibility
-	const userCapacities = derived([myCapacitySlotsStore], ([$slots]) => {
-		// V5: Convert slots array to a collection (for compatibility)
-		// Each slot becomes a commitment with capacity_slots
-		const collection: CapacitiesCollection = {};
-		if ($slots) {
-			$slots.forEach(slot => {
-				const commitment: CommitmentWithId = {
-					id: slot.id,
-					capacity_slots: [slot],
-					need_slots: [],
-					timestamp: Date.now(),
-					itcStamp: { id: 0, event: 0 }  // Placeholder ITC stamp
-				};
-				collection[slot.id] = commitment;
+	// V5: State for derived data (populated in onMount to avoid iOS Safari initialization errors)
+	let userCapacities = $state<CapacitiesCollection>({});
+	let mutualContributors = $state<string[]>([]);
+	let userNetworkCapacitiesWithSlotQuantities = $state<Record<string, Commitment>>({});
+	let userTree: any = null;
+	let myCapacitySlotsStore: any = null;
+	let networkCommitments: any = null;
+	let getNetworkCommitmentsRecord: any = null;
+
+	// Initialize stores on mount to avoid iOS Safari initialization errors
+	onMount(() => {
+		(async () => {
+			const stores = await import('$lib/protocol/stores.svelte');
+			userTree = stores.myRecognitionTreeStore;
+			myCapacitySlotsStore = stores.myCapacitySlotsStore;
+			networkCommitments = stores.networkCommitments;
+			getNetworkCommitmentsRecord = stores.getNetworkCommitmentsRecord;
+			
+			// Subscribe to capacity slots
+			myCapacitySlotsStore.subscribe((slots: AvailabilitySlot[] | null) => {
+				const collection: CapacitiesCollection = {};
+				if (slots) {
+					slots.forEach(slot => {
+						const commitment: CommitmentWithId = {
+							id: slot.id,
+							capacity_slots: [slot],
+							need_slots: [],
+							timestamp: Date.now(),
+							itcStamp: { id: 0, event: 0 }
+						};
+						collection[slot.id] = commitment;
+					});
+				}
+				userCapacities = collection;
 			});
-		}
-		return collection;
-	});
-
-	// V5: Compute mutual contributors from tree
-	const mutualContributors = derived([userTree], ([$tree]) => {
-		if (!$tree) return [];
-		return getAllContributorsFromTree($tree);
-	});
-
-	// V5: Network capacities from commitments
-	const userNetworkCapacitiesWithSlotQuantities = derived([networkCommitments], ([$networkCommitments]) => {
-		// V5: Return all network commitments as-is (they have capacity_slots)
-		const allCommitments = getNetworkCommitmentsRecord();
-		return allCommitments;
+			
+			// Subscribe to tree for mutual contributors
+			userTree.subscribe((tree: any) => {
+				if (!tree) {
+					mutualContributors = [];
+				} else {
+					mutualContributors = getAllContributorsFromTree(tree);
+				}
+			});
+			
+			// Subscribe to network commitments
+			networkCommitments.subscribe(() => {
+				userNetworkCapacitiesWithSlotQuantities = getNetworkCommitmentsRecord();
+			});
+		})();
 	});
 
 	// Reactive store subscriptions
 	// Use demo tree for unauthenticated users, user tree for authenticated users
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
+	const tree = $derived(isAuthenticated ? (userTree ? get(userTree) : null) : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
@@ -164,7 +176,7 @@
 
 	// Derived providers list for inventory filter
 	const inventoryProviders = $derived.by(() => {
-		const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
+		const networkCapacities = userNetworkCapacitiesWithSlotQuantities;
 		if (!networkCapacities) return [];
 
 		const providerMap = new Map<string, string>();
@@ -183,7 +195,7 @@
 	// Load provider names asynchronously
 	$effect(() => {
 		void (async () => {
-			const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
+			const networkCapacities = userNetworkCapacitiesWithSlotQuantities;
 			if (!networkCapacities) return;
 
 			const uniqueProviders = [...new Set(
@@ -286,7 +298,7 @@
 			nodeAtPath: Node | null;
 		}> = [];
 
-		for (const contributorId of $mutualContributors) {
+		for (const contributorId of mutualContributors) {
 			const contributorTree = $collectiveForest.get(contributorId);
 			let nodeAtPath: Node | null = null;
 			let hasSubtreesAtPath = false;
