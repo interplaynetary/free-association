@@ -137,24 +137,27 @@ export function populateWithExampleData(rootNode: RootNode): RootNode {
 }
 
 // Expose to window for debugging
+// Delay initialization to ensure all stores are initialized (prevents iOS Safari errors)
 if (typeof window !== 'undefined') {
-	// Expose the original function
-	(window as any).populateWithExampleData = populateWithExampleData;
+	setTimeout(() => {
+		// Expose the original function
+		(window as any).populateWithExampleData = populateWithExampleData;
 
-	// Add a wrapper that uses current userTree if available
-	(window as any).populateCurrentTreeWithExampleData = () => {
-		const currentTree = get(userTree);
-		if (!currentTree) {
-			console.error('[DEBUG] No userTree available to populate with example data');
-			return null;
-		}
-		console.log('[DEBUG] Populating current userTree with example data');
-		const populatedTree = populateWithExampleData(currentTree);
-		userTree.set(populatedTree);
-		return populatedTree;
-	};
+		// Add a wrapper that uses current userTree if available
+		(window as any).populateCurrentTreeWithExampleData = () => {
+			const currentTree = get(userTree);
+			if (!currentTree) {
+				console.error('[DEBUG] No userTree available to populate with example data');
+				return null;
+			}
+			console.log('[DEBUG] Populating current userTree with example data');
+			const populatedTree = populateWithExampleData(currentTree);
+			userTree.set(populatedTree);
+			return populatedTree;
+		};
 
-	console.log(
-		'[DEBUG] populateWithExampleData and populateCurrentTreeWithExampleData functions exposed to window'
-	);
+		console.log(
+			'[DEBUG] populateWithExampleData and populateCurrentTreeWithExampleData functions exposed to window'
+		);
+	}, 0);
 }

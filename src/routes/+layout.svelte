@@ -11,14 +11,18 @@
 	import { loading } from '$lib/translations';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
-	// Initialize global services (auto-initializes viewport and navigation handling)
-	import '$lib/services';
-
 	// Layout props
 	let { children }: LayoutProps = $props();
 
-	// Request notification permission on mount
-	onMount(() => {
+	// Initialize services dynamically on mount to avoid initialization order issues
+	onMount(async () => {
+		// Dynamically import and initialize services after component mounts
+		// This ensures all dependencies (like globalState) are fully initialized
+		if (browser) {
+			await import('$lib/services');
+		}
+		
+		// Request notification permission
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {
 				console.log('Notification permission:', permission);

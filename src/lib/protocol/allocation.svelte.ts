@@ -1191,53 +1191,57 @@ export function enableAutoAllocationPublishing(): () => void {
 // EXPORTS FOR DEBUGGING
 // ═══════════════════════════════════════════════════════════════════
 
+// Initialize debug exports after a delay to ensure all stores are initialized
+// This prevents "Cannot access uninitialized variable" errors on iOS Safari
 if (typeof window !== 'undefined') {
-	(window as any).freeAlgorithm = {
-		// Stores
-		myPublicKey,
-		myRecognitionOfOthers,
-		myMutualRecognition,
-		myCurrentNeeds,
-		myActiveNeeds,
-		myAvailableCapacity,
-		myAllocationsAsProvider,
-		myNeedsAtNextStep,
-		universalSatisfactionAchieved,
-		totalNeedMagnitude,
-		dampingFactors,
+	setTimeout(() => {
+		(window as any).freeAlgorithm = {
+			// Stores
+			myPublicKey,
+			myRecognitionOfOthers,
+			myMutualRecognition,
+			myCurrentNeeds,
+			myActiveNeeds,
+			myAvailableCapacity,
+			myAllocationsAsProvider,
+			myNeedsAtNextStep,
+			universalSatisfactionAchieved,
+			totalNeedMagnitude,
+			dampingFactors,
+			
+			// ITC Functions
+			getMyITCStamp,
+			incrementMyITCStamp,
+			mergeITCStampFromPeer,
+			isPeerUpdateStale,
+			getCausallyConsistentCommitments,
+			
+			// System State
+			getCurrentSystemState,
+			getPreviousSystemState,
+			updateSystemStateFromNetwork,
+			
+			// Convergence Metrics (from pure functions)
+			computeTotalNeedMagnitude,
+			computeContractionRate,
+			computePercentNeedsMet,
+			checkUniversalSatisfaction,
+			estimateIterationsToConvergence,
+			computeConvergenceSummary,
+			computeMaxPersonNeed,
+			computeNeedVariance,
+			computePeopleStuck,
+			
+			// Spatial/Temporal Optimization
+			networkNeedsIndex,
+			getCandidateRecipients,
+			
+			// Publishing
+			publishMyCommitment,
+			publishMyRecognitionWeights,
+			updateCommitmentWithDampingHistory
+		};
 		
-		// ITC Functions
-		getMyITCStamp,
-		incrementMyITCStamp,
-		mergeITCStampFromPeer,
-		isPeerUpdateStale,
-		getCausallyConsistentCommitments,
-		
-		// System State
-		getCurrentSystemState,
-		getPreviousSystemState,
-		updateSystemStateFromNetwork,
-		
-		// Convergence Metrics (from pure functions)
-		computeTotalNeedMagnitude,
-		computeContractionRate,
-		computePercentNeedsMet,
-		checkUniversalSatisfaction,
-		estimateIterationsToConvergence,
-		computeConvergenceSummary,
-		computeMaxPersonNeed,
-		computeNeedVariance,
-		computePeopleStuck,
-		
-		// Spatial/Temporal Optimization
-		networkNeedsIndex,
-		getCandidateRecipients,
-		
-		// Publishing
-		publishMyCommitment,
-		publishMyRecognitionWeights,
-		updateCommitmentWithDampingHistory
-	};
-	
-	console.log('[FREE-ALGORITHM] Debug interface available at window.freeAlgorithm');
+		console.log('[FREE-ALGORITHM] Debug interface available at window.freeAlgorithm');
+	}, 0);
 }

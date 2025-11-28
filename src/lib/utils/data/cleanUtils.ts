@@ -445,13 +445,16 @@ export function deduplicateContributors() {
 }
 
 // Expose to window for debugging
+// Delay initialization to ensure all stores are initialized (prevents iOS Safari errors)
 if (typeof window !== 'undefined') {
-	(window as any).changeTreeName = changeTreeName;
-	(window as any).createNewTree = createNewTree;
-	(window as any).updateTreeFromJson = updateTreeFromJson;
-	(window as any).cleanOrphanedContactIds = cleanOrphanedContactIds;
-	(window as any).deduplicateContributors = deduplicateContributors;
-	console.log(
-		'[DEBUG] changeTreeName, createNewTree, updateTreeFromJson, cleanOrphanedContactIds, and deduplicateContributors functions exposed to window'
-	);
+	setTimeout(() => {
+		(window as any).changeTreeName = changeTreeName;
+		(window as any).createNewTree = createNewTree;
+		(window as any).updateTreeFromJson = updateTreeFromJson;
+		(window as any).cleanOrphanedContactIds = cleanOrphanedContactIds;
+		(window as any).deduplicateContributors = deduplicateContributors;
+		console.log(
+			'[DEBUG] changeTreeName, createNewTree, updateTreeFromJson, cleanOrphanedContactIds, and deduplicateContributors functions exposed to window'
+		);
+	}, 0);
 }
