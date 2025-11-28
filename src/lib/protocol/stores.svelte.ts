@@ -634,45 +634,51 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
  * 
  * This ensures MR calculations remain stable and local-first, updating
  * reactively only when new information arrives from the network.
+ * 
+ * Delayed to avoid iOS Safari initialization errors.
  */
-networkCommitments.subscribe(($networkCommitsVersioned) => {
-	const myPub = get(holsterUserPub);
-	const myCommitment = get(myCommitmentStore);
-	
-	if (!myPub || !myCommitment) return;
-	
-	const cache = myCommitment.others_recognition_of_me || {};
-	const updates: Record<string, GlobalRecognitionWeights> = {};
-	
-	// Check each network commitment for changes
-	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
-		// Skip own commitment (prevents infinite loop when our data syncs back)
-		if (theirPub === myPub) continue;
-		
-		const theirWeights = versionedEntity.data.global_recognition_weights;
-		if (!theirWeights) continue;
-		
-		// Normalize and extract their recognition of me
-		const normalized = normalizeGlobalRecognitionWeights(theirWeights);
-		const networkRecOfMe = normalized[myPub] || 0;
-		const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
-		
-		// Network proved otherwise? Update cache!
-		if (networkRecOfMe !== cachedRecOfMe) {
-			updates[theirPub] = normalized;
-			console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
-		}
-	}
-	
-	// Apply updates if any changes detected
-	if (Object.keys(updates).length > 0) {
-		console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
-		myCommitmentStore.set({
-			...myCommitment,
-			others_recognition_of_me: { ...cache, ...updates }
+if (typeof window !== 'undefined') {
+	setTimeout(() => {
+		networkCommitments.subscribe(($networkCommitsVersioned) => {
+			const myPub = get(holsterUserPub);
+			const myCommitment = get(myCommitmentStore);
+			
+			if (!myPub || !myCommitment) return;
+			
+			const cache = myCommitment.others_recognition_of_me || {};
+			const updates: Record<string, GlobalRecognitionWeights> = {};
+			
+			// Check each network commitment for changes
+			for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
+				// Skip own commitment (prevents infinite loop when our data syncs back)
+				if (theirPub === myPub) continue;
+				
+				const theirWeights = versionedEntity.data.global_recognition_weights;
+				if (!theirWeights) continue;
+				
+				// Normalize and extract their recognition of me
+				const normalized = normalizeGlobalRecognitionWeights(theirWeights);
+				const networkRecOfMe = normalized[myPub] || 0;
+				const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
+				
+				// Network proved otherwise? Update cache!
+				if (networkRecOfMe !== cachedRecOfMe) {
+					updates[theirPub] = normalized;
+					console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
+				}
+			}
+			
+			// Apply updates if any changes detected
+			if (Object.keys(updates).length > 0) {
+				console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
+				myCommitmentStore.set({
+					...myCommitment,
+					others_recognition_of_me: { ...cache, ...updates }
+				});
+			}
 		});
-	}
-});
+	}, 0);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS (Slot Updates) ✅

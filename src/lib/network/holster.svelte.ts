@@ -33,6 +33,7 @@ function clearStores(): void {
 // BROWSER INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════
 
+// Delay auth check to avoid iOS Safari initialization errors
 if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 	const checkAuth = async () => {
 		try {
@@ -56,7 +57,9 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 		}
 	};
 
-	checkAuth();
+	setTimeout(() => {
+		checkAuth();
+	}, 0);
 } else if (import.meta.env.VITEST) {
 	isHolsterAuthenticating.set(false);
 }

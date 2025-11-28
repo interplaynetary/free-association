@@ -88,7 +88,7 @@
 	// Reactive store subscriptions
 	// Use demo tree for unauthenticated users, user tree for authenticated users
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived(isAuthenticated ? (userTree ? get(userTree) : null) : demoTreeStore.current);
+	const tree = $derived<Node | null>(isAuthenticated ? (userTree ? get(userTree) : null) : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
@@ -129,19 +129,19 @@
 	}
 
 	// Helper function to update the appropriate tree store based on authentication
-	function updateTreeStore(updatedTree: Node) {
-		if (isAuthenticated) {
+	function updateTreeStore(updatedTree: Node | NonRootNode) {
+		if (isAuthenticated && userTree) {
 			userTree.set(updatedTree);
 		} else {
 			// For demo tree, ensure it's serializable by using JSON round-trip
 			// This avoids structuredClone errors with proxy objects
 			try {
 				const serialized = JSON.parse(JSON.stringify(updatedTree));
-				demoTreeStore.set(serialized);
+				demoTreeStore.set(serialized as any);
 			} catch (err) {
 				console.error('[DEMO TREE] Failed to serialize tree:', err);
 				// Fallback: try to set anyway
-				demoTreeStore.set(updatedTree);
+				demoTreeStore.set(updatedTree as any);
 			}
 		}
 	}
@@ -252,6 +252,7 @@
 
 	// Helper function to find node by following a sequence of node names
 	function findNodeByNamePath(tree: Node, nameSequence: string[]): Node | null {
+		if (!('children' in tree)) return null;
 		if (nameSequence.length === 0) return tree;
 
 		let currentNode = tree;
@@ -290,6 +291,7 @@
 
 	// Derived store: Contributors who have trees available at the current path
 	const availableContributors = $derived.by(() => {
+		if (!tree) return [];
 		const pathNodeNames = getPathNodeNames(tree, path);
 		const contributors: Array<{
 			id: string;
@@ -303,7 +305,7 @@
 			let nodeAtPath: Node | null = null;
 			let hasSubtreesAtPath = false;
 
-			if (contributorTree) {
+			if (contributorTree && 'children' in contributorTree) {
 				// Find the node using the sequence of names
 				nodeAtPath = findNodeByNamePath(contributorTree, pathNodeNames);
 				// Check if this node has children (subtrees)
@@ -679,7 +681,7 @@
 			// Extract the first capacity slot from the commitment (v5 structure)
 			if (capacity.capacity_slots && capacity.capacity_slots.length > 0) {
 				const newSlot = capacity.capacity_slots[0];
-				const updatedSlots = [...currentSlots, newSlot];
+				const updatedSlots = Array.isArray(currentSlots) ? [...currentSlots, newSlot] : [newSlot];
 				
 				// Update v5 store (Holster auto-persists)
 				myCapacitySlotsStore.set(updatedSlots);
@@ -811,7 +813,7 @@
 								<button
 									class="toolbar-button edit-button"
 									class:edit-active={isTextEditMode}
-									title={isTextEditMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.text_edit_mode')) : $t('toolbar.text_edit_mode')}
+									title={isTextEditMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.text_edit_mode'))) : $t('toolbar.text_edit_mode')}
 									onclick={handleTextEditMode}
 								>
 									✏️
@@ -822,7 +824,7 @@
 								<button
 									class="toolbar-button recompose-button"
 									class:recompose-active={isRecomposeMode}
-									title={isRecomposeMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.recompose')) : $t('toolbar.recompose_mode')}
+									title={isRecomposeMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.recompose'))) : $t('toolbar.recompose_mode')}
 									onclick={handleRecompose}
 								>
 									↕️
@@ -834,7 +836,7 @@
 								<button
 									class="toolbar-button delete-button"
 									class:delete-active={isDeleteMode}
-									title={isDeleteMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.delete_mode')) : $t('toolbar.delete_mode')}
+									title={isDeleteMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.delete_mode'))) : $t('toolbar.delete_mode')}
 									onclick={globalState.toggleDeleteMode}
 								>
 									🗑️
