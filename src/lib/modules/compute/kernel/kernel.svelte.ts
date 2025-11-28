@@ -826,10 +826,13 @@ export function getUserSpaceDiagnostics() {
 }
 
 // Window debugging
+// Delay initialization to ensure all stores are initialized (prevents iOS Safari errors)
 if (typeof window !== 'undefined') {
-	(window as any).debugUserSpace = () => {
-		console.log('[USER-SPACE] Diagnostics:', getUserSpaceDiagnostics());
-	};
+	setTimeout(() => {
+		(window as any).debugUserSpace = () => {
+			console.log('[USER-SPACE] Diagnostics:', getUserSpaceDiagnostics());
+		};
+	}, 0);
 }
 
 // Re-export UserSpacePaths for convenience
