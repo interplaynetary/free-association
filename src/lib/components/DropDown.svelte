@@ -57,6 +57,7 @@
 
 	// State
 	let dropdownContainer = $state<HTMLDivElement | null>(null);
+	let openedTimestamp = $state<number>(0);
 
 	// Subscribe to dataProvider using proper lifecycle management
 	// Initialize empty - will populate on mount
@@ -673,6 +674,9 @@
 
 			adjustPosition();
 			initialized = true;
+			
+			// Mark the time when dropdown was opened
+			openedTimestamp = Date.now();
 		}
 	}
 
@@ -757,6 +761,9 @@
 		if (show && !initialized && browser) {
 			console.log('Initializing dropdown...');
 			initialize();
+		} else if (show && initialized && browser) {
+			// Update timestamp when dropdown is re-shown
+			openedTimestamp = Date.now();
 		}
 	});
 
@@ -768,6 +775,13 @@
 	});
 
 	const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+		// Ignore clicks that happen within 100ms of opening to prevent immediate closure
+		const timeSinceOpen = Date.now() - openedTimestamp;
+		if (timeSinceOpen < 100) {
+			console.log('[DROPDOWN] Ignoring click-outside within 100ms of opening');
+			return;
+		}
+		
 		if (dropdownContainer && !dropdownContainer.contains(event.target as Node)) {
 			handleClose();
 		}

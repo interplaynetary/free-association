@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
+import { page } from '$app/stores';
 // V5: Import from v5 protocol and stores
 import { 
 	findNodeById, 
@@ -34,10 +35,30 @@ if (browser) {
 	let lastPub = '';
 	userPub.subscribe((pub) => {
 		if (pub && pub !== lastPub) {
-			// User has logged in or changed - initialize path with user's pub
-			currentPath.set([pub]);
+			// User has logged in or changed
 			lastPub = pub;
-			console.log('[GLOBAL] Initialized currentPath with user public key:', pub);
+			
+			// Check if we're on an org page - if so, don't reset the path
+			try {
+				const currentPage = get(page);
+				const isOrgPage = currentPage?.route?.id?.startsWith('/org/') || false;
+				
+				console.log('[GLOBAL] User logged in - isOrgPage:', isOrgPage, 'route:', currentPage?.route?.id);
+				
+				if (isOrgPage) {
+					console.log('[GLOBAL] User logged in while on org page - preserving org tree path');
+					// Don't reset path - stay on the org tree
+				} else {
+					// Initialize path with user's pub for personal tree
+					currentPath.set([pub]);
+					console.log('[GLOBAL] Initialized currentPath with user public key:', pub);
+				}
+			} catch (error) {
+				console.error('[GLOBAL] Error checking page route:', error);
+				// Fallback: initialize path with user's pub
+				currentPath.set([pub]);
+				console.log('[GLOBAL] Initialized currentPath with user public key (fallback):', pub);
+			}
 		} else if (!pub && lastPub) {
 			// User has logged out - initialize path with demo tree if available
 			lastPub = '';
@@ -60,8 +81,20 @@ if (browser) {
 
 // We will use the persist/manifest functions from state.ts for sync
 
-// Helper function to get current tree (user or demo)
+// Helper function to get current tree (user, org, or demo)
 function getCurrentTree() {
+	// Check if we're on an org page - if so, always use demo tree (which contains the org tree)
+	if (browser) {
+		const currentPage = get(page);
+		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+		
+		if (isOrgPage) {
+			console.log('[GLOBAL] On org page - using demo tree (org tree)');
+			return demoTreeStore.current;
+		}
+	}
+	
+	// Not on an org page - use authenticated user's tree if available
 	const pub = get(userPub);
 	if (pub) {
 		// User is authenticated - use userTree
@@ -74,6 +107,17 @@ function getCurrentTree() {
 
 // Helper function to clone tree safely (handles demo tree proxy issues)
 function cloneTreeGlobal(treeToClone: any) {
+	// Check if we're on an org page - if so, use JSON serialization
+	if (browser) {
+		const currentPage = get(page);
+		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+		
+		if (isOrgPage) {
+			// Org pages use demo tree - use JSON serialization
+			return JSON.parse(JSON.stringify(treeToClone));
+		}
+	}
+	
 	const pub = get(userPub);
 	if (pub) {
 		// Authenticated users: use structuredClone for proper cloning
@@ -86,6 +130,24 @@ function cloneTreeGlobal(treeToClone: any) {
 
 // Helper function to update the appropriate tree store
 function updateTreeStore(updatedTree: any) {
+	// Check if we're on an org page - if so, update demo tree
+	if (browser) {
+		const currentPage = get(page);
+		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+		
+		if (isOrgPage) {
+			// Org pages: update demoTree with JSON serialization
+			try {
+				const serialized = JSON.parse(JSON.stringify(updatedTree));
+				demoTreeStore.set(serialized);
+			} catch (err) {
+				console.error('[GLOBAL] Failed to serialize org tree:', err);
+				demoTreeStore.set(updatedTree);
+			}
+			return;
+		}
+	}
+	
 	const pub = get(userPub);
 	if (pub) {
 		// Authenticated users: update userTree
@@ -223,10 +285,13 @@ export const globalState = $state({
 		return path.length > 1;
 	},
 	// Reset all state (logout)
-	// V5: Create empty root node instead of null
+	// V5: Don't manually set tree - let Holster handle it (will reload on next login)
 	resetState: () => {
-		const emptyTree = createRootNode('root', 'My Values');
-		userTree.set(emptyTree);
+		// ✅ DON'T manually set an empty tree - let Holster handle tree state
+		// This ensures Holster properly reloads the tree from network on next login
+		// const emptyTree = createRootNode('root', 'My Values');
+		// userTree.set(emptyTree);
+		
 		currentPath.set([]);
 		globalState.editMode = false;
 		globalState.editingNodeId = '';

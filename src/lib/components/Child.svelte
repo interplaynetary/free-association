@@ -349,7 +349,10 @@
 			return;
 		}
 
-		event.preventDefault();
+		// Only preventDefault for mouse events (not passive touch events)
+		if (event.type !== 'touchstart') {
+			event.preventDefault();
+		}
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 
@@ -392,7 +395,10 @@
 			return;
 		}
 
-		event.preventDefault();
+		// Only preventDefault for mouse events (not passive touch events)
+		if (event.type !== 'touchstart') {
+			event.preventDefault();
+		}
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 

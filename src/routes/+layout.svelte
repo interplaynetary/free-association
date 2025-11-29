@@ -9,10 +9,14 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
+	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
 	// Layout props
 	let { children }: LayoutProps = $props();
+
+	// PWA web manifest link
+	let webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
 	// Initialize services dynamically on mount to avoid initialization order issues
 	onMount(async () => {
@@ -20,6 +24,20 @@
 		// This ensures all dependencies (like globalState) are fully initialized
 		if (browser) {
 			await import('$lib/services');
+		}
+		
+		// Register PWA service worker with auto-update
+		if (browser && pwaInfo) {
+			const { registerSW } = await import('virtual:pwa-register');
+			registerSW({
+				immediate: true,
+				onRegistered(r) {
+					console.log('SW Registered:', r);
+				},
+				onRegisterError(error) {
+					console.log('SW registration error', error);
+				}
+			});
 		}
 		
 		// Request notification permission
@@ -30,6 +48,10 @@
 		}
 	});
 </script>
+
+<svelte:head>
+	{@html webManifestLink}
+</svelte:head>
 
 <main>
 	{#if $loading}

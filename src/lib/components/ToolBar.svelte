@@ -5,7 +5,8 @@
 		myRecognitionTreeStore as userTree,
 		myCapacitySlotsStore,
 		networkCommitments,
-		getNetworkCommitmentsRecord
+		getNetworkCommitmentsRecord,
+		setMyCapacitySlots
 	} from '$lib/protocol/stores.svelte';
 	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/tree';
 	import { page } from '$app/stores';
@@ -670,7 +671,7 @@
 				const updatedSlots = [...currentSlots, newSlot];
 				
 				// Update v5 store (Holster auto-persists)
-				myCapacitySlotsStore.set(updatedSlots);
+				setMyCapacitySlots(updatedSlots);
 				
 				// Add to highlighted capacities using global state
 				globalState.highlightCapacity(capacity.id);
@@ -1106,6 +1107,8 @@
 		border-top: 1px solid #e0e0e0;
 		position: relative;
 		z-index: 50;
+		width: 100%;
+		overflow: hidden;
 	}
 
 	.toolbar {
@@ -1117,6 +1120,9 @@
 		position: relative;
 		height: 62px;
 		flex-shrink: 0;
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
 	}
 
 	.toolbar-actions {
@@ -1125,6 +1131,8 @@
 		align-items: center;
 		height: 100%;
 		flex: 1;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.toolbar-footer {
@@ -1134,7 +1142,9 @@
 		gap: 2px;
 		font-size: 9px;
 		color: #999;
-		flex-shrink: 0;
+		flex-shrink: 1;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.demo-version {
@@ -1142,14 +1152,6 @@
 		font-size: 10px;
 		font-weight: 600;
 		line-height: 1.2;
-	}
-
-	.demo-notice {
-		color: #999;
-		font-size: 8px;
-		font-style: italic;
-		line-height: 1.2;
-		text-align: right;
 	}
 
 	.footer-link {
@@ -1302,6 +1304,9 @@
 		align-items: center;
 		padding: 4px 8px;
 		height: 100%;
+		flex-shrink: 1;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	/* Center the action controls between separator and right edge */
@@ -1311,6 +1316,8 @@
 		justify-content: center;
 		align-items: center;
 		height: 100%;
+		min-width: 0;
+		overflow: hidden;
 	}
 
 	.toolbar-item {
@@ -1836,10 +1843,6 @@
 
 		.demo-version {
 			font-size: 9px;
-		}
-
-		.demo-notice {
-			font-size: 7px;
 		}
 
 		.copyright {

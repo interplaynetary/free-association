@@ -397,31 +397,25 @@
 		}
 	);
 	
-	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
-	// Recognition weights are automatically computed from the tree in v5!
-	// In demo mode, use demoRecognitionWeights instead of store-based weights
-	// ✅ Subscribe to BOTH stores so changes in either trigger updates
+	// V5: Create reactive derived store from demoRecognitionWeights (org page)
+	// Recognition weights are computed from the org tree!
+	// ✅ ORG PAGE: Always use demo recognition (computed from org tree), never auth weights
 	const barSegments = derived(
-		[myRecognitionWeights, demoRecognitionWeights], 
-		([$authWeights, $demoWeights]) => {
-			console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
+		demoRecognitionWeights, 
+		($weights) => {
+			console.log('[📊 ORG-YR] Recognition weights changed - generating segments for bar...');
 			
-			// Use demo recognition if auth weights are empty (demo mode)
-			const weights = ($authWeights && Object.keys($authWeights).length > 0) 
-				? $authWeights 
-				: $demoWeights;
-			
-			if (!weights || Object.keys(weights).length === 0) {
-				console.log('[📊 UI-YR] ❌ No recognition weights available');
+			if (!$weights || Object.keys($weights).length === 0) {
+				console.log('[📊 ORG-YR] ❌ No recognition weights available');
 				return [];
 			}
 
-			const totalEntries = Object.keys(weights).length;
-			const nonZeroEntries = Object.values(weights as Record<string, number>).filter(v => v > 0).length;
-			console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+			const totalEntries = Object.keys($weights).length;
+			const nonZeroEntries = Object.values($weights as Record<string, number>).filter(v => v > 0).length;
+			console.log(`[📊 ORG-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
 
 			// Transform recognition weights into segments for Bar
-			const segments = Object.entries(weights as Record<string, number>)
+			const segments = Object.entries($weights as Record<string, number>)
 				.filter(([_, value]) => value > 0) // Only include non-zero values
 				.map(([id, value]) => ({
 					id,
@@ -429,7 +423,7 @@
 				}))
 				.sort((a, b) => b.value - a.value); // Sort by value descending
 			
-			console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
+			console.log(`[📊 ORG-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
 			segments.forEach(seg => {
 				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
 			});
@@ -438,29 +432,24 @@
 		}
 	);
 
-	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
-	// ✅ FALLBACK TO DEMO: Use demoMutualRecognition in demo mode (same algorithm, different data)
+	// V5: Create reactive derived store from demoMutualRecognition (org page)
+	// ✅ ORG PAGE: Always use demo mutual recognition (computed from org tree), never auth MR
 	const providerSegments = derived(
-		[myMutualRecognition, demoMutualRecognition],
-		([$mutualRec, $demoMutualRec]) => {
-			console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
-			
-			// Use demo mutual recognition if auth MR is empty (demo mode)
-			const mutualRec = ($mutualRec && Object.keys($mutualRec).length > 0) 
-				? $mutualRec 
-				: $demoMutualRec;
+		demoMutualRecognition,
+		($mutualRec) => {
+			console.log('[📊 ORG-MR] Mutual recognition changed - generating segments for bar...');
 
-			if (!mutualRec || Object.keys(mutualRec).length === 0) {
-				console.log('[📊 UI-MR] ❌ No mutual recognition data available');
+			if (!$mutualRec || Object.keys($mutualRec).length === 0) {
+				console.log('[📊 ORG-MR] ❌ No mutual recognition data available');
 				return [];
 			}
 
-			const totalEntries = Object.keys(mutualRec).length;
-			const nonZeroEntries = Object.values(mutualRec as Record<string, number>).filter(v => v > 0).length;
-			console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+			const totalEntries = Object.keys($mutualRec).length;
+			const nonZeroEntries = Object.values($mutualRec as Record<string, number>).filter(v => v > 0).length;
+			console.log(`[📊 ORG-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
 
 			// Transform mutual recognition data into segments for Bar
-			const segments = Object.entries(mutualRec as Record<string, number>)
+			const segments = Object.entries($mutualRec as Record<string, number>)
 				.filter(([_, value]) => value > 0) // Only include non-zero values
 				.map(([id, value]) => ({
 					id,
@@ -468,7 +457,7 @@
 				}))
 				.sort((a, b) => b.value - a.value); // Sort by value descending
 
-			console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
+			console.log(`[📊 ORG-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
 			segments.forEach(seg => {
 				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
 			});

@@ -74,9 +74,11 @@
 	}
 
 	// Reactive store subscriptions
-	// Use demo tree for unauthenticated users, user tree for authenticated users
+	// Check if we're on an org page - if so, always use demo tree (which contains org tree)
+	const isOrgPage = $derived($page?.route?.id?.startsWith('/org/') || false);
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
+	// Use demo tree on org pages, otherwise use user tree if authenticated, or demo tree if not
+	const tree = $derived(isOrgPage ? demoTreeStore.current : (isAuthenticated ? $userTree : demoTreeStore.current));
 	const path = $derived($currentPath);
 	const pub = $derived($userPub);
 	const user = $derived($userAlias);
@@ -399,6 +401,7 @@
 			currentPathInfo,
 			path,
 			isSoulRoute,
+			isOrgPage,
 			user: !!user,
 			hasTree: !!tree,
 			routeWithoutBase,
@@ -413,28 +416,49 @@
 			return;
 		}
 
-	// If we're clicking on the root node (index 0) and we're on the soul route:
-	// - If we're already at the root (path length 0 or 1), toggle the login panel
-	// - If we're deeper in the tree (path length > 1), navigate back to root
-	if (index === 0 && isSoulRoute) {
-		if (currentPathInfo.length <= 1) {
-			// We're at the root node or have no tree yet, toggle login panel
-			console.log('[DEBUG] At root, toggling login panel');
-			showLoginPanel = !showLoginPanel;
-			if (showLoginPanel) {
-				startLoginPanelTimer();
+		// Special handling for org pages: clicking root always shows login panel
+		if (index === 0 && isOrgPage) {
+			if (currentPathInfo.length <= 1) {
+				// At org root, toggle login panel (for convenient account access)
+				console.log('[DEBUG] At org root, toggling login panel for account access');
+				showLoginPanel = !showLoginPanel;
+				if (showLoginPanel) {
+					startLoginPanelTimer();
+				} else {
+					clearLoginPanelTimer();
+					isPanelClosing = false;
+				}
+				return;
 			} else {
-				clearLoginPanelTimer();
-				isPanelClosing = false;
+				// Deeper in org tree, navigate to org root
+				console.log('[DEBUG] Navigating to org root from deeper level');
+				globalState.navigateToPathIndex(index);
+				return;
 			}
-			return;
-		} else {
-			// We're deeper in the tree, navigate to root
-			console.log('[DEBUG] Navigating to root from deeper level');
-			globalState.navigateToPathIndex(index);
-			return;
 		}
-	}
+
+		// If we're clicking on the root node (index 0) and we're on the soul route:
+		// - If we're already at the root (path length 0 or 1), toggle the login panel
+		// - If we're deeper in the tree (path length > 1), navigate back to root
+		if (index === 0 && isSoulRoute) {
+			if (currentPathInfo.length <= 1) {
+				// We're at the root node or have no tree yet, toggle login panel
+				console.log('[DEBUG] At root, toggling login panel');
+				showLoginPanel = !showLoginPanel;
+				if (showLoginPanel) {
+					startLoginPanelTimer();
+				} else {
+					clearLoginPanelTimer();
+					isPanelClosing = false;
+				}
+				return;
+			} else {
+				// We're deeper in the tree, navigate to root
+				console.log('[DEBUG] Navigating to root from deeper level');
+				globalState.navigateToPathIndex(index);
+				return;
+			}
+		}
 
 		console.log('[DEBUG] Navigating to path index:', index);
 		// Simply update the path using the globalState function
