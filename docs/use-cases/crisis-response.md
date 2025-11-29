@@ -156,16 +156,16 @@ System responds in real-time as needs evolve. No need to restart coordination pr
 
 **Fairness:** Allocation proportional to mutual recognition, capped at need
 
-## Limitations
+## Considerations
 
-**Requires Pre-Existing Network:**
-Organizations must establish recognition before crisis. Free Association accelerates deployment but doesn't create new partnerships during crisis.
+**Pre-Existing Network:**
+Organizations establish recognition before crisis. Free Association accelerates deployment and works with existing partnerships.
 
-**Capacity Constraints:**
-System optimally allocates available capacity but cannot create resources that don't exist.
+**Capacity Boundaries:**
+System optimally allocates available capacity and works within existing resources.
 
-**Trust Prerequisites:**
-Mutual recognition implies trusted coordination relationships. System enables rapid deployment among trusted partners.
+**Trust Foundation:**
+Mutual recognition reflects trusted coordination relationships. System enables rapid deployment among trusted partners.
 
 ## Implementation Path
 

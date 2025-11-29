@@ -6,13 +6,13 @@
 
 ## The Core Problem
 
-Traditional resource coordination relies on three inadequate mechanisms:
+Traditional resource coordination relies on three mechanisms with specific constraints:
 
 - **Markets** - Exclude those without purchasing power
 - **Charity** - Creates dependency relationships  
 - **Bureaucracy** - Slow and inflexible
 
-None of these are adequate for the speed and scale of challenges we face—from climate adaptation to humanitarian response.
+These mechanisms face challenges matching the speed and scale required—from climate adaptation to humanitarian response.
 
 ## The Solution
 

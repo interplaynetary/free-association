@@ -209,7 +209,7 @@ Each participant maintains their unique identity and approach:
 * **Participation Modes:** Physical presence, video conference, and asynchronous participation all supported. Assembly minutes record participation method per attendee.
 
 * **Assembly Types:**
-  - **Annual:** Mandatory yearly gathering, reviews operations and updates protocols
+  - **Annual:** Yearly gathering, reviews operations and updates protocols
   - **Emergency:** Convened for urgent matters, expedited decision timeline
   - **Working Group:** Focused sub-assembly addressing specific topics, reports to main assembly
 

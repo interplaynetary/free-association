@@ -28,7 +28,7 @@ Citizens could delegate a portion of their proportion-setting power to another a
 
 ### Degrees of Separation
 
-If all people in the world are separated through at most 6 degrees of separation, then all organizations must be separated by at most 3 or 4 degrees.
+If all people in the world are separated through at most 6 degrees of separation, then all organizations would be separated by at most 3 or 4 degrees.
 
 **Implication:** Significant computational gain for calculating transitive surplus shares.
 

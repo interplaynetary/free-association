@@ -1,18 +1,18 @@
 # The Coordination Problem
 
-## The Inadequacy of Traditional Mechanisms
+## Traditional Mechanisms
 
-Resource coordination today relies on three primary mechanisms, each with critical limitations:
+Resource coordination today relies on three primary mechanisms, each with specific constraints:
 
 ### Markets
 
 **Mechanism:** Price-based allocation through purchasing power
 
-**Limitations:**
+**Constraints:**
 - Excludes those without financial resources
-- Ignores mission alignment and contribution
-- Creates adversarial dynamics in resource acquisition
-- Inefficient for collective goods and crisis response
+- Doesn't account for mission alignment and contribution
+- Can create adversarial dynamics in resource acquisition
+- Challenging for collective goods and crisis response
 
 **Example Problem:** A highly effective humanitarian organization without reserves cannot access resources when crisis hits, regardless of capability or need.
 
@@ -22,12 +22,12 @@ Resource coordination today relies on three primary mechanisms, each with critic
 
 **Mechanism:** Unidirectional resource transfer from donors to recipients
 
-**Limitations:**
+**Constraints:**
 - Creates dependency relationships
 - No material reciprocity for donors
 - Hierarchical structure concentrates power
-- Donors lack insight into actual contribution value
-- Recipients lack agency in relationship
+- Donors have limited insight into actual contribution value
+- Recipients have limited agency in relationship
 
 **Example Problem:** Organizations spend 30-40% of resources on fundraising and reporting rather than mission work. Effective contributors remain under-resourced due to limited fundraising capacity.
 
@@ -37,10 +37,10 @@ Resource coordination today relies on three primary mechanisms, each with critic
 
 **Mechanism:** Committee-based allocation through formal processes
 
-**Limitations:**
+**Constraints:**
 - Slow decision-making (months to allocate)
 - High administrative overhead
-- Inflexible to changing circumstances
+- Challenging to adapt to changing circumstances
 - Political negotiation delays resource flow
 - Centralized bottlenecks
 
@@ -50,7 +50,7 @@ Resource coordination today relies on three primary mechanisms, each with critic
 
 ## The Speed and Scale Challenge
 
-Modern challenges require coordination that is:
+Modern challenges benefit from coordination that is:
 
 ### Fast
 Climate events, humanitarian crises, and systemic risks evolve on days-to-weeks timescales. Traditional coordination operates on months-to-years timescales.
@@ -63,7 +63,7 @@ Circumstances change continuously. Needs evolve. New information emerges. Priori
 **Current Reality:** Resource commitments are static. Reallocation requires restarting entire coordination process.
 
 ### Efficient
-Resources must reach mission work, not coordination overhead.
+Resources flowing to mission work rather than coordination overhead.
 
 **Current Reality:** 30-70% of resources consumed by administrative processes, fundraising, and reporting.
 
@@ -85,9 +85,9 @@ Traditional mechanisms lack a way to:
 
 This creates fundamental tension: coordination requires information aggregation, but centralized aggregation creates bottlenecks and power concentration.
 
-## The Need for a Fourth Mechanism
+## A Fourth Mechanism
 
-We need a coordination mechanism that:
+A coordination mechanism that:
 
 - Operates at the speed of information exchange (seconds, not months)
 - Enables mutual recognition without central authority

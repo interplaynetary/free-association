@@ -146,7 +146,7 @@ Participants can publish/propose/offer/allocate with the help of protocols of th
 
 * The Secretariat is a council governed by the coalition's adopted protocols. Its purpose is to offer open-source solutions to support coalition participants.
 
-**Secretariat must:**
+**Secretariat commits to:**
 
 * invite  
   * its members to its assembly  

@@ -2,7 +2,7 @@
 
 ## The Coordination Challenge
 
-Humanitarian crises require rapid, coordinated response from multiple organizations. Traditional coordination faces critical challenges:
+Humanitarian crises call for rapid, coordinated response from multiple organizations. Traditional coordination faces critical challenges:
 
 **Information Bottlenecks:**
 - Centralized coordination bodies become information bottlenecks

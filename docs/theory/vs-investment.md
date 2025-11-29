@@ -26,7 +26,7 @@ Free Association differs fundamentally from traditional equity and investment st
 - Pressure for acquisition or IPO
 - Mission potentially subordinated to exit requirements
 
-### Limitations
+### Observed Constraints
 
 **Permanent Claims from Temporary Contributions:**
 - One-time capital provision creates permanent ownership
@@ -38,15 +38,15 @@ Free Association differs fundamentally from traditional equity and investment st
 - Capital accumulation creates power accumulation
 - Wealthy entities acquire disproportionate control
 
-**Mission-Finance Tension:**
-- Investor exit pressure vs. mission sustainability
-- Growth requirements vs. appropriate scale
-- Financial returns vs. impact priorities
+**Mission-Finance Tensions:**
+- Investor exit pressure can differ from mission sustainability needs
+- Growth requirements can differ from appropriate scale
+- Financial returns can differ from impact priorities
 
-**Transferability Enables False Recognition:**
-- Ownership acquired without genuine contribution
-- Speculative ownership divorced from value creation
-- Secondary market activity unrelated to actual impact
+**Transferability Effects:**
+- Ownership can be acquired without genuine contribution
+- Speculative ownership can be separated from value creation
+- Secondary market activity can be unrelated to actual impact
 
 ## Mutual Stakeholding (Equity-Based)
 

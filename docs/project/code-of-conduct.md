@@ -15,17 +15,17 @@ This Code applies to all Free Association spaces, including:
 
 ## Expected Standards
 
-All participants are expected to:
+We invite all participants to:
 
 - Engage professionally and respectfully
 - Respect differing viewpoints and experiences
 - Accept constructive feedback gracefully
-- Focus on what is best for the community
+- Focus on what supports the community
 - Show consideration for others
 
-## Unacceptable Behavior
+## Behavior Outside Community Standards
 
-The following behaviors are not tolerated:
+The following behaviors are outside our community standards:
 
 - Harassment, intimidation, or discrimination in any form
 - Unwelcome sexual attention or advances
@@ -42,9 +42,9 @@ All reports will be handled confidentially. Retaliation against those who report
 
 ## Enforcement
 
-Participants asked to stop unacceptable behavior are expected to comply immediately.
+When participants are asked to stop behavior outside our standards, we request immediate compliance.
 
-Violations may result in:
+Responses to violations may include:
 
 - Warning
 - Temporary suspension from community spaces

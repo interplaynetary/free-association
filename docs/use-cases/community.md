@@ -2,7 +2,7 @@
 
 ## The Community Coordination Challenge
 
-Communities coordinate shared resources through various mechanisms, each with limitations:
+Communities coordinate shared resources through various mechanisms, each with particular patterns:
 
 **Committee-Based Allocation:**
 - Slow decision-making

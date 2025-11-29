@@ -155,18 +155,18 @@ Everyone is welcome to:
 
 **Standard Contributions:**
 - Maintainers review and approve
-- Must pass tests and maintain code quality
-- Should align with project direction
+- Pass tests and maintain code quality
+- Align with project direction
 
 **Significant Changes:**
-- Require discussion before implementation
-- May need RFC for architectural changes
-- Must demonstrate value and feasibility
+- Discussion before implementation
+- May benefit from RFC for architectural changes
+- Demonstrate value and feasibility
 
 ### Documentation
 
-**Accuracy Required:**
-- Technical documentation must be accurate
+**Accuracy:**
+- Technical documentation is accurate
 - Changes reviewed for correctness
 - Clarity and accessibility valued
 
@@ -185,7 +185,7 @@ Everyone is welcome to:
 - Seek mutual understanding
 
 **2. Maintainer Mediation**
-- If direct communication insufficient
+- If direct communication doesn't resolve the matter
 - Maintainer facilitates discussion
 - Seeks resolution acceptable to all
 
@@ -204,9 +204,9 @@ Everyone is welcome to:
 **Status:** Application in process
 
 **Current Guidance:**
-- "Free Association" name should be used accurately
+- "Free Association" name used accurately
 - Modified versions clearly marked as such
-- Derivative works should not create confusion
+- Derivative works avoid creating confusion
 
 **Future:** Formal policy once trademark registration complete
 

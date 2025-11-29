@@ -12,7 +12,7 @@ The complete protocol specification is available in the main repository:
 
 ### Core Requirements
 
-Any implementation claiming Free Association conformance MUST preserve:
+Any implementation claiming Free Association conformance preserves:
 
 **1. Mutual Recognition Foundation**
 - Recognition weights sum to 100% per entity
@@ -50,7 +50,7 @@ FinalAllocation(r) = min(RawAllocation(r), Need(r))
 
 ### Required Properties
 
-Conformant implementations must demonstrate:
+Conformant implementations demonstrate:
 
 ✅ **Contraction:** Total needs decrease or stay constant  
 ✅ **No Accumulation:** Received ≤ Declared Need always  
@@ -75,7 +75,7 @@ The following are NON-CONFORMANT:
 
 ## Conformance Testing
 
-Implementations should pass test suite covering:
+Implementations pass test suite covering:
 - Basic allocation scenarios
 - Property verification
 - Edge case handling

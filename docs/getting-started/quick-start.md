@@ -3,7 +3,7 @@
 ## For Decision-Makers (5 minutes)
 
 ### The Problem
-Traditional resource coordination is too slow for modern challenges. Crisis response takes months when it should take days.
+Traditional resource coordination operates slower than modern challenges require. Crisis response takes months when days would serve better.
 
 ### The Solution
 Free Association enables automatic resource allocation based on mutual recognition—no bureaucracy, no gatekeepers.

@@ -21,27 +21,27 @@ Free Association differs fundamentally from charitable resource distribution.
 - Recipient provides no material value to donor
 - Relationship based on benevolence, not exchange
 
-### Limitations
+### Observed Constraints
 
-**Dependency Creation:**
-- Recipients become dependent on donor goodwill
-- No mechanism for reciprocal value
-- Perpetuates hierarchical relationship
+**Dependency Dynamics:**
+- Recipients can become dependent on donor goodwill
+- Limited mechanism for reciprocal value
+- Can perpetuate hierarchical relationship
 
 **Donor Control:**
 - Donors determine priorities and allocation
 - Recipients have limited agency
 - Power concentration in donor role
 
-**Scalability Constraints:**
+**Scalability Challenges:**
 - Depends on donor willingness to give without return
-- Limited by donor capacity and motivation
-- Doesn't create sustainable resource flows
+- Bounded by donor capacity and motivation
+- Creates time-limited resource flows
 
-**Incentive Misalignment:**
+**Incentive Patterns:**
 - Donors may prioritize visibility over impact
 - Recipients incentivized to emphasize need rather than capability
-- System doesn't reward contribution, only need demonstration
+- System rewards need demonstration over contribution
 
 ## Free Association
 
