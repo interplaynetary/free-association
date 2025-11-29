@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Bar from '$lib/components/Bar.svelte';
-	import Map from '$lib/components/Map.svelte';
-	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
 	
-	// Dynamically import Parent to avoid module-level store initialization on iOS Safari
+	// Dynamically import Parent, Map, and ResourceSlots to avoid module-level store initialization on iOS Safari
 	let Parent = $state<any>(null);
+	let Map = $state<any>(null);
+	let ResourceSlots = $state<any>(null);
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -36,11 +36,18 @@
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
 		
-		// V5: Dynamically import stores AND Parent component to avoid module-level initialization on iOS Safari
+		// V5: Dynamically import stores AND components to avoid module-level initialization on iOS Safari
 		(async () => {
-			// Import Parent component
+			// Import Parent, Map, and ResourceSlots components
 			const ParentModule = await import('$lib/components/Parent.svelte');
 			Parent = ParentModule.default;
+			
+			const MapModule = await import('$lib/components/Map.svelte');
+			Map = MapModule.default;
+			
+			const ResourceSlotsModule = await import('$lib/components/ResourceSlots.svelte');
+			ResourceSlots = ResourceSlotsModule.default;
+			
 			const { 
 				myRecognitionWeights, 
 				myMutualRecognition,
@@ -230,21 +237,25 @@
 			{#if Parent}
 				<Parent />
 			{/if}
-	{:else if currentView === 'map'}
-			<Map fullHeight={true} />
+		{:else if currentView === 'map'}
+			{#if Map}
+				<Map fullHeight={true} />
+			{/if}
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<!-- Resource Slots Component with type selector and tabs -->
-				<ResourceSlots
-					{needSlots}
-					{capacitySlots}
-					onNeedUpdate={updateNeedSlot}
-					onNeedDelete={removeNeedSlot}
-					onCapacityUpdate={updateCapacitySlot}
-					onCapacityDelete={removeCapacitySlot}
-					onNeedAdd={addNeedSlot}
-					onCapacityAdd={addCapacitySlot}
-				/>
+				{#if ResourceSlots}
+					<ResourceSlots
+						{needSlots}
+						{capacitySlots}
+						onNeedUpdate={updateNeedSlot}
+						onNeedDelete={removeNeedSlot}
+						onCapacityUpdate={updateCapacitySlot}
+						onCapacityDelete={removeCapacitySlot}
+						onNeedAdd={addNeedSlot}
+						onCapacityAdd={addCapacitySlot}
+					/>
+				{/if}
 			</div>
 		{/if}
 	</div>
