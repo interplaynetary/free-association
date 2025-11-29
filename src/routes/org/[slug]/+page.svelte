@@ -1,25 +1,29 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import Type from '$lib/components/Type.svelte';
-	import { 
-		myRecognitionTreeStore, 
-		myRecognitionWeights, 
-		myMutualRecognition,
-		myNeedSlotsStore,
-		myCapacitySlotsStore,
-		myNeedTypesStore,
-		myCapacityTypesStore,
-		myCommitmentStore,
-		initializeAllocationStores,
-		enableAutoCommitmentComposition,
-		setMyNeedSlots,
-		setMyCapacitySlots
-	} from '$lib/protocol/stores.svelte';
-	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
+	
+	// Dynamically import Parent and stores to avoid module-level initialization on iOS Safari
+	let Parent = $state<any>(null);
+	let myRecognitionTreeStore: any;
+	let myRecognitionWeights: any;
+	let myMutualRecognition: any;
+	let myNeedSlotsStore: any;
+	let myCapacitySlotsStore: any;
+	let myNeedTypesStore: any;
+	let myCapacityTypesStore: any;
+	let myCommitmentStore: any;
+	let initializeAllocationStores: any;
+	let enableAutoCommitmentComposition: any;
+	let setMyNeedSlots: any;
+	let setMyCapacitySlots: any;
+	let networkCommitments: any;
+	let enableAutoAllocationPublishing: any;
+	let unsubNeeds: (() => void) | null = null;
+	let unsubCapacity: (() => void) | null = null;
+	
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
@@ -86,30 +90,54 @@
 			console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
 		}
 		
-		// Initialize stores for inventory view
-		console.log('[ORG-PAGE] Initializing stores for inventory view...');
-		initializeAllocationStores();
-		
-		// Subscribe to stores (reactive)
-		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
-			needSlots = slots || [];
-		});
-		
-		const unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
-			capacitySlots = slots || [];
-		});
-		
-		// Enable auto-composition
-		cleanupComposition = enableAutoCommitmentComposition();
-		
-		// Enable auto-allocation publishing
-		cleanupAllocationPublishing = enableAutoAllocationPublishing();
-		
-		console.log('[ORG-PAGE] ✅ Initialized and subscribed');
+		// Dynamically import stores and Parent component
+		(async () => {
+			const ParentModule = await import('$lib/components/Parent.svelte');
+			Parent = ParentModule.default;
+			
+			const storesModule = await import('$lib/protocol/stores.svelte');
+			myRecognitionTreeStore = storesModule.myRecognitionTreeStore;
+			myRecognitionWeights = storesModule.myRecognitionWeights;
+			myMutualRecognition = storesModule.myMutualRecognition;
+			myNeedSlotsStore = storesModule.myNeedSlotsStore;
+			myCapacitySlotsStore = storesModule.myCapacitySlotsStore;
+			myNeedTypesStore = storesModule.myNeedTypesStore;
+			myCapacityTypesStore = storesModule.myCapacityTypesStore;
+			myCommitmentStore = storesModule.myCommitmentStore;
+			initializeAllocationStores = storesModule.initializeAllocationStores;
+			enableAutoCommitmentComposition = storesModule.enableAutoCommitmentComposition;
+			setMyNeedSlots = storesModule.setMyNeedSlots;
+			setMyCapacitySlots = storesModule.setMyCapacitySlots;
+			networkCommitments = storesModule.networkCommitments;
+			
+			const allocationModule = await import('$lib/protocol/allocation.svelte');
+			enableAutoAllocationPublishing = allocationModule.enableAutoAllocationPublishing;
+			
+			// Initialize stores for inventory view
+			console.log('[ORG-PAGE] Initializing stores for inventory view...');
+			initializeAllocationStores();
+			
+			// Subscribe to stores (reactive)
+			unsubNeeds = myNeedSlotsStore.subscribe((slots: any) => {
+				needSlots = slots || [];
+			});
+			
+			unsubCapacity = myCapacitySlotsStore.subscribe((slots: any) => {
+				capacitySlots = slots || [];
+			});
+			
+			// Enable auto-composition
+			cleanupComposition = enableAutoCommitmentComposition();
+			
+			// Enable auto-allocation publishing
+			cleanupAllocationPublishing = enableAutoAllocationPublishing();
+			
+			console.log('[ORG-PAGE] ✅ Initialized and subscribed');
+		})();
 		
 		return () => {
-			unsubNeeds();
-			unsubCapacity();
+			if (unsubNeeds) unsubNeeds();
+			if (unsubCapacity) unsubCapacity();
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
@@ -515,7 +543,9 @@
 <div class="layout org-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
-			<Parent />
+			{#if Parent}
+				<Parent />
+			{/if}
 		{:else if currentView === 'map'}
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}

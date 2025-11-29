@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+	
+	// Dynamically import Parent to avoid module-level store initialization on iOS Safari
+	let Parent: any = null;
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -34,8 +36,11 @@
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
 		
-		// V5: Dynamically import stores to avoid module-level initialization on iOS Safari
+		// V5: Dynamically import stores AND Parent component to avoid module-level initialization on iOS Safari
 		(async () => {
+			// Import Parent component
+			const ParentModule = await import('$lib/components/Parent.svelte');
+			Parent = ParentModule.default;
 			const { 
 				myRecognitionWeights, 
 				myMutualRecognition,
@@ -222,8 +227,10 @@
 <div class="layout root-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
-			<Parent />
-		{:else if currentView === 'map'}
+		{#if Parent}
+			<svelte:component this={Parent} />
+		{/if}
+	{:else if currentView === 'map'}
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">

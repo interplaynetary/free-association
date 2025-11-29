@@ -829,9 +829,9 @@ export function getUserSpaceDiagnostics() {
 // Delay initialization to ensure all stores are initialized (prevents iOS Safari errors)
 if (typeof window !== 'undefined') {
 	setTimeout(() => {
-		(window as any).debugUserSpace = () => {
-			console.log('[USER-SPACE] Diagnostics:', getUserSpaceDiagnostics());
-		};
+	(window as any).debugUserSpace = () => {
+		console.log('[USER-SPACE] Diagnostics:', getUserSpaceDiagnostics());
+	};
 	}, 0);
 }
 
