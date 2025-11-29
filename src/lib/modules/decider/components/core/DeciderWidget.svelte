@@ -12,13 +12,11 @@
 	import LoadingState from '../shared/LoadingState.svelte';
 	import PhaseTimer from '../shared/PhaseTimer.svelte';
 	import DeciderHeader from '../header/DeciderHeader.svelte';
-	import ProgressHeader from '../header/ProgressHeader.svelte';
 	import DeciderTabs from '../navigation/DeciderTabs.svelte';
 	import AgendaNavigation from '../navigation/AgendaNavigation.svelte';
 	import ProposalCarousel from '../navigation/ProposalCarousel.svelte';
 	import QuickActions from '../navigation/QuickActions.svelte';
 	import ProposalCardMini from '../proposal/ProposalCardMini.svelte';
-	import ProposalCardWithActions from '../proposal/ProposalCardWithActions.svelte';
 	import ProposalCardExpanded from '../proposal/ProposalCardExpanded.svelte';
 	import ProposingPhaseCard from '../phases/ProposingPhaseCard.svelte';
 	import ChallengeCard from '../phases/ChallengeCard.svelte';
@@ -27,10 +25,6 @@
 	import ConfigProposalForm from '../forms/ConfigProposalForm.svelte';
 	import ActionModal from '../modals/ActionModal.svelte';
 	import ExpandedProposalOverlay from '../modals/ExpandedProposalOverlay.svelte';
-	import ActivityFeed from '../shared/ActivityFeed.svelte';
-	
-	// Import composables for elegant state management
-	import { useActivityFeed } from '../../composables';
 	
 	interface Props {
 		user: any;
@@ -52,9 +46,6 @@
 	let decider = $state<ReactiveP2PDecider | null>(null);
 	let isInitialized = $state(false);
 	let initError = $state<string | null>(null);
-	
-	// Activity tracking
-	const activityFeed = useActivityFeed();
 	
 	// UI state
 	let activeTab = $state('proposals');
@@ -216,7 +207,6 @@
 		isSubmitting = true;
 		try {
 			await decider.writeMyProposal(content);
-			activityFeed.add({ type: 'proposal', content });
 			showFeedback('success', 'Proposal submitted successfully');
 		} catch (e) {
 			console.error('Failed to submit proposal:', e);
@@ -238,7 +228,6 @@
 		isSubmitting = true;
 		try {
 			await decider.writeMyChallengeToProposal(currentAction.proposalPub, content);
-			activityFeed.add({ type: 'challenge', targetPub: currentAction.proposalPub, content });
 			showFeedback('success', 'Challenge submitted successfully');
 			actionModalOpen = false;
 			currentAction = null;
@@ -262,7 +251,6 @@
 		isSubmitting = true;
 		try {
 			await decider.writeMyCommentOnProposal(currentAction.proposalPub, content);
-			activityFeed.add({ type: 'comment', targetPub: currentAction.proposalPub, content });
 			showFeedback('success', 'Comment submitted successfully');
 			actionModalOpen = false;
 			currentAction = null;
@@ -281,7 +269,6 @@
 		isSubmitting = true;
 		try {
 			await decider.writeMyModificationToProposal(currentAction.proposalPub, content);
-			activityFeed.add({ type: 'modification', targetPub: currentAction.proposalPub, content });
 			showFeedback('success', 'Modification submitted successfully');
 			actionModalOpen = false;
 			currentAction = null;
@@ -307,7 +294,6 @@
 		isSubmitting = true;
 		try {
 			await decider.writeMySupportForProposal(currentAction.proposalPub, allocation);
-			activityFeed.add({ type: 'support', targetPub: currentAction.proposalPub, data: allocation });
 			showFeedback('success', 'Support submitted successfully');
 			actionModalOpen = false;
 			currentAction = null;
@@ -427,58 +413,6 @@
 	function getProposalByPub(proposalPub: string): ProposalData | undefined {
 		return allProposals.find(p => p.authorPub === proposalPub);
 	}
-	
-	// Inline action handlers (for ProposalCardWithActions)
-	async function handleInlineChallenge(proposalPub: string, content: string): Promise<void> {
-		if (!decider) return;
-		if (!validateContent(content)) return;
-		
-		try {
-			await decider.writeMyChallengeToProposal(proposalPub, content);
-			activityFeed.add({ type: 'challenge', targetPub: proposalPub, content });
-			showFeedback('success', 'Challenge submitted successfully');
-		} catch (e) {
-			console.error('Failed to submit challenge:', e);
-			showFeedback('error', e instanceof Error ? e.message : 'Failed to submit challenge');
-			throw e;
-		}
-	}
-	
-	async function handleInlineComment(proposalPub: string, content: string): Promise<void> {
-		if (!decider) return;
-		if (!validateContent(content)) return;
-		
-		try {
-			await decider.writeMyCommentOnProposal(proposalPub, content);
-			activityFeed.add({ type: 'comment', targetPub: proposalPub, content });
-			showFeedback('success', 'Comment submitted successfully');
-		} catch (e) {
-			console.error('Failed to submit comment:', e);
-			showFeedback('error', e instanceof Error ? e.message : 'Failed to submit comment');
-			throw e;
-		}
-	}
-	
-	async function handleInlineModification(proposalPub: string, content: string): Promise<void> {
-		if (!decider) return;
-		if (!validateContent(content)) return;
-		
-		try {
-			await decider.writeMyModificationToProposal(proposalPub, content);
-			activityFeed.add({ type: 'modification', targetPub: proposalPub, content });
-			showFeedback('success', 'Modification submitted successfully');
-		} catch (e) {
-			console.error('Failed to submit modification:', e);
-			showFeedback('error', e instanceof Error ? e.message : 'Failed to submit modification');
-			throw e;
-		}
-	}
-	
-	async function handleAgree(proposalPub: string): Promise<void> {
-		// "No concerns" - Just track that we reviewed it
-		// Could also write a null/empty challenge to indicate "reviewed and approved"
-		showFeedback('success', 'Marked as reviewed');
-	}
 </script>
 
 <div class="decider-widget" class:compact={variant === 'compact'} class:inline={variant === 'inline'} class:full={variant === 'full'}>
@@ -500,20 +434,8 @@
 	{#if !isInitialized || !decider}
 		<LoadingState message={initError || 'Initializing Decider...'} />
 	{:else if config}
+		<!-- Header -->
 		{@const agendaItem = config.agenda[config.currentAgendaIndex]}
-		
-		<!-- Progress Header (NEW) -->
-		<ProgressHeader
-			currentPhase={currentPhase}
-			phaseStartTime={phaseStartTime}
-			phaseDuration={phaseDuration}
-			agendaItem={typeof agendaItem === 'string' ? agendaItem : agendaItem.text}
-			agendaIndex={config.currentAgendaIndex}
-			agendaTotal={config.agenda.length}
-			compact={variant === 'compact'}
-		/>
-		
-		<!-- Header (Legacy - can be removed after testing) -->
 		<DeciderHeader
 			agendaItem={typeof agendaItem === 'string' ? agendaItem : agendaItem.text}
 			currentPhase={currentPhase}
@@ -569,7 +491,6 @@
 						onSubmit={handleSubmitProposal}
 						participants={config.participants}
 						submittedParticipants={submittedParticipants}
-						gameId={gameId}
 					/>
 				{/if}
 				
@@ -595,39 +516,19 @@
 							/>
 						</div>
 					{:else}
-						<!-- Inline/Full: Show grid with inline actions for challenging/commenting -->
+						<!-- Inline/Full: Show grid of mini cards -->
 						<div class="proposals-grid">
 							{#each allProposals as proposal (proposal.authorPub)}
 								{#if proposal.content}
-									{#if currentPhase === 'challenging' || currentPhase === 'commenting'}
-										<!-- NEW: Use ProposalCardWithActions for better UX -->
-										<ProposalCardWithActions
-											proposal={{content: proposal.content, authorPub: proposal.authorPub}}
-											{currentUserPub}
-											challengeCount={getChallengeCount(proposal.authorPub)}
-											commentCount={getCommentCount(proposal.authorPub)}
-											modificationCount={getModificationCount(proposal.authorPub)}
-											status={getProposalStatus(proposal.authorPub)}
-											{currentPhase}
-											{gameId}
-											onChallenge={(content) => handleInlineChallenge(proposal.authorPub, content)}
-											onComment={(content) => handleInlineComment(proposal.authorPub, content)}
-											onModification={(content) => handleInlineModification(proposal.authorPub, content)}
-											onAgree={() => handleAgree(proposal.authorPub)}
-											onExpand={() => handleExpandProposal(proposal.authorPub)}
-										/>
-									{:else}
-										<!-- Default: Use mini cards for other phases -->
-										<ProposalCardMini
-											proposal={{content: proposal.content, authorPub: proposal.authorPub}}
-											{currentUserPub}
-											challengeCount={getChallengeCount(proposal.authorPub)}
-											commentCount={getCommentCount(proposal.authorPub)}
-											modificationCount={getModificationCount(proposal.authorPub)}
-											status={getProposalStatus(proposal.authorPub)}
-											onExpand={() => handleExpandProposal(proposal.authorPub)}
-										/>
-									{/if}
+									<ProposalCardMini
+										proposal={{content: proposal.content, authorPub: proposal.authorPub}}
+										{currentUserPub}
+										challengeCount={getChallengeCount(proposal.authorPub)}
+										commentCount={getCommentCount(proposal.authorPub)}
+										modificationCount={getModificationCount(proposal.authorPub)}
+										status={getProposalStatus(proposal.authorPub)}
+										onExpand={() => handleExpandProposal(proposal.authorPub)}
+									/>
 								{/if}
 							{/each}
 						</div>
@@ -719,22 +620,6 @@
 				onCancel={handleCancelConfigProposal}
 			/>
 		</ActionModal>
-		
-		<!-- Activity Feed (NEW) -->
-		<ActivityFeed 
-			activities={activityFeed.activities}
-			onView={(activity) => {
-				// Navigate to the activity - e.g., expand the proposal
-				if (activity.targetPub) {
-					handleExpandProposal(activity.targetPub);
-				}
-			}}
-			onDelete={(activity) => {
-				// Delete activity from feed (but not from network)
-				activityFeed.remove(activity.id);
-				showFeedback('success', 'Activity removed from feed');
-			}}
-		/>
 	{/if}
 </div>
 

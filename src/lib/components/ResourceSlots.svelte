@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
 	import { TimePatternEditor } from './slots';
 	import { NEED_TYPES, type NeedType } from '$lib/protocol/utils/needTypes';
+	import { myAllocationsAsProvider } from '$lib/protocol/allocation.svelte';
+	import { networkAllocations } from '$lib/protocol/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
 	
@@ -52,37 +53,8 @@
 	// Expanded state for allocation details
 	let expandedAllocations = $state<Set<string>>(new Set());
 	
-	// Reactive allocation state (populated from store subscriptions in onMount)
-	let myAllocations = $state<SlotAllocationRecord[]>([]);
-	let allNetworkAllocations = $state<Map<string, SlotAllocationRecord[]>>(new Map());
-	
 	// Get current need type info
 	const currentNeedType = $derived(NEED_TYPES.find(t => t.id === selectedNeedType) || NEED_TYPES[0]);
-	
-	// Dynamically load allocation stores to avoid iOS Safari initialization issues
-	onMount(() => {
-		let unsubMyAllocations: (() => void) | null = null;
-		let unsubNetworkAllocations: (() => void) | null = null;
-		
-		(async () => {
-			const { myAllocationsAsProvider } = await import('$lib/protocol/allocation.svelte');
-			const { networkAllocations } = await import('$lib/protocol/stores.svelte');
-			
-			// Subscribe to stores
-			unsubMyAllocations = myAllocationsAsProvider.subscribe((data: any) => {
-				myAllocations = data?.allocations || [];
-			});
-			
-			unsubNetworkAllocations = networkAllocations.subscribe((allocMap: Map<string, SlotAllocationRecord[]>) => {
-				allNetworkAllocations = allocMap;
-			});
-		})();
-		
-		return () => {
-			unsubMyAllocations?.();
-			unsubNetworkAllocations?.();
-		};
-	});
 	
 	// Get current slots based on active tab AND selected need type
 	const currentSlots = $derived(
@@ -90,6 +62,10 @@
 			.filter(slot => slot.need_type_id === selectedNeedType)
 	);
 	const isNeedMode = $derived(activeTab === 'needs');
+	
+	// Reactive allocation data - derived from stores
+	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
+	const allNetworkAllocations = $derived($networkAllocations);
 	const myPubKey = $derived($holsterUserPub);
 	
 	// Get allocations map for all slots (reactive)
@@ -305,7 +281,7 @@
 							{@const otherPubKey = isNeedMode ? 
 								// For needs, find the provider by looking through networkAllocations
 								(() => {
-									for (const [providerKey, allocList] of allNetworkAllocations) {
+									for (const [providerKey, allocList] of $networkAllocations) {
 										if (allocList?.some(a => a === allocation)) return providerKey;
 									}
 									return '';

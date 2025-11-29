@@ -1,14 +1,27 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
+	import Map from '$lib/components/Map.svelte';
+	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
+	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
+	import { 
+		myRecognitionTreeStore, 
+		myRecognitionWeights, 
+		myMutualRecognition,
+		myNeedSlotsStore,
+		myCapacitySlotsStore,
+		myCommitmentStore,
+		initializeAllocationStores,
+		enableAutoCommitmentComposition,
+		setMyNeedSlots,
+		setMyCapacitySlots
+	} from '$lib/protocol/stores.svelte';
+	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
+	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
-	
-	// Dynamically import Parent, Map, and ResourceSlots to avoid module-level store initialization on iOS Safari
-	let Parent = $state<any>(null);
-	let Map = $state<any>(null);
-	let ResourceSlots = $state<any>(null);
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -16,150 +29,44 @@
 	// Reactive state for inventory view (Svelte 5 runes) - USD only!
 	let needSlots = $state<NeedSlot[]>([]);
 	let capacitySlots = $state<AvailabilitySlot[]>([]);
-	
-	// Reactive state for bar segments
-	let barSegments = $state<Array<{id: string, value: number}>>([]);
-	let providerSegments = $state<Array<{id: string, value: number}>>([]);
 
 
-	// Cleanup functions and store references
+	// Cleanup functions
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
 	let cleanupAutoNeedTracking: (() => void) | null = null;
-	let setMyNeedSlots: ((slots: NeedSlot[]) => void) | null = null;
-	let setMyCapacitySlots: ((slots: AvailabilitySlot[]) => void) | null = null;
-	let unsubNeeds: (() => void) | null = null;
-	let unsubCapacity: (() => void) | null = null;
-	let unsubBarSegments: (() => void) | null = null;
-	let unsubProviderSegments: (() => void) | null = null;
 
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
 		
-		// V5: Dynamically import stores AND components to avoid module-level initialization on iOS Safari
-		(async () => {
-			// Import Parent, Map, and ResourceSlots components
-			const ParentModule = await import('$lib/components/Parent.svelte');
-			Parent = ParentModule.default;
-			
-			const MapModule = await import('$lib/components/Map.svelte');
-			Map = MapModule.default;
-			
-			const ResourceSlotsModule = await import('$lib/components/ResourceSlots.svelte');
-			ResourceSlots = ResourceSlotsModule.default;
-			
-			const { 
-				myRecognitionWeights, 
-				myMutualRecognition,
-				myNeedSlotsStore,
-				myCapacitySlotsStore,
-				initializeAllocationStores,
-				enableAutoCommitmentComposition,
-				setMyNeedSlots: _setMyNeedSlots,
-				setMyCapacitySlots: _setMyCapacitySlots
-			} = await import('$lib/protocol/stores.svelte');
-			
-			const { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } = await import('$lib/protocol/allocation.svelte');
-			
-			// Store setters for CRUD functions
-			setMyNeedSlots = _setMyNeedSlots;
-			setMyCapacitySlots = _setMyCapacitySlots;
-			
-			// Initialize stores
-			initializeAllocationStores();
+		// Initialize stores
+		initializeAllocationStores();
 		
-			// Subscribe to stores (reactive)
-			unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
-				needSlots = slots || [];
-			});
-			
-			unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
-				capacitySlots = slots || [];
-			});
-			
-			// Subscribe to recognition weights for bar segments
-			unsubBarSegments = myRecognitionWeights.subscribe((weights) => {
-			console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
-			
-			// Defensive: Handle undefined/null weights
-			if (!weights || typeof weights !== 'object' || Object.keys(weights).length === 0) {
-				console.log('[📊 UI-YR] ❌ No recognition weights available');
-				barSegments = [];
-				return;
-			}
-
-			const totalEntries = Object.keys(weights).length;
-			const nonZeroEntries = Object.values(weights).filter(v => v > 0).length;
-			console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-			// Transform recognition weights into segments for Bar
-			const segments = Object.entries(weights)
-				.filter(([_, value]) => value > 0) // Only include non-zero values
-				.map(([id, value]) => ({
-					id,
-					value: value * 100 // Convert from decimal to percentage
-				}))
-				.sort((a, b) => b.value - a.value); // Sort by value descending
-			
-			console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
-			segments.forEach(seg => {
-				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-			});
-			
-			barSegments = segments;
+		// Subscribe to stores (reactive)
+		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
+			needSlots = slots || [];
 		});
-			
-			// Subscribe to mutual recognition for provider segments
-			unsubProviderSegments = myMutualRecognition.subscribe((mutualRec) => {
-			console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
-
-			// Defensive: Handle undefined/null mutual recognition
-			if (!mutualRec || typeof mutualRec !== 'object' || Object.keys(mutualRec).length === 0) {
-				console.log('[📊 UI-MR] ❌ No mutual recognition data available');
-				providerSegments = [];
-				return;
-			}
-
-			const totalEntries = Object.keys(mutualRec).length;
-			const nonZeroEntries = Object.values(mutualRec).filter(v => v > 0).length;
-			console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-			// Transform mutual recognition data into segments for Bar
-			const segments = Object.entries(mutualRec)
-				.filter(([_, value]) => value > 0) // Only include non-zero values
-				.map(([id, value]) => ({
-					id,
-					value: value * 100 // Convert from decimal to percentage
-				}))
-				.sort((a, b) => b.value - a.value); // Sort by value descending
-
-			console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
-			segments.forEach(seg => {
-				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-			});
-			
-			providerSegments = segments;
+		
+		const unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
+			capacitySlots = slots || [];
 		});
-			
-			// Enable auto-composition
-			cleanupComposition = enableAutoCommitmentComposition();
-			
-			// Enable auto-allocation publishing
-			cleanupAllocationPublishing = enableAutoAllocationPublishing();
-			
-			// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
-			// This enables the coordination mechanism: recipients automatically reduce needs
-			cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
-			console.log('[HOME] ✅ Enabled automatic remaining need tracking');
-			
-			console.log('[HOME] ✅ Initialized and subscribed');
-		})();
+		
+		// Enable auto-composition
+		cleanupComposition = enableAutoCommitmentComposition();
+		
+		// Enable auto-allocation publishing
+		cleanupAllocationPublishing = enableAutoAllocationPublishing();
+		
+		// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
+		// This enables the coordination mechanism: recipients automatically reduce needs
+		cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
+		console.log('[HOME] ✅ Enabled automatic remaining need tracking');
+		
+		console.log('[HOME] ✅ Initialized and subscribed');
 		
 		return () => {
-			if (unsubNeeds) unsubNeeds();
-			if (unsubCapacity) unsubCapacity();
-			if (unsubBarSegments) unsubBarSegments();
-			if (unsubProviderSegments) unsubProviderSegments();
+			unsubNeeds();
+			unsubCapacity();
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 			if (cleanupAutoNeedTracking) cleanupAutoNeedTracking();
@@ -168,7 +75,6 @@
 
 	// CRUD Operations - Generalized for any need type
 	function addNeedSlot(name: string, quantity: number, needTypeId: string) {
-		if (!setMyNeedSlots) return;
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -184,12 +90,10 @@
 	}
 	
 	function removeNeedSlot(id: string) {
-		if (!setMyNeedSlots) return;
 		setMyNeedSlots(needSlots.filter(s => s.id !== id));
 	}
 	
 	function updateNeedSlot(updatedSlot: NeedSlot) {
-		if (!setMyNeedSlots) return;
 		const updated = needSlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);
@@ -198,7 +102,6 @@
 
 	// CRUD Operations - Generalized capacity for any need type
 	function addCapacitySlot(name: string, quantity: number, needTypeId: string) {
-		if (!setMyCapacitySlots) return;
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -214,17 +117,79 @@
 	}
 	
 	function removeCapacitySlot(id: string) {
-		if (!setMyCapacitySlots) return;
 		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id));
 	}
 	
 	function updateCapacitySlot(updatedSlot: AvailabilitySlot) {
-		if (!setMyCapacitySlots) return;
 		const updated = capacitySlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);
 		setMyCapacitySlots(updated);
 	}
+
+	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
+	// Recognition weights are automatically computed from the tree in v5!
+	const barSegments = derived(myRecognitionWeights, ($weights) => {
+		console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
+		
+		// Defensive: Handle undefined/null weights (iOS Safari hydration timing)
+		if (!$weights || typeof $weights !== 'object' || Object.keys($weights).length === 0) {
+			console.log('[📊 UI-YR] ❌ No recognition weights available');
+			return [];
+		}
+
+		const totalEntries = Object.keys($weights).length;
+		const nonZeroEntries = Object.values($weights).filter(v => v > 0).length;
+		console.log(`[📊 UI-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+
+		// Transform recognition weights into segments for Bar
+		const segments = Object.entries($weights)
+			.filter(([_, value]) => value > 0) // Only include non-zero values
+			.map(([id, value]) => ({
+				id,
+				value: value * 100 // Convert from decimal to percentage
+			}))
+			.sort((a, b) => b.value - a.value); // Sort by value descending
+		
+		console.log(`[📊 UI-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
+		segments.forEach(seg => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+		
+		return segments;
+	});
+
+	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
+	// Mutual recognition is automatically computed from recognition weights + network data in v5!
+	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
+		console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
+
+		// Defensive: Handle undefined/null mutual recognition (iOS Safari hydration timing)
+		if (!$mutualRec || typeof $mutualRec !== 'object' || Object.keys($mutualRec).length === 0) {
+			console.log('[📊 UI-MR] ❌ No mutual recognition data available');
+			return [];
+		}
+
+		const totalEntries = Object.keys($mutualRec).length;
+		const nonZeroEntries = Object.values($mutualRec).filter(v => v > 0).length;
+		console.log(`[📊 UI-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
+
+		// Transform mutual recognition data into segments for Bar
+		const segments = Object.entries($mutualRec)
+			.filter(([_, value]) => value > 0) // Only include non-zero values
+			.map(([id, value]) => ({
+				id,
+				value: value * 100 // Convert from decimal to percentage
+			}))
+			.sort((a, b) => b.value - a.value); // Sort by value descending
+
+		console.log(`[📊 UI-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
+		segments.forEach(seg => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+		
+		return segments;
+	});
 
 	// V5: No manual recalculation needed! Everything is reactive 🎉
 	// Recognition weights auto-update when tree changes
@@ -234,28 +199,22 @@
 <div class="layout root-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
-			{#if Parent}
-				<Parent />
-			{/if}
+			<Parent />
 		{:else if currentView === 'map'}
-			{#if Map}
-				<Map fullHeight={true} />
-			{/if}
+			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<!-- Resource Slots Component with type selector and tabs -->
-				{#if ResourceSlots}
-					<ResourceSlots
-						{needSlots}
-						{capacitySlots}
-						onNeedUpdate={updateNeedSlot}
-						onNeedDelete={removeNeedSlot}
-						onCapacityUpdate={updateCapacitySlot}
-						onCapacityDelete={removeCapacitySlot}
-						onNeedAdd={addNeedSlot}
-						onCapacityAdd={addCapacitySlot}
-					/>
-				{/if}
+				<ResourceSlots
+					{needSlots}
+					{capacitySlots}
+					onNeedUpdate={updateNeedSlot}
+					onNeedDelete={removeNeedSlot}
+					onCapacityUpdate={updateCapacitySlot}
+					onCapacityDelete={removeCapacitySlot}
+					onNeedAdd={addNeedSlot}
+					onCapacityAdd={addCapacitySlot}
+				/>
 			</div>
 		{/if}
 	</div>
@@ -271,9 +230,9 @@
 				<span class="label-desktop">{$t('home.your_recognition_abbr')}</span>
 			</div>
 			<div class="bar-area">
-				{#if barSegments.length > 0}
+				{#if $barSegments.length > 0}
 					<Bar
-						segments={barSegments}
+						segments={$barSegments}
 						width="100%"
 						height="100%"
 						showLabelsOnSelect={true}
@@ -298,9 +257,9 @@
 				<span class="label-desktop">{$t('home.mutual_recognition_abbr')}</span>
 			</div>
 			<div class="bar-area">
-				{#if providerSegments.length > 0}
+				{#if $providerSegments.length > 0}
 					<Bar
-						segments={providerSegments}
+						segments={$providerSegments}
 						width="100%"
 						height="100%"
 						showLabelsOnSelect={true}

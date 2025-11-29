@@ -10,6 +10,7 @@ import {
 	createRootNode
 } from '$lib/protocol/tree';
 import { userPub } from '$lib/network/auth.svelte';
+import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
 import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 
 // User identification is handled via username (alias) and userpub (public key)
@@ -22,58 +23,48 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  *
  * These stores form the foundation of our state management:
  * - userPub: The authenticated user's public key from Holster
- * - userTree: The complete tree structure for the current user (lazy-loaded to avoid iOS Safari initialization errors)
+ * - userTree: The complete tree structure for the current user (imported from state)
  * - currentPath: The navigation path (array of node IDs) in the tree
  */
 export const currentPath: Writable<string[]> = writable([]);
 
-// Lazy-load userTree to avoid iOS Safari initialization errors
-let userTree: any = null;
-
-// Initialize userTree and currentPath subscription
-// Delay to avoid iOS Safari initialization errors
+// Initialize currentPath when user logs in or demo tree loads
 if (browser) {
-	setTimeout(async () => {
-		// Load the store
-		const stores = await import('$lib/protocol/stores.svelte');
-		userTree = stores.myRecognitionTreeStore;
-		
-		// Watch for user authentication state changes
-		let lastPub = '';
-		userPub.subscribe((pub) => {
-			if (pub && pub !== lastPub) {
-				// User has logged in or changed - initialize path with user's pub
-				currentPath.set([pub]);
-				lastPub = pub;
-				console.log('[GLOBAL] Initialized currentPath with user public key:', pub);
-			} else if (!pub && lastPub) {
-				// User has logged out - initialize path with demo tree if available
-				lastPub = '';
-				console.log('[GLOBAL] User logged out - checking for demo tree');
-				
-				// Small delay to ensure demo tree is initialized
-				setTimeout(() => {
-					const demoTree = demoTreeStore.current;
-					if (demoTree) {
-						console.log('[GLOBAL] Setting path to demo tree root:', demoTree.id);
-						currentPath.set([demoTree.id]);
-					} else {
-						console.log('[GLOBAL] No demo tree available - clearing path');
-						currentPath.set([]);
-					}
-				}, 100);
-			}
-		});
-	}, 0);
+	// Watch for user authentication state changes
+	let lastPub = '';
+	userPub.subscribe((pub) => {
+		if (pub && pub !== lastPub) {
+			// User has logged in or changed - initialize path with user's pub
+			currentPath.set([pub]);
+			lastPub = pub;
+			console.log('[GLOBAL] Initialized currentPath with user public key:', pub);
+		} else if (!pub && lastPub) {
+			// User has logged out - initialize path with demo tree if available
+			lastPub = '';
+			console.log('[GLOBAL] User logged out - checking for demo tree');
+			
+			// Small delay to ensure demo tree is initialized
+			setTimeout(() => {
+				const demoTree = demoTreeStore.current;
+				if (demoTree) {
+					console.log('[GLOBAL] Setting path to demo tree root:', demoTree.id);
+					currentPath.set([demoTree.id]);
+				} else {
+					console.log('[GLOBAL] No demo tree available - clearing path');
+					currentPath.set([]);
+				}
+			}, 100);
+		}
+	});
 }
 
 // We will use the persist/manifest functions from state.ts for sync
 
 // Helper function to get current tree (user or demo)
-function getCurrentTree(): import('$lib/protocol/schemas').RootNode | null {
+function getCurrentTree() {
 	const pub = get(userPub);
-	if (pub && userTree) {
-		// User is authenticated - use userTree (if loaded)
+	if (pub) {
+		// User is authenticated - use userTree
 		return get(userTree);
 	} else {
 		// User is not authenticated - use demoTree
@@ -96,8 +87,8 @@ function cloneTreeGlobal(treeToClone: any) {
 // Helper function to update the appropriate tree store
 function updateTreeStore(updatedTree: any) {
 	const pub = get(userPub);
-	if (pub && userTree) {
-		// Authenticated users: update userTree (if loaded)
+	if (pub) {
+		// Authenticated users: update userTree
 		userTree.set(updatedTree);
 	} else {
 		// Demo users: update demoTree with JSON serialization

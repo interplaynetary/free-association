@@ -13,13 +13,11 @@ export { default as DeciderHeader } from './header/DeciderHeader.svelte';
 export { default as PhaseIndicator } from './header/PhaseIndicator.svelte';
 export { default as TimeWindowBadge } from './header/TimeWindowBadge.svelte';
 export { default as ParticipantAvatars } from './header/ParticipantAvatars.svelte';
-export { default as ProgressHeader } from './header/ProgressHeader.svelte';
 
 // Proposal Components
 export { default as ProposalCardMini } from './proposal/ProposalCardMini.svelte';
 export { default as ProposalCardExpanded } from './proposal/ProposalCardExpanded.svelte';
 export { default as ProposalStatusBadge } from './proposal/ProposalStatusBadge.svelte';
-export { default as ProposalCardWithActions } from './proposal/ProposalCardWithActions.svelte';
 
 // Phase-Specific Action Components
 export { default as ProposingPhaseCard } from './phases/ProposingPhaseCard.svelte';
@@ -49,5 +47,4 @@ export { default as ContentCard } from './shared/ContentCard.svelte';
 export { default as PointAllocator } from './shared/PointAllocator.svelte';
 export { default as EmptyState } from './shared/EmptyState.svelte';
 export { default as LoadingState } from './shared/LoadingState.svelte';
-export { default as ActivityFeed } from './shared/ActivityFeed.svelte';
 

@@ -349,10 +349,7 @@
 			return;
 		}
 
-		// Only preventDefault for mouse events (touch events are passive listeners)
-		if (event.type !== 'touchstart') {
-			event.preventDefault();
-		}
+		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 
@@ -395,10 +392,7 @@
 			return;
 		}
 
-		// Only preventDefault for mouse events (touch events are passive listeners)
-		if (event.type !== 'touchstart') {
-			event.preventDefault();
-		}
+		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
 
@@ -467,8 +461,7 @@
 		event.stopPropagation();
 
 		// For touch events, also prevent default to avoid iOS text selection conflicts
-		// Only if the event is cancelable (not a passive listener)
-		if (event.type === 'touchend' && event.cancelable) {
+		if (event.type === 'touchend') {
 			event.preventDefault();
 		}
 
@@ -927,13 +920,11 @@
 						const thumbPosition = (currentSliderValue() / 100) * rect.width;
 						const thumbSize = 20; // Match CSS thumb width
 
-					// If touch is not near the thumb, prevent slider behavior and forward to parent
-					if (Math.abs(touchX - thumbPosition) > thumbSize / 2) {
-						// Prevent the slider from changing value (only if cancelable)
-						if (event.cancelable) {
+						// If touch is not near the thumb, prevent slider behavior and forward to parent
+						if (Math.abs(touchX - thumbPosition) > thumbSize / 2) {
+							// Prevent the slider from changing value
 							event.preventDefault();
-						}
-						event.stopPropagation();
+							event.stopPropagation();
 
 							// Manually forward the event to the parent clickable div for normal interactions
 							const parentClickable = target.closest('.clickable');
@@ -1033,26 +1024,22 @@
 							flex-shrink: 0;
 							pointer-events: auto;
 						"
-					viewBox="-25 -25 50 50"
-					role="button"
-					tabindex="0"
-					aria-label={$t('tree.add_anti_contributor')}
-					onclick={handleAddAntiContributorClick}
-					ontouchstart={handleAddAntiContributorClick}
-					onpointerdown={(e) => {
-						if (e.cancelable) {
+						viewBox="-25 -25 50 50"
+						role="button"
+						tabindex="0"
+						aria-label={$t('tree.add_anti_contributor')}
+						onclick={handleAddAntiContributorClick}
+						ontouchstart={handleAddAntiContributorClick}
+						onpointerdown={(e) => {
 							e.preventDefault();
-						}
-						e.stopPropagation();
-						e.stopImmediatePropagation();
-					}}
-					onmousedown={(e) => {
-						if (e.cancelable) {
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
 							e.preventDefault();
-						}
-						e.stopPropagation();
-						e.stopImmediatePropagation();
-					}}
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
@@ -1111,16 +1098,12 @@
 						onclick={handleAddAntiContributorClick}
 						ontouchstart={handleAddAntiContributorClick}
 						onpointerdown={(e) => {
-							if (e.cancelable) {
-								e.preventDefault();
-							}
+							e.preventDefault();
 							e.stopPropagation();
 							e.stopImmediatePropagation();
 						}}
 						onmousedown={(e) => {
-							if (e.cancelable) {
-								e.preventDefault();
-							}
+							e.preventDefault();
 							e.stopPropagation();
 							e.stopImmediatePropagation();
 						}}
@@ -1142,26 +1125,22 @@
 							flex-shrink: 0;
 							pointer-events: auto;
 						"
-					viewBox="-25 -25 50 50"
-					role="button"
-					tabindex="0"
-					aria-label={$t('tree.add_contributor')}
-					onclick={handleAddContributorClick}
-					ontouchstart={handleAddContributorClick}
-					onpointerdown={(e) => {
-						if (e.cancelable) {
+						viewBox="-25 -25 50 50"
+						role="button"
+						tabindex="0"
+						aria-label={$t('tree.add_contributor')}
+						onclick={handleAddContributorClick}
+						ontouchstart={handleAddContributorClick}
+						onpointerdown={(e) => {
 							e.preventDefault();
-						}
-						e.stopPropagation();
-						e.stopImmediatePropagation();
-					}}
-					onmousedown={(e) => {
-						if (e.cancelable) {
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
+						onmousedown={(e) => {
 							e.preventDefault();
-						}
-						e.stopPropagation();
-						e.stopImmediatePropagation();
-					}}
+							e.stopPropagation();
+							e.stopImmediatePropagation();
+						}}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
@@ -1220,16 +1199,12 @@
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}
 						onpointerdown={(e) => {
-							if (e.cancelable) {
-								e.preventDefault();
-							}
+							e.preventDefault();
 							e.stopPropagation();
 							e.stopImmediatePropagation();
 						}}
 						onmousedown={(e) => {
-							if (e.cancelable) {
-								e.preventDefault();
-							}
+							e.preventDefault();
 							e.stopPropagation();
 							e.stopImmediatePropagation();
 						}}

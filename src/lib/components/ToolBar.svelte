@@ -1,6 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { globalState, currentPath } from '$lib/global.svelte';
+	// V5: Import from v5 stores
+	import { 
+		myRecognitionTreeStore as userTree,
+		myCapacitySlotsStore,
+		networkCommitments,
+		getNetworkCommitmentsRecord
+	} from '$lib/protocol/stores.svelte';
 	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
@@ -25,6 +31,7 @@
 		}
 	}
 	import { userNamesOrAliasesCache, resolveToPublicKey, getUserName } from '$lib/network/users.svelte';
+	import { derived } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 	import {
 		getColorForUserId,
@@ -33,62 +40,43 @@
 	} from '$lib/utils/ui/colorUtils';
 	import { t } from '$lib/translations';
 
-	// V5: State for derived data (populated in onMount to avoid iOS Safari initialization errors)
-	let userCapacities = $state<CapacitiesCollection>({});
-	let mutualContributors = $state<string[]>([]);
-	let userNetworkCapacitiesWithSlotQuantities = $state<Record<string, Commitment>>({});
-	let userTree: any = null;
-	let myCapacitySlotsStore: any = null;
-	let networkCommitments: any = null;
-	let getNetworkCommitmentsRecord: any = null;
+	// V5: Create derived stores for backward compatibility
+	const userCapacities = derived([myCapacitySlotsStore], ([$slots]) => {
+		// V5: Convert slots array to a collection (for compatibility)
+		// Each slot becomes a commitment with capacity_slots
+		const collection: CapacitiesCollection = {};
+		if ($slots) {
+			$slots.forEach(slot => {
+				const commitment: CommitmentWithId = {
+					id: slot.id,
+					capacity_slots: [slot],
+					need_slots: [],
+					timestamp: Date.now(),
+					itcStamp: { id: 0, event: 0 }  // Placeholder ITC stamp
+				};
+				collection[slot.id] = commitment;
+			});
+		}
+		return collection;
+	});
 
-	// Initialize stores on mount to avoid iOS Safari initialization errors
-	onMount(() => {
-		(async () => {
-			const stores = await import('$lib/protocol/stores.svelte');
-			userTree = stores.myRecognitionTreeStore;
-			myCapacitySlotsStore = stores.myCapacitySlotsStore;
-			networkCommitments = stores.networkCommitments;
-			getNetworkCommitmentsRecord = stores.getNetworkCommitmentsRecord;
-			
-			// Subscribe to capacity slots
-			myCapacitySlotsStore.subscribe((slots: AvailabilitySlot[] | null) => {
-				const collection: CapacitiesCollection = {};
-				if (slots) {
-					slots.forEach(slot => {
-						const commitment: CommitmentWithId = {
-							id: slot.id,
-							capacity_slots: [slot],
-							need_slots: [],
-							timestamp: Date.now(),
-							itcStamp: { id: 0, event: 0 }
-						};
-						collection[slot.id] = commitment;
-					});
-				}
-				userCapacities = collection;
-			});
-			
-			// Subscribe to tree for mutual contributors
-			userTree.subscribe((tree: any) => {
-				if (!tree) {
-					mutualContributors = [];
-				} else {
-					mutualContributors = getAllContributorsFromTree(tree);
-				}
-			});
-			
-			// Subscribe to network commitments
-			networkCommitments.subscribe(() => {
-				userNetworkCapacitiesWithSlotQuantities = getNetworkCommitmentsRecord();
-			});
-		})();
+	// V5: Compute mutual contributors from tree
+	const mutualContributors = derived([userTree], ([$tree]) => {
+		if (!$tree) return [];
+		return getAllContributorsFromTree($tree);
+	});
+
+	// V5: Network capacities from commitments
+	const userNetworkCapacitiesWithSlotQuantities = derived([networkCommitments], ([$networkCommitments]) => {
+		// V5: Return all network commitments as-is (they have capacity_slots)
+		const allCommitments = getNetworkCommitmentsRecord();
+		return allCommitments;
 	});
 
 	// Reactive store subscriptions
 	// Use demo tree for unauthenticated users, user tree for authenticated users
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived<Node | null>(isAuthenticated ? (userTree ? get(userTree) : null) : demoTreeStore.current);
+	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
@@ -129,19 +117,19 @@
 	}
 
 	// Helper function to update the appropriate tree store based on authentication
-	function updateTreeStore(updatedTree: Node | NonRootNode) {
-		if (isAuthenticated && userTree) {
+	function updateTreeStore(updatedTree: Node) {
+		if (isAuthenticated) {
 			userTree.set(updatedTree);
 		} else {
 			// For demo tree, ensure it's serializable by using JSON round-trip
 			// This avoids structuredClone errors with proxy objects
 			try {
 				const serialized = JSON.parse(JSON.stringify(updatedTree));
-				demoTreeStore.set(serialized as any);
+				demoTreeStore.set(serialized);
 			} catch (err) {
 				console.error('[DEMO TREE] Failed to serialize tree:', err);
 				// Fallback: try to set anyway
-				demoTreeStore.set(updatedTree as any);
+				demoTreeStore.set(updatedTree);
 			}
 		}
 	}
@@ -176,7 +164,7 @@
 
 	// Derived providers list for inventory filter
 	const inventoryProviders = $derived.by(() => {
-		const networkCapacities = userNetworkCapacitiesWithSlotQuantities;
+		const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
 		if (!networkCapacities) return [];
 
 		const providerMap = new Map<string, string>();
@@ -195,7 +183,7 @@
 	// Load provider names asynchronously
 	$effect(() => {
 		void (async () => {
-			const networkCapacities = userNetworkCapacitiesWithSlotQuantities;
+			const networkCapacities = $userNetworkCapacitiesWithSlotQuantities;
 			if (!networkCapacities) return;
 
 			const uniqueProviders = [...new Set(
@@ -252,7 +240,6 @@
 
 	// Helper function to find node by following a sequence of node names
 	function findNodeByNamePath(tree: Node, nameSequence: string[]): Node | null {
-		if (!('children' in tree)) return null;
 		if (nameSequence.length === 0) return tree;
 
 		let currentNode = tree;
@@ -291,7 +278,6 @@
 
 	// Derived store: Contributors who have trees available at the current path
 	const availableContributors = $derived.by(() => {
-		if (!tree) return [];
 		const pathNodeNames = getPathNodeNames(tree, path);
 		const contributors: Array<{
 			id: string;
@@ -300,12 +286,12 @@
 			nodeAtPath: Node | null;
 		}> = [];
 
-		for (const contributorId of mutualContributors) {
+		for (const contributorId of $mutualContributors) {
 			const contributorTree = $collectiveForest.get(contributorId);
 			let nodeAtPath: Node | null = null;
 			let hasSubtreesAtPath = false;
 
-			if (contributorTree && 'children' in contributorTree) {
+			if (contributorTree) {
 				// Find the node using the sequence of names
 				nodeAtPath = findNodeByNamePath(contributorTree, pathNodeNames);
 				// Check if this node has children (subtrees)
@@ -681,7 +667,7 @@
 			// Extract the first capacity slot from the commitment (v5 structure)
 			if (capacity.capacity_slots && capacity.capacity_slots.length > 0) {
 				const newSlot = capacity.capacity_slots[0];
-				const updatedSlots = Array.isArray(currentSlots) ? [...currentSlots, newSlot] : [newSlot];
+				const updatedSlots = [...currentSlots, newSlot];
 				
 				// Update v5 store (Holster auto-persists)
 				myCapacitySlotsStore.set(updatedSlots);
@@ -813,7 +799,7 @@
 								<button
 									class="toolbar-button edit-button"
 									class:edit-active={isTextEditMode}
-									title={isTextEditMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.text_edit_mode'))) : $t('toolbar.text_edit_mode')}
+									title={isTextEditMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.text_edit_mode')) : $t('toolbar.text_edit_mode')}
 									onclick={handleTextEditMode}
 								>
 									✏️
@@ -824,7 +810,7 @@
 								<button
 									class="toolbar-button recompose-button"
 									class:recompose-active={isRecomposeMode}
-									title={isRecomposeMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.recompose'))) : $t('toolbar.recompose_mode')}
+									title={isRecomposeMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.recompose')) : $t('toolbar.recompose_mode')}
 									onclick={handleRecompose}
 								>
 									↕️
@@ -836,7 +822,7 @@
 								<button
 									class="toolbar-button delete-button"
 									class:delete-active={isDeleteMode}
-									title={isDeleteMode ? String($t('toolbar.mode_disabled')).replace('{mode}', String($t('toolbar.delete_mode'))) : $t('toolbar.delete_mode')}
+									title={isDeleteMode ? ($t('toolbar.mode_disabled') as any).replace('{mode}', $t('toolbar.delete_mode')) : $t('toolbar.delete_mode')}
 									onclick={globalState.toggleDeleteMode}
 								>
 									🗑️

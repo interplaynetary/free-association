@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Header from '$lib/components/Header.svelte';
 	import ToolBar from '$lib/components/ToolBar.svelte';
 	import DraggedNode from '$lib/components/DraggedNode.svelte';
 	import { Toaster } from 'svelte-french-toast';
@@ -12,16 +13,9 @@
 
 	// Layout props
 	let { children }: LayoutProps = $props();
-	
-	// Dynamically import Header to avoid module-level store initialization on iOS Safari
-	let Header = $state<any>(null);
 
-	// Initialize services and Header component dynamically on mount to avoid initialization order issues
+	// Initialize services dynamically on mount to avoid initialization order issues
 	onMount(async () => {
-		// Dynamically import Header component first (before services)
-		const HeaderModule = await import('$lib/components/Header.svelte');
-		Header = HeaderModule.default;
-		
 		// Dynamically import and initialize services after component mounts
 		// This ensures all dependencies (like globalState) are fully initialized
 		if (browser) {
@@ -44,9 +38,7 @@
 		</div>
 	{:else}
 		<div class="app-header">
-			{#if Header}
-				<Header />
-			{/if}
+			<Header />
 		</div>
 		<div class="app-content">
 			{@render children()}

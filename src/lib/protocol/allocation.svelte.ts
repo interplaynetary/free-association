@@ -21,11 +21,7 @@ import type { Readable, Writable } from 'svelte/store';
 // IMPORT PURE ALGORITHM FUNCTIONS (Single Source of Truth!)
 // ═══════════════════════════════════════════════════════════════════
 
-console.log('[ALLOCATION.SVELTE.TS] Module loading - START');
-
 import { holsterUserPub } from '$lib/network/holster.svelte'
-
-console.log('[ALLOCATION.SVELTE.TS] Imported holsterUserPub');
 
 import {
 	// System State
@@ -90,9 +86,6 @@ import {
 	networkAllocations,
 	type SpaceTimeIndex
 } from '$lib/protocol/stores.svelte';
-
-console.log('[ALLOCATION.SVELTE.TS] Imported from stores.svelte');
-
 import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
 import { deepEqual } from '$lib/protocol/utils/memoize';
 
@@ -192,15 +185,11 @@ export function getCausallyConsistentCommitments(): Record<string, Commitment> {
 // PART I: MY IDENTITY & RECOGNITION
 // ═══════════════════════════════════════════════════════════════════
 
-console.log('[ALLOCATION.SVELTE.TS] About to create myPublicKey export');
-
 /**
  * My Public Key (identity in the network)
  * Re-exported from stores for convenience
  */
 export const myPublicKey = holsterUserPub;
-
-console.log('[ALLOCATION.SVELTE.TS] Created myPublicKey export');
 
 /**
  * My Recognition of Others
@@ -208,8 +197,6 @@ console.log('[ALLOCATION.SVELTE.TS] Created myPublicKey export');
  * 
  * V5: Extracted from commitment (recognition stored in commitment.global_recognition_weights)
  */
-console.log('[ALLOCATION.SVELTE.TS] About to create myRecognitionOfOthers derived store');
-
 export const myRecognitionOfOthers: Readable<GlobalRecognitionWeights> = derived(
 	[myCommitmentStore],
 	([$commitment]) => {
@@ -217,8 +204,6 @@ export const myRecognitionOfOthers: Readable<GlobalRecognitionWeights> = derived
 		return normalizeGlobalRecognitionWeights($commitment.global_recognition_weights);
 	}
 );
-
-console.log('[ALLOCATION.SVELTE.TS] Created myRecognitionOfOthers derived store');
 
 /**
  * Others' Recognition of Me
