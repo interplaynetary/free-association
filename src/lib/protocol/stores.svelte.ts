@@ -25,9 +25,13 @@
  * - Conflict resolution (timestamp-based)
  */
 
+console.log('[STORES.SVELTE.TS] Module loading - START');
+
 import { get, derived, readable, writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
+
+console.log('[STORES.SVELTE.TS] Imported svelte/store');
 // NOTE: Converters removed! We now use JSON.stringify/parse for simplicity and reliability.
 // This eliminates 400+ lines of complex conversion logic and entire classes of bugs.
 import {
@@ -45,7 +49,12 @@ import {
 } from './schemas';
 import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
+
+console.log('[STORES.SVELTE.TS] Imported holster');
+
 import {getTimeBucketKey, getLocationBucketKey } from '$lib/protocol/utils/match';
+
+console.log('[STORES.SVELTE.TS] Imported match utils');
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
@@ -78,12 +87,16 @@ import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCS
  * 
  * V5: Tree structure encodes type preferences (not separate per-type MR values)
  */
+console.log('[STORES.SVELTE.TS] About to create myRecognitionTreeStore');
+
 export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
 	persistDebounce: 200 // Debounce tree edits
 	// NOTE: No converters needed! JSON handles everything perfectly.
 });
+
+console.log('[STORES.SVELTE.TS] Created myRecognitionTreeStore');
 
 /**
  * My Recognition Weights (V5) - DERIVED
