@@ -3,12 +3,12 @@
 	import * as d3 from 'd3';
 	import { derived } from 'svelte/store';
 	
-	// Import V5 stores and types
+	// Import V5 stores directly (not from barrel export to prevent premature initialization)
 	import {
 		myCommitmentStore,
 		networkCommitments,
 		getNetworkCommitmentsRecord,
-	} from '$lib/protocol';
+	} from '$lib/protocol/stores.svelte';
 	
 	// Import V5 algorithm (reactive)
 	import {
@@ -16,7 +16,7 @@
 		myPublicKey,
 		myAllocationsAsProvider,
 		publishMyCommitment
-	} from '$lib/protocol';
+	} from '$lib/protocol/allocation.svelte';
 	
 	import type { Commitment } from '$lib/protocol';
 	

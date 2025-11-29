@@ -17,8 +17,6 @@
  * V5 UPDATE: Now using global recognition model with event-driven allocation
  */
 
-import '$lib/network/holster.svelte'; // This initializes Holster (migration Phase 1)
-
 // Schemas and types (V5) - Safe for SSR
 export * from '$lib/protocol/schemas';
 
@@ -31,9 +29,32 @@ export * from '$lib/utils/primitives/itc';
 // Slot matching (V5) - Safe for SSR  
 export * from '$lib/protocol/utils/match';
 
-export * from '$lib/protocol/allocation';
+// Re-export allocation functions (excluding types already exported from schemas)
+export {
+	createInitialState,
+	buildSystemState,
+	computeTotalNeedMagnitude,
+	computeContractionRate,
+	computePercentNeedsMet,
+	checkUniversalSatisfaction,
+	estimateIterationsToConvergence,
+	computeConvergenceSummary,
+	computeMaxPersonNeed,
+	computeNeedVariance,
+	computePeopleStuck,
+	computeDampingFactors,
+	updateOverAllocationHistory,
+	computeMutualRecognition,
+	computeAllocations,
+	applyNeedUpdateLaw,
+	applyDivisibilityConstraints,
+	meetsMinimumAllocation,
+	redistributeRemainders,
+	type SystemStateSnapshot,
+	type AllocationResult
+} from '$lib/protocol/allocation';
 
-
-// Browser-only exports (require Holster, reactive stores, D3)
-export * from '$lib/protocol/stores.svelte';
-export * from '$lib/protocol/allocation.svelte';
+// NOTE: Browser-only exports (stores.svelte, allocation.svelte) are NOT exported here
+// to prevent premature initialization on iOS Safari. Import them directly when needed:
+// import { myRecognitionTreeStore } from '$lib/protocol/stores.svelte'
+// import { myAllocationsAsProvider } from '$lib/protocol/allocation.svelte'
