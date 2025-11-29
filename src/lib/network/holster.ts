@@ -97,9 +97,58 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 	try {
 		// Update users list
 		const authState = getAuthState();
-		holster.get('freely-associating-players').next(authState.pub).put({
-			alias: authState.alias,
-			lastSeen: Date.now()
+		console.log('[HOLSTER] Adding user to users list:', authState.alias, authState.pub.slice(0, 20) + '...');
+		
+		// First, check the current state of the users list
+		const currentUsersCount = await new Promise<number>((resolve) => {
+			const checkCallback = (data: any) => {
+				holster.get('freely-associating-players').off(checkCallback);
+				if (data) {
+					const userKeys = Object.keys(data).filter(key => !key.startsWith('_'));
+					console.log('[HOLSTER] Current users list has', userKeys.length, 'users');
+					resolve(userKeys.length);
+				} else {
+					console.log('[HOLSTER] Users list is empty or not yet initialized');
+					resolve(0);
+				}
+			};
+			holster.get('freely-associating-players').on(checkCallback, true);
+		});
+		
+		// Add/update our user entry using .next() to target only our pub key
+		await new Promise<void>((resolve, reject) => {
+			holster.get('freely-associating-players').next(authState.pub).put({
+				alias: authState.alias,
+				lastSeen: Date.now()
+			}, (err: any) => {
+				if (err) {
+					console.error('[HOLSTER] ❌ Failed to add user to users list:', err);
+					reject(new Error(`Failed to add user to users list: ${err}`));
+				} else {
+					console.log('[HOLSTER] ✅ User added to users list successfully');
+					resolve();
+				}
+			});
+		});
+		
+		// Verify the list still has all users (plus potentially our new entry)
+		await new Promise<void>((resolve) => {
+			setTimeout(() => {
+				const verifyCallback = (data: any) => {
+					holster.get('freely-associating-players').off(verifyCallback);
+					if (data) {
+						const userKeys = Object.keys(data).filter(key => !key.startsWith('_'));
+						console.log('[HOLSTER] After adding user, list has', userKeys.length, 'users');
+						if (userKeys.length >= currentUsersCount) {
+							console.log('[HOLSTER] ✅ Verification passed: user list integrity maintained');
+						} else {
+							console.warn('[HOLSTER] ⚠️  Warning: user count decreased from', currentUsersCount, 'to', userKeys.length);
+						}
+					}
+					resolve();
+				};
+				holster.get('freely-associating-players').on(verifyCallback, true);
+			}, 500); // Wait briefly for the put operation to propagate
 		});
 
 		// Initialize data streams

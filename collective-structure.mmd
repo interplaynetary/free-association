@@ -1,0 +1,141 @@
+COLLECTIVE TREE ARCHITECTURE: FROM INDIVIDUAL TREES TO COLLECTIVE ALLOCATION
+(Implementation of structure.md concepts for collective governance)
+
+sequenceDiagram
+    participant Alice
+    participant Bob
+    participant Carol
+    participant Collective
+    participant Network
+
+    Note over Alice,Network: ═══════════ PHASE 1: INDIVIDUAL TREES ═══════════
+    Note over Alice,Network: Each entity maintains their own tree (User Inputs)
+
+    par Individual Tree Publication
+        Alice->>Network: Publish Individual Tree {<br/>  Root (entity_id: Alice)<br/>    Goal: "Food Security" (70pts)<br/>      Need-Slot: {food, declared: 100}<br/>    Non-Slot: "Mission Alignment" (30pts)<br/>      Contributors: [Carol: 30pts, Bob: 20pts]<br/>}
+    and
+        Bob->>Network: Publish Individual Tree {<br/>  Root (entity_id: Bob)<br/>    Goal: "Community Health" (80pts)<br/>      Capacity-Slot: {medical, available: 50}<br/>    Non-Slot: "Strategic Partners" (20pts)<br/>      Contributors: [Alice: 40pts, Carol: 30pts]<br/>}
+    and
+        Carol->>Network: Publish Individual Tree {<br/>  Root (entity_id: Carol)<br/>    Goal: "Food Distribution" (100pts)<br/>      Capacity-Slot: {food, available: 200}<br/>        Contributors: [Alice: 50pts, Bob: 30pts]<br/>}
+    end
+
+    Note over Network: 📡 Individual trees published<br/>Each represents ONE entity's perspective
+
+    Note over Alice,Network: ═══════════ PHASE 2: COLLECTIVE TREE MERGING ═══════════
+    Note over Alice,Network: 🔄 Merge individual trees into collective perspective
+
+    rect rgb(240, 248, 255)
+        Note over Collective: 📊 TREE MERGING ALGORITHM
+        Collective->>Collective: mergeContributorTrees({<br/>  contributorTrees: {<br/>    Alice: aliceTree,<br/>    Bob: bobTree,<br/>    Carol: carolTree<br/>  },<br/>  recognitionShares: {<br/>    Alice: 0.4,<br/>    Bob: 0.3,<br/>    Carol: 0.3<br/>  }<br/>})<br/><br/>Step 1: Calculate contributor weights<br/>  Alice: 40% (recognition share)<br/>  Bob: 30%<br/>  Carol: 30%<br/><br/>Step 2: Merge nodes by hash<br/>  For each unique node path:<br/>    - Collect all instances from contributors<br/>    - Weight by contributor share<br/>    - Merge properties (MRD-weighted average)<br/><br/>Step 3: Build collective tree<br/>  CollectiveNode {<br/>    id: hash(node_name + node_type + path)<br/>    contributor_data: {<br/>      Alice: {weight: 0.4, node_ref},<br/>      Bob: {weight: 0.3, node_ref},<br/>      Carol: {weight: 0.3, node_ref}<br/>    },<br/>    merged_weight: weighted_average,<br/>    children: [...merged_children]<br/>  }
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Collective: 📈 COLLECTIVE TREE STRUCTURE
+        Collective->>Network: Publish Collective Tree {<br/>  Root (collective_id: "food_coalition")<br/>    <br/>    Goal: "Food Security & Distribution"<br/>      Weight: 0.75 (75% of collective focus)<br/>      Contributor Data:<br/>        Alice: 40% → points: 70<br/>        Carol: 30% → points: 100<br/>        Bob: 30% → points: 0 (no equivalent node)<br/>      <br/>      Merged Weight = (0.4×70 + 0.3×100 + 0.3×0) / 100<br/>                    = 0.58 (consensus importance)<br/>      <br/>      Capacity-Slot: {food, collective: 200}<br/>        Contributors from Carol's tree:<br/>          Alice provides: 50pts (25%)<br/>          Bob provides: 30pts (15%)<br/>          Carol self: 120pts (60%)<br/>        <br/>        Need-Slot: {food, collective: 100}<br/>          From Alice's tree demand<br/>    <br/>    Goal: "Community Health"<br/>      Weight: 0.25 (25% of collective focus)<br/>      Only from Bob's tree<br/>      <br/>      Capacity-Slot: {medical, collective: 50}<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ PHASE 3: NODE RECOGNITION CALCULATION ═══════════
+    Note over Alice,Network: 📐 Calculate recognition metrics for each node
+
+    rect rgb(255, 248, 240)
+        Note over Collective: 📊 NODE RECOGNITION METRICS
+        Collective->>Collective: Calculate for each node:<br/><br/>1. Total Recognition:<br/>   Σ(contributor_weight × contributor_points)<br/>   <br/>   Food Security node:<br/>     Alice: 0.4 × 70 = 28<br/>     Carol: 0.3 × 100 = 30<br/>     Bob: 0.3 × 0 = 0<br/>     Total = 58<br/><br/>2. Average MRD (Multi-Recognition Depth):<br/>   Contributors who recognize this node:<br/>     Alice, Carol (2 contributors)<br/>   Average MRD = 2 / 3 total = 0.667<br/>   💡 Measures consensus: how many agree it's important<br/><br/>3. Contributor Weights (normalized):<br/>   Alice: 28/58 = 48.3%<br/>   Carol: 30/58 = 51.7%<br/>   Bob: 0/58 = 0%<br/>   💡 Who influences this node most<br/><br/>4. Path from root:<br/>   ["root", "food_security_goal"]<br/>   Depth: 1
+        Note over Collective: NodeRecognitionMetrics[food_security] = {<br/>  node_id: "food_security_goal",<br/>  node_name: "Food Security & Distribution",<br/>  total_recognition: 58,<br/>  average_mrd: 0.667,<br/>  contributor_weights: {<br/>    Alice: 0.483,<br/>    Carol: 0.517,<br/>    Bob: 0.0<br/>  },<br/>  contributor_ids: ["Alice", "Carol"],<br/>  path_from_root: ["root", "food_security_goal"],<br/>  depth: 1<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ PHASE 4: GOVERNANCE FILTERING ═══════════
+    Note over Alice,Network: 🎯 Apply filters to create governance-compliant tree
+
+    rect rgb(255, 240, 240)
+        Note over Collective: 🔍 UNIFIED FILTERING
+        Collective->>Collective: applyUnifiedFilter({<br/>  collectiveTree,<br/>  nodeRecognition,<br/>  config: {<br/>    min_total_recognition: 30,<br/>    min_average_mrd: 0.5,<br/>    min_contributor_count: 2,<br/>    preserve_paths: true<br/>  }<br/>})<br/><br/>For each node in tree:<br/><br/>Food Security Goal:<br/>  ✓ total_recognition: 58 > 30<br/>  ✓ average_mrd: 0.667 > 0.5<br/>  ✓ contributor_count: 2 >= 2<br/>  → KEEP<br/><br/>Community Health Goal:<br/>  ✓ total_recognition: 24 < 30 ❌<br/>  ✓ average_mrd: 0.333 < 0.5 ❌<br/>  ✗ contributor_count: 1 < 2 ❌<br/>  → REMOVE (only Bob supports)<br/><br/>Filter Results:<br/>  - Nodes kept: 5<br/>  - Nodes removed: 3<br/>  - Contributors remaining: [Alice, Carol]<br/>  - Contributors removed: [Bob]
+        Collective->>Network: Publish Filtered Tree {<br/>  Only nodes meeting governance criteria<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ PHASE 5: DISTRIBUTION CALCULATION ═══════════
+    Note over Alice,Network: 💰 Convert recognition → distribution shares
+
+    rect rgb(240, 255, 240)
+        Note over Collective: 📊 RECOGNITION → DISTRIBUTION
+        Collective->>Collective: nodeRecognitionToDistribution({<br/>  nodeRecognition,<br/>  options: {<br/>    targetNodeId: "food_security_goal",<br/>    aggregationMode: "single-node",<br/>    normalizationMethod: "sum-to-one"<br/>  }<br/>})<br/><br/>Single-Node Distribution:<br/>  Focus on "Food Security Goal" node only<br/>  <br/>  Contributor shares (from node recognition):<br/>    Alice: 0.483<br/>    Carol: 0.517<br/>    Bob: 0.0<br/>  <br/>  Already normalized to sum=1.0 ✓<br/><br/>Result:<br/>  distribution = {<br/>    Alice: 48.3%,<br/>    Carol: 51.7%<br/>  }
+        Note over Collective: Alternative: Tree-Wide Aggregation<br/><br/>nodeRecognitionToDistribution({<br/>  aggregationMode: "tree-wide"<br/>})<br/><br/>Aggregate across ALL nodes:<br/>  Alice total recognition: 28 + 15 + ... = 67<br/>  Carol total recognition: 30 + 20 + ... = 85<br/>  Bob total recognition: 24 + ... = 24<br/>  Total: 176<br/><br/>distribution = {<br/>  Alice: 67/176 = 38.1%,<br/>  Carol: 85/176 = 48.3%,<br/>  Bob: 24/176 = 13.6%<br/>}<br/><br/>Alternative: Weighted-Path Aggregation<br/>Weight each node by path position<br/>Higher nodes (closer to root) → more weight
+    end
+
+    Note over Alice,Network: ═══════════ PHASE 6: CAPACITY ALLOCATION ═══════════
+    Note over Alice,Network: 🎁 Allocate actual resources using distribution
+
+    rect rgb(240, 248, 255)
+        Note over Collective: 🔄 COLLECTIVE CAPACITY ALLOCATION
+        Collective->>Collective: allocateFromCollectiveTree({<br/>  collectiveTree,<br/>  nodeRecognition,<br/>  capacitySlots: [<br/>    {<br/>      id: "food_slot_1",<br/>      need_type_id: "food",<br/>      quantity: 200,<br/>      availability_windows: [...]<br/>    }<br/>  ],<br/>  memberCommitments: {<br/>    Carol: {<br/>      id: "carol_food_capacity",<br/>      need_type_id: "food",<br/>      quantity: 200,<br/>      is_offer: true<br/>    }<br/>  },<br/>  options: {<br/>    providerPubKey: "Carol",<br/>    targetNodeId: "food_security_goal"<br/>  }<br/>})<br/><br/>Step 1: Get distribution shares<br/>  Alice: 48.3%<br/>  Carol: 51.7%<br/><br/>Step 2: Filter capacity by compliance<br/>  Carol's food capacity: 200 units<br/>  Matches need_type_id: "food" ✓<br/><br/>Step 3: Allocate by shares<br/>  Alice allocation: 200 × 0.483 = 96.6 units<br/>  Carol allocation: 200 × 0.517 = 103.4 units<br/><br/>Step 4: Check against declared needs<br/>  Alice declared need: 100 units<br/>  Alice final: min(96.6, 100) = 96.6 ✓<br/>  <br/>  Carol doesn't need food (provider only)<br/>  Carol final: 0<br/><br/>Step 5: Reallocate declined capacity<br/>  Carol declined: 103.4 units<br/>  Remaining recipients: [Alice]<br/>  Alice additional: min(103.4, 100-96.6) = 3.4<br/>  Alice total: 96.6 + 3.4 = 100 ✓
+        Collective->>Network: Publish Allocations {<br/>  [{<br/>    recipient: Alice,<br/>    provider: Carol,<br/>    quantity: 100,<br/>    need_type: "food",<br/>    distribution_share: 0.483,<br/>    governance_compliant: true<br/>  }]<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ PHASE 7: FULL GOVERNANCE PIPELINE ═══════════
+    Note over Alice,Network: 🏛️ Integrated: Filter → Distribute → Allocate
+
+    rect rgb(255, 240, 255)
+        Note over Collective: 🎯 GOVERN AND ALLOCATE
+        Collective->>Collective: governAndAllocate({<br/>  collectiveTree,<br/>  nodeRecognition,<br/>  <br/>  filterConfig: {<br/>    min_total_recognition: 30,<br/>    min_average_mrd: 0.5,<br/>    min_contributor_count: 2,<br/>    logic_rule: {<br/>      "or": [<br/>        {">=": [{"var": "total_recognition"}, 50]},<br/>        {"and": [<br/>          {">=": [{"var": "average_mrd"}, 0.8]},<br/>          {">=": [{"var": "contributor_count"}, 3]}<br/>        ]}<br/>      ]<br/>    }<br/>  },<br/>  <br/>  distributionOptions: {<br/>    targetNodeId: "food_security_goal",<br/>    aggregationMode: "single-node"<br/>  },<br/>  <br/>  capacitySlots: [...],<br/>  memberCommitments: {...},<br/>  providerPubKey: "Carol"<br/>})<br/><br/>Pipeline executes:<br/>1. Filter tree by governance rules ✓<br/>2. Calculate distribution from filtered tree ✓<br/>3. Allocate capacity using distribution ✓<br/><br/>Returns:<br/>  - filtered_tree (governance-compliant)<br/>  - node_recognition (updated)<br/>  - distribution (contributor shares)<br/>  - allocation (actual resources)
+        Note over Collective: Result = {<br/>  filtered_tree: {<br/>    nodes_count: 5,<br/>    contributors: ["Alice", "Carol"]<br/>  },<br/>  distribution: {<br/>    Alice: 0.483,<br/>    Carol: 0.517<br/>  },<br/>  allocation: {<br/>    allocations: [{<br/>      recipient: "Alice",<br/>      quantity: 100,<br/>      governance_compliant: true<br/>    }],<br/>    total_allocated: 100,<br/>    utilization_rate: 0.50 (100/200)<br/>  },<br/>  filter_stats: {<br/>    original_nodes: 8,<br/>    filtered_nodes: 5,<br/>    removed_nodes: 3<br/>  }<br/>}
+    end
+
+    Note over Alice,Network: ═══════════ KEY ARCHITECTURE FEATURES ═══════════
+
+    rect rgb(240, 240, 255)
+        Note over Alice,Network: 🏗️ COLLECTIVE TREE ARCHITECTURE:<br/><br/>1. TREE MERGING (Individual → Collective):<br/>   📝 Input: Multiple individual trees<br/>   🔄 Process: Hash-based node merging<br/>   📊 Output: Unified collective tree<br/>   💡 Each node tracks contributor data<br/><br/>2. NODE RECOGNITION METRICS:<br/>   - Total Recognition: Weighted sum of contributor points<br/>   - Average MRD: Consensus measure (how many agree)<br/>   - Contributor Weights: Per-contributor influence<br/>   - Path Analysis: Tree structure metadata<br/><br/>3. GOVERNANCE FILTERING:<br/>   🎯 Recognition-based: min_total_recognition, min_average_mrd<br/>   👥 Consensus-based: min_contributor_count, min_percentage<br/>   🔧 Logic-based: JSON Logic rules (complex criteria)<br/>   🛠️ Custom: User-defined filter functions<br/>   📏 Path preservation: Keep parent paths when child filtered<br/><br/>4. DISTRIBUTION MODES:<br/>   🎯 Single-Node: Focus on one specific node<br/>   🌲 Tree-Wide: Aggregate across entire tree<br/>   ⚖️ Weighted-Path: Weight by tree position<br/>   🔢 Normalization: sum-to-one or proportional<br/><br/>5. CAPACITY ALLOCATION:<br/>   📋 Capacity Slots: Available resources to allocate<br/>   💼 Member Commitments: Who provides what<br/>   ✅ Compliance Filtering: Match providers to recipients<br/>   ⚖️ Share-Based Distribution: Allocate by recognition shares<br/>   🔄 Reallocation: Handle declined capacity<br/><br/>6. SEPARATION OF CONCERNS:<br/>   Individual Trees = User inputs (stable)<br/>   Collective Tree = Merged perspective (derived)<br/>   Node Recognition = Metrics (derived)<br/>   Distribution = Shares (derived)<br/>   Allocation = Resources (derived)<br/>   <br/>   Only individual trees stored permanently<br/>   Everything else recomputed on demand
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 1: HASH-BASED NODE IDENTITY ═══════════
+
+    rect rgb(255, 245, 245)
+        Note over Collective: 🔑 NODE HASHING FOR MERGING
+        Collective->>Collective: Hash-based node identification:<br/><br/>Node Identity = hash(node_name + node_type + path)<br/><br/>Example:<br/>  Alice's tree: "Food Security" Goal at path ["root"]<br/>  Carol's tree: "Food Security" Goal at path ["root"]<br/>  Bob's tree: "Community Health" Goal at path ["root"]<br/><br/>Hash calculation:<br/>  hash("Food Security" + "Goal" + "root")<br/>    = "fs_goal_root_abc123"<br/>  <br/>  hash("Community Health" + "Goal" + "root")<br/>    = "ch_goal_root_def456"<br/><br/>Merging logic:<br/>  If same hash → merge properties<br/>  If different hash → separate nodes<br/><br/>Result:<br/>  "Food Security" from Alice + Carol → 1 merged node<br/>  "Community Health" from Bob → separate node<br/><br/>Benefits:<br/>  ✓ Automatic node matching across contributors<br/>  ✓ No manual ID coordination needed<br/>  ✓ Semantic merging (same meaning = same node)<br/>  ✓ Works with any number of contributors
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 2: MRD (MULTI-RECOGNITION DEPTH) ═══════════
+
+    rect rgb(245, 255, 245)
+        Note over Collective: 📊 CONSENSUS MEASUREMENT
+        Collective->>Collective: Multi-Recognition Depth (MRD):<br/><br/>Definition:<br/>  MRD = (# contributors who recognize node) / (total contributors)<br/><br/>Example 1: High Consensus<br/>  Node: "Food Security"<br/>  Contributors: 3 total [Alice, Bob, Carol]<br/>  Recognizers: 3 [Alice, Bob, Carol all have this node]<br/>  MRD = 3/3 = 1.0 (100% consensus!) ✓<br/><br/>Example 2: Partial Consensus<br/>  Node: "Community Health"<br/>  Contributors: 3 total<br/>  Recognizers: 2 [Bob, Carol have it, Alice doesn't]<br/>  MRD = 2/3 = 0.667 (67% consensus)<br/><br/>Example 3: Low Consensus<br/>  Node: "Bob's Pet Project"<br/>  Contributors: 3 total<br/>  Recognizers: 1 [only Bob]<br/>  MRD = 1/3 = 0.333 (33% consensus) ⚠️<br/><br/>Governance Use:<br/>  min_average_mrd: 0.5 → Require >50% consensus<br/>  Filters out nodes with low collective support<br/><br/>Benefits:<br/>  ✓ Measures agreement, not just recognition weight<br/>  ✓ Prevents single contributor from dominating<br/>  ✓ Encourages collective alignment<br/>  ✓ Simple, intuitive metric (0.0 to 1.0)
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 3: JSON LOGIC FILTERING ═══════════
+
+    rect rgb(245, 245, 255)
+        Note over Collective: 🔧 COMPLEX GOVERNANCE RULES
+        Collective->>Collective: JSON Logic integration for flexible rules:<br/><br/>Example 1: Simple threshold<br/>  {<br/>    ">=": [{"var": "total_recognition"}, 50]<br/>  }<br/>  → Keep nodes with total_recognition >= 50<br/><br/>Example 2: AND condition<br/>  {<br/>    "and": [<br/>      {">=": [{"var": "average_mrd"}, 0.7]},<br/>      {">=": [{"var": "contributor_count"}, 3]}<br/>    ]<br/>  }<br/>  → Keep if MRD >= 0.7 AND count >= 3<br/><br/>Example 3: OR with complex logic<br/>  {<br/>    "or": [<br/>      {">=": [{"var": "total_recognition"}, 100]},<br/>      {"and": [<br/>        {">=": [{"var": "average_mrd"}, 0.9]},<br/>        {">=": [{"var": "contributor_count"}, 5]}<br/>      ]}<br/>    ]<br/>  }<br/>  → Keep if (recognition >= 100) OR<br/>           (MRD >= 0.9 AND count >= 5)<br/><br/>Example 4: Nested conditions<br/>  {<br/>    "if": [<br/>      {"==": [{"var": "depth"}, 0]},<br/>      true,  // Always keep root<br/>      {">=": [{"var": "average_mrd"}, 0.5]}<br/>    ]<br/>  }<br/>  → Root always kept, others need MRD >= 0.5<br/><br/>Benefits:<br/>  ✓ Declarative (not imperative code)<br/>  ✓ Serializable (store in DB/network)<br/>  ✓ Platform-agnostic (works in any language)<br/>  ✓ Composable (combine multiple rules)<br/>  ✓ Safe (no arbitrary code execution)
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 4: CONTRIBUTOR WEIGHT CALCULATION ═══════════
+
+    rect rgb(255, 250, 240)
+        Note over Collective: ⚖️ WEIGHTED MERGING
+        Collective->>Collective: calculateContributorWeights({<br/>  contributorIds: ["Alice", "Bob", "Carol"],<br/>  contributorTrees: Map {<br/>    Alice → aliceTree,<br/>    Bob → bobTree,<br/>    Carol → carolTree<br/>  },<br/>  recognitionShares: {<br/>    Alice: 0.5,  // Optional: explicit weights<br/>    Bob: 0.3,<br/>    Carol: 0.2<br/>  }<br/>})<br/><br/>MODE 1: Explicit Recognition Shares<br/>  If recognitionShares provided:<br/>    Use as-is (already normalized)<br/>    Alice: 0.5, Bob: 0.3, Carol: 0.2 ✓<br/><br/>MODE 2: Equal Weights (Default)<br/>  If no recognitionShares:<br/>    weights = 1.0 / count<br/>    Alice: 0.333, Bob: 0.333, Carol: 0.333<br/><br/>MODE 3: Mutual Fulfillment (Future)<br/>  Calculate from network relationships:<br/>    MF(Alice,Bob) = 0.8<br/>    MF(Alice,Carol) = 0.6<br/>    MF(Bob,Carol) = 0.7<br/>    <br/>    Weight_Alice = Σ(MF with others) / total<br/>    Weight_Bob = Σ(MF with others) / total<br/>    Weight_Carol = Σ(MF with others) / total<br/><br/>Properties propagation:<br/>  When merging node properties (points, weights, etc.):<br/>    merged_value = Σ(contributor_weight × contributor_value)<br/>  <br/>  Example:<br/>    Alice says node has 70 points (weight: 0.5)<br/>    Bob says node has 50 points (weight: 0.3)<br/>    Carol says node has 80 points (weight: 0.2)<br/>    <br/>    merged_points = 0.5×70 + 0.3×50 + 0.2×80<br/>                  = 35 + 15 + 16 = 66 points
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 5: PATH PRESERVATION IN FILTERING ═══════════
+
+    rect rgb(250, 245, 255)
+        Note over Collective: 🌲 MAINTAINING TREE STRUCTURE
+        Collective->>Collective: Path Preservation During Filtering:<br/><br/>Scenario:<br/>  Tree structure:<br/>    Root<br/>      → Goal A (recognition: 100) ✓<br/>          → Goal A1 (recognition: 20) ❌<br/>              → Goal A1a (recognition: 80) ✓<br/>          → Goal A2 (recognition: 90) ✓<br/>      → Goal B (recognition: 30) ❌<br/>          → Goal B1 (recognition: 70) ✓<br/><br/>Filter: min_total_recognition = 50<br/><br/>preserve_paths: false<br/>  Apply filter strictly:<br/>    Root ✓ (always kept)<br/>      → Goal A ✓ (100 >= 50)<br/>          → Goal A2 ✓ (90 >= 50)<br/>      (Goal A1 removed, so A1a orphaned and removed)<br/>      (Goal B removed, so B1 orphaned and removed)<br/>  <br/>  Result: 3 nodes (Root, A, A2)<br/><br/>preserve_paths: true<br/>  Keep parent paths to preserved nodes:<br/>    Root ✓<br/>      → Goal A ✓ (meets filter)<br/>          → Goal A1 ✓ (kept as path to A1a!)<br/>              → Goal A1a ✓ (meets filter)<br/>          → Goal A2 ✓ (meets filter)<br/>      → Goal B ✓ (kept as path to B1!)<br/>          → Goal B1 ✓ (meets filter)<br/>  <br/>  Result: 7 nodes (all paths preserved)<br/><br/>Use Cases:<br/>  preserve_paths: false<br/>    → Strict governance (only strong nodes)<br/>    → Clean, minimal tree<br/>  <br/>  preserve_paths: true<br/>    → Inclusive governance (keep weaker parents)<br/>    → Maintain semantic structure<br/>    → Better for UI/navigation<br/><br/>Implementation:<br/>  1. Mark nodes meeting criteria<br/>  2. If preserve_paths: Mark all ancestors<br/>  3. Filter: Keep marked nodes only<br/>  4. Renormalize weights in filtered tree
+    end
+
+    Note over Alice,Network: ═══════════ ADVANCED FEATURE 6: RENORMALIZATION ═══════════
+
+    rect rgb(255, 245, 250)
+        Note over Collective: 🔢 WEIGHT ADJUSTMENT AFTER FILTERING
+        Collective->>Collective: renormalizeCollectiveTree(filteredTree):<br/><br/>Problem:<br/>  After filtering, sibling weights don't sum to 1.0<br/>  <br/>  Before filter:<br/>    Parent<br/>      → Child A (weight: 0.4)<br/>      → Child B (weight: 0.3)<br/>      → Child C (weight: 0.3)<br/>    Sum: 1.0 ✓<br/>  <br/>  After filter (removed Child B):<br/>    Parent<br/>      → Child A (weight: 0.4)<br/>      → Child C (weight: 0.3)<br/>    Sum: 0.7 ❌ (not normalized!)<br/><br/>Solution: Renormalize sibling weights<br/>  <br/>  Calculate sum: 0.4 + 0.3 = 0.7<br/>  Divide each by sum:<br/>    Child A: 0.4 / 0.7 = 0.571<br/>    Child C: 0.3 / 0.7 = 0.429<br/>  Sum: 1.0 ✓<br/><br/>Algorithm:<br/>  function renormalizeNodeRecursive(node):<br/>    // First, renormalize all children recursively<br/>    for child in node.children:<br/>      renormalizeNodeRecursive(child)<br/>    <br/>    // Then renormalize this level<br/>    if node.children.length > 0:<br/>      sum = Σ(child.weight for child in children)<br/>      if sum > 0:<br/>        for child in children:<br/>          child.weight = child.weight / sum<br/>    <br/>    return node<br/><br/>Properties:<br/>  ✓ Maintains relative proportions<br/>  ✓ Ensures valid probability distribution<br/>  ✓ Required after filtering<br/>  ✓ Applied recursively (bottom-up)
+    end
+
+    Note over Alice,Network: ═══════════ COMPARISON: INDIVIDUAL vs COLLECTIVE ═══════════
+
+    rect rgb(240, 255, 255)
+        Note over Alice,Network: 📊 ARCHITECTURE COMPARISON:<br/><br/>┌─────────────────────────────────────────────────────────┐<br/>│ ASPECT              │ Individual Trees │ Collective Trees │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Perspective         │ Single entity    │ Merged consensus │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Node Identity       │ Internal ID      │ Hash-based       │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Recognition         │ ShareOfTotal     │ MRD + Total      │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Governance          │ Self-determined  │ Filtered/voted   │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Allocation          │ Direct MS-based  │ Distribution-    │<br/>│                     │                  │ based            │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Contributor Data    │ Implicit         │ Explicit tracked │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Storage             │ Persistent       │ Ephemeral        │<br/>│                     │                  │ (recomputed)     │<br/>├─────────────────────────────────────────────────────────┤<br/>│ Use Case            │ Personal needs   │ Collective       │<br/>│                     │ & capacity       │ decisions        │<br/>└─────────────────────────────────────────────────────────┘<br/><br/>WORKFLOW:<br/>Individual Trees (base layer):<br/>  - Each entity maintains their own tree<br/>  - Stored in network<br/>  - Used for direct allocation (v6 protocol)<br/>  <br/>Collective Trees (governance layer):<br/>  - Computed on-demand from individual trees<br/>  - Apply governance filters<br/>  - Generate distribution for collective decisions<br/>  - Not stored (recreated when needed)<br/><br/>WHEN TO USE WHICH:<br/>Individual Trees:<br/>  ✓ Personal resource management<br/>  ✓ Direct peer-to-peer allocation<br/>  ✓ Bilateral relationships<br/>  ✓ Fast, no consensus needed<br/><br/>Collective Trees:<br/>  ✓ Coalition decisions<br/>  ✓ Pooled resource allocation<br/>  ✓ Grant distributions<br/>  ✓ Governance compliance required
+    end
+
+    Note over Alice,Network: ═══════════ INTEGRATION WITH STRUCTURE.MD ═══════════
+
+    rect rgb(255, 255, 240)
+        Note over Alice,Network: 🔗 HOW COLLECTIVE TREES FIT INTO V6 PROTOCOL:<br/><br/>STRUCTURE.MD (Individual Trees):<br/>  1. User publishes tree (user inputs)<br/>  2. System computes derived state (reactive)<br/>  3. Calculate ShareOfGeneralSatisfaction<br/>  4. Calculate Mutual-Satisfaction<br/>  5. Allocate capacity (two-tier)<br/>  6. Recipients rate satisfaction<br/>  7. Satisfaction flows up tree (aggregation)<br/>  8. Shares update reactively<br/>  9. Next cycle uses updated shares<br/><br/>COLLECTIVE-STRUCTURE (Collective Layer):<br/>  1. Collect individual trees from network<br/>  2. Merge trees → collective tree<br/>  3. Calculate node recognition metrics<br/>  4. Apply governance filters<br/>  5. Generate distribution shares<br/>  6. Allocate pooled capacity<br/>  7. (Satisfaction still flows in individual trees)<br/>  8. Next governance cycle uses updated trees<br/><br/>KEY RELATIONSHIPS:<br/><br/>Individual ShareOfGeneralSatisfaction →<br/>  Used as recognitionShares in merging<br/><br/>Individual tree satisfaction →<br/>  Propagates into merged node properties<br/><br/>Collective distribution →<br/>  Used for pooled resource allocation<br/>  Complements individual allocations<br/><br/>SEPARATION OF CONCERNS:<br/>  Individual Trees = Personal autonomy<br/>  Collective Trees = Group coordination<br/>  <br/>  Both coexist, serve different purposes<br/>  Collective layer builds on individual layer<br/>  Individual trees remain source of truth
+    end
+
