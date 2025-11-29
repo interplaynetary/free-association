@@ -32,18 +32,33 @@ let isUsersListInitialized = false;
  */
 function subscribeToUsersList() {
 	if (isUsersListInitialized) {
-		console.log('[USERS-LIST] Already subscribed');
+		console.log('[USERS-LIST] Already subscribed, skipping');
 		return;
 	}
 
+	console.log('[USERS-LIST] Setting up subscription to freely-associating-players...');
+
 	usersListCallback = (data: any) => {
-		if (!data) return;
+		console.log('[USERS-LIST] Received data:', data);
+		
+		if (!data) {
+			console.log('[USERS-LIST] No data received, skipping');
+			return;
+		}
+
+		// Check if this is a single user update or full list
+		const isFullUpdate = Object.keys(data).length > 1 || data._ === undefined;
+		console.log('[USERS-LIST] Update type:', isFullUpdate ? 'FULL' : 'INCREMENTAL');
 
 		// Filter out metadata fields and deleted entries
 		const usersData: Record<string, {alias: string, lastSeen: number}> = {};
 		for (const [key, value] of Object.entries(data)) {
+			console.log(`[USERS-LIST] Processing key: ${key}, value:`, value);
 			if (value && typeof value === 'object' && !key.startsWith('_')) {
 				usersData[key] = value as any;
+				console.log(`[USERS-LIST] ✅ Added user: ${key.slice(0, 20)}...`);
+			} else {
+				console.log(`[USERS-LIST] ⏭️  Skipped key: ${key} (metadata or invalid)`);
 			}
 		}
 
@@ -55,21 +70,25 @@ function subscribeToUsersList() {
 			const userData = usersData[pubKey];
 			if (userData?.alias) {
 				aliases[pubKey] = userData.alias;
+				console.log(`[USERS-LIST] Alias: ${userData.alias} -> ${pubKey.slice(0, 20)}...`);
 			}
 		});
 
-		// Update stores
+		// Update stores (replacing - Gun sends full state)
 		userPubKeys.set(pubKeys);
 		userAliasesCache.set(aliases);
 		
-		console.log('[USERS-LIST] Updated:', {
-			count: pubKeys.length,
-			aliases: Object.keys(aliases).length
+		console.log('[USERS-LIST] ✅ Updated stores:', {
+			totalUsers: pubKeys.length,
+			usersWithAliases: Object.keys(aliases).length,
+			pubKeys: pubKeys.map(k => k.slice(0, 20) + '...'),
+			aliases: aliases
 		});
 	};
 
 	holster.get('freely-associating-players').on(usersListCallback, true);
 	isUsersListInitialized = true;
+	console.log('[USERS-LIST] ✅ Subscription active (with historical data = true)');
 }
 
 /**

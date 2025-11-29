@@ -8,7 +8,7 @@
 	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
 	
 	// Dynamically import Parent to avoid module-level store initialization on iOS Safari
-	let Parent: any = null;
+	let Parent = $state<any>(null);
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -227,9 +227,9 @@
 <div class="layout root-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
 		{#if currentView === 'tree'}
-		{#if Parent}
-			<svelte:component this={Parent} />
-		{/if}
+			{#if Parent}
+				<Parent />
+			{/if}
 	{:else if currentView === 'map'}
 			<Map fullHeight={true} />
 		{:else if currentView === 'inventory'}

@@ -7,9 +7,13 @@
 	
 	// Dynamically import Parent and stores to avoid module-level initialization on iOS Safari
 	let Parent = $state<any>(null);
-	let myRecognitionTreeStore: any;
-	let myRecognitionWeights: any;
-	let myMutualRecognition: any;
+	
+	// Import readable here for placeholder stores
+	import { readable, derived } from 'svelte/store';
+	
+	// Create placeholder readable stores for derived stores to use before initialization
+	let myRecognitionWeights = $state(readable({}));
+	let myMutualRecognition = $state(readable({}));
 	let myNeedSlotsStore: any;
 	let myCapacitySlotsStore: any;
 	let myNeedTypesStore: any;
@@ -27,7 +31,6 @@
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
-	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
 	import type { NeedSlot, AvailabilitySlot, NonRootNode } from '$lib/protocol/schemas';
 	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
@@ -96,7 +99,7 @@
 			Parent = ParentModule.default;
 			
 			const storesModule = await import('$lib/protocol/stores.svelte');
-			myRecognitionTreeStore = storesModule.myRecognitionTreeStore;
+			// Replace placeholder stores with real ones
 			myRecognitionWeights = storesModule.myRecognitionWeights;
 			myMutualRecognition = storesModule.myMutualRecognition;
 			myNeedSlotsStore = storesModule.myNeedSlotsStore;
@@ -324,7 +327,6 @@
 	
 	// Load org recognition data from config (who recognizes whom in the demo ecosystem)
 	// This is the "others_recognition_of_me" equivalent for demo mode
-	import { readable } from 'svelte/store';
 	import type { GlobalRecognitionWeights } from '$lib/protocol/schemas';
 	import { getOrgTreesMap } from '$lib/config/org-trees';
 	
