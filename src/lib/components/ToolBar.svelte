@@ -905,7 +905,6 @@
 		<!-- Footer links and copyright (right side) -->
 		<div class="toolbar-footer">
 			<span class="demo-version">Demo v 0.5.2</span>
-			<span class="demo-notice">Not all features may be working</span>
 			<a href="{base}/terms" class="footer-link">Terms</a>
 			<span class="footer-separator">•</span>
 			<a href="{base}/privacy" class="footer-link">Privacy</a>
