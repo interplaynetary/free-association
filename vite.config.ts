@@ -5,20 +5,18 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import process from 'node:process';
 
-// Check if we're building for server (adapter-node)
-const isServerBuild = process.env.BUILD_TARGET === 'server';
-
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
 		devtoolsJson(),
 		sveltekit(),
 		// PWA plugin with automatic reload
-		...(!isServerBuild ? [SvelteKitPWA({
+		SvelteKitPWA({
 			registerType: 'autoUpdate',
 			srcDir: 'src',
 			strategies: 'generateSW',
 			scope: '/',
+			base: '/',
 			includeAssets: ['favicon.png', 'robots.txt', 'logo.png'],
 			manifest: {
 				name: 'Playnet',
@@ -93,7 +91,7 @@ export default defineConfig({
 			kit: {
 				includeVersionFile: true
 			}
-		})] : [])
+		})
 	],
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
@@ -106,10 +104,6 @@ export default defineConfig({
 	},
 	build: {
 		target: 'esnext'
-		// PWA virtual modules externalization disabled
-		// rollupOptions: {
-		// 	external: isServerBuild ? ['virtual:pwa-info', 'virtual:pwa-register', 'virtual:pwa-register/svelte'] : []
-		// }
 	},
 	esbuild: {
 		target: 'esnext'

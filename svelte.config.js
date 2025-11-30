@@ -1,23 +1,32 @@
 import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-static';
+import adapterStatic from '@sveltejs/adapter-static';
+import adapterNode from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import process from 'node:process';
+
+// Use Node adapter for server builds, static adapter otherwise
+const isServerBuild = process.env.BUILD_TARGET === 'server';
 
 const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 	kit: {
-		adapter: adapter({
-			fallback: 'index.html'
-		}),
+		adapter: isServerBuild
+			? adapterNode({
+					out: 'build-server',
+					precompress: true,
+					envPrefix: ''
+			  })
+			: adapterStatic({
+					fallback: 'index.html'
+			  }),
 		paths: {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
 		},
-		// Service worker completely disabled
-		// serviceWorker: {
-		// 	register: false
-		// },
-		// files: {
-		// 	serviceWorker: 'src/service-worker.ts'
-		// }
+		// Disable service worker registration for server builds
+		// vite-pwa handles service worker generation
+		serviceWorker: {
+			register: false
+		}
 	},
 	extensions: ['.svelte', '.svx'],
 	vitePlugin: {

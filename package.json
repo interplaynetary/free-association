@@ -7,10 +7,10 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:server": "cp svelte.config.server.js svelte.config.js.tmp && mv svelte.config.js.tmp svelte.config.js && BUILD_TARGET=server bun run build && mv svelte.config.js.tmp svelte.config.js || true",
+		"build:server": "BUILD_TARGET=server vite build",
 		"build:capacitor": "vite build && npx cap sync",
 		"preview": "vite preview",
-		"preview:server": "node build-server/index.js",
+		"start": "node build-server/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
