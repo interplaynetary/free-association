@@ -1,0 +1,2894 @@
+\documentclass[11pt,a4paper]{article}
+
+% Essential packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{mathtools}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+% Page geometry
+\geometry{margin=1in}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+    pdftitle={Universal Framework for Sovereign Coordination},
+    pdfauthor={Free-Association Research Community},
+}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{axiom}[theorem]{Axiom}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+% Custom commands
+\newcommand{\E}{\mathcal{E}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\C}{\mathcal{C}}
+\DeclareMathOperator{\MR}{MR}
+\DeclareMathOperator{\TMR}{TMR}
+
+\title{\textbf{Universal Framework for Sovereign Coordination}\\
+\large From First Principles to Infinite Designs}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We derive from first principles the minimal axioms required for coordination systems that preserve individual sovereignty while enabling cooperation. Starting with only the concepts of sovereignty and goal optimization, we prove that trade-offs emerge necessarily—they are not assumed but derived from anti-gaming having meaning. This leads to exactly three fundamental axioms that generate an infinite design space of valid coordination mechanisms. 
+
+We prove that \textit{all} mechanisms satisfying these axioms exhibit universal anti-gaming properties, convergence to stable equilibria, and sybil resistance. The framework reveals a three-layer architecture (signals, transformation, allocation) underlying all valid systems. We develop several specific instances: recognition-based coordination (using mutual recognition), vote-based coordination, attention-based coordination, and prediction-based coordination.
+
+Crucially, we establish that traditional money-based markets violate sovereignty through unrevokable ownership transfer and stock accumulation, placing them outside this framework. We further develop the concept of \textbf{dual sovereignty}—sovereignty must apply to both allocation signals AND capacity provision—revealing that the framework describes a capacity-based economy rather than an ownership-based one. 
+
+We establish the boundaries of sovereignty-preserving coordination through an impossibility theorem: weak monotonicity is not merely technical but the mathematical expression of respect for sovereign expression.
+
+\medskip
+
+\noindent\textbf{Keywords}: Coordination theory, sovereignty, mechanism design, anti-gaming, capacity allocation, decentralized coordination
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\part{Foundations}
+
+\section{Introduction: The Challenge of Sovereign Cooperation}
+
+\subsection{The Fundamental Tension}
+
+Modern systems face an apparent paradox: how can entities maintain complete sovereignty over their choices while still coordinating effectively at scale? Existing approaches each sacrifice something essential:
+
+\textbf{Traditional markets}:
+\begin{itemize}
+\item Use money as coordination signal
+\item But money is \textit{transferable}—ownership changes hands
+\item Once transferred, retrieval requires recipient's consent
+\item Money \textit{accumulates} as stock, not current flow
+\item \textbf{Result}: Violates sovereignty
+\end{itemize}
+
+\textbf{Voting systems}:
+\begin{itemize}
+\item Preserve individual choice in voting moment
+\item But limited to discrete decisions
+\item Gaming through strategic voting, coalitions
+\item Scale limitations (voting on everything is impractical)
+\item \textbf{Result}: Partial solution, limited domain
+\end{itemize}
+
+\textbf{Reputation systems}:
+\begin{itemize}
+\item External scores assigned by others or platforms
+\item Not controlled by the entity being scored
+\item Vulnerable to manipulation, fake reviews, Sybil attacks
+\item \textbf{Result}: External control violates sovereignty
+\end{itemize}
+
+\textbf{Centralized coordination}:
+\begin{itemize}
+\item Authority makes allocation decisions
+\item Entities have limited input
+\item Single point of failure, censorship risk
+\item \textbf{Result}: Obvious sovereignty violation
+\end{itemize}
+
+\subsection{The Core Requirements}
+
+What we seek is a coordination framework with these properties:
+
+\begin{enumerate}
+\item \textbf{Sovereignty}: Each entity exclusively controls its allocation preferences
+\item \textbf{Anti-gaming}: Cooperation (allocating to beneficial partners) is optimal for self-interest
+\item \textbf{Scale invariance}: Works identically for 10 or 10 million entities
+\item \textbf{Universality}: Applies to any entity type (humans, AI, organizations, resources)
+\item \textbf{No external authority}: Coordination emerges from pairwise relationships
+\end{enumerate}
+
+\subsection{The Central Question}
+
+\begin{center}
+\large
+\textit{What are the \textbf{minimal} mathematical requirements for a coordination system}\\
+\textit{that preserves sovereignty while enabling emergent cooperation?}
+\end{center}
+
+\medskip
+
+\textbf{The answer}: Exactly three axioms—sovereignty (with unilateral revocability), capacity conservation, and weak monotonicity. These emerge from first principles, generate an infinite design space of valid mechanisms, and guarantee universal anti-gaming properties.
+
+
+
+\section{The First Principle: Sovereignty}
+
+\subsection{What Is Sovereignty?}
+
+We begin with a precise definition:
+
+\begin{definition}[Sovereignty]
+An entity $e$ has \textbf{sovereignty} over its allocation preferences if and only if:
+\begin{enumerate}
+\item \textbf{Exclusive ultimate control}: Entity $e$ retains ultimate authority over its preferences
+\item \textbf{Unilateral revocability}: Entity $e$ can revoke/change preferences at any time without requiring consent from others
+\item \textbf{Revokable delegation permitted}: $e$ may delegate to agents (e.g., AI assistants) who can act on $e$'s behalf
+\item \textbf{Unrevokable ownership forbidden}: Transfer that removes $e$'s unilateral revocation rights is prohibited
+\end{enumerate}
+\end{definition}
+
+\textbf{Key distinction}:
+\begin{itemize}
+\item \textbf{Revokable delegation}: ✓ Allowed (originator can always take back control)
+\item \textbf{Unrevokable ownership}: ✗ Forbidden (originator loses revocation rights)
+\end{itemize}
+
+This definition immediately has strong implications for what types of mechanisms can preserve sovereignty.
+
+\subsection{The Sovereignty Test}
+
+Consider how different mechanisms fare under this definition:
+
+\begin{example}[Money]
+\textbf{Exclusive ultimate control}: Yes initially, but lost upon transfer ✗
+
+\textbf{Unilateral revocability}: \textbf{NO} ✗
+\begin{itemize}
+\item Once money is transferred, it's gone
+\item Getting it back requires recipient's consent (not unilateral)
+\item Payment is irreversible without bilateral agreement
+\end{itemize}
+
+\textbf{Revokable delegation}: Not applicable (money is ownership, not delegation)
+
+\textbf{Unrevokable ownership}: \textbf{YES} ✗
+\begin{itemize}
+\item Money transfer IS unrevokable ownership transfer
+\item Ownership changes hands permanently
+\item Originator loses revocation rights
+\item This is money's core function—but violates sovereignty
+\end{itemize}
+
+\textbf{Conclusion}: Money \textbf{violates sovereignty} because transfers are unrevokable ownership changes.
+\end{example}
+
+\begin{example}[Recognition]
+\textbf{Exclusive ultimate control}: Yes, originator retains ultimate authority ✓
+
+\textbf{Unilateral revocability}: Yes ✓
+\begin{itemize}
+\item You can change recognition at any time
+\item No consent needed from those you recognize
+\item Changes take effect immediately
+\item Can revoke even if delegated to an agent
+\end{itemize}
+
+\textbf{Revokable delegation permitted}: Yes ✓
+\begin{itemize}
+\item Can delegate to AI assistant to manage recognition
+\item Can delegate to trusted advisor
+\item BUT originator can always revoke delegation unilaterally
+\item Delegation doesn't transfer ownership
+\end{itemize}
+
+\textbf{Unrevokable ownership forbidden}: Yes (satisfied) ✓
+\begin{itemize}
+\item Recognition cannot be transferred as unrevokable ownership
+\item Even if delegated, originator retains revocation rights
+\item No one can "own" your recognition except you
+\end{itemize}
+
+\textbf{Conclusion}: Recognition \textbf{preserves sovereignty} because delegation is always revokable.
+\end{example}
+
+\begin{example}[Votes]
+\textbf{Exclusive ultimate control}: Yes, voter retains authority ✓
+
+\textbf{Unilateral revocability}: Yes ✓
+\begin{itemize}
+\item Can change vote until decision point
+\item No consent needed from others
+\item Can revoke proxy/delegation at will
+\end{itemize}
+
+\textbf{Revokable delegation permitted}: Yes ✓
+\begin{itemize}
+\item Proxy voting: delegate to representative
+\item BUT voter can revoke proxy unilaterally
+\item Delegation doesn't transfer ownership of vote
+\end{itemize}
+
+\textbf{Unrevokable ownership forbidden}:
+\begin{itemize}
+\item If vote \textbf{selling} allowed (unrevokable transfer): violates sovereignty ✗
+\item If only \textbf{proxy} allowed (revokable delegation): preserves sovereignty ✓
+\end{itemize}
+
+\textbf{Conclusion}: Votes \textbf{preserve sovereignty if delegation is revokable} (proxy voting OK, vote selling NOT OK).
+\end{example}
+
+\subsection{Additional Sovereignty Requirements}
+
+Further analysis reveals additional requirements:
+
+\begin{proposition}[Flow Not Stock: The Deep Reason]
+Sovereignty requires that allocation preferences represent \textbf{current state} (flow), not \textbf{accumulated balance} (stock).
+
+\textbf{Deep reason}: Stock = accumulated ownership, which creates:
+\begin{itemize}
+\item Permanent power imbalances (wealth concentration)
+\item Non-revokable control (owner doesn't need your consent)
+\item Past allocations constraining future choices
+\item Violation of unilateral revocability
+\end{itemize}
+
+\textbf{The profound insight}: The entire framework is about organizing \textbf{capacity allocation}, not ownership transfer.
+
+\textbf{Both must be sovereign}:
+\begin{enumerate}
+\item \textbf{Recognition (signals)}: Your allocation preferences are sovereign ✓
+\item \textbf{Capacity (provision)}: Your capacity/labor remains sovereign ✓
+\end{enumerate}
+
+When you "provide" something, you're allocating your capacity—not transferring ownership. You retain revocability.
+
+\textbf{Example}: 
+\begin{itemize}
+\item \textbf{Ownership model}: "I give you this object, now you own it (permanent)"
+\item \textbf{Capacity model}: "I allocate my capacity to provide you this object (revokable ongoing relationship)"
+\end{itemize}
+
+\textbf{Note}: This doesn't prevent delegation—a delegate can manage current flow, but originator retains revocation rights.
+\end{proposition}
+
+\begin{proposition}[Instantaneous Effect]
+Sovereignty requires that preference changes take effect \textbf{immediately}, with no time-locked commitments.
+
+\textbf{Reasoning}: If entity is committed to allocation over multiple periods, cannot change "at any time," violating unilateral revocability.
+
+\textbf{Note}: Delegation to an agent is fine—originator can revoke delegation instantly.
+\end{proposition}
+
+\subsection{The Dual Sovereignty Principle}
+
+\textbf{Key insight}: Sovereignty applies to BOTH layers:
+
+\begin{theorem}[Dual Sovereignty]
+A coordination system preserves sovereignty if and only if:
+\begin{enumerate}
+\item \textbf{Signal sovereignty}: Entities control their allocation preferences (recognition, votes, attention)
+\item \textbf{Capacity sovereignty}: Entities control their labor/provision with revocability
+\end{enumerate}
+
+Both must remain under originator's unilateral revocation rights.
+\end{theorem}
+
+\textbf{What this means}:
+\begin{itemize}
+\item You can't \textbf{own} my labor (that would be slavery)
+\item You can't \textbf{direct} my capacity without my ongoing consent (revokable)
+\item Even if I \textbf{provide} you something, I retain sovereignty over future provision
+\item The system organizes \textbf{capacity allocation}, not ownership transfer
+\end{itemize}
+
+\begin{example}[Capacity vs Ownership]
+\textbf{Ownership paradigm}:
+\begin{itemize}
+\item I sell you a chair → ownership transfers → permanent
+\item You now own the chair → I have no further say
+\item If you want more chairs, we negotiate new ownership transfer
+\item Accumulation of owned objects = wealth (stock)
+\end{itemize}
+
+\textbf{Capacity paradigm}:
+\begin{itemize}
+\item I allocate capacity to provide you useful-seating → ongoing relationship
+\item You gain utility while I choose to allocate capacity → revocable
+\item If circumstances change, I can reallocate capacity → sovereignty preserved
+\item Flow of capacity allocation, no permanent accumulation
+\end{itemize}
+
+The capacity paradigm is \textbf{agnostic to property relations}. Objects may shift possession, but this doesn't constitute ownership transfer—rather, ongoing capacity allocation.
+\end{example}
+
+\textbf{Why "flow not stock" is necessary}: Stock = accumulated ownership = non-revokable = sovereignty violation.
+
+\subsection{The Sovereignty Constraint Summary}
+
+Combining these requirements, we have:
+
+\begin{theorem}[Dual Sovereignty Requirements]
+A coordination mechanism preserves sovereignty if and only if:
+
+\textbf{For signals (preferences)}:
+\begin{enumerate}
+\item \textbf{Ultimate control by originator}: Entity retains final authority over preferences
+\item \textbf{Unilaterally revocable}: No consent needed to revoke/change preferences
+\item \textbf{Revokable delegation permitted}: Can delegate to agents, but retains revocation rights
+\item \textbf{Unrevokable ownership forbidden}: Cannot transfer in way that removes revocation rights
+\end{enumerate}
+
+\textbf{For capacity (provision)}:
+\begin{enumerate}
+\item \textbf{Ultimate control retained}: Entity retains authority over their labor/capacity
+\item \textbf{Provision is revocable}: Can stop providing at any time (no ownership transfer)
+\item \textbf{Flow not stock}: Current allocation, not accumulated ownership
+\item \textbf{No binding commitments}: No time-locked obligation to provide
+\end{enumerate}
+\end{theorem}
+
+\textbf{Critical implications}:
+\begin{itemize}
+\item \textbf{Signal delegation is OK}: AI manages your recognition, but you retain revocation ✓
+\item \textbf{Capacity delegation is OK}: Agent provides on your behalf, but you can revoke ✓
+\item \textbf{Ownership transfer is NOT OK}: Money/property transfer away your rights ✗
+\item \textbf{Slavery/indenture is NOT OK}: Cannot transfer control of your labor ✗
+\item This excludes: money, ownership transfer, binding employment contracts, accumulated wealth
+\end{itemize}
+
+\textbf{The system organizes capacity allocation, not ownership relations.}
+
+\section{The Second Principle: Goal Optimization}
+
+\subsection{Entities Have Goals}
+
+We make one minimal assumption about entities:
+
+\begin{axiom}[Goal-Oriented Entities]
+Each entity $e \in \E$ seeks to achieve some goal $G_e$.
+\end{axiom}
+
+\textbf{Goals can be anything}:
+\begin{itemize}
+\item \textbf{Personal}: Individual wellbeing, wealth, happiness, learning
+\item \textbf{Social}: Helping friends, building community, supporting family
+\item \textbf{Societal}: Improving society, reducing suffering, advancing knowledge
+\item \textbf{Altruistic}: Maximizing others' wellbeing, environmental protection
+\item \textbf{Mixed}: Combination of personal and social/societal benefit
+\end{itemize}
+
+\textbf{Crucially}: Goals need not be mutually exclusive. An entity can simultaneously pursue personal wellbeing AND societal benefit. The framework is completely agnostic to goal content.
+
+\textbf{What we do NOT assume}:
+\begin{itemize}
+\item Goals are selfish (can be purely altruistic)
+\item Goals are competitive (can be cooperative)
+\item Goals are fixed (can evolve over time)
+\item Goals are material (can be spiritual, social, intellectual)
+\item How entities learn about goal achievement (any learning method)
+\end{itemize}
+
+\textbf{We only assume}: Entities have goals and act to achieve them. The anti-gaming theorem works for ANY goal content—whether your goal is personal wealth or global wellbeing.
+
+\subsection{What Goal Optimization Requires}
+
+\begin{proposition}[Signals Must Exist]
+For entities to optimize goal achievement through coordination, there must exist a way to express allocation preferences.
+
+Let $\sigma_e: \E \to \mathbb{R}_{\ge 0}$ be entity $e$'s \textbf{allocation signal} expressing preference for allocating to each other entity.
+\end{proposition}
+
+\begin{proposition}[Allocation Must Depend on Signals]
+\label{prop:allocation-responsive}
+If allocation $\A(p,r)$ (from provider $p$ to recipient $r$) does not depend on recipient's signal, then recipient has no control over allocation and cannot optimize.
+
+\textbf{Therefore}: $\A$ must be a function of signals: $\A = \A(\sigma, C)$ where $C$ represents capacities.
+\end{proposition}
+
+This is our second fundamental requirement: \textbf{allocation responsiveness}.
+
+\subsection{The Monotonicity Requirement}
+
+\begin{proposition}[Increasing Signal Should Not Decrease Allocation]
+\label{prop:monotonicity-needed}
+Consider entity $e$ with goal $G_e$, receiving allocation from provider $p$:
+
+If increasing signal $\sigma_e(p)$ \textit{decreases} received allocation $\A(p,e)$:
+\[ \frac{\partial \A(p,e)}{\partial \sigma_e(p)} < 0 \]
+
+Then entity $e$ is incentivized to \textbf{reduce} signal even to beneficial providers, violating goal optimization.
+
+\textbf{Therefore}: We require \textbf{weak monotonicity}:
+\[ \frac{\partial \A(p,e)}{\partial \sigma_e(p)} \ge 0 \]
+\end{proposition}
+
+This will become our third fundamental axiom.
+
+\section{Deriving the Trade-Off Constraint}
+
+\subsection{The Unbounded Signal Thought Experiment}
+
+Consider a hypothetical system where signals can be arbitrarily large:
+
+\begin{example}[Unbounded Signals]
+Suppose $\sigma_e: \E \to \mathbb{R}_{\ge 0}$ with no constraint. Entity $e$ can set:
+\[ \sigma_e(f) = 10^{100} \quad \forall f \in \E \]
+
+Signal maximally to \textit{all} entities simultaneously.
+
+\textbf{Question}: Is there any optimization to do?
+
+\textbf{Answer}: NO! There's no opportunity cost. Allocating more to beneficial partner $f_1$ doesn't require reducing allocation to anyone else.
+\end{example}
+
+\subsection{The Discovery: Trade-offs Are Necessary}
+
+\begin{theorem}[Trade-offs Enable Optimization]
+\label{thm:tradeoffs-necessary}
+For goal optimization to be \textbf{non-trivial}, signals must be \textbf{bounded}, creating trade-offs.
+
+\textbf{Proof}:
+\begin{enumerate}
+\item Suppose signals are unbounded: $\forall e: \sup_f \sigma_e(f) = \infty$
+
+\item Entity $e$ can signal maximally to all partners: $\sigma_e(f) = M$ for arbitrarily large $M$
+
+\item Consider the optimization problem:
+\[ \max_{\sigma_e} \mathbb{P}(G_e) = f\left(\sum_f \beta(e,f) \cdot \A(f,e)\right) \]
+
+where $\beta(e,f) \ge 0$ is the benefit gradient (how much $f$ helps achieve $G_e$), and $\A(f,e)$ depends on $\sigma_e(f)$.
+
+\item If $\sigma_e$ is unbounded, the "solution" is trivial: signal maximally to everyone
+
+\item No meaningful trade-off: increasing $\sigma_e(f_1)$ doesn't require decreasing $\sigma_e(f_2)$
+
+\item The gradient-based reasoning of anti-gaming becomes vacuous:
+\[ \frac{d\mathbb{P}(G_e)}{d\sigma_e(f)} \ge 0 \]
+holds, but there's no \textbf{opportunity cost} term forcing reallocation
+
+\item \textbf{Result}: Optimization is trivial (signal everything maximally), anti-gaming provides no guidance
+\end{enumerate}
+
+\textbf{Conclusion}: Bounded signals are \textbf{necessary} for optimization to have meaning. \qed
+\end{theorem}
+
+\subsection{The Profound Implication}
+
+\begin{center}
+\large
+\textit{The trade-off constraint is not imposed—}\\
+\textit{it emerges as the minimal structure required}\\
+\textit{for coordination to be non-trivial.}
+\end{center}
+
+This means the budget constraint $\sum \sigma_e(f) = 1$ (or any bounded constraint) is \textbf{derived}, not assumed!
+
+\subsection{What Form Should the Constraint Take?}
+
+We need bounded signals creating trade-offs. Rather than assuming a specific form, we derive the general requirements:
+
+\begin{theorem}[Valid Constraint Sets]
+\label{thm:valid-constraints}
+A constraint set $\C_e$ enables anti-gaming and optimization if and only if it satisfies:
+\begin{enumerate}
+\item \textbf{Compact}: Closed and bounded (ensures optimization has solution)
+\item \textbf{Convex}: Enables gradient-based optimization and guarantees unique optima
+\item \textbf{Homogeneous}: $\sigma \in \C_e \implies \lambda\sigma \in \C_{\lambda e}$ for $\lambda > 0$ (scale invariance)
+\item \textbf{Non-empty interior}: $\exists \sigma$ in interior of $\C_e$ (allows finite adjustments in all directions)
+\end{enumerate}
+
+\textbf{These are necessary and sufficient} for the framework to function.
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+\textbf{Necessity}:
+\begin{itemize}
+\item \textit{Compact}: If unbounded, can signal infinitely → no trade-offs. If not closed, limit points may escape constraint.
+\item \textit{Convex}: Non-convex constraints create local optima, preventing convergence to global anti-gaming equilibrium.
+\item \textit{Homogeneous}: Required for scale invariance. If doubling all signals changes relative structure, system depends on absolute scale.
+\item \textit{Non-empty interior}: If all points are boundary, cannot make infinitesimal adjustments → optimization impossible.
+\end{itemize}
+
+\textbf{Sufficiency}: Given these properties, anti-gaming theorem (Section \ref{thm:anti-gaming}) applies. \qed
+\end{proof}
+
+\begin{corollary}[Infinite Valid Constraints]
+Any $L^p$ norm with $p \ge 1$ defines a valid constraint:
+\[ \C_e^{(p)} = \left\{\sigma : \left(\sum_f |\sigma(f)|^p\right)^{1/p} = 1, \sigma(f) \ge 0\right\} \]
+
+All satisfy the four requirements. Therefore \textbf{infinitely many valid constraints exist}.
+\end{corollary}
+
+\textbf{Standard choice (L¹)}: $\C_e = \{\sigma : \sum_f \sigma(f) = 1, \sigma(f) \ge 0\}$ (sum-normalization)
+\begin{itemize}
+\item Linear trade-offs: increasing one by $\delta$ requires decreasing others by exactly $\delta$
+\item Natural "percentage" interpretation
+\item Simplest and most intuitive
+\end{itemize}
+
+\textbf{Alternative choice (L²)}: $\C_e = \{\sigma : \sum_f \sigma(f)^2 = 1, \sigma(f) \ge 0\}$
+\begin{itemize}
+\item Quadratic trade-offs: cost grows with current allocation
+\item Progressive constraint: penalizes concentration
+\item Creates more balanced allocations
+\end{itemize}
+
+\textbf{Entropy constraint}: $H(\sigma) \ge H_{\min}$ with $\sum \sigma = 1$
+\begin{itemize}
+\item Enforces diversity
+\item Prevents over-concentration
+\item Ensures exploration
+\end{itemize}
+
+\textbf{Key insight}: The framework is constraint-agnostic. Sum-normalization is elegant but not uniquely required. Any compact, convex, homogeneous constraint enables the core properties.
+
+\section{The Complete Axiomatic Foundation}
+
+\subsection{The Three Fundamental Axioms}
+
+We can now state the minimal axiom set:
+
+\begin{axiom}[Sovereign Signals with Trade-offs]
+\label{ax:sovereignty}
+Each entity $e \in \E$ controls an allocation signal $\sigma_e: \E \to \mathbb{R}_{\ge 0}$ satisfying:
+\begin{enumerate}
+\item \textbf{Ultimate control}: Entity $e$ retains final authority over $\sigma_e$
+\item \textbf{Unilaterally revocable}: $e$ can revoke/change $\sigma_e$ anytime without consent
+\item \textbf{Revokable delegation permitted}: $e$ may delegate management to agents, retaining revocation rights
+\item \textbf{Unrevokable ownership forbidden}: Cannot transfer $\sigma_e$ in way that removes $e$'s revocation rights
+\item \textbf{Flow not stock}: $\sigma_e$ represents current state, not accumulated balance
+\item \textbf{Bounded}: $\sigma_e \in \C_e$ where $\C_e$ is a bounded constraint set
+\end{enumerate}
+
+\textbf{Standard constraint}: $\C_e = \{\sigma : \sum_f \sigma(f) = 1, \sigma(f) \ge 0\}$
+
+\textbf{Delegation example}: Entity $e$ can let AI assistant manage $\sigma_e$, but $e$ can override or revoke at any time.
+\end{axiom}
+
+\begin{axiom}[Capacity Conservation]
+\label{ax:conservation}
+A provider $p$ with capacity $C_p$ cannot allocate more than available:
+\[ \sum_{r \in \E} \A_{\text{actual}}(p,r) \le C_p \]
+
+This is a physical constraint reflecting finite resources.
+\end{axiom}
+
+\begin{axiom}[Weak Monotonicity]
+\label{ax:monotonicity}
+In the \textbf{allocatable regime}, the allocation function satisfies:
+\[ \frac{\partial \A(p,r)}{\partial \sigma_r(p)} \ge 0 \]
+
+Increasing signal does not decrease allocation (may have no effect, but not negative).
+
+\textbf{Allocatable regime}: Where $\frac{\partial \A}{\partial \sigma} > 0$ (signal has positive effect).
+
+\textbf{Non-allocatable regime}: Where $\frac{\partial \A}{\partial \sigma} = 0$ (signal saturated, no additional effect).
+\end{axiom}
+
+\subsection{What's Derivable (Not Axiomatic)}
+
+From these three axioms, we can \textbf{derive}:
+
+\begin{proposition}[Allocation Responsiveness]
+Allocation must depend on signals: $\A = \A(\sigma, C, \ldots)$
+
+\textbf{Proof}: From Proposition \ref{prop:allocation-responsive} and goal optimization requirement. \qed
+\end{proposition}
+
+\begin{proposition}[Trade-off Necessity]
+Signals must be bounded (creating trade-offs).
+
+\textbf{Proof}: From Theorem \ref{thm:tradeoffs-necessary}. \qed
+\end{proposition}
+
+\subsection{The Minimal Insight}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{Theorem} (Axiomatic Minimality):
+
+\medskip
+
+Three axioms are \textbf{necessary and sufficient} for sovereignty-preserving, anti-gaming coordination:
+\begin{enumerate}
+\item Sovereignty (with derived trade-offs)
+\item Capacity Conservation
+\item Weak Monotonicity
+\end{enumerate}
+
+All other properties are either derived from these or implementation choices.
+}}
+\end{center}
+
+\part{Architecture}
+
+\section{Discovering the Universal Structure}
+
+\subsection{The Layer Decomposition}
+
+Any allocation system satisfying our axioms can be decomposed into three distinct layers:
+
+\begin{definition}[Three-Layer Architecture]
+An allocation system consists of:
+
+\textbf{Layer 1: Signals} ($\sigma$)
+\[ \sigma_e: \E \to \mathbb{R}_{\ge 0}, \quad \sigma_e \in \C_e \]
+Entity $e$'s sovereign allocation preferences, subject to trade-off constraint.
+
+\textbf{Layer 2: Transformation} ($\phi$) \textit{[Optional]}
+\[ \phi: \mathbb{R}_{\ge 0}^n \to \mathbb{R}_{\ge 0} \]
+Maps signals (possibly from multiple entities) to derived values ("shares" or "priorities").
+
+\textbf{Layer 3: Allocation} ($\A$)
+\[ \A(p,r) = C_p \cdot f(\phi(\sigma_p(r)), \phi(\sigma_r(p)), \ldots) \]
+Distributes provider $p$'s capacity $C_p$ to recipients based on (transformed) signals.
+\end{definition}
+
+\subsection{Why Three Layers?}
+
+\textbf{Separation of concerns}:
+\begin{itemize}
+\item Layer 1: Sovereign preference expression
+\item Layer 2: Collective processing/aggregation (optional)
+\item Layer 3: Physical capacity distribution
+\end{itemize}
+
+\textbf{Composability}: Mix and match signals, transformations, and allocation rules.
+
+\textbf{Clarity}: What's individual (Layer 1) vs. collective (Layer 2) vs. physical (Layer 3) is explicit.
+
+\subsection{Layer 2 Is Optional}
+
+\begin{remark}[Direct Allocation]
+Allocation can occur directly from signals without transformation:
+\[ \A(p,r) = C_p \cdot \frac{\sigma_p(r)}{\sum_f \sigma_p(f)} \]
+
+Layer 2 ($\phi$) is an optional processing step, not fundamental.
+
+\textbf{Key insight}: "Shares" are just Layer 2 transformations!
+\end{remark}
+
+\section{Layer 1: The Signal Design Space}
+
+\subsection{Valid Signals}
+
+\begin{definition}[Sovereignty-Preserving Signal]
+A signal type preserves sovereignty if it satisfies Axiom \ref{ax:sovereignty}.
+
+\textbf{Valid examples} (all allow revokable delegation):
+\begin{itemize}
+\item \textbf{Recognition}: Subjective valuation, can delegate to AI but retain revocation ✓
+\item \textbf{Attention}: Focus allocation, can let algorithm manage but can override ✓
+\item \textbf{Votes/Preferences}: Rankings, can use proxy but can revoke proxy ✓
+\item \textbf{Beliefs/Predictions}: Probabilities, can delegate to model but can override ✓
+\item \textbf{Endorsements}: Support signals, can delegate but retain control ✓
+\end{itemize}
+
+\textbf{Key}: Delegation (to AI, advisors, algorithms) is \textbf{allowed and encouraged}—as long as originator retains unilateral revocation rights!
+\end{definition}
+
+\subsection{Invalid Signals}
+
+\begin{definition}[Sovereignty-Violating Signal]
+A signal type violates sovereignty if it fails any requirement of Axiom \ref{ax:sovereignty}.
+
+\textbf{Invalid examples} (all involve unrevokable ownership transfer):
+\begin{itemize}
+\item \textbf{Money}: Once transferred, becomes unrevokable ownership of recipient ✗
+\item \textbf{Ownership shares}: Transfer changes ownership, not revokable ✗
+\item \textbf{Binding contracts}: Time-locked commitments, not unilaterally revocable ✗
+\item \textbf{Debt obligations}: Creates binding claims, not revokable ✗
+\item \textbf{Physical goods}: Possession transfers ownership, not revokable ✗
+\item \textbf{Vote selling}: Transfers ownership of vote, not just delegation ✗
+\end{itemize}
+
+\textbf{Key distinction}:
+\begin{itemize}
+\item \textbf{Revokable delegation}: ✓ "I let you manage this, but I can take it back anytime"
+\item \textbf{Unrevokable ownership}: ✗ "I give this to you, now it's yours, I need your permission to get it back"
+\end{itemize}
+\end{definition}
+
+\subsection{The Constraint Design Space}
+
+Beyond the standard $\sum \sigma = 1$, many constraints preserve anti-gaming:
+
+\begin{theorem}[Valid Constraint Sets]
+\label{thm:valid-constraints}
+A constraint set $\C_e$ enables anti-gaming if it is:
+\begin{enumerate}
+\item \textbf{Compact}: Closed and bounded
+\item \textbf{Convex}: Enables optimization
+\item \textbf{Homogeneous}: $\sigma \in \C_e \implies \lambda\sigma \in \C_{\lambda e}$ for $\lambda > 0$ (scale invariance)
+\item \textbf{Non-empty interior}: $\exists \sigma$ in interior of $\C_e$ (allows adjustment)
+\end{enumerate}
+\end{theorem}
+
+\textbf{Proof}: In Part VI, Section \ref{sec:constraint-theorem}.
+
+\begin{example}[Alternative Constraints]
+\textbf{$L^2$ norm}: $\sum_f \sigma_e(f)^2 = 1$
+\begin{itemize}
+\item Quadratic trade-offs
+\item Penalizes concentration
+\item Progressive "taxation" on focused allocation
+\end{itemize}
+
+\textbf{$L^\infty$ norm}: $\max_f \sigma_e(f) = 1$
+\begin{itemize}
+\item Winner-take-most dynamics
+\item One entity receives maximum signal
+\end{itemize}
+
+\textbf{Entropy constraint}: $H(\sigma) \ge H_{\min}$ with $\sum \sigma = 1$
+\begin{itemize}
+\item Enforces diversity
+\item Prevents over-concentration
+\item Ensures exploration
+\end{itemize}
+\end{example}
+
+\textbf{Implication}: The sum-normalization $\sum \sigma = 1$ is elegant and natural, but infinitely many alternatives exist!
+
+\section{Layer 2: The Transformation Design Space}
+
+\subsection{The Transformation Function}
+
+\begin{definition}[Transformation Function]
+A transformation $\phi$ maps signals to derived values:
+\[ \phi: \mathbb{R}_{\ge 0}^k \to \mathbb{R}_{\ge 0} \]
+
+where $k$ is the number of signal inputs (can be from one or multiple entities).
+
+For anti-gaming to hold, $\phi$ must satisfy \textbf{weak monotonicity} with respect to entity's own signal:
+\[ \frac{\partial \phi}{\partial \sigma_e(f)} \ge 0 \]
+\end{definition}
+
+\subsection{Transformation Examples}
+
+\begin{example}[Identity (Skip Layer 2)]
+\[ \phi(\sigma_e(f)) = \sigma_e(f) \]
+
+Direct allocation proportional to signal. No transformation layer.
+\end{example}
+
+\begin{example}[Normalization]
+\[ \phi(\sigma_e(f)) = \frac{\sigma_e(f)}{\sum_g \sigma_e(g)} \]
+
+Convert to probability distribution.
+\end{example}
+
+\begin{example}[Mutual Minimum (Recognition)]
+\[ \phi(\sigma_e(f), \sigma_f(e)) = \min(\sigma_e(f), \sigma_f(e)) \]
+
+Requires reciprocation from both entities.
+
+\textbf{Properties}:
+\begin{itemize}
+\item Symmetric: $\phi(a,b) = \phi(b,a)$
+\item Monotonic in each argument (when below the minimum)
+\item Creates "allocatable regime": $\sigma_e(f) \le \sigma_f(e)$
+\end{itemize}
+
+This is the foundation of recognition-based coordination!
+\end{example}
+
+\begin{example}[Collective Aggregation]
+For collective $C$ with members $M_C$:
+\[ \phi_C(f) = \sum_{e \in M_C} w_e \cdot \min(\sigma_e(f), \sigma_f(e)) \]
+
+where $w_e$ are normalized weights.
+
+Aggregates reciprocal relationships across collective members.
+\end{example}
+
+\begin{example}[Market-Like Clearing]
+\[ \phi_{\text{market}}(p) = \text{ClearingFunction}(\{\sigma_e(p)\}_{e \in \E}, C_p) \]
+
+Market-like mechanisms for matching supply and demand, but using sovereign signals (recognition, votes, attention) instead of money!
+\end{example}
+
+\subsection{The Key Constraint on Transformations}
+
+\begin{theorem}[Monotonicity Requirement]
+For anti-gaming to hold, transformation must satisfy:
+\[ \frac{\partial \phi(\ldots, \sigma_e(f), \ldots)}{\partial \sigma_e(f)} \ge 0 \]
+
+Increasing entity $e$'s signal to $f$ must not decrease the transformation output relevant to $e$.
+\end{theorem}
+
+This is a direct consequence of Axiom \ref{ax:monotonicity}.
+
+\section{Layer 3: The Allocation Mechanisms}
+
+\subsection{Basic Allocation Framework}
+
+\begin{definition}[Proportional Allocation]
+Provider $p$ with capacity $C_p$ allocates to recipient $r$:
+\[ \A(p,r) = C_p \cdot \frac{\phi_p(r)}{\sum_{r' \in \E} \phi_p(r')} \]
+
+where $\phi_p(r)$ is the (transformed) signal determining $p$'s allocation priority for $r$.
+\end{definition}
+
+\subsection{Need-Capped Allocation}
+
+\begin{definition}[Allocation with Needs]
+If recipient $r$ declares need $N_r$, actual allocation is capped:
+\[ \A_{\text{actual}}(p,r) = \min(\A(p,r), N_r) \]
+
+Prevents over-allocation beyond stated needs.
+\end{definition}
+
+\subsection{Multi-Round Convergent Allocation}
+
+\begin{algorithm}[Multi-Provider Need Satisfaction]
+\textbf{Input}: Providers $\{p_i\}$ with capacities $\{C_i\}$, recipients $\{r_j\}$ with needs $\{N_j\}$, signals $\{\sigma\}$
+
+\textbf{Repeat until convergence}:
+\begin{enumerate}
+\item For each provider $p_i$:
+   \begin{itemize}
+   \item Compute allocation priorities: $\phi_i(r_j)$
+   \item Allocate proportionally: $\A_i(r_j) = C_i \cdot \phi_i(r_j) / \sum_j \phi_i(r_j)$
+   \item Cap at remaining need: $\A_{\text{actual},i}(r_j) = \min(\A_i(r_j), N_j^{(t)})$
+   \end{itemize}
+\item Update recipient needs: $N_j^{(t+1)} = \max(0, N_j^{(t)} - \sum_i \A_{\text{actual},i}(r_j))$
+\item Compute unused capacity: $C_i^{\text{unused}} = C_i - \sum_j \A_{\text{actual},i}(r_j)$
+\end{enumerate}
+
+\textbf{Convergence}: Typically 2-5 rounds until all needs satisfied or all capacity allocated.
+\end{algorithm}
+
+\subsection{The Complete Architecture}
+
+Putting all three layers together:
+
+\begin{center}
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 1: SIGNALS                                            │
+│ Entity e chooses σₑ ∈ Cₑ (sovereign, trade-offs)            │
+│ Examples: Recognition, votes, attention, predictions        │
+└────────────────────────┬────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 2: TRANSFORMATION [Optional]                          │
+│ φ: signals → shares/priorities                              │
+│ Examples: min(), normalize, aggregate, market-clear         │
+│ Requirement: ∂φ/∂σₑ ≥ 0 (monotonic)                         │
+└────────────────────────┬────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 3: ALLOCATION                                         │
+│ A(p,r) = Cₚ · (function of φ)                               │
+│ Respects capacity conservation: Σ A(p,r) ≤ Cₚ               │
+│ Optional: Cap at needs, multi-round convergence             │
+└─────────────────────────────────────────────────────────────┘
+\end{verbatim}
+\end{center}
+
+\textbf{The insight}: All valid coordination mechanisms fit this structure!
+
+\part{Universal Properties}
+
+\section{The Universal Anti-Gaming Theorem}
+
+\subsection{Setup and Definitions}
+
+\begin{definition}[Goal Achievement]
+Entity $e$ has goal $G_e$. The probability of achieving the goal depends on capacities received from partners:
+\[ \mathbb{P}(G_e) = f\left(\sum_{f \in \E} \beta(e,f) \cdot \A(f,e)\right) \]
+
+where:
+\begin{itemize}
+\item $\beta(e,f) \ge 0$ is the \textbf{benefit gradient}: how much capacity from $f$ helps achieve $G_e$
+\item $\A(f,e)$ is allocation received from $f$
+\item $f$ is an increasing function
+\end{itemize}
+
+\textbf{Goals can be social/altruistic}: If entity $e$'s goal is "maximize societal wellbeing," then $\beta(e,f)$ represents how much partner $f$ contributes to societal wellbeing. The framework works identically whether goals are selfish, altruistic, or mixed.
+\end{definition}
+
+\begin{definition}[Beneficial vs Non-Beneficial Partners]
+Partner $f_1$ is \textbf{more beneficial} than $f_2$ for entity $e$ if:
+\[ \beta(e,f_1) > \beta(e,f_2) \]
+
+Partners exist on a spectrum from less to more beneficial for $e$'s goals.
+
+\textbf{This is goal-agnostic}:
+\begin{itemize}
+\item If $G_e$ = "personal wealth," then $\beta(e,f)$ = how much $f$ helps $e$ accumulate wealth
+\item If $G_e$ = "reduce global poverty," then $\beta(e,f)$ = how much $f$ contributes to poverty reduction
+\item If $G_e$ = "advance scientific knowledge," then $\beta(e,f)$ = how much $f$ contributes to scientific progress
+\item If $G_e$ = "support my community," then $\beta(e,f)$ = how much $f$ helps the community
+\end{itemize}
+
+The anti-gaming theorem works for ALL goal types!
+\end{definition}
+
+\subsection{The Total Derivative Analysis}
+
+The key insight: when signals have trade-offs, we must use \textbf{total derivatives}, not partial derivatives.
+
+\begin{theorem}[Universal Anti-Gaming Theorem with Anti-Fragmentation]
+\label{thm:anti-gaming}
+Consider entity $e$ with:
+\begin{itemize}
+\item Sovereign signals $\sigma_e \in \C_e$ (bounded, trade-offs exist)
+\item Transformation $\phi$ satisfying:
+  \begin{enumerate}
+  \item \textbf{Weak monotonicity}: $\frac{\partial \phi}{\partial \sigma_e(f)} \ge 0$
+  \item \textbf{Anti-fragmentation (sub-additivity)}: For any partition of entity $e$ into fragments $e_1, \ldots, e_k$:
+  \[ \sum_{i=1}^k \phi(e_i, f, \sigma) \le \phi(e, f, \sigma) \]
+  when $\sum_i \sigma_{e_i}(f) = \sigma_e(f)$ (budget preserved)
+  \end{enumerate}
+\item Allocation $\A(f,e)$ depending on $\phi(\sigma_e(f), \ldots)$
+\end{itemize}
+
+\textbf{Part A (Anti-Gaming)}: For shifting signal from partner $f_2$ to $f_1$ by amount $\delta$ (preserving constraint):
+\[ \sigma_e(f_1) \to \sigma_e(f_1) + \delta, \quad \sigma_e(f_2) \to \sigma_e(f_2) - \delta \]
+
+The total derivative of goal achievement is:
+\[ \frac{d\mathbb{P}(G_e)}{d\delta} = \beta(e,f_1) \cdot \frac{\partial \phi_1}{\partial \sigma_e(f_1)} - \beta(e,f_2) \cdot \frac{\partial \phi_2}{\partial \sigma_e(f_2)} \]
+
+(capacity factors omitted for clarity; full version in proof).
+
+If $\beta(e,f_1) > \beta(e,f_2)$ and both in allocatable regime:
+\[ \frac{d\mathbb{P}(G_e)}{d\delta} > 0 \]
+
+\textbf{Conclusion}: Shifting signal toward more beneficial partners increases goal achievement.
+
+\textbf{Part B (Anti-Fragmentation/Sybil Resistance)}: For entity $e$ fragmenting into $e_1, \ldots, e_k$ with:
+\[ \sum_{i=1}^k \sigma_{e_i}(f) = \sigma_e(f) \quad \forall f \]
+
+The sub-additivity property ensures:
+\[ \sum_{i=1}^k \phi(e_i, f, \sigma) \le \phi(e, f, \sigma) \]
+
+\textbf{Result}: Fragmentation provides no benefit (best case: break even), typically reduces total allocation.
+
+\textbf{Conclusion}: No incentive to create sybil identities.
+
+\medskip
+
+\textbf{These properties hold for ANY transformation $\phi$ satisfying weak monotonicity and sub-additivity!}
+\end{theorem}
+
+\begin{proof}
+\textbf{Step 1}: Express goal achievement as function of allocations:
+\[ \mathbb{P}(G_e) = f\left(\sum_{g \in \E} \beta(e,g) \cdot \A(g,e)\right) \]
+
+\textbf{Step 2}: Allocation depends on transformation:
+\[ \A(f,e) = \kappa_f \cdot h(\phi(\sigma_e(f), \ldots)) \]
+
+where $\kappa_f$ is $f$'s capacity factor and $h$ is an increasing function.
+
+\textbf{Step 3}: Consider shifting signal from $f_2$ to $f_1$ by $\delta$:
+\[ \sigma_e(f_1) \to \sigma_e(f_1) + \delta, \quad \sigma_e(f_2) \to \sigma_e(f_2) - \delta \]
+
+This preserves the budget constraint (e.g., if $\sum \sigma_e = 1$, still holds).
+
+\textbf{Step 4}: Compute total derivative:
+\begin{align*}
+\frac{d\mathbb{P}}{d\delta} &= \frac{\partial \mathbb{P}}{\partial \A(f_1,e)} \cdot \frac{d\A(f_1,e)}{d\delta} + \frac{\partial \mathbb{P}}{\partial \A(f_2,e)} \cdot \frac{d\A(f_2,e)}{d\delta} \\
+&= f' \cdot \beta(e,f_1) \cdot \frac{d\A(f_1,e)}{d\delta} + f' \cdot \beta(e,f_2) \cdot \frac{d\A(f_2,e)}{d\delta}
+\end{align*}
+
+\textbf{Step 5}: Expand allocation derivatives:
+\begin{align*}
+\frac{d\A(f_1,e)}{d\delta} &= \kappa_{f_1} \cdot h'(\phi_1) \cdot \frac{\partial \phi_1}{\partial \sigma_e(f_1)} \cdot \frac{d\sigma_e(f_1)}{d\delta} \\
+&= \kappa_{f_1} \cdot h'(\phi_1) \cdot \frac{\partial \phi_1}{\partial \sigma_e(f_1)} \cdot (+1)
+\end{align*}
+
+Similarly:
+\[ \frac{d\A(f_2,e)}{d\delta} = \kappa_{f_2} \cdot h'(\phi_2) \cdot \frac{\partial \phi_2}{\partial \sigma_e(f_2)} \cdot (-1) \]
+
+\textbf{Step 6}: Substitute:
+\begin{align*}
+\frac{d\mathbb{P}}{d\delta} &= f' \cdot \left[\beta(e,f_1) \cdot \kappa_{f_1} \cdot h'(\phi_1) \cdot \frac{\partial \phi_1}{\partial \sigma_e(f_1)}\right] \\
+&\quad - f' \cdot \left[\beta(e,f_2) \cdot \kappa_{f_2} \cdot h'(\phi_2) \cdot \frac{\partial \phi_2}{\partial \sigma_e(f_2)}\right]
+\end{align*}
+
+\textbf{Step 7}: In allocatable regime, $\frac{\partial \phi}{\partial \sigma} > 0$ (by Axiom \ref{ax:monotonicity}).
+
+If $\beta(e,f_1) > \beta(e,f_2)$ (properly weighted by capacities and sensitivities):
+\[ \frac{d\mathbb{P}}{d\delta} > 0 \]
+
+\textbf{Therefore}: Shifting signal toward higher-gradient partners increases goal achievement. \qed
+\end{proof}
+
+\subsection{The Profound Universality}
+
+\begin{corollary}[Universal Application]
+Theorem \ref{thm:anti-gaming} holds for:
+\begin{itemize}
+\item \textbf{Any signal type}: Recognition, votes, attention, predictions
+\item \textbf{Any constraint}: $L^1$, $L^2$, entropy, custom
+\item \textbf{Any transformation $\phi$}: min(), normalize, aggregate, market-clear
+\item \textbf{Any allocation mechanism}: Proportional, capped, multi-round
+\end{itemize}
+
+As long as:
+\begin{enumerate}
+\item Signals have trade-offs (bounded)
+\item Transformation is weakly monotonic
+\item Allocation depends on (transformed) signals
+\end{enumerate}
+
+\textbf{Anti-gaming is universal across all sovereignty-preserving mechanisms!}
+\end{corollary}
+
+\subsection{Simple Heuristic}
+
+For practical use:
+
+\begin{center}
+\fbox{\parbox{0.8\textwidth}{
+\textbf{Anti-Gaming Heuristic}:
+
+\medskip
+
+Allocate more signal to partners who help your goals more.
+
+\medskip
+
+The mathematics proves this maximizes goal achievement in \textit{any} valid mechanism.
+}}
+\end{center}
+
+\subsection{Cooperation from Goal Optimization}
+
+\begin{remark}[Self-Interest Includes Social Goals]
+The theorem shows "cooperation emerges from self-interest"—but \textbf{"self-interest" here means goal optimization, which can include social/altruistic goals}.
+
+\textbf{Examples}:
+\begin{itemize}
+\item \textbf{Selfish goal}: "Maximize my wealth" → allocate to partners who help me accumulate wealth
+\item \textbf{Social goal}: "Maximize my community's wellbeing" → allocate to partners who help the community
+\item \textbf{Altruistic goal}: "Reduce suffering globally" → allocate to partners who reduce suffering
+\item \textbf{Mixed goal}: "Both personal fulfillment AND societal benefit" → allocate to partners who advance both
+\end{itemize}
+
+In ALL cases, the anti-gaming theorem applies: allocating to beneficial partners maximizes goal achievement.
+
+\textbf{The profound insight}: Cooperation doesn't require altruism OR selfishness—it emerges from \textbf{goal-directed behavior}, regardless of goal content. An entity pursuing "maximize global wellbeing" optimizes exactly like an entity pursuing "maximize personal wealth"—both allocate to helpful partners.
+
+\textbf{Social coordination}: When many entities have social/altruistic goals, the system naturally produces socially beneficial outcomes—not through sacrifice, but through aligned goal optimization.
+\end{remark}
+
+\section{Convergence and Stability}
+
+\subsection{The Update Rule}
+
+\begin{definition}[Best-Response Update]
+Entity $e$ updates signal to align with realized transformation output:
+\[ \sigma_e^{(t+1)}(f) = \frac{\phi^{(t)}(e,f)}{\sum_g \phi^{(t)}(e,g)} \]
+
+Allocate signal proportional to what you received/achieved in previous round.
+\end{definition}
+
+\subsection{Fixed Point Convergence}
+
+\begin{theorem}[Convergence to Equilibrium]
+\label{thm:convergence}
+Under the following conditions:
+\begin{enumerate}
+\item Transformation $\phi$ is Lipschitz continuous
+\item Transformation $\phi$ is bounded
+\item Entity set $\E$ is finite and fixed
+\item All entities use best-response updates
+\end{enumerate}
+
+The iterative system converges to a fixed point $\sigma^*$ where:
+\[ \sigma^*(e,f) = \frac{\phi^*(e,f)}{\sum_g \phi^*(e,g)} \quad \forall e,f \]
+
+\textbf{Convergence rate}: Exponential, typically 50-150 iterations.
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+\textbf{Method}: Banach Fixed-Point Theorem via contraction mapping.
+
+\textbf{Step 1}: Define update operator $T: \mathcal{R} \to \mathcal{R}$ where $\mathcal{R}$ is space of signal distributions:
+\[ T(\sigma)(e,f) = \frac{\phi(\sigma)(e,f)}{\sum_g \phi(\sigma)(e,g)} \]
+
+\textbf{Step 2}: Define metric:
+\[ d(\sigma, \sigma') = \sum_{e,f} |\sigma(e,f) - \sigma'(e,f)| \]
+
+\textbf{Step 3}: Show $T$ is contractive. Lipschitz continuity of $\phi$ ensures:
+\[ |\ \phi(\sigma)(e,f) - \phi(\sigma')(e,f)| \le L \cdot d_{\text{local}}(\sigma, \sigma') \]
+
+The normalization in the update rule and boundedness of $\phi$ combine to give:
+\[ d(T(\sigma), T(\sigma')) \le \lambda \cdot d(\sigma, \sigma') \]
+
+for some $\lambda < 1$ (contraction constant).
+
+\textbf{Step 4}: By Banach Fixed-Point Theorem:
+\begin{itemize}
+\item Unique fixed point $\sigma^*$ exists
+\item $\sigma^{(t)} \to \sigma^*$ exponentially
+\item $d(\sigma^{(t)}, \sigma^*) \le \lambda^t \cdot d(\sigma^{(0)}, \sigma^*)$
+\end{itemize}
+
+\textbf{Step 5}: At fixed point:
+\[ \sigma^*(e,f) = \frac{\phi^*(e,f)}{\sum_g \phi^*(e,g)} \]
+
+Perfect alignment between signals and transformation outputs. \qed
+\end{proof}
+
+\subsection{Interpretation}
+
+\begin{remark}[Stable Equilibria]
+The fixed point represents a state where:
+\begin{itemize}
+\item Signals align with transformation outputs
+\item For recognition: perfect reciprocal alignment
+\item For markets: supply matches demand
+\item For votes: stable coalitions
+\item No entity has incentive to unilaterally change
+\end{itemize}
+
+System naturally evolves toward stable coordination equilibria.
+\end{remark}
+
+\section{Sybil Resistance}
+
+\subsection{The Question}
+
+Can entity $e$ gain influence by fragmenting into sybil identities $s_1, \ldots, s_k$?
+
+\subsection{The Answer}
+
+\begin{theorem}[Universal Sybil Resistance]
+\label{thm:sybil}
+Consider entity $e$ splitting into sybils $s_1, \ldots, s_k$ with:
+\[ \sum_{i=1}^k \sigma_{s_i}(f) = \sigma_e(f) \quad \forall f \]
+
+(Budget preserved across sybils)
+
+For any transformation $\phi$ satisfying weak monotonicity and sub-additivity:
+\[ \sum_{i=1}^k \phi(s_i, f) \le \phi(e, f) \quad \forall f \]
+
+with equality if and only if:
+\begin{enumerate}
+\item Entity $e$ splits proportionally: $\sigma_{s_i}(f) = \alpha_i \cdot \sigma_e(f)$ with $\sum \alpha_i = 1$
+\item Partner $f$ responds optimally: $\sigma_f(s_i) = \alpha_i \cdot \sigma_f(e)$
+\end{enumerate}
+
+\textbf{Best case}: Break even (total transformation output unchanged)
+
+\textbf{All other cases}: Lose influence (total transformation output decreases)
+
+\textbf{Rational conclusion}: No benefit to creating sybils.
+\end{theorem}
+
+\begin{proof}
+\textbf{Case}: Mutual minimum transformation (recognition)
+
+Let $\phi(e,f) = \min(\sigma_e(f), \sigma_f(e))$.
+
+\textbf{Original}: $\phi(e,f) = \min(\sigma_e(f), \sigma_f(e)) = \min(r, r')$ where $r = \sigma_e(f)$, $r' = \sigma_f(e)$.
+
+\textbf{After splitting}: Sybils $s_1, \ldots, s_k$ with $\sum_i \sigma_{s_i}(f) = r$ (budget preserved).
+
+\textbf{Partner response}: Anti-gaming (Theorem \ref{thm:anti-gaming}) implies $f$ allocates proportionally. If sybils together provide same value as original $e$:
+\[ \sigma_f(s_i) = r' \cdot \frac{\sigma_{s_i}(f)}{\sum_j \sigma_{s_j}(f)} = r' \cdot \frac{\sigma_{s_i}(f)}{r} \]
+
+\textbf{Total mutual recognition}:
+\[ \sum_{i=1}^k \min(\sigma_{s_i}(f), \sigma_f(s_i)) \]
+
+\textbf{If proportional split}: $\sigma_{s_i}(f) = r \cdot \alpha_i$ with $\sum \alpha_i = 1$:
+\begin{align*}
+\sum_i \min(r\alpha_i, r'\alpha_i) &= \sum_i \alpha_i \cdot \min(r, r') \\
+&= \min(r, r') \\
+&= \phi(e,f)
+\end{align*}
+
+\textbf{Equality achieved} but no gain!
+
+\textbf{If non-proportional split}: The min() function's concavity ensures:
+\[ \sum_i \min(\sigma_{s_i}(f), \sigma_f(s_i)) < \min(r, r') \]
+
+\textbf{Strict loss of influence}.
+
+\textbf{General case}: For any sub-additive $\phi$ (including min, normalize, aggregate), similar argument holds. \qed
+\end{proof}
+
+\subsection{Why Sybils Don't Work}
+
+\begin{enumerate}
+\item \textbf{Budget fragments}: Split across multiple identities
+\item \textbf{Partners respond proportionally}: Anti-gaming ensures rational allocation
+\item \textbf{Sub-additivity}: Transformation functions satisfy $\phi(a+b) \le \phi(a) + \phi(b)$
+\item \textbf{Best case}: Break even
+\item \textbf{Typical case}: Lose influence
+\end{enumerate}
+
+\textbf{No special detection needed}—sybils are automatically futile!
+
+\section{The Velocity of Correction: A Fundamental Theorem}
+
+\subsection{From Observation to Proof}
+
+The anti-gaming theorem shows that optimal allocation exists. But the axioms imply something stronger: entities are mathematically constrained to follow the steepest ascent path toward that optimum.
+
+\begin{definition}[Goal Achievement Gradient]
+For entity $e$ with goal $G_e$ and current signal allocation $\sigma_e$, define the local gradient:
+\[ \nabla_{\sigma_e} \mathbb{P}(G_e) = \left( \frac{\partial \mathbb{P}(G_e)}{\partial \sigma_e(f_1)}, \frac{\partial \mathbb{P}(G_e)}{\partial \sigma_e(f_2)}, \ldots \right) \]
+
+subject to the constraint $\sigma_e \in \C_e$.
+
+The \textbf{constrained gradient} (accounting for trade-offs) for a shift from $f_2$ to $f_1$ is:
+\[ \nabla_{\sigma_e}^{\text{constrained}} \mathbb{P}(G_e) \bigg|_{f_1 \leftarrow f_2} = \frac{\partial \mathbb{P}}{\partial \sigma_e(f_1)} - \frac{\partial \mathbb{P}}{\partial \sigma_e(f_2)} \]
+\end{definition}
+
+\begin{theorem}[Velocity Maximization from Axioms]
+\label{thm:velocity-maximization}
+Given:
+\begin{enumerate}
+\item \textbf{Sovereignty}: Entity $e$ exclusively controls $\sigma_e$
+\item \textbf{Unilateral revocability}: $e$ can change $\sigma_e$ at any time without consent
+\item \textbf{Instantaneous effect}: Changes to $\sigma_e$ affect allocations immediately
+\item \textbf{Weak monotonicity}: $\frac{\partial \phi}{\partial \sigma_e} \ge 0$
+\item \textbf{Goal optimization}: Entity seeks to maximize $\mathbb{P}(G_e)$
+\end{enumerate}
+
+\textbf{Then}:
+\begin{enumerate}
+\item \textbf{Best-response path is steepest ascent}: Entity's optimal update follows:
+\[ \sigma_e^{(t+1)} = \sigma_e^{(t)} + \alpha \cdot \nabla_{\sigma_e}^{\text{constrained}} \mathbb{P}(G_e) \]
+for some step size $\alpha > 0$, projected onto $\C_e$.
+
+\item \textbf{Velocity is maximized}: Any delay in correction $\Delta t$ results in cumulative loss:
+\[ \text{Loss}(\Delta t) = \int_0^{\Delta t} \left[ \mathbb{P}(G_e)^* - \mathbb{P}(G_e)^{(t)} \right] dt \]
+where $\mathbb{P}(G_e)^*$ is optimal goal achievement.
+
+\item \textbf{Correction velocity is bounded only by}:
+\begin{itemize}
+\item Information speed (discovery of misallocations)
+\item Decision speed (computation of gradient)
+\item No coordination overhead (sovereignty eliminates approval delays)
+\item No lock-in penalties (revocability eliminates sunk costs)
+\end{itemize}
+\end{enumerate}
+
+\textbf{Result}: The axioms mathematically constrain entities to follow maximum-velocity correction paths.
+\end{theorem}
+
+\begin{proof}
+\textbf{Step 1 (Steepest Ascent)}:
+
+From anti-gaming theorem (Theorem \ref{thm:anti-gaming}):
+\[ \frac{d\mathbb{P}(G_e)}{d\delta} = \beta(e,f_1) \cdot \frac{\partial \phi_1}{\partial \sigma_e(f_1)} - \beta(e,f_2) \cdot \frac{\partial \phi_2}{\partial \sigma_e(f_2)} \]
+
+This is precisely the constrained gradient. Since entity seeks to maximize $\mathbb{P}(G_e)$, it follows gradient ascent:
+\[ \sigma_e^{(t+1)} = \text{proj}_{\C_e}\left( \sigma_e^{(t)} + \alpha \cdot \nabla_{\sigma_e}^{\text{constrained}} \mathbb{P}(G_e) \right) \]
+
+\textbf{Step 2 (Velocity Maximization)}:
+
+\textbf{Claim}: Any delay $\Delta t$ between discovering misallocation and correcting it is suboptimal.
+
+\textbf{Proof of claim}:
+\begin{itemize}
+\item Current state: $\mathbb{P}(G_e)^{(t)} < \mathbb{P}(G_e)^*$ (suboptimal)
+\item Optimal state achievable: $\mathbb{P}(G_e)^* = \max_{\sigma_e \in \C_e} \mathbb{P}(G_e)$
+\item Cost of delay: $\text{Loss}(\Delta t) = \int_0^{\Delta t} \left[ \mathbb{P}(G_e)^* - \mathbb{P}(G_e)^{(t)} \right] dt > 0$
+\item \textbf{Instantaneous effect} (axiom): Correction at time $t$ yields benefit at time $t$ (no lag)
+\item \textbf{Unilateral revocability} (axiom): No cost to change $\sigma_e$ (no approval needed, no sunk cost)
+\item \textbf{Therefore}: Optimal strategy is immediate correction (minimize $\Delta t$)
+\end{itemize}
+
+\textbf{Step 3 (Velocity Bounds)}:
+
+What limits correction velocity?
+
+\textbf{NOT limited by}:
+\begin{itemize}
+\item \textbf{Coordination}: Sovereignty eliminates need for approval (no $\Delta t_{\text{approval}}$)
+\item \textbf{Lock-in}: Revocability eliminates sunk costs (no $\Delta t_{\text{commitment}}$)
+\item \textbf{Lag}: Instantaneous effect eliminates delay between change and benefit (no $\Delta t_{\text{lag}}$)
+\end{itemize}
+
+\textbf{Only limited by}:
+\begin{itemize}
+\item $\Delta t_{\text{discovery}}$: Time to discover misallocation (information speed)
+\item $\Delta t_{\text{decision}}$: Time to compute gradient (decision speed)
+\end{itemize}
+
+\textbf{Therefore}:
+\[ \Delta t_{\text{total}} = \Delta t_{\text{discovery}} + \Delta t_{\text{decision}} \]
+
+is minimal—no structural delays introduced by the axioms. The axioms \textbf{maximize} velocity. \qed
+\end{proof}
+
+\begin{corollary}[Security from Velocity]
+\label{cor:security-from-velocity}
+In a system where correction velocity is maximized by the axioms:
+\begin{enumerate}
+\item \textbf{Attacks = Persistent Misallocations}: Any attack creates deviation from optimal $\sigma_e^*$
+\item \textbf{Correction is Incentivized}: Loss accumulates at rate $\mathbb{P}(G_e)^* - \mathbb{P}(G_e)^{(t)}$
+\item \textbf{Correction is Fast}: Velocity bounded only by information and decision speed
+\item \textbf{Therefore}: Attacks cannot persist beyond discovery time
+\end{enumerate}
+
+\textbf{Security emerges from velocity maximization—not from attack-specific defenses.}
+\end{corollary}
+
+\begin{remark}[Velocity as Fundamental Property]
+This theorem reveals that velocity of correction is not a behavioral observation or emergent consequence—it is \textbf{mathematically inherent} to the axioms.
+
+The axioms:
+\begin{itemize}
+\item \textbf{Force} steepest ascent (sovereignty + goal optimization)
+\item \textbf{Remove} structural delays (revocability + instantaneous effect)
+\item \textbf{Bound} velocity only by information and computation
+\end{itemize}
+
+Velocity maximization is built into the foundation.
+\end{remark}
+
+\subsection{Conditions That Maximize Correction Velocity}
+
+The framework's axioms naturally implement conditions that maximize correction velocity:
+
+\textbf{1. Transparency of Signals}
+\begin{itemize}
+\item Enables fast discovery: Partners can verify allocations instantly
+\item Enables fast matching: Beneficial partners are discoverable
+\item Enables fast correction: Misallocations are visible immediately
+\item \textbf{Trade-off}: Privacy vs correction speed
+\end{itemize}
+
+\textbf{2. Sovereignty (Individual Control)}
+\begin{itemize}
+\item Enables instant correction: No external approval needed for reallocation
+\item Enables parallel optimization: All entities correct simultaneously
+\item Eliminates coordination overhead: Fastest possible response
+\item \textbf{Result}: Decentralized correction is faster than centralized
+\end{itemize}
+
+\textbf{3. Unilateral Revocability (No Lock-In)}
+\begin{itemize}
+\item Enables instant reallocation when better partner found
+\item Eliminates sunk cost fallacy: Optimal allocation always accessible
+\item Creates continuous pressure: Partners must maintain value
+\item \textbf{Result}: No persistent misallocation possible
+\end{itemize}
+
+\textbf{4. Trade-Off Constraints (Bounded Signals)}
+\begin{itemize}
+\item Opportunity cost of misallocation is immediate and visible
+\item Cannot create influence from nothing
+\item Lost capacity from beneficial partners is felt now
+\item Creates constant pressure to optimize
+\end{itemize}
+
+\textbf{5. Discovery Infrastructure (Emergent)}
+\begin{itemize}
+\item Fast discovery of beneficial partners reduces search time
+\item Reputation signals, referrals, trials accelerate matching
+\item Shared discovery tools benefit all participants
+\item \textbf{Emergent property}: Entities naturally build/support discovery mechanisms
+\end{itemize}
+
+\subsection{How Attacks Become Self-Correcting}
+
+Attacks are just \textbf{persistent misallocations}. If misallocations get corrected quickly, attacks cannot persist.
+
+\textbf{Sybil Attacks} (Identity Fragmentation):
+\begin{itemize}
+\item Partners notice fragmented value → reallocate away
+\item Correction speed: Immediate (next allocation round)
+\item Result: Cannot maintain elevated influence through splitting
+\end{itemize}
+
+\textbf{Collusion} (Mutual Inflation):
+\begin{itemize}
+\item Budget constraint: $\sum \sigma = 1$ means allocating to colluders means not allocating to beneficial partners
+\item Lost capacity from beneficial partners → visible immediately
+\item Correction speed: As fast as better partners are discovered
+\item Result: Collusion is self-limiting, corrects when better options found
+\end{itemize}
+
+\textbf{Eclipse Attacks} (Isolation):
+\begin{itemize}
+\item Victim observes low goal achievement
+\item Sovereignty enables escape → seek new partners
+\item Multiple discovery paths available
+\item Correction speed: Depends on discovery infrastructure
+\item Result: Not prevented, but recoverable
+\end{itemize}
+
+\textbf{Timing Games} (Strategic Delays):
+\begin{itemize}
+\item Convergence properties ensure fixed point reached regardless of timing
+\item Signal symmetry: timing doesn't change fundamental values
+\item Short-term fluctuations possible, long-term convergence guaranteed
+\item Correction speed: Bounded by convergence rate
+\item Result: Timing advantages are temporary and small
+\end{itemize}
+
+\subsection{Why This Is Simpler Than Traditional Security}
+
+\textbf{Traditional approach}: List every attack type, design defenses for each
+
+\textbf{Correction velocity approach}:
+\begin{enumerate}
+\item Axioms create conditions for fast correction
+\item All misallocations (including attacks) get corrected
+\item No special-case handling needed
+\end{enumerate}
+
+\begin{theorem}[Security from Velocity]
+In a system where:
+\begin{enumerate}
+\item Misallocations have immediate cost (anti-gaming)
+\item Entities have sovereign control (unilateral correction)
+\item Signals are revocable (no lock-in)
+\item Information is transparent (fast discovery)
+\end{enumerate}
+
+Then attacks cannot persist because they are corrected at a rate bounded only by information and decision speed.
+\end{theorem}
+
+\textbf{The unified insight}: Security emerges from \textbf{velocity optimization}, not from \textbf{attack-specific defenses}.
+
+\subsection{Assumptions and Trust Model}
+
+\textbf{What must be true}:
+\begin{enumerate}
+\item Entities control their own signals (sovereignty)
+\item Signal values are observable (transparency)
+\item Signals can be updated (revocability)
+\item Discovery mechanisms exist (infrastructure)
+\end{enumerate}
+
+\textbf{What's NOT assumed}:
+\begin{itemize}
+\item No trusted third parties
+\item No global consensus
+\item No benevolence or altruism
+\item No ability to detect ``malicious'' intent
+\end{itemize}
+
+\textbf{Result}: Framework is \textbf{value-neutral}. It doesn't judge whether allocations are ``good'' or ``bad''—it enables fast correction based on each entity's goal optimization. If an entity genuinely provides value and builds mutual relationships, they're a legitimate participant, regardless of their intent.
+
+\part{The Design Space}
+
+\section{Specific Instances of the Framework}
+
+\subsection{Recognition-Based Coordination}
+
+One particularly elegant instance of the framework uses recognition as the signal type:
+
+\textbf{Layer 1: Recognition Signals}
+\[ R(e,f) \ge 0, \quad \sum_f R(e,f) = 1 \]
+
+Entity $e$'s subjective valuation of their relationship with $f$, subject to sum-normalization constraint.
+
+\subsubsection{Entity Type Adapters}
+
+When implementing any signal type (recognition, votes, attention, etc.), different entity types may need adapters to generate signals:
+
+\begin{center}
+\begin{verbatim}
+Entity Type → [Adapter Layer] → Signal (σ)
+                                    ↓
+                        Framework processes identically
+\end{verbatim}
+\end{center}
+
+\textbf{Adapter categories}:
+\begin{itemize}
+\item \textbf{Active entities} (humans, organizations, AI): Direct sovereign control over signal generation
+\item \textbf{Passive entities} (resources, data): Signals computed from observable metrics (demand, usage, access patterns)
+\item \textbf{Proxy entities} (representatives, agents): Signals delegated from other entities with retained revocability
+\end{itemize}
+
+\textbf{Key insight}: The specific adapter formulas are \textbf{implementation choices}, not axiomatically required. Different implementations can make different choices while satisfying the core axioms (sovereignty, conservation, monotonicity).
+
+\textbf{For recognition specifically}, example adapters:
+\begin{itemize}
+\item Active: $R(e,f)$ chosen directly by entity $e$
+\item Resource: $R_{\text{resource}}(r,e)$ could be based on demand, scarcity, quality, or access patterns
+\item Proxy: $R_{\text{proxy}}(p,f) = R_{\text{owner}}(p,f)$ with owner retaining revocation rights
+\item AI agent: $R_{\text{AI}}(a,e)$ could be based on utility function, interaction value, or learned preferences
+\end{itemize}
+
+The framework remains type-agnostic—all entities are processed identically once signals are generated. Type-specific behavior appears only in the adapter layer.
+
+\textbf{Layer 2: Mutual Recognition Transform}
+
+We introduce a transformation that requires reciprocation:
+\[ \MR(e,f) = \min(R(e,f), R(f,e)) \]
+
+\textbf{Why $\min()$?} This creates perfect reciprocity:
+\begin{itemize}
+\item If Alice recognizes Bob at 50\% but Bob recognizes Alice at 10\%, their mutual recognition is 10\%
+\item To increase mutual recognition, \textit{both} must increase their recognition
+\item This naturally discourages free-riding
+\item Creates symmetric, reciprocal relationships
+\end{itemize}
+
+\textbf{Properties of MR}:
+\begin{itemize}
+\item Symmetric: $\MR(e,f) = \MR(f,e)$
+\item Bounded by both recognitions: $\MR(e,f) \le \min(R(e,f), R(f,e))$
+\item Satisfies weak monotonicity: $\frac{\partial \MR}{\partial R(e,f)} \ge 0$
+\end{itemize}
+
+\textbf{Normalized form}: To convert to allocation probabilities:
+\[ \MRS(e,f) = \frac{\MR(e,f)}{\sum_g \MR(e,g)} \]
+
+This represents: "Of all my mutually-valued relationships, what percentage is this one?"
+
+\textbf{Layer 3: Proportional Allocation}
+\[ \A(p,r) = C_p \cdot \MRS(p,r) \]
+
+Provider $p$ allocates capacity proportional to normalized mutual recognition shares.
+
+\textbf{Why this works}:
+\begin{itemize}
+\item \textbf{Satisfies all axioms}: Signals are sovereign, transformation is monotonic, allocation respects capacity
+\item \textbf{Symmetric reciprocity}: The $\min()$ function naturally enforces mutual benefit
+\item \textbf{Elegant}: Simple rule generates complex coordination
+\item \textbf{Natural Sybil resistance}: Splitting reduces mutual recognition due to $\min()$ properties
+\item \textbf{Convergent dynamics}: Updates converge to reciprocal alignment
+\end{itemize}
+
+\textbf{This demonstrates}: How a simple transformation ($\min$) creates powerful coordination properties within the universal framework.
+
+\subsubsection{Normalized Shares: MRS}
+
+The basic MR provides absolute mutual recognition values, but for allocation we need normalized shares.
+
+\begin{definition}[Total Mutual Recognition]
+For entity $e$, the total mutual recognition is:
+\[ \TMR(e) = \sum_{f \in \E} \MR(e,f) \]
+
+This represents the sum of all mutually-valued relationships entity $e$ has.
+\end{definition}
+
+\begin{definition}[Mutual Recognition Share (MRS)]
+The normalized mutual recognition share is:
+\[ \MRS(e,f) = \frac{\MR(e,f)}{\TMR(e)} \quad \text{for } \TMR(e) > 0 \]
+
+\textbf{Interpretation}: "Of all my mutually-valued relationships, what percentage is this one?"
+
+\textbf{Edge case} ($\TMR(e) = 0$): When entity has no mutual recognition (new entity, or all recognition unreciprocated), use recognition directly: $\MRS(e,f) = R(e,f)$. This allows new entities to participate while building mutual recognition.
+\end{definition}
+
+\textbf{Properties of MRS}:
+\begin{itemize}
+\item \textbf{Normalized}: $\sum_f \MRS(e,f) = 1$ (valid probability distribution)
+\item \textbf{Monotonic}: $\frac{\partial \MRS}{\partial R(e,f)} \ge 0$ in allocatable regime (satisfies Axiom \ref{ax:monotonicity})
+\item \textbf{Scale-invariant}: Ratios preserved under recognition rescaling
+\item \textbf{Symmetric influence}: Both entities' recognitions affect the share
+\end{itemize}
+
+\textbf{Why MRS satisfies the axioms}:
+\begin{enumerate}
+\item \textbf{Sovereignty}: Each entity controls their $R$ inputs, MRS is derived
+\item \textbf{Conservation}: $\sum \MRS = 1$ ensures allocation sums to capacity
+\item \textbf{Weak Monotonicity}: Increasing $R(e,f)$ increases $\MR(e,f)$ (in regime) increases $\MRS(e,f)$
+\end{enumerate}
+
+\subsubsection{Collective Coordination}
+
+For collectives $C \subseteq \E$ with members $M_C$, we can aggregate member relationships into collective-level shares.
+
+\textbf{Two collective share systems}:
+
+\begin{definition}[SCMRS: Contribution-Weighted Collective Shares]
+For collective $C$ with members $M_C$:
+\[ \SCMRS_C(e) = \frac{\TMR_C(e)}{\sum_{f \in M_C} \TMR_C(f)} \]
+
+where $\TMR_C(e) = \sum_{f \in M_C} \MR(e,f)$ is total mutual recognition within collective.
+
+\textbf{Properties}:
+\begin{itemize}
+\item Weights by network integration: more connections → higher share
+\item Satisfies $\sum_{e \in M_C} \SCMRS_C(e) = 1$
+\item Monotonic in individual recognitions
+\item Rewards contribution to collective relationships
+\end{itemize}
+
+\textbf{Use case}: Resource allocation based on contribution, cooperative production, meritocratic governance.
+\end{definition}
+
+\begin{definition}[SCRMRS: Equal-Voice Collective Shares]
+For collective $C$ with members $M_C$:
+\[ \SCRMRS_C(e) = \frac{1}{|M_C|} \sum_{f \in M_C} \MRS(f,e) \]
+
+\textbf{Properties}:
+\begin{itemize}
+\item Equal voting power: each member's perspective weighted equally
+\item Satisfies $\sum_{e \in M_C} \SCRMRS_C(e) = 1$
+\item Monotonic in individual recognitions
+\item Democratic voice regardless of network position
+\end{itemize}
+
+\textbf{Use case}: Democratic governance, one-person-one-vote contexts, equal representation.
+\end{definition}
+
+\textbf{Hybrid approach}: Combine both:
+\[ S_C(e) = \gamma \cdot \SCMRS_C(e) + (1-\gamma) \cdot \SCRMRS_C(e) \]
+where $\gamma \in [0,1]$ balances contribution vs equal voice.
+
+\textbf{Verification of axioms}:
+\begin{itemize}
+\item Both SCMRS and SCRMRS are weighted sums of monotonic functions → monotonic
+\item Both normalized to sum to 1 → compatible with capacity conservation
+\item Both built from sovereign individual recognitions → sovereignty preserved at collective level
+\end{itemize}
+
+\subsubsection{Network Integration: MRD}
+
+\begin{definition}[Mutual Recognition Density (MRD)]
+For entity $e$ and collective $C$:
+\[ \MRD_C(e) = \frac{\TMR_C(e)}{\AMR(C)} = \frac{\sum_{f \in M_C} \MR(e,f)}{\frac{1}{|M_C|}\sum_{g \in M_C} \TMR_C(g)} \]
+
+where $\AMR(C)$ is average mutual recognition per member in $C$.
+
+\textbf{Interpretation}: How well-integrated is entity $e$ relative to average collective member?
+\begin{itemize}
+\item $\MRD_C(e) < 1$: Below average integration
+\item $\MRD_C(e) = 1$: Average integration
+\item $\MRD_C(e) > 1$: Above average integration
+\end{itemize}
+\end{definition}
+
+\textbf{Emergent membership via MRD}:
+
+\begin{theorem}[MRD-Based Membership]
+Setting membership threshold $\theta$ (typically $\theta = 0.5$):
+\[ M_C = \{ e \in \E \mid \MRD_C(e) \ge \theta \} \]
+
+creates natural membership boundaries based on relationship depth.
+
+\textbf{Properties}:
+\begin{enumerate}
+\item \textbf{Sybil resistant}: Fake entities cannot easily build deep mutual relationships
+\item \textbf{Transparent onboarding}: Clear path to membership through relationship building
+\item \textbf{Natural boundaries}: Membership emerges from actual relationship patterns
+\item \textbf{Self-organizing}: No central authority needed to determine membership
+\end{enumerate}
+\end{theorem}
+
+\textbf{Two membership models}:
+
+\textbf{1. Collectives (Closed, Rising Bar)}:
+\[ C^{(t+1)} = \{ e \in C^{(t)} \mid \MRD_{C^{(t)}}(e) \ge \theta \} \]
+Calculate MRD from current members → coherent, self-refining groups.
+
+\textbf{2. Commons (Open, Stable Bar)}:
+\[ \C^{(t+1)} = \{ e \in \E \mid \MRD_{\E}^{(t)}(e) \ge \theta \} \]
+Calculate MRD from all participants → inclusive, self-organizing communities.
+
+\subsubsection{Recursive Organization: Hyper-Collectives}
+
+Collectives can themselves be members of higher-level collectives, creating recursive organization.
+
+\begin{definition}[Hyper-Collective]
+A hyper-collective $H$ is a collective whose members include other collectives:
+\[ M_H = \{C_1, C_2, \ldots, C_k\} \cup \{e_1, e_2, \ldots, e_m\} \]
+where $C_i$ are collectives and $e_j$ are base entities.
+\end{definition}
+
+\textbf{Collective autonomy parameter}: How does collective $C$ relate to other entities?
+
+\begin{definition}[α-Parameterized Collective Autonomy]
+For collective $C$ with members $M_C$, mutual recognition with entity $f$:
+
+\textbf{Aggregation} ($\alpha = 1$): Pure bottom-up
+\[ \MR_{\text{agg}}(C,f) = \sum_{e \in M_C} w(e,C) \cdot \MR(e,f) \]
+
+\textbf{Entity-level} ($\alpha = 0$): Collective as sovereign entity
+\[ R_C(f) = \sum_{e \in M_C} v(e,C) \cdot R(e,f), \quad \MR_{\text{entity}}(C,f) = \min(R_C(f), R(f,C)) \]
+
+\textbf{Hybrid} (general):
+\[ \MR^*(C,f) = \alpha \cdot \MR_{\text{agg}}(C,f) + (1-\alpha) \cdot \MR_{\text{entity}}(C,f) \]
+
+where $\alpha \in [0,1]$ controls collective autonomy:
+\begin{itemize}
+\item $\alpha = 1$: Collective is purely aggregation of members
+\item $\alpha = 0$: Collective is fully autonomous entity
+\item $\alpha \in (0,1)$: Hybrid between aggregation and autonomy
+\end{itemize}
+\end{definition}
+
+\textbf{Properties preservation}:
+
+\begin{theorem}[Recursive Property Preservation]
+The recognition framework preserves all properties at every level:
+\begin{enumerate}
+\item \textbf{Sovereignty}: Collective recognition satisfies $\sum_f R_C(f) = 1$ when acting as entity
+\item \textbf{Symmetry}: $\MR^*(C,f) = \MR^*(f,C)$
+\item \textbf{Monotonicity}: $\frac{\partial \MR^*}{\partial R(e,f)} \ge 0$ for member $e$
+\item \textbf{Anti-gaming}: Applies to collectives as entities
+\item \textbf{Sybil resistance}: Splitting collective reduces total MR
+\end{enumerate}
+\end{theorem}
+
+\begin{theorem}[MR Propagation Through Hierarchies]
+If $a \in A$ (entity in collective) and $A \in C$ (collective in hyper-collective), then for any entity $D$:
+\[ \MR(C,D) \ge w(a,A) \cdot w(A,C) \cdot \MR(a,D) \]
+
+where weights satisfy $\sum w = 1$ at each level.
+
+\textbf{Implication}: Individual contributions propagate upward—no one is "lost" in hierarchies.
+\end{theorem}
+
+\textbf{Cross-level capacity allocation}:
+
+For capacity flowing from hyper-collective $H$ through intermediate collectives to base entity $e$:
+
+\textbf{Path-based allocation}:
+\[ A_{H \to e}^{\text{path}} = A_H(C_1) \cdot A_{C_1}(C_2) \cdot \ldots \cdot A_{C_k}(e) \]
+
+\textbf{Total allocation} (summing over all paths):
+\[ A_H(e) = \sum_{\text{paths } H \to e} A_{H \to e}^{\text{path}} \]
+
+\begin{example}[Individual in Multiple Collectives]
+Entity $e$ is member of collectives $A$, $B$, $C$, all in hyper-collective $H$:
+
+\textbf{Given}:
+\begin{itemize}
+\item $H$ allocates: $A_H(A) = 0.30$, $A_H(B) = 0.25$, $A_H(C) = 0.20$
+\item Entity shares: $\SCMRS_A(e) = 0.10$, $\SCMRS_B(e) = 0.10$, $\SCMRS_C(e) = 0.10$
+\end{itemize}
+
+\textbf{Total allocation to $e$}:
+\begin{align*}
+A_H(e) &= A_H(A) \cdot \SCMRS_A(e) + A_H(B) \cdot \SCMRS_B(e) + A_H(C) \cdot \SCMRS_C(e) \\
+&= 0.30 \times 0.10 + 0.25 \times 0.10 + 0.20 \times 0.10 \\
+&= 0.030 + 0.025 + 0.020 = 0.075 \text{ (7.5\% of H's capacity)}
+\end{align*}
+\end{example}
+
+\subsubsection{Advanced Features}
+
+\textbf{Two-Tier Recognition System}:
+
+For supporting emerging partnerships alongside established relationships:
+
+\begin{definition}[Two-Tier Shares]
+\[ S_{\text{two-tier}}(e,f) = \begin{cases}
+\frac{\MR(e,f)}{\TMR_{\text{tier1}}(e)} & \text{if } \MR(e,f) > 0 \text{ (established)} \\
+\frac{R(e,f)}{\sum_{g:\MR(e,g)=0} R(e,g)} & \text{if } \MR(e,f) = 0 \text{ (emerging)}
+\end{cases} \]
+
+\textbf{Properties}:
+\begin{itemize}
+\item Tier 1 (MR > 0): Allocates to established mutual relationships
+\item Tier 2 (MR = 0): Allocates to emerging partnerships based on recognition alone
+\item Larger allocatable regime than pure MR
+\item Supports exploration of new partners
+\item Still satisfies weak monotonicity
+\end{itemize}
+
+\textbf{Use case}: When entities want to support new partners before full reciprocation established.
+\end{definition}
+
+\textbf{Filters and Limits}:
+
+\begin{definition}[Filter Function]
+A filter $\F: 2^{\E} \to 2^{\E}$ selects subsets: $\F(S) \subseteq S$
+
+\textbf{Types}:
+\begin{itemize}
+\item \textbf{Attribute}: $\F_{\text{attr}}(S) = \{e \in S \mid \text{attr}(e) \in A\}$
+\item \textbf{MRD threshold}: $\F_{\text{MRD} \ge \theta}(S) = \{e \in S \mid \MRD_S(e) \ge \theta\}$
+\item \textbf{Composite}: $\F_1 \circ \F_2 \circ \ldots \circ \F_n$
+\end{itemize}
+
+\textbf{Application}: Filter eligible recipients before allocation:
+\[ \E_{\text{eligible}} = \F(\E), \quad A(e,f) = C_e \cdot \MRS(e,f) \text{ for } f \in \E_{\text{eligible}} \]
+\end{definition}
+
+\begin{definition}[Limit Function]
+A limit $\mathcal{L}$ transforms distributions while preserving mass:
+\[ \mathcal{L}(d): \E \to [0,1], \quad \sum_e \mathcal{L}(d)(e) = 1 \]
+
+\textbf{Types}:
+\begin{itemize}
+\item \textbf{Cap}: $\mathcal{L}_{\text{cap}}(d)(e) = \min(d(e), \text{cap}_e)$ then renormalize
+\item \textbf{Floor}: Ensure minimum: $d(e) \ge \text{floor}_e$ then renormalize
+\item \textbf{Progressive}: $\mathcal{L}_{\text{progressive}}(d)(e) = d(e)^\alpha$ then renormalize
+\end{itemize}
+
+\textbf{Application}: Modify allocation after shares computed:
+\[ A_{\text{limited}}(e,f) = \mathcal{L}_e(A(e,\cdot))(f) \]
+\end{definition}
+
+\subsubsection{Summary: Recognition as Complete Instance}
+
+The recognition-based coordination system demonstrates how the three universal axioms generate a rich, practical coordination framework:
+
+\textbf{Starting from axioms}:
+\begin{enumerate}
+\item \textbf{Sovereignty}: $\sum R(e,f) = 1$ (budget constraint)
+\item \textbf{Conservation}: Capacity limits
+\item \textbf{Weak Monotonicity}: $\frac{\partial \MR}{\partial R} \ge 0$ in allocatable regime
+\end{enumerate}
+
+\textbf{Generates}:
+\begin{itemize}
+\item Basic coordination: $\MR = \min(R, R^\top)$, $\MRS = \MR/\TMR$
+\item Collective organization: SCMRS (contribution), SCRMRS (equal-voice)
+\item Emergent membership: MRD-based thresholds
+\item Recursive hierarchy: Hyper-collectives with α-parameter
+\item Advanced features: Two-tier, filters, limits
+\end{itemize}
+
+\textbf{All properties verified}:
+\begin{itemize}
+\item Anti-gaming (proven in Section \ref{thm:anti-gaming})
+\item Convergence (proven in Section \ref{thm:convergence})
+\item Sybil resistance (proven in Section \ref{thm:sybil})
+\item Scale invariance (ratios preserved)
+\item Velocity of correction (self-healing)
+\end{itemize}
+
+\textbf{The key insight}: From three simple axioms emerges a complete coordination system with collectives, commons, recursive organization, and flexible policy mechanisms—all provably sovereignty-preserving and anti-gaming.
+
+\subsection{Vote-Based Coordination}
+
+Another natural instance uses voting as the signal type:
+
+\textbf{Layer 1: Vote Signals}
+\[ V(e,f) \ge 0, \quad \sum_f V(e,f) = 1 \]
+
+Entity $e$'s vote allocation across alternatives $f$. The sum constraint creates trade-offs (voting more for one option means less for others).
+
+\textbf{Sovereignty check}:
+\begin{itemize}
+\item Unilaterally revocable? Yes (can change vote anytime) ✓
+\item Revokable delegation? Yes (proxy voting allowed) ✓
+\item Unrevokable transfer? No (vote selling would violate this) ✓
+\end{itemize}
+
+\textbf{Layer 2: Aggregation}
+
+Votes are aggregated across entities:
+\[ \phi_{\text{vote}}(f) = \sum_{e \in \E} w_e \cdot V(e,f) \]
+
+The weights $w_e$ determine voting power:
+\begin{itemize}
+\item Equal weights ($w_e = 1/|\E|$): Democratic, one-person-one-vote
+\item Contribution-based: Weight by participation or expertise
+\item Quadratic: $w_e = \sqrt{V_e}$ for certain fairness properties
+\end{itemize}
+
+\textbf{Layer 3: Allocation}
+
+Collective capacity flows according to aggregated votes:
+\[ \A(\text{collective}, f) = C_{\text{collective}} \cdot \frac{\phi_{\text{vote}}(f)}{\sum_g \phi_{\text{vote}}(g)} \]
+
+\textbf{Why this works}:
+\begin{itemize}
+\item Satisfies sovereignty (votes are revokable)
+\item Satisfies monotonicity (aggregation is weighted sum, monotonic in each vote)
+\item Satisfies conservation (capacity allocated proportionally)
+\item Enables democratic decision-making within sovereign framework
+\item Flexible: Can implement various voting rules through different $w_e$ choices
+\end{itemize}
+
+\textbf{Extension}: Can combine with mutual recognition—entities vote, but votes weighted by mutual recognition between voter and collective.
+
+\subsection{Attention-Based Coordination}
+
+A particularly natural instance for cognitive/computational systems uses attention as the signal:
+
+\textbf{Layer 1: Attention Signals}
+\[ A(e,f) \ge 0, \quad \sum_f A(e,f) = 1 \]
+
+Entity $e$ allocates cognitive or computational resources (attention) across entities $f$.
+
+\textbf{Why attention works}:
+\begin{itemize}
+\item Attention is inherently scarce (you can't attend to everything simultaneously)
+\item The constraint $\sum A = 1$ naturally reflects cognitive/computational limits
+\item Attention is revocable (you can redirect focus instantly)
+\item Attention is non-transferable as unrevokable ownership (can delegate management, retain control)
+\end{itemize}
+
+\textbf{Sovereignty check}:
+\begin{itemize}
+\item Unilaterally revocable? Yes (redirect attention anytime) ✓
+\item Revokable delegation? Yes (algorithm manages attention, but can override) ✓
+\item Flow not stock? Yes (current focus, not accumulated) ✓
+\end{itemize}
+
+\textbf{Layer 2: Optional Quality Weighting}
+
+Can optionally weight by quality or value received:
+\[ \phi(e,f) = A(e,f) \cdot Q(f) \]
+
+where $Q(f)$ represents quality, usefulness, or information value of $f$'s output.
+
+This transformation is still monotonic: $\frac{\partial \phi}{\partial A(e,f)} = Q(f) \ge 0$.
+
+\textbf{Layer 3: Capacity Flows to Attended Entities}
+\[ \A(p,r) = C_p \cdot \frac{\phi(p,r)}{\sum_g \phi(p,g)} \]
+
+Capacity (computational resources, information, responses) flows proportionally to attention.
+
+\textbf{Applications}:
+\begin{itemize}
+\item AI systems allocating processing time based on attention to humans
+\item Information markets where attention (not money) determines visibility
+\item Recommendation systems respecting user attention sovereignty
+\item Multi-agent AI coordination through attention allocation
+\end{itemize}
+
+\textbf{Key advantage}: Creates "attention markets" without money—entities compete for attention, capacity flows to high-attention entities, but all attention remains revocable and sovereign.
+
+\subsection{Prediction-Based Coordination (Sovereign Information Markets)}
+
+We can create market-like information aggregation without money by using predictions as signals:
+
+\textbf{Layer 1: Probability Assignment Signals}
+\[ P_e(x) \ge 0, \quad \sum_x P_e(x) = 1 \]
+
+Entity $e$ assigns probabilities to different outcomes $x$, subject to normalization (probabilities sum to 1).
+
+\textbf{Sovereignty check}:
+\begin{itemize}
+\item Unilaterally revocable? Yes (can update beliefs anytime) ✓
+\item Revokable delegation? Yes (can use ML model predictions, but override) ✓
+\item Flow not stock? Yes (current beliefs, not accumulated wealth) ✓
+\end{itemize}
+
+\textbf{Why this works}: Probability assignments are mental states, not ownership transfers. You can change your mind (update probabilities) unilaterally.
+
+\textbf{Layer 2: Market-Like Aggregation}
+
+Aggregate probability assignments across entities to form "market price":
+\[ \phi_{\text{market}}(x) = \frac{\sum_{e \in \E} w_e \cdot P_e(x)}{\sum_x \sum_{e \in \E} w_e \cdot P_e(x)} \]
+
+Weights $w_e$ could be:
+\begin{itemize}
+\item Equal (simple average)
+\item By historical accuracy (expertise-weighted)
+\item By mutual recognition (trust-weighted)
+\end{itemize}
+
+This creates "prices" (aggregated probabilities) without money!
+
+\textbf{Layer 3: Reward Proportional to Accuracy}
+
+When outcome $x_{\text{actual}}$ occurs, reward capacity flows to accurate predictors:
+\[ \A(x_{\text{actual}}, e) = C_{\text{reward}} \cdot \frac{P_e(x_{\text{actual}})}{\sum_f P_f(x_{\text{actual}})} \]
+
+\textbf{Incentive properties}:
+\begin{itemize}
+\item If you predict accurately, you receive more capacity
+\item This incentivizes truthful belief reporting
+\item Creates information aggregation similar to prediction markets
+\item But without money's non-revokability and accumulation problems
+\end{itemize}
+
+\textbf{Applications}:
+\begin{itemize}
+\item Forecasting future events without betting money
+\item Aggregating expert opinions with sovereign revocability
+\item AI systems sharing and updating probabilistic models
+\item Scientific prediction markets within research communities
+\end{itemize}
+
+\textbf{Key difference from traditional prediction markets}:
+\begin{itemize}
+\item Traditional: Buy/sell contracts with money (ownership transfer, accumulation)
+\item Sovereign: Update probability assignments (mental state, revocable, flow)
+\item Traditional: Winners accumulate wealth (stock creates power imbalance)
+\item Sovereign: Accurate predictors receive capacity (flow, symmetric)
+\end{itemize}
+
+\subsection{Traditional Money-Based Markets (EXCLUDED)}
+
+\textbf{Layer 1: Money}
+\[ M(e,f) = \text{payment from } e \text{ to } f \]
+
+\textbf{Sovereignty Test}:
+\begin{itemize}
+\item \textbf{Unilaterally revocable}? NO ✗
+  \begin{itemize}
+  \item Once paid, retrieval requires consent
+  \item Irreversible without bilateral agreement
+  \end{itemize}
+\item \textbf{Non-transferable}? NO ✗
+  \begin{itemize}
+  \item Money's core function is transferability
+  \item Ownership changes hands
+  \end{itemize}
+\item \textbf{Flow not stock}? NO ✗
+  \begin{itemize}
+  \item Money accumulates as balance
+  \item Wealth is stock, not current flow
+  \end{itemize}
+\end{itemize}
+
+\textbf{Conclusion}: Money-based markets \textbf{violate Axiom \ref{ax:sovereignty}}.
+
+\textbf{Status}: OUTSIDE this framework.
+
+\textbf{Alternative}: Use market-LIKE clearing mechanisms with sovereign signals (recognition, votes, predictions) instead of money!
+
+\section{The Design Space Map}
+
+\subsection{The Sovereignty Boundary}
+
+\begin{center}
+\begin{verbatim}
+┌──────────────────────────────────────────────────────────┐
+│             SOVEREIGNTY-PRESERVING MECHANISMS            │
+│                                                          │
+│  INSIDE (Valid, All Axioms Satisfied)                   │
+│  ┌────────────────────────────────────────────┐         │
+│  │                                             │         │
+│  │  Signals:                                   │         │
+│  │    • Recognition                            │         │
+│  │    • Votes (non-transferable)               │         │
+│  │    • Attention                              │         │
+│  │    • Predictions/Beliefs                    │         │
+│  │                                             │         │
+│  │  Constraints:                               │         │
+│  │    • L¹ norm (Σ σ = 1)                     │         │
+│  │    • L² norm (Σ σ² = 1)                    │         │
+│  │    • Entropy (H ≥ H_min)                   │         │
+│  │    • Custom (compact, convex, homogeneous)  │         │
+│  │                                             │         │
+│  │  Transformations:                           │         │
+│  │    • Identity (no transform)                │         │
+│  │    • min() [recognition]                    │         │
+│  │    • Normalize                              │         │
+│  │    • Aggregate (collectives)                │         │
+│  │    • Market-clear (with sovereign signals)  │         │
+│  │                                             │         │
+│  │  Result: INFINITE valid combinations!      │         │
+│  │          All have anti-gaming guarantee    │         │
+│  └────────────────────────────────────────────┘         │
+│                                                          │
+│  BOUNDARY: ∂φ/∂σ ≥ 0 (Weak Monotonicity)                │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│           SOVEREIGNTY-VIOLATING MECHANISMS               │
+│                                                          │
+│  OUTSIDE (Invalid, Violate Axiom 1)                     │
+│  ┌────────────────────────────────────────────┐         │
+│  │                                             │         │
+│  │  • Money (transferable, stock)              │         │
+│  │  • Ownership shares (transferable)          │         │
+│  │  • Binding contracts (not revocable)        │         │
+│  │  • Debt (creates stock claims)              │         │
+│  │  • Physical goods (transferable)            │         │
+│  │  • Penalties (∂φ/∂σ < 0)                   │         │
+│  │                                             │         │
+│  │  Result: Outside framework scope           │         │
+│  │          Properties not guaranteed         │         │
+│  └────────────────────────────────────────────┘         │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+\end{verbatim}
+\end{center}
+
+\subsection{Mix and Match Freedom}
+
+The framework permits:
+\begin{itemize}
+\item Any valid signal type
+\item × Any valid constraint
+\item × Any monotonic transformation
+\item × Any conservation-respecting allocation
+\end{itemize}
+
+= \textbf{Infinite possible mechanisms}, all with guaranteed properties!
+
+\part{Deep Theory}
+
+\section{Axiom Minimality: The Reduction}
+
+\subsection{Can Any Axiom Be Derived?}
+
+We claimed three axioms are necessary. Can we reduce further?
+
+\begin{theorem}[Axiom Independence]
+The three axioms (Sovereignty, Conservation, Monotonicity) are \textbf{mutually independent}—none can be derived from the others.
+\end{theorem}
+
+\begin{proof}[Proof by Counterexample]
+\textbf{Axiom 1 (Sovereignty) independent}:
+
+Counterexample: System with centralized allocation (violates sovereignty) but conserves capacity (Axiom 2) and is monotonic (Axiom 3). Example: central authority allocates proportional to external scores, conservatively, monotonically. Therefore Axiom 1 cannot be derived from 2 and 3. ✓
+
+\textbf{Axiom 2 (Conservation) independent}:
+
+Counterexample: System with sovereign signals (Axiom 1), monotonic transformation (Axiom 3), but "magic" capacity creation violating conservation (can allocate more than available). Therefore Axiom 2 cannot be derived from 1 and 3. ✓
+
+\textbf{Axiom 3 (Monotonicity) independent}:
+
+Counterexample: System with sovereign signals (Axiom 1), capacity conservation (Axiom 2), but \textit{penalties} for high signals ($\frac{\partial \phi}{\partial \sigma} < 0$) violating monotonicity. Therefore Axiom 3 cannot be derived from 1 and 2. ✓
+
+\textbf{Conclusion}: All three axioms are independent. \qed
+\end{proof}
+
+\subsection{But Trade-offs ARE Derivable!}
+
+\begin{theorem}[Trade-offs from Anti-Gaming]
+The bounded signal constraint (trade-offs) is \textbf{derivable} from goal optimization + weak monotonicity.
+
+It is NOT a separate axiom!
+\end{theorem}
+
+This was shown in Theorem \ref{thm:tradeoffs-necessary}.
+
+\subsection{Allocation Responsiveness Is Derivable}
+
+\begin{theorem}[Responsiveness from Goal Optimization]
+"Allocation must depend on signals" is \textbf{derivable} from goal optimization.
+\end{theorem}
+
+This was shown in Proposition \ref{prop:allocation-responsive}.
+
+\subsection{The Truly Minimal Set}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{Minimal Axiom Set}:
+
+\begin{enumerate}
+\item Sovereignty (with unilateral revocability, non-transferability, flow)
+\item Capacity Conservation (physical constraint)
+\item Weak Monotonicity (enables anti-gaming)
+\end{enumerate}
+
+\textbf{Derivable}:
+\begin{itemize}
+\item Trade-offs (from anti-gaming having meaning)
+\item Allocation responsiveness (from goal optimization)
+\end{itemize}
+
+\textbf{Total}: Three irreducible axioms generate the entire framework.
+}}
+\end{center}
+
+\section{The Fundamental Theorem of Constraints}
+\label{sec:constraint-theorem}
+
+\subsection{What Constraints Enable Anti-Gaming?}
+
+We've used $\sum \sigma = 1$, but are there alternatives?
+
+\begin{theorem}[Valid Constraint Characterization]
+A constraint set $\C_e$ enables anti-gaming if and only if it is:
+\begin{enumerate}
+\item \textbf{Compact}: Closed and bounded in topology
+\item \textbf{Convex}: For any $\sigma_1, \sigma_2 \in \C_e$ and $\lambda \in [0,1]$: $\lambda\sigma_1 + (1-\lambda)\sigma_2 \in \C_e$
+\item \textbf{Homogeneous}: For any $\sigma \in \C_e$ and $\lambda > 0$: $\lambda\sigma \in \C_{\lambda e}$ (scale-invariant structure)
+\item \textbf{Non-empty interior}: $\exists \sigma$ in interior of $\C_e$ (allows finite adjustments in all directions)
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+\textbf{Necessity}:
+
+\textit{Compact}: If unbounded, can signal infinitely → no trade-offs → anti-gaming vacuous. If not closed, limit points may escape constraint → optimization undefined.
+
+\textit{Convex}: Needed for gradient-based optimization (Theorem \ref{thm:anti-gaming}). Non-convex constraints create local optima, preventing convergence to global anti-gaming equilibrium.
+
+\textit{Homogeneous}: Required for scale invariance. If doubling all signals changes relative structure, system behavior depends on absolute scale, violating universality.
+
+\textit{Non-empty interior}: If all points are boundary, cannot make infinitesimal adjustments in all directions → optimization impossible.
+
+\textbf{Sufficiency}:
+
+Given these four properties:
+\begin{itemize}
+\item Compactness ensures finite bounds → trade-offs exist
+\item Convexity enables gradient descent → optimization converges
+\item Homogeneity preserves ratios → scale-invariant allocation
+\item Interior enables local adjustment → continuous optimization
+\end{itemize}
+
+Therefore anti-gaming theorem applies. \qed
+\end{proof}
+
+\subsection{Infinite Valid Constraint Families}
+
+\begin{corollary}[Norm-Based Constraints]
+Any $L^p$ norm with $p \ge 1$ defines a valid constraint:
+\[ \C_e^{(p)} = \left\{\sigma : \left(\sum_f |\sigma(f)|^p\right)^{1/p} = 1, \sigma(f) \ge 0\right\} \]
+
+All four properties satisfied:
+\begin{itemize}
+\item Compact: Yes (norm ball is compact)
+\item Convex: Yes (norm balls are convex for $p \ge 1$)
+\item Homogeneous: Yes (norms are homogeneous)
+\item Non-empty interior: Yes (interior is non-empty)
+\end{itemize}
+
+Therefore \textbf{infinitely many valid constraints exist}!
+\end{corollary}
+
+\begin{example}[L² vs L¹ Comparison]
+\textbf{L¹} ($\sum \sigma = 1$):
+\begin{itemize}
+\item Linear trade-offs: increasing one by $\delta$ requires decreasing others by exactly $\delta$
+\item Simplex geometry
+\item Natural "percentage" interpretation
+\end{itemize}
+
+\textbf{L²} ($\sum \sigma^2 = 1$):
+\begin{itemize}
+\item \textbf{Quadratic trade-offs}: Cost $= 2\sigma\delta + \delta^2$ grows with current allocation
+\item Sphere geometry
+\item \textbf{Progressive constraint}: Penalizes concentration
+\item Effect: More balanced allocations than L¹
+\end{itemize}
+
+\textbf{Trade-off comparison}: To shift $\delta$ from $\sigma(f_2)=0.1$ to $\sigma(f_1)=0.5$:
+\begin{itemize}
+\item L¹: Cost is constant ($\delta$)
+\item L²: Cost grows: $2(0.5)\delta \approx 5$ times more expensive than shifting from 0.1
+\end{itemize}
+
+\textbf{Result}: L² creates **progressive allocation**—harder to concentrate on few entities.
+\end{example}
+
+\section{The Impossibility Theorem: Sovereignty's Boundary}
+
+\subsection{Non-Monotonic Transformations}
+
+\textbf{Question}: Can useful mechanisms exist with $\frac{\partial \phi}{\partial \sigma_e(f)} < 0$?
+
+Where increasing YOUR signal decreases YOUR allocation?
+
+\subsection{The Answer: NO}
+
+\begin{theorem}[Non-Monotonicity Impossibility]
+\label{thm:non-monotonic-impossible}
+Any mechanism with $\frac{\partial \phi_e}{\partial \sigma_e(f)} < 0$ (direct non-monotonicity) violates at least one of:
+\begin{enumerate}
+\item \textbf{Sovereignty}: Entity's expression is penalized, not respected
+\item \textbf{Anti-gaming}: Entity incentivized to signal \textit{less} to beneficial partners
+\item \textbf{Truthful signaling}: Optimal signal $\ne$ true preference
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+Suppose $\frac{\partial \phi_e}{\partial \sigma_e(f)} < 0$ at some point.
+
+Consider entity $e$ with beneficial partner $f$ (i.e., $\beta(e,f) > 0$).
+
+From goal optimization:
+\[ \mathbb{P}(G_e) = g\left(\sum_f \beta(e,f) \cdot \A(f,e)\right) \]
+
+where $\A(f,e)$ depends on $\phi_e(\sigma_e(f))$.
+
+Taking derivative:
+\[ \frac{\partial \mathbb{P}}{\partial \sigma_e(f)} = g' \cdot \beta(e,f) \cdot \frac{\partial \A}{\partial \phi} \cdot \frac{\partial \phi_e}{\partial \sigma_e(f)} \]
+
+Given:
+\begin{itemize}
+\item $g' > 0$ (more capacity helps goal)
+\item $\beta(e,f) > 0$ (beneficial partner)
+\item $\frac{\partial \A}{\partial \phi} > 0$ (allocation increases with $\phi$)
+\item $\frac{\partial \phi_e}{\partial \sigma_e(f)} < 0$ (assumed)
+\end{itemize}
+
+Therefore:
+\[ \frac{\partial \mathbb{P}}{\partial \sigma_e(f)} < 0 \]
+
+Entity $e$ is incentivized to \textbf{decrease} signal to beneficial partner $f$!
+
+This creates three problems:
+
+\textbf{Violates anti-gaming}: Optimal to signal \textit{less} to helpful partners (opposite of cooperation).
+
+\textbf{Violates truthful signaling}: Entity must misrepresent preferences (signal low even though partner is beneficial).
+
+\textbf{Violates sovereignty}:Entity's expression ($\sigma_e(f)$) is \textbf{penalized}—not respected. Increasing expression \textit{harms} the entity.
+
+In all cases, fundamental properties are violated. \qed
+\end{proof}
+
+\subsection{The Three Cases of "Non-Monotonicity"}
+
+\begin{example}[Case 1: Direct Penalties (Invalid)]
+\[ \phi(\sigma_e(f)) = \begin{cases}
+\sigma_e(f) & \sigma_e(f) \le \theta \\
+\theta - (\sigma_e(f) - \theta) & \sigma_e(f) > \theta
+\end{cases} \]
+
+Penalizes signals above threshold.
+
+\textbf{Effect}: $\frac{\partial \phi}{\partial \sigma_e} < 0$ for $\sigma > \theta$.
+
+\textbf{Status}: Violates sovereignty and anti-gaming ✗
+\end{example}
+
+\begin{example}[Case 2: Competition (Valid, Not Actually Non-Monotonic)]
+\[ \phi_e(p) = \frac{\sigma_e(p)}{\sum_{f \in \E} \sigma_f(p)} \]
+
+Entity $e$'s share of provider $p$ under competition.
+
+\textbf{Analysis}:
+\begin{itemize}
+\item $\frac{\partial \phi_e}{\partial \sigma_e} > 0$ ✓ (monotonic in own signal!)
+\item $\frac{\partial \phi_e}{\partial \sigma_{f \ne e}} < 0$ (decreases when others signal more)
+\end{itemize}
+
+\textbf{This is competition, not non-monotonicity}!
+
+Your allocation decreases due to \textbf{others' signals}, not your own.
+
+\textbf{Status}: Valid, captured by "allocatable regime" concept ✓
+\end{example}
+
+\begin{example}[Case 3: Self-Imposed Constraints (Valid)]
+Entity voluntarily commits: "If I signal above $\theta$, penalize me."
+
+\textbf{Analysis}: This is just a \textbf{redefined constraint set}:
+\[ \C_e = \{\sigma : \sigma(f) \le \theta \text{ or allocation} = 0\} \]
+
+Not a non-monotonic transformation—just a tighter constraint on valid signals.
+
+\textbf{Status}: Valid (constraint choice) ✓
+\end{example}
+
+\subsection{The Philosophical Insight}
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{The Meaning of Weak Monotonicity}:
+
+\medskip
+
+Weak monotonicity ($\frac{\partial \phi}{\partial \sigma} \ge 0$) is not just a technical requirement.
+
+\medskip
+
+It is the \textbf{mathematical expression of respect for sovereignty}.
+
+\medskip
+
+For your expression to be respected, it must be \textbf{honored}—not \textbf{penalized}.
+
+\medskip
+
+Non-monotonic mechanisms treat signals as \textit{inputs to be regulated} rather than \textit{preferences to be respected}.
+}}
+\end{center}
+
+\subsection{The Sovereignty Boundary}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Inside Boundary (Valid)} & \textbf{Outside Boundary (Invalid)} \\
+\midrule
+$\frac{\partial \phi}{\partial \sigma} \ge 0$ & $\frac{\partial \phi}{\partial \sigma} < 0$ \\
+Signal is honored & Signal is penalized \\
+Sovereignty preserved & Sovereignty violated \\
+Anti-gaming works & Anti-gaming fails \\
+Truthful signaling & Strategic misrepresentation \\
+Cooperation optimal & Cooperation suboptimal \\
+\midrule
+\textbf{Framework applies} & \textbf{Framework doesn't apply} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Conclusion}: Weak monotonicity marks the \textbf{boundary} of sovereignty-preserving mechanisms.
+
+\part{Implications}
+
+\section{What We Discovered: The Core Insights}
+
+\subsection{Sovereignty Is Mathematical}
+
+Sovereignty is not vague or ideological—it has precise mathematical meaning:
+
+\begin{definition}[Mathematical Sovereignty]
+An allocation mechanism is \textbf{sovereignty-preserving} if and only if:
+\begin{enumerate}
+\item Entities retain \textbf{ultimate control} over their signals
+\item Signals are \textbf{unilaterally revocable} by originator
+\item \textbf{Revokable delegation} is permitted (to agents, AI, advisors)
+\item \textbf{Unrevokable ownership transfer} is forbidden
+\item Signals represent \textbf{flow} (current state), not stock
+\item Signal changes have \textbf{instantaneous effect}
+\end{enumerate}
+\end{definition}
+
+\textbf{Critical distinction}:
+\begin{itemize}
+\item Recognition with AI delegation: ✓ Valid (you can take back control)
+\item Money transfer: ✗ Invalid (recipient now owns it, you need consent)
+\item Proxy voting: ✓ Valid (you can revoke proxy)
+\item Vote selling: ✗ Invalid (buyer now owns vote, not revokable)
+\end{itemize}
+
+This immediately distinguishes valid (recognition, delegated votes, attention) from invalid (money, ownership, contracts) mechanisms.
+
+\subsection{Money Violates Sovereignty}
+
+\begin{theorem}[Money Exclusion]
+Traditional money-based coordination violates sovereignty.
+
+\textbf{Proof}: Money fails both signal and capacity sovereignty:
+
+\textbf{Signal level}:
+\begin{itemize}
+\item Retrieval requires consent (not unilaterally revocable) ✗
+\item Ownership transfers (unrevokable) ✗
+\end{itemize}
+
+\textbf{Capacity level}:
+\begin{itemize}
+\item Balance accumulates over time (stock not flow) ✗
+\item Creates permanent power imbalances (wealth concentration) ✗
+\item Past accumulation constrains future relationships ✗
+\end{itemize}
+
+Therefore money-based markets are \textbf{outside} this framework. \qed
+\end{theorem}
+
+\textit{This is a mathematical fact, not a value judgment.}
+
+\textbf{The deep issue with money}: It's not just that individual transactions are non-revokable. It's that money is \textbf{accumulated stock} (wealth), which creates:
+\begin{itemize}
+\item Permanent power differentials
+\item Non-revokable control over others' behavior
+\item Past allocations determining future power
+\item Violation of ongoing capacity sovereignty
+\end{itemize}
+
+\subsection{The Capacity-Based Economy}
+
+\begin{definition}[Capacity-Based Coordination]
+A \textbf{capacity-based economy} organizes the allocation of entities' capacity (labor, provision, resources) through sovereign, revocable relationships—rather than through ownership transfer.
+\end{definition}
+
+\textbf{Key principles}:
+
+\begin{enumerate}
+\item \textbf{Agnostic to property relations}: The framework doesn't care who "owns" what—it cares about capacity allocation
+
+\item \textbf{Possession ≠ Ownership}: When objects shift hands, this doesn't necessarily constitute ownership transfer. Rather: entity $e$ allocated capacity to provide object to entity $f$.
+
+\item \textbf{Ongoing relationships, not transactions}: Instead of discrete ownership transfers, continuous capacity allocation relationships
+
+\item \textbf{Revocability preserved}: Even if you're "using" something I provided, I retain sovereignty to reallocate my capacity
+
+\item \textbf{No permanent accumulation}: Flow-based, not stock-based. No accumulated wealth creating permanent power imbalances
+\end{enumerate}
+
+\begin{example}[Housing: Ownership vs Capacity]
+\textbf{Ownership model}:
+\begin{itemize}
+\item Landlord owns building (permanent, stock)
+\item Tenant pays rent (money, accumulated)
+\item Power imbalance from ownership
+\item Tenant can be evicted, landlord retains ownership
+\end{itemize}
+
+\textbf{Capacity model}:
+\begin{itemize}
+\item Provider allocates capacity to provide useful-housing
+\item Recipient allocates recognition/capacity to provider
+\item Mutual relationship, both sides sovereign and revocable
+\item If relationship deteriorates, either can reallocate capacity
+\item No permanent ownership accumulation
+\end{itemize}
+
+The capacity model is \textbf{symmetric sovereignty}—both sides retain revocability.
+\end{example}
+
+\begin{remark}[Compatibility with Legal Systems]
+This framework is \textbf{agnostic to legal property relations}:
+\begin{itemize}
+\item Can operate within existing ownership systems (members retain legal property)
+\item Can operate within alternative systems (commons, cooperatives, etc.)
+\item Focus is on \textbf{capacity allocation}, not legal ownership structure
+\item Legal ownership might exist, but coordination happens through capacity signals
+\end{itemize}
+\end{remark}
+
+\textbf{The profound shift}:
+
+From: "Who owns what?" (stock, permanent, power imbalances)
+
+To: "Who allocates capacity to whom?" (flow, revocable, symmetric sovereignty)
+
+\subsection{Initial Property Imbalance and Framework Power}
+
+Historical property concentration (whether capitalist wealth, state power, or inherited privilege) creates initial conditions—but does it create persistent framework power?
+
+\textbf{The answer depends on participant choice}:
+
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{Two Scenarios}:
+
+\medskip
+
+\textbf{Scenario A}: IF participants allocate capacity to enforce external ownership claims
+\begin{itemize}
+\item THEN those structures persist within the framework
+\item Property rights, state authority, contracts are enforced
+\item But enforcement is now through ongoing, revocable consent
+\item Cost of enforcement is visible (anti-gaming opportunity cost)
+\item Can be withdrawn unilaterally at any time
+\end{itemize}
+
+\medskip
+
+\textbf{Scenario B}: IF participants do NOT allocate capacity to enforce external claims
+\begin{itemize}
+\item THEN accumulated power advantages deplete over time
+\item Property/authority cannot translate to framework power
+\item Only ongoing value provision maintains influence
+\item Depletion dynamics apply (detailed below)
+\end{itemize}
+}}
+\end{center}
+
+\medskip
+
+\textbf{The fundamental shift the framework provides}:
+\begin{itemize}
+\item \textbf{Non-sovereign systems}: Ownership enforced regardless of ongoing consent (state monopoly on violence)
+\item \textbf{This framework}: Ownership claims persist \textbf{only if} participants continuously choose to allocate capacity to enforce them
+\end{itemize}
+
+\textbf{Key insight}: Not automatic dissolution of existing power structures, but transition from \textbf{imposed enforcement} to \textbf{ongoing consensual support}. External ownership has no inherent power—it persists only through revocable, voluntary capacity allocation with visible opportunity costs.
+
+\medskip
+
+\textbf{The rest of this section explores Scenario B} (no external enforcement), showing how accumulated power advantages deplete when participants exercise sovereignty to not enforce external ownership claims:
+
+\begin{proposition}[Property Depletion Dynamics]
+When participants do not allocate capacity to enforce external ownership claims, accumulated ownership from non-sovereign systems can be converted to initial recognition signals, but these advantages deplete unless converted to actual value provision.
+
+\textbf{The mechanism}:
+
+\begin{center}
+\begin{verbatim}
+Initial Property/Power → Convert to initial recognition signals
+                       ↘ BUT signals are SOVEREIGN (revocable)
+                       ↘ AND flow-based (no accumulation)
+                       ↘ AND subject to anti-gaming (depletes if not reciprocated)
+                       ↘ No mechanism to convert ownership into ongoing framework power
+\end{verbatim}
+\end{center}
+
+\textbf{Forms of accumulated power}:
+\begin{itemize}
+\item \textbf{Capitalist property}: Wealth accumulated through ownership
+\item \textbf{State power}: Authority accumulated through institutional position
+\item \textbf{Inherited privilege}: Status accumulated through lineage or history
+\item \textbf{Monopoly control}: Market power accumulated through exclusion
+\item \textbf{Platform dominance}: Network effects from captured user base
+\end{itemize}
+
+All share the property: accumulated through non-sovereign (unrevokable) mechanisms.
+
+\textbf{The depletion dynamic}:
+
+If entities with accumulated power try to use property-derived recognition without reciprocating value:
+
+\begin{enumerate}
+\item \textbf{Initial round}: High recognition from property/power conversion
+\begin{itemize}
+\item Wealthy entity allocates recognition expecting reciprocation
+\item Or uses property to incentivize initial recognition from others
+\item Initial advantage exists
+\end{itemize}
+
+\item \textbf{Subsequent rounds}: Recipients apply anti-gaming
+\begin{itemize}
+\item Entities observe: does this partner actually help my goals?
+\item If property holder provides value: maintain recognition ✓
+\item If property holder doesn't provide value: reallocate to beneficial partners ✓
+\item Anti-gaming theorem ensures optimal reallocation
+\end{itemize}
+
+\item \textbf{Over time}: Property-derived advantage depletes
+\begin{itemize}
+\item Must provide ongoing value to maintain recognition
+\item Cannot rely on accumulated stock
+\item Flow-based system prevents power accumulation
+\item Revocability prevents lock-in
+\end{itemize}
+\end{enumerate}
+
+\textbf{Result}: When external ownership enforcement is not allocated, property holders must \textbf{convert ownership to value provision} or lose influence.
+\end{proposition}
+
+\begin{example}[Capitalist Attempting Framework Dominance]
+\textbf{Initial state}:
+\begin{itemize}
+\item Capitalist $C$ has significant property wealth
+\item Converts wealth to initial recognition: $R(C, f_i)$ for many entities
+\item Expects reciprocation based on property/bribes
+\end{itemize}
+
+\textbf{Round 1}: Partners reciprocate based on incentives:
+\[ R(f_i, C) = \text{high (incentivized by property)} \]
+
+\textbf{Round 2-10}: Partners discover better alternatives:
+\begin{itemize}
+\item Entity $f_i$ notices partner $g$ provides more actual value
+\item Anti-gaming: $\beta(f_i, g) > \beta(f_i, C)$
+\item Rational reallocation: $R(f_i, g)$ increases, $R(f_i, C)$ decreases
+\item No lock-in: can reallocate instantly
+\end{itemize}
+
+\textbf{Equilibrium}: 
+\begin{itemize}
+\item If $C$ provides value: maintains recognition proportional to value
+\item If $C$ doesn't provide value: recognition depletes to near-zero
+\item Property advantage has been \textbf{neutralized by sovereignty + anti-gaming}
+\end{itemize}
+\end{example}
+
+\begin{example}[State Power Attempting Framework Control]
+\textbf{Initial state}:
+\begin{itemize}
+\item State entity $S$ has institutional authority
+\item Attempts to use authority to command recognition
+\item But recognition is sovereign—cannot be commanded
+\end{itemize}
+
+\textbf{Two scenarios}:
+
+\textbf{Scenario A} (State provides value):
+\begin{itemize}
+\item State provides infrastructure, coordination, public goods
+\item Entities recognize state based on actual value received
+\item Recognition maintained proportional to value provision
+\item Authority is irrelevant—value provision matters
+\end{itemize}
+
+\textbf{Scenario B} (State demands recognition without value):
+\begin{itemize}
+\item State cannot enforce recognition (sovereignty prevents it)
+\item Or entities comply minimally, reallocate to beneficial partners
+\item State's non-reciprocation becomes visible
+\item Recognition depletes as entities find better partners
+\end{itemize}
+
+\textbf{Result}: State power (institutional authority) cannot translate to framework power without value provision.
+\end{example}
+
+\begin{remark}[Why This Works]
+Three axioms prevent accumulated power persistence:
+
+\begin{enumerate}
+\item \textbf{Sovereignty}: Cannot force others to maintain recognition
+\item \textbf{Weak Monotonicity}: Anti-gaming drives reallocation to value providers
+\item \textbf{Flow not Stock}: No recognition accumulation, continuous reallocation required
+\end{enumerate}
+
+Historical advantages can provide initial positioning, but ongoing framework power requires ongoing value provision.
+
+\textbf{This is fundamentally different from non-sovereign systems}:
+\begin{itemize}
+\item Money: Accumulates as stock, transfers are unrevokable → power persists
+\item State authority: Institutional position grants ongoing power → authority persists
+\item Ownership: Property rights enforced externally → control persists
+\end{itemize}
+
+In the framework: Power must be \textbf{re-earned continuously} through value provision.
+\end{remark}
+
+\subsection{Cooperation Emerges Universally}
+
+\begin{theorem}[Universal Cooperation]
+For \textit{any} mechanism satisfying the three axioms:
+\begin{itemize}
+\item Anti-gaming holds (Theorem \ref{thm:anti-gaming})
+\item Entities maximize goals by cooperating with beneficial partners
+\item No external enforcement needed
+\item Goal optimization → cooperation
+\end{itemize}
+
+\textbf{Cooperation is not assumed—it emerges from the axioms.}
+\end{theorem}
+
+\textbf{This works for any goal type}:
+
+\begin{example}[Selfish vs Social Goals]
+\textbf{Entity A with selfish goal}: "Maximize my personal wealth"
+\begin{itemize}
+\item Partners who help: skilled collaborators, customers, suppliers
+\item Anti-gaming: Allocate recognition to partners who contribute to wealth
+\item Result: Cooperation with wealth-creating partners
+\end{itemize}
+
+\textbf{Entity B with social goal}: "Maximize community wellbeing"
+\begin{itemize}
+\item Partners who help: effective organizers, generous contributors, skilled teachers
+\item Anti-gaming: Allocate recognition to partners who improve community
+\item Result: Cooperation with community-benefiting partners
+\end{itemize}
+
+\textbf{Entity C with mixed goal}: "Both personal fulfillment AND reduce poverty"
+\begin{itemize}
+\item Partners who help: those who enable fulfilling work that reduces poverty
+\item Anti-gaming: Allocate to partners who advance both dimensions
+\item Result: Cooperation with partners aligned on both goals
+\end{itemize}
+
+The mathematics is identical in all three cases! The framework is completely agnostic to goal content.
+\end{example}
+
+\begin{remark}[Socially Beneficial Systems]
+If many entities have social/altruistic goals, the system naturally produces socially beneficial outcomes—not through sacrifice or enforcement, but through \textbf{aligned goal optimization}.
+
+A society of entities pursuing "maximize collective wellbeing" will allocate capacity to those who actually improve collective wellbeing. No central planner needed—just goal-directed individuals with social objectives.
+\end{remark}
+
+\subsection{Infinite Designs Possible}
+
+\begin{corollary}[Design Space]
+The three axioms generate an \textbf{infinite} design space:
+\begin{itemize}
+\item Any sovereign signal type (recognition, votes, attention, predictions, …)
+\item × Any valid constraint ($L^1$, $L^2$, entropy, custom, …)
+\item × Any monotonic transformation (min, normalize, aggregate, market-clear, …)
+\item × Any conservative allocation (proportional, capped, multi-round, …)
+\end{itemize}
+
+= Infinite valid mechanisms, all with guaranteed anti-gaming!
+\end{corollary}
+
+\subsection{The Profound Result}
+
+\begin{center}
+\Large
+\fbox{\parbox{0.9\textwidth}{
+\centering
+
+\textbf{Three Simple Axioms}
+
+↓
+
+\textbf{Infinite Valid Designs}
+
+↓
+
+\textbf{Universal Anti-Gaming}
+
+↓
+
+\textbf{Emergent Cooperation}
+}}
+\end{center}
+
+\medskip
+
+\begin{center}
+\textit{We didn't design a coordination system.}
+
+\medskip
+
+\textit{We discovered the minimal requirements for sovereignty-preserving coordination—}
+
+\textit{and found they generate an infinite design space,}
+
+\textit{all with guaranteed cooperative properties.}
+\end{center}
+
+\section{Vision and Conclusion}
+
+\subsection{A New Paradigm for Coordination}
+
+This framework represents a fundamentally new approach to coordination:
+
+\textbf{Characteristics}:
+\begin{itemize}
+\item \textbf{Not imposed top-down}: Emerges from pairwise relationships
+\item \textbf{Not domain-specific}: Applies universally (humans, AI, organizations, resources)
+\item \textbf{Not mechanism-specific}: Infinite valid implementations
+\item \textbf{Not scale-dependent}: Works identically at any size
+\item \textbf{Mathematical foundation}: Provable properties, not heuristics
+\end{itemize}
+
+\textbf{Interoperability}: All mechanisms satisfying the axioms can potentially interoperate—different signal types can coexist, different constraints can bridge, different transformations can compose. The unified mathematical foundation enables translation.
+
+\subsection{The Vision}
+
+A world where:
+\begin{itemize}
+\item \textbf{Individuals retain sovereignty}: No forced transfers, no accumulated power imbalances
+\item \textbf{Cooperation emerges naturally}: From self-interest, not altruism or enforcement
+\item \textbf{Scale is irrelevant}: 10 or 10 billion entities, same principles
+\item \textbf{Any entity type participates}: Humans, AI, organizations seamlessly coordinate
+\item \textbf{Infinite mechanisms interoperate}: Diverse approaches unified by axioms
+\item \textbf{Anti-gaming is guaranteed}: Mathematical certainty, not hope
+\end{itemize}
+
+
+\subsection{The Core Result}
+
+\begin{center}
+\fbox{\parbox{0.8\textwidth}{
+\textbf{Three Axioms}:
+\begin{enumerate}
+\item Sovereignty (with unilateral revocability)
+\item Capacity Conservation
+\item Weak Monotonicity
+\end{enumerate}
+
+\medskip
+
+\textbf{Generate}:
+\begin{itemize}
+\item Infinite valid designs
+\item Universal anti-gaming
+\item Guaranteed convergence
+\item Natural Sybil resistance
+\item Scale invariance
+\end{itemize}
+
+\medskip
+
+\textbf{Boundary}:
+\[ \frac{\partial \phi}{\partial \sigma} \ge 0 \text{ (respect for sovereignty)} \]
+}}
+\end{center}
+
+\subsection{The Resolution}
+
+\begin{center}
+\large
+
+\textit{Sovereignty and cooperation are not in tension.}
+
+\medskip
+
+\textit{Given minimal mathematical structure,}
+
+\textit{they emerge together—}
+
+\textit{not through compromise, but through necessity.}
+
+\medskip
+
+\textit{This is the foundation for a new paradigm of coordination.}
+\end{center}
+
+% Bibliography removed for self-contained version
+
+\end{document}
+

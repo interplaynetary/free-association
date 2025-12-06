@@ -1,0 +1,3 @@
+name = "free-association-protocol" 
+main = "research/matrix/example-server.ts"
+compatibility_date = "2024-01-01"

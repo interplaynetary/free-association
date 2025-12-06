@@ -1,0 +1,52 @@
+# Source files (we publish compiled output)
+src/
+tsconfig.json
+tsup.config.ts
+
+# Tests
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+*.test.ts
+*.spec.ts
+
+# Development files
+.git/
+.gitignore
+.cursor/
+.vscode/
+.idea/
+
+# Documentation (keep only essential)
+docs/MENTAL-MODELS.md
+docs/STRUCTURE.md
+COMPLETE-WITH-LAMBDA-R.md
+ELEGANT-COMPLETE-STATUS.md
+FINAL-STATUS.md
+WHICH-ONE.md
+
+# Build artifacts
+*.tsbuildinfo
+.turbo/
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+

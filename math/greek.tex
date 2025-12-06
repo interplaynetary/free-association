@@ -1,0 +1,653 @@
+
+\subsection{Recognition Greeks: Sensitivity Analysis}
+
+\textbf{Intuition}: Like options pricing theory, we can decompose how goal achievement $\mathbb{P}(G)$ responds to different factors. The \textbf{greeks} measure sensitivities: how does $\mathbb{P}(G)$ change with recognition allocation, time, volatility, etc.? These provide risk analytics for recognition portfolios.
+
+\subsubsection{Greek Naming Grammar}
+
+We use a \textbf{systematic, compositional naming system} where names are mechanically constructed from mathematical structure. This enables:
+\begin{itemize}
+\item \textbf{Formula reconstruction}: Name $\rightarrow$ Formula
+\item \textbf{Predictive naming}: Any new Greek can be named instantly
+\item \textbf{Chemical-style exploration}: Systematically explore the derivative space
+\item \textbf{Zero memorization}: Rules generate all names
+\end{itemize}
+
+\textbf{Four Fundamental Dimensions}:
+\begin{itemize}
+\item \textbf{Shift/Reallocation} ($\delta$): Recognition shift between partners
+\item \textbf{Uncertainty} ($\sigma_\beta$): Confidence in benefit estimates
+\item \textbf{Time} ($t$): Temporal evolution
+\item \textbf{Discovery} ($r$): Search rate / opportunity cost
+\end{itemize}
+
+\textbf{Naming Pattern Types}:
+\begin{itemize}
+\item \textbf{Impact}: First derivative --- e.g., ``Shift Impact''
+\item \textbf{Shape}: Second derivative (same variable) --- e.g., ``Return Shape''
+\item \textbf{Under}: Cross-derivative with uncertainty --- e.g., ``Strategy Under Uncertainty''
+\item \textbf{Over}: Cross-derivative with time --- e.g., ``Strategy Over Time''
+\item \textbf{Momentum/Extremes}: Third derivative (same variable) --- e.g., ``Return Momentum''
+\end{itemize}
+
+\textbf{Construction Grammar}:
+\begin{align*}
+\text{First-order:} \quad & [\text{What}] \text{ Impact} \\
+\text{Same-variable 2nd:} \quad & [\text{What}] \text{ Shape} \\
+\text{Cross with } \sigma\text{:} \quad & [\text{What}] \text{ Under Uncertainty} \\
+\text{Cross with } t\text{:} \quad & [\text{What}] \text{ Over Time} \\
+\text{Same-variable 3rd:} \quad & [\text{What}] \text{ Momentum or Extremes} \\
+\text{Mixed 3rd:} \quad & [\text{What Shape}] \text{ Under/Over } [\text{Condition}]
+\end{align*}
+
+\textbf{Example}: $\frac{\partial^3 \mathbb{P}}{\partial \delta^2 \partial \sigma_\beta}$
+\begin{enumerate}
+\item Base: $\frac{\partial^2}{\partial \delta^2}$ is ``Return Shape'' (curvature)
+\item Varies with: $\sigma_\beta$ (uncertainty)
+\item Pattern: [Shape] Under [Uncertainty]
+\item \textbf{Name}: ``Curvature Under Uncertainty''
+\item \textbf{Traditional}: Zomma
+\item \textbf{Consideration}: Does convexity depend on confidence?
+\end{enumerate}
+
+\textbf{Format}: We use ``\textbf{Systematic Name (Traditional)}'' throughout, enabling both self-teaching (systematic) and literature connection (traditional).
+
+\subsubsection{Shift Impact (Delta)}
+
+\textbf{Definition}: Shift Impact measures the benefit magnitude from reallocating recognition:
+\[ \Delta(e, f_1 \leftarrow f_2) = \frac{d\mathbb{P}(G)}{d\delta} = \beta(e,f_1) \cdot \kappa_{f_1} \cdot h'(S_1) \cdot \frac{\partial S_1}{\partial R(e,f_1)} - \beta(e,f_2) \cdot \kappa_{f_2} \cdot h'(S_2) \cdot \frac{\partial S_2}{\partial R(e,f_2)} \]
+
+where $S_i = S(e,f_i,R)$, and $\delta$ is the shift: $R(e,f_1) \to R(e,f_1) + \delta$, $R(e,f_2) \to R(e,f_2) - \delta$.
+
+\textbf{For MR}: Simplifies to $\beta(e,f_1) \cdot \kappa_{f_1} \cdot h'(\MR_1) - \beta(e,f_2) \cdot \kappa_{f_2} \cdot h'(\MR_2)$ in under-allocated regime where $\frac{\partial S}{\partial R} = 1$.
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{High positive delta}: Strong directional exposure---shifting to $f_1$ significantly increases goal achievement
+\item \textbf{Near-zero delta}: Allocation is near-optimal for these partners, marginal gains diminishing
+\item \textbf{Portfolio delta}: $\Delta_{\text{total}} = \sum_{\text{all shifts}} \Delta(e, \text{shifts})$
+\end{itemize}
+
+\textbf{Application}: Delta indicates which reallocation moves have highest impact. Target high-delta shifts for fastest improvement.
+
+\subsubsection{Return Shape (Gamma)}
+
+\textbf{Definition}: Return Shape measures the convexity of goal achievement---whether returns accelerate or diminish:
+\[ \Gamma(e, f_1 \leftarrow f_2) = \frac{d^2\mathbb{P}(G)}{d\delta^2} = \frac{\partial \Delta}{\partial \delta} \]
+
+\textbf{Expanded form}:
+\[ \Gamma = \frac{d}{d\delta}\left[\beta(e,f_1) \cdot \kappa_{f_1} \cdot h'(S_1) \cdot \frac{\partial S_1}{\partial R(e,f_1)} - \beta(e,f_2) \cdot \kappa_{f_2} \cdot h'(S_2) \cdot \frac{\partial S_2}{\partial R(e,f_2)}\right] \]
+
+For $h(S) = S$ (linear capacity in share function):
+\[ \Gamma = \beta(e,f_1) \cdot \frac{\partial^2 \MR(e,f_1)}{\partial R(e,f_1)^2} - \beta(e,f_2) \cdot \frac{\partial^2 \MR(e,f_2)}{\partial R(e,f_2)^2} \]
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive gamma}: Convex region---returns accelerate with further allocation (increasing marginal returns)
+\item \textbf{Negative gamma}: Concave region---returns decelerate (diminishing marginal returns)
+\item \textbf{High $|\Gamma|$}: Allocation is highly sensitive to small changes; requires frequent rebalancing
+\end{itemize}
+
+\textbf{Note}: For $\MR(e,f) = \min(R(e,f), R(f,e))$, the derivative structure creates piecewise behavior:
+\[ \frac{\partial \MR}{\partial R(e,f)} = \begin{cases} 1 & \text{if } R(e,f) < R(f,e) \\ 0 & \text{if } R(e,f) > R(f,e) \end{cases} \]
+Creating a ``kink'' at $R(e,f) = R(f,e)$ where gamma is undefined (jump discontinuity).
+
+\subsubsection{Time Impact (Theta)}
+
+\textbf{Definition}: Time Impact measures how goal achievement evolves temporally, holding allocations constant:
+\[ \Theta(e) = \frac{d\mathbb{P}(G)}{dt} \]
+
+\textbf{Components}:
+\begin{itemize}
+\item \textbf{Capacity accumulation}: $\frac{d}{dt}\left[\sum_f \beta(e,f) \cdot C_f(e,t)\right]$ where $C_f(e,t)$ is time-dependent capacity
+\item \textbf{Relationship maturation}: As $\MR$ values stabilize and grow, $h(\MR(t))$ increases
+\item \textbf{Discovery acceleration}: Finding new beneficial partners over time
+\item \textbf{Opportunity cost of delay}: Each time period without optimal allocation costs potential goal achievement
+\end{itemize}
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive theta}: Goal achievement accelerates over time (compounding relationships)
+\item \textbf{Negative theta}: Time decay---urgency to act now rather than wait
+\item \textbf{Zero theta}: Time-invariant payoff structure
+\end{itemize}
+
+\textbf{Connection to correction velocity}: High negative theta creates urgency for fast correction. Every moment of misallocation costs goal achievement NOW.
+
+\subsubsection{Uncertainty Impact (Vega)}
+
+\textbf{Definition}: Uncertainty Impact measures how confidence in benefit estimates affects goal achievement:
+\[ \nu(e) = \frac{\partial \mathbb{P}(G)}{\partial \sigma_\beta} \]
+
+where $\sigma_\beta$ is the volatility (uncertainty) in benefit gradient estimates $\beta(e,f)$.
+
+\textbf{Expanded form}: Assuming $\beta(e,f)$ are random variables with variance $\sigma_\beta^2$:
+\[ \nu(e) = \sum_f \frac{\partial \mathbb{P}(G)}{\partial \beta(e,f)} \cdot \frac{\partial \beta(e,f)}{\partial \sigma_\beta} \]
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{High vega}: Goal achievement highly sensitive to partner uncertainty---need stable, reliable partners
+\item \textbf{Low vega}: Robust allocation---less affected by fluctuations in partner value
+\item \textbf{Vega peaks at mid-allocations}: Uncertainty matters most when partners are similar in value
+\end{itemize}
+
+\textbf{Risk management}:
+\begin{itemize}
+\item High vega $\Rightarrow$ Diversify partner portfolio (reduce concentration risk)
+\item Use trial periods to reduce $\sigma_\beta$ before large allocations
+\item Prefer partners with verifiable, stable capacity
+\end{itemize}
+
+\subsubsection{Discovery Impact (Rho)}
+
+\textbf{Definition}: Discovery Impact measures how the discovery rate affects goal achievement---the value of search versus commitment:
+\[ \rho(e) = \frac{\partial \mathbb{P}(G)}{\partial r} \]
+
+\textbf{Interpretation}: The opportunity cost rate $r$ represents:
+\begin{itemize}
+\item Rate at which new beneficial partners are discovered
+\item Cost of ``locking in'' recognition to current partners
+\item Discount rate for future vs present allocations
+\end{itemize}
+
+\textbf{Expanded form}: If goal achievement is discounted over time:
+\[ \mathbb{P}(G) = \int_0^\infty e^{-rt} \cdot \text{InstantaneousBenefit}(t) \, dt \]
+
+Then:
+\[ \rho = \frac{\partial}{\partial r} \left[\int_0^\infty e^{-rt} \cdot \sum_f \beta(e,f,t) \cdot C_f(e,t) \, dt\right] \]
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Negative rho}: Higher opportunity costs reduce value of current allocations
+\item \textbf{High $|\rho|$}: Allocation highly sensitive to discovery rate---maintain flexibility
+\item \textbf{Low $|\rho|$}: Stable environment, less need for exploration
+\end{itemize}
+
+\textbf{Connection to exploration-engagement}: 
+\begin{itemize}
+\item High $r$ (fast discovery) $\Rightarrow$ Maintain flexibility, explore more
+\item Low $r$ (slow discovery) $\Rightarrow$ Engage deeply with known partners, allocate thoroughly
+\end{itemize}
+
+\subsubsection{Second-Order Greeks: Cross-Sensitivities}
+
+Second-order Greeks measure how first-order Greeks change with respect to other parameters---the \textbf{interaction effects}.
+
+\textbf{Strategy Under Uncertainty (Vanna)}
+
+\textbf{Definition}: How allocation strategy depends on confidence in partner value:
+\[ \text{Strategy Under Uncertainty}(e) = \frac{\partial^2 \mathbb{P}(G)}{\partial \delta \partial \sigma_\beta} = \frac{\partial (\text{Shift Impact})}{\partial \sigma_\beta} = \frac{\partial (\text{Uncertainty Impact})}{\partial \delta} \]
+
+\textbf{Consideration}: Does your reallocation strategy require high confidence, or is it robust to uncertainty?
+
+\textbf{Expanded form}:
+\[ \text{Vanna} = \frac{\partial}{\partial \sigma_\beta} \left[\beta(e,f_1) \cdot \kappa_{f_1} \cdot h'(S_1) \cdot \frac{\partial S_1}{\partial R(e,f_1)} - \beta(e,f_2) \cdot \kappa_{f_2} \cdot h'(S_2) \cdot \frac{\partial S_2}{\partial R(e,f_2)}\right] \]
+
+Assuming $\beta(e,f) = \bar{\beta}(e,f) + \sigma_\beta \cdot \epsilon_f$ where $\epsilon_f$ is uncertainty:
+\[ \text{Vanna} = \epsilon_{f_1} \cdot h'(\MR(e,f_1)) - \epsilon_{f_2} \cdot h'(\MR(e,f_2)) \]
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{High positive Vanna}: Delta increases when uncertainty increases---benefit from volatility
+\item \textbf{Negative Vanna}: Delta decreases with uncertainty---hurt by volatility
+\item \textbf{Vanna peaks}: Where allocation shift has most exposure to partner uncertainty
+\end{itemize}
+
+\textbf{Risk management}: High |Vanna| means allocation strategy is sensitive to confidence in benefit estimates. Hedge by:
+\begin{itemize}
+\item Seeking verifiable information to reduce $\sigma_\beta$
+\item Diversifying to partners with uncorrelated uncertainties
+\item Using trial periods before large allocations
+\end{itemize}
+
+\textbf{Strategy Over Time (Charm)}
+
+\textbf{Definition}: How allocation strategy evolves temporally---whether timing windows open or close:
+\[ \text{Strategy Over Time}(e) = \frac{\partial^2 \mathbb{P}(G)}{\partial \delta \partial t} = \frac{\partial (\text{Shift Impact})}{\partial t} = \frac{\partial (\text{Time Impact})}{\partial \delta} \]
+
+\textbf{Consideration}: Is the window of opportunity opening or closing over time?
+
+\textbf{Components}:
+\begin{itemize}
+\item Relationship maturation: As $\MR(e,f,t)$ evolves, delta changes
+\item Learning effects: As $\beta$ estimates improve over time, optimal shifts change
+\item Network evolution: New partners appear, old ones leave
+\end{itemize}
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Charm}: Delta increases over time---wait strategy beneficial
+\item \textbf{Negative Charm}: Delta decreases over time---act now before opportunity fades
+\item \textbf{High |Charm|}: Allocation urgency matters (time-sensitive decisions)
+\end{itemize}
+
+\textbf{Application}: 
+\begin{itemize}
+\item Positive Charm + low Delta $\Rightarrow$ Patience may be optimal
+\item Negative Charm + high Delta $\Rightarrow$ Urgent reallocation needed
+\item Monitor $\frac{d\Delta}{dt}$ to time allocations optimally
+\end{itemize}
+
+\textbf{Uncertainty Shape (Vomma)}
+
+\textbf{Definition}: The convexity structure of uncertainty impact---whether fragile or antifragile to volatility:
+\[ \text{Uncertainty Shape}(e) = \frac{\partial^2 \mathbb{P}(G)}{\partial \sigma_\beta^2} = \frac{\partial (\text{Uncertainty Impact})}{\partial \sigma_\beta} \]
+
+\textbf{Consideration}: Are you positioned to benefit or suffer from volatility spikes?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Vomma}: Goal achievement is convex in uncertainty---benefits from volatility spikes
+\item \textbf{Negative Vomma}: Goal achievement is concave in uncertainty---hurt by volatility increases
+\item \textbf{High |Vomma|}: Extremely sensitive to changes in partner reliability
+\end{itemize}
+
+\textbf{Application}: Vomma measures ``volatility of volatility'' exposure. High Vomma means:
+\begin{itemize}
+\item Need stable partners with predictable uncertainty profiles
+\item Vulnerable to sudden confidence shocks
+\item Consider hedging with options on partner reliability (e.g., insurance, guarantees)
+\end{itemize}
+
+\textbf{Uncertainty Over Time (Veta)}
+
+\textbf{Definition}: How uncertainty impact evolves through learning and experience:
+\[ \text{Uncertainty Over Time}(e) = \frac{\partial^2 \mathbb{P}(G)}{\partial \sigma_\beta \partial t} = \frac{\partial (\text{Uncertainty Impact})}{\partial t} = \frac{\partial (\text{Time Impact})}{\partial \sigma_\beta} \]
+
+\textbf{Consideration}: Does learning reduce uncertainty exposure over time? Should you front-load exploration?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Veta}: Uncertainty exposure increases over time
+\item \textbf{Negative Veta}: Uncertainty exposure decreases over time (learning reduces sensitivity)
+\item \textbf{High |Veta|}: Timing matters for uncertainty management
+\end{itemize}
+
+\textbf{Application}: Negative Veta (typical in learning scenarios) means:
+\begin{itemize}
+\item Early decisions more sensitive to uncertainty
+\item Information gathering has declining marginal value over time
+\item Front-load learning and exploration
+\end{itemize}
+
+\textbf{Discovery Under Uncertainty (Vera)}
+
+\textbf{Definition}: How discovery value depends on confidence level---can you search effectively under uncertainty:
+\[ \text{Discovery Under Uncertainty}(e) = \frac{\partial^2 \mathbb{P}(G)}{\partial r \partial \sigma_\beta} = \frac{\partial (\text{Discovery Impact})}{\partial \sigma_\beta} = \frac{\partial (\text{Uncertainty Impact})}{\partial r} \]
+
+\textbf{Consideration}: Does your exploration strategy require high confidence, or can you search effectively with incomplete information?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Vera}: In high-uncertainty environments, opportunity cost matters more
+\item \textbf{Negative Vera}: In high-uncertainty environments, opportunity cost matters less
+\end{itemize}
+
+\textbf{Application}: Guides exploration-engagement under uncertainty:
+\begin{itemize}
+\item High Vera + high $\sigma_\beta$ $\Rightarrow$ Maintain flexibility for discovery
+\item Low Vera + high $\sigma_\beta$ $\Rightarrow$ Commit despite uncertainty
+\end{itemize}
+
+\subsubsection{Third-Order Greeks: Higher-Order Dynamics}
+
+Third-order Greeks measure how second-order Greeks change---providing insight into \textbf{acceleration of acceleration}.
+
+\textbf{Return Momentum (Speed)}
+
+\textbf{Definition}: The momentum of returns---whether acceleration is building or fading:
+\[ \text{Return Momentum}(e) = \frac{\partial^3 \mathbb{P}(G)}{\partial \delta^3} = \frac{\partial (\text{Return Shape})}{\partial \delta} \]
+
+\textbf{Consideration}: Is momentum building toward a tipping point, or are you approaching a plateau?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Speed}: Convexity accelerates with further allocation
+\item \textbf{Negative Speed}: Convexity diminishes (inflection point approaching)
+\item \textbf{High |Speed|}: Extreme sensitivity to allocation size
+\end{itemize}
+
+\textbf{Application}: Speed indicates ``tipping points'' in allocation:
+\begin{itemize}
+\item Positive Speed near current allocation $\Rightarrow$ Small moves trigger acceleration
+\item Negative Speed $\Rightarrow$ Approaching diminishing returns zone
+\item Monitor Speed to avoid over-allocating past optimal
+\end{itemize}
+
+\textbf{Practical note}: For piecewise-linear MR function, Speed captures behavior near the ``kink'' at $R(e,f) = R(f,e)$.
+
+\textbf{Curvature Under Uncertainty (Zomma)}
+
+\textbf{Definition}: How return convexity depends on confidence---does your curvature strategy require certainty:
+\[ \text{Curvature Under Uncertainty}(e) = \frac{\partial^3 \mathbb{P}(G)}{\partial \delta^2 \partial \sigma_\beta} = \frac{\partial (\text{Return Shape})}{\partial \sigma_\beta} = \frac{\partial (\text{Strategy Under Uncertainty})}{\partial \delta} \]
+
+\textbf{Consideration}: Can you engage in gamma scalping (rebalancing for convexity) when uncertain about partners, or do you need high confidence?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Zomma}: Convexity increases with uncertainty---more gamma in volatile environments
+\item \textbf{Negative Zomma}: Convexity decreases with uncertainty---less gamma in volatile environments
+\item \textbf{High |Zomma|}: Gamma scalping strategy highly dependent on partner reliability
+\end{itemize}
+
+\textbf{Application}: Zomma guides dynamic hedging under uncertainty:
+\begin{itemize}
+\item Positive Zomma $\Rightarrow$ Increase rebalancing frequency in uncertain environments
+\item Negative Zomma $\Rightarrow$ Reduce rebalancing in uncertain environments (convexity disappears)
+\item Trade-off: Rebalancing costs vs gamma profit
+\end{itemize}
+
+\textbf{Curvature Over Time (Color)}
+
+\textbf{Definition}: How return convexity evolves temporally---whether curvature improves or decays:
+\[ \text{Curvature Over Time}(e) = \frac{\partial^3 \mathbb{P}(G)}{\partial \delta^2 \partial t} = \frac{\partial (\text{Return Shape})}{\partial t} = \frac{\partial (\text{Strategy Over Time})}{\partial \delta} \]
+
+\textbf{Consideration}: Should you rebalance now while convexity is favorable, or wait for it to improve?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Color}: Convexity increases over time---gamma scalping becomes more profitable
+\item \textbf{Negative Color}: Convexity decreases over time---gamma scalping becomes less profitable
+\item \textbf{High |Color|}: Time-sensitive gamma management required
+\end{itemize}
+
+\textbf{Application}: Color determines optimal rebalancing schedules:
+\begin{itemize}
+\item Positive Color $\Rightarrow$ Delay rebalancing (gamma improves with time)
+\item Negative Color $\Rightarrow$ Rebalance immediately (gamma decays)
+\item Factor Color into rebalancing cost-benefit analysis
+\end{itemize}
+
+\textbf{Uncertainty Extremes (Ultima)}
+
+\textbf{Definition}: How you respond to extreme uncertainty---tail risk structure:
+\[ \text{Uncertainty Extremes}(e) = \frac{\partial^3 \mathbb{P}(G)}{\partial \sigma_\beta^3} = \frac{\partial (\text{Uncertainty Shape})}{\partial \sigma_\beta} \]
+
+\textbf{Consideration}: Are you vulnerable or resilient to Black Swan events and tail risks?
+
+\textbf{Interpretation}:
+\begin{itemize}
+\item \textbf{Positive Ultima}: Volatility convexity accelerates---extreme sensitivity to uncertainty spikes
+\item \textbf{Negative Ultima}: Volatility convexity diminishes
+\item \textbf{High |Ultima|}: Portfolio is extremely fragile/antifragile to volatility changes
+\end{itemize}
+
+\textbf{Application}: Ultima measures ``tail risk'' in uncertainty:
+\begin{itemize}
+\item High positive Ultima $\Rightarrow$ Antifragile portfolio (benefits from Black Swans)
+\item High negative Ultima $\Rightarrow$ Fragile portfolio (vulnerable to tail events)
+\item Use Ultima to assess portfolio resilience to extreme uncertainty
+\end{itemize}
+
+\subsubsection{Complete Greeks Hierarchy}
+
+\textbf{First-Order (Base Responses)}:
+\begin{itemize}
+\item \textbf{Allocation Response} ($\Delta$): $\frac{\partial \mathbb{P}}{\partial \delta}$
+\item \textbf{Uncertainty Response} ($\nu$): $\frac{\partial \mathbb{P}}{\partial \sigma_\beta}$
+\item \textbf{Temporal Response} ($\Theta$): $\frac{\partial \mathbb{P}}{\partial t}$
+\item \textbf{Opportunity Response} ($\rho$): $\frac{\partial \mathbb{P}}{\partial r}$
+\end{itemize}
+
+\textbf{Second-Order (Curvatures \& Couplings)}:
+\begin{itemize}
+\item \textbf{Allocation Curvature} ($\Gamma$): $\frac{\partial^2 \mathbb{P}}{\partial \delta^2}$ --- Convexity in allocation
+\item \textbf{Uncertainty Curvature} (Vomma): $\frac{\partial^2 \mathbb{P}}{\partial \sigma_\beta^2}$ --- Convexity in uncertainty
+\item \textbf{Allocation--Uncertainty Coupling} (Vanna): $\frac{\partial^2 \mathbb{P}}{\partial \delta \partial \sigma_\beta}$ --- How $\Delta$ varies with $\sigma$
+\item \textbf{Allocation--Temporal Coupling} (Charm): $\frac{\partial^2 \mathbb{P}}{\partial \delta \partial t}$ --- How $\Delta$ varies with $t$
+\item \textbf{Uncertainty--Temporal Coupling} (Veta): $\frac{\partial^2 \mathbb{P}}{\partial \sigma_\beta \partial t}$ --- How $\nu$ varies with $t$
+\item \textbf{Opportunity--Uncertainty Coupling} (Vera): $\frac{\partial^2 \mathbb{P}}{\partial r \partial \sigma_\beta}$ --- How $\rho$ varies with $\sigma$
+\end{itemize}
+
+\textbf{Third-Order (Accelerations \& Curvature Couplings)}:
+\begin{itemize}
+\item \textbf{Allocation Acceleration} (Speed): $\frac{\partial^3 \mathbb{P}}{\partial \delta^3}$ --- How $\Gamma$ varies with $\delta$
+\item \textbf{Uncertainty Acceleration} (Ultima): $\frac{\partial^3 \mathbb{P}}{\partial \sigma_\beta^3}$ --- How Uncertainty Curvature varies with $\sigma$
+\item \textbf{Allocation Curvature--Uncertainty Coupling} (Zomma): $\frac{\partial^3 \mathbb{P}}{\partial \delta^2 \partial \sigma_\beta}$ --- How $\Gamma$ varies with $\sigma$
+\item \textbf{Allocation Curvature--Temporal Coupling} (Color): $\frac{\partial^3 \mathbb{P}}{\partial \delta^2 \partial t}$ --- How $\Gamma$ varies with $t$
+\end{itemize}
+
+\textbf{Greek Symmetries} (by Schwarz's theorem, for smooth $\mathbb{P}$):
+\[ \frac{\partial^2 \mathbb{P}}{\partial x \partial y} = \frac{\partial^2 \mathbb{P}}{\partial y \partial x} \]
+
+Thus all couplings are symmetric:
+\begin{itemize}
+\item Allocation--Uncertainty Coupling = $\frac{\partial (\text{Allocation Response})}{\partial \sigma_\beta} = \frac{\partial (\text{Uncertainty Response})}{\partial \delta}$
+\item Allocation--Temporal Coupling = $\frac{\partial (\text{Allocation Response})}{\partial t} = \frac{\partial (\text{Temporal Response})}{\partial \delta}$
+\item Uncertainty--Temporal Coupling = $\frac{\partial (\text{Uncertainty Response})}{\partial t} = \frac{\partial (\text{Temporal Response})}{\partial \sigma_\beta}$
+\end{itemize}
+
+This symmetry validates the ``Coupling'' nomenclature and provides consistency checks.
+
+These symmetries provide consistency checks for numerical implementations.
+
+\subsubsection{Portfolio Greeks: Aggregation}
+
+For an entity's entire recognition portfolio:
+
+\textbf{Total Delta}:
+\[ \Delta_{\text{total}}(e) = \sum_{(f_1,f_2)} w_{f_1,f_2} \cdot \Delta(e, f_1 \leftarrow f_2) \]
+where $w_{f_1,f_2}$ are weights for potential shifts.
+
+\textbf{Dollar Delta} (in capacity units):
+\[ \Delta_\$ = \Delta_{\text{total}} \cdot \left(\sum_f C_f(e)\right) \]
+
+\textbf{Greeks Surface}: For all possible shifts, create a heatmap:
+\[ \Sigma_{\text{greeks}} = \{(\delta R(e,f_1), \delta R(e,f_2), \Delta, \Gamma) \mid f_1, f_2 \in \E\} \]
+
+This provides complete sensitivity landscape for optimization.
+
+\subsubsection{Hedging and Risk Management}
+
+\textbf{Delta-Neutral Portfolio}:
+To eliminate directional exposure (insensitive to small changes):
+\[ \Delta_{\text{total}}(e) = 0 \]
+Achieved by balancing positive-delta and negative-delta shifts.
+
+\textbf{Gamma Scalping}:
+In high-gamma regions, frequently rebalance to capture convexity:
+\begin{enumerate}
+\item Measure current $\Gamma$
+\item If $|\Gamma| > \theta_{\text{threshold}}$: Make small adjustment $\delta$
+\item Capture delta profit: $\Delta \cdot \delta$
+\item Repeat as allocation drifts
+\end{enumerate}
+
+\textbf{Theta Management}:
+If $\Theta < 0$ (time decay):
+\begin{itemize}
+\item Act urgently---delaying allocation costs goal achievement
+\item Prioritize high-delta moves
+\item Reduce search time (opportunity cost of delay)
+\end{itemize}
+
+If $\Theta > 0$ (time benefit):
+\begin{itemize}
+\item Patience can be strategic
+\item Allow relationships to mature before reallocating
+\item Compound returns over time
+\end{itemize}
+
+\textbf{Vega Hedging}:
+Reduce sensitivity to partner uncertainty:
+\begin{itemize}
+\item \textbf{Diversification}: Spread recognition across many partners ($\nu \propto 1/\sqrt{n}$)
+\item \textbf{Stable partners}: Prefer low-$\sigma_\beta$ partners for core allocation
+\item \textbf{Trial allocations}: Small initial $R(e,f)$ to measure $\beta$ before committing
+\end{itemize}
+
+\textbf{Rho Management}:
+Adapt to opportunity cost environment:
+\begin{itemize}
+\item High $r$ (fast discovery): Keep options open, moderate allocations
+\item Low $r$ (slow discovery): Commit deeply to proven partners
+\item Monitor $\frac{dr}{dt}$: Anticipate changes in discovery rate
+\end{itemize}
+
+\subsubsection{Recognition as Options: The Complete Mapping}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llll}
+\toprule
+\textbf{Elegant Name (Traditional)} & \textbf{Order} & \textbf{Formula} & \textbf{Measures} \\
+\midrule
+\multicolumn{4}{l}{\textit{First-Order Greeks}} \\
+Delta ($\Delta$) & 1st & $\frac{\partial \mathbb{P}}{\partial \delta}$ & Allocation sensitivity \\
+Vega ($\nu$) & 1st & $\frac{\partial \mathbb{P}}{\partial \sigma_\beta}$ & Volatility sensitivity \\
+Theta ($\Theta$) & 1st & $\frac{\partial \mathbb{P}}{\partial t}$ & Time evolution \\
+Rho ($\rho$) & 1st & $\frac{\partial \mathbb{P}}{\partial r}$ & Opportunity cost \\
+\midrule
+\multicolumn{4}{l}{\textit{Second-Order Greeks}} \\
+Gamma ($\Gamma$) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial \delta^2}$ & Allocation convexity \\
+Confidence Sensitivity (Vanna) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial \delta \partial \sigma_\beta}$ & Certainty interaction \\
+Urgency Gradient (Charm) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial \delta \partial t}$ & Timing pressure \\
+Uncertainty Curvature (Vomma) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial \sigma_\beta^2}$ & Volatility convexity \\
+Learning Gradient (Veta) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial \sigma_\beta \partial t}$ & Knowledge acquisition \\
+Discovery Volatility (Vera) & 2nd & $\frac{\partial^2 \mathbb{P}}{\partial r \partial \sigma_\beta}$ & Search uncertainty \\
+\midrule
+\multicolumn{4}{l}{\textit{Third-Order Greeks}} \\
+Acceleration (Speed) & 3rd & $\frac{\partial^3 \mathbb{P}}{\partial \delta^3}$ & Curvature momentum \\
+Convexity Uncertainty (Zomma) & 3rd & $\frac{\partial^3 \mathbb{P}}{\partial \delta^2 \partial \sigma_\beta}$ & Gamma confidence \\
+Convexity Maturation (Color) & 3rd & $\frac{\partial^3 \mathbb{P}}{\partial \delta^2 \partial t}$ & Gamma aging \\
+Extremal Sensitivity (Ultima) & 3rd & $\frac{\partial^3 \mathbb{P}}{\partial \sigma_\beta^3}$ & Tail risk \\
+\bottomrule
+\end{tabular}
+\caption{Recognition Greeks with Descriptive Names}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Options Concept} & \textbf{Recognition Analog} & \textbf{Risk Management} \\
+\midrule
+Underlying $(S)$ & Allocation shift $\delta$ & Controllable \\
+Option value $(V)$ & Goal achievement $\mathbb{P}(G)$ & Objective \\
+Volatility $(\sigma)$ & Benefit uncertainty $\sigma_\beta$ & Reduce via learning \\
+Time $(t)$ & Goal horizon & Optimize timing \\
+Interest rate $(r)$ & Discovery rate & Adapt to environment \\
+\midrule
+Delta hedging & Rebalancing & Correction velocity \\
+Gamma scalping & Dynamic optimization & Utilize convexity \\
+Vega hedging & Diversification & Reduce uncertainty \\
+Theta management & Timing optimization & Act vs wait \\
+\bottomrule
+\end{tabular}
+\caption{Options-Recognition Strategic Mapping}
+\end{table}
+
+\textbf{Key Insight}: Recognition allocation creates option-like payoff structures. The budget constraint ($\sum R = 1$) creates zero-sum dynamics analogous to delta hedging in options markets. Entities must ``trade'' recognition between partners, creating natural hedging and risk management behaviors.
+
+\subsubsection{Practical Greeks Computation}
+
+\textbf{Numerical Differentiation}: For computational implementation, use finite differences:
+
+\textbf{First-order (central difference)}:
+\[ \Delta \approx \frac{\mathbb{P}(G;\delta + h) - \mathbb{P}(G;\delta - h)}{2h} \]
+
+\textbf{Second-order (three-point)}:
+\[ \Gamma \approx \frac{\mathbb{P}(G;\delta + h) - 2\mathbb{P}(G;\delta) + \mathbb{P}(G;\delta - h)}{h^2} \]
+
+\textbf{Cross-derivatives (four-point)}:
+\[ \text{Vanna} \approx \frac{\mathbb{P}(\delta+h,\sigma+k) - \mathbb{P}(\delta+h,\sigma-k) - \mathbb{P}(\delta-h,\sigma+k) + \mathbb{P}(\delta-h,\sigma-k)}{4hk} \]
+
+\textbf{Step sizes}: Typically $h \approx 0.01$ (1\% allocation shift), $k \approx 0.05$ (5\% volatility change).
+
+\subsubsection{Greeks-Based Decision Framework}
+
+\textbf{Allocation Decision Tree}:
+
+\begin{enumerate}
+\item \textbf{Check Delta}: Is $\Delta > \epsilon_{\text{threshold}}$?
+   \begin{itemize}
+   \item Yes: Beneficial shift available $\rightarrow$ Continue to step 2
+   \item No: Near-optimal allocation $\rightarrow$ Monitor, no immediate action
+   \end{itemize}
+
+\item \textbf{Check Gamma}: Is $\Gamma > 0$ (convex)?
+   \begin{itemize}
+   \item Yes: Returns accelerate $\rightarrow$ Allocate aggressively
+   \item No: Returns decelerate $\rightarrow$ Allocate conservatively
+   \end{itemize}
+
+\item \textbf{Check Vanna}: Is $|\text{Vanna}| > \theta_{\text{vanna}}$?
+   \begin{itemize}
+   \item Yes: Sensitive to uncertainty $\rightarrow$ Gather more information first
+   \item No: Robust to uncertainty $\rightarrow$ Proceed with allocation
+   \end{itemize}
+
+\item \textbf{Check Charm}: Is $\text{Charm} > 0$ (improving over time)?
+   \begin{itemize}
+   \item Yes + high Theta: Consider delaying
+   \item No + high Delta: Act immediately
+   \end{itemize}
+
+\item \textbf{Execute}: Allocate $\delta^* = \min(\Delta / \Gamma, \delta_{\max})$ (Newton-Raphson step)
+
+\item \textbf{Monitor}: Track realized vs expected $\mathbb{P}(G)$, update $\beta$ estimates
+\end{enumerate}
+
+\textbf{Risk Limits}: Implement Greeks-based position limits:
+\begin{itemize}
+\item $|\Delta_{\text{portfolio}}| \le \Delta_{\max}$ --- Limit directional exposure
+\item $|\Gamma_{\text{portfolio}}| \le \Gamma_{\max}$ --- Limit convexity exposure
+\item $|\nu_{\text{portfolio}}| \le \nu_{\max}$ --- Limit volatility exposure
+\item $|\text{Speed}| \le S_{\max}$ --- Limit nonlinearity exposure
+\end{itemize}
+
+\textbf{Greeks P\&L Attribution}: Decompose goal achievement changes:
+\begin{align*}
+\Delta \mathbb{P}(G) &\approx \Delta \cdot \delta\delta + \frac{1}{2}\Gamma \cdot (\delta\delta)^2 + \Theta \cdot \delta t \\
+&\quad + \nu \cdot \delta\sigma_\beta + \text{Vanna} \cdot \delta\delta \cdot \delta\sigma_\beta \\
+&\quad + \text{Charm} \cdot \delta\delta \cdot \delta t + \text{higher-order terms}
+\end{align*}
+
+This allows attribution of performance to specific risk factors.
+
+\textbf{Greeks Visualization}: For $n$ partners, create Greeks surfaces:
+\begin{itemize}
+\item \textbf{2D Heatmap}: $\Delta(f_i, f_j)$ for all $(i,j)$ partner pairs
+\item \textbf{3D Surface}: $\mathbb{P}(G; R(e,f_1), R(e,f_2))$ showing convexity
+\item \textbf{Time evolution}: $\{\Delta(t), \Gamma(t), \nu(t)\}$ trajectories
+\item \textbf{Scenario analysis}: Greeks under stress scenarios ($\sigma_\beta \to 2\sigma_\beta$, $r \to 2r$, etc.)
+\end{itemize}
+
+\textbf{Greeks in Automated Systems}: For AI agents managing recognition:
+\begin{lstlisting}[language=Python]
+def optimal_allocation_step(current_R, beta_estimates, sigma_beta, t):
+    # Compute all Greeks
+    delta = compute_delta(current_R, beta_estimates)
+    gamma = compute_gamma(current_R, beta_estimates)
+    vanna = compute_vanna(current_R, beta_estimates, sigma_beta)
+    charm = compute_charm(current_R, beta_estimates, t)
+    
+    # Decision logic
+    if abs(delta) < DELTA_THRESHOLD:
+        return current_R  # Near optimal
+    
+    if vanna > VANNA_THRESHOLD:
+        # High uncertainty sensitivity - reduce step size
+        step_size = 0.5 * (delta / gamma)
+    else:
+        step_size = delta / gamma  # Full Newton step
+    
+    if charm < 0:  # Delta decaying
+        urgency_multiplier = 2.0
+    else:
+        urgency_multiplier = 1.0
+    
+    # Execute constrained step
+    new_R = current_R + urgency_multiplier * step_size
+    return project_to_simplex(new_R)  # Enforce sum R = 1
+\end{lstlisting}
+
+\textbf{Greeks Dashboard}: Real-time monitoring interface:
+\begin{itemize}
+\item Current Greeks values with sparklines showing trends
+\item Greeks surfaces for top-10 allocation pairs
+\item Risk limit utilization bars (e.g., ``Vega: 45\% of limit'')
+\item Alerts when Greeks exceed thresholds
+\item Scenario Greeks: ``What if $\sigma_\beta$ doubles?''
+\end{itemize}

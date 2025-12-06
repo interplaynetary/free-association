@@ -218,8 +218,9 @@ export function updateAttributeInCollection(
 			// ✅ VALUE UNCHANGED: Update metadata only
 			// This prevents unnecessary reactive updates!
 			
-			// Update ITC (use provided or increment existing)
-			const updatedITC = existingITC || itcEvent(existingAttr.itcStamp);
+			// Update ITC (use provided or increment existing, or seed if missing)
+			const updatedITC = existingITC || 
+				(existingAttr.itcStamp ? itcEvent(existingAttr.itcStamp) : itcSeed());
 			
 			// Update collection-level ITC
 			const collectionITC = collection._itcStamp ? 
@@ -260,6 +261,12 @@ export function updateAttributeInCollection(
 		confidence,
 		baseITC
 	);
+	
+	// recognizeAttribute always returns an itcStamp, but TypeScript doesn't know that
+	// Add assertion for type safety
+	if (!newAttr.itcStamp) {
+		throw new Error('recognizeAttribute must always return an itcStamp');
+	}
 	
 	// Update collection
 	const updatedCollection = {

@@ -1083,6 +1083,46 @@ export type OrganizationsCollection = z.infer<typeof OrganizationsCollectionSche
 
 
 // ═══════════════════════════════════════════════════════════════════
+// ATTRIBUTE TYPE SCHEMAS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Membership List - Array of member identifiers
+ * Used for organization membership, collective capacities, etc.
+ */
+export const MembershipListSchema = z.array(z.string().min(1));
+export type MembershipList = z.infer<typeof MembershipListSchema>;
+
+/**
+ * Skill Value - Represents proficiency in a skill
+ */
+export const SkillValueSchema = z.object({
+	level: z.number().int().min(1).max(10), // 1-10 proficiency scale
+	years: z.number().nonnegative().optional(), // Years of experience
+	description: z.string().optional(),
+	verified: z.boolean().default(false),
+	endorsements: z.array(z.string()).default([]) // Pubkeys who endorse this skill
+});
+export type SkillValue = z.infer<typeof SkillValueSchema>;
+
+/**
+ * Location Value - Represents a physical or online location
+ */
+export const LocationValueSchema = z.object({
+	city: z.string().optional(),
+	state_province: z.string().optional(),
+	country: z.string().optional(),
+	coords: z.tuple([
+		z.number().min(-90).max(90),  // latitude
+		z.number().min(-180).max(180) // longitude
+	]).optional(),
+	postal_code: z.string().optional(),
+	street_address: z.string().optional(),
+	online: z.boolean().optional() // True if remote/online
+});
+export type LocationValue = z.infer<typeof LocationValueSchema>;
+
+// ═══════════════════════════════════════════════════════════════════
 // ATTRIBUTE RECOGNITION SYSTEM
 // ═══════════════════════════════════════════════════════════════════
 

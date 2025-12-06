@@ -1,0 +1,24 @@
+# Cloudflare Workers Configuration
+# Deploy with: npx wrangler deploy
+
+name = "free-association-relay"
+main = "workers.ts"
+compatibility_date = "2024-01-01"
+
+# Workers environment
+[env.production]
+name = "free-association-relay"
+route = "relay.free-association.example.com/*"
+
+[env.staging]
+name = "free-association-relay-staging"
+route = "relay-staging.free-association.example.com/*"
+
+# Build configuration
+[build]
+command = "npm run build"
+
+# Limits
+[limits]
+cpu_ms = 50
+

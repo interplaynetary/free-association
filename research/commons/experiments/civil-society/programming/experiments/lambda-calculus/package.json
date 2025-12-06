@@ -1,0 +1,81 @@
+{
+  "name": "@free-association/lambda-calculus",
+  "version": "1.0.0",
+  "description": "Lambda Calculus implementation of the Free-Association Framework (Recognition Calculus λ-R)",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./elegant": {
+      "types": "./dist/elegant/index.d.ts",
+      "import": "./dist/elegant/index.mjs",
+      "require": "./dist/elegant/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "LAMBDA-R-COMPLIANT.md",
+    "docs/ELEGANT-API.md",
+    "docs/CORE-VS-ELEGANT.md",
+    "docs/QUICK-COMPARISON.md",
+    "docs/MENTAL-MODELS.md",
+    "docs/PACKAGING.md",
+    "docs/DEPLOYMENT-GUIDE.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "prepublishOnly": "npm run type-check && npm run build && npm test"
+  },
+  "keywords": [
+    "lambda-calculus",
+    "recognition-calculus",
+    "functional-programming",
+    "coordination",
+    "free-association",
+    "monads",
+    "combinators",
+    "church-encoding",
+    "ski-calculus",
+    "y-combinator",
+    "mutual-recognition",
+    "MRS",
+    "MRD"
+  ],
+  "author": "Free Association Contributors",
+  "license": "SEE LICENSE IN ../../LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/interplaynetary/free-association.git",
+    "directory": "src/lib/protocol/lambda-calculus"
+  },
+  "bugs": {
+    "url": "https://github.com/interplaynetary/free-association/issues"
+  },
+  "homepage": "https://github.com/interplaynetary/free-association#readme",
+  "peerDependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "optionalDependencies": {
+    "tsup": "^8.5.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

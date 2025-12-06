@@ -2,7 +2,7 @@
  * Attribute Types Module - Type-Specific Helpers
  * 
  * Provides parsing and validation helpers for common attribute types.
- * Extensible for future attribute types.
+ * Uses Zod schemas for validation (single source of truth).
  * 
  * Common Attribute Types:
  * - membership: Array of member IDs (pubkeys, org_ids, contact_ids)
@@ -11,10 +11,22 @@
  * - skill:{name}: Skill level object
  * - location: Location object
  * 
- * Each helper validates and normalizes the attribute value.
+ * Each helper validates and normalizes the attribute value using Zod.
  */
 
-import type { AvailabilitySlot, NeedSlot, MembershipList } from '$lib/protocol/schemas';
+import {
+	AvailabilitySlotSchema,
+	NeedSlotSchema,
+	MembershipListSchema,
+	SkillValueSchema,
+	LocationValueSchema,
+	type AvailabilitySlot,
+	type NeedSlot,
+	type MembershipList,
+	type SkillValue,
+	type LocationValue
+} from '$lib/protocol/schemas';
+import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════════════
 // MEMBERSHIP ATTRIBUTES
@@ -23,11 +35,11 @@ import type { AvailabilitySlot, NeedSlot, MembershipList } from '$lib/protocol/s
 /**
  * Parse membership attribute
  * 
- * Validates and normalizes a membership attribute value.
+ * Validates and normalizes a membership attribute value using Zod.
  * 
  * @param value - Attribute value (should be array of member IDs)
- * @returns Normalized membership list
- * @throws Error if value is invalid
+ * @returns Normalized membership list (deduplicated)
+ * @throws ZodError if value is invalid
  * 
  * @example
  * ```typescript
@@ -39,19 +51,9 @@ import type { AvailabilitySlot, NeedSlot, MembershipList } from '$lib/protocol/s
  * ```
  */
 export function parseMembershipAttribute(value: any): MembershipList {
-	if (!Array.isArray(value)) {
-		throw new Error('Membership attribute must be an array');
-	}
-	
-	// Validate each member ID is a string
-	for (const member of value) {
-		if (typeof member !== 'string' || member.length === 0) {
-			throw new Error('Each member ID must be a non-empty string');
-		}
-	}
-	
+	const parsed = MembershipListSchema.parse(value);
 	// Deduplicate
-	return Array.from(new Set(value));
+	return Array.from(new Set(parsed));
 }
 
 /**
@@ -63,12 +65,7 @@ export function parseMembershipAttribute(value: any): MembershipList {
  * @returns True if valid
  */
 export function isMembershipAttribute(value: any): boolean {
-	try {
-		parseMembershipAttribute(value);
-		return true;
-	} catch {
-		return false;
-	}
+	return MembershipListSchema.safeParse(value).success;
 }
 
 /**
@@ -90,45 +87,22 @@ export function createMembershipAttribute(members: string[]): MembershipList {
 /**
  * Parse capacity attribute
  * 
- * Validates and normalizes a capacity attribute value.
+ * Validates and normalizes a capacity attribute value using Zod.
  * 
  * @param value - Attribute value (should be array of AvailabilitySlot objects)
- * @returns Normalized capacity slots
- * @throws Error if value is invalid
+ * @returns Validated capacity slots
+ * @throws ZodError if value is invalid
  * 
  * @example
  * ```typescript
  * const slots = parseCapacityAttribute([
- *   { id: "slot1", quantity: 100, need_type_id: "food", ... },
- *   { id: "slot2", quantity: 50, need_type_id: "food", ... }
+ *   { id: "slot1", quantity: 100, need_type_id: "food", name: "Food", ... },
+ *   { id: "slot2", quantity: 50, need_type_id: "food", name: "Snacks", ... }
  * ]);
  * ```
  */
 export function parseCapacityAttribute(value: any): AvailabilitySlot[] {
-	if (!Array.isArray(value)) {
-		throw new Error('Capacity attribute must be an array of AvailabilitySlot objects');
-	}
-	
-	// Basic validation - check required fields
-	for (const slot of value) {
-		if (typeof slot !== 'object' || slot === null) {
-			throw new Error('Each capacity slot must be an object');
-		}
-		
-		if (!slot.id || typeof slot.id !== 'string') {
-			throw new Error('Each capacity slot must have an id (string)');
-		}
-		
-		if (typeof slot.quantity !== 'number' || slot.quantity < 0) {
-			throw new Error('Each capacity slot must have a non-negative quantity (number)');
-		}
-		
-		if (!slot.need_type_id || typeof slot.need_type_id !== 'string') {
-			throw new Error('Each capacity slot must have a need_type_id (string)');
-		}
-	}
-	
-	return value as AvailabilitySlot[];
+	return z.array(AvailabilitySlotSchema).parse(value);
 }
 
 /**
@@ -140,12 +114,7 @@ export function parseCapacityAttribute(value: any): AvailabilitySlot[] {
  * @returns True if valid
  */
 export function isCapacityAttribute(value: any): boolean {
-	try {
-		parseCapacityAttribute(value);
-		return true;
-	} catch {
-		return false;
-	}
+	return z.array(AvailabilitySlotSchema).safeParse(value).success;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -155,45 +124,22 @@ export function isCapacityAttribute(value: any): boolean {
 /**
  * Parse need attribute
  * 
- * Validates and normalizes a need attribute value.
+ * Validates and normalizes a need attribute value using Zod.
  * 
  * @param value - Attribute value (should be array of NeedSlot objects)
- * @returns Normalized need slots
- * @throws Error if value is invalid
+ * @returns Validated need slots
+ * @throws ZodError if value is invalid
  * 
  * @example
  * ```typescript
  * const slots = parseNeedAttribute([
- *   { id: "need1", quantity: 10, need_type_id: "housing", ... },
- *   { id: "need2", quantity: 5, need_type_id: "housing", ... }
+ *   { id: "need1", quantity: 10, need_type_id: "housing", name: "Housing", ... },
+ *   { id: "need2", quantity: 5, need_type_id: "housing", name: "Shelter", ... }
  * ]);
  * ```
  */
 export function parseNeedAttribute(value: any): NeedSlot[] {
-	if (!Array.isArray(value)) {
-		throw new Error('Need attribute must be an array of NeedSlot objects');
-	}
-	
-	// Basic validation - check required fields
-	for (const slot of value) {
-		if (typeof slot !== 'object' || slot === null) {
-			throw new Error('Each need slot must be an object');
-		}
-		
-		if (!slot.id || typeof slot.id !== 'string') {
-			throw new Error('Each need slot must have an id (string)');
-		}
-		
-		if (typeof slot.quantity !== 'number' || slot.quantity < 0) {
-			throw new Error('Each need slot must have a non-negative quantity (number)');
-		}
-		
-		if (!slot.need_type_id || typeof slot.need_type_id !== 'string') {
-			throw new Error('Each need slot must have a need_type_id (string)');
-		}
-	}
-	
-	return value as NeedSlot[];
+	return z.array(NeedSlotSchema).parse(value);
 }
 
 /**
@@ -205,12 +151,7 @@ export function parseNeedAttribute(value: any): NeedSlot[] {
  * @returns True if valid
  */
 export function isNeedAttribute(value: any): boolean {
-	try {
-		parseNeedAttribute(value);
-		return true;
-	} catch {
-		return false;
-	}
+	return z.array(NeedSlotSchema).safeParse(value).success;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -218,24 +159,13 @@ export function isNeedAttribute(value: any): boolean {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Skill object
- */
-export interface SkillValue {
-	level: number; // 1-10
-	years?: number; // Years of experience
-	description?: string;
-	verified?: boolean;
-	endorsements?: string[]; // Array of pubkeys who endorse this skill
-}
-
-/**
  * Parse skill attribute
  * 
- * Validates and normalizes a skill attribute value.
+ * Validates and normalizes a skill attribute value using Zod.
  * 
  * @param value - Attribute value (should be SkillValue object)
- * @returns Normalized skill value
- * @throws Error if value is invalid
+ * @returns Validated skill value
+ * @throws ZodError if value is invalid
  * 
  * @example
  * ```typescript
@@ -248,44 +178,7 @@ export interface SkillValue {
  * ```
  */
 export function parseSkillAttribute(value: any): SkillValue {
-	if (typeof value !== 'object' || value === null) {
-		throw new Error('Skill attribute must be an object');
-	}
-	
-	if (typeof value.level !== 'number' || value.level < 1 || value.level > 10) {
-		throw new Error('Skill level must be a number between 1 and 10');
-	}
-	
-	if (value.years !== undefined && (typeof value.years !== 'number' || value.years < 0)) {
-		throw new Error('Skill years must be a non-negative number');
-	}
-	
-	if (value.description !== undefined && typeof value.description !== 'string') {
-		throw new Error('Skill description must be a string');
-	}
-	
-	if (value.verified !== undefined && typeof value.verified !== 'boolean') {
-		throw new Error('Skill verified must be a boolean');
-	}
-	
-	if (value.endorsements !== undefined) {
-		if (!Array.isArray(value.endorsements)) {
-			throw new Error('Skill endorsements must be an array');
-		}
-		for (const endorsement of value.endorsements) {
-			if (typeof endorsement !== 'string') {
-				throw new Error('Each endorsement must be a string (pubkey)');
-			}
-		}
-	}
-	
-	return {
-		level: value.level,
-		years: value.years,
-		description: value.description,
-		verified: value.verified || false,
-		endorsements: value.endorsements || []
-	};
+	return SkillValueSchema.parse(value);
 }
 
 /**
@@ -297,12 +190,7 @@ export function parseSkillAttribute(value: any): SkillValue {
  * @returns True if valid
  */
 export function isSkillAttribute(value: any): boolean {
-	try {
-		parseSkillAttribute(value);
-		return true;
-	} catch {
-		return false;
-	}
+	return SkillValueSchema.safeParse(value).success;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -310,26 +198,13 @@ export function isSkillAttribute(value: any): boolean {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Location object
- */
-export interface LocationValue {
-	city?: string;
-	state_province?: string;
-	country?: string;
-	coords?: [number, number]; // [latitude, longitude]
-	postal_code?: string;
-	street_address?: string;
-	online?: boolean; // True if remote/online
-}
-
-/**
  * Parse location attribute
  * 
- * Validates and normalizes a location attribute value.
+ * Validates and normalizes a location attribute value using Zod.
  * 
  * @param value - Attribute value (should be LocationValue object)
- * @returns Normalized location value
- * @throws Error if value is invalid
+ * @returns Validated location value
+ * @throws ZodError if value is invalid
  * 
  * @example
  * ```typescript
@@ -341,71 +216,7 @@ export interface LocationValue {
  * ```
  */
 export function parseLocationAttribute(value: any): LocationValue {
-	if (typeof value !== 'object' || value === null) {
-		throw new Error('Location attribute must be an object');
-	}
-	
-	const location: LocationValue = {};
-	
-	if (value.city !== undefined) {
-		if (typeof value.city !== 'string') {
-			throw new Error('Location city must be a string');
-		}
-		location.city = value.city;
-	}
-	
-	if (value.state_province !== undefined) {
-		if (typeof value.state_province !== 'string') {
-			throw new Error('Location state_province must be a string');
-		}
-		location.state_province = value.state_province;
-	}
-	
-	if (value.country !== undefined) {
-		if (typeof value.country !== 'string') {
-			throw new Error('Location country must be a string');
-		}
-		location.country = value.country;
-	}
-	
-	if (value.coords !== undefined) {
-		if (!Array.isArray(value.coords) || value.coords.length !== 2) {
-			throw new Error('Location coords must be an array of [latitude, longitude]');
-		}
-		if (typeof value.coords[0] !== 'number' || typeof value.coords[1] !== 'number') {
-			throw new Error('Location coords must be numbers');
-		}
-		if (value.coords[0] < -90 || value.coords[0] > 90) {
-			throw new Error('Latitude must be between -90 and 90');
-		}
-		if (value.coords[1] < -180 || value.coords[1] > 180) {
-			throw new Error('Longitude must be between -180 and 180');
-		}
-		location.coords = [value.coords[0], value.coords[1]];
-	}
-	
-	if (value.postal_code !== undefined) {
-		if (typeof value.postal_code !== 'string') {
-			throw new Error('Location postal_code must be a string');
-		}
-		location.postal_code = value.postal_code;
-	}
-	
-	if (value.street_address !== undefined) {
-		if (typeof value.street_address !== 'string') {
-			throw new Error('Location street_address must be a string');
-		}
-		location.street_address = value.street_address;
-	}
-	
-	if (value.online !== undefined) {
-		if (typeof value.online !== 'boolean') {
-			throw new Error('Location online must be a boolean');
-		}
-		location.online = value.online;
-	}
-	
-	return location;
+	return LocationValueSchema.parse(value);
 }
 
 /**
@@ -417,12 +228,7 @@ export function parseLocationAttribute(value: any): LocationValue {
  * @returns True if valid
  */
 export function isLocationAttribute(value: any): boolean {
-	try {
-		parseLocationAttribute(value);
-		return true;
-	} catch {
-		return false;
-	}
+	return LocationValueSchema.safeParse(value).success;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -488,18 +294,29 @@ export function parseAttributeValue(attribute_name: string, value: any): any {
 /**
  * Validate attribute value based on type
  * 
- * Automatically detects type and validates accordingly.
+ * Automatically detects type and validates accordingly using Zod.
  * 
  * @param attribute_name - Attribute name
  * @param value - Attribute value
  * @returns True if valid
  */
 export function validateAttributeValue(attribute_name: string, value: any): boolean {
-	try {
-		parseAttributeValue(attribute_name, value);
-		return true;
-	} catch {
-		return false;
+	const type = detectAttributeType(attribute_name);
+	
+	switch (type) {
+		case 'membership':
+			return MembershipListSchema.safeParse(value).success;
+		case 'capacity':
+			return z.array(AvailabilitySlotSchema).safeParse(value).success;
+		case 'need':
+			return z.array(NeedSlotSchema).safeParse(value).success;
+		case 'skill':
+			return SkillValueSchema.safeParse(value).success;
+		case 'location':
+			return LocationValueSchema.safeParse(value).success;
+		case 'generic':
+			// No validation for generic types - always valid
+			return true;
 	}
 }
 

@@ -34,7 +34,7 @@
 				onRegistered(r) {
 					console.log('SW Registered:', r);
 				},
-				onRegisterError(error) {
+				onRegisterError(error: Error) {
 					console.log('SW registration error', error);
 				}
 			});
@@ -82,13 +82,6 @@
 	x={globalState.dragX}
 	y={globalState.dragY}
 />
-
-<!-- PWA Reload Prompt - disabled -->
-<!-- {#if browser}
-	{#await import('$lib/ReloadPrompt.svelte') then { default: ReloadPrompt }}
-		<ReloadPrompt />
-	{/await}
-{/if} -->
 
 <style>
 	main {
