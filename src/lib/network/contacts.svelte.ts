@@ -11,8 +11,8 @@
 import { get, derived } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
 // V5: Import from v5 schemas
-import type { ContactsCollection, Contact } from '$lib/protocol/schemas';
-import { ContactsCollectionSchema } from '$lib/protocol/schemas';
+import type { ContactsCollectionData as ContactsCollection, Contact } from '$lib/protocol/core/schemas';
+import { ContactsCollectionSchema } from '$lib/protocol/core/schemas';
 
 // ============================================================================
 // Store (V5 Pattern - Elegant!)

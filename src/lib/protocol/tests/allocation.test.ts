@@ -111,7 +111,7 @@ import {
 	publishMyCommitment,
 	publishMyRecognitionWeights,
 	updateCommitmentWithDampingHistory
-} from '$lib/protocol/allocation.svelte';
+} from '../stores/allocation.svelte';
 
 // Import stores module
 import {
@@ -120,7 +120,7 @@ import {
 	getAllCommitmentsRecord,
 	networkNeedsIndex,
 	type SpaceTimeIndex
-} from '$lib/protocol/stores.svelte';
+} from '$lib/protocol/stores/stores.svelte';
 
 // ═══════════════════════════════════════════════════════════════════
 // TEST HELPERS

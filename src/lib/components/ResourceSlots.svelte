@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
+	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/core/schemas';
 	import { TimePatternEditor } from './slots';
-	import { NEED_TYPES, type NeedType } from '$lib/protocol/utils/needTypes';
-	import { myAllocationsAsProvider } from '$lib/protocol/allocation.svelte';
-	import { networkAllocations } from '$lib/protocol/stores.svelte';
+	import { NEED_TYPES, type NeedType } from '$lib/protocol/core/utils/needTypes';
+	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
+	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
 	

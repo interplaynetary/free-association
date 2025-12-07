@@ -5,7 +5,7 @@
 	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
 	import { handleAddressClick } from '$lib/location/mapUtils';
 	// V5: Import mutual recognition from v5 stores
-	import { myMutualRecognition } from '$lib/protocol/stores.svelte';
+	import { myMutualRecognition } from '$lib/protocol/stores/stores.svelte';
 	// V5: Composition feature not yet implemented
 	// import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
 	import { userPub } from '$lib/network/auth.svelte';
@@ -24,7 +24,7 @@
 		formatSlotTimeDisplay,
 		formatSlotLocationDisplay,
 		getSlotSortValue
-	} from '$lib/protocol/tree';
+	} from '$lib/protocol/core/tree';
 
 	interface Props {
 		share: any; // Using any since we're now working with inventory data, not RecipientCapacity

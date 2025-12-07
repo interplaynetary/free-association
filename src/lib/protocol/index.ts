@@ -1,39 +1,39 @@
 /**
- * Free Association Circles Module
+ * Free Association Protocol
+ * 
+ * Main entry point for the Free Association protocol.
+ * 
+ * Structure:
+ * - core/ - Pure protocol logic (framework-agnostic, npm-ready)
+ * - stores/ - Svelte reactive wrappers (P2P synchronized stores)
  * 
  * Exports:
- * - Schemas (Zod types and validation)
- * - Protocol (tree manipulation, recognition, allocation)
- * - Stores (Holster-backed P2P data stores)
- * - Node Stores (Dynamic store factory from NodeDataStorage configs)
- * - Reactive Computation (Declarative dataflow execution)
- * - Program Hashing (Content-addressable program indexing)
- * - RDL Validator (JSON Schema validation for RDL)
- * - ITC (Interval Tree Clocks for dynamic causality tracking)
- * - Algorithm (allocation computation)
- * - Matching (slot compatibility)
- * - Visualization (Visualization component)
+ * - Core Protocol (schemas, allocation, recognition, tree operations)
+ * - Svelte Stores (reactive wrappers for real-time sync)
+ * - Utilities (matching, filtering, memoization)
+ * - ITC (Interval Tree Clocks for causality tracking)
  * 
- * V5 UPDATE: Now using global recognition model with event-driven allocation
+ * V5 UPDATE: Global recognition model with event-driven allocation
+ * V6 UPDATE: Clean separation of pure core from reactive stores
  */
 
 import '$lib/network/holster.svelte'; // This initializes Holster (migration Phase 1)
 
-// Schemas and types (V5) - Safe for SSR
-export * from '$lib/protocol/schemas';
+// ═══════════════════════════════════════════════════════════════════
+// CORE PROTOCOL (Pure, framework-agnostic)
+// ═══════════════════════════════════════════════════════════════════
 
-// Protocol functions (V5) - Safe for SSR
-export * from '$lib/protocol/tree';
+export * from './core';
+
+// ═══════════════════════════════════════════════════════════════════
+// EXTERNAL DEPENDENCIES (not in core, but commonly used)
+// ═══════════════════════════════════════════════════════════════════
 
 // Interval Tree Clocks (ITC) - Safe for SSR
 export * from '$lib/utils/primitives/itc';
 
-// Slot matching (V5) - Safe for SSR  
-export * from '$lib/protocol/utils/match';
+// ═══════════════════════════════════════════════════════════════════
+// SVELTE STORES (Browser-only, reactive wrappers)
+// ═══════════════════════════════════════════════════════════════════
 
-export * from '$lib/protocol/allocation';
-
-
-// Browser-only exports (require Holster, reactive stores, D3)
-export * from '$lib/protocol/stores.svelte';
-export * from '$lib/protocol/allocation.svelte';
+export * from './stores';

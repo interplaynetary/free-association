@@ -23,8 +23,8 @@
  * - Community resource coordination
  */
 
-import { MRDMembershipModule } from '$lib/protocol/collective/collective-membership';
-import { extractRecognitionDataFromTrees } from '$lib/protocol/collective/collective-recognition';
+import { MRDMembershipModule } from '$lib/protocol/stores/collective-membership';
+import { extractRecognitionDataFromTrees } from '$lib/protocol/stores/collective-recognition';
 import type {
 	RecognitionData,
 	MembershipOutput
@@ -37,10 +37,10 @@ import type {
 	Organization,
 	Commitment,
 	AllocationResult
-} from '$lib/protocol/schemas';
-import type { ComplianceFilter } from '$lib/protocol/utils/filters';
+} from '$lib/protocol/core/schemas';
+import type { ComplianceFilter } from '$lib/protocol/core/utils/filters';
 import { calculateCollectiveRecognitionDistribution } from '$lib/protocol/distribution';
-import { allocateWithDistribution } from '$lib/protocol/allocation';
+import { allocateWithDistribution } from '$lib/protocol/core/allocation';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -825,5 +825,5 @@ export function printAllocationSummary(council: RecognitionCouncil): void {
 
 // Export types
 export type { RecognitionData, MembershipOutput } from '$lib/protocol/collective/schemas';
-export type { ComplianceFilter } from '$lib/protocol/utils/filters';
+export type { ComplianceFilter } from '$lib/protocol/core/utils/filters';
 

@@ -13,8 +13,8 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
-  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/protocol/tree';
+  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/protocol/core/tree';
   import AllocationDetails from './AllocationDetails.svelte';
   
   interface Props {

@@ -21,14 +21,14 @@ import { get } from 'svelte/store';
 import {
 	myAttributeRecognitions,
 	myAttributeSubscriptions
-} from '$lib/protocol/attributes/attribute-recognition.svelte';
+} from '$lib/protocol/stores/attributes.svelte';
 import {
 	updateAttributeInCollection,
 	getAttributeFromCollection,
 	removeAttributeFromCollection,
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
-} from '$lib/protocol/attributes/attribute-recognition';
+} from '$lib/protocol/core/attributes/attribute-recognition';
 import { holsterUserPub } from './holster.svelte';
 import { getPublicKeyFromContactId } from './users.svelte';
 

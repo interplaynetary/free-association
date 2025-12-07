@@ -26,12 +26,12 @@ import type {
 	SlotFilter,
 	AvailabilitySlot,
 	NeedSlot
-} from '$lib/protocol/schemas';
+} from '$lib/protocol/core/schemas';
 import {
 	SlotSubscriptionsSchema,
 	SlotFiltersCollectionSchema,
 	SlotFilterSchema
-} from '$lib/protocol/schemas';
+} from '$lib/protocol/core/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // UNIFIED STORES (Holster-backed via createStore)

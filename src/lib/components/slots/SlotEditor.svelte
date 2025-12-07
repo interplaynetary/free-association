@@ -13,7 +13,7 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
   import SlotForm from './SlotForm.svelte';
   import SlotsList from './SlotsList.svelte';
   

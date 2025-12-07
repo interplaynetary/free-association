@@ -8,8 +8,8 @@
  * This module is server-only and should be initialized in hooks.server.ts
  */
 
-import { MRDMembershipModule } from '$lib/protocol/collective/collective-membership.svelte';
-import { computeAllocations } from '$lib/protocol/collective/collective-recognition.svelte';
+import { MRDMembershipModule } from '$lib/protocol/stores/collective-membership.svelte';
+import { computeAllocations } from '$lib/protocol/stores/collective-recognition.svelte';
 import type { 
 	RecognitionData,
 	BaseCapacity, 

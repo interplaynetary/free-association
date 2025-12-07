@@ -8,15 +8,15 @@
 	import { globalState, currentPath } from '$lib/global.svelte';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	// V5: Import from v5 stores
-	import { myRecognitionTreeStore as userTree, myRecognitionWeights } from '$lib/protocol/stores.svelte';
+	import { myRecognitionTreeStore as userTree, myRecognitionWeights } from '$lib/protocol/stores/stores.svelte';
 	// V5: userSogf and generalShares - these would need to be computed from recognition data
 	// For now, create empty stores as placeholders
 	import { writable } from 'svelte/store';
 	const userSogf = writable({});
 	const generalShares = writable({});
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
-	import type { Node, RootNode } from '$lib/protocol/schemas';
-	import { normalizeShareMap } from '$lib/protocol/tree';
+	import type { Node, RootNode } from '$lib/protocol/core/schemas';
+	import { normalizeShareMap } from '$lib/protocol/core/tree';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data

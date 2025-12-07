@@ -14,7 +14,7 @@ import {
 	calculateCollectiveRecognition,
 	calculateCollectiveCapacityAllocation,
 	type CollectiveTree
-} from '$lib/protocol/collective/collective-tree.svelte';
+} from '$lib/protocol/stores/collective-tree.svelte';
 import type { Node } from '$lib/protocol/schemas';
 import { collectiveTreeConfig, formatInterval } from './config';
 

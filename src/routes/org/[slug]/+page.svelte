@@ -18,20 +18,20 @@
 		enableAutoCommitmentComposition,
 		setMyNeedSlots,
 		setMyCapacitySlots
-	} from '$lib/protocol/stores.svelte';
-	import { enableAutoAllocationPublishing } from '$lib/protocol/allocation.svelte';
+	} from '$lib/protocol/stores/stores.svelte';
+	import { enableAutoAllocationPublishing } from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot, NonRootNode } from '$lib/protocol/schemas';
-	import { NEED_TYPES, formatNeedType } from '$lib/protocol/utils/needTypes';
+	import type { NeedSlot, AvailabilitySlot, NonRootNode } from '$lib/protocol/core/schemas';
+	import { NEED_TYPES, formatNeedType } from '$lib/protocol/core/utils/needTypes';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
 	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
-	import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/tree';
-	import { computeMutualRecognition } from '$lib/protocol/allocation';
+	import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/core/tree';
+	import { computeMutualRecognition } from '$lib/protocol/core/allocation';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();
@@ -297,7 +297,7 @@
 	// Load org recognition data from config (who recognizes whom in the demo ecosystem)
 	// This is the "others_recognition_of_me" equivalent for demo mode
 	import { readable } from 'svelte/store';
-	import type { GlobalRecognitionWeights } from '$lib/protocol/schemas';
+	import type { GlobalRecognitionWeights } from '$lib/protocol/core/schemas';
 	import { getOrgTreesMap } from '$lib/config/org-trees';
 	
 	const demoOrgRecognitionMap = readable<Record<string, GlobalRecognitionWeights>>({}, (set) => {

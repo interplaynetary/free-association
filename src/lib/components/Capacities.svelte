@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { Commitment, AvailabilitySlot } from '$lib/protocol/schemas';
+	import type { Commitment, AvailabilitySlot } from '$lib/protocol/core/schemas';
 	import {
 		findNodeById,
 		updateNodeById
-	} from '$lib/protocol/tree';
+	} from '$lib/protocol/core/tree';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
@@ -16,7 +16,7 @@
 		myCapacitySlotsStore,
 		composeCommitmentFromSources,
 		setMyCapacitySlots // ✅ NEW: Helper to update capacity slots
-	} from '$lib/protocol/stores.svelte';
+	} from '$lib/protocol/stores/stores.svelte';
 	// V5: Composition features not yet implemented
 	// import { userDesiredSlotComposeFrom, userDesiredSlotComposeInto } from '$lib/state/core.svelte';
 	import Capacity from './Capacity.svelte';

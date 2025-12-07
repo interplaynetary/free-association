@@ -59,7 +59,7 @@ import {
 	getNetworkCommitmentsRecord,
 	getSubscriptionStats,
 	getConvergenceStats
-} from '$lib/protocol/stores.svelte';
+} from '$lib/protocol/stores/stores.svelte';
 import { mockAuth, clearAuth } from '$lib/network/holster.svelte';
 import type { Commitment, RootNode, NeedSlot, AvailabilitySlot, GlobalRecognitionWeights } from '../schemas';
 import { seed as itcSeed, event as itcEvent, join as itcJoin } from '$lib/utils/primitives/itc';

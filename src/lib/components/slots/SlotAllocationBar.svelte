@@ -12,8 +12,8 @@
 	 * - Real-time reactivity from network commitments
 	 */
 	
-	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
-	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores.svelte';
+	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores/stores.svelte';
 	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 	import Bar from '$lib/components/Bar.svelte';
 	

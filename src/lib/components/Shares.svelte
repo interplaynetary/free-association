@@ -1,10 +1,10 @@
 <script lang="ts">
 	// V5: Import commitments from v5 stores
-	import { getAllCommitmentsRecord } from '$lib/protocol/stores.svelte';
+	import { getAllCommitmentsRecord } from '$lib/protocol/stores/stores.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
-	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol/tree';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol/core/tree';
 	import { t } from '$lib/translations';
 	import type {
 		Node,
@@ -14,7 +14,7 @@
 		Commitment,
 		AvailabilitySlot,
 		NeedSlot
-	} from '$lib/protocol/schemas';
+	} from '$lib/protocol/core/schemas';
 	
 	// V5: Use Commitment types directly (already have capacity_slots and need_slots)
 	type Capacity = Commitment;

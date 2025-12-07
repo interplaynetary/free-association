@@ -1,7 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 // V5: Import from v5 stores
-import { myCapacitySlotsStore } from '$lib/protocol/stores.svelte';
+import { myCapacitySlotsStore } from '$lib/protocol/stores/stores.svelte';
 
 // Live location data interface
 export interface LiveLocationData {

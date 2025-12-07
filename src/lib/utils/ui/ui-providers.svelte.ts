@@ -6,8 +6,8 @@ import {
 	networkCommitments,
 	networkCapacitySlots,
 	getNetworkCommitmentsRecord
-} from '$lib/protocol/stores.svelte';
-import { findNodeById, getDescendants } from '$lib/protocol/tree';
+} from '$lib/protocol/stores/stores.svelte';
+import { findNodeById, getDescendants } from '$lib/protocol/core/tree';
 import {
 	userPubKeys,
 	userNamesOrAliasesCache,
@@ -16,7 +16,7 @@ import {
 } from '$lib/network/users.svelte';
 import { userAliasesCache } from '$lib/network/users.svelte';
 import { globalOrganizations, getOrganizationName } from '$lib/network/organizations.svelte';
-import type { Commitment, Node } from '$lib/protocol/schemas';
+import type { Commitment, Node } from '$lib/protocol/core/schemas';
 
 // V5: Helper to create nodesMap from tree
 function createNodesMap(tree: Node | null): Record<string, Node> {

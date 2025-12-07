@@ -20,8 +20,8 @@
 
 import { RecognitionCouncil } from './recognition-council';
 import type { RecognitionCouncilConfig } from './recognition-council';
-import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/schemas';
-import type { ComplianceFilter } from '$lib/protocol/utils/filters';
+import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/core/schemas';
+import type { ComplianceFilter } from '$lib/protocol/core/utils/filters';
 
 // ═══════════════════════════════════════════════════════════════════
 // PROPOSAL SYSTEM (from councils.ts)

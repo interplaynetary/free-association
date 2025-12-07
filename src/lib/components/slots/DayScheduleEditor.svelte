@@ -10,7 +10,7 @@
 	 * Generates DaySchedule[] for AvailabilityWindow
 	 */
 	
-	import type { DaySchedule, DayOfWeek, TimeRange } from '$lib/protocol/schemas';
+	import type { DaySchedule, DayOfWeek, TimeRange } from '$lib/protocol/core/schemas';
 	import TimeRangeEditor from './TimeRangeEditor.svelte';
 	
 	interface Props {

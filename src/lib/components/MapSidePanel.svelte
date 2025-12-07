@@ -3,7 +3,7 @@
 	import { handleAddressClick } from '$lib/location/mapUtils';
 	import { globalState } from '$lib/global.svelte';
 	// V5: Import mutual recognition from v5 stores
-	import { myMutualRecognition } from '$lib/protocol/stores.svelte';
+	import { myMutualRecognition } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
 
 	interface Props {

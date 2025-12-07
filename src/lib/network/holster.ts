@@ -1,6 +1,6 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import type { HolsterInstance, HolsterUser } from '@mblaney/holster';
-import { config } from '$lib/protocol/config';
+import { config } from '$lib/protocol/core/config';
 
 // ═══════════════════════════════════════════════════════════════════
 // HOLSTER INITIALIZATION
@@ -153,7 +153,7 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 
 		// Initialize data streams
 		console.log('[HOLSTER] Initializing data streams...');
-		const storesModule = await import('$lib/protocol/stores.svelte');
+		const storesModule = await import('$lib/protocol/stores/stores.svelte');
 		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 

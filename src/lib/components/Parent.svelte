@@ -4,7 +4,7 @@
 	import { page } from '$app/stores';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	// V5: Import from v5 stores
-	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
+	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 	import { writable } from 'svelte/store';
 	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
 	const isLoadingTree = writable(false);
@@ -12,7 +12,7 @@
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode, type RootNode } from '$lib/protocol/schemas';
+	import { type Node, type NonRootNode, type RootNode } from '$lib/protocol/core/schemas';
 	import {
 		findNodeById,
 		getParentNode,
@@ -25,7 +25,7 @@
 		calculateNodePoints,
 		getPathToNode,
 		updateManualFulfillment
-	} from '$lib/protocol/tree';
+	} from '$lib/protocol/core/tree';
 	import { get } from 'svelte/store';
 	import {
 		createContact,

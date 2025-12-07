@@ -13,7 +13,7 @@ import {
 	type QuestCollection,
 	type QuestSharingSettings
 } from './quest-schemas';
-import { myRecognitionWeights } from '$lib/protocol/stores.svelte';
+import { myRecognitionWeights } from '$lib/protocol/stores/stores.svelte';
 
 /**
  * My Main Quests Store

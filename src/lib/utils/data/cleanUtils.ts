@@ -2,10 +2,10 @@ import { get } from 'svelte/store';
 import { userPub, userAlias } from '$lib/network/auth.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/network/users.svelte';
 // V5: Import from v5 stores
-import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
-import { createRootNode } from '$lib/protocol/tree';
+import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
+import { createRootNode } from '$lib/protocol/core/tree';
 import { populateWithExampleData } from '$lib/utils/example';
-import type { Node, NonRootNode } from '$lib/protocol/schemas';
+import type { Node, NonRootNode } from '$lib/protocol/core/schemas';
 
 /**
  * Change the name of the user's tree root node

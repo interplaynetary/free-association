@@ -16,12 +16,12 @@
 		enableAutoCommitmentComposition,
 		setMyNeedSlots,
 		setMyCapacitySlots
-	} from '$lib/protocol/stores.svelte';
-	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/allocation.svelte';
+	} from '$lib/protocol/stores/stores.svelte';
+	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);

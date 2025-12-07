@@ -47,7 +47,7 @@ export type {
 
 export type {
 	ComplianceFilter
-} from '$lib/protocol/utils/filters';
+} from '$lib/protocol/core/utils/filters';
 
 export type {
 	Organization,
@@ -55,5 +55,5 @@ export type {
 	NeedSlot,
 	Node,
 	RootNode
-} from '$lib/protocol/schemas';
+} from '$lib/protocol/core/schemas';
 

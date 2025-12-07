@@ -4,7 +4,7 @@
  */
 
 import * as z from 'zod';
-import { ITCStampSchema, RootNodeSchema, AvailabilitySlotSchema, NeedSlotSchema } from '$lib/protocol/schemas';
+import { ITCStampSchema, RootNodeSchema, AvailabilitySlotSchema, NeedSlotSchema } from '$lib/protocol/core/schemas';
 
 /**
  * Quest Origin - Tracks who/what created this quest

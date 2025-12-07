@@ -6,7 +6,7 @@
 
 import type { CollectiveTreeCallbacks, CollectiveDefinition } from './scheduler';
 import type { Node } from '$lib/protocol/schemas';
-import type { CollectiveTree } from '$lib/protocol/collective/collective-tree.svelte';
+import type { CollectiveTree } from '$lib/protocol/stores/collective-tree.svelte';
 import { holsterGet, holsterNextPut, holsterGetArray, ensureAuthenticated } from '$lib/server/holster/db';
 import { SharedUtils } from '../collective/shared-utils';
 

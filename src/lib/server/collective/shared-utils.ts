@@ -9,7 +9,7 @@
  */
 
 import { holsterGet, holsterNextPut, holsterGetArray, ensureAuthenticated } from '$lib/server/holster/db';
-import { sharesOfGeneralFulfillmentMap } from '$lib/protocol/tree';
+import { sharesOfGeneralFulfillmentMap } from '$lib/protocol/core/tree';
 import type { RecognitionData } from '$lib/protocol/collective/schemas';
 import type { Node } from '$lib/protocol/schemas';
 

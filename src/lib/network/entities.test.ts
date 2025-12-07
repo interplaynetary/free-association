@@ -14,13 +14,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { AttributeRecognitionsCollection } from '$lib/protocol/schemas';
+import type { AttributeRecognitionsCollection } from '$lib/protocol/core/schemas';
 import {
 	updateAttributeInCollection,
 	getAttributeFromCollection,
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
-} from '$lib/protocol/attributes/attribute-recognition';
+} from '$lib/protocol/core/attributes/attribute-recognition';
 
 describe('Entity Attribute Operations', () => {
 	it('should set entity attribute using core functions', () => {

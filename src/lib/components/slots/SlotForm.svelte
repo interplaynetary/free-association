@@ -13,8 +13,8 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
-  import { NeedSlotSchema, AvailabilitySlotSchema } from '$lib/protocol/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+  import { NeedSlotSchema, AvailabilitySlotSchema } from '$lib/protocol/core/schemas';
   import NeedTypeSelector from './NeedTypeSelector.svelte';
   import BasicInfo from './form/BasicInfo.svelte';
   import QuantityInput from './form/QuantityInput.svelte';

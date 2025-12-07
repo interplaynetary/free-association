@@ -9,9 +9,9 @@ import {
 	reorderNode, 
 	wouldCreateCycle,
 	createRootNode
-} from '$lib/protocol/tree';
+} from '$lib/protocol/core/tree';
 import { userPub } from '$lib/network/auth.svelte';
-import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores.svelte';
+import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 
 // User identification is handled via username (alias) and userpub (public key)

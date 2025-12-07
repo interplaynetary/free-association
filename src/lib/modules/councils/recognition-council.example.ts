@@ -12,7 +12,7 @@ import {
 	printMembershipStatus,
 	printAllocationSummary
 } from './recognition-council';
-import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/schemas';
+import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/core/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // EXAMPLE 1: Basic Climate Action Council

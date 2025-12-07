@@ -15,7 +15,7 @@ import {
 	printMembershipStatus,
 	printAllocationSummary
 } from './recognition-council';
-import type { AvailabilitySlot } from '$lib/protocol/schemas';
+import type { AvailabilitySlot } from '$lib/protocol/core/schemas';
 import type { BaseNeed } from '$lib/protocol/collective/schemas';
 
 // ═══════════════════════════════════════════════════════════════════

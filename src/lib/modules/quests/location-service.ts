@@ -7,7 +7,7 @@
  * 3. Browser Geolocation API (real-time, requires permission)
  */
 
-import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/schemas';
+import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/core/schemas';
 import type { QuestLocation } from '$lib/modules/quests/quest-schemas';
 
 export interface LocationSource {

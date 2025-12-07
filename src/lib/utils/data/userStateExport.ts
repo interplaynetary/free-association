@@ -22,7 +22,7 @@ import type {
 	SlotSubscriptions,
 	SlotFiltersCollection,
 	Commitment
-} from '$lib/protocol/schemas';
+} from '$lib/protocol/core/schemas';
 import { 
 	myRecognitionTreeStore as userTree,
 	myRecognitionWeights,
@@ -31,10 +31,10 @@ import {
 	myCommitmentStore,
 	setMyCapacitySlots,
 	setMyNeedSlots
-} from '$lib/protocol/stores.svelte';
+} from '$lib/protocol/stores/stores.svelte';
 import { userContacts } from '$lib/network/users.svelte';
 import { slotSubscriptions, slotFilters } from '$lib/network/capacity-subscriptions.svelte';
-import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/attributes/attribute-recognition.svelte';
+import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/stores/attributes.svelte';
 
 // V5 TODO: User slot composition types need to be defined in v5
 // For now, we'll use simplified types

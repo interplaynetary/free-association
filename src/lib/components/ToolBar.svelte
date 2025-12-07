@@ -7,18 +7,18 @@
 		networkCommitments,
 		getNetworkCommitmentsRecord,
 		setMyCapacitySlots
-	} from '$lib/protocol/stores.svelte';
-	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/tree';
+	} from '$lib/protocol/stores/stores.svelte';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '$lib/protocol/core/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	import { searchTreeForNavigation } from '$lib/protocol/utils/filters/treeSearch';
+	import { searchTreeForNavigation } from '$lib/protocol/core/filters/treeSearch';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
-	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/protocol/schemas';
-	import { collectiveForest } from '$lib/protocol/collective/collective-tree.svelte';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '$lib/protocol/core/schemas';
+	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
 	
 	// V5: Wrap Commitment with id for collection storage
 	type CommitmentWithId = Commitment & { id: string };

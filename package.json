@@ -4,6 +4,9 @@
 	"version": "0.0.1",
 	"type": "module",
 	"author": "playnet",
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -91,6 +94,7 @@
 		"@capacitor/android": "^7.4.0",
 		"@capacitor/core": "^7.4.0",
 		"@capacitor/ios": "^7.4.0",
+		"@internationalized/date": "^3.10.0",
 		"@jsonquerylang/jsonquery": "^5.0.4",
 		"@mblaney/holster": "1.0.35",
 		"@peerbit/document": "^9.6.2",

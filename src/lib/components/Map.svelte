@@ -19,7 +19,7 @@
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 	// V5: Import commitments (contains capacity slots) from v5 stores
-	import { getAllCommitmentsRecord } from '$lib/protocol/stores.svelte';
+	import { getAllCommitmentsRecord } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';

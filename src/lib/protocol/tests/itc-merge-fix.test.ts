@@ -20,7 +20,7 @@ import {
 	myCommitmentStore,
 	myNeedSlotsStore,
 	setMyNeedSlots // ✅ NEW: Helper to update need slots
-} from '$lib/protocol/stores.svelte';
+} from '$lib/protocol/stores/stores.svelte';
 import type { Commitment, NeedSlot } from '../schemas';
 
 describe('ITC Merge Fix - Data Loss Prevention', () => {
