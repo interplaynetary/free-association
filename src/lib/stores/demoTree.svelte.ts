@@ -5,8 +5,8 @@
  * Data is stored in browser's localStorage and not synced to Holster.
  */
 
-import type { RootNode } from '$lib/protocol/core/schemas';
-import { createRootNode } from '$lib/protocol/core/tree';
+import type { RootNode } from '../../../packages/protocol/src/schemas';
+import { createRootNode } from '../../../packages/protocol/src/tree';
 import { applyTemplate } from '$lib/templates';
 import { writable, type Readable } from 'svelte/store';
 

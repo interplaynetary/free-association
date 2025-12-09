@@ -4,7 +4,7 @@
 	import { getUserName } from '$lib/network/users.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import Share from '$lib/components/Share.svelte';
-	import { getAllocatedSlotCount, getTotalSlotCount } from '$lib/protocol/core/tree';
+	import { getAllocatedSlotCount, getTotalSlotCount } from '../../../packages/protocol/src/tree';
 	import { t } from '$lib/translations';
 	import type {
 		Node,
@@ -14,7 +14,7 @@
 		Commitment,
 		AvailabilitySlot,
 		NeedSlot
-	} from '$lib/protocol/core/schemas';
+	} from '../../../packages/protocol/src/schemas';
 	
 	// V5: Use Commitment types directly (already have capacity_slots and need_slots)
 	type Capacity = Commitment;

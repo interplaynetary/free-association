@@ -24,13 +24,13 @@ import {
 	type AttributeSubscriptions,
 	type EntityIdMappings,
 	type AttributeValue
-} from '../core/schemas';
+} from '../../../../packages/protocol/src/schemas';
 import {
 	getAttributeFromCollection,
 	updateAttributeInCollection,
 	removeAttributeFromCollection
-} from '../core/attributes/attribute-recognition';
-import { getEqualityChecker } from '../core/attributes/attribute-types';
+} from '../../../../packages/protocol/src/attributes/attribute-recognition';
+import { getEqualityChecker } from '../../../../packages/protocol/src/attributes/attribute-types';
 import { leq as itcLeq, equals as itcEquals, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
 import { holsterUserPub } from '$lib/network/holster.svelte';

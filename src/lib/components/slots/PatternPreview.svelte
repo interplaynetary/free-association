@@ -6,7 +6,7 @@
 	 * Helps users understand complex recurring patterns
 	 */
 	
-	import type { AvailabilityWindow, DayOfWeek } from '$lib/protocol/core/schemas';
+	import type { AvailabilityWindow, DayOfWeek } from '../../../../packages/protocol/src/schemas';
 	
 	interface Props {
 		recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;

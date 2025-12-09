@@ -5,8 +5,8 @@
  * Each organization gets a pre-populated tree structure loaded from JSON config.
  */
 
-import type { RootNode, Organization, Contributor } from '$lib/protocol/core/schemas';
-import { RootNodeSchema } from '$lib/protocol/core/schemas';
+import type { RootNode, Organization, Contributor } from '../../../packages/protocol/src/schemas';
+import { RootNodeSchema } from '../../../packages/protocol/src/schemas';
 import orgTreesConfig from './org-trees.json';
 
 /**

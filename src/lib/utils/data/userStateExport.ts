@@ -22,7 +22,7 @@ import type {
 	SlotSubscriptions,
 	SlotFiltersCollection,
 	Commitment
-} from '$lib/protocol/core/schemas';
+} from '../../../../packages/protocol/src/schemas';
 import { 
 	myRecognitionTreeStore as userTree,
 	myRecognitionWeights,

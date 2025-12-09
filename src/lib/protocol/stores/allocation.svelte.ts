@@ -59,7 +59,7 @@ import {
 	applyDivisibilityConstraints,
 	meetsMinimumAllocation,
 	redistributeRemainders
-} from '../core/allocation';
+} from '../../../../packages/protocol/src/allocation';
 
 // Import v5 schemas and stores
 import type {
@@ -70,9 +70,9 @@ import type {
 	SlotAllocationRecord,
 	MultiDimensionalDamping,
 	PerTypeDampingHistoryEntry
-} from '../core/schemas';
+} from '../../../../packages/protocol/src/schemas';
 
-import { normalizeGlobalRecognitionWeights } from '../core/schemas';
+import { normalizeGlobalRecognitionWeights } from '../../../../packages/protocol/src/schemas';
 
 import {
 	myCommitmentStore,
@@ -86,8 +86,8 @@ import {
 	networkAllocations,
 	type SpaceTimeIndex
 } from './stores.svelte';
-import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '../core/utils/match';
-import { deepEqual } from '../core/utils/memoize';
+import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '../../../../packages/protocol/src/utils/match';
+import { deepEqual } from '../../../../packages/protocol/src/utils/memoize';
 
 // Import../../commons/v5/matchnctions for causal consistency
 import {

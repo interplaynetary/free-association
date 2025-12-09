@@ -13,7 +13,7 @@
 	 * - Transparency and trust building
 	 */
 	
-	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
 	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores/stores.svelte';
 	
 	interface Props {

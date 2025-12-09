@@ -25,7 +25,7 @@
 		if (browser) {
 			await import('$lib/services');
 		}
-		
+
 		// Register PWA service worker with auto-update
 		if (browser && pwaInfo) {
 			const { registerSW } = await import('virtual:pwa-register');
@@ -39,7 +39,7 @@
 				}
 			});
 		}
-		
+
 		// Request notification permission
 		if (browser && 'Notification' in window && Notification.permission === 'default') {
 			Notification.requestPermission().then((permission) => {

@@ -1,5 +1,5 @@
-import { addChild, findNodeById } from '$lib/protocol/core/tree';
-import type { RootNode } from '$lib/protocol/core/schemas';
+import { addChild, findNodeById } from '../../../packages/protocol/src/tree';
+import type { RootNode } from '../../../packages/protocol/src/schemas';
 
 /**
  * Official UN Sustainable Development Goals colors

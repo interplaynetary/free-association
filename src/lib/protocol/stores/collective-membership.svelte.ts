@@ -8,7 +8,7 @@
  */
 
 // Re-export everything from the pure TypeScript module
-export * from '../core/collective/collective-membership';
+export * from '../../../../packages/protocol/src/collective/collective-membership';
 
 /*
 # Membership Module: Mutual Recognition Density (MRD)

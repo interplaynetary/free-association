@@ -113,6 +113,14 @@ export default defineConfig({
 		noExternal: []
 	},
 	server: {
+		fs: {
+			allow: [
+				// Search up for workspace root
+				'..',
+				// Explicitly allow packages directory
+				'packages'
+			]
+		},
 		watch: {
 			ignored: [
 				'**/store/**',

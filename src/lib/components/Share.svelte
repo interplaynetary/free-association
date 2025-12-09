@@ -24,7 +24,7 @@
 		formatSlotTimeDisplay,
 		formatSlotLocationDisplay,
 		getSlotSortValue
-	} from '$lib/protocol/core/tree';
+	} from '../../../packages/protocol/src/tree';
 
 	interface Props {
 		share: any; // Using any since we're now working with inventory data, not RecipientCapacity

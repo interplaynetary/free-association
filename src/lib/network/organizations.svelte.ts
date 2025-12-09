@@ -19,8 +19,8 @@ import { holster } from '$lib/network/holster';
 import type {
 	Organization,
 	OrganizationsCollection
-} from '$lib/protocol/core/schemas';
-import { OrganizationSchema, OrganizationsCollectionSchema } from '$lib/protocol/core/schemas';
+} from '../../../packages/protocol/src/schemas';
+import { OrganizationSchema, OrganizationsCollectionSchema } from '../../../packages/protocol/src/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // USER'S ORGANIZATIONS STORE (Holster-backed via createStore)

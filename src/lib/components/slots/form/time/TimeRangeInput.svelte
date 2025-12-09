@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { TimeRange } from '$lib/protocol/core/schemas';
+  import type { TimeRange } from '../../../../../../packages/protocol/src/schemas';
   
   interface Props {
     startTime: string;

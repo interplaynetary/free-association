@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { AvailabilitySlot, AvailabilityWindow } from '$lib/protocol/core/schemas';
-	import { AvailabilitySlotSchema } from '$lib/protocol/core/schemas';
+	import type { AvailabilitySlot, AvailabilityWindow } from '../../../packages/protocol/src/schemas';
+	import { AvailabilitySlotSchema } from '../../../packages/protocol/src/schemas';
 	import { 
 		TimePatternEditor, 
 		DivisibilityEditor, 

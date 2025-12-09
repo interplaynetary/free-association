@@ -21,7 +21,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+	import type { NeedSlot, AvailabilitySlot } from '../../packages/protocol/src/schemas';
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);

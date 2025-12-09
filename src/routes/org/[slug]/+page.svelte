@@ -5,9 +5,9 @@
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import Type from '$lib/components/Type.svelte';
-	import { 
-		myRecognitionTreeStore, 
-		myRecognitionWeights, 
+	import {
+		myRecognitionTreeStore,
+		myRecognitionWeights,
 		myMutualRecognition,
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
@@ -25,13 +25,20 @@
 	import { currentPath } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot, NonRootNode } from '$lib/protocol/core/schemas';
-	import { NEED_TYPES, formatNeedType } from '$lib/protocol/core/utils/needTypes';
+	import type {
+		NeedSlot,
+		AvailabilitySlot,
+		NonRootNode
+	} from '../../../../packages/protocol/src/schemas';
+	import { NEED_TYPES, formatNeedType } from '../../../../packages/protocol/src/utils/needTypes';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
 	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
-	import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '$lib/protocol/core/tree';
-	import { computeMutualRecognition } from '$lib/protocol/core/allocation';
+	import {
+		sharesOfGeneralFulfillmentMap,
+		getAllContributorsFromTree
+	} from '../../../../packages/protocol/src/tree';
+	import { computeMutualRecognition } from '../../../../packages/protocol/src/allocation';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();
@@ -65,7 +72,7 @@
 
 	// Bootstrap: Register demo orgs in globalOrganizations IMMEDIATELY
 	// (In production, orgs would come from Holster network)
-	globalOrganizations.update(orgs => ({ ...orgs, ...DEMO_ORGANIZATIONS }));
+	globalOrganizations.update((orgs) => ({ ...orgs, ...DEMO_ORGANIZATIONS }));
 	console.log('[ORG-PAGE] Registered demo organizations');
 
 	// Use the tree as-is - it already has node-specific contributors from the JSON config
@@ -74,39 +81,41 @@
 	// Initialize demo tree with organization-specific tree IMMEDIATELY
 	// Force initialization to ensure we load the org tree even if another tree exists
 	// persist=false means this tree won't be saved to localStorage
-	console.log('[ORG-PAGE] Initializing demo tree store with org tree NOW (before component renders)');
+	console.log(
+		'[ORG-PAGE] Initializing demo tree store with org tree NOW (before component renders)'
+	);
 	demoTreeStore.initializeWithCustomTree(orgTreeWithContributors, true, false);
 
 	onMount(() => {
 		console.log('[ORG-PAGE] Component mounted - tree already initialized');
-		
+
 		// Initialize path with the org tree root
 		if (data.tree) {
 			currentPath.set([data.tree.id]);
 			console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
 		}
-		
+
 		// Initialize stores for inventory view
 		console.log('[ORG-PAGE] Initializing stores for inventory view...');
 		initializeAllocationStores();
-		
+
 		// Subscribe to stores (reactive)
 		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
 			needSlots = slots || [];
 		});
-		
+
 		const unsubCapacity = myCapacitySlotsStore.subscribe((slots) => {
 			capacitySlots = slots || [];
 		});
-		
+
 		// Enable auto-composition
 		cleanupComposition = enableAutoCommitmentComposition();
-		
+
 		// Enable auto-allocation publishing
 		cleanupAllocationPublishing = enableAutoAllocationPublishing();
-		
+
 		console.log('[ORG-PAGE] ✅ Initialized and subscribed');
-		
+
 		return () => {
 			unsubNeeds();
 			unsubCapacity();
@@ -126,7 +135,7 @@
 	// CRUD Operations - Needs
 	function addNeedSlot() {
 		if (!newNeedName.trim()) return;
-		
+
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: newNeedName,
@@ -136,29 +145,27 @@
 			max_natural_div: 1,
 			min_allocation_percentage: 0.01
 		};
-		
+
 		setMyNeedSlots([...needSlots, newSlot]);
-		
+
 		// Reset form
 		newNeedName = '';
 		newNeedQuantity = 10;
 	}
-	
+
 	function removeNeedSlot(id: string) {
-		setMyNeedSlots(needSlots.filter(s => s.id !== id));
+		setMyNeedSlots(needSlots.filter((s) => s.id !== id));
 	}
-	
+
 	function updateNeedQuantity(id: string, quantity: number) {
-		const updated = needSlots.map(s =>
-			s.id === id ? { ...s, quantity } : s
-		);
+		const updated = needSlots.map((s) => (s.id === id ? { ...s, quantity } : s));
 		setMyNeedSlots(updated);
 	}
 
 	// CRUD Operations - Capacity
 	function addCapacitySlot() {
 		if (!newCapacityName.trim()) return;
-		
+
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: newCapacityName,
@@ -168,35 +175,33 @@
 			max_natural_div: 1,
 			min_allocation_percentage: 0.01
 		};
-		
+
 		setMyCapacitySlots([...capacitySlots, newSlot]);
-		
+
 		// Reset form
 		newCapacityName = '';
 		newCapacityQuantity = 5;
 	}
-	
+
 	function removeCapacitySlot(id: string) {
-		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id));
+		setMyCapacitySlots(capacitySlots.filter((s) => s.id !== id));
 	}
-	
+
 	function updateCapacityQuantity(id: string, quantity: number) {
-		const updated = capacitySlots.map(s =>
-			s.id === id ? { ...s, quantity } : s
-		);
+		const updated = capacitySlots.map((s) => (s.id === id ? { ...s, quantity } : s));
 		setMyCapacitySlots(updated);
 	}
 
 	// Batch update handlers for Type component
 	function handleNeedTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
-		const updated = needSlots.map(slot =>
+		const updated = needSlots.map((slot) =>
 			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
 		);
 		setMyNeedSlots(updated);
 	}
-	
+
 	function handleCapacityTypeBatchUpdate(typeId: string, updates: Partial<AvailabilitySlot>) {
-		const updated = capacitySlots.map(slot =>
+		const updated = capacitySlots.map((slot) =>
 			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
 		);
 		setMyCapacitySlots(updated);
@@ -204,134 +209,136 @@
 
 	// Individual slot update handlers (for full slot editing with new editors)
 	function handleNeedSlotUpdate(updatedSlot: NeedSlot) {
-		const updated = needSlots.map(s =>
-			s.id === updatedSlot.id ? updatedSlot : s
-		);
+		const updated = needSlots.map((s) => (s.id === updatedSlot.id ? updatedSlot : s));
 		setMyNeedSlots(updated);
 	}
-	
+
 	function handleCapacitySlotUpdate(updatedSlot: AvailabilitySlot) {
-		const updated = capacitySlots.map(s =>
-			s.id === updatedSlot.id ? updatedSlot : s
-		);
+		const updated = capacitySlots.map((s) => (s.id === updatedSlot.id ? updatedSlot : s));
 		setMyCapacitySlots(updated);
 	}
 
 	// ═══════════════════════════════════════════════════════════════════
 	// DEMO RECOGNITION STORES (Reuse Protocol Algorithms, Separate Data)
 	// ═══════════════════════════════════════════════════════════════════
-	
+
 	// V5: Compute recognition from demo tree (since stores require authentication)
 	// ✅ REUSES PROTOCOL: Same sharesOfGeneralFulfillmentMap algorithm
 	// ✅ SEPARATE DATA: Uses demoTreeStore instead of myRecognitionTreeStore
-	const demoRecognitionWeights = derived(
-		[demoTreeStore.toStore()],
-		([$tree]) => {
-			console.log('[📊 DEMO-REC] Tree changed - recomputing recognition weights');
-			
-			if (!$tree) {
-				console.log('[📊 DEMO-REC] ❌ No demo tree available');
-				return {};
-			}
-			
-			// DEBUG: Inspect tree structure
-			console.log('[📊 DEMO-REC]   Root ID:', $tree.id);
-			console.log('[📊 DEMO-REC]   Root name:', $tree.name);
-			console.log('[📊 DEMO-REC]   Children count:', $tree.children?.length || 0);
-			
-			// Find and log all contribution nodes (nodes with contributors)
-			const allNodes = [$tree];
-			const queue = [...($tree.children || [])];
-			while (queue.length > 0) {
-				const node = queue.shift()!;
-				allNodes.push(node);
-				queue.push(...(node.children || []));
-			}
-			
-			console.log('[📊 DEMO-REC]   Total nodes in tree:', allNodes.length);
-			
-			const contributionNodes = allNodes.filter(node => {
-				if (node.type === 'RootNode') return false;
-				const nonRoot = node as any;
-				return nonRoot.contributors && nonRoot.contributors.length > 0;
-			});
-			
-			console.log('[📊 DEMO-REC]   Contribution nodes (with contributors):', contributionNodes.length);
-			
-			contributionNodes.forEach((node: any) => {
-				console.log(`[📊 DEMO-REC]     • Node "${node.name}" (${node.id}): ${node.contributors.length} contributors`);
-				node.contributors.forEach((c: any) => {
-					console.log(`[📊 DEMO-REC]       - ${c.id} (${c.points} points)`);
-				});
-			});
-			
-			// Try to get contributors from tree using protocol function
-			console.log('[📊 DEMO-REC] Getting all contributors from tree via protocol...');
-			const allContributors = getAllContributorsFromTree($tree);
-			console.log('[📊 DEMO-REC]   Protocol found', allContributors.length, 'unique contributor IDs');
-			allContributors.forEach(id => {
-				console.log(`[📊 DEMO-REC]     • ${id}`);
-			});
-			
-			try {
-				console.log('[📊 DEMO-REC] Computing recognition weights...');
-				// ✅ REUSE PROTOCOL ALGORITHM
-				const weights = sharesOfGeneralFulfillmentMap($tree, {});
-				const nonZero = Object.values(weights).filter(w => w > 0).length;
-				console.log(`[📊 DEMO-REC] ✅ Computed ${Object.keys(weights).length} total, ${nonZero} non-zero recognition weights`);
-				
-				Object.entries(weights).forEach(([id, weight]) => {
-					if (weight > 0) {
-						console.log(`[📊 DEMO-REC]   • ${id}: ${(weight * 100).toFixed(2)}%`);
-					}
-				});
-				
-				return weights;
-			} catch (error) {
-				console.error('[📊 DEMO-REC] ❌ Error computing recognition:', error);
-				return {};
-			}
+	const demoRecognitionWeights = derived([demoTreeStore.toStore()], ([$tree]) => {
+		console.log('[📊 DEMO-REC] Tree changed - recomputing recognition weights');
+
+		if (!$tree) {
+			console.log('[📊 DEMO-REC] ❌ No demo tree available');
+			return {};
 		}
-	);
-	
+
+		// DEBUG: Inspect tree structure
+		console.log('[📊 DEMO-REC]   Root ID:', $tree.id);
+		console.log('[📊 DEMO-REC]   Root name:', $tree.name);
+		console.log('[📊 DEMO-REC]   Children count:', $tree.children?.length || 0);
+
+		// Find and log all contribution nodes (nodes with contributors)
+		const allNodes = [$tree];
+		const queue = [...($tree.children || [])];
+		while (queue.length > 0) {
+			const node = queue.shift()!;
+			allNodes.push(node);
+			queue.push(...(node.children || []));
+		}
+
+		console.log('[📊 DEMO-REC]   Total nodes in tree:', allNodes.length);
+
+		const contributionNodes = allNodes.filter((node) => {
+			if (node.type === 'RootNode') return false;
+			const nonRoot = node as any;
+			return nonRoot.contributors && nonRoot.contributors.length > 0;
+		});
+
+		console.log(
+			'[📊 DEMO-REC]   Contribution nodes (with contributors):',
+			contributionNodes.length
+		);
+
+		contributionNodes.forEach((node: any) => {
+			console.log(
+				`[📊 DEMO-REC]     • Node "${node.name}" (${node.id}): ${node.contributors.length} contributors`
+			);
+			node.contributors.forEach((c: any) => {
+				console.log(`[📊 DEMO-REC]       - ${c.id} (${c.points} points)`);
+			});
+		});
+
+		// Try to get contributors from tree using protocol function
+		console.log('[📊 DEMO-REC] Getting all contributors from tree via protocol...');
+		const allContributors = getAllContributorsFromTree($tree);
+		console.log('[📊 DEMO-REC]   Protocol found', allContributors.length, 'unique contributor IDs');
+		allContributors.forEach((id) => {
+			console.log(`[📊 DEMO-REC]     • ${id}`);
+		});
+
+		try {
+			console.log('[📊 DEMO-REC] Computing recognition weights...');
+			// ✅ REUSE PROTOCOL ALGORITHM
+			const weights = sharesOfGeneralFulfillmentMap($tree, {});
+			const nonZero = Object.values(weights).filter((w) => w > 0).length;
+			console.log(
+				`[📊 DEMO-REC] ✅ Computed ${Object.keys(weights).length} total, ${nonZero} non-zero recognition weights`
+			);
+
+			Object.entries(weights).forEach(([id, weight]) => {
+				if (weight > 0) {
+					console.log(`[📊 DEMO-REC]   • ${id}: ${(weight * 100).toFixed(2)}%`);
+				}
+			});
+
+			return weights;
+		} catch (error) {
+			console.error('[📊 DEMO-REC] ❌ Error computing recognition:', error);
+			return {};
+		}
+	});
+
 	// Load org recognition data from config (who recognizes whom in the demo ecosystem)
 	// This is the "others_recognition_of_me" equivalent for demo mode
 	import { readable } from 'svelte/store';
-	import type { GlobalRecognitionWeights } from '$lib/protocol/core/schemas';
+	import type { GlobalRecognitionWeights } from '../../../../packages/protocol/src/schemas';
 	import { getOrgTreesMap } from '$lib/config/org-trees';
-	
+
 	const demoOrgRecognitionMap = readable<Record<string, GlobalRecognitionWeights>>({}, (set) => {
 		// Load all org configs and compute their recognition weights
 		const orgTreesMap = getOrgTreesMap();
 		const recognitionMap: Record<string, GlobalRecognitionWeights> = {};
-		
+
 		console.log('[📊 DEMO-ORG-REC] Loading org recognition data from config...');
-		
+
 		for (const [slug, config] of Object.entries(orgTreesMap)) {
 			if (!config.recognizes || config.recognizes.length === 0) continue;
-			
+
 			// Compute recognition weights for this org
 			// Convert contributors array to weights (same as protocol does)
 			const totalPoints = config.recognizes.reduce((sum, c) => sum + c.points, 0);
 			const weights: GlobalRecognitionWeights = {};
-			
-			config.recognizes.forEach(contributor => {
+
+			config.recognizes.forEach((contributor) => {
 				weights[contributor.id] = contributor.points / totalPoints;
 			});
-			
+
 			// Map by org_id (not slug)
 			const orgId = `org_demo_${slug.replace(/-/g, '')}`;
 			recognitionMap[orgId] = weights;
-			
+
 			console.log(`[📊 DEMO-ORG-REC]   ${config.name} (${orgId}):`, weights);
 		}
-		
-		console.log(`[📊 DEMO-ORG-REC] ✅ Loaded ${Object.keys(recognitionMap).length} org recognition trees`);
+
+		console.log(
+			`[📊 DEMO-ORG-REC] ✅ Loaded ${Object.keys(recognitionMap).length} org recognition trees`
+		);
 		set(recognitionMap);
-		
+
 		return () => {}; // No cleanup needed
 	});
-	
+
 	// V5: Compute mutual recognition for demo mode
 	// ✅ REUSES PROTOCOL: Same computeMutualRecognition algorithm from allocation.ts
 	// ✅ SEPARATE DATA: Uses demo recognition weights + org recognition data
@@ -339,22 +346,22 @@
 		[demoRecognitionWeights, demoOrgRecognitionMap],
 		([$myRecognition, $orgRecognition]) => {
 			console.log('[🤝 DEMO-MR] Computing mutual recognition for demo mode...');
-			
+
 			if (!$myRecognition || Object.keys($myRecognition).length === 0) {
 				console.log('[🤝 DEMO-MR] ❌ No recognition weights available');
 				return {};
 			}
-			
+
 			const myRecCount = Object.keys($myRecognition).length;
 			const orgRecCount = Object.keys($orgRecognition).length;
 			console.log(`[🤝 DEMO-MR] My recognition: ${myRecCount} entries`);
 			console.log(`[🤝 DEMO-MR] Org recognition: ${orgRecCount} orgs`);
-			
+
 			// ✅ FIX: Use the org_demo_* format to match recognition data keys
 			// Convert slug → org_id (e.g., "unicef" → "org_demo_unicef")
 			const myOrgId = `org_demo_${data.slug.replace(/-/g, '')}`;
 			console.log(`[🤝 DEMO-MR] My org ID: ${myOrgId}`);
-			
+
 			// DEBUG: Log the inputs before calling the algorithm
 			console.log('[🤝 DEMO-MR] Inputs to computeMutualRecognition:');
 			console.log('[🤝 DEMO-MR]   myRecognition:', $myRecognition);
@@ -362,116 +369,122 @@
 			Object.entries($orgRecognition).forEach(([orgId, theirWeights]) => {
 				console.log(`[🤝 DEMO-MR]     ${orgId} recognizes:`, theirWeights);
 				if (theirWeights[myOrgId]) {
-					console.log(`[🤝 DEMO-MR]       → Recognizes ${myOrgId}: ${(theirWeights[myOrgId] * 100).toFixed(2)}%`);
+					console.log(
+						`[🤝 DEMO-MR]       → Recognizes ${myOrgId}: ${(theirWeights[myOrgId] * 100).toFixed(2)}%`
+					);
 				}
 			});
-			
+
 			// ✅ REUSE PROTOCOL ALGORITHM - Same function as authenticated mode!
 			const mutualRec = computeMutualRecognition(
-				$myRecognition,      // Who I recognize
-				$orgRecognition,     // Who recognizes me (from config)
-				myOrgId              // My org ID (matches config format!)
+				$myRecognition, // Who I recognize
+				$orgRecognition, // Who recognizes me (from config)
+				myOrgId // My org ID (matches config format!)
 			);
-			
-			const mutualCount = Object.values(mutualRec).filter(mr => mr > 0).length;
+
+			const mutualCount = Object.values(mutualRec).filter((mr) => mr > 0).length;
 			console.log(`[🤝 DEMO-MR] ✅ Computed ${mutualCount} mutual recognition relationships`);
-			
+
 			// Detailed comparison logging
 			Object.entries(mutualRec).forEach(([id, mr]) => {
 				const myRec = $myRecognition[id] || 0;
 				const theirRec = $orgRecognition[id]?.[myOrgId] || 0;
 				const minValue = Math.min(myRec, theirRec);
-				const capped = myRec < theirRec ? 'MY_REC' : (theirRec < myRec ? 'THEIR_REC' : 'EQUAL');
-				
+				const capped = myRec < theirRec ? 'MY_REC' : theirRec < myRec ? 'THEIR_REC' : 'EQUAL';
+
 				console.log(`[🤝 DEMO-MR]   ${id}:`);
 				console.log(`[🤝 DEMO-MR]     I→them: ${(myRec * 100).toFixed(2)}%`);
 				console.log(`[🤝 DEMO-MR]     them→me: ${(theirRec * 100).toFixed(2)}%`);
 				console.log(`[🤝 DEMO-MR]     MR: ${(mr * 100).toFixed(2)}% (capped by ${capped})`);
-				
+
 				if (mr > 0 && mr !== minValue) {
-					console.error(`[🤝 DEMO-MR]     ❌ ERROR: MR (${mr}) != min(${myRec}, ${theirRec}) = ${minValue}`);
+					console.error(
+						`[🤝 DEMO-MR]     ❌ ERROR: MR (${mr}) != min(${myRec}, ${theirRec}) = ${minValue}`
+					);
 				}
 			});
-			
+
 			return mutualRec;
 		}
 	);
-	
+
 	// V5: Create reactive derived store from demoRecognitionWeights (org page)
 	// Recognition weights are computed from the org tree!
 	// ✅ ORG PAGE: Always use demo recognition (computed from org tree), never auth weights
-	const barSegments = derived(
-		demoRecognitionWeights, 
-		($weights) => {
-			console.log('[📊 ORG-YR] Recognition weights changed - generating segments for bar...');
-			
-			if (!$weights || Object.keys($weights).length === 0) {
-				console.log('[📊 ORG-YR] ❌ No recognition weights available');
-				return [];
-			}
+	const barSegments = derived(demoRecognitionWeights, ($weights) => {
+		console.log('[📊 ORG-YR] Recognition weights changed - generating segments for bar...');
 
-			const totalEntries = Object.keys($weights).length;
-			const nonZeroEntries = Object.values($weights as Record<string, number>).filter(v => v > 0).length;
-			console.log(`[📊 ORG-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-			// Transform recognition weights into segments for Bar
-			const segments = Object.entries($weights as Record<string, number>)
-				.filter(([_, value]) => value > 0) // Only include non-zero values
-				.map(([id, value]) => ({
-					id,
-					value: value * 100 // Convert from decimal to percentage
-				}))
-				.sort((a, b) => b.value - a.value); // Sort by value descending
-			
-			console.log(`[📊 ORG-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
-			segments.forEach(seg => {
-				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-			});
-			
-			return segments;
+		if (!$weights || Object.keys($weights).length === 0) {
+			console.log('[📊 ORG-YR] ❌ No recognition weights available');
+			return [];
 		}
-	);
+
+		const totalEntries = Object.keys($weights).length;
+		const nonZeroEntries = Object.values($weights as Record<string, number>).filter(
+			(v) => v > 0
+		).length;
+		console.log(
+			`[📊 ORG-YR] Recognition weights has ${totalEntries} entries (${nonZeroEntries} non-zero)`
+		);
+
+		// Transform recognition weights into segments for Bar
+		const segments = Object.entries($weights as Record<string, number>)
+			.filter(([_, value]) => value > 0) // Only include non-zero values
+			.map(([id, value]) => ({
+				id,
+				value: value * 100 // Convert from decimal to percentage
+			}))
+			.sort((a, b) => b.value - a.value); // Sort by value descending
+
+		console.log(`[📊 ORG-YR] ✅ Generated ${segments.length} segments for recognition bar:`);
+		segments.forEach((seg) => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+
+		return segments;
+	});
 
 	// V5: Create reactive derived store from demoMutualRecognition (org page)
 	// ✅ ORG PAGE: Always use demo mutual recognition (computed from org tree), never auth MR
-	const providerSegments = derived(
-		demoMutualRecognition,
-		($mutualRec) => {
-			console.log('[📊 ORG-MR] Mutual recognition changed - generating segments for bar...');
+	const providerSegments = derived(demoMutualRecognition, ($mutualRec) => {
+		console.log('[📊 ORG-MR] Mutual recognition changed - generating segments for bar...');
 
-			if (!$mutualRec || Object.keys($mutualRec).length === 0) {
-				console.log('[📊 ORG-MR] ❌ No mutual recognition data available');
-				return [];
-			}
-
-			const totalEntries = Object.keys($mutualRec).length;
-			const nonZeroEntries = Object.values($mutualRec as Record<string, number>).filter(v => v > 0).length;
-			console.log(`[📊 ORG-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`);
-
-			// Transform mutual recognition data into segments for Bar
-			const segments = Object.entries($mutualRec as Record<string, number>)
-				.filter(([_, value]) => value > 0) // Only include non-zero values
-				.map(([id, value]) => ({
-					id,
-					value: value * 100 // Convert from decimal to percentage
-				}))
-				.sort((a, b) => b.value - a.value); // Sort by value descending
-
-			console.log(`[📊 ORG-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
-			segments.forEach(seg => {
-				console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
-			});
-			
-			return segments;
+		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
+			console.log('[📊 ORG-MR] ❌ No mutual recognition data available');
+			return [];
 		}
-	);
+
+		const totalEntries = Object.keys($mutualRec).length;
+		const nonZeroEntries = Object.values($mutualRec as Record<string, number>).filter(
+			(v) => v > 0
+		).length;
+		console.log(
+			`[📊 ORG-MR] Mutual recognition has ${totalEntries} entries (${nonZeroEntries} non-zero)`
+		);
+
+		// Transform mutual recognition data into segments for Bar
+		const segments = Object.entries($mutualRec as Record<string, number>)
+			.filter(([_, value]) => value > 0) // Only include non-zero values
+			.map(([id, value]) => ({
+				id,
+				value: value * 100 // Convert from decimal to percentage
+			}))
+			.sort((a, b) => b.value - a.value); // Sort by value descending
+
+		console.log(`[📊 ORG-MR] ✅ Generated ${segments.length} segments for mutual recognition bar:`);
+		segments.forEach((seg) => {
+			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
+		});
+
+		return segments;
+	});
 
 	// V5: No manual recalculation needed! Everything is reactive 🎉
 	// Recognition weights auto-update when tree changes
 	// Mutual recognition auto-updates when recognition weights or network data changes
 
 	import { formatBudget } from '$lib/config/org-trees';
-	
+
 	// Convert initial budget to display format
 	function convertToDisplay(fullAmount: number): { value: number; unit: 'K' | 'M' | 'B' } {
 		if (fullAmount >= 1_000_000_000) {
@@ -483,11 +496,11 @@
 		}
 		return { value: fullAmount, unit: 'K' };
 	}
-	
+
 	const initial = convertToDisplay(data.monthlyBudget || 0);
 	let budgetValue = $state(initial.value);
 	let budgetUnit = $state<'K' | 'M' | 'B'>(initial.unit);
-	
+
 	// Calculate full amount from display values
 	function getFullAmount(): number {
 		const multipliers = { K: 1_000, M: 1_000_000, B: 1_000_000_000 };
@@ -501,255 +514,234 @@
 </svelte:head>
 
 <div class="org-page-container">
-<div class="layout org-page" class:full-width={currentView !== 'tree'}>
-	<div class="view-content">
+	<div class="layout org-page" class:full-width={currentView !== 'tree'}>
+		<div class="view-content">
+			{#if currentView === 'tree'}
+				<Parent />
+			{:else if currentView === 'map'}
+				<Map fullHeight={true} />
+			{:else if currentView === 'inventory'}
+				<div class="inventory-view">
+					<!-- Need Slots Section -->
+					<section class="slots-section needs">
+						<h2>🎯 My Need Slots ({needSlots.length})</h2>
+
+						<div class="add-form">
+							<input
+								type="text"
+								bind:value={newNeedName}
+								placeholder="Need name..."
+								onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
+							/>
+							<select bind:value={newNeedType}>
+								{#each NEED_TYPES as type}
+									<option value={type.id}>{formatNeedType(type.id)}</option>
+								{/each}
+							</select>
+							<input type="number" bind:value={newNeedQuantity} min="0" step="0.1" />
+							<button onclick={addNeedSlot} class="btn-primary"> ➕ Add Need </button>
+						</div>
+
+						<div class="slots-list">
+							{#if needSlots.length === 0}
+								<div class="empty-state">No need slots yet. Add one above!</div>
+							{:else}
+								<!-- Organize need slots by type -->
+								{#each $myNeedTypesStore as typeId (typeId)}
+									<Type
+										{typeId}
+										typeName={formatNeedType(typeId)}
+										slots={$myNeedSlotsStore}
+										kind="need"
+										capacityId="need-{typeId}"
+										onBatchUpdate={handleNeedTypeBatchUpdate}
+										onSlotUpdate={handleNeedSlotUpdate}
+										onSlotDelete={removeNeedSlot}
+									>
+										{#snippet children({ slot }: { slot: NeedSlot })}
+											<div class="slot-actions-row">
+												<div class="quantity-control">
+													<label for="need-qty-{slot.id}">Quantity:</label>
+													<input
+														id="need-qty-{slot.id}"
+														type="number"
+														value={slot.quantity}
+														min="0"
+														step="0.1"
+														onchange={(e) =>
+															updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
+													/>
+													<span>{slot.unit || 'units'}</span>
+												</div>
+												<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
+													🗑️ Delete
+												</button>
+											</div>
+											{#if showRawData}
+												<details class="raw-data">
+													<summary>Raw data</summary>
+													<pre>{JSON.stringify(slot, null, 2)}</pre>
+												</details>
+											{/if}
+										{/snippet}
+									</Type>
+								{/each}
+							{/if}
+						</div>
+					</section>
+
+					<!-- Capacity Slots Section -->
+					<section class="slots-section capacity">
+						<h2>🎁 My Capacity Slots ({capacitySlots.length})</h2>
+
+						<div class="add-form">
+							<input
+								type="text"
+								bind:value={newCapacityName}
+								placeholder="Capacity name..."
+								onkeydown={(e) => e.key === 'Enter' && addCapacitySlot()}
+							/>
+							<select bind:value={newCapacityType}>
+								{#each NEED_TYPES as type}
+									<option value={type.id}>{formatNeedType(type.id)}</option>
+								{/each}
+							</select>
+							<input type="number" bind:value={newCapacityQuantity} min="0" step="0.1" />
+							<button onclick={addCapacitySlot} class="btn-primary"> ➕ Add Capacity </button>
+						</div>
+
+						<div class="slots-list">
+							{#if capacitySlots.length === 0}
+								<div class="empty-state">No capacity slots yet. Add one above!</div>
+							{:else}
+								<!-- Organize capacity slots by type -->
+								{#each $myCapacityTypesStore as typeId (typeId)}
+									<Type
+										{typeId}
+										typeName={formatNeedType(typeId)}
+										slots={$myCapacitySlotsStore}
+										kind="capacity"
+										capacityId="capacity-{typeId}"
+										onBatchUpdate={handleCapacityTypeBatchUpdate}
+										onSlotUpdate={handleCapacitySlotUpdate}
+										onSlotDelete={removeCapacitySlot}
+									>
+										{#snippet children({ slot }: { slot: AvailabilitySlot })}
+											<div class="slot-actions-row">
+												<div class="quantity-control">
+													<label for="capacity-qty-{slot.id}">Quantity:</label>
+													<input
+														id="capacity-qty-{slot.id}"
+														type="number"
+														value={slot.quantity}
+														min="0"
+														step="0.1"
+														onchange={(e) =>
+															updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
+													/>
+													<span>{slot.unit || 'units'}</span>
+												</div>
+												<button
+													onclick={() => removeCapacitySlot(slot.id)}
+													class="btn-danger-small"
+												>
+													🗑️ Delete
+												</button>
+											</div>
+											{#if showRawData}
+												<details class="raw-data">
+													<summary>Raw data</summary>
+													<pre>{JSON.stringify(slot, null, 2)}</pre>
+												</details>
+											{/if}
+										{/snippet}
+									</Type>
+								{/each}
+							{/if}
+						</div>
+					</section>
+				</div>
+			{/if}
+		</div>
 		{#if currentView === 'tree'}
-			<Parent />
-		{:else if currentView === 'map'}
-			<Map fullHeight={true} />
-		{:else if currentView === 'inventory'}
-			<div class="inventory-view">
-				<!-- Need Slots Section -->
-				<section class="slots-section needs">
-					<h2>🎯 My Need Slots ({needSlots.length})</h2>
-					
-					<div class="add-form">
-						<input
-							type="text"
-							bind:value={newNeedName}
-							placeholder="Need name..."
-							onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
-						/>
-						<select bind:value={newNeedType}>
-							{#each NEED_TYPES as type}
-								<option value={type.id}>{formatNeedType(type.id)}</option>
-							{/each}
-						</select>
-						<input
-							type="number"
-							bind:value={newNeedQuantity}
-							min="0"
-							step="0.1"
-						/>
-						<button onclick={addNeedSlot} class="btn-primary">
-							➕ Add Need
-						</button>
+			{#key $loading}
+				<div class="bars">
+					<div class="bar-group">
+						<div class="bar-label bar-label-yr" title={$t('home.your_recognition_description')}>
+							<span class="label-mobile"
+								>{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}</span
+							>
+							<span class="label-desktop">{$t('home.your_recognition_abbr')}</span>
+						</div>
+						<div class="bar-area">
+							{#if $barSegments.length > 0}
+								<Bar
+									segments={$barSegments}
+									width="100%"
+									height="100%"
+									showLabels={true}
+									showLabelsAboveOnSelect={true}
+									showValues={false}
+									rounded={false}
+								/>
+							{:else}
+								<div class="placeholder">
+									<p>
+										{$t('home.no_contributors')}
+									</p>
+								</div>
+							{/if}
+						</div>
 					</div>
-					
-					<div class="slots-list">
-						{#if needSlots.length === 0}
-							<div class="empty-state">
-								No need slots yet. Add one above!
-							</div>
-						{:else}
-							<!-- Organize need slots by type -->
-							{#each $myNeedTypesStore as typeId (typeId)}
-								<Type 
-									{typeId} 
-									typeName={formatNeedType(typeId)}
-									slots={$myNeedSlotsStore} 
-									kind="need"
-									capacityId="need-{typeId}"
-									onBatchUpdate={handleNeedTypeBatchUpdate}
-									onSlotUpdate={handleNeedSlotUpdate}
-									onSlotDelete={removeNeedSlot}
-								>
-									{#snippet children({ slot }: { slot: NeedSlot })}
-										<div class="slot-actions-row">
-											<div class="quantity-control">
-												<label for="need-qty-{slot.id}">Quantity:</label>
-												<input
-													id="need-qty-{slot.id}"
-													type="number"
-													value={slot.quantity}
-													min="0"
-													step="0.1"
-													onchange={(e) => updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
-												/>
-												<span>{slot.unit || 'units'}</span>
-											</div>
-											<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
-												🗑️ Delete
-											</button>
-										</div>
-										{#if showRawData}
-											<details class="raw-data">
-												<summary>Raw data</summary>
-												<pre>{JSON.stringify(slot, null, 2)}</pre>
-											</details>
-										{/if}
-									{/snippet}
-								</Type>
-							{/each}
-						{/if}
+					<div class="bar-group">
+						<div class="bar-label bar-label-mr" title={$t('home.mutual_recognition_description')}>
+							<span class="label-mobile"
+								>{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}</span
+							>
+							<span class="label-desktop">{$t('home.mutual_recognition_abbr')}</span>
+						</div>
+						<div class="bar-area">
+							{#if $providerSegments.length > 0}
+								<Bar
+									segments={$providerSegments}
+									width="100%"
+									height="100%"
+									showLabels={true}
+									showLabelsAboveOnSelect={true}
+									showValues={false}
+									rounded={false}
+								/>
+							{:else}
+								<div class="placeholder">
+									<p>{$t('home.no_mutual_contributors')}</p>
+								</div>
+							{/if}
+						</div>
 					</div>
-				</section>
-				
-				<!-- Capacity Slots Section -->
-				<section class="slots-section capacity">
-					<h2>🎁 My Capacity Slots ({capacitySlots.length})</h2>
-					
-					<div class="add-form">
-						<input
-							type="text"
-							bind:value={newCapacityName}
-							placeholder="Capacity name..."
-							onkeydown={(e) => e.key === 'Enter' && addCapacitySlot()}
-						/>
-						<select bind:value={newCapacityType}>
-							{#each NEED_TYPES as type}
-								<option value={type.id}>{formatNeedType(type.id)}</option>
-							{/each}
-						</select>
-						<input
-							type="number"
-							bind:value={newCapacityQuantity}
-							min="0"
-							step="0.1"
-						/>
-						<button onclick={addCapacitySlot} class="btn-primary">
-							➕ Add Capacity
-						</button>
-					</div>
-					
-					<div class="slots-list">
-						{#if capacitySlots.length === 0}
-							<div class="empty-state">
-								No capacity slots yet. Add one above!
-							</div>
-						{:else}
-							<!-- Organize capacity slots by type -->
-							{#each $myCapacityTypesStore as typeId (typeId)}
-								<Type 
-									{typeId} 
-									typeName={formatNeedType(typeId)}
-									slots={$myCapacitySlotsStore} 
-									kind="capacity"
-									capacityId="capacity-{typeId}"
-									onBatchUpdate={handleCapacityTypeBatchUpdate}
-									onSlotUpdate={handleCapacitySlotUpdate}
-									onSlotDelete={removeCapacitySlot}
-								>
-									{#snippet children({ slot }: { slot: AvailabilitySlot })}
-										<div class="slot-actions-row">
-											<div class="quantity-control">
-												<label for="capacity-qty-{slot.id}">Quantity:</label>
-												<input
-													id="capacity-qty-{slot.id}"
-													type="number"
-													value={slot.quantity}
-													min="0"
-													step="0.1"
-													onchange={(e) => updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
-												/>
-												<span>{slot.unit || 'units'}</span>
-											</div>
-											<button onclick={() => removeCapacitySlot(slot.id)} class="btn-danger-small">
-												🗑️ Delete
-											</button>
-										</div>
-										{#if showRawData}
-											<details class="raw-data">
-												<summary>Raw data</summary>
-												<pre>{JSON.stringify(slot, null, 2)}</pre>
-											</details>
-										{/if}
-									{/snippet}
-								</Type>
-							{/each}
-						{/if}
-					</div>
-				</section>
-			</div>
+				</div>
+			{/key}
 		{/if}
 	</div>
-	{#if currentView === 'tree'}
-		{#key $loading}
-		<div class="bars">
-		<div class="bar-group">
-			<div
-				class="bar-label bar-label-yr"
-				title={$t('home.your_recognition_description')}
-			>
-				<span class="label-mobile">{@html $t('home.your_recognition').toLowerCase().replace(' ', '<br />')}</span>
-				<span class="label-desktop">{$t('home.your_recognition_abbr')}</span>
-			</div>
-			<div class="bar-area">
-				{#if $barSegments.length > 0}
-					<Bar
-						segments={$barSegments}
-						width="100%"
-						height="100%"
-						showLabels={true}
-						showLabelsAboveOnSelect={true}
-						showValues={false}
-						rounded={false}
-					/>
-				{:else}
-					<div class="placeholder">
-						<p>
-							{$t('home.no_contributors')}
-						</p>
-					</div>
-				{/if}
-			</div>
-		</div>
-		<div class="bar-group">
-			<div
-				class="bar-label bar-label-mr"
-				title={$t('home.mutual_recognition_description')}
-			>
-				<span class="label-mobile">{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}</span>
-				<span class="label-desktop">{$t('home.mutual_recognition_abbr')}</span>
-			</div>
-			<div class="bar-area">
-				{#if $providerSegments.length > 0}
-					<Bar
-						segments={$providerSegments}
-						width="100%"
-						height="100%"
-						showLabels={true}
-						showLabelsAboveOnSelect={true}
-						showValues={false}
-						rounded={false}
-					/>
-				{:else}
-					<div class="placeholder">
-						<p>{$t('home.no_mutual_contributors')}</p>
-					</div>
-				{/if}
-			</div>
-		</div>
-		</div>
-		{/key}
-	{/if}
-</div>
 
-{#if data.monthlyBudget}
-<div class="org-capacity-footer">
-	<div class="capacity-info">
-		<span class="budget-label">Monthly Distribution:</span>
-		<div class="budget-input-wrapper">
-			<span class="currency">$</span>
-			<input
-				type="number"
-				bind:value={budgetValue}
-				min="0"
-				step="0.1"
-				class="budget-input"
-			/>
-			<select bind:value={budgetUnit} class="unit-select">
-				<option value="K">K</option>
-				<option value="M">M</option>
-				<option value="B">B</option>
-			</select>
-			<span class="formatted-display">= ${formatBudget(getFullAmount())}</span>
+	{#if data.monthlyBudget}
+		<div class="org-capacity-footer">
+			<div class="capacity-info">
+				<span class="budget-label">Monthly Distribution:</span>
+				<div class="budget-input-wrapper">
+					<span class="currency">$</span>
+					<input type="number" bind:value={budgetValue} min="0" step="0.1" class="budget-input" />
+					<select bind:value={budgetUnit} class="unit-select">
+						<option value="K">K</option>
+						<option value="M">M</option>
+						<option value="B">B</option>
+					</select>
+					<span class="formatted-display">= ${formatBudget(getFullAmount())}</span>
+				</div>
+				<span class="separator">•</span>
+				<span class="explainer">Allocated via mutual recognition</span>
+			</div>
 		</div>
-		<span class="separator">•</span>
-		<span class="explainer">Allocated via mutual recognition</span>
-	</div>
-</div>
-{/if}
+	{/if}
 </div>
 
 <style>
@@ -921,7 +913,7 @@
 		height: 100%;
 		overflow: auto;
 	}
-	
+
 	.bars {
 		width: 100%;
 		height: 100%;
@@ -1071,7 +1063,7 @@
 		background: white;
 		border-radius: 8px;
 		padding: 1.5rem;
-		box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		display: flex;
 		flex-direction: column;
 	}
@@ -1091,7 +1083,7 @@
 		flex-wrap: wrap;
 	}
 
-	.add-form input[type="text"] {
+	.add-form input[type='text'] {
 		flex: 1;
 		min-width: 150px;
 	}
@@ -1104,7 +1096,7 @@
 		font-size: 0.95rem;
 	}
 
-	.add-form input[type="number"] {
+	.add-form input[type='number'] {
 		width: 80px;
 	}
 
@@ -1233,9 +1225,8 @@
 			flex-direction: column;
 		}
 
-		.add-form input[type="number"] {
+		.add-form input[type='number'] {
 			width: 100%;
 		}
 	}
 </style>
-

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Commitment, AvailabilitySlot } from '$lib/protocol/core/schemas';
-	import { CommitmentSchema, AvailabilitySlotSchema } from '$lib/protocol/core/schemas';
+	import type { Commitment, AvailabilitySlot } from '../../../packages/protocol/src/schemas';
+	import { CommitmentSchema, AvailabilitySlotSchema } from '../../../packages/protocol/src/schemas';
 	import TagPill from '$lib/components/TagPill.svelte';
 	import DropDown from '$lib/components/DropDown.svelte';
 	import Chat from '$lib/components/Chat.svelte';
@@ -8,7 +8,7 @@
 	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
-	import { Rules } from '$lib/protocol/core/utils/filters/filters';
+	import { Rules } from '../../../packages/protocol/src/utils/filters/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { createSubtreesDataProvider } from '$lib/utils/ui/ui-providers.svelte';

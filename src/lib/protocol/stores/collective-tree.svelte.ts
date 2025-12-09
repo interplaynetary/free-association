@@ -27,8 +27,8 @@ import type {
 	CollectiveCapacityAllocation,
 	TreeFilterConfig,
 	FilteredTreeResult
-} from '../core/schemas';
-import { mutualFulfillment as originalMutualFulfillment } from '../core/tree';
+} from '../../../../packages/protocol/src/schemas';
+import { mutualFulfillment as originalMutualFulfillment } from '../../../../packages/protocol/src/tree';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 
@@ -293,8 +293,8 @@ import type {
 	CollectiveNonRootNode,
 	TreeMergeConfig,
 	TreeMergeResult
-} from '../core/schemas';
-import { shareOfParent } from '../core/tree';
+} from '../../../../packages/protocol/src/schemas';
+import { shareOfParent } from '../../../../packages/protocol/src/tree';
 import crypto from 'crypto';
 
 // Hash function for creating collective IDs
@@ -2182,12 +2182,12 @@ function renormalizeCollectiveTree(tree: CollectiveTree): CollectiveTree {
  * ```
  */
 
-import type { DistributionResult } from '../core/distribution';
-import type { AllocationResult, AvailabilitySlot, Commitment } from '../core/schemas';
-import type { ComplianceFilter } from '../core/utils/filters';
-import type { JsonLogicRule } from '../core/filters/filters';
-import { ruleToFilter } from '../core/filters/filters';
-import { allocateWithDistribution } from '../core/allocation';
+import type { DistributionResult } from '../../../../packages/protocol/src/distribution';
+import type { AllocationResult, AvailabilitySlot, Commitment } from '../../../../packages/protocol/src/schemas';
+import type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
+import type { JsonLogicRule } from '../../../../packages/protocol/src/filters/filters';
+import { ruleToFilter } from '../../../../packages/protocol/src/filters/filters';
+import { allocateWithDistribution } from '../../../../packages/protocol/src/allocation';
 
 /**
  * Node Recognition Metrics

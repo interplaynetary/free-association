@@ -1,8 +1,8 @@
 import { get, writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 // V5: Import from v5 schemas
-import type { Contact, ContactsCollectionData } from '$lib/protocol/core/schemas';
-import { ContactSchema } from '$lib/protocol/core/schemas';
+import type { Contact, ContactsCollectionData } from '../../../packages/protocol/src/schemas';
+import { ContactSchema } from '../../../packages/protocol/src/schemas';
 
 // V5: Import Holster contacts module (from v5 commons)
 import {

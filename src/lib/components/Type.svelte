@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
-	import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '$lib/protocol/core/utils/slots';
+	import type { NeedSlot, AvailabilitySlot } from '../../../packages/protocol/src/schemas';
+	import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '../../../packages/protocol/src/utils/slots';
 	import { onMount } from 'svelte';
 	import SlotEditor from './Slot.svelte';
 	

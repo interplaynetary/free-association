@@ -1,5 +1,5 @@
 import { writable, get, type Writable, derived } from 'svelte/store';
-import type { ChatReadStates, ChatReadState } from '$lib/protocol/core/schemas';
+import type { ChatReadStates, ChatReadState } from '../../../packages/protocol/src/schemas';
 import * as HolsterChat from './chat-holster.svelte';
 
 // Conditionally import browser - gracefully handle test environment

@@ -14,7 +14,7 @@
 	 * 3. Same times every day (all weeks)
 	 */
 	
-	import type { MonthSchedule, WeekSchedule, DaySchedule, DayOfWeek, TimeRange } from '$lib/protocol/core/schemas';
+	import type { MonthSchedule, WeekSchedule, DaySchedule, DayOfWeek, TimeRange } from '../../../../packages/protocol/src/schemas';
 	import TimeRangeEditor from './TimeRangeEditor.svelte';
 	
 	interface Props {

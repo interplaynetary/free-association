@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/core/schemas';
+	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '../../../packages/protocol/src/schemas';
 	import { TimePatternEditor } from './slots';
-	import { NEED_TYPES, type NeedType } from '$lib/protocol/core/utils/needTypes';
+	import { NEED_TYPES, type NeedType } from '../../../packages/protocol/src/utils/needTypes';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';

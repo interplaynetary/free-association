@@ -1,6 +1,6 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import type { HolsterInstance, HolsterUser } from '@mblaney/holster';
-import { config } from '$lib/protocol/core/config';
+import { config } from '../../../packages/protocol/src/config';
 
 // ═══════════════════════════════════════════════════════════════════
 // HOLSTER INITIALIZATION
@@ -98,7 +98,7 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		// Update users list
 		const authState = getAuthState();
 		console.log('[HOLSTER] Adding user to users list:', authState.alias, authState.pub.slice(0, 20) + '...');
-		
+
 		// First, check the current state of the users list
 		const currentUsersCount = await new Promise<number>((resolve) => {
 			const checkCallback = (data: any) => {
@@ -114,7 +114,7 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 			};
 			holster.get('freely-associating-players').on(checkCallback, true);
 		});
-		
+
 		// Add/update our user entry using .next() to target only our pub key
 		await new Promise<void>((resolve, reject) => {
 			holster.get('freely-associating-players').next(authState.pub).put({
@@ -130,7 +130,7 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 				}
 			});
 		});
-		
+
 		// Verify the list still has all users (plus potentially our new entry)
 		await new Promise<void>((resolve) => {
 			setTimeout(() => {
@@ -157,32 +157,32 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 
-	// Initialize users list
-	const usersModule = await import('$lib/network/users.svelte');
-	usersModule.initializeUsersList();
-	
-	// Initialize contacts
-	usersModule.initializeContacts();
-	console.log('[HOLSTER] ✅ Contacts initialized');
+		// Initialize users list
+		const usersModule = await import('$lib/network/users.svelte');
+		usersModule.initializeUsersList();
 
-	// Initialize organizations list
-	const orgsModule = await import('$lib/network/organizations.svelte');
-	orgsModule.initializeOrganizationsList();
-	orgsModule.initializeOrganizations();
-	console.log('[HOLSTER] ✅ Organizations initialized');
+		// Initialize contacts
+		usersModule.initializeContacts();
+		console.log('[HOLSTER] ✅ Contacts initialized');
 
-	// Note: Membership is now handled by the unified entity/attribute system
-	// No separate initialization needed - attributes auto-initialize
+		// Initialize organizations list
+		const orgsModule = await import('$lib/network/organizations.svelte');
+		orgsModule.initializeOrganizationsList();
+		orgsModule.initializeOrganizations();
+		console.log('[HOLSTER] ✅ Organizations initialized');
 
-	// Initialize capacity subscriptions
-	const capacitySubsModule = await import('$lib/network/capacity-subscriptions.svelte');
-	capacitySubsModule.initializeCapacitySubscriptions();
-	console.log('[HOLSTER] ✅ Capacity subscriptions initialized');
+		// Note: Membership is now handled by the unified entity/attribute system
+		// No separate initialization needed - attributes auto-initialize
 
-	// Initialize records
-	const recordsModule = await import('$lib/network/records.svelte');
-	recordsModule.initializeMyRecords();
-	console.log('[HOLSTER] ✅ Records initialized');
+		// Initialize capacity subscriptions
+		const capacitySubsModule = await import('$lib/network/capacity-subscriptions.svelte');
+		capacitySubsModule.initializeCapacitySubscriptions();
+		console.log('[HOLSTER] ✅ Capacity subscriptions initialized');
+
+		// Initialize records
+		const recordsModule = await import('$lib/network/records.svelte');
+		recordsModule.initializeMyRecords();
+		console.log('[HOLSTER] ✅ Records initialized');
 
 		// Enable auto-subscription
 		storesModule.enableAutoSubscriptionSync();
@@ -192,17 +192,17 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		storesModule.enableAutoCommitmentComposition();
 		console.log('[HOLSTER] ✅ Auto-composition enabled');
 
-	// Enable auto-membership sync
-	storesModule.enableAutoMembershipSync();
-	console.log('[HOLSTER] ✅ Auto-membership sync enabled');
+		// Enable auto-membership sync
+		storesModule.enableAutoMembershipSync();
+		console.log('[HOLSTER] ✅ Auto-membership sync enabled');
 
-	// Enable auto-capacity sync
-	storesModule.enableAutoCapacitySync();
-	console.log('[HOLSTER] ✅ Auto-capacity sync enabled');
+		// Enable auto-capacity sync
+		storesModule.enableAutoCapacitySync();
+		console.log('[HOLSTER] ✅ Auto-capacity sync enabled');
 
-	// Enable auto-need sync
-	storesModule.enableAutoNeedSync();
-	console.log('[HOLSTER] ✅ Auto-need sync enabled');
+		// Enable auto-need sync
+		storesModule.enableAutoNeedSync();
+		console.log('[HOLSTER] ✅ Auto-need sync enabled');
 
 		callbacks?.onSuccess?.(authState);
 	} catch (error) {

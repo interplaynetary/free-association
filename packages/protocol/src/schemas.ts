@@ -110,34 +110,34 @@ export type Contributor = z.infer<typeof ContributorSchema>;
 export const NodeDataStorageSchema = z.object({
 	/** Arbitrary data stored at this node */
 	data: z.optional(z.any()),
-	
+
 	/** Holster path this node subscribes to */
 	holster_path: z.optional(z.string()),
-	
+
 	/** Schema type identifier for validation */
 	data_schema_type: z.optional(z.string()),
-	
+
 	/** Timestamp when this node's data was last updated locally */
 	data_updated_at: z.optional(z.number().int().positive()),
-	
+
 	/** Whether this node is currently loading data from network */
 	is_loading: z.optional(z.boolean()),
-	
+
 	/** Whether this node is currently persisting data to network */
 	is_persisting: z.optional(z.boolean()),
-	
+
 	/** Last network timestamp seen (for conflict resolution) */
 	last_network_timestamp: z.optional(z.number().int().positive()),
-	
+
 	/** Whether to auto-persist changes to this node's data */
 	auto_persist: z.optional(z.boolean().default(true)),
-	
+
 	/** Debounce time for persistence (ms) */
 	persist_debounce_ms: z.optional(z.number().gte(0).default(0)),
-	
+
 	/** Optional pubkey to subscribe to (if subscribing to another user's data) */
 	subscribe_to_user: z.optional(z.string()),
-	
+
 	/** Custom comparison function name for equality checking */
 	equality_check: z.optional(z.string())
 });
@@ -203,10 +203,10 @@ export const NeedTypeSchema = z.object({
 	description: z.string().optional(),
 	unit: z.string().default('units'),
 	emoji: z.string().optional(),
-	
+
 	// Substitutability weights (for advanced extensions)
 	substitution_weights: z.record(z.string(), z.number()).optional(),
-	
+
 	// Complementarity ratios (for advanced extensions)
 	complementary_types: z.array(z.string()).optional(),
 	complementary_ratios: z.record(z.string(), z.number()).optional()
@@ -234,7 +234,7 @@ export type TimeRange = z.infer<typeof TimeRangeSchema>;
  */
 export const DayOfWeekSchema = z.enum([
 	'monday',
-	'tuesday', 
+	'tuesday',
 	'wednesday',
 	'thursday',
 	'friday',
@@ -282,13 +282,13 @@ export type WeekSchedule = z.infer<typeof WeekScheduleSchema>;
  */
 export const MonthScheduleSchema = z.object({
 	month: z.number().int().min(1).max(12),  // 1-12 (January-December)
-	
+
 	// OPTION 1: Week-specific patterns within this month (most flexible)
 	week_schedules: z.array(WeekScheduleSchema).optional(),
-	
+
 	// OPTION 2: Simple day schedules for all weeks in this month
 	day_schedules: z.array(DayScheduleSchema).optional(),
-	
+
 	// OPTION 3: Same times every day, all weeks in this month
 	time_ranges: z.array(TimeRangeSchema).optional()
 });
@@ -330,13 +330,13 @@ export type MonthSchedule = z.infer<typeof MonthScheduleSchema>;
 export const AvailabilityWindowSchema = z.object({
 	// LEVEL 1: Month-specific patterns (for yearly recurrence)
 	month_schedules: z.array(MonthScheduleSchema).optional(),
-	
+
 	// LEVEL 2: Week-specific patterns (for monthly recurrence)
 	week_schedules: z.array(WeekScheduleSchema).optional(),
-	
+
 	// LEVEL 3: Day-specific patterns (for weekly/daily recurrence)
 	day_schedules: z.array(DayScheduleSchema).optional(),
-	
+
 	// LEVEL 4: Simple time ranges (same for all days/weeks/months)
 	time_ranges: z.array(TimeRangeSchema).optional()
 });
@@ -354,14 +354,14 @@ export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 export const AvailabilitySlotSchema = z.object({
 	id: z.string().min(1),
 	quantity: z.number().gte(0),
-	
+
 	// REQUIRED: Type specification for multi-dimensional framework
 	need_type_id: z.string().min(1), // k in C_j^k(t)
-	
+
 	// Divisibility constraints (prevents over-fragmentation)
 	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
 	min_allocation_percentage: PercentageSchema.optional(), // Min % per allocation (e.g., don't allocate less than 10%)
-	
+
 	// Resource metadata
 	name: z.string(),
 	emoji: z.string().optional(),
@@ -370,25 +370,25 @@ export const AvailabilitySlotSchema = z.object({
 	resource_type: z.string().optional(),
 	filter_rule: z.any().optional(),
 	hidden_until_request_accepted: z.boolean().optional(),
-	
+
 	// Timing constraints
 	advance_notice_hours: z.number().gte(0).optional(),
 	booking_window_hours: z.number().gte(0).optional(),
-	
+
 	// Recurrence pattern
 	recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
-	
+
 	// Date range (for one-time slots or to bound recurring patterns)
 	start_date: z.string().nullable().optional(),  // ISO date string
 	end_date: z.string().nullable().optional(),    // ISO date string (for recurring, when pattern ends)
-	
+
 	// Timezone
 	time_zone: z.string().optional(),
-	
+
 	// Structured availability window (REQUIRED for recurring, optional for one-time)
 	// Defines exactly when during each recurrence period the slot is available
 	availability_window: AvailabilityWindowSchema.optional(),
-	
+
 	// Location
 	location_type: z.string().optional(),
 	longitude: z.number().min(-180).max(180).optional(),
@@ -399,12 +399,12 @@ export const AvailabilitySlotSchema = z.object({
 	postal_code: z.string().optional(),
 	country: z.string().optional(),
 	online_link: z.string().url().or(z.string().length(0)).optional(),
-	
+
 	// Hierarchical & coordination
 	parent_slot_id: z.string().optional(),
 	mutual_agreement_required: z.boolean().default(false).optional(),
 	priority: z.number().optional(),
-	
+
 	// Collective capacity: Who can provide this (pubkeys or org_ids)
 	// Empty/undefined = just me, populated = collective effort
 	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
@@ -420,14 +420,14 @@ export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
 export const NeedSlotSchema = z.object({
 	id: z.string().min(1),
 	quantity: z.number().gte(0),
-	
+
 	// REQUIRED: Type specification for multi-dimensional framework
 	need_type_id: z.string().min(1), // k in N_i^k(t)
-	
+
 	// Divisibility constraints (prevents over-fragmentation)
 	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
 	min_allocation_percentage: PercentageSchema.optional(), // Min % per allocation (e.g., don't accept less than 10%)
-	
+
 	// Resource metadata
 	name: z.string(),
 	emoji: z.string().optional(),
@@ -436,25 +436,25 @@ export const NeedSlotSchema = z.object({
 	resource_type: z.string().optional(),
 	filter_rule: z.any().optional(),
 	hidden_until_request_accepted: z.boolean().optional(),
-	
+
 	// Timing constraints
 	advance_notice_hours: z.number().gte(0).optional(),
 	booking_window_hours: z.number().gte(0).optional(),
-	
+
 	// Recurrence pattern
 	recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
-	
+
 	// Date range (for one-time needs or to bound recurring patterns)
 	start_date: z.string().nullable().optional(),  // ISO date string
 	end_date: z.string().nullable().optional(),    // ISO date string (for recurring, when pattern ends)
-	
+
 	// Timezone
 	time_zone: z.string().optional(),
-	
+
 	// Structured availability window (REQUIRED for recurring, optional for one-time)
 	// Defines exactly when the need occurs during each recurrence period
 	availability_window: AvailabilityWindowSchema.optional(),
-	
+
 	// Location
 	location_type: z.string().optional(),
 	longitude: z.number().min(-180).max(180).optional(),
@@ -465,12 +465,12 @@ export const NeedSlotSchema = z.object({
 	postal_code: z.string().optional(),
 	country: z.string().optional(),
 	online_link: z.string().url().or(z.string().length(0)).optional(),
-	
+
 	// Hierarchical & coordination
 	parent_slot_id: z.string().optional(),
 	mutual_agreement_required: z.boolean().default(false).optional(),
 	priority: z.number().optional(),
-	
+
 	// Collective need: Who needs this (pubkeys or org_ids)
 	// Empty/undefined = just me, populated = collective need
 	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
@@ -531,10 +531,10 @@ export type PerTypeDampingHistoryEntry = z.infer<typeof PerTypeDampingHistoryEnt
 export const MultiDimensionalDampingSchema = z.object({
 	// Per-type damping factors (α_k)
 	damping_factors: z.record(z.string(), z.number().min(0).max(1)),
-	
+
 	// Per-type damping history
 	damping_history: z.record(z.string(), z.array(PerTypeDampingHistoryEntrySchema)),
-	
+
 	// Global damping factor (backward compatibility)
 	global_damping_factor: z.number().min(0).max(1)
 });
@@ -556,10 +556,10 @@ export const SlotAllocationRecordSchema = z.object({
 	recipient_pubkey: z.string(),
 	recipient_need_slot_id: z.string().optional(),
 	quantity: z.number().nonnegative(),
-	
+
 	// MULTI-DIMENSIONAL: Type information
 	need_type_id: z.string().min(1),
-	
+
 	// Compatibility
 	time_compatible: z.boolean(),
 	location_compatible: z.boolean(),
@@ -585,16 +585,16 @@ export const CommitmentSchema = z.object({
 	// Multi-dimensional capacity & needs (slot-native)
 	capacity_slots: z.array(AvailabilitySlotSchema).optional(),
 	need_slots: z.array(NeedSlotSchema).optional(),
-	
+
 	// Allocation records (what I'm giving to others from my capacity)
 	// Published so recipients can see incoming allocations for transparency
 	slot_allocations: z.array(SlotAllocationRecordSchema).optional(),
-	
+
 	// Global recognition: MR(A, B) = min(R_A(B), R_B(A))
 	// Computed from recognition trees via sharesOfGeneralFulfillmentMap()
 	// Note: .nullable() allows null from Holster (empty objects → null)
 	global_recognition_weights: GlobalRecognitionWeightsSchema.nullable().optional(),
-	
+
 	// LOCAL CACHE: Others' full recognition weights (cached from network commitments)
 	// Updated when network proves otherwise (local-first!)
 	// Format: { theirPubKey: { allPubKeys: weights, ... } }
@@ -603,11 +603,11 @@ export const CommitmentSchema = z.object({
 		z.string(), // theirPubKey
 		GlobalRecognitionWeightsSchema // Their full recognition weights (normalized)
 	).nullable().optional(),
-	
+
 	// Causality tracking (ITC)
 	itcStamp: z.any(), // ITCStampSchema
 	timestamp: z.number().int().positive(),
-	
+
 	// Per-type adaptive damping (α_k)
 	multi_dimensional_damping: MultiDimensionalDampingSchema.nullable().optional()
 });
@@ -649,19 +649,19 @@ export const TwoTierAllocationStateSchema = z.object({
 		})
 	),
 	slot_allocations: z.array(SlotAllocationRecordSchema),
-	
+
 	// Per-type allocation totals (A_total^k(i, t))
 	recipient_totals_by_type: PerTypeAllocationTotalsSchema,
-	
+
 	// Per-type convergence tracking
 	converged: z.boolean().optional(),
 	convergence_by_type: z.record(z.string(), z.boolean()).optional(),
-	
+
 	convergenceHistory: z.array(z.object({
 		denominatorDelta: z.number(),
 		timestamp: z.number().int().positive()
 	})).optional(),
-	
+
 	// Causality tracking (ITC)
 	itcStamp: z.any().optional(), // ITCStampSchema
 	timestamp: z.number().int().positive()
@@ -694,7 +694,7 @@ export const MultiDimensionalNeedStateSchema = z.object({
 	pubKey: z.string().min(1),
 	needsByType: z.record(z.string(), PerTypeNeedStateSchema), // need_type_id -> state
 	timestamp: z.number().int().positive(),
-	
+
 	// Computed metrics
 	totalResidualNeed: z.number().nonnegative().optional(),    // ||N⃗_i(t)||
 	totalMaxNeed: z.number().nonnegative().optional()          // ||N⃗_i^max||
@@ -723,7 +723,7 @@ export const MultiDimensionalCapacityStateSchema = z.object({
 	pubKey: z.string().min(1),
 	capacitiesByType: z.record(z.string(), PerTypeCapacityStateSchema), // need_type_id -> state
 	timestamp: z.number().int().positive(),
-	
+
 	// Computed metrics
 	totalAvailableCapacity: z.number().nonnegative().optional(), // ||C⃗_j(t)||
 	totalMaxCapacity: z.number().nonnegative().optional()        // ||C⃗_j^max||
@@ -755,17 +755,17 @@ export type SystemState = z.infer<typeof SystemStateSchema>;
  */
 export const PerTypeConvergenceMetricsSchema = z.object({
 	need_type_id: z.string().min(1),
-	
+
 	// Per-type vector metrics
 	needVectorNorm: z.number().nonnegative(),                 // ||N⃗^k(t)||
 	needVectorNormPrevious: z.number().nonnegative(),         // ||N⃗^k(t-1)||
 	contractionConstant: z.number().nonnegative(),            // k_k < 1
-	
+
 	// Per-type convergence
 	isConverged: z.boolean(),
 	iterationsToConvergence: z.number().int().nullable(),
 	convergenceRate: z.number(),
-	
+
 	// Per-type universalSatisfaction condition
 	universalSatisfactionAchieved: z.boolean(),                              // ∀i: N_i^k(t) = 0
 	percentNeedsMet: z.number().min(0).max(100)               // % with N_i^k = 0
@@ -782,27 +782,27 @@ export const ConvergenceMetricsSchema = z.object({
 	frobeniusNorm: z.number().nonnegative(),                  // ||N⃗⃗(t)||_F
 	frobeniusNormPrevious: z.number().nonnegative(),          // ||N⃗⃗(t-1)||_F
 	contractionConstant: z.number().nonnegative(),            // k_max = max_k k_k
-	
+
 	// Per-type metrics
 	perTypeMetrics: z.record(z.string(), PerTypeConvergenceMetricsSchema),
-		
+
 	// Overall convergence
 	isConverged: z.boolean(),                                 // All types converged
 	iterationsToConvergence: z.number().int().nullable(),
 	convergenceRate: z.number(),                              // Overall exponential rate
-	
+
 	// Timing metrics (E34-E37)
 	responseLatency: z.number().nonnegative(),
 	lastIterationTime: z.number().int().positive(),
 	iterationFrequency: z.number().nonnegative(),
-	
+
 	// UniversalSatisfaction condition (E41' - multi-dimensional)
 	universalSatisfactionAchieved: z.boolean(),                              // ∀i,k: N_i^k(t) = 0
 	percentNeedsMet: z.number().min(0).max(100),              // % across all types
-	
+
 	// Freedom metric (E45' - Frobenius norm)
 	freedomMetric: z.number().nonnegative(),                   // lim(t→∞) ||N⃗⃗(t)||_F
-	
+
 	// Additional distribution metrics (detect edge cases)
 	maxPersonNeed: z.number().nonnegative().optional(),        // Worst-case participant ||N⃗_i||
 	needVariance: z.number().nonnegative().optional(),         // Distribution inequality
@@ -847,7 +847,7 @@ export type ConvergenceSummary = z.infer<typeof ConvergenceSummarySchema>;
 export const AllocationResultSchema = z.object({
 	/** Computed slot allocations */
 	allocations: z.array(SlotAllocationRecordSchema),
-	
+
 	/** Denominator for each capacity slot (for transparency) */
 	slotDenominators: z.record(
 		z.string(),
@@ -857,13 +857,13 @@ export const AllocationResultSchema = z.object({
 			need_type_id: z.string().min(1)
 		})
 	),
-	
+
 	/** Total allocated by type and recipient (for tracking) */
 	totalsByTypeAndRecipient: z.record(
 		z.string(), // need_type_id
 		z.record(z.string(), z.number().nonnegative()) // pubKey -> total
 	),
-	
+
 	/** Simplified convergence summary for this iteration */
 	convergence: ConvergenceSummarySchema
 });
@@ -1263,10 +1263,10 @@ export const SlotFilterSchema = z.object({
 	filter_id: z.string(),
 	name: z.string(), // Human-readable name
 	enabled: z.boolean().default(true),
-	
+
 	// NEW: What type of slots this filter applies to
 	applies_to: z.enum(['capacity', 'need', 'both']).default('both'),
-	
+
 	// Filter conditions (all optional, undefined = don't filter on this)
 	source_pubkeys: z.array(z.string()).optional(), // Only from these users
 	need_type_ids: z.array(z.string()).optional(), // Only these types
@@ -1274,7 +1274,7 @@ export const SlotFilterSchema = z.object({
 	must_include_ids: MembersSchema.optional(), // Only if includes these IDs (pubkeys, orgs, contacts) - UNIFIED!
 	location_max_distance_km: z.number().optional(), // Max distance from my location
 	min_quantity: z.number().optional(), // Minimum quantity
-	
+
 	created_at: z.number().optional(),
 	updated_at: z.number().optional()
 });

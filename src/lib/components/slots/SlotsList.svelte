@@ -13,7 +13,7 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/core/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
   import SlotCard from './SlotCard.svelte';
   
   interface Props {

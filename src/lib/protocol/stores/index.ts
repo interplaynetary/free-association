@@ -11,7 +11,7 @@
  * Use these stores in Svelte applications for reactive updates.
  * 
  * NOTE: This module only exports Svelte stores and reactive wrappers.
- * For pure protocol types and functions, import from '../core' or the main protocol index.
+ * For pure protocol types and functions, import from '../../../../packages/protocol/src' or the main protocol index.
  */
 
 // Main protocol stores

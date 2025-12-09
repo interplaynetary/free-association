@@ -1,4 +1,4 @@
-import type { RootNode } from '$lib/protocol/core/schemas';
+import type { RootNode } from '../../../packages/protocol/src/schemas';
 import { populateSDGTree } from './sdg';
 import { populateNVCTree } from './nvc';
 

@@ -9,7 +9,7 @@ import {
 	reorderNode, 
 	wouldCreateCycle,
 	createRootNode
-} from '$lib/protocol/core/tree';
+} from '../../packages/protocol/src/tree';
 import { userPub } from '$lib/network/auth.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 import { demoTreeStore } from '$lib/stores/demoTree.svelte';

@@ -42,15 +42,15 @@ import {
 	type NeedSlot,
 	type GlobalRecognitionWeights,
 	type SlotAllocationRecord
-} from '../core/schemas';
+} from '../../../../packages/protocol/src/schemas';
 import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
-import {getTimeBucketKey, getLocationBucketKey } from '../core/utils/match';
-import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '../core/tree';
+import {getTimeBucketKey, getLocationBucketKey } from '../../../../packages/protocol/src/utils/match';
+import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '../../../../packages/protocol/src/tree';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.svelte';
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
-import { applyFiltersUnion, mergeSlots } from '../core/utils/capacity-filters';
+import { applyFiltersUnion, mergeSlots } from '../../../../packages/protocol/src/utils/capacity-filters';
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 

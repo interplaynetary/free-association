@@ -23,7 +23,7 @@ import {
 } from '$lib/modules/quests/quest-stores.svelte';
 import { aggregateLocations } from '$lib/modules/quests/location-service';
 import type { Quest, QuestType } from '$lib/modules/quests/quest-schemas';
-import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/core/schemas';
+import type { AvailabilitySlot, NeedSlot } from '../../../packages/protocol/src/schemas';
 import { seed as itcSeed, event as itcEvent } from '$lib/utils/primitives/itc';
 
 export interface QuestGenerationOptions {

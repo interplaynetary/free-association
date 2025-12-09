@@ -12,7 +12,7 @@
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode, type RootNode } from '$lib/protocol/core/schemas';
+	import { type Node, type NonRootNode, type RootNode } from '../../../packages/protocol/src/schemas';
 	import {
 		findNodeById,
 		getParentNode,
@@ -25,7 +25,7 @@
 		calculateNodePoints,
 		getPathToNode,
 		updateManualFulfillment
-	} from '$lib/protocol/core/tree';
+	} from '../../../packages/protocol/src/tree';
 	import { get } from 'svelte/store';
 	import {
 		createContact,

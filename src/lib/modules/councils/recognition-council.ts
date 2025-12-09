@@ -37,10 +37,10 @@ import type {
 	Organization,
 	Commitment,
 	AllocationResult
-} from '$lib/protocol/core/schemas';
-import type { ComplianceFilter } from '$lib/protocol/core/utils/filters';
+} from '../../../../packages/protocol/src/schemas';
+import type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
 import { calculateCollectiveRecognitionDistribution } from '$lib/protocol/distribution';
-import { allocateWithDistribution } from '$lib/protocol/core/allocation';
+import { allocateWithDistribution } from '../../../../packages/protocol/src/allocation';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -825,5 +825,5 @@ export function printAllocationSummary(council: RecognitionCouncil): void {
 
 // Export types
 export type { RecognitionData, MembershipOutput } from '$lib/protocol/collective/schemas';
-export type { ComplianceFilter } from '$lib/protocol/core/utils/filters';
+export type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
 

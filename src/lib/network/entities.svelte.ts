@@ -28,7 +28,7 @@ import {
 	removeAttributeFromCollection,
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
-} from '$lib/protocol/core/attributes/attribute-recognition';
+} from '../../../packages/protocol/src/attributes/attribute-recognition';
 import { holsterUserPub } from './holster.svelte';
 import { getPublicKeyFromContactId } from './users.svelte';
 
