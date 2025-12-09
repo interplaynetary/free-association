@@ -23,9 +23,9 @@
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
-	import { findNodeById } from '../../../packages/protocol/src/tree';
-	import { searchTreeForNavigation } from '../../../packages/protocol/src/filters/treeSearch';
-	import { type Node, type RootNode } from '../../../packages/protocol/src/schemas';
+	import { findNodeById } from '@playnet/free-association/tree';
+	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
+	import { type Node, type RootNode } from '@playnet/free-association/schemas';
 	import { gunAvatar } from 'gun-avatar';
 	import { startTour } from '$lib/utils/ui/tour';
 	import { browser } from '$app/environment';

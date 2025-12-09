@@ -11,8 +11,8 @@
 import { get, derived } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
 // V5: Import from v5 schemas
-import type { ContactsCollectionData as ContactsCollection, Contact } from '../../../packages/protocol/src/schemas';
-import { ContactsCollectionSchema } from '../../../packages/protocol/src/schemas';
+import type { ContactsCollectionData as ContactsCollection, Contact } from '@playnet/free-association/schemas';
+import { ContactsCollectionSchema } from '@playnet/free-association/schemas';
 
 // ============================================================================
 // Store (V5 Pattern - Elegant!)

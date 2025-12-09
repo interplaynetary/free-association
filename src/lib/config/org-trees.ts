@@ -5,8 +5,8 @@
  * Each organization gets a pre-populated tree structure loaded from JSON config.
  */
 
-import type { RootNode, Organization, Contributor } from '../../../packages/protocol/src/schemas';
-import { RootNodeSchema } from '../../../packages/protocol/src/schemas';
+import type { RootNode, Organization, Contributor } from '@playnet/free-association/schemas';
+import { RootNodeSchema } from '@playnet/free-association/schemas';
 import orgTreesConfig from './org-trees.json';
 
 /**

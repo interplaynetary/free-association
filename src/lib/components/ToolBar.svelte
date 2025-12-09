@@ -8,16 +8,16 @@
 		getNetworkCommitmentsRecord,
 		setMyCapacitySlots
 	} from '$lib/protocol/stores/stores.svelte';
-	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '../../../packages/protocol/src/tree';
+	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '@playnet/free-association/tree';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	import { searchTreeForNavigation } from '../../../packages/protocol/src/filters/treeSearch';
+	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
-	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '../../../packages/protocol/src/schemas';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '@playnet/free-association/schemas';
 	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
 	
 	// V5: Wrap Commitment with id for collection storage

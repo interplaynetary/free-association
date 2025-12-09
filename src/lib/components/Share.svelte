@@ -24,7 +24,7 @@
 		formatSlotTimeDisplay,
 		formatSlotLocationDisplay,
 		getSlotSortValue
-	} from '../../../packages/protocol/src/tree';
+	} from '@playnet/free-association/tree';
 
 	interface Props {
 		share: any; // Using any since we're now working with inventory data, not RecipientCapacity

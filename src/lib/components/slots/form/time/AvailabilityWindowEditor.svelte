@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { AvailabilityWindow, DaySchedule, TimeRange } from '../../../../../../packages/protocol/src/schemas';
+  import type { AvailabilityWindow, DaySchedule, TimeRange } from '@playnet/free-association/schemas';
   import DayScheduleEditor from './DayScheduleEditor.svelte';
   import TimeRangeInput from './TimeRangeInput.svelte';
   

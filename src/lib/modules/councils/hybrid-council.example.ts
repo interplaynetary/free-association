@@ -15,7 +15,7 @@ import {
 	printMembershipStatus,
 	printAllocationSummary
 } from './recognition-council';
-import type { AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
+import type { AvailabilitySlot } from '@playnet/free-association/schemas';
 import type { BaseNeed } from '$lib/protocol/collective/schemas';
 
 // ═══════════════════════════════════════════════════════════════════

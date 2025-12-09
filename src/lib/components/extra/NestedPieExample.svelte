@@ -15,8 +15,8 @@
 	const userSogf = writable({});
 	const generalShares = writable({});
 	import type { PieSlice, PieChartData } from './NestedPie.svelte';
-	import type { Node, RootNode } from '../../../../packages/protocol/src/schemas';
-	import { normalizeShareMap } from '../../../../packages/protocol/src/tree';
+	import type { Node, RootNode } from '@playnet/free-association/schemas';
+	import { normalizeShareMap } from '@playnet/free-association/tree';
 	import { get } from 'svelte/store';
 
 	// State for pie chart data

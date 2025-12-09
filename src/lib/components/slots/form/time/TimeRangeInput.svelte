@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { TimeRange } from '../../../../../../packages/protocol/src/schemas';
+  import type { TimeRange } from '@playnet/free-association/schemas';
   
   interface Props {
     startTime: string;

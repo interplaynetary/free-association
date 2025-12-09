@@ -22,7 +22,7 @@ import type {
 	SlotSubscriptions,
 	SlotFiltersCollection,
 	Commitment
-} from '../../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 import { 
 	myRecognitionTreeStore as userTree,
 	myRecognitionWeights,

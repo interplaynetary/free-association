@@ -19,8 +19,8 @@ import { holster } from '$lib/network/holster';
 import type {
 	Organization,
 	OrganizationsCollection
-} from '../../../packages/protocol/src/schemas';
-import { OrganizationSchema, OrganizationsCollectionSchema } from '../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
+import { OrganizationSchema, OrganizationsCollectionSchema } from '@playnet/free-association/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // USER'S ORGANIZATIONS STORE (Holster-backed via createStore)

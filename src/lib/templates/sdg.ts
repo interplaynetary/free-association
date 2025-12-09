@@ -1,5 +1,5 @@
-import { addChild, findNodeById } from '../../../packages/protocol/src/tree';
-import type { RootNode } from '../../../packages/protocol/src/schemas';
+import { addChild, findNodeById } from '@playnet/free-association/tree';
+import type { RootNode } from '@playnet/free-association/schemas';
 
 /**
  * Official UN Sustainable Development Goals colors

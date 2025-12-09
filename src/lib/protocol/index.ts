@@ -23,7 +23,7 @@ import '$lib/network/holster.svelte'; // This initializes Holster (migration Pha
 // CORE PROTOCOL (Pure, framework-agnostic)
 // ═══════════════════════════════════════════════════════════════════
 
-export * from '../../../packages/protocol/src';
+export * from '@playnet/free-association';
 
 // ═══════════════════════════════════════════════════════════════════
 // EXTERNAL DEPENDENCIES (not in core, but commonly used)

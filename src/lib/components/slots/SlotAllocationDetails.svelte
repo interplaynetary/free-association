@@ -10,7 +10,7 @@
 	 * detailed allocation list (expandable)
 	 */
 	
-	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
+	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
 	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores/stores.svelte';
 	import { getUserName, userNamesOrAliasesCache } from '$lib/network/users.svelte';
 	import SlotAllocationBar from './SlotAllocationBar.svelte';

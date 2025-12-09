@@ -24,13 +24,13 @@ import {
 	type AttributeSubscriptions,
 	type EntityIdMappings,
 	type AttributeValue
-} from '../../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 import {
 	getAttributeFromCollection,
 	updateAttributeInCollection,
 	removeAttributeFromCollection
-} from '../../../../packages/protocol/src/attributes/attribute-recognition';
-import { getEqualityChecker } from '../../../../packages/protocol/src/attributes/attribute-types';
+} from '@playnet/free-association/attributes/attribute-recognition';
+import { getEqualityChecker } from '@playnet/free-association/attributes/attribute-types';
 import { leq as itcLeq, equals as itcEquals, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
 import { holsterUserPub } from '$lib/network/holster.svelte';

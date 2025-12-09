@@ -8,5 +8,5 @@
  */
 
 // Re-export everything from the pure TypeScript module
-export * from '../../../../packages/protocol/src/collective/collective-recognition';
+export * from '@playnet/free-association/collective/collective-recognition';
 

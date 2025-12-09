@@ -12,7 +12,7 @@ import {
 	printMembershipStatus,
 	printAllocationSummary
 } from './recognition-council';
-import type { AvailabilitySlot, NeedSlot } from '../../../../packages/protocol/src/schemas';
+import type { AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // EXAMPLE 1: Basic Climate Action Council

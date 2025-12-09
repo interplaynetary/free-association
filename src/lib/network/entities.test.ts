@@ -14,13 +14,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { AttributeRecognitionsCollection } from '../../../packages/protocol/src/schemas';
+import type { AttributeRecognitionsCollection } from '@playnet/free-association/schemas';
 import {
 	updateAttributeInCollection,
 	getAttributeFromCollection,
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
-} from '../../../packages/protocol/src/attributes/attribute-recognition';
+} from '@playnet/free-association/attributes/attribute-recognition';
 
 describe('Entity Attribute Operations', () => {
 	it('should set entity attribute using core functions', () => {

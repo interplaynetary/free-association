@@ -1,5 +1,5 @@
-import { addChild } from '../../../../../../../packages/protocol/src/tree';
-import type { RootNode, Node } from '../../../../../../../packages/protocol/src/schemas';
+import { addChild } from '@playnet/free-association/tree';
+import type { RootNode, Node } from '@playnet/free-association/schemas';
 import { userTree } from '$lib/state/core.svelte';
 import { get } from 'svelte/store';
 

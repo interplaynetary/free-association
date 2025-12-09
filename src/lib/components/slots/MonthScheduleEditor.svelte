@@ -14,7 +14,7 @@
 	 * 3. Same times every day (all weeks)
 	 */
 	
-	import type { MonthSchedule, WeekSchedule, DaySchedule, DayOfWeek, TimeRange } from '../../../../packages/protocol/src/schemas';
+	import type { MonthSchedule, WeekSchedule, DaySchedule, DayOfWeek, TimeRange } from '@playnet/free-association/schemas';
 	import TimeRangeEditor from './TimeRangeEditor.svelte';
 	
 	interface Props {

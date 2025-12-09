@@ -1,5 +1,5 @@
 // V5: Import from v5 stores and schemas
-import type { RootNode, AvailabilitySlot, Commitment } from '../../../packages/protocol/src/schemas';
+import type { RootNode, AvailabilitySlot, Commitment } from '@playnet/free-association/schemas';
 import { myRecognitionTreeStore, myCommitmentStore, myCapacitySlotsStore } from '$lib/protocol/stores/stores.svelte';
 import { get } from 'svelte/store';
 import { getLocalTimeZone } from '@internationalized/date';

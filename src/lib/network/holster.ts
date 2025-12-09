@@ -1,6 +1,6 @@
 import Holster from '@mblaney/holster/src/holster.js';
 import type { HolsterInstance, HolsterUser } from '@mblaney/holster';
-import { config } from '../../../packages/protocol/src/config';
+import { config } from '@playnet/free-association/config';
 
 // ═══════════════════════════════════════════════════════════════════
 // HOLSTER INITIALIZATION

@@ -47,7 +47,7 @@ export type {
 
 export type {
 	ComplianceFilter
-} from '../../../../packages/protocol/src/utils/filters';
+} from '@playnet/free-association/utils/filters';
 
 export type {
 	Organization,
@@ -55,5 +55,5 @@ export type {
 	NeedSlot,
 	Node,
 	RootNode
-} from '../../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 

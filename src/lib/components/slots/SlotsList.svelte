@@ -13,7 +13,7 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
   import SlotCard from './SlotCard.svelte';
   
   interface Props {

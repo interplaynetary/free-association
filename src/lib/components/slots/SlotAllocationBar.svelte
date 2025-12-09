@@ -12,7 +12,7 @@
 	 * - Real-time reactivity from network commitments
 	 */
 	
-	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
+	import type { SlotAllocationRecord, NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
 	import { networkAllocations, myCommitmentStore } from '$lib/protocol/stores/stores.svelte';
 	import { getColorForUserId } from '$lib/utils/ui/colorUtils';
 	import Bar from '$lib/components/Bar.svelte';

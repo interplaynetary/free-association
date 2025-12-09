@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { getOrgTree, getOrgMetadata } from '$lib/config/org-trees';
-import type { RootNode, Contributor } from '../../../../packages/protocol/src/schemas';
+import type { RootNode, Contributor } from '@playnet/free-association/schemas';
 
 // Client-side only rendering (same as main app)
 export const prerender = false;

@@ -1,6 +1,6 @@
 import { derived } from 'svelte/store';
 import { userNetworkCapacitiesWithSlotQuantities } from '../core.svelte';
-import type { CapacitiesCollection, ProviderCapacity, BaseCapacity, AvailabilitySlot } from '../../../../../packages/protocol/src/schemas';
+import type { CapacitiesCollection, ProviderCapacity, BaseCapacity, AvailabilitySlot } from '@playnet/free-association/schemas';
 
 // Import from the three modular systems
 import {

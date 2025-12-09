@@ -37,10 +37,10 @@ import type {
 	Organization,
 	Commitment,
 	AllocationResult
-} from '../../../../packages/protocol/src/schemas';
-import type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
+} from '@playnet/free-association/schemas';
+import type { ComplianceFilter } from '@playnet/free-association/utils/filters';
 import { calculateCollectiveRecognitionDistribution } from '$lib/protocol/distribution';
-import { allocateWithDistribution } from '../../../../packages/protocol/src/allocation';
+import { allocateWithDistribution } from '@playnet/free-association/allocation';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -825,5 +825,5 @@ export function printAllocationSummary(council: RecognitionCouncil): void {
 
 // Export types
 export type { RecognitionData, MembershipOutput } from '$lib/protocol/collective/schemas';
-export type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
+export type { ComplianceFilter } from '@playnet/free-association/utils/filters';
 

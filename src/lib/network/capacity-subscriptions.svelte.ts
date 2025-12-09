@@ -26,12 +26,12 @@ import type {
 	SlotFilter,
 	AvailabilitySlot,
 	NeedSlot
-} from '../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 import {
 	SlotSubscriptionsSchema,
 	SlotFiltersCollectionSchema,
 	SlotFilterSchema
-} from '../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // UNIFIED STORES (Holster-backed via createStore)

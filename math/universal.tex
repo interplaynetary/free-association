@@ -143,7 +143,27 @@ Let $\E$ be the set of all entities, potentially infinite and heterogeneous:
 \[ \E = \bigcup_{t \in T} \E_t \]
 where $T$ is the set of entity types including but not limited to: human, organization, AI agent, resource, concept, collective, hyper-collective.
 
+
 \textbf{Practical Note}: While $\E$ is defined abstractly as potentially infinite, all practical implementations work with finite entity sets at any given time $t$. The formulas $\sum_{f \in \E}$ should be understood as finite sums in practice. The framework allows $\E$ to grow over time as new entities join, but computation at each instant involves finite sets.
+
+\subsection{Benefit Gradient}
+
+For any entity $e \in \E$, other entities $f \in \E$ provide varying degrees of value or benefit toward $e$'s existence, goals, or utility. We define this as the \textbf{benefit gradient}:
+
+\[ \beta(e, f) \ge 0 \]
+
+representing the marginal contribution of $f$ to $e$.
+
+properties:
+\begin{itemize}
+\item \textbf{Ideal Ground Truth}: The benefit gradient represents the \textit{ideal, potentially unknowable} objective distribution of how marginally beneficial entities are to $e$'s goals.
+\item \textbf{Dynamic}: $\beta(e,f)$ changes as situations evolve.
+\item \textbf{Asymmetric}: In general, $\beta(e,f) \ne \beta(f,e)$.
+\end{itemize}
+
+\textbf{Scalar vs Vector}: While modeled as a scalar marginal contribution for the theorem, $\beta$ essentially aggregates value across all of $e$'s dimensions of need.
+
+\textbf{Relationship to Recognition}: The core objective of the coordination framework is to enable entities to align their recognition distributions $R(e,\cdot)$ with their true benefit gradients $\beta(e,\cdot)$, such that resource allocation maximizes actual value creation. The anti-gaming theorem (Section 9) proves that mechanisms exist to drive this alignment naturally.
 
 \subsection{Recognition Distributions}
 

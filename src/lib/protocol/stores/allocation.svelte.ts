@@ -59,7 +59,7 @@ import {
 	applyDivisibilityConstraints,
 	meetsMinimumAllocation,
 	redistributeRemainders
-} from '../../../../packages/protocol/src/allocation';
+} from '@playnet/free-association/allocation';
 
 // Import v5 schemas and stores
 import type {
@@ -70,9 +70,9 @@ import type {
 	SlotAllocationRecord,
 	MultiDimensionalDamping,
 	PerTypeDampingHistoryEntry
-} from '../../../../packages/protocol/src/schemas';
+} from '@playnet/free-association/schemas';
 
-import { normalizeGlobalRecognitionWeights } from '../../../../packages/protocol/src/schemas';
+import { normalizeGlobalRecognitionWeights } from '@playnet/free-association/schemas';
 
 import {
 	myCommitmentStore,
@@ -86,8 +86,8 @@ import {
 	networkAllocations,
 	type SpaceTimeIndex
 } from './stores.svelte';
-import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '../../../../packages/protocol/src/utils/match';
-import { deepEqual } from '../../../../packages/protocol/src/utils/memoize';
+import {slotsCompatible, passesSlotFilters, type FilterContext, getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
+import { deepEqual } from '@playnet/free-association/utils/memoize';
 
 // Import../../commons/v5/matchnctions for causal consistency
 import {

@@ -8,7 +8,7 @@
  */
 
 // Re-export everything from the pure TypeScript module
-export * from '../../../../packages/protocol/src/collective/collective-membership';
+export * from '@playnet/free-association/collective/collective-membership';
 
 /*
 # Membership Module: Mutual Recognition Density (MRD)

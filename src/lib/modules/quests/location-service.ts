@@ -7,7 +7,7 @@
  * 3. Browser Geolocation API (real-time, requires permission)
  */
 
-import type { AvailabilitySlot, NeedSlot } from '../../../../packages/protocol/src/schemas';
+import type { AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
 import type { QuestLocation } from '$lib/modules/quests/quest-schemas';
 
 export interface LocationSource {

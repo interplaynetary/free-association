@@ -28,7 +28,7 @@ import {
 	removeAttributeFromCollection,
 	getAllAttributesForEntity,
 	getEntitiesWithAttribute
-} from '../../../packages/protocol/src/attributes/attribute-recognition';
+} from '@playnet/free-association/attributes/attribute-recognition';
 import { holsterUserPub } from './holster.svelte';
 import { getPublicKeyFromContactId } from './users.svelte';
 

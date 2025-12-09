@@ -6,7 +6,7 @@
 	 * Helps users understand complex recurring patterns
 	 */
 	
-	import type { AvailabilityWindow, DayOfWeek } from '../../../../packages/protocol/src/schemas';
+	import type { AvailabilityWindow, DayOfWeek } from '@playnet/free-association/schemas';
 	
 	interface Props {
 		recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;

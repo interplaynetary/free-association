@@ -10,8 +10,8 @@
 import { writable, get } from 'svelte/store';
 import { holsterUser } from '$lib/network/holster.svelte';
 // V5: Use Zod schemas for validation
-import type { ChatReadStates } from '../../../packages/protocol/src/schemas';
-import { ChatReadStatesSchema } from '../../../packages/protocol/src/schemas';
+import type { ChatReadStates } from '@playnet/free-association/schemas';
+import { ChatReadStatesSchema } from '@playnet/free-association/schemas';
 import { addTimestamp, getTimestamp, shouldPersist } from '$lib/utils/data/holsterTimestamp';
 
 // ============================================================================

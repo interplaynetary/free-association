@@ -10,7 +10,7 @@
 	 * Generates proper AvailabilityWindow schema objects
 	 */
 	
-	import type { AvailabilityWindow, TimeRange, DaySchedule, WeekSchedule, MonthSchedule } from '../../../../packages/protocol/src/schemas';
+	import type { AvailabilityWindow, TimeRange, DaySchedule, WeekSchedule, MonthSchedule } from '@playnet/free-association/schemas';
 	import TimeRangeEditor from './TimeRangeEditor.svelte';
 	import DayScheduleEditor from './DayScheduleEditor.svelte';
 	import WeekScheduleEditor from './WeekScheduleEditor.svelte';

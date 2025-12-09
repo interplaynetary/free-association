@@ -13,8 +13,8 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
-  import { NeedSlotSchema, AvailabilitySlotSchema } from '../../../../packages/protocol/src/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
+  import { NeedSlotSchema, AvailabilitySlotSchema } from '@playnet/free-association/schemas';
   import NeedTypeSelector from './NeedTypeSelector.svelte';
   import BasicInfo from './form/BasicInfo.svelte';
   import QuantityInput from './form/QuantityInput.svelte';

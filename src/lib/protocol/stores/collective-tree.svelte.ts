@@ -27,8 +27,8 @@ import type {
 	CollectiveCapacityAllocation,
 	TreeFilterConfig,
 	FilteredTreeResult
-} from '../../../../packages/protocol/src/schemas';
-import { mutualFulfillment as originalMutualFulfillment } from '../../../../packages/protocol/src/tree';
+} from '@playnet/free-association/schemas';
+import { mutualFulfillment as originalMutualFulfillment } from '@playnet/free-association/tree';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 
@@ -293,8 +293,8 @@ import type {
 	CollectiveNonRootNode,
 	TreeMergeConfig,
 	TreeMergeResult
-} from '../../../../packages/protocol/src/schemas';
-import { shareOfParent } from '../../../../packages/protocol/src/tree';
+} from '@playnet/free-association/schemas';
+import { shareOfParent } from '@playnet/free-association/tree';
 import crypto from 'crypto';
 
 // Hash function for creating collective IDs
@@ -2182,12 +2182,12 @@ function renormalizeCollectiveTree(tree: CollectiveTree): CollectiveTree {
  * ```
  */
 
-import type { DistributionResult } from '../../../../packages/protocol/src/distribution';
-import type { AllocationResult, AvailabilitySlot, Commitment } from '../../../../packages/protocol/src/schemas';
-import type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
-import type { JsonLogicRule } from '../../../../packages/protocol/src/filters/filters';
-import { ruleToFilter } from '../../../../packages/protocol/src/filters/filters';
-import { allocateWithDistribution } from '../../../../packages/protocol/src/allocation';
+import type { DistributionResult } from '@playnet/free-association/distribution';
+import type { AllocationResult, AvailabilitySlot, Commitment } from '@playnet/free-association/schemas';
+import type { ComplianceFilter } from '@playnet/free-association/utils/filters';
+import type { JsonLogicRule } from '@playnet/free-association/filters/filters';
+import { ruleToFilter } from '@playnet/free-association/filters/filters';
+import { allocateWithDistribution } from '@playnet/free-association/allocation';
 
 /**
  * Node Recognition Metrics

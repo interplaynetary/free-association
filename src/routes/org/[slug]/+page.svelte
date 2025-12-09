@@ -29,16 +29,16 @@
 		NeedSlot,
 		AvailabilitySlot,
 		NonRootNode
-	} from '../../../../packages/protocol/src/schemas';
-	import { NEED_TYPES, formatNeedType } from '../../../../packages/protocol/src/utils/needTypes';
+	} from '@playnet/free-association/schemas';
+	import { NEED_TYPES, formatNeedType } from '@playnet/free-association/utils/needTypes';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
 	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 	import {
 		sharesOfGeneralFulfillmentMap,
 		getAllContributorsFromTree
-	} from '../../../../packages/protocol/src/tree';
-	import { computeMutualRecognition } from '../../../../packages/protocol/src/allocation';
+	} from '@playnet/free-association/tree';
+	import { computeMutualRecognition } from '@playnet/free-association/allocation';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();
@@ -302,7 +302,7 @@
 	// Load org recognition data from config (who recognizes whom in the demo ecosystem)
 	// This is the "others_recognition_of_me" equivalent for demo mode
 	import { readable } from 'svelte/store';
-	import type { GlobalRecognitionWeights } from '../../../../packages/protocol/src/schemas';
+	import type { GlobalRecognitionWeights } from '@playnet/free-association/schemas';
 	import { getOrgTreesMap } from '$lib/config/org-trees';
 
 	const demoOrgRecognitionMap = readable<Record<string, GlobalRecognitionWeights>>({}, (set) => {

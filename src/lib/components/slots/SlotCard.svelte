@@ -13,8 +13,8 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '../../../../packages/protocol/src/schemas';
-  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '../../../../packages/protocol/src/tree';
+  import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
+  import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '@playnet/free-association/tree';
   import AllocationDetails from './AllocationDetails.svelte';
   
   interface Props {

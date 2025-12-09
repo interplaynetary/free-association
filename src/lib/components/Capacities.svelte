@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { globalState } from '$lib/global.svelte';
-	import type { Commitment, AvailabilitySlot } from '../../../packages/protocol/src/schemas';
+	import type { Commitment, AvailabilitySlot } from '@playnet/free-association/schemas';
 	import {
 		findNodeById,
 		updateNodeById
-	} from '../../../packages/protocol/src/tree';
+	} from '@playnet/free-association/tree';
 	import { Calendar, DatePicker, Button } from 'bits-ui';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	import { userAlias, userPub } from '$lib/network/auth.svelte';

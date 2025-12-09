@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-  import type { NeedType } from '../../../../packages/protocol/src/schemas';
+  import type { NeedType } from '@playnet/free-association/schemas';
   
   interface Props {
     /** Currently selected need type ID */

@@ -20,8 +20,8 @@
 
 import { RecognitionCouncil } from './recognition-council';
 import type { RecognitionCouncilConfig } from './recognition-council';
-import type { AvailabilitySlot, NeedSlot } from '../../../../packages/protocol/src/schemas';
-import type { ComplianceFilter } from '../../../../packages/protocol/src/utils/filters';
+import type { AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
+import type { ComplianceFilter } from '@playnet/free-association/utils/filters';
 
 // ═══════════════════════════════════════════════════════════════════
 // PROPOSAL SYSTEM (from councils.ts)
