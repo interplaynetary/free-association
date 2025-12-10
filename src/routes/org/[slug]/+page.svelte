@@ -90,7 +90,7 @@
 		console.log('[ORG-PAGE] Component mounted - tree already initialized');
 
 		// Initialize path with the org tree root
-		if (data.tree) {
+		if (data.tree?.id) {
 			currentPath.set([data.tree.id]);
 			console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
 		}
@@ -317,11 +317,13 @@
 
 			// Compute recognition weights for this org
 			// Convert contributors array to weights (same as protocol does)
-			const totalPoints = config.recognizes.reduce((sum, c) => sum + c.points, 0);
+			const totalPoints = config.recognizes.reduce((sum, c) => sum + (c.points || 0), 0);
 			const weights: GlobalRecognitionWeights = {};
 
 			config.recognizes.forEach((contributor) => {
-				weights[contributor.id] = contributor.points / totalPoints;
+				if (contributor.points && contributor.id) {
+					weights[contributor.id] = contributor.points / totalPoints;
+				}
 			});
 
 			// Map by org_id (not slug)
@@ -569,11 +571,11 @@
 														min="0"
 														step="0.1"
 														onchange={(e) =>
-															updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
+															slot.id && updateNeedQuantity(slot.id, parseFloat(e.currentTarget.value))}
 													/>
 													<span>{slot.unit || 'units'}</span>
 												</div>
-												<button onclick={() => removeNeedSlot(slot.id)} class="btn-danger-small">
+												<button onclick={() => slot.id && removeNeedSlot(slot.id)} class="btn-danger-small">
 													🗑️ Delete
 												</button>
 											</div>
@@ -637,12 +639,12 @@
 														min="0"
 														step="0.1"
 														onchange={(e) =>
-															updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
+															slot.id && updateCapacityQuantity(slot.id, parseFloat(e.currentTarget.value))}
 													/>
 													<span>{slot.unit || 'units'}</span>
 												</div>
 												<button
-													onclick={() => removeCapacitySlot(slot.id)}
+													onclick={() => slot.id && removeCapacitySlot(slot.id)}
 													class="btn-danger-small"
 												>
 													🗑️ Delete

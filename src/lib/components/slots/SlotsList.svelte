@@ -58,9 +58,9 @@
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(s =>
-        s.name.toLowerCase().includes(query) ||
+        (s.name || '').toLowerCase().includes(query) ||
         s.description?.toLowerCase().includes(query) ||
-        s.need_type_id.toLowerCase().includes(query)
+        (s.need_type_id || '').toLowerCase().includes(query)
       );
     }
     
@@ -69,13 +69,13 @@
       let comparison = 0;
       
       if (sortBy === 'name') {
-        comparison = a.name.localeCompare(b.name);
+        comparison = (a.name || '').localeCompare(b.name || '');
       } else if (sortBy === 'date') {
         const dateA = a.start_date || '';
         const dateB = b.start_date || '';
         comparison = dateA.localeCompare(dateB);
       } else if (sortBy === 'quantity') {
-        comparison = a.quantity - b.quantity;
+        comparison = (a.quantity || 0) - (b.quantity || 0);
       }
       
       return sortDirection === 'asc' ? comparison : -comparison;

@@ -105,7 +105,7 @@
   function handleChange(newTranscript) {
     console.log('New transcript:', newTranscript);
   }
-</script>
+<\/script>
 
 <VoiceInput
   bind:value={transcript}

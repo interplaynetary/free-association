@@ -152,50 +152,50 @@ const activeSubscriptions = new Set<string>();
  */
 export function subscribeToAttributeRecognitions(pubkey: string) {
 	if (activeSubscriptions.has(pubkey)) return;
-	
+
 	myAttributeRecognitions.subscribeToUser(pubkey, (theirRecognitions) => {
 		console.log(`[📡 ATTR-SUB] Received recognitions from ${pubkey.slice(0, 20)}...`);
-		
+
 		// Handle deletion - remove attributes with this source
 		if (!theirRecognitions) {
 			const ourCurrent = get(myAttributeRecognitions);
 			if (!ourCurrent) return;
-			
+
 			const { updated, count } = removeAttributesBySource(ourCurrent, pubkey);
-			
+
 			if (count > 0) {
 				myAttributeRecognitions.set(updated);
 				console.log(`[📡 ATTR-SUB] 🗑️  Removed ${count} attributes from ${pubkey.slice(0, 20)}...`);
 			}
 			return;
 		}
-		
+
 		// Process each entity's attributes from their recognitions
 		const ourCurrent = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 		let updated = ourCurrent;
 		let appliedCount = 0;
 		let skippedCount = 0;
-		
+
 		for (const [entity_id, entityAttrs] of Object.entries(theirRecognitions)) {
 			if (entity_id === '_itcStamp' || entity_id === '_timestamp') continue;
 			if (typeof entityAttrs !== 'object' || entityAttrs === null) continue;
-			
+
 			for (const [attr_name, theirAttr] of Object.entries(entityAttrs)) {
 				if (typeof theirAttr !== 'object' || theirAttr === null) continue;
 				if (!('value' in theirAttr) || !('timestamp' in theirAttr)) continue;
-				
+
 				const theirValue = theirAttr as AttributeValue;
 				const ourAttr = getAttributeFromCollection(ourCurrent, entity_id, attr_name);
-				
+
 				// ✅ ITC CAUSALITY CHECK
 				if (!checkAndMergeITC(ourAttr, theirValue, entity_id, attr_name, pubkey)) {
 					skippedCount++;
 					continue;
 				}
-				
+
 				// ✅ Get custom equality checker for this attribute type
 				const equalityChecker = getEqualityChecker(attr_name);
-				
+
 				// ✅ Write to unified collection with source tracking AND change detection
 				updated = updateAttributeInCollection(
 					updated,
@@ -207,11 +207,11 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
 					theirValue.itcStamp,
 					equalityChecker // ← Custom equality checker for optimized change detection
 				);
-				
+
 				appliedCount++;
 			}
 		}
-		
+
 		// Apply updates if any
 		if (appliedCount > 0) {
 			myAttributeRecognitions.set(updated);
@@ -220,7 +220,7 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
 			console.log(`[📡 ATTR-SUB] ⏭️  No updates from ${pubkey.slice(0, 20)}... (all stale or empty)`);
 		}
 	});
-	
+
 	activeSubscriptions.add(pubkey);
 	console.log(`[📡 ATTR-SUB] ✅ Subscribed to ${pubkey.slice(0, 20)}... attribute recognitions`);
 }
@@ -234,17 +234,17 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
  */
 export function unsubscribeFromAttributeRecognitions(pubkey: string) {
 	activeSubscriptions.delete(pubkey);
-	
+
 	const ourCurrent = get(myAttributeRecognitions);
 	if (!ourCurrent) return;
-	
+
 	const { updated, count } = removeAttributesBySource(ourCurrent, pubkey);
-	
+
 	if (count > 0) {
 		myAttributeRecognitions.set(updated);
 		console.log(`[📡 ATTR-SUB] 🗑️  Removed ${count} attributes from ${pubkey.slice(0, 20)}...`);
 	}
-	
+
 	console.log(`[📡 ATTR-SUB] Unsubscribed from ${pubkey.slice(0, 20)}...`);
 }
 
@@ -278,14 +278,14 @@ export function getSubscribedPubkeys(): string[] {
  */
 export function enableAutoAttributeSync(): () => void {
 	console.log('[AUTO-ATTR-SYNC] 🔄 Enabling automatic attribute syncing');
-	
+
 	// Track active subscriptions to avoid duplicates
 	const activeSubs = new Map<string, () => void>();
-	
+
 	// Subscribe to changes in attribute subscriptions
 	const unsubscribe = myAttributeSubscriptions.subscribe(($subs) => {
 		if (!$subs) return;
-		
+
 		// Get all unique source pubkeys
 		const sourcePubkeys = new Set<string>();
 		for (const entitySubs of Object.values($subs)) {
@@ -293,26 +293,26 @@ export function enableAutoAttributeSync(): () => void {
 				sourcePubkeys.add(source_pubkey);
 			}
 		}
-		
+
 		console.log(`[AUTO-ATTR-SYNC] Processing ${sourcePubkeys.size} source pubkeys`);
-		
+
 		// Subscribe to new sources
 		for (const pubkey of sourcePubkeys) {
 			if (activeSubs.has(pubkey)) continue;
-			
+
 			console.log(`[AUTO-ATTR-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s attribute recognitions`);
-			
+
 			subscribeToAttributeRecognitions(pubkey);
-			
+
 			// Track this subscription
 			activeSubs.set(pubkey, () => {
 				console.log(`[AUTO-ATTR-SYNC] ⏸️  Unsubscribed from ${pubkey.slice(0, 20)}...`);
 			});
 		}
-		
+
 		// Cleanup removed subscriptions
 		const currentKeys = sourcePubkeys;
-		
+
 		for (const [pubkey, cleanup] of activeSubs.entries()) {
 			if (!currentKeys.has(pubkey)) {
 				console.log(`[AUTO-ATTR-SYNC] ➖ Removing subscription: ${pubkey.slice(0, 20)}...`);
@@ -322,7 +322,7 @@ export function enableAutoAttributeSync(): () => void {
 			}
 		}
 	});
-	
+
 	return () => {
 		unsubscribe();
 		activeSubs.clear();
@@ -340,16 +340,16 @@ export function enableAutoAttributeSync(): () => void {
 export interface ResolutionResult {
 	/** Resolved attribute value (undefined if not found) */
 	value: any;
-	
+
 	/** Source pubkey that provided this value */
 	source_pubkey?: string;
-	
+
 	/** How was this resolved? */
 	resolution_type: 'subscription' | 'self' | 'local' | 'not_found';
-	
+
 	/** Confidence level (0-1) */
 	confidence: number;
-	
+
 	/** Timestamp when value was declared */
 	timestamp?: number;
 }
@@ -365,7 +365,7 @@ function getResolutionType(
 	subscribedSource: string | undefined
 ): 'subscription' | 'self' | 'local' {
 	if (!source_pubkey) return 'local';
-	
+
 	if (subscribedSource && source_pubkey === subscribedSource) return 'subscription';
 	if (source_pubkey === resolved_entity_id) return 'self';
 	return 'local';
@@ -382,21 +382,21 @@ function removeAttributesBySource(
 ): { updated: AttributeRecognitionsCollection; count: number } {
 	let updated = collection;
 	let count = 0;
-	
+
 	for (const [entity_id, entityAttrs] of Object.entries(collection)) {
 		if (entity_id === '_itcStamp' || entity_id === '_timestamp') continue;
-		
+
 		if (typeof entityAttrs === 'object' && entityAttrs !== null) {
 			for (const [attr_name, attr_value] of Object.entries(entityAttrs)) {
 				if (typeof attr_value === 'object' && attr_value !== null &&
-				    'source_pubkey' in attr_value && attr_value.source_pubkey === source_pubkey) {
+					'source_pubkey' in attr_value && attr_value.source_pubkey === source_pubkey) {
 					updated = removeAttributeFromCollection(updated, entity_id, attr_name);
 					count++;
 				}
 			}
 		}
 	}
-	
+
 	return { updated, count };
 }
 
@@ -414,14 +414,14 @@ function checkAndMergeITC(
 	source_pubkey: string
 ): boolean {
 	if (!ourAttr?.itcStamp || !theirValue.itcStamp) return true;
-	
+
 	// Skip if theirs is causally stale
 	if (itcLeq(theirValue.itcStamp, ourAttr.itcStamp) &&
-	    !itcEquals(theirValue.itcStamp, ourAttr.itcStamp)) {
+		!itcEquals(theirValue.itcStamp, ourAttr.itcStamp)) {
 		console.log(`[📡 ATTR-SUB] ⏭️  ITC stale: ${entity_id}/${attr_name} from ${source_pubkey.slice(0, 20)}...`);
 		return false;
 	}
-	
+
 	// Merge ITC stamps (concurrent updates)
 	theirValue.itcStamp = itcJoin(ourAttr.itcStamp, theirValue.itcStamp);
 	console.log(`[📡 ATTR-SUB] 🔀 Merged ITC for ${entity_id}/${attr_name}`);
@@ -452,22 +452,22 @@ export function resolveAttribute(
 	const subscriptions = get(myAttributeSubscriptions) || {};
 	const recognitions = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 	const idMappings = get(myEntityIdMappings) || {};
-	
+
 	const resolved_entity_id = idMappings[entity_id] || entity_id;
 	const attr = getAttributeFromCollection(recognitions, resolved_entity_id, attribute_name);
-	
+
 	if (!attr) {
 		return { value: undefined, resolution_type: 'not_found', confidence: 0 };
 	}
-	
+
 	const subscribedSource = subscriptions[entity_id]?.[attribute_name];
 	const resolution_type = getResolutionType(attr.source_pubkey, resolved_entity_id, subscribedSource);
-	
+
 	return {
 		value: attr.value,
 		source_pubkey: attr.source_pubkey,
 		resolution_type,
-		confidence: attr.confidence,
+		confidence: attr.confidence ?? 0,
 		timestamp: attr.timestamp
 	};
 }
@@ -553,11 +553,11 @@ export function createResolutionStore(
  */
 export function initializeAttributeStores() {
 	console.log('[ATTR-STORES] Initializing stores...');
-	
+
 	myAttributeRecognitions.initialize();
 	myAttributeSubscriptions.initialize();
 	myEntityIdMappings.initialize();
-	
+
 	console.log('[ATTR-STORES] Stores initialized:');
 	console.log('  - My attribute recognitions (persistent)');
 	console.log('  - My attribute subscriptions (persistent)');
@@ -572,11 +572,11 @@ export function initializeAttributeStores() {
  */
 export async function cleanupAttributeStores() {
 	console.log('[ATTR-STORES] Cleaning up stores...');
-	
+
 	await myAttributeRecognitions.cleanup();
 	await myAttributeSubscriptions.cleanup();
 	await myEntityIdMappings.cleanup();
-	
+
 	console.log('[ATTR-STORES] Stores cleaned up');
 }
 
@@ -610,7 +610,7 @@ export function deriveAttribute(attributeName: string): Readable<Map<string, Att
 	let attributeMap = new Map<string, AttributeValue>();
 	let lastITCStamps = new Map<string, ITCStamp>();
 	let isFirstRun = true;
-	
+
 	return derived(myAttributeRecognitions, ($collection, set) => {
 		if (!$collection) {
 			// Empty collection
@@ -620,21 +620,21 @@ export function deriveAttribute(attributeName: string): Readable<Map<string, Att
 			isFirstRun = false;
 			return;
 		}
-		
+
 		let changed = isFirstRun;
-		
+
 		// Check each entity for this attribute
 		for (const [entity_id, entityAttrs] of Object.entries($collection)) {
 			if (entity_id === '_itcStamp' || entity_id === '_timestamp') continue;
 			if (typeof entityAttrs !== 'object' || entityAttrs === null) continue;
-			
+
 			const attr = (entityAttrs as Record<string, AttributeValue>)[attributeName];
-			
+
 			if (attr && typeof attr === 'object' && 'value' in attr && 'itcStamp' in attr && attr.itcStamp) {
 				// Attribute exists - check if ITC changed
 				const currentITC = attr.itcStamp;
 				const lastITC = lastITCStamps.get(entity_id);
-				
+
 				// ✅ Use ITC equality check instead of timestamp
 				if (!lastITC || !itcEquals(currentITC, lastITC)) {
 					changed = true;
@@ -648,7 +648,7 @@ export function deriveAttribute(attributeName: string): Readable<Map<string, Att
 				lastITCStamps.delete(entity_id);
 			}
 		}
-		
+
 		// Check for entity deletions
 		for (const entity_id of attributeMap.keys()) {
 			if (!$collection[entity_id]) {
@@ -657,7 +657,7 @@ export function deriveAttribute(attributeName: string): Readable<Map<string, Att
 				lastITCStamps.delete(entity_id);
 			}
 		}
-		
+
 		// ✅ Always notify on first run, then only if actually changed
 		if (changed) {
 			attributeMap = new Map(attributeMap); // Clone for reactivity
@@ -694,7 +694,7 @@ export function deriveEntityAttribute(
 ): Readable<AttributeValue | undefined> {
 	let lastITC: ITCStamp | null = null;
 	let isFirstRun = true;
-	
+
 	return derived(myAttributeRecognitions, ($collection, set) => {
 		if (!$collection) {
 			lastITC = null;
@@ -702,9 +702,9 @@ export function deriveEntityAttribute(
 			isFirstRun = false;
 			return;
 		}
-		
+
 		const attr = getAttributeFromCollection($collection, entityId, attributeName);
-		
+
 		if (attr && attr.itcStamp) {
 			// ✅ Check if ITC changed
 			const currentITC = attr.itcStamp;
@@ -747,7 +747,7 @@ export function deriveEntity(entityId: string): Readable<Record<string, Attribut
 	let lastAttributes: Record<string, AttributeValue> = {};
 	let isFirstRun = true;
 	let lastExisted = false;
-	
+
 	return derived(myAttributeRecognitions, ($collection, set) => {
 		if (!$collection) {
 			if (isFirstRun || lastExisted) {
@@ -760,9 +760,9 @@ export function deriveEntity(entityId: string): Readable<Record<string, Attribut
 			isFirstRun = false;
 			return;
 		}
-		
+
 		const entityAttrs = $collection[entityId];
-		
+
 		if (!entityAttrs || typeof entityAttrs !== 'object') {
 			// Entity doesn't exist
 			if (isFirstRun || lastExisted) {
@@ -775,33 +775,33 @@ export function deriveEntity(entityId: string): Readable<Record<string, Attribut
 			isFirstRun = false;
 			return;
 		}
-		
+
 		// ✅ Check if any attribute's ITC changed
 		let changed = isFirstRun;
 		const currentAttrs: Record<string, AttributeValue> = {};
-		
+
 		for (const [attr_name, attr_value] of Object.entries(entityAttrs)) {
 			if (typeof attr_value === 'object' && attr_value !== null && 'value' in attr_value && 'itcStamp' in attr_value) {
 				const attrVal = attr_value as AttributeValue;
 				currentAttrs[attr_name] = attrVal;
-				
+
 				const currentITC = attrVal.itcStamp;
 				const lastITC = lastAttributeITCs.get(attr_name);
-				
+
 				// ✅ Use ITC equality check
 				if (currentITC && (!lastITC || !itcEquals(currentITC, lastITC))) {
 					changed = true;
 				}
 			}
 		}
-		
+
 		const currentAttributeCount = Object.keys(currentAttrs).length;
-		
+
 		// Also trigger if attribute count changed
 		if (currentAttributeCount !== lastAttributeCount) {
 			changed = true;
 		}
-		
+
 		// ✅ Always notify on first run, then only if entity actually changed
 		if (changed) {
 			// Update all ITC stamps
@@ -811,7 +811,7 @@ export function deriveEntity(entityId: string): Readable<Record<string, Attribut
 					lastAttributeITCs.set(attr_name, attr_value.itcStamp);
 				}
 			}
-			
+
 			lastAttributeCount = currentAttributeCount;
 			lastAttributes = currentAttrs;
 			lastExisted = true;
@@ -830,13 +830,13 @@ if (typeof window !== 'undefined') {
 		const subs = get(myAttributeSubscriptions);
 		const recognitions = get(myAttributeRecognitions);
 		const mappings = get(myEntityIdMappings);
-		
+
 		// Count attributes by source
 		const sourceStats: Record<string, number> = {};
 		if (recognitions) {
 			for (const [entity_id, entityAttrs] of Object.entries(recognitions)) {
 				if (entity_id === '_itcStamp' || entity_id === '_timestamp') continue;
-				
+
 				if (typeof entityAttrs === 'object' && entityAttrs !== null) {
 					for (const attr_value of Object.values(entityAttrs)) {
 						if (typeof attr_value === 'object' && attr_value !== null && 'source_pubkey' in attr_value) {
@@ -847,14 +847,14 @@ if (typeof window !== 'undefined') {
 				}
 			}
 		}
-		
+
 		console.log('[ATTR-DEBUG] My Subscriptions:', subs);
 		console.log('[ATTR-DEBUG] My Recognitions:', recognitions);
 		console.log('[ATTR-DEBUG] My ID Mappings:', mappings);
 		console.log('[ATTR-DEBUG] Attributes by Source:', sourceStats);
 		console.log('[ATTR-DEBUG] Active Subscriptions:', getSubscribedPubkeys());
 	};
-	
+
 	console.log('[ATTR-DEBUG] 🛠️  Debug utility available: window.debugAttributeStores()');
 }
 

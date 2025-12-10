@@ -138,11 +138,11 @@ export const filteredOrganizations = derived(
 		const query = $searchQuery.toLowerCase();
 		return $orgsArray.filter((org) => {
 			// Search in all language names
-			const nameMatch = Object.values(org.names).some((name) =>
+			const nameMatch = org.names ? Object.values(org.names).some((name) =>
 				name.toLowerCase().includes(query)
-			);
+			) : false;
 			const descMatch = org.description?.toLowerCase().includes(query);
-			const idMatch = org.org_id.toLowerCase().includes(query);
+			const idMatch = org.org_id?.toLowerCase().includes(query);
 
 			return nameMatch || descMatch || idMatch;
 		});
@@ -284,23 +284,23 @@ export function getOrganizationName(
 	preferredLang: string = 'en'
 ): string {
 	// Try preferred language
-	if (org.names[preferredLang]) {
+	if (org.names?.[preferredLang]) {
 		return org.names[preferredLang];
 	}
 
 	// Try English fallback
-	if (org.names['en']) {
+	if (org.names?.['en']) {
 		return org.names['en'];
 	}
 
 	// Return first available name
-	const firstLang = Object.keys(org.names)[0];
-	if (firstLang) {
+	const firstLang = org.names ? Object.keys(org.names)[0] : undefined;
+	if (firstLang && org.names) {
 		return org.names[firstLang];
 	}
 
 	// Last resort: return org_id
-	return org.org_id;
+	return org.org_id || 'unknown';
 }
 
 /**

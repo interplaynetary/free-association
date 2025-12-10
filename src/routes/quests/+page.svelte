@@ -98,7 +98,7 @@
 			_updatedAt: Date.now()
 		};
 		
-		questSharingSettingsStore.set(newSettings);
+		questSharingSettingsStore.set(newSettings as any);
 		
 		if (newSettings.enabled) {
 			initializeQuestSharing();

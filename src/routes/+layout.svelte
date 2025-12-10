@@ -31,7 +31,7 @@
 			const { registerSW } = await import('virtual:pwa-register');
 			registerSW({
 				immediate: true,
-				onRegistered(r) {
+				onRegistered(r: ServiceWorkerRegistration | undefined) {
 					console.log('SW Registered:', r);
 				},
 				onRegisterError(error: Error) {

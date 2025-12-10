@@ -1,6 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig, type Plugin } from 'vite';
-import { configDefaults } from 'vitest/config';
+import { type Plugin } from 'vite';
+import { defineConfig, configDefaults } from 'vitest/config';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import process from 'node:process';
@@ -8,7 +8,7 @@ import process from 'node:process';
 // https://vite.dev/config/
 export default defineConfig({
 	plugins: [
-		devtoolsJson(),
+		devtoolsJson() as any,
 		sveltekit(),
 		// PWA plugin with automatic reload
 		SvelteKitPWA({
