@@ -1,0 +1,16 @@
+--- src/routes/org/[slug]/+page.svelte
++++ src/routes/org/[slug]/+page.svelte
+@@ -136,8 +136,13 @@
+ itialize path with the tree root
+ if (data.isUserTree && data.userPubkey) {
+ the actual pubkey as the root ID (the tree loaded from network will have this as its root)
+ tPath.set([data.userPubkey]);
+ sole.log('[ORG-PAGE] Set path to user tree root (pubkey):', data.userPubkey);
++
++// 🎯 ELEGANT: Set the viewed entity so mutual recognition works!
++setViewedEntity(data.userPubkey);
++console.log('[ORG-PAGE] Set viewed entity to:', data.userPubkey);
+ } else if (data.tree?.id) {
+ tPath.set([data.tree.id]);
+ sole.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
++viewSelf(); // Reset to viewing self for org trees

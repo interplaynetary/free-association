@@ -23,7 +23,7 @@
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
-	import { derived, get } from 'svelte/store';
+	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
 	import type {
 		NeedSlot,
@@ -40,8 +40,8 @@
 		getAllContributorsFromTree
 	} from '@playnet/free-association/tree';
 	import { computeMutualRecognition } from '@playnet/free-association/allocation';
-	import { setViewContext, resetViewContext } from '$lib/protocol/stores/context.svelte';
-	import { currentUserMutualRecognition } from '$lib/protocol/stores/context-stores.svelte';
+import { setViewedEntity, viewSelf } from '$lib/protocol/stores/view-context.svelte';
+import { viewedEntityMutualRecognition } from '$lib/protocol/stores/mutual-recognition.svelte';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();
@@ -67,11 +67,6 @@
 	// Cleanup functions
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
-	let cleanupUserTreeSubscription: (() => void) | null = null;
-	
-	// Loading state for user trees
-	let userTreeLoading = $state(false);
-	let userTreeLoaded = $state(false);
 
 	// ✅ CRITICAL: Initialize org tree IMMEDIATELY (before component renders)
 // This prevents the SDG tree from being loaded from localStorage first
@@ -79,105 +74,40 @@ console.log('[ORG-PAGE] Initializing org page for:', data.orgName);
 
 // Handle user trees differently from org trees
 if (data.isUserTree) {
-	const userPubkey = data.userPubkey; // Capture in closure to avoid stale reference
-	console.log('[ORG-PAGE] This is a user tree (pubkey):', userPubkey);
+	console.log('[ORG-PAGE] This is a user tree (pubkey):', data.userPubkey);
+	console.log('[ORG-PAGE] User tree will be loaded from network via subscription');
 	
-	// Check if this is the authenticated user's own tree
-	import('$lib/network/holster.svelte').then(({ holsterUserPub }) => {
-		const isOwnTree = get(holsterUserPub) === userPubkey;
+	// For user trees, we'll subscribe to their recognition tree from the network
+	// For now, use a placeholder tree structure
+	const placeholderTree: RootNode = {
+		id: 'user_tree_root',
+		name: `${data.orgName}'s Recognition Tree`,
+		type: 'RootNode',
+		children: [],
+		manual_fulfillment: 0,
+		updated_at: new Date().toISOString()
+	};
+	
+	demoTreeStore.initializeWithCustomTree(placeholderTree, true, false);
+	
+	// Subscribe to the user's recognition tree from the network
+	if (data.userPubkey) {
+		console.log('[ORG-PAGE] Subscribing to recognition tree for:', data.userPubkey);
 		
-		if (isOwnTree) {
-			// 🎯 ELEGANT: Viewing own tree - use myRecognitionTreeStore directly!
-			console.log('[ORG-PAGE] 👤 Viewing own tree - using myRecognitionTreeStore');
+		// Import and subscribe
+		import('$lib/protocol/stores/stores.svelte').then(({ subscribeToRecognitionTree, networkRecognitionTrees }) => {
+			subscribeToRecognitionTree(data.userPubkey!);
 			
-			import('$lib/protocol/stores/stores.svelte').then(({ myRecognitionTreeStore }) => {
-				const myTree = get(myRecognitionTreeStore);
-				if (myTree) {
-					const treeWithCorrectId = { ...myTree, id: userPubkey! };
-					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
-					userTreeLoading = false;
-					userTreeLoaded = true;
-					console.log('[ORG-PAGE] ✅ Own tree loaded instantly');
-				} else {
-					console.warn('[ORG-PAGE] ⚠️ Own tree not found in myRecognitionTreeStore');
+			// Listen for tree updates
+			networkRecognitionTrees.subscribe(($trees) => {
+				const userTree = $trees.get(data.userPubkey!);
+				if (userTree?.data) {
+					console.log('[ORG-PAGE] Received user tree from network:', userTree.data.name);
+					demoTreeStore.initializeWithCustomTree(userTree.data, true, false);
 				}
 			});
-		} else {
-			// 🌐 Viewing someone else's tree - load from network
-			console.log('[ORG-PAGE] 🌐 Viewing another user\'s tree - loading from network');
-			userTreeLoading = true;
-			userTreeLoaded = false;
-			
-			// Create placeholder
-			const placeholderTree: RootNode = {
-				id: userPubkey!,
-				name: `${data.orgName}`,
-				type: 'RootNode',
-				children: [],
-				manual_fulfillment: 0,
-				updated_at: new Date().toISOString()
-			};
-			demoTreeStore.initializeWithCustomTree(placeholderTree, true, false);
-			
-			// Subscribe to network data
-			import('$lib/protocol/stores/stores.svelte').then(({ 
-				subscribeToRecognitionTree, 
-				subscribeToCommitment,
-				networkRecognitionTrees,
-				networkCommitments
-			}) => {
-				subscribeToRecognitionTree(userPubkey!);
-				subscribeToCommitment(userPubkey!);
-				console.log('[ORG-PAGE] ✅ Subscribed to tree and commitment');
-				
-				// Check existing data first
-				const currentTrees = get(networkRecognitionTrees);
-				const existingTree = currentTrees.get(userPubkey!);
-				
-				if (existingTree?.data) {
-					console.log('[ORG-PAGE] 💡 Found existing data');
-					const treeWithCorrectId = { ...existingTree.data, id: userPubkey! };
-					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
-					userTreeLoading = false;
-					userTreeLoaded = true;
-				} else {
-					// Wait for network data
-					const loadTimeout = setTimeout(() => {
-						if (userTreeLoading) {
-							console.warn('[ORG-PAGE] ⚠️ Timeout waiting for tree data');
-						}
-					}, 10000);
-					
-					const unsubTree = networkRecognitionTrees.subscribe(($trees) => {
-						if (userTreeLoaded) return;
-						const tree = $trees.get(userPubkey!);
-						if (tree?.data) {
-							clearTimeout(loadTimeout);
-							const treeWithCorrectId = { ...tree.data, id: userPubkey! };
-							demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
-							userTreeLoading = false;
-							userTreeLoaded = true;
-							console.log('[ORG-PAGE] ✅ Tree loaded from network');
-						}
-					});
-					
-					const unsubCommit = networkCommitments.subscribe(($commits) => {
-						const commit = $commits.get(userPubkey!);
-						if (commit?.data) {
-							const recWeights = Object.keys(commit.data.global_recognition_weights || {}).length;
-							console.log(`[ORG-PAGE] Commitment: ${recWeights} recognition weights`);
-						}
-					});
-					
-					cleanupUserTreeSubscription = () => {
-						clearTimeout(loadTimeout);
-						unsubTree();
-						unsubCommit();
-					};
-				}
-			});
-		}
-	});
+		});
+	}
 } else {
 	// Original org tree logic
 	console.log('[ORG-PAGE] Preparing custom tree:', data.tree!.name);
@@ -202,19 +132,12 @@ if (data.isUserTree) {
 
 	onMount(() => {
 	console.log('[ORG-PAGE] Component mounted - tree already initialized');
-		
-		// Ensure we're in tree view
-		globalState.currentView = 'tree';
-		console.log('[ORG-PAGE] Set currentView to tree');
 
 		// Initialize path with the tree root
 	if (data.isUserTree && data.userPubkey) {
 		// Use the actual pubkey as the root ID (the tree loaded from network will have this as its root)
 		currentPath.set([data.userPubkey]);
 		console.log('[ORG-PAGE] Set path to user tree root (pubkey):', data.userPubkey);
-		// 🎯 ELEGANT: Set the view context so all context-aware stores work!
-		setViewContext(data.userPubkey);
-		console.log('[ORG-PAGE] Set view context to:', data.userPubkey);
 	} else if (data.tree?.id) {
 		currentPath.set([data.tree.id]);
 		console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
@@ -252,10 +175,6 @@ if (data.isUserTree) {
 	// Clean up org tree when leaving this route
 	onDestroy(() => {
 		console.log('[ORG-PAGE] Destroying - clearing org tree and reinitializing with SDG');
-		
-		// Reset view context back to authenticated user
-		resetViewContext();
-		
 		// Clear the org tree from memory and reinitialize with default SDG tree
 		demoTreeStore.clear();
 		demoTreeStore.initializeWithSDG();
@@ -575,9 +494,9 @@ if (data.isUserTree) {
 		return segments;
 	});
 
-	// V5: Create reactive derived store from mutual recognition
-	// 🎯 ELEGANT: Now uses context-aware MR that works for ANY user!
-	const providerSegments = derived(currentUserMutualRecognition, ($mutualRec) => {
+	// V5: Create reactive derived store from demoMutualRecognition (org page)
+	// ✅ ORG PAGE: Always use demo mutual recognition (computed from org tree), never auth MR
+	const providerSegments = derived(demoMutualRecognition, ($mutualRec) => {
 		console.log('[📊 ORG-MR] Mutual recognition changed - generating segments for bar...');
 
 		if (!$mutualRec || Object.keys($mutualRec).length === 0) {
@@ -648,15 +567,7 @@ if (data.isUserTree) {
 	<div class="layout org-page" class:full-width={currentView !== 'tree'}>
 		<div class="view-content">
 			{#if currentView === 'tree'}
-				{#if data.isUserTree && userTreeLoading}
-					<!-- Loading state for user trees -->
-					<div class="loading-container">
-						<div class="loading-spinner"></div>
-						<p>Loading {data.orgName}'s recognition tree from network...</p>
-					</div>
-				{:else}
-					<Parent />
-				{/if}
+				<Parent />
 			{:else if currentView === 'map'}
 				<Map fullHeight={true} />
 			{:else if currentView === 'inventory'}
@@ -832,8 +743,8 @@ if (data.isUserTree) {
 							{/if}
 						</div>
 					</div>
-				<!-- Mutual recognition now works for ALL users via context-aware stores! -->
-				<div class="bar-group">
+					{#if !data.isUserTree}
+					<div class="bar-group">
 						<div class="bar-label bar-label-mr" title={$t('home.mutual_recognition_description')}>
 							<span class="label-mobile"
 								>{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}</span
@@ -858,6 +769,7 @@ if (data.isUserTree) {
 							{/if}
 						</div>
 					</div>
+					{/if}
 				</div>
 			{/key}
 		{/if}
@@ -1368,34 +1280,5 @@ if (data.isUserTree) {
 		.add-form input[type='number'] {
 			width: 100%;
 		}
-	}
-	
-	/* Loading state styles */
-	.loading-container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		min-height: 400px;
-		gap: 1.5rem;
-	}
-	
-	.loading-spinner {
-		width: 48px;
-		height: 48px;
-		border: 4px solid rgba(0, 0, 0, 0.1);
-		border-top-color: var(--primary-color, #4CAF50);
-		border-radius: 50%;
-		animation: spin 1s linear infinite;
-	}
-	
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
-	
-	.loading-container p {
-		color: var(--text-secondary, #666);
-		font-size: 1rem;
-		margin: 0;
 	}
 </style>

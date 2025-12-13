@@ -171,6 +171,11 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		orgsModule.initializeOrganizations();
 		console.log('[HOLSTER] ✅ Organizations initialized');
 
+		// Initialize public trees list
+		const publicTreesModule = await import('$lib/network/public-trees.svelte');
+		publicTreesModule.initializePublicTrees();
+		console.log('[HOLSTER] ✅ Public trees initialized');
+
 		// Note: Membership is now handled by the unified entity/attribute system
 		// No separate initialization needed - attributes auto-initialize
 
@@ -329,6 +334,14 @@ export async function signout(): Promise<void> {
 		cleanupContacts();
 	} catch (error) {
 		console.error('[HOLSTER SIGNOUT] Error cleaning up users list:', error);
+	}
+
+	// Cleanup public trees
+	try {
+		const { cleanupPublicTrees } = await import('$lib/network/public-trees.svelte');
+		cleanupPublicTrees();
+	} catch (error) {
+		console.error('[HOLSTER SIGNOUT] Error cleaning up public trees:', error);
 	}
 
 	// Cleanup records

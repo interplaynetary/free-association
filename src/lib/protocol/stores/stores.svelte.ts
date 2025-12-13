@@ -43,9 +43,8 @@ import {
 	type GlobalRecognitionWeights,
 	type SlotAllocationRecord
 } from '@playnet/free-association/schemas';
-import * as z from 'zod';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
-import {getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
+import { getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.svelte';
@@ -97,25 +96,25 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 	[myRecognitionTreeStore],
 	([$tree]) => {
 		console.log('[🌳 RECOGNITION-WEIGHTS] Computing from tree...');
-		
+
 		if (!$tree) {
 			console.log('[🌳 RECOGNITION-WEIGHTS] ❌ No tree available');
 			return {};
 		}
-		
+
 		try {
 			// Run protocol calculation: tree → recognition shares
 			const weights = sharesOfGeneralFulfillmentMap($tree, {});
 			const contributorCount = Object.keys(weights).length;
 			const nonZeroCount = Object.values(weights).filter(w => w > 0).length;
-			
+
 			console.log(`[🌳 RECOGNITION-WEIGHTS] ✅ Computed ${contributorCount} contributors (${nonZeroCount} non-zero):`);
 			Object.entries(weights).forEach(([id, weight]) => {
 				if (weight > 0) {
 					console.log(`  • ${id.slice(0, 20)}... → ${(weight * 100).toFixed(2)}%`);
 				}
 			});
-			
+
 			return weights;
 		} catch (error) {
 			console.error('[🌳 RECOGNITION-WEIGHTS] ❌ Error computing from tree:', error);
@@ -201,7 +200,7 @@ export const myNeedTypesStore: Readable<string[]> = derived(
 		if (!$needSlots || $needSlots.length === 0) {
 			return [];
 		}
-		
+
 		// Extract unique need_type_ids
 		const typeIds = new Set<string>();
 		for (const slot of $needSlots) {
@@ -209,7 +208,7 @@ export const myNeedTypesStore: Readable<string[]> = derived(
 				typeIds.add(slot.need_type_id);
 			}
 		}
-		
+
 		return Array.from(typeIds).sort();
 	}
 );
@@ -231,7 +230,7 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 		if (!$capacitySlots || $capacitySlots.length === 0) {
 			return [];
 		}
-		
+
 		// Extract unique need_type_ids
 		const typeIds = new Set<string>();
 		for (const slot of $capacitySlots) {
@@ -239,7 +238,7 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 				typeIds.add(slot.need_type_id);
 			}
 		}
-		
+
 		return Array.from(typeIds).sort();
 	}
 );
@@ -265,11 +264,11 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
  */
 export function initializeAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-V5] Initializing stores...');
-	
+
 	// Source stores (persistent)
 	myRecognitionTreeStore.initialize();
 	myCommitmentStore.initialize(); // THE source of truth for slots!
-	
+
 	console.log('[ALLOCATION-HOLSTER-V5] Stores initialized:');
 	console.log('  - Recognition tree (persistent)');
 	console.log('  - Commitment (persistent - contains slots!)');
@@ -286,10 +285,10 @@ export function initializeAllocationStores() {
  */
 export async function cleanupAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-V5] Cleaning up stores...');
-	
+
 	await myRecognitionTreeStore.cleanup();
 	await myCommitmentStore.cleanup();
-	
+
 	console.log('[ALLOCATION-HOLSTER-V5] Stores cleaned up');
 }
 
@@ -490,7 +489,7 @@ export const networkNeedTypesStore: Readable<string[]> = derived(
 	[networkNeedSlots],
 	([$networkNeedSlots]) => {
 		const typeIds = new Set<string>();
-		
+
 		// Iterate through all participants' need slots
 		for (const [pubKey, needSlots] of $networkNeedSlots.entries()) {
 			if (needSlots && Array.isArray(needSlots)) {
@@ -501,7 +500,7 @@ export const networkNeedTypesStore: Readable<string[]> = derived(
 				}
 			}
 		}
-		
+
 		return Array.from(typeIds).sort();
 	}
 );
@@ -523,7 +522,7 @@ export const networkCapacityTypesStore: Readable<string[]> = derived(
 	[networkCapacitySlots],
 	([$networkCapacitySlots]) => {
 		const typeIds = new Set<string>();
-		
+
 		// Iterate through all participants' capacity slots
 		for (const [pubKey, capacitySlots] of $networkCapacitySlots.entries()) {
 			if (capacitySlots && Array.isArray(capacitySlots)) {
@@ -534,7 +533,7 @@ export const networkCapacityTypesStore: Readable<string[]> = derived(
 				}
 			}
 		}
-		
+
 		return Array.from(typeIds).sort();
 	}
 );
@@ -570,54 +569,54 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 	[holsterUserPub, myCommitmentStore],  // ✅ Only my commitment! Truly local-first!
 	([$myPub, $myCommitment]) => {
 		console.log('[🤝 MUTUAL-REC] Computing mutual recognition (local-first)...');
-		
+
 		if (!$myPub || !$myCommitment) {
 			console.log('[🤝 MUTUAL-REC] ❌ No pub key or commitment available');
 			return {};
 		}
-		
+
 		// Source: Who I recognize (from tree)
 		const myWeights = $myCommitment.global_recognition_weights || {};
-		
+
 		// Cache: Others' recognition of me (from network, updated when proven otherwise)
 		const othersRecCache = $myCommitment.others_recognition_of_me || {};
-		
+
 		const mutualRec: GlobalRecognitionWeights = {};
-		
+
 		const myRecCount = Object.keys(myWeights).length;
 		const cacheCount = Object.keys(othersRecCache).length;
-		
+
 		console.log(`[🤝 MUTUAL-REC] My recognition: ${myRecCount} entries`);
 		console.log(`[🤝 MUTUAL-REC] Cached others' rec: ${cacheCount} entries`);
-		
+
 		// For everyone I recognize (including myself!)
 		for (const theirPub in myWeights) {
 			const myRecOfThem = myWeights[theirPub] || 0;
-			
+
 			// ✅ SPECIAL CASE: Self-recognition
 			if (theirPub === $myPub) {
 				mutualRec[theirPub] = myRecOfThem;  // MR(me, me) = myRec[me]
 				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}... (SELF): MR=${(myRecOfThem * 100).toFixed(2)}%`);
 				continue;
 			}
-			
+
 			// Get their recognition of me from cache
 			const theirWeights = othersRecCache[theirPub];
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
-			
+
 			// Compute MR
 			const mr = Math.min(myRecOfThem, theirRecOfMe);
 			mutualRec[theirPub] = mr;
-			
+
 			if (mr > 0 || myRecOfThem > 0 || theirRecOfMe > 0) {
 				const source = theirWeights ? 'CACHED' : 'AWAITING';
 				console.log(`[🤝 MUTUAL-REC]   ${theirPub.slice(0, 20)}...: I→them=${(myRecOfThem * 100).toFixed(2)}%, them→me=${(theirRecOfMe * 100).toFixed(2)}%, MR=${(mr * 100).toFixed(2)}% [${source}]`);
 			}
 		}
-		
+
 		const mutualCount = Object.values(mutualRec).filter(mr => mr > 0).length;
 		console.log(`[🤝 MUTUAL-REC] ✅ Computed ${mutualCount} mutual relationships (local-first!)`);
-		
+
 		return mutualRec;
 	}
 );
@@ -638,32 +637,32 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 networkCommitments.subscribe(($networkCommitsVersioned) => {
 	const myPub = get(holsterUserPub);
 	const myCommitment = get(myCommitmentStore);
-	
+
 	if (!myPub || !myCommitment) return;
-	
+
 	const cache = myCommitment.others_recognition_of_me || {};
 	const updates: Record<string, GlobalRecognitionWeights> = {};
-	
+
 	// Check each network commitment for changes
 	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
 		// Skip own commitment (prevents infinite loop when our data syncs back)
 		if (theirPub === myPub) continue;
-		
+
 		const theirWeights = versionedEntity.data.global_recognition_weights;
 		if (!theirWeights) continue;
-		
+
 		// Normalize and extract their recognition of me
 		const normalized = normalizeGlobalRecognitionWeights(theirWeights);
 		const networkRecOfMe = normalized[myPub] || 0;
 		const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
-		
+
 		// Network proved otherwise? Update cache!
 		if (networkRecOfMe !== cachedRecOfMe) {
 			updates[theirPub] = normalized;
 			console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
 		}
 	}
-	
+
 	// Apply updates if any changes detected
 	if (Object.keys(updates).length > 0) {
 		console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
@@ -687,10 +686,10 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
 export function setMyNeedSlots(needSlots: NeedSlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
-	
+
 	// Merge ITC with network
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
-	
+
 	const updated: Commitment = {
 		need_slots: needSlots,
 		capacity_slots: current?.capacity_slots || [],
@@ -700,7 +699,7 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
-	
+
 	myCommitmentStore.set(updated);
 	console.log('[SET-NEED-SLOTS] Updated:', needSlots.length, 'slots');
 }
@@ -714,10 +713,10 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
-	
+
 	// Merge ITC with network
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
-	
+
 	const updated: Commitment = {
 		need_slots: current?.need_slots || [],
 		capacity_slots: capacitySlots,
@@ -727,7 +726,7 @@ export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
-	
+
 	myCommitmentStore.set(updated);
 	console.log('[SET-CAPACITY-SLOTS] Updated:', capacitySlots.length, 'slots');
 }
@@ -774,10 +773,10 @@ const activeSubscriptions = new Set<string>();
  */
 export function subscribeToCommitment(pubKey: string) {
 	if (activeSubscriptions.has(`${pubKey}:commitment`)) return;
-	
+
 	myCommitmentStore.subscribeToUser(pubKey, (commitment) => {
 		console.log(`[📡 NETWORK-SUB] Received commitment from ${pubKey.slice(0, 20)}...`);
-		
+
 		// Handle deletion
 		if (!commitment) {
 			const deleted = networkCommitments.delete(pubKey);
@@ -788,12 +787,12 @@ export function subscribeToCommitment(pubKey: string) {
 			}
 			return;
 		}
-		
+
 		// Log what we received
 		const recognitionCount = Object.keys(commitment.global_recognition_weights || {}).length;
 		const nonZeroRec = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
 		console.log(`[📡 NETWORK-SUB] Commitment contains ${recognitionCount} recognition entries (${nonZeroRec} non-zero)`);
-		
+
 		// CRITICAL: Normalize their recognition weights before storing
 		// This ensures that when we compute MR, their recognition of us is a proper fraction
 		let normalizedCommitment = commitment;
@@ -806,10 +805,10 @@ export function subscribeToCommitment(pubKey: string) {
 			};
 			console.log(`[📡 NETWORK-SUB] Normalized recognition weights for ${pubKey.slice(0, 20)}...`);
 		}
-				
+
 		// Update via versioned store - handles ITC, timestamps, and field change detection!
 		const result = networkCommitments.update(pubKey, normalizedCommitment);
-		
+
 		if (result.applied) {
 			const changedFields = Array.from(result.changedFields!).join(', ');
 			console.log(`[📡 NETWORK-SUB] ✅ Updated [${changedFields}] from ${pubKey.slice(0, 20)}...`);
@@ -817,7 +816,7 @@ export function subscribeToCommitment(pubKey: string) {
 			console.log(`[📡 NETWORK-SUB] ⏭️  Skipped from ${pubKey.slice(0, 20)}... (${result.reason})`);
 		}
 	});
-	
+
 	activeSubscriptions.add(`${pubKey}:commitment`);
 	console.log(`[📡 NETWORK-SUB] ✅ Subscribed to ${pubKey.slice(0, 20)}... commitment`);
 }
@@ -842,7 +841,7 @@ export function subscribeToCommitment(pubKey: string) {
  */
 export function subscribeToRecognitionTree(pubKey: string) {
 	if (activeSubscriptions.has(`${pubKey}:tree`)) return;
-	
+
 	myRecognitionTreeStore.subscribeToUser(pubKey, (tree) => {
 		// Handle deletion
 		if (!tree) {
@@ -852,10 +851,10 @@ export function subscribeToRecognitionTree(pubKey: string) {
 			}
 			return;
 		}
-		
+
 		// Update via versioned store - handles timestamps and field change detection!
 		const result = networkRecognitionTrees.update(pubKey, tree);
-		
+
 		if (result.applied) {
 			const changedFields = Array.from(result.changedFields!).join(', ');
 			console.log(`[ALLOCATION-HOLSTER-V5] ✅ Updated tree [${changedFields}] from ${pubKey.slice(0, 20)}...`);
@@ -863,7 +862,7 @@ export function subscribeToRecognitionTree(pubKey: string) {
 			console.log(`[ALLOCATION-HOLSTER-V5] ⏭️  Skipped tree from ${pubKey.slice(0, 20)}... (${result.reason})`);
 		}
 	});
-	
+
 	activeSubscriptions.add(`${pubKey}:tree`);
 	console.log(`[ALLOCATION-HOLSTER-V5] Subscribed to ${pubKey.slice(0, 20)}... recognition tree`);
 }
@@ -887,11 +886,11 @@ export function subscribeToRecognitionTree(pubKey: string) {
  */
 export function subscribeToFullParticipant(pubKey: string, includeTree: boolean = false) {
 	subscribeToCommitment(pubKey);
-	
+
 	if (includeTree) {
 		subscribeToRecognitionTree(pubKey);
 	}
-	
+
 	const treeNote = includeTree ? ' + tree' : '';
 	console.log(`[ALLOCATION-HOLSTER-V5] Subscribed to ${pubKey.slice(0, 20)}... (commitment${treeNote})`);
 }
@@ -905,11 +904,11 @@ export function subscribeToFullParticipant(pubKey: string, includeTree: boolean 
 export function unsubscribeFromParticipant(pubKey: string) {
 	activeSubscriptions.delete(`${pubKey}:commitment`);
 	activeSubscriptions.delete(`${pubKey}:tree`);
-	
+
 	// Delete from versioned stores (triggers incremental index update)
 	networkCommitments.delete(pubKey);
 	networkRecognitionTrees.delete(pubKey);
-	
+
 	console.log(`[ALLOCATION-HOLSTER-V5] Unsubscribed from ${pubKey.slice(0, 20)}...`);
 }
 
@@ -918,12 +917,12 @@ export function unsubscribeFromParticipant(pubKey: string) {
  */
 export function getSubscribedParticipants(): string[] {
 	const pubKeys = new Set<string>();
-	
+
 	for (const key of activeSubscriptions) {
 		const pubKey = key.split(':')[0];
 		pubKeys.add(pubKey);
 	}
-	
+
 	return Array.from(pubKeys);
 }
 
@@ -949,26 +948,26 @@ export function getNetworkCommitmentsRecord(): Record<string, Commitment> {
  */
 export function getAllCommitmentsRecord(): Record<string, Commitment> {
 	const record = getNetworkCommitmentsRecord();
-	
+
 	// Include our own commitment if available
 	const myCommitment = get(myCommitmentStore);
 	const myPub = get(holsterUserPub);
-	
+
 	console.log('[GET-ALL-COMMITMENTS] Network commitments:', Object.keys(record).length);
 	console.log('[GET-ALL-COMMITMENTS] My commitment:', myCommitment ? 'yes' : 'no');
 	console.log('[GET-ALL-COMMITMENTS] My pub:', myPub ? myPub.slice(0, 20) + '...' : 'none');
-	
+
 	if (myCommitment && myPub) {
-		console.log('[GET-ALL-COMMITMENTS] ✅ Including my commitment with', 
-			myCommitment.need_slots?.length || 0, 'needs,', 
+		console.log('[GET-ALL-COMMITMENTS] ✅ Including my commitment with',
+			myCommitment.need_slots?.length || 0, 'needs,',
 			myCommitment.capacity_slots?.length || 0, 'capacity');
 		record[myPub] = myCommitment;
 	} else {
 		console.log('[GET-ALL-COMMITMENTS] ⚠️ NOT including my commitment');
 	}
-	
+
 	console.log('[GET-ALL-COMMITMENTS] Returning', Object.keys(record).length, 'total commitments');
-	
+
 	return record;
 }
 
@@ -979,13 +978,13 @@ export function getAllCommitmentsRecord(): Record<string, Commitment> {
 export function getNetworkRecognitionWeightsRecord(): Record<string, Record<string, number>> {
 	const record: Record<string, Record<string, number>> = {};
 	const commitMap = networkCommitments.get(); // Versioned store snapshot
-	
+
 	for (const [pubKey, versionedEntity] of commitMap.entries()) {
 		if (versionedEntity.data.global_recognition_weights) {
 			record[pubKey] = versionedEntity.data.global_recognition_weights;
 		}
 	}
-	
+
 	return record;
 }
 
@@ -1000,19 +999,19 @@ export function getNetworkRecognitionWeightsRecord(): Record<string, Record<stri
 export interface SpaceTimeIndex {
 	/** Type-based index: need_type_id -> Set<pubKey> */
 	byType: Map<string, Set<string>>;
-	
+
 	/** Location-based index: location_bucket -> Set<pubKey> */
 	byLocation: Map<string, Set<string>>;
-	
+
 	/** Time-based index: time_bucket -> Set<pubKey> */
 	byTime: Map<string, Set<string>>;
-	
+
 	/** Composite index: "type|location" -> Set<pubKey> */
 	byTypeAndLocation: Map<string, Set<string>>;
-	
+
 	/** Composite index: "type|time" -> Set<pubKey> */
 	byTypeAndTime: Map<string, Set<string>>;
-	
+
 	/** Full composite: "type|location|time" -> Set<pubKey> */
 	byAll: Map<string, Set<string>>;
 }
@@ -1037,35 +1036,35 @@ function removeFromIndex(pubKey: string, index: SpaceTimeIndex): void {
 			index.byType.delete(key); // Clean up empty Set
 		}
 	}
-	
+
 	for (const [key, pubKeySet] of index.byLocation.entries()) {
 		pubKeySet.delete(pubKey);
 		if (pubKeySet.size === 0) {
 			index.byLocation.delete(key);
 		}
 	}
-	
+
 	for (const [key, pubKeySet] of index.byTime.entries()) {
 		pubKeySet.delete(pubKey);
 		if (pubKeySet.size === 0) {
 			index.byTime.delete(key);
 		}
 	}
-	
+
 	for (const [key, pubKeySet] of index.byTypeAndLocation.entries()) {
 		pubKeySet.delete(pubKey);
 		if (pubKeySet.size === 0) {
 			index.byTypeAndLocation.delete(key);
 		}
 	}
-	
+
 	for (const [key, pubKeySet] of index.byTypeAndTime.entries()) {
 		pubKeySet.delete(pubKey);
 		if (pubKeySet.size === 0) {
 			index.byTypeAndTime.delete(key);
 		}
 	}
-	
+
 	for (const [key, pubKeySet] of index.byAll.entries()) {
 		pubKeySet.delete(pubKey);
 		if (pubKeySet.size === 0) {
@@ -1082,44 +1081,44 @@ function addNeedSlotsToIndex(pubKey: string, needSlots: NeedSlot[] | Commitment,
 	// Handle both direct slots and full commitment (backwards compat)
 	const slots = Array.isArray(needSlots) ? needSlots : needSlots.need_slots;
 	if (!slots) return;
-	
+
 	for (const needSlot of slots) {
 		const typeId = needSlot.need_type_id;
 		const locationKey = getLocationBucketKey(needSlot);
 		const timeKey = getTimeBucketKey(needSlot);
-		
+
 		// Type index
 		if (!index.byType.has(typeId)) {
 			index.byType.set(typeId, new Set());
 		}
 		index.byType.get(typeId)!.add(pubKey);
-		
+
 		// Location index
 		if (!index.byLocation.has(locationKey)) {
 			index.byLocation.set(locationKey, new Set());
 		}
 		index.byLocation.get(locationKey)!.add(pubKey);
-		
+
 		// Time index
 		if (!index.byTime.has(timeKey)) {
 			index.byTime.set(timeKey, new Set());
 		}
 		index.byTime.get(timeKey)!.add(pubKey);
-		
+
 		// Composite: type + location
 		const typeLocKey = `${typeId}|${locationKey}`;
 		if (!index.byTypeAndLocation.has(typeLocKey)) {
 			index.byTypeAndLocation.set(typeLocKey, new Set());
 		}
 		index.byTypeAndLocation.get(typeLocKey)!.add(pubKey);
-		
+
 		// Composite: type + time
 		const typeTimeKey = `${typeId}|${timeKey}`;
 		if (!index.byTypeAndTime.has(typeTimeKey)) {
 			index.byTypeAndTime.set(typeTimeKey, new Set());
 		}
 		index.byTypeAndTime.get(typeTimeKey)!.add(pubKey);
-		
+
 		// Full composite: type + location + time
 		const fullKey = `${typeId}|${locationKey}|${timeKey}`;
 		if (!index.byAll.has(fullKey)) {
@@ -1137,44 +1136,44 @@ function addCapacitySlotsToIndex(pubKey: string, capacitySlots: AvailabilitySlot
 	// Handle both direct slots and full commitment (backwards compat)
 	const slots = Array.isArray(capacitySlots) ? capacitySlots : capacitySlots.capacity_slots;
 	if (!slots) return;
-	
+
 	for (const capacitySlot of slots) {
 		const typeId = capacitySlot.need_type_id;
 		const locationKey = getLocationBucketKey(capacitySlot);
 		const timeKey = getTimeBucketKey(capacitySlot);
-		
+
 		// Type index
 		if (!index.byType.has(typeId)) {
 			index.byType.set(typeId, new Set());
 		}
 		index.byType.get(typeId)!.add(pubKey);
-		
+
 		// Location index
 		if (!index.byLocation.has(locationKey)) {
 			index.byLocation.set(locationKey, new Set());
 		}
 		index.byLocation.get(locationKey)!.add(pubKey);
-		
+
 		// Time index
 		if (!index.byTime.has(timeKey)) {
 			index.byTime.set(timeKey, new Set());
 		}
 		index.byTime.get(timeKey)!.add(pubKey);
-		
+
 		// Composite: type + location
 		const typeLocKey = `${typeId}|${locationKey}`;
 		if (!index.byTypeAndLocation.has(typeLocKey)) {
 			index.byTypeAndLocation.set(typeLocKey, new Set());
 		}
 		index.byTypeAndLocation.get(typeLocKey)!.add(pubKey);
-		
+
 		// Composite: type + time
 		const typeTimeKey = `${typeId}|${timeKey}`;
 		if (!index.byTypeAndTime.has(typeTimeKey)) {
 			index.byTypeAndTime.set(typeTimeKey, new Set());
 		}
 		index.byTypeAndTime.get(typeTimeKey)!.add(pubKey);
-		
+
 		// Full composite: type + location + time
 		const fullKey = `${typeId}|${locationKey}|${timeKey}`;
 		if (!index.byAll.has(fullKey)) {
@@ -1201,7 +1200,7 @@ function updateIndexForParticipant(
 ): void {
 	// Step 1: Remove old entries for this pubKey - O(M_old)
 	removeFromIndex(pubKey, index);
-	
+
 	// Step 2: Add new entries if slots exist - O(M_new)
 	if (slots) {
 		if (isNeedIndex) {
@@ -1249,35 +1248,35 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 			byTypeAndTime: new Map(),
 			byAll: new Map()
 		};
-		
+
 		// Track which participants have pending updates (batch within same tick)
 		let pendingUpdates = new Map<string, NeedSlot[] | Commitment | undefined>();
 		let isUpdateScheduled = false;
-		
+
 		// Process all pending updates (called via queueMicrotask)
 		const processPendingUpdates = () => {
 			if (pendingUpdates.size === 0) {
 				isUpdateScheduled = false;
 				return;
 			}
-			
+
 			// Process all pending updates
 			for (const [pubKey, slotsOrCommitment] of pendingUpdates.entries()) {
 				updateIndexForParticipant(pubKey, slotsOrCommitment, index, true);
 			}
-			
+
 			console.log(`[NEEDS-INDEX] Batch updated ${pendingUpdates.size} participants (Svelte-native batching)`);
 			pendingUpdates.clear();
 			isUpdateScheduled = false;
-			
+
 			// Notify subscribers (Svelte batches this automatically)
 			set({ ...index }); // Shallow copy to trigger reactivity
 		};
-		
+
 		// Schedule update (uses queueMicrotask for Svelte-native batching)
 		const scheduleUpdate = (pubKey: string, slotsOrCommitment: NeedSlot[] | Commitment | undefined) => {
 			pendingUpdates.set(pubKey, slotsOrCommitment);
-			
+
 			// Use queueMicrotask (same as Svelte's internal batching)
 			// All updates in the same tick are batched together
 			if (!isUpdateScheduled) {
@@ -1285,7 +1284,7 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 				queueMicrotask(processPendingUpdates);
 			}
 		};
-		
+
 		// Initial build from all existing commitments
 		const allCommitments = getAllCommitmentsRecord();
 		for (const [pubKey, commitment] of Object.entries(allCommitments)) {
@@ -1293,7 +1292,7 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 		}
 		console.log(`[NEEDS-INDEX] Initial build: ${index.byType.size} types, ${index.byLocation.size} locations, ${index.byTime.size} times`);
 		set({ ...index });
-		
+
 		// Subscribe to my commitment changes (extract needs)
 		const unsubMyCommitment = myCommitmentStore.subscribe((myCommit) => {
 			const myPub = get(holsterUserPub);
@@ -1301,7 +1300,7 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 				scheduleUpdate(myPub, myCommit.need_slots);
 			}
 		});
-		
+
 		// ✅ FINE-GRAINED: Subscribe to networkNeedSlots field store!
 		// Only triggers when NEEDS change, not recognition/capacity/damping
 		const unsubNetwork = networkNeedSlots.subscribe((needSlotsMap) => {
@@ -1310,7 +1309,7 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 				scheduleUpdate(pubKey, needSlots);
 			}
 		});
-		
+
 		return () => {
 			unsubMyCommitment();
 			unsubNetwork();
@@ -1355,35 +1354,35 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 			byTypeAndTime: new Map(),
 			byAll: new Map()
 		};
-		
+
 		// Track which participants have pending updates (batch within same tick)
 		let pendingUpdates = new Map<string, AvailabilitySlot[] | Commitment | undefined>();
 		let isUpdateScheduled = false;
-		
+
 		// Process all pending updates (called via queueMicrotask)
 		const processPendingUpdates = () => {
 			if (pendingUpdates.size === 0) {
 				isUpdateScheduled = false;
 				return;
 			}
-			
+
 			// Process all pending updates
 			for (const [pubKey, slotsOrCommitment] of pendingUpdates.entries()) {
 				updateIndexForParticipant(pubKey, slotsOrCommitment, index, false); // false = capacity index
 			}
-			
+
 			console.log(`[CAPACITY-INDEX] Batch updated ${pendingUpdates.size} participants (Svelte-native batching)`);
 			pendingUpdates.clear();
 			isUpdateScheduled = false;
-			
+
 			// Notify subscribers (Svelte batches this automatically)
 			set({ ...index }); // Shallow copy to trigger reactivity
 		};
-		
+
 		// Schedule update (uses queueMicrotask for Svelte-native batching)
 		const scheduleUpdate = (pubKey: string, slotsOrCommitment: AvailabilitySlot[] | Commitment | undefined) => {
 			pendingUpdates.set(pubKey, slotsOrCommitment);
-			
+
 			// Use queueMicrotask (same as Svelte's internal batching)
 			// All updates in the same tick are batched together
 			if (!isUpdateScheduled) {
@@ -1391,7 +1390,7 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 				queueMicrotask(processPendingUpdates);
 			}
 		};
-		
+
 		// Initial build from all existing commitments
 		const allCommitments = getAllCommitmentsRecord();
 		for (const [pubKey, commitment] of Object.entries(allCommitments)) {
@@ -1399,7 +1398,7 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 		}
 		console.log(`[CAPACITY-INDEX] Initial build: ${index.byType.size} types, ${index.byLocation.size} locations, ${index.byTime.size} times`);
 		set({ ...index });
-		
+
 		// Subscribe to my commitment changes (extract capacity)
 		const unsubMyCommitment = myCommitmentStore.subscribe((myCommit) => {
 			const myPub = get(holsterUserPub);
@@ -1407,7 +1406,7 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 				scheduleUpdate(myPub, myCommit.capacity_slots);
 			}
 		});
-		
+
 		// ✅ FINE-GRAINED: Subscribe to networkCapacitySlots field store!
 		// Only triggers when CAPACITY changes, not recognition/needs/damping
 		const unsubNetwork = networkCapacitySlots.subscribe((capacitySlotsMap) => {
@@ -1416,7 +1415,7 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 				scheduleUpdate(pubKey, capacitySlots);
 			}
 		});
-		
+
 		return () => {
 			unsubMyCommitment();
 			unsubNetwork();
@@ -1443,10 +1442,10 @@ export const networkCapacityIndex: Readable<SpaceTimeIndex> = readable<SpaceTime
 export function getMyContributors(): string[] {
 	const tree = get(myRecognitionTreeStore);
 	if (!tree) return [];
-	
+
 	// Extract all contributors (positive + anti) from tree
 	const contributors = getAllContributorsFromTree(tree);
-	
+
 	console.log(`[MY-CONTRIBUTORS] Found ${contributors.length} contributors in tree`);
 	return contributors;
 }
@@ -1472,41 +1471,41 @@ export function getMyContributors(): string[] {
  */
 export function syncSubscriptionsWithTree() {
 	console.log('[🔄 AUTO-SUB] Syncing subscriptions with tree...');
-	
+
 	const currentContributors = getMyContributors();
 	const currentSubscriptions = getSubscribedParticipants();
-	
+
 	console.log(`[🔄 AUTO-SUB] Tree has ${currentContributors.length} contributors`);
 	console.log(`[🔄 AUTO-SUB] Currently subscribed to ${currentSubscriptions.length} users`);
-	
+
 	// ✅ CRITICAL: Resolve contact IDs to public keys before subscribing!
 	// Network subscriptions only work with public keys, not local contact IDs
 	const resolvedContributors = currentContributors
 		.map(id => resolveToPublicKey(id) || id)
 		.filter((pubKey, index, self) => self.indexOf(pubKey) === index); // Deduplicate
-	
+
 	// Find who to subscribe to (new contributors)
 	const toSubscribe = resolvedContributors.filter(
 		contributor => !currentSubscriptions.includes(contributor)
 	);
-	
+
 	// Find who to unsubscribe from (removed contributors)
 	const toUnsubscribe = currentSubscriptions.filter(
 		subscribed => !resolvedContributors.includes(subscribed)
 	);
-	
+
 	// Subscribe to new contributors
 	for (const contributor of toSubscribe) {
 		console.log(`[🔄 AUTO-SUB] ➕ Subscribing to: ${contributor.slice(0, 20)}... (will receive their commitment)`);
 		subscribeToCommitment(contributor);
 	}
-	
+
 	// Unsubscribe from removed contributors
 	for (const removed of toUnsubscribe) {
 		console.log(`[🔄 AUTO-SUB] ➖ Unsubscribing from: ${removed.slice(0, 20)}...`);
 		unsubscribeFromParticipant(removed);
 	}
-	
+
 	console.log(`[🔄 AUTO-SUB] ✅ Sync complete: +${toSubscribe.length} new, -${toUnsubscribe.length} removed, =${resolvedContributors.length} total`);
 }
 
@@ -1538,16 +1537,16 @@ export function syncSubscriptionsWithTree() {
  */
 export function enableAutoSubscriptionSync(): () => void {
 	console.log('[AUTO-SYNC] 🔄 Enabling automatic subscription syncing');
-	
+
 	// Initial sync (subscribe to existing contributors)
 	syncSubscriptionsWithTree();
-	
+
 	// Watch tree for changes and sync subscriptions
 	const unsubTree = myRecognitionTreeStore.subscribe(() => {
 		console.log('[AUTO-SYNC] 🌳 Tree changed, syncing subscriptions...');
 		syncSubscriptionsWithTree();
 	});
-	
+
 	return () => {
 		unsubTree();
 		console.log('[AUTO-SYNC] ⏸️  Disabled automatic subscription syncing');
@@ -1573,7 +1572,7 @@ export function enableAutoSubscriptionSync(): () => void {
 export function enableAutoMembershipSync(): () => void {
 	console.log('[AUTO-MEMBERSHIP-SYNC] ℹ️  DEPRECATED: Membership sync now handled by attribute system automatically');
 	console.log('[AUTO-MEMBERSHIP-SYNC] ℹ️  Use subscribeToOrgMembership() - it auto-subscribes via the attribute system');
-	return () => {}; // NO-OP - attribute system handles it
+	return () => { }; // NO-OP - attribute system handles it
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1599,10 +1598,10 @@ export function enableAutoMembershipSync(): () => void {
  */
 export function enableAutoCapacitySync(): () => void {
 	console.log('[AUTO-CAPACITY-SYNC] 🔄 Enabling automatic capacity syncing (unified v2)');
-	
+
 	// Track active subscriptions
 	const activeSubs = new Map<string, () => void>();
-	
+
 	/**
 	 * Apply filters and update slots
 	 * Called when filters change or new capacity data arrives
@@ -1610,22 +1609,22 @@ export function enableAutoCapacitySync(): () => void {
 	const applyFiltersAndUpdateSlots = () => {
 		const myPub = get(holsterUserPub);
 		if (!myPub) return;
-		
+
 		// Get current state
 		const cache = get(capacityCache) as Record<string, any[]>;
 		const allFilters = Object.values(get(slotFilters) || {});
 		const currentCommitment = get(myCommitmentStore);
-		
+
 		if (!currentCommitment) return;
-		
+
 		// My declared capacity slots (user-defined, take priority)
 		const myDeclaredSlots = currentCommitment.capacity_slots || [];
-		
+
 		// Helper function to resolve members (org_ids → pubkeys)
 		const resolveMembers = (id: string): string[] => {
 			return resolveContributorWithOrgs(id);
 		};
-		
+
 		// Apply filters to cached slots (union across all sources)
 		// Pass 'capacity' as slotType to filter only capacity-relevant filters
 		const filteredNetworkSlots = applyFiltersUnion(
@@ -1635,50 +1634,50 @@ export function enableAutoCapacitySync(): () => void {
 			myPub,
 			resolveMembers
 		);
-		
+
 		console.log(`[AUTO-CAPACITY-SYNC] Filtered ${filteredNetworkSlots.length} slots from ${Object.keys(cache || {}).length} sources`);
-		
+
 		// Merge: declared slots + filtered network slots (declared takes priority)
 		const mergedSlots = mergeSlots(myDeclaredSlots, filteredNetworkSlots);
-		
+
 		console.log(`[AUTO-CAPACITY-SYNC] Merged: ${myDeclaredSlots.length} declared + ${filteredNetworkSlots.length} network = ${mergedSlots.length} total`);
-		
+
 		// Update capacity slots if changed
 		if (JSON.stringify(myDeclaredSlots) !== JSON.stringify(mergedSlots)) {
 			setMyCapacitySlots(mergedSlots);
 			console.log('[AUTO-CAPACITY-SYNC] ✅ Updated capacity slots');
 		}
 	};
-	
+
 	// Subscribe to unified slot subscription changes - check .capacity field
 	const unsubCapacitySubs = slotSubscriptions.subscribe(($subs: any) => {
 		if (!$subs) return;
-		
+
 		// Filter for capacity subscriptions only
 		const capacitySubKeys = Object.entries($subs)
 			.filter(([_, sub]: [string, any]) => sub?.capacity === true)
 			.map(([pubkey, _]) => pubkey);
-		
+
 		console.log(`[AUTO-CAPACITY-SYNC] Processing ${capacitySubKeys.length} capacity subscriptions`);
-		
+
 		// Subscribe to new sources
 		for (const pubkey of capacitySubKeys) {
 			if (activeSubs.has(pubkey)) continue;
-			
+
 			console.log(`[AUTO-CAPACITY-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s capacity slots`);
-			
+
 			// Subscribe to their commitment (if not already subscribed)
 			subscribeToCommitment(pubkey);
-			
+
 			// Track this subscription
 			activeSubs.set(pubkey, () => {
 				console.log(`[AUTO-CAPACITY-SYNC] ⏸️  Unsubscribed from ${pubkey.slice(0, 20)}...`);
 			});
 		}
-		
+
 		// Cleanup removed subscriptions
 		const currentKeys = new Set(capacitySubKeys);
-		
+
 		for (const [key, cleanup] of activeSubs.entries()) {
 			if (!currentKeys.has(key)) {
 				console.log(`[AUTO-CAPACITY-SYNC] ➖ Removing subscription: ${key.slice(0, 20)}...`);
@@ -1687,11 +1686,11 @@ export function enableAutoCapacitySync(): () => void {
 			}
 		}
 	});
-	
+
 	// Watch network capacity slots for changes
 	const unsubNetworkCapacity = networkCapacitySlots.subscribe((slotsMap) => {
 		const subs = (get(slotSubscriptions) || {}) as Record<string, { capacity?: boolean; needs?: boolean }>;
-		
+
 		// Update cache for subscribed sources (check .capacity field)
 		for (const [pubkey, slots] of slotsMap.entries()) {
 			if (subs[pubkey]?.capacity) {
@@ -1701,20 +1700,20 @@ export function enableAutoCapacitySync(): () => void {
 				}));
 			}
 		}
-		
+
 		// Reapply filters whenever network data changes
 		applyFiltersAndUpdateSlots();
 	});
-	
+
 	// Watch unified filter changes
 	const unsubFilters = slotFilters.subscribe(() => {
 		console.log('[AUTO-CAPACITY-SYNC] Filters changed, reapplying...');
 		applyFiltersAndUpdateSlots();
 	});
-	
+
 	// Initial application
 	applyFiltersAndUpdateSlots();
-	
+
 	return () => {
 		unsubCapacitySubs();
 		unsubNetworkCapacity();
@@ -1734,32 +1733,32 @@ export function enableAutoCapacitySync(): () => void {
  */
 export function enableAutoNeedSync(): () => void {
 	console.log('[AUTO-NEED-SYNC] 🔄 Enabling automatic need syncing (unified v2)');
-	
+
 	// Track active subscriptions
 	const activeSubs = new Map<string, () => void>();
-	
+
 	/**
 	 * Apply filters and update slots
 	 */
 	const applyFiltersAndUpdateSlots = () => {
 		const myPub = get(holsterUserPub);
 		if (!myPub) return;
-		
+
 		// Get current state
 		const cache = get(needCache) as Record<string, any[]>;
 		const allFilters = Object.values(get(slotFilters) || {});
 		const currentCommitment = get(myCommitmentStore);
-		
+
 		if (!currentCommitment) return;
-		
+
 		// My declared need slots (user-defined, take priority)
 		const myDeclaredSlots = currentCommitment.need_slots || [];
-		
+
 		// Helper function to resolve members
 		const resolveMembers = (id: string): string[] => {
 			return resolveContributorWithOrgs(id);
 		};
-		
+
 		// Apply filters to cached slots
 		// Pass 'need' as slotType to filter only need-relevant filters
 		const filteredNetworkSlots = applyFiltersUnion(
@@ -1769,50 +1768,50 @@ export function enableAutoNeedSync(): () => void {
 			myPub,
 			resolveMembers
 		);
-		
+
 		console.log(`[AUTO-NEED-SYNC] Filtered ${filteredNetworkSlots.length} slots from ${Object.keys(cache || {}).length} sources`);
-		
+
 		// Merge: declared slots + filtered network slots
 		const mergedSlots = mergeSlots(myDeclaredSlots, filteredNetworkSlots);
-		
+
 		console.log(`[AUTO-NEED-SYNC] Merged: ${myDeclaredSlots.length} declared + ${filteredNetworkSlots.length} network = ${mergedSlots.length} total`);
-		
+
 		// Update need slots if changed
 		if (JSON.stringify(myDeclaredSlots) !== JSON.stringify(mergedSlots)) {
 			setMyNeedSlots(mergedSlots);
 			console.log('[AUTO-NEED-SYNC] ✅ Updated need slots');
 		}
 	};
-	
+
 	// Subscribe to unified slot subscription changes - check .needs field
 	const unsubNeedSubs = slotSubscriptions.subscribe(($subs: any) => {
 		if (!$subs) return;
-		
+
 		// Filter for need subscriptions only
 		const needSubKeys = Object.entries($subs)
 			.filter(([_, sub]: [string, any]) => sub?.needs === true)
 			.map(([pubkey, _]) => pubkey);
-		
+
 		console.log(`[AUTO-NEED-SYNC] Processing ${needSubKeys.length} need subscriptions`);
-		
+
 		// Subscribe to new sources
 		for (const pubkey of needSubKeys) {
 			if (activeSubs.has(pubkey)) continue;
-			
+
 			console.log(`[AUTO-NEED-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s need slots`);
-			
+
 			// Subscribe to their commitment
 			subscribeToCommitment(pubkey);
-			
+
 			// Track this subscription
 			activeSubs.set(pubkey, () => {
 				console.log(`[AUTO-NEED-SYNC] ⏸️  Unsubscribed from ${pubkey.slice(0, 20)}...`);
 			});
 		}
-		
+
 		// Cleanup removed subscriptions
 		const currentKeys = new Set(needSubKeys);
-		
+
 		for (const [key, cleanup] of activeSubs.entries()) {
 			if (!currentKeys.has(key)) {
 				console.log(`[AUTO-NEED-SYNC] ➖ Removing subscription: ${key.slice(0, 20)}...`);
@@ -1821,11 +1820,11 @@ export function enableAutoNeedSync(): () => void {
 			}
 		}
 	});
-	
+
 	// Watch network need slots for changes
 	const unsubNetworkNeeds = networkNeedSlots.subscribe((slotsMap) => {
 		const subs = (get(slotSubscriptions) || {}) as Record<string, { capacity?: boolean; needs?: boolean }>;
-		
+
 		// Update cache for subscribed sources (check .needs field)
 		for (const [pubkey, slots] of slotsMap.entries()) {
 			if (subs[pubkey]?.needs) {
@@ -1835,20 +1834,20 @@ export function enableAutoNeedSync(): () => void {
 				}));
 			}
 		}
-		
+
 		// Reapply filters whenever network data changes
 		applyFiltersAndUpdateSlots();
 	});
-	
+
 	// Watch unified filter changes
 	const unsubFilters = slotFilters.subscribe(() => {
 		console.log('[AUTO-NEED-SYNC] Filters changed, reapplying...');
 		applyFiltersAndUpdateSlots();
 	});
-	
+
 	// Initial application
 	applyFiltersAndUpdateSlots();
-	
+
 	return () => {
 		unsubNeedSubs();
 		unsubNetworkNeeds();
@@ -1881,25 +1880,25 @@ export function enableAutoNeedSync(): () => void {
 function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
 	// Start with local ITC or create new seed
 	let mergedITC: ITCStamp = localITC || itcSeed();
-	
+
 	// Merge with all network commitments
 	const networkCommitMap = networkCommitments.get();
 	let networkMergeCount = 0;
-	
+
 	for (const [pubKey, versionedEntity] of networkCommitMap.entries()) {
 		if (versionedEntity.metadata.itcStamp) {
 			mergedITC = itcJoin(mergedITC, versionedEntity.metadata.itcStamp);
 			networkMergeCount++;
 		}
 	}
-	
+
 	// Increment for this local event
 	mergedITC = itcEvent(mergedITC);
-	
+
 	if (networkMergeCount > 0) {
 		console.log(`[ITC-MERGE] ✅ Merged ${networkMergeCount} network ITC stamps into local commitment`);
 	}
-	
+
 	return mergedITC;
 }
 
@@ -1918,26 +1917,26 @@ function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
  */
 export function composeCommitmentFromSources(): Commitment | null {
 	console.log('[📝 COMPOSE] Composing commitment from sources...');
-	
+
 	const tree = get(myRecognitionTreeStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const existingCommitment = get(myCommitmentStore);
 	const myPub = get(holsterUserPub);
-	
+
 	// Need at least tree or existing commitment
 	if (!tree && !existingCommitment) {
 		console.warn('[📝 COMPOSE] ❌ No source data available');
 		return null;
 	}
-	
+
 	// ✅ CRITICAL FIX: Merge network ITCs to prevent data loss!
 	const mergedITC = getMergedITCStamp(existingCommitment?.itcStamp);
-	
+
 	// ✅ CRITICAL: Resolve contact IDs to public keys before publishing!
 	// Contact IDs are local-only - the network only understands public keys
 	const recognitionWeightsForNetwork: Record<string, number> = {};
 	let resolvedCount = 0;
-	
+
 	for (const [identifier, weight] of Object.entries(recognitionWeights || {})) {
 		// Resolve contact IDs to public keys (leaves public keys unchanged)
 		const resolvedKey = resolveToPublicKey(identifier) || identifier;
@@ -1947,45 +1946,45 @@ export function composeCommitmentFromSources(): Commitment | null {
 		}
 		recognitionWeightsForNetwork[resolvedKey] = weight;
 	}
-	
+
 	if (resolvedCount > 0) {
 		console.log(`[📝 COMPOSE] ✅ Resolved ${resolvedCount} contact ID(s) to public keys for network`);
 	}
-	
+
 	if (myPub && recognitionWeightsForNetwork[myPub] !== undefined) {
 		console.log(`[📝 COMPOSE] ✅ Including self-recognition (${(recognitionWeightsForNetwork[myPub] * 100).toFixed(2)}%) in commitment`);
 	}
-	
+
 	// Compose the commitment - PRESERVE existing slots AND cache!
 	const commitment: Commitment = {
 		// Preserve existing slots (updated via setMyNeedSlots/setMyCapacitySlots)
 		need_slots: existingCommitment?.need_slots || [],
 		capacity_slots: existingCommitment?.capacity_slots || [],
-		
+
 		// Update recognition data (from tree) - source of truth!
 		global_recognition_weights: recognitionWeightsForNetwork,
-		
+
 		// Preserve cache (updated by network subscriber)
 		others_recognition_of_me: existingCommitment?.others_recognition_of_me,
-		
+
 		// Preserve stateful data from existing commitment
 		multi_dimensional_damping: existingCommitment?.multi_dimensional_damping,
-		
+
 		// Metadata with merged ITC
 		itcStamp: mergedITC,  // ✅ Now includes all network history!
 		timestamp: Date.now()
 	};
-	
+
 	const recCount = Object.keys(commitment.global_recognition_weights || {}).length;
 	const recNonZero = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
 	const cacheCount = Object.keys(commitment.others_recognition_of_me || {}).length;
-	
+
 	console.log(`[📝 COMPOSE] ✅ Composed commitment:`);
 	console.log(`  • Recognition: ${recCount} entries (${recNonZero} non-zero) [includes self if present in tree]`);
 	console.log(`  • Others' rec cache: ${cacheCount} entries`);
 	console.log(`  • Need Slots: ${commitment.need_slots?.length || 0}`);
 	console.log(`  • Capacity Slots: ${commitment.capacity_slots?.length || 0}`);
-	
+
 	// Log details of recognition
 	if (recNonZero > 0) {
 		console.log('[📝 COMPOSE] Recognition weights being published to network:');
@@ -1996,7 +1995,7 @@ export function composeCommitmentFromSources(): Commitment | null {
 			}
 		});
 	}
-	
+
 	return commitment;
 }
 
@@ -2018,10 +2017,10 @@ export function composeCommitmentFromSources(): Commitment | null {
  */
 export function enableAutoCommitmentComposition(): () => void {
 	console.log('[AUTO-COMPOSE] Enabling reactive commitment composition (recognition only)');
-	
+
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let isRecomposing = false; // Prevent cascading updates
-	
+
 	/**
 	 * Recompose commitment with debouncing
 	 * Batches multiple rapid source changes into single update
@@ -2031,23 +2030,23 @@ export function enableAutoCommitmentComposition(): () => void {
 			console.log(`[AUTO-COMPOSE] ⏭️  Skipped: already recomposing`);
 			return;
 		}
-		
+
 		// Clear existing timer
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 		}
-		
+
 		// Schedule recomposition
 		debounceTimer = setTimeout(() => {
 			isRecomposing = true;
-			
+
 			const newCommitment = composeCommitmentFromSources();
 			if (!newCommitment) {
 				console.log(`[AUTO-COMPOSE] ⏭️  Skipped: no source data (${reason})`);
 				isRecomposing = false;
 				return;
 			}
-			
+
 			// ✅ CRITICAL FIX: Check if commitment actually changed before calling set()
 			// This prevents infinite loop where loading triggers recompose triggers save triggers load...
 			const currentCommitment = get(myCommitmentStore);
@@ -2069,10 +2068,10 @@ export function enableAutoCommitmentComposition(): () => void {
 						others_recognition_of_me: newCommitment.others_recognition_of_me,
 						multi_dimensional_damping: newCommitment.multi_dimensional_damping
 					};
-					
+
 					const currentJson = JSON.stringify(currentData);
 					const newJson = JSON.stringify(newData);
-					
+
 					if (currentJson === newJson) {
 						console.log(`[AUTO-COMPOSE] ⏭️  Skipped: commitment data unchanged (${reason})`);
 						isRecomposing = false;
@@ -2082,29 +2081,29 @@ export function enableAutoCommitmentComposition(): () => void {
 					console.warn(`[AUTO-COMPOSE] ⚠️  Equality check failed, proceeding with update:`, error);
 				}
 			}
-			
+
 			// Apply the update
 			// NOTE: This preserves existing slots and only updates recognition data
 			console.log(`[💾 AUTO-COMPOSE] Publishing updated commitment to network (${reason})...`);
 			myCommitmentStore.set(newCommitment);
 			console.log(`[💾 AUTO-COMPOSE] ✅ Updated commitment recognition (${reason}) - now persisting to Holster`);
-			
+
 			isRecomposing = false;
 		}, 100); // 100ms debounce (same-tick batching)
 	};
-	
+
 	// Subscribe to recognition tree (generates weights)
 	const unsubTree = myRecognitionTreeStore.subscribe(() => {
 		debouncedRecompose('tree changed');
 	});
-	
+
 	// Subscribe to network recognition weights (from OTHERS only - not our own commitment!)
 	// This prevents infinite loop: myMutualRecognition includes myCommitmentStore,
 	// so subscribing to it would create circular dependency!
 	const unsubNetworkRec = networkRecognitionWeights.subscribe(() => {
 		debouncedRecompose('network recognition changed');
 	});
-	
+
 	// Return cleanup function
 	return () => {
 		if (debounceTimer) clearTimeout(debounceTimer);
@@ -2141,24 +2140,24 @@ export function getConvergenceStats() {
 	let convergedCount = 0;
 	let totalWithData = 0;
 	const epsilon = 0.001; // Convergence threshold
-	
+
 	const commitMap = networkCommitments.get(); // Versioned store
-	
+
 	for (const [_, versionedEntity] of commitMap.entries()) {
 		const commitment = versionedEntity.data; // Extract data from versioned entity
 		if (commitment.need_slots && commitment.need_slots.length > 0) {
-		totalWithData++;
-			
+			totalWithData++;
+
 			// Check if all needs are near zero
 			const totalNeed = commitment.need_slots.reduce((sum: number, slot) => sum + slot.quantity, 0);
 			if (totalNeed < epsilon) {
-			convergedCount++;
+				convergedCount++;
 			}
 		}
 	}
-	
+
 	const convergenceRate = totalWithData > 0 ? convergedCount / totalWithData : 0;
-	
+
 	return {
 		convergedCount,
 		totalWithData,
@@ -2177,7 +2176,7 @@ export function getConvergenceStats() {
 export function getV5Diagnostics() {
 	const stats = getSubscriptionStats();
 	const convergence = getConvergenceStats();
-	
+
 	return {
 		...stats,
 		convergence,
@@ -2221,21 +2220,21 @@ export function migrateNetworkCommitments(): {
 	errors: string[];
 } {
 	console.log('[MIGRATION] Starting network commitments migration...');
-	
+
 	let fixed = 0;
 	let deleted = 0;
 	const errors: string[] = [];
 	const commitMap = networkCommitments.get();
-	
+
 	for (const [pubKey, versionedEntity] of commitMap.entries()) {
 		const shortKey = pubKey.slice(0, 20);
-		
+
 		// Re-validate against schema
 		const validation = CommitmentSchema.safeParse(versionedEntity.data);
-		
+
 		if (!validation.success) {
 			console.warn(`[MIGRATION] Invalid commitment for ${shortKey}:`, validation.error.format());
-			
+
 			// NOTE: We can't auto-fix corrupted data anymore (no converters).
 			// Just delete invalid entries - they'll be regenerated from source.
 			networkCommitments.delete(pubKey);
@@ -2245,7 +2244,7 @@ export function migrateNetworkCommitments(): {
 			console.error(`[MIGRATION] ❌ ${errorMsg}`);
 		}
 	}
-	
+
 	const result = { fixed, deleted, errors };
 	console.log('[MIGRATION] Complete:', result);
 	return result;
@@ -2274,7 +2273,7 @@ export function validateAllStores(): {
 	};
 } {
 	console.log('[VALIDATION] Validating all stores...');
-	
+
 	const result = {
 		myCommitment: { valid: true } as { valid: boolean; error?: any },
 		myTree: { valid: true } as { valid: boolean; error?: any },
@@ -2286,7 +2285,7 @@ export function validateAllStores(): {
 			stores: [] as string[]
 		}
 	};
-	
+
 	// Validate own commitment
 	const myCommit = get(myCommitmentStore);
 	if (myCommit) {
@@ -2303,7 +2302,7 @@ export function validateAllStores(): {
 			console.error('[VALIDATION] ❌ Invalid myCommitment:', validation.error.format());
 		}
 	}
-	
+
 	// Validate own recognition tree
 	const myTree = get(myRecognitionTreeStore);
 	if (myTree) {
@@ -2320,7 +2319,7 @@ export function validateAllStores(): {
 			console.error('[VALIDATION] ❌ Invalid myTree:', validation.error.format());
 		}
 	}
-	
+
 	// Validate network commitments
 	const commitMap = networkCommitments.get();
 	for (const [pubKey, versionedEntity] of commitMap.entries()) {
@@ -2338,7 +2337,7 @@ export function validateAllStores(): {
 			console.error(`[VALIDATION] ❌ Invalid commitment from ${shortKey}:`, validation.error.format());
 		}
 	}
-	
+
 	// Validate network recognition trees (if any)
 	const treeMap = networkRecognitionTrees.get();
 	for (const [pubKey, versionedEntity] of treeMap.entries()) {
@@ -2356,13 +2355,13 @@ export function validateAllStores(): {
 			console.error(`[VALIDATION] ❌ Invalid tree from ${shortKey}:`, validation.error.format());
 		}
 	}
-	
+
 	console.log('[VALIDATION] Complete:', {
 		valid: result.summary.totalValid,
 		invalid: result.summary.totalInvalid,
 		invalidStores: result.summary.stores
 	});
-	
+
 	return result;
 }
 
@@ -2376,13 +2375,13 @@ export function validateAllStores(): {
  */
 export async function clearAllV5Stores() {
 	console.log('[V5-MIGRATION] 🧹 Clearing all V5 stores...');
-	
+
 	const paths = [
 		'trees/recognition_tree',
 		'allocation/commitment' // THE source of truth (contains slots!)
 		// NOTE: 'allocation/need_slots' and 'allocation/capacity_slots' are derived, not persisted!
 	];
-	
+
 	// Step 1: Clear via Holster API
 	for (const path of paths) {
 		try {
@@ -2396,12 +2395,12 @@ export async function clearAllV5Stores() {
 			console.error(`[V5-MIGRATION] ❌ Failed to clear ${path}:`, error);
 		}
 	}
-	
+
 	// Step 2: Clear IndexedDB directly (Gun/Holster cache)
 	try {
 		const dbs = await indexedDB.databases();
 		console.log('[V5-MIGRATION] 📦 Found IndexedDB databases:', dbs.map(db => db.name));
-		
+
 		// Clear radata (Gun's default DB name)
 		const radataExists = dbs.some(db => db.name === 'radata');
 		if (radataExists) {
@@ -2424,10 +2423,10 @@ export async function clearAllV5Stores() {
 	} catch (error) {
 		console.warn('[V5-MIGRATION] ⚠️  Could not clear IndexedDB:', error);
 	}
-	
+
 	console.log('[V5-MIGRATION] ✅ All stores cleared!');
 	console.log('[V5-MIGRATION] 🔄 Reload page NOW to start fresh with JSON format.');
-	
+
 	// Give user 3 seconds to see the message, then auto-reload
 	setTimeout(() => {
 		console.log('[V5-MIGRATION] 🔄 Auto-reloading...');
@@ -2448,7 +2447,7 @@ if (typeof window !== 'undefined') {
 	(window as any).migrateNetworkCommitments = migrateNetworkCommitments;
 	(window as any).validateAllStores = validateAllStores;
 	(window as any).clearAllV5Stores = clearAllV5Stores;
-	
+
 	console.log('[V5-DEBUG] 🛠️  Migration & debug utilities available:');
 	console.log('  • window.clearAllV5Stores() - Clear all stores (use when migrating to JSON format)');
 	console.log('  • window.migrateNetworkCommitments() - Validate and clean network commitments');

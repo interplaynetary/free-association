@@ -1,6 +1,7 @@
 import type { RootNode } from '@playnet/free-association/schemas';
 import { populateSDGTree } from './sdg';
 import { populateNVCTree } from './nvc';
+import { populateUrbanTree } from './urban';
 
 export type TemplateEntry = {
   id: string;
@@ -11,7 +12,8 @@ export type TemplateEntry = {
 
 const TEMPLATE_REGISTRY: TemplateEntry[] = [
   { id: 'sdg', label: 'Sustainable Development Goals', emoji: '🌍', populate: populateSDGTree },
-  { id: 'nvc', label: 'Universal Basic Needs (NVC)', emoji: '🫶', populate: populateNVCTree }
+  { id: 'nvc', label: 'Universal Basic Needs (NVC)', emoji: '🫶', populate: populateNVCTree },
+  { id: 'urban', label: 'Urban Contexts', emoji: '🏙️', populate: populateUrbanTree }
 ];
 
 export function getTemplates(): TemplateEntry[] {
