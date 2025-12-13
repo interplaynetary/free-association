@@ -17,7 +17,11 @@
 		initializeAllocationStores,
 		enableAutoCommitmentComposition,
 		setMyNeedSlots,
-		setMyCapacitySlots
+		setMyCapacitySlots,
+		subscribeToRecognitionTree,
+		subscribeToCommitment,
+		networkRecognitionTrees,
+		networkCommitments
 	} from '$lib/protocol/stores/stores.svelte';
 	import { enableAutoAllocationPublishing } from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
@@ -25,6 +29,7 @@
 	import { currentPath } from '$lib/global.svelte';
 	import { derived, get } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
+	import { holsterUserPub } from '$lib/network/holster.svelte';
 	import type {
 		NeedSlot,
 		AvailabilitySlot,
@@ -79,105 +84,90 @@ console.log('[ORG-PAGE] Initializing org page for:', data.orgName);
 
 // Handle user trees differently from org trees
 if (data.isUserTree) {
-	const userPubkey = data.userPubkey; // Capture in closure to avoid stale reference
-	console.log('[ORG-PAGE] This is a user tree (pubkey):', userPubkey);
+	const userPubkey = data.userPubkey!;
+	const isOwnTree = get(holsterUserPub) === userPubkey;
 	
-	// Check if this is the authenticated user's own tree
-	import('$lib/network/holster.svelte').then(({ holsterUserPub }) => {
-		const isOwnTree = get(holsterUserPub) === userPubkey;
+	if (isOwnTree) {
+		// 🎯 Viewing own tree - instant load from myRecognitionTreeStore
+		console.log('[ORG-PAGE] 👤 Viewing own tree');
+		const myTree = get(myRecognitionTreeStore);
 		
-		if (isOwnTree) {
-			// 🎯 ELEGANT: Viewing own tree - use myRecognitionTreeStore directly!
-			console.log('[ORG-PAGE] 👤 Viewing own tree - using myRecognitionTreeStore');
-			
-			import('$lib/protocol/stores/stores.svelte').then(({ myRecognitionTreeStore }) => {
-				const myTree = get(myRecognitionTreeStore);
-				if (myTree) {
-					const treeWithCorrectId = { ...myTree, id: userPubkey! };
-					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
-					userTreeLoading = false;
-					userTreeLoaded = true;
-					console.log('[ORG-PAGE] ✅ Own tree loaded instantly');
-				} else {
-					console.warn('[ORG-PAGE] ⚠️ Own tree not found in myRecognitionTreeStore');
-				}
-			});
+		if (myTree) {
+			const treeWithCorrectId = { ...myTree, id: userPubkey };
+			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
+			userTreeLoading = false;
+			userTreeLoaded = true;
+			console.log('[ORG-PAGE] ✅ Own tree loaded');
 		} else {
-			// 🌐 Viewing someone else's tree - load from network
-			console.log('[ORG-PAGE] 🌐 Viewing another user\'s tree - loading from network');
-			userTreeLoading = true;
-			userTreeLoaded = false;
+			console.warn('[ORG-PAGE] ⚠️ Own tree not found');
+		}
+	} else {
+		// 🌐 Viewing another user's tree - load from network
+		console.log('[ORG-PAGE] 🌐 Loading from network:', userPubkey);
+		userTreeLoading = true;
+		userTreeLoaded = false;
+		
+		// Placeholder while loading
+		const placeholderTree: RootNode = {
+			id: userPubkey,
+			name: `${data.orgName}`,
+			type: 'RootNode',
+			children: [],
+			manual_fulfillment: 0,
+			updated_at: new Date().toISOString()
+		};
+		demoTreeStore.initializeWithCustomTree(placeholderTree, true, false);
+		
+		// Subscribe to network data
+		subscribeToRecognitionTree(userPubkey);
+		subscribeToCommitment(userPubkey);
+		
+		// Check if data already exists
+		const existingTree = get(networkRecognitionTrees).get(userPubkey);
+		
+		if (existingTree?.data) {
+			// Fast path: data already cached
+			console.log('[ORG-PAGE] 💡 Found cached data');
+			const treeWithCorrectId = { ...existingTree.data, id: userPubkey };
+			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
+			userTreeLoading = false;
+			userTreeLoaded = true;
+		} else {
+			// Wait for network
+			const loadTimeout = setTimeout(() => {
+				if (userTreeLoading) {
+					console.warn('[ORG-PAGE] ⚠️ Timeout');
+				}
+			}, 10000);
 			
-			// Create placeholder
-			const placeholderTree: RootNode = {
-				id: userPubkey!,
-				name: `${data.orgName}`,
-				type: 'RootNode',
-				children: [],
-				manual_fulfillment: 0,
-				updated_at: new Date().toISOString()
-			};
-			demoTreeStore.initializeWithCustomTree(placeholderTree, true, false);
-			
-			// Subscribe to network data
-			import('$lib/protocol/stores/stores.svelte').then(({ 
-				subscribeToRecognitionTree, 
-				subscribeToCommitment,
-				networkRecognitionTrees,
-				networkCommitments
-			}) => {
-				subscribeToRecognitionTree(userPubkey!);
-				subscribeToCommitment(userPubkey!);
-				console.log('[ORG-PAGE] ✅ Subscribed to tree and commitment');
-				
-				// Check existing data first
-				const currentTrees = get(networkRecognitionTrees);
-				const existingTree = currentTrees.get(userPubkey!);
-				
-				if (existingTree?.data) {
-					console.log('[ORG-PAGE] 💡 Found existing data');
-					const treeWithCorrectId = { ...existingTree.data, id: userPubkey! };
+			const unsubTree = networkRecognitionTrees.subscribe(($trees) => {
+				if (userTreeLoaded) return;
+				const tree = $trees.get(userPubkey);
+				if (tree?.data) {
+					clearTimeout(loadTimeout);
+					const treeWithCorrectId = { ...tree.data, id: userPubkey };
 					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
 					userTreeLoading = false;
 					userTreeLoaded = true;
-				} else {
-					// Wait for network data
-					const loadTimeout = setTimeout(() => {
-						if (userTreeLoading) {
-							console.warn('[ORG-PAGE] ⚠️ Timeout waiting for tree data');
-						}
-					}, 10000);
-					
-					const unsubTree = networkRecognitionTrees.subscribe(($trees) => {
-						if (userTreeLoaded) return;
-						const tree = $trees.get(userPubkey!);
-						if (tree?.data) {
-							clearTimeout(loadTimeout);
-							const treeWithCorrectId = { ...tree.data, id: userPubkey! };
-							demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
-							userTreeLoading = false;
-							userTreeLoaded = true;
-							console.log('[ORG-PAGE] ✅ Tree loaded from network');
-						}
-					});
-					
-					const unsubCommit = networkCommitments.subscribe(($commits) => {
-						const commit = $commits.get(userPubkey!);
-						if (commit?.data) {
-							const recWeights = Object.keys(commit.data.global_recognition_weights || {}).length;
-							console.log(`[ORG-PAGE] Commitment: ${recWeights} recognition weights`);
-						}
-					});
-					
-					cleanupUserTreeSubscription = () => {
-						clearTimeout(loadTimeout);
-						unsubTree();
-						unsubCommit();
-					};
+					console.log('[ORG-PAGE] ✅ Loaded from network');
 				}
 			});
+			
+			const unsubCommit = networkCommitments.subscribe(($commits) => {
+				const commit = $commits.get(userPubkey);
+				if (commit?.data) {
+					const weights = Object.keys(commit.data.global_recognition_weights || {}).length;
+					console.log(`[ORG-PAGE] Commitment: ${weights} weights`);
+				}
+			});
+			
+			cleanupUserTreeSubscription = () => {
+				clearTimeout(loadTimeout);
+				unsubTree();
+				unsubCommit();
+			};
 		}
-	});
+	}
 } else {
 	// Original org tree logic
 	console.log('[ORG-PAGE] Preparing custom tree:', data.tree!.name);
