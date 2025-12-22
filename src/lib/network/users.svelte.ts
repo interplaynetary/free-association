@@ -40,7 +40,7 @@ function subscribeToUsersList() {
 		if (!data) return;
 
 		// Filter out metadata fields and deleted entries
-		const usersData: Record<string, {alias: string, lastSeen: number}> = {};
+		const usersData: Record<string, { alias: string, lastSeen: number }> = {};
 		for (const [key, value] of Object.entries(data)) {
 			if (value && typeof value === 'object' && !key.startsWith('_')) {
 				usersData[key] = value as any;
@@ -50,7 +50,7 @@ function subscribeToUsersList() {
 		// Extract pub keys and aliases
 		const pubKeys = Object.keys(usersData);
 		const aliases: Record<string, string> = {};
-		
+
 		pubKeys.forEach(pubKey => {
 			const userData = usersData[pubKey];
 			if (userData?.alias) {
@@ -58,13 +58,25 @@ function subscribeToUsersList() {
 			}
 		});
 
-		// Update stores
-		userPubKeys.set(pubKeys);
-		userAliasesCache.set(aliases);
-		
-		console.log('[USERS-LIST] Updated:', {
-			count: pubKeys.length,
-			aliases: Object.keys(aliases).length
+		// Update stores with NON-DESTRUCTIVE merge
+		userPubKeys.update(current => {
+			// Merge current and new keys, removing duplicates
+			const merged = new Set([...current, ...pubKeys]);
+			return [...merged];
+		});
+
+		userAliasesCache.update(current => {
+			// Merge new aliases into current cache
+			// New aliases overwrite old ones if they exist (which is what we want for updates)
+			return {
+				...current,
+				...aliases
+			};
+		});
+
+		console.log('[USERS-LIST] Updated (Merged):', {
+			received: pubKeys.length,
+			totalKnown: get(userPubKeys).length
 		});
 	};
 
@@ -92,11 +104,11 @@ export async function cleanupUsersList() {
 	userAliasesCache.set({});
 	isUsersListInitialized = false;
 	console.log('[USERS-LIST] Cleaned up');
-	
+
 	// Also cleanup organizations
 	const orgsModule = require('$lib/network/organizations.svelte');
 	orgsModule.cleanupOrganizations();
-	
+
 	// Note: Membership is now handled by the unified entity/attribute system
 	// Cleaned up with myAttributeRecognitions store
 	console.log('[USERS-LIST] Organizations cleaned up');
@@ -270,7 +282,7 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 		console.warn(`[USERS] Cannot update contact: contacts not loaded`);
 		return;
 	}
-	
+
 	const existingContact = currentContacts[contact_id];
 
 	if (!existingContact) {
@@ -322,10 +334,10 @@ export function getContactByPublicKey(public_key: string): Contact | undefined {
 		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ Contacts not loaded yet`);
 		return undefined;
 	}
-	
+
 	const contactsList = Object.values(contacts);
 	console.log(`[GET-CONTACT-BY-PUBKEY] Searching for pubkey ${public_key.slice(0, 20)}... among ${contactsList.length} contacts`);
-	
+
 	const found = contactsList.find((contact) => contact.public_key === public_key);
 	if (found) {
 		console.log(`[GET-CONTACT-BY-PUBKEY] ✅ Found contact: ${found.name} (${found.contact_id})`);
@@ -333,7 +345,7 @@ export function getContactByPublicKey(public_key: string): Contact | undefined {
 		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ No contact found with this pubkey`);
 		console.log(`[GET-CONTACT-BY-PUBKEY] Available pubkeys:`, contactsList.map(c => c.public_key?.slice(0, 20) + '...'));
 	}
-	
+
 	return found;
 }
 
@@ -369,12 +381,12 @@ export function getIdentifierType(identifier: string): 'contactId' | 'pubKey' {
  */
 export function getPublicKeyFromContactId(contactId: string): string | undefined {
 	const contacts = get(userContacts);
-	
+
 	// Handle null/undefined contacts (e.g., not loaded yet)
 	if (!contacts) {
 		return undefined;
 	}
-	
+
 	const contact = contacts[contactId];
 
 	if (!contact) {

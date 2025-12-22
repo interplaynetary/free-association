@@ -85,7 +85,7 @@
 		"workbox-window": "^7.3.0"
 	},
 	"dependencies": {
-		"@playnet/free-association": "^1.0.5",
+		"@playnet/free-association": "^1.0.8",
 		"@babel/preset-typescript": "^7.27.1",
 		"@capacitor/android": "^7.4.0",
 		"@capacitor/core": "^7.4.0",
