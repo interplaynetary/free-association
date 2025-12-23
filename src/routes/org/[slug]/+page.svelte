@@ -44,7 +44,32 @@
 		sharesOfGeneralFulfillmentMap,
 		getAllContributorsFromTree
 	} from '@playnet/free-association/tree';
-	import { computeMutualRecognition } from '@playnet/free-association/allocation';
+	// Local implementation of mutual recognition (since it was removed from allocation module)
+	function computeMutualRecognition(
+		myRecognition: Record<string, number>,
+		othersRecognition: Record<string, Record<string, number>>,
+		myId: string
+	): Record<string, number> {
+		const mutual: Record<string, number> = {};
+		
+		// For each person/org I recognize
+		for (const [theirId, myWeight] of Object.entries(myRecognition)) {
+			if (myWeight <= 0) continue;
+			
+			// Check how much they recognize me
+			// othersRecognition is a map of theirId -> their weights
+			const theirWeights = othersRecognition[theirId] || {};
+			const theirWeight = theirWeights[myId] || 0;
+			
+			// Mutual is the minimum of the two
+			const mutualWeight = Math.min(myWeight, theirWeight);
+			if (mutualWeight > 0) {
+				mutual[theirId] = mutualWeight;
+			}
+		}
+		
+		return mutual;
+	}
 	import { setViewContext, resetViewContext } from '$lib/protocol/stores/context.svelte';
 	import { currentUserMutualRecognition } from '$lib/protocol/stores/context-stores.svelte';
 
