@@ -19,7 +19,7 @@ import type {
     AvailabilitySlot,
     NeedSlot,
     Commitment
-} from './schemas';
+} from '@playnet/free-association/schemas';
 
 import {
     slotsCompatible
@@ -316,7 +316,9 @@ export function applyDivisibilityConstraints(
 
     // 2. Check natural unit divisibility
     // Default to 1 if not specified (standard unit)
-    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0) ? slot.max_natural_div : 1.0;
+    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0)
+        ? (slot.quantity / slot.max_natural_div)
+        : 1.0;
 
     // If smaller than one unit, return 0
     if (rawQuantity < unitSize - EPSILON) {
@@ -350,7 +352,9 @@ export function meetsMinimumAllocation(
     }
 
     // Check unit size check
-    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0) ? slot.max_natural_div : 1.0;
+    const unitSize = (slot.max_natural_div && slot.max_natural_div > 0)
+        ? (slot.quantity / slot.max_natural_div)
+        : 1.0;
 
     if (quantity < unitSize - EPSILON) {
         return false;
@@ -401,7 +405,7 @@ export function initialAllocationWithSurplus(
         const compatibility = calculateCompatibility(cs, needSlots);
 
         // Step 2: Tentative allocation
-        const tentativeAllocations = performTentativeAllocation(cs, needSlots, compatibility, debug);
+        const tentativeAllocations = performTentativeAllocation(cs, needSlots, compatibility, matrix, debug);
 
         // Step 3: Calculate surplus
         const totalTentative = Object.values(tentativeAllocations).reduce((sum, a) => sum + a, 0);
@@ -499,6 +503,7 @@ export function performTentativeAllocation(
     cs: AvailabilitySlot,
     needSlots: NeedSlot[],
     compatibility: Map<string, CompatibilityInfo>,
+    currentMatrix: SlotAllocationMatrix,
     debug: boolean
 ): Record<string, number> {
     const allocations: Record<string, number> = {};
@@ -508,8 +513,16 @@ export function performTentativeAllocation(
         const info = compatibility.get(ns.id)!;
         if (!info.isCompatible) continue;
 
-        // Min(bilateral limit, need request)
-        const amount = Math.min(info.bilateralLimit, ns.quantity);
+        // Calculate already received from other CS
+        let alreadyReceived = 0;
+        for (const otherCsId in currentMatrix) {
+            alreadyReceived += currentMatrix[otherCsId][ns.id]?.amount || 0;
+        }
+        const remainingNeed = Math.max(0, ns.quantity - alreadyReceived);
+
+        // Use Provider Limit (ignore Recipient Limit in Phase 1)
+        // Ensure we don't exceed remaining need
+        const amount = Math.min(info.providerLimit, remainingNeed);
         allocations[ns.id] = amount;
         totalTentative += amount;
     }
@@ -535,7 +548,7 @@ export function redistributeSurplus(
 ): number {
 
     // Identify needs with UNMET need
-    const unmetNeeds: Array<{ nsId: string; priority: number; unmet: number; recipientLimitRemaining: number }> = [];
+    const unmetNeeds: Array<{ nsId: string; priority: number; unmet: number }> = [];
 
     for (const ns of needSlots) {
         const info = compatibility.get(ns.id)!;
@@ -549,21 +562,15 @@ export function redistributeSurplus(
 
         const unmet = Math.max(0, ns.quantity - totalReceived);
 
-        // Check recipient limit remaining for THIS provider
-        const currentFromMe = matrix[cs.id][ns.id].amount;
-        // Logic: RecipientLimit is total willingness to receive FROM THIS PROVIDER
-        // But did we respect it in Tentative? Yes.
-        // So Remaining Limit = Limit - Allocated.
-        const recipientLimitForSlot = info.recipientPriority * getNeedQuantity(needSlots, ns.id);
-        const recipientLimitRemaining = Math.max(0, recipientLimitForSlot - currentFromMe);
+        // NOTE: In Phase 1, we ignore recipient-side limits for surplus redistribution
+        // We only care about absolute unmet need. Phase 2 will correct proportions.
 
-        // Only include if they have unmet needs AND room to accept more from us
-        if (unmet > EPSILON && recipientLimitRemaining > EPSILON) {
+        // Only include if they have unmet needs
+        if (unmet > EPSILON) {
             unmetNeeds.push({
                 nsId: ns.id,
                 priority: info.providerPriority,
-                unmet,
-                recipientLimitRemaining
+                unmet
             });
         }
     }
@@ -580,7 +587,7 @@ export function redistributeSurplus(
         const share = item.priority / totalPriority;
         const potential = surplus * share;
 
-        const actual = Math.min(potential, item.unmet, item.recipientLimitRemaining);
+        const actual = Math.min(potential, item.unmet);
 
         if (actual > EPSILON) {
             matrix[cs.id][item.nsId].amount += actual;
@@ -1044,10 +1051,26 @@ export function makeAdjustments(
             else if (row[nsId] < -EPSILON) under.push(nsId);
         }
 
-        if (over.length === 0 || under.length === 0) continue;
+        if (over.length === 0 && under.length === 0) continue;
 
+        // Calculate available capacity (unused)
+        let totalAllocated = 0;
+        for (const nsId in matrix[csId]) {
+            totalAllocated += matrix[csId][nsId].amount;
+        }
+
+        // Find capacity slot quantity
+        const cs = capacitySlots.find(c => c.id === csId);
+        if (!cs) continue;
+
+        // Pool starts with unused capacity
+        // We limit how much unused capacity we use per iteration to avoid oscillation? 
+        // Or just use what's needed.
+        // Let's use up to available.
+        let pool = Math.max(0, cs.quantity - totalAllocated);
+
+        // Also add from reductions
         // Reduce over-allocated
-        let pool = 0;
         for (const nsId of over) {
             const reduction = Math.min(
                 matrix[csId][nsId].amount * MAX_ADJUSTMENT_PER_ITERATION,
@@ -1068,19 +1091,12 @@ export function makeAdjustments(
             const increase = pool * weight;
 
             if (increase > EPSILON) {
-                // Check recipient priority limit
+                // Ensure we don't exceed need quantity
                 const ns = needSlots.find(n => n.id === nsId);
-                const recipientPriority = ns?.priority_distribution?.find(
-                    p => p.target_slot_id === csId
-                )?.priority_percentage || 0;
+                const currentTotal = Object.values(matrix).reduce((sum, row) => sum + (row[nsId]?.amount || 0), 0);
+                const roomInNeed = Math.max(0, (ns ? ns.quantity : 0) - currentTotal);
 
-                const nsQty = ns ? ns.quantity : 0;
-                const recipientLimit = recipientPriority * nsQty;
-
-                const currentAmount = matrix[csId][nsId].amount;
-                const roomUnderLimit = Math.max(0, recipientLimit - currentAmount);
-
-                const actualIncrease = Math.min(increase, roomUnderLimit);
+                const actualIncrease = Math.min(increase, roomInNeed);
 
                 if (actualIncrease > EPSILON) {
                     matrix[csId][nsId].amount += actualIncrease;
@@ -1129,4 +1145,25 @@ export function findOwner(slotId: string, commitments: Record<string, Commitment
         if (needMatch) return pubkey;
     }
     return undefined;
+}
+
+export function getSlotPriority(
+    slot: AvailabilitySlot | NeedSlot,
+    personPubkey: string,
+    commitment?: Commitment
+): number {
+    if (!slot.id) return 0;
+
+    // 1. Explicit Priority (Schema format: Record<pubkey, number>)
+    if (slot.priority_distribution && !Array.isArray(slot.priority_distribution)) {
+        const val = (slot.priority_distribution as Record<string, number>)[personPubkey];
+        if (val !== undefined) return val;
+    }
+
+    // 2. Fallback to Global Recognition
+    if (commitment && commitment.global_recognition_weights) {
+        return commitment.global_recognition_weights[personPubkey] || 0;
+    }
+
+    return 0;
 }

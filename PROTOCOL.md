@@ -7,84 +7,85 @@
 ---
 
 ## Abstract
-
-Free Association is a coordination protocol enabling resource allocation through mutual recognition. This specification defines the mathematical requirements for protocol-conformant implementations without prescribing implementation details.
-
----
-
-## Core Principles (Non-Negotiable)
-
-Any implementation claiming Free Association conformance MUST preserve these properties:
-
-### 1. Mutual Recognition Foundation
-- Recognition weights sum to 100% per entity
-- Mutual recognition = min(A→B recognition, B→A recognition)
-- Recognition is non-transferable
-- Recognition is dynamically adjustable
-
-### 2. Needs-Based Allocation
-- Allocations capped at declared need (no accumulation possible)
-- Remaining need = max(0, declared need - received)
-- Each resource type tracked independently
-
-### 3. Mathematical Fairness Guarantees
-- **Contraction Property**: Total remaining needs decrease or stay constant
-- **Proportional Allocation**: Shares determined by mutual recognition ratios, not need size
-- **Two-Tier Priority**: Mutual recognition (Tier 1) before one-way recognition (Tier 2)
-- **No Wealth Accumulation**: No formula enables Need(t+1) > Need(t) through receiving
+ 
+ Free Association is a coordination protocol enabling resource allocation through priority aligned capacity distribution. This specification defines the mathematical requirements for protocol-conformant implementations without prescribing implementation details.
+ 
+ ---
+ 
+ ## Core Principles (Non-Negotiable)
+ 
+ Any implementation claiming Free Association conformance MUST preserve these properties:
+ 
+ ### 1. Priority Alignment Foundation
+ - Priority weights sum to 100% per entity
+ - Reciprocal Alignment = min(A→B priority, B→A priority)
+ - Priorities are non-transferable
+ - Priorities are dynamically adjustable
+ 
+ ### 2. Needs-Based Allocation
+ - Allocations capped at declared need (no accumulation possible)
+ - Remaining need = max(0, declared need - received)
+ - Each resource type tracked independently
+ 
+ ### 3. Mathematical Fairness Guarantees
+ - **Contraction Property**: Total remaining needs decrease or stay constant
+ - **Proportional Allocation**: Shares determined by priority weights, not need size
+ - **Constrained Priority Phases**: Provider constraints (Phase 1) respected before source refinement (Phase 2)
+ - **No Wealth Accumulation**: No formula enables Need(t+1) > Need(t) through receiving
 
 ---
 
 ## Mathematical Requirements
 
-### Recognition Weights
-
-For any entity E:
-
-```
-∀E: Σ(E→Others) = 100%
-Recognition(E→E) ≥ 0  (self-recognition permitted)
-Recognition is non-transferable
-```
-
-### Mutual Recognition
-
-```
-MutualRecognition(A, B) = min(Recognition(A→B), Recognition(B→A))
-```
-
-This MUST be symmetric:
-```
-MutualRecognition(A, B) = MutualRecognition(B, A)
-```
+### Priority Weights
+ 
+ For any entity E:
+ 
+ ```
+ ∀E: Σ(E→Others) = 100%
+ Priority(E→E) ≥ 0  (self-prioritization permitted)
+ Priorities are non-transferable
+ ```
+ 
+ ### Reciprocal Alignment
+ 
+ ```
+ Alignment(A, B) = min(Priority(A→B), Priority(B→A))
+ ```
+ 
+ This MUST be symmetric:
+ ```
+ Alignment(A, B) = Alignment(B, A)
+ ```
 
 ### Allocation Formula (Core Requirement)
-
-For provider P allocating capacity C to recipients R:
-
-**Tier 1 (Mutual Recognition):**
-
-```
-Filter: R_mutual = {r ∈ R | MutualRecognition(P, r) > 0 AND r needs compatible resource}
-
-For each r ∈ R_mutual:
-  Share(r) = MutualRecognition(P, r) / Σ(MutualRecognition(P, R_mutual))
-  RawAllocation(r) = C × Share(r)
-  FinalAllocation(r) = min(RawAllocation(r), Need(r))
-```
-
-**Tier 2 (One-Way Recognition):**
-
-```
-RemainingCapacity = C - Σ(FinalAllocation(R_mutual))
-
-Filter: R_oneway = {r ∈ R | Recognition(P→r) > 0 AND r ∉ R_mutual AND r needs compatible resource}
-
-For each r ∈ R_oneway:
-  Share(r) = Recognition(P→r) / Σ(Recognition(P→R_oneway))
-  RawAllocation(r) = RemainingCapacity × Share(r)
-  FinalAllocation(r) = min(RawAllocation(r), Need(r))
-```
+ 
+ The core allocation function `φ(Capacity, Needs, Weights)` MUST satisfy the **Constrained Weighted Allocation** model:
+ 
+ **Phase 1: Weighted Provider Allocation (Mandatory)**
+ 
+ For each provider P with capacity C and compatible needs N_1...N_k:
+ 
+ 1.  **Ideal Targets**: Calculate weighted targets based on provider priorities (w_i).
+     ```
+     Target_i = w_i × C  (where Σ w_i = 100%)
+     ```
+ 
+ 2.  **Constraint Satisfaction**: Find allocations A_i minimizing distance to Targets subject to:
+     -   `0 ≤ A_i ≤ Need_i` (Need constraint)
+     -   `Σ A_i ≤ C` (Capacity constraint)
+     -   If `max_natural_div` exists, A_i must be integer multiple of unit size.
+ 
+     *Algorithm Effect:* If specific needs are less than their weighted share, the unused capacity MUST be redistributed to other needs that are unmet, up to their weighted share, before being considered "surplus".
+ 
+ **Phase 2: Recipient Source Refinement (Mandatory)**
+ 
+ 3.  **Source Adjustment**: Recipients may shift received quantities between providers to match *their* preference weights (`w_recipient`), provided:
+     -   Total received per recipient remains constant (`Σ A_ij` unchanged for recipient j).
+     -   Total provided per provider remains constant (`Σ A_ij` unchanged for provider i).
+     -   No provider's specific willingness limit is violated (if such hard limits exist).
+ 
+ This formulation guarantees Pareto efficiency with respect to the constraints and weights.
 
 ### Update Law
 
@@ -118,11 +119,11 @@ This holds unconditionally in every allocation round. Receiving resources always
 No entity can receive more than declared need per allocation round
 
 ### Property 3: Fairness
-```
-∀A, B: If MutualRecognition(P, A) = MutualRecognition(P, B)
-Then Share(A) = Share(B)
-```
-Equal mutual recognition yields equal proportional shares (before need cap)
+ ```
+ ∀A, B: If Priority(P, A) = Priority(P, B)
+ Then Share(A) = Share(B)
+ ```
+ Equal priority alignment yields equal proportional shares (before need cap)
 
 ### Property 4: Determinism
 ```
@@ -141,14 +142,14 @@ The following are **explicit violations** of Free Association protocol:
 - Enabling wealth/resource stockpiling
 - Creating investment or profit mechanisms
 
-### Recognition Manipulation
-- Making recognition transferable or tradeable
-- Allowing recognition inheritance
-- Enabling recognition markets
-
-### Allocation Distortions
-- Weighting by need size instead of mutual recognition for share calculation
-- Prioritizing non-mutual over mutual recognition
+### Priority Manipulation
+ - Making priorities transferable or tradeable
+ - Allowing priority inheritance
+ - Enabling priority markets
+ 
+ ### Allocation Distortions
+ - Weighting by need size instead of priority for share calculation
+ - Prioritizing non-reciprocal over reciprocal alignment
 - Adding pricing or payment mechanisms
 - Introducing central authority control over allocations
 
@@ -201,16 +202,16 @@ Implementations MAY:
 Conformant implementations must pass:
 
 **Basic Allocation Tests:**
-- Equal mutual recognition → equal shares (before need cap)
-- Higher mutual recognition → higher shares
-- Allocation never exceeds declared need
-- Tier 1 allocates before Tier 2
-
-**Property Tests:**
-- Contraction: Needs decrease or stay constant
-- No accumulation: Received ≤ Need always
-- Determinism: Repeated computation yields same result
-- Symmetry: MutualRecognition(A,B) = MutualRecognition(B,A)
+ - Equal priority alignment → equal shares (before need cap)
+ - Higher reciprocal alignment → higher shares
+ - Allocation never exceeds declared need
+ - Provider constraints (Phase 1) respect all limits before refinement
+ 
+ **Property Tests:**
+ - Contraction: Needs decrease or stay constant
+ - No accumulation: Received ≤ Need always
+ - Determinism: Repeated computation yields same result
+ - Symmetry: Alignment(A,B) = Alignment(B,A)
 
 **Edge Cases:**
 - Zero capacity handling
@@ -309,13 +310,13 @@ Implementations choose these based on their context.
 
 A system is Free Association conformant if and only if:
 
-✅ Mutual recognition = min(A→B, B→A)  
-✅ Allocations capped at declared need  
-✅ Shares proportional to mutual recognition (not need size)  
-✅ Two-tier priority (mutual before one-way)  
-✅ Contraction property holds  
-✅ No accumulation possible  
-✅ Deterministic and peer-to-peer capable
+✅ Reciprocal Alignment = min(A→B, B→A)  
+ ✅ Allocations capped at declared need  
+ ✅ Shares proportional to priority weights (not need size)  
+ ✅ Constrained Priority Phases (Provider constraints → Source refinement)  
+ ✅ Contraction property holds  
+ ✅ No accumulation possible  
+ ✅ Deterministic and peer-to-peer capable
 
 Everything else is implementation detail.
 

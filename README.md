@@ -1,14 +1,14 @@
 ## Free Association: A Digital Public Infrastructure for Resource Coordination
 
-**Free Association** is a mathematically-proven coordination infrastructure that enables organizations, communities, and individuals to allocate resources efficiently based on mutual recognition of contributions—without centralized control, bureaucratic overhead, or market exclusion.
+**Free Association** is a mathematically-proven coordination infrastructure for priority alligned capacity distribution that enables organizations, communities, and individuals to allocate resources without centralized control, bureaucratic overhead, or market exclusion.
 
 **The Core Problem:** Traditional resource coordination relies on markets (which exclude those without purchasing power), charity (which creates dependency), or bureaucracy (which is slow and inflexible). None of these mechanisms are adequate for the speed and scale of challenges we face — from climate adaptation to humanitarian response.
 
-**The Solution:** A fourth type of economic relationship based on **mutual recognition**—where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. This creates a self-organizing coordination system that is:
-
-- **Fast**: Allocations converge in seconds, not months
-- **Fair**: Mathematically guaranteed proportional distribution
-- **Efficient**: Resources flow directly based on declared needs and mutual recognition
+**The Solution:** A fourth type of economic relationship based on **priority aligned capacity distribution**. This creates a self-organizing coordination system that is:
+ 
+ - **Fast**: Allocations converge in seconds, not months
+ - **Fair**: Mathematically guaranteed proportional distribution based on priorities
+ - **Efficient**: Resources flow directly based on declared needs and priority alignment
 - **Decentralized**: No central authority controls outcomes or data
 
 **Try It:** [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (browser-based, peer-to-peer, no installation required)
@@ -17,33 +17,35 @@
 
 The infrastructure operates on three simple data points published by each participant:
 
-**1. Recognition Weights** - Who contributes to your organizational goals?
-   - Each entity allocates 100% of recognition among contributors
-   - Non-transferable and dynamically adjustable as relationships evolve
-   - Recognition can reflect contributions to direct operations or broader mission-aligned values
-   - Organized as a contribution tree tracking different types of support
-
-**2. Available Capacity** - What resources can you offer?
-   - Declare surplus resources (funds, expertise, facilities, time)
-   - Specify filters (time windows, locations, resource types)
-   - Update dynamically as circumstances change
-
-**3. Declared Needs** - What resources do you require?
-   - State specific resource requirements
-   - Update in real-time as needs evolve
-   - System caps allocations at actual declared needs (preventing accumulation)
-
-**4. Mutual Recognition** - Bidirectional acknowledgment of contributions
-   - Calculated as the minimum of reciprocal recognition percentages
-   - Example: If Organization A recognizes B at 50% and B recognizes A at 10%, their mutual recognition is 10%
-   - Taking the minimum ensures proportional reciprocity
-   - Self-recognition is valid for time-shifting resources within your own organization
-
-**5. Contribution Trees** - Structured tracking of contribution types
-   - Each branch represents a category (program areas, operational support, etc.)
-   - Points distributed among contributors within each branch
-   - Global recognition calculated from weighted contributions across all branches
-   - Enables granular tracking while maintaining overall coherence
+**1. Priority Weights** - How do you prioritize your capacity?
+    - Each entity allocates 100% of weight among recipients or categories
+    - **Often derived from recognition of contribution to priority realization**
+    - Non-transferable and dynamically adjustable as priorities evolve
+    - Weights reflect strategic alignment, mission contribution, or operational necessity
+    - Organized as a Prioritization tree tracking different types of support
+ 
+ **2. Available Capacity** - What resources can you offer?
+    - Declare surplus resources (funds, expertise, facilities, time)
+    - Specify filters (time windows, locations, resource types)
+    - Update dynamically as circumstances change
+ 
+ **3. Declared Needs** - What resources do you require?
+    - State specific resource requirements
+    - Update in real-time as needs evolve
+    - System caps allocations at actual declared needs (preventing accumulation)
+ 
+ **4. Priority Reciprocity** - How shared priorities drive stability
+    - Allocations are often guided by reciprocal prioritization
+    - **Reciprocity is typically established through mutual recognition of contribution to priority realization**
+    - Example: If Organization A prioritizes B at 50% and B prioritizes A at 10%, their reciprocal alignment is 10%
+    - This ensures resources flow to partners with shared commitment
+    - Self-prioritization allows time-shifting resources within your own organization
+ 
+ **5. Prioritization trees** - Structured tracking of alignment
+    - Each branch represents a category (program areas, operational support, etc.)
+    - Weights distributed among recipients within each branch
+    - Global priority calculated from weighted contributions across all branches
+    - Enables granular tracking while maintaining overall coherence
 
 **Resource Types:**
    - **Mission-aligned values**: Contributions toward organizational mission and values (no shared definitions required)
@@ -51,70 +53,68 @@ The infrastructure operates on three simple data points published by each partic
    - System handles both intangible mission contributions and tangible resource coordination
 
 ### The Allocation Algorithm
-
-**Two-Tier Priority System:**
-
-**Tier 1 - Mutual Recognition Priority**: Entities with mutual recognition receive first priority based on:
-   - Strength of mutual recognition
-   - Declared resource needs
-   - Compatible resource specifications (time, location, type)
-
-**Tier 2 - Unilateral Recognition**: Remaining capacity flows to entities you recognize (even without mutual recognition)
-   - Enables support for new partners building recognition networks
-   - Maintains incentives for genuine contribution
-
-**Allocation Process:**
-1. Filter for compatible resource specifications
-2. Calculate proportional shares based on mutual recognition
-3. Recognition determines the split; need size sets the cap
-4. Allocations capped at declared needs (no accumulation beyond stated requirements)
-
-**Dynamic Updates:**
-- Remaining need = max(0, Declared Need - Total Received)
-- Adaptive damping prevents allocation oscillation
-- Each resource type tracks independently
-- System converges to stable equilibrium in 5-10 calculation rounds
+ 
+ **Constrained Weighted Allocation:**
+ 
+ The system solves a resource allocation problem where providers and recipients express preferences through priorities (weights), subject to strict constraints.
+ 
+ **1. Proportionality & Fairness**:
+    - **Provider Weights**: "I dedicate X% of my capacity availability to this need" -> Guides initial distribution.
+    - **Recipient Weights**: "I prefer X% of my support to come from you" -> Guides refined source adjustment.
+ 
+ **2. Hard Constraints**:
+    - **Need Limits**: Allocations never exceed declared needs (no accumulation).
+    - **Capacity Limits**: Allocations never exceed available capacity.
+    - **Physical Units**: Respects minimum divisible units (e.g. "people" must be integers).
+ 
+ **3. Allocation Phase 1 (Provider Constraints)**:
+    - Calculates ideal weighted targets based on provider priorities.
+    - Applies need constraints (capping at declared need).
+    - Distributes capacity proportionally to weights, respecting all limits.
+ 
+ **4. Allocation Phase 2 (Recipient Refinement)**:
+    - Recipients can adjust *who* they receive from, shifting allocations between providers to match their source preferences (based on recognition).
+    - This happens without violating any provider's capacity or willingness limits.
+ 
+ **Dynamic & Self-Correcting**:
+ - Remaining need = max(0, Declared Need - Total Received)
+ - System converges to stable equilibrium as needs are met or network state changes.
+ - Each resource type tracks independently.
 
 ### Mathematical Foundations
 
 The system's fairness and efficiency are guaranteed by these formal properties:
 
 ```
-Recognition Distribution:
-- Total Recognition per Entity = 100%
-- Recognition allocated among contributors as percentages
+Provider Optimization Problem (Phase 1):
 
-Mutual Recognition Calculation:
-MR(Entity_A, Entity_B) = min(
-    Recognition_A_gives_B,
-    Recognition_B_gives_A
-)
+Given:
+- C: Total Provider Capacity
+- N_i: Declared Need for recipient i
+- w_i: Provider's weight for recipient i (Σ w_i = 100%)
 
-Proportional Share Calculation:
-Share(Recipient, Provider) = 
-    MR(Recipient, Provider) / Σ MR(Provider, All_Compatible_Recipients)
+Objective:
+Minimize Σ (A_i - w_i * C)^2  (Minimize deviation from weighted proportional share)
 
-Active Need (with oscillation prevention):
-Active_Need = Declared_Need × Damping_Factor
-    where Damping_Factor ∈ {0.5, 0.8, 1.0}
+Subject to Constraints:
+1. 0 <= A_i <= N_i        (Need Constraint: Cannot exceed declared need)
+2. Σ A_i <= C             (Capacity Constraint: Cannot exceed avail capacity)
 
-Raw Allocation:
-Raw_Allocation(Recipient, Provider) = 
-    Provider_Capacity × Share(Recipient, Provider)
+Recipient Source Refinement (Phase 2):
+Recipients adjust source mix to match their preferences (w_recip):
+Minimize Σ (S_j - w_recip_j * Total_Received)^2
 
-Final Allocation (capped at need):
-Final_Allocation(Recipient, Provider) = min(
-    Raw_Allocation(Recipient, Provider),
-    Declared_Need(Recipient)
-)
+Subject to:
+1. Total_Received constant (No change in total help)
+2. Provider allocations constant (No change in provider load)
 
-Need Update (next cycle):
-Remaining_Need = max(0, Declared_Need - Total_Received)
+Update Law (Next Cycle):
+Remaining_Need(t+1) = max(0, Declared_Need(t) - Total_Received(t))
 ```
 
 **Key Properties:**
 - **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
-- **Proportional fairness**: Allocations strictly proportional to mutual recognition
+- **Proportional fairness**: Allocations strictly proportional to priority
 - **Dynamic equilibrium**: System maintains instantaneous optimality as network state evolves
 - **Contraction guarantee**: Receiving resources always reduces remaining need (holds unconditionally)
 - **Deterministic algorithm**: Same inputs always produce same allocations
@@ -147,52 +147,44 @@ Provider non-delivery is resolved in Protocol v6 (draft) through satisfaction-ba
 
 ### Property 2: Proportional Fairness
 
-**Theorem:** Allocations are strictly proportional to mutual recognition.
-
-**Formal Statement:**
-```
-∀ Recipients A, B with respect to Provider P:
-If MR(P, A) = MR(P, B)
-Then Raw_Allocation(A) = Raw_Allocation(B)
-```
+**Theorem:** Allocations are strictly proportional to provider priorities.
+ 
+ **Formal Statement:**
+ ```
+ ∀ Recipients A, B with respect to Provider P:
+ If Priority(P, A) = Priority(P, B)
+ Then Raw_Allocation(A) = Raw_Allocation(B)
+ ```
 
 **Proof:**
 
-Given the allocation formula:
-```
-Share(Recipient, Provider) = MR(Recipient, Provider) / Total_MR
-
-Where Total_MR = Σ MR(Provider, All_Compatible_Recipients)
-```
-
-For recipients A and B:
-```
-Share(A) = MR(P, A) / Total_MR
-Share(B) = MR(P, B) / Total_MR
-
-If MR(P, A) = MR(P, B), then:
-Share(A) = Share(B)
-
-Raw allocation calculation:
-Raw_Allocation(A) = Provider_Capacity × Share(A)
-Raw_Allocation(B) = Provider_Capacity × Share(B)
-
-Since Share(A) = Share(B) and Provider_Capacity is constant:
-∴ Raw_Allocation(A) = Raw_Allocation(B)
-```
-
-**Generalization:** For any ratio r = MR(P, A) / MR(P, B):
-```
-Raw_Allocation(A) / Raw_Allocation(B) = r
-```
-
-Allocations are strictly proportional to mutual recognition ratios. □
+**Proof:**
+ 
+ The allocation solves: `Minimize Σ (A_i - w_i * C)^2`
+ 
+ The optimality condition (ignoring boundary constraints) sets the derivative to zero:
+ `2(A_i - w_i * C) = λ` (Lagrange multiplier for capacity constraint)
+ 
+ This implies:
+ `A_i = w_i * C + λ/2`
+ 
+ If we assume the capacity constraint is binding (Σ A_i = C) and weights sum to 1 (Σ w_i = 1):
+ `Σ A_i = Σ (w_i * C + λ/2) = C + n*λ/2 = C`
+ `=> λ = 0`
+ 
+ Therefore, when needs allow:
+ `A_i = w_i * C`
+ 
+ For any two recipients A and B:
+ `A_A / A_B = (w_A * C) / (w_B * C) = w_A / w_B`
+ 
+ Thus, allocations are strictly proportional to provider weights (which reflect priority alignment). Constraints (needs) simply cap this allocation, but do not distort the proportionality of the *target* distribution. □
 
 ### Property 3: Dynamic Equilibrium and Contraction
 
 **Theorem:** The system maintains instantaneous optimality as network state evolves.
 
-**Framework:** The system computes optimal allocation r*(S) for current state S (recognition, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**, not convergence to a fixed point.
+**Framework:** The system computes optimal allocation r*(S) for current state S (priorities, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**, not convergence to a fixed point.
 
 **Formal Proof of Contraction:**
 
@@ -226,7 +218,7 @@ Contraction constant: k = (1 - f) < 1
 
 **Step 3: Convergence to zero (static case only)**
 
-If network state becomes static (no new needs, stable recognition/capacity):
+If network state becomes static (no new needs, stable priortization/capacity):
 ```
 ||r(t)|| ≤ k^t · ||r(0)|| → 0 as t → ∞
 ```
@@ -289,14 +281,14 @@ Total_Received cannot exceed Declared_Need
 ```
 
 **System Guarantee:**
-```
-The min() capping function combined with remaining need tracking ensures:
-∀ R, ∀ t: Total_Received(R, t) ≤ Declared_Need(R, t)
-
-No accumulation beyond stated requirements is mathematically possible.
-```
-
-**Conclusion:** The allocation formula structurally prevents accumulation. □
+ ```
+ The optimization constraint (Constraint 1) explicitly forbids exceeding declared need:
+ 0 <= Allocations <= Declared_Need
+ 
+ No accumulation beyond stated requirements is mathematically possible because the solver enforces this hard bound.
+ ```
+ 
+ **Conclusion:** The allocation constraints structurally prevent accumulation. □
 
 ### Property 5: Contraction (Always Holds)
 
@@ -342,7 +334,7 @@ Even when needs evolve over time:
 
 **Static equilibrium case:**
 
-When network state stabilizes (no new needs, constant recognition/capacity):
+When network state stabilizes (no new needs, constant prioritization/capacity):
 ```
 If Remaining_Need(R) > 0 and
    Available_Capacity > 0 and
@@ -363,7 +355,7 @@ The only stable equilibrium is Remaining_Need = 0 for all R
 **Formal Statement:**
 ```
 ∀ Inputs I₁, I₂:
-If Recognition(I₁) = Recognition(I₂) AND
+If Prioritization(I₁) = Prioritization(I₂) AND
    Capacity(I₁) = Capacity(I₂) AND
    Needs(I₁) = Needs(I₂)
 Then allocate(I₁) = allocate(I₂)
@@ -373,27 +365,19 @@ Then allocate(I₁) = allocate(I₂)
 
 The allocation function is defined as a pure mathematical operation:
 ```
-φ(Recognition, Capacity, Needs) → Allocations
+φ(Prioritization, Capacity, Needs) → Allocations
 ```
 
-Each step is deterministic:
-```
-1. Mutual Recognition calculation:
-   MR(A, B) = min(Recognition_A→B, Recognition_B→A)
-   Pure function of Recognition weights → Deterministic ✓
-
-2. Share calculation:
-   Share(R, P) = MR(R, P) / Σ MR(P, All_R)
-   Pure arithmetic → Deterministic ✓
-
-3. Raw Allocation:
-   Raw_Alloc = Capacity × Share
-   Pure multiplication → Deterministic ✓
-
-4. Final Allocation:
-   Final_Alloc = min(Raw_Alloc, Need)
-   Pure function → Deterministic ✓
-```
+**Proof:**
+ 
+ The allocation is the solution to minimizing a strictly convex quadratic function (`Σ (A_i - w_i * C)^2`) over a convex set (defined by linear constraints `0 <= A_i <= N_i` and `Σ A_i <= C`).
+ 
+ By standard convex optimization theory:
+ 1. The feasible set is convex (intersection of half-spaces).
+ 2. The objective function is strictly convex (sum of squares).
+ 3. Therefore, there exists a **unique global minimum**.
+ 
+ Since the minimum is unique, the algorithm (which finds this minimum) must produce the exact same result for the same inputs every time.
 
 **Scope:** This property guarantees that the allocation algorithm itself is deterministic. It does NOT address:
 - Network-level consistency (different nodes may observe different states at different times)
@@ -417,7 +401,7 @@ A provider might under-declare capacity to reserve resources or maintain optiona
 
 **Non-Delivery (Current Protocol - v5):**
 
-In the current protocol, a provider could declare capacity but fail to deliver. Recognition updates are social/manual, requiring active community response.
+In the current protocol, a provider could declare capacity but fail to deliver. Prioritization updates are social/manual, requiring active community response.
 
 **Resolution (Protocol v6 - Draft):**
 
@@ -435,62 +419,62 @@ The protocol supports `SlotFilter` specifications for time/location/type constra
 
 ---
 
-### Recognition Gaming Analysis
-
-**Question:** Can entities manipulate outcomes through recognition weight gaming?
-
-**The Self-Correcting Mechanism:**
-
-The system has a fundamental mathematical property that prevents most recognition gaming:
-
-```
-Total Recognition = 100% (zero-sum constraint)
-Total Recognition = Effective Recognition + Ineffective Recognition
-
-Therefore:
-↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Mutual Recognition with Beneficial Partners
-      → ↓ Access to Beneficial Resources
-         → ↓ Goal Achievement
-```
-
-**Why this resolves most "gaming" attempts:**
-
-1. **Individual false recognition:** Giving recognition to non-contributors automatically reduces recognition of actual contributors. The entity starves itself of beneficial resources through its own choices.
-
-2. **Recognition "cartels":** 
-   - If cartel members genuinely meet each other's needs → this is a legitimate cooperative, not gaming
-   - If cartel members don't actually help each other → needs remain unmet, forcing recognition reallocation to external helpers or actual cooperation
-   - 100% budget forces tradeoff: high internal recognition = low external recognition = reduced access to external resources
-
-3. **Time-shifting recognition:** Reducing recognition after receiving decreases future mutual recognition, reducing future allocations. The bidirectional constraint makes this self-defeating over multiple periods.
-
-**The One Remaining Algorithmic Vulnerability: Single-Period Exit**
-
-An entity could:
-1. Build genuine recognition through contribution
-2. In final period before exit: declare maximal needs
-3. Receive allocation based on accumulated recognition
-4. Exit before any correction mechanisms operate
-
-**Why this works once:**
-- Non-accumulation property limits extraction to declared need per period
-- But entity can take one period's allocation and leave
-- No future period exists for correction mechanism
-
-**Mitigation:**
-- Non-accumulation caps extraction (can't stockpile)
-- Requires building genuine recognition first
-- Network can observe patterns
-- Social reputation effects
-
-**Conclusion:**
-
-The protocol is **self-correcting for ongoing participants** through:
-- 100% recognition budget constraint + outcome feedback (need gaming)
-- Satisfaction-based learning in v6 (provider gaming)
-
-The only remaining algorithmic vulnerability is **one-time exit after building trust**, which is fundamentally a trust/reputation problem that exists in any system requiring multi-period interaction.
+### Strategic Priority Analysis
+ 
+ **Question:** Can entities manipulate outcomes through priority weight gaming?
+ 
+ **The Self-Correcting Mechanism:**
+ 
+ The system has a fundamental mathematical property that prevents most priority gaming:
+ 
+ ```
+ Total Weight = 100% (zero-sum constraint)
+ Total Weight = Effective Priority + Ineffective Priority
+ 
+ Therefore:
+ ↑ Ineffective Priority → ↓ Effective Priority
+    → ↓ Reciprocal Alignment with Beneficial Partners
+       → ↓ Access to Beneficial Resources
+          → ↓ Goal Achievement
+ ```
+ 
+ **Why this resolves most "gaming" attempts:**
+ 
+ 1. **Misaligned Priorities:** Prioritizing non-contributors automatically reduces priority for actual contributors. The entity starves itself of beneficial resources through its own choices.
+ 
+ 2. **Priority "Cartels":**
+    - If cartel members genuinely meet each other's needs → this is a legitimate cooperative
+    - If cartel members don't actually help each other → needs remain unmet, forcing priority reallocation to external helpers or actual cooperation
+    - 100% budget forces tradeoff: high internal priority = low external priority = reduced access to external resources
+ 
+ 3. **Time-Shifting:** Reducing priority after receiving decreases future reciprocal alignment, reducing future allocations. The bidirectional nature makes this self-defeating over multiple periods.
+ 
+ **The One Remaining Algorithmic Vulnerability: Single-Period Exit**
+ 
+ An entity could:
+ 1. Build genuine alignment through contribution
+ 2. In final period before exit: declare maximal needs
+ 3. Receive allocation based on accumulated alignment
+ 4. Exit before any correction mechanisms operate
+ 
+ **Why this works once:**
+ - Non-accumulation property limits extraction to declared need per period
+ - But entity can take one period's allocation and leave
+ - No future period exists for correction mechanism
+ 
+ **Mitigation:**
+ - Non-accumulation caps extraction (can't stockpile)
+ - Requires building genuine alignment first
+ - Network can observe patterns
+ - Social reputation effects
+ 
+ **Conclusion:**
+ 
+ The protocol is **self-correcting for ongoing participants** through:
+ - 100% priority budget constraint + outcome feedback
+ - Satisfaction-based learning in v6 (provider gaming)
+ 
+ The only remaining algorithmic vulnerability is **one-time exit after building trust**, which is fundamentally a trust/reputation problem that exists in any system requiring multi-period interaction.
 
 ---
 
@@ -501,7 +485,7 @@ The only remaining algorithmic vulnerability is **one-time exit after building t
 
 Thus far we have principally spoken of free-association between individuals, but what about between organizations, communities, states etc.?
 
-If States/Organizations mutually recognized eachother's contributions towards their own self actualization, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors.
+If States/Organizations mutually recognized eachother's contributions towards the realization of eachother's priorities, and surplus flowed bi-directionally, there would be no more need for imports/exports or international-trade because resources and coordinations flows as surplus from mutual-recognized contributors.
 
 Internally each state/organization would have a mechanism for collective setting of the proportions of the branches of self-actualization of their community.
 For example: **Each member has an equal share of proportion-setting-power (at which levels?)**
@@ -515,7 +499,7 @@ The design space is vast, especially for all those decisions that do not concern
 - do all members get equal shares of proportion-setting-power (at which levels?) How is this determined?
 - How are contributors added to nodes? How is this determined?
 - Can nodes represent groups of contributors, and the tree represent a federation of groups? Could these groups have their own decision making logic for membership within them?
-- how do new nodes get created in an organization's recognition-tree? (are there limits to this?) - can one add point to one's own created-node? Or to a node one is a part of?
+- how do new nodes get created in an organization's prioritization-tree? (are there limits to this?) - can one add point to one's own created-node? Or to a node one is a part of?
 - can one add points towards a node one is a part of?
 - How are capacities collectively declared, and how are their absolute values determined? How are their filters on share-distribution determined
 
@@ -542,19 +526,19 @@ Traditional coordination requires lengthy political negotiations before resource
 **Free Association:**
 - Day 1: Entity declares need in system
 - Immediately: All participants see need; system recalculates optimal allocation
-- Day 1-2: Resource commitments transparent and automatic based on pre-established mutual recognition
+- Day 1-2: Resource commitments transparent and automatic based on pre-established prioritization
 - Day 2-3: First resources arrive from mutual partners
 - Ongoing: System continuously adapts as needs evolve
 
 ### Organizational Resource Coordination
 
-**Foundation Grant Allocation**: Instead of lengthy application processes, foundations recognize mission-aligned organizations. When capacity is available, it flows automatically to recognized partners based on their declared needs and mutual recognition strength.
+**Foundation Grant Allocation**: Instead of lengthy application processes, foundations recognize mission-aligned organizations. When capacity is available, it flows automatically to recognized partners based on their declared needs and **reciprocal alignment (based on recognition)**.
 
-**Humanitarian Response**: Aid organizations mutually recognize each other's contributions to shared goals. When a crisis emerges, resources flow automatically to organizations with strongest mutual recognition and greatest need—no coordination meetings required.
+**Humanitarian Response**: Aid organizations mutually recognize each other's contributions to shared goals. When a crisis emerges, resources flow automatically to organizations with strongest **reciprocal alignment (based on recognition)** and greatest need—no coordination meetings required.
 
-**Impact Investment Networks**: Investors recognize organizations working on aligned goals. Capital flows based on mutual recognition and declared capital needs, creating efficient deployment without traditional fundraising overhead.
+**Impact Investment Networks**: Investors recognize organizations working on aligned goals. Capital flows based on **reciprocal alignment (based on recognition)** and declared capital needs, creating efficient deployment without traditional fundraising overhead.
 
-**Community Resource Sharing**: Communities allocate shared resources (facilities, equipment, expertise) based on members' mutual recognition of contributions and declared needs. The system handles allocation automatically, reducing administrative burden.
+**Community Resource Sharing**: Communities allocate shared resources (facilities, equipment, expertise) based on members' **reciprocal alignment (based on recognition)** and declared needs. The system handles allocation automatically, reducing administrative burden.
 
 ### Key Outcomes
 
@@ -567,8 +551,8 @@ Traditional coordination requires lengthy political negotiations before resource
 - vs. typical ~70% after administrative costs
 
 **Alignment**: Resources automatically flow to mission-aligned partners
-- Mutual recognition ensures values alignment
-- No need for lengthy due diligence on shared values
+ - Priority alignment ensures values alignment
+ - No need for lengthy due diligence on shared values
 
 **Adaptability**: System responds in real-time as circumstances evolve
 - Priorities change → allocations recalculate automatically
@@ -579,9 +563,9 @@ Traditional coordination requires lengthy political negotiations before resource
 
 ### How Resource Flows Are Determined
 
-**Priority-Based Allocation:**
-1. **Tier 1 - Mutual Recognition**: Entities with mutual recognition receive priority proportional to recognition strength and declared needs
-2. **Tier 2 - Unilateral Recognition**: Remaining capacity flows to recognized entities (even without mutual recognition), enabling support for emerging partnerships
+**Constrained Priority Allocation:**
+ 1. **Phase 1 - Provider Constraints**: Capacity is distributed according to provider priorities, bounded by declared needs and total capacity.
+ 2. **Phase 2 - Source Refinement**: Recipients refine their allocations to prefer sources they recognize, ensuring reciprocal stability.
 
 **Real-Time Adaptation:**
 - System recalculates allocations automatically when network state changes
@@ -589,38 +573,38 @@ Traditional coordination requires lengthy political negotiations before resource
 - Mathematical guarantee: If sufficient capacity exists, all needs are met through optimal allocation
 
 **Mission-Aligned Resource Flow:**
-- Recognition can extend to entities working on aligned causes
+- Prioritiest can extend to entities working on aligned causes
 - Resources flow based on contribution to declared organizational goals
 - Enables support for broader ecosystem of mission-aligned work
 
-### Self-Correcting Network Properties
+### Self-Correcting Priority Properties
 
-The system naturally promotes accurate recognition through mathematical necessity:
+The system naturally promotes accurate prioritization through mathematical necessity:
+ 
+ **Priority Accuracy and Network Integrity:**
 
-**Recognition Accuracy and Network Integrity:**
-
-Organizations define their goals and priorities subjectively, but achieving them depends on objective access to resources and partnerships. Recognition accuracy is validated through outcomes:
-
-- **Effective Recognition**: Recognition that, when acted upon, connects you with resources and partnerships that genuinely advance your organizational goals (validated by positive outcomes)
-
-- **Ineffective Recognition**: Recognition that fails to connect you with beneficial resources or creates harmful dependencies (invalidated by negative outcomes)
+Organizations define their goals and priorities subjectively, but achieving them depends on objective access to resources and partnerships. Priority accuracy is validated through outcomes:
+ 
+ - **Effective Priority**: Priorities that, when acted upon, connect you with resources and partnerships that genuinely advance your organizational goals (validated by positive outcomes)
+ 
+ - **Ineffective Priority**: Priorities that fail to connect you with beneficial resources or create misaligned dependencies (invalidated by negative outcomes)
 
 **Mathematical Consequence:**
 
 ```
-For any participant:
-Total Recognition = 100%
-Total Recognition = Effective Recognition + Ineffective Recognition
+ For any participant:
+ Total Priority Budget = 100%
+ Total Priority = Effective Priority + Ineffective Priority
+ 
+ Therefore:
+ ↑ Ineffective Priority → ↓ Effective Priority
+    → ↓ Reciprocal Alignment with Actually Beneficial Partners
+       → ↓ Access to Actually Beneficial Resources
+          → ↓ Organizational Goal Achievement
+             → Natural incentive to correct priority distribution
+ ```
 
-Therefore:
-↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Mutual Recognition with Actually Beneficial Partners
-      → ↓ Access to Actually Beneficial Resources
-         → ↓ Organizational Goal Achievement
-            → Natural incentive to correct recognition accuracy
-```
-
-**Key Implication**: The system creates natural incentives for accurate recognition. Inflating or misattributing recognition only decreases connection to beneficial partners and resources. Organizations that maintain accurate recognition patterns receive better-aligned resources and achieve better outcomes.
+**Key Implication**: The system creates natural incentives for accurate prioritization. **Since priorities are derived from recognition of contribution, misaligning priorities effectively means misidentifying beneficial contributors.** Inflation or misattribution of priorities and only decreases connection to actually beneficial partners. Organizations that maintain accurate recognition of contribution (and thus accurate priority alignments) receive better-aligned resources and achieve better outcomes.
 
 ## Collective Resource Coordination
 
@@ -638,13 +622,13 @@ Free Association can coordinate shared resource pools (organizational budgets, c
    - Organization B: $500K/month program funding
    - Organization C: $200K/month emergency reserve
 
-**3. Members Establish Mutual Recognition**
-   - Each member recognizes others' contributions to shared mission
-   - Mutual recognition percentages determine allocation weights
-
-**4. Calculate Collective Priority Distribution**
-   - Sum all mutual recognition values across collective members
-   - Each member's share = their mutual recognition / total collective mutual recognition
+**3. Members Establish Priority Alignment**
+    - Each member prioritizes contribution sources aligned with the shared mission
+    - Reciprocal priority percentages determine allocation weights
+ 
+ **4. Calculate Collective Priority Distribution**
+    - Sum all alignment values across collective members
+    - Each member's share = their reciprocal alignment / total collective alignment
 
 **5. Allocate Resources**
    - Distribute collective resources according to calculated shares
@@ -653,9 +637,9 @@ Free Association can coordinate shared resource pools (organizational budgets, c
 ### Key Properties
 
 - **Needs-based**: No entity receives beyond declared needs
-- **Recognition-weighted**: Stronger mutual recognition yields proportionally larger shares
-- **Continuously optimal**: System recalculates as network state evolves
-- **Non-accumulative**: Cannot accumulate resources beyond stated requirements
+ - **Priority-weighted**: Stronger reciprocal alignment yields proportionally larger shares
+ - **Continuously optimal**: System recalculates as network state evolves
+ - **Non-accumulative**: Cannot accumulate resources beyond stated requirements
 
 ### Decentralized Coordination Advantages
 
@@ -716,12 +700,12 @@ Free Association differs fundamentally from charitable resource distribution:
 - Hierarchical structure
 
 **Free Association:**
-- Bidirectional recognition and resource flows
+- Bidirectional prioritization and resource flows
 - Creates interdependency and mutual support
 - Resources flow to entities contributing to your goals
 - Peer-to-peer network structure
 
-Recognition-based allocation transcends charity by creating organic resource flows based on actual contributions to shared goals. Resources become part of a coordination network that strengthens mission alignment while enabling mutual achievement.
+Priority-alligned allocation transcends charity by creating organic resource flows based on actual contributions to shared goals. Resources become part of a coordination network that strengthens mission alignment while enabling mutual achievement.
 
 ### Distinction from Investment/Equity Models
 
@@ -752,13 +736,13 @@ For any participant:
 Total Recognition = 100%
 Total Recognition = Effective Recognition + Ineffective Recognition
    ∴ ↑ Ineffective Recognition → ↓ Effective Recognition
-      → ↓ Mutual Recognition with Beneficial Partners
+      → ↓ Recognition with Beneficial Partners
          → ↓ Access to Beneficial Resources
             → ↓ Goal Achievement
                → Natural correction toward accurate recognition
 ```
 
-**Key Distinction**: Recognition cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
+**Key Distinction**: Recognition (and the resulting access to prioritization) cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
 
 This represents a resolution of traditional ownership/control tensions: mutual recognition without domination, coordination without centralized authority, reciprocity without permanent obligation.
 
