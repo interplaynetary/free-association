@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { userPub, userAlias } from '$lib/network/auth.svelte';
+import { holsterUserPub as userPub, holsterUserAlias as userAlias } from '$lib/network/holster.svelte';
 import { userContacts, resolveToPublicKey } from '$lib/network/users.svelte';
 // V5: Import from v5 stores
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
@@ -181,11 +181,11 @@ export function cleanOrphanedContactIds() {
 					hasChanges = true;
 				}
 			}
-			
+
 			// V5: Also clean anti_contributors
 			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
 				const originalLength = nonRootNode.anti_contributors.length;
-				
+
 				nonRootNode.anti_contributors = nonRootNode.anti_contributors.filter((contributor) => {
 					if (contributor.id.startsWith('contact_')) {
 						const exists = validContactIds.has(contributor.id);
@@ -199,7 +199,7 @@ export function cleanOrphanedContactIds() {
 					}
 					return true;
 				});
-				
+
 				if (nonRootNode.anti_contributors.length < originalLength) {
 					hasChanges = true;
 				}
@@ -260,7 +260,7 @@ export function deduplicateContributors() {
 
 				// Create a set to track resolved public keys we've already seen
 				const seenPublicKeys = new Set<string>();
-				const deduplicatedContributors: Array<{id: string, points: number}> = [];
+				const deduplicatedContributors: Array<{ id: string, points: number }> = [];
 
 				// First pass: collect all contact IDs and their resolved public keys
 				const contactIdToPublicKey = new Map<string, string>();
@@ -279,7 +279,7 @@ export function deduplicateContributors() {
 				// Second pass: deduplicate, preferring contact IDs over public keys
 				// When merging duplicates, sum their points
 				const pointsByPublicKey = new Map<string, number>();
-				
+
 				originalContributors.forEach((contributor) => {
 					if (contributor.id.startsWith('contact_')) {
 						// This is a contact ID - resolve to public key to check for duplicates
@@ -347,18 +347,18 @@ export function deduplicateContributors() {
 					);
 				}
 			}
-			
+
 			// V5: Also deduplicate anti_contributors
 			if (nonRootNode.anti_contributors && nonRootNode.anti_contributors.length > 0) {
 				const originalLength = nonRootNode.anti_contributors.length;
 				const originalAntiContributors = [...nonRootNode.anti_contributors];
-				
+
 				const seenPublicKeys = new Set<string>();
-				const deduplicatedAntiContributors: Array<{id: string, points: number}> = [];
-				
+				const deduplicatedAntiContributors: Array<{ id: string, points: number }> = [];
+
 				const contactIdToPublicKey = new Map<string, string>();
 				const publicKeyToContactId = new Map<string, string>();
-				
+
 				originalAntiContributors.forEach((contributor) => {
 					if (contributor.id.startsWith('contact_')) {
 						const resolvedPublicKey = resolveToPublicKey(contributor.id);
@@ -368,7 +368,7 @@ export function deduplicateContributors() {
 						}
 					}
 				});
-				
+
 				// Deduplicate anti_contributors using the same logic
 				originalAntiContributors.forEach((contributor) => {
 					if (contributor.id.startsWith('contact_')) {
@@ -412,9 +412,9 @@ export function deduplicateContributors() {
 						}
 					}
 				});
-				
+
 				nonRootNode.anti_contributors = deduplicatedAntiContributors;
-				
+
 				if (nonRootNode.anti_contributors.length < originalLength) {
 					hasChanges = true;
 				}

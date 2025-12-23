@@ -57,10 +57,11 @@
 		// Enable auto-allocation publishing
 		cleanupAllocationPublishing = enableAutoAllocationPublishing();
 		
-		// ✅ PHASE 2: Enable automatic remaining need tracking (README.md line 312)
-		// This enables the coordination mechanism: recipients automatically reduce needs
+		// ✅ RE-ENABLED: Auto-need tracking (fixed to not overwrite declared needs)
+		// The bug was in applyNeedUpdateLawToCommitment() which was overwriting
+		// declared need quantities. Now it's fixed - declared needs stay constant.
 		cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
-		console.log('[HOME] ✅ Enabled automatic remaining need tracking');
+		console.log('[HOME] ✅ Enabled automatic remaining need tracking (fixed)');
 		
 		console.log('[HOME] ✅ Initialized and subscribed');
 		

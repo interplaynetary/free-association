@@ -3,14 +3,14 @@ import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
 import { page } from '$app/stores';
 // V5: Import from v5 protocol and stores
-import { 
-	findNodeById, 
-	isContribution, 
-	reorderNode, 
+import {
+	findNodeById,
+	isContribution,
+	reorderNode,
 	wouldCreateCycle,
 	createRootNode
 } from '@playnet/free-association/tree';
-import { userPub } from '$lib/network/auth.svelte';
+import { holsterUserPub as userPub } from '$lib/network/holster.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 
@@ -37,14 +37,14 @@ if (browser) {
 		if (pub && pub !== lastPub) {
 			// User has logged in or changed
 			lastPub = pub;
-			
+
 			// Check if we're on an org page - if so, don't reset the path
 			try {
 				const currentPage = get(page);
 				const isOrgPage = currentPage?.route?.id?.startsWith('/org/') || false;
-				
+
 				console.log('[GLOBAL] User logged in - isOrgPage:', isOrgPage, 'route:', currentPage?.route?.id);
-				
+
 				if (isOrgPage) {
 					console.log('[GLOBAL] User logged in while on org page - preserving org tree path');
 					// Don't reset path - stay on the org tree
@@ -63,7 +63,7 @@ if (browser) {
 			// User has logged out - initialize path with demo tree if available
 			lastPub = '';
 			console.log('[GLOBAL] User logged out - checking for demo tree');
-			
+
 			// Small delay to ensure demo tree is initialized
 			setTimeout(() => {
 				const demoTree = demoTreeStore.current;
@@ -87,13 +87,13 @@ function getCurrentTree() {
 	if (browser) {
 		const currentPage = get(page);
 		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
-		
+
 		if (isOrgPage) {
 			console.log('[GLOBAL] On org page - using demo tree (org tree)');
 			return demoTreeStore.current;
 		}
 	}
-	
+
 	// Not on an org page - use authenticated user's tree if available
 	const pub = get(userPub);
 	if (pub) {
@@ -111,13 +111,13 @@ function cloneTreeGlobal(treeToClone: any) {
 	if (browser) {
 		const currentPage = get(page);
 		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
-		
+
 		if (isOrgPage) {
 			// Org pages use demo tree - use JSON serialization
 			return JSON.parse(JSON.stringify(treeToClone));
 		}
 	}
-	
+
 	const pub = get(userPub);
 	if (pub) {
 		// Authenticated users: use structuredClone for proper cloning
@@ -134,7 +134,7 @@ function updateTreeStore(updatedTree: any) {
 	if (browser) {
 		const currentPage = get(page);
 		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
-		
+
 		if (isOrgPage) {
 			// Org pages: update demoTree with JSON serialization
 			try {
@@ -147,7 +147,7 @@ function updateTreeStore(updatedTree: any) {
 			return;
 		}
 	}
-	
+
 	const pub = get(userPub);
 	if (pub) {
 		// Authenticated users: update userTree
@@ -291,7 +291,7 @@ export const globalState = $state({
 		// This ensures Holster properly reloads the tree from network on next login
 		// const emptyTree = createRootNode('root', 'My Values');
 		// userTree.set(emptyTree);
-		
+
 		currentPath.set([]);
 		globalState.editMode = false;
 		globalState.editingNodeId = '';

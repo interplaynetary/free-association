@@ -16,7 +16,7 @@
 		subscribedRecordParticipants,
 		recordLoadingStates
 	} from '$lib/network/records.svelte';
-	import type { Record } from '$lib/coalition/record';
+	import type { Record } from '$lib/modules/coalition/record';
 	import { holsterUser } from '$lib/network/holster';
 	import { userAliasesCache, userPubKeys } from '$lib/network/users.svelte';
 	import { getColorForUserId } from '$lib/utils/ui/colorUtils';

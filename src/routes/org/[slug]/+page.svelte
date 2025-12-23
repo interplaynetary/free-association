@@ -561,13 +561,18 @@ if (data.isUserTree) {
 		segments.forEach((seg) => {
 			console.log(`  • ${seg.id.slice(0, 20)}... → ${seg.value.toFixed(2)}%`);
 		});
-
 		return segments;
 	});
 
 	// V5: Create reactive derived store from mutual recognition
-	// 🎯 ELEGANT: Now uses context-aware MR that works for ANY user!
-	const providerSegments = derived(currentUserMutualRecognition, ($mutualRec) => {
+	// 🎯 ELEGANT: Now uses
+	// Choose appropriate mutual recognition store based on page type
+	// User trees: Use context-aware store (loads from network)
+	// Demo orgs: Use demo store (computes from demo data)
+	const mutualRecStore = data.isUserTree ? currentUserMutualRecognition : demoMutualRecognition;
+	
+	// V5: Create reactive derived store for mutual recognition bar
+	const providerSegments = derived(mutualRecStore, ($mutualRec) => {
 		console.log('[📊 ORG-MR] Mutual recognition changed - generating segments for bar...');
 
 		if (!$mutualRec || Object.keys($mutualRec).length === 0) {

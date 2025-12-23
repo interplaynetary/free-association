@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import { onMount, onDestroy } from 'svelte';
-	import { userAlias, userPub } from '$lib/network/auth.svelte';
+	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import {
 		subscribeToChat,

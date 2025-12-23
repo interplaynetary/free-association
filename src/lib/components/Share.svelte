@@ -8,7 +8,7 @@
 	import { myMutualRecognition } from '$lib/protocol/stores/stores.svelte';
 	// V5: Composition feature not yet implemented
 	// import { userDesiredSlotComposeFrom } from '$lib/state/core.svelte';
-	import { userPub } from '$lib/network/auth.svelte';
+	import { holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	import { get } from 'svelte/store';
 	// V5: Import slot utility functions from v5 protocol
 	import {

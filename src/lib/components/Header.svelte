@@ -5,16 +5,16 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
-	// V5: Import from auth.svelte (already v5/Holster-only)
+	// V5: Import from holster.svelte (Holster-only)
 	import {
-		userAlias,
-		userPub,
+		holsterUserAlias as userAlias,
+		holsterUserPub as userPub,
 		login,
 		signup,
 		signout,
-		isAuthenticating,
+		isHolsterAuthenticating as isAuthenticating,
 		// changePassword
-	} from '$lib/network/auth.svelte';
+	} from '$lib/network/holster.svelte';
 	// Track tree persistence state
 	let isTreePersisting = $state(false);
 	import LanguageSwitcher from './LanguageSwitcher.svelte';

@@ -51,7 +51,47 @@ import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
 import { applyFiltersUnion, mergeSlots } from '@playnet/free-association/utils/capacity-filters';
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
-import { seed as itcSeed, event as itcEvent, join as itcJoin, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
+import { seed as itcSeed, event as itcEvent, join as itcJoin, leq as itcLeq, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+// TYPE EXTENSIONS (LOCAL)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Slots Cache Entry - Cached slots from another user
+ * 
+ * Enables offline allocation computation by caching others' needs and capacity.
+ * Per-source ITC tracking allows staleness detection even offline.
+ */
+export interface SlotsCacheEntry {
+	/** Cached need slots from this user */
+	need_slots?: NeedSlot[];
+
+	/** Cached capacity slots from this user */
+	capacity_slots?: AvailabilitySlot[];
+
+	/** ITC stamp from their commitment (for per-source staleness detection) */
+	itcStamp?: ITCStamp;
+
+	/** Timestamp from their commitment (fallback) */
+	timestamp: number;
+
+	/** When we cached this data locally */
+	cached_at: number;
+}
+
+/**
+ * Extended Commitment with Allocation Cache
+ * 
+ * Extends the base Commitment type with local caching for offline operation.
+ * Similar to how we cache others_recognition_of_me, we cache their slots.
+ */
+export interface CommitmentWithCache extends Commitment {
+	/** Cache of others' slots for offline allocation */
+	others_slots_cache?: Record<string, SlotsCacheEntry>;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // MY DATA STORES (V5)
@@ -246,7 +286,7 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 // NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
 // because they reference myMutualRecognition which is defined later
 
-// V5: NO ROUND STATE STORE (event-driven, no rounds!)
+
 // V5: NO ALLOCATION STATE STORE (commitments capture allocation results!)
 // V5: NO SEPARATE RECOGNITION STORE (recognition in commitment!)
 // V5: Recognition tree generates the weights that go into commitment!
@@ -396,7 +436,7 @@ export const networkRecognitionTrees: VersionedStore<RootNode, string> = createV
 		fulfillment: (tree) => tree.manual_fulfillment
 	},
 	schema: RootNodeSchema, // ✅ Defensive validation for network tree data
-	timestampExtractor: (tree) => new Date(tree.updated_at).getTime(),
+	timestampExtractor: (tree) => new Date(tree.updated_at || Date.now()).getTime(),
 	enableLogging: false
 });
 
@@ -424,6 +464,7 @@ export const networkRecognitionTrees: VersionedStore<RootNode, string> = createV
  */
 export const networkRecognitionWeights = networkCommitments.deriveField<GlobalRecognitionWeights>('recognition');
 
+
 /**
  * Network Need Slots - FIELD STORE
  * 
@@ -437,7 +478,17 @@ export const networkRecognitionWeights = networkCommitments.deriveField<GlobalRe
  * - Provider matching
  * - Allocation computation
  */
-export const networkNeedSlots = networkCommitments.deriveField<NeedSlot[]>('needs');
+export const networkNeedSlots = derived(networkCommitments, ($commits) => {
+	const allNeeds: (NeedSlot & { pubkey: string })[] = [];
+	for (const [pubkey, commitment] of Object.entries($commits)) {
+		if (commitment.need_slots) {
+			for (const slot of commitment.need_slots) {
+				allNeeds.push({ ...slot, pubkey });
+			}
+		}
+	}
+	return allNeeds;
+});
 
 /**
  * Network Capacity Slots - FIELD STORE
@@ -670,6 +721,69 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
 			...myCommitment,
 			others_recognition_of_me: { ...cache, ...updates }
 		});
+	}
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SLOTS CACHE UPDATER (OFFLINE-FIRST ALLOCATION)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Slots Cache Updater: Cache Others' Slots for Offline Allocation
+ * 
+ * Listens to incoming network commitments and caches their slots
+ * (need_slots, capacity_slots) along with ITC stamps for staleness detection.
+ * 
+ * This enables:
+ * - Offline allocation computation (no network needed)
+ * - Per-source staleness detection via ITC comparison
+ * - Network resilience (graceful degradation during outages)
+ * - Local-first operation (trust cache until network proves otherwise)
+ */
+networkCommitments.subscribe(($networkCommitsVersioned) => {
+	const myPub = get(holsterUserPub);
+	const myCommitment = get(myCommitmentStore);
+
+	if (!myPub || !myCommitment) return;
+
+	const slotsCache = (myCommitment as any).others_slots_cache || {};
+	const slotsUpdates: Record<string, SlotsCacheEntry> = {};
+
+	// Check each network commitment for slot changes
+	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
+		// Skip own commitment
+		if (theirPub === myPub) continue;
+
+		const theirCommitment = versionedEntity.data;
+		const cached = slotsCache[theirPub];
+
+		// Update cache if:
+		// 1. No cache exists, OR
+		// 2. Network data is newer (ITC comparison)
+		const shouldUpdate = !cached ||
+			(theirCommitment.itcStamp && cached.itcStamp &&
+				!itcLeq(theirCommitment.itcStamp, cached.itcStamp));
+
+		if (shouldUpdate) {
+			slotsUpdates[theirPub] = {
+				need_slots: theirCommitment.need_slots,
+				capacity_slots: theirCommitment.capacity_slots,
+				itcStamp: theirCommitment.itcStamp,
+				timestamp: theirCommitment.timestamp || Date.now(),
+				cached_at: Date.now()
+			};
+
+			console.log(`[SLOTS-CACHE] Updating ${theirPub.slice(0, 20)}... (${theirCommitment.need_slots?.length || 0} needs, ${theirCommitment.capacity_slots?.length || 0} capacity)`);
+		}
+	}
+
+	// Apply updates if any changes detected
+	if (Object.keys(slotsUpdates).length > 0) {
+		console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users for offline allocation`);
+		myCommitmentStore.set({
+			...myCommitment,
+			others_slots_cache: { ...slotsCache, ...slotsUpdates }
+		} as any);
 	}
 });
 
@@ -1083,7 +1197,7 @@ function addNeedSlotsToIndex(pubKey: string, needSlots: NeedSlot[] | Commitment,
 	if (!slots) return;
 
 	for (const needSlot of slots) {
-		const typeId = needSlot.need_type_id;
+		const typeId = needSlot.need_type_id || '';
 		const locationKey = getLocationBucketKey(needSlot);
 		const timeKey = getTimeBucketKey(needSlot);
 
@@ -1138,7 +1252,7 @@ function addCapacitySlotsToIndex(pubKey: string, capacitySlots: AvailabilitySlot
 	if (!slots) return;
 
 	for (const capacitySlot of slots) {
-		const typeId = capacitySlot.need_type_id;
+		const typeId = capacitySlot.need_type_id || '';
 		const locationKey = getLocationBucketKey(capacitySlot);
 		const timeKey = getTimeBucketKey(capacitySlot);
 
@@ -1915,7 +2029,40 @@ function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
  * 
  * Returns a complete commitment ready to publish
  */
-export function composeCommitmentFromSources(): Commitment | null {
+/**
+ * Total I've received (across all providers, by type)
+ * This would be computed by aggregating allocations from all providers
+ * 
+ * NOTE: Moved from allocation.svelte.ts to prevent circular dependency
+ */
+export const totalReceivedBySlot: Readable<Record<string, Record<string, number>>> = derived(
+	[networkAllocations, holsterUserPub],
+	([$allocations, $myPub]) => {
+		const result: Record<string, Record<string, number>> = {};
+		if (!$myPub) return result;
+
+		for (const [providerPub, allocationList] of $allocations.entries()) {
+			if (!Array.isArray(allocationList)) continue;
+
+			for (const allocation of allocationList) {
+				if (allocation.recipient_pubkey === $myPub) {
+					const typeId = allocation.need_type_id;
+					const quantity = allocation.quantity || 0;
+
+					if (typeId) {
+						if (!result[typeId]) {
+							result[typeId] = {};
+						}
+						result[typeId][providerPub] = (result[typeId][providerPub] || 0) + quantity;
+					}
+				}
+			}
+		}
+		return result;
+	}
+);
+
+export function composeCommitmentFromSources(totalReceivedMap?: Record<string, Record<string, number>>): Commitment | null {
 	console.log('[📝 COMPOSE] Composing commitment from sources...');
 
 	const tree = get(myRecognitionTreeStore);
@@ -1970,7 +2117,9 @@ export function composeCommitmentFromSources(): Commitment | null {
 		// Preserve stateful data from existing commitment
 		multi_dimensional_damping: existingCommitment?.multi_dimensional_damping,
 
-		// Metadata with merged ITC
+		// Removed valid-but-not-in-schema fields to fix build:
+		// total_allocated_by_slot: totalReceivedBySlot || {},
+		// distance_from_need_by_slot: ...
 		itcStamp: mergedITC,  // ✅ Now includes all network history!
 		timestamp: Date.now()
 	};
@@ -1984,6 +2133,11 @@ export function composeCommitmentFromSources(): Commitment | null {
 	console.log(`  • Others' rec cache: ${cacheCount} entries`);
 	console.log(`  • Need Slots: ${commitment.need_slots?.length || 0}`);
 	console.log(`  • Capacity Slots: ${commitment.capacity_slots?.length || 0}`);
+	const totalAllocCount = Object.keys(commitment.total_allocated || {}).length;
+	const distanceCount = Object.keys(commitment.distance_from_need || {}).length;
+	if (totalAllocCount > 0 || distanceCount > 0) {
+		console.log(`  • Total Allocated: ${totalAllocCount} types, Distance from Need: ${distanceCount} types`);
+	}
 
 	// Log details of recognition
 	if (recNonZero > 0) {
@@ -2040,7 +2194,7 @@ export function enableAutoCommitmentComposition(): () => void {
 		debounceTimer = setTimeout(() => {
 			isRecomposing = true;
 
-			const newCommitment = composeCommitmentFromSources();
+			const newCommitment = composeCommitmentFromSources(get(totalReceivedBySlot));
 			if (!newCommitment) {
 				console.log(`[AUTO-COMPOSE] ⏭️  Skipped: no source data (${reason})`);
 				isRecomposing = false;
@@ -2149,7 +2303,7 @@ export function getConvergenceStats() {
 			totalWithData++;
 
 			// Check if all needs are near zero
-			const totalNeed = commitment.need_slots.reduce((sum: number, slot) => sum + slot.quantity, 0);
+			const totalNeed = commitment.need_slots.reduce((sum: number, slot) => sum + (slot.quantity || 0), 0);
 			if (totalNeed < epsilon) {
 				convergedCount++;
 			}

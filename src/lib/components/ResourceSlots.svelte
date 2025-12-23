@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '@playnet/free-association/schemas';
+	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
 	import { TimePatternEditor } from './slots';
-	import { NEED_TYPES, type NeedType } from '@playnet/free-association/utils/needTypes';
+	import SlotPriorityDistributionEditor from './slots/form/SlotPriorityDistributionEditor.svelte';
+	import { NEED_TYPES, type NeedType } from '$lib/protocol/needTypes-local';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
@@ -52,6 +53,9 @@
 	
 	// Expanded state for allocation details
 	let expandedAllocations = $state<Set<string>>(new Set());
+
+    // Expanded state for priority editor
+    let expandedPrioritySlots = $state<Set<string>>(new Set());
 	
 	// Get current need type info
 	const currentNeedType = $derived(NEED_TYPES.find(t => t.id === selectedNeedType) || NEED_TYPES[0]);
@@ -85,19 +89,48 @@
 		const map = new Map<string, SlotAllocationRecord[]>();
 		if (!myPubKey) return map;
 		
+        let networkAllocCount = 0;
+        let selfAllocFound = 0;
+
 		for (const [providerPubKey, allocations] of allNetworkAllocations) {
 			if (allocations && Array.isArray(allocations)) {
 				for (const allocation of allocations) {
+                    networkAllocCount++;
 					if (allocation.recipient_pubkey === myPubKey && allocation.recipient_need_slot_id) {
 						const slotId = allocation.recipient_need_slot_id;
 						if (!map.has(slotId)) {
 							map.set(slotId, []);
 						}
 						map.get(slotId)!.push(allocation);
+                        if (providerPubKey === myPubKey) selfAllocFound++;
 					}
 				}
 			}
 		}
+
+        // Merge my own allocations (as provider) to myself (as recipient)
+        // These are not always in networkAllocations depending on how the stores are setup
+        for (const allocation of myAllocations) {
+            // Check if I am the recipient (Self-Allocation)
+            if (allocation.recipient_pubkey === myPubKey && allocation.recipient_need_slot_id) {
+                const slotId = allocation.recipient_need_slot_id;
+                
+                if (!map.has(slotId)) {
+                    map.set(slotId, []);
+                }
+                
+                // Avoid duplicates if I am somehow in networkAllocations
+                const existing = map.get(slotId)!;
+                if (!existing.some(a => a.availability_slot_id === allocation.availability_slot_id && a.provider_pubkey === allocation.provider_pubkey)) {
+                     existing.push(allocation);
+                     selfAllocFound++;
+                }
+            }
+        }
+
+        console.log(`[UI-NEEDS] Mapped ${networkAllocCount} network allocations to needs. found ${selfAllocFound} from myself.`);
+        console.log(`[UI-NEEDS] myAllocations (local) has:`, myAllocations.filter(a => a.recipient_pubkey === myPubKey));
+
 		return map;
 	});
 	
@@ -137,6 +170,26 @@
 		}
 		expandedAllocations = newSet;
 	}
+
+    function togglePriorityEditor(id: string) {
+        const newSet = new Set(expandedPrioritySlots);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+            // Close others if desired, or keep open
+        }
+        expandedPrioritySlots = newSet;
+    }
+
+    function handlePriorityUpdate(slot: SlotType, priority_distribution: Record<string, number>, isNeed: boolean) {
+        const updatedSlot = { ...slot, priority_distribution };
+        if (isNeed) {
+            onNeedUpdate(updatedSlot as NeedSlot);
+        } else {
+            onCapacityUpdate(updatedSlot as AvailabilitySlot);
+        }
+    }
 	
 	// Generic handlers (DRY)
 	function handleQuantityChange(slot: SlotType, quantity: number, isNeed: boolean) {
@@ -163,13 +216,47 @@
 		if (!slot.recurrence) return 'monthly';
 		return slot.recurrence + (slot.start_date ? ` from ${new Date(slot.start_date).toLocaleDateString()}` : '');
 	}
+
+	// Tier helpers
+	function getTierLabel(tier: number | string): string {
+		// Handle legacy string tiers
+		if (tier === 'mutual') return 'mutual';
+		if (tier === 'non-mutual') return 'non-mutual';
+		
+		// Handle numeric tiers
+		if (tier === 0) return 'mutual';
+		if (tier === 1) return 'non-mutual';
+		return `tier-${tier}`;
+	}
+
+	function getTierEmoji(tier: number | string): string {
+		const label = getTierLabel(tier);
+		if (label === 'mutual') return '🤝';
+		if (label === 'non-mutual') return '➡️';
+		return '🔢';
+	}
+	
+	function getTierDisplayName(tier: number | string): string {
+		const label = getTierLabel(tier);
+		if (label === 'mutual') return 'Mutual Recognition';
+		if (label === 'non-mutual') return 'One-way Connection';
+		return `Tier ${tier}`;
+	}
 </script>
 
 {#snippet slotCard(slot: SlotType)}
-	{@const allocations = isNeedMode 
+	{@const rawAllocations = isNeedMode 
 		? (needAllocationsMap.get(slot.id) || [])
 		: (capacityAllocationsMap.get(slot.id) || [])
 	}
+	<!-- Sort allocations by tier (0 first) then by amount (desc) -->
+	{@const allocations = [...rawAllocations].sort((a, b) => {
+		const tA = typeof a.tier === 'number' ? a.tier : (a.tier === 'mutual' ? 0 : 1);
+		const tB = typeof b.tier === 'number' ? b.tier : (b.tier === 'mutual' ? 0 : 1);
+		if (tA !== tB) return tA - tB;
+		return b.quantity - a.quantity;
+	})}
+	
 	{@const totalAllocated = allocations.reduce((sum, a) => sum + a.quantity, 0)}
 	{@const percentFilled = slot.quantity > 0 ? Math.min((totalAllocated / slot.quantity) * 100, 100) : 0}
 	
@@ -215,7 +302,16 @@
 				class="btn-time"
 				onclick={(e) => { e.stopPropagation(); toggleTimeEditor(slot.id); }}
 			>
-				🕐 {expandedSlots.has(slot.id) ? 'Close' : 'Edit Time'}
+				🕐 {expandedSlots.has(slot.id) ? 'Close' : 'Time'}
+			</button>
+
+            <button
+				type="button"
+				class="btn-time"
+				onclick={(e) => { e.stopPropagation(); togglePriorityEditor(slot.id); }}
+                title="Edit Priority Distribution"
+			>
+				⭐ {expandedPrioritySlots.has(slot.id) ? 'Close' : 'Priorities'}
 			</button>
 			
 			<button
@@ -246,6 +342,25 @@
 			</div>
 		{/if}
 		
+        {#if expandedPrioritySlots.has(slot.id)}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div 
+				class="time-editor-section" 
+				role="region"
+				onclick={(e) => e.stopPropagation()}
+			>
+                <div class="priority-header">
+                    <h4>Person-to-Person Priorities</h4>
+                    <p class="help-text">Override global recognition for this slot.</p>
+                </div>
+				<SlotPriorityDistributionEditor
+					priorityDistribution={slot.priority_distribution}
+                    onUpdate={(dist) => handlePriorityUpdate(slot, dist, isNeedMode)}
+				/>
+			</div>
+		{/if}
+
 		{#if expandedAllocations.has(slot.id)}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -288,8 +403,9 @@
 								})()
 								: allocation.recipient_pubkey
 							}
+							{@const tierLabel = getTierLabel(allocation.tier)}
 							
-							<div class="allocation-item {allocation.tier}">
+							<div class="allocation-item {tierLabel}">
 								<div class="allocation-header">
 									<span class="user-name">
 										{#await getUserName(otherPubKey)}
@@ -305,8 +421,8 @@
 									</span>
 								</div>
 								<div class="allocation-meta">
-									<span class="tier-badge {allocation.tier}">
-										{allocation.tier === 'mutual' ? '🤝 Mutual' : '➡️ One-way'}
+									<span class="tier-badge {tierLabel}">
+										{getTierEmoji(allocation.tier)} {getTierDisplayName(allocation.tier)}
 									</span>
 									{#if allocation.time_compatible && allocation.location_compatible}
 										<span class="compatible">✓ Time & Location match</span>

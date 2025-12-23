@@ -13,8 +13,8 @@ import { writable, derived, get } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { holster, holsterUser, isAuthenticated } from './holster';
 import { createVersionedStore, type VersionedStore } from '../utils/primitives/v-store.svelte';
-import type { 
-	Record as CoalitionRecord, 
+import type {
+	Record as CoalitionRecord,
 	UUID,
 	MembershipUpdateRecord,
 	RegistryEntryRecord,
@@ -43,8 +43,8 @@ import type {
 	DisputeRecord,
 	DisputeResolutionRecord,
 	RecordSchema
-} from '$lib/coalition/record';
-import { validateRecord } from '$lib/coalition/record';
+} from '$lib/modules/coalition/record';
+import { validateRecord } from '$lib/modules/coalition/record';
 
 // ═══════════════════════════════════════════════════════════════════
 // STATE STORES
@@ -112,15 +112,15 @@ export function initializeMyRecords(): void {
 
 	// Subscribe to my record index
 	const recordIndexRef = holster.user().get('coalition').get('record_index');
-	
+
 	recordIndexRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
-		
+
 		// data is expected to be an array of record IDs
 		const recordIds = Array.isArray(data) ? data : (data.ids || []);
-		
+
 		console.log(`[RECORDS] Found ${recordIds.length} records in index`);
-		
+
 		// Load each record
 		recordIds.forEach((recordId: string) => {
 			loadMyRecord(recordId);
@@ -133,24 +133,24 @@ export function initializeMyRecords(): void {
  */
 function loadMyRecord(recordId: UUID): void {
 	const recordRef = holster.user().get('coalition').get('records').get(recordId);
-	
+
 	recordRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
-		
+
 		try {
 			// Validate record
 			const record = validateRecord(data);
-			
+
 			// Update stores
 			myRecords.update(map => {
 				const newMap = new Map(map);
 				newMap.set(recordId, record);
 				return newMap;
 			});
-			
+
 			// Update versioned store
 			recordStore.update(recordId, record);
-			
+
 			console.log(`[RECORDS] ✅ Loaded my record: ${recordId} (${record.type})`);
 		} catch (error) {
 			console.error(`[RECORDS] ❌ Invalid record ${recordId}:`, error);
@@ -191,14 +191,14 @@ export function subscribeToParticipantRecords(pubKey: string): void {
 
 	// Subscribe to their record index
 	const recordIndexRef = holster.user(pubKey).get('coalition').get('record_index');
-	
+
 	const unsubIndex = recordIndexRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
-		
+
 		const recordIds = Array.isArray(data) ? data : (data.ids || []);
-		
+
 		console.log(`[RECORDS] Found ${recordIds.length} records from ${pubKey.slice(0, 20)}...`);
-		
+
 		// Load each record
 		recordIds.forEach((recordId: string) => {
 			loadNetworkRecord(pubKey, recordId);
@@ -221,20 +221,20 @@ export function subscribeToParticipantRecords(pubKey: string): void {
  */
 function loadNetworkRecord(pubKey: string, recordId: UUID): void {
 	const recordRef = holster.user(pubKey).get('coalition').get('records').get(recordId);
-	
+
 	recordRef.next().get((data: any, key: string) => {
 		if (!data || typeof data !== 'object') return;
-		
+
 		try {
 			// Validate record
 			const record = validateRecord(data);
-			
+
 			// Verify issuer matches pubKey (security check)
 			if (record.issuer !== pubKey) {
 				console.warn(`[RECORDS] ⚠️  Issuer mismatch for record ${recordId}: expected ${pubKey.slice(0, 20)}, got ${record.issuer.slice(0, 20)}`);
 				// Still store it but log the warning
 			}
-			
+
 			// Update network records store
 			networkRecords.update(map => {
 				const newMap = new Map(map);
@@ -244,7 +244,7 @@ function loadNetworkRecord(pubKey: string, recordId: UUID): void {
 				newMap.get(pubKey)!.set(recordId, record);
 				return newMap;
 			});
-			
+
 			console.log(`[RECORDS] ✅ Loaded network record: ${recordId} from ${pubKey.slice(0, 20)}... (${record.type})`);
 		} catch (error) {
 			console.error(`[RECORDS] ❌ Invalid record ${recordId} from ${pubKey.slice(0, 20)}...:`, error);
@@ -365,7 +365,7 @@ export async function updateRecordStatus(
 
 	const currentRecords = get(myRecords);
 	const record = currentRecords.get(recordId);
-	
+
 	if (!record) {
 		throw new Error(`Record ${recordId} not found`);
 	}
@@ -458,15 +458,15 @@ export const allRecords = derived(
 	[myRecords, networkRecords],
 	([$myRecords, $networkRecords]) => {
 		const all: CoalitionRecord[] = [];
-		
+
 		// Add my records
 		all.push(...Array.from($myRecords.values()));
-		
+
 		// Add network records
 		for (const participantRecords of $networkRecords.values()) {
 			all.push(...Array.from(participantRecords.values()));
 		}
-		
+
 		return all;
 	}
 );
@@ -503,7 +503,7 @@ export const recordStats = derived(
 		for (const record of allRecordsArray) {
 			// Count by type
 			stats.byType[record.type] = (stats.byType[record.type] || 0) + 1;
-			
+
 			// Count by status
 			stats.byStatus[record.status]++;
 		}

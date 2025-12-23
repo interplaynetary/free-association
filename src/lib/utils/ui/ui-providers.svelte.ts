@@ -1,6 +1,6 @@
 import { derived, get } from 'svelte/store';
 // V5: Import from v5 stores and protocol
-import { 
+import {
 	myRecognitionTreeStore as userTree,
 	myCapacitySlotsStore,
 	networkCommitments,
@@ -21,15 +21,15 @@ import type { Commitment, Node } from '@playnet/free-association/schemas';
 // V5: Helper to create nodesMap from tree
 function createNodesMap(tree: Node | null): Record<string, Node> {
 	if (!tree) return {};
-	
+
 	const map: Record<string, Node> = {};
 	map[tree.id] = tree;
-	
+
 	const descendants = getDescendants(tree);
 	descendants.forEach(node => {
 		map[node.id] = node;
 	});
-	
+
 	return map;
 }
 
@@ -50,8 +50,8 @@ function getDisplayName(userId: string, namesCache: Record<string, string>): str
 // Simplified contacts and users data provider - now includes organizations!
 export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 	return derived(
-		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache, globalOrganizations],
-		([$userContacts, $userIds, $userNamesCache, $userAliasesCache, $globalOrgs]) => {
+		[userContacts, userPubKeys, userNamesOrAliasesCache, userAliasesCache, globalOrganizations, nodesMap],
+		([$userContacts, $userIds, $userNamesCache, $userAliasesCache, $globalOrgs, $nodesMap]) => {
 			const items: Array<{
 				id: string;
 				name: string;
@@ -71,7 +71,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 			if ($globalOrgs) {
 				Object.entries($globalOrgs).forEach(([orgId, org]) => {
 					if (excludeIds.includes(orgId)) return;
-					
+
 					items.push({
 						id: orgId,
 						name: getOrganizationName(org, 'en'), // TODO: Use user's preferred language
@@ -81,7 +81,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 							isOrganization: true
 						}
 					});
-					
+
 					processedIds.add(orgId);
 				});
 			}
@@ -115,13 +115,53 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				});
 			}
 
-			// Add all users that aren't already added as contacts or orgs
+			// V5: Add contributors from the tree (if available) - before general users
+			// This ensures people we are already working with show up even if not in global list
+			if ($nodesMap) {
+				const treeContributorIds = new Set<string>();
+
+				Object.values($nodesMap).forEach(node => {
+					if (node.type === 'NonRootNode') {
+						const nonRoot = node as any;
+						// Add contributors
+						if (nonRoot.contributors && Array.isArray(nonRoot.contributors)) {
+							nonRoot.contributors.forEach((c: any) => treeContributorIds.add(c.id));
+						}
+						// Add anti-contributors
+						if (nonRoot.anti_contributors && Array.isArray(nonRoot.anti_contributors)) {
+							nonRoot.anti_contributors.forEach((c: any) => treeContributorIds.add(c.id));
+						}
+					}
+				});
+
+				treeContributorIds.forEach(contributorId => {
+					if (excludeIds.includes(contributorId)) return;
+					if (processedIds.has(contributorId)) return; // Already added as contact/org
+
+					// Try to resolve public key from contact ID if needed
+					// For now, assume contributorId is either a pubkey or contact ID we don't have loaded
+
+					items.push({
+						id: contributorId,
+						name: getDisplayName(contributorId, $userNamesCache),
+						metadata: {
+							userId: contributorId,
+							isContact: false,
+							gunAlias: $userAliasesCache[contributorId]
+						}
+					});
+
+					processedIds.add(contributorId);
+				});
+			}
+
+			// Add all users that aren't already added as contacts or orgs or contributors
 			if ($userIds) {
 				const allUserIds = [...new Set([...$userIds, ...Object.keys($userNamesCache)])];
 
 				allUserIds.forEach((userId) => {
 					if (excludeIds.includes(userId)) return;
-					if (processedIds.has(userId)) return; // Skip if already added as contact/org
+					if (processedIds.has(userId)) return; // Skip if already added
 
 					items.push({
 						id: userId,
@@ -140,7 +180,7 @@ export function createContactsAndUsersDataProvider(excludeIds: string[] = []) {
 				// Organizations first
 				if (a.metadata.isOrganization && !b.metadata.isOrganization) return -1;
 				if (!a.metadata.isOrganization && b.metadata.isOrganization) return 1;
-				
+
 				// Then contacts
 				if (a.metadata.isContact && !b.metadata.isContact) return -1;
 				if (!a.metadata.isContact && b.metadata.isContact) return 1;
@@ -277,10 +317,10 @@ export function createAllNetworkCapacitiesDataProvider(excludeCapacityId?: strin
 
 			// Get all commitments to access capacity slots
 			const commitments = getNetworkCommitmentsRecord();
-			
+
 			Object.entries(commitments).forEach(([userId, commitment]) => {
 				if (!commitment.capacity_slots) return;
-				
+
 				const providerName = getDisplayName(userId, $userNamesCache);
 
 				commitment.capacity_slots.forEach((slot) => {

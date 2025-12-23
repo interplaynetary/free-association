@@ -13,7 +13,7 @@
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
-	import { userAlias, userPub } from '$lib/network/auth.svelte';
+	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';

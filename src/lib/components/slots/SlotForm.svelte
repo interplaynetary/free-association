@@ -13,14 +13,15 @@
 -->
 
 <script lang="ts">
-  import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
-  import { NeedSlotSchema, AvailabilitySlotSchema } from '@playnet/free-association/schemas';
+  import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
+  import { NeedSlotSchema, AvailabilitySlotSchema } from '$lib/protocol/schemas';
   import NeedTypeSelector from './NeedTypeSelector.svelte';
   import BasicInfo from './form/BasicInfo.svelte';
   import QuantityInput from './form/QuantityInput.svelte';
   import TimeSelector from './form/TimeSelector.svelte';
   import LocationSelector from './form/LocationSelector.svelte';
   import FilterRuleEditor from './form/FilterRuleEditor.svelte';
+  import SlotPriorityDistributionEditor from './form/SlotPriorityDistributionEditor.svelte';
   
   interface Props {
     slot?: NeedSlot | AvailabilitySlot;
@@ -33,6 +34,9 @@
   let { slot, slotType, onSave, onCancel, readonly = false }: Props = $props();
   
   // Form state - initialize from slot or defaults
+  // We use $state.raw or just $state for these values
+  // To avoid locally referenced warnings, ideally we'd use a derived if we wanted reactivity to props
+  // But for a form, initializing once is common pattern.
   let formData = $state({
     id: slot?.id || crypto.randomUUID(),
     need_type_id: slot?.need_type_id || '',
@@ -63,6 +67,7 @@
     booking_window_hours: slot?.booking_window_hours,
     mutual_agreement_required: slot?.mutual_agreement_required,
     priority: slot?.priority,
+    priority_distribution: (slot?.priority_distribution || {}) as Record<string, number>,
     hidden_until_request_accepted: slot?.hidden_until_request_accepted
   });
   
@@ -73,7 +78,7 @@
   let showAdvancedOptions = $state(false);
   
   function updateField(field: string, value: any) {
-    formData[field] = value;
+    (formData as any)[field] = value;
     // Clear error for this field
     if (errors[field]) {
       delete errors[field];
@@ -264,9 +269,25 @@
               </label>
             </div>
             
+            <!-- Priority Distribution Editor (Person-to-Person) -->
+            <div class="field">
+              <label class="label">        
+                Priority Distribution (Person-to-Person)
+              </label>
+              <div class="help-text">
+                Override your global recognition weights for this specific slot.
+              </div>
+              <SlotPriorityDistributionEditor
+                priorityDistribution={formData.priority_distribution}
+                onUpdate={(dist) => updateField('priority_distribution', dist)}
+                {readonly}
+              />
+            </div>
+
+            <!-- Legacy Priority (Hidden/Deprecated in UI but kept for schema compatibility if needed) 
             <div class="field">
               <label class="label" for="priority">
-                Priority (higher = more important)
+                Legacy Priority (Simple Score)
               </label>
               <input
                 id="priority"
@@ -274,8 +295,10 @@
                 class="input"
                 bind:value={formData.priority}
                 placeholder="0"
+                readonly={readonly}
               />
             </div>
+            -->
             
             <div class="field">
               <label class="label" for="advance-notice">

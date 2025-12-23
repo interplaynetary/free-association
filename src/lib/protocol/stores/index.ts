@@ -48,7 +48,12 @@ export {
 	systemState,
 	allocationsStore,
 	myDampedNeeds,
-	allocationDebugInfo
+	allocationDebugInfo,
+	// Derived stores moved from stores.svelte.ts to break circular dependency
+	myRecognitionOfOthers,
+	othersRecognitionOfMe,
+	myCurrentNeeds,
+	myAvailableCapacity
 } from './allocation.svelte';
 
 // Attribute stores

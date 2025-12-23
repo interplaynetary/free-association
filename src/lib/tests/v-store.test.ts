@@ -24,7 +24,7 @@ import {
   zodEquals,
   zodArrayEquals,
   commonCheckers
-} from '../../utils/primitives/v-store-equality-checkers';
+} from '../utils/primitives/v-store-equality-checkers';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, leq as itcLeq, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 import { z } from 'zod';
 
@@ -103,7 +103,7 @@ describe('ITC Causality - Join', () => {
     const metadata = store.getMetadata('key1');
     expect(metadata).toBeDefined();
     expect(metadata!.itcStamp).toBeDefined();
-    
+
     // Both original stamps should be ≤ merged stamp
     expect(itcLeq(stampA, metadata!.itcStamp!)).toBe(true);
     expect(itcLeq(stampB, metadata!.itcStamp!)).toBe(true);
@@ -655,57 +655,57 @@ describe('Zod-Powered Equality', () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Config Validation', () => {
-	it('should throw error for invalid config', () => {
-		// Suppress expected error logs during this test
-		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		
-		expect(() => {
-			createVersionedStore({
-				fields: 'not an object' as any, // Invalid!
-				timestampExtractor: (e: any) => e.timestamp,
-				enableLogging: false
-			});
-		}).toThrow();
-		
-		errorSpy.mockRestore();
-	});
+  it('should throw error for invalid config', () => {
+    // Suppress expected error logs during this test
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-	it('should warn when no extractors provided', () => {
-		const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => {
+      createVersionedStore({
+        fields: 'not an object' as any, // Invalid!
+        timestampExtractor: (e: any) => e.timestamp,
+        enableLogging: false
+      });
+    }).toThrow();
 
-		createVersionedStore<TestEntity>({
-			fields: {
-				fieldA: (e) => e.fieldA
-			},
-			enableLogging: true
-			// No itcExtractor or timestampExtractor!
-		});
+    errorSpy.mockRestore();
+  });
 
-		expect(consoleSpy).toHaveBeenCalledWith(
-			expect.stringContaining('No itcExtractor or timestampExtractor provided')
-		);
+  it('should warn when no extractors provided', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
 
-		consoleSpy.mockRestore();
-	});
+    createVersionedStore<TestEntity>({
+      fields: {
+        fieldA: (e) => e.fieldA
+      },
+      enableLogging: true
+      // No itcExtractor or timestampExtractor!
+    });
 
-	it('should warn when fields are empty', () => {
-		// Suppress expected warnings during this test
-		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No itcExtractor or timestampExtractor provided')
+    );
 
-		createVersionedStore<TestEntity>({
-			fields: {}, // Empty!
-			timestampExtractor: (e) => e.timestamp,
-			enableLogging: true
-		});
+    consoleSpy.mockRestore();
+  });
 
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('No fields defined')
-		);
+  it('should warn when fields are empty', () => {
+    // Suppress expected warnings during this test
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => { });
 
-		warnSpy.mockRestore();
-		infoSpy.mockRestore();
-	});
+    createVersionedStore<TestEntity>({
+      fields: {}, // Empty!
+      timestampExtractor: (e) => e.timestamp,
+      enableLogging: true
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No fields defined')
+    );
+
+    warnSpy.mockRestore();
+    infoSpy.mockRestore();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════

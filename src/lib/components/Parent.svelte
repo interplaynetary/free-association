@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { page } from '$app/stores';
-	import { userAlias, userPub } from '$lib/network/auth.svelte';
+	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 	import { writable } from 'svelte/store';
