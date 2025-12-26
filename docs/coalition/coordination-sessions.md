@@ -179,7 +179,7 @@ For organizations actively participating in framework development:
 * [Participation Framework](/docs/coalition/participation-framework.md)
 * [Decision-Making Protocols](/docs/coalition/secretariat/)
 * [How Free Association Works](/docs/concepts/how-it-works.md)
-* [Recognition Mathematics](/docs/coalition/recognition-mathematics.md)
+* [Priority Mathematics](/docs/coalition/recognition-mathematics.md)
 
 **Questions to Consider:**
 * Who does your organization recognize as contributing to your goals?
@@ -286,7 +286,7 @@ Yes. Each venue has different focus areas and participant types. Attending multi
 
 ### **What's the cost to participate?**
 
-Coordination sessions are free. Coalition membership has no fees—participation is based on mutual recognition and resource sharing, not financial contributions.
+Coordination sessions are free. Coalition membership has no fees—participation is based on reciprocal alignment and resource sharing, not financial contributions.
 
 ### **Will there be follow-up sessions?**
 

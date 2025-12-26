@@ -16,7 +16,7 @@ By the time resources arrive, circumstances have changed, immediate needs have p
 
 - **Day 1:** Entity declares need in system
 - **Immediately:** All participants see need; system recalculates optimal allocation
-- **Day 1-2:** Resource commitments transparent and automatic based on pre-established mutual recognition
+- **Day 1-2:** Resource commitments transparent and automatic based on pre-established reciprocal alignment
 - **Day 2-3:** First resources arrive from mutual partners
 - **Ongoing:** System continuously adapts as needs evolve
 
@@ -26,7 +26,7 @@ By the time resources arrive, circumstances have changed, immediate needs have p
 
 **1. Establish Recognition Networks**
 
-Organizations working in crisis response establish mutual recognition based on:
+Organizations working in crisis response establish reciprocal alignment based on:
 - Past collaboration effectiveness
 - Complementary capabilities
 - Geographic coverage
@@ -62,7 +62,7 @@ Organization in Crisis Zone:
 
 System immediately calculates optimal allocation:
 - Identifies all organizations with relevant capacity
-- Calculates mutual recognition with affected organization
+- Calculates reciprocal alignment with affected organization
 - Determines proportional shares
 - Caps at declared needs
 - Generates allocation commitments
@@ -95,7 +95,7 @@ As situation evolves:
 - 2 medical supply networks
 
 **Pre-Crisis State:**
-- Mutual recognition established over 2+ years
+- Reciprocal alignment established over 2+ years
 - Combined reserve capacity: $5M + significant personnel/equipment
 - All participants monitoring for need declarations
 
@@ -107,7 +107,7 @@ As situation evolves:
 - Commitments visible to all participants
 
 **Hour 6:**
-- First medical team departs (from organization with highest mutual recognition)
+- First medical team departs (from organization with highest reciprocal alignment)
 - Supply shipment prepared (proportional to recognition × capacity)
 - Communications equipment diverted from nearby region
 
@@ -130,7 +130,7 @@ As situation evolves:
 ## Key Enablers
 
 ### Pre-Established Trust
-Mutual recognition established during stable periods enables immediate response during crisis.
+Reciprocal alignment established during stable periods enables immediate response during crisis.
 
 ### Distributed Capacity
 No single coordination body. All participants maintain capacity autonomy until crisis triggers need.
@@ -154,7 +154,7 @@ System responds in real-time as needs evolve. No need to restart coordination pr
 
 **Transparency:** All participants see needs, capacity, and commitments
 
-**Fairness:** Allocation proportional to mutual recognition, capped at need
+**Fairness:** Allocation proportional to reciprocal alignment, capped at need
 
 ## Considerations
 
@@ -165,14 +165,14 @@ Organizations establish recognition before crisis. Free Association accelerates 
 System optimally allocates available capacity and works within existing resources.
 
 **Trust Foundation:**
-Mutual recognition reflects trusted coordination relationships. System enables rapid deployment among trusted partners.
+Reciprocal alignment reflects trusted coordination relationships. System enables rapid deployment among trusted partners.
 
 ## Implementation Path
 
 Organizations interested in crisis response coordination:
 
 1. Join crisis response coalition
-2. Establish mutual recognition with partner organizations
+2. Establish reciprocal alignment with partner organizations
 3. Declare reserve capacity available for crisis deployment
 4. Monitor network for need declarations
 5. Respond automatically when crisis triggers system

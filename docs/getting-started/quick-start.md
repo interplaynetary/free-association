@@ -6,7 +6,7 @@
 Traditional resource coordination operates slower than modern challenges require. Crisis response takes months when days would serve better.
 
 ### The Solution
-Free Association enables automatic resource allocation based on mutual recognition—no bureaucracy, no gatekeepers.
+Free Association enables automatic resource allocation based on reciprocal alignment—no bureaucracy, no gatekeepers.
 
 ### Key Benefits
 - **<48 hours** from need to commitment (vs. 90+ days typical)
@@ -21,13 +21,13 @@ Free Association enables automatic resource allocation based on mutual recogniti
 
 ### System Architecture
 - Peer-to-peer network
-- Published data: recognition weights, capacity, needs
+- Published data: priority weights, capacity, needs
 - Distributed calculation
 - Need-capped allocation algorithm (prevents accumulation)
 
 ### Core Algorithm
 ```
-Recognition → Mutual Recognition → Proportional Share → Allocation (capped at need)
+Priority → Reciprocal Alignment → Proportional Share → Allocation (capped at need)
 Dynamic equilibrium: recomputes ~100-200ms per state change
 ```
 
@@ -44,7 +44,7 @@ Dynamic equilibrium: recomputes ~100-200ms per state change
 
 ### Mathematical Properties
 - **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
-- **Proportional fairness**: Strict proportionality to mutual recognition
+- **Proportional fairness**: Strict proportionality to reciprocal alignment
 - **Dynamic equilibrium**: Maintains instantaneous optimality as network evolves
 - **Contraction guarantee**: Receiving resources always reduces remaining need (unconditional)
 
@@ -64,15 +64,19 @@ Allocation(R, P) = min(Capacity_P × Share(R, P), Need_R)
 ### 1. Recognition (Who contributes to your goals?)
 Each entity allocates 100% recognition among contributors.
 
-### 2. Mutual Recognition (Bidirectional acknowledgment)
-Takes minimum of reciprocal recognition percentages.
+### 2. Reciprocal Alignment (Bidirectional acknowledgment)
+Only when both parties prioritize each other does reciprocal alignment exist.
+- You prioritize them (outbound)
+- They prioritize you (inbound)
+- **Reciprocal Alignment** = min(Inbound, Outbound)
+- Ensures proportional relationships.
 
 ### 3. Capacity & Needs (What can you offer? What do you need?)
 Entities declare available resources and requirements.
 
 ### 4. Automatic Allocation
 System calculates optimal distribution:
-- Priority to mutual recognition pairs
+- Priority to reciprocal alignment pairs
 - Proportional to recognition strength
 - Capped at declared needs
 - Updates in real-time

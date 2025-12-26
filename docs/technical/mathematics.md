@@ -4,21 +4,21 @@ The system's fairness and efficiency are guaranteed by formal mathematical prope
 
 ## Recognition Distribution
 
-### Recognition Weights
+### Priority Weights
 
-Each entity allocates 100% of recognition among contributors:
+Each entity allocates 100% of priority weight among recipients or categories:
 
 ```
-∀ Entity E: Σ Recognition(E → Others) = 100%
+∀ Entity E: Σ Priority(E → Others) = 100%
 ```
 
 **Properties:**
 - Non-transferable (cannot be bought, sold, or traded)
 - Dynamically adjustable
-- Self-recognition permitted: `Recognition(E → E) ≥ 0`
-- Continuous values: `Recognition(E → X) ∈ [0%, 100%]`
+- Self-priority permitted: `Priority(E → E) ≥ 0`
+- Continuous values: `Priority(E → X) ∈ [0%, 100%]`
 
-### Recognition Allocation
+### Priority Allocation
 
 Example:
 ```
@@ -33,14 +33,14 @@ Total: 100%
 
 ---
 
-## Mutual Recognition Calculation
+## Reciprocal Alignment Calculation
 
-Mutual recognition is the minimum of reciprocal recognition percentages:
+Reciprocal Alignment is the minimum of reciprocal priority percentages:
 
 ```
-MR(Entity_A, Entity_B) = min(
-    Recognition_A_gives_B,
-    Recognition_B_gives_A
+RA(Entity_A, Entity_B) = min(
+    Priority_A_to_B,
+    Priority_B_to_A
 )
 ```
 
@@ -77,46 +77,46 @@ B recognizes A at 10%
 A recognizes B at 30%
 B recognizes A at 0%
 → MR(A, B) = min(30%, 0%) = 0%
-(No mutual recognition, only one-way)
+(No reciprocal alignment, only one-way)
 ```
 
 ---
 
 ## Proportional Share Calculation
 
-### Tier 1: Mutual Recognition
+### Phase 1: Priority Alignment (Reciprocal)
 
-Share proportional to mutual recognition relative to all compatible recipients:
+Share proportional to reciprocal alignment relative to all compatible recipients:
 
 ```
 Share(Recipient, Provider) = 
-    MR(Recipient, Provider) / Σ MR(Provider, All_Compatible_Recipients)
+    RA(Recipient, Provider) / Σ RA(Provider, All_Compatible_Recipients)
 ```
 
-**Key Property:** Share determined by recognition strength, not need size.
+**Key Property:** Share determined by alignment strength, not need size.
 
 ### Example
 
 Provider P with capacity $1M, three recipients:
 
 ```
-MR(P, A) = 30%
-MR(P, B) = 50%
-MR(P, C) = 20%
-Total MR = 100%
+RA(P, A) = 30%
+RA(P, B) = 50%
+RA(P, C) = 20%
+Total RA = 100%
 
 Share_A = 30% / 100% = 30% → $300K raw allocation
 Share_B = 50% / 100% = 50% → $500K raw allocation
 Share_C = 20% / 100% = 20% → $200K raw allocation
 ```
 
-### Tier 2: Unilateral Recognition
+### Phase 2: Unilateral Priority (Overflow)
 
-After Tier 1 allocation complete, remaining capacity flows based on unilateral recognition:
+After Phase 1 allocation complete (if excess capacity exists), remaining capacity flows based on unilateral priority:
 
 ```
 Share(Recipient, Provider) = 
-    Recognition_Provider_gives_Recipient / Σ Recognition_Provider_gives_All_Unilateral_Recipients
+    Priority_Provider_to_Recipient / Σ Priority_Provider_to_All_Unilateral_Recipients
 ```
 
 ---
@@ -191,7 +191,7 @@ where Total_Received = Σ Final_Allocation(All_Providers)
 
 ### Property 2: Proportional Fairness
 
-**Theorem:** Allocations are strictly proportional to mutual recognition.
+**Theorem:** Allocations are strictly proportional to reciprocal alignment.
 
 **Formal Statement:**
 ```
@@ -312,7 +312,7 @@ Total Recognition = Effective Recognition + Ineffective Recognition
 
 Therefore:
 ↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Mutual Recognition with Beneficial Partners
+   → ↓ Reciprocal Alignment with Beneficial Partners
       → ↓ Access to Beneficial Resources
          → ↓ Goal Achievement
             → Natural incentive to correct recognition
@@ -343,7 +343,7 @@ System damping mechanisms mitigate instability while maintaining responsiveness.
 **Single Allocation Round:**
 ```
 For N entities, E edges (recognition relationships):
-- Mutual recognition calculation: O(E)
+- Reciprocal alignment calculation: O(E)
 - Share calculation: O(E)
 - Allocation: O(E)
 Total: O(E) per round

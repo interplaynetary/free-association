@@ -147,7 +147,7 @@ Organizations can join coordination coalitions to amplify network effects.
 
 **Network Effects:**
 Larger networks increase:
-- Partner options for mutual recognition
+- Partner options for reciprocal alignment
 - Resource diversity
 - Coverage across geographies and sectors
 - Learning and best practices

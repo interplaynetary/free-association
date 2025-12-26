@@ -21,7 +21,7 @@ Watch a demonstration of the interface and key features:
 
 The demo lets you interact with:
 
-- **Recognition Weight** configuration
+- **Priority Weight** configuration
 - **Capacity** declarations
 - **Need** specifications
 - Real-time **allocation** calculations
@@ -31,7 +31,7 @@ The demo lets you interact with:
 
 Try different scenarios:
 
-1. **Simple bilateral exchange** - Two entities with mutual recognition
+1. **Simple bilateral exchange** - Two entities with reciprocal alignment
 2. **Network effects** - Multiple entities with varying recognition patterns
 3. **Crisis response** - Sudden need declaration and resource flow
 4. **Capacity constraints** - Limited resources distributed optimally

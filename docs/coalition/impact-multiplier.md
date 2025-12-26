@@ -13,7 +13,7 @@ Most capital distribution systems face a fundamental tension: **scale versus ali
 The system creates a **perfectly value-aligned impact multiplier** through three mechanisms:
 
 1. **Recognition-weighted distribution** ensures capital flows proportionally to demonstrated value-alignment
-2. **Mutual recognition** creates bilateral verification of alignment, eliminating one-sided relationships
+2. **Reciprocal alignment** creates bilateral verification of alignment, eliminating one-sided relationships
 3. **Network composition** compounds these effects, where each new participant strengthens alignment for all
 
 **Result:** Each dollar/euro/resource unit has multiplicatively greater impact as the network grows, while maintaining perfect alignment with each participant's priorities.
@@ -64,19 +64,21 @@ If Entity A allocates:
 * 30% recognition to others
 
 Then A's available capital is distributed:
-* 40% → B (directly aligned with A's priorities)
-* 30% → C (directly aligned with A's priorities)
-* 30% → others
+*   40% → B (directly aligned with A's priorities)
+*   30% → C (directly aligned with A's priorities)
+*   30% → others
 
 **Value-Alignment Guarantee:** By mathematical construction, capital only flows to entities that the allocator recognizes as contributing to their goals. **Perfect alignment by definition.**
 
-### Mechanism 2: Mutual Recognition (Bilateral Verification)
-
-**MR = min(A's recognition of B, B's recognition of A)**
+### Mechanism 2: Reciprocal Alignment (Bilateral Verification)
+**Reciprocal Alignment acts as a filter** that allows capital to flow only through relationships where trust and value are independently verified by both parties.
+- A prioritizes B (validates value)
+- B prioritizes A (validates alignment)
+- **Reciprocal Alignment Score** = min(A→B, B→A)
 
 **This creates automatic fraud detection:**
 
-| Scenario | A recognizes B | B recognizes A | Mutual Recognition | Capital Flow |
+| Scenario | A recognizes B | B recognizes A | Reciprocal Alignment | Capital Flow |
 |:---------|:--------------|:--------------|:-------------------|:-------------|
 | **Genuine Partnership** | 30% | 25% | 25% | High (25% of budget) |
 | **One-sided Claim** | 30% | 2% | 2% | Minimal (2% of budget) |
@@ -132,12 +134,12 @@ Each new participant doesn't just add their own capital—they increase the *eff
 
 **For any network of N participants:**
 
-**Total Aligned Capital Flow** = Σ (Individual Capacity × Mutual Recognition Score)
+**Total Aligned Capital Flow** = Σ (Individual Capacity × Reciprocal Alignment Score)
 
 **Key Properties:**
 
 1. **Monotonic Increase:** Adding a participant cannot decrease total aligned capital
-2. **Compositional:** New relationships create value proportional to mutual recognition
+2. **Compositional:** New relationships create value proportional to reciprocal alignment
 3. **Self-Correcting:** Misalignment is penalized through reduced MR
 
 **Impact Multiplier Formula:**
@@ -148,7 +150,7 @@ Network Impact = Σ(Capacity_i × MR_i) / Σ(Capacity_i)
 
 **Where:**
 * **Capacity_i** = resources available from participant i
-* **MR_i** = mutual recognition score for participant i
+* **RA_i** = reciprocal alignment score for participant i
 * **As MR increases across network, total impact increases multiplicatively**
 
 **Critical Insight:**
@@ -159,7 +161,7 @@ In Free Association: **Impact = Capital × (Individual Efficiency + Network Alig
 
 The Network Alignment Coefficient grows with:
 * Number of participants
-* Mutual recognition density
+* Reciprocal alignment density
 * Capacity diversity
 
 **Result:** Same capital, multiplicatively greater impact through alignment.
@@ -194,7 +196,7 @@ The Network Alignment Coefficient grows with:
 
 **Automatic Distribution:**
 
-* **Capital flows proportionally to mutual recognition** (no application process)
+* **Capital flows proportionally to reciprocal alignment** (no application process)
 * **Real-time monitoring** through network data (no separate evaluation)
 * **Continuous adjustment** as recognition updates (immediate feedback)
 
@@ -260,7 +262,7 @@ The Network Alignment Coefficient grows with:
 
 **Guarantees:**
 
-1. **No capital flows without mutual recognition** (bilateral verification)
+1. **No capital flows without reciprocal alignment** (bilateral verification)
 2. **Recognition is zero-sum for each participant** (forces prioritization)
 3. **Gaming is self-defeating** (inflating recognition reduces genuine partnerships)
 4. **Alignment is mathematical, not aspirational** (encoded in the protocol)
@@ -312,7 +314,7 @@ The Network Alignment Coefficient grows with:
 **Questions to Consider:**
 
 * What percentage of your capital could be distributed through recognition-weighted allocation?
-* Which of your current partners would likely show high mutual recognition?
+* Which of your current partners would likely show high reciprocal alignment?
 * How would network transparency change your due diligence requirements?
 * What impact multiplier would justify transitioning capital to this approach?
 

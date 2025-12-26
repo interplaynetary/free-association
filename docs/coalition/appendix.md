@@ -15,7 +15,7 @@ The coalition serves as a platform for discovering and establishing mutual-recog
 - Access to a network of potential collaborators
 - Transparent recognition patterns to identify aligned organizations
 - Low-barrier entry to coordination networks
-- Natural filtering through mutual recognition mechanics
+- Natural filtering through reciprocal alignment mechanics
 
 **How it works:**
 1. Join the coalition and declare your capacities, needs, and goals
@@ -154,11 +154,11 @@ Each participant maintains their unique identity and approach:
 
 ### **Derivation Algorithms:**
 
-* **Mutual Recognition:** Calculated as minimum of bidirectional recognition: `min(A→B recognition, B→A recognition)`. Identifies symmetric cooperation relationships.
+* **Reciprocal Alignment:** Calculated as minimum of bidirectional priority: `min(A→B priority, B→A priority)`. Identifies symmetric cooperation relationships.
 
-* **Organizational Recognition:** Aggregates individual recognitions weighted by organizational membership. Formula: `Σ(member_recognition × member_weight) / total_members` where member_weight reflects their standing within the organization.
+* **Organizational Priority:** Aggregates individual priorities weighted by organizational membership. Formula: `Σ(member_priority × member_weight) / total_members`.
 
-* **Allocation Formula:** Resources distributed proportionally to allocation weights among recognized entities. For capacity C allocated among entities E with weights W: `entity_share = (W_entity / ΣW_all) × C`
+* **Allocation Formula:** Resources distributed proportionally to allocation weights among aligned entities.
 
 ### **Identity & Verification:**
 

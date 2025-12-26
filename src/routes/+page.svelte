@@ -12,16 +12,18 @@
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
 		myCommitmentStore,
-		initializeAllocationStores,
 		enableAutoCommitmentComposition,
 		setMyNeedSlots,
 		setMyCapacitySlots
 	} from '$lib/protocol/stores/stores.svelte';
-	import { enableAutoAllocationPublishing, enableAutoRemainingNeedTracking } from '$lib/protocol/stores/allocation.svelte';
+	import { 
+		enableAutoAllocationPublishing, 
+		initializeAllocationStores 
+	} from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
-	import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
+	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
 
 	// Reactive view state
 	const currentView = $derived(globalState.currentView);
@@ -34,7 +36,6 @@
 	// Cleanup functions
 	let cleanupComposition: (() => void) | null = null;
 	let cleanupAllocationPublishing: (() => void) | null = null;
-	let cleanupAutoNeedTracking: (() => void) | null = null;
 
 	onMount(() => {
 		console.log('[HOME] Initializing stores for inventory view...');
@@ -57,11 +58,7 @@
 		// Enable auto-allocation publishing
 		cleanupAllocationPublishing = enableAutoAllocationPublishing();
 		
-		// ✅ RE-ENABLED: Auto-need tracking (fixed to not overwrite declared needs)
-		// The bug was in applyNeedUpdateLawToCommitment() which was overwriting
-		// declared need quantities. Now it's fixed - declared needs stay constant.
-		cleanupAutoNeedTracking = enableAutoRemainingNeedTracking();
-		console.log('[HOME] ✅ Enabled automatic remaining need tracking (fixed)');
+
 		
 		console.log('[HOME] ✅ Initialized and subscribed');
 		
@@ -70,7 +67,6 @@
 			unsubCapacity();
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
-			if (cleanupAutoNeedTracking) cleanupAutoNeedTracking();
 		};
 	});
 

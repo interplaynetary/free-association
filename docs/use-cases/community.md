@@ -99,10 +99,9 @@ Member B:
 - Project funding: $1,000 for community event
 ```
 
-**4. Automatic Allocation**
-
-System allocates resources:
-- Proportional to mutual recognition
+**4. Reciprocal Alignment:**
+Communities allocate shared resources (facilities, equipment, expertise) based on members' **reciprocal alignment** and declared needs. The system handles allocation automatically, reducing administrative burden.
+- Proportional to reciprocal alignment
 - Capped at declared needs
 - Updates automatically as needs/availability change
 - Transparent to all members
@@ -150,8 +149,8 @@ Members seeing valuable contribution naturally increase recognition, leading to 
 **Need-Based Caps:**
 Cannot accumulate resources beyond stated needs, preventing hoarding.
 
-**Mutual Recognition:**
-Bidirectional recognition creates peer accountability.
+**Reciprocal Alignment:**
+Bidirectional priority creates peer accountability.
 
 ## Real-World Scenarios
 
@@ -177,10 +176,10 @@ Bidirectional recognition creates peer accountability.
 - Welcoming new members
 
 **Allocation:**
-- Desk access: Based on declared need + MR
-- Meeting rooms: Scheduled through system based on MR
+- Desk access: Based on declared need + RA
+- Meeting rooms: Scheduled through system based on RA
 - Equipment: Time slots allocated proportionally
-- Budget: Project funding flows to highest MR + need
+- Budget: Project funding flows to highest RA + need
 
 **Result:**
 - No scheduling conflicts
@@ -209,10 +208,10 @@ Bidirectional recognition creates peer accountability.
 - Cooperative governance participation
 
 **Allocation:**
-- Equipment access: Seasonal need + MR
-- Storage space: Harvest volume need + MR
-- Distribution slots: Production volume + MR
-- Operating support: Declared needs + MR
+- Equipment access: Seasonal need + RA
+- Storage space: Harvest volume need + RA
+- Distribution slots: Production volume + RA
+- Operating support: Declared needs + RA
 
 **Result:**
 - Equipment efficiently shared across seasonal demands
@@ -243,10 +242,10 @@ Bidirectional recognition creates peer accountability.
 - Sharing knowledge and techniques
 
 **Allocation:**
-- Workshop time: Project needs + MR
-- Materials budget: Declared needs + MR
-- Teaching slots: Availability declaration + MR
-- Event participation: Project readiness + MR
+- Workshop time: Project needs + RA
+- Materials budget: Declared needs + RA
+- Teaching slots: Availability declaration + RA
+- Event participation: Project readiness + RA
 
 **Result:**
 - Experienced makers naturally receive more complex project resources

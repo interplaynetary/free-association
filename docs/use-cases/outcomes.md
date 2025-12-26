@@ -98,7 +98,7 @@ Recognition pattern directly encodes what/who contributes to organizational goal
 For mission alignment questions, recognition encodes ongoing assessment. Focus due diligence on operational capacity.
 
 **Values Compatibility:**
-Mutual recognition implies compatible values and standards. Organizations establish recognition only with aligned partners.
+Reciprocal alignment implies compatible values and standards. Organizations establish recognition only with aligned partners.
 
 ### Outcomes
 

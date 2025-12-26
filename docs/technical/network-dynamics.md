@@ -6,15 +6,11 @@
 
 Resources allocate through a two-tier priority system:
 
-**Tier 1: Mutual Recognition**
-- Entities with mutual recognition receive priority
-- Allocation proportional to recognition strength
-- Declared needs set the cap
+**Phase 1: Priority Alignment**
+Primary resource flow occurs between entities with strong reciprocal priority alignment. This ensures stable, committed relationships receive resources first.
 
-**Tier 2: Unilateral Recognition**
-- Remaining capacity flows to recognized entities
-- Even without mutual recognition
-- Enables support for emerging partnerships
+**Phase 2: Unilateral Priority**
+Resources flow to entities you prioritize, even if they don't prioritize you (yet). This supports new entrants and mission-aligned recipients who are not yet peers.
 
 ### Real-Time Adaptation
 
@@ -78,7 +74,7 @@ Total Recognition = Effective Recognition + Ineffective Recognition
 
 Therefore:
 ↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Mutual Recognition with Actually Beneficial Partners
+   → ↓ Reciprocal Alignment with Actually Beneficial Partners
       → ↓ Access to Actually Beneficial Resources
          → ↓ Organizational Goal Achievement
             → Natural incentive to correct recognition accuracy
@@ -95,10 +91,10 @@ Effective Recognition = 60%
 Ineffective Recognition = 40%
 ```
 
-**Step 2:** Mutual recognition calculated
+**Step 2:** Reciprocal alignment calculated
 ```
-Mutual recognition with beneficial partners = 60% (maximum possible)
-Mutual recognition with ineffective partner = 40%
+Reciprocal alignment with beneficial partners = 60% (maximum possible)
+Reciprocal alignment with ineffective partner = 40%
 ```
 
 **Step 3:** Resource allocation flows proportionally
@@ -130,7 +126,7 @@ Result: ↑ Effective recognition → ↑ Access to beneficial resources
 
 **Initial Formation:**
 - Small group of organizations with known contribution patterns
-- Establish mutual recognition based on historical collaboration
+- Establish reciprocal alignment based on historical collaboration
 - Declare initial capacity and needs
 
 **Progressive Expansion:**
@@ -173,7 +169,7 @@ Result: ↑ Effective recognition → ↑ Access to beneficial resources
 2. **Capacity Fluctuation:**
    - Unreliable capacity declarations
    - Commitments not honored
-   - Damages trust and mutual recognition
+   - Damages trust and reciprocal alignment
 
 3. **Need Oscillation:**
    - Rapidly changing need declarations
@@ -217,7 +213,7 @@ All network participants can observe:
 - Allocation results (resource flows)
 
 **Calculated Data:**
-- Mutual recognition networks
+- Reciprocal alignment networks
 - Proportional shares
 - Coverage gaps
 - Network dynamics
@@ -234,7 +230,7 @@ No central authority accesses private organizational data.
 ### Distributed Calculation
 
 **Any participant can independently calculate:**
-- Mutual recognition between any pair
+- Reciprocal alignment between any pair
 - Expected allocation given network state
 - Optimal resource flows
 - System equilibrium
@@ -273,8 +269,8 @@ Free Association reduces asymmetry:
 
 **Dynamics:**
 - Hub capacity flows to recognized partners
-- Tier 1: Partners with mutual recognition (hub recognizes partner + partner recognizes hub)
-- Tier 2: Partners with one-way recognition (hub recognizes but not reciprocated)
+- Phase 1: Partners with reciprocal alignment (hub projects alignment to partner + partner projects alignment to hub)
+- Phase 2: Partners with one-way priority (hub projects priority but not reciprocated)
 
 **Use Cases:**
 - Foundation grantmaking
@@ -283,7 +279,7 @@ Free Association reduces asymmetry:
 ### Mesh Networks
 
 **Structure:**
-- Multiple organizations with mutual recognition
+- Multiple organizations with reciprocal alignment
 - Dense network of bilateral relationships
 - No central hub
 
@@ -306,7 +302,7 @@ Free Association reduces asymmetry:
 - Some cross-tier recognition
 
 **Dynamics:**
-- Within-tier mutual recognition
+- Within-tier reciprocal alignment
 - Cross-tier support for specialized needs
 - Tier mobility based on contribution
 

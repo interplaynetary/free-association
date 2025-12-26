@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { AvailabilitySlot, AvailabilityWindow } from '@playnet/free-association/schemas';
-	import { AvailabilitySlotSchema } from '@playnet/free-association/schemas';
+	import type { AvailabilitySlot, AvailabilityWindow } from '$lib/protocol/schemas';
+	import { AvailabilitySlotSchema } from '$lib/protocol/schemas';
 	import { 
 		TimePatternEditor, 
 		DivisibilityEditor, 

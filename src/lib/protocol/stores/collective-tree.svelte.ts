@@ -110,15 +110,16 @@ export interface CollectiveTree {
 	merge_conflicts: any[];
 }
 
-export interface CollectiveNode {
+export type CollectiveNode = CollectiveRootNode | CollectiveNonRootNode;
+
+export interface CollectiveNodeBase {
 	id: string;
 	name: string;
-	type: 'CollectiveRootNode' | 'CollectiveNonRootNode';
 	manual_fulfillment: number | null;
 	children: CollectiveNode[];
 }
 
-export interface CollectiveRootNode extends CollectiveNode {
+export interface CollectiveRootNode extends CollectiveNodeBase {
 	type: 'CollectiveRootNode';
 	created_at: string;
 	updated_at: string;
@@ -127,7 +128,7 @@ export interface CollectiveRootNode extends CollectiveNode {
 	source_trees: Record<string, any>;
 }
 
-export interface CollectiveNonRootNode extends CollectiveNode {
+export interface CollectiveNonRootNode extends CollectiveNodeBase {
 	type: 'CollectiveNonRootNode';
 	weight_percentage: number;
 	parent_id: string;
@@ -295,8 +296,10 @@ function mutualFulfillment(ci: Forest, a: Entity, b: Entity): number {
 	}
 
 	// Update cache
-	if (!mfCache.has(a.id)) mfCache.set(a.id, new Map());
-	mfCache.get(a.id)!.set(b.id, result);
+	if (a.id) {
+		if (!mfCache.has(a.id)) mfCache.set(a.id, new Map());
+		if (b.id) mfCache.get(a.id)!.set(b.id, result);
+	}
 
 	return result;
 }
@@ -319,6 +322,7 @@ function getCollectiveWeights(entity: Entity, ci: Forest): [Map<string, number>,
 	let total = 0;
 
 	for (const member of entity.members) {
+		if (!member.id) continue;
 		const subCollective = createSubCollective(entity, member);
 		const mf = mutualFulfillment(ci, member, subCollective);
 		weights.set(member.id, mf);
@@ -367,12 +371,14 @@ function collectiveCapacity(ci: Forest, collective: Collective): number {
 
 	// Pre-calculate all MF values
 	for (const member of collective.members) {
+		if (!member.id) continue;
 		const mf = mutualFulfillment(ci, member, collective);
 		memberMFs.set(member.id, mf);
 		mfSum += mf;
 	}
 
 	for (const member of collective.members) {
+		if (!member.id) continue;
 		const mf = memberMFs.get(member.id)!;
 		const phi = mf / mfSum;
 
@@ -604,7 +610,7 @@ function mergeNodeRecursively(
 		const node = nodeData.originalNode;
 
 		// Process children of this node
-		for (const child of node.children) {
+		for (const child of (node.children || [])) {
 			const childId = child.id;
 			const childName = child.name;
 
@@ -686,7 +692,7 @@ function convertMergeDataToCollectiveNode(
 		const weightedPercentage = nodeData.weightInParent * nodeData.contributorWeight;
 		totalWeightedPercentage += weightedPercentage;
 		sourceContributors[contributorId] = weightedPercentage;
-		mergedFromNodes.push(nodeData.originalNode.id);
+		if (nodeData.originalNode.id) mergedFromNodes.push(nodeData.originalNode.id);
 		allContributorIds.push(contributorId);
 	}
 
@@ -786,12 +792,12 @@ function convertTreeToPercentages(tree: Node): Map<string, number> {
 		percentageMap.set(node.id, pathWeight);
 
 		// Calculate total points of all siblings at this level
-		const totalSiblingPoints = node.children.reduce((sum, child) => {
+		const totalSiblingPoints = (node.children || []).reduce((sum, child) => {
 			return sum + (child.type === 'NonRootNode' ? (child as NonRootNode).points : 0);
 		}, 0);
 
 		// Process each child with its percentage of siblings
-		for (const child of node.children) {
+		for (const child of (node.children || [])) {
 			if (child.type === 'NonRootNode') {
 				const childPoints = (child as NonRootNode).points;
 				const childPercentage = totalSiblingPoints > 0 ? childPoints / totalSiblingPoints : 0;

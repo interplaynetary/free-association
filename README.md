@@ -71,11 +71,13 @@ The infrastructure operates on three simple data points published by each partic
     - Calculates ideal weighted targets based on provider priorities.
     - Applies need constraints (capping at declared need).
     - Distributes capacity proportionally to weights, respecting all limits.
- 
- **4. Allocation Phase 2 (Recipient Refinement)**:
-    - Recipients can adjust *who* they receive from, shifting allocations between providers to match their source preferences (based on recognition).
-    - This happens without violating any provider's capacity or willingness limits.
- 
+
+ **4. Allocation Phase 2 (Recipient Refinement & Overshoot)**:
+    - Recipients adjust *who* they receive from, shifting allocations to match their source preferences.
+    - **Overshoot**: High-priority providers can temporarily displace low-priority incumbents even if the recipient is full.
+    - **Hidden Demand**: Unserved but compatible needs are discovered and funded.
+    - **Global Clamping**: Strict limits are enforced at the end of each round.
+
  **Dynamic & Self-Correcting**:
  - Remaining need = max(0, Declared Need - Total Received)
  - System converges to stable equilibrium as needs are met or network state changes.
@@ -726,27 +728,27 @@ Free Association also differs from traditional investment structures:
 
 **Free Association:**
 - No ownership of other entities—each maintains 100% autonomy
-- Recognition continuously adjustable based on current contributions
-- Non-transferable recognition prevents accumulation of false claims
+- Priority continuously adjustable based on current contributions
+- Non-transferable priority prevents accumulation of false claims
 - Present contributions determine resource flows, not past investments
-- Mathematical properties ensure false recognition naturally decays:
+- Mathematical properties ensure false priority naturally decays:
 
 ```
 For any participant:
-Total Recognition = 100%
-Total Recognition = Effective Recognition + Ineffective Recognition
-   ∴ ↑ Ineffective Recognition → ↓ Effective Recognition
-      → ↓ Recognition with Beneficial Partners
+Total Priority = 100%
+Total Priority = Effective Priority + Ineffective Priority
+   ∴ ↑ Ineffective Priority → ↓ Effective Priority
+      → ↓ Reciprocal Alignment with Beneficial Partners
          → ↓ Access to Beneficial Resources
             → ↓ Goal Achievement
-               → Natural correction toward accurate recognition
+               → Natural correction toward accurate prioritization
 ```
 
-**Key Distinction**: Recognition (and the resulting access to prioritization) cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
+**Key Distinction**: Priority (and the resulting access to resources) cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
 
-This represents a resolution of traditional ownership/control tensions: mutual recognition without domination, coordination without centralized authority, reciprocity without permanent obligation.
+This represents a resolution of traditional ownership/control tensions: reciprocal alignment without domination, coordination without centralized authority, reciprocity without permanent obligation.
 
-### Additional Resources
+ ### Additional Resources
 
 - [openassociation.org](https://openassociation.org) - Project website and additional context
 - [Glossary](GLOSSARY.md) - Technical terminology and definitions

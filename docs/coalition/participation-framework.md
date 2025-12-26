@@ -20,26 +20,17 @@ This coalition consists of entities experimenting with protocols for voluntary c
 
 ## **Key derivations include:**
 
-**Recognition (R):** Acknowledgement of contributions to the realization of one’s priorities/values.
+**Priority (P):** Acknowledgement of contributions to the realization of one’s priorities/values.
 
-**Relative-Recognition (RR):** Recognition normalized over **Total Recognition** to obtain proportions of 100%. Each participant has a fixed "budget" of total-recognition to divide and attribute. This normalization forces prioritization and trade-offs. **Recognition is non-transferable and dynamically adjustable.** Each participant can allocate recognition to entities who contribute to achieving their goals/priorities.
+**Relative-Priority (RP):** Priority normalized over **Total Priority** to obtain proportions of 100%. Each participant has a fixed "budget" of total-priority to divide and attribute. This normalization forces trade-offs. **Priority is non-transferable and dynamically adjustable.**
 
-**Mutual-Recognition (MR):** Calculated as the lower of relative-recognition percentages that two entities assign to each other: `MR(X,Y) = min(X_rec_of_Y, Y_rec_of_X)`. This creates *perfect reciprocity in proportion*. A one-sided relationship where A recognizes B highly (ex: 50%), but B recognizes A little (ex: 1%) is valued at the lower amount (ex: 1%), discouraging free-riding and encouraging mutual engagement and support. 
+**Reciprocal Alignment (RA):** Calculated as the lower of relative-priority percentages that two entities assign to each other: `RA(X,Y) = min(X_priority_to_Y, Y_priority_to_X)`. This creates *perfect reciprocity in proportion*. A one-sided relationship where A prioritizes B highly (ex: 50%), but B prioritizes A little (ex: 1%) is valued at the lower amount (ex: 1%), encouraging mutual engagement.
 
-**Relative Mutual-Recognition (RMR):** Mutual-Recognition normalized over **Total Mutual-Recognition** to obtain proportions of 100%. When we **recognize** each other, we have **mutual-recognition of mutual-value** and **can choose to allocate our capacities to each-other in precise proportion to how relatively mutually-fulfilling we are to each other.**
+**Relative Reciprocal-Alignment (RRA):** Reciprocal-Alignment normalized over **Total Reciprocal-Alignment** to obtain proportions of 100%. When we **align** with each other, we can **choose to allocate our capacities to each-other in precise proportion to our alignment.**
 
-**Collective-Mutual-Recognition (CMR):** For a recognized member set, each member's mutual-recognitions with other members summed and normalized over the **Total Pool** of all mutual-recognitions between all members: `Share(Member) = Σ MR(Member, Others) / Σ MR(all pairs)`. Members with stronger network integration have proportionally more influence. Used when contribution should be weighted by relationship strength.
+**Collective-Reciprocal-Alignment (CRA):** For a member set, each member's reciprocal-alignments with other members summed and normalized. `Share(Member) = Σ RA(Member, Others) / Σ RA(all pairs)`. Members with stronger network integration have proportionally more influence.
 
-**Collective-Relative-Mutual-Recognition (CRMR):** For a recognized member set, each member's relative-mutual-recognitions (normalized to 100%) treated as equal votes, then aggregated: `Share(Member) = Σ RMR_votes_for_Member / Total_Members`. Each member has equal voting power regardless of network position. Used when equal voice is desired (governance, democratic contexts).
-
-**Mutual-Recognition-Density (MRD):** Measures network integration depth 
-by normalizing participant's total mutual-recognition against network 
-average: `MRD(i) = Σ MR(i, members) / Average_MRS`. Can be used for 
-membership determination (when `MRD ≥ threshold`, typically 0.5) enabling 
-membership to emerge from relationship depth. Average can be calculated 
-from current members (collective model: coherent, rising bar) or all 
-participants (commons model: open, stable bar) — naturally resistant to 
-Sybil attacks and collusion while providing transparent onboarding paths.
+**Reciprocal-Alignment-Density (RAD):** Measures network integration depth by normalizing participant's total reciprocal-alignment against network average. `RAD(i) = Σ RA(i, members) / Average_RA`. Used for membership determination (when `RAD ≥ threshold`) enabling membership to emerge from relationship depth.
 
 Note, distribution choice reflects: *whose contribution-recognitions should be taken into account when formulating proportions to prioritize allocations?* — individual control suggests relative-recognition/relative-mutual-recognition, cooperatively-realized capacities suggest collective-mutual-recognition (weighted by contribution) or collective-relative-mutual-recognition (equal voice).
 
@@ -58,16 +49,16 @@ Entities define their goals/priorities subjectively, but achieving them depends 
 
 **FOR ANY PARTICIPANT:**  
 **GIVEN:**  
-  **• Total Recognition \= 100%**  
-  **• Capacities distributed ∝ Relative-(Mutual-)Recognition**  
+  **• Total Priority = 100%**  
+  **• Capacities distributed ∝ Reciprocal-Alignment**  
   **• Goals require access to specific capacities/partnerships**  
 **THEN:**  
-  **↑ Recognition allocated to non-beneficial partners**  
-    **∴ ∝ ↓ Recognition available for beneficial partners   \[total-relative-recognition budget constraint\]**  
-    **∴ ↓ Mutual-Recognition with beneficial partners**  
-   	 **∴ ↓ Access to needed capacities \[proportional allocation\]**  
+  **↑ Priority allocated to non-beneficial partners**  
+    **∴ ∝ ↓ Priority available for beneficial partners   [total-priority budget constraint]**  
+    **∴ ↓ Reciprocal-Alignment with beneficial partners**  
+   	 **∴ ↓ Access to needed capacities [proportional allocation]**  
     	 	**∴ ↓ Goal Achievement**  
-    	 		**∴  RESULT: Natural incentive to correct recognition allocation**
+    	 		**∴  RESULT: Natural incentive to correct priority allocation**
 
 **Key Implication:** The system creates natural incentives for accurate recognition. Inflating or misattributing recognition only decreases connection to beneficial partners and capacities. Entities that maintain accurate recognition patterns receive better-aligned capacities and achieve better outcomes.
 
@@ -83,10 +74,10 @@ This framework bypasses institutionalized intermediaries by asking: **"Whose per
 - **Property** (who owns) → allocate via own/synthetic recognition
 - **Governance** (who decides) → each autonomously decides whose recognition to include
 - **Currency** (medium of exchange) → value flows directly as capacity based on recognition
-- **Jurisdiction** (which rules) → emerges from mutual recognition of protocols
+- **Jurisdiction** (which rules) → emerges from reciprocal alignment of protocols
 - **Markets** (price signals) → value directly expressed through recognition allocations
 
-**Why this works:** Recognition is more fundamental than reified coordination layers. Direct protocol using mutual recognition as primitive enables coordination without building enforcement infrastructure first.
+**Why this works:** Recognition is more fundamental than reified coordination layers. Direct protocol using reciprocal alignment as primitive enables coordination without building enforcement infrastructure first.
 
 **Key properties:**
 - **Interoperability**: Worker cooperative ↔ sole proprietor ↔ state enterprise coordinate via same protocol

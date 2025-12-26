@@ -1189,13 +1189,17 @@
 
 			if (!hasContributor) {
 				// V5: Get current contributor IDs and add the new one
-				const currentContributorIds = (nonRootNode.contributors || []).map((c) => c.id);
-				const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map((c) => c.id);
+				const currentContributorIds = (nonRootNode.contributors || [])
+					.map((c) => c.id)
+					.filter((id): id is string => !!id);
+				const currentAntiContributorIds = (nonRootNode.anti_contributors || [])
+					.map((c) => c.id)
+					.filter((id): id is string => !!id);
 				currentContributorIds.push(userId);
 
 				// Use the protocol function to properly add contributors AND clear children
 				// This ensures the node becomes a proper leaf contribution node
-				addContributors(node, currentContributorIds, currentAntiContributorIds);
+				addContributors(node as any, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1228,13 +1232,17 @@
 
 			if (!hasAntiContributor) {
 				// V5: Get current contributor IDs and add the new anti-contributor
-				const currentContributorIds = (nonRootNode.contributors || []).map((c) => c.id);
-				const currentAntiContributorIds = (nonRootNode.anti_contributors || []).map((c) => c.id);
+				const currentContributorIds = (nonRootNode.contributors || [])
+					.map((c) => c.id)
+					.filter((id): id is string => !!id);
+				const currentAntiContributorIds = (nonRootNode.anti_contributors || [])
+					.map((c) => c.id)
+					.filter((id): id is string => !!id);
 				currentAntiContributorIds.push(userId);
 
 				// Use the protocol function to properly add both types AND clear children
 				// This ensures the node becomes a proper leaf contribution node
-				addContributors(node, currentContributorIds, currentAntiContributorIds);
+				addContributors(node as any, currentContributorIds, currentAntiContributorIds);
 
 				// Run deduplication to ensure no duplicates exist
 				deduplicateContributorsInTree(updatedTree);
@@ -1257,7 +1265,7 @@
 		const node = findNodeById(tree, nodeId);
 		if (!node) return 0;
 
-		return fulfilled(node, tree);
+		return fulfilled(node as any, tree);
 	}
 
 	// Get manual fulfillment value for a node

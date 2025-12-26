@@ -472,14 +472,21 @@ export function calculateCompatibility(
 
         // 2. Get Priorities
         // Provider -> NeedSlot
-        const providerPriority = cs.priority_distribution?.find(
-            p => p.target_slot_id === ns.id
-        )?.priority_percentage || 0;
+        // Provider -> NeedSlot
+        let providerPriority = 0;
+        if (Array.isArray(cs.priority_distribution)) {
+            providerPriority = cs.priority_distribution.find(
+                p => p.target_slot_id === ns.id
+            )?.priority_percentage || 0;
+        }
 
         // Recipient -> CapacitySlot
-        const recipientPriority = ns.priority_distribution?.find(
-            p => p.target_slot_id === cs.id
-        )?.priority_percentage || 0;
+        let recipientPriority = 0;
+        if (Array.isArray(ns.priority_distribution)) {
+            recipientPriority = ns.priority_distribution.find(
+                p => p.target_slot_id === cs.id
+            )?.priority_percentage || 0;
+        }
 
         // 3. Calculate Limits
         const providerLimit = providerPriority * cs.quantity;
@@ -762,8 +769,10 @@ export function tryAnnealingEscape(
 
         if (totalAllocated > cs.quantity + EPSILON) {
             const scale = cs.quantity / totalAllocated;
-            for (const nsId in neighbor[cs.id]) {
-                neighbor[cs.id][nsId].amount *= scale;
+            if (neighbor[cs.id]) {
+                for (const nsId in neighbor[cs.id]) {
+                    neighbor[cs.id][nsId].amount *= scale;
+                }
             }
         }
     }
@@ -864,7 +873,10 @@ export function iterativeRefinement(
         // Try gradient descent adjustment
         const adjustment = makeAdjustments(matrix, deviations, capacitySlots, needSlots);
 
-        if (!adjustment) {
+        // Enforce need limits (Global Clamp) to resolve any overshoots
+        const clamped = enforceNeedLimits(matrix, needSlots);
+
+        if (!adjustment && !clamped) {
             // No adjustments possible - might be stuck
             stuckIterations = Math.max(stuckIterations, annealEveryNIterations);
         }
@@ -955,34 +967,48 @@ export function calculateDeviations(
         deviations[cs.id] = {};
 
         let totalGiven = 0;
-        const actualShares: Record<string, number> = {};
+        // Identify ALL potential recipients (entries in matrix)
+        const recipients: string[] = [];
 
         for (const nsId in matrix[cs.id]) {
+            recipients.push(nsId);
             const amt = matrix[cs.id][nsId].amount;
             if (amt > EPSILON) {
                 totalGiven += amt;
-                actualShares[nsId] = amt;
             }
         }
 
         if (totalGiven < EPSILON) continue;
 
-        // Calculate Ideal Shares based on actually served needs
+        // Calculate Ideal Shares based on ALL potential needs
         let totalPriorityAmongServed = 0;
         const priorities: Record<string, number> = {};
 
-        for (const nsId in actualShares) {
-            const priority = cs.priority_distribution?.find(
-                p => p.target_slot_id === nsId
-            )?.priority_percentage || 0;
+        for (const nsId of recipients) {
+            let priority = 0;
+            if (Array.isArray(cs.priority_distribution)) {
+                priority = cs.priority_distribution.find(
+                    p => p.target_slot_id === nsId
+                )?.priority_percentage || 0;
+            }
             priorities[nsId] = priority;
             totalPriorityAmongServed += priority;
         }
 
         if (totalPriorityAmongServed > EPSILON) {
-            for (const nsId in actualShares) {
-                const actual = actualShares[nsId] / totalGiven;
-                const ideal = priorities[nsId] / totalPriorityAmongServed;
+            for (const nsId of recipients) {
+                const currentAmount = matrix[cs.id][nsId].amount;
+                const actual = currentAmount / totalGiven;
+
+                let ideal = 0;
+                // Safe lookup
+                if (Array.isArray(cs.priority_distribution)) {
+                    const p = cs.priority_distribution.find(
+                        p => p.target_slot_id === nsId
+                    );
+                    if (p) ideal = p.priority_percentage / totalPriorityAmongServed;
+                }
+
                 deviations[cs.id][nsId] = (actual - ideal) * alpha;
             }
         }
@@ -991,23 +1017,24 @@ export function calculateDeviations(
     // 2. Recipient (Need) Perspective
     for (const ns of needSlots) {
         let totalReceived = 0;
-        const actualShares: Record<string, number> = {};
+        // Identify ALL potential sources (entries in matrix)
+        const sources: string[] = [];
 
         for (const csId in matrix) {
-            const amt = matrix[csId]?.[ns.id]?.amount || 0;
-            if (amt > EPSILON) {
-                totalReceived += amt;
-                actualShares[csId] = amt;
+            const entry = matrix[csId]?.[ns.id];
+            if (entry) { // Exists means compatible
+                sources.push(csId);
+                totalReceived += entry.amount;
             }
         }
 
         if (totalReceived < EPSILON) continue;
 
-        // Ideal shares
+        // Ideal shares - Consider ALL sources
         let totalPriorityAmongSources = 0;
         const priorities: Record<string, number> = {};
 
-        for (const csId in actualShares) {
+        for (const csId of sources) {
             const priority = ns.priority_distribution?.find(
                 p => p.target_slot_id === csId
             )?.priority_percentage || 0;
@@ -1016,8 +1043,9 @@ export function calculateDeviations(
         }
 
         if (totalPriorityAmongSources > EPSILON) {
-            for (const csId in actualShares) {
-                const actual = actualShares[csId] / totalReceived;
+            for (const csId of sources) {
+                const currentAmount = matrix[csId][ns.id].amount;
+                const actual = currentAmount / totalReceived;
                 const ideal = priorities[csId] / totalPriorityAmongSources;
 
                 if (!deviations[csId]) deviations[csId] = {};
@@ -1091,16 +1119,59 @@ export function makeAdjustments(
             const increase = pool * weight;
 
             if (increase > EPSILON) {
-                // Ensure we don't exceed need quantity
-                const ns = needSlots.find(n => n.id === nsId);
-                const currentTotal = Object.values(matrix).reduce((sum, row) => sum + (row[nsId]?.amount || 0), 0);
-                const roomInNeed = Math.max(0, (ns ? ns.quantity : 0) - currentTotal);
-
-                const actualIncrease = Math.min(increase, roomInNeed);
+                // Allow temporary overshoot of need (will be clamped globally later)
+                // This enables "squeeze in" behavior for more aligned providers
+                const actualIncrease = increase;
 
                 if (actualIncrease > EPSILON) {
                     matrix[csId][nsId].amount += actualIncrease;
                     adjustmentsMade = true;
+                }
+            }
+        }
+    }
+
+    return adjustmentsMade;
+}
+
+/**
+ * Enforce need limits by scaling down over-allocations globally
+ * This runs after individual adjustments to resolve "overshoot"
+ */
+export function enforceNeedLimits(
+    matrix: SlotAllocationMatrix,
+    needSlots: NeedSlot[]
+): boolean {
+    let adjustmentsMade = false;
+
+    for (const ns of needSlots) {
+        if (!ns.id || ns.quantity === undefined) continue;
+
+        // Calculate total received
+        let totalReceived = 0;
+        const sources: string[] = [];
+
+        for (const csId in matrix) {
+            const amt = matrix[csId]?.[ns.id]?.amount || 0;
+            if (amt > EPSILON) {
+                totalReceived += amt;
+                sources.push(csId);
+            }
+        }
+
+        // If over-allocated, scale down everyone proportionally
+        if (totalReceived > ns.quantity + EPSILON) {
+            const scale = ns.quantity / totalReceived;
+
+            for (const csId of sources) {
+                if (matrix[csId][ns.id]) {
+                    const original = matrix[csId][ns.id].amount;
+                    const newValue = original * scale;
+                    matrix[csId][ns.id].amount = newValue;
+
+                    if (Math.abs(original - newValue) > EPSILON) {
+                        adjustmentsMade = true;
+                    }
                 }
             }
         }

@@ -206,7 +206,7 @@
 		const updated = {
 			...slot,
 			recurrence: recurrence as any,
-			availability_window: availabilityWindow
+			availability_window: availabilityWindow as any
 		};
 		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
 	}
@@ -217,30 +217,17 @@
 		return slot.recurrence + (slot.start_date ? ` from ${new Date(slot.start_date).toLocaleDateString()}` : '');
 	}
 
-	// Tier helpers
-	function getTierLabel(tier: number | string): string {
-		// Handle legacy string tiers
-		if (tier === 'mutual') return 'mutual';
-		if (tier === 'non-mutual') return 'non-mutual';
-		
-		// Handle numeric tiers
-		if (tier === 0) return 'mutual';
-		if (tier === 1) return 'non-mutual';
-		return `tier-${tier}`;
+	// Status helpers
+	function getStatusLabel(withinLimit: boolean): string {
+		return withinLimit ? 'priority-flow' : 'surplus-flow';
 	}
 
-	function getTierEmoji(tier: number | string): string {
-		const label = getTierLabel(tier);
-		if (label === 'mutual') return '🤝';
-		if (label === 'non-mutual') return '➡️';
-		return '🔢';
+	function getStatusEmoji(withinLimit: boolean): string {
+		return withinLimit ? '⚡' : '🌊';
 	}
 	
-	function getTierDisplayName(tier: number | string): string {
-		const label = getTierLabel(tier);
-		if (label === 'mutual') return 'Mutual Recognition';
-		if (label === 'non-mutual') return 'One-way Connection';
-		return `Tier ${tier}`;
+	function getStatusDisplayName(withinLimit: boolean): string {
+		return withinLimit ? 'Priority Flow' : 'Surplus Flow';
 	}
 </script>
 
@@ -249,11 +236,11 @@
 		? (needAllocationsMap.get(slot.id) || [])
 		: (capacityAllocationsMap.get(slot.id) || [])
 	}
-	<!-- Sort allocations by tier (0 first) then by amount (desc) -->
+	<!-- Sort allocations by priority (within limit first) then by amount (desc) -->
 	{@const allocations = [...rawAllocations].sort((a, b) => {
-		const tA = typeof a.tier === 'number' ? a.tier : (a.tier === 'mutual' ? 0 : 1);
-		const tB = typeof b.tier === 'number' ? b.tier : (b.tier === 'mutual' ? 0 : 1);
-		if (tA !== tB) return tA - tB;
+		const pA = a.withinPriorityLimit ? 0 : 1;
+		const pB = b.withinPriorityLimit ? 0 : 1;
+		if (pA !== pB) return pA - pB;
 		return b.quantity - a.quantity;
 	})}
 	
@@ -305,6 +292,7 @@
 				🕐 {expandedSlots.has(slot.id) ? 'Close' : 'Time'}
 			</button>
 
+            {#if !isNeedMode}
             <button
 				type="button"
 				class="btn-time"
@@ -313,6 +301,7 @@
 			>
 				⭐ {expandedPrioritySlots.has(slot.id) ? 'Close' : 'Priorities'}
 			</button>
+            {/if}
 			
 			<button
 				type="button"
@@ -335,14 +324,14 @@
 				<TimePatternEditor
 					recurrence={slot.recurrence || null}
 					availabilityWindow={slot.availability_window}
-					onUpdate={(recurrence: string | null, availabilityWindow?: AvailabilityWindow) => 
+					onUpdate={(recurrence: string | null, availabilityWindow?: any) => 
 						handleTimePatternUpdate(slot, recurrence, availabilityWindow, isNeedMode)
 					}
 				/>
 			</div>
 		{/if}
 		
-        {#if expandedPrioritySlots.has(slot.id)}
+        {#if expandedPrioritySlots.has(slot.id) && !isNeedMode}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div 
@@ -355,7 +344,7 @@
                     <p class="help-text">Override global recognition for this slot.</p>
                 </div>
 				<SlotPriorityDistributionEditor
-					priorityDistribution={slot.priority_distribution}
+					priorityDistribution={(slot as AvailabilitySlot).priority_distribution}
                     onUpdate={(dist) => handlePriorityUpdate(slot, dist, isNeedMode)}
 				/>
 			</div>
@@ -403,9 +392,9 @@
 								})()
 								: allocation.recipient_pubkey
 							}
-							{@const tierLabel = getTierLabel(allocation.tier)}
+							{@const statusLabel = getStatusLabel(allocation.withinPriorityLimit)}
 							
-							<div class="allocation-item {tierLabel}">
+							<div class="allocation-item {statusLabel}">
 								<div class="allocation-header">
 									<span class="user-name">
 										{#await getUserName(otherPubKey)}
@@ -421,8 +410,8 @@
 									</span>
 								</div>
 								<div class="allocation-meta">
-									<span class="tier-badge {tierLabel}">
-										{getTierEmoji(allocation.tier)} {getTierDisplayName(allocation.tier)}
+									<span class="status-badge {statusLabel}">
+										{getStatusEmoji(allocation.withinPriorityLimit)} {getStatusDisplayName(allocation.withinPriorityLimit)}
 									</span>
 									{#if allocation.time_compatible && allocation.location_compatible}
 										<span class="compatible">✓ Time & Location match</span>
@@ -964,7 +953,7 @@
 		border-left: 3px solid #10b981;
 	}
 	
-	.allocation-item.non-mutual {
+	.allocation-item.extended {
 		border-left: 3px solid #3b82f6;
 	}
 	
@@ -994,7 +983,7 @@
 		align-items: center;
 	}
 	
-	.tier-badge {
+	.status-badge {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
@@ -1004,12 +993,12 @@
 		font-weight: 600;
 	}
 	
-	.tier-badge.mutual {
+	.status-badge.mutual {
 		background: #d1fae5;
 		color: #065f46;
 	}
 	
-	.tier-badge.non-mutual {
+	.status-badge.extended {
 		background: #dbeafe;
 		color: #1e40af;
 	}

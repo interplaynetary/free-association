@@ -8,7 +8,7 @@
  */
 
 import { MRDMembershipModule } from '$lib/protocol/stores/collective-membership.svelte';
-import { calculateSlotBasedPriorityAllocation, type SlotAllocationRecord } from '$lib/protocol/allocation-local';
+import { calculateIPFAllocation, type SlotAllocationRecord } from '$lib/protocol/allocation-ipf';
 import type {
 	AvailabilitySlot,
 	NeedSlot,
@@ -427,7 +427,8 @@ export async function triggerAllocationComputation(): Promise<void> {
 /**
  * Adapter to call the slot-based allocation engine
  */
-function computeAllocations(
+// Export for testing
+export function computeAllocations(
 	capacity: AvailabilitySlot,
 	needs: Map<string, NeedSlot>,
 	memberTrees: Map<string, Node>
@@ -441,20 +442,24 @@ function computeAllocations(
 	// We use the capacity ID as the key or a fixed 'collective' ID if not available
 	const providerId = capacity.members?.[0] || 'collective';
 
+	// Collect all recipient IDs for the provider to recognize
+	const recipientIds = new Set<string>();
+	for (const slot of needs.values()) {
+		const o = slot.members?.[0] || 'unknown_recipient';
+		recipientIds.add(o);
+	}
+	const providerRecognition: Record<string, number> = {};
+	recipientIds.forEach(id => providerRecognition[id] = 1.0);
+
 	allCommitments[providerId] = {
 		capacity_slots: [capacity],
 		need_slots: [],
 		timestamp: Date.now(),
-		itcStamp: null
+		itcStamp: null,
+		global_recognition_weights: providerRecognition
 	};
 
 	// 2. Recipient Commitments
-	// Iterate needs to find owners. 
-	// PROBLEM: NeedSlots don't strictly have an owner ID in the schema.
-	// We assume the needs map keys MIGHT be related to owner, OR NeedSlot.members has it.
-	// If not, we map them to 'unknown' which means they won't get priority boost from recognition,
-	// but might still get allocated if fully compatible and no priority check fails.
-
 	for (const [key, slot] of needs.entries()) {
 		// Heuristic: Try to find owner from members
 		const owner = slot.members?.[0] || 'unknown_recipient';
@@ -464,7 +469,9 @@ function computeAllocations(
 				capacity_slots: [],
 				need_slots: [],
 				timestamp: Date.now(),
-				itcStamp: null
+				itcStamp: null,
+				// Recipient recognizes provider (Collective)
+				global_recognition_weights: { [providerId]: 1.0 }
 			};
 		}
 
@@ -475,12 +482,17 @@ function computeAllocations(
 	}
 
 	// 3. Run Allocation
-	const allocations = calculateSlotBasedPriorityAllocation(
-		[capacity],
-		needSlots,
-		allCommitments,
+	// Sanitize capacity (recurrence null -> undefined)
+	const sanitizedCapacity = {
+		...capacity,
+		recurrence: capacity.recurrence || undefined
+	};
+
+	const allocations = calculateIPFAllocation(
+		[sanitizedCapacity as any],
+		needSlots as any,
+		allCommitments as any,
 		{
-			enableRefinement: true,
 			debug: false
 		}
 	);

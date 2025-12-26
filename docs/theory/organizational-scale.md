@@ -8,7 +8,7 @@ Thus far we have principally spoken of free-association between individuals, but
 
 ## The Vision
 
-If states and organizations mutually recognized each other's contributions toward their own self-actualization, and surplus flowed bi-directionally, there would be no more need for traditional imports/exports or international trade. Resources and coordination would flow as surplus from mutually-recognized contributors.
+If states and organizations mutually prioritized each other's contributions toward their own self-actualization, and surplus flowed bi-directionally, there would be no more need for traditional imports/exports or international trade. Resources and coordination would flow as surplus from mutually-prioritized contributors.
 
 ### Internal Mechanism
 
@@ -16,7 +16,7 @@ Each state or organization would have a mechanism for collective setting of the 
 
 **Example:** Each member has an equal share of proportion-setting-power (at which levels?)
 
-Surplus would distribute according to mutual-fulfillment exactly the same as occurs between individuals.
+Surplus would distribute according to reciprocal-alignment exactly the same as occurs between individuals.
 
 ### Delegation Mechanism
 
@@ -76,7 +76,7 @@ The design space is vast, especially for decisions that do not concern proportio
 
 ### Tree Structure
 
-**How do new nodes get created in an organization's recognition tree?**
+**How do new nodes get created in an organization's prioritization tree?**
 - Are there limits to this?
 - Can one add points to one's own created node?
 - Can one add points to a node one is part of?

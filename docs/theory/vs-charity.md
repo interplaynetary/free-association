@@ -47,10 +47,10 @@ Free Association differs fundamentally from charitable resource distribution.
 
 ### Structure
 
-**Bidirectional Recognition and Resource Flows:**
+**Bidirectional Priority and Resource Flows:**
 - All entities both contribute and receive
-- Recognition flows in both directions
-- Resources follow mutual recognition patterns
+- Priority flows in both directions
+- Resources follow reciprocal alignment patterns
 
 **Peer-to-Peer Network:**
 - No inherent hierarchy
@@ -108,7 +108,7 @@ Recognition distributed proportionally among contributors.
 Resources automatically flow to recognized contributors when:
 - Capacity is available
 - Needs are declared
-- Mutual recognition exists
+- Reciprocal alignment exists
 
 **4. Network Effects**
 As networks grow:
@@ -149,7 +149,7 @@ Organizations using charitable models can transition:
 
 **Phase 3: Build Network**
 - Introduce partners to system
-- Establish mutual recognition
+- Establish reciprocal alignment
 - Expand beyond bilateral relationships
 
 **Phase 4: Scale Transition**
@@ -190,7 +190,7 @@ Free Association and charity can coexist:
 
 ### Free Association Framework
 
-**Foundation:** Mutual recognition of contribution to shared goals
+**Foundation:** Reciprocal alignment of contribution to shared goals
 
 **Mechanism:** Resources flow based on value creation in network
 
@@ -224,7 +224,7 @@ Both serve important functions:
 
 **Free Association Approach:**
 - Determine who contributes to your goals
-- Establish mutual recognition
+- Establish reciprocal alignment
 - Declare available capacity
 - Resources flow automatically based on contribution and need
 
@@ -240,7 +240,7 @@ Both serve important functions:
 
 **Free Association Approach:**
 - Demonstrate contribution to partners' goals
-- Establish mutual recognition
+- Establish reciprocal alignment
 - Declare own needs
 - Full autonomy in operations
 

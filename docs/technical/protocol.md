@@ -14,11 +14,11 @@ The complete protocol specification is available in the main repository:
 
 Any implementation claiming Free Association conformance preserves:
 
-**1. Mutual Recognition Foundation**
-- Recognition weights sum to 100% per entity
-- Mutual recognition = min(A→B, B→A)
-- Recognition is non-transferable
-- Recognition is dynamically adjustable
+**1. Priority Alignment Foundation**
+- Priority weights sum to 100% per entity
+- Reciprocal Alignment = min(A→B, B→A)
+- Priority is non-transferable
+- Priority is dynamically adjustable
 
 **2. Needs-Based Allocation**
 - Allocations capped at declared need
@@ -33,17 +33,17 @@ Any implementation claiming Free Association conformance preserves:
 
 ### Allocation Formula
 
-**Tier 1 (Mutual Recognition):**
+**Phase 1 (Priority Alignment):**
 ```
-Share(r) = MR(P, r) / Σ MR(P, All_Mutual_Recipients)
+Share(r) = RA(P, r) / Σ RA(P, All_Aligned_Recipients)
 RawAllocation(r) = Capacity × Share(r)
 FinalAllocation(r) = min(RawAllocation(r), Need(r))
 ```
 
-**Tier 2 (Unilateral Recognition):**
+**Phase 2 (Unilateral Priority):**
 ```
-RemainingCapacity = Capacity - Σ FinalAllocation(Tier1)
-Share(r) = Recognition(P→r) / Σ Recognition(P→All_Unilateral)
+RemainingCapacity = Capacity - Σ FinalAllocation(Phase1)
+Share(r) = Priority(P→r) / Σ Priority(P→All_Unilateral)
 RawAllocation(r) = RemainingCapacity × Share(r)
 FinalAllocation(r) = min(RawAllocation(r), Need(r))
 ```
@@ -54,7 +54,7 @@ Conformant implementations demonstrate:
 
 ✅ **Contraction:** Total needs decrease or stay constant  
 ✅ **No Accumulation:** Received ≤ Declared Need always  
-✅ **Fairness:** Equal mutual recognition → equal shares  
+✅ **Fairness:** Equal reciprocal alignment → equal shares  
 ✅ **Determinism:** Same state → same allocations
 
 ### Protocol Violations
@@ -64,7 +64,7 @@ The following are NON-CONFORMANT:
 ❌ Allowing accumulation beyond declared need  
 ❌ Making recognition transferable or tradeable  
 ❌ Weighting by need size instead of recognition  
-❌ Prioritizing unilateral over mutual recognition  
+❌ Prioritizing unilateral over reciprocal alignment  
 ❌ Breaking determinism property
 
 ## Version Information

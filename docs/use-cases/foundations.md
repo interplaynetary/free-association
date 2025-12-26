@@ -70,7 +70,7 @@ Organization C:
 **4. Automatic Allocation**
 
 System calculates optimal distribution:
-- Proportional to mutual recognition
+- Proportional to reciprocal alignment
 - Capped at declared needs
 - Respects foundation filters (sector, geography)
 - Updates automatically as needs change

@@ -1,4 +1,4 @@
-# **Recognition Mathematics: Natural Incentives for Accuracy**
+# **Priority Mathematics: Natural Incentives for Accuracy**
 
 **Status:** Draft v0.1 (November 2025)  
 **Part of:** Free Association Coalition Documentation
@@ -55,13 +55,13 @@ Where:
 
 ---
 
-## **Mutual Recognition**
+## **Reciprocal Alignment**
 
 ### **Definition**
 
-**Mutual Recognition (MR)** between two entities is calculated as the **minimum** of their bidirectional recognition:
+**Reciprocal Alignment (RA)** between two entities is calculated as the **minimum** of their bidirectional priority weights:
 
-**MR(entity-a, entity-b) = min(recognition-a-gives-to-b, recognition-b-gives-to-a)**
+**RA(entity-a, entity-b) = min(priority-a-gives-to-b, priority-b-gives-to-a)**
 
 ### **Mathematical Formulation**
 
@@ -72,7 +72,7 @@ MR(A, B) = \min(R_{A \to B}, R_{B \to A})
 Where:
 * \( R_{A \to B} \) = Recognition that A allocates to B (as % of A's total)
 * \( R_{B \to A} \) = Recognition that B allocates to A (as % of B's total)
-* \( MR(A, B) \) = Mutual recognition between A and B
+* \( MR(A, B) \) = Reciprocal alignment between A and B
 
 ### **Why Minimum?**
 
@@ -87,7 +87,7 @@ The min() function creates powerful incentive alignment:
 **Incentive Analysis:**
 
 1. **A's excess recognition is "wasted":**
-   * A allocated 30% but only receives 10% mutual recognition
+   * A allocated 30% but only receives 10% reciprocal alignment
    * The extra 20% doesn't create mutual benefit
    * A has incentive to reallocate that 20% to entities who reciprocate
 
@@ -101,7 +101,7 @@ The min() function creates powerful incentive alignment:
    * One-sided relationships provide minimal mutual benefit
    * Symmetric recognition patterns emerge where genuine value exists
 
-### **Properties of Mutual Recognition**
+### **Properties of Reciprocal Alignment**
 
 **Symmetric:**
 \[
@@ -129,11 +129,11 @@ MR(A, A) = R_{A \to A} = 0 \text{ (participants don't self-recognize)}
 
 ### **Purpose**
 
-Organizational recognition aggregates individual mutual recognitions to determine an individual's share within an organization's collective resources or influence.
+Organizational recognition aggregates individual reciprocal alignments to determine an individual's share within an organization's collective resources or influence.
 
 ### **Formula**
 
-**Each member's share = (their total mutual recognition across all organization members) / (total mutual recognition in organization)**
+**Each member's share = (their total reciprocal alignment across all organization members) / (total reciprocal alignment in organization)**
 
 \[
 \text{OrgShare}_i = \frac{\sum_{j \in \text{Org}} MR(i, j)}{\sum_{k \in \text{Org}} \sum_{j \in \text{Org}} MR(k, j)}
@@ -141,14 +141,14 @@ Organizational recognition aggregates individual mutual recognitions to determin
 
 Where:
 * \( \text{OrgShare}_i \) = Member \( i \)'s share of organizational resources
-* \( MR(i, j) \) = Mutual recognition between member \( i \) and member \( j \)
+* \( MR(i, j) \) = Reciprocal alignment between member \( i \) and member \( j \)
 * Org = Set of all members in the organization
 
 ### **Example Calculation**
 
 **Organization with 3 members (A, B, C):**
 
-**Mutual Recognition Matrix:**
+**Reciprocal Alignment Matrix:**
 
 |     | A   | B   | C   |
 |-----|-----|-----|-----|
@@ -182,7 +182,7 @@ If the organization allocates resources (e.g., $90,000 budget):
 ### **Properties**
 
 **Proportional:**
-* Members with more mutual recognition get larger shares
+* Members with more reciprocal alignment get larger shares
 * Reflects their contribution to organizational network
 
 **Normalized:**
@@ -241,7 +241,7 @@ Recognition accuracy is validated through **outcomes**:
 \downarrow \text{Effective Recognition}
 \]
 \[
-\downarrow \text{Mutual Recognition with Actually Beneficial Partners}
+\downarrow \text{Reciprocal Alignment with Actually Beneficial Partners}
 \]
 \[
 \downarrow \text{Access to Actually Beneficial Resources}
@@ -269,8 +269,8 @@ Allocating recognition to ineffective partners means **less recognition availabl
 **2. Min() Function Punishes Misallocation**
 
 If you over-recognize someone who doesn't reciprocate (or can't help you):
-* Your high recognition doesn't create high mutual recognition
-* Resources flow based on mutual recognition, not one-sided recognition
+* Your high recognition doesn't create high reciprocal alignment
+* Resources flow based on reciprocal alignment, not one-sided recognition
 * Your misallocated recognition is "wasted"
 
 **3. Outcomes Provide Feedback**
@@ -313,7 +313,7 @@ Recognition is not locked in. As you learn from outcomes:
 * Incentive: Accumulate money (which may or may not correlate with contribution)
 
 **Free Association:**
-* Resources allocated based on mutual recognition
+* Resources allocated based on reciprocal alignment
 * Contribution creates recognition, recognition creates access
 * Incentive: Contribute to others' goals to receive recognition
 
@@ -339,7 +339,7 @@ Recognition is not locked in. As you learn from outcomes:
 
 If A recognizes B, and B recognizes C:
 * C benefits even without direct recognition from A
-* Resources flowing through network based on mutual recognition patterns
+* Resources flowing through network based on reciprocal alignment patterns
 * Creates incentive for strategic recognition of connectors
 
 **Recognition Subgraphs:**
@@ -354,12 +354,12 @@ Highly mutually-recognized clusters form:
 **Concentrated:**
 * Allocate large percentages to few entities
 * Deep relationships with key partners
-* Higher mutual recognition per relationship (if reciprocated)
+* Higher reciprocal alignment per relationship (if reciprocated)
 
 **Distributed:**
 * Allocate small percentages to many entities
 * Broad network with diverse partners
-* Lower mutual recognition per relationship but more total relationships
+* Lower reciprocal alignment per relationship but more total relationships
 
 **Optimal Strategy:**
 
@@ -383,7 +383,7 @@ If recognition is not periodically reaffirmed:
 
 Changing recognition patterns has costs:
 * Existing partners may reduce their recognition in response
-* Mutual recognition takes time to build
+* Reciprocal alignment takes time to build
 * Creates stability in recognition networks while allowing adaptation
 
 ---
@@ -394,7 +394,7 @@ Changing recognition patterns has costs:
 
 The recognition system implements a **repeated cooperative game** with:
 
-* **No Nash equilibrium in pure defection:** Free-riding (not recognizing anyone) yields zero mutual recognition and zero resources
+* **No Nash equilibrium in pure defection:** Free-riding (not recognizing anyone) yields zero reciprocal alignment and zero resources
 * **Tit-for-tat stability:** Reciprocal recognition is an evolutionarily stable strategy
 * **Cooperation emergence:** Repeated interactions with reputation tracking favor cooperative behavior
 
@@ -431,7 +431,7 @@ The system is:
 
 3. **Do they recognize me reciprocally?**
    * Check their recognition declarations
-   * Calculate mutual recognition
+   * Calculate reciprocal alignment
 
 4. **Could I better allocate this recognition elsewhere?**
    * Opportunity cost analysis
@@ -466,7 +466,7 @@ The system is:
 
 3. **Seek reciprocity**
    * Prioritize entities who recognize your contributions
-   * Build symmetric relationships for maximum mutual recognition
+   * Build symmetric relationships for maximum reciprocal alignment
 
 4. **Demonstrate value**
    * Deliver on stated capacities
@@ -500,7 +500,7 @@ The system doesn't require:
 
 It only requires:
 * ✅ Fixed recognition budget (mathematical constraint)
-* ✅ Mutual recognition calculation (min function)
+* ✅ Reciprocal alignment calculation (min function)
 * ✅ Access to outcomes (to learn from experience)
 * ✅ Ability to update recognition (dynamic adjustment)
 
@@ -521,7 +521,7 @@ Limited recognition budget + Outcome feedback + Dynamic adjustment = Natural sel
 ## **Further Reading**
 
 * [Participation Framework](/docs/coalition/participation-framework.md) \- How recognition fits into coalition operations
-* [Allocation Algorithm](/docs/concepts/allocation-algorithm.md) \- How mutual recognition determines resource distribution
+* [Allocation Algorithm](/docs/concepts/allocation-algorithm.md) \- How reciprocal alignment determines resource distribution
 * [Network Dynamics](/docs/technical/network-dynamics.md) \- Emergence of recognition patterns over time
 * [Mathematical Foundations](/docs/technical/mathematics.md) \- Formal proofs and advanced mathematical properties
 

@@ -7,7 +7,7 @@ Free Association can coordinate shared resource pools among member entities—or
 When multiple entities pool resources for collective benefit, Free Association provides an allocation mechanism that is:
 
 - **Needs-based:** No entity receives beyond declared needs
-- **Recognition-weighted:** Stronger mutual recognition yields proportionally larger shares
+- **Priority-weighted:** Stronger reciprocal alignment yields proportionally larger shares
 - **Continuously optimal:** System recalculates as network state evolves
 - **Non-accumulative:** Cannot accumulate resources beyond stated requirements
 
@@ -37,13 +37,9 @@ Organization D: $800K/month field operations
 
 **Key Property:** Needs based on member's own assessment. No external needs verification required.
 
-### 3. Members Establish Mutual Recognition
-
-Each member recognizes others' contributions to shared mission.
-
-**Example:**
-```
-From Organization A's perspective:
+### 3. Members Establish Priority Alignment
+    - Each member prioritizes contribution sources aligned with the shared mission
+    - Reciprocal priority percentages determine allocation weights perspective:
 - Recognizes B at 15% (complementary programs)
 - Recognizes C at 10% (emergency coordination)
 - Recognizes D at 20% (field infrastructure)
@@ -57,7 +53,7 @@ Each organization maintains own recognition pattern.
 
 ### 4. Calculate Collective Priority Distribution
 
-System sums mutual recognition values across collective members.
+System sums reciprocal alignment values across collective members.
 
 **Calculation:**
 ```
@@ -126,12 +122,12 @@ This prevents:
 
 ### Recognition-Weighted Distribution
 
-**Stronger mutual recognition yields proportionally larger shares.**
+**Stronger reciprocal alignment yields proportionally larger shares.**
 
 Recognition strength determines allocation:
-- High mutual recognition → larger share of collective resources
-- Low mutual recognition → smaller share
-- Zero mutual recognition → no allocation from collective
+- High reciprocal alignment → larger share of collective resources
+- Low reciprocal alignment → smaller share
+- Zero reciprocal alignment → no allocation from collective
 
 This creates natural incentive for:
 - Genuine contribution to other members' goals
@@ -190,7 +186,7 @@ No committee decides:
 
 Instead:
 - Each member recognizes contributors to their goals
-- Aggregate mutual recognition emerges from individual assessments
+- Aggregate reciprocal alignment emerges from individual assessments
 - Allocation reflects decentralized value determination
 
 ### Flexible Membership
@@ -200,7 +196,7 @@ Instead:
 Members can:
 - Join by establishing recognition with existing members
 - Leave by removing recognition or being removed from others' recognition
-- Participate at varying levels based on mutual recognition strength
+- Participate at varying levels based on reciprocal alignment strength
 - Maintain autonomy in membership decisions
 
 No central body controls membership or defines participation criteria.
@@ -228,7 +224,7 @@ Yet coordination emerges through published declarations and distributed calculat
 
 **Operation:**
 - Members declare emergency needs as they arise
-- System allocates based on mutual recognition + declared needs
+- System allocates based on reciprocal alignment + declared needs
 - Resources flow within 24-48 hours
 - Continuous reallocation as situations evolve
 
@@ -247,7 +243,7 @@ Yet coordination emerges through published declarations and distributed calculat
 
 **Operation:**
 - Members declare capital needs for projects
-- System allocates based on mutual recognition + needs
+- System allocates based on reciprocal alignment + needs
 - Capital flows according to contribution and requirements
 - Updates quarterly as projects complete
 
@@ -266,7 +262,7 @@ Yet coordination emerges through published declarations and distributed calculat
 
 **Operation:**
 - Institutions declare research program budgets
-- System allocates based on mutual recognition (contribution to consortium goals) + needs
+- System allocates based on reciprocal alignment (contribution to consortium goals) + needs
 - Budget flows quarterly
 - Recognition updates annually based on contribution assessment
 
@@ -334,7 +330,7 @@ Each member publishes:
 - Available capacity (if providing to collective)
 
 Any participant can calculate:
-- Mutual recognition network
+- Reciprocal alignment network
 - Proportional shares
 - Optimal allocation
 
@@ -378,7 +374,7 @@ Result: Distributed calculation, no central calculator required.
 ### Allocation Algorithm
 
 ```javascript
-// Calculate total mutual recognition per member
+// Calculate total reciprocal alignment per member
 for each member M:
   M.totalMR = Σ MR(M, other_members)
 

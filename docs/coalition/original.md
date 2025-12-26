@@ -19,6 +19,6 @@ This coalition consists of entities experimenting with **Digital Public Goods (D
 
 **Participants may publish data:** For example, sources for deriving, filters and their applications, recognitions, capacities, needs, organizational membership, environmental data, qualities, or any other data.
 
-**Participants may derive data from local and network-data:** For example, distributions, goals, estimates, needs, capacities, organizational membership, sources for deriving, filters and their applications, or any other data. Key distribution derivations include Recognition (always a portion of 100%), Mutual Recognition (reciprocal minimum), and Organizational Recognition (derived from mutual-recognition among members).
+**Participants may derive data from local and network-data:** For example, distributions, goals, estimates, needs, capacities, organizational membership, sources for deriving, filters and their applications, or any other data. Key distribution derivations include Recognition (always a portion of 100%), Reciprocal Alignment (reciprocal minimum), and Organizational Priority (derived from reciprocal alignment among members).
 
 **Participants can publish/propose/offer/allocate with the help of protocols of their choosing.**

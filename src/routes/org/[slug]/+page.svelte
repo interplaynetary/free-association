@@ -14,7 +14,6 @@
 		myNeedTypesStore,
 		myCapacityTypesStore,
 		myCommitmentStore,
-		initializeAllocationStores,
 		enableAutoCommitmentComposition,
 		setMyNeedSlots,
 		setMyCapacitySlots,
@@ -23,7 +22,10 @@
 		networkRecognitionTrees,
 		networkCommitments
 	} from '$lib/protocol/stores/stores.svelte';
-	import { enableAutoAllocationPublishing } from '$lib/protocol/stores/allocation.svelte';
+	import { 
+		enableAutoAllocationPublishing,
+		initializeAllocationStores 
+	} from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
@@ -35,7 +37,7 @@
 		AvailabilitySlot,
 		NonRootNode,
 		RootNode
-	} from '@playnet/free-association/schemas';
+	} from '$lib/protocol/schemas';
 	import { NEED_TYPES, formatNeedType } from '@playnet/free-association/utils/needTypes';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
@@ -118,7 +120,7 @@ if (data.isUserTree) {
 		const myTree = get(myRecognitionTreeStore);
 		
 		if (myTree) {
-			const treeWithCorrectId = { ...myTree, id: userPubkey };
+			const treeWithCorrectId = { ...myTree, id: userPubkey, manual_fulfillment: myTree.manual_fulfillment ?? undefined };
 			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
 			userTreeLoading = false;
 			userTreeLoaded = true;
@@ -139,9 +141,10 @@ if (data.isUserTree) {
 			type: 'RootNode',
 			children: [],
 			manual_fulfillment: 0,
+			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		};
-		demoTreeStore.initializeWithCustomTree(placeholderTree, true, false);
+		demoTreeStore.initializeWithCustomTree(placeholderTree as any, true, false);
 		
 		// Subscribe to network data
 		subscribeToRecognitionTree(userPubkey);
@@ -153,7 +156,7 @@ if (data.isUserTree) {
 		if (existingTree?.data) {
 			// Fast path: data already cached
 			console.log('[ORG-PAGE] 💡 Found cached data');
-			const treeWithCorrectId = { ...existingTree.data, id: userPubkey };
+			const treeWithCorrectId = { ...existingTree.data, id: userPubkey, manual_fulfillment: existingTree.data.manual_fulfillment ?? undefined };
 			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
 			userTreeLoading = false;
 			userTreeLoaded = true;
@@ -170,7 +173,7 @@ if (data.isUserTree) {
 				const tree = $trees.get(userPubkey);
 				if (tree?.data) {
 					clearTimeout(loadTimeout);
-					const treeWithCorrectId = { ...tree.data, id: userPubkey };
+					const treeWithCorrectId = { ...tree.data, id: userPubkey, manual_fulfillment: tree.data.manual_fulfillment ?? undefined };
 					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
 					userTreeLoading = false;
 					userTreeLoaded = true;
@@ -287,7 +290,9 @@ if (data.isUserTree) {
 			quantity: newNeedQuantity,
 			unit: 'units',
 			max_natural_div: 1,
-			min_allocation_percentage: 0.01
+			min_allocation_percentage: 0.01,
+			recurrence: undefined,
+			availability_window: undefined
 		};
 
 		setMyNeedSlots([...needSlots, newSlot]);
@@ -317,7 +322,10 @@ if (data.isUserTree) {
 			quantity: newCapacityQuantity,
 			unit: 'units',
 			max_natural_div: 1,
-			min_allocation_percentage: 0.01
+			min_allocation_percentage: 0.01,
+			recurrence: undefined,
+			availability_window: undefined,
+			priority_distribution: undefined
 		};
 
 		setMyCapacitySlots([...capacitySlots, newSlot]);

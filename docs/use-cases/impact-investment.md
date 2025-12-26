@@ -80,7 +80,7 @@ Climate Tech Organization A:
 **4. Automatic Allocation**
 
 System calculates optimal capital deployment:
-- Mutual recognition determines priority
+- Reciprocal alignment determines priority
 - Declared needs cap allocation
 - Filter compatibility ensures appropriate matching
 - Updates automatically as needs/capacity evolve

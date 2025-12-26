@@ -116,7 +116,7 @@ Total Recognition = Effective Recognition + Ineffective Recognition
 
 Therefore:
 ↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Mutual Recognition with Actually Beneficial Partners
+   → ↓ Reciprocal Alignment with Actually Beneficial Partners
       → ↓ Access to Actually Beneficial Resources
          → ↓ Goal Achievement
             → Natural incentive to correct recognition toward accuracy
@@ -133,12 +133,12 @@ Therefore:
 - Accumulates through acquisition
 
 **Free Association:**
-- Recognition continuously assessed
+- Priority continuously assessed
 - Adjusts based on ongoing contribution
 - Non-transferable
 - Cannot accumulate beyond direct relationships
 
-**Result:** Recognition reflects current coordination reality, not historical capital provision.
+**Result:** Priority reflects current coordination reality, not historical capital provision.
 
 ## Capital Coordination Without Ownership
 
@@ -175,7 +175,7 @@ Based on contribution to organization's goals:
 - Operational support
 
 **Allocation Flows Automatically:**
-- Mutual recognition determines priority
+- Reciprocal alignment determines priority
 - Declared needs set cap
 - Resources deploy without ownership transfer
 
@@ -211,7 +211,7 @@ Traditional structures create tensions:
 
 Free Association resolves these through:
 
-**Mutual Recognition Without Domination:**
+**Reciprocal Alignment Without Domination:**
 - Acknowledge contribution without acquiring control
 - Value each other's work without ownership claims
 - Coordinate effectively without hierarchy
@@ -275,7 +275,7 @@ Free Association resolves these through:
 
 **Free Association:**
 - Power: Distributed across network
-- Dynamics: Collaborative (mutual recognition)
+- Dynamics: Collaborative (reciprocal alignment)
 - Orientation: Mission-focused
 - Distribution: Recognition based on current contribution
 
@@ -297,7 +297,7 @@ Free Association resolves these through:
 
 **Portfolio Support: Free Association**
 - Investor capacity flows to recognized portfolio
-- Organizations support each other through mutual recognition
+- Organizations support each other through reciprocal alignment
 - Network effects amplify individual investments
 
 ### Benefits of Integration

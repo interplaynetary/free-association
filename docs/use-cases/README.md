@@ -1,12 +1,12 @@
 # Use Cases Overview
 
-Free Association enables rapid, efficient resource coordination across multiple domains. Each use case demonstrates how mutual recognition replaces traditional coordination overhead.
+Free Association enables rapid, efficient resource coordination across multiple domains. Each use case demonstrates how reciprocal alignment replaces traditional coordination overhead.
 
 ## Crisis Response
 **Problem:** 90-270+ days from crisis to resource flow  
 **Solution:** <48 hours through automatic allocation
 
-Organizations with pre-established mutual recognition respond immediately when crisis needs are declared. No coordination meetings. No political negotiations. Resources flow automatically based on recognition and need.
+Organizations with pre-established reciprocal alignment respond immediately when crisis needs are declared. No coordination meetings. No political negotiations. Resources flow automatically based on recognition and need.
 
 [Read more →](crisis-response.md)
 
@@ -16,7 +16,7 @@ Organizations with pre-established mutual recognition respond immediately when c
 **Problem:** Lengthy application processes, high overhead, delayed deployment  
 **Solution:** Automatic allocation to recognized mission-aligned partners
 
-Foundations recognize organizations contributing to shared goals. When capacity is available, it flows automatically based on declared needs and mutual recognition strength.
+Foundations recognize organizations contributing to shared goals. When capacity is available, it flows automatically based on declared needs and reciprocal alignment strength.
 
 [Read more →](foundations.md)
 
@@ -26,7 +26,7 @@ Foundations recognize organizations contributing to shared goals. When capacity 
 **Problem:** Coordination bottlenecks delay aid delivery  
 **Solution:** Direct resource flow between recognized partners
 
-Aid organizations mutually recognize contributions to shared humanitarian goals. When crisis emerges, resources flow automatically to organizations with strongest mutual recognition and greatest need.
+Aid organizations mutually recognize contributions to shared humanitarian goals. When crisis emerges, resources flow automatically to organizations with strongest reciprocal alignment and greatest need.
 
 [Read more →](humanitarian.md)
 
@@ -36,7 +36,7 @@ Aid organizations mutually recognize contributions to shared humanitarian goals.
 **Problem:** Fundraising overhead, misaligned capital deployment  
 **Solution:** Efficient capital flow to mission-aligned organizations
 
-Investors recognize organizations working on aligned goals. Capital flows based on mutual recognition and declared needs, eliminating traditional fundraising overhead.
+Investors recognize organizations working on aligned goals. Capital flows based on reciprocal alignment and declared needs, eliminating traditional fundraising overhead.
 
 [Read more →](impact-investment.md)
 
@@ -46,7 +46,7 @@ Investors recognize organizations working on aligned goals. Capital flows based 
 **Problem:** Administrative burden in allocating shared resources  
 **Solution:** Automatic allocation based on member contributions
 
-Communities allocate shared resources (facilities, equipment, expertise) based on members' mutual recognition of contributions and declared needs. System handles allocation automatically.
+Communities allocate shared resources (facilities, equipment, expertise) based on members' reciprocal alignment of contributions and declared needs. System handles allocation automatically.
 
 [Read more →](community.md)
 
@@ -71,7 +71,7 @@ Across all use cases, Free Association delivers:
 All use cases benefit from recognition networks established before needs arise. This enables immediate response when circumstances change.
 
 ### Bidirectional Value
-Mutual recognition creates peer-to-peer relationships rather than donor-recipient hierarchies. All participants both contribute and receive.
+Reciprocal alignment creates peer-to-peer relationships rather than donor-recipient hierarchies. All participants both contribute and receive.
 
 ### Continuous Optimization
 System recalculates automatically as needs, capacity, and recognition evolve. No need to restart coordination process.

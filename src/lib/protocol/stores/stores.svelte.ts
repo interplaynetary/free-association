@@ -42,7 +42,8 @@ import {
 	type NeedSlot,
 	type GlobalRecognitionWeights,
 	type SlotAllocationRecord
-} from '@playnet/free-association/schemas';
+} from '../schemas';
+import type { DistributedIPFState } from '../allocation-ipf-distributed';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
 import { getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
@@ -144,7 +145,7 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 
 		try {
 			// Run protocol calculation: tree → recognition shares
-			const weights = sharesOfGeneralFulfillmentMap($tree, {});
+			const weights = sharesOfGeneralFulfillmentMap($tree as any, {});
 			const contributorCount = Object.keys(weights).length;
 			const nonZeroCount = Object.values(weights).filter(w => w > 0).length;
 
@@ -174,7 +175,7 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
  * - Capacity slots (derived stores read from here!)
  * - Need slots (derived stores read from here!)
  * - Global recognition weights (from myRecognitionWeights - computed from tree!)
- * - Global MR values (mutual recognition with others)
+ * - Global MR values (mutual recognition)
  * - Adaptive damping state (time-based history)
  * - ITC stamp (causality tracking)
  * 
@@ -204,6 +205,22 @@ export const myNeedSlotsStore: Readable<NeedSlot[] | null> = derived(
 	[myCommitmentStore],
 	([$commitment]) => $commitment?.need_slots || null
 );
+
+/**
+ * My Current Needs Map (Legacy/Convenience)
+ * 
+ * Maps ID -> NeedSlot
+ * Used by allocation recipient loop
+ */
+export const myCurrentNeeds = derived(myNeedSlotsStore, ($slots) => {
+	const map: Record<string, NeedSlot> = {};
+	if ($slots) {
+		for (const s of $slots) {
+			map[s.id] = s;
+		}
+	}
+	return map;
+});
 
 /**
  * My Capacity Slots Store (V5) - DERIVED FROM COMMITMENT
@@ -283,6 +300,51 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 	}
 );
 
+// ═══════════════════════════════════════════════════════════════════
+// DISTRIBUTED IPF STATE (V6)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * My Distributed IPF State (V6)
+ * 
+ * Stores the internal state for the distributed Sinkhorn algorithm:
+ * - rowScalings (x_p): My provider scaling factors
+ * - colScalings (y_r): My recipient constraint factors
+ * - cachedRemoteScalings: Last known factors from others
+ * 
+ * This state EVOLVES as we receive messages and reassess priorities.
+ */
+export const myDistributedIPFState = writable<DistributedIPFState>({
+	rowScalings: {},
+	colScalings: {},
+	cachedRemoteScalings: {}
+});
+
+/**
+ * Sync Constraint Factors to Commitment (V6)
+ * 
+ * Automatically updates `myCommitmentStore.constraint_scaling_factors`
+ * whenever `myDistributedIPFState.colScalings` changes.
+ * 
+ * This effectively BROADCASTS my y_r values to the network!
+ */
+myDistributedIPFState.subscribe(state => {
+	const currentCommitment = get(myCommitmentStore);
+	if (!currentCommitment) return;
+
+	// Only update if changed prevents infinite loops and churn
+	const currentFactors = currentCommitment.constraint_scaling_factors || {};
+	if (JSON.stringify(currentFactors) !== JSON.stringify(state.colScalings)) {
+		console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', state.colScalings);
+
+		myCommitmentStore.update(c => ({
+			...c,
+			constraint_scaling_factors: { ...state.colScalings },
+			timestamp: Date.now()
+		}));
+	}
+});
+
 // NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
 // because they reference myMutualRecognition which is defined later
 
@@ -295,42 +357,8 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 // INITIALIZATION (V5)
 // ═══════════════════════════════════════════════════════════════════
 
-/**
- * Initialize all allocation stores (V5)
- * Call this after holster authentication
- * 
- * ✅ SIMPLIFIED: Only 2 persistent stores now (tree + commitment)!
- * Slots are derived from commitment (single source of truth)
- */
-export function initializeAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-V5] Initializing stores...');
 
-	// Source stores (persistent)
-	myRecognitionTreeStore.initialize();
-	myCommitmentStore.initialize(); // THE source of truth for slots!
 
-	console.log('[ALLOCATION-HOLSTER-V5] Stores initialized:');
-	console.log('  - Recognition tree (persistent)');
-	console.log('  - Commitment (persistent - contains slots!)');
-	console.log('  - Need slots (derived from commitment)');
-	console.log('  - Capacity slots (derived from commitment)');
-	console.log('  - Recognition weights (derived from tree)');
-}
-
-/**
- * Cleanup all allocation stores (V5)
- * Call this before logout
- * 
- * ✅ SIMPLIFIED: Only 2 persistent stores to clean up now!
- */
-export async function cleanupAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-V5] Cleaning up stores...');
-
-	await myRecognitionTreeStore.cleanup();
-	await myCommitmentStore.cleanup();
-
-	console.log('[ALLOCATION-HOLSTER-V5] Stores cleaned up');
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // NETWORK DATA STORES (OTHER PARTICIPANTS) - V5 WITH VERSIONED STORES
@@ -433,7 +461,7 @@ export const networkRecognitionTrees: VersionedStore<RootNode, string> = createV
 			traverse(tree);
 			return Array.from(contributorIds).sort();
 		},
-		fulfillment: (tree) => tree.manual_fulfillment
+		fulfillment: (tree) => tree.manual_fulfillment as any
 	},
 	schema: RootNodeSchema, // ✅ Defensive validation for network tree data
 	timestampExtractor: (tree) => new Date(tree.updated_at || Date.now()).getTime(),
@@ -466,23 +494,23 @@ export const networkRecognitionWeights = networkCommitments.deriveField<GlobalRe
 
 
 /**
- * Network Need Slots - FIELD STORE
+ * Network Need Slots Map - FIELD STORE
  * 
  * Fine-grained store for just the needs field!
- * 
- * ✅ Only updates when needs change
- * ✅ NOT triggered by recognition/capacity/damping changes
- * 
- * Use this for:
- * - Need indexing
- * - Provider matching
- * - Allocation computation
+ * Maps pubKey -> NeedSlot[]
  */
-export const networkNeedSlots = derived(networkCommitments, ($commits) => {
+export const networkNeedSlotsMap = networkCommitments.deriveField<NeedSlot[]>('needs');
+
+/**
+ * Network Need Slots - FLATTENED ARRAY
+ * 
+ * Derived from map for consumers that want a flat list (like allocation provider loop).
+ */
+export const networkNeedSlots = derived(networkNeedSlotsMap, ($needsMap) => {
 	const allNeeds: (NeedSlot & { pubkey: string })[] = [];
-	for (const [pubkey, commitment] of Object.entries($commits)) {
-		if (commitment.need_slots) {
-			for (const slot of commitment.need_slots) {
+	for (const [pubkey, slots] of Object.entries($needsMap)) {
+		if (slots) {
+			for (const slot of slots) {
 				allNeeds.push({ ...slot, pubkey });
 			}
 		}
@@ -542,13 +570,9 @@ export const networkNeedTypesStore: Readable<string[]> = derived(
 		const typeIds = new Set<string>();
 
 		// Iterate through all participants' need slots
-		for (const [pubKey, needSlots] of $networkNeedSlots.entries()) {
-			if (needSlots && Array.isArray(needSlots)) {
-				for (const slot of needSlots) {
-					if (slot.need_type_id) {
-						typeIds.add(slot.need_type_id);
-					}
-				}
+		for (const slot of $networkNeedSlots) {
+			if (slot.need_type_id) {
+				typeIds.add(slot.need_type_id);
 			}
 		}
 
@@ -1197,9 +1221,15 @@ function addNeedSlotsToIndex(pubKey: string, needSlots: NeedSlot[] | Commitment,
 	if (!slots) return;
 
 	for (const needSlot of slots) {
+		const safeSlot = {
+			...needSlot,
+			recurrence: needSlot.recurrence || undefined,
+			start_date: needSlot.start_date || undefined,
+			end_date: needSlot.end_date || undefined
+		};
 		const typeId = needSlot.need_type_id || '';
-		const locationKey = getLocationBucketKey(needSlot);
-		const timeKey = getTimeBucketKey(needSlot);
+		const locationKey = getLocationBucketKey(safeSlot as any);
+		const timeKey = getTimeBucketKey(safeSlot as any);
 
 		// Type index
 		if (!index.byType.has(typeId)) {
@@ -1252,9 +1282,15 @@ function addCapacitySlotsToIndex(pubKey: string, capacitySlots: AvailabilitySlot
 	if (!slots) return;
 
 	for (const capacitySlot of slots) {
+		const safeSlot = {
+			...capacitySlot,
+			recurrence: capacitySlot.recurrence || undefined,
+			start_date: capacitySlot.start_date || undefined,
+			end_date: capacitySlot.end_date || undefined
+		};
 		const typeId = capacitySlot.need_type_id || '';
-		const locationKey = getLocationBucketKey(capacitySlot);
-		const timeKey = getTimeBucketKey(capacitySlot);
+		const locationKey = getLocationBucketKey(safeSlot as any);
+		const timeKey = getTimeBucketKey(safeSlot as any);
 
 		// Type index
 		if (!index.byType.has(typeId)) {
@@ -1415,11 +1451,9 @@ export const networkNeedsIndex: Readable<SpaceTimeIndex> = readable<SpaceTimeInd
 			}
 		});
 
-		// ✅ FINE-GRAINED: Subscribe to networkNeedSlots field store!
-		// Only triggers when NEEDS change, not recognition/capacity/damping
-		const unsubNetwork = networkNeedSlots.subscribe((needSlotsMap) => {
-			// Needs changed - update index for changed participants
-			for (const [pubKey, needSlots] of needSlotsMap.entries()) {
+		// ✅ FINE-GRAINED: Subscribe to networkNeedSlotsMap!
+		const unsubNetwork = networkNeedSlotsMap.subscribe((needSlotsMap) => {
+			for (const [pubKey, needSlots] of Object.entries(needSlotsMap)) {
 				scheduleUpdate(pubKey, needSlots);
 			}
 		});
@@ -1558,7 +1592,7 @@ export function getMyContributors(): string[] {
 	if (!tree) return [];
 
 	// Extract all contributors (positive + anti) from tree
-	const contributors = getAllContributorsFromTree(tree);
+	const contributors = getAllContributorsFromTree(tree as any);
 
 	console.log(`[MY-CONTRIBUTORS] Found ${contributors.length} contributors in tree`);
 	return contributors;

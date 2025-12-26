@@ -34,8 +34,7 @@ export {
 
 	// Helper functions
 	getAllCommitmentsRecord,
-	getNetworkRecognitionWeightsRecord,
-	initializeAllocationStores
+	getNetworkRecognitionWeightsRecord
 } from './stores.svelte';
 
 // Note: SpaceTimeIndex is already exported from core/allocation, don't duplicate
@@ -53,7 +52,8 @@ export {
 	myRecognitionOfOthers,
 	othersRecognitionOfMe,
 	myCurrentNeeds,
-	myAvailableCapacity
+	myAvailableCapacity,
+	initializeAllocationStores // Moved from stores.svelte
 } from './allocation.svelte';
 
 // Attribute stores

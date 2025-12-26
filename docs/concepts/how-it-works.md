@@ -4,20 +4,20 @@ Free Association operates on simple data points published by each participant. T
 
 ## Core Data Points
 
-### 1. Recognition Weights
-**Who contributes to your organizational goals?**
+### 1. Priority Weights
+**How do you prioritize your capacity?**
 
-Each entity allocates 100% of recognition among contributors.
+Each entity allocates 100% of weight among recipients or categories.
 
 **Properties:**
+- **Often derived from recognition of contribution**
 - Non-transferable (cannot be bought or sold)
-- Dynamically adjustable as relationships evolve
-- Can reflect direct operations or broader mission-aligned values
-- Organized as a contribution tree
+- Dynamically adjustable as priorities evolve
+- Organized as a prioritization tree
 
 **Example:**
 ```
-Humanitarian Organization A recognizes:
+Humanitarian Organization A prioritizes:
 - Partner NGO B: 30%
 - Local Community Group C: 25%
 - Technical Infrastructure Provider D: 20%
@@ -77,28 +77,21 @@ Organization B declares:
 
 ---
 
-### 4. Mutual Recognition
-**Bidirectional acknowledgment of contributions**
+### 4. Reciprocal Alignment
+**Bidirectional alignment of priorities**
 
-The system calculates mutual recognition between any two entities:
+Allocations are often guided by reciprocal prioritization.
 
-```
-MR(Entity_A, Entity_B) = min(
-    Recognition_A_gives_B,
-    Recognition_B_gives_A
-)
-```
-
-**Why minimum?**
-- Ensures proportional reciprocity
-- Prevents unilateral inflation
-- Creates natural incentive for accurate recognition
+**Why reciprocity?**
+- Ensures shared commitment
+- Prevents unilateral extraction
+- Creates natural incentive for accurate prioritization
 
 **Example:**
 ```
-Organization A recognizes B at 50%
-Organization B recognizes A at 10%
-→ Mutual Recognition = 10%
+Organization A prioritizes B at 50%
+Organization B prioritizes A at 10%
+→ Reciprocal Alignment = 10%
 ```
 
 **Self-Recognition:**
@@ -147,7 +140,7 @@ Ally E = 0.2 × 0.5 = 10%
 
 **Total Recognition (100%):** Each participant has a fixed "budget" of recognition to distribute. This forces prioritization and trade-offs. Recognition is non-transferable and dynamically adjustable.
 
-**Mutual Recognition (MR):** Calculated as the lower of the recognition percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship (where A recognizes B highly, but B recognizes A little) is valued at the lower amount, discouraging free-riding and encouraging mutual engagement and support.
+**Reciprocal Alignment (RA):** Calculated as the lower of the priority percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship (where A prioritizes B highly, but B prioritizes A little) is valued at the lower amount, encouraging mutual engagement.
 
 When we **recognize** each other, we have **mutual-recognition of mutual-value** and **can choose to allocate our capacities to each-other in precise proportion to how mutually-fulfilling we are to each other.**
 
@@ -207,7 +200,7 @@ Concrete resources requiring common terminology:
 Once all entities have published their data:
 
 1. **Filter** for compatible resource specifications
-2. **Calculate** mutual recognition between all pairs
+2. **Calculate** reciprocal alignment between all pairs
 3. **Determine** proportional shares based on recognition strength
 4. **Allocate** resources (capped at declared needs)
 5. **Update** remaining needs automatically

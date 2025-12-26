@@ -2,7 +2,7 @@
 
 ## A Digital Public Infrastructure for Resource Coordination
 
-**Free Association** is a mathematically-proven coordination infrastructure that enables organizations, communities, and individuals to allocate resources efficiently based on mutual recognition of contributions—without centralized control, bureaucratic overhead, or market exclusion.
+**Free Association** is a mathematically-proven coordination infrastructure that enables organizations, communities, and individuals to allocate resources efficiently based on reciprocal alignment of contributions—without centralized control, bureaucratic overhead, or market exclusion.
 
 ## The Core Problem
 
@@ -16,13 +16,13 @@ These mechanisms face challenges matching the speed and scale required—from cl
 
 ## The Solution
 
-A fourth type of economic relationship based on **mutual recognition**—where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. 
+A fourth type of economic relationship based on **priority aligned capacity distribution** — where entities acknowledge each other's contributions toward shared goals and allocate resources accordingly. 
 
 This creates a self-organizing coordination system that is:
 
 - **Fast** - Allocations converge in seconds, not months
-- **Fair** - Mathematically guaranteed proportional distribution
-- **Efficient** - Resources flow directly based on declared needs and mutual recognition
+- **Fair** - Mathematically guaranteed proportional distribution based on priorities
+- **Efficient** - Resources flow directly based on declared needs and priority alignment
 - **Decentralized** - No central authority controls outcomes or data
 
 ## Try It Now

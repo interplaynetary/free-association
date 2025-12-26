@@ -153,8 +153,10 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 
 		// Initialize data streams
 		console.log('[HOLSTER] Initializing data streams...');
+		const allocationModule = await import('$lib/protocol/stores/allocation.svelte');
+		allocationModule.initializeAllocationStores();
+
 		const storesModule = await import('$lib/protocol/stores/stores.svelte');
-		storesModule.initializeAllocationStores();
 		console.log('[HOLSTER] ✅ V5 stores initialized');
 
 		// Initialize users list

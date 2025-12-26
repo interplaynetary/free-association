@@ -12,7 +12,7 @@ When you export your data, you receive a comprehensive JSON file containing:
 
 ### Core Data
 - **Recognition Tree**: Your complete tree structure showing who you recognize and how
-- **Recognition Weights**: Computed recognition percentages for each contributor
+- **Priority Weights**: Computed priority percentages for each contributor
 - **Capacity Slots**: Resources you've declared as available to share
 - **Need Slots**: Resources you've declared as needs
 - **Commitment**: Your complete commitment including metadata and ITC stamps

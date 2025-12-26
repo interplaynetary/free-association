@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { NeedSlot, AvailabilitySlot } from '@playnet/free-association/schemas';
+	import type { NeedSlot, AvailabilitySlot } from '$lib/protocol/schemas';
 	import { formatSlotTimeDisplay, formatSlotLocationDisplay } from '@playnet/free-association/utils/slots';
 	import { onMount } from 'svelte';
 	import SlotEditor from './Slot.svelte';

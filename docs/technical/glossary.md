@@ -3,16 +3,17 @@
 ## Core Concepts
 
 ### Free Association
-A coordination protocol enabling resource allocation through mutual recognition of contributions. Entities acknowledge each other's value and allocate resources accordingly without centralized control.
+A coordination protocol enabling resource allocation through reciprocal alignment of contributions. Entities acknowledge each other's value and allocate resources accordingly without centralized control.
 
 ### Recognition
 The percentage (summing to 100%) that an entity allocates among contributors to their organizational goals. Non-transferable and dynamically adjustable.
 
-### Mutual Recognition (MR)
-The minimum of reciprocal recognition percentages between two entities. Calculated as: `MR(A, B) = min(Recognition_A_gives_B, Recognition_B_gives_A)`.
+### Reciprocal Alignment (RA)
+**RA** - Reciprocal Alignment
+The calculated overlap in priorities between two entities. Determined by the minimum of the reciprocal priority percentages. Ensures that resource flows reflect shared commitment. Equal to `min(Priority_A_to_B, Priority_B_to_A)`.
 
 ### Entity
-Any participant in the network—organization, community, institution, individual—that can publish recognition weights, capacity, and needs.
+Any participant in the network—organization, community, institution, individual—that can publish priority weights, capacity, and needs.
 
 ### Network
 The collection of entities and their recognition relationships. Forms the basis for resource allocation calculation.
@@ -21,8 +22,8 @@ The collection of entities and their recognition relationships. Forms the basis 
 
 ## Recognition System
 
-### Recognition Weights
-The distribution of an entity's 100% recognition among contributors. Represents assessment of who contributes to organizational goals.
+### Priority Weights
+The distribution of an entity's 100% priority among contributors. Represents assessment of who contributes to organizational goals.
 
 ### Contribution Tree
 Hierarchical structure organizing recognition by contribution category. Each branch has weight; contributors within each branch receive recognition points.
@@ -69,7 +70,7 @@ Specification limiting resource compatibility—time windows, geographic locatio
 ## Allocation Mechanics
 
 ### Proportional Share
-Percentage of provider's capacity allocated to specific recipient, based on mutual recognition: `Share = MR(P, R) / Σ MR(P, All_Recipients)`.
+Percentage of provider's capacity allocated to specific recipient, based on reciprocal alignment: `Share = RA(P, R) / Σ RA(P, All_Recipients)`.
 
 ### Raw Allocation
 Allocation before need cap is applied: `Raw_Allocation = Provider_Capacity × Share`.
@@ -77,14 +78,11 @@ Allocation before need cap is applied: `Raw_Allocation = Provider_Capacity × Sh
 ### Final Allocation
 Allocation after need cap: `Final_Allocation = min(Raw_Allocation, Declared_Need)`.
 
-### Two-Tier Priority
-Allocation structure where mutual recognition relationships (Tier 1) receive priority over unilateral recognition (Tier 2).
+### Phase 1 Allocation
+Allocation step where reciprocal alignment relationships receive priority. Capacity flows efficiently between entities that mutually prioritize each other.
 
-### Tier 1 Allocation
-Resources allocated among entities with mutual recognition, proportional to recognition strength.
-
-### Tier 2 Allocation
-Remaining capacity (after Tier 1) allocated among entities with unilateral recognition from provider.
+### Phase 2 Allocation
+Remaining capacity (after Phase 1) allocated among entities with unilateral priority from provider. Allows for exploration of new relationships and support for up-and-coming entities.
 
 ---
 
@@ -100,7 +98,7 @@ Multiplier applied to declared need to prevent allocation oscillation. Values: 0
 Allocation capping mechanism creates incentives for honest need reporting. Over-reporting doesn't accumulate resources (non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget combined with outcome feedback creates self-correcting dynamics for ongoing participants. Protocol v6 (draft) adds satisfaction-based learning that automatically resolves provider non-delivery.
 
 ### Proportional Fairness
-Property ensuring allocations strictly proportional to mutual recognition strength.
+Property ensuring allocations strictly proportional to reciprocal alignment strength.
 
 ### Non-Accumulative
 Property preventing entities from receiving resources beyond declared needs.
@@ -119,7 +117,7 @@ Property ensuring same network state always yields identical allocation results.
 Network structure with central organization recognizing many partners, who primarily recognize the hub.
 
 ### Mesh Network
-Dense network where multiple entities have mutual recognition relationships. No single central hub.
+Dense network where multiple entities have reciprocal alignment relationships. No single central hub.
 
 ### Hierarchical Network
 Network organized in tiers, with recognition flowing primarily within tiers and some cross-tier relationships.
@@ -202,10 +200,10 @@ Process of verifying potential partners. In Free Association, recognition encode
 Allocation of entity's 100% recognition among contributors: `Σ Recognition(E→Others) = 100%`.
 
 ### Symmetry Property
-Mutual recognition is symmetric: `MR(A, B) = MR(B, A)`.
+Reciprocal alignment is symmetric: `RA(A, B) = RA(B, A)`.
 
 ### Minimum Function
-Taking the lower of two values. Used in mutual recognition: `MR(A,B) = min(Rec_A_to_B, Rec_B_to_A)`.
+Taking the lower of two values. Used in reciprocal alignment: `RA(A,B) = min(Priority_A_to_B, Priority_B_to_A)`.
 
 ### Convergence Criterion
 Threshold for determining system has reached stable state: `|Need(t+1) - Need(t)| < ε`.
@@ -233,7 +231,7 @@ Support exchanged among peers based on reciprocity and solidarity. Free Associat
 
 ## Acronyms
 
-**MR** - Mutual Recognition
+**RA** - Reciprocal Alignment
 
 **DPI** - Digital Public Infrastructure  
 

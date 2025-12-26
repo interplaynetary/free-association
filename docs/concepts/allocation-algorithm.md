@@ -1,93 +1,52 @@
 # The Allocation Algorithm
 
-## Two-Tier Priority System
+## Constrained Weighted Allocation
 
-Resources allocate through a priority structure that balances mutual relationships with support for emerging partnerships.
+Resources are distributed through a rigorous mathematical process that balances:
+1.  **Provider Priorities**: "I want to give X% to you."
+2.  **Recipient Preferences**: "I want Y% of my help to come from you."
+3.  **Hard Constraints**: Capacity limits and Declared Needs.
 
-### Tier 1: Mutual Recognition Priority
+### Phase 1: Symmetric Intent (The Seed)
+Instead of distinct "Push" and "Pull" phases, we construct a single **Hypothesis Matrix** representing the "pure intent" of the network before physical constraints are applied.
 
-Entities with mutual recognition receive first priority.
+$Seed = (Priority_{provider} + \epsilon) \times (Preference_{recipient} + \epsilon)^\gamma$
 
-**Allocation Factors:**
-- Strength of mutual recognition
-- Declared resource needs
-- Compatible resource specifications (time, location, type)
+*   **Constructive Intersection**: A connection is strong only if **both** the provider wants to give and the recipient wants to receive.
+*   **Hidden Demand**: The $\epsilon$ term allows the system to discover latent connections that aren't currently active but could be valuable.
 
-**Why First Priority?**
-Mutual recognition indicates bidirectional contribution and established coordination relationships. These partnerships receive priority for stable resource flows.
+### Phase 2: Entropic Equilibrium
+The system actively molds this Seed Matrix to fit the physical constraints of reality (Capacity and Need). This is not done by ad-hoc adjustment, but by finding the **Entropic Equilibrium**—the single unique state that minimizes the information divergence from the Seed Matrix.
 
----
-
-### Tier 2: Unilateral Recognition
-
-Remaining capacity flows to entities you recognize, even without mutual recognition.
-
-**Purpose:**
-- Support for new partners building recognition networks
-- Enable mission-aligned resource flow
-- Maintain incentives for genuine contribution
-
-**Example:**
-Foundation recognizes emerging organization at 15%, but emerging organization doesn't yet recognize foundation (no established relationship). Remaining foundation capacity after Tier 1 allocations flows to emerging organization proportional to recognition.
+**Goal**: Preserve the *ratios* of the Seed Matrix as much as physically possible.
 
 ---
 
 ## Allocation Process
 
 ### Step 1: Filter Compatible Resources
-
 Match resource specifications:
 - Time windows overlap
 - Geographic constraints satisfied
-- Resource types compatible
+- Resource types compatible (Type IDs match)
 
-Only compatible resources participate in allocation calculation.
+### Step 2: Construct Seed
+Build the Symmetric Intent matrix for all compatible connections. This captures the "ideal world" distribution of resources if there were no limits.
 
-### Step 2: Calculate Mutual Recognition
+### Step 3: Iterative Proportional Fitting (IPF)
+The algorithm iteratively scales the matrix to satisfy constraints:
+- **Row Scaling (Provider Force)**: Scale allocations to exactly match valid provider capacity.
+- **Column Scaling (Recipient Clamp)**: Scale allocations down if they exceed recipient need.
+- **Hydraulic Displacement**: High-priority providers naturally displace low-priority ones through this pressure-balancing process.
 
-For each provider-recipient pair:
-```
-MR(Recipient, Provider) = min(
-    Recognition_Recipient_gives_Provider,
-    Recognition_Provider_gives_Recipient
-)
-```
+### Step 4: Convergence
+The cycle repeats until the system reaches a stable state (typically 10-20 iterations).
 
-### Step 3: Determine Proportional Shares
-
-**Tier 1 Calculation:**
-```
-Share(Recipient, Provider) = 
-    MR(Recipient, Provider) / Σ MR(Provider, All_Compatible_Recipients)
-```
-
-Each recipient's share is proportional to their mutual recognition relative to all recipients.
-
-**Tier 2 Calculation:**
-```
-Share(Recipient, Provider) = 
-    Recognition_Provider_gives_Recipient / Σ Recognition_Provider_gives_All_Recipients
-```
-
-Unilateral recognition determines share among recipients without mutual recognition.
-
-### Step 4: Calculate Raw Allocation
-
-```
-Raw_Allocation(Recipient, Provider) = 
-    Provider_Capacity × Share(Recipient, Provider)
-```
-
-### Step 5: Cap at Declared Need
-
-```
-Final_Allocation(Recipient, Provider) = min(
-    Raw_Allocation(Recipient, Provider),
-    Declared_Need(Recipient)
-)
-```
-
-**Key Property:** No entity receives more than they declare they need. This prevents accumulation and ensures resources flow to actual requirements.
+### Step 5: Final Settlement
+The result is a unique, stable equilibrium where:
+1.  **No Need Exceeded**: Allocations $\le$ Declared Need.
+2.  **No Capacity Exceeded**: Total Allocations $\le$ Capacity.
+3.  **Optimal Alignment**: The distribution represents the best possible compromise between all competing priorities.
 
 ---
 
@@ -96,120 +55,33 @@ Final_Allocation(Recipient, Provider) = min(
 The system continuously adapts to changing conditions:
 
 ### Need Updates
-
 After each allocation round:
 ```
 Remaining_Need = max(0, Declared_Need - Total_Received)
 ```
-
 As allocations are received, remaining needs decrease. System recalculates optimal allocation for updated need state.
 
-### Oscillation Prevention
-
-Adaptive damping prevents allocation oscillation:
-```
-Active_Need = Declared_Need × Damping_Factor
-
-where Damping_Factor ∈ {0.5, 0.8, 1.0}
-```
-
-Damping factor adjusts based on allocation stability, preventing oscillation while maintaining responsiveness.
-
 ### Independent Resource Tracking
-
 Each resource type tracks independently:
 - Funding needs separate from expertise needs
 - Time commitments independent of facility access
-- System optimizes across all resource types simultaneously
 
 ---
 
 ## Convergence Properties
 
 ### Speed
-System converges to stable equilibrium in **5-10 calculation rounds**.
-
-Each round takes 100-200ms, meaning full convergence in **1-2 seconds** after network state change.
+System converges to stable equilibrium rapidly. Each round takes 100-200ms.
 
 ### Stability
 Once converged, allocations remain stable unless:
-- Network state changes (new needs, capacity, or recognition)
+- Network state changes (new needs, capacity, or priorities)
 - Resource specifications updated
 - Participants join or leave
 
 ### Optimality
 At equilibrium:
 - All needs met if sufficient capacity exists
-- Resources distributed proportional to mutual recognition
+- Resources distributed proportional to priority weights
 - No entity receives beyond declared needs
-- Tier 1 allocations satisfied before Tier 2
-
----
-
-## Example Calculation
-
-### Network State
-**Provider Foundation (P):**
-- Available capacity: $1,000,000
-
-**Recipients:**
-- Organization A: Declared need $400K
-- Organization B: Declared need $600K  
-- Organization C: Declared need $800K
-
-**Mutual Recognition (P's perspective):**
-- P recognizes A at 40%, A recognizes P at 30% → MR = 30%
-- P recognizes B at 35%, B recognizes P at 50% → MR = 35%
-- P recognizes C at 25%, C recognizes P at 20% → MR = 20%
-
-**Total Mutual Recognition:** 30% + 35% + 20% = 85%
-
-### Tier 1 Allocation
-
-**Organization A Share:**
-```
-Share_A = 30% / 85% = 35.3%
-Raw_Allocation_A = $1,000,000 × 0.353 = $353,000
-Final_Allocation_A = min($353,000, $400,000) = $353,000
-```
-
-**Organization B Share:**
-```
-Share_B = 35% / 85% = 41.2%
-Raw_Allocation_B = $1,000,000 × 0.412 = $412,000
-Final_Allocation_B = min($412,000, $600,000) = $412,000
-```
-
-**Organization C Share:**
-```
-Share_C = 20% / 85% = 23.5%
-Raw_Allocation_C = $1,000,000 × 0.235 = $235,000
-Final_Allocation_C = min($235,000, $800,000) = $235,000
-```
-
-**Result:**
-- A receives: $353,000 (remaining need: $47,000)
-- B receives: $412,000 (remaining need: $188,000)
-- C receives: $235,000 (remaining need: $565,000)
-- Total allocated: $1,000,000
-
-All capacity deployed. Allocations strictly proportional to mutual recognition. Each allocation capped at declared need.
-
----
-
-## Key Properties
-
-**Need Declaration Incentives:**
-Allocation capping creates incentives for honest need reporting. Over-reporting doesn't increase allocation (capped at need, non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget constraint creates self-correcting dynamics for ongoing participants. Protocol v6 (draft) adds satisfaction-based learning that automatically resolves provider non-delivery.
-
-**Proportional Fairness:**
-Allocations strictly proportional to mutual recognition strength. No arbitrary prioritization.
-
-**Non-Accumulative:**
-Cannot receive resources beyond declared needs. Prevents hoarding and ensures efficient flow to actual requirements.
-
-**Real-Time Adaptive:**
-System recalculates automatically as any network parameter changes. Maintains continuous optimization.
-
-[Next: Use cases →](../use-cases/README.md)
-
+- **Pareto Efficiency**: No allocation can be improved without violating a priority constraint.
