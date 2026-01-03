@@ -70,4 +70,4 @@ Multiple Service Entities are supported for resilience, innovation, specializati
 ## **Contact**
 
 **Service Entity concept:** coalition@openassociation.org  
-**Service needs & DPI/DPG requests:** services@openassociation.org
+**Service needs & DPI/DPG requests:** info@openassociation.org

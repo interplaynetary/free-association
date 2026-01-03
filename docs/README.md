@@ -27,7 +27,7 @@ This creates a self-organizing coordination system that is:
 
 ## Try It Now
 
-[interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/)
+[free.playnet.lol](https://free.playnet.lol/)
 
 Browser-based, peer-to-peer, no installation required.
 

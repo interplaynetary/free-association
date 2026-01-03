@@ -4,7 +4,7 @@
 
 Experience Free Association directly in your browser:
 
-**[interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/)**
+**[free.playnet.lol](https://free.playnet.lol)**
 
 - No installation required
 - Peer-to-peer architecture

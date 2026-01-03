@@ -14,7 +14,6 @@ For general questions about Free Association, project information, or media inqu
 
 For organizations interested in:
 - Pilot programs
-- Coalition membership
 - Implementation support
 - Partnership opportunities
 
@@ -173,7 +172,7 @@ For:
 **Resources:**
 - [Project Website](https://openassociation.org)
 - [Interface Demo Video](https://youtu.be/gapy9mBpP5w?si=B2sbZpoaXStg4eKL)
-- [Live Demo](https://interplaynetary.github.io/free-association/)
+- [Live Demo](https://free.playnet.lol/)
 
 ---
 

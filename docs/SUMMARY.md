@@ -16,18 +16,10 @@
 
 * [Invitation to Coordination Sessions](coalition/invitation.md)
 * [Participation Framework](coalition/participation-framework.md)
-* [Appendix: Technical Details](coalition/appendix.md)
 * [Coalition Service Entity](coalition/service-entity.md)
-* [Priority Mathematics](coalition/recognition-mathematics.md)
 * [Coordination Sessions](coalition/coordination-sessions.md)
-* [Founding Process](coalition/founding-process.md)
-* [Implementation Mapping](coalition/implementation-mapping.md)
-* Secretariat
-  * [Iterative Consensus Protocol](coalition/secretariat/decision-making-protocol.md)
-  * [Node Protocol Delegation](coalition/secretariat/node-protocol-delegation.md)
-  * Record System
-    * [Format Specification](coalition/secretariat/record/format.md)
-    * [Record Log](coalition/secretariat/record/log.md)
+* [Appendix: Technical Details](coalition/appendix.md)
+
 
 ## Real-World Application
 
@@ -48,15 +40,8 @@
 ## Technical Reference
 
 * [Mathematical Foundations](technical/mathematics.md)
-* [Network Dynamics](technical/network-dynamics.md)
 * [Protocol Specification](technical/protocol.md)
 * [Glossary](technical/glossary.md)
-
-## Theoretical Background
-
-* [Distinction from Charity Models](theory/vs-charity.md)
-* [Distinction from Investment Models](theory/vs-investment.md)
-* [Organizational Free Association](theory/organizational-scale.md)
 
 ## Project Information
 
