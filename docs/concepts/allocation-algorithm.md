@@ -77,13 +77,14 @@ Each resource type tracks independently:
 ## Convergence Properties
 
 ### Speed
-System converges to stable equilibrium rapidly. Each round takes 100-200ms.
+System converges to stable equilibrium rapidly. 
 
 ### Stability
 Once converged, allocations remain stable unless:
 - Network state changes (new needs, capacity, or recognition)
 - Resource specifications updated
 - Participants join or leave
+Upon a change, system immediately re-calculates allocations, dynamic convergence takes place.
 
 ### Optimality
 At equilibrium:

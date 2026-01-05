@@ -20,7 +20,6 @@
 * [Coordination Sessions](coalition/coordination-sessions.md)
 * [Appendix: Technical Details](coalition/appendix.md)
 
-
 ## Real-World Application
 
 * [Use Cases Overview](use-cases/README.md)
