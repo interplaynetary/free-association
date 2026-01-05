@@ -11,17 +11,15 @@ Free Association allows you to export all your personal data in a standard, non-
 When you export your data, you receive a comprehensive JSON file containing:
 
 ### Core Data
-- **Recognition Tree**: Your complete tree structure showing who you recognize and how
-- **Priority Weights**: Computed priority percentages for each contributor
-- **Capacity Slots**: Resources you've declared as available to share
-- **Need Slots**: Resources you've declared as needs
-- **Commitment**: Your complete commitment including metadata and ITC stamps
+- **Recognition Data**: Your recognition allocations and relationships
+- **Capacity Information**: Resources you've declared as available to share
+- **Need Information**: Resources you've declared as needs
+- **Commitment Data**: Your coordination commitments and metadata
 
 ### Network Configuration
-- **Slot Subscriptions**: Which entities you subscribe to for capacity/need slots
-- **Slot Filters**: Filters you've set up for automatically populating slots
-- **Membership Lists**: Organizations you've declared membership in
-- **Membership Subscriptions**: Organization memberships you track
+- **Subscriptions**: Entities and resources you track
+- **Filters**: Criteria you've set for resource matching
+- **Organizational Data**: Organizations you're affiliated with
 
 ### Social Data
 - **Contacts**: Your contact list and associated data
@@ -72,15 +70,13 @@ The exported data follows a non-proprietary JSON schema documented in our [Proto
   "version": "3.0.0",
   "exported_at": "2025-11-15T12:00:00.000Z",
   "data": {
-    "tree": { ... },
-    "recognition_weights": { ... },
-    "capacity_slots": [ ... ],
-    "need_slots": [ ... ],
+    "recognition": { ... },
+    "capacity": [ ... ],
+    "needs": [ ... ],
     "commitment": { ... },
-    "slot_subscriptions": { ... },
-    "slot_filters": { ... },
-    "membership_lists": { ... },
-    "membership_subscriptions": { ... },
+    "subscriptions": { ... },
+    "filters": { ... },
+    "organizations": { ... },
     "contacts": { ... }
   }
 }
@@ -112,7 +108,7 @@ You can also import previously exported data:
 
 ### What's Included
 - ✅ All data you've entered into Free Association
-- ✅ Your recognition trees and allocations
+- ✅ Your recognition allocations
 - ✅ Your network configuration
 - ✅ Your contacts and subscriptions
 

@@ -1,52 +1,58 @@
 # The Allocation Algorithm
 
-## Constrained Weighted Allocation
+## Two-Sided Constrained Optimization
 
-Resources are distributed through a rigorous mathematical process that balances:
-1.  **Provider Priorities**: "I want to give X% to you."
-2.  **Recipient Preferences**: "I want Y% of my help to come from you."
-3.  **Hard Constraints**: Capacity limits and Declared Needs.
+The allocation algorithm solves a multi-provider, multi-recipient resource distribution problem:
 
-### Phase 1: Symmetric Intent (The Seed)
-Instead of distinct "Push" and "Pull" phases, we construct a single **Hypothesis Matrix** representing the "pure intent" of the network before physical constraints are applied.
+**Challenge:** Find allocation matrix **X** such that:
+- Providers allocate to recipients they recognize most
+- Recipients receive from providers they prefer most  
+- All capacity and need constraints are satisfied
 
-$Seed = (Priority_{provider} + \epsilon) \times (Preference_{recipient} + \epsilon)^\gamma$
+$$
+\text{Find } X \text{ s.t. } \forall i, \sum_j X_{ij} \leq C_i \land \forall j, \sum_i X_{ij} \leq N_j
+$$
 
-*   **Constructive Intersection**: A connection is strong only if **both** the provider wants to give and the recipient wants to receive.
-*   **Hidden Demand**: The $\epsilon$ term allows the system to discover latent connections that aren't currently active but could be valuable.
+Where $C_i$ = Capacity of provider i, $N_j$ = Need of recipient j.
 
-### Phase 2: Entropic Equilibrium
-The system actively molds this Seed Matrix to fit the physical constraints of reality (Capacity and Need). This is not done by ad-hoc adjustment, but by finding the **Entropic Equilibrium**—the single unique state that minimizes the information divergence from the Seed Matrix.
+### Provider Constraints
+Each provider has finite capacity to distribute among compatible recipients. They prefer to allocate to recipients whose contributions they value most highly (proportional to recognition).
 
-**Goal**: Preserve the *ratios* of the Seed Matrix as much as physically possible.
+### Recipient Constraints
+Each recipient has specific needs with finite capacity requirements. They prefer to receive from providers they trust/value most highly.
+
+### Two-Sided Optimization
+The system must simultaneously satisfy:
+1. **Provider priorities**: Allocate proportionally to recognition of recipients
+2. **Recipient preferences**: Receive from preferred providers
+3. **Capacity constraints**: $\sum_j X_{ij} \leq C_i$ for all providers
+4. **Need constraints**: $\sum_i X_{ij} \leq N_j$ for all recipients
+
+This is a **constrained weighted allocation problem** that finds the allocation matrix minimizing deviation from both providers' priorities and recipients' preferences.
 
 ---
 
-## Allocation Process
+## Mathematical Properties
 
-### Step 1: Filter Compatible Resources
-Match resource specifications:
-- Time windows overlap
-- Geographic constraints satisfied
-- Resource types compatible (Type IDs match)
+The allocation mechanism has several important properties:
 
-### Step 2: Construct Seed
-Build the Symmetric Intent matrix for all compatible connections. This captures the "ideal world" distribution of resources if there were no limits.
+### Proportional Preservation
+If you express that Recipient A should receive twice as much as Recipient B (through recognition), the system allocates approximately twice as much capacity to A when feasible given constraints.
 
-### Step 3: Iterative Proportional Fitting (IPF)
-The algorithm iteratively scales the matrix to satisfy constraints:
-- **Row Scaling (Provider Force)**: Scale allocations to exactly match valid provider capacity.
-- **Column Scaling (Recipient Clamp)**: Scale allocations down if they exceed recipient need.
-- **Hydraulic Displacement**: High-priority providers naturally displace low-priority ones through this pressure-balancing process.
+$$
+\frac{X_{ij}}{X_{ik}} \approx \frac{P_{ij}}{P_{ik}}
+$$
 
-### Step 4: Convergence
-The cycle repeats until the system reaches a stable state (typically 10-20 iterations).
+The proportional relationships you express are preserved in the final allocation.
 
-### Step 5: Final Settlement
-The result is a unique, stable equilibrium where:
-1.  **No Need Exceeded**: Allocations $\le$ Declared Need.
-2.  **No Capacity Exceeded**: Total Allocations $\le$ Capacity.
-3.  **Optimal Alignment**: The distribution represents the best possible compromise between all competing priorities.
+### Least Biased Solution
+Among all possible allocations satisfying the constraints, the system selects the one that introduces the least additional bias beyond what entities express. This is the entropy-maximizing (information-theoretically optimal) solution.
+
+### Constraint Propagation
+When constraints bind (e.g., a recipient reaches capacity), the effects propagate through the network. Capacity that cannot flow to a full recipient automatically redistributes to other compatible needs according to expressed preferences.
+
+### Equilibrium Convergence
+The system converges to a stable equilibrium where no entity can improve their allocation quality (measured by preference satisfaction) without degrading someone else's. This is a Pareto-efficient outcome.
 
 ---
 
@@ -75,13 +81,14 @@ System converges to stable equilibrium rapidly. Each round takes 100-200ms.
 
 ### Stability
 Once converged, allocations remain stable unless:
-- Network state changes (new needs, capacity, or priorities)
+- Network state changes (new needs, capacity, or recognition)
 - Resource specifications updated
 - Participants join or leave
 
 ### Optimality
 At equilibrium:
-- All needs met if sufficient capacity exists
-- Resources distributed proportional to priority weights
-- No entity receives beyond declared needs
-- **Pareto Efficiency**: No allocation can be improved without violating a priority constraint.
+- Resources distributed proportional to recognition weights
+- All capacity and need constraints satisfied
+- **Pareto Efficiency**: No allocation can be improved without violating a constraint or degrading another entity's preference satisfaction
+- **Proportional Preservation**: Allocation ratios match recognition ratios where constraints allow
+

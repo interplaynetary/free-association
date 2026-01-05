@@ -6,7 +6,7 @@
 Traditional resource coordination operates slower than modern challenges require. Crisis response takes months when days would serve better.
 
 ### The Solution
-Free Association enables automatic resource allocation based on reciprocal alignment—no bureaucracy, no gatekeepers.
+Free Association enables automatic resource allocation proportional to recognition—no bureaucracy, no gatekeepers.
 
 ### Key Benefits
 - **<48 hours** from need to commitment (vs. 90+ days typical)
@@ -21,13 +21,13 @@ Free Association enables automatic resource allocation based on reciprocal align
 
 ### System Architecture
 - Peer-to-peer network
-- Published data: priority weights, capacity, needs
+- Published data: recognition weights, capacity, needs
 - Distributed calculation
-- Need-capped allocation algorithm (prevents accumulation)
+- Proportional allocation algorithm with constraint satisfaction
 
 ### Core Algorithm
 ```
-Priority → Reciprocal Alignment → Proportional Share → Allocation (capped at need)
+Recognition → Proportional Allocation → Constraint Satisfaction
 Dynamic equilibrium: recomputes ~100-200ms per state change
 ```
 
@@ -43,16 +43,16 @@ Dynamic equilibrium: recomputes ~100-200ms per state change
 ## For Researchers (5 minutes)
 
 ### Mathematical Properties
-- **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
-- **Proportional fairness**: Strict proportionality to reciprocal alignment
+- **Proportional allocation**: Allocations proportional to recognition
+- **Two-sided optimization**: Satisfies both provider priorities and recipient preferences
 - **Dynamic equilibrium**: Maintains instantaneous optimality as network evolves
-- **Contraction guarantee**: Receiving resources always reduces remaining need (unconditional)
+- **Constraint satisfaction**: Respects capacity and need bounds
 
 ### Key Formula
 ```
-MR(A, B) = min(Recognition_A_gives_B, Recognition_B_gives_A)
-Share(R, P) = MR(R, P) / Σ MR(P, All_Recipients)
-Allocation(R, P) = min(Capacity_P × Share(R, P), Need_R)
+Allocation ∝ Recognition
+A_i ∝ R_i / Σ R (proportional to recognition share)
+Subject to: Σ A_i ≤ Capacity and A_i ≤ Need_i
 ```
 
 [Mathematical foundations →](../technical/mathematics.md)
@@ -62,27 +62,20 @@ Allocation(R, P) = min(Capacity_P × Share(R, P), Need_R)
 ## Three-Minute Concept
 
 ### 1. Recognition (Who contributes to your goals?)
-Each entity allocates 100% recognition among contributors.
+Each entity allocates 100% recognition among contributors based on their contribution to goal realization.
 
-### 2. Reciprocal Alignment (Bidirectional acknowledgment)
-Only when both parties prioritize each other does reciprocal alignment exist.
-- You prioritize them (outbound)
-- They prioritize you (inbound)
-- **Reciprocal Alignment** = min(Inbound, Outbound)
-- Ensures proportional relationships.
-
-### 3. Capacity & Needs (What can you offer? What do you need?)
+### 2. Capacity & Needs (What can you offer? What do you need?)
 Entities declare available resources and requirements.
 
-### 4. Automatic Allocation
-System calculates optimal distribution:
-- Priority to reciprocal alignment pairs
-- Proportional to recognition strength
-- Capped at declared needs
-- Updates in real-time
+### 3. Automatic Allocation
+System calculates optimal distribution through two-sided optimization:
+- **Provider side**: Allocate proportional to recognition of recipients
+- **Recipient side**: Prefer sources they value most
+- **Constraints**: Respect capacity limits and need bounds
+- **Updates**: Real-time recalculation as network evolves
 
 ### Result
-Resources flow automatically to mission-aligned partners based on actual need and mutual contribution—no meetings, no applications, no bureaucracy.
+Resources flow automatically to recognized partners based on actual need and contribution—no meetings, no applications, no bureaucracy.
 
 ---
 

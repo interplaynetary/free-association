@@ -15,7 +15,7 @@ The coalition serves as a platform for discovering and establishing mutual-recog
 - Access to a network of potential collaborators
 - Transparent recognition patterns to identify aligned organizations
 - Low-barrier entry to coordination networks
-- Natural filtering through reciprocal alignment mechanics
+- Natural filtering through recognition mechanics
 
 **How it works:**
 1. Join the coalition and declare your capacities, needs, and goals
@@ -50,7 +50,7 @@ Coalition participation enables rapid resource coordination without bureaucratic
 
 ### **3. Enhanced Information Sharing**
 
-Coalition membership provides structured information exchange across all aspects of coordination.
+Coalition participation provides structured information exchange across all aspects of coordination.
 
 **Information sharing covers:**
 
@@ -154,7 +154,7 @@ Each participant maintains their unique identity and approach:
 
 ### **Derivation Algorithms:**
 
-* **Reciprocal Alignment:** Calculated as minimum of bidirectional priority: `min(A→B priority, B→A priority)`. Identifies symmetric cooperation relationships.
+* **Recognition:** Calculated as minimum of bidirectional priority: `min(A→B priority, B→A priority)`. Identifies symmetric cooperation relationships.
 
 * **Organizational Priority:** Aggregates individual priorities weighted by organizational membership. Formula: `Σ(member_priority × member_weight) / total_members`.
 
@@ -174,8 +174,8 @@ Each participant maintains their unique identity and approach:
 
 ### **Bootstrap Process:**
 
-1. **Initial Participants:** Self-organized group declares itself as the founding secretariat
-2. **First Protocol:** Founding secretariat adopts initial decision-making protocol via consensus
+1. **Initial Participants:** Self-organized group declares itself as the founding coordination team
+2. **First Protocol:** Founding coordination team adopts initial decision-making protocol via consensus
 3. **Registry Initialization:** Members register their UUIDs and contact information  
 4. **First Assembly:** Convened to formalize structure and invite additional participants
 5. **Operational Phase:** Regular operation begins with annual assembly cycle
@@ -200,7 +200,7 @@ Each participant maintains their unique identity and approach:
 
 * **Technical Conflict Resolution:** When concurrent record edits occur, CRDT semantics provide automatic field-level conflict resolution via last-write-wins with timestamp tie-breaking.
 
-* **Dispute Resolution:** When semantic conflicts arise (e.g., two entities claim same identifier, factual disagreements), `dispute` mechanism invoked. Secretariat applies dispute resolution protocol to determine authoritative interpretation.
+* **Dispute Resolution:** When semantic conflicts arise (e.g., two entities claim same identifier, factual disagreements), `dispute` mechanism invoked. Coordination team applies dispute resolution protocol to determine authoritative interpretation.
 
 ### **Assembly Mechanics:**
 

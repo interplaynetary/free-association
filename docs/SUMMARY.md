@@ -35,7 +35,6 @@
 
 * [For Organizations](implementation/organizations.md)
 * [For Developers](implementation/developers.md)
-* [Collective Resource Coordination](implementation/collective-coordination.md)
 
 ## Technical Reference
 

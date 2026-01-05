@@ -35,7 +35,7 @@ Humanitarian crises call for rapid, coordinated response from multiple organizat
 
 **Pre-Crisis Setup:**
 
-Organizations establish reciprocal alignment based on:
+Organizations establish recognition based on:
 - Complementary capabilities
 - Geographic coverage
 - Past collaboration effectiveness
@@ -62,7 +62,7 @@ Local Organization in Affected Region:
 
 System calculates optimal resource distribution:
 - Identifies organizations with relevant capacity
-- Calculates reciprocal alignment
+- Calculates recognition
 - Determines proportional shares
 - Accounts for geographic proximity
 - Respects operational constraints
@@ -111,7 +111,7 @@ All participants see commitments, reducing duplicated efforts.
 Local organizations declare their own needs based on ground-level assessment. No external needs assessment required.
 
 **Resource Flow:**
-Organizations with strong reciprocal alignment with local entities receive priority. This often means local and regional organizations receive resources faster than in traditional systems.
+Organizations with strong recognition with local entities receive priority. This often means local and regional organizations receive resources faster than in traditional systems.
 
 ### Continuous Adaptation
 
@@ -178,7 +178,7 @@ By Day 30 in Free Association approach, emergency phase complete and recovery un
 ### Tiered Response
 
 **Phase 1: Immediate (0-48 hours)**
-Organizations with highest reciprocal alignment + geographic proximity deploy immediately.
+Organizations with highest recognition + geographic proximity deploy immediately.
 
 **Phase 2: Reinforcement (48-168 hours)**
 Additional organizations fill gaps, provide specialized resources.
@@ -242,7 +242,7 @@ Organizations establish recognition only with partners meeting their operational
 Humanitarian organizations interested in coordination pilots:
 
 1. **Identify coordination network** - compatible partner organizations
-2. **Establish reciprocal alignment** - assess contribution to shared goals
+2. **Establish recognition** - assess contribution to shared goals
 3. **Declare capacity** - available resources for emergency deployment
 4. **Monitor for needs** - automatic notification when network declares needs
 5. **Deploy automatically** - system calculates optimal allocation

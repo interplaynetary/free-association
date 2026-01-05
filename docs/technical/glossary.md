@@ -3,14 +3,12 @@
 ## Core Concepts
 
 ### Free Association
-A coordination protocol enabling resource allocation through reciprocal alignment of contributions. Entities acknowledge each other's value and allocate resources accordingly without centralized control.
+A coordination protocol enabling resource allocation through recognition of contributions. Entities acknowledge each other's value and allocate resources accordingly without centralized control.
 
 ### Recognition
 The percentage (summing to 100%) that an entity allocates among contributors to their organizational goals. Non-transferable and dynamically adjustable.
 
-### Reciprocal Alignment (RA)
-**RA** - Reciprocal Alignment
-The calculated overlap in priorities between two entities. Determined by the minimum of the reciprocal priority percentages. Ensures that resource flows reflect shared commitment. Equal to `min(Priority_A_to_B, Priority_B_to_A)`.
+
 
 ### Entity
 Any participant in the network—organization, community, institution, individual—that can publish priority weights, capacity, and needs.
@@ -53,9 +51,6 @@ Available surplus resources an entity can offer. Can include funding, expertise,
 ### Declared Need
 Specific resource requirement stated by an entity. Allocation capped at declared need to prevent accumulation.
 
-### Active Need
-Declared need adjusted by damping factor to prevent oscillation: `Active_Need = Declared_Need × Damping_Factor`.
-
 ### Remaining Need
 Unsatisfied portion of declared need: `Remaining_Need = max(0, Declared_Need - Total_Received)`.
 
@@ -70,7 +65,7 @@ Specification limiting resource compatibility—time windows, geographic locatio
 ## Allocation Mechanics
 
 ### Proportional Share
-Percentage of provider's capacity allocated to specific recipient, based on reciprocal alignment: `Share = RA(P, R) / Σ RA(P, All_Recipients)`.
+Percentage of provider's capacity allocated to specific recipient, based on recognition.
 
 ### Raw Allocation
 Allocation before need cap is applied: `Raw_Allocation = Provider_Capacity × Share`.
@@ -78,52 +73,18 @@ Allocation before need cap is applied: `Raw_Allocation = Provider_Capacity × Sh
 ### Final Allocation
 Allocation after need cap: `Final_Allocation = min(Raw_Allocation, Declared_Need)`.
 
-### Phase 1 Allocation
-Allocation step where reciprocal alignment relationships receive priority. Capacity flows efficiently between entities that mutually prioritize each other.
-
-### Phase 2 Allocation
-Remaining capacity (after Phase 1) allocated among entities with unilateral priority from provider. Allows for exploration of new relationships and support for up-and-coming entities.
-
 ---
 
 ## System Properties
 
-### Convergence
-Process of system reaching stable equilibrium state. Typically occurs in 5-10 calculation rounds (1-2 seconds).
-
-### Damping Factor
-Multiplier applied to declared need to prevent allocation oscillation. Values: 0.5 (conservative), 0.8 (balanced), 1.0 (responsive).
-
-### Need Declaration Incentives
-Allocation capping mechanism creates incentives for honest need reporting. Over-reporting doesn't accumulate resources (non-accumulation property applies), under-reporting reduces allocation. The 100% recognition budget combined with outcome feedback creates self-correcting dynamics for ongoing participants. Protocol v6 (draft) adds satisfaction-based learning that automatically resolves provider non-delivery.
-
-### Proportional Fairness
-Property ensuring allocations strictly proportional to reciprocal alignment strength.
-
-### Non-Accumulative
-Property preventing entities from receiving resources beyond declared needs.
-
-### Contraction Property
-Guarantee that receiving resources always reduces remaining need. This holds unconditionally in every allocation round, regardless of how needs change between rounds.
-
 ### Determinism
 Property ensuring same network state always yields identical allocation results.
 
----
+### Proportional Preservation
+Property ensuring allocation ratios match recognition ratios where constraints allow.
 
-## Network Patterns
-
-### Hub-and-Spoke Network
-Network structure with central organization recognizing many partners, who primarily recognize the hub.
-
-### Mesh Network
-Dense network where multiple entities have reciprocal alignment relationships. No single central hub.
-
-### Hierarchical Network
-Network organized in tiers, with recognition flowing primarily within tiers and some cross-tier relationships.
-
-### Hybrid Network
-Network combining multiple structural patterns (hub-and-spoke, mesh, hierarchical) based on actual relationships.
+### Pareto Efficiency
+Property ensuring no entity can improve their allocation quality without degrading another's.
 
 ---
 
@@ -148,8 +109,8 @@ Proposal for protocol change, submitted through governance process for community
 ### Pilot Program
 Limited-scope implementation of Free Association to test and learn. Typically 10-20% of capacity, 3-12 months.
 
-### Coalition
-Group of organizations jointly implementing Free Association for coordination.
+### Free Association Coalition
+Group of organizations implementing Free Association for coordination.
 
 ### Collective Resource Coordination
 Using Free Association to allocate shared resource pools among member entities.
@@ -159,54 +120,34 @@ Use of Free Association for rapid resource deployment in emergency situations.
 
 ---
 
-## Organizational Terms
-
-### Mission-Aligned Partners
-Organizations working on compatible goals, even without direct collaboration.
-
-### Contribution Assessment
-Process of determining recognition percentages based on evaluation of contributions to organizational goals.
-
-### Capacity Declaration
-Statement of available surplus resources with specifications (filters, timing, type).
-
-### Need Declaration
-Statement of specific resource requirements with specifications.
-
-### Recognition Pattern
-Overall distribution of entity's recognition across contributors. Encodes strategic priorities and relationships.
-
----
-
-## Comparative Terms
-
-### Traditional Coordination
-Resource coordination through markets (purchasing power), charity (donations), or bureaucracy (committees).
-
-### Bureaucratic Overhead
-Administrative time and resources consumed by coordination process. Target reduction: 70-90% with Free Association.
-
-### Fundraising Overhead
-Time organizations spend acquiring resources rather than mission work. Target reduction: 75-85% with Free Association.
-
-### Due Diligence
-Process of verifying potential partners. In Free Association, recognition encodes ongoing assessment.
-
----
-
 ## Mathematical Terms
 
 ### Recognition Distribution
 Allocation of entity's 100% recognition among contributors: `Σ Recognition(E→Others) = 100%`.
 
-### Symmetry Property
-Reciprocal alignment is symmetric: `RA(A, B) = RA(B, A)`.
+### True Recognition
+Recognition of contribution to the realization of priorities that *enables the continued realization of priorities* (self-sustaining).
 
-### Minimum Function
-Taking the lower of two values. Used in reciprocal alignment: `RA(A,B) = min(Priority_A_to_B, Priority_B_to_A)`.
+### False Recognition
+Recognition of contribution to the realization of priorities that *impairs the continued realization of priorities* (self-terminating).
 
-### Convergence Criterion
-Threshold for determining system has reached stable state: `|Need(t+1) - Need(t)| < ε`.
+### Alignment (α)
+Measures how closely your capacity allocation matches true recognition. Formula: `Alignment (α) = Σ_i min(Allocation_i / Capacity, TrueRecognition_i)`. Ranges from 0 (completely misaligned) to 1 (perfectly aligned).
+
+### Alignment Velocity (v)
+Measures how fast alignment improves or degrades. Formula: `Velocity (v) = ΔAlignment / ΔTime`. Positive velocity indicates learning and correcting, negative indicates degrading, zero indicates stability.
+
+### Proportional Preservation
+Property ensuring that if you express Recipient A should receive twice as much as Recipient B (through recognition), the system allocates approximately twice as much capacity to A when feasible given constraints.
+
+### Least Biased Solution
+Among all possible allocations satisfying constraints, the system selects the one that introduces the least additional bias beyond what entities express. This is the entropy-maximizing (information-theoretically optimal) solution.
+
+### Constraint Propagation
+When constraints bind (e.g., a recipient reaches capacity), effects propagate through the network. Capacity that cannot flow to a full recipient automatically redistributes to other compatible needs according to expressed preferences.
+
+### Pareto Efficiency
+The system converges to a stable equilibrium where no entity can improve their allocation quality (measured by preference satisfaction) without degrading someone else's.
 
 ---
 
@@ -230,8 +171,6 @@ Support exchanged among peers based on reciprocity and solidarity. Free Associat
 ---
 
 ## Acronyms
-
-**RA** - Reciprocal Alignment
 
 **DPI** - Digital Public Infrastructure  
 

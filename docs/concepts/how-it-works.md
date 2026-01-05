@@ -77,21 +77,23 @@ Organization B declares:
 
 ---
 
-### 4. Reciprocal Alignment
-**Bidirectional alignment of priorities**
+### 4. Recognition
+**Assessment of contribution to goal realization**
 
-Allocations are often guided by reciprocal prioritization.
+Entities allocate recognition based on contribution toward their goals.
 
-**Why reciprocity?**
-- Ensures shared commitment
-- Prevents unilateral extraction
-- Creates natural incentive for accurate prioritization
+**Key Properties:**
+- Subjective assessment by each entity
+- 100% budget forces prioritization
+- Non-transferable (cannot be bought or sold)
+- Dynamically adjustable as understanding evolves
 
 **Example:**
 ```
-Organization A prioritizes B at 50%
-Organization B prioritizes A at 10%
-→ Reciprocal Alignment = 10%
+Organization A recognizes:
+- Partner B: 50% (major program contributor)
+- Partner C: 30% (operational support)
+- Partner D: 20% (mission alignment)
 ```
 
 **Self-Recognition:**
@@ -140,39 +142,72 @@ Ally E = 0.2 × 0.5 = 10%
 
 **Total Recognition (100%):** Each participant has a fixed "budget" of recognition to distribute. This forces prioritization and trade-offs. Recognition is non-transferable and dynamically adjustable.
 
-**Reciprocal Alignment (RA):** Calculated as the lower of the priority percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship (where A prioritizes B highly, but B prioritizes A little) is valued at the lower amount, encouraging mutual engagement.
+**Allocation Follows Recognition:** Resources are distributed proportionally to recognition, subject to capacity and need constraints. The allocation algorithm performs two-sided optimization, satisfying both provider priorities (who they want to support) and recipient preferences (who they want to receive from).
 
-When we **recognize** each other, we have **mutual-recognition of mutual-value** and **can choose to allocate our capacities to each-other in precise proportion to how mutually-fulfilling we are to each other.**
+## Anti-Gaming: True vs. False Recognition
 
-**The system naturally promotes accurate recognition through mathematical necessity:**  
+**The system naturally promotes accurate recognition through mathematical necessity:**
 
-Entities define their goals/priorities subjectively, but achieving them depends on objective access to capacities and partnerships.
+Participants define their goals subjectively, but achieving them depends on objective access to resources and contributions. Recognition accuracy is validated through outcomes.
 
-**FOR ANY PARTICIPANT:**  
+**True Recognition:** Recognition of contribution to the realization of priorities that *enables the continued realization of priorities* (self-sustaining).
 
-**GIVEN:**  
+**False Recognition:** Recognition of contribution to the realization of priorities that *impairs the continued realization of priorities* (self-terminating).
 
-  **• Total Recognition = 100%**  
+### The Causality Chain
 
-  **• Capacities distributed ∝ (Mutual)-Recognition**  
+**GIVEN:**
+- Total Recognition = 100%
+- True ∩ False = ∅ (mutually exclusive)
+- Capacity Directed ∝ Recognition Share
 
-  **• Goals require access to specific capacities/partnerships**  
+**IMPLICATIONS:**
 
-**THEN:**  
+↑ False Recognition  
+⟹ ↓ True Recognition (budget constraint)  
+⟹ ↓ Alignment (α) between allocation and true contribution  
+⟹ ↑ Capacity Directed to non-beneficial partners  
+⟹ ↓ Capacity Directed to beneficial partners  
+⟹ ↓ Goal Achievement  
+⟹ Immediate incentive to revoke false recognition  
+⟹ Free-rider loses allocation
 
-  **↑ Recognition allocated to non-beneficial partners**  
+**Key Insight:** False recognition is self-punishing. When you allocate recognition to someone who doesn't actually help you achieve your goals, you have less capacity for people who do. Your outcomes get worse, you notice, and you correct the misallocation.
 
-    **∴ ∝ ↓ Recognition available for beneficial partners [budget constraint]**  
+### Alignment (α)
 
-    **∴ ↓ Mutual-Recognition with beneficial partners**  
+**Alignment** measures how closely your capacity allocation matches true recognition:
 
-    **∴ ↓ Access to needed capacities [proportional allocation]**  
+```
+Alignment (α) = Σ min(Allocation_i / Capacity, TrueRecognition_i)
+```
 
-    **∴ ↓ Goal Achievement**  
+Where:
+- **Capacity** = Your total available capacity
+- **Allocation_i** = Capacity you give to partner i
+- **TrueRecognition_i** = Actual proportion of contribution to your goal realization
 
-    **∴ Natural incentive to correct recognition allocation**
+Alignment ranges from 0 (completely misaligned) to 1 (perfectly aligned).
 
-**Key Implication:** The system creates natural incentives for accurate recognition. Inflating or misattributing recognition only decreases connection to beneficial partners and capacities. Entities that maintain accurate recognition patterns receive better-aligned capacities and achieve better outcomes.
+### Alignment Velocity (v)
+
+**Alignment Velocity** measures how fast alignment improves:
+
+```
+Velocity (v) = ΔAlignment / ΔTime
+```
+
+- **Positive velocity** → Getting more aligned (learning, correcting)
+- **Negative velocity** → Getting less aligned (degrading)
+- **Zero velocity** → Stable (either perfect or stuck)
+
+Entities are incentivized to maximize alignment velocity through:
+1. **Transparency** - Real-time visibility into allocations and outcomes
+2. **Sovereignty** - Unilateral power to reallocate instantly
+3. **Revocability** - Instant withdrawal of allocation
+4. **Discovery** - Low-friction mechanisms to find better partners
+
+**Key Implication:** The system creates natural incentives for accurate recognition. Misattributing recognition decreases connection to beneficial partners. Entities that maintain accurate recognition patterns achieve better outcomes.
 
 ---
 
@@ -200,15 +235,17 @@ Concrete resources requiring common terminology:
 Once all entities have published their data:
 
 1. **Filter** for compatible resource specifications
-2. **Calculate** reciprocal alignment between all pairs
-3. **Determine** proportional shares based on recognition strength
-4. **Allocate** resources (capped at declared needs)
+2. **Calculate** recognition weights for all potential allocations
+3. **Optimize** allocation matrix to satisfy both provider priorities and recipient preferences
+4. **Apply** constraints (capacity limits and need bounds)
 5. **Update** remaining needs automatically
 6. **Recompute** optimal allocation as network state changes (~100-200ms per update)
 
-The entire process happens automatically. When state stabilizes, needs converge in O(log(1/ε)) rounds.
+The entire process happens automatically through two-sided optimization. The system finds the allocation that best satisfies both:
+- **Provider priorities**: Who providers want to support (proportional to recognition)
+- **Recipient preferences**: Who recipients want to receive from
 
-Recognition determines the split. Need size sets the cap. No meetings. No applications. No bureaucracy.
+Recognition determines the proportions. Constraints set the bounds. No meetings. No applications. No bureaucracy.
 
 [Next: The allocation algorithm →](allocation-algorithm.md)
 

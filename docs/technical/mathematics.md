@@ -33,136 +33,162 @@ Total: 100%
 
 ---
 
-## Reciprocal Alignment Calculation
+## Recognition and Allocation
 
-Reciprocal Alignment is the minimum of reciprocal priority percentages:
+### Recognition Weights
 
-```
-RA(Entity_A, Entity_B) = min(
-    Priority_A_to_B,
-    Priority_B_to_A
-)
-```
-
-### Why Minimum?
-
-**Ensures proportional reciprocity:**
-- Prevents unilateral inflation of relationship
-- Both parties must acknowledge contribution
-- Creates natural incentive for accurate recognition
-
-**Symmetry property:**
-```
-MR(A, B) = MR(B, A)
-```
-
-### Examples
-
-**Symmetric Recognition:**
-```
-A recognizes B at 40%
-B recognizes A at 40%
-→ MR(A, B) = min(40%, 40%) = 40%
-```
-
-**Asymmetric Recognition:**
-```
-A recognizes B at 50%
-B recognizes A at 10%
-→ MR(A, B) = min(50%, 10%) = 10%
-```
-
-**Unilateral Recognition:**
-```
-A recognizes B at 30%
-B recognizes A at 0%
-→ MR(A, B) = min(30%, 0%) = 0%
-(No reciprocal alignment, only one-way)
-```
-
----
-
-## Proportional Share Calculation
-
-### Phase 1: Priority Alignment (Reciprocal)
-
-Share proportional to reciprocal alignment relative to all compatible recipients:
+Each entity's recognition determines how they allocate capacity:
 
 ```
-Share(Recipient, Provider) = 
-    RA(Recipient, Provider) / Σ RA(Provider, All_Compatible_Recipients)
+Allocation_i ∝ Recognition_i / Σ Recognition
 ```
 
-**Key Property:** Share determined by alignment strength, not need size.
+**Key Property:** Allocation is proportional to recognition share.
 
 ### Example
 
-Provider P with capacity $1M, three recipients:
-
 ```
-RA(P, A) = 30%
-RA(P, B) = 50%
-RA(P, C) = 20%
-Total RA = 100%
+Organization A recognizes:
+- Partner B: 50%
+- Partner C: 30%
+- Partner D: 20%
 
-Share_A = 30% / 100% = 30% → $300K raw allocation
-Share_B = 50% / 100% = 50% → $500K raw allocation
-Share_C = 20% / 100% = 20% → $200K raw allocation
-```
-
-### Phase 2: Unilateral Priority (Overflow)
-
-After Phase 1 allocation complete (if excess capacity exists), remaining capacity flows based on unilateral priority:
-
-```
-Share(Recipient, Provider) = 
-    Priority_Provider_to_Recipient / Σ Priority_Provider_to_All_Unilateral_Recipients
+With 100 units capacity:
+- Allocation to B: 50 units
+- Allocation to C: 30 units  
+- Allocation to D: 20 units
 ```
 
 ---
 
-## Active Need with Damping
+## True vs. False Recognition
 
-To prevent oscillation, active need uses damping factor:
+**True Recognition:** Recognition of contribution to the realization of priorities that *enables the continued realization of priorities* (self-sustaining).
+
+**False Recognition:** Recognition of contribution to the realization of priorities that *impairs the continued realization of priorities* (self-terminating).
+
+### The Causality Chain
+
+**GIVEN:**
+```
+Total Recognition = 100%
+True ∩ False = ∅ (mutually exclusive)
+Capacity Directed ∝ Recognition Share
+```
+
+**IMPLICATIONS:**
+```
+↑ False Recognition
+⟹ ↓ True Recognition (budget constraint)
+⟹ ↓ Alignment (α)
+⟹ ↑ Capacity to non-beneficial partners
+⟹ ↓ Capacity to beneficial partners
+⟹ ↓ Goal Achievement
+⟹ Immediate incentive to revoke false recognition
+⟹ Free-rider loses allocation
+```
+
+**Mathematical Formulation:**
+```
+Let:
+  R_true = True recognition allocation
+  R_false = False recognition allocation
+  R_total = 100%
+
+Then:
+  R_total = R_true + R_false
+  
+If R_false increases:
+  R_true = R_total - R_false decreases
+  
+Since Allocation ∝ Recognition:
+  Capacity_beneficial = C × (R_true / R_total) decreases
+  Capacity_non-beneficial = C × (R_false / R_total) increases
+  
+Therefore:
+  Goal_Achievement = f(Capacity_beneficial) decreases
+```
+
+---
+
+---
+
+## Alignment Mathematics
+
+### Alignment (α)
+
+**Alignment** measures how closely your capacity allocation matches true recognition:
 
 ```
-Active_Need = Declared_Need × Damping_Factor
-
-where Damping_Factor ∈ {0.5, 0.8, 1.0}
+Alignment (α) = Σ_i min(Allocation_i / Capacity, TrueRecognition_i)
 ```
 
-**Damping Selection:**
-- High volatility: 0.5 (conservative)
-- Moderate volatility: 0.8 (balanced)
-- Stable state: 1.0 (responsive)
+**Where:**
+- Capacity = Your total available capacity
+- Allocation_i = Capacity you give to partner i
+- TrueRecognition_i = Actual proportion of contribution to your goal realization
 
-System adjusts damping based on allocation stability.
+**Properties:**
+- α ∈ [0, 1]
+- α = 1 when Allocation_i / Capacity = TrueRecognition_i for all i (perfect alignment)
+- α = 0 when allocations completely mismatch true recognition
+
+### Perfect Alignment
+
+```
+Perfect Alignment: Allocation_i / Capacity = TrueRecognition_i for all i
+
+When actual allocation proportions exactly match true recognition proportions,
+alignment = 1.
+```
+
+### Alignment Velocity (v)
+
+**Alignment Velocity** measures how fast alignment improves:
+
+```
+Velocity (v) = ΔAlignment / ΔTime
+```
+
+**Interpretation:**
+- v > 0: Getting more aligned (learning, correcting)
+- v < 0: Getting less aligned (degrading)
+- v = 0: Stable (either perfect or stuck)
+
+**Maximizing Alignment Velocity:**
+
+Entities are incentivized to maximize v through:
+1. **Transparency** - Real-time visibility into allocations and outcomes
+2. **Sovereignty** - Unilateral power to reallocate instantly
+3. **Revocability** - Instant withdrawal of allocation
+4. **Discovery** - Low-friction mechanisms to find better partners
+5. **Low Switching Costs** - Minimal transaction costs for reallocation
 
 ---
 
 ## Allocation Formulas
 
-### Raw Allocation
+### Proportional Allocation
 
-Before need cap:
-
-```
-Raw_Allocation(Recipient, Provider) = 
-    Provider_Capacity × Share(Recipient, Provider)
-```
-
-### Final Allocation
-
-Capped at declared need:
+Allocation proportional to recognition:
 
 ```
-Final_Allocation(Recipient, Provider) = min(
-    Raw_Allocation(Recipient, Provider),
-    Declared_Need(Recipient)
-)
+Allocation_i = Capacity × (Recognition_i / Σ Recognition)
 ```
 
-**Key Property:** No entity receives more than declared need.
+### Constrained Allocation
+
+Subject to capacity and need constraints:
+
+```
+Final_Allocation(Recipient, Provider) = Allocation_i
+
+Subject to:
+  Σ_j Allocation_j ≤ Capacity (provider constraint)
+  Σ_i Allocation_i ≤ Need (recipient constraint)
+```
+
+**Key Property:** Allocation preserves recognition proportions while respecting constraints.
 
 ### Need Update
 
@@ -178,113 +204,50 @@ where Total_Received = Σ Final_Allocation(All_Providers)
 
 ## Formal Properties
 
-### Property 1: Need Declaration Incentives
+### Property 1: Recognition Accuracy Incentive
 
-**Analysis:** The allocation capping mechanism creates partial incentives for honest need reporting.
+**Analysis:** Recognition accuracy emerges from mathematical necessity through the true/false recognition framework.
 
 **Key observations:**
-- Over-reporting need: Allocation capped at actual need, non-accumulation property (Property 4) automatically reduces remaining need
-- Under-reporting need: Receives less than actual requirements
-- Accurate reporting: Maximizes utility given recognition network
+- False recognition displaces true recognition (budget constraint)
+- Displaced capacity flows to non-beneficial partners
+- Goal achievement decreases
+- Immediate incentive to correct recognition
 
-**Limitations:** This analysis assumes single-period optimization and doesn't address multi-period strategies, recognition gaming, or provider gaming. See full strategic analysis in main documentation.
+**This creates natural selection pressure for accurate recognition without imposed metrics.**
 
-### Property 2: Proportional Fairness
+### Property 2: Proportional Preservation
 
-**Theorem:** Allocations are strictly proportional to reciprocal alignment.
+**Property:** If you express that Recipient A should receive twice as much as Recipient B (through recognition), the system allocates approximately twice as much capacity to A when feasible given constraints.
 
-**Formal Statement:**
+**Mathematical Statement:**
 ```
-∀ A, B: If MR(P, A) = MR(P, B)
-Then Raw_Allocation(A) = Raw_Allocation(B)
-```
-
-**Proof:**
-```
-Share(A) = MR(P, A) / Total_MR
-Share(B) = MR(P, B) / Total_MR
-
-If MR(P, A) = MR(P, B), then Share(A) = Share(B)
-
-Raw_Allocation(A) = Capacity × Share(A)
-Raw_Allocation(B) = Capacity × Share(B)
-
-∴ Raw_Allocation(A) = Raw_Allocation(B)
+X_ij / X_ik ≈ P_ij / P_ik
 ```
 
-### Property 3: Dynamic Equilibrium and Convergence
+The proportional relationships you express are preserved in the final allocation.
 
-**Theorem:** The system maintains instantaneous optimality as network state evolves.
+### Property 3: Least Biased Solution
 
-**Framework:** The system computes optimal allocation r*(S) for current state S (recognition, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**.
+**Property:** Among all possible allocations satisfying the constraints, the system selects the one that introduces the least additional bias beyond what entities express.
 
-**Convergence guarantee:** When network state stabilizes, needs converge to zero in O(log(1/ε)) rounds.
+This is the entropy-maximizing (information-theoretically optimal) solution.
 
-**Convergence Criterion:**
-```
-System stable when:
-∀ Entities: |Need(t+1) - Need(t)| < ε
-where ε = 0.001 (0.1% threshold)
-```
+### Property 4: Constraint Propagation
 
-**Performance note:** Reference implementation recomputes allocations in 100-200ms per state change. Actual performance depends on implementation, hardware, and network conditions.
+**Property:** When constraints bind (e.g., a recipient reaches capacity), the effects propagate through the network.
 
-### Property 4: Non-Accumulative
+Capacity that cannot flow to a full recipient automatically redistributes to other compatible needs according to expressed preferences.
 
-**Theorem:** No entity receives beyond declared needs.
+### Property 5: Equilibrium Convergence
 
-**Formal Statement:**
-```
-∀ Recipient R, ∀ Time t:
-Total_Received(R, t) ≤ Declared_Need(R, t)
-```
+**Property:** The system converges to a stable equilibrium where no entity can improve their allocation quality (measured by preference satisfaction) without degrading someone else's.
 
-**Proof:**
-```
-By definition:
-Final_Allocation(R, P) = min(Raw_Allocation(R, P), Declared_Need(R))
-
-∴ Final_Allocation(R, P) ≤ Declared_Need(R)
-
-Total_Received(R) = Σ Final_Allocation(R, All_Providers)
-
-Since each allocation ≤ Declared_Need, and system tracks cumulative:
-Total_Received(R) ≤ Declared_Need(R)
-```
-
-### Property 5: Contraction (Unconditional)
-
-**Theorem:** Receiving resources always reduces remaining need.
-
-**Formal Statement:**
-```
-For any allocation A(R) applied to need R:
-Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
-                         ≤ Need(R, before)
-```
-
-**This holds in every allocation round, regardless of how needs change between rounds.**
-
-**Proof:**
-```
-By allocation capping (Property 4):
-A(R) ≤ Need(R, before)
-
-Therefore:
-Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
-                         ≤ Need(R, before) - 0
-                         = Need(R, before)
-
-Since A(R) ≥ 0 and max(0, ...) prevents negative needs:
-Receiving resources strictly reduces need (when A(R) > 0)
-∴ Contraction property holds unconditionally
-```
-
-**Implication:** The system continuously adapts to evolving needs while ensuring allocation always improves satisfaction, never worsens it.
+This is a **Pareto-efficient** outcome.
 
 ### Property 6: Determinism
 
-**Theorem:** Same network state yields identical allocations.
+**Property:** Same network state yields identical allocations.
 
 **Formal Statement:**
 ```
@@ -297,133 +260,32 @@ Then Allocations(S₁) = Allocations(S₂)
 
 **Implication:** Multiple independent calculations yield identical results. No randomness, no arbitrary choices.
 
----
+## Recognition Accuracy Incentive
 
-## Network Effects
+Recognition accuracy emerges from mathematical necessity. Participants define their goals subjectively, but achieving them depends on objective access to resources and contributions.
 
-### Recognition Accuracy Incentive
-
-Recognition accuracy emerges from mathematical necessity:
-
+**GIVEN:**
 ```
-For any participant:
 Total Recognition = 100%
-Total Recognition = Effective Recognition + Ineffective Recognition
-
-Therefore:
-↑ Ineffective Recognition → ↓ Effective Recognition
-   → ↓ Reciprocal Alignment with Beneficial Partners
-      → ↓ Access to Beneficial Resources
-         → ↓ Goal Achievement
-            → Natural incentive to correct recognition
+True ∩ False = ∅
+Capacity Directed ∝ Recognition-Share
 ```
 
-**Key Insight:** Misattributing recognition decreases connection to actually beneficial partners. Accuracy is self-correcting through outcomes.
-
-### Network Stability
-
-**Stable equilibrium when:**
-- Recognition patterns reflect actual contribution
-- Capacity matches sustainable surplus
-- Needs reflect actual requirements
-
-**Instability sources:**
-- Rapidly changing recognition (relationship volatility)
-- Volatile capacity declarations (unreliable commitments)
-- Oscillating needs (unclear requirements)
-
-System damping mechanisms mitigate instability while maintaining responsiveness.
-
----
-
-## Computational Complexity
-
-### Time Complexity
-
-**Single Allocation Round:**
+**IMPLICATIONS (The Causality Chain):**
 ```
-For N entities, E edges (recognition relationships):
-- Reciprocal alignment calculation: O(E)
-- Share calculation: O(E)
-- Allocation: O(E)
-Total: O(E) per round
+↑False Recognition
+⟹↓True Recognition
+⟹↓Alignment (α)
+⟹↑Capacity Directed to non-beneficial
+⟹↓Capacity Directed to beneficial
+⟹↓Goal Achievement
+⟹Immediate incentive to revoke recognition
+⟹Free-rider loses allocation
 ```
 
-**Full Convergence (when state stabilizes):**
-```
-With C convergence rounds:
-Total: O(C × E)
-where C = O(log(1/ε)) theoretically
+**The causality chain:** False recognition → Displaced capacity → Worse outcomes → Immediate incentive to correct → Free-rider loses allocation.
 
-For sparse networks (E ≈ N):
-Total: O(C × N)
-```
+**Key Implication:** The system creates natural incentives for true recognition. Inflation or misattribution of contribution to priority realization only decreases connection to actually beneficial partners. Participants that maintain **True Recognition** better-align their capacity allocation and achieve better outcomes.
 
-### Space Complexity
 
-```
-Recognition network: O(E)
-Entity data (needs, capacity): O(N)
-Allocation results: O(E)
-Total: O(N + E)
-```
-
-### Scalability
-
-**Tested Network Sizes:**
-- 10-100 entities: <100ms per round
-- 100-1,000 entities: <500ms per round
-- 1,000-10,000 entities: <2s per round
-
-**Distributed Calculation:**
-Each entity can independently calculate allocations given published network state. Enables parallel computation for large networks.
-
----
-
-## Extensions and Variations
-
-### Contribution Trees
-
-Recognition can be organized hierarchically:
-
-```
-Global_Recognition(Entity, Contributor) = 
-    Σ Branch_Weight(i) × Branch_Recognition(i, Contributor)
-
-where:
-Σ Branch_Weight = 100%
-∀ Branch: Σ Branch_Recognition = 100%
-```
-
-This enables granular tracking while maintaining overall coherence.
-
-### Resource Type Filters
-
-Allocations respect resource type compatibility:
-
-```
-Compatible(Provider, Recipient) = 
-    Time_Overlap AND
-    Location_Match AND
-    Type_Match
-
-Allocations only to Compatible(P, R) = true
-```
-
-### Multi-Provider Aggregation
-
-Single recipient can receive from multiple providers:
-
-```
-Total_Received(R) = Σ Final_Allocation(R, All_Providers)
-Remaining_Need(R) = max(0, Declared_Need(R) - Total_Received(R))
-```
-
----
-
-## Formal Specification
-
-For complete formal protocol specification, see [Protocol Specification](protocol.md).
-
-For implementation details, see reference implementation at [github.com/interplaynetary/free-association](https://github.com/interplaynetary/free-association).
 

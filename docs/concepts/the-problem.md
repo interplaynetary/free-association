@@ -90,7 +90,7 @@ This creates fundamental tension: coordination requires information aggregation,
 A coordination mechanism that:
 
 - Operates at the speed of information exchange (seconds, not months)
-- Enables reciprocal alignment without central authority
+- Enables recognition without central authority
 - Distributes resources based on contribution and need
 - Maintains participant autonomy and data sovereignty
 - Adapts continuously as circumstances evolve

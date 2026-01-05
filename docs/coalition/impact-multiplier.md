@@ -70,15 +70,15 @@ Then A's available capital is distributed:
 
 **Value-Alignment Guarantee:** By mathematical construction, capital only flows to entities that the allocator recognizes as contributing to their goals. **Perfect alignment by definition.**
 
-### Mechanism 2: Reciprocal Alignment (Bilateral Verification)
-**Reciprocal Alignment acts as a filter** that allows capital to flow only through relationships where trust and value are independently verified by both parties.
+### Mechanism 2: Recognition (Bilateral Verification)
+**Recognition acts as a filter** that allows capital to flow only through relationships where trust and value are independently verified by both parties.
 - A prioritizes B (validates value)
 - B prioritizes A (validates alignment)
-- **Reciprocal Alignment Score** = min(A→B, B→A)
+- **Recognition Score** = recognition calculation
 
 **This creates automatic fraud detection:**
 
-| Scenario | A recognizes B | B recognizes A | Reciprocal Alignment | Capital Flow |
+| Scenario | A recognizes B | B recognizes A | Recognition | Capital Flow |
 |:---------|:--------------|:--------------|:-------------------|:-------------|
 | **Genuine Partnership** | 30% | 25% | 25% | High (25% of budget) |
 | **One-sided Claim** | 30% | 2% | 2% | Minimal (2% of budget) |
@@ -87,7 +87,7 @@ Then A's available capital is distributed:
 **Why this works:**
 
 * **B cannot claim alignment** without A's verification
-* **A cannot inflate B's importance** without B's reciprocal recognition
+* **A cannot inflate B's importance** without B's recognition
 * **Both parties must genuinely contribute** to each other's goals to maintain high MR
 * **Gaming the system is self-defeating** (inflating recognition reduces capacity flow from genuine partners)
 
@@ -134,12 +134,12 @@ Each new participant doesn't just add their own capital—they increase the *eff
 
 **For any network of N participants:**
 
-**Total Aligned Capital Flow** = Σ (Individual Capacity × Reciprocal Alignment Score)
+**Total Aligned Capital Flow** = Σ (Individual Capacity × Recognition Score)
 
 **Key Properties:**
 
 1. **Monotonic Increase:** Adding a participant cannot decrease total aligned capital
-2. **Compositional:** New relationships create value proportional to reciprocal alignment
+2. **Compositional:** New relationships create value proportional to recognition
 3. **Self-Correcting:** Misalignment is penalized through reduced MR
 
 **Impact Multiplier Formula:**
@@ -150,7 +150,7 @@ Network Impact = Σ(Capacity_i × MR_i) / Σ(Capacity_i)
 
 **Where:**
 * **Capacity_i** = resources available from participant i
-* **RA_i** = reciprocal alignment score for participant i
+* **RA_i** = recognition score for participant i
 * **As MR increases across network, total impact increases multiplicatively**
 
 **Critical Insight:**
@@ -196,7 +196,7 @@ The Network Alignment Coefficient grows with:
 
 **Automatic Distribution:**
 
-* **Capital flows proportionally to reciprocal alignment** (no application process)
+* **Capital flows proportionally to recognition** (no application process)
 * **Real-time monitoring** through network data (no separate evaluation)
 * **Continuous adjustment** as recognition updates (immediate feedback)
 
@@ -262,7 +262,7 @@ The Network Alignment Coefficient grows with:
 
 **Guarantees:**
 
-1. **No capital flows without reciprocal alignment** (bilateral verification)
+1. **No capital flows without recognition** (bilateral verification)
 2. **Recognition is zero-sum for each participant** (forces prioritization)
 3. **Gaming is self-defeating** (inflating recognition reduces genuine partnerships)
 4. **Alignment is mathematical, not aspirational** (encoded in the protocol)
@@ -314,7 +314,7 @@ The Network Alignment Coefficient grows with:
 **Questions to Consider:**
 
 * What percentage of your capital could be distributed through recognition-weighted allocation?
-* Which of your current partners would likely show high reciprocal alignment?
+* Which of your current partners would likely show high recognition?
 * How would network transparency change your due diligence requirements?
 * What impact multiplier would justify transitioning capital to this approach?
 

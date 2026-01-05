@@ -89,7 +89,7 @@ free-association/
 
 **Data Flow:**
 1. Entities declare: recognition, capacity, needs
-2. System calculates: reciprocal alignment, proportional shares
+2. System calculates: recognition, proportional shares
 3. Algorithm determines: optimal allocation
 4. Results display: transparent to all participants
 5. Updates trigger: recalculation and convergence
@@ -102,7 +102,7 @@ free-association/
 
 ### Key Algorithms
 
-**Reciprocal Alignment Calculation:**
+**Recognition Calculation:**
 The system calculates alignment between any two entities based on their bidirectional priority weights.
 ```javascript
 function calculateMutualRecognition(entityA, entityB) {

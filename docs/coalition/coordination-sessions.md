@@ -138,7 +138,7 @@ All sessions are designed for:
    * Questions and discussion
 
 3. **Next Steps** (15-30 min)
-   * Coalition membership process
+   * Coalition participation process
    * Technical implementation options
    * Follow-up coordination
 
@@ -146,7 +146,7 @@ All sessions are designed for:
 
 1. **Deep Dive** (60-90 min)
    * Technical specifications
-   * Secretariat governance structure
+   * Coordination team governance structure
    * Decision-making protocols
    * Record format and registry
 
@@ -169,7 +169,7 @@ For organizations actively participating in framework development:
 * **Protocol Design**: Developing decision-making protocols
 * **Technical Specifications**: Record formats, derivation algorithms
 * **Pilot Design**: Planning early implementation experiments
-* **Secretariat Formation**: Coordinating founding member process
+* **Coordination team Formation**: Coordinating founding member process
 
 ## **Preparation Materials**
 
@@ -177,7 +177,7 @@ For organizations actively participating in framework development:
 
 **Recommended Reading:**
 * [Participation Framework](/docs/coalition/participation-framework.md)
-* [Decision-Making Protocols](/docs/coalition/secretariat/)
+* [Decision-Making Protocols](/docs/coalition/coordination team/)
 * [How Free Association Works](/docs/concepts/how-it-works.md)
 * [Priority Mathematics](/docs/coalition/recognition-mathematics.md)
 
@@ -231,7 +231,7 @@ docs.openassociation.org
 
 ### **Record Access**
 
-Secretariat activity record:  
+Coordination team activity record:  
 record.openassociation.org
 
 ### **General Inquiries**
@@ -266,8 +266,8 @@ The coordination sessions feed into the coalition founding process:
 
 1. **November 10-21**: Informal coordination sessions (HAPPENING NOW)
 2. **Late November**: Founding member identification
-3. **December**: Contact registration and secretariat formation
-4. **January 2026**: First secretariat assembly
+3. **December**: Contact registration and coordination team formation
+4. **January 2026**: First coordination team assembly
 5. **Q1 2026**: Pilot implementations begin
 
 ## **Frequently Asked Questions**
@@ -286,7 +286,7 @@ Yes. Each venue has different focus areas and participant types. Attending multi
 
 ### **What's the cost to participate?**
 
-Coordination sessions are free. Coalition membership has no fees—participation is based on reciprocal alignment and resource sharing, not financial contributions.
+Coordination sessions are free. Coalition participation has no fees—participation is based on recognition and resource sharing, not financial contributions.
 
 ### **Will there be follow-up sessions?**
 
@@ -302,7 +302,7 @@ Yes. Post-COP30 coordination will continue through:
 2. Identify 3-5 organizations you recognize as aligned with your goals
 3. Draft initial capacity and need statements
 4. Generate PGP key pair for secure communication
-5. Designate organizational representative for secretariat
+5. Designate organizational representative for coordination team
 
 ## **Contact Summary**
 

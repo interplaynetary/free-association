@@ -119,7 +119,7 @@ Document reasoning for recognition decisions.
 
 ---
 
-## Coalition Membership
+## Coalition Participation
 
 Organizations can join coordination coalitions to amplify network effects.
 
@@ -147,7 +147,7 @@ Organizations can join coordination coalitions to amplify network effects.
 
 **Network Effects:**
 Larger networks increase:
-- Partner options for reciprocal alignment
+- Partner options for recognition
 - Resource diversity
 - Coverage across geographies and sectors
 - Learning and best practices
@@ -181,13 +181,13 @@ Larger networks increase:
 **Governance:**
 - Decentralized decision-making via adopted protocols
 - No central authority over individual resource allocation
-- Coalition secretariat offers open-source solutions
+- Coalition coordination team offers open-source solutions
 - Participants retain full autonomy
 - See [Coalition Participation Framework](../coalition/participation-framework.md) for details
 
 **Decision-Making Protocols:**
-- [Iterative Consensus Protocol](../coalition/secretariat/decision-making-protocol.md) - Structured deliberation and refinement
-- [Node Protocol Delegation](../coalition/secretariat/node-protocol-delegation.md) - Executable mandates with dynamic authority
+- [Iterative Consensus Protocol](../coalition/coordination team/decision-making-protocol.md) - Structured deliberation and refinement
+- [Node Protocol Delegation](../coalition/coordination team/node-protocol-delegation.md) - Executable mandates with dynamic authority
 
 **Resources:**
 - Technical infrastructure

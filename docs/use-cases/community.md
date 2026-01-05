@@ -99,9 +99,9 @@ Member B:
 - Project funding: $1,000 for community event
 ```
 
-**4. Reciprocal Alignment:**
-Communities allocate shared resources (facilities, equipment, expertise) based on members' **reciprocal alignment** and declared needs. The system handles allocation automatically, reducing administrative burden.
-- Proportional to reciprocal alignment
+**4. Recognition:**
+Communities allocate shared resources (facilities, equipment, expertise) based on members' **recognition** and declared needs. The system handles allocation automatically, reducing administrative burden.
+- Proportional to recognition
 - Capped at declared needs
 - Updates automatically as needs/availability change
 - Transparent to all members
@@ -149,7 +149,7 @@ Members seeing valuable contribution naturally increase recognition, leading to 
 **Need-Based Caps:**
 Cannot accumulate resources beyond stated needs, preventing hoarding.
 
-**Reciprocal Alignment:**
+**Recognition:**
 Bidirectional priority creates peer accountability.
 
 ## Real-World Scenarios

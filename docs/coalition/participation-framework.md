@@ -24,7 +24,7 @@ This coalition consists of entities experimenting with protocols for voluntary c
 
 **Relative-Priority (RP):** Priority normalized over **Total Priority** to obtain proportions of 100%. Each participant has a fixed "budget" of total-priority to divide and attribute. This normalization forces trade-offs. **Priority is non-transferable and dynamically adjustable.**
 
-**Reciprocal Alignment (RA):** Calculated as the lower of relative-priority percentages that two entities assign to each other: `RA(X,Y) = min(X_priority_to_Y, Y_priority_to_X)`. This creates *perfect reciprocity in proportion*. A one-sided relationship where A prioritizes B highly (ex: 50%), but B prioritizes A little (ex: 1%) is valued at the lower amount (ex: 1%), encouraging mutual engagement.
+**Recognition (RA):** Calculated as the lower of relative-priority percentages that two entities assign to each other: `RA(X,Y) = min(X_priority_to_Y, Y_priority_to_X)`. This creates *perfect reciprocity in proportion*. A one-sided relationship where A prioritizes B highly (ex: 50%), but B prioritizes A little (ex: 1%) is valued at the lower amount (ex: 1%), encouraging mutual engagement.
 
 **Relative Reciprocal-Alignment (RRA):** Reciprocal-Alignment normalized over **Total Reciprocal-Alignment** to obtain proportions of 100%. When we **align** with each other, we can **choose to allocate our capacities to each-other in precise proportion to our alignment.**
 
@@ -74,10 +74,10 @@ This framework bypasses institutionalized intermediaries by asking: **"Whose per
 - **Property** (who owns) → allocate via own/synthetic recognition
 - **Governance** (who decides) → each autonomously decides whose recognition to include
 - **Currency** (medium of exchange) → value flows directly as capacity based on recognition
-- **Jurisdiction** (which rules) → emerges from reciprocal alignment of protocols
+- **Jurisdiction** (which rules) → emerges from recognition of protocols
 - **Markets** (price signals) → value directly expressed through recognition allocations
 
-**Why this works:** Recognition is more fundamental than reified coordination layers. Direct protocol using reciprocal alignment as primitive enables coordination without building enforcement infrastructure first.
+**Why this works:** Recognition is more fundamental than reified coordination layers. Direct protocol using recognition as primitive enables coordination without building enforcement infrastructure first.
 
 **Key properties:**
 - **Interoperability**: Worker cooperative ↔ sole proprietor ↔ state enterprise coordinate via same protocol

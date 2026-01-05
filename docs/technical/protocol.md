@@ -14,57 +14,58 @@ The complete protocol specification is available in the main repository:
 
 Any implementation claiming Free Association conformance preserves:
 
-**1. Priority Alignment Foundation**
-- Priority weights sum to 100% per entity
-- Reciprocal Alignment = min(A→B, B→A)
-- Priority is non-transferable
-- Priority is dynamically adjustable
+**1. Recognition Foundation**
+- Recognition weights sum to 100% per entity
+- Recognition is non-transferable
+- Recognition is dynamically adjustable
+- Allocation proportional to recognition
 
-**2. Needs-Based Allocation**
-- Allocations capped at declared need
-- Remaining need = max(0, declared - received)
-- Each resource type tracked independently
+**2. Two-Sided Optimization**
+- Provider priorities: Allocate proportionally to recognition
+- Recipient preferences: Prefer valued providers
+- Capacity and need constraints respected
+- Proportional preservation where feasible
 
 **3. Mathematical Fairness Guarantees**
-- Contraction property
 - Proportional allocation
-- Two-tier priority
-- No accumulation possible
+- Constraint satisfaction
+- Pareto efficiency
+- Determinism
 
 ### Allocation Formula
 
-**Phase 1 (Priority Alignment):**
+**Proportional Allocation:**
 ```
-Share(r) = RA(P, r) / Σ RA(P, All_Aligned_Recipients)
-RawAllocation(r) = Capacity × Share(r)
-FinalAllocation(r) = min(RawAllocation(r), Need(r))
+Allocation_i = Capacity × (Recognition_i / Σ Recognition)
+
+Subject to:
+  Σ_j Allocation_j ≤ Capacity_Provider
+  Σ_i Allocation_i ≤ Need_Recipient
 ```
 
-**Phase 2 (Unilateral Priority):**
-```
-RemainingCapacity = Capacity - Σ FinalAllocation(Phase1)
-Share(r) = Priority(P→r) / Σ Priority(P→All_Unilateral)
-RawAllocation(r) = RemainingCapacity × Share(r)
-FinalAllocation(r) = min(RawAllocation(r), Need(r))
-```
+**Two-Sided Optimization:**
+The system finds the allocation matrix that minimizes deviation from both:
+- Provider priorities (recognition weights)
+- Recipient preferences (source preferences)
+
+While satisfying all capacity and need constraints.
 
 ### Required Properties
 
 Conformant implementations demonstrate:
 
-✅ **Contraction:** Total needs decrease or stay constant  
-✅ **No Accumulation:** Received ≤ Declared Need always  
-✅ **Fairness:** Equal reciprocal alignment → equal shares  
+✅ **Proportional Allocation:** Allocations proportional to recognition  
+✅ **Constraint Satisfaction:** Respects capacity and need bounds  
+✅ **Pareto Efficiency:** No improvement without violating constraints  
 ✅ **Determinism:** Same state → same allocations
 
 ### Protocol Violations
 
 The following are NON-CONFORMANT:
 
-❌ Allowing accumulation beyond declared need  
 ❌ Making recognition transferable or tradeable  
-❌ Weighting by need size instead of recognition  
-❌ Prioritizing unilateral over reciprocal alignment  
+❌ Breaking proportional allocation property  
+❌ Violating capacity or need constraints  
 ❌ Breaking determinism property
 
 ## Version Information
@@ -79,7 +80,6 @@ Implementations pass test suite covering:
 - Basic allocation scenarios
 - Property verification
 - Edge case handling
-- Convergence behavior
 
 ## Interoperability
 

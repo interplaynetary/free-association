@@ -88,7 +88,7 @@ This coalition consists of entities experimenting with piloting new **Digital Pu
 
 **Participants may publish data:** recognitions, capacities, needs, environmental data, qualities, or any other data. Examples include contribution percentages, resources/capacities, needs, organizational membership, environmental variables, sources for deriving, filters and their applications.
 
-**Participants may derive data from local and network-data:** For example, distributions, goals, estimates, needs, capacities, organizational membership, sources for deriving, filters and their applications, or any other data. Key distribution derivations include Priority (always a portion of 100%), Reciprocal Alignment (reciprocal minimum), and Organizational Priority.
+**Participants may derive data from local and network-data:** For example, distributions, goals, estimates, needs, capacities, organizational membership, sources for deriving, filters and their applications, or any other data. Key distribution derivations include Priority (always a portion of 100%), Recognition (reciprocal minimum), and Organizational Priority.
 
 **Participants can publish/propose/offer/allocate with the help of protocols of their choosing.**
 
@@ -100,7 +100,7 @@ This coalition consists of entities experimenting with piloting new **Digital Pu
 
 **Total Priority (100%):** Each participant has a fixed "budget" of total-priority to divide and attribute. This forces prioritization and trade-offs. **Priority is non-transferable and dynamically adjustable.**
 
-**Reciprocal Alignment (RA):** Calculated as the lower of the priority percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship where A prioritizes B highly (ex: 50%), but B prioritizes A little (ex: 1%) is valued at the lower amount (ex: 1%), encouraging mutual engagement.
+**Recognition (RA):** Calculated as the lower of the priority percentages that two entities assign to each other. This creates *perfect reciprocity in proportion*. A one-sided relationship where A prioritizes B highly (ex: 50%), but B prioritizes A little (ex: 1%) is valued at the lower amount (ex: 1%), encouraging mutual engagement.
 
 **The system naturally promotes accurate prioritization through mathematical necessity:**
 
@@ -185,7 +185,7 @@ Entities define their goals/priorities subjectively, but achieving them depends 
 
 ### What Protocols Derive
 
-**Reciprocal Alignment (RA = minimum of paired priorities):**
+**Recognition (RA = minimum of paired priorities):**
 
 * **Mozambique** attributes **WHO** 20%
   **WHO** attributes **Mozambique** 12%
