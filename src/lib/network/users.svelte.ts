@@ -16,7 +16,7 @@ import {
 } from './contacts.svelte';
 
 // Import organizations module for org_id resolution
-import { globalOrganizations, getOrganizationName } from './organizations.svelte';
+import { globalOrganizations, getOrganizationName, cleanupOrganizations } from './organizations.svelte';
 
 // ================================
 // USERS LIST SUBSCRIPTION (Holster)
@@ -107,8 +107,8 @@ export async function cleanupUsersList() {
 	console.log('[USERS-LIST] Keeping subscription active for read-only browsing');
 
 	// Also cleanup organizations (but keep their subscriptions active too)
-	const orgsModule = require('$lib/network/organizations.svelte');
-	orgsModule.cleanupOrganizations();
+	// const orgsModule = require('$lib/network/organizations.svelte');
+	cleanupOrganizations();
 
 	// Note: Membership is now handled by the unified entity/attribute system
 	// Cleaned up with myAttributeRecognitions store

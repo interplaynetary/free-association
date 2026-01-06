@@ -24,7 +24,8 @@
 		addContributors,
 		calculateNodePoints,
 		getPathToNode,
-		updateManualFulfillment
+		updateManualFulfillment,
+		createRootNode
 	} from '@playnet/free-association/tree';
 	import { get } from 'svelte/store';
 	import {
@@ -139,16 +140,12 @@
 	const tree = $derived.by(() => {
 		if (isOrgRoute) {
 			// On org routes, always show the demo tree (which contains the org tree)
-			console.log('[TREE-SELECT] Org route detected, using demoTreeStore');
+			console.log('[TREE-SELECT] Org route detected, using demoTreeStore (View Store)');
 			return demoTreeStore.current;
-		} else if (isAuthenticated) {
-			// On homepage while authenticated, show user's tree
-			console.log('[TREE-SELECT] Homepage + authenticated, using userTree');
-			return $userTree;
 		} else {
-			// On homepage while not authenticated, show demo tree (SDG)
-			console.log('[TREE-SELECT] Homepage + not authenticated, using demoTreeStore');
-			return demoTreeStore.current;
+			// On homepage (Auth or Unauth), use the ONE user tree (which handles local/holster sync)
+			console.log('[TREE-SELECT] Homepage, using userTree');
+			return $userTree;
 		}
 	});
 	
@@ -345,10 +342,9 @@
 	// Helper function to update the appropriate tree store based on route and authentication
 	function updateTreeStore(updatedTree: Node) {
 		// ✅ ROUTE-AWARE TREE UPDATE:
-		// On org routes, always update demoTreeStore (regardless of authentication)
-		// On homepage, update based on authentication status
+		// On org routes, always update demoTreeStore (View Store)
+		// On homepage, always update userTree (Auth or Unauth)
 		if (isOrgRoute) {
-			// Org route: always update demo tree
 			console.log('[TREE-UPDATE] Org route - updating demoTreeStore');
 			try {
 				const serialized = JSON.parse(JSON.stringify(updatedTree));
@@ -357,20 +353,10 @@
 				console.error('[DEMO TREE] Failed to serialize tree:', err);
 				demoTreeStore.set(updatedTree as RootNode);
 			}
-		} else if (isAuthenticated) {
-			// Homepage + authenticated: update user tree
-			console.log('[TREE-UPDATE] Homepage + authenticated - updating userTree');
-			userTree.set(updatedTree as RootNode);
 		} else {
-			// Homepage + not authenticated: update demo tree
-			console.log('[TREE-UPDATE] Homepage + not authenticated - updating demoTreeStore');
-			try {
-				const serialized = JSON.parse(JSON.stringify(updatedTree));
-				demoTreeStore.set(serialized as RootNode);
-			} catch (err) {
-				console.error('[DEMO TREE] Failed to serialize tree:', err);
-				demoTreeStore.set(updatedTree as RootNode);
-			}
+			// Homepage (Auth or Demo): update userTree
+			console.log(`[TREE-UPDATE] Homepage (${isAuthenticated ? 'Auth' : 'Demo'}) - updating userTree`);
+			userTree.set(updatedTree as RootNode);
 		}
 		// Force UI update
 		triggerUpdate();
@@ -423,10 +409,20 @@
 		});
 		
 		// Only initialize SDG on homepage (not on org routes)
+		// Only initialize SDG on homepage (not on org routes)
 		if (!isOrgRoute && !isAuthenticated && !hasExistingTree) {
-			console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
-			demoTreeStore.initializeWithSDG();
-			triggerUpdate();
+			// Check if userTree is already loaded (it might be loading from LocalStorage)
+			// Wait, userTree is a store. We access $userTree via get(userTree).
+			// If it's null, we initialize.
+			const currentUserTree = get(userTree);
+			if (!currentUserTree) {
+				console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
+				// Inline SDG initialization logic
+				const demoRootNode = createRootNode('demo_user', 'Log In');
+				const populated = applyTemplate(demoRootNode, 'sdg');
+				userTree.set(populated);
+				triggerUpdate();
+			}
 		}
 		
 		// Initialize path for demo tree if needed (for both homepage and org routes)

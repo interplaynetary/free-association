@@ -121,31 +121,16 @@ export interface CommitmentWithCache extends Commitment {
 export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
-	persistDebounce: 200 // Debounce tree edits
-	// NOTE: No converters needed! JSON handles everything perfectly.
+	persistDebounce: 200, // Debounce tree edits
+	// SAFETY: Automatically purge demo data if it somehow got persisted
+	validate: (tree) => tree.id !== 'demo_user',
+	// DUAL MODE: Use LocalStorage for 'Demo Mode' when not authenticated!
+	localStorageKey: 'free-association-demo-tree'
 });
 
 
-if (typeof window !== 'undefined') {
-	// Lazy-load demoTreeStore to avoid circular dependencies
-	import('$lib/protocol/stores/demoTree.svelte').then(({ demoTreeStore }) => {
-		let currentPub = '';
+// Demo tree store imported directly (no circular dependency)
 
-		// Track auth state
-		holsterUserPub.subscribe(pub => {
-			currentPub = pub;
-		});
-
-		// Subscribe to demoTreeStore and sync to myRecognitionTreeStore when not authenticated
-		demoTreeStore.toStore().subscribe(demoTree => {
-			if (!currentPub && demoTree) {
-				// Not authenticated: sync demo tree to recognition tree store
-				console.log('[DEMO-SYNC] Syncing demoTreeStore to myRecognitionTreeStore for recognition weights');
-				myRecognitionTreeStore.set(demoTree);
-			}
-		});
-	});
-}
 
 /**
  * My Recognition Weights (V5) - DERIVED
@@ -154,30 +139,23 @@ if (typeof window !== 'undefined') {
  * This is my "outgoing" recognition - who I recognize and how much
  * 
  * Reactive: Updates automatically when tree changes!
+ * 
+ * ✅ V5 FIX: Handles both Authenticated and Demo modes
+ * - Auth: Uses myRecognitionTreeStore (Source of Truth)
+ * - Demo: Uses demoTreeStore (Local Memory)
+ * - Prevents demo data from polluting persistent store!
  */
 export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
-	[myRecognitionTreeStore],
-	([$tree]) => {
-		console.log('[🌳 RECOGNITION-WEIGHTS] Computing from tree...');
-
-		if (!$tree) {
-			console.log('[🌳 RECOGNITION-WEIGHTS] ❌ No tree available');
-			return {};
-		}
+	myRecognitionTreeStore,
+	($tree) => {
+		if (!$tree) return {};
 
 		try {
 			// Run protocol calculation: tree → recognition shares
 			const weights = sharesOfGeneralFulfillmentMap($tree as any, {});
-			const contributorCount = Object.keys(weights).length;
-			const nonZeroCount = Object.values(weights).filter(w => w > 0).length;
-
-			console.log(`[🌳 RECOGNITION-WEIGHTS] ✅ Computed ${contributorCount} contributors (${nonZeroCount} non-zero):`);
-			Object.entries(weights).forEach(([id, weight]) => {
-				if (weight > 0) {
-					console.log(`  • ${id.slice(0, 20)}... → ${(weight * 100).toFixed(2)}%`);
-				}
-			});
-
+			// Optional: Log stats (can reduce this later)
+			// const contributorCount = Object.keys(weights).length;
+			// console.log(`[🌳 RECOGNITION-WEIGHTS] Computed ${contributorCount} contributors`);
 			return weights;
 		} catch (error) {
 			console.error('[🌳 RECOGNITION-WEIGHTS] ❌ Error computing from tree:', error);

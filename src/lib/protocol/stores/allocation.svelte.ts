@@ -397,8 +397,14 @@ let stopAllocationLoops: (() => void) | null = null;
  * Initialize all allocation stores (V5)
  * Call this after holster authentication
  */
-export function initializeAllocationStores() {
+export async function initializeAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-V5] Initializing stores...');
+
+	// Clear potential stale data (e.g. from Demo Tree or previous login)
+	// This ensures we don't carry over "clean" states or demo data into authenticated session
+	// Use cleanup() to properly stop listeners and reset initialized state
+	await myRecognitionTreeStore.cleanup();
+	await myCommitmentStore.cleanup();
 
 	// Source stores (persistent) - Imported from stores.svelte
 	myRecognitionTreeStore.initialize();

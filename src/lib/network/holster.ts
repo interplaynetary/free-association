@@ -195,7 +195,7 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 		// Initialize data streams
 		console.log('[HOLSTER] Initializing data streams...');
 		const allocationModule = await import('$lib/protocol/stores/allocation.svelte');
-		allocationModule.initializeAllocationStores();
+		await allocationModule.initializeAllocationStores();
 
 		const storesModule = await import('$lib/protocol/stores/stores.svelte');
 		console.log('[HOLSTER] ✅ V5 stores initialized');
@@ -395,8 +395,25 @@ export async function signout(): Promise<void> {
 		console.error('[HOLSTER SIGNOUT] Error cleaning up records:', error);
 	}
 
+	// Cleanup allocation stores (V5)
+	try {
+		const { cleanupAllocationStores } = await import('$lib/protocol/stores/allocation.svelte');
+		await cleanupAllocationStores();
+	} catch (error) {
+		console.error('[HOLSTER SIGNOUT] Error cleaning up allocation stores:', error);
+	}
+
 	// Destroy session
 	holsterUser.leave();
+
+	// Re-initialize allocation stores in Demo Mode (Local Storage)
+	try {
+		const { initializeAllocationStores } = await import('$lib/protocol/stores/allocation.svelte');
+		console.log('[HOLSTER SIGNOUT] Re-initializing stores for Demo Mode...');
+		await initializeAllocationStores();
+	} catch (error) {
+		console.error('[HOLSTER SIGNOUT] Error re-initializing allocation stores:', error);
+	}
 }
 
 export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
