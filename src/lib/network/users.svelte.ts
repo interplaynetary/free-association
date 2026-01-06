@@ -94,24 +94,25 @@ export function initializeUsersList() {
 
 /**
  * Cleanup users list subscription
+ * 
+ * NOTE: This does NOT clear the users list data (userPubKeys, userAliasesCache)
+ * to preserve read-only browsing mode after logout. The subscription remains
+ * active for continued network browsing.
  */
 export async function cleanupUsersList() {
-	if (usersListCallback) {
-		holster.get('freely-associating-players').off(usersListCallback);
-		usersListCallback = null;
-	}
-	userPubKeys.set([]);
-	userAliasesCache.set({});
-	isUsersListInitialized = false;
-	console.log('[USERS-LIST] Cleaned up');
+	// NOTE: We do NOT unsubscribe or clear data here anymore!
+	// The users list subscription persists for read-only browsing.
+	// Only auth-specific data is cleared on logout.
 
-	// Also cleanup organizations
+	console.log('[USERS-LIST] Keeping subscription active for read-only browsing');
+
+	// Also cleanup organizations (but keep their subscriptions active too)
 	const orgsModule = require('$lib/network/organizations.svelte');
 	orgsModule.cleanupOrganizations();
 
 	// Note: Membership is now handled by the unified entity/attribute system
 	// Cleaned up with myAttributeRecognitions store
-	console.log('[USERS-LIST] Organizations cleaned up');
+	console.log('[USERS-LIST] Auth-specific data cleaned up');
 }
 
 // ================================

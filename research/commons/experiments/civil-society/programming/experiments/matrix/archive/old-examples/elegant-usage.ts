@@ -59,7 +59,7 @@ const needSlots: NeedSlot[] = [
   {
     id: "need-tutoring-1",
     participantId: "alice@example.com",
-    need_type_id: "tutoring",
+    type_id: "tutoring",
     quantity: 2,
     name: "Math tutoring sessions",
     time_zone: "America/New_York",
@@ -81,7 +81,7 @@ const availabilitySlots: AvailabilitySlot[] = [
   {
     id: "avail-tutoring-1",
     participantId: "bob@example.com",
-    need_type_id: "tutoring",
+    type_id: "tutoring",
     quantity: 10,
     name: "Math tutoring hours",
     time_zone: "America/New_York",

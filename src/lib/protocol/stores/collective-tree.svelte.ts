@@ -3147,7 +3147,7 @@ export function exampleGovernancePipeline() {
 		{
 			id: 'slot-001',
 			quantity: 100,
-			need_type_id: 'food',
+			type_id: 'food',
 			name: 'Community Kitchen Meals',
 			max_natural_div: 1,
 			min_allocation_percentage: 0.1
@@ -3160,7 +3160,7 @@ export function exampleGovernancePipeline() {
 			need_slots: [{
 				id: 'need-alice-001',
 				quantity: 30,
-				need_type_id: 'food',
+				type_id: 'food',
 				name: 'Weekly meals'
 			}],
 			itcStamp: { id: 1, event: 0 },
@@ -3170,7 +3170,7 @@ export function exampleGovernancePipeline() {
 			need_slots: [{
 				id: 'need-bob-001',
 				quantity: 25,
-				need_type_id: 'food',
+				type_id: 'food',
 				name: 'Weekly meals'
 			}],
 			itcStamp: { id: 1, event: 0 },
@@ -3180,7 +3180,7 @@ export function exampleGovernancePipeline() {
 			need_slots: [{
 				id: 'need-carol-001',
 				quantity: 20,
-				need_type_id: 'food',
+				type_id: 'food',
 				name: 'Weekly meals'
 			}],
 			itcStamp: { id: 1, event: 0 },

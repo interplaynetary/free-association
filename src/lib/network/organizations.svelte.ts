@@ -21,6 +21,7 @@ import type {
 	OrganizationsCollection
 } from '@playnet/free-association/schemas';
 import { OrganizationSchema, OrganizationsCollectionSchema } from '@playnet/free-association/schemas';
+import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 
 // ═══════════════════════════════════════════════════════════════════
 // USER'S ORGANIZATIONS STORE (Holster-backed via createStore)
@@ -47,7 +48,7 @@ export const organizationSearchQuery = writable('');
  * Global list of all organizations registered across the network
  * Maps org_id -> Organization metadata (names, description, emoji)
  */
-export const globalOrganizations = writable<Record<string, Organization>>({});
+export const globalOrganizations = writable<Record<string, Organization>>(DEMO_ORGANIZATIONS);
 
 let orgListCallback: ((data: any) => void) | null = null;
 let isOrgListInitialized = false;

@@ -27,7 +27,7 @@ const ConfirmStep: React.FC<ConfirmStepProps> = ({ need, isEditMode, onConfirm, 
 	});
 
 	const scheduleDisplay = formatScheduleOneLine(need.availability_window, need.recurrence || null);
-	
+
 	return (
 		<Box flexDirection="column">
 			<Text bold color="green">✓ Review your need{isEditMode ? ' (editing)' : ''}:</Text>
@@ -52,7 +52,7 @@ interface NeedAddProps {
 
 type Step = 'type' | 'name' | 'quantity' | 'unit' | 'recurrence' | 'schedule' | 'location' | 'confirm';
 
-const NEED_TYPE_OPTIONS: SelectOption[] = [
+const type_OPTIONS: SelectOption[] = [
 	{ value: 'food', label: 'Food', emoji: '🍎' },
 	{ value: 'tutoring', label: 'Tutoring', emoji: '📚' },
 	{ value: 'housing', label: 'Housing', emoji: '🏠' },
@@ -82,7 +82,7 @@ export const NeedAdd: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCancel
 	const [need, setNeed] = useState<Partial<NeedSlot>>(existingNeed || {
 		id: `need-${Date.now()}`,
 		quantity: 0,
-		need_type_id: '',
+		type_id: '',
 		name: '',
 		unit: 'units'
 	});
@@ -127,10 +127,10 @@ export const NeedAdd: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCancel
 	});
 
 	const handleTypeSelect = (typeId: string) => {
-		const option = NEED_TYPE_OPTIONS.find(o => o.value === typeId);
+		const option = type_OPTIONS.find(o => o.value === typeId);
 		setNeed({
 			...need,
-			need_type_id: typeId,
+			type_id: typeId,
 			name: option?.label || typeId,
 			emoji: option?.emoji
 		});
@@ -219,83 +219,83 @@ export const NeedAdd: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCancel
 
 			<Box flexDirection="column" paddingX={2}>
 				{renderBreadcrumb()}
-				
-			{step === 'type' && (
-				<Select
-					label="What do you need?"
-					options={NEED_TYPE_OPTIONS}
-					defaultValue={need.need_type_id}
-					onSelect={handleTypeSelect}
-					onCancel={onCancel}
-				/>
-			)}
 
-			{step === 'quantity' && (
-				<Input
-					label="Quantity"
-					type="number"
-					placeholder="10"
-					defaultValue={need.quantity ? need.quantity.toString() : ''}
-					onSubmit={handleQuantitySubmit}
-					onCancel={onCancel}
-					validate={(value) => {
-						const num = parseFloat(value);
-						if (isNaN(num) || num <= 0) {
-							return 'Please enter a positive number';
-						}
-						return true;
-					}}
-				/>
-			)}
+				{step === 'type' && (
+					<Select
+						label="What do you need?"
+						options={type_OPTIONS}
+						defaultValue={need.type_id}
+						onSelect={handleTypeSelect}
+						onCancel={onCancel}
+					/>
+				)}
 
-			{step === 'unit' && (
-				<UnitSelector
-					label="Unit of measurement"
-					defaultUnit={need.unit || 'units'}
-					commonUnits={['hours', 'units', 'kg', 'sessions', 'meals', 'days', 'people', 'items']}
-					onSelect={handleUnitSubmit}
-					onCancel={onCancel}
-				/>
-			)}
+				{step === 'quantity' && (
+					<Input
+						label="Quantity"
+						type="number"
+						placeholder="10"
+						defaultValue={need.quantity ? need.quantity.toString() : ''}
+						onSubmit={handleQuantitySubmit}
+						onCancel={onCancel}
+						validate={(value) => {
+							const num = parseFloat(value);
+							if (isNaN(num) || num <= 0) {
+								return 'Please enter a positive number';
+							}
+							return true;
+						}}
+					/>
+				)}
 
-		{step === 'recurrence' && (
-			<Select
-				label="When do you need it?"
-				options={RECURRENCE_OPTIONS}
-				defaultValue={need.recurrence || 'none'}
-				onSelect={handleRecurrenceSelect}
-				onCancel={onCancel}
-			/>
-		)}
+				{step === 'unit' && (
+					<UnitSelector
+						label="Unit of measurement"
+						defaultUnit={need.unit || 'units'}
+						commonUnits={['hours', 'units', 'kg', 'sessions', 'meals', 'days', 'people', 'items']}
+						onSelect={handleUnitSubmit}
+						onCancel={onCancel}
+					/>
+				)}
 
-		{step === 'schedule' && need.recurrence && (
-			<TimeScheduleBuilder
-				recurrence={need.recurrence}
-				existingSchedule={need.availability_window}
-				onComplete={handleScheduleComplete}
-				onCancel={onCancel}
-			/>
-		)}
+				{step === 'recurrence' && (
+					<Select
+						label="When do you need it?"
+						options={RECURRENCE_OPTIONS}
+						defaultValue={need.recurrence || 'none'}
+						onSelect={handleRecurrenceSelect}
+						onCancel={onCancel}
+					/>
+				)}
 
-		{step === 'location' && (
-				<Select
-					label="Where?"
-					options={LOCATION_OPTIONS}
-					defaultValue={need.location_type}
-					onSelect={handleLocationSelect}
-					onCancel={onCancel}
-				/>
-			)}
+				{step === 'schedule' && need.recurrence && (
+					<TimeScheduleBuilder
+						recurrence={need.recurrence}
+						existingSchedule={need.availability_window}
+						onComplete={handleScheduleComplete}
+						onCancel={onCancel}
+					/>
+				)}
 
-			{step === 'confirm' && (
-				<ConfirmStep
-					need={need}
-					isEditMode={isEditMode}
-					onConfirm={handleConfirm}
-					onCancel={onCancel}
-					onGoBack={goToPreviousStep}
-				/>
-			)}
+				{step === 'location' && (
+					<Select
+						label="Where?"
+						options={LOCATION_OPTIONS}
+						defaultValue={need.location_type}
+						onSelect={handleLocationSelect}
+						onCancel={onCancel}
+					/>
+				)}
+
+				{step === 'confirm' && (
+					<ConfirmStep
+						need={need}
+						isEditMode={isEditMode}
+						onConfirm={handleConfirm}
+						onCancel={onCancel}
+						onGoBack={goToPreviousStep}
+					/>
+				)}
 			</Box>
 		</Box>
 	);

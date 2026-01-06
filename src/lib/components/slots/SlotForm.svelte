@@ -39,7 +39,7 @@
   // But for a form, initializing once is common pattern.
   let formData = $state({
     id: slot?.id || crypto.randomUUID(),
-    need_type_id: slot?.need_type_id || '',
+    type_id: slot?.type_id || '',
     name: slot?.name || '',
     emoji: slot?.emoji,
     description: slot?.description,
@@ -88,8 +88,8 @@
   function validateForm(): boolean {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.need_type_id) {
-      newErrors.need_type_id = 'Need type is required';
+    if (!formData.type_id) {
+      newErrors.type_id = 'Need type is required';
     }
     
     if (!formData.name?.trim()) {
@@ -157,13 +157,13 @@
     <!-- Need Type Selection -->
     <section class="form-section">
       <NeedTypeSelector
-        selected={formData.need_type_id}
-        onSelect={(id) => updateField('need_type_id', id)}
+        selected={formData.type_id}
+        onSelect={(id) => updateField('type_id', id)}
         required
         variant="buttons"
       />
-      {#if errors.need_type_id}
-        <p class="error-message">{errors.need_type_id}</p>
+      {#if errors.type_id}
+        <p class="error-message">{errors.type_id}</p>
       {/if}
     </section>
     

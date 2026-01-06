@@ -12,11 +12,11 @@
 
 import { z } from 'zod';
 import { RpcTarget, type RpcStub } from 'capnweb';
-import { 
-  type SparseMatrix, 
-  Sparse, 
-  SparsePerf, 
-  SparseCompare 
+import {
+  type SparseMatrix,
+  Sparse,
+  SparsePerf,
+  SparseCompare
 } from './sparse-matrix.js';
 
 // ============================================================================
@@ -50,17 +50,17 @@ const GoalIdSchema = z.string().uuid();
 // ---- Credential Schema (Discriminated Union) ----
 
 const CredentialSchema = z.discriminatedUnion('type', [
-  z.object({ 
-    type: z.literal('password'), 
-    data: z.string().min(8) 
+  z.object({
+    type: z.literal('password'),
+    data: z.string().min(8)
   }),
-  z.object({ 
-    type: z.literal('publicKey'), 
-    data: z.string().min(32) 
+  z.object({
+    type: z.literal('publicKey'),
+    data: z.string().min(32)
   }),
-  z.object({ 
-    type: z.literal('oauth'), 
-    data: z.string() 
+  z.object({
+    type: z.literal('oauth'),
+    data: z.string()
   })
 ]);
 
@@ -156,7 +156,7 @@ const TimeRangeSchema = z.object({
 
 /** Day of week */
 const DayOfWeekSchema = z.enum([
-  'monday', 'tuesday', 'wednesday', 'thursday', 
+  'monday', 'tuesday', 'wednesday', 'thursday',
   'friday', 'saturday', 'sunday'
 ]);
 
@@ -203,26 +203,26 @@ const DivisibilitySchema = z.object({
 const NeedSlotSchema = z.object({
   id: z.string().min(1),
   participantId: ParticipantIdSchema,
-  need_type_id: z.string().min(1),
+  type_id: z.string().min(1),
   quantity: z.number().gte(0),
   name: z.string(),
-  
+
   // Time constraints
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   time_zone: z.string().default('UTC'),
   recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
   availability_window: AvailabilityWindowSchema.optional(),
-  
+
   // Location
   location: LocationSchema.optional(),
-  
+
   // Divisibility
   divisibility: DivisibilitySchema.optional(),
-  
+
   // Compliance filter (JsonLogic rules)
   filter_rule: z.any().nullable().optional(),
-  
+
   // Priority
   priority: z.number().optional()
 });
@@ -231,23 +231,23 @@ const NeedSlotSchema = z.object({
 const AvailabilitySlotSchema = z.object({
   id: z.string().min(1),
   participantId: ParticipantIdSchema,
-  need_type_id: z.string().min(1),
+  type_id: z.string().min(1),
   quantity: z.number().gte(0),
   name: z.string(),
-  
+
   // Time constraints
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   time_zone: z.string().default('UTC'),
   recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
   availability_window: AvailabilityWindowSchema.optional(),
-  
+
   // Location
   location: LocationSchema.optional(),
-  
+
   // Divisibility
   divisibility: DivisibilitySchema.optional(),
-  
+
   // Priority
   priority: z.number().optional()
 });
@@ -272,7 +272,7 @@ const DampingStateSchema = z.object({
 
 /** Per-type damping (for multi-dimensional) */
 const MultiTypeDampingSchema = z.record(
-  z.string(), // need_type_id
+  z.string(), // type_id
   DampingStateSchema
 );
 
@@ -380,7 +380,7 @@ interface IAuthenticatedParticipant {
   getCapacity(): Promise<number>;
   addCapacity(amount: number): Promise<void>;
   getParticipantId(): Promise<ParticipantId>;
-  
+
   // Slot-based allocation methods
   addNeedSlot(slot: NeedSlot): Promise<void>;
   addAvailabilitySlot(slot: AvailabilitySlot): Promise<void>;
@@ -388,7 +388,7 @@ interface IAuthenticatedParticipant {
   getAvailabilitySlots(): Promise<AvailabilitySlot[]>;
   removeNeedSlot(slotId: string): Promise<void>;
   removeAvailabilitySlot(slotId: string): Promise<void>;
-  
+
   // Allocation requests
   requestAllocation(needSlotId: string): Promise<SlotAllocationRecord[]>;
   getAllocations(): Promise<SlotAllocationRecord[]>;
@@ -416,22 +416,22 @@ class TimeMatching {
    * Convert HH:MM time from timezone to UTC
    */
   static convertTimeToUTC(
-    timeStr: string, 
-    dateStr: string, 
+    timeStr: string,
+    dateStr: string,
     timezone: string = 'UTC'
   ): string {
     if (timezone === 'UTC' || timezone === 'Etc/UTC') {
       return timeStr;
     }
-    
+
     try {
       const [hours, minutes] = timeStr.split(':').map(Number);
       const [year, month, day] = dateStr.split('-').map(Number);
-      
+
       // Create reference date
       const refUTC = Date.UTC(year, month - 1, day, 12, 0, 0);
       const refDate = new Date(refUTC);
-      
+
       // Format in target timezone
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
@@ -442,30 +442,30 @@ class TimeMatching {
         minute: '2-digit',
         hour12: false
       });
-      
+
       const parts = formatter.formatToParts(refDate);
       const tzHour = parseInt(parts.find(p => p.type === 'hour')!.value);
       const tzDay = parseInt(parts.find(p => p.type === 'day')!.value);
-      
+
       // Calculate offset
       const offsetHours = 12 - tzHour;
       const dayShift = tzDay - day;
-      
+
       // Apply offset
       let utcHours = hours + offsetHours - (dayShift * 24);
       let utcMinutes = minutes;
-      
+
       // Normalize
       while (utcHours < 0) utcHours += 24;
       while (utcHours >= 24) utcHours -= 24;
-      
+
       return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
     } catch (error) {
       console.warn('Timezone conversion failed:', error);
       return timeStr;
     }
   }
-  
+
   /**
    * Check if two time ranges overlap (both in UTC)
    */
@@ -477,15 +477,15 @@ class TimeMatching {
     const end1 = range1.end_time;
     const start2 = range2.start_time;
     const end2 = range2.end_time;
-    
+
     // No overlap if one ends before the other starts
     if (end1 <= start2 || end2 <= start1) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   /**
    * Check if availability windows overlap
    */
@@ -499,7 +499,7 @@ class TimeMatching {
     // If no windows specified, assume always available
     if (!window1 && !window2) return true;
     if (!window1 || !window2) return false;
-    
+
     // Check time ranges (simplest case)
     if (window1.time_ranges && window2.time_ranges) {
       for (const tr1 of window1.time_ranges) {
@@ -508,20 +508,20 @@ class TimeMatching {
           start_time: this.convertTimeToUTC(tr1.start_time, referenceDate, tz1),
           end_time: this.convertTimeToUTC(tr1.end_time, referenceDate, tz1)
         };
-        
+
         for (const tr2 of window2.time_ranges) {
           const utc_tr2 = {
             start_time: this.convertTimeToUTC(tr2.start_time, referenceDate, tz2),
             end_time: this.convertTimeToUTC(tr2.end_time, referenceDate, tz2)
           };
-          
+
           if (this.timeRangesOverlap(utc_tr1, utc_tr2)) {
             return true;
           }
         }
       }
     }
-    
+
     // Check day schedules
     if (window1.day_schedules && window2.day_schedules) {
       for (const ds1 of window1.day_schedules) {
@@ -529,20 +529,20 @@ class TimeMatching {
           // Check if days overlap
           const daysOverlap = ds1.days.some(d => ds2.days.includes(d));
           if (!daysOverlap) continue;
-          
+
           // Check if time ranges overlap on those days
           for (const tr1 of ds1.time_ranges) {
             const utc_tr1 = {
               start_time: this.convertTimeToUTC(tr1.start_time, referenceDate, tz1),
               end_time: this.convertTimeToUTC(tr1.end_time, referenceDate, tz1)
             };
-            
+
             for (const tr2 of ds2.time_ranges) {
               const utc_tr2 = {
                 start_time: this.convertTimeToUTC(tr2.start_time, referenceDate, tz2),
                 end_time: this.convertTimeToUTC(tr2.end_time, referenceDate, tz2)
               };
-              
+
               if (this.timeRangesOverlap(utc_tr1, utc_tr2)) {
                 return true;
               }
@@ -551,7 +551,7 @@ class TimeMatching {
         }
       }
     }
-    
+
     return false;
   }
 }
@@ -571,14 +571,14 @@ class LocationMatching {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
-  
+
   /**
    * Check if two locations are compatible
    */
@@ -590,16 +590,16 @@ class LocationMatching {
     // No location constraints = always compatible
     if (!loc1 && !loc2) return true;
     if (!loc1 || !loc2) return false;
-    
+
     // Both online = compatible
     if (loc1.type === 'online' && loc2.type === 'online') return true;
     if (loc1.type === 'online' || loc2.type === 'online') return true;
-    
+
     // Check city/country match
     if (loc1.city && loc2.city && loc1.city !== loc2.city) {
       // Different cities - check distance if coordinates available
-      if (loc1.latitude && loc1.longitude && 
-          loc2.latitude && loc2.longitude) {
+      if (loc1.latitude && loc1.longitude &&
+        loc2.latitude && loc2.longitude) {
         const distance = this.calculateDistance(
           loc1.latitude, loc1.longitude,
           loc2.latitude, loc2.longitude
@@ -608,21 +608,21 @@ class LocationMatching {
       }
       return false;
     }
-    
+
     if (loc1.country && loc2.country && loc1.country !== loc2.country) {
       return false;
     }
-    
+
     // Check coordinate distance if available
-    if (loc1.latitude && loc1.longitude && 
-        loc2.latitude && loc2.longitude) {
+    if (loc1.latitude && loc1.longitude &&
+      loc2.latitude && loc2.longitude) {
       const distance = this.calculateDistance(
         loc1.latitude, loc1.longitude,
         loc2.latitude, loc2.longitude
       );
       return distance <= maxDistanceKm;
     }
-    
+
     return true;
   }
 }
@@ -638,7 +638,7 @@ class ComplianceFilters {
    */
   static evaluate(rule: any, data: any): boolean {
     if (!rule) return true;
-    
+
     // Simplified: just check if data matches rule conditions
     // In production, use full JsonLogic implementation
     return true;
@@ -658,10 +658,10 @@ class SlotMatching {
     maxDistanceKm: number = 50
   ): boolean {
     // Type must match
-    if (needSlot.need_type_id !== availSlot.need_type_id) {
+    if (needSlot.type_id !== availSlot.type_id) {
       return false;
     }
-    
+
     // Check location compatibility
     if (!LocationMatching.locationsCompatible(
       needSlot.location,
@@ -670,7 +670,7 @@ class SlotMatching {
     )) {
       return false;
     }
-    
+
     // Check time compatibility
     const timeCompatible = TimeMatching.availabilityWindowsOverlap(
       needSlot.availability_window,
@@ -679,11 +679,11 @@ class SlotMatching {
       availSlot.time_zone,
       needSlot.start_date || '2024-01-01'
     );
-    
+
     if (!timeCompatible) {
       return false;
     }
-    
+
     // Check compliance filter
     if (needSlot.filter_rule) {
       const providerData = { providerId: availSlot.participantId };
@@ -691,10 +691,10 @@ class SlotMatching {
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Get compatible providers for a need slot
    */
@@ -702,7 +702,7 @@ class SlotMatching {
     needSlot: NeedSlot,
     availabilitySlots: AvailabilitySlot[]
   ): AvailabilitySlot[] {
-    return availabilitySlots.filter(avail => 
+    return availabilitySlots.filter(avail =>
       this.slotsCompatible(needSlot, avail)
     );
   }
@@ -724,7 +724,7 @@ class DampeningSystem {
   private static readonly HISTORY_WINDOW = 5; // Track last N iterations
   private static readonly SENSITIVITY = 0.5; // How aggressively to dampen
   private static readonly MIN_DAMPING = 0.1; // Never go below 10%
-  
+
   /**
    * Calculate damping factor based on over-allocation history
    */
@@ -732,20 +732,20 @@ class DampeningSystem {
     overAllocationHistory: number[]
   ): number {
     if (overAllocationHistory.length === 0) return 1.0;
-    
+
     // Calculate average recent over-allocation
     const recentHistory = overAllocationHistory.slice(-this.HISTORY_WINDOW);
     const avgOvershoot = recentHistory.reduce((sum, val) => sum + val, 0) / recentHistory.length;
-    
+
     // Apply damping formula
     const dampingFactor = Math.max(
       this.MIN_DAMPING,
       1 - (avgOvershoot * this.SENSITIVITY)
     );
-    
+
     return dampingFactor;
   }
-  
+
   /**
    * Update damping state with new allocation results
    */
@@ -755,18 +755,18 @@ class DampeningSystem {
     need: number
   ): DampingState {
     const overshoot = need > 0 ? Math.max(0, (allocated - need) / need) : 0;
-    
+
     const newHistory = [...state.overAllocationHistory, overshoot];
     if (newHistory.length > this.HISTORY_WINDOW) {
       newHistory.shift(); // Keep only recent history
     }
-    
+
     return {
       overAllocationHistory: newHistory,
       dampingFactor: this.calculateDampingFactor(newHistory)
     };
   }
-  
+
   /**
    * Apply damping to allocation amounts
    */
@@ -795,7 +795,7 @@ class DivisibilityConstraints {
     constraints?: Divisibility
   ): boolean {
     if (!constraints) return true;
-    
+
     // Check minimum percentage constraint
     if (constraints.min_allocation_percentage) {
       const percentage = requestedAmount / totalAvailable;
@@ -803,10 +803,10 @@ class DivisibilityConstraints {
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Get minimum allowed allocation based on constraints
    */
@@ -815,14 +815,14 @@ class DivisibilityConstraints {
     constraints?: Divisibility
   ): number {
     if (!constraints) return 0;
-    
+
     if (constraints.min_allocation_percentage) {
       return totalAvailable * constraints.min_allocation_percentage;
     }
-    
+
     return 0;
   }
-  
+
   /**
    * Round allocation to satisfy natural division constraints
    */
@@ -834,10 +834,10 @@ class DivisibilityConstraints {
     if (!constraints || !constraints.max_natural_div) {
       return amount;
     }
-    
+
     // Calculate unit size
     const unitSize = totalAvailable / constraints.max_natural_div;
-    
+
     // Round to nearest unit
     return Math.round(amount / unitSize) * unitSize;
   }
@@ -863,31 +863,31 @@ class LargestRemainderMethod {
   ): Record<string, number> {
     const result: Record<string, number> = {};
     const remainders: Array<{ id: string; remainder: number }> = [];
-    
+
     let allocatedSoFar = 0;
-    
+
     // Step 1: Allocate integer parts
     for (const [id, share] of Object.entries(shares)) {
       const exactAmount = share * totalQuantity;
       const integerPart = Math.floor(exactAmount);
       const remainder = exactAmount - integerPart;
-      
+
       result[id] = integerPart;
       allocatedSoFar += integerPart;
-      
+
       if (remainder > 0) {
         remainders.push({ id, remainder });
       }
     }
-    
+
     // Step 2: Distribute remaining units to largest remainders
     const remaining = totalQuantity - allocatedSoFar;
     remainders.sort((a, b) => b.remainder - a.remainder);
-    
+
     for (let i = 0; i < remaining && i < remainders.length; i++) {
       result[remainders[i].id]++;
     }
-    
+
     return result;
   }
 }
@@ -908,19 +908,19 @@ class SpaceTimeIndex {
   private byType: Map<string, Set<string>> = new Map();
   private byLocation: Map<string, Set<string>> = new Map();
   private byTime: Map<string, Set<string>> = new Map();
-  
+
   /**
    * Index a slot
    */
   addSlot(slot: NeedSlot | AvailabilitySlot): void {
     const participantId = slot.participantId;
-    
+
     // Index by type
-    if (!this.byType.has(slot.need_type_id)) {
-      this.byType.set(slot.need_type_id, new Set());
+    if (!this.byType.has(slot.type_id)) {
+      this.byType.set(slot.type_id, new Set());
     }
-    this.byType.get(slot.need_type_id)!.add(participantId);
-    
+    this.byType.get(slot.type_id)!.add(participantId);
+
     // Index by location bucket
     if (slot.location) {
       const locBucket = this.getLocationBucket(slot.location);
@@ -929,7 +929,7 @@ class SpaceTimeIndex {
       }
       this.byLocation.get(locBucket)!.add(participantId);
     }
-    
+
     // Index by time bucket
     const timeBucket = this.getTimeBucket(slot);
     if (!this.byTime.has(timeBucket)) {
@@ -937,17 +937,17 @@ class SpaceTimeIndex {
     }
     this.byTime.get(timeBucket)!.add(participantId);
   }
-  
+
   /**
    * Find participants matching a need
    */
   findMatching(need: NeedSlot): Set<string> {
     // Get candidates by type (most restrictive filter)
-    const typeMatches = this.byType.get(need.need_type_id);
+    const typeMatches = this.byType.get(need.type_id);
     if (!typeMatches || typeMatches.size === 0) {
       return new Set();
     }
-    
+
     // Further filter by location if specified
     if (need.location) {
       const locBucket = this.getLocationBucket(need.location);
@@ -957,10 +957,10 @@ class SpaceTimeIndex {
         return new Set([...typeMatches].filter(id => locMatches.has(id)));
       }
     }
-    
+
     return typeMatches;
   }
-  
+
   /**
    * Get location bucket for indexing
    */
@@ -976,7 +976,7 @@ class SpaceTimeIndex {
     }
     return 'unknown';
   }
-  
+
   /**
    * Get time bucket for indexing
    */
@@ -992,7 +992,7 @@ class SpaceTimeIndex {
     }
     return 'anytime';
   }
-  
+
   /**
    * Clear index
    */
@@ -1025,13 +1025,13 @@ class ConvergenceTracker {
     const totalNeed = needSlots.reduce((sum, slot) => sum + slot.quantity, 0);
     const totalCapacity = availabilitySlots.reduce((sum, slot) => sum + slot.quantity, 0);
     const totalAllocated = allocations.reduce((sum, alloc) => sum + alloc.allocatedQuantity, 0);
-    
+
     // Calculate satisfaction rate
     const satisfactionRate = totalNeed > 0 ? totalAllocated / totalNeed : 1.0;
-    
+
     // Calculate allocation efficiency (how much of available capacity was used)
     const allocationEfficiency = totalCapacity > 0 ? totalAllocated / totalCapacity : 0;
-    
+
     return {
       totalNeed,
       totalCapacity,
@@ -1040,7 +1040,7 @@ class ConvergenceTracker {
       allocationEfficiency
     };
   }
-  
+
   /**
    * Check if allocation has converged
    */
@@ -1050,12 +1050,12 @@ class ConvergenceTracker {
     threshold: number = 0.01
   ): boolean {
     if (!previousMetrics) return false;
-    
+
     // Check if change is below threshold
     const change = Math.abs(
       currentMetrics.satisfactionRate - previousMetrics.satisfactionRate
     );
-    
+
     return change < threshold;
   }
 }
@@ -1087,12 +1087,12 @@ class ConvergenceTracker {
 class FreeAssociationMatrices {
   private n: number; // Maximum participant index (for bounds checking)
   private R: SparseMatrix; // Sparse recognition matrix (only non-zero entries)
-  
+
   constructor(n: number) {
     this.n = n;
     this.R = Sparse.create();
   }
-  
+
   /**
    * Set recognition from participant i to participant j (SPARSE)
    * @param i - Giver index (0-based)
@@ -1108,7 +1108,7 @@ class FreeAssociationMatrices {
     }
     Sparse.set(this.R, i, j, value);
   }
-  
+
   /**
    * Get recognition from participant i to participant j (SPARSE)
    */
@@ -1118,7 +1118,7 @@ class FreeAssociationMatrices {
     }
     return Sparse.get(this.R, i, j);
   }
-  
+
   /**
    * Set entire recognition matrix (SPARSE)
    * Converts dense matrix to sparse representation automatically
@@ -1135,7 +1135,7 @@ class FreeAssociationMatrices {
     // Convert dense to sparse (automatically filters out zeros)
     this.R = Sparse.fromDense(matrix);
   }
-  
+
   /**
    * Get memory statistics (SPARSE)
    */
@@ -1147,7 +1147,7 @@ class FreeAssociationMatrices {
   } {
     const stats = Sparse.getStats(this.R, this.n);
     const comparison = SparseCompare.compareMemory(this.n, stats.entries);
-    
+
     return {
       entries: stats.entries,
       memoryKB: stats.memoryKB,
@@ -1155,7 +1155,7 @@ class FreeAssociationMatrices {
       savingsVsDense: comparison.savings.percentage
     };
   }
-  
+
   /**
    * Validate budget constraint: each row sums to 1 (Axiom 1) (SPARSE)
    */
@@ -1172,7 +1172,7 @@ class FreeAssociationMatrices {
     }
     return true;
   }
-  
+
   /**
    * Compute Recognition-Shares (RS) (SPARSE)
    * 
@@ -1190,14 +1190,14 @@ class FreeAssociationMatrices {
    */
   computeRS(): SparseMatrix {
     const timer = SparsePerf.startTimer();
-    
+
     // Use sparse row normalization (only processes non-zero entries)
     const RS = Sparse.rowNormalize(this.R);
-    
+
     SparsePerf.recordOperation('computeRS', timer());
     return RS;
   }
-  
+
   /**
    * Compute Mutual-Recognition (MR) (SPARSE)
    * 
@@ -1217,18 +1217,18 @@ class FreeAssociationMatrices {
    */
   computeMR(): SparseMatrix {
     const timer = SparsePerf.startTimer();
-    
+
     const RS = this.computeRS();
     const RS_T = Sparse.transpose(RS);
-    
+
     // Element-wise min of RS and its transpose
     // Only computes where RS has non-zero entries
     const MR = Sparse.elementWiseMin(RS, RS_T);
-    
+
     SparsePerf.recordOperation('computeMR', timer());
     return MR;
   }
-  
+
   /**
    * Compute Total Mutual Recognition vector (t) (SPARSE)
    * 
@@ -1242,10 +1242,10 @@ class FreeAssociationMatrices {
    */
   computeTotalMR(): number[] {
     const timer = SparsePerf.startTimer();
-    
+
     const MR = this.computeMR();
     const t: number[] = Array(this.n).fill(0);
-    
+
     // Only iterate over participants with non-zero MR
     for (const [i, row] of MR.entries()) {
       let sum = 0;
@@ -1254,11 +1254,11 @@ class FreeAssociationMatrices {
       }
       t[i] = sum;
     }
-    
+
     SparsePerf.recordOperation('computeTotalMR', timer());
     return t;
   }
-  
+
   /**
    * Compute Mutual-Recognition-Shares (MRS) (SPARSE)
    * 
@@ -1276,31 +1276,31 @@ class FreeAssociationMatrices {
    */
   computeMRS(): SparseMatrix {
     const timer = SparsePerf.startTimer();
-    
+
     const MR = this.computeMR();
     const t = this.computeTotalMR();
     const MRS = Sparse.create();
-    
+
     // Only process rows with non-zero total MR
     for (const [i, row] of MR.entries()) {
       if (t[i] === 0) continue; // Avoid division by zero
-      
+
       for (const [j, value] of row.entries()) {
         Sparse.set(MRS, i, j, value / t[i]);
       }
     }
-    
+
     SparsePerf.recordOperation('computeMRS', timer());
     return MRS;
   }
-  
+
   /**
    * Verify symmetry property of MR (SPARSE)
    * MR_ij should equal MR_ji
    */
   verifyMRSymmetry(tolerance: number = 1e-10): boolean {
     const MR = this.computeMR();
-    
+
     // Check all entries in sparse matrix
     for (const [i, row] of MR.entries()) {
       for (const [j, value_ij] of row.entries()) {
@@ -1310,10 +1310,10 @@ class FreeAssociationMatrices {
         }
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Verify that each row of a matrix sums to 1 (SPARSE)
    */
@@ -1329,11 +1329,11 @@ class FreeAssociationMatrices {
     }
     return true;
   }
-  
+
   // ========================================================================
   // COLLECTIVE OPERATIONS (Section 3)
   // ========================================================================
-  
+
   /**
    * Compute Mutual Recognition within Collective (m_C) (SPARSE)
    * 
@@ -1348,11 +1348,11 @@ class FreeAssociationMatrices {
    */
   computeMutualRecognitionWithinCollective(collectiveIndices: number[]): number[] {
     const timer = SparsePerf.startTimer();
-    
+
     const MR = this.computeMR();
     const m_C: number[] = Array(this.n).fill(0);
     const collectiveSet = new Set(collectiveIndices);
-    
+
     // Only iterate over participants with non-zero MR
     for (const [i, row] of MR.entries()) {
       let sum = 0;
@@ -1363,11 +1363,11 @@ class FreeAssociationMatrices {
       }
       m_C[i] = sum;
     }
-    
+
     SparsePerf.recordOperation('computeMutualRecognitionWithinCollective', timer());
     return m_C;
   }
-  
+
   /**
    * Compute Total Pool within Collective (T_C) (SPARSE)
    * 
@@ -1382,27 +1382,27 @@ class FreeAssociationMatrices {
    */
   computeTotalPoolWithinCollective(collectiveIndices: number[]): number {
     const timer = SparsePerf.startTimer();
-    
+
     const MR = this.computeMR();
     const collectiveSet = new Set(collectiveIndices);
     let T_C = 0;
-    
+
     // Only iterate over collective members with non-zero MR
     for (const i of collectiveIndices) {
       const row = MR.get(i);
       if (!row) continue;
-      
+
       for (const [j, value] of row.entries()) {
         if (collectiveSet.has(j)) {
           T_C += value;
         }
       }
     }
-    
+
     SparsePerf.recordOperation('computeTotalPoolWithinCollective', timer());
     return T_C;
   }
-  
+
   /**
    * Compute Synthetic-Collective-Mutual-Recognition-Shares (SCMRS) (SPARSE)
    * Weighted version (relationship strength weighted)
@@ -1420,26 +1420,26 @@ class FreeAssociationMatrices {
    */
   computeSCMRS_weighted(collectiveIndices: number[]): number[] {
     const timer = SparsePerf.startTimer();
-    
+
     const m_C = this.computeMutualRecognitionWithinCollective(collectiveIndices);
     const T_C = this.computeTotalPoolWithinCollective(collectiveIndices);
     const s: number[] = Array(this.n).fill(0);
-    
+
     // Avoid division by zero
     if (T_C === 0) {
       SparsePerf.recordOperation('computeSCMRS_weighted', timer());
       return s;
     }
-    
+
     // Only compute for collective members
     for (const i of collectiveIndices) {
       s[i] = m_C[i] / T_C;
     }
-    
+
     SparsePerf.recordOperation('computeSCMRS_weighted', timer());
     return s;
   }
-  
+
   /**
    * Compute Synthetic-Collective-Relative-Mutual-Recognition-Shares (SCRMRS) (SPARSE)
    * Equal voice version (each member's MRS as equal vote)
@@ -1457,35 +1457,35 @@ class FreeAssociationMatrices {
    */
   computeSCRMRS_equal(collectiveIndices: number[]): number[] {
     const timer = SparsePerf.startTimer();
-    
+
     const MRS = this.computeMRS();
     const s: number[] = Array(this.n).fill(0);
     const C_size = collectiveIndices.length;
-    
+
     if (C_size === 0) {
       SparsePerf.recordOperation('computeSCRMRS_equal', timer());
       return s;
     }
-    
+
     // For each participant i, average the MRS_ji from all collective members j
     for (const j of collectiveIndices) {
       const row = MRS.get(j);
       if (!row) continue;
-      
+
       // Add this collective member's MRS values to corresponding participants
       for (const [i, value] of row.entries()) {
         s[i] += value / C_size;
       }
     }
-    
+
     SparsePerf.recordOperation('computeSCRMRS_equal', timer());
     return s;
   }
-  
+
   // ========================================================================
   // NETWORK INTEGRATION METRICS (Section 4)
   // ========================================================================
-  
+
   /**
    * Compute Average Mutual Recognition in Collective
    * 
@@ -1497,14 +1497,14 @@ class FreeAssociationMatrices {
   computeAverageMRInCollective(collectiveIndices: number[]): number {
     const T_C = this.computeTotalPoolWithinCollective(collectiveIndices);
     const C_size = collectiveIndices.length;
-    
+
     if (C_size === 0) {
       return 0;
     }
-    
+
     return T_C / C_size;
   }
-  
+
   /**
    * Compute Mutual-Recognition-Density (MRD)
    * 
@@ -1526,14 +1526,14 @@ class FreeAssociationMatrices {
     const m_C = this.computeMutualRecognitionWithinCollective(collectiveIndices);
     const T_C = this.computeTotalPoolWithinCollective(collectiveIndices);
     const C_size = collectiveIndices.length;
-    
+
     if (T_C === 0 || C_size === 0) {
       return 0;
     }
-    
+
     return (C_size * m_C[participantIndex]) / T_C;
   }
-  
+
   /**
    * Compute MRD for all participants relative to collective
    * 
@@ -1542,14 +1542,14 @@ class FreeAssociationMatrices {
    */
   computeAllMRD(collectiveIndices: number[]): number[] {
     const mrd: number[] = Array(this.n).fill(0);
-    
+
     for (let i = 0; i < this.n; i++) {
       mrd[i] = this.computeMRD(collectiveIndices, i);
     }
-    
+
     return mrd;
   }
-  
+
   /**
    * Determine collective membership based on MRD threshold
    * 
@@ -1559,8 +1559,8 @@ class FreeAssociationMatrices {
    * @returns New collective member indices
    */
   determineMembership(
-    collectiveIndices: number[], 
-    threshold: number = 0.5, 
+    collectiveIndices: number[],
+    threshold: number = 0.5,
     model: "collective" | "commons" = "collective"
   ): number[] {
     if (model === "collective") {
@@ -1576,11 +1576,11 @@ class FreeAssociationMatrices {
       return allIndices.filter(i => mrd[i] >= threshold);
     }
   }
-  
+
   // ========================================================================
   // ALLOCATION PROTOCOLS (Section 5)
   // ========================================================================
-  
+
   /**
    * Enhanced Slot-Based Allocation Engine
    * 
@@ -1613,28 +1613,28 @@ class FreeAssociationMatrices {
   } {
     const allocations: SlotAllocationRecord[] = [];
     const updatedDamping: MultiTypeDamping = { ...(dampingState || {}) };
-    
+
     // Build space-time index for efficient matching
     const index = new SpaceTimeIndex();
     for (const availSlot of availabilitySlots) {
       index.addSlot(availSlot);
     }
-    
+
     // Track remaining capacity for each slot
     const remainingCapacity = new Map<string, number>();
     for (const availSlot of availabilitySlots) {
       remainingCapacity.set(availSlot.id, availSlot.quantity);
     }
-    
+
     // Group needs by type for per-type damping
     const needsByType = new Map<string, NeedSlot[]>();
     for (const need of needSlots) {
-      if (!needsByType.has(need.need_type_id)) {
-        needsByType.set(need.need_type_id, []);
+      if (!needsByType.has(need.type_id)) {
+        needsByType.set(need.type_id, []);
       }
-      needsByType.get(need.need_type_id)!.push(need);
+      needsByType.get(need.type_id)!.push(need);
     }
-    
+
     // Allocate for each type
     for (const [typeId, typeNeeds] of needsByType) {
       // Get damping state for this type
@@ -1642,7 +1642,7 @@ class FreeAssociationMatrices {
         overAllocationHistory: [],
         dampingFactor: 1.0
       };
-      
+
       // Process each need in this type
       for (const need of typeNeeds) {
         // Find compatible providers using index
@@ -1652,73 +1652,73 @@ class FreeAssociationMatrices {
           SlotMatching.slotsCompatible(need, avail) &&
           (remainingCapacity.get(avail.id) || 0) > 0
         );
-        
+
         if (compatibleSlots.length === 0) continue;
-        
+
         // Calculate distribution shares for compatible providers
         const providerShares: Record<string, number> = {};
         let totalShare = 0;
-        
+
         for (const availSlot of compatibleSlots) {
           const share = participantShares.get(availSlot.participantId) || 0;
           providerShares[availSlot.id] = share;
           totalShare += share;
         }
-        
+
         // Normalize shares
         if (totalShare > 0) {
           for (const slotId in providerShares) {
             providerShares[slotId] /= totalShare;
           }
         }
-        
+
         // Calculate raw allocations (proportional to shares)
         const rawAllocations: Record<string, number> = {};
         for (const availSlot of compatibleSlots) {
           const share = providerShares[availSlot.id] || 0;
           const rawAmount = need.quantity * share;
-          
+
           // Apply damping
           const dampedAmount = DampeningSystem.applyDamping(
             rawAmount,
             typeDamping.dampingFactor
           );
-          
+
           // Apply divisibility constraints
           const availableCapacity = remainingCapacity.get(availSlot.id) || 0;
           const minAllocation = DivisibilityConstraints.getMinimumAllocation(
             availableCapacity,
             availSlot.divisibility
           );
-          
+
           // Skip if below minimum
           if (dampedAmount < minAllocation) continue;
-          
+
           // Round to natural units
           const roundedAmount = DivisibilityConstraints.roundToNaturalUnit(
             dampedAmount,
             availableCapacity,
             availSlot.divisibility
           );
-          
+
           rawAllocations[availSlot.id] = Math.min(roundedAmount, availableCapacity);
         }
-        
+
         // Apply largest remainder method for indivisible quantities
         const totalRawAllocation = Object.values(rawAllocations).reduce((sum, val) => sum + val, 0);
         const targetQuantity = Math.min(need.quantity, totalRawAllocation);
-        
+
         const finalAllocations = LargestRemainderMethod.allocate(
           providerShares,
           Math.floor(targetQuantity)
         );
-        
+
         // Create allocation records
         let allocatedToNeed = 0;
         for (const availSlot of compatibleSlots) {
           const allocatedQty = finalAllocations[availSlot.id] || 0;
           if (allocatedQty === 0) continue;
-          
+
           allocations.push({
             needSlotId: need.id,
             availabilitySlotId: availSlot.id,
@@ -1727,13 +1727,13 @@ class FreeAssociationMatrices {
             allocatedQuantity: allocatedQty,
             timestamp: Date.now()
           });
-          
+
           // Update remaining capacity
           const remaining = remainingCapacity.get(availSlot.id)! - allocatedQty;
           remainingCapacity.set(availSlot.id, remaining);
           allocatedToNeed += allocatedQty;
         }
-        
+
         // Update damping state for this type
         updatedDamping[typeId] = DampeningSystem.updateDampingState(
           typeDamping,
@@ -1742,19 +1742,19 @@ class FreeAssociationMatrices {
         );
       }
     }
-    
+
     // Calculate convergence metrics
     const metrics = ConvergenceTracker.calculateMetrics(
       needSlots,
       availabilitySlots,
       allocations
     );
-    
+
     const converged = ConvergenceTracker.hasConverged(
       metrics,
       previousMetrics
     );
-    
+
     return {
       allocations,
       metrics,
@@ -1762,7 +1762,7 @@ class FreeAssociationMatrices {
       converged
     };
   }
-  
+
   /**
    * Multi-Provider Need Satisfaction Algorithm (BASIC VERSION)
    * 
@@ -1797,7 +1797,7 @@ class FreeAssociationMatrices {
     if (capacities.length !== this.n) {
       throw new Error(`Capacities array must have length ${this.n}`);
     }
-    
+
     // Choose share matrix based on type (SPARSE)
     let S: number[];
     if (shareType === 'RS') {
@@ -1822,27 +1822,27 @@ class FreeAssociationMatrices {
     } else {
       throw new Error(`Unknown share type: ${shareType}`);
     }
-    
+
     // Initialize state
     const allocations: number[] = Array(this.n).fill(0);
     const K = [...capacities]; // Copy to avoid modifying input
     let remainingNeed = need;
     const maxIterations = 100;
     let iteration = 0;
-    
+
     while (remainingNeed > 0 && iteration < maxIterations) {
       // 1. Compute raw allocations based on current capacities and shares
       const rawAllocations: number[] = Array(this.n).fill(0);
       for (let i = 0; i < this.n; i++) {
         rawAllocations[i] = K[i] * S[i];
       }
-      
+
       // Check if any capacity available
       const totalRaw = rawAllocations.reduce((sum, val) => sum + val, 0);
       if (totalRaw === 0) {
         break; // No more capacity available
       }
-      
+
       // 2. Compute actual allocations (capped by remaining need)
       let actualAllocations: number[];
       if (totalRaw <= remainingNeed) {
@@ -1853,24 +1853,24 @@ class FreeAssociationMatrices {
         const scale = remainingNeed / totalRaw;
         actualAllocations = rawAllocations.map(val => val * scale);
       }
-      
+
       // 3. Update state
       for (let i = 0; i < this.n; i++) {
         allocations[i] += actualAllocations[i];
         K[i] -= actualAllocations[i];
       }
-      
+
       const totalActual = actualAllocations.reduce((sum, val) => sum + val, 0);
       remainingNeed -= totalActual;
-      
+
       // Prevent floating point issues
       if (remainingNeed < 1e-10) {
         remainingNeed = 0;
       }
-      
+
       iteration++;
     }
-    
+
     return {
       allocations,
       remainingNeed,
@@ -1944,13 +1944,13 @@ class RecognitionBudget extends RpcTarget {
   private allocations: Map<ParticipantId, number> = new Map();
   private readonly totalBudget = 1.0;
   private callbacks: Set<RpcStub<IRecognitionEventCallback>> = new Set();
-  
+
   constructor(participantId: ParticipantId, participantIndex: ParticipantIndex) {
     super();
     this.participantId = participantId;
     this.participantIndex = participantIndex;
   }
-  
+
   /**
    * Subscribe to recognition events (bidirectional calling!)
    * Client passes RpcTarget callback, server calls it when events occur
@@ -1958,14 +1958,14 @@ class RecognitionBudget extends RpcTarget {
   subscribe(callback: RpcStub<IRecognitionEventCallback>): void {
     this.callbacks.add(callback);
   }
-  
+
   /**
    * Unsubscribe from events
    */
   unsubscribe(callback: RpcStub<IRecognitionEventCallback>): void {
     this.callbacks.delete(callback);
   }
-  
+
   /**
    * Allocate recognition to another participant
    * Enforces sum constraint: Σ R(a,x) = 1
@@ -1974,18 +1974,18 @@ class RecognitionBudget extends RpcTarget {
     // Validate inputs with Zod
     const validatedId = ParticipantIdSchema.parse(targetId);
     const validatedAmount = RecognitionValueSchema.parse(amount);
-    
+
     // Cannot allocate to self
     if (validatedId === this.participantId) {
       throw new Error("Cannot allocate recognition to self");
     }
-    
+
     // Check budget constraint
     const currentTotal = Array.from(this.allocations.values())
       .reduce((sum, val) => sum + val, 0);
     const existingToTarget = this.allocations.get(validatedId) || 0;
     const newTotal = currentTotal - existingToTarget + validatedAmount;
-    
+
     if (newTotal > this.totalBudget + 0.0001) { // Small tolerance for floating point
       throw new Error(
         `Budget violation: ${newTotal.toFixed(4)} > ${this.totalBudget}. ` +
@@ -1994,15 +1994,15 @@ class RecognitionBudget extends RpcTarget {
         `existing to target: ${existingToTarget}`
       );
     }
-    
+
     this.allocations.set(validatedId, validatedAmount);
-    
+
     // Notify callbacks (server calls client!)
     await this.notifyCallbacks('allocated', validatedId, validatedAmount);
-    
+
     return true;
   }
-  
+
   /**
    * Notify all subscribed callbacks (bidirectional RPC)
    */
@@ -2022,11 +2022,11 @@ class RecognitionBudget extends RpcTarget {
         console.error('Error in recognition callback:', error);
       }
     });
-    
+
     // Fire in parallel, don't wait
     Promise.all(notifications).catch(console.error);
   }
-  
+
   /**
    * Get recognition allocated to specific participant
    */
@@ -2034,14 +2034,14 @@ class RecognitionBudget extends RpcTarget {
     const validatedId = ParticipantIdSchema.parse(targetId);
     return this.allocations.get(validatedId) || 0;
   }
-  
+
   /**
    * Get all allocations
    */
   getAllAllocations(): Map<ParticipantId, number> {
     return new Map(this.allocations);
   }
-  
+
   /**
    * Get total allocated so far
    */
@@ -2049,11 +2049,11 @@ class RecognitionBudget extends RpcTarget {
     return Array.from(this.allocations.values())
       .reduce((sum, val) => sum + val, 0);
   }
-  
+
   getParticipantId(): ParticipantId {
     return this.participantId;
   }
-  
+
   getParticipantIndex(): ParticipantIndex {
     return this.participantIndex;
   }
@@ -2070,32 +2070,32 @@ class NetworkState extends RpcTarget {
   private readonly participantIndexToId: Map<ParticipantIndex, ParticipantId> = new Map();
   private readonly recognitionBudgets: Map<ParticipantId, RecognitionBudget> = new Map();
   private nextIndex: number = 0;
-  
+
   constructor(initialSize: number = 100) {
     super();
     this.matrices = new FreeAssociationMatrices(initialSize);
   }
-  
+
   /**
    * Register a participant in the network
    */
   registerParticipant(participantId: unknown): RecognitionBudget {
     const validatedId = ParticipantIdSchema.parse(participantId);
-    
+
     if (this.recognitionBudgets.has(validatedId)) {
       return this.recognitionBudgets.get(validatedId)!;
     }
-    
+
     const index = this.nextIndex++;
     this.participantIdToIndex.set(validatedId, index);
     this.participantIndexToId.set(index, validatedId);
-    
+
     const budget = new RecognitionBudget(validatedId, index);
     this.recognitionBudgets.set(validatedId, budget);
-    
+
     return budget;
   }
-  
+
   /**
    * Sync recognition budgets to matrix
    * Must be called before computing derived values
@@ -2105,12 +2105,12 @@ class NetworkState extends RpcTarget {
     for (const [giverId, giverBudget] of this.recognitionBudgets) {
       const giverIndex = this.participantIdToIndex.get(giverId)!;
       const allocations = giverBudget.getAllAllocations();
-      
+
       // Clear row first
       for (let j = 0; j < this.nextIndex; j++) {
         this.matrices.setRecognition(giverIndex, j, 0);
       }
-      
+
       // Set allocations
       for (const [receiverId, amount] of allocations) {
         const receiverIndex = this.participantIdToIndex.get(receiverId);
@@ -2120,7 +2120,7 @@ class NetworkState extends RpcTarget {
       }
     }
   }
-  
+
   /**
    * Compute Mutual Recognition between two participants
    * Implements Axiom 2: MR(a,b) = min(R(a,b), R(b,a))
@@ -2128,71 +2128,71 @@ class NetworkState extends RpcTarget {
   computeMutualRecognition(participantAId: unknown, participantBId: unknown): number {
     const validatedAId = ParticipantIdSchema.parse(participantAId);
     const validatedBId = ParticipantIdSchema.parse(participantBId);
-    
+
     this.syncToMatrix();
-    
+
     const indexA = this.participantIdToIndex.get(validatedAId);
     const indexB = this.participantIdToIndex.get(validatedBId);
-    
+
     if (indexA === undefined || indexB === undefined) {
       throw new Error("One or both participants not found in network");
     }
-    
+
     const MR = this.matrices.computeMR();
     return Sparse.get(MR, indexA, indexB);
   }
-  
+
   /**
    * Compute total mutual recognition for a participant
    */
   computeTotalMR(participantId: unknown): number {
     const validatedId = ParticipantIdSchema.parse(participantId);
-    
+
     this.syncToMatrix();
-    
+
     const index = this.participantIdToIndex.get(validatedId);
     if (index === undefined) {
       throw new Error("Participant not found in network");
     }
-    
+
     const t = this.matrices.computeTotalMR();
     return t[index];
   }
-  
+
   /**
    * Compute MRS value between two participants
    */
   computeMRS(participantAId: unknown, participantBId: unknown): number {
     const validatedAId = ParticipantIdSchema.parse(participantAId);
     const validatedBId = ParticipantIdSchema.parse(participantBId);
-    
+
     this.syncToMatrix();
-    
+
     const indexA = this.participantIdToIndex.get(validatedAId);
     const indexB = this.participantIdToIndex.get(validatedBId);
-    
+
     if (indexA === undefined || indexB === undefined) {
       throw new Error("One or both participants not found in network");
     }
-    
+
     const MRS = this.matrices.computeMRS();
     return Sparse.get(MRS, indexA, indexB);
   }
-  
+
   /**
    * Get recognition budget for a participant
    */
   getRecognitionBudget(participantId: unknown): RecognitionBudget {
     const validatedId = ParticipantIdSchema.parse(participantId);
-    
+
     const budget = this.recognitionBudgets.get(validatedId);
     if (!budget) {
       throw new Error("Participant not found in network");
     }
-    
+
     return budget;
   }
-  
+
   /**
    * Get matrices object for direct access (for testing)
    */
@@ -2200,14 +2200,14 @@ class NetworkState extends RpcTarget {
     this.syncToMatrix();
     return this.matrices;
   }
-  
+
   /**
    * Get participant ID from index
    */
   getParticipantId(index: ParticipantIndex): ParticipantId | undefined {
     return this.participantIndexToId.get(index);
   }
-  
+
   /**
    * Get participant index from ID
    */
@@ -2228,7 +2228,7 @@ class Collective extends RpcTarget {
   private readonly threshold: number;
   private readonly model: MembershipModel;
   private callbacks: Set<RpcStub<ICollectiveEventCallback>> = new Set();
-  
+
   constructor(
     collectiveId: CollectiveId,
     network: NetworkState,
@@ -2241,21 +2241,21 @@ class Collective extends RpcTarget {
     this.threshold = threshold;
     this.model = model;
   }
-  
+
   /**
    * Subscribe to collective events (bidirectional calling!)
    */
   subscribe(callback: RpcStub<ICollectiveEventCallback>): void {
     this.callbacks.add(callback);
   }
-  
+
   /**
    * Unsubscribe from events
    */
   unsubscribe(callback: RpcStub<ICollectiveEventCallback>): void {
     this.callbacks.delete(callback);
   }
-  
+
   /**
    * Attempt to join collective
    * Returns this collective capability if MRD >= threshold
@@ -2265,23 +2265,23 @@ class Collective extends RpcTarget {
    */
   async attemptJoin(participantId: unknown): Promise<Collective> {
     const validatedId = ParticipantIdSchema.parse(participantId);
-    
+
     const mrd = this.computeMRDForParticipant(validatedId);
-    
+
     if (mrd >= this.threshold) {
       this.members.add(validatedId);
-      
+
       // Notify all subscribers (server → clients RPC!)
       await this.notifyCallbacks('joined', validatedId);
-      
+
       return this; // Return capability = grant membership
     }
-    
+
     throw new Error(
       `Insufficient mutual recognition density: ${mrd.toFixed(3)} < ${this.threshold}`
     );
   }
-  
+
   /**
    * Notify all subscribed callbacks
    */
@@ -2290,7 +2290,7 @@ class Collective extends RpcTarget {
     memberId?: ParticipantId
   ): Promise<void> {
     const memberList = Array.from(this.members);
-    
+
     const notifications = Array.from(this.callbacks).map(async callback => {
       try {
         if (event === 'joined' && memberId) {
@@ -2304,21 +2304,21 @@ class Collective extends RpcTarget {
         console.error('Error in collective callback:', error);
       }
     });
-    
+
     Promise.all(notifications).catch(console.error);
   }
-  
+
   /**
    * Compute MRD for a participant relative to this collective
    */
   computeMRDForParticipant(participantId: unknown): number {
     const validatedId = ParticipantIdSchema.parse(participantId);
-    
+
     const participantIndex = this.network.getParticipantIndex(validatedId);
     if (participantIndex === undefined) {
       throw new Error("Participant not found in network");
     }
-    
+
     // Get indices of current members
     const memberIndices: number[] = [];
     for (const memberId of this.members) {
@@ -2327,16 +2327,16 @@ class Collective extends RpcTarget {
         memberIndices.push(index);
       }
     }
-    
+
     if (memberIndices.length === 0) {
       // First member always accepted
       return 1.0;
     }
-    
+
     const matrices = this.network.getMatrices();
     return matrices.computeMRD(memberIndices, participantIndex);
   }
-  
+
   /**
    * Get all members with their MRD values
    */
@@ -2348,10 +2348,10 @@ class Collective extends RpcTarget {
         memberIndices.push(index);
       }
     }
-    
+
     const matrices = this.network.getMatrices();
     const mrdValues = matrices.computeAllMRD(memberIndices);
-    
+
     const results: MRDResult[] = [];
     for (const memberId of this.members) {
       const index = this.network.getParticipantIndex(memberId);
@@ -2364,17 +2364,17 @@ class Collective extends RpcTarget {
         });
       }
     }
-    
+
     return results;
   }
-  
+
   /**
    * Get list of member IDs
    */
   getMembers(): ParticipantId[] {
     return Array.from(this.members);
   }
-  
+
   /**
    * Check if participant is a member
    */
@@ -2382,7 +2382,7 @@ class Collective extends RpcTarget {
     const validatedId = ParticipantIdSchema.parse(participantId);
     return this.members.has(validatedId);
   }
-  
+
   getCollectiveId(): CollectiveId {
     return this.collectiveId;
   }
@@ -2399,7 +2399,7 @@ class ParticipantGoal extends RpcTarget {
   private readonly beneficialSet: Set<ParticipantId>;
   private readonly network: NetworkState;
   private receivedCapacity: Map<ParticipantId, number> = new Map();
-  
+
   constructor(
     goalId: GoalId,
     participantId: ParticipantId,
@@ -2412,7 +2412,7 @@ class ParticipantGoal extends RpcTarget {
     this.beneficialSet = new Set(beneficialParticipantIds);
     this.network = network;
   }
-  
+
   /**
    * Receive capacity from another participant
    * Only beneficial capacity contributes (Axiom 5)
@@ -2420,7 +2420,7 @@ class ParticipantGoal extends RpcTarget {
   receiveCapacity(fromId: unknown, amount: unknown): GoalProgress {
     const validatedFromId = ParticipantIdSchema.parse(fromId);
     const validatedAmount = CapacitySchema.parse(amount);
-    
+
     // Check beneficial set membership
     if (!this.beneficialSet.has(validatedFromId)) {
       return {
@@ -2429,17 +2429,17 @@ class ParticipantGoal extends RpcTarget {
         reason: "Not in beneficial set"
       };
     }
-    
+
     // Accept and record
     const current = this.receivedCapacity.get(validatedFromId) || 0;
     this.receivedCapacity.set(validatedFromId, current + validatedAmount);
-    
+
     return {
       accepted: true,
       goalProbability: this.computeGoalProbability()
     };
   }
-  
+
   /**
    * Compute goal achievement probability (Axiom 4)
    * f: strictly increasing function of beneficial capacity
@@ -2448,12 +2448,12 @@ class ParticipantGoal extends RpcTarget {
     const totalBeneficialCapacity = Array.from(this.beneficialSet)
       .map(id => this.receivedCapacity.get(id) || 0)
       .reduce((sum, val) => sum + val, 0);
-    
+
     // Logistic function: f(x) = 1 / (1 + e^(-k*x))
     const k = 0.01; // Scaling factor
     return 1 / (1 + Math.exp(-k * totalBeneficialCapacity));
   }
-  
+
   /**
    * Get current progress toward goal
    */
@@ -2465,7 +2465,7 @@ class ParticipantGoal extends RpcTarget {
   } {
     let beneficialReceived = 0;
     let nonBeneficialReceived = 0;
-    
+
     for (const [fromId, amount] of this.receivedCapacity) {
       if (this.beneficialSet.has(fromId)) {
         beneficialReceived += amount;
@@ -2473,7 +2473,7 @@ class ParticipantGoal extends RpcTarget {
         nonBeneficialReceived += amount;
       }
     }
-    
+
     return {
       totalReceived: beneficialReceived + nonBeneficialReceived,
       beneficialReceived,
@@ -2481,11 +2481,11 @@ class ParticipantGoal extends RpcTarget {
       probability: this.computeGoalProbability()
     };
   }
-  
+
   getGoalId(): GoalId {
     return this.goalId;
   }
-  
+
   getBeneficialSet(): ParticipantId[] {
     return Array.from(this.beneficialSet);
   }
@@ -2500,13 +2500,13 @@ class MatrixRegion extends RpcTarget {
   private matrix: number[][];
   private readonly bounds: MatrixBounds;
   private updateCallbacks: Set<(update: MatrixUpdate) => void> = new Set();
-  
+
   constructor(matrix: number[][], bounds: MatrixBounds) {
     super();
     this.matrix = matrix;
     this.bounds = MatrixBoundsSchema.parse(bounds);
   }
-  
+
   /**
    * Set cell value - automatically enforces bounds
    */
@@ -2515,17 +2515,17 @@ class MatrixRegion extends RpcTarget {
     const validatedCol = z.number().int().nonnegative().parse(col);
     const validatedValue = z.number().parse(value);
     const validatedBy = ParticipantIdSchema.parse(by);
-    
+
     if (!this.isInBounds(validatedRow, validatedCol)) {
       throw new Error(
         `Out of bounds: (${validatedRow}, ${validatedCol}) not in ` +
         `[${this.bounds.startRow}:${this.bounds.endRow}, ${this.bounds.startCol}:${this.bounds.endCol}]`
       );
     }
-    
+
     const oldValue = this.matrix[validatedRow][validatedCol];
     this.matrix[validatedRow][validatedCol] = validatedValue;
-    
+
     // Notify subscribers
     const update: MatrixUpdate = {
       row: validatedRow,
@@ -2535,45 +2535,45 @@ class MatrixRegion extends RpcTarget {
       timestamp: Date.now(),
       updatedBy: validatedBy
     };
-    
+
     this.notifySubscribers(update);
   }
-  
+
   /**
    * Get cell value
    */
   getCell(row: unknown, col: unknown): number {
     const validatedRow = z.number().int().nonnegative().parse(row);
     const validatedCol = z.number().int().nonnegative().parse(col);
-    
+
     if (!this.isInBounds(validatedRow, validatedCol)) {
       throw new Error(`Out of bounds: (${validatedRow}, ${validatedCol})`);
     }
-    
+
     return this.matrix[validatedRow][validatedCol];
   }
-  
+
   /**
    * Subscribe to updates in this region
    */
   onUpdate(callback: (update: MatrixUpdate) => void): void {
     this.updateCallbacks.add(callback);
   }
-  
+
   /**
    * Unsubscribe from updates
    */
   offUpdate(callback: (update: MatrixUpdate) => void): void {
     this.updateCallbacks.delete(callback);
   }
-  
+
   private isInBounds(row: number, col: number): boolean {
-    return row >= this.bounds.startRow && 
-           row < this.bounds.endRow &&
-           col >= this.bounds.startCol && 
-           col < this.bounds.endCol;
+    return row >= this.bounds.startRow &&
+      row < this.bounds.endRow &&
+      col >= this.bounds.startCol &&
+      col < this.bounds.endCol;
   }
-  
+
   private notifySubscribers(update: MatrixUpdate): void {
     for (const callback of this.updateCallbacks) {
       try {
@@ -2583,7 +2583,7 @@ class MatrixRegion extends RpcTarget {
       }
     }
   }
-  
+
   getBounds(): MatrixBounds {
     return { ...this.bounds };
   }
@@ -2608,14 +2608,14 @@ class AuthenticatedParticipant extends RpcTarget {
   private readonly goals: Map<GoalId, ParticipantGoal> = new Map();
   private readonly collectives: Map<CollectiveId, Collective> = new Map();
   private capacityCallbacks: Set<RpcStub<ICapacityEventCallback>> = new Set();
-  
+
   // Slot-based allocation state
   private needSlots: NeedSlot[] = [];
   private availabilitySlots: AvailabilitySlot[] = [];
   private allocations: SlotAllocationRecord[] = [];
   private dampingState: MultiTypeDamping = {};
   private previousMetrics?: ConvergenceMetrics;
-  
+
   constructor(participantId: ParticipantId, network: NetworkState, initialCapacity: number = 1000) {
     super();
     this.participantId = participantId;
@@ -2623,7 +2623,7 @@ class AuthenticatedParticipant extends RpcTarget {
     this.budget = network.registerParticipant(participantId);
     this.capacity = initialCapacity;
   }
-  
+
   /**
    * Subscribe to capacity events (bidirectional calling!)
    * Pass a client-side RpcTarget, server will call it back
@@ -2631,28 +2631,28 @@ class AuthenticatedParticipant extends RpcTarget {
   subscribeToCapacityEvents(callback: RpcStub<ICapacityEventCallback>): void {
     this.capacityCallbacks.add(callback);
   }
-  
+
   /**
    * Unsubscribe from capacity events
    */
   unsubscribeFromCapacityEvents(callback: RpcStub<ICapacityEventCallback>): void {
     this.capacityCallbacks.delete(callback);
   }
-  
+
   /**
    * Get recognition budget for allocating to others
    */
   getRecognitionBudget(): RecognitionBudget {
     return this.budget;
   }
-  
+
   /**
    * Get network state for querying MR, MRS, etc.
    */
   getNetworkState(): NetworkState {
     return this.network;
   }
-  
+
   /**
    * Allocate capacity to another participant
    * Flow automatically proportional to mutual recognition (Axiom 3)
@@ -2664,14 +2664,14 @@ class AuthenticatedParticipant extends RpcTarget {
   async allocateCapacity(recipientId: unknown, requestedAmount: unknown): Promise<number> {
     const validatedRecipientId = ParticipantIdSchema.parse(recipientId);
     const validatedAmount = CapacitySchema.parse(requestedAmount);
-    
+
     // Compute mutual recognition
     const mr = this.network.computeMutualRecognition(this.participantId, validatedRecipientId);
-    
+
     // g(MR) - flow multiplier function (linear: g(x) = x)
     const flowMultiplier = mr;
     const allocatedFlow = validatedAmount * flowMultiplier;
-    
+
     // Enforce capacity constraint
     if (allocatedFlow > this.capacity) {
       throw new Error(
@@ -2679,15 +2679,15 @@ class AuthenticatedParticipant extends RpcTarget {
         `need ${allocatedFlow.toFixed(2)} (requested ${validatedAmount} × MR ${mr.toFixed(3)})`
       );
     }
-    
+
     this.capacity -= allocatedFlow;
-    
+
     // Notify callbacks (server → client RPC!)
     await this.notifyCapacityCallbacks('allocated', validatedRecipientId, allocatedFlow);
-    
+
     return allocatedFlow;
   }
-  
+
   /**
    * Receive capacity from another participant (for goal satisfaction)
    * 
@@ -2699,18 +2699,18 @@ class AuthenticatedParticipant extends RpcTarget {
   async receiveCapacity(fromId: unknown, amount: unknown): Promise<void> {
     const validatedFromId = ParticipantIdSchema.parse(fromId);
     const validatedAmount = CapacitySchema.parse(amount);
-    
+
     this.capacity += validatedAmount;
-    
+
     // Update all goals
     for (const goal of this.goals.values()) {
       await goal.receiveCapacity(validatedFromId, validatedAmount);
     }
-    
+
     // Notify callbacks (receiver notifies their own subscribers)
     await this.notifyCapacityCallbacks('received', validatedFromId, validatedAmount);
   }
-  
+
   /**
    * Notify capacity event callbacks (bidirectional RPC)
    */
@@ -2730,67 +2730,67 @@ class AuthenticatedParticipant extends RpcTarget {
         console.error('Error in capacity callback:', error);
       }
     });
-    
+
     // Fire in parallel, don't block
     Promise.all(notifications).catch(console.error);
   }
-  
+
   /**
    * Create or get a goal
    */
   getGoal(goalId: unknown, beneficialParticipantIds?: unknown): ParticipantGoal {
     const validatedGoalId = GoalIdSchema.parse(goalId);
-    
+
     // Return existing goal if it exists
     if (this.goals.has(validatedGoalId)) {
       return this.goals.get(validatedGoalId)!;
     }
-    
+
     // Create new goal
     if (!beneficialParticipantIds) {
       throw new Error("beneficialParticipantIds required for new goal");
     }
-    
+
     const validatedBeneficialIds = z.array(ParticipantIdSchema).parse(beneficialParticipantIds);
-    
+
     const goal = new ParticipantGoal(
       validatedGoalId,
       this.participantId,
       validatedBeneficialIds,
       this.network
     );
-    
+
     this.goals.set(validatedGoalId, goal);
     return goal;
   }
-  
+
   /**
    * Join or get a collective
    */
   async joinCollective(collectiveId: unknown): Promise<Collective> {
     const validatedCollectiveId = CollectiveIdSchema.parse(collectiveId);
-    
+
     // Return existing collective if already member
     if (this.collectives.has(validatedCollectiveId)) {
       return this.collectives.get(validatedCollectiveId)!;
     }
-    
+
     // Try to join (will throw if MRD insufficient)
     // In real implementation, this would be fetched from a collective registry
     const collective = new Collective(validatedCollectiveId, this.network);
     const membershipCapability = await collective.attemptJoin(this.participantId);
-    
+
     this.collectives.set(validatedCollectiveId, membershipCapability);
     return membershipCapability;
   }
-  
+
   /**
    * Get current capacity
    */
   getCapacity(): number {
     return this.capacity;
   }
-  
+
   /**
    * Add capacity (e.g., from external source)
    */
@@ -2798,57 +2798,57 @@ class AuthenticatedParticipant extends RpcTarget {
     const validatedAmount = CapacitySchema.parse(amount);
     this.capacity += validatedAmount;
   }
-  
+
   getParticipantId(): ParticipantId {
     return this.participantId;
   }
-  
+
   // ========================================================================
   // SLOT-BASED ALLOCATION METHODS
   // ========================================================================
-  
+
   /**
    * Add a need slot
    */
   addNeedSlot(slot: unknown): void {
     const validatedSlot = NeedSlotSchema.parse(slot);
-    
+
     // Ensure participantId matches
     if (validatedSlot.participantId !== this.participantId) {
       throw new Error("Slot participantId must match session participantId");
     }
-    
+
     this.needSlots.push(validatedSlot);
   }
-  
+
   /**
    * Add an availability slot
    */
   addAvailabilitySlot(slot: unknown): void {
     const validatedSlot = AvailabilitySlotSchema.parse(slot);
-    
+
     // Ensure participantId matches
     if (validatedSlot.participantId !== this.participantId) {
       throw new Error("Slot participantId must match session participantId");
     }
-    
+
     this.availabilitySlots.push(validatedSlot);
   }
-  
+
   /**
    * Get all need slots
    */
   getNeedSlots(): NeedSlot[] {
     return [...this.needSlots];
   }
-  
+
   /**
    * Get all availability slots
    */
   getAvailabilitySlots(): AvailabilitySlot[] {
     return [...this.availabilitySlots];
   }
-  
+
   /**
    * Remove a need slot
    */
@@ -2856,7 +2856,7 @@ class AuthenticatedParticipant extends RpcTarget {
     const validatedId = z.string().parse(slotId);
     this.needSlots = this.needSlots.filter(slot => slot.id !== validatedId);
   }
-  
+
   /**
    * Remove an availability slot
    */
@@ -2864,7 +2864,7 @@ class AuthenticatedParticipant extends RpcTarget {
     const validatedId = z.string().parse(slotId);
     this.availabilitySlots = this.availabilitySlots.filter(slot => slot.id !== validatedId);
   }
-  
+
   /**
    * Request allocation for a specific need slot
    * 
@@ -2876,28 +2876,28 @@ class AuthenticatedParticipant extends RpcTarget {
    */
   async requestAllocation(needSlotId: unknown): Promise<SlotAllocationRecord[]> {
     const validatedId = z.string().parse(needSlotId);
-    
+
     // Find the need slot
     const needSlot = this.needSlots.find(slot => slot.id === validatedId);
     if (!needSlot) {
       throw new Error(`Need slot not found: ${validatedId}`);
     }
-    
+
     // Get all availability slots from network
     // In production, this would query the network state
     // For now, use local slots as demonstration
     const allAvailabilitySlots = [...this.availabilitySlots];
-    
+
     // Calculate MRS shares for all providers
     const matrices = this.network.getMatrices();
     const participantIndex = this.network.getParticipantIndex(this.participantId);
     if (participantIndex === undefined) {
       throw new Error("Participant not registered in network");
     }
-    
+
     const MRS = matrices.computeMRS();
     const participantShares = new Map<string, number>();
-    
+
     // Get shares for all potential providers
     for (const availSlot of allAvailabilitySlots) {
       const providerIndex = this.network.getParticipantIndex(availSlot.participantId);
@@ -2906,7 +2906,7 @@ class AuthenticatedParticipant extends RpcTarget {
         participantShares.set(availSlot.participantId, share);
       }
     }
-    
+
     // Run enhanced allocation engine
     const result = matrices.allocateSlots(
       [needSlot],
@@ -2915,22 +2915,22 @@ class AuthenticatedParticipant extends RpcTarget {
       this.dampingState,
       this.previousMetrics
     );
-    
+
     // Update state
     this.allocations.push(...result.allocations);
     this.dampingState = result.updatedDamping;
     this.previousMetrics = result.metrics;
-    
+
     return result.allocations;
   }
-  
+
   /**
    * Get all allocations for this participant
    */
   getAllocations(): SlotAllocationRecord[] {
     return [...this.allocations];
   }
-  
+
   /**
    * Get convergence metrics
    */
@@ -2949,12 +2949,12 @@ class ParticipantServer extends RpcTarget {
   private readonly network: NetworkState;
   private readonly sessions: Map<ParticipantId, AuthenticatedParticipant> = new Map();
   private readonly collectives: Map<CollectiveId, Collective> = new Map();
-  
+
   constructor() {
     super();
     this.network = new NetworkState(1000); // Initial capacity for 1000 participants
   }
-  
+
   /**
    * Authenticate and get participant session
    * 
@@ -2964,60 +2964,60 @@ class ParticipantServer extends RpcTarget {
   authenticate(participantId: unknown, credentials: unknown): AuthenticatedParticipant {
     const validatedId = ParticipantIdSchema.parse(participantId);
     const validatedCredentials = CredentialSchema.parse(credentials);
-    
+
     // Verify credentials
     const verified = this.verifyCredentials(validatedId, validatedCredentials);
     if (!verified) {
       throw new Error("Authentication failed");
     }
-    
+
     // Return existing session if available
     if (this.sessions.has(validatedId)) {
       return this.sessions.get(validatedId)!;
     }
-    
+
     // Create new session
     const session = new AuthenticatedParticipant(validatedId, this.network);
     this.sessions.set(validatedId, session);
-    
+
     return session;
   }
-  
+
   /**
    * Get public network view (read-only)
    */
   getPublicNetworkView(): NetworkState {
     return this.network;
   }
-  
+
   /**
    * Get or create a collective
    */
   getCollective(collectiveId: unknown, threshold?: unknown, model?: unknown): Collective {
     const validatedId = CollectiveIdSchema.parse(collectiveId);
-    
+
     if (this.collectives.has(validatedId)) {
       return this.collectives.get(validatedId)!;
     }
-    
-    const validatedThreshold = threshold !== undefined 
+
+    const validatedThreshold = threshold !== undefined
       ? z.number().min(0).max(1).parse(threshold)
       : 0.5;
     const validatedModel = model !== undefined
       ? MembershipModelSchema.parse(model)
       : 'collective';
-    
+
     const collective = new Collective(
       validatedId,
       this.network,
       validatedThreshold,
       validatedModel
     );
-    
+
     this.collectives.set(validatedId, collective);
     return collective;
   }
-  
+
   /**
    * Verify credentials (placeholder implementation)
    * In production, this would check against a database
@@ -3188,9 +3188,9 @@ function sparseToDenseArray(sparse: SparseMatrix, n: number): number[][] {
 function runValidationTests(): void {
   console.log("Running validation tests (SPARSE MATRIX)...\n");
   console.log("✨ This now uses sparse matrix optimization internally!");
-  
+
   const matrices = new FreeAssociationMatrices(3);
-  
+
   // Set recognition matrix from example
   const R = [
     [0, 0.6, 0.4],
@@ -3198,19 +3198,19 @@ function runValidationTests(): void {
     [0.5, 0.5, 0]
   ];
   matrices.setRecognitionMatrix(R);
-  
+
   // Test 1: Budget constraint
   console.log("Test 1: Budget constraint");
   const budgetValid = matrices.validateBudgetConstraint();
   console.log(`  Budget constraint valid: ${budgetValid} ✓\n`);
-  
+
   // Test 2: RS computation
   console.log("Test 2: RS (Recognition-Shares)");
   const RS = matrices.computeRS();
   const RS_dense = sparseToDenseArray(RS, 3);
   console.log("  RS =", RS_dense);
   console.log("  Expected: R (already normalized) ✓\n");
-  
+
   // Test 3: MR computation
   console.log("Test 3: MR (Mutual-Recognition)");
   const MR = matrices.computeMR();
@@ -3222,7 +3222,7 @@ function runValidationTests(): void {
     [0.4, 0.5, 0]
   ];
   console.log("  Expected:", expectedMR);
-  
+
   // Verify MR values
   let mrCorrect = true;
   for (let i = 0; i < 3; i++) {
@@ -3237,18 +3237,18 @@ function runValidationTests(): void {
   if (mrCorrect) {
     console.log("  MR values correct ✓");
   }
-  
+
   // Verify symmetry
   const symmetric = matrices.verifyMRSymmetry();
   console.log(`  MR symmetry: ${symmetric} ✓\n`);
-  
+
   // Test 4: Total MR vector
   console.log("Test 4: Total MR vector (t)");
   const t = matrices.computeTotalMR();
   console.log("  t =", t);
   const expectedT = [0.7, 0.8, 0.9];
   console.log("  Expected:", expectedT);
-  
+
   let tCorrect = true;
   for (let i = 0; i < 3; i++) {
     if (Math.abs(t[i] - expectedT[i]) > 0.0001) {
@@ -3259,7 +3259,7 @@ function runValidationTests(): void {
   if (tCorrect) {
     console.log("  t values correct ✓\n");
   }
-  
+
   // Test 5: MRS computation
   console.log("Test 5: MRS (Mutual-Recognition-Shares)");
   const MRS = matrices.computeMRS();
@@ -3271,7 +3271,7 @@ function runValidationTests(): void {
     [0.444, 0.556, 0]
   ];
   console.log("  Expected:", expectedMRS);
-  
+
   let mrsCorrect = true;
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
@@ -3285,11 +3285,11 @@ function runValidationTests(): void {
   if (mrsCorrect) {
     console.log("  MRS values correct ✓");
   }
-  
+
   // Verify row normalization
   const mrsNormalized = matrices.verifyRowNormalization(MRS);
   console.log(`  MRS rows sum to 1: ${mrsNormalized} ✓\n`);
-  
+
   // Test 6: SCMRS (weighted)
   console.log("Test 6: SCMRS (weighted)");
   const collective = [0, 1, 2]; // All participants
@@ -3297,7 +3297,7 @@ function runValidationTests(): void {
   console.log("  SCMRS =", scmrs.map(val => val.toFixed(3)));
   const expectedSCMRS = [0.292, 0.333, 0.375];
   console.log("  Expected:", expectedSCMRS);
-  
+
   let scmrsCorrect = true;
   for (let i = 0; i < 3; i++) {
     if (Math.abs(scmrs[i] - expectedSCMRS[i]) > 0.001) {
@@ -3308,20 +3308,20 @@ function runValidationTests(): void {
   if (scmrsCorrect) {
     console.log("  SCMRS values correct ✓\n");
   }
-  
+
   // Test 7: MRD for participant 1 (index 0)
   console.log("Test 7: MRD for participant 1");
   const mrd0 = matrices.computeMRD(collective, 0);
   console.log(`  MRD(1) = ${mrd0.toFixed(3)}`);
   const expectedMRD = 0.875;
   console.log(`  Expected: ${expectedMRD}`);
-  
+
   if (Math.abs(mrd0 - expectedMRD) < 0.001) {
     console.log("  MRD value correct ✓\n");
   } else {
     console.log(`  ERROR: MRD(1) = ${mrd0.toFixed(3)}, expected ${expectedMRD}\n`);
   }
-  
+
   // Test 8: Multi-provider allocation
   console.log("Test 8: Multi-provider allocation");
   const capacities = [100, 100, 100]; // Each has 100 capacity
@@ -3331,21 +3331,21 @@ function runValidationTests(): void {
   console.log(`  Remaining need: ${result.remainingNeed.toFixed(2)}`);
   console.log(`  Satisfied: ${result.satisfied}`);
   console.log(`  Iterations: ${result.iterations} ✓\n`);
-  
+
   console.log("All validation tests completed!\n");
-  
+
   // ✨ SPARSE MATRIX PERFORMANCE REPORT
-  console.log("=" .repeat(60));
+  console.log("=".repeat(60));
   console.log("SPARSE MATRIX PERFORMANCE REPORT");
   console.log("=".repeat(60) + "\n");
-  
+
   // Memory statistics
   const memStats = matrices.getMemoryStats();
   console.log("Memory Usage:");
   console.log(`  Sparse storage: ${memStats.entries} entries, ${memStats.memoryKB}`);
   console.log(`  Matrix sparsity: ${memStats.sparsity}`);
   console.log(`  Savings vs dense: ${memStats.savingsVsDense}\n`);
-  
+
   // Performance statistics
   console.log("Operation Performance:");
   const perfStats = SparsePerf.getAllStats();
@@ -3357,7 +3357,7 @@ function runValidationTests(): void {
       console.log(`    Total: ${stats.totalMs.toFixed(3)}ms`);
     }
   }
-  
+
   console.log("\n✨ All operations completed successfully with sparse optimization!");
 }
 
@@ -3374,7 +3374,7 @@ if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes(
 export {
   // Core matrix mathematics
   FreeAssociationMatrices,
-  
+
   // RPC classes
   RpcTarget,
   RecognitionBudget,
@@ -3384,7 +3384,7 @@ export {
   MatrixRegion,
   AuthenticatedParticipant,
   ParticipantServer,
-  
+
   // Test utilities
   runValidationTests
 };

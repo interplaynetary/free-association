@@ -26,7 +26,7 @@ export const App: React.FC = () => {
 		'alice-pub-key': {
 			capacity_slots: [{
 				id: 'alice-food-1',
-				need_type_id: 'food',
+				type_id: 'food',
 				quantity: 50,
 				name: 'Food',
 				availability_window: { time_ranges: [{ start_time: '09:00', end_time: '17:00' }] },
@@ -34,7 +34,7 @@ export const App: React.FC = () => {
 			}],
 			need_slots: [{
 				id: 'alice-tutoring-1',
-				need_type_id: 'tutoring',
+				type_id: 'tutoring',
 				quantity: 10,
 				name: 'Tutoring',
 				availability_window: { time_ranges: [{ start_time: '18:00', end_time: '20:00' }] },
@@ -50,7 +50,7 @@ export const App: React.FC = () => {
 		'bob-pub-key': {
 			capacity_slots: [{
 				id: 'bob-tutoring-1',
-				need_type_id: 'tutoring',
+				type_id: 'tutoring',
 				quantity: 20,
 				name: 'Tutoring',
 				availability_window: { time_ranges: [{ start_time: '18:00', end_time: '21:00' }] },
@@ -58,7 +58,7 @@ export const App: React.FC = () => {
 			}],
 			need_slots: [{
 				id: 'bob-food-1',
-				need_type_id: 'food',
+				type_id: 'food',
 				quantity: 30,
 				name: 'Food',
 				availability_window: { time_ranges: [{ start_time: '09:00', end_time: '17:00' }] },
@@ -75,7 +75,7 @@ export const App: React.FC = () => {
 			capacity_slots: [
 				{
 					id: 'carol-food-1',
-					need_type_id: 'food',
+					type_id: 'food',
 					quantity: 40,
 					name: 'Food',
 					availability_window: { time_ranges: [{ start_time: '10:00', end_time: '16:00' }] },
@@ -83,7 +83,7 @@ export const App: React.FC = () => {
 				},
 				{
 					id: 'carol-tutoring-1',
-					need_type_id: 'tutoring',
+					type_id: 'tutoring',
 					quantity: 15,
 					name: 'Tutoring',
 					availability_window: { time_ranges: [{ start_time: '19:00', end_time: '21:00' }] },
@@ -93,7 +93,7 @@ export const App: React.FC = () => {
 			need_slots: [
 				{
 					id: 'carol-food-2',
-					need_type_id: 'food',
+					type_id: 'food',
 					quantity: 10,
 					name: 'Food',
 					availability_window: { time_ranges: [{ start_time: '12:00', end_time: '14:00' }] },
@@ -101,7 +101,7 @@ export const App: React.FC = () => {
 				},
 				{
 					id: 'carol-tutoring-2',
-					need_type_id: 'tutoring',
+					type_id: 'tutoring',
 					quantity: 5,
 					name: 'Tutoring',
 					availability_window: { time_ranges: [{ start_time: '18:00', end_time: '19:00' }] },

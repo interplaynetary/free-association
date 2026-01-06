@@ -116,7 +116,7 @@ export const AllocationResults: React.FC<AllocationResultsProps> = ({
 									<Text>
 										Quantity: {cap.quantity} {cap.unit}
 									</Text>
-									<Text>Type: {cap.need_type_id}</Text>
+									<Text>Type: {cap.type_id}</Text>
 									<Text>Location: {cap.location_type || 'any'}</Text>
 									{cap.recurrence && (
 										<Text>Recurrence: {cap.recurrence}</Text>
@@ -157,7 +157,7 @@ export const AllocationResults: React.FC<AllocationResultsProps> = ({
 									<Text>
 										Quantity: {need.quantity} {need.unit}
 									</Text>
-									<Text>Type: {need.need_type_id}</Text>
+									<Text>Type: {need.type_id}</Text>
 									<Text>Location: {need.location_type || 'any'}</Text>
 									{need.recurrence && (
 										<Text>Recurrence: {need.recurrence}</Text>
@@ -180,7 +180,7 @@ export const AllocationResults: React.FC<AllocationResultsProps> = ({
 	// Network mode
 	if (viewMode === 'network') {
 		const participants = Object.keys(allCommitments);
-		
+
 		return (
 			<Box flexDirection="column" padding={1}>
 				<Text bold color="cyan">📊 Network Overview</Text>
@@ -194,7 +194,7 @@ export const AllocationResults: React.FC<AllocationResultsProps> = ({
 					const commitment = allCommitments[pubKey];
 					const capacities = commitment?.availability_slots || [];
 					const needs = commitment?.need_slots || [];
-					
+
 					const totalOffered = capacities.reduce((sum, c) => sum + c.quantity, 0);
 					const totalNeeded = needs.reduce((sum, n) => sum + n.quantity, 0);
 

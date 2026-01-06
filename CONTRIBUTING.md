@@ -160,7 +160,7 @@ Your contributions to Free-Association help create:
 - **Project README** - Overview of free-association concepts and mathematics
 - **Values Documentation** - Our core principles and design philosophy
 - **Glossary** - Definitions of key terms and concepts
-- **Interface Demo** - [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/)
+- **Interface Demo** - [free.playnet.lol](https://free.playnet.lol/)
 - **Community Discussions** - Ongoing conversations about development and implementation
 
 ### 🎯 Recognition and Gratitude

@@ -24,6 +24,7 @@ const mockGenerateProposals = mock(() => ([{
     proposed_quantity: 10,
     provider_id: "me",
     recipient_id: "them",
+    recipient_pubkey: "them", // Added to match code expectations
     priority: 1.0
 }]));
 
@@ -99,10 +100,10 @@ describe("Allocation Store Integration", () => {
 
     it("should trigger provider update when capacity and needs exist", async () => {
         // Setup Inputs
-        const myCapacity = [{ id: "c1", quantity: 100, need_type_id: "food" }];
+        const myCapacity = [{ id: "c1", quantity: 100, type_id: "food" }];
         mockMyCommitmentStore.set({ capacity_slots: myCapacity, need_slots: [] });
 
-        const networkNeeds = [{ id: "n1", quantity: 50, need_type_id: "food" }];
+        const networkNeeds = [{ id: "n1", quantity: 50, type_id: "food" }];
         mockNetworkNeedSlots.set(networkNeeds);
 
         // Wait for reactivity (Svelte stores are sync but derived might take a tick?)
@@ -124,7 +125,7 @@ describe("Allocation Store Integration", () => {
     });
 
     it("should update myAllocationsAsProvider based on proposals", () => {
-        const myCapacity = [{ id: "c1", quantity: 100, need_type_id: "food" }];
+        const myCapacity = [{ id: "c1", quantity: 100, type_id: "food" }];
         mockMyCommitmentStore.set({ capacity_slots: myCapacity });
         mockNetworkNeedSlots.set([{ id: "n1" }]);
 
@@ -137,7 +138,7 @@ describe("Allocation Store Integration", () => {
 
     it("should trigger recipient update when allocations are received", async () => {
         // Setup Inputs
-        const myNeeds = [{ id: "n1", quantity: 50, need_type_id: "food" }];
+        const myNeeds = [{ id: "n1", quantity: 50, type_id: "food" }];
         mockMyCommitmentStore.set({ capacity_slots: [], need_slots: myNeeds });
 
         // Simulate incoming allocation

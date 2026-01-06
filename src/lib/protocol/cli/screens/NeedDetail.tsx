@@ -19,10 +19,10 @@ export const NeedDetail: React.FC<NeedDetailProps> = ({
 	onDelete
 }) => {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-	
+
 	useInput((input, key) => {
 		if (showDeleteConfirm) return; // Let ConfirmDialog handle input
-		
+
 		const lower = input.toLowerCase();
 		if (key.escape || lower === 'q') {
 			onBack();
@@ -32,7 +32,7 @@ export const NeedDetail: React.FC<NeedDetailProps> = ({
 			setShowDeleteConfirm(true);
 		}
 	});
-	
+
 	if (showDeleteConfirm) {
 		return (
 			<ConfirmDialog
@@ -65,7 +65,7 @@ export const NeedDetail: React.FC<NeedDetailProps> = ({
 					<Text bold underline>Basic Info:</Text>
 					<Box marginLeft={2} flexDirection="column">
 						<Text>ID: <Text dimColor>{need.id}</Text></Text>
-						<Text>Type: {need.emoji} {need.need_type_id}</Text>
+						<Text>Type: {need.emoji} {need.type_id}</Text>
 						<Text>
 							Quantity: <Text color="magenta">{need.quantity} {need.unit || 'units'}</Text>
 							{' '}
@@ -81,29 +81,29 @@ export const NeedDetail: React.FC<NeedDetailProps> = ({
 					</Box>
 				</Box>
 
-			{/* Schedule */}
-			{need.recurrence && (
-				<Box flexDirection="column" marginBottom={2}>
-					<Text bold underline>Schedule:</Text>
-					<Box marginLeft={2} flexDirection="column">
-						<Text>Pattern: {need.recurrence}</Text>
-						{formatScheduleForDisplay(need.availability_window).map((line, i) => (
-							<Box key={i}>
-								<Text>{line}</Text>
-							</Box>
-						))}
-						{need.start_date && (
-							<Text>Start: {need.start_date}</Text>
-						)}
-						{need.end_date && (
-							<Text>End: {need.end_date}</Text>
-						)}
-						{need.time_zone && (
-							<Text>Timezone: {need.time_zone}</Text>
-						)}
+				{/* Schedule */}
+				{need.recurrence && (
+					<Box flexDirection="column" marginBottom={2}>
+						<Text bold underline>Schedule:</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text>Pattern: {need.recurrence}</Text>
+							{formatScheduleForDisplay(need.availability_window).map((line, i) => (
+								<Box key={i}>
+									<Text>{line}</Text>
+								</Box>
+							))}
+							{need.start_date && (
+								<Text>Start: {need.start_date}</Text>
+							)}
+							{need.end_date && (
+								<Text>End: {need.end_date}</Text>
+							)}
+							{need.time_zone && (
+								<Text>Timezone: {need.time_zone}</Text>
+							)}
+						</Box>
 					</Box>
-				</Box>
-			)}
+				)}
 
 				{/* Location */}
 				<Box flexDirection="column" marginBottom={2}>

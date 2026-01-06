@@ -75,7 +75,7 @@
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: name,
-			need_type_id: needTypeId,
+			type_id: needTypeId,
 			quantity: quantity,
 			unit: needTypeId === 'money' ? 'USD' : 'units',
 			max_natural_div: 1,
@@ -102,7 +102,7 @@
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: name,
-			need_type_id: needTypeId,
+			type_id: needTypeId,
 			quantity: quantity,
 			unit: needTypeId === 'money' ? 'USD' : 'units',
 			max_natural_div: 1,
@@ -245,31 +245,6 @@
 				{/if}
 			</div>
 		</div>
-		<div class="bar-group">
-			<div
-				class="bar-label bar-label-mr"
-				title={$t('home.mutual_recognition_description')}
-			>
-				<span class="label-mobile">{@html $t('home.mutual_recognition').toLowerCase().replace(' ', '<br />')}</span>
-				<span class="label-desktop">{$t('home.mutual_recognition_abbr')}</span>
-			</div>
-			<div class="bar-area">
-				{#if $providerSegments.length > 0}
-					<Bar
-						segments={$providerSegments}
-						width="100%"
-						height="100%"
-						showLabelsOnSelect={true}
-						showValues={false}
-						rounded={false}
-					/>
-				{:else}
-					<div class="placeholder">
-						<p>{$t('home.no_mutual_contributors')}</p>
-					</div>
-				{/if}
-			</div>
-		</div>
 		</div>
 		{/key}
 	{/if}
@@ -280,7 +255,9 @@
 
 	.layout {
 		display: grid;
-		grid-template-columns: 9fr 1fr;
+		/* Responsive grid: bar gets fixed width, treemap takes remaining space */
+		grid-template-columns: 1fr minmax(60px, 80px);
+		gap: 0;
 		width: 100%;
 		height: 100%;
 		max-height: 100%;
@@ -305,13 +282,16 @@
 	.bars {
 		width: 100%;
 		height: 100%;
-		overflow: auto;
+		/* Changed from overflow: auto to prevent unwanted scrolling */
+		overflow: hidden;
 	}
 
 	.bars {
 		display: flex;
 		gap: 0.5rem;
 		padding: 0.5rem;
+		box-sizing: border-box;
+		min-width: 0;
 	}
 
 	/* Mobile: Horizontal bars stacked vertically */
@@ -348,6 +328,13 @@
 		}
 	}
 
+	/* Larger screens: give bar more space */
+	@media (min-width: 1200px) {
+		.layout:not(.full-width) {
+			grid-template-columns: 1fr 100px;
+		}
+	}
+
 	/* Desktop: Vertical bars side by side */
 	@media (min-width: 769px) {
 		.bars {
@@ -381,6 +368,10 @@
 			padding: 0 0.25rem;
 			max-width: 100%;
 			text-align: center;
+			/* Prevent text overflow from expanding container */
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.label-mobile {
@@ -428,13 +419,21 @@
 	@media (max-width: 768px) {
 		.layout {
 			grid-template-columns: 1fr;
-			grid-template-rows: 1fr auto;
+			grid-template-rows: minmax(0, 1fr) auto; /* Allow treemap to shrink, give bar minimum space */
+		}
+
+		/* Override height constraints for mobile stacking */
+		.view-content {
+			height: auto;
+			min-height: 0;
 		}
 
 		.bars {
 			flex-direction: column;
 			height: auto;
 			gap: 0.5rem;
+			/* Maintain consistent padding on mobile */
+			padding: 0.5rem;
 		}
 
 		.placeholder {

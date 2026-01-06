@@ -38,10 +38,10 @@ export const CapacityList: React.FC<CapacityListProps> = ({
 
 	// Group by need type
 	const byType = capacities.reduce((acc, cap) => {
-		if (!acc[cap.need_type_id]) {
-			acc[cap.need_type_id] = [];
+		if (!acc[cap.type_id]) {
+			acc[cap.type_id] = [];
 		}
-		acc[cap.need_type_id].push(cap);
+		acc[cap.type_id].push(cap);
 		return {};
 	}, {} as Record<string, AvailabilitySlot[]>);
 
@@ -94,7 +94,7 @@ export const CapacityList: React.FC<CapacityListProps> = ({
 							</Box>
 						);
 					})}
-					
+
 					<Box marginTop={1}>
 						<Text>
 							{selectedIndex === capacities.length ? '▶ ' : '  '}

@@ -26,7 +26,7 @@ describe("IPF Fuzzing / Stress Tests", () => {
                 id: cid,
                 name: `Cap ${i}`,
                 quantity: qty,
-                need_type_id: "resource",
+                type_id: "resource",
                 // Randomly link to owner?
                 // Just use separate commitments logic
             };
@@ -51,7 +51,7 @@ describe("IPF Fuzzing / Stress Tests", () => {
                 id: nid,
                 name: `Need ${i}`,
                 quantity: qty,
-                need_type_id: "resource"
+                type_id: "resource"
             };
             needSlots.push(need);
 

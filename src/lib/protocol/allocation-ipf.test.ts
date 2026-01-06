@@ -14,7 +14,7 @@ const createCapacitySlot = (id: string, quantity: number, overrides: Partial<Ava
     id,
     name: `Capacity ${id}`,
     quantity,
-    need_type_id: 'type1', // IPF requires types notionally
+    type_id: 'type1', // IPF requires types notionally
     ...overrides
 });
 
@@ -22,7 +22,7 @@ const createNeedSlot = (id: string, quantity: number, overrides: Partial<NeedSlo
     id,
     name: `Need ${id}`,
     quantity,
-    need_type_id: 'type1',
+    type_id: 'type1',
     ...overrides
 });
 

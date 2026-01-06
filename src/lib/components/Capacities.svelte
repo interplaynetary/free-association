@@ -32,7 +32,7 @@
 		return slots
 			.map(
 				(slot) =>
-					`${slot.name} ${slot.emoji || ''} ${slot.unit || ''} ${slot.description || ''} ${slot.need_type_id || ''}`
+					`${slot.name} ${slot.emoji || ''} ${slot.unit || ''} ${slot.description || ''} ${slot.type_id || ''}`
 			)
 			.join(' ')
 			.toLowerCase();
@@ -128,7 +128,7 @@
 		if (commitment.capacity_slots) {
 			commitment.capacity_slots.forEach((slot, index) => {
 				console.log(`[CAPACITIES] Slot ${index} (${slot.id}):`, {
-					need_type_id: slot.need_type_id,
+					type_id: slot.type_id,
 					name: slot.name,
 					quantity: slot.quantity,
 					location_type: slot.location_type,
@@ -172,7 +172,7 @@
 			if (commitment.capacity_slots) {
 				commitment.capacity_slots.forEach((slot, index) => {
 					console.log(`[CAPACITIES] Slot ${index} (${slot.id}):`, {
-						need_type_id: slot.need_type_id,
+						type_id: slot.type_id,
 						name: slot.name,
 						quantity: slot.quantity,
 						location_type: slot.location_type,
@@ -646,7 +646,7 @@
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: quantity,
-					need_type_id: 'need_type_general', // Default need type - should be selectable in UI
+					type_id: 'type_general', // Default need type - should be selectable in UI
 					name: verb,
 					emoji: emoji,
 					unit: unit,
@@ -697,7 +697,7 @@
 				{
 					id: `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 					quantity: 1,
-					need_type_id: 'need_type_general', // Default need type
+					type_id: 'type_general', // Default need type
 					name: '',
 					emoji: '',
 					unit: '',

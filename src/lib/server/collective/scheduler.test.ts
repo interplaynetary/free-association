@@ -9,7 +9,7 @@ describe("Scheduler Adapter Logic", () => {
         const capacity: AvailabilitySlot = {
             id: "cap1",
             quantity: 100,
-            need_type_id: "food",
+            type_id: "food",
             name: "My Capacity",
             recurrence: null as any, // Simulate DB returning null
         };
@@ -17,7 +17,7 @@ describe("Scheduler Adapter Logic", () => {
         const need: NeedSlot = {
             id: "need1",
             quantity: 50,
-            need_type_id: "food",
+            type_id: "food",
             name: "My Need",
             recurrence: null as any,
         };
@@ -36,14 +36,14 @@ describe("Scheduler Adapter Logic", () => {
         const capacity: AvailabilitySlot = {
             id: "cap1",
             quantity: 100,
-            need_type_id: "labor",
+            type_id: "labor",
             name: "Labor Cap",
         };
 
         const need: NeedSlot = {
             id: "need1",
             quantity: 100,
-            need_type_id: "labor",
+            type_id: "labor",
             name: "Labor Need",
         };
 

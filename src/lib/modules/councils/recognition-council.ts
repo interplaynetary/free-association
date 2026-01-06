@@ -49,19 +49,19 @@ import { allocateWithDistribution } from '@playnet/free-association/allocation';
 export interface RecognitionCouncilConfig {
 	/** Organization ID (for network identity) */
 	org_id?: string;
-	
+
 	/** MRD threshold for membership (default: 0.5) */
 	mrd_threshold?: number;
-	
+
 	/** Minimum mutual recognition required (default: 0.0) */
 	minimum_recognition?: number;
-	
+
 	/** Bootstrap members (seed for initial computation) */
 	seed_members?: string[];
-	
+
 	/** Auto-update capacity members based on MRD? */
 	auto_update_capacity_members?: boolean;
-	
+
 	/** How often to update capacity membership (ms) */
 	membership_update_frequency_ms?: number;
 }
@@ -84,19 +84,19 @@ export interface CouncilMembershipStatus {
 export interface CouncilAllocationSummary {
 	/** Raw allocation result from allocation engine */
 	allocation_result: AllocationResult;
-	
+
 	/** Total capacity across all slots */
 	total_capacity: number;
-	
+
 	/** Total allocated to members */
 	total_allocated: number;
-	
+
 	/** Remaining unused capacity */
 	unused_capacity: number;
-	
+
 	/** Aggregated allocations per member */
 	member_allocations: Record<string, number>;
-	
+
 	/** Collective recognition shares (0-1) */
 	member_shares: Record<string, number>;
 }
@@ -125,95 +125,95 @@ export class RecognitionCouncil {
 	protected council_id: string;
 	protected org_id: string;
 	protected name: string;
-	
+
 	// Recognition & Membership (emergent)
 	protected mrd_module: MRDMembershipModule;
 	protected recognition_data: RecognitionData[] = [];
 	protected current_members: Set<string> = new Set();
 	protected membership_history: MembershipOutput[] = [];
-	
+
 	// Configuration
 	protected mrd_threshold: number;
 	protected minimum_recognition: number;
 	protected auto_update_capacity_members: boolean;
 	protected membership_update_frequency_ms: number;
-	
+
 	// Resources (collective capacity/need)
 	protected capacity_slots: AvailabilitySlot[] = [];
 	protected need_slots: NeedSlot[] = [];
 	protected member_commitments: Map<string, Commitment> = new Map();
 	protected member_trees: Map<string, Node> = new Map();
 	protected compliance_filters: Map<string, ComplianceFilter> = new Map();
-	
+
 	// Timestamps
 	protected created_at: number;
 	protected updated_at: number;
 	protected last_allocation_timestamp?: string;
-	
+
 	constructor(name: string, config: RecognitionCouncilConfig = {}) {
 		this.name = name;
-		this.council_id = config.org_id || 
+		this.council_id = config.org_id ||
 			`org_council_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 		this.org_id = this.council_id;
-		
+
 		this.mrd_threshold = config.mrd_threshold ?? 0.5;
 		this.minimum_recognition = config.minimum_recognition ?? 0.0;
 		this.auto_update_capacity_members = config.auto_update_capacity_members ?? true;
-		this.membership_update_frequency_ms = config.membership_update_frequency_ms ?? 
+		this.membership_update_frequency_ms = config.membership_update_frequency_ms ??
 			(7 * 24 * 60 * 60 * 1000); // 7 days default
-		
+
 		this.mrd_module = new MRDMembershipModule(
 			this.mrd_threshold,
 			this.minimum_recognition
 		);
-		
+
 		// Bootstrap with seed members if provided
 		if (config.seed_members && config.seed_members.length > 0) {
 			this.current_members = new Set(config.seed_members);
 		}
-		
+
 		this.created_at = Date.now();
 		this.updated_at = Date.now();
-		
+
 		console.log(`[RECOGNITION-COUNCIL] Created: ${this.name}`, {
 			org_id: this.org_id,
 			mrd_threshold: this.mrd_threshold,
 			seed_members: this.current_members.size
 		});
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════
 	// GETTERS
 	// ═══════════════════════════════════════════════════════════════
-	
+
 	get id(): string {
 		return this.council_id;
 	}
-	
+
 	get organizationId(): string {
 		return this.org_id;
 	}
-	
+
 	get councilName(): string {
 		return this.name;
 	}
-	
+
 	get members(): string[] {
 		return Array.from(this.current_members);
 	}
-	
+
 	get memberCount(): number {
 		return this.current_members.size;
 	}
-	
+
 	get threshold(): number {
 		return this.mrd_threshold;
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════
 	// RECOGNITION & MEMBERSHIP MANAGEMENT
 	// ═══════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Update recognition data and recompute membership
 	 * 
@@ -224,21 +224,21 @@ export class RecognitionCouncil {
 	 */
 	updateRecognition(recognitionData: RecognitionData[]): MembershipOutput {
 		this.recognition_data = recognitionData;
-		
+
 		// Compute membership based on MRD
 		const output = this.mrd_module.computeMembership(
 			recognitionData,
 			this.current_members  // Seed with current members
 		);
-		
+
 		// Update current members
 		const oldMembers = new Set(this.current_members);
 		this.current_members = new Set(output.members);
-		
+
 		// Store in history
 		this.membership_history.push(output);
 		this.updated_at = Date.now();
-		
+
 		// Log changes
 		if (output.added.length > 0 || output.removed.length > 0) {
 			console.log(`[COUNCIL ${this.name}] Membership updated:`, {
@@ -248,10 +248,10 @@ export class RecognitionCouncil {
 				network_average: output.networkAverage
 			});
 		}
-		
+
 		return output;
 	}
-	
+
 	/**
 	 * Update member's recognition tree
 	 * 
@@ -261,10 +261,10 @@ export class RecognitionCouncil {
 	updateMemberTree(memberId: string, tree: Node): void {
 		this.member_trees.set(memberId, tree);
 		this.updated_at = Date.now();
-		
+
 		console.log(`[COUNCIL ${this.name}] Updated tree for ${memberId}`);
 	}
-	
+
 	/**
 	 * Recompute recognition data from member trees
 	 * Helper method to extract recognition relationships from trees
@@ -273,35 +273,35 @@ export class RecognitionCouncil {
 		const recognitionData = extractRecognitionDataFromTrees(this.member_trees);
 		return this.updateRecognition(recognitionData);
 	}
-	
+
 	/**
 	 * Check if someone is a member (based on latest MRD computation)
 	 */
 	isMember(pubkey: string): boolean {
 		return this.current_members.has(pubkey);
 	}
-	
+
 	/**
 	 * Get member's current MRD score
 	 */
 	getMRD(pubkey: string): number {
 		return this.mrd_module.getMrd(pubkey);
 	}
-	
+
 	/**
 	 * Get member's mutual recognition score (sum with other members)
 	 */
 	getMutualRecognitionScore(pubkey: string): number {
 		return this.mrd_module.getMutualRecognitionScore(pubkey);
 	}
-	
+
 	/**
 	 * Get detailed breakdown of member's integration with others
 	 */
 	getMemberIntegration(pubkey: string): Record<string, number> {
 		return this.mrd_module.getIntegrationBreakdown(pubkey, this.recognition_data);
 	}
-	
+
 	/**
 	 * Get comprehensive membership status
 	 */
@@ -322,9 +322,9 @@ export class RecognitionCouncil {
 				}
 			};
 		}
-		
+
 		const latest = this.membership_history[this.membership_history.length - 1];
-		
+
 		const candidates = Object.entries(latest.membershipStatus)
 			.filter(([_, status]) => status === 'candidate')
 			.map(([id, _]) => ({
@@ -332,7 +332,7 @@ export class RecognitionCouncil {
 				mrd: latest.mrdScores[id] || 0
 			}))
 			.sort((a, b) => b.mrd - a.mrd);
-		
+
 		return {
 			members: latest.members,
 			candidates,
@@ -348,22 +348,22 @@ export class RecognitionCouncil {
 			}
 		};
 	}
-	
+
 	/**
 	 * Set new MRD threshold and recompute membership
 	 */
 	setThreshold(newThreshold: number): MembershipOutput {
 		this.mrd_module.setThreshold(newThreshold);
 		this.mrd_threshold = newThreshold;
-		
+
 		// Recompute with new threshold
 		return this.updateRecognition(this.recognition_data);
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════
 	// RESOURCE MANAGEMENT (CAPACITY & NEEDS)
 	// ═══════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Add collective capacity slot
 	 * 
@@ -378,18 +378,18 @@ export class RecognitionCouncil {
 			...slot,
 			members: Array.from(this.current_members)
 		};
-		
+
 		this.capacity_slots.push(slotWithMembers);
 		this.updated_at = Date.now();
-		
+
 		console.log(`[COUNCIL ${this.name}] Added collective capacity:`, {
 			slot_id: slot.id,
 			quantity: slot.quantity,
-			need_type: slot.need_type_id,
+			type: slot.type_id,
 			members: this.current_members.size
 		});
 	}
-	
+
 	/**
 	 * Remove collective capacity slot
 	 */
@@ -397,30 +397,30 @@ export class RecognitionCouncil {
 		const originalLength = this.capacity_slots.length;
 		this.capacity_slots = this.capacity_slots.filter(s => s.id !== slotId);
 		const removed = this.capacity_slots.length < originalLength;
-		
+
 		if (removed) {
 			this.updated_at = Date.now();
 			console.log(`[COUNCIL ${this.name}] Removed capacity slot: ${slotId}`);
 		}
-		
+
 		return removed;
 	}
-	
+
 	/**
 	 * Update capacity slot members to match current council members
 	 * Call this after membership changes to keep capacity in sync
 	 */
 	syncCapacityMembers(): void {
 		const currentMembers = Array.from(this.current_members);
-		
+
 		for (const slot of this.capacity_slots) {
 			slot.members = currentMembers;
 		}
-		
+
 		this.updated_at = Date.now();
 		console.log(`[COUNCIL ${this.name}] Synced capacity members: ${currentMembers.length}`);
 	}
-	
+
 	/**
 	 * Declare member's needs
 	 * 
@@ -432,26 +432,26 @@ export class RecognitionCouncil {
 			console.warn(`[COUNCIL ${this.name}] ${memberId} is not a member, cannot declare needs`);
 			return;
 		}
-		
+
 		// Create or update commitment
 		const existingCommitment = this.member_commitments.get(memberId);
-		
+
 		const commitment: Commitment = {
 			need_slots: needSlots,
 			capacity_slots: existingCommitment?.capacity_slots || [],
 			global_recognition_weights: existingCommitment?.global_recognition_weights || null,
 			timestamp: Date.now()
 		};
-		
+
 		this.member_commitments.set(memberId, commitment);
 		this.updated_at = Date.now();
-		
+
 		console.log(`[COUNCIL ${this.name}] Needs declared by ${memberId}:`, {
 			slots: needSlots.length,
-			types: [...new Set(needSlots.map(s => s.need_type_id))]
+			types: [...new Set(needSlots.map(s => s.type_id))]
 		});
 	}
-	
+
 	/**
 	 * Remove member's commitment
 	 */
@@ -462,14 +462,14 @@ export class RecognitionCouncil {
 		}
 		return removed;
 	}
-	
+
 	/**
 	 * Get member's commitment
 	 */
 	getMemberCommitment(memberId: string): Commitment | undefined {
 		return this.member_commitments.get(memberId);
 	}
-	
+
 	/**
 	 * Set compliance filter for a member
 	 * 
@@ -484,21 +484,21 @@ export class RecognitionCouncil {
 	setMemberFilter(memberId: string, filter: ComplianceFilter): void {
 		this.compliance_filters.set(memberId, filter);
 		this.updated_at = Date.now();
-		
+
 		console.log(`[COUNCIL ${this.name}] Filter set for ${memberId}:`, filter);
 	}
-	
+
 	/**
 	 * Remove compliance filter for a member
 	 */
 	removeMemberFilter(memberId: string): boolean {
 		return this.compliance_filters.delete(memberId);
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════
 	// ALLOCATION COMPUTATION
 	// ═══════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Compute resource allocations across all members
 	 * 
@@ -513,24 +513,24 @@ export class RecognitionCouncil {
 	computeAllocations(): AllocationResult {
 		// Sync capacity members with current council members
 		this.syncCapacityMembers();
-		
+
 		// STEP 1: Calculate distribution (WHO gets WHAT share)
 		const distribution = calculateCollectiveRecognitionDistribution(
 			Array.from(this.current_members),
 			this.member_trees
 		);
-		
+
 		console.log(`[COUNCIL ${this.name}] Distribution computed:`, {
 			method: distribution.method,
 			recipients: Object.keys(distribution.shares).length,
 			total_pool: distribution.metadata?.totalPool || 0
 		});
-		
+
 		// STEP 2: Build commitments map from member commitments
 		const allCommitments: Record<string, Commitment> = Object.fromEntries(
 			this.member_commitments
 		);
-		
+
 		// STEP 3: Run allocation engine (HOW to allocate slots)
 		const result = allocateWithDistribution(
 			this.council_id,  // Council as provider
@@ -540,13 +540,13 @@ export class RecognitionCouncil {
 			undefined,  // needsIndex (optional optimization)
 			this.compliance_filters  // Compliance filters
 		);
-		
+
 		this.last_allocation_timestamp = new Date().toISOString();
-		
+
 		// Calculate summary metrics
 		const totalCapacity = this.capacity_slots.reduce((sum, slot) => sum + slot.quantity, 0);
 		const totalAllocated = result.allocations.reduce((sum, alloc) => sum + alloc.quantity, 0);
-		
+
 		console.log(`[COUNCIL ${this.name}] Allocations computed:`, {
 			total_capacity: totalCapacity,
 			total_allocated: totalAllocated,
@@ -555,35 +555,35 @@ export class RecognitionCouncil {
 			slot_allocations: result.allocations.length,
 			members: this.current_members.size
 		});
-		
+
 		return result;
 	}
-	
+
 	/**
 	 * Get simplified allocation summary with aggregated metrics
 	 */
 	getAllocationSummary(): CouncilAllocationSummary {
 		const result = this.computeAllocations();
-		
+
 		// Calculate total capacity
 		const totalCapacity = this.capacity_slots.reduce((sum, slot) => sum + slot.quantity, 0);
-		
+
 		// Calculate total allocated
 		const totalAllocated = result.allocations.reduce((sum, alloc) => sum + alloc.quantity, 0);
-		
+
 		// Aggregate allocations per member
 		const memberAllocations: Record<string, number> = {};
 		for (const alloc of result.allocations) {
 			const current = memberAllocations[alloc.recipient_pubkey] || 0;
 			memberAllocations[alloc.recipient_pubkey] = current + alloc.quantity;
 		}
-		
+
 		// Get recognition shares from distribution
 		const distribution = calculateCollectiveRecognitionDistribution(
 			Array.from(this.current_members),
 			this.member_trees
 		);
-		
+
 		return {
 			allocation_result: result,
 			total_capacity: totalCapacity,
@@ -593,19 +593,19 @@ export class RecognitionCouncil {
 			member_shares: distribution.shares
 		};
 	}
-	
+
 	/**
 	 * Get allocation for specific member
 	 */
 	getMemberAllocation(memberId: string): number {
 		const result = this.computeAllocations();
-		
+
 		// Sum all allocations for this member
 		return result.allocations
 			.filter(alloc => alloc.recipient_pubkey === memberId)
 			.reduce((sum, alloc) => sum + alloc.quantity, 0);
 	}
-	
+
 	/**
 	 * Get member's collective recognition share (0-1)
 	 */
@@ -614,14 +614,14 @@ export class RecognitionCouncil {
 			Array.from(this.current_members),
 			this.member_trees
 		);
-		
+
 		return distribution.shares[memberId] || 0;
 	}
-	
+
 	// ═══════════════════════════════════════════════════════════════
 	// NETWORK INTEGRATION (Holster)
 	// ═══════════════════════════════════════════════════════════════
-	
+
 	/**
 	 * Get council as Organization object (for publishing to network)
 	 */
@@ -637,7 +637,7 @@ export class RecognitionCouncil {
 			updated_at: this.updated_at
 		};
 	}
-	
+
 	/**
 	 * Export council state for persistence/network
 	 */
@@ -678,7 +678,7 @@ export class RecognitionCouncil {
 			updated_at: this.updated_at
 		};
 	}
-	
+
 	/**
 	 * Import council state from persistence/network
 	 */
@@ -687,22 +687,22 @@ export class RecognitionCouncil {
 			...state.config,
 			seed_members: state.members
 		});
-		
+
 		council.capacity_slots = state.capacity_slots;
-		
+
 		// Restore member commitments
 		for (const { member_id, commitment } of state.member_commitments) {
 			council.member_commitments.set(member_id, commitment);
 		}
-		
+
 		// Restore filters
 		for (const { member_id, filter } of state.compliance_filters) {
 			council.compliance_filters.set(member_id, filter);
 		}
-		
+
 		council.created_at = state.created_at;
 		council.updated_at = state.updated_at;
-		
+
 		return council;
 	}
 }
@@ -733,12 +733,12 @@ export function createAndRegisterCouncil(
 	config: RecognitionCouncilConfig = {}
 ): RecognitionCouncil {
 	const council = new RecognitionCouncil(name, config);
-	
+
 	console.log(`[RECOGNITION-COUNCIL] Created and registered: ${name}`, {
 		org_id: council.organizationId,
 		members: council.memberCount
 	});
-	
+
 	return council;
 }
 
@@ -758,7 +758,7 @@ export function createRecognitionData(
 ): RecognitionData[] {
 	const data: RecognitionData[] = [];
 	const now = new Date();
-	
+
 	for (const [fromId, recognitions] of Object.entries(recognitionMap)) {
 		for (const [toId, percentage] of Object.entries(recognitions)) {
 			data.push({
@@ -769,7 +769,7 @@ export function createRecognitionData(
 			});
 		}
 	}
-	
+
 	return data;
 }
 
@@ -778,25 +778,25 @@ export function createRecognitionData(
  */
 export function printMembershipStatus(council: RecognitionCouncil): void {
 	const status = council.getMembershipStatus();
-	
+
 	console.log(`\n=== ${council.councilName} - Membership Status ===`);
 	console.log(`Threshold: ${status.threshold}`);
 	console.log(`Network Average MRS: ${status.network_average.toFixed(2)}\n`);
-	
+
 	console.log(`Members (${status.members.length}):`);
 	for (const member of status.members) {
 		const mrd = council.getMRD(member);
 		const mrs = council.getMutualRecognitionScore(member);
 		console.log(`  ${member}: MRD=${mrd.toFixed(2)}, MRS=${mrs.toFixed(2)}`);
 	}
-	
+
 	if (status.candidates.length > 0) {
 		console.log(`\nCandidates (${status.candidates.length}):`);
 		for (const candidate of status.candidates.slice(0, 5)) {
 			console.log(`  ${candidate.id}: MRD=${candidate.mrd.toFixed(2)}`);
 		}
 	}
-	
+
 	console.log(`\nHealth Metrics:`);
 	console.log(`  Recognition Density: ${(status.health_metrics.recognition_density * 100).toFixed(1)}%`);
 	console.log(`  Average MRD: ${status.health_metrics.average_mrd.toFixed(2)}`);
@@ -809,12 +809,12 @@ export function printMembershipStatus(council: RecognitionCouncil): void {
  */
 export function printAllocationSummary(council: RecognitionCouncil): void {
 	const summary = council.getAllocationSummary();
-	
+
 	console.log(`\n=== ${council.councilName} - Allocation Summary ===`);
 	console.log(`Total Capacity: ${summary.total_capacity}`);
 	console.log(`Total Allocated: ${summary.total_allocated}`);
 	console.log(`Unused: ${summary.unused_capacity}\n`);
-	
+
 	console.log(`Member Allocations:`);
 	for (const [memberId, allocation] of Object.entries(summary.member_allocations)) {
 		const share = summary.member_shares[memberId];

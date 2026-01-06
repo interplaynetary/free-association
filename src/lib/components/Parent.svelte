@@ -2160,7 +2160,16 @@
 		top: 0;
 		bottom: 0;
 		left: 0.5rem; /* visual left padding for tree map */
-		right: 0.5rem; /* visual right padding for tree map */
+		/* Default to 0.5rem right padding for mobile/full-width */
+		right: 0.5rem;
+	}
+
+	/* Desktop: match layout breakpoint (769px) */
+	@media (min-width: 769px) {
+		.treemap-container {
+			/* On desktop, the bar is to the right, so we don't need padding */
+			right: 0;
+		}
 	}
 
 	.treemap-container :global(.clickable) {

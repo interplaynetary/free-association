@@ -795,7 +795,7 @@ In addition to Open Collective budget:
 **Our Resources:**
 
 * Open Collective: [opencollective.com/free-association](https://opencollective.com/free-association)
-* Protocol Interface: [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association)
+* Protocol Interface: [free.playnet.lol](https://free.playnet.lol)
 * Documentation: [playnet.gitbook.io](https://playnet.gitbook.io)
 * GitHub: [github.com/interplaynetary](https://github.com/interplaynetary)
 

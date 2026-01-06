@@ -15,7 +15,7 @@ const createCapacitySlot = (id: string, quantity: number, overrides: Partial<Ava
     id,
     name: `Capacity ${id}`,
     quantity,
-    need_type_id: 'type1',
+    type_id: 'type1',
     ...overrides
 });
 
@@ -23,7 +23,7 @@ const createNeedSlot = (id: string, quantity: number, overrides: Partial<NeedSlo
     id,
     name: `Need ${id}`,
     quantity,
-    need_type_id: 'type1',
+    type_id: 'type1',
     ...overrides
 });
 
@@ -70,20 +70,22 @@ describe('Distributed IPF Allocation (Simulation)', () => {
         let p1State: DistributedIPFState = {
             rowScalings: { 'c1': 1.0 },
             colScalings: {},
-            cachedRemoteScalings: { 'n1': 1.0, 'n2': 1.0 } // Assume everyone open initially
+            cachedRemoteScalings: { 'n1': 1.0, 'n2': 1.0 }, // Assume everyone open initially
+            totalSeedsByNeed: {} // Will be populated by recipients
         };
 
         // P2 State
         let p2State: DistributedIPFState = {
             rowScalings: { 'c2': 1.0 },
             colScalings: {},
-            cachedRemoteScalings: { 'n2': 1.0, 'n3': 1.0 }
+            cachedRemoteScalings: { 'n2': 1.0, 'n3': 1.0 },
+            totalSeedsByNeed: {}
         };
 
         // R1, R2, R3 State (Receivers only)
-        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1.0 }, cachedRemoteScalings: {} };
-        let r2State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n2': 1.0 }, cachedRemoteScalings: {} };
-        let r3State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n3': 1.0 }, cachedRemoteScalings: {} };
+        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1.0 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r2State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n2': 1.0 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r3State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n3': 1.0 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
 
         // --- SIMULATION LOOP ---
         const iterations = 50;
@@ -166,9 +168,9 @@ describe('Distributed IPF Allocation (Simulation)', () => {
             'r2': createCommitment('r2', { need_slots: [n2] })
         };
 
-        let pState: DistributedIPFState = { rowScalings: { 'c1': 1 }, colScalings: {}, cachedRemoteScalings: {} };
-        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1 }, cachedRemoteScalings: {} };
-        let r2State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n2': 1 }, cachedRemoteScalings: {} };
+        let pState: DistributedIPFState = { rowScalings: { 'c1': 1 }, colScalings: {}, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r2State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n2': 1 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
 
         for (let i = 0; i < 20; i++) {
             pState = updateProviderState([cs], [n1, n2], commitments, pState);
@@ -201,8 +203,8 @@ describe('Distributed IPF Allocation (Simulation)', () => {
             'r1': createCommitment('r1', { need_slots: [n1] })
         };
 
-        let pState: DistributedIPFState = { rowScalings: { 'c1': 1 }, colScalings: {}, cachedRemoteScalings: {} };
-        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1 }, cachedRemoteScalings: {} };
+        let pState: DistributedIPFState = { rowScalings: { 'c1': 1 }, colScalings: {}, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1 }, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
 
         // Simulate convergence
         for (let i = 0; i < 20; i++) {
@@ -211,6 +213,7 @@ describe('Distributed IPF Allocation (Simulation)', () => {
 
             r1State = updateRecipientState([n1], props, r1State);
             pState.cachedRemoteScalings['n1'] = r1State.colScalings['n1'];
+            pState.totalSeedsByNeed['n1'] = r1State.totalSeedsByNeed['n1'];
 
             // Debug logging for first few iterations
             if (i < 5) {
@@ -232,5 +235,63 @@ describe('Distributed IPF Allocation (Simulation)', () => {
         // CRITICAL ASSERTION: Should allocate exactly the need (50), not the full capacity (200)
         expect(finalFlow).toBeCloseTo(50, 0);
         expect(finalFlow).toBeLessThanOrEqual(50.1); // Allow tiny numerical error
+    });
+
+    it('should under-allocate if totalSeeds is inflated (Ghost Provider scenario)', () => {
+        // SCENARIO: P1(100) -> R1(50).
+        // But R1 reports totalSeed = 2.0 (as if P2 is there), but P2 is missing/not sending.
+        // P1 should calculate fairShare = (1/2)*50 = 25.
+        // P1 sends 25.
+        // R1 receives 25. Total < Need.
+
+        const cs = createCapacitySlot('c1', 100, { priority_distribution: { 'r1': 1 } });
+        const n1 = createNeedSlot('n1', 50, { priority_distribution: { 'p1': 1 } });
+
+        const commitments = {
+            'p1': createCommitment('p1', { capacity_slots: [cs] }),
+            'r1': createCommitment('r1', { need_slots: [n1] })
+        };
+
+        let pState: DistributedIPFState = { rowScalings: { 'c1': 1 }, colScalings: {}, cachedRemoteScalings: {}, totalSeedsByNeed: {} };
+        let r1State: DistributedIPFState = { rowScalings: {}, colScalings: { 'n1': 1 }, cachedRemoteScalings: {}, totalSeedsByNeed: { 'n1': 2.0 } }; // INFLATED SEED
+
+        // Simulate loop where R1 keeps reporting inflated seed
+        for (let i = 0; i < 10; i++) {
+            // Provider sees inflated seed
+            pState.totalSeedsByNeed['n1'] = 2.0;
+
+            pState = updateProviderState([cs], [n1], commitments, pState);
+            const props = generateFlowProposals([cs], [n1], commitments, pState);
+
+            // Recipient update normally sums incoming seeds. 
+            // BUT here we force the "Ghost" to remain in the state to simulate the bug.
+            const realRState = updateRecipientState([n1], props, r1State);
+            r1State = {
+                ...realRState,
+                // Force ghost seed persistence
+                totalSeedsByNeed: { 'n1': realRState.totalSeedsByNeed['n1'] + 1.0 }
+            };
+
+            pState.cachedRemoteScalings['n1'] = r1State.colScalings['n1'];
+        }
+
+        const finalProps = generateFlowProposals([cs], [n1], commitments, pState);
+        const finalFlow = finalProps.find(p => p.need_slot_id === 'n1')?.proposed_quantity || 0;
+
+        console.log('Ghost Provider Scenario - Final Flow:', finalFlow);
+
+        // Expectation: Under-allocation occurs
+        // P1 fairShare = 25. Capacity=100. Target=25.
+        // x_p targets 25. 
+        // y_r calculation:
+        //   R1 receives 25. Need 50. y_r = 50/25 = 2.0.
+        // P1 sees y_r = 2.0.
+        // P1 denominator = k*y_r = 1*2 = 2.
+        // P1 target = 25.
+        // x_p = 25/2 = 12.5.
+        // Allocation = k * x_p * y_r = 1 * 12.5 * 2 = 25.
+
+        // It stabilizes at 25 (Half of need).
+        expect(finalFlow).toBeCloseTo(25, 0);
     });
 });

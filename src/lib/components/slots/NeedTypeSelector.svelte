@@ -29,7 +29,7 @@
   
   // Common need types (can be extended via a global registry)
   // In a real app, this would come from a store or configuration
-  const NEED_TYPES: NeedType[] = [
+  const typeS: NeedType[] = [
     {
       id: 'food',
       name: 'Food',
@@ -121,7 +121,7 @@
     </label>
     
     <div class="type-grid">
-      {#each NEED_TYPES as type (type.id)}
+      {#each typeS as type (type.id)}
         <button
           type="button"
           class="type-button"
@@ -137,7 +137,7 @@
     </div>
     
     {#if selected}
-      {@const selectedType = NEED_TYPES.find(t => t.id === selected)}
+      {@const selectedType = typeS.find(t => t.id === selected)}
       {#if selectedType}
         <div class="selected-info">
           <p class="description">{selectedType.description}</p>
@@ -162,7 +162,7 @@
       data-testid="need-type-select"
     >
       <option value="">Select a type...</option>
-      {#each NEED_TYPES as type (type.id)}
+      {#each typeS as type (type.id)}
         <option value={type.id}>
           {type.emoji} {type.name}
         </option>
@@ -170,7 +170,7 @@
     </select>
     
     {#if selected}
-      {@const selectedType = NEED_TYPES.find(t => t.id === selected)}
+      {@const selectedType = typeS.find(t => t.id === selected)}
       {#if selectedType}
         <div class="selected-info">
           <p class="description">{selectedType.description}</p>

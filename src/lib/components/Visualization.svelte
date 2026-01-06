@@ -36,11 +36,11 @@
 	let selectedEntity: string | null = null;
 	let round = $state(0);
 	
-	// Filter slots by resource type (V5: uses need_type_id)
-	function filterSlotsByType<T extends { need_type_id?: string }>(slots: T[] | undefined): T[] {
+	// Filter slots by resource type (V5: uses type_id)
+	function filterSlotsByType<T extends { type_id?: string }>(slots: T[] | undefined): T[] {
 		if (!slots) return [];
 		if (!resourceType) return slots;
-		return slots.filter(slot => slot.need_type_id === resourceType);
+		return slots.filter(slot => slot.type_id === resourceType);
 	}
 	
 	// Calculate total capacity from slots

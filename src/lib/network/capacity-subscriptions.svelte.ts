@@ -206,7 +206,7 @@ export function createSlotFilter(
 		enabled: filterData.enabled !== undefined ? filterData.enabled : true,
 		applies_to: filterData.applies_to || 'both', // NEW: defaults to both!
 		source_pubkeys: filterData.source_pubkeys,
-		need_type_ids: filterData.need_type_ids,
+		type_ids: filterData.type_ids,
 		must_include_me: filterData.must_include_me,
 		must_include_ids: filterData.must_include_ids, // UNIFIED!
 		location_max_distance_km: filterData.location_max_distance_km,

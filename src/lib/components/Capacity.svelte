@@ -445,11 +445,11 @@
 			return normalized;
 		});
 		
-		// V5: All fields required, including need_type_id
+		// V5: All fields required, including type_id
 		const newSlot: AvailabilitySlot & { capacity_group_id?: string } = {
 			id: newSlotId,
 			quantity: 1,
-			need_type_id: 'general', // Default need type
+			type_id: 'general', // Default need type
 			name: '',
 			location_type: 'Undefined',
 			start_date: todayString,

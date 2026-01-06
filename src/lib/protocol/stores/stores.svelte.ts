@@ -125,6 +125,28 @@ export const myRecognitionTreeStore = createStore({
 	// NOTE: No converters needed! JSON handles everything perfectly.
 });
 
+
+if (typeof window !== 'undefined') {
+	// Lazy-load demoTreeStore to avoid circular dependencies
+	import('$lib/stores/demoTree.svelte').then(({ demoTreeStore }) => {
+		let currentPub = '';
+
+		// Track auth state
+		holsterUserPub.subscribe(pub => {
+			currentPub = pub;
+		});
+
+		// Subscribe to demoTreeStore and sync to myRecognitionTreeStore when not authenticated
+		demoTreeStore.toStore().subscribe(demoTree => {
+			if (!currentPub && demoTree) {
+				// Not authenticated: sync demo tree to recognition tree store
+				console.log('[DEMO-SYNC] Syncing demoTreeStore to myRecognitionTreeStore for recognition weights');
+				myRecognitionTreeStore.set(demoTree);
+			}
+		});
+	});
+}
+
 /**
  * My Recognition Weights (V5) - DERIVED
  * 
@@ -243,7 +265,7 @@ export const myCapacitySlotsStore: Readable<AvailabilitySlot[] | null> = derived
 /**
  * My Need Types Store (V5) - DERIVED FROM NEED SLOTS
  * 
- * Extracts unique need_type_ids from my need slots for UI organization
+ * Extracts unique type_ids from my need slots for UI organization
  * Returns array of type IDs that I have needs for
  * 
  * Use for:
@@ -258,11 +280,11 @@ export const myNeedTypesStore: Readable<string[]> = derived(
 			return [];
 		}
 
-		// Extract unique need_type_ids
+		// Extract unique type_ids
 		const typeIds = new Set<string>();
 		for (const slot of $needSlots) {
-			if (slot.need_type_id) {
-				typeIds.add(slot.need_type_id);
+			if (slot.type_id) {
+				typeIds.add(slot.type_id);
 			}
 		}
 
@@ -273,7 +295,7 @@ export const myNeedTypesStore: Readable<string[]> = derived(
 /**
  * My Capacity Types Store (V5) - DERIVED FROM CAPACITY SLOTS
  * 
- * Extracts unique need_type_ids from my capacity slots for UI organization
+ * Extracts unique type_ids from my capacity slots for UI organization
  * Returns array of type IDs that I can provide
  * 
  * Use for:
@@ -288,11 +310,11 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 			return [];
 		}
 
-		// Extract unique need_type_ids
+		// Extract unique type_ids
 		const typeIds = new Set<string>();
 		for (const slot of $capacitySlots) {
-			if (slot.need_type_id) {
-				typeIds.add(slot.need_type_id);
+			if (slot.type_id) {
+				typeIds.add(slot.type_id);
 			}
 		}
 
@@ -554,7 +576,7 @@ export const networkAllocations = networkCommitments.deriveField<SlotAllocationR
 /**
  * Network Need Types Store (V5) - DERIVED FROM NETWORK NEED SLOTS
  * 
- * Extracts unique need_type_ids from all network participants' need slots
+ * Extracts unique type_ids from all network participants' need slots
  * Returns array of type IDs that exist across the network
  * 
  * ✅ Fine-grained reactivity: Only updates when network needs change
@@ -571,8 +593,8 @@ export const networkNeedTypesStore: Readable<string[]> = derived(
 
 		// Iterate through all participants' need slots
 		for (const slot of $networkNeedSlots) {
-			if (slot.need_type_id) {
-				typeIds.add(slot.need_type_id);
+			if (slot.type_id) {
+				typeIds.add(slot.type_id);
 			}
 		}
 
@@ -583,7 +605,7 @@ export const networkNeedTypesStore: Readable<string[]> = derived(
 /**
  * Network Capacity Types Store (V5) - DERIVED FROM NETWORK CAPACITY SLOTS
  * 
- * Extracts unique need_type_ids from all network participants' capacity slots
+ * Extracts unique type_ids from all network participants' capacity slots
  * Returns array of type IDs that can be provided across the network
  * 
  * ✅ Fine-grained reactivity: Only updates when network capacity changes
@@ -602,8 +624,8 @@ export const networkCapacityTypesStore: Readable<string[]> = derived(
 		for (const [pubKey, capacitySlots] of $networkCapacitySlots.entries()) {
 			if (capacitySlots && Array.isArray(capacitySlots)) {
 				for (const slot of capacitySlots) {
-					if (slot.need_type_id) {
-						typeIds.add(slot.need_type_id);
+					if (slot.type_id) {
+						typeIds.add(slot.type_id);
 					}
 				}
 			}
@@ -1135,7 +1157,7 @@ export function getNetworkRecognitionWeightsRecord(): Record<string, Record<stri
  * Maps bucket keys to sets of pubKeys who have needs/capacity in that bucket
  */
 export interface SpaceTimeIndex {
-	/** Type-based index: need_type_id -> Set<pubKey> */
+	/** Type-based index: type_id -> Set<pubKey> */
 	byType: Map<string, Set<string>>;
 
 	/** Location-based index: location_bucket -> Set<pubKey> */
@@ -1227,7 +1249,7 @@ function addNeedSlotsToIndex(pubKey: string, needSlots: NeedSlot[] | Commitment,
 			start_date: needSlot.start_date || undefined,
 			end_date: needSlot.end_date || undefined
 		};
-		const typeId = needSlot.need_type_id || '';
+		const typeId = needSlot.type_id || '';
 		const locationKey = getLocationBucketKey(safeSlot as any);
 		const timeKey = getTimeBucketKey(safeSlot as any);
 
@@ -1288,7 +1310,7 @@ function addCapacitySlotsToIndex(pubKey: string, capacitySlots: AvailabilitySlot
 			start_date: capacitySlot.start_date || undefined,
 			end_date: capacitySlot.end_date || undefined
 		};
-		const typeId = capacitySlot.need_type_id || '';
+		const typeId = capacitySlot.type_id || '';
 		const locationKey = getLocationBucketKey(safeSlot as any);
 		const timeKey = getTimeBucketKey(safeSlot as any);
 
@@ -2080,7 +2102,7 @@ export const totalReceivedBySlot: Readable<Record<string, Record<string, number>
 
 			for (const allocation of allocationList) {
 				if (allocation.recipient_pubkey === $myPub) {
-					const typeId = allocation.need_type_id;
+					const typeId = allocation.type_id;
 					const quantity = allocation.quantity || 0;
 
 					if (typeId) {
@@ -2642,4 +2664,3 @@ if (typeof window !== 'undefined') {
 	console.log('  • window.validateAllStores() - Check store health');
 	console.log('  • window.debugStoresV5() - Show diagnostics');
 }
-

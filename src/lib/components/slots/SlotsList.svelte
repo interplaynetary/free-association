@@ -42,7 +42,7 @@
   
   // Get unique need types from slots
   const needTypes = $derived(
-    Array.from(new Set(slots.map(s => s.need_type_id))).sort()
+    Array.from(new Set(slots.map(s => s.type_id))).sort()
   );
   
   // Filtered and sorted slots
@@ -51,7 +51,7 @@
     
     // Filter by need type
     if (filterType !== 'all') {
-      result = result.filter(s => s.need_type_id === filterType);
+      result = result.filter(s => s.type_id === filterType);
     }
     
     // Search filter
@@ -60,7 +60,7 @@
       result = result.filter(s =>
         (s.name || '').toLowerCase().includes(query) ||
         s.description?.toLowerCase().includes(query) ||
-        (s.need_type_id || '').toLowerCase().includes(query)
+        (s.type_id || '').toLowerCase().includes(query)
       );
     }
     

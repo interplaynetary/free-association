@@ -74,26 +74,26 @@ export const DivisibilitySchema = z.object({
 export const NeedSlotSchema = z.object({
   id: z.string().min(1),
   participantId: ParticipantIdSchema,
-  need_type_id: z.string().min(1),
+  type_id: z.string().min(1),
   quantity: z.number().gte(0),
   name: z.string(),
-  
+
   // Time
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   time_zone: z.string().default('UTC'),
   recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
   availability_window: AvailabilityWindowSchema.optional(),
-  
+
   // Location
   location: LocationSchema.optional(),
-  
+
   // Divisibility
   divisibility: DivisibilitySchema.optional(),
-  
+
   // Compliance
   filter_rule: z.any().nullable().optional(),
-  
+
   // Priority
   priority: z.number().optional()
 });
@@ -101,23 +101,23 @@ export const NeedSlotSchema = z.object({
 export const AvailabilitySlotSchema = z.object({
   id: z.string().min(1),
   participantId: ParticipantIdSchema,
-  need_type_id: z.string().min(1),
+  type_id: z.string().min(1),
   quantity: z.number().gte(0),
   name: z.string(),
-  
+
   // Time
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
   time_zone: z.string().default('UTC'),
   recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
   availability_window: AvailabilityWindowSchema.optional(),
-  
+
   // Location
   location: LocationSchema.optional(),
-  
+
   // Divisibility
   divisibility: DivisibilitySchema.optional(),
-  
+
   // Priority
   priority: z.number().optional()
 });

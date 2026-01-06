@@ -33,7 +33,7 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 		providedCommitments || null
 	);
 	const [myPubKey, setMyPubKey] = useState<string>(providedPubKey || '');
-	
+
 	useEffect(() => {
 		if (!providedCommitments) {
 			// Load from storage
@@ -77,7 +77,7 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 		for (const [pubKey, commitment] of Object.entries(commitments)) {
 			const updatedNeedSlots = (commitment.need_slots || []).map(slot => ({
 				...slot,
-				quantity: Math.max(0, slot.quantity - (allAllocations[pubKey]?.[slot.need_type_id] || 0))
+				quantity: Math.max(0, slot.quantity - (allAllocations[pubKey]?.[slot.type_id] || 0))
 			}));
 			updatedCommitments[pubKey] = {
 				...commitment,
@@ -89,7 +89,7 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 
 		// Compute allocations from all providers
 		const allResults: Array<{ provider: string; result: AllocationResult }> = [];
-		
+
 		for (const [providerPubKey, providerCommitment] of Object.entries(updatedCommitments)) {
 			const providerCapacity = providerCommitment.capacity_slots || [];
 			if (providerCapacity.length === 0) continue;
@@ -117,12 +117,12 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 		}
 
 		setResults(allResults);
-		
+
 		if (allResults.length > 0) {
 			setNeedMagnitude(allResults[0].result.convergence.totalNeedMagnitude);
-			
-			if (allResults[0].result.convergence.universalSatisfaction || 
-			    allResults[0].result.convergence.isConverged) {
+
+			if (allResults[0].result.convergence.universalSatisfaction ||
+				allResults[0].result.convergence.isConverged) {
 				setConverged(true);
 			}
 		}
@@ -143,11 +143,11 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 			for (const { result } of results) {
 				for (const allocation of result.allocations) {
 					const recipientId = allocation.recipient_pubkey;
-					const typeId = allocation.need_type_id;
+					const typeId = allocation.type_id;
 					if (!newAllocations[recipientId]) {
 						newAllocations[recipientId] = {};
 					}
-					newAllocations[recipientId][typeId] = 
+					newAllocations[recipientId][typeId] =
 						(newAllocations[recipientId][typeId] || 0) + allocation.quantity;
 				}
 			}
@@ -158,7 +158,7 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 			else if (onComplete) onComplete();
 		}
 	});
-	
+
 	if (!commitments || Object.keys(commitments).length === 0) {
 		return (
 			<Box flexDirection="column" padding={2}>
@@ -222,9 +222,9 @@ export const StepByStepDisplay: React.FC<StepByStepDisplayProps> = ({
 									<Text color="cyan">From {peopleNames[provider] || provider.substring(0, 8)}:</Text>
 									{result.allocations.map((alloc, idx) => (
 										<Text key={idx} marginLeft={2}>
-											→ {peopleNames[alloc.recipient_pubkey] || alloc.recipient_pubkey.substring(0, 8)}: 
+											→ {peopleNames[alloc.recipient_pubkey] || alloc.recipient_pubkey.substring(0, 8)}:
 											<Text color="green"> {alloc.quantity.toFixed(2)} </Text>
-											{alloc.need_type_id} ({alloc.tier})
+											{alloc.type_id} ({alloc.tier})
 										</Text>
 									))}
 								</Box>

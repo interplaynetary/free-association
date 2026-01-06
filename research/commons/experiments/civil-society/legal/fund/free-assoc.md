@@ -6,7 +6,7 @@ This requires more than mere abstract agreement or forced cooperation - it deman
 
 **_free-association_** essentially unifies the concepts of **_mutual-aid_**, **_mutual-recognition_**, **_mutual-fulfillment_**, and **capacity-distribution\_** in a single elegant and coherent framework that creates the mathematical foundations for a scalable gifting economy of co-creative abundance.
 
-You can interact with an interface implementing this logic at [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
+You can interact with an interface implementing this logic at [free.playnet.lol](https://free.playnet.lol/) (in active development) (p2p, distributed, running in the browser - no need for a download - for free)
 
 ### Here's how it works:
 

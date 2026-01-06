@@ -25,7 +25,7 @@
 }
 
 html, body {
-  width: 100vw;
+  width: 100%; /* Changed from 100vw to prevent horizontal scrolling */
   /* Enhanced viewport height support with multiple fallbacks */
   height: 100vh; /* Standard fallback */
   height: -webkit-fill-available; /* iOS Safari specific */

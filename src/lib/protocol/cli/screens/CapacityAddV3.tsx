@@ -14,7 +14,7 @@ interface CapacityAddProps {
 
 interface CapacityState {
 	id: string;
-	need_type_id: string;
+	type_id: string;
 	name: string;
 	emoji?: string;
 	quantity: number;
@@ -24,7 +24,7 @@ interface CapacityState {
 	location_type: string;
 }
 
-const NEED_TYPE_OPTIONS = [
+const type_OPTIONS = [
 	{ value: 'food', label: '🍎 Food' },
 	{ value: 'tutoring', label: '📚 Tutoring' },
 	{ value: 'housing', label: '🏠 Housing' },
@@ -58,14 +58,14 @@ export const CapacityAddV3: React.FC<CapacityAddProps> = ({ existingCapacity, on
 		// Type selection with emoji extraction
 		select<CapacityState>('type')
 			.label('What can you offer?')
-			.options(NEED_TYPE_OPTIONS)
+			.options(type_OPTIONS)
 			.update((state, value) => {
-				const option = NEED_TYPE_OPTIONS.find(o => o.value === value);
+				const option = type_OPTIONS.find(o => o.value === value);
 				const emoji = option?.label?.match(/^(\p{Emoji})/u)?.[1];
 				const label = option?.label?.replace(/^(\p{Emoji})\s*/u, '') || value;
 				return {
 					...state,
-					need_type_id: value,
+					type_id: value,
 					name: label,
 					emoji
 				};
@@ -129,7 +129,7 @@ export const CapacityAddV3: React.FC<CapacityAddProps> = ({ existingCapacity, on
 	// Initial state
 	const initialState: CapacityState = existingCapacity ? {
 		id: existingCapacity.id,
-		need_type_id: existingCapacity.need_type_id,
+		type_id: existingCapacity.type_id,
 		name: existingCapacity.name,
 		emoji: existingCapacity.emoji,
 		quantity: existingCapacity.quantity,
@@ -139,7 +139,7 @@ export const CapacityAddV3: React.FC<CapacityAddProps> = ({ existingCapacity, on
 		location_type: existingCapacity.location_type || 'flexible'
 	} : {
 		id: `cap-${Date.now()}`,
-		need_type_id: '',
+		type_id: '',
 		name: '',
 		quantity: 0,
 		unit: 'units',
@@ -181,7 +181,7 @@ interface ConfirmCapacityProps {
 
 const ConfirmCapacity: React.FC<ConfirmCapacityProps> = ({ capacity, isEditMode, onSubmit, onCancel }) => {
 	const scheduleDisplay = formatScheduleOneLine(capacity.availability_window, capacity.recurrence);
-	
+
 	return (
 		<Box flexDirection="column">
 			<Text bold color="green">✓ Review your capacity{isEditMode ? ' (editing)' : ''}:</Text>

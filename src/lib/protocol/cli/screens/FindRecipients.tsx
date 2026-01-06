@@ -66,7 +66,7 @@ export const FindRecipients: React.FC<FindRecipientsProps> = ({
 			// Check their needs
 			commitment.need_slots?.forEach(need => {
 				// Match by need type
-				if (need.need_type_id === capacity.need_type_id) {
+				if (need.type_id === capacity.type_id) {
 					// Calculate basic compatibility score (0-100)
 					let compatibility = 50; // Base score for type match
 

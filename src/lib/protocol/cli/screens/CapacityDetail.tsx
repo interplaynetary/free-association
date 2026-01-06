@@ -19,10 +19,10 @@ export const CapacityDetail: React.FC<CapacityDetailProps> = ({
 	onDelete
 }) => {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-	
+
 	useInput((input, key) => {
 		if (showDeleteConfirm) return; // Let ConfirmDialog handle input
-		
+
 		const lower = input.toLowerCase();
 		if (key.escape || lower === 'q') {
 			onBack();
@@ -32,7 +32,7 @@ export const CapacityDetail: React.FC<CapacityDetailProps> = ({
 			setShowDeleteConfirm(true);
 		}
 	});
-	
+
 	if (showDeleteConfirm) {
 		return (
 			<ConfirmDialog
@@ -65,7 +65,7 @@ export const CapacityDetail: React.FC<CapacityDetailProps> = ({
 					<Text bold underline>Basic Info:</Text>
 					<Box marginLeft={2} flexDirection="column">
 						<Text>ID: <Text dimColor>{capacity.id}</Text></Text>
-						<Text>Type: {capacity.emoji} {capacity.need_type_id}</Text>
+						<Text>Type: {capacity.emoji} {capacity.type_id}</Text>
 						<Text>
 							Quantity: <Text color="cyan">{capacity.quantity} {capacity.unit || 'units'}</Text>
 							{' '}
@@ -81,29 +81,29 @@ export const CapacityDetail: React.FC<CapacityDetailProps> = ({
 					</Box>
 				</Box>
 
-			{/* Schedule */}
-			{capacity.recurrence && (
-				<Box flexDirection="column" marginBottom={2}>
-					<Text bold underline>Schedule:</Text>
-					<Box marginLeft={2} flexDirection="column">
-						<Text>Pattern: {capacity.recurrence}</Text>
-						{formatScheduleForDisplay(capacity.availability_window).map((line, i) => (
-							<Box key={i}>
-								<Text>{line}</Text>
-							</Box>
-						))}
-						{capacity.start_date && (
-							<Text>Start: {capacity.start_date}</Text>
-						)}
-						{capacity.end_date && (
-							<Text>End: {capacity.end_date}</Text>
-						)}
-						{capacity.time_zone && (
-							<Text>Timezone: {capacity.time_zone}</Text>
-						)}
+				{/* Schedule */}
+				{capacity.recurrence && (
+					<Box flexDirection="column" marginBottom={2}>
+						<Text bold underline>Schedule:</Text>
+						<Box marginLeft={2} flexDirection="column">
+							<Text>Pattern: {capacity.recurrence}</Text>
+							{formatScheduleForDisplay(capacity.availability_window).map((line, i) => (
+								<Box key={i}>
+									<Text>{line}</Text>
+								</Box>
+							))}
+							{capacity.start_date && (
+								<Text>Start: {capacity.start_date}</Text>
+							)}
+							{capacity.end_date && (
+								<Text>End: {capacity.end_date}</Text>
+							)}
+							{capacity.time_zone && (
+								<Text>Timezone: {capacity.time_zone}</Text>
+							)}
+						</Box>
 					</Box>
-				</Box>
-			)}
+				)}
 
 				{/* Location */}
 				<Box flexDirection="column" marginBottom={2}>

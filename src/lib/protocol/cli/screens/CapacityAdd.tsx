@@ -27,7 +27,7 @@ const ConfirmStep: React.FC<ConfirmStepProps> = ({ capacity, isEditMode, onConfi
 	});
 
 	const scheduleDisplay = formatScheduleOneLine(capacity.availability_window, capacity.recurrence || null);
-	
+
 	return (
 		<Box flexDirection="column">
 			<Text bold color="green">✓ Review your capacity{isEditMode ? ' (editing)' : ''}:</Text>
@@ -52,7 +52,7 @@ interface CapacityAddProps {
 
 type Step = 'type' | 'name' | 'quantity' | 'unit' | 'recurrence' | 'schedule' | 'location' | 'confirm';
 
-const NEED_TYPE_OPTIONS: SelectOption[] = [
+const type_OPTIONS: SelectOption[] = [
 	{ value: 'food', label: 'Food', emoji: '🍎' },
 	{ value: 'tutoring', label: 'Tutoring', emoji: '📚' },
 	{ value: 'housing', label: 'Housing', emoji: '🏠' },
@@ -82,7 +82,7 @@ export const CapacityAdd: React.FC<CapacityAddProps> = ({ existingCapacity, onSa
 	const [capacity, setCapacity] = useState<Partial<AvailabilitySlot>>(existingCapacity || {
 		id: `cap-${Date.now()}`,
 		quantity: 0,
-		need_type_id: '',
+		type_id: '',
 		name: '',
 		unit: 'units'
 	});
@@ -127,10 +127,10 @@ export const CapacityAdd: React.FC<CapacityAddProps> = ({ existingCapacity, onSa
 	});
 
 	const handleTypeSelect = (typeId: string) => {
-		const option = NEED_TYPE_OPTIONS.find(o => o.value === typeId);
+		const option = type_OPTIONS.find(o => o.value === typeId);
 		setCapacity({
 			...capacity,
-			need_type_id: typeId,
+			type_id: typeId,
 			name: option?.label || typeId,
 			emoji: option?.emoji
 		});
@@ -219,83 +219,83 @@ export const CapacityAdd: React.FC<CapacityAddProps> = ({ existingCapacity, onSa
 
 			<Box flexDirection="column" paddingX={2}>
 				{renderBreadcrumb()}
-				
-			{step === 'type' && (
-				<Select
-					label="What can you offer?"
-					options={NEED_TYPE_OPTIONS}
-					defaultValue={capacity.need_type_id}
-					onSelect={handleTypeSelect}
-					onCancel={onCancel}
-				/>
-			)}
 
-			{step === 'quantity' && (
-				<Input
-					label="Quantity"
-					type="number"
-					placeholder="50"
-					defaultValue={capacity.quantity ? capacity.quantity.toString() : ''}
-					onSubmit={handleQuantitySubmit}
-					onCancel={onCancel}
-					validate={(value) => {
-						const num = parseFloat(value);
-						if (isNaN(num) || num <= 0) {
-							return 'Please enter a positive number';
-						}
-						return true;
-					}}
-				/>
-			)}
+				{step === 'type' && (
+					<Select
+						label="What can you offer?"
+						options={type_OPTIONS}
+						defaultValue={capacity.type_id}
+						onSelect={handleTypeSelect}
+						onCancel={onCancel}
+					/>
+				)}
 
-			{step === 'unit' && (
-				<UnitSelector
-					label="Unit of measurement"
-					defaultUnit={capacity.unit || 'units'}
-					commonUnits={['hours', 'units', 'kg', 'sessions', 'meals', 'days', 'people', 'items']}
-					onSelect={handleUnitSubmit}
-					onCancel={onCancel}
-				/>
-			)}
+				{step === 'quantity' && (
+					<Input
+						label="Quantity"
+						type="number"
+						placeholder="50"
+						defaultValue={capacity.quantity ? capacity.quantity.toString() : ''}
+						onSubmit={handleQuantitySubmit}
+						onCancel={onCancel}
+						validate={(value) => {
+							const num = parseFloat(value);
+							if (isNaN(num) || num <= 0) {
+								return 'Please enter a positive number';
+							}
+							return true;
+						}}
+					/>
+				)}
 
-		{step === 'recurrence' && (
-			<Select
-				label="When are you available?"
-				options={RECURRENCE_OPTIONS}
-				defaultValue={capacity.recurrence || 'none'}
-				onSelect={handleRecurrenceSelect}
-				onCancel={onCancel}
-			/>
-		)}
+				{step === 'unit' && (
+					<UnitSelector
+						label="Unit of measurement"
+						defaultUnit={capacity.unit || 'units'}
+						commonUnits={['hours', 'units', 'kg', 'sessions', 'meals', 'days', 'people', 'items']}
+						onSelect={handleUnitSubmit}
+						onCancel={onCancel}
+					/>
+				)}
 
-		{step === 'schedule' && capacity.recurrence && (
-			<TimeScheduleBuilder
-				recurrence={capacity.recurrence}
-				existingSchedule={capacity.availability_window}
-				onComplete={handleScheduleComplete}
-				onCancel={onCancel}
-			/>
-		)}
+				{step === 'recurrence' && (
+					<Select
+						label="When are you available?"
+						options={RECURRENCE_OPTIONS}
+						defaultValue={capacity.recurrence || 'none'}
+						onSelect={handleRecurrenceSelect}
+						onCancel={onCancel}
+					/>
+				)}
 
-		{step === 'location' && (
-				<Select
-					label="Where?"
-					options={LOCATION_OPTIONS}
-					defaultValue={capacity.location_type}
-					onSelect={handleLocationSelect}
-					onCancel={onCancel}
-				/>
-			)}
+				{step === 'schedule' && capacity.recurrence && (
+					<TimeScheduleBuilder
+						recurrence={capacity.recurrence}
+						existingSchedule={capacity.availability_window}
+						onComplete={handleScheduleComplete}
+						onCancel={onCancel}
+					/>
+				)}
 
-			{step === 'confirm' && (
-				<ConfirmStep
-					capacity={capacity}
-					isEditMode={isEditMode}
-					onConfirm={handleConfirm}
-					onCancel={onCancel}
-					onGoBack={goToPreviousStep}
-				/>
-			)}
+				{step === 'location' && (
+					<Select
+						label="Where?"
+						options={LOCATION_OPTIONS}
+						defaultValue={capacity.location_type}
+						onSelect={handleLocationSelect}
+						onCancel={onCancel}
+					/>
+				)}
+
+				{step === 'confirm' && (
+					<ConfirmStep
+						capacity={capacity}
+						isEditMode={isEditMode}
+						onConfirm={handleConfirm}
+						onCancel={onCancel}
+						onGoBack={goToPreviousStep}
+					/>
+				)}
 			</Box>
 		</Box>
 	);

@@ -71,8 +71,8 @@
       {/if}
       <div class="title-group">
         <h3 class="title" data-testid="slot-name">{slot.name}</h3>
-        {#if slot.need_type_id}
-          <span class="need-type-badge">{slot.need_type_id}</span>
+        {#if slot.type_id}
+          <span class="need-type-badge">{slot.type_id}</span>
         {/if}
       </div>
     </div>

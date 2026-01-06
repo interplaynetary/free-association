@@ -82,6 +82,47 @@ export function isAuthenticated(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PUBLIC NETWORK INITIALIZATION (Pre-Login)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize public network data subscriptions (read-only)
+ * 
+ * This enables browsing the network before logging in:
+ * - Users list (freely-associating-players)
+ * - Organizations list
+ * - Public recognition trees
+ * 
+ * These are READ-ONLY subscriptions. Writing/publishing still requires auth.
+ * Safe to call multiple times (idempotent).
+ */
+export async function initializePublicNetworkData(): Promise<void> {
+	console.log('[HOLSTER] 🌐 Initializing public network data (pre-login)...');
+
+	try {
+		// Initialize users list (read-only)
+		const usersModule = await import('$lib/network/users.svelte');
+		usersModule.initializeUsersList();
+		console.log('[HOLSTER] ✅ Users list initialized (read-only)');
+
+		// Initialize organizations list (read-only)
+		const orgsModule = await import('$lib/network/organizations.svelte');
+		orgsModule.initializeOrganizationsList();
+		orgsModule.initializeOrganizations();
+		console.log('[HOLSTER] ✅ Organizations initialized (read-only)');
+
+		// Initialize public trees (read-only)
+		const publicTreesModule = await import('$lib/network/public-trees.svelte');
+		publicTreesModule.initializePublicTrees();
+		console.log('[HOLSTER] ✅ Public trees initialized (read-only)');
+
+		console.log('[HOLSTER] 🌐 Public network data ready for browsing!');
+	} catch (error) {
+		console.error('[HOLSTER] ❌ Failed to initialize public network data:', error);
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // CORE AUTH OPERATIONS
 // ═══════════════════════════════════════════════════════════════════
 

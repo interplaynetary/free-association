@@ -928,14 +928,14 @@ Examples:
 
 **6. Multi-Dimensional Need Types (Per-Type Tracking)**
 
-Current system tracks everything per need_type_id:
+Current system tracks everything per type_id:
 - Damping factors: α_k per type k
 - Convergence: separate for each type
 - Allocations: A_total^k(i, t) per recipient per type
 
 ```typescript
 const PerTypeDampingHistoryEntrySchema = z.object({
-  need_type_id: z.string().min(1),
+  type_id: z.string().min(1),
   overAllocation: z.number(),
   timestamp: z.number().int().positive()
 });
@@ -953,7 +953,7 @@ const SlotFilterSchema = z.object({
   filter_id: z.string(),
   applies_to: z.enum(['capacity', 'need', 'both']),
   source_pubkeys: z.array(z.string()).optional(),
-  need_type_ids: z.array(z.string()).optional(),
+  type_ids: z.array(z.string()).optional(),
   must_include_me: z.boolean().optional(),
   location_max_distance_km: z.number().optional()
 });

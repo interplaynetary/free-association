@@ -259,14 +259,14 @@ export function updateCapacityCoordinates(
 	// Safety check: ensure capacity_slots exists and is an array
 	if (!capacity.capacity_slots || !Array.isArray(capacity.capacity_slots)) {
 		// If no slots exist, create a default slot with the coordinates
-		// V5: Slots require name and need_type_id
+		// V5: Slots require name and type_id
 		return {
 			...capacity,
 			capacity_slots: [
 				{
 					id: `slot-${Date.now()}`,
 					name: 'Default Slot',  // V5: Required field
-					need_type_id: 'default',  // V5: Required field
+					type_id: 'default',  // V5: Required field
 					quantity: 1,
 					longitude: lnglat.lng,
 					latitude: lnglat.lat,

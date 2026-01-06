@@ -26,14 +26,14 @@ export class TimeMatching {
     if (timezone === 'UTC' || timezone === 'Etc/UTC') {
       return timeStr;
     }
-    
+
     try {
       const [hours, minutes] = timeStr.split(':').map(Number);
       const [year, month, day] = dateStr.split('-').map(Number);
-      
+
       const refUTC = Date.UTC(year, month - 1, day, 12, 0, 0);
       const refDate = new Date(refUTC);
-      
+
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
         year: 'numeric',
@@ -43,27 +43,27 @@ export class TimeMatching {
         minute: '2-digit',
         hour12: false
       });
-      
+
       const parts = formatter.formatToParts(refDate);
       const tzHour = parseInt(parts.find(p => p.type === 'hour')!.value);
       const tzDay = parseInt(parts.find(p => p.type === 'day')!.value);
-      
+
       const offsetHours = 12 - tzHour;
       const dayShift = tzDay - day;
-      
+
       let utcHours = hours + offsetHours - (dayShift * 24);
       let utcMinutes = minutes;
-      
+
       while (utcHours < 0) utcHours += 24;
       while (utcHours >= 24) utcHours -= 24;
-      
+
       return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
     } catch (error) {
       console.warn('Timezone conversion failed:', error);
       return timeStr;
     }
   }
-  
+
   /**
    * Check if two time ranges overlap (both in UTC)
    */
@@ -72,14 +72,14 @@ export class TimeMatching {
     const end1 = range1.end_time;
     const start2 = range2.start_time;
     const end2 = range2.end_time;
-    
+
     if (end1 <= start2 || end2 <= start1) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   /**
    * Check if availability windows overlap
    */
@@ -92,7 +92,7 @@ export class TimeMatching {
   ): boolean {
     if (!window1 && !window2) return true;
     if (!window1 || !window2) return false;
-    
+
     // Check time ranges
     if (window1.time_ranges && window2.time_ranges) {
       for (const tr1 of window1.time_ranges) {
@@ -100,39 +100,39 @@ export class TimeMatching {
           start_time: this.convertTimeToUTC(tr1.start_time, referenceDate, tz1),
           end_time: this.convertTimeToUTC(tr1.end_time, referenceDate, tz1)
         };
-        
+
         for (const tr2 of window2.time_ranges) {
           const utc_tr2 = {
             start_time: this.convertTimeToUTC(tr2.start_time, referenceDate, tz2),
             end_time: this.convertTimeToUTC(tr2.end_time, referenceDate, tz2)
           };
-          
+
           if (this.timeRangesOverlap(utc_tr1, utc_tr2)) {
             return true;
           }
         }
       }
     }
-    
+
     // Check day schedules
     if (window1.day_schedules && window2.day_schedules) {
       for (const ds1 of window1.day_schedules) {
         for (const ds2 of window2.day_schedules) {
           const daysOverlap = ds1.days.some(d => ds2.days.includes(d));
           if (!daysOverlap) continue;
-          
+
           for (const tr1 of ds1.time_ranges) {
             const utc_tr1 = {
               start_time: this.convertTimeToUTC(tr1.start_time, referenceDate, tz1),
               end_time: this.convertTimeToUTC(tr1.end_time, referenceDate, tz1)
             };
-            
+
             for (const tr2 of ds2.time_ranges) {
               const utc_tr2 = {
                 start_time: this.convertTimeToUTC(tr2.start_time, referenceDate, tz2),
                 end_time: this.convertTimeToUTC(tr2.end_time, referenceDate, tz2)
               };
-              
+
               if (this.timeRangesOverlap(utc_tr1, utc_tr2)) {
                 return true;
               }
@@ -141,7 +141,7 @@ export class TimeMatching {
         }
       }
     }
-    
+
     return false;
   }
 }
@@ -169,7 +169,7 @@ export class LocationMatching {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
-  
+
   /**
    * Check if two locations are compatible
    */
@@ -180,15 +180,15 @@ export class LocationMatching {
   ): boolean {
     if (!loc1 && !loc2) return true;
     if (!loc1 || !loc2) return false;
-    
+
     // Both online = compatible
     if (loc1.type === 'online' && loc2.type === 'online') return true;
     if (loc1.type === 'online' || loc2.type === 'online') return true;
-    
+
     // Check city/country match
     if (loc1.city && loc2.city && loc1.city !== loc2.city) {
       if (loc1.latitude && loc1.longitude &&
-          loc2.latitude && loc2.longitude) {
+        loc2.latitude && loc2.longitude) {
         const distance = this.calculateDistance(
           loc1.latitude, loc1.longitude,
           loc2.latitude, loc2.longitude
@@ -197,21 +197,21 @@ export class LocationMatching {
       }
       return false;
     }
-    
+
     if (loc1.country && loc2.country && loc1.country !== loc2.country) {
       return false;
     }
-    
+
     // Check coordinate distance if available
     if (loc1.latitude && loc1.longitude &&
-        loc2.latitude && loc2.longitude) {
+      loc2.latitude && loc2.longitude) {
       const distance = this.calculateDistance(
         loc1.latitude, loc1.longitude,
         loc2.latitude, loc2.longitude
       );
       return distance <= maxDistanceKm;
     }
-    
+
     return true;
   }
 }
@@ -245,10 +245,10 @@ export class SlotMatching {
     maxDistanceKm: number = 50
   ): boolean {
     // Type must match
-    if (needSlot.need_type_id !== availSlot.need_type_id) {
+    if (needSlot.type_id !== availSlot.type_id) {
       return false;
     }
-    
+
     // Check location compatibility
     if (!LocationMatching.locationsCompatible(
       needSlot.location,
@@ -257,7 +257,7 @@ export class SlotMatching {
     )) {
       return false;
     }
-    
+
     // Check time compatibility
     const timeCompatible = TimeMatching.availabilityWindowsOverlap(
       needSlot.availability_window,
@@ -266,11 +266,11 @@ export class SlotMatching {
       availSlot.time_zone,
       needSlot.start_date || '2024-01-01'
     );
-    
+
     if (!timeCompatible) {
       return false;
     }
-    
+
     // Check compliance filter
     if (needSlot.filter_rule) {
       const providerData = { providerId: availSlot.participantId };
@@ -278,10 +278,10 @@ export class SlotMatching {
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   /**
    * Get compatible providers for a need slot
    */

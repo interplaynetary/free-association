@@ -97,8 +97,8 @@ export const currentUserNeedTypes: Readable<string[]> = derived(
 
         const typeIds = new Set<string>();
         for (const slot of $slots) {
-            if (slot.need_type_id) {
-                typeIds.add(slot.need_type_id);
+            if (slot.type_id) {
+                typeIds.add(slot.type_id);
             }
         }
 
@@ -118,8 +118,8 @@ export const currentUserCapacityTypes: Readable<string[]> = derived(
 
         const typeIds = new Set<string>();
         for (const slot of $slots) {
-            if (slot.need_type_id) {
-                typeIds.add(slot.need_type_id);
+            if (slot.type_id) {
+                typeIds.add(slot.type_id);
             }
         }
 

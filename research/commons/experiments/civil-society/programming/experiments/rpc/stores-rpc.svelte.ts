@@ -65,25 +65,25 @@ import { jsonEquals } from '$lib/utils/primitives/v-store-equality-checkers';
 export interface ICommitmentRpc {
 	/** Get current commitment snapshot */
 	getCommitment(): Promise<Commitment>;
-	
+
 	/** Get need slots only */
 	getNeedSlots(): Promise<NeedSlot[]>;
-	
+
 	/** Get capacity slots only */
 	getCapacitySlots(): Promise<AvailabilitySlot[]>;
-	
+
 	/** Get recognition weights */
 	getRecognitionWeights(): Promise<GlobalRecognitionWeights>;
-	
+
 	/** Get slot allocations (what I'm providing to others) */
 	getSlotAllocations(): Promise<SlotAllocationRecord[]>;
-	
+
 	/** Subscribe to commitment updates (callback gets called on changes) */
 	subscribeToUpdates(callback: (commitment: Commitment) => void): Promise<void>;
-	
+
 	/** Compute mutual recognition with another participant */
 	computeMutualRecognition(otherCommitment: RpcStub<ICommitmentRpc>): Promise<number>;
-	
+
 	/** Get public key */
 	getPubKey(): Promise<string>;
 }
@@ -96,13 +96,13 @@ export interface ICommitmentRpc {
 export interface IRecognitionTreeRpc {
 	/** Get current tree snapshot */
 	getTree(): Promise<RootNode>;
-	
+
 	/** Get all contributors from tree */
 	getContributors(): Promise<string[]>;
-	
+
 	/** Subscribe to tree updates */
 	subscribeToUpdates(callback: (tree: RootNode) => void): Promise<void>;
-	
+
 	/** Get recognition weights computed from tree */
 	getComputedWeights(): Promise<GlobalRecognitionWeights>;
 }
@@ -117,10 +117,10 @@ export interface IAllocationEngineRpc {
 	computeAllocations(
 		recipientCommitments: RpcStub<ICommitmentRpc>[]
 	): Promise<SlotAllocationRecord[]>;
-	
+
 	/** Get allocation for specific recipient */
 	getAllocationFor(recipientPubKey: string): Promise<SlotAllocationRecord[]>;
-	
+
 	/** Subscribe to allocation updates */
 	subscribeToAllocations(callback: (allocations: SlotAllocationRecord[]) => void): Promise<void>;
 }
@@ -133,10 +133,10 @@ export interface IAllocationEngineRpc {
 export interface INetworkCoordinatorRpc {
 	/** Register my commitment (returns stub for others to call) */
 	registerCommitment(commitment: RpcStub<ICommitmentRpc>): Promise<void>;
-	
+
 	/** Discover participants with compatible needs/capacity */
 	discoverParticipants(needTypeId: string): Promise<RpcStub<ICommitmentRpc>[]>;
-	
+
 	/** Get commitment stub by public key */
 	getCommitment(pubKey: string): Promise<RpcStub<ICommitmentRpc> | null>;
 }
@@ -157,7 +157,7 @@ export class CommitmentRpcTarget extends RevocableRpcTarget implements ICommitme
 	private myPubKey: string;
 	private commitmentStore: any; // Store type from primitives/store.svelte
 	private updateCallbacks: Set<(commitment: Commitment) => void> = new Set();
-	
+
 	constructor(
 		pubKey: string,
 		commitmentStore: any,
@@ -169,7 +169,7 @@ export class CommitmentRpcTarget extends RevocableRpcTarget implements ICommitme
 		super(options);
 		this.myPubKey = pubKey;
 		this.commitmentStore = commitmentStore;
-		
+
 		// Subscribe to local changes and notify RPC subscribers
 		this.commitmentStore.subscribe((commitment: Commitment | null) => {
 			if (commitment) {
@@ -179,7 +179,7 @@ export class CommitmentRpcTarget extends RevocableRpcTarget implements ICommitme
 			}
 		});
 	}
-	
+
 	async getCommitment(): Promise<Commitment> {
 		this.checkAccess('getCommitment');
 		const commitment = get(this.commitmentStore) as Commitment | null;
@@ -188,64 +188,64 @@ export class CommitmentRpcTarget extends RevocableRpcTarget implements ICommitme
 		}
 		return commitment;
 	}
-	
+
 	async getNeedSlots(): Promise<NeedSlot[]> {
 		this.checkAccess('getNeedSlots');
 		const commitment = await this.getCommitment();
 		return commitment.need_slots || [];
 	}
-	
+
 	async getCapacitySlots(): Promise<AvailabilitySlot[]> {
 		this.checkAccess('getCapacitySlots');
 		const commitment = await this.getCommitment();
 		return commitment.capacity_slots || [];
 	}
-	
+
 	async getRecognitionWeights(): Promise<GlobalRecognitionWeights> {
 		this.checkAccess('getRecognitionWeights');
 		const commitment = await this.getCommitment();
 		return commitment.global_recognition_weights || {};
 	}
-	
+
 	async getSlotAllocations(): Promise<SlotAllocationRecord[]> {
 		this.checkAccess('getSlotAllocations');
 		const commitment = await this.getCommitment();
 		return commitment.slot_allocations || [];
 	}
-	
+
 	async subscribeToUpdates(callback: (commitment: Commitment) => void): Promise<void> {
 		this.checkAccess('subscribeToUpdates');
-		
+
 		// Validate callback is a function (Cap'n Web passes it by reference)
 		if (typeof callback !== 'function') {
 			throw new Error('Callback must be a function');
 		}
-		
+
 		this.updateCallbacks.add(callback);
-		
+
 		// Send current state immediately
 		const commitment = get(this.commitmentStore) as Commitment | null;
 		if (commitment) {
 			callback(commitment);
 		}
 	}
-	
+
 	async computeMutualRecognition(otherCommitment: RpcStub<ICommitmentRpc>): Promise<number> {
 		this.checkAccess('computeMutualRecognition');
-		
+
 		// Get my recognition of them
 		const myWeights = await this.getRecognitionWeights();
 		const theirPubKey = await otherCommitment.getPubKey();
 		const myRecOfThem = myWeights[theirPubKey] || 0;
-		
+
 		// Get their recognition of me (via RPC!)
 		const theirWeights = await otherCommitment.getRecognitionWeights();
 		const theirRecOfMe = theirWeights[this.myPubKey] || 0;
-		
+
 		// Compute mutual recognition
 		return Math.min(myRecOfThem, theirRecOfMe);
 	}
-	
+
 	async getPubKey(): Promise<string> {
 		this.checkAccess('getPubKey');
 		return this.myPubKey;
@@ -262,7 +262,7 @@ export class CommitmentRpcTarget extends RevocableRpcTarget implements ICommitme
 export class RecognitionTreeRpcTarget extends RevocableRpcTarget implements IRecognitionTreeRpc {
 	private treeStore: any; // Store type from primitives/store.svelte
 	private updateCallbacks: Set<(tree: RootNode) => void> = new Set();
-	
+
 	constructor(
 		treeStore: any,
 		options?: {
@@ -272,7 +272,7 @@ export class RecognitionTreeRpcTarget extends RevocableRpcTarget implements IRec
 	) {
 		super(options);
 		this.treeStore = treeStore;
-		
+
 		// Subscribe to local changes
 		this.treeStore.subscribe((tree: RootNode | null) => {
 			if (tree) {
@@ -282,7 +282,7 @@ export class RecognitionTreeRpcTarget extends RevocableRpcTarget implements IRec
 			}
 		});
 	}
-	
+
 	async getTree(): Promise<RootNode> {
 		this.checkAccess('getTree');
 		const tree = get(this.treeStore) as RootNode | null;
@@ -291,23 +291,23 @@ export class RecognitionTreeRpcTarget extends RevocableRpcTarget implements IRec
 		}
 		return tree;
 	}
-	
+
 	async getContributors(): Promise<string[]> {
 		this.checkAccess('getContributors');
 		const tree = await this.getTree();
 		return getAllContributorsFromTree(tree);
 	}
-	
+
 	async subscribeToUpdates(callback: (tree: RootNode) => void): Promise<void> {
 		this.checkAccess('subscribeToUpdates');
 		this.updateCallbacks.add(callback);
-		
+
 		const tree = get(this.treeStore) as RootNode | null;
 		if (tree) {
 			callback(tree);
 		}
 	}
-	
+
 	async getComputedWeights(): Promise<GlobalRecognitionWeights> {
 		this.checkAccess('getComputedWeights');
 		const tree = await this.getTree();
@@ -366,7 +366,7 @@ export const myNeedTypesStore: Readable<string[]> = derived(
 		if (!$needSlots) return [];
 		const typeIds = new Set<string>();
 		for (const slot of $needSlots) {
-			if (slot.need_type_id) typeIds.add(slot.need_type_id);
+			if (slot.type_id) typeIds.add(slot.type_id);
 		}
 		return Array.from(typeIds).sort();
 	}
@@ -379,7 +379,7 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 		if (!$capacitySlots) return [];
 		const typeIds = new Set<string>();
 		for (const slot of $capacitySlots) {
-			if (slot.need_type_id) typeIds.add(slot.need_type_id);
+			if (slot.type_id) typeIds.add(slot.type_id);
 		}
 		return Array.from(typeIds).sort();
 	}
@@ -399,17 +399,17 @@ export class RpcConnectionManager {
 	private connections = new Map<string, RpcStub<ICommitmentRpc>>();
 	private myCommitmentTarget: CommitmentRpcTarget | null = null;
 	private myTreeTarget: RecognitionTreeRpcTarget | null = null;
-	
+
 	/**
 	 * Initialize my RPC targets (so others can call me)
 	 */
 	initializeMyTargets(pubKey: string) {
 		this.myCommitmentTarget = new CommitmentRpcTarget(pubKey, myCommitmentStore);
 		this.myTreeTarget = new RecognitionTreeRpcTarget(myRecognitionTreeStore);
-		
+
 		console.log('[RPC-MANAGER] Initialized RPC targets for', pubKey.slice(0, 20));
 	}
-	
+
 	/**
 	 * Connect to a participant's commitment via RPC
 	 * 
@@ -420,28 +420,28 @@ export class RpcConnectionManager {
 		if (this.connections.has(pubKey)) {
 			return this.connections.get(pubKey)!;
 		}
-		
+
 		console.log(`[RPC-MANAGER] Connecting to ${pubKey.slice(0, 20)} at ${wsUrl}`);
-		
+
 		// Establish symmetric WebSocket RPC session
 		// Both sides can call each other!
 		const session = newWebSocketRpcSession<ICommitmentRpc>(wsUrl);
-		
+
 		this.connections.set(pubKey, session);
-		
+
 		// Subscribe to their updates (bidirectional calling!)
 		if (this.myCommitmentTarget) {
 			await session.subscribeToUpdates(async (theirCommitment) => {
 				console.log(`[RPC-MANAGER] Received update from ${pubKey.slice(0, 20)}`);
-				
+
 				// Update local cache (integrates with existing system)
 				networkCommitments.update(pubKey, theirCommitment);
 			});
 		}
-		
+
 		return session;
 	}
-	
+
 	/**
 	 * Get my commitment RPC target (for exposing to others)
 	 */
@@ -451,7 +451,7 @@ export class RpcConnectionManager {
 		}
 		return this.myCommitmentTarget;
 	}
-	
+
 	/**
 	 * Get my tree RPC target (for transparency)
 	 */
@@ -461,14 +461,14 @@ export class RpcConnectionManager {
 		}
 		return this.myTreeTarget;
 	}
-	
+
 	/**
 	 * Get connection stub for a participant
 	 */
 	getConnection(pubKey: string): RpcStub<ICommitmentRpc> | undefined {
 		return this.connections.get(pubKey);
 	}
-	
+
 	/**
 	 * Disconnect from a participant
 	 */
@@ -476,7 +476,7 @@ export class RpcConnectionManager {
 		this.connections.delete(pubKey);
 		console.log(`[RPC-MANAGER] Disconnected from ${pubKey.slice(0, 20)}`);
 	}
-	
+
 	/**
 	 * Disconnect from all participants
 	 */
@@ -549,26 +549,26 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 	[holsterUserPub, myCommitmentStore],
 	([$myPub, $myCommitment]) => {
 		if (!$myPub || !$myCommitment) return {};
-		
+
 		const myWeights = $myCommitment.global_recognition_weights || {};
 		const othersRecCache = $myCommitment.others_recognition_of_me || {};
 		const mutualRec: GlobalRecognitionWeights = {};
-		
+
 		for (const theirPub in myWeights) {
 			const myRecOfThem = myWeights[theirPub] || 0;
-			
+
 			// Self-recognition
 			if (theirPub === $myPub) {
 				mutualRec[theirPub] = myRecOfThem;
 				continue;
 			}
-			
+
 			// Mutual recognition
 			const theirWeights = othersRecCache[theirPub];
 			const theirRecOfMe = theirWeights?.[$myPub] || 0;
 			mutualRec[theirPub] = Math.min(myRecOfThem, theirRecOfMe);
 		}
-		
+
 		return mutualRec;
 	}
 );
@@ -579,26 +579,26 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
 
 export function initializeAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-RPC] Initializing stores...');
-	
+
 	myRecognitionTreeStore.initialize();
 	myCommitmentStore.initialize();
-	
+
 	// Initialize RPC targets
 	const myPub = get(holsterUserPub);
 	if (myPub) {
 		rpcManager.initializeMyTargets(myPub);
 	}
-	
+
 	console.log('[ALLOCATION-HOLSTER-RPC] Stores initialized with RPC support');
 }
 
 export async function cleanupAllocationStores() {
 	console.log('[ALLOCATION-HOLSTER-RPC] Cleaning up stores...');
-	
+
 	rpcManager.disconnectAll();
 	await myRecognitionTreeStore.cleanup();
 	await myCommitmentStore.cleanup();
-	
+
 	console.log('[ALLOCATION-HOLSTER-RPC] Stores cleaned up');
 }
 
@@ -617,17 +617,17 @@ export async function subscribeToParticipantViaRpc(
 	wsUrl: string
 ): Promise<void> {
 	console.log(`[RPC-SUB] Subscribing to ${pubKey.slice(0, 20)} via RPC`);
-	
+
 	// Connect via RPC (symmetric WebSocket session)
 	const commitmentStub = await rpcManager.connectToParticipant(pubKey, wsUrl);
-	
+
 	// Get initial commitment
 	const commitment = await commitmentStub.getCommitment();
 	console.log(`[RPC-SUB] Received initial commitment from ${pubKey.slice(0, 20)}`);
-	
+
 	// Update local cache
 	networkCommitments.update(pubKey, commitment);
-	
+
 	// RPC callback will handle future updates automatically
 }
 
@@ -642,11 +642,11 @@ export async function computeMutualRecognitionViaRpc(
 ): Promise<number> {
 	const myCommitmentTarget = rpcManager.getMyCommitmentTarget();
 	const theirCommitmentStub = rpcManager.getConnection(theirPubKey);
-	
+
 	if (!theirCommitmentStub) {
 		throw new Error(`Not connected to ${theirPubKey}`);
 	}
-	
+
 	// Call my local method with their RPC stub as parameter
 	// This demonstrates object capability passing!
 	return await myCommitmentTarget.computeMutualRecognition(theirCommitmentStub);
@@ -660,7 +660,7 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
-	
+
 	const updated: Commitment = {
 		need_slots: needSlots,
 		capacity_slots: current?.capacity_slots || [],
@@ -670,7 +670,7 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
-	
+
 	myCommitmentStore.set(updated);
 }
 
@@ -678,7 +678,7 @@ export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 	const current = get(myCommitmentStore);
 	const recognitionWeights = get(myRecognitionWeights);
 	const mergedITC = getMergedITCStamp(current?.itcStamp);
-	
+
 	const updated: Commitment = {
 		need_slots: current?.need_slots || [],
 		capacity_slots: capacitySlots,
@@ -688,20 +688,20 @@ export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
-	
+
 	myCommitmentStore.set(updated);
 }
 
 function getMergedITCStamp(localITC?: ITCStamp | null): ITCStamp {
 	let mergedITC: ITCStamp = localITC || itcSeed();
-	
+
 	const networkCommitMap = networkCommitments.get();
 	for (const [, versionedEntity] of networkCommitMap.entries()) {
 		if (versionedEntity.metadata.itcStamp) {
 			mergedITC = itcJoin(mergedITC, versionedEntity.metadata.itcStamp);
 		}
 	}
-	
+
 	return itcEvent(mergedITC);
 }
 
@@ -753,7 +753,7 @@ export class ProtocolAuth extends RpcTarget {
 		if (!this.verifySignature(pubKey, signature)) {
 			throw new Error('Invalid signature');
 		}
-		
+
 		// Return a NEW revocable capability (auto-expires in 24h)
 		return new CommitmentRpcTarget(
 			get(holsterUserPub) || '',
@@ -764,7 +764,7 @@ export class ProtocolAuth extends RpcTarget {
 			}
 		) as any;
 	}
-	
+
 	/**
 	 * Login with read-only access (more restrictive)
 	 */
@@ -772,7 +772,7 @@ export class ProtocolAuth extends RpcTarget {
 		if (!this.verifySignature(pubKey, signature)) {
 			throw new Error('Invalid signature');
 		}
-		
+
 		// Return capability with shorter expiration
 		return new CommitmentRpcTarget(
 			get(holsterUserPub) || '',
@@ -783,7 +783,7 @@ export class ProtocolAuth extends RpcTarget {
 			}
 		) as any;
 	}
-	
+
 	/**
 	 * Get recognition tree capability (optional transparency)
 	 */
@@ -797,7 +797,7 @@ export class ProtocolAuth extends RpcTarget {
 		if (!this.verifySignature(pubKey, signature)) {
 			throw new Error('Invalid signature');
 		}
-		
+
 		return {
 			commitment: new CommitmentRpcTarget(
 				get(holsterUserPub) || '',
@@ -816,7 +816,7 @@ export class ProtocolAuth extends RpcTarget {
 			) as any
 		};
 	}
-	
+
 	private verifySignature(pubKey: string, signature: string): boolean {
 		// TODO: Implement actual signature verification
 		// For now, accept all (demo mode)
@@ -855,7 +855,7 @@ export async function quickGetCommitment(
 	signature: string
 ) {
 	const batch = newHttpBatchRpcSession<ProtocolAuth>(url);
-	
+
 	// Promise pipelining - all in ONE HTTP request!
 	const sessionPromise = batch.login(pubKey, signature);
 	return await (sessionPromise as any).commitment();
@@ -883,7 +883,7 @@ export async function quickGetNeeds(
 	signature: string
 ): Promise<NeedSlot[]> {
 	const batch = newHttpBatchRpcSession<ProtocolAuth>(url);
-	
+
 	// Promise pipelining - no await on sessionPromise!
 	const sessionPromise = batch.login(pubKey, signature);
 	const commitmentPromise = (sessionPromise as any).commitment();
@@ -915,17 +915,17 @@ export async function quickBatchFetch(
 	signature: string
 ): Promise<{ needs: NeedSlot[]; capacity: AvailabilitySlot[] }> {
 	const batch = newHttpBatchRpcSession<ProtocolAuth>(url);
-	
+
 	// Start both chains in parallel
 	const sessionPromise = batch.login(pubKey, signature);
 	const commitmentPromise = (sessionPromise as any).commitment();
-	
+
 	// Fetch both in parallel - still ONE HTTP request!
 	const [needs, capacity] = await Promise.all([
 		(commitmentPromise as any).needs(),
 		(commitmentPromise as any).capacity()
 	]);
-	
+
 	return { needs, capacity };
 }
 

@@ -66,7 +66,7 @@ export const FindProviders: React.FC<FindProvidersProps> = ({
 			// Check their capacities
 			commitment.availability_slots?.forEach(capacity => {
 				// Match by need type
-				if (capacity.need_type_id === need.need_type_id) {
+				if (capacity.type_id === need.type_id) {
 					// Calculate basic compatibility score (0-100)
 					let compatibility = 50; // Base score for type match
 

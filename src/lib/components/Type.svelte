@@ -45,7 +45,7 @@
 	type Slot = NeedSlot | AvailabilitySlot;
 	
 	interface Props {
-		/** The need_type_id to display slots for */
+		/** The type_id to display slots for */
 		typeId: string;
 		/** Array of slots (need or capacity) */
 		slots: Slot[] | null | undefined;
@@ -82,7 +82,7 @@
 	
 	// Filter slots to only this type
 	const filteredSlots = $derived(
-		slots?.filter(slot => slot.need_type_id === typeId) || []
+		slots?.filter(slot => slot.type_id === typeId) || []
 	);
 	
 	// Check if we should show this section

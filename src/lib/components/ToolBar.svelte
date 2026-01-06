@@ -627,7 +627,7 @@
 				{
 					id: slotId,
 					name: '',  // V5: Required field (user will fill this in)
-					need_type_id: 'default',  // V5: Required field
+					type_id: 'default',  // V5: Required field
 					quantity: 1,
 					emoji: '',
 					unit: '',

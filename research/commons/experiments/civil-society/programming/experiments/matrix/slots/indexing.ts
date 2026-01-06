@@ -16,19 +16,19 @@ export class SpaceTimeIndex {
   private byType: Map<string, Set<string>> = new Map();
   private byLocation: Map<string, Set<string>> = new Map();
   private byTime: Map<string, Set<string>> = new Map();
-  
+
   /**
    * Index a slot
    */
   addSlot(slot: NeedSlot | AvailabilitySlot): void {
     const participantId = slot.participantId;
-    
+
     // Index by type
-    if (!this.byType.has(slot.need_type_id)) {
-      this.byType.set(slot.need_type_id, new Set());
+    if (!this.byType.has(slot.type_id)) {
+      this.byType.set(slot.type_id, new Set());
     }
-    this.byType.get(slot.need_type_id)!.add(participantId);
-    
+    this.byType.get(slot.type_id)!.add(participantId);
+
     // Index by location bucket
     if (slot.location) {
       const locBucket = this.getLocationBucket(slot.location);
@@ -37,7 +37,7 @@ export class SpaceTimeIndex {
       }
       this.byLocation.get(locBucket)!.add(participantId);
     }
-    
+
     // Index by time bucket
     const timeBucket = this.getTimeBucket(slot);
     if (!this.byTime.has(timeBucket)) {
@@ -45,17 +45,17 @@ export class SpaceTimeIndex {
     }
     this.byTime.get(timeBucket)!.add(participantId);
   }
-  
+
   /**
    * Find participants matching a need
    */
   findMatching(need: NeedSlot): Set<string> {
     // Get candidates by type (most restrictive filter)
-    const typeMatches = this.byType.get(need.need_type_id);
+    const typeMatches = this.byType.get(need.type_id);
     if (!typeMatches || typeMatches.size === 0) {
       return new Set();
     }
-    
+
     // Further filter by location if specified
     if (need.location) {
       const locBucket = this.getLocationBucket(need.location);
@@ -65,10 +65,10 @@ export class SpaceTimeIndex {
         return new Set([...typeMatches].filter(id => locMatches.has(id)));
       }
     }
-    
+
     return typeMatches;
   }
-  
+
   /**
    * Get location bucket for indexing
    */
@@ -84,7 +84,7 @@ export class SpaceTimeIndex {
     }
     return 'unknown';
   }
-  
+
   /**
    * Get time bucket for indexing
    */
@@ -100,7 +100,7 @@ export class SpaceTimeIndex {
     }
     return 'anytime';
   }
-  
+
   /**
    * Clear index
    */
@@ -109,7 +109,7 @@ export class SpaceTimeIndex {
     this.byLocation.clear();
     this.byTime.clear();
   }
-  
+
   /**
    * Get statistics
    */
@@ -123,7 +123,7 @@ export class SpaceTimeIndex {
     for (const set of this.byType.values()) {
       totalParticipants += set.size;
     }
-    
+
     return {
       totalTypes: this.byType.size,
       totalLocations: this.byLocation.size,

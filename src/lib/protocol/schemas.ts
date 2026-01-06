@@ -348,15 +348,16 @@ export type AvailabilityWindow = z.infer<typeof AvailabilityWindowSchema>;
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Availability Slot - Multi-Dimensional (Pure)
- * Each slot MUST specify which need type k it provides
+ * Base Slot Schema - Common fields for both capacity and need slots
+ * 
+ * This schema contains all fields shared between AvailabilitySlot and NeedSlot.
+ * Using Zod v4's composition features to eliminate duplication.
  */
-export const AvailabilitySlotSchema = z.object({
+export const BaseSlotSchema = z.object({
+	// Core identification
 	id: z.string().min(1),
 	quantity: z.number().gte(0),
-
-	// REQUIRED: Type specification for multi-dimensional framework
-	need_type_id: z.string().min(1), // k in C_j^k(t)
+	type_id: z.string().min(1), // k in C_j^k(t) or N_i^k(t)
 
 	// Divisibility constraints (prevents over-fragmentation)
 	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
@@ -405,8 +406,8 @@ export const AvailabilitySlotSchema = z.object({
 	mutual_agreement_required: z.boolean().default(false).optional(),
 	priority: z.number().optional(),
 
-	// Collective capacity: Who can provide this (pubkeys or org_ids)
-	// Empty/undefined = just me, populated = collective effort
+	// Collective capacity/need: Who can provide/needs this (pubkeys or org_ids)
+	// Empty/undefined = just me, populated = collective effort/need
 	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
 	members: z.array(z.string()).optional(),
 
@@ -416,80 +417,29 @@ export const AvailabilitySlotSchema = z.object({
 	// Same structure as global_recognition_weights: Record<pubkey, priority>
 	priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional()
 });
+
+export type BaseSlot = z.infer<typeof BaseSlotSchema>;
+
+/**
+ * Availability Slot - Multi-Dimensional (Pure)
+ * Each slot MUST specify which need type k it provides
+ * 
+ * Extends BaseSlotSchema with all common slot fields.
+ */
+export const AvailabilitySlotSchema = BaseSlotSchema;
 
 export type AvailabilitySlot = z.infer<typeof AvailabilitySlotSchema>;
 
 /**
  * Need Slot - Multi-Dimensional (Pure)
  * Each slot MUST specify which need type k it requests
+ * 
+ * Extends BaseSlotSchema with all common slot fields.
  */
-export const NeedSlotSchema = z.object({
-	id: z.string().min(1),
-	quantity: z.number().gte(0),
-
-	// REQUIRED: Type specification for multi-dimensional framework
-	need_type_id: z.string().min(1), // k in N_i^k(t)
-
-	// Divisibility constraints (prevents over-fragmentation)
-	max_natural_div: z.number().gte(1).optional(), // Max natural divisions (e.g., can't divide a person)
-	min_allocation_percentage: PercentageSchema.optional(), // Min % per allocation (e.g., don't accept less than 10%)
-
-	// Resource metadata
-	name: z.string(),
-	emoji: z.string().optional(),
-	unit: z.string().optional(),
-	description: z.string().optional(),
-	resource_type: z.string().optional(),
-	filter_rule: z.any().optional(),
-	hidden_until_request_accepted: z.boolean().optional(),
-
-	// Timing constraints
-	advance_notice_hours: z.number().gte(0).optional(),
-	booking_window_hours: z.number().gte(0).optional(),
-
-	// Recurrence pattern
-	recurrence: z.enum(['daily', 'weekly', 'monthly', 'yearly']).nullable().optional(),
-
-	// Date range (for one-time needs or to bound recurring patterns)
-	start_date: z.string().nullable().optional(),  // ISO date string
-	end_date: z.string().nullable().optional(),    // ISO date string (for recurring, when pattern ends)
-
-	// Timezone
-	time_zone: z.string().optional(),
-
-	// Structured availability window (REQUIRED for recurring, optional for one-time)
-	// Defines exactly when the need occurs during each recurrence period
-	availability_window: AvailabilityWindowSchema.optional(),
-
-	// Location
-	location_type: z.string().optional(),
-	longitude: z.number().min(-180).max(180).optional(),
-	latitude: z.number().min(-90).max(90).optional(),
-	street_address: z.string().optional(),
-	city: z.string().optional(),
-	state_province: z.string().optional(),
-	postal_code: z.string().optional(),
-	country: z.string().optional(),
-	online_link: z.string().url().or(z.string().length(0)).optional(),
-
-	// Hierarchical & coordination
-	parent_slot_id: z.string().optional(),
-	mutual_agreement_required: z.boolean().default(false).optional(),
-	priority: z.number().optional(),
-
-	// Collective need: Who needs this (pubkeys or org_ids)
-	// Empty/undefined = just me, populated = collective need
-	// Supports org_ids (e.g., "org_abc123") which resolve to member lists recursively
-	members: z.array(z.string()).optional(),
-
-	// Priority distribution for slot-based alloc (Specific to this slot)
-	// Person-to-person recognition weights specific to THIS slot
-	// Overrides global_recognition_weights for this slot if specified
-	// Same structure as global_recognition_weights: Record<pubkey, priority>
-	priority_distribution: z.record(z.string(), z.number().min(0).max(1)).optional()
-});
+export const NeedSlotSchema = BaseSlotSchema;
 
 export type NeedSlot = z.infer<typeof NeedSlotSchema>;
+
 
 // ═══════════════════════════════════════════════════════════════════
 // GLOBAL RECOGNITION (PURE MODEL)
@@ -520,38 +470,7 @@ export const GlobalRecognitionWeightsSchema = z.record(
 
 export type GlobalRecognitionWeights = z.infer<typeof GlobalRecognitionWeightsSchema>;
 
-// ═══════════════════════════════════════════════════════════════════
-// MULTI-DIMENSIONAL DAMPING
-// ═══════════════════════════════════════════════════════════════════
 
-/**
- * Per-Type Damping History Entry (E12')
- * H_i^k(t) = [h_i^k(t-2), h_i^k(t-1), h_i^k(t)]
- */
-export const PerTypeDampingHistoryEntrySchema = z.object({
-	need_type_id: z.string().min(1),
-	overAllocation: z.number(),
-	timestamp: z.number().int().positive()
-});
-
-export type PerTypeDampingHistoryEntry = z.infer<typeof PerTypeDampingHistoryEntrySchema>;
-
-/**
- * Multi-Dimensional Damping State
- * Tracks damping per need type
- */
-export const MultiDimensionalDampingSchema = z.object({
-	// Per-type damping factors (α_k)
-	damping_factors: z.record(z.string(), z.number().min(0).max(1)),
-
-	// Per-type damping history
-	damping_history: z.record(z.string(), z.array(PerTypeDampingHistoryEntrySchema)),
-
-	// Global damping factor (backward compatibility)
-	global_damping_factor: z.number().min(0).max(1)
-});
-
-export type MultiDimensionalDamping = z.infer<typeof MultiDimensionalDampingSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // N-TIER DISTRIBUTION SUPPORT
@@ -601,7 +520,7 @@ export const SlotAllocationRecordSchema = z.object({
 	quantity: z.number().nonnegative(),
 
 	// MULTI-DIMENSIONAL: Type information
-	need_type_id: z.string().min(1),
+	type_id: z.string().min(1),
 
 	// Compatibility
 	time_compatible: z.boolean(),
@@ -612,6 +531,10 @@ export const SlotAllocationRecordSchema = z.object({
 
 	// Deprecated (Keep for backward compatibility if needed, but making optional/nullable)
 	tier: z.union([z.number().int().nonnegative(), z.string()]).optional(),
+
+	// DISTRIBUTED IPF: Priority Score (K_pr)
+	// Persisted so recipients can reconstruct accurate Total Seed values
+	seed_value: z.number().nonnegative().optional()
 });
 
 export type SlotAllocationRecord = z.infer<typeof SlotAllocationRecordSchema>;
@@ -624,7 +547,7 @@ export type SlotAllocationRecord = z.infer<typeof SlotAllocationRecordSchema>;
  * Commitment - Pure Global Recognition Model
  *
  * v5 Implementation:
- * - All slots have required need_type_id for type-specific allocation
+ * - All slots have required type_id for type-specific allocation
  * - Global recognition: MR(A, B) = min(R_A(B), R_B(A)) - same for all types
  * - Type preferences expressed through recognition tree structure (protocol.ts)
  * - Per-type damping factors and history
@@ -654,33 +577,37 @@ export const CommitmentSchema = z.object({
 
 	// Distance-based allocation tracking
 	// Total allocations received FROM EACH PROVIDER
-	// Format: { need_type_id: { provider_pubkey: quantity } }
+	// Format: { type_id: { provider_pubkey: quantity } }
 	// This allows providers to see what the recipient is receiving from OTHER providers
 	// without needing to subscribe to those providers' commitments
 	total_allocated: z.record(
-		z.string(), // need_type_id
+		z.string(), // type_id
 		z.record(z.string(), z.number().nonnegative()) // provider_pubkey → quantity
 	).optional(),
 
 	// Distance from need (can be negative for over-allocation)
 	// Formula: distance = declared_need - sum(total_allocated[type_id].values())
 	// Positive = under-allocated, Negative = over-allocated, Zero = perfect
-	// Format: { need_type_id: distance }
+	// Format: { type_id: distance }
 	distance_from_need: z.record(z.string(), z.number()).optional(),
 
 	// Causality tracking (ITC)
 	itcStamp: z.any(), // ITCStampSchema
 	timestamp: z.number().int().positive(),
 
-	// Per-type adaptive damping (α_k)
-	multi_dimensional_damping: MultiDimensionalDampingSchema.nullable().optional(),
-
 	// DISTRIBUTED IPF: Constraint Factors (y_r)
 	// Published by recipients to signal saturation level to providers.
 	// Map: need_slot_id -> scaling_factor (0.0 to 1.0)
 	// y_r = 1.0 (Under-saturated, send full proposal)
 	// y_r < 1.0 (Over-saturated, scale down proposal)
-	constraint_scaling_factors: z.record(z.string(), z.number().min(0).max(1)).optional()
+	constraint_scaling_factors: z.record(z.string(), z.number().min(0).max(1)).optional(),
+
+	// DISTRIBUTED IPF: Competition Metrics (total_seed)
+	// Published by recipients to signal competition level to providers.
+	// Map: need_slot_id -> total_seed (sum of all K_pr from proposals)
+	// Allows providers to calculate fair share: (my_K_pr / total_seed) × need
+	// Enables priority-aware allocation without provider-to-provider subscriptions
+	total_seed_by_need: z.record(z.string(), z.number().nonnegative()).optional()
 });
 
 export type Commitment = z.infer<typeof CommitmentSchema>;
@@ -694,51 +621,13 @@ export type Commitment = z.infer<typeof CommitmentSchema>;
  * A_total^k(i, t) for each recipient i and type k
  */
 export const PerTypeAllocationTotalsSchema = z.record(
-	z.string(), // need_type_id
+	z.string(), // type_id
 	z.record(z.string(), z.number().nonnegative()) // pubKey -> total received
 );
 
 export type PerTypeAllocationTotals = z.infer<typeof PerTypeAllocationTotalsSchema>;
 
-/**
- * Two-Tier Allocation State - Pure Multi-Dimensional
- * 
- * v4 Pure Implementation:
- * - Per-type allocation totals (A_total^k(i, t))
- * - Per-type convergence tracking
- * - Frobenius norm metrics
- * - No scalar fallbacks
- */
-export const TwoTierAllocationStateSchema = z.object({
-	// Slot-level allocations with type tracking
-	slot_denominators: z.record(
-		z.string(),
-		z.object({
-			mutual: z.number().nonnegative(),
-			nonMutual: z.number().nonnegative(),
-			need_type_id: z.string().min(1) // Required: type per slot
-		})
-	),
-	slot_allocations: z.array(SlotAllocationRecordSchema),
 
-	// Per-type allocation totals (A_total^k(i, t))
-	recipient_totals_by_type: PerTypeAllocationTotalsSchema,
-
-	// Per-type convergence tracking
-	converged: z.boolean().optional(),
-	convergence_by_type: z.record(z.string(), z.boolean()).optional(),
-
-	convergenceHistory: z.array(z.object({
-		denominatorDelta: z.number(),
-		timestamp: z.number().int().positive()
-	})).optional(),
-
-	// Causality tracking (ITC)
-	itcStamp: z.any().optional(), // ITCStampSchema
-	timestamp: z.number().int().positive()
-});
-
-export type TwoTierAllocationState = z.infer<typeof TwoTierAllocationStateSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-DIMENSIONAL STATE VECTORS
@@ -749,7 +638,7 @@ export type TwoTierAllocationState = z.infer<typeof TwoTierAllocationStateSchema
  * N_i^k(t) ∈ [0, N_i^k_max]
  */
 export const PerTypeNeedStateSchema = z.object({
-	need_type_id: z.string().min(1),
+	type_id: z.string().min(1),
 	residualNeed: z.number().nonnegative(),    // N_i^k(t)
 	maxNeed: z.number().nonnegative(),          // N_i^k_max
 	lastAllocationReceived: z.number().nonnegative().default(0)
@@ -757,130 +646,9 @@ export const PerTypeNeedStateSchema = z.object({
 
 export type PerTypeNeedState = z.infer<typeof PerTypeNeedStateSchema>;
 
-/**
- * Multi-Dimensional Need State Vector (D3')
- * N⃗_i(t) = [N_i^1(t), N_i^2(t), ..., N_i^m(t)]^T
- */
-export const MultiDimensionalNeedStateSchema = z.object({
-	pubKey: z.string().min(1),
-	needsByType: z.record(z.string(), PerTypeNeedStateSchema), // need_type_id -> state
-	timestamp: z.number().int().positive(),
 
-	// Computed metrics
-	totalResidualNeed: z.number().nonnegative().optional(),    // ||N⃗_i(t)||
-	totalMaxNeed: z.number().nonnegative().optional()          // ||N⃗_i^max||
-});
 
-export type MultiDimensionalNeedState = z.infer<typeof MultiDimensionalNeedStateSchema>;
 
-/**
- * Capacity State Per Type (D4')
- * C_j^k(t) ∈ [0, C_j^k_max]
- */
-export const PerTypeCapacityStateSchema = z.object({
-	need_type_id: z.string().min(1),
-	availableCapacity: z.number().nonnegative(),   // C_j^k(t)
-	maxCapacity: z.number().nonnegative(),          // C_j^k_max
-	lastAllocationGiven: z.number().nonnegative().default(0)
-});
-
-export type PerTypeCapacityState = z.infer<typeof PerTypeCapacityStateSchema>;
-
-/**
- * Multi-Dimensional Capacity State Vector (D4')
- * C⃗_j(t) = [C_j^1(t), C_j^2(t), ..., C_j^m(t)]^T
- */
-export const MultiDimensionalCapacityStateSchema = z.object({
-	pubKey: z.string().min(1),
-	capacitiesByType: z.record(z.string(), PerTypeCapacityStateSchema), // need_type_id -> state
-	timestamp: z.number().int().positive(),
-
-	// Computed metrics
-	totalAvailableCapacity: z.number().nonnegative().optional(), // ||C⃗_j(t)||
-	totalMaxCapacity: z.number().nonnegative().optional()        // ||C⃗_j^max||
-});
-
-export type MultiDimensionalCapacityState = z.infer<typeof MultiDimensionalCapacityStateSchema>;
-
-/**
- * System State Vector (E18')
- * N⃗⃗(t) = [N⃗_1(t), N⃗_2(t), ..., N⃗_n(t)]^T (n participants × m need types)
- */
-export const SystemStateSchema = z.object({
-	needVector: z.record(z.string(), MultiDimensionalNeedStateSchema),     // N⃗⃗(t)
-	capacityVector: z.record(z.string(), MultiDimensionalCapacityStateSchema), // C⃗⃗(t)
-	timestamp: z.number().int().positive(),
-	iteration: z.number().int().nonnegative(),
-	itcStamp: z.any() // ITCStampSchema
-});
-
-export type SystemState = z.infer<typeof SystemStateSchema>;
-
-// ═══════════════════════════════════════════════════════════════════
-// MULTI-DIMENSIONAL CONVERGENCE METRICS
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * Per-Type Convergence Metrics
- * Tracks convergence independently for each need type k
- */
-export const PerTypeConvergenceMetricsSchema = z.object({
-	need_type_id: z.string().min(1),
-
-	// Per-type vector metrics
-	needVectorNorm: z.number().nonnegative(),                 // ||N⃗^k(t)||
-	needVectorNormPrevious: z.number().nonnegative(),         // ||N⃗^k(t-1)||
-	contractionConstant: z.number().nonnegative(),            // k_k < 1
-
-	// Per-type convergence
-	isConverged: z.boolean(),
-	iterationsToConvergence: z.number().int().nullable(),
-	convergenceRate: z.number(),
-
-	// Per-type universalSatisfaction condition
-	universalSatisfactionAchieved: z.boolean(),                              // ∀i: N_i^k(t) = 0
-	percentNeedsMet: z.number().min(0).max(100)               // % with N_i^k = 0
-});
-
-export type PerTypeConvergenceMetrics = z.infer<typeof PerTypeConvergenceMetricsSchema>;
-
-/**
- * Multi-Dimensional Convergence Metrics (Theorem 1', 3)
- * Tracks convergence across all dimensions using Frobenius norm
- */
-export const ConvergenceMetricsSchema = z.object({
-	// System-level metrics (Frobenius norm)
-	frobeniusNorm: z.number().nonnegative(),                  // ||N⃗⃗(t)||_F
-	frobeniusNormPrevious: z.number().nonnegative(),          // ||N⃗⃗(t-1)||_F
-	contractionConstant: z.number().nonnegative(),            // k_max = max_k k_k
-
-	// Per-type metrics
-	perTypeMetrics: z.record(z.string(), PerTypeConvergenceMetricsSchema),
-
-	// Overall convergence
-	isConverged: z.boolean(),                                 // All types converged
-	iterationsToConvergence: z.number().int().nullable(),
-	convergenceRate: z.number(),                              // Overall exponential rate
-
-	// Timing metrics (E34-E37)
-	responseLatency: z.number().nonnegative(),
-	lastIterationTime: z.number().int().positive(),
-	iterationFrequency: z.number().nonnegative(),
-
-	// UniversalSatisfaction condition (E41' - multi-dimensional)
-	universalSatisfactionAchieved: z.boolean(),                              // ∀i,k: N_i^k(t) = 0
-	percentNeedsMet: z.number().min(0).max(100),              // % across all types
-
-	// Freedom metric (E45' - Frobenius norm)
-	freedomMetric: z.number().nonnegative(),                   // lim(t→∞) ||N⃗⃗(t)||_F
-
-	// Additional distribution metrics (detect edge cases)
-	maxPersonNeed: z.number().nonnegative().optional(),        // Worst-case participant ||N⃗_i||
-	needVariance: z.number().nonnegative().optional(),         // Distribution inequality
-	peopleStuck: z.number().int().nonnegative().optional()     // How many with unchanging needs
-});
-
-export type ConvergenceMetrics = z.infer<typeof ConvergenceMetricsSchema>;
 
 // ═══════════════════════════════════════════════════════════════════
 // ALLOCATION RESULT SCHEMA (for pure algorithm output)
@@ -925,13 +693,13 @@ export const AllocationResultSchema = z.object({
 		z.object({
 			mutual: z.number().nonnegative(),
 			nonMutual: z.number().nonnegative(),
-			need_type_id: z.string().min(1)
+			type_id: z.string().min(1)
 		})
 	),
 
 	/** Total allocated by type and recipient (for tracking) */
 	totalsByTypeAndRecipient: z.record(
-		z.string(), // need_type_id
+		z.string(), // type_id
 		z.record(z.string(), z.number().nonnegative()) // pubKey -> total
 	),
 
@@ -957,41 +725,7 @@ export function parseCommitment(data: unknown): Commitment | null {
 	return result.data;
 }
 
-/**
- * Validate and parse multi-dimensional allocation state
- */
-export function parseAllocationState(data: unknown): TwoTierAllocationState | null {
-	const result = TwoTierAllocationStateSchema.safeParse(data);
-	if (!result.success) {
-		console.warn('[SCHEMA-V4] Invalid allocation state:', result.error);
-		return null;
-	}
-	return result.data;
-}
 
-/**
- * Validate and parse multi-dimensional system state
- */
-export function parseSystemState(data: unknown): SystemState | null {
-	const result = SystemStateSchema.safeParse(data);
-	if (!result.success) {
-		console.warn('[SCHEMA-V4] Invalid system state:', result.error);
-		return null;
-	}
-	return result.data;
-}
-
-/**
- * Validate and parse convergence metrics
- */
-export function parseConvergenceMetrics(data: unknown): ConvergenceMetrics | null {
-	const result = ConvergenceMetricsSchema.safeParse(data);
-	if (!result.success) {
-		console.warn('[SCHEMA-V4] Invalid convergence metrics:', result.error);
-		return null;
-	}
-	return result.data;
-}
 
 /**
  * Validate and parse allocation result
@@ -1327,7 +1061,7 @@ export type Members = z.infer<typeof MembersSchema>;
  * 
  * Examples:
  * - Filter for capacities that include me: { applies_to: 'capacity', must_include_me: true }
- * - Filter for food needs from Alice: { applies_to: 'need', source_pubkeys: ['alice...'], need_type_ids: ['food'] }
+ * - Filter for food needs from Alice: { applies_to: 'need', source_pubkeys: ['alice...'], type_ids: ['food'] }
  * - Filter for any slots with org involvement: { applies_to: 'both', must_include_ids: ['org_abc123'] }
  */
 export const SlotFilterSchema = z.object({
@@ -1340,7 +1074,7 @@ export const SlotFilterSchema = z.object({
 
 	// Filter conditions (all optional, undefined = don't filter on this)
 	source_pubkeys: z.array(z.string()).optional(), // Only from these users
-	need_type_ids: z.array(z.string()).optional(), // Only these types
+	type_ids: z.array(z.string()).optional(), // Only these types
 	must_include_me: z.boolean().optional(), // Only if I'm in members
 	must_include_ids: MembersSchema.optional(), // Only if includes these IDs (pubkeys, orgs, contacts) - UNIFIED!
 	location_max_distance_km: z.number().optional(), // Max distance from my location
@@ -1414,141 +1148,4 @@ export type ProviderCapacity = Commitment & { id?: string };  // Some legacy cod
 export type RecipientCapacity = Commitment;
 export type CapacitiesCollection = Record<string, Commitment>;
 
-// ═══════════════════════════════════════════════════════════════════
-// PRIORITY-BASED ALLOCATION SCHEMAS
-// ═══════════════════════════════════════════════════════════════════
 
-/**
- * Priority Assignment - Provider's or Recipient's priority for a specific entity
- * 
- * Priority percentage means "I'm willing to dedicate UP TO this % of my capacity/need"
- * NOT "I'm targeting to give/receive exactly this %"
- */
-export const PriorityAssignmentSchema = z.object({
-	/** Entity ID (recipient for provider, provider for recipient) */
-	entity_id: z.string(),
-
-	/** Priority percentage (0-1): maximum willing to allocate/receive */
-	priority_percentage: PercentageSchema,
-
-	/** Optional slot-specific priority */
-	slot_id: z.string().optional()
-});
-
-export type PriorityAssignment = z.infer<typeof PriorityAssignmentSchema>;
-
-/**
- * Priority Provider Input - Provider's capacity and priority assignments
- */
-export const PriorityProviderInputSchema = z.object({
-	provider_id: z.string(),
-	capacity: z.number().nonnegative(),
-	need_type_id: z.string(),
-	slot_id: z.string().optional(),
-
-	/** Priority assignments to recipients (should sum to ≤ 100%) */
-	priorities: z.array(PriorityAssignmentSchema),
-
-	/** Optional divisibility constraints */
-	divisibility_constraints: z.object({
-		max_natural_div: z.number().optional(),
-		min_allocation_percentage: PercentageSchema.optional()
-	}).optional()
-});
-
-export type PriorityProviderInput = z.infer<typeof PriorityProviderInputSchema>;
-
-/**
- * Priority Recipient Input - Recipient's need and priority assignments
- */
-export const PriorityRecipientInputSchema = z.object({
-	recipient_id: z.string(),
-	need: z.number().nonnegative(),
-	need_type_id: z.string(),
-	slot_id: z.string().optional(),
-
-	/** Priority assignments to providers (should sum to ≤ 100%) */
-	priorities: z.array(PriorityAssignmentSchema),
-
-	/** Optional compliance filter */
-	compliance_filter: z.any().optional()
-});
-
-export type PriorityRecipientInput = z.infer<typeof PriorityRecipientInputSchema>;
-
-/**
- * Priority Allocation Record - Single allocation with priority metadata
- */
-export const PriorityAllocationRecordSchema = z.object({
-	provider_id: z.string(),
-	recipient_id: z.string(),
-	amount: z.number().nonnegative(),
-
-	/** Was this allocation within the initial priority limit? */
-	within_priority_limit: z.boolean(),
-
-	/** Was this allocation from surplus redistribution? */
-	from_surplus: z.boolean()
-});
-
-export type PriorityAllocationRecord = z.infer<typeof PriorityAllocationRecordSchema>;
-
-/**
- * Provider Metrics - Per-provider allocation metrics
- */
-export const ProviderMetricsSchema = z.object({
-	utilization: PercentageSchema,
-	surplus_remaining: z.number().nonnegative(),
-	priority_limits_respected: z.boolean()
-});
-
-export type ProviderMetrics = z.infer<typeof ProviderMetricsSchema>;
-
-/**
- * Recipient Metrics - Per-recipient fulfillment metrics
- */
-export const RecipientMetricsSchema = z.object({
-	fulfillment: PercentageSchema,
-	unmet_need: z.number().nonnegative(),
-	sources: z.array(z.string())
-});
-
-export type RecipientMetrics = z.infer<typeof RecipientMetricsSchema>;
-
-/**
- * System Metrics - Overall allocation system metrics
- */
-export const SystemMetricsSchema = z.object({
-	total_allocated: z.number().nonnegative(),
-	total_capacity: z.number().nonnegative(),
-	total_need: z.number().nonnegative(),
-	utilization_rate: PercentageSchema,
-	fulfillment_rate: PercentageSchema
-});
-
-export type SystemMetrics = z.infer<typeof SystemMetricsSchema>;
-
-/**
- * Priority Allocation Result - Complete allocation result with priority metadata
- */
-export const PriorityAllocationResultSchema = z.object({
-	/** All allocations with priority metadata */
-	allocations: z.array(PriorityAllocationRecordSchema),
-
-	/** Per-provider metrics */
-	provider_metrics: z.record(z.string(), ProviderMetricsSchema),
-
-	/** Per-recipient metrics */
-	recipient_metrics: z.record(z.string(), RecipientMetricsSchema),
-
-	/** System-wide metrics */
-	system_metrics: SystemMetricsSchema,
-
-	/** Did Phase 2 refinement converge? */
-	converged: z.boolean().optional(),
-
-	/** Number of Phase 2 iterations */
-	iterations: z.number().optional()
-});
-
-export type PriorityAllocationResult = z.infer<typeof PriorityAllocationResultSchema>;

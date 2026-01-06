@@ -13,7 +13,7 @@ interface NeedAddProps {
 
 interface NeedState {
 	id: string;
-	need_type_id: string;
+	type_id: string;
 	name: string;
 	emoji?: string;
 	quantity: number;
@@ -23,7 +23,7 @@ interface NeedState {
 	location_type: string;
 }
 
-const NEED_TYPE_OPTIONS = [
+const type_OPTIONS = [
 	{ value: 'food', label: '🍎 Food' },
 	{ value: 'tutoring', label: '📚 Tutoring' },
 	{ value: 'housing', label: '🏠 Housing' },
@@ -62,14 +62,14 @@ export const NeedAddV2: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 					id: 'type',
 					type: 'select',
 					label: 'What do you need?',
-					options: NEED_TYPE_OPTIONS,
+					options: type_OPTIONS,
 					onExit: (state, value: string) => {
-						const option = NEED_TYPE_OPTIONS.find(o => o.value === value);
+						const option = type_OPTIONS.find(o => o.value === value);
 						const emoji = option?.label?.match(/^(\p{Emoji})/u)?.[1];
 						const label = option?.label?.replace(/^(\p{Emoji})\s*/u, '') || value;
 						return {
 							...state,
-							need_type_id: value,
+							type_id: value,
 							name: label,
 							emoji
 						};
@@ -162,7 +162,7 @@ export const NeedAddV2: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 	// Initial state
 	const initialState: NeedState = existingNeed ? {
 		id: existingNeed.id,
-		need_type_id: existingNeed.need_type_id,
+		type_id: existingNeed.type_id,
 		name: existingNeed.name,
 		emoji: existingNeed.emoji,
 		quantity: existingNeed.quantity,
@@ -172,7 +172,7 @@ export const NeedAddV2: React.FC<NeedAddProps> = ({ existingNeed, onSave, onCanc
 		location_type: existingNeed.location_type || 'flexible'
 	} : {
 		id: `need-${Date.now()}`,
-		need_type_id: '',
+		type_id: '',
 		name: '',
 		quantity: 0,
 		unit: 'units',
@@ -216,7 +216,7 @@ interface ConfirmNeedProps {
 
 const ConfirmNeed: React.FC<ConfirmNeedProps> = ({ need, isEditMode, onSubmit, onCancel }) => {
 	const scheduleDisplay = formatScheduleOneLine(need.availability_window, need.recurrence);
-	
+
 	return (
 		<Box flexDirection="column">
 			<Text bold color="green">✓ Review your need{isEditMode ? ' (editing)' : ''}:</Text>

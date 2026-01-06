@@ -2,7 +2,7 @@
 	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
 	import { TimePatternEditor } from './slots';
 	import SlotPriorityDistributionEditor from './slots/form/SlotPriorityDistributionEditor.svelte';
-	import { NEED_TYPES, type NeedType } from '$lib/protocol/needTypes-local';
+	import { types, type NeedType } from '$lib/protocol/needTypes-local';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
@@ -27,7 +27,7 @@
 		onCapacityAdd: (name: string, quantity: number, needTypeId: string) => void;
 	}
 	
-	let { 
+	let {
 		needSlots, 
 		capacitySlots,
 		onNeedUpdate,
@@ -58,12 +58,12 @@
     let expandedPrioritySlots = $state<Set<string>>(new Set());
 	
 	// Get current need type info
-	const currentNeedType = $derived(NEED_TYPES.find(t => t.id === selectedNeedType) || NEED_TYPES[0]);
+	const currentNeedType = $derived(types.find(t => t.id === selectedNeedType) || types[0]);
 	
 	// Get current slots based on active tab AND selected need type
 	const currentSlots = $derived(
 		(activeTab === 'needs' ? needSlots : capacitySlots)
-			.filter(slot => slot.need_type_id === selectedNeedType)
+			.filter(slot => slot.type_id === selectedNeedType)
 	);
 	const isNeedMode = $derived(activeTab === 'needs');
 	
@@ -439,7 +439,7 @@
 			bind:value={selectedNeedType}
 			class="type-select"
 		>
-			{#each NEED_TYPES as needType}
+			{#each types as needType}
 				<option value={needType.id}>
 					{needType.emoji} {needType.label}
 				</option>
@@ -456,13 +456,13 @@
 			class="tab {activeTab === 'needs' ? 'active' : ''}"
 			onclick={() => activeTab = 'needs'}
 		>
-		🎯 Needs ({needSlots.filter(s => s.need_type_id === selectedNeedType).length})
+		🎯 Needs ({needSlots.filter(s => s.type_id === selectedNeedType).length})
 		</button>
 		<button
 			class="tab {activeTab === 'capacity' ? 'active' : ''}"
 			onclick={() => activeTab = 'capacity'}
 		>
-			🎁 Capacity ({capacitySlots.filter(s => s.need_type_id === selectedNeedType).length})
+			🎁 Capacity ({capacitySlots.filter(s => s.type_id === selectedNeedType).length})
 		</button>
 	</div>
 	

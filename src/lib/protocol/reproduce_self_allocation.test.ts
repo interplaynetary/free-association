@@ -79,7 +79,7 @@ const needTypeId = "type1";
 
 const myNeedSlot = {
     id: myNeedId,
-    need_type_id: needTypeId,
+    type_id: needTypeId,
     quantity: 1, // LOW QUANTITY
     start_date: "2024-01-01",
     // IMPORTANT: Match compatibility fields
@@ -89,7 +89,7 @@ const myNeedSlot = {
 
 const myCapSlot = {
     id: myCapId,
-    need_type_id: needTypeId,
+    type_id: needTypeId,
     quantity: 1, // LOW QUANTITY
     start_date: "2024-01-01",
     location_type: "anywhere",

@@ -38,7 +38,7 @@
 		NonRootNode,
 		RootNode
 	} from '$lib/protocol/schemas';
-	import { NEED_TYPES, formatNeedType } from '@playnet/free-association/utils/needTypes';
+	import { types, formatNeedType } from '$lib/protocol/needTypes-local';
 	import type { PageData } from './+page';
 	import { globalOrganizations } from '$lib/network/organizations.svelte';
 	import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
@@ -286,7 +286,7 @@ if (data.isUserTree) {
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: newNeedName,
-			need_type_id: newNeedType,
+			type_id: newNeedType,
 			quantity: newNeedQuantity,
 			unit: 'units',
 			max_natural_div: 1,
@@ -318,7 +318,7 @@ if (data.isUserTree) {
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: newCapacityName,
-			need_type_id: newCapacityType,
+			type_id: newCapacityType,
 			quantity: newCapacityQuantity,
 			unit: 'units',
 			max_natural_div: 1,
@@ -347,14 +347,14 @@ if (data.isUserTree) {
 	// Batch update handlers for Type component
 	function handleNeedTypeBatchUpdate(typeId: string, updates: Partial<NeedSlot>) {
 		const updated = needSlots.map((slot) =>
-			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+			slot.type_id === typeId ? { ...slot, ...updates } : slot
 		);
 		setMyNeedSlots(updated);
 	}
 
 	function handleCapacityTypeBatchUpdate(typeId: string, updates: Partial<AvailabilitySlot>) {
 		const updated = capacitySlots.map((slot) =>
-			slot.need_type_id === typeId ? { ...slot, ...updates } : slot
+			slot.type_id === typeId ? { ...slot, ...updates } : slot
 		);
 		setMyCapacitySlots(updated);
 	}
@@ -701,7 +701,7 @@ if (data.isUserTree) {
 								onkeydown={(e) => e.key === 'Enter' && addNeedSlot()}
 							/>
 							<select bind:value={newNeedType}>
-								{#each NEED_TYPES as type}
+								{#each types as type}
 									<option value={type.id}>{formatNeedType(type.id)}</option>
 								{/each}
 							</select>
@@ -769,7 +769,7 @@ if (data.isUserTree) {
 								onkeydown={(e) => e.key === 'Enter' && addCapacitySlot()}
 							/>
 							<select bind:value={newCapacityType}>
-								{#each NEED_TYPES as type}
+								{#each types as type}
 									<option value={type.id}>{formatNeedType(type.id)}</option>
 								{/each}
 							</select>

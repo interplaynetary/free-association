@@ -74,12 +74,12 @@ const TEST_USER_PUB = 'test-user-pub-key';
 function createTestCommitment(overrides: Partial<Commitment> = {}): Commitment {
 	return {
 		timestamp: Date.now(),
-	need_slots: [],
-	capacity_slots: [],
-	global_recognition_weights: {},
-	others_recognition_of_me: {},
-	itcStamp: itcSeed(),
-	...overrides
+		need_slots: [],
+		capacity_slots: [],
+		global_recognition_weights: {},
+		others_recognition_of_me: {},
+		itcStamp: itcSeed(),
+		...overrides
 	};
 }
 
@@ -99,7 +99,7 @@ function createTestTree(overrides: Partial<RootNode> = {}): RootNode {
 function createTestNeedSlot(overrides: Partial<NeedSlot> = {}): NeedSlot {
 	return {
 		id: `need-${Math.random()}`,
-		need_type_id: 'food',
+		type_id: 'food',
 		name: 'Test Need',
 		quantity: 10,
 		...overrides
@@ -109,7 +109,7 @@ function createTestNeedSlot(overrides: Partial<NeedSlot> = {}): NeedSlot {
 function createTestCapacitySlot(overrides: Partial<AvailabilitySlot> = {}): AvailabilitySlot {
 	return {
 		id: `capacity-${Math.random()}`,
-		need_type_id: 'food',
+		type_id: 'food',
 		name: 'Test Capacity',
 		quantity: 20,
 		...overrides
@@ -143,7 +143,7 @@ describe('Network Commitments - Versioned Store', () => {
 
 	it('should track field changes independently', () => {
 		const needSlot = createTestNeedSlot({ quantity: 10 });
-		
+
 		const commitment1 = createTestCommitment({
 			global_recognition_weights: { bob: 0.5 },
 			need_slots: [needSlot]
@@ -828,7 +828,7 @@ describe('Metadata and Versioning', () => {
 
 	it('should track field versions independently', () => {
 		const needSlot = createTestNeedSlot();
-		
+
 		// Initial update
 		networkCommitments.update('alice', createTestCommitment({
 			global_recognition_weights: { bob: 0.5 },
@@ -884,7 +884,7 @@ describe('Realistic Scenario - Multi-User Allocation', () => {
 		networkCommitments.update('alice', createTestCommitment({
 			need_slots: [
 				createTestNeedSlot({
-					need_type_id: 'food',
+					type_id: 'food',
 					quantity: 10
 				})
 			],
@@ -901,7 +901,7 @@ describe('Realistic Scenario - Multi-User Allocation', () => {
 			need_slots: [],
 			capacity_slots: [
 				createTestCapacitySlot({
-					need_type_id: 'food',
+					type_id: 'food',
 					quantity: 20
 				})
 			],
@@ -927,7 +927,7 @@ describe('Realistic Scenario - Multi-User Allocation', () => {
 		networkCommitments.update('alice', createTestCommitment({
 			need_slots: [
 				createTestNeedSlot({
-					need_type_id: 'food',
+					type_id: 'food',
 					quantity: 5 // Decreased!
 				})
 			],
@@ -1237,7 +1237,7 @@ describe.skip('Holster Converters - Round Trip Conversion (OBSOLETE - using JSON
 					id: 'slot-1',
 					name: 'Food',
 					quantity: 10,
-					need_type_id: 'food',
+					type_id: 'food',
 					recurrence: 'daily'
 				}
 			]
@@ -1436,7 +1436,7 @@ describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JS
 					id: 'slot-1',
 					name: 'Test',
 					quantity: 10,
-					need_type_id: 'food',
+					type_id: 'food',
 					recurrence: 'Bi-weekly' // Legacy value in Holster format
 				}
 			}
@@ -1448,13 +1448,13 @@ describe.skip('Holster Converters - Integration with Stores (OBSOLETE - using JS
 		// Verify conversion happened correctly (Record → Array)
 		expect(Array.isArray(normalizedCommitment.capacity_slots)).toBe(true);
 		expect(normalizedCommitment.capacity_slots?.length).toBe(1);
-		
+
 		// Verify enum normalization happened ('Bi-weekly' → 'weekly')
 		expect(normalizedCommitment.capacity_slots?.[0].recurrence).toBe('weekly');
 
 		// Now update the versioned store with the normalized data
 		const updateResult = networkCommitments.update('alice', normalizedCommitment);
-		
+
 		// Verify update was accepted (schema validation passed)
 		expect(updateResult.applied).toBe(true);
 
