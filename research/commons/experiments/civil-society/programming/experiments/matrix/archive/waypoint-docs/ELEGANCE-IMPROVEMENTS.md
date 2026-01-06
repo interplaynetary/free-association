@@ -161,10 +161,10 @@ class NetworkCoordinator extends RpcTarget {
     // Index by need types
     const slots = await stub.getAvailabilitySlots();
     for (const slot of slots) {
-      if (!this.byNeedType.has(slot.need_type_id)) {
-        this.byNeedType.set(slot.need_type_id, new Set());
+      if (!this.byNeedType.has(slot.type_id)) {
+        this.byNeedType.set(slot.type_id, new Set());
       }
-      this.byNeedType.get(slot.need_type_id)!.add(pubKey);
+      this.byNeedType.get(slot.type_id)!.add(pubKey);
     }
   }
   

@@ -43,10 +43,12 @@ import {
 	type GlobalRecognitionWeights,
 	type SlotAllocationRecord
 } from '../schemas';
-import type { DistributedIPFState } from '../allocation-ipf-distributed';
+import { updateProviderState, updateRecipientState, type FlowProposal } from '../allocation-ipf-distributed';
 import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
 import { getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
+// ✅ Import demoTreeStore for pre-login tree access
+import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 // Pure attribute-based membership
 import { myAttributeRecognitions, myAttributeSubscriptions } from './attributes.svelte';
 import { slotSubscriptions, slotFilters, capacityCache, needCache } from '$lib/network/capacity-subscriptions.svelte';
@@ -118,34 +120,109 @@ export interface CommitmentWithCache extends Commitment {
  * 
  * V5: Tree structure encodes type preferences (not separate per-type MR values)
  */
-export const myRecognitionTreeStore = createStore({
+/**
+ * My Recognition Tree Store (V5) - HYBRID (localStorage + Holster)
+ * 
+ * Pre-login: Uses localStorage for demo/experimentation
+ * Post-login: Uses Holster for network persistence
+ * 
+ * On login: Discards localStorage demo and loads from network
+ */
+const holsterTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
-	persistDebounce: 200 // Debounce tree edits
-	// NOTE: No converters needed! JSON handles everything perfectly.
+	persistDebounce: 200
 });
 
+// Create a hybrid store that wraps the Holster store with localStorage fallback
+function createHybridTreeStore() {
+	const LOCALSTORAGE_KEY = 'demo_recognition_tree';
+	let localTree: any = null;
 
-if (typeof window !== 'undefined') {
-	// Lazy-load demoTreeStore to avoid circular dependencies
-	import('$lib/protocol/stores/demoTree.svelte').then(({ demoTreeStore }) => {
-		let currentPub = '';
-
-		// Track auth state
-		holsterUserPub.subscribe(pub => {
-			currentPub = pub;
-		});
-
-		// Subscribe to demoTreeStore and sync to myRecognitionTreeStore when not authenticated
-		demoTreeStore.toStore().subscribe(demoTree => {
-			if (!currentPub && demoTree) {
-				// Not authenticated: sync demo tree to recognition tree store
-				console.log('[DEMO-SYNC] Syncing demoTreeStore to myRecognitionTreeStore for recognition weights');
-				myRecognitionTreeStore.set(demoTree);
+	// Try to load from localStorage on init
+	if (typeof window !== 'undefined') {
+		try {
+			const stored = localStorage.getItem(LOCALSTORAGE_KEY);
+			if (stored) {
+				localTree = JSON.parse(stored);
+				console.log('[HYBRID-TREE] Loaded demo tree from localStorage');
 			}
-		});
+		} catch (error) {
+			console.error('[HYBRID-TREE] Failed to load from localStorage:', error);
+		}
+	}
+
+	const { subscribe, set: holsterSet, update: holsterUpdate } = holsterTreeStore;
+
+	// Create a writable that combines both sources
+	const hybridStore = writable(localTree);
+
+	// Subscribe to Holster store (when authenticated)
+	holsterTreeStore.subscribe(holsterTree => {
+		if (holsterTree !== null) {
+			// Authenticated: use Holster data, discard localStorage
+			console.log('[HYBRID-TREE] Using Holster tree (authenticated)');
+			hybridStore.set(holsterTree);
+
+			// Clear localStorage demo on login
+			if (typeof window !== 'undefined') {
+				localStorage.removeItem(LOCALSTORAGE_KEY);
+			}
+		} else if (!holsterUser.is && localTree) {
+			// Not authenticated: use localStorage demo
+			console.log('[HYBRID-TREE] Using localStorage demo tree');
+			hybridStore.set(localTree);
+		}
 	});
+
+	return {
+		subscribe: hybridStore.subscribe,
+		set: (value: any) => {
+			if (holsterUser.is) {
+				// Authenticated: save to Holster
+				holsterSet(value);
+			} else {
+				// Not authenticated: save to localStorage
+				hybridStore.set(value);
+				localTree = value;
+				if (typeof window !== 'undefined') {
+					try {
+						localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(value));
+						console.log('[HYBRID-TREE] Saved demo tree to localStorage');
+					} catch (error) {
+						console.error('[HYBRID-TREE] Failed to save to localStorage:', error);
+					}
+				}
+			}
+		},
+		update: (updater: (current: any) => any) => {
+			if (holsterUser.is) {
+				// Authenticated: update Holster
+				holsterUpdate(updater);
+			} else {
+				// Not authenticated: update localStorage
+				hybridStore.update(current => {
+					const updated = updater(current);
+					localTree = updated;
+					if (typeof window !== 'undefined' && updated) {
+						try {
+							localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(updated));
+							console.log('[HYBRID-TREE] Updated demo tree in localStorage');
+						} catch (error) {
+							console.error('[HYBRID-TREE] Failed to update localStorage:', error);
+						}
+					}
+					return updated;
+				});
+			}
+		},
+		// Expose Holster methods for initialization
+		initialize: holsterTreeStore.initialize,
+		cleanup: holsterTreeStore.cleanup
+	};
 }
+
+export const myRecognitionTreeStore = createHybridTreeStore();
 
 /**
  * My Recognition Weights (V5) - DERIVED
@@ -336,36 +413,12 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
  * 
  * This state EVOLVES as we receive messages and reassess priorities.
  */
-export const myDistributedIPFState = writable<DistributedIPFState>({
-	rowScalings: {},
-	colScalings: {},
-	cachedRemoteScalings: {}
-});
+// DELETED
+export const myDistributedIPFState = { subscribe: () => { } }; // Mock for safety during migration, remove later
 
-/**
- * Sync Constraint Factors to Commitment (V6)
- * 
- * Automatically updates `myCommitmentStore.constraint_scaling_factors`
- * whenever `myDistributedIPFState.colScalings` changes.
- * 
- * This effectively BROADCASTS my y_r values to the network!
- */
-myDistributedIPFState.subscribe(state => {
-	const currentCommitment = get(myCommitmentStore);
-	if (!currentCommitment) return;
-
-	// Only update if changed prevents infinite loops and churn
-	const currentFactors = currentCommitment.constraint_scaling_factors || {};
-	if (JSON.stringify(currentFactors) !== JSON.stringify(state.colScalings)) {
-		console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', state.colScalings);
-
-		myCommitmentStore.update(c => ({
-			...c,
-			constraint_scaling_factors: { ...state.colScalings },
-			timestamp: Date.now()
-		}));
-	}
-});
+// ═══════════════════════════════════════════════════════════════════
+// IPF DERIVED STORES MOVED TO BOTTOM OF FILE (to satisfy deps)
+// ═══════════════════════════════════════════════════════════════════
 
 // NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
 // because they reference myMutualRecognition which is defined later
@@ -433,15 +486,20 @@ export const networkCommitments: VersionedStore<Commitment, string> = createVers
 		recognition: (c) => c.global_recognition_weights,
 		needs: (c) => c.need_slots,
 		capacity: (c) => c.capacity_slots,
-		damping: (c) => c.multi_dimensional_damping,
-		allocations: (c) => c.slot_allocations // ✅ Track allocations for fine-grained reactivity
+		allocations: (c) => c.slot_allocations, // ✅ Track allocations for fine-grained reactivity
+		// IPF fields for distributed allocation
+		constraint_scaling_factors: (c) => c.constraint_scaling_factors,
+		total_seed_by_need: (c) => c.total_seed_by_need
 		// NOTE: 'mr' field removed - MR is now computed from recognition weights (not stored)
 	},
 	fieldEqualityCheckers: {
 		// Use deep equality for array fields (arrays of objects)
 		needs: jsonEquals,
 		capacity: jsonEquals,
-		allocations: jsonEquals // ✅ Deep equality for allocation records
+		allocations: jsonEquals, // ✅ Deep equality for allocation records
+		// IPF fields need deep equality (they are Record<string, number>)
+		constraint_scaling_factors: jsonEquals,
+		total_seed_by_need: jsonEquals
 	},
 	schema: CommitmentSchema, // ✅ Defensive validation for network data
 	itcExtractor: (c) => c.itcStamp,
@@ -514,6 +572,54 @@ export const networkRecognitionTrees: VersionedStore<RootNode, string> = createV
  */
 export const networkRecognitionWeights = networkCommitments.deriveField<GlobalRecognitionWeights>('recognition');
 
+// ═══════════════════════════════════════════════════════════════════
+// IPF CACHE STORES (Derived from networkCommitments)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Cached remote constraint factors (y_r) from all network peers
+ * 
+ * Automatically rebuilds when any peer's constraint_scaling_factors change.
+ * Removed slots are automatically cleaned up.
+ */
+/**
+ * cachedRemoteIPFFactors (y_r) (LIVE - 10s)
+ * 
+ * Aggregates constraint_scaling_factors from ACTIVE peers only.
+ * Filters out "Ghost Providers" that haven't updated in 10s.
+ */
+export const cachedRemoteIPFFactors = networkCommitments
+	.deriveLiveAggregatedMap<number>('constraint_scaling_factors', 10_000);
+
+/**
+ * cachedCompetitionMetrics (total_seed) (LIVE - 10s)
+ * 
+ * Aggregates total_seed_by_need from ACTIVE peers only.
+ * Filters out "Ghost Providers" that haven't updated in 10s.
+ * 
+ * IMPORTANT: Includes MY OWN total_seed values so that when I am both
+ * a provider and a recipient, I correctly account for my own competition!
+ */
+const networkCompetitionMetrics = networkCommitments
+	.deriveLiveAggregatedMap<number>('total_seed_by_need', 10_000);
+
+export const cachedCompetitionMetrics = derived(
+	[networkCompetitionMetrics, myCommitmentStore],
+	([$network, $myCommit]) => {
+		// Start with network values (from other peers)
+		const combined = { ...$network };
+
+		// Add my own total_seed values
+		if ($myCommit?.total_seed_by_need) {
+			for (const [needId, seed] of Object.entries($myCommit.total_seed_by_need)) {
+				combined[needId] = (combined[needId] || 0) + seed;
+			}
+		}
+
+		return combined;
+	}
+);
+
 
 /**
  * Network Need Slots Map - FIELD STORE
@@ -527,16 +633,35 @@ export const networkNeedSlotsMap = networkCommitments.deriveField<NeedSlot[]>('n
  * Network Need Slots - FLATTENED ARRAY
  * 
  * Derived from map for consumers that want a flat list (like allocation provider loop).
+ * INCLUDES self for unified, interoperable allocation view.
  */
-export const networkNeedSlots = derived(networkNeedSlotsMap, ($needsMap) => {
+export const networkNeedSlots = derived([networkNeedSlotsMap, holsterUserPub], ([$needsMap, $myPub]) => {
 	const allNeeds: (NeedSlot & { pubkey: string })[] = [];
-	for (const [pubkey, slots] of Object.entries($needsMap)) {
+	console.log('[NETWORK-NEEDS-FLAT] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+	console.log('[NETWORK-NEEDS-FLAT] networkNeedSlotsMap entries:', $needsMap.size);
+	console.log('[NETWORK-NEEDS-FLAT] My pubkey:', $myPub?.slice(0, 20) + '...');
+
+	// Log all entries in the map
+	const entries = Array.from($needsMap.entries());
+	console.log('[NETWORK-NEEDS-FLAT] Map contents:', entries.map(([pk, slots]) => ({
+		pubkey: pk.slice(0, 20) + '...',
+		slotsCount: slots?.length || 0,
+		isSelf: pk === $myPub,
+		slotsUndefined: slots === undefined,
+		slotsNull: slots === null,
+		slotsEmpty: Array.isArray(slots) && slots.length === 0
+	})));
+
+	for (const [pubkey, slots] of $needsMap.entries()) {
+		console.log(`[NETWORK-NEEDS-FLAT]   ${pubkey.slice(0, 20)}...: ${slots?.length || 0} needs (self=${pubkey === $myPub})`);
 		if (slots) {
 			for (const slot of slots) {
 				allNeeds.push({ ...slot, pubkey });
+				console.log(`[NETWORK-NEEDS-FLAT]     → Added need: ${slot.id?.slice(0, 15)}... qty=${slot.quantity} (from ${pubkey === $myPub ? 'SELF' : 'network'})`);
 			}
 		}
 	}
+	console.log(`[NETWORK-NEEDS-FLAT] ✅ Total flattened needs: ${allNeeds.length} (including self)`);
 	return allNeeds;
 });
 
@@ -556,9 +681,10 @@ export const networkNeedSlots = derived(networkNeedSlotsMap, ($needsMap) => {
 export const networkCapacitySlots = networkCommitments.deriveField<AvailabilitySlot[]>('capacity');
 
 /**
- * Network Allocations - FIELD STORE
+ * Network Allocations - FIELD STORE (LIVE - 10s)
  * 
  * Fine-grained store for just the allocations field!
+ * Filters out "Ghost Providers" that haven't updated in 10s.
  * 
  * ✅ Only updates when allocations change
  * ✅ NOT triggered by recognition/needs/capacity/damping changes
@@ -571,7 +697,10 @@ export const networkCapacitySlots = networkCommitments.deriveField<AvailabilityS
  * Maps pubKey → SlotAllocationRecord[]
  * Each provider's published allocations from their capacity to recipients' needs
  */
-export const networkAllocations = networkCommitments.deriveField<SlotAllocationRecord[]>('allocations');
+export const networkAllocations = networkCommitments.deriveLiveField<SlotAllocationRecord[]>(
+	'allocations',
+	10_000
+);
 
 /**
  * Network Need Types Store (V5) - DERIVED FROM NETWORK NEED SLOTS
@@ -763,9 +892,15 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
 	// Apply updates if any changes detected
 	if (Object.keys(updates).length > 0) {
 		console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
-		myCommitmentStore.set({
-			...myCommitment,
-			others_recognition_of_me: { ...cache, ...updates }
+		myCommitmentStore.update(current => {
+			if (!current) return current;
+			return {
+				...current,
+				others_recognition_of_me: {
+					...(current.others_recognition_of_me || {}),
+					...updates
+				}
+			};
 		});
 	}
 });
@@ -788,6 +923,8 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
  */
 networkCommitments.subscribe(($networkCommitsVersioned) => {
 	const myPub = get(holsterUserPub);
+	// Note: We don't rely on 'myCommitment' here for the update, 
+	// only for the initial cache check (optimization)
 	const myCommitment = get(myCommitmentStore);
 
 	if (!myPub || !myCommitment) return;
@@ -826,10 +963,16 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
 	// Apply updates if any changes detected
 	if (Object.keys(slotsUpdates).length > 0) {
 		console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users for offline allocation`);
-		myCommitmentStore.set({
-			...myCommitment,
-			others_slots_cache: { ...slotsCache, ...slotsUpdates }
-		} as any);
+		myCommitmentStore.update(current => {
+			if (!current) return current;
+			return {
+				...current,
+				others_slots_cache: {
+					...((current as any).others_slots_cache || {}),
+					...slotsUpdates
+				}
+			} as any;
+		});
 	}
 });
 
@@ -855,7 +998,7 @@ export function setMyNeedSlots(needSlots: NeedSlot[]) {
 		capacity_slots: current?.capacity_slots || [],
 		global_recognition_weights: recognitionWeights,
 		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
-		multi_dimensional_damping: current?.multi_dimensional_damping,
+		// multi_dimensional_damping removed - not in schema
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
@@ -882,7 +1025,7 @@ export function setMyCapacitySlots(capacitySlots: AvailabilitySlot[]) {
 		capacity_slots: capacitySlots,
 		global_recognition_weights: recognitionWeights,
 		others_recognition_of_me: current?.others_recognition_of_me,  // Preserve cache!
-		multi_dimensional_damping: current?.multi_dimensional_damping,
+		// multi_dimensional_damping removed - not in schema
 		itcStamp: mergedITC,
 		timestamp: Date.now()
 	};
@@ -952,6 +1095,19 @@ export function subscribeToCommitment(pubKey: string) {
 		const recognitionCount = Object.keys(commitment.global_recognition_weights || {}).length;
 		const nonZeroRec = Object.values(commitment.global_recognition_weights || {}).filter(w => w > 0).length;
 		console.log(`[📡 NETWORK-SUB] Commitment contains ${recognitionCount} recognition entries (${nonZeroRec} non-zero)`);
+
+		// DEBUG: Log IPF fields
+		const hasConstraintFactors = !!commitment.constraint_scaling_factors;
+		const hasTotalSeed = !!commitment.total_seed_by_need;
+		const constraintCount = hasConstraintFactors ? Object.keys(commitment.constraint_scaling_factors!).length : 0;
+		const totalSeedCount = hasTotalSeed ? Object.keys(commitment.total_seed_by_need!).length : 0;
+		console.log(`[📡 NETWORK-SUB] IPF fields: constraint_scaling_factors=${hasConstraintFactors} (${constraintCount} entries), total_seed_by_need=${hasTotalSeed} (${totalSeedCount} entries)`);
+		if (hasConstraintFactors) {
+			console.log(`[📡 NETWORK-SUB] constraint_scaling_factors:`, commitment.constraint_scaling_factors);
+		}
+		if (hasTotalSeed) {
+			console.log(`[📡 NETWORK-SUB] total_seed_by_need:`, commitment.total_seed_by_need);
+		}
 
 		// CRITICAL: Normalize their recognition weights before storing
 		// This ensures that when we compute MR, their recognition of us is a proper fraction
@@ -2171,7 +2327,7 @@ export function composeCommitmentFromSources(totalReceivedMap?: Record<string, R
 		others_recognition_of_me: existingCommitment?.others_recognition_of_me,
 
 		// Preserve stateful data from existing commitment
-		multi_dimensional_damping: existingCommitment?.multi_dimensional_damping,
+		// multi_dimensional_damping removed - not in schema
 
 		// Removed valid-but-not-in-schema fields to fix build:
 		// total_allocated_by_slot: totalReceivedBySlot || {},
@@ -2268,15 +2424,15 @@ export function enableAutoCommitmentComposition(): () => void {
 						need_slots: currentCommitment.need_slots,
 						capacity_slots: currentCommitment.capacity_slots,
 						global_recognition_weights: currentCommitment.global_recognition_weights,
-						others_recognition_of_me: currentCommitment.others_recognition_of_me,
-						multi_dimensional_damping: currentCommitment.multi_dimensional_damping
+						others_recognition_of_me: currentCommitment.others_recognition_of_me
+						// multi_dimensional_damping removed
 					};
 					const newData = {
 						need_slots: newCommitment.need_slots,
 						capacity_slots: newCommitment.capacity_slots,
 						global_recognition_weights: newCommitment.global_recognition_weights,
-						others_recognition_of_me: newCommitment.others_recognition_of_me,
-						multi_dimensional_damping: newCommitment.multi_dimensional_damping
+						others_recognition_of_me: newCommitment.others_recognition_of_me
+						// multi_dimensional_damping removed
 					};
 
 					const currentJson = JSON.stringify(currentData);
@@ -2293,9 +2449,27 @@ export function enableAutoCommitmentComposition(): () => void {
 			}
 
 			// Apply the update
-			// NOTE: This preserves existing slots and only updates recognition data
+			// NOTE: We use .update() to ensure we don't overwrite any slot changes that happened
+			// while we were composing (Read-Modify-Write race protection)
 			console.log(`[💾 AUTO-COMPOSE] Publishing updated commitment to network (${reason})...`);
-			myCommitmentStore.set(newCommitment);
+
+			myCommitmentStore.update(latest => {
+				if (!latest) return newCommitment;
+
+				// CRITICAL: Always preserve the LATEST slots from the store
+				// The composed commitment might have been built with stale slot data
+				return {
+					...newCommitment,
+					// Preserve latest, authoritative local state
+					need_slots: latest.need_slots,
+					capacity_slots: latest.capacity_slots,
+					// Preserve other local caches
+					others_recognition_of_me: latest.others_recognition_of_me,
+					others_slots_cache: (latest as any).others_slots_cache,
+					itcStamp: latest.itcStamp
+				};
+			});
+
 			console.log(`[💾 AUTO-COMPOSE] ✅ Updated commitment recognition (${reason}) - now persisting to Holster`);
 
 			isRecomposing = false;
@@ -2645,6 +2819,196 @@ export async function clearAllV5Stores() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// IPF DERIVED STORES (Moved here to satisfy dependencies)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * My IPF row scalings (provider state: x_p)
+ * 
+ * Automatically rebuilds when capacity slots, network needs, or remote factors change.
+ * Removed capacity slots are automatically cleaned up.
+ */
+export const myIPFRowScalings: Readable<Record<string, number>> = derived(
+	[myCommitmentStore, networkNeedSlots, cachedRemoteIPFFactors, cachedCompetitionMetrics],
+	([$commit, $needs, $remoteFactors, $competition]) => {
+		if (!$commit) return {};
+
+		const state = updateProviderState(
+			$commit.capacity_slots || [],
+			$needs,
+			getAllCommitmentsRecord(),
+			{
+				rowScalings: {},
+				colScalings: {},
+				cachedRemoteScalings: $remoteFactors,
+				totalSeedsByNeed: $competition
+			}
+		);
+		return state.rowScalings;
+	}
+);
+
+/**
+ * My IPF column scalings (recipient state: y_r)
+ * 
+ * Automatically rebuilds when need slots or network allocations change.
+ * Removed need slots are automatically cleaned up.
+ */
+export const myIPFColScalings: Readable<Record<string, number>> = derived(
+	[myCommitmentStore, networkAllocations],
+	([$commit, $allocations]) => {
+		const myPub = get(holsterUserPub);
+		if (!myPub) return {};
+
+		// Convert allocations to proposals
+		const proposals: FlowProposal[] = [];
+
+		// Add network proposals (from other providers)
+		for (const [providerPubkey, allocs] of $allocations) {
+			if (!allocs) continue;
+
+			for (const a of allocs) {
+				if (a.recipient_pubkey === myPub) {
+					proposals.push({
+						capacity_slot_id: a.availability_slot_id,
+						need_slot_id: a.recipient_need_slot_id || 'unknown',
+						provider_pubkey: providerPubkey,
+						recipient_pubkey: myPub,
+						proposed_quantity: a.quantity,
+						seed_value: (a as any).seed_value || 1.0
+					});
+				}
+			}
+		}
+
+		// REMOVED REDUNDANT SELF-ALLOCATION BLOCK
+		// Self-allocations are already included in the networkAllocations loopback.
+		// Double-adding them causes massive seed inflation!
+
+
+		if (!$commit) return {};
+
+		const state = updateRecipientState(
+			$commit.need_slots || [],
+			proposals,
+			{
+				rowScalings: {},
+				colScalings: {},
+				cachedRemoteScalings: {},
+				totalSeedsByNeed: {}
+			},
+			1e-6
+		);
+
+		return state.colScalings;
+	}
+);
+
+/**
+ * Total seeds by need (for broadcasting to network)
+ * 
+ * Automatically rebuilds when my column scalings change.
+ */
+export const myTotalSeedsByNeed: Readable<Record<string, number>> = derived(
+	[myCommitmentStore, networkAllocations],
+	([$commit, $allocations]) => {
+		const myPub = get(holsterUserPub);
+		if (!myPub) return {};
+
+		// Convert allocations to proposals (same logic as myIPFColScalings)
+		const proposals: FlowProposal[] = [];
+
+		for (const [providerPubkey, allocs] of $allocations) {
+			if (!allocs) continue;
+
+			for (const a of allocs) {
+				if (a.recipient_pubkey === myPub) {
+					proposals.push({
+						capacity_slot_id: a.availability_slot_id,
+						need_slot_id: a.recipient_need_slot_id || 'unknown',
+						provider_pubkey: providerPubkey,
+						recipient_pubkey: myPub,
+						proposed_quantity: a.quantity,
+						seed_value: (a as any).seed_value || 1.0
+					});
+				}
+			}
+		}
+
+		const mySelfAllocs = $allocations.get(myPub);
+		if (mySelfAllocs) {
+			for (const a of mySelfAllocs) {
+				if (a.recipient_pubkey === myPub) {
+					proposals.push({
+						capacity_slot_id: a.availability_slot_id,
+						need_slot_id: a.recipient_need_slot_id || 'unknown',
+						provider_pubkey: myPub,
+						recipient_pubkey: myPub,
+						proposed_quantity: a.quantity,
+						seed_value: (a as any).seed_value || 1.0
+					});
+				}
+			}
+		}
+
+		if (!$commit) return {};
+
+		const state = updateRecipientState(
+			$commit.need_slots || [],
+			proposals,
+			{
+				rowScalings: {},
+				colScalings: {},
+				cachedRemoteScalings: {},
+				totalSeedsByNeed: {}
+			},
+			1e-6
+		);
+
+		return state.totalSeedsByNeed;
+	}
+);
+
+
+/**
+ * Sync Constraint Factors to Commitment (V6 - Using Derived Stores)
+ * 
+ * Automatically updates `myCommitmentStore.constraint_scaling_factors`
+ * whenever derived IPF state changes.
+ * 
+ * This effectively BROADCASTS my y_r values to the network!
+ */
+derived([myIPFColScalings, myTotalSeedsByNeed], ([$colScalings, $totalSeeds]) => ({
+	constraint_scaling_factors: $colScalings,
+	total_seed_by_need: $totalSeeds
+})).subscribe(ipfState => {
+	const currentCommitment = get(myCommitmentStore);
+	if (!currentCommitment) return;
+
+	// Check if either colScalings or totalSeedsByNeed changed
+	const currentFactors = currentCommitment.constraint_scaling_factors || {};
+	const currentTotalSeeds = currentCommitment.total_seed_by_need || {};
+
+	const factorsChanged = JSON.stringify(currentFactors) !== JSON.stringify(ipfState.constraint_scaling_factors);
+	const seedsChanged = JSON.stringify(currentTotalSeeds) !== JSON.stringify(ipfState.total_seed_by_need);
+
+	if (factorsChanged || seedsChanged) {
+		console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', ipfState.constraint_scaling_factors);
+		if (seedsChanged) {
+			console.log('[IPF-Sync] Broadcasting new competition metrics (total_seed)', ipfState.total_seed_by_need);
+		}
+
+		myCommitmentStore.update(c => ({
+			...c,
+			constraint_scaling_factors: { ...ipfState.constraint_scaling_factors },
+			total_seed_by_need: { ...ipfState.total_seed_by_need },
+			timestamp: Date.now()
+		}));
+	}
+});
+
+
+// ═══════════════════════════════════════════════════════════════════
 // WINDOW DEBUGGING (V5)
 // ═══════════════════════════════════════════════════════════════════
 
@@ -2664,3 +3028,4 @@ if (typeof window !== 'undefined') {
 	console.log('  • window.validateAllStores() - Check store health');
 	console.log('  • window.debugStoresV5() - Show diagnostics');
 }
+

@@ -154,7 +154,7 @@ If allocations repeatedly overshoot needs by 20%, damping reduces future allocat
 **Class:** `SpaceTimeIndex`
 
 **Indexes:**
-- By type (need_type_id → participants)
+- By type (type_id → participants)
 - By location (grid bucket → participants)
 - By time (time bucket → participants)
 
@@ -431,7 +431,7 @@ const session = await api.authenticate("alice@example.com", {
 await session.addNeedSlot({
   id: "need-1",
   participantId: "alice@example.com",
-  need_type_id: "tutoring",
+  type_id: "tutoring",
   quantity: 2,
   name: "Math tutoring sessions",
   time_zone: "America/New_York",
@@ -474,7 +474,7 @@ console.log("Satisfaction rate:", metrics.satisfactionRate);
 await bobSession.addAvailabilitySlot({
   id: "avail-food-1",
   participantId: "bob@example.com",
-  need_type_id: "food",
+  type_id: "food",
   quantity: 100,
   name: "Meal portions",
   divisibility: {
@@ -486,7 +486,7 @@ await bobSession.addAvailabilitySlot({
 await bobSession.addAvailabilitySlot({
   id: "avail-tutoring-1",
   participantId: "bob@example.com",
-  need_type_id: "tutoring",
+  type_id: "tutoring",
   quantity: 10,
   name: "Tutoring hours",
   divisibility: {

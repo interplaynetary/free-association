@@ -22,7 +22,7 @@
 
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
-	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import { findNodeById } from '@playnet/free-association/tree';
 	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
 	import { type Node, type RootNode } from '@playnet/free-association/schemas';

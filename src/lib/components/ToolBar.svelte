@@ -16,7 +16,7 @@
 	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
-	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '@playnet/free-association/schemas';
 	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
 	

@@ -9,7 +9,7 @@
 	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
 	const isLoadingTree = writable(false);
 	// Demo tree for unauthenticated users (local storage only)
-	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
 	import { type Node, type NonRootNode, type RootNode } from '@playnet/free-association/schemas';

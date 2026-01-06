@@ -233,7 +233,7 @@ getTotalQuantityAtSpaceTime _sig slots = sum $ map quantity slots
   
 From match.ts:
   "COMPATIBILITY REQUIREMENTS:
-   - Type match: need_type_id must be identical
+   - Type match: type_id must be identical
    - Time compatibility: date/time ranges must overlap
    - Location compatibility: city/country/coordinates must match
    - Recurrence: NO FILTERING - capacity serves any need"

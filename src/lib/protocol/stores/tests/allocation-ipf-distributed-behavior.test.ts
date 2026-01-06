@@ -6,8 +6,8 @@ import {
     generateFlowProposals,
     type DistributedIPFState,
     type FlowProposal
-} from './allocation-ipf-distributed';
-import type { AvailabilitySlot, NeedSlot, Commitment } from './schemas';
+} from '../../allocation-ipf-distributed';
+import type { AvailabilitySlot, NeedSlot, Commitment } from '../../schemas';
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FACTORIES

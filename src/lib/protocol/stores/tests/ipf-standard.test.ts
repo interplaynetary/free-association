@@ -1,6 +1,6 @@
 
-import { describe, it, expect } from 'bun:test';
-import { GeneralIPF } from './ipf-standard';
+import { describe, it, expect } from 'vitest';
+import { GeneralIPF } from '../../ipf-standard';
 
 describe('Standard IPF (Faithful Port)', () => {
     it('Solving the 2D example from Python ipfn documentation', () => {

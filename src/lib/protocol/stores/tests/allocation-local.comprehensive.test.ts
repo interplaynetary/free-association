@@ -10,7 +10,7 @@ import {
     iterativeRefinement,
     calculateTotalDeviation,
     EPSILON
-} from './allocation-local';
+} from '../../allocation-local';
 import type { AvailabilitySlot, NeedSlot, Commitment } from '@playnet/free-association/schemas';
 
 // --- MOCK DATA FACTORIES ---

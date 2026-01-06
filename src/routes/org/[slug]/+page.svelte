@@ -27,7 +27,7 @@
 		initializeAllocationStores 
 	} from '$lib/protocol/stores/allocation.svelte';
 	import { globalState } from '$lib/global.svelte';
-	import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
 	import { derived, get } from 'svelte/store';
 	import { t, loading } from '$lib/translations';

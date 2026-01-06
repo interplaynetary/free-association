@@ -12,7 +12,7 @@ import {
 } from '@playnet/free-association/tree';
 import { holsterUserPub as userPub } from '$lib/network/holster.svelte';
 import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
-import { demoTreeStore } from '$lib/stores/demoTree.svelte';
+import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 
 // User identification is handled via username (alias) and userpub (public key)
 // Authentication and data persistence managed through Holster

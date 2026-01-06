@@ -5,52 +5,49 @@
 **The Core Problem:** Traditional resource coordination relies on markets (which exclude those without purchasing power), charity (which creates dependency), or bureaucracy (which is slow and inflexible). None of these mechanisms are adequate for the speed and scale of challenges we face — from climate adaptation to humanitarian response.
 
 **The Solution:** A fourth type of economic relationship based on **priority aligned capacity distribution**. This creates a self-organizing coordination system that is:
- 
  - **Fast**: Allocations converge in seconds, not months
  - **Fair**: Mathematically guaranteed proportional distribution based on priorities
  - **Efficient**: Resources flow directly based on declared needs and priority alignment
 - **Decentralized**: No central authority controls outcomes or data
 
-**Try It:** [interplaynetary.github.io/free-association](https://interplaynetary.github.io/free-association/) (browser-based, peer-to-peer, no installation required)
+**Try It:** [free.playnet.lol](https://free.playnet.lol) (browser-based, peer-to-peer, no installation required)
 
 ### How the System Works
 
 The infrastructure operates on three simple data points published by each participant:
 
-**1. Priority Weights** - How do you prioritize your capacity?
-    - Each entity allocates 100% of weight among recipients or categories
-    - **Often derived from recognition of contribution to priority realization**
+**1. Priority Weights** - How do you prioritize the distribution of your capacity?
+    - Each participant allocates 100% of weight among recipients or categories
     - Non-transferable and dynamically adjustable as priorities evolve
     - Weights reflect strategic alignment, mission contribution, or operational necessity
     - Organized as a Prioritization tree tracking different types of support
  
- **2. Available Capacity** - What resources can you offer?
-    - Declare surplus resources (funds, expertise, facilities, time)
+ **2. Available Capacity** - What can you offer?
+    - Examples: funds, expertise, facilities, time
     - Specify filters (time windows, locations, resource types)
     - Update dynamically as circumstances change
  
- **3. Declared Needs** - What resources do you require?
-    - State specific resource requirements
+ **3. Declared Needs** - What do you require?
+    - State specific requirements: Type, Quantity, Time, Location
     - Update in real-time as needs evolve
     - System caps allocations at actual declared needs (preventing accumulation)
  
- **4. Priority Reciprocity** - How shared priorities drive stability
+// Reciprocity is not essential
+
+ **4. Priority Reciprocity** - How reciprocity drive stability
     - Allocations are often guided by reciprocal prioritization
-    - **Reciprocity is typically established through mutual recognition of contribution to priority realization**
-    - Example: If Organization A prioritizes B at 50% and B prioritizes A at 10%, their reciprocal alignment is 10%
+    - Example: If A prioritizes B at 50% and B prioritizes A at 10%, their reciprocal alignment is 10%
     - This ensures resources flow to partners with shared commitment
-    - Self-prioritization allows time-shifting resources within your own organization
  
- **5. Prioritization trees** - Structured tracking of alignment
+ **5. Prioritization trees** - Structured tracking of alignment/contribution
     - Each branch represents a category (program areas, operational support, etc.)
     - Weights distributed among recipients within each branch
-    - Global priority calculated from weighted contributions across all branches
+    - Global priority calculated from weighted contributions to priority-realization across all branches
     - Enables granular tracking while maintaining overall coherence
 
-**Resource Types:**
-   - **Mission-aligned values**: Contributions toward organizational mission and values (no shared definitions required)
-   - **Specific resource types**: Concrete resources requiring common terminology (funding, expertise, facilities)
-   - System handles both intangible mission contributions and tangible resource coordination
+**System handles both intangible/tangible alignment:**
+   - **Priorities**: Contributions toward one's goals/priorities/values do not require us to call them the same thing for allignment to occur as %'s of total-prioritization.
+   - **Resources**: Concrete resources require common terminology (funding, expertise, time) to facilitate capacity-need matching
 
 ### The Allocation Algorithm
  
@@ -59,7 +56,7 @@ The infrastructure operates on three simple data points published by each partic
  The system solves a resource allocation problem where providers and recipients express preferences through priorities (weights), subject to strict constraints.
  
  **1. Proportionality & Fairness**:
-    - **Provider Weights**: "I dedicate X% of my capacity availability to this need" -> Guides initial distribution.
+    - **Provider Weights**: "I dedicate X% of my capacity to this need" -> Guides initial distribution.
     - **Recipient Weights**: "I prefer X% of my support to come from you" -> Guides refined source adjustment.
  
  **2. Hard Constraints**:
@@ -660,7 +657,7 @@ Free Association can coordinate shared resource pools (organizational budgets, c
 - Join coordination coalitions with other pilot organizations
 - Access technical support and implementation guidance
 
-**Coalition Membership**: Multiple engagement levels available:
+**Coalition Participation**: Multiple engagement levels available:
 - **Active Members**: Implementing pilots with resource commitments
 - **Supporting Members**: Observing and learning from active pilots
 - **Aligned Allies**: Staying connected to developments and findings

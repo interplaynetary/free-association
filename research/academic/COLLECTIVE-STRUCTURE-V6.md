@@ -685,7 +685,7 @@ function allocateFromCollectiveTree(
       const rawAllocation = totalCapacity * share;
       
       // Check against recipient's declared need
-      const recipientNeed = findRecipientNeed(recipientId, slot.need_type_id);
+      const recipientNeed = findRecipientNeed(recipientId, slot.type_id);
       const cappedAllocation = Math.min(rawAllocation, recipientNeed || Infinity);
       
       allocations.push({
@@ -870,7 +870,7 @@ const result = governAndAllocate({
   capacitySlots: [
     {
       id: 'food_slot_1',
-      need_type_id: 'food',
+      type_id: 'food',
       quantity: 1000,
       availability_windows: [/* ... */]
     }
@@ -878,7 +878,7 @@ const result = governAndAllocate({
   memberCommitments: {
     Carol: {
       id: 'carol_food',
-      need_type_id: 'food',
+      type_id: 'food',
       quantity: 1000,
       is_offer: true
     }

@@ -131,7 +131,7 @@
 		flex: 1;
 		width: 100%;
 		overflow-y: auto;
-		overflow-x: hidden; /* Prevent horizontal scrolling */
+		/* overflow-x: hidden; */ /* Removed - let pages control their own overflow */
 		position: relative;
 		z-index: 1;
 		/* Remove fixed height calculation, let flexbox handle it */

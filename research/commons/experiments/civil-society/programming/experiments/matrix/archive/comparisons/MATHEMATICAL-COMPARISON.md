@@ -180,7 +180,7 @@ allocateMultiProvider(recipientIndex, need, capacities, shareType):
    ```typescript
    // Weight-based has:
    interface NeedSlot {
-     need_type_id: string;
+     type_id: string;
      quantity: number;
      start_date?: string;
      availability_window?: AvailabilityWindow;
@@ -199,7 +199,7 @@ allocateMultiProvider(recipientIndex, need, capacities, shareType):
    // Weight-based:
    function slotsCompatible(needSlot, availabilitySlot): boolean {
      // Type matching
-     if (needSlot.need_type_id !== availabilitySlot.need_type_id) return false;
+     if (needSlot.type_id !== availabilitySlot.type_id) return false;
      
      // Time matching (timezone-aware!)
      if (!timeRangesOverlap(needSlot, availabilitySlot)) return false;
