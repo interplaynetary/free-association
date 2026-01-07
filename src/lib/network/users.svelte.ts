@@ -22,6 +22,8 @@ import { globalOrganizations, getOrganizationName, cleanupOrganizations } from '
 // USERS LIST SUBSCRIPTION (Holster)
 // ================================
 
+console.log('[TRACE] src/lib/network/users.svelte.ts: <module scope>');
+
 import { holster } from '$lib/network/holster.svelte';
 
 let usersListCallback: ((data: any) => void) | null = null;
@@ -31,8 +33,10 @@ let isUsersListInitialized = false;
  * Subscribe to freely-associating-players list from Holster
  */
 function subscribeToUsersList() {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: subscribeToUsersList');
 	if (isUsersListInitialized) {
 		console.log('[USERS-LIST] Already subscribed');
+		console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: subscribeToUsersList (already subscribed)');
 		return;
 	}
 
@@ -82,14 +86,17 @@ function subscribeToUsersList() {
 
 	holster.get('freely-associating-players').on(usersListCallback, true);
 	isUsersListInitialized = true;
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: subscribeToUsersList');
 }
 
 /**
  * Initialize users list subscription
  */
 export function initializeUsersList() {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: initializeUsersList');
 	console.log('[USERS-LIST] Initializing...');
 	subscribeToUsersList();
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: initializeUsersList');
 }
 
 /**
@@ -100,6 +107,7 @@ export function initializeUsersList() {
  * active for continued network browsing.
  */
 export async function cleanupUsersList() {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: cleanupUsersList');
 	// NOTE: We do NOT unsubscribe or clear data here anymore!
 	// The users list subscription persists for read-only browsing.
 	// Only auth-specific data is cleared on logout.
@@ -113,6 +121,7 @@ export async function cleanupUsersList() {
 	// Note: Membership is now handled by the unified entity/attribute system
 	// Cleaned up with myAttributeRecognitions store
 	console.log('[USERS-LIST] Auth-specific data cleaned up');
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: cleanupUsersList');
 }
 
 // ================================
@@ -203,7 +212,9 @@ export const userNamesOrAliasesCache = derived(
  * Call this when user logs in
  */
 export function initializeContacts() {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: initializeContacts');
 	initializeHolsterContacts();
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: initializeContacts');
 }
 
 /**
@@ -211,7 +222,9 @@ export function initializeContacts() {
  * Call this when user logs out
  */
 export function cleanupContacts() {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: cleanupContacts');
 	cleanupHolsterContacts();
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: cleanupContacts');
 }
 
 /**
@@ -219,7 +232,10 @@ export function cleanupContacts() {
  * Called automatically via CRUD operations
  */
 export async function persistContacts(contacts?: ContactsCollectionData) {
-	return persistHolsterContacts(contacts);
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: persistContacts');
+	const result = await persistHolsterContacts(contacts);
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: persistContacts');
+	return result;
 }
 
 // ================================
@@ -232,6 +248,7 @@ export async function persistContacts(contacts?: ContactsCollectionData) {
 export async function createContact(
 	contactData: Omit<Contact, 'contact_id' | 'created_at' | 'updated_at'>
 ): Promise<Contact> {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: createContact', { name: contactData.name });
 	// Only check for duplicates if we have a meaningful public key
 	const hasValidPublicKey = contactData.public_key && contactData.public_key.trim() !== '';
 
@@ -271,6 +288,7 @@ export async function createContact(
 		}));
 	}
 
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: createContact', { contact_id });
 	return validatedContact;
 }
 
@@ -278,9 +296,11 @@ export async function createContact(
  * Update an existing contact
  */
 export function updateContact(contact_id: string, updates: Partial<Contact>): void {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: updateContact', { contact_id });
 	const currentContacts = get(userContacts);
 	if (!currentContacts) {
 		console.warn(`[USERS] Cannot update contact: contacts not loaded`);
+		console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: updateContact (not loaded)');
 		return;
 	}
 
@@ -288,6 +308,7 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 
 	if (!existingContact) {
 		//console.warn(`Contact with ID ${contact_id} not found`);
+		console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: updateContact (not found)');
 		return;
 	}
 
@@ -316,14 +337,17 @@ export function updateContact(contact_id: string, updates: Partial<Contact>): vo
 
 	// V5: Update store and persist (Holster-only)
 	updateHolsterContactsStore(updatedContacts);
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: updateContact');
 }
 
 /**
  * Delete a contact (V5: Holster-only)
  */
 export async function deleteContact(contact_id: string): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: deleteContact', { contact_id });
 	// Use Holster-specific delete that sets to null
 	await deleteHolsterContact(contact_id);
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: deleteContact');
 }
 
 /**
@@ -332,19 +356,19 @@ export async function deleteContact(contact_id: string): Promise<void> {
 export function getContactByPublicKey(public_key: string): Contact | undefined {
 	const contacts = get(userContacts);
 	if (!contacts) {
-		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ Contacts not loaded yet`);
+		// console.log(`[GET-CONTACT-BY-PUBKEY] ❌ Contacts not loaded yet`);
 		return undefined;
 	}
 
 	const contactsList = Object.values(contacts);
-	console.log(`[GET-CONTACT-BY-PUBKEY] Searching for pubkey ${public_key.slice(0, 20)}... among ${contactsList.length} contacts`);
+	// console.log(`[GET-CONTACT-BY-PUBKEY] Searching for pubkey ${public_key.slice(0, 20)}... among ${contactsList.length} contacts`);
 
 	const found = contactsList.find((contact) => contact.public_key === public_key);
 	if (found) {
-		console.log(`[GET-CONTACT-BY-PUBKEY] ✅ Found contact: ${found.name} (${found.contact_id})`);
+		// console.log(`[GET-CONTACT-BY-PUBKEY] ✅ Found contact: ${found.name} (${found.contact_id})`);
 	} else {
-		console.log(`[GET-CONTACT-BY-PUBKEY] ❌ No contact found with this pubkey`);
-		console.log(`[GET-CONTACT-BY-PUBKEY] Available pubkeys:`, contactsList.map(c => c.public_key?.slice(0, 20) + '...'));
+		// console.log(`[GET-CONTACT-BY-PUBKEY] ❌ No contact found with this pubkey`);
+		// console.log(`[GET-CONTACT-BY-PUBKEY] Available pubkeys:`, contactsList.map(c => c.public_key?.slice(0, 20) + '...'));
 	}
 
 	return found;
@@ -465,19 +489,23 @@ export async function getUserAlias(pubkey: string) {
  * Uses the combined cache for reactive components
  */
 export async function getUserName(identifier: string): Promise<string> {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: getUserName');
 	// Handle org_ids (works for ANY org in globalOrganizations)
 	if (identifier.startsWith('org_')) {
 		const orgs = get(globalOrganizations);
 		const org = orgs[identifier];
 		if (org) {
+			console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: getUserName (org found)');
 			return getOrganizationName(org, 'en'); // TODO: Use user's preferred language
 		}
+		console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: getUserName (org fallback)');
 		return identifier; // Fallback if org not found
 	}
 
 	// First check the combined cache (contacts take priority over aliases)
 	const combinedCache = get(userNamesOrAliasesCache);
 	if (combinedCache[identifier]) {
+		// console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: getUserName (cache hit)');
 		return combinedCache[identifier];
 	}
 
@@ -503,14 +531,14 @@ export async function getUserName(identifier: string): Promise<string> {
 		}
 	} else {
 		// For pubKey-based lookup, check if we have a contact with this public key
-		console.log(`[GET-USER-NAME] Looking up pubkey: ${identifier.slice(0, 20)}...`);
+		// console.log(`[GET-USER-NAME] Looking up pubkey: ${identifier.slice(0, 20)}...`);
 		const contact = getContactByPublicKey(identifier);
 		if (contact) {
-			console.log(`[GET-USER-NAME] ✅ Found contact for pubkey: ${contact.name}`);
+			// console.log(`[GET-USER-NAME] ✅ Found contact for pubkey: ${contact.name}`);
 			displayName = contact.name;
 			shouldCacheInNamesCache = true; // Contact names go in userNamesCache
 		} else {
-			console.log(`[GET-USER-NAME] ⚠️  No contact found for pubkey, falling back to alias`);
+			// console.log(`[GET-USER-NAME] ⚠️  No contact found for pubkey, falling back to alias`);
 			// If no contact found, fall back to Gun alias
 			displayName = await getUserAlias(identifier);
 			// Don't cache here - getUserAlias already handles userAliasesCache
@@ -525,6 +553,7 @@ export async function getUserName(identifier: string): Promise<string> {
 		}));
 	}
 
+	// console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: getUserName');
 	return displayName;
 }
 
@@ -540,6 +569,7 @@ export async function getUserName(identifier: string): Promise<string> {
 export function resolveContactIdsInTree(
 	node: import('$lib/protocol/core/schemas').Node
 ): import('$lib/protocol/core/schemas').Node {
+	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: resolveContactIdsInTree');
 	// Create a deep clone to avoid modifying the original
 	const resolvedNode = structuredClone(node);
 
@@ -605,6 +635,7 @@ export function resolveContactIdsInTree(
 	// Start processing from the root
 	processNode(resolvedNode);
 
+	console.log('[TRACE] [EXIT] src/lib/network/users.svelte.ts: resolveContactIdsInTree');
 	return resolvedNode;
 }
 

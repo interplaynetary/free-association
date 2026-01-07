@@ -54,6 +54,8 @@ import { applyFiltersUnion, mergeSlots } from '@playnet/free-association/utils/c
 import { resolveContributorWithOrgs, resolveToPublicKey } from '$lib/network/users.svelte';
 import { seed as itcSeed, event as itcEvent, join as itcJoin, leq as itcLeq, type Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
+console.log('[TRACE] src/lib/protocol/stores/stores.svelte.ts: <module scope>');
+
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -329,6 +331,7 @@ export const myDistributedIPFState = writable<DistributedIPFState>({
  * This effectively BROADCASTS my y_r values to the network!
  */
 myDistributedIPFState.subscribe(state => {
+	console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: myDistributedIPFState subscription');
 	const currentCommitment = get(myCommitmentStore);
 	if (!currentCommitment) return;
 
@@ -710,6 +713,7 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
  * reactively only when new information arrives from the network.
  */
 networkCommitments.subscribe(($networkCommitsVersioned) => {
+	console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: networkCommitments subscription (rec cache updater)');
 	const myPub = get(holsterUserPub);
 	const myCommitment = get(myCommitmentStore);
 

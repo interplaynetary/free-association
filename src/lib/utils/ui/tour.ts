@@ -1,6 +1,8 @@
 import { driver, type DriveStep, type Side } from 'driver.js';
 import { globalState } from '$lib/global.svelte';
 
+console.log('[TRACE] src/lib/utils/ui/tour.ts: <module scope>');
+
 // Home page tour steps
 const homeTourSteps: DriveStep[] = [
 	{
@@ -397,8 +399,9 @@ const TOUR_PROGRESS_KEY = 'free-association-tour-progress';
 
 // Save tour progress to localStorage
 function saveTourProgress(view: string, stepIndex: number) {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: saveTourProgress', { view, stepIndex });
 	if (typeof window === 'undefined') return;
-	
+
 	try {
 		const progress = {
 			view,
@@ -410,19 +413,21 @@ function saveTourProgress(view: string, stepIndex: number) {
 	} catch (error) {
 		console.warn('[TOUR] Failed to save progress:', error);
 	}
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: saveTourProgress');
 }
 
 // Load tour progress from localStorage
 function loadTourProgress(): { view: string; stepIndex: number } | null {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: loadTourProgress');
 	if (typeof window === 'undefined') return null;
-	
+
 	try {
 		const saved = localStorage.getItem(TOUR_PROGRESS_KEY);
 		if (!saved) return null;
-		
+
 		const progress = JSON.parse(saved);
 		console.log('[TOUR] Loaded progress:', progress);
-		
+
 		// Optional: Clear progress if it's older than 7 days
 		const weekInMs = 7 * 24 * 60 * 60 * 1000;
 		if (Date.now() - progress.timestamp > weekInMs) {
@@ -430,28 +435,33 @@ function loadTourProgress(): { view: string; stepIndex: number } | null {
 			clearTourProgress();
 			return null;
 		}
-		
+
 		return progress;
 	} catch (error) {
 		console.warn('[TOUR] Failed to load progress:', error);
 		return null;
+	} finally {
+		console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: loadTourProgress');
 	}
 }
 
 // Clear tour progress from localStorage
 function clearTourProgress() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: clearTourProgress');
 	if (typeof window === 'undefined') return;
-	
+
 	try {
 		localStorage.removeItem(TOUR_PROGRESS_KEY);
 		console.log('[TOUR] Cleared progress');
 	} catch (error) {
 		console.warn('[TOUR] Failed to clear progress:', error);
 	}
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: clearTourProgress');
 }
 
 // Function to detect current view
 function getCurrentView(): string {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: getCurrentView');
 	if (typeof window === 'undefined') return 'tree';
 
 	// Check the current view from globalState
@@ -461,7 +471,7 @@ function getCurrentView(): string {
 	// Map view types to tour types
 	switch (currentView) {
 		case 'inventory':
-		return 'inventory';
+			return 'inventory';
 		case 'map':
 			return 'map';
 		case 'tree':
@@ -488,6 +498,7 @@ function elementExists(selector: string | Element | (() => Element)): boolean {
 
 // Main tour function that detects view and starts appropriate tour
 export function startTour() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: startTour');
 	const currentView = getCurrentView();
 
 	// Debug logging
@@ -564,7 +575,7 @@ export function startTour() {
 			// Save progress when moving to next step
 			const currentStepIndex = options.state.activeIndex || 0;
 			saveTourProgress(currentView, currentStepIndex + 1);
-			
+
 			// Call the default next behavior
 			driverObj.moveNext();
 		},
@@ -572,7 +583,7 @@ export function startTour() {
 			// Save progress when moving to previous step
 			const currentStepIndex = options.state.activeIndex || 0;
 			saveTourProgress(currentView, Math.max(0, currentStepIndex - 1));
-			
+
 			// Call the default previous behavior
 			driverObj.movePrevious();
 		},
@@ -588,7 +599,7 @@ export function startTour() {
 				console.log('[TOUR] Tour exited at step:', currentStepIndex);
 				saveTourProgress(currentView, currentStepIndex);
 			}
-			
+
 			// Destroy the driver instance
 			if (driverObj) {
 				driverObj.destroy();
@@ -598,10 +609,12 @@ export function startTour() {
 
 	// Start from saved index or beginning
 	driverObj.drive(startIndex);
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: startTour');
 }
 
 // Legacy function for backward compatibility
 export function startHomeTour() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: startHomeTour');
 	driverObj = driver({
 		showProgress: true,
 		nextBtnText: 'Next →',
@@ -611,10 +624,12 @@ export function startHomeTour() {
 	});
 
 	driverObj.drive();
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: startHomeTour');
 }
 
 // Specific function for map tour
 export function startMapTour() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: startMapTour');
 	driverObj = driver({
 		showProgress: true,
 		nextBtnText: 'Next →',
@@ -624,10 +639,12 @@ export function startMapTour() {
 	});
 
 	driverObj.drive();
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: startMapTour');
 }
 
 // Specific function for inventory tour
 export function startInventoryTour() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: startInventoryTour');
 	driverObj = driver({
 		showProgress: true,
 		nextBtnText: 'Next →',
@@ -637,16 +654,20 @@ export function startInventoryTour() {
 	});
 
 	driverObj.drive();
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: startInventoryTour');
 }
 
 // Export function to manually reset tour progress (useful for starting over)
 export function resetTourProgress() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: resetTourProgress');
 	clearTourProgress();
 	console.log('[TOUR] Tour progress manually reset');
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: resetTourProgress');
 }
 
 // Debug function to test view detection and element availability
 export function debugViewDetection() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: debugViewDetection');
 	console.log('[DEBUG] Window location:', window.location);
 	console.log('[DEBUG] Global state view:', globalState.currentView);
 	console.log('[DEBUG] Detected view:', getCurrentView());
@@ -678,12 +699,14 @@ export function debugViewDetection() {
 			console.log(`[DEBUG] Step ${index + 1}: No element selector (generic popover) - ✅ OK`);
 		}
 	});
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: debugViewDetection');
 }
 
 // Comprehensive verification function for tour elements
 export function verifyTourElements() {
+	console.log('[TRACE] [ENTER] src/lib/utils/ui/tour.ts: verifyTourElements');
 	console.log('[TOUR-VERIFY] Starting comprehensive tour element verification...');
-	
+
 	const currentView = getCurrentView();
 	let steps;
 	if (currentView === 'inventory') {
@@ -693,12 +716,12 @@ export function verifyTourElements() {
 	} else {
 		steps = homeTourSteps;
 	}
-	
+
 	// Define expected elements for each view
 	const expectedElements: Record<string, string[]> = {
 		tree: [
 			'.breadcrumbs',
-			'.view-content', 
+			'.view-content',
 			'.treemap-node',
 			'.node-title',
 			'.add-contributor-button',
@@ -729,17 +752,17 @@ export function verifyTourElements() {
 			'.shares-list'
 		]
 	};
-	
+
 	const elementsToCheck = expectedElements[currentView] || expectedElements.tree;
-	
+
 	console.log(`[TOUR-VERIFY] Checking ${elementsToCheck.length} expected elements for ${currentView} view:`);
-	
+
 	const results = {
 		found: [] as string[],
 		missing: [] as string[],
 		total: elementsToCheck.length
 	};
-	
+
 	elementsToCheck.forEach((selector: string) => {
 		const exists = elementExists(selector);
 		if (exists) {
@@ -750,18 +773,18 @@ export function verifyTourElements() {
 			console.log(`[TOUR-VERIFY] ❌ ${selector}`);
 		}
 	});
-	
+
 	console.log(`[TOUR-VERIFY] Summary: ${results.found.length}/${results.total} elements found`);
-	
+
 	if (results.missing.length > 0) {
 		console.warn(`[TOUR-VERIFY] Missing elements:`, results.missing);
 		console.log(`[TOUR-VERIFY] Note: Some elements may not be visible until certain conditions are met (e.g., nodes exist, user is logged in, etc.)`);
 	}
-	
+
 	// Check tour steps specifically
 	console.log(`[TOUR-VERIFY] Checking ${steps.length} tour steps:`);
 	let stepsMissing = 0;
-	
+
 	steps.forEach((step, index) => {
 		if (step.element) {
 			const exists = elementExists(step.element);
@@ -771,9 +794,10 @@ export function verifyTourElements() {
 			}
 		}
 	});
-	
+
 	console.log(`[TOUR-VERIFY] Tour readiness: ${steps.length - stepsMissing}/${steps.length} steps have valid targets`);
-	
+
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/tour.ts: verifyTourElements');
 	return {
 		view: currentView,
 		elements: results,

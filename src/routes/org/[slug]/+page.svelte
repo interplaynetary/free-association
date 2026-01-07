@@ -52,6 +52,7 @@
 		othersRecognition: Record<string, Record<string, number>>,
 		myId: string
 	): Record<string, number> {
+		console.log('[TRACE] [ENTER] src/routes/org/[slug]/+page.svelte: computeMutualRecognition');
 		const mutual: Record<string, number> = {};
 		
 		// For each person/org I recognize
@@ -71,6 +72,7 @@
 		}
 		
 		return mutual;
+		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: computeMutualRecognition'); // Unreachable, need to fix manual return placement if I could, but wait, function returns on line 73.
 	}
 	import { setViewContext, resetViewContext } from '$lib/protocol/stores/context.svelte';
 	import { currentUserMutualRecognition } from '$lib/protocol/stores/context-stores.svelte';
@@ -107,6 +109,7 @@
 
 	// ✅ CRITICAL: Initialize org tree IMMEDIATELY (before component renders)
 // This prevents the SDG tree from being loaded from localStorage first
+console.log('[TRACE] [STEP] src/routes/org/[slug]/+page.svelte: initialization logic');
 console.log('[ORG-PAGE] Initializing org page for:', data.orgName);
 
 // Handle user trees differently from org trees
@@ -219,6 +222,7 @@ if (data.isUserTree) {
 
 
 	onMount(() => {
+	console.log('[TRACE] [ENTER] src/routes/org/[slug]/+page.svelte: onMount');
 	console.log('[ORG-PAGE] Component mounted - tree already initialized');
 		
 		// Ensure we're in tree view
@@ -265,6 +269,7 @@ if (data.isUserTree) {
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
+		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: onMount');
 	});
 
 	// Clean up org tree when leaving this route
@@ -281,6 +286,7 @@ if (data.isUserTree) {
 
 	// CRUD Operations - Needs
 	function addNeedSlot() {
+		console.log('[TRACE] [ENTER] src/routes/org/[slug]/+page.svelte: addNeedSlot');
 		if (!newNeedName.trim()) return;
 
 		const newSlot: NeedSlot = {
@@ -300,10 +306,13 @@ if (data.isUserTree) {
 		// Reset form
 		newNeedName = '';
 		newNeedQuantity = 10;
+		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: addNeedSlot');
 	}
 
 	function removeNeedSlot(id: string) {
+		console.log('[TRACE] [ENTER] src/routes/org/[slug]/+page.svelte: removeNeedSlot', { id });
 		setMyNeedSlots(needSlots.filter((s) => s.id !== id));
+		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: removeNeedSlot');
 	}
 
 	function updateNeedQuantity(id: string, quantity: number) {
@@ -378,6 +387,7 @@ if (data.isUserTree) {
 	// ✅ REUSES PROTOCOL: Same sharesOfGeneralFulfillmentMap algorithm
 	// ✅ SEPARATE DATA: Uses demoTreeStore instead of myRecognitionTreeStore
 	const demoRecognitionWeights = derived([demoTreeStore.toStore()], ([$tree]) => {
+		console.log('[TRACE] [STEP] src/routes/org/[slug]/+page.svelte: demoRecognitionWeights (recalculation)');
 		console.log('[📊 DEMO-REC] Tree changed - recomputing recognition weights');
 
 		if (!$tree) {
@@ -499,6 +509,7 @@ if (data.isUserTree) {
 	const demoMutualRecognition = derived(
 		[demoRecognitionWeights, demoOrgRecognitionMap],
 		([$myRecognition, $orgRecognition]) => {
+			console.log('[TRACE] [STEP] src/routes/org/[slug]/+page.svelte: demoMutualRecognition (recalculation)');
 			console.log('[🤝 DEMO-MR] Computing mutual recognition for demo mode...');
 
 			if (!$myRecognition || Object.keys($myRecognition).length === 0) {

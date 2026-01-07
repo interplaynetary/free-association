@@ -18,8 +18,11 @@
 	// PWA web manifest link
 	let webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
 
+    console.log('[TRACE] src/routes/+layout.svelte: <module scope>');
+
 	// Initialize services dynamically on mount to avoid initialization order issues
 	onMount(async () => {
+        console.log('[TRACE] src/routes/+layout.svelte: onMount');
 		// Dynamically import and initialize services after component mounts
 		// This ensures all dependencies (like globalState) are fully initialized
 		if (browser) {
@@ -46,6 +49,7 @@
 				console.log('Notification permission:', permission);
 			});
 		}
+		console.log('[TRACE] [EXIT] src/routes/+layout.svelte: onMount');
 	});
 </script>
 

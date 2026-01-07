@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getColorForNameHash } from '$lib/utils/ui/colorUtils';
+    console.log('[TRACE] src/lib/components/DraggedNode.svelte: <module scope>');
 
 	// Props
 	let {
@@ -17,7 +18,10 @@
 	}>();
 
 	// Calculate node color if not provided
-	const computedColor = $derived(nodeColor || getColorForNameHash(nodeName));
+	const computedColor = $derived.by(() => {
+		console.log('[TRACE] [STEP] src/lib/components/DraggedNode.svelte: computedColor');
+		return nodeColor || getColorForNameHash(nodeName);
+	});
 </script>
 
 {#if show}

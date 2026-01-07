@@ -23,7 +23,7 @@ import type {
 	SlotFiltersCollection,
 	Commitment
 } from '@playnet/free-association/schemas';
-import { 
+import {
 	myRecognitionTreeStore as userTree,
 	myRecognitionWeights,
 	myCapacitySlotsStore,
@@ -35,6 +35,8 @@ import {
 import { userContacts } from '$lib/network/users.svelte';
 import { slotSubscriptions, slotFilters } from '$lib/network/capacity-subscriptions.svelte';
 import { myAttributeRecognitions, myAttributeSubscriptions } from '$lib/protocol/stores/attributes.svelte';
+
+console.log('[TRACE] src/lib/utils/data/userStateExport.ts: <module scope>');
 
 // V5 TODO: User slot composition types need to be defined in v5
 // For now, we'll use simplified types
@@ -59,16 +61,16 @@ export interface UserStateExport {
 		capacity_slots: any[] | null;  // V5: Slot-native
 		need_slots: any[] | null;  // V5: Slot-native
 		commitment: Commitment | null;  // V5: Full commitment with all metadata
-		
+
 		// Network configuration
 		slot_subscriptions: SlotSubscriptions | null;  // Who you subscribe to for slots
 		slot_filters: SlotFiltersCollection | null;  // Filters for auto-populating slots
 		attribute_recognitions: any | null;  // Entity attribute recognitions (replaces membership_lists)
 		attribute_subscriptions: any | null;  // Attribute subscriptions (replaces membership_subscriptions)
-		
+
 		// Social data
 		contacts: ContactsCollectionData | null;
-		
+
 		// V5 TODO: Composition desires need to be redesigned for v5
 		compose_from: UserSlotComposition | null;
 		compose_into: UserSlotComposition | null;
@@ -80,6 +82,7 @@ export interface UserStateExport {
  * V5: Comprehensive export including all persistent stores and configurations
  */
 export function exportUserState(): UserStateExport {
+	console.log('[TRACE] [ENTER] src/lib/utils/data/userStateExport.ts: exportUserState');
 	console.log('[USER-STATE-EXPORT] Exporting complete user state (v5 - comprehensive)...');
 
 	// Core data stores
@@ -88,13 +91,13 @@ export function exportUserState(): UserStateExport {
 	const capacitySlots = get(myCapacitySlotsStore);
 	const needSlots = get(myNeedSlotsStore);
 	const commitment = get(myCommitmentStore);  // Full commitment with metadata
-	
+
 	// Network configuration stores
 	const slotSubs = get(slotSubscriptions);
 	const filters = get(slotFilters);
 	const attributeRecognitions = get(myAttributeRecognitions);
 	const attributeSubs = get(myAttributeSubscriptions);
-	
+
 	// Social data
 	const contacts = get(userContacts);
 
@@ -108,16 +111,16 @@ export function exportUserState(): UserStateExport {
 			capacity_slots: capacitySlots,
 			need_slots: needSlots,
 			commitment,
-			
+
 			// Network configuration
 			slot_subscriptions: slotSubs,
 			slot_filters: filters,
 			attribute_recognitions: attributeRecognitions,
 			attribute_subscriptions: attributeSubs,
-			
+
 			// Social data
 			contacts,
-			
+
 			// V5 TODO: Composition desires need to be redesigned
 			compose_from: null,
 			compose_into: null
@@ -138,6 +141,7 @@ export function exportUserState(): UserStateExport {
 	});
 
 	return exportData;
+	// console.log('[TRACE] [EXIT] src/lib/utils/data/userStateExport.ts: exportUserState'); // Implicit exit via return
 }
 
 /**
@@ -145,6 +149,7 @@ export function exportUserState(): UserStateExport {
  * V5: Updated to validate all comprehensive fields
  */
 export function validateUserStateImport(data: any): { valid: boolean; errors: string[] } {
+	console.log('[TRACE] [ENTER] src/lib/utils/data/userStateExport.ts: validateUserStateImport');
 	const errors: string[] = [];
 
 	// Check version
@@ -269,6 +274,7 @@ export async function importUserState(
 		skipContacts?: boolean;
 	} = {}
 ): Promise<{ success: boolean; errors: string[] }> {
+	console.log('[TRACE] [ENTER] src/lib/utils/data/userStateExport.ts: importUserState');
 	console.log('[USER-STATE-IMPORT] Starting comprehensive user state import (v5)...');
 
 	// Validate the import data
@@ -356,13 +362,17 @@ export async function importUserState(
 		return { success: false, errors };
 	}
 }
+// console.log('[TRACE] [EXIT] src/lib/utils/data/userStateExport.ts: importUserState'); // Implicit exit via return
 
 /**
  * Export user state as formatted JSON string
  */
 export function exportUserStateAsJSON(pretty: boolean = true): string {
+	console.log('[TRACE] [ENTER] src/lib/utils/data/userStateExport.ts: exportUserStateAsJSON');
 	const exportData = exportUserState();
-	return JSON.stringify(exportData, null, pretty ? 2 : 0);
+	const result = JSON.stringify(exportData, null, pretty ? 2 : 0);
+	console.log('[TRACE] [EXIT] src/lib/utils/data/userStateExport.ts: exportUserStateAsJSON');
+	return result;
 }
 
 /**
@@ -387,8 +397,10 @@ export async function importUserStateFromJSON(
 	}
 ): Promise<{ success: boolean; errors: string[] }> {
 	try {
+		console.log('[TRACE] [ENTER] src/lib/utils/data/userStateExport.ts: importUserStateFromJSON');
 		const parsedData = JSON.parse(jsonString);
 		return await importUserState(parsedData, options);
+		// console.log('[TRACE] [EXIT] src/lib/utils/data/userStateExport.ts: importUserStateFromJSON'); // Implicit exit
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Failed to parse JSON';
 		console.error('[USER-STATE-IMPORT] JSON parsing failed:', error);

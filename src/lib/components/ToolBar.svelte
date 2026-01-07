@@ -41,6 +41,9 @@
 	} from '$lib/utils/ui/colorUtils';
 	import { t } from '$lib/translations';
 
+    console.log('[TRACE] src/lib/components/ToolBar.svelte: <module scope>');
+
+
 	// V5: Create derived stores for backward compatibility
 	const userCapacities = derived([myCapacitySlotsStore], ([$slots]) => {
 		// V5: Convert slots array to a collection (for compatibility)
@@ -333,6 +336,7 @@
 
 	// Add new node handler
 	function handleAddNode() {
+		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleAddNode');
 		if (!tree || path.length === 0) return;
 
 		// Get current node ID (last in path)
@@ -382,6 +386,7 @@
 			console.error('[UI FLOW] Error adding new node:', error);
 			globalState.showToast($t('errors.error_occurred'), 'error');
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: handleAddNode');
 	}
 
 	// Search panel toggle (tree search)
@@ -471,6 +476,7 @@
 	// Helper function to resolve contact IDs to public keys for forest subtrees
 	// This ensures we only store public keys when adding subtrees from other users
 	function resolveContactIdsForForestSubtree(node: Node): Node {
+		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: resolveContactIdsForForestSubtree', { nodeId: node.id });
 		// Create a deep clone to avoid modifying the original
 		const resolvedNode = structuredClone(node);
 
@@ -549,10 +555,12 @@
 		processNode(resolvedNode);
 
 		return resolvedNode;
+		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: resolveContactIdsForForestSubtree'); // Note: Unreachable, fix manual return
 	}
 
 	// Handle adding a subtree to the current location
 	function handleAddSubtree(subtreeToAdd: Node) {
+		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleAddSubtree', { subtreeId: subtreeToAdd.id });
 		if (!tree || path.length === 0) return;
 
 		// Get current node ID (last in path)
@@ -607,6 +615,7 @@
 			console.error('[TOOLBAR] Error adding subtree:', error);
 			globalState.showToast('Error adding subtree', 'error');
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: handleAddSubtree');
 	}
 
 	// Create a default capacity with proper structure
@@ -657,6 +666,7 @@
 
 	// Add capacity to the store - V5: Add slot to myCapacitySlotsStore
 	function addCapacity(capacity: ProviderCapacity) {
+		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: addCapacity', { id: capacity.id });
 		const alias = $userAlias;
 		const pub = $userPub;
 		if (!alias || !pub) return false;
@@ -690,6 +700,7 @@
 
 	// Create new capacity handler
 	async function handleCreateCapacity() {
+		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleCreateCapacity');
 		const alias = $userAlias;
 		const pub = $userPub;
 		if (!alias || !pub) {
@@ -711,6 +722,7 @@
 			console.error('[TOOLBAR] Error creating capacity:', error);
 			globalState.showToast('Error creating capacity', 'error');
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: handleCreateCapacity');
 	}
 
 	// Handle search result selection

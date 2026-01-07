@@ -2,6 +2,8 @@ import { browser } from '$app/environment';
 import { pushState } from '$app/navigation';
 import { globalState } from '$lib/global.svelte';
 
+console.log('[TRACE] src/lib/services/navigation.svelte.ts: <module scope>');
+
 /**
  * Navigation Service - Handles global navigation and keyboard shortcuts
  *
@@ -16,6 +18,7 @@ class NavigationService {
 	private routerReady = false;
 
 	constructor() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: constructor');
 		if (browser && !this.isInitialized) {
 			// Wait for SvelteKit router to be ready before initializing
 			// Use a longer delay to ensure router is mounted
@@ -26,8 +29,9 @@ class NavigationService {
 	}
 
 	private initialize() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: initialize');
 		if (this.isInitialized) return;
-		
+
 		console.log('[NAVIGATION-SERVICE] Initializing navigation service');
 		this.isInitialized = true;
 
@@ -38,22 +42,28 @@ class NavigationService {
 		// Delay initial history push further to ensure router is ready
 		setTimeout(() => {
 			this.routerReady = true;
+			this.routerReady = true;
 			this.setupInitialHistory();
 		}, 1500);
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: initialize');
 	}
 
 	private handleGlobalKeydown = (event: KeyboardEvent) => {
+		// console.log('[TRACE] src/lib/services/navigation.svelte.ts: handleGlobalKeydown', { key: event.key }); // potentially noisy, commented out for now or enable if needed
 		// Handle escape key for zoom out navigation or exit edit mode
 		if (event.key === 'Escape') {
+			console.log('[TRACE] src/lib/services/navigation.svelte.ts: handleGlobalKeydown (Escape)');
 			this.handleBackNavigation();
 		}
 	};
 
 	private handleBackNavigation() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: handleBackNavigation');
 		// If we're in edit mode, let the edit mode handle the escape
 		if (globalState.editMode) {
 			// The Child component will handle exiting edit mode
 			// Don't prevent default here to allow the input blur to work
+			console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: handleBackNavigation (edit mode handling)');
 			return;
 		}
 
@@ -65,9 +75,11 @@ class NavigationService {
 		if (!isEditing) {
 			globalState.zoomOut();
 		}
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: handleBackNavigation');
 	}
 
 	private handlePopState = (event: PopStateEvent) => {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: handlePopState');
 		// Don't interfere with text editing focus events
 		const activeElement = document.activeElement;
 		const isEditingText = this.isCurrentlyEditing(activeElement);
@@ -91,6 +103,7 @@ class NavigationService {
 			this.safePushState(window.location.href, {});
 		}
 		// If we can't handle the back action, let the browser handle it normally
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: handlePopState');
 	};
 
 	private isCurrentlyEditing(activeElement: Element | null): boolean {
@@ -104,38 +117,46 @@ class NavigationService {
 	}
 
 	private setupKeyboardListeners() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: setupKeyboardListeners');
 		document.addEventListener('keydown', this.handleGlobalKeydown);
 		console.log('[NAVIGATION-SERVICE] Global keyboard listeners set up');
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: setupKeyboardListeners');
 	}
 
 	private setupHistoryListeners() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: setupHistoryListeners');
 		window.addEventListener('popstate', this.handlePopState);
 		console.log('[NAVIGATION-SERVICE] History listeners set up');
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: setupHistoryListeners');
 	}
 
 	/**
 	 * Safely call pushState only when router is ready
 	 */
 	private safePushState(url: string, state: any) {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: safePushState', { url });
 		if (!this.routerReady) {
 			console.log('[NAVIGATION-SERVICE] Router not ready, skipping pushState');
 			return;
 		}
-		
+
 		try {
 			pushState(url, state);
 		} catch (error) {
 			console.warn('[NAVIGATION-SERVICE] Failed to pushState:', error);
 		}
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: safePushState');
 	}
 
 	private setupInitialHistory() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: setupInitialHistory');
 		if (!this.initialHistoryPushed) {
 			// Push initial state to ensure back button can be intercepted
 			this.safePushState(window.location.href, {});
 			this.initialHistoryPushed = true;
 			console.log('[NAVIGATION-SERVICE] Initial history state pushed');
 		}
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: setupInitialHistory');
 	}
 
 	// Public API methods
@@ -144,11 +165,14 @@ class NavigationService {
 	}
 
 	public navigateBack(): void {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: navigateBack');
 		this.handleBackNavigation();
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: navigateBack');
 	}
 
 	// Cleanup method for testing or manual cleanup
 	destroy() {
+		console.log('[TRACE] src/lib/services/navigation.svelte.ts: destroy');
 		if (!browser) return;
 
 		document.removeEventListener('keydown', this.handleGlobalKeydown);
@@ -157,6 +181,7 @@ class NavigationService {
 		this.isInitialized = false;
 		this.initialHistoryPushed = false;
 		console.log('[NAVIGATION-SERVICE] Navigation service destroyed');
+		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: destroy');
 	}
 }
 

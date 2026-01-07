@@ -33,6 +33,8 @@ import {
 	SlotFilterSchema
 } from '@playnet/free-association/schemas';
 
+console.log('[TRACE] src/lib/network/capacity-subscriptions.svelte.ts: <module scope>');
+
 // ═══════════════════════════════════════════════════════════════════
 // UNIFIED STORES (Holster-backed via createStore)
 // ═══════════════════════════════════════════════════════════════════
@@ -96,10 +98,20 @@ export const needCache: Writable<Record<string, NeedSlot[]>> = writable({});
  * Initialize slot subscription stores (unified!)
  * Call this when user logs in
  */
+// ═══════════════════════════════════════════════════════════════════
+// LIFECYCLE FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize slot subscription stores (unified!)
+ * Call this when user logs in
+ */
 export function initializeCapacitySubscriptions() {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: initializeCapacitySubscriptions');
 	slotSubscriptions.initialize();
 	slotFilters.initialize();
 	console.log('[SLOT-SUBS] Initialized unified stores');
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: initializeCapacitySubscriptions');
 }
 
 /**
@@ -107,11 +119,13 @@ export function initializeCapacitySubscriptions() {
  * Call this when user logs out
  */
 export async function cleanupCapacitySubscriptions() {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: cleanupCapacitySubscriptions');
 	await slotSubscriptions.cleanup();
 	await slotFilters.cleanup();
 	capacityCache.set({});
 	needCache.set({});
 	console.log('[SLOT-SUBS] Cleaned up');
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: cleanupCapacitySubscriptions');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -128,6 +142,7 @@ export function subscribeToSlots(
 	pubkey: string,
 	types: { capacity?: boolean; needs?: boolean } = { capacity: true, needs: true }
 ): void {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: subscribeToSlots', { pubkey, types });
 	const currentSubs = get(slotSubscriptions) || {};
 	slotSubscriptions.set({
 		...currentSubs,
@@ -137,14 +152,19 @@ export function subscribeToSlots(
 		}
 	});
 	console.log(`[SLOT-SUBS] ✅ Subscribed to ${pubkey.slice(0, 20)}...:`, types);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: subscribeToSlots');
 }
 
 /**
  * Unsubscribe from a user's slots completely - UNIFIED!
  */
 export function unsubscribeFromSlots(pubkey: string): void {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: unsubscribeFromSlots', { pubkey });
 	const currentSubs = get(slotSubscriptions);
-	if (!currentSubs) return;
+	if (!currentSubs) {
+		console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: unsubscribeFromSlots (no subs)');
+		return;
+	}
 
 	const { [pubkey]: removed, ...remaining } = currentSubs;
 	slotSubscriptions.set(remaining);
@@ -160,6 +180,7 @@ export function unsubscribeFromSlots(pubkey: string): void {
 	});
 
 	console.log(`[SLOT-SUBS] ❌ Unsubscribed from ${pubkey.slice(0, 20)}...`);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: unsubscribeFromSlots');
 }
 
 /**
@@ -172,6 +193,7 @@ export function updateSlotSubscription(
 	pubkey: string,
 	types: { capacity?: boolean; needs?: boolean }
 ): void {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotSubscription', { pubkey, types });
 	const currentSubs = get(slotSubscriptions) || {};
 	const existing = currentSubs[pubkey] || { capacity: false, needs: false };
 	slotSubscriptions.set({
@@ -182,6 +204,7 @@ export function updateSlotSubscription(
 		}
 	});
 	console.log(`[SLOT-SUBS] 🔄 Updated subscription for ${pubkey.slice(0, 20)}...:`, types);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotSubscription');
 }
 
 
@@ -197,6 +220,7 @@ export function updateSlotSubscription(
 export function createSlotFilter(
 	filterData: Omit<SlotFilter, 'filter_id' | 'created_at' | 'updated_at'>
 ): SlotFilter {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: createSlotFilter');
 	const now = Date.now();
 	const filter_id = `filter_${now}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -228,6 +252,7 @@ export function createSlotFilter(
 	slotFilters.set(updatedFilters);
 
 	console.log(`[SLOT-SUBS] Created slot filter (${validatedFilter.applies_to}): ${filter_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: createSlotFilter', { filter_id });
 	return validatedFilter;
 }
 
@@ -235,15 +260,18 @@ export function createSlotFilter(
  * Update an existing slot filter - UNIFIED!
  */
 export function updateSlotFilter(filter_id: string, updates: Partial<SlotFilter>): void {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotFilter', { filter_id });
 	const currentFilters = get(slotFilters);
 	if (!currentFilters) {
 		console.warn(`[SLOT-SUBS] No filters loaded`);
+		console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotFilter (no filters)');
 		return;
 	}
 
 	const existingFilter = currentFilters[filter_id];
 	if (!existingFilter) {
 		console.warn(`[SLOT-SUBS] Filter with ID ${filter_id} not found`);
+		console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotFilter (not found)');
 		return;
 	}
 
@@ -265,20 +293,26 @@ export function updateSlotFilter(filter_id: string, updates: Partial<SlotFilter>
 	slotFilters.set(updatedFilters);
 
 	console.log(`[SLOT-SUBS] Updated slot filter: ${filter_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: updateSlotFilter');
 }
 
 /**
  * Delete a slot filter - UNIFIED!
  */
 export function deleteSlotFilter(filter_id: string): void {
+	console.log('[TRACE] [ENTER] src/lib/network/capacity-subscriptions.svelte.ts: deleteSlotFilter', { filter_id });
 	const currentFilters = get(slotFilters);
-	if (!currentFilters) return;
+	if (!currentFilters) {
+		console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: deleteSlotFilter (no filters)');
+		return;
+	}
 
 	const { [filter_id]: deleted, ...remaining } = currentFilters;
 
 	slotFilters.set(remaining);
 
 	console.log(`[SLOT-SUBS] Deleted slot filter: ${filter_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/capacity-subscriptions.svelte.ts: deleteSlotFilter');
 }
 
 

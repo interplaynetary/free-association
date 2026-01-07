@@ -8,8 +8,11 @@
  * 4. Integration with the existing geocoding utilities
  */
 
+
 import { geocodeCapacityAddress, formatAddress } from './geocoding';
 import type { AvailabilitySlot } from '$lib/protocol/schemas';
+
+console.log('[TRACE] src/lib/location/geocodingCache.ts: <module scope>');
 
 interface AddressComponents {
 	street_address?: string;
@@ -119,6 +122,7 @@ function isCacheValid(cached: CachedGeocodeResult): boolean {
  * Load geocoding cache from localStorage on startup
  */
 function loadCacheFromStorage(): void {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: loadCacheFromStorage');
 	if (typeof window === 'undefined') return; // SSR check
 
 	try {
@@ -140,12 +144,14 @@ function loadCacheFromStorage(): void {
 	} catch (error) {
 		console.warn('[GEOCODING-CACHE] Failed to load cache from storage:', error);
 	}
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: loadCacheFromStorage');
 }
 
 /**
  * Save geocoding cache to localStorage
  */
 function saveCacheToStorage(): void {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: saveCacheToStorage');
 	if (typeof window === 'undefined') return; // SSR check
 
 	try {
@@ -161,6 +167,7 @@ function saveCacheToStorage(): void {
 	} catch (error) {
 		console.warn('[GEOCODING-CACHE] Failed to save cache to storage:', error);
 	}
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: saveCacheToStorage');
 }
 
 /**
@@ -170,10 +177,12 @@ async function geocodeWithCache(
 	components: AddressComponents,
 	addressHash: string
 ): Promise<CachedGeocodeResult | null> {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: geocodeWithCache', { addressHash });
 	// Check cache first
 	const cached = geocodingCache.get(addressHash);
 	if (cached && isCacheValid(cached)) {
 		console.log(`[GEOCODING-CACHE] Cache hit for address hash: ${addressHash}`);
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: geocodeWithCache (cache hit)');
 		return cached;
 	}
 
@@ -181,6 +190,7 @@ async function geocodeWithCache(
 	const hasAddressData = Object.values(components).some((value) => value && value.trim());
 	if (!hasAddressData) {
 		console.log('[GEOCODING-CACHE] No address data to geocode');
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: geocodeWithCache (no data)');
 		return null;
 	}
 
@@ -206,13 +216,16 @@ async function geocodeWithCache(
 			saveCacheToStorage();
 
 			console.log(`[GEOCODING-CACHE] Cached geocoding result for ${addressHash}:`, cachedResult);
+			console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: geocodeWithCache (success)');
 			return cachedResult;
 		} else {
 			console.log(`[GEOCODING-CACHE] No geocoding results found for address hash: ${addressHash}`);
+			console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: geocodeWithCache (no results)');
 			return null;
 		}
 	} catch (error) {
 		console.error(`[GEOCODING-CACHE] Geocoding failed for address hash ${addressHash}:`, error);
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: geocodeWithCache (error)');
 		return null;
 	}
 }
@@ -221,8 +234,10 @@ async function geocodeWithCache(
  * Process a single slot's location data, geocoding if needed
  */
 async function processSlotLocation(slot: AvailabilitySlot): Promise<AvailabilitySlot> {
+	// console.log('[TRACE] src/lib/location/geocodingCache.ts: processSlotLocation', { slotId: slot.id }); // potentially noisy
 	// Only process slots with specific location type
 	if (slot.location_type !== 'Specific') {
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processSlotLocation (not specific)');
 		return slot;
 	}
 
@@ -243,6 +258,7 @@ async function processSlotLocation(slot: AvailabilitySlot): Promise<Availability
 
 	if (!changed) {
 		console.log(`[GEOCODING-CACHE] Address unchanged for slot ${slot.id}, skipping geocoding`);
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processSlotLocation (unchanged)');
 		return slot;
 	}
 
@@ -253,6 +269,7 @@ async function processSlotLocation(slot: AvailabilitySlot): Promise<Availability
 
 	if (geocodeResult) {
 		// Return slot with updated coordinates
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processSlotLocation (updated)');
 		return {
 			...slot,
 			latitude: geocodeResult.latitude,
@@ -263,6 +280,7 @@ async function processSlotLocation(slot: AvailabilitySlot): Promise<Availability
 		console.warn(
 			`[GEOCODING-CACHE] Geocoding failed for slot ${slot.id}, keeping original coordinates`
 		);
+		console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processSlotLocation (failed)');
 		return slot;
 	}
 }
@@ -271,6 +289,7 @@ async function processSlotLocation(slot: AvailabilitySlot): Promise<Availability
  * Process all slots in a capacity, geocoding addresses that have changed
  */
 export async function processCapacityLocations(capacity: any): Promise<any> {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: processCapacityLocations', { capacityId: capacity.id });
 	if (!capacity.availability_slots || !Array.isArray(capacity.availability_slots)) {
 		return capacity;
 	}
@@ -293,10 +312,12 @@ export async function processCapacityLocations(capacity: any): Promise<any> {
 		}
 	}
 
-	return {
+	const result = {
 		...capacity,
 		availability_slots: processedSlots
 	};
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processCapacityLocations');
+	return result;
 }
 
 /**
@@ -305,6 +326,7 @@ export async function processCapacityLocations(capacity: any): Promise<any> {
 export async function processCapacitiesLocations(
 	capacities: Record<string, any>
 ): Promise<Record<string, any>> {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: processCapacitiesLocations', { count: Object.keys(capacities).length });
 	console.log(
 		`[GEOCODING-CACHE] Processing locations for ${Object.keys(capacities).length} capacities`
 	);
@@ -325,6 +347,7 @@ export async function processCapacitiesLocations(
 	console.log(
 		`[GEOCODING-CACHE] Completed processing ${Object.keys(processedCapacities).length} capacities`
 	);
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: processCapacitiesLocations');
 	return processedCapacities;
 }
 
@@ -333,19 +356,23 @@ export async function processCapacitiesLocations(
  * Call this when the app starts
  */
 export function initializeGeocodingCache(): void {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: initializeGeocodingCache');
 	loadCacheFromStorage();
 	console.log('[GEOCODING-CACHE] Geocoding cache system initialized');
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: initializeGeocodingCache');
 }
 
 /**
  * Clear the geocoding cache (useful for testing or manual cache reset)
  */
 export function clearGeocodingCache(): void {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: clearGeocodingCache');
 	geocodingCache.clear();
 	if (typeof window !== 'undefined') {
 		localStorage.removeItem('geocoding-cache');
 	}
 	console.log('[GEOCODING-CACHE] Geocoding cache cleared');
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: clearGeocodingCache');
 }
 
 /**
@@ -356,6 +383,7 @@ export function getGeocodingCacheStats(): {
 	validEntries: number;
 	expiredEntries: number;
 } {
+	console.log('[TRACE] src/lib/location/geocodingCache.ts: getGeocodingCacheStats');
 	let validEntries = 0;
 	let expiredEntries = 0;
 
@@ -367,6 +395,7 @@ export function getGeocodingCacheStats(): {
 		}
 	});
 
+	console.log('[TRACE] [EXIT] src/lib/location/geocodingCache.ts: getGeocodingCacheStats');
 	return {
 		size: geocodingCache.size,
 		validEntries,

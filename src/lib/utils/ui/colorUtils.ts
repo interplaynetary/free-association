@@ -2,6 +2,8 @@ import * as d3 from 'd3';
 import { resolveToPublicKey } from '$lib/network/users.svelte';
 import { getSDGColor, isSDGNode } from '../../templates/sdg';
 
+console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: <module scope>');
+
 const nameColors = new Map();
 
 const colorScale = d3
@@ -40,6 +42,7 @@ const COLOR_PALETTE = [
  * @returns A numeric hash
  */
 function hashString(str: string): number {
+	// console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: hashString', { str }); // Too noisy for a hash function
 	let hash = 0;
 	if (str.length === 0) return hash;
 
@@ -79,6 +82,7 @@ function getBrightness(hex: string): number {
  * @returns Hex color code
  */
 export function getColorForUserId(userId: string): string {
+	console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: getColorForUserId', { userId });
 	if (!userId) return '#cccccc';
 
 	// Resolve to public key if possible to ensure consistent colors
@@ -88,7 +92,9 @@ export function getColorForUserId(userId: string): string {
 
 	// Get a consistent index from the resolved key
 	const index = hashString(colorKey) % COLOR_PALETTE.length;
-	return COLOR_PALETTE[index];
+	const result = COLOR_PALETTE[index];
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/colorUtils.ts: getColorForUserId');
+	return result;
 }
 
 /**
@@ -124,14 +130,18 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function getColorForName(name: string) {
+	console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: getColorForName', { name });
 	if (!nameColors.has(name)) {
 		nameColors.set(name, colorScale(name));
 	}
-	return nameColors.get(name);
+	const result = nameColors.get(name);
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/colorUtils.ts: getColorForName');
+	return result;
 }
 
 // Helper function to get color based on name and optional ID
 export function getColorForNameHash(name: string, nodeId?: string): string {
+	console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: getColorForNameHash', { name, nodeId });
 	if (!name) return '#64748b'; // Default slate color
 
 	// Check if this is an SDG node and return official SDG color
@@ -151,7 +161,9 @@ export function getColorForNameHash(name: string, nodeId?: string): string {
 	const s = 55 + (Math.abs(hash) % 15); // 55-70% saturation - softer but still vibrant
 	const l = 70 + (Math.abs(hash) % 10); // 70-80% lightness - brighter, softer tones
 
-	return `hsl(${h}, ${s}%, ${l}%)`;
+	const result = `hsl(${h}, ${s}%, ${l}%)`;
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/colorUtils.ts: getColorForNameHash');
+	return result;
 }
 
 /**
@@ -161,6 +173,7 @@ export function getColorForNameHash(name: string, nodeId?: string): string {
  * @returns Darker HSL color string
  */
 export function getDarkerColorForNameHash(name: string, nodeId?: string): string {
+	console.log('[TRACE] src/lib/utils/ui/colorUtils.ts: getDarkerColorForNameHash', { name, nodeId });
 	if (!name) return '#4a5568'; // Default darker slate color
 
 	// Check if this is an SDG node and darken the official color
@@ -212,5 +225,7 @@ export function getDarkerColorForNameHash(name: string, nodeId?: string): string
 	const s = 55 + (Math.abs(hash) % 15); // Same saturation as base
 	const l = Math.max(20, 70 + (Math.abs(hash) % 10) - 25); // 25% darker than base, minimum 20%
 
-	return `hsl(${h}, ${s}%, ${l}%)`;
+	const result = `hsl(${h}, ${s}%, ${l}%)`;
+	console.log('[TRACE] [EXIT] src/lib/utils/ui/colorUtils.ts: getDarkerColorForNameHash');
+	return result;
 }

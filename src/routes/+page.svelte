@@ -38,6 +38,7 @@
 	let cleanupAllocationPublishing: (() => void) | null = null;
 
 	onMount(() => {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: onMount');
 		console.log('[HOME] Initializing stores for inventory view...');
 		
 		// Initialize stores
@@ -68,10 +69,12 @@
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: onMount');
 	});
 
 	// CRUD Operations - Generalized for any need type
 	function addNeedSlot(name: string, quantity: number, needTypeId: string) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: addNeedSlot', { name, quantity, needTypeId });
 		const newSlot: NeedSlot = {
 			id: `need_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -83,22 +86,29 @@
 			recurrence: 'monthly' // Default to per month
 		};
 		
+		
 		setMyNeedSlots([...needSlots, newSlot]);
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: addNeedSlot');
 	}
 	
 	function removeNeedSlot(id: string) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: removeNeedSlot', { id });
 		setMyNeedSlots(needSlots.filter(s => s.id !== id));
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: removeNeedSlot');
 	}
 	
 	function updateNeedSlot(updatedSlot: NeedSlot) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: updateNeedSlot', { id: updatedSlot.id });
 		const updated = needSlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);
 		setMyNeedSlots(updated);
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: updateNeedSlot');
 	}
 
 	// CRUD Operations - Generalized capacity for any need type
 	function addCapacitySlot(name: string, quantity: number, needTypeId: string) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: addCapacitySlot', { name, quantity, needTypeId });
 		const newSlot: AvailabilitySlot = {
 			id: `capacity_${Date.now()}_${Math.random()}`,
 			name: name,
@@ -111,22 +121,28 @@
 		};
 		
 		setMyCapacitySlots([...capacitySlots, newSlot]);
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: addCapacitySlot');
 	}
 	
 	function removeCapacitySlot(id: string) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: removeCapacitySlot', { id });
 		setMyCapacitySlots(capacitySlots.filter(s => s.id !== id));
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: removeCapacitySlot');
 	}
 	
 	function updateCapacitySlot(updatedSlot: AvailabilitySlot) {
+		console.log('[TRACE] [ENTER] src/routes/+page.svelte: updateCapacitySlot', { id: updatedSlot.id });
 		const updated = capacitySlots.map(s =>
 			s.id === updatedSlot.id ? updatedSlot : s
 		);
 		setMyCapacitySlots(updated);
+		console.log('[TRACE] [EXIT] src/routes/+page.svelte: updateCapacitySlot');
 	}
 
 	// V5: Create reactive derived store from myRecognitionWeights (replaces userSogf)
 	// Recognition weights are automatically computed from the tree in v5!
 	const barSegments = derived(myRecognitionWeights, ($weights) => {
+		console.log('[TRACE] [STEP] src/routes/+page.svelte: barSegments (derived recalculation)');
 		console.log('[📊 UI-YR] Recognition weights changed - generating segments for bar...');
 		
 		// Defensive: Handle undefined/null weights (iOS Safari hydration timing)
@@ -159,6 +175,7 @@
 	// V5: Create reactive derived store from myMutualRecognition (replaces generalShares)
 	// Mutual recognition is automatically computed from recognition weights + network data in v5!
 	const providerSegments = derived(myMutualRecognition, ($mutualRec) => {
+		console.log('[TRACE] [STEP] src/routes/+page.svelte: providerSegments (derived recalculation)');
 		console.log('[📊 UI-MR] Mutual recognition changed - generating segments for bar...');
 
 		// Defensive: Handle undefined/null mutual recognition (iOS Safari hydration timing)
@@ -228,14 +245,16 @@
 			</div>
 			<div class="bar-area">
 				{#if $barSegments.length > 0}
-					<Bar
-						segments={$barSegments}
-						width="100%"
-						height="100%"
-						showLabelsOnSelect={true}
-						showValues={false}
-						rounded={false}
-					/>
+					<div class="bar-wrapper">
+						<Bar
+							segments={$barSegments}
+							width="100%"
+							height="100%"
+							showLabelsOnSelect={true}
+							showValues={false}
+							rounded={false}
+						/>
+					</div>
 				{:else}
 					<div class="placeholder">
 						<p>
@@ -294,6 +313,14 @@
 		min-width: 0;
 	}
 
+	.bar-wrapper {
+		width: 100%;
+		height: 100%;
+		border-radius: 6px;
+		overflow: hidden;
+		position: relative;
+	}
+
 	/* Mobile: Horizontal bars stacked vertically */
 	@media (max-width: 768px) {
 		.bars {
@@ -306,7 +333,7 @@
 			grid-template-columns: auto 1fr;
 			gap: 0.75rem;
 			align-items: center;
-			height: 2rem;
+			height: 4rem;
 			width: 100%;
 		}
 
@@ -345,7 +372,7 @@
 		.bar-group {
 			display: flex;
 			flex-direction: column;
-			width: 2rem;
+			width: 100%;
 			height: 100%;
 			min-height: 0;
 			max-height: 100%;
@@ -364,7 +391,7 @@
 
 		.bar-label {
 			order: 2;
-			font-size: min(0.5em, 1vw);
+			font-size: min(0.8em, 1.5vw);
 			padding: 0 0.25rem;
 			max-width: 100%;
 			text-align: center;
@@ -384,7 +411,7 @@
 	}
 
 	.bar-label {
-		font-size: min(0.6em, 1.2vh);
+		font-size: min(0.9em, 2vh);
 		color: #666;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -432,8 +459,8 @@
 			flex-direction: column;
 			height: auto;
 			gap: 0.5rem;
-			/* Maintain consistent padding on mobile */
-			padding: 0.5rem;
+			/* Maintain consistent padding on mobile, but increase horizontal padding */
+			padding: 0.5rem 1rem;
 		}
 
 		.placeholder {

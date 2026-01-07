@@ -11,6 +11,7 @@ import { initializeGeocodingCache } from '$lib/location/geocodingCache';
 
 // Services are auto-initialized when imported
 console.log('[SERVICES] Global services initialized');
+console.log('[TRACE] src/lib/services/index.ts: <module scope>');
 
 // Initialize geocoding cache system
 initializeGeocodingCache();

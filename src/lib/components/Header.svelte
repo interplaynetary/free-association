@@ -15,6 +15,9 @@
 		isHolsterAuthenticating as isAuthenticating,
 		// changePassword
 	} from '$lib/network/holster.svelte';
+
+    console.log('[TRACE] src/lib/components/Header.svelte: <module scope>');
+
 	// Track tree persistence state
 	let isTreePersisting = $state(false);
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
@@ -545,11 +548,13 @@
 
 	// Handle form submission (login or register)
 	async function handleSubmit(event: Event) {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handleSubmit');
 		// Prevent default form submission
 		event.preventDefault();
 
 		// Validate form inputs
 		if (!validateForm()) {
+			console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: handleSubmit (validation failed)');
 			return;
 		}
 
@@ -574,10 +579,12 @@
 		} finally {
 			isLoading = false;
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: handleLogin');
 	}
 
 	// Handle login with Gun
 	async function handleLogin() {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handleLogin');
 		try {
 			await login(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
@@ -597,6 +604,7 @@
 
 	// Handle signup/register with Gun
 	async function handleSignup() {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handleSignup');
 		try {
 			await signup(usernameInput.trim(), password);
 			// Success handling is done via Gun's 'auth' event in gunSetup
@@ -616,6 +624,7 @@
 
 	// Handle logout with Gun
 	async function handleLogout() {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handleLogout');
 		try {
 			await signout();
 			globalState.resetState();
@@ -747,6 +756,7 @@
 
 	// Handle importing user data
 	async function handleImportData() {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handleImportData');
 		if (!importJsonInput.trim()) {
 			importError = 'Please paste JSON data to import';
 			return;
@@ -778,6 +788,7 @@
 		} finally {
 			isImporting = false;
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: handleImportData');
 	}
 
 	// Search functionality - now using improved protocol.ts functions
@@ -811,6 +822,7 @@
 		displayPath: string;
 		score: number;
 	}) {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: navigateToSearchResult', { nodeName: result.node.name, path: result.displayPath });
 		// Allow navigation even when not authenticated (demo tree exists)
 		if (!user && !tree) {
 			showLoginPanel = true;
@@ -825,6 +837,7 @@
 		toggleSearchPanel();
 
 		globalState.showToast(`Navigated to "${result.node.name}"`, 'success');
+		console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: navigateToSearchResult');
 	}
 
 	// Handle keyboard navigation in search
@@ -879,9 +892,11 @@
 
 	// Handle password change
 	async function handlePasswordChange() {
+		console.log('[TRACE] [ENTER] src/lib/components/Header.svelte: handlePasswordChange');
 		// Validate inputs
 		if (!currentPassword || !newPassword || !confirmNewPassword) {
 			passwordChangeError = 'Please fill in all fields';
+			console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: handlePasswordChange (validation failed)');
 			return;
 		}
 
@@ -914,6 +929,7 @@
 		} finally {
 			isChangingPassword = false;
 		}
+		console.log('[TRACE] [EXIT] src/lib/components/Header.svelte: handlePasswordChange');
 	}
 </script>
 

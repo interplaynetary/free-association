@@ -34,12 +34,17 @@ function clearStores(): void {
 // ═══════════════════════════════════════════════════════════════════
 
 if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
+	console.log('[TRACE] src/lib/network/holster.svelte.ts: <module scope>');
 	const checkAuth = async () => {
+		console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: checkAuth');
 		try {
 			isHolsterAuthenticating.set(true);
 
 			const authState = await holsterCore.recall({
-				onSuccess: (state) => updateStoresFromAuthState(state),
+				onSuccess: (state) => {
+					console.log('[TRACE] [CALLBACK] src/lib/network/holster.svelte.ts: recall onSuccess');
+					updateStoresFromAuthState(state)
+				},
 				onError: (error) => console.error('[HOLSTER RECALL] Error:', error)
 			});
 
@@ -54,6 +59,7 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 		} finally {
 			isHolsterAuthenticating.set(false);
 		}
+		console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: checkAuth');
 	};
 
 	checkAuth();
@@ -66,30 +72,38 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 // ═══════════════════════════════════════════════════════════════════
 
 export async function login(alias: string, password: string): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: login', { alias });
 	const authState = await holsterCore.login(alias, password, {
 		onSuccess: (state) => updateStoresFromAuthState(state),
 		onError: (error) => console.error('[HOLSTER LOGIN] Error:', error)
 	});
 
 	updateStoresFromAuthState(authState);
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: login');
 }
 
 export async function signup(alias: string, password: string): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: signup', { alias });
 	const authState = await holsterCore.signup(alias, password, {
 		onSuccess: (state) => updateStoresFromAuthState(state),
 		onError: (error) => console.error('[HOLSTER SIGNUP] Error:', error)
 	});
 
 	updateStoresFromAuthState(authState);
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: signup');
 }
 
 export async function signout(): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: signout');
 	await holsterCore.signout();
 	clearStores();
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: signout');
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: changePassword');
 	await holsterCore.changePassword(currentPassword, newPassword);
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: changePassword');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -97,17 +111,21 @@ export async function changePassword(currentPassword: string, newPassword: strin
 // ═══════════════════════════════════════════════════════════════════
 
 export function mockAuth(pub: string, alias: string = 'test_user'): void {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: mockAuth');
 	holsterCore.mockAuth(pub, alias);
 	holsterUserPub.set(pub);
 	holsterUserAlias.set(alias);
 	isHolsterAuthenticating.set(false);
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: mockAuth');
 }
 
 export function clearAuth(): void {
+	console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: clearAuth');
 	holsterCore.clearAuth();
 	holsterUserPub.set('');
 	holsterUserAlias.set('');
 	isHolsterAuthenticating.set(false);
+	console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: clearAuth');
 }
 
 export function isAuthenticated(): boolean {

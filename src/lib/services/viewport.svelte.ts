@@ -1,5 +1,7 @@
 import { browser } from '$app/environment';
 
+console.log('[TRACE] src/lib/services/viewport.svelte.ts: <module scope>');
+
 /**
  * Viewport Service - Handles iOS keyboard detection and viewport changes
  *
@@ -14,12 +16,14 @@ class ViewportService {
 	private isInitialized = false;
 
 	constructor() {
+		console.log('[TRACE] src/lib/services/viewport.svelte.ts: constructor');
 		if (browser && !this.isInitialized) {
 			this.initialize();
 		}
 	}
 
 	private initialize() {
+		console.log('[TRACE] src/lib/services/viewport.svelte.ts: initialize');
 		console.log('[VIEWPORT-SERVICE] Initializing viewport service');
 		this.isInitialized = true;
 		this.hasVisualViewport = 'visualViewport' in window;
@@ -29,11 +33,16 @@ class ViewportService {
 
 		// Initial calculation
 		this.handleViewportChange();
+		console.log('[TRACE] [EXIT] src/lib/services/viewport.svelte.ts: initialize');
 	}
 
 	private handleViewportChange = () => {
+		console.log('[TRACE] src/lib/services/viewport.svelte.ts: handleViewportChange');
 		// Multiple levels of feature detection for better compatibility
-		if (!window.visualViewport && !window.innerHeight) return;
+		if (!window.visualViewport && !window.innerHeight) {
+			console.log('[TRACE] [EXIT] src/lib/services/viewport.svelte.ts: handleViewportChange (no viewport)');
+			return;
+		}
 
 		let keyboardHeight = 0;
 
@@ -61,6 +70,7 @@ class ViewportService {
 			document.documentElement.style.setProperty('-webkit-keyboard-height', '0px');
 			document.documentElement.style.setProperty('-moz-keyboard-height', '0px');
 		}
+		console.log('[TRACE] [EXIT] src/lib/services/viewport.svelte.ts: handleViewportChange');
 	};
 
 	private scrollHandler = (event: Event) => {
@@ -73,6 +83,7 @@ class ViewportService {
 	};
 
 	private setupViewportListeners() {
+		console.log('[TRACE] src/lib/services/viewport.svelte.ts: setupViewportListeners');
 		if (this.hasVisualViewport && window.visualViewport) {
 			console.log('[VIEWPORT-SERVICE] Setting up Visual Viewport API listeners');
 			window.visualViewport.addEventListener('resize', this.handleViewportChange);
@@ -86,6 +97,7 @@ class ViewportService {
 				setTimeout(this.handleViewportChange, 100);
 			});
 		}
+		console.log('[TRACE] [EXIT] src/lib/services/viewport.svelte.ts: setupViewportListeners');
 	}
 
 	// Public API

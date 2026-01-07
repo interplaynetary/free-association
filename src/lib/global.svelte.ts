@@ -31,9 +31,11 @@ export const currentPath: Writable<string[]> = writable([]);
 
 // Initialize currentPath when user logs in or demo tree loads
 if (browser) {
+	console.log('[TRACE] src/lib/global.svelte.ts: <module scope>');
 	// Watch for user authentication state changes
 	let lastPub = '';
 	userPub.subscribe((pub) => {
+		console.log('[TRACE] src/lib/global.svelte.ts: userPub.subscribe', { pub });
 		if (pub && pub !== lastPub) {
 			// User has logged in or changed
 			lastPub = pub;
@@ -82,7 +84,9 @@ if (browser) {
 // We will use the persist/manifest functions from state.ts for sync
 
 // Helper function to get current tree (user, org, or demo)
+// Helper function to get current tree (user, org, or demo)
 function getCurrentTree() {
+	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: getCurrentTree');
 	// Check if we're on an org page - if so, always use demo tree (which contains the org tree)
 	if (browser) {
 		const currentPage = get(page);
@@ -90,6 +94,7 @@ function getCurrentTree() {
 
 		if (isOrgPage) {
 			console.log('[GLOBAL] On org page - using demo tree (org tree)');
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (org page)');
 			return demoTreeStore.current;
 		}
 	}
@@ -98,15 +103,19 @@ function getCurrentTree() {
 	const pub = get(userPub);
 	if (pub) {
 		// User is authenticated - use userTree
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (user tree)');
 		return get(userTree);
 	} else {
 		// User is not authenticated - use demoTree
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (demo tree)');
 		return demoTreeStore.current;
 	}
 }
 
 // Helper function to clone tree safely (handles demo tree proxy issues)
+// Helper function to clone tree safely (handles demo tree proxy issues)
 function cloneTreeGlobal(treeToClone: any) {
+	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: cloneTreeGlobal');
 	// Check if we're on an org page - if so, use JSON serialization
 	if (browser) {
 		const currentPage = get(page);
@@ -114,6 +123,7 @@ function cloneTreeGlobal(treeToClone: any) {
 
 		if (isOrgPage) {
 			// Org pages use demo tree - use JSON serialization
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: cloneTreeGlobal (org page/json)');
 			return JSON.parse(JSON.stringify(treeToClone));
 		}
 	}
@@ -121,15 +131,19 @@ function cloneTreeGlobal(treeToClone: any) {
 	const pub = get(userPub);
 	if (pub) {
 		// Authenticated users: use structuredClone for proper cloning
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: cloneTreeGlobal (structuredClone)');
 		return structuredClone(treeToClone);
 	} else {
 		// Demo tree: use JSON serialization to avoid proxy/clone issues
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: cloneTreeGlobal (json)');
 		return JSON.parse(JSON.stringify(treeToClone));
 	}
 }
 
 // Helper function to update the appropriate tree store
+// Helper function to update the appropriate tree store
 function updateTreeStore(updatedTree: any) {
+	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: updateTreeStore');
 	// Check if we're on an org page - if so, update demo tree
 	if (browser) {
 		const currentPage = get(page);
@@ -144,6 +158,7 @@ function updateTreeStore(updatedTree: any) {
 				console.error('[GLOBAL] Failed to serialize org tree:', err);
 				demoTreeStore.set(updatedTree);
 			}
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (org page)');
 			return;
 		}
 	}
@@ -152,6 +167,7 @@ function updateTreeStore(updatedTree: any) {
 	if (pub) {
 		// Authenticated users: update userTree
 		userTree.set(updatedTree);
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (userTree)');
 	} else {
 		// Demo users: update demoTree with JSON serialization
 		try {
@@ -161,6 +177,7 @@ function updateTreeStore(updatedTree: any) {
 			console.error('[GLOBAL] Failed to serialize demo tree:', err);
 			demoTreeStore.set(updatedTree);
 		}
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (demoTree)');
 	}
 }
 
@@ -216,28 +233,43 @@ export const globalState = $state({
 	ephemeralFulfillmentValues: new Map<string, number>(), // nodeId -> ephemeral percentage (0-100)
 	ephemeralFulfillmentCounter: 0, // Counter to trigger reactivity when ephemeral values change
 	navigateToPath: async (newPath: string[]) => {
+		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: navigateToPath', { newPath });
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
 			console.log('Navigation blocked: currently in edit mode');
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPath (blocked)');
 			return;
 		}
 
 		console.log('Navigating to path', newPath);
 		const tree = getCurrentTree();
-		if (!newPath.length || !tree) return;
+		if (!newPath.length || !tree) {
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPath (no path/tree)');
+			return;
+		}
 		currentPath.set(newPath);
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPath');
 	},
 	navigateToPathIndex: (index: number) => {
+		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: navigateToPathIndex', { index });
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
 			console.log('Navigation blocked: currently in edit mode');
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPathIndex (blocked)');
 			return;
 		}
 
 		const path = get(currentPath);
-		if (index < 0 || index >= path.length) return;
-		if (index === path.length - 1) return; // Already at position
+		if (index < 0 || index >= path.length) {
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPathIndex (invalid index)');
+			return;
+		}
+		if (index === path.length - 1) {
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPathIndex (already at position)');
+			return; // Already at position
+		}
 		currentPath.set(path.slice(0, index + 1));
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: navigateToPathIndex');
 	},
 	// Add a node ID to the path (zoom in)
 	zoomInto: (nodeId: string) => {
@@ -267,16 +299,23 @@ export const globalState = $state({
 	},
 
 	// Remove the last node ID from the path (zoom out)
+	// Remove the last node ID from the path (zoom out)
 	zoomOut: () => {
+		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: zoomOut');
 		// Prevent navigation when in edit mode
 		if (globalState.editMode) {
 			console.log('Navigation blocked: currently in edit mode');
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: zoomOut (blocked)');
 			return;
 		}
 
 		const path = get(currentPath);
-		if (path.length <= 1) return;
+		if (path.length <= 1) {
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: zoomOut (root/empty)');
+			return;
+		}
 		currentPath.set(path.slice(0, -1));
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: zoomOut');
 	},
 
 	// Check if we can zoom out (path has more than one level)
@@ -287,6 +326,7 @@ export const globalState = $state({
 	// Reset all state (logout)
 	// V5: Don't manually set tree - let Holster handle it (will reload on next login)
 	resetState: () => {
+		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: resetState');
 		// ✅ DON'T manually set an empty tree - let Holster handle tree state
 		// This ensures Holster properly reloads the tree from network on next login
 		// const emptyTree = createRootNode('root', 'My Values');
@@ -323,6 +363,7 @@ export const globalState = $state({
 				clearAllChatSubscriptions();
 			});
 		}
+		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: resetState');
 	},
 
 	/**
@@ -567,16 +608,19 @@ export const globalState = $state({
 
 	// Node reordering function
 	handleNodeReorder: (sourceNodeId: string, targetNodeId: string) => {
+		console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: handleNodeReorder', { sourceNodeId, targetNodeId });
 		try {
 			const tree = getCurrentTree();
 			if (!tree) {
 				globalState.showToast('No tree available for reordering', 'error');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (no tree)');
 				return false;
 			}
 
 			// Don't allow moving to self
 			if (sourceNodeId === targetNodeId) {
 				globalState.showToast('Cannot move node to itself', 'warning');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (self move)');
 				return false;
 			}
 
@@ -586,6 +630,7 @@ export const globalState = $state({
 			// Check if this would create a cycle
 			if (wouldCreateCycle(updatedTree, sourceNodeId, targetNodeId)) {
 				globalState.showToast('Cannot move node to its own descendant', 'warning');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (cycle detected)');
 				return false;
 			}
 
@@ -595,11 +640,13 @@ export const globalState = $state({
 
 			if (!sourceNode) {
 				globalState.showToast('Source node not found', 'error');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (source missing)');
 				return false;
 			}
 
 			if (!targetNode) {
 				globalState.showToast('Target node not found', 'error');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (target missing)');
 				return false;
 			}
 
@@ -609,6 +656,7 @@ export const globalState = $state({
 					`Cannot move node to "${targetNode.name}" - nodes with contributors cannot have children`,
 					'warning'
 				);
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (target has contributors)');
 				return false;
 			}
 
@@ -617,6 +665,7 @@ export const globalState = $state({
 
 			if (!success) {
 				globalState.showToast('Failed to reorder node', 'error');
+				console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (reorderNode failed)');
 				return false;
 			}
 
@@ -625,10 +674,12 @@ export const globalState = $state({
 
 			globalState.showToast(`Moved "${sourceNode.name}" to "${targetNode.name}"`, 'success');
 			console.log(`[REORDER] Successfully moved ${sourceNode.name} to ${targetNode.name}`);
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (success)');
 			return true;
 		} catch (err) {
 			console.error('Error in reorder process:', err);
 			globalState.showToast('Error reordering node', 'error');
+			console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: handleNodeReorder (error)');
 			return false;
 		}
 	},

@@ -1,22 +1,3 @@
-/**
- * Unified Entity System
- * 
- * All entities are just: UUID/pubkey → attributes
- * 
- * Architecture:
- * - **Entity ID** = UUID (contact_id, org_id) OR pubkey
- * - **Contacts** = Person entities (UUID → {name, pubkey?, emoji, notes})
- * - **Organizations** = Group entities (UUID → {names, emoji, description})
- * - **Attributes** = What we recognize about entities (skills, location, membership, etc.)
- * 
- * Key insights:
- * - UUIDs are NOT "local" - both contact_id and org_id can be shared across network
- * - The prefixes (contact_, org_) are naming conventions, not semantic barriers
- * - Entity semantics emerge from attributes, not from type system
- * - Has 'public_key' attribute? → Person entity
- * - Has 'membership' attribute? → Organization entity
- */
-
 import { get } from 'svelte/store';
 import {
 	myAttributeRecognitions,
@@ -32,10 +13,15 @@ import {
 import { holsterUserPub } from './holster.svelte';
 import { getPublicKeyFromContactId } from './users.svelte';
 
+console.log('[TRACE] src/lib/network/entities.svelte.ts: <module scope>');
+
 // ═══════════════════════════════════════════════════════════════════
 // CORE ENTITY ATTRIBUTE OPERATIONS
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * Set an attribute for any entity (contact_id, org_id, or pubkey)
+ */
 /**
  * Set an attribute for any entity (contact_id, org_id, or pubkey)
  */
@@ -44,6 +30,7 @@ export function setEntityAttribute(
 	attribute_name: string,
 	value: any
 ): void {
+	console.log('[TRACE] [ENTER] src/lib/network/entities.svelte.ts: setEntityAttribute', { entity_id, attribute_name });
 	const selfPubkey = get(holsterUserPub);
 	let current = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 
@@ -56,6 +43,7 @@ export function setEntityAttribute(
 	);
 
 	myAttributeRecognitions.set(current);
+	console.log('[TRACE] [EXIT] src/lib/network/entities.svelte.ts: setEntityAttribute');
 }
 
 /**
@@ -79,9 +67,11 @@ export function removeEntityAttribute(
 	entity_id: string,
 	attribute_name: string
 ): void {
+	console.log('[TRACE] [ENTER] src/lib/network/entities.svelte.ts: removeEntityAttribute', { entity_id, attribute_name });
 	let current = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 	current = removeAttributeFromCollection(current, entity_id, attribute_name);
 	myAttributeRecognitions.set(current);
+	console.log('[TRACE] [EXIT] src/lib/network/entities.svelte.ts: removeEntityAttribute');
 }
 
 /**

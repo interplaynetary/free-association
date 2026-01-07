@@ -25,6 +25,8 @@ import { mutualFulfillment as originalMutualFulfillment } from '@playnet/free-as
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 
+console.log('[TRACE] src/lib/protocol/stores/collective-tree.svelte.ts: <module scope>');
+
 // ═══════════════════════════════════════════════════════════════════
 // LOCAL TYPE DEFINITIONS (not in published package)
 // ═══════════════════════════════════════════════════════════════════
@@ -306,6 +308,7 @@ function mutualFulfillment(ci: Forest, a: Entity, b: Entity): number {
 
 // Optimized weight calculation
 function getCollectiveWeights(entity: Entity, ci: Forest): [Map<string, number>, number] {
+	// console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: getCollectiveWeights', { entityId: entity.id });
 	if (!isCollective(entity)) {
 		return [new Map([[entity.id, 1.0]]), 1.0];
 	}
@@ -314,6 +317,7 @@ function getCollectiveWeights(entity: Entity, ci: Forest): [Map<string, number>,
 	if (weightCache.has(entity.id)) {
 		const weights = weightCache.get(entity.id)!;
 		const total = Array.from(weights.values()).reduce((sum, w) => sum + w, 0);
+		// console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: getCollectiveWeights (cached)');
 		return [weights, total];
 	}
 
@@ -333,6 +337,7 @@ function getCollectiveWeights(entity: Entity, ci: Forest): [Map<string, number>,
 	const normalized = new Map(Array.from(weights.entries()).map(([id, w]) => [id, w / total]));
 
 	weightCache.set(entity.id, normalized);
+	// console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: getCollectiveWeights');
 	return [normalized, total];
 }
 
@@ -432,6 +437,7 @@ function calculateContributorWeights(
 	contributorTrees: Map<string, Node>,
 	recognitionShares?: Record<string, number>
 ): Record<string, number> {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateContributorWeights');
 	if (recognitionShares) {
 		// Use provided recognition shares
 		const totalWeight = Object.values(recognitionShares).reduce((sum, weight) => sum + weight, 0);
@@ -483,11 +489,13 @@ function calculateContributorWeights(
 		}
 	}
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: calculateContributorWeights');
 	return weights;
 }
 
 // Create a collective tree by merging multiple contributor trees
 function mergeContributorTrees(config: TreeMergeConfig): TreeMergeResult {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: mergeContributorTrees');
 	const startTime = Date.now();
 	const contributorIds = Object.keys(config.contributor_trees);
 	const contributorTrees = new Map(Object.entries(config.contributor_trees) as [string, Node][]);
@@ -593,6 +601,8 @@ function mergeContributorTrees(config: TreeMergeConfig): TreeMergeResult {
 	} catch (error) {
 		errors.push(`Tree merge failed: ${error instanceof Error ? error.message : String(error)}`);
 		throw error;
+	} finally {
+		console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: mergeContributorTrees');
 	}
 }
 
@@ -785,6 +795,7 @@ export {
 
 // Convert an individual tree to percentage-based representation
 function convertTreeToPercentages(tree: Node): Map<string, number> {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: convertTreeToPercentages');
 	const percentageMap = new Map<string, number>();
 
 	function calculatePercentagesRecursive(node: Node, pathWeight: number = 1.0): void {
@@ -812,6 +823,7 @@ function convertTreeToPercentages(tree: Node): Map<string, number> {
 	}
 
 	calculatePercentagesRecursive(tree);
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: convertTreeToPercentages');
 	return percentageMap;
 }
 
@@ -1047,6 +1059,7 @@ function calculateContributorPercentageOfNode(
 	nodeId: string,
 	contributorId: string
 ): ProportionalNode {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateContributorPercentageOfNode');
 	// Step 1: Find the target node in collective tree
 	const targetNode = findCollectiveNodeById(collectiveTree.root, nodeId);
 	if (!targetNode) {
@@ -1138,6 +1151,7 @@ function calculateContributorPercentageOfNode(
 		path_weight_contribution: cumulativePathWeight,
 		derivation_steps: derivationSteps
 	};
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: calculateContributorPercentageOfNode');
 }
 
 // Calculate all contributors' percentages for a given node
@@ -1145,6 +1159,7 @@ function calculateAllContributorPercentagesOfNode(
 	collectiveTree: CollectiveTree,
 	nodeId: string
 ): Array<ProportionalNode> {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateAllContributorPercentagesOfNode');
 	const analyses: Array<ProportionalNode> = [];
 
 	for (const contributorId of collectiveTree.contributors) {
@@ -1160,6 +1175,7 @@ function calculateAllContributorPercentagesOfNode(
 	}
 
 	return analyses;
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: calculateAllContributorPercentagesOfNode');
 }
 
 // Helper function to calculate individual node percentage from original tree
@@ -1259,6 +1275,7 @@ function calculateCollectiveCapacityAllocation(
 	collectiveTree: CollectiveTree,
 	individualCapacities: Record<string, Record<string, number>> // Contributor → Capacity type → amount
 ): CollectiveCapacityAllocation {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateCollectiveCapacityAllocation');
 	const totalCollectiveCapacity: Record<string, number> = {};
 	const nodeCapacityAllocations: Record<string, Record<string, number>> = {};
 	const contributorCapacityShares: Record<string, Record<string, number>> = {};
@@ -1320,6 +1337,7 @@ function calculateCollectiveCapacityAllocation(
 		nodeAllocations.length;
 	const allocationFairness = 1 / (1 + allocationVariance);
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: calculateCollectiveCapacityAllocation');
 	return {
 		collective_tree_id: collectiveTree.id,
 		total_collective_capacity: totalCollectiveCapacity,
@@ -1624,6 +1642,7 @@ function filterTreeByMinimumPercentage(
 	minimumPercentage: number,
 	preservePaths: boolean = true
 ): FilteredTreeResult {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: filterTreeByMinimumPercentage');
 	const removedNodes: Array<{
 		node_id: string;
 		node_name: string;
@@ -1732,11 +1751,13 @@ function filterTreeByMinimumPercentage(
 }
 
 // Filter collective tree based on minimum contributor quorum
+// Filter collective tree based on minimum contributor quorum
 function filterTreeByMinimumQuorum(
 	collectiveTree: CollectiveTree,
 	minimumQuorum: number,
 	preservePaths: boolean = true
 ): FilteredTreeResult {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: filterTreeByMinimumQuorum');
 	const removedNodes: Array<{
 		node_id: string;
 		node_name: string;
@@ -1849,6 +1870,7 @@ function filterTreeByMultipleCriteria(
 	collectiveTree: CollectiveTree,
 	config: TreeFilterConfig
 ): FilteredTreeResult {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: filterTreeByMultipleCriteria');
 	const removedNodes: Array<{
 		node_id: string;
 		node_name: string;
@@ -2024,6 +2046,7 @@ function filterTreeByCapacityAllocation(
 	minimumCapacityValue: number,
 	capacityType?: string
 ): FilteredTreeResult {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: filterTreeByCapacityAllocation');
 	const removedNodes: Array<{
 		node_id: string;
 		node_name: string;
@@ -2151,6 +2174,7 @@ function analyzeFilteredContributors(
 	removed_contributors: string[];
 	contributor_node_counts: Record<string, { original: number; filtered: number }>;
 } {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: analyzeFilteredContributors');
 	const originalContributors = new Set(originalTree.contributors);
 	const filteredContributors = new Set(filteredResult.filtered_tree.contributors);
 
@@ -2218,6 +2242,7 @@ export {
  * Renormalized: [A: 50%, C: 50%] = 100%
  */
 function renormalizeChildrenWeights(parent: CollectiveNode): CollectiveNode {
+	// console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: renormalizeChildrenWeights');
 	if (parent.children.length === 0) {
 		return parent;
 	}
@@ -2265,6 +2290,7 @@ function renormalizeChildrenWeights(parent: CollectiveNode): CollectiveNode {
  * This ensures mathematical consistency throughout the tree structure
  */
 function renormalizeCollectiveTree(tree: CollectiveTree): CollectiveTree {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: renormalizeCollectiveTree');
 	function renormalizeNodeRecursive(node: CollectiveNode): CollectiveNode {
 		// First, recursively renormalize children
 		const childrenNormalized = node.children.map((child) =>
@@ -2396,9 +2422,10 @@ function nodeRecognitionToDistribution(
 	const mode = options?.aggregationMode || 'tree-wide';
 	const normMethod = options?.normalizationMethod || 'sum-to-one';
 
-	console.log('[NODE-RECOGNITION-TO-DISTRIBUTION] Converting recognition to distribution');
-	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Mode: ${mode}, Normalization: ${normMethod}`);
-	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Processing ${nodeRecognition.size} nodes`);
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: nodeRecognitionToDistribution', { mode, normMethod });
+	// console.log('[NODE-RECOGNITION-TO-DISTRIBUTION] Converting recognition to distribution');
+	// console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Mode: ${mode}, Normalization: ${normMethod}`);
+	// console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Processing ${nodeRecognition.size} nodes`);
 
 	// Edge case: No recognition data
 	if (nodeRecognition.size === 0) {
@@ -2589,6 +2616,7 @@ function nodeRecognitionToDistribution(
 	const finalSum = Object.values(shares).reduce((sum, share) => sum + share, 0);
 	console.log(`[NODE-RECOGNITION-TO-DISTRIBUTION] Final distribution: ${Object.keys(shares).length} recipients, sum=${finalSum.toFixed(4)}`);
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: nodeRecognitionToDistribution');
 	return {
 		shares,
 		method: 'collective-recognition',
@@ -2648,8 +2676,9 @@ function applyUnifiedFilter(
 	nodeRecognition: Map<string, NodeRecognitionMetrics>,
 	config: UnifiedFilterConfig
 ): FilteredTreeResult {
-	console.log('[APPLY-UNIFIED-FILTER] Starting unified filtering');
-	console.log('[APPLY-UNIFIED-FILTER] Config:', JSON.stringify(config, null, 2));
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: applyUnifiedFilter');
+	// console.log('[APPLY-UNIFIED-FILTER] Starting unified filtering');
+	// console.log('[APPLY-UNIFIED-FILTER] Config:', JSON.stringify(config, null, 2));
 
 	const removedNodes: Array<{
 		node_id: string;
@@ -2860,9 +2889,10 @@ function allocateFromCollectiveTree(
 		complianceFilters?: Map<string, ComplianceFilter>;
 	}
 ): AllocationResult {
-	console.log('[ALLOCATE-FROM-COLLECTIVE-TREE] Starting allocation');
-	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Capacity slots: ${capacitySlots.length}`);
-	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Member commitments: ${Object.keys(memberCommitments).length}`);
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: allocateFromCollectiveTree');
+	// console.log('[ALLOCATE-FROM-COLLECTIVE-TREE] Starting allocation');
+	// console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Capacity slots: ${capacitySlots.length}`);
+	// console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Member commitments: ${Object.keys(memberCommitments).length}`);
 
 	// Step 1: Convert recognition to distribution
 	const distribution = nodeRecognitionToDistribution(nodeRecognition, {
@@ -2887,6 +2917,7 @@ function allocateFromCollectiveTree(
 
 	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Allocation complete: ${allocationResult.allocations.length} allocations`);
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: allocateFromCollectiveTree');
 	return allocationResult;
 }
 
@@ -2942,7 +2973,8 @@ function governAndAllocate(config: {
 	// Allocation (if capacity provided)
 	allocation?: AllocationResult;
 } {
-	console.log('[GOVERN-AND-ALLOCATE] Starting complete governance pipeline');
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: governAndAllocate');
+	// console.log('[GOVERN-AND-ALLOCATE] Starting complete governance pipeline');
 
 	// Step 1: Apply unified filter
 	console.log('[GOVERN-AND-ALLOCATE] Step 1: Applying filters');
@@ -3018,6 +3050,7 @@ function governAndAllocate(config: {
 		distribution,
 		allocation
 	};
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: governAndAllocate');
 }
 
 // Export the new bridge functions

@@ -35,6 +35,8 @@ import { leq as itcLeq, equals as itcEquals, join as itcJoin, type Stamp as ITCS
 
 import { holsterUserPub } from '$lib/network/holster.svelte';
 
+console.log('[TRACE] src/lib/protocol/stores/attributes.svelte.ts: <module scope>');
+
 // ═══════════════════════════════════════════════════════════════════
 // LOCAL STORES (My Data) - Using createStore pattern
 // ═══════════════════════════════════════════════════════════════════
@@ -151,15 +153,25 @@ const activeSubscriptions = new Set<string>();
  * @param pubkey - User's public key
  */
 export function subscribeToAttributeRecognitions(pubkey: string) {
-	if (activeSubscriptions.has(pubkey)) return;
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions', { pubkey });
+
+	if (activeSubscriptions.has(pubkey)) {
+		console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions (already subscribed)');
+		return;
+	}
 
 	myAttributeRecognitions.subscribeToUser(pubkey, (theirRecognitions) => {
+		console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> update received', { pubkey, hasData: !!theirRecognitions });
 		console.log(`[📡 ATTR-SUB] Received recognitions from ${pubkey.slice(0, 20)}...`);
 
 		// Handle deletion - remove attributes with this source
 		if (!theirRecognitions) {
+			console.log('[TRACE] [STEP] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> processing deletion');
 			const ourCurrent = get(myAttributeRecognitions);
-			if (!ourCurrent) return;
+			if (!ourCurrent) {
+				console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> callback (no local data)');
+				return;
+			}
 
 			const { updated, count } = removeAttributesBySource(ourCurrent, pubkey);
 
@@ -167,10 +179,12 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
 				myAttributeRecognitions.set(updated);
 				console.log(`[📡 ATTR-SUB] 🗑️  Removed ${count} attributes from ${pubkey.slice(0, 20)}...`);
 			}
+			console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> callback (deletion complete)');
 			return;
 		}
 
 		// Process each entity's attributes from their recognitions
+		console.log('[TRACE] [STEP] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> processing updates');
 		const ourCurrent = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 		let updated = ourCurrent;
 		let appliedCount = 0;
@@ -219,10 +233,12 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
 		} else {
 			console.log(`[📡 ATTR-SUB] ⏭️  No updates from ${pubkey.slice(0, 20)}... (all stale or empty)`);
 		}
+		console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions -> callback (update complete)', { appliedCount, skippedCount });
 	});
 
 	activeSubscriptions.add(pubkey);
 	console.log(`[📡 ATTR-SUB] ✅ Subscribed to ${pubkey.slice(0, 20)}... attribute recognitions`);
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: subscribeToAttributeRecognitions (subscribed)');
 }
 
 /**
@@ -233,11 +249,16 @@ export function subscribeToAttributeRecognitions(pubkey: string) {
  * @param pubkey - User's public key
  */
 export function unsubscribeFromAttributeRecognitions(pubkey: string) {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: unsubscribeFromAttributeRecognitions', { pubkey });
 	activeSubscriptions.delete(pubkey);
 
 	const ourCurrent = get(myAttributeRecognitions);
-	if (!ourCurrent) return;
+	if (!ourCurrent) {
+		console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: unsubscribeFromAttributeRecognitions (no stores)');
+		return;
+	}
 
+	console.log('[TRACE] [STEP] src/lib/protocol/stores/attributes.svelte.ts: unsubscribeFromAttributeRecognitions -> calling removeAttributesBySource');
 	const { updated, count } = removeAttributesBySource(ourCurrent, pubkey);
 
 	if (count > 0) {
@@ -246,6 +267,7 @@ export function unsubscribeFromAttributeRecognitions(pubkey: string) {
 	}
 
 	console.log(`[📡 ATTR-SUB] Unsubscribed from ${pubkey.slice(0, 20)}...`);
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: unsubscribeFromAttributeRecognitions (completed)');
 }
 
 /**
@@ -277,6 +299,7 @@ export function getSubscribedPubkeys(): string[] {
  * Returns unsubscribe function to disable auto-syncing
  */
 export function enableAutoAttributeSync(): () => void {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync');
 	console.log('[AUTO-ATTR-SYNC] 🔄 Enabling automatic attribute syncing');
 
 	// Track active subscriptions to avoid duplicates
@@ -285,6 +308,8 @@ export function enableAutoAttributeSync(): () => void {
 	// Subscribe to changes in attribute subscriptions
 	const unsubscribe = myAttributeSubscriptions.subscribe(($subs) => {
 		if (!$subs) return;
+
+		console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync -> subscriptions changed', { count: Object.keys($subs).length });
 
 		// Get all unique source pubkeys
 		const sourcePubkeys = new Set<string>();
@@ -301,6 +326,7 @@ export function enableAutoAttributeSync(): () => void {
 			if (activeSubs.has(pubkey)) continue;
 
 			console.log(`[AUTO-ATTR-SYNC] ➕ Subscribing to ${pubkey.slice(0, 20)}...'s attribute recognitions`);
+			console.log('[TRACE] [STEP] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync -> calling subscribeToAttributeRecognitions', { pubkey });
 
 			subscribeToAttributeRecognitions(pubkey);
 
@@ -317,16 +343,21 @@ export function enableAutoAttributeSync(): () => void {
 			if (!currentKeys.has(pubkey)) {
 				console.log(`[AUTO-ATTR-SYNC] ➖ Removing subscription: ${pubkey.slice(0, 20)}...`);
 				cleanup();
+				console.log('[TRACE] [STEP] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync -> calling unsubscribeFromAttributeRecognitions', { pubkey });
 				unsubscribeFromAttributeRecognitions(pubkey);
 				activeSubs.delete(pubkey);
 			}
 		}
 	});
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync (watcher setup)');
+
 	return () => {
+		console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync -> cleanup');
 		unsubscribe();
 		activeSubs.clear();
 		console.log('[AUTO-ATTR-SYNC] ⏸️  Disabled automatic attribute syncing');
+		console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: enableAutoAttributeSync -> cleanup');
 	};
 }
 
@@ -380,6 +411,7 @@ function removeAttributesBySource(
 	collection: AttributeRecognitionsCollection,
 	source_pubkey: string
 ): { updated: AttributeRecognitionsCollection; count: number } {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: removeAttributesBySource', { source_pubkey });
 	let updated = collection;
 	let count = 0;
 
@@ -397,6 +429,7 @@ function removeAttributesBySource(
 		}
 	}
 
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: removeAttributesBySource', { count });
 	return { updated, count };
 }
 
@@ -413,6 +446,9 @@ function checkAndMergeITC(
 	attr_name: string,
 	source_pubkey: string
 ): boolean {
+	// Detailed conditional logging might be too noisy for this pure helper, but let's add entry
+	// console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: checkAndMergeITC');
+
 	if (!ourAttr?.itcStamp || !theirValue.itcStamp) return true;
 
 	// Skip if theirs is causally stale
@@ -449,6 +485,8 @@ export function resolveAttribute(
 	entity_id: string,
 	attribute_name: string
 ): ResolutionResult {
+	// console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: resolveAttribute'); // Too noisy for read path?
+
 	const subscriptions = get(myAttributeSubscriptions) || {};
 	const recognitions = get(myAttributeRecognitions) || { _timestamp: Date.now() };
 	const idMappings = get(myEntityIdMappings) || {};
@@ -552,6 +590,7 @@ export function createResolutionStore(
  * Similar to initializeAllocationStores() in stores.svelte.ts.
  */
 export function initializeAttributeStores() {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: initializeAttributeStores');
 	console.log('[ATTR-STORES] Initializing stores...');
 
 	myAttributeRecognitions.initialize();
@@ -563,6 +602,7 @@ export function initializeAttributeStores() {
 	console.log('  - My attribute subscriptions (persistent)');
 	console.log('  - My entity ID mappings (persistent)');
 	console.log('  - Network attribute recognitions (versioned)');
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: initializeAttributeStores');
 }
 
 /**
@@ -571,6 +611,7 @@ export function initializeAttributeStores() {
  * Call this before logout.
  */
 export async function cleanupAttributeStores() {
+	console.log('[TRACE] [ENTER] src/lib/protocol/stores/attributes.svelte.ts: cleanupAttributeStores');
 	console.log('[ATTR-STORES] Cleaning up stores...');
 
 	await myAttributeRecognitions.cleanup();
@@ -578,6 +619,7 @@ export async function cleanupAttributeStores() {
 	await myEntityIdMappings.cleanup();
 
 	console.log('[ATTR-STORES] Stores cleaned up');
+	console.log('[TRACE] [EXIT] src/lib/protocol/stores/attributes.svelte.ts: cleanupAttributeStores');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -802,24 +844,20 @@ export function deriveEntity(entityId: string): Readable<Record<string, Attribut
 			changed = true;
 		}
 
-		// ✅ Always notify on first run, then only if entity actually changed
 		if (changed) {
-			// Update all ITC stamps
-			lastAttributeITCs = new Map();
-			for (const [attr_name, attr_value] of Object.entries(currentAttrs)) {
-				if (attr_value.itcStamp) {
-					lastAttributeITCs.set(attr_name, attr_value.itcStamp);
-				}
-			}
-
-			lastAttributeCount = currentAttributeCount;
 			lastAttributes = currentAttrs;
+			lastAttributeITCs = new Map();
+			for (const [name, val] of Object.entries(currentAttrs)) {
+				if (val.itcStamp) lastAttributeITCs.set(name, val.itcStamp);
+			}
+			lastAttributeCount = currentAttributeCount;
 			lastExisted = true;
-			set(currentAttrs);
+			set(lastAttributes);
 			isFirstRun = false;
 		}
 	});
 }
+
 
 // ═══════════════════════════════════════════════════════════════════
 // DEBUGGING

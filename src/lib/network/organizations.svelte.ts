@@ -23,6 +23,8 @@ import type {
 import { OrganizationSchema, OrganizationsCollectionSchema } from '@playnet/free-association/schemas';
 import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 
+console.log('[TRACE] src/lib/network/organizations.svelte.ts: <module scope>');
+
 // ═══════════════════════════════════════════════════════════════════
 // USER'S ORGANIZATIONS STORE (Holster-backed via createStore)
 // ═══════════════════════════════════════════════════════════════════
@@ -56,9 +58,14 @@ let isOrgListInitialized = false;
 /**
  * Subscribe to freely-associating-organizations list from Holster
  */
+/**
+ * Subscribe to freely-associating-organizations list from Holster
+ */
 function subscribeToOrganizationsList() {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: subscribeToOrganizationsList');
 	if (isOrgListInitialized) {
 		console.log('[ORGS-LIST] Already subscribed');
+		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: subscribeToOrganizationsList (already initialized)');
 		return;
 	}
 
@@ -91,20 +98,24 @@ function subscribeToOrganizationsList() {
 
 	holster.get('freely-associating-organizations').on(orgListCallback, true);
 	isOrgListInitialized = true;
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: subscribeToOrganizationsList');
 }
 
 /**
  * Initialize global organizations list subscription
  */
 export function initializeOrganizationsList() {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: initializeOrganizationsList');
 	console.log('[ORGS-LIST] Initializing...');
 	subscribeToOrganizationsList();
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: initializeOrganizationsList');
 }
 
 /**
  * Cleanup organizations list subscription
  */
 function cleanupOrganizationsList() {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: cleanupOrganizationsList');
 	if (orgListCallback) {
 		holster.get('freely-associating-organizations').off(orgListCallback);
 		orgListCallback = null;
@@ -112,6 +123,7 @@ function cleanupOrganizationsList() {
 	globalOrganizations.set({});
 	isOrgListInitialized = false;
 	console.log('[ORGS-LIST] Cleaned up');
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: cleanupOrganizationsList');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -159,8 +171,10 @@ export const filteredOrganizations = derived(
  * Call this when user logs in
  */
 export function initializeOrganizations() {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: initializeOrganizations');
 	holsterOrganizations.initialize();
 	console.log('[ORGS] Initialized user organizations store');
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: initializeOrganizations');
 }
 
 /**
@@ -168,9 +182,11 @@ export function initializeOrganizations() {
  * Call this when user logs out
  */
 export async function cleanupOrganizations() {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: cleanupOrganizations');
 	await holsterOrganizations.cleanup();
 	cleanupOrganizationsList();
 	console.log('[ORGS] Cleaned up');
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: cleanupOrganizations');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -183,6 +199,7 @@ export async function cleanupOrganizations() {
 export function createOrganization(
 	orgData: Omit<Organization, 'org_id' | 'created_at' | 'updated_at'>
 ): Organization {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: createOrganization');
 	const now = Date.now();
 	const org_id = `org_${now}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -209,6 +226,7 @@ export function createOrganization(
 	holsterOrganizations.set(updatedOrgs);
 
 	console.log(`[ORGS] Created organization: ${org_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: createOrganization', { org_id });
 	return validatedOrg;
 }
 
@@ -216,15 +234,18 @@ export function createOrganization(
  * Update an existing organization
  */
 export function updateOrganization(org_id: string, updates: Partial<Organization>): void {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: updateOrganization', { org_id });
 	const currentOrgs = get(holsterOrganizations);
 	if (!currentOrgs) {
 		console.warn(`[ORGS] No organizations loaded`);
+		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: updateOrganization (not loaded)');
 		return;
 	}
 
 	const existingOrg = currentOrgs[org_id];
 	if (!existingOrg) {
 		console.warn(`[ORGS] Organization with ID ${org_id} not found`);
+		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: updateOrganization (not found)');
 		return;
 	}
 
@@ -248,15 +269,18 @@ export function updateOrganization(org_id: string, updates: Partial<Organization
 	holsterOrganizations.set(updatedOrgs);
 
 	console.log(`[ORGS] Updated organization: ${org_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: updateOrganization');
 }
 
 /**
  * Delete an organization
  */
 export function deleteOrganization(org_id: string): void {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: deleteOrganization', { org_id });
 	const currentOrgs = get(holsterOrganizations);
 	if (!currentOrgs) {
 		console.warn(`[ORGS] No organizations loaded`);
+		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: deleteOrganization (not loaded)');
 		return;
 	}
 
@@ -267,6 +291,7 @@ export function deleteOrganization(org_id: string): void {
 	holsterOrganizations.set(remaining);
 
 	console.log(`[ORGS] Deleted organization: ${org_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: deleteOrganization');
 }
 
 /**
@@ -310,9 +335,11 @@ export function getOrganizationName(
  * so others can discover and reference it
  */
 export function registerOrganizationGlobally(org_id: string): void {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: registerOrganizationGlobally', { org_id });
 	const org = getOrganizationById(org_id);
 	if (!org) {
 		console.warn(`[ORGS] Cannot register: organization ${org_id} not found`);
+		console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: registerOrganizationGlobally (not found)');
 		return;
 	}
 
@@ -327,14 +354,17 @@ export function registerOrganizationGlobally(org_id: string): void {
 	});
 
 	console.log(`[ORGS] Registered organization globally: ${org_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: registerOrganizationGlobally');
 }
 
 /**
  * Unregister organization from global list
  */
 export function unregisterOrganizationGlobally(org_id: string): void {
+	console.log('[TRACE] [ENTER] src/lib/network/organizations.svelte.ts: unregisterOrganizationGlobally', { org_id });
 	// Remove from global list by setting to null
 	holster.get('freely-associating-organizations').next(org_id).put(null);
 	console.log(`[ORGS] Unregistered organization globally: ${org_id}`);
+	console.log('[TRACE] [EXIT] src/lib/network/organizations.svelte.ts: unregisterOrganizationGlobally');
 }
 
