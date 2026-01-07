@@ -954,6 +954,15 @@
 						class:is-editing={editingEntryId === item.id}
 						class:is-selected={isItemSelected(item.id)}
 						data-id={item.id}
+						role={editingEntryId === item.id ? undefined : "button"}
+						tabindex={editingEntryId === item.id ? -1 : 0}
+						onclick={editingEntryId === item.id ? undefined : () => handleItemClick(item.id, item.name, item.metadata)}
+						onkeydown={editingEntryId === item.id ? undefined : (e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleItemClick(item.id, item.name, item.metadata);
+							}
+						}}
 					>
 						<div class="color-dot" style="background-color: {getColorForUserId(item.id)}"></div>
 
@@ -1055,18 +1064,7 @@
 						</div>
 						{:else}
 							<!-- Normal display mode -->
-							<div
-								class="item-content"
-								role="button"
-								tabindex="0"
-								onclick={() => handleItemClick(item.id, item.name, item.metadata)}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										handleItemClick(item.id, item.name, item.metadata);
-									}
-								}}
-							>
+							<div class="item-content">
 							<div class="item-name">
 								{#if isItemSelected(item.id)}
 									<span class="selected-icon">✓</span>
