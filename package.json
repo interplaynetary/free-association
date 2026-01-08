@@ -5,7 +5,7 @@
 	"type": "module",
 	"author": "playnet",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "vite dev --host",
 		"build": "vite build",
 		"build:server": "BUILD_TARGET=server vite build",
 		"build:capacitor": "vite build && npx cap sync",

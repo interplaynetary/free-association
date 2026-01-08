@@ -8,7 +8,7 @@
 	import { outsideClick } from '$lib/actions/outsideClick';
 
 	import Slot from './Slot.svelte';
-	import { Rules } from '@playnet/free-association/utils/filters/filters';
+	import { Rules } from '@playnet/free-association/filters/filters';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { createSubtreesDataProvider } from '$lib/utils/ui/ui-providers.svelte';

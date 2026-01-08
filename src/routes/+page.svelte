@@ -4,6 +4,7 @@
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
+	import Capacity from '$lib/components/Capacity.svelte';
 	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
 	import { 
 		myRecognitionTreeStore, 
@@ -31,6 +32,52 @@
 	// Reactive state for inventory view (Svelte 5 runes) - USD only!
 	let needSlots = $state<NeedSlot[]>([]);
 	let capacitySlots = $state<AvailabilitySlot[]>([]);
+	
+	// Demo capacity for testing Capacity component display
+	let demoCapacity = $state({
+		id: 'demo-capacity-1',
+		timestamp: Date.now(),
+		capacity_slots: [
+			{
+				id: 'demo-slot-1',
+				name: 'Demo Tutoring Session',
+				emoji: '📚',
+				quantity: 5,
+				type_id: 'general',
+				location_type: 'Online' as const,
+				online_link: 'https://meet.example.com',
+				start_date: new Date().toISOString().split('T')[0],
+				end_date: undefined,
+				start_time: '14:00',
+				end_time: '16:00',
+				all_day: false,
+				time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				recurrence: 'weekly' as const,
+				max_natural_div: 1,
+				min_allocation_percentage: 0.01
+			},
+			{
+				id: 'demo-slot-2',
+				name: 'Demo Workshop',
+				emoji: '🛠️',
+				quantity: 10,
+				type_id: 'general',
+				location_type: 'Specific' as const,
+				street_address: '123 Main St, City',
+				latitude: 40.7128,
+				longitude: -74.0060,
+				start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+				end_date: undefined,
+				start_time: '10:00',
+				end_time: '12:00',
+				all_day: false,
+				time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				recurrence: 'monthly' as const,
+				max_natural_div: 1,
+				min_allocation_percentage: 0.01
+			}
+		]
+	} as any);
 
 
 	// Cleanup functions
@@ -438,8 +485,38 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		overflow: hidden;
+		overflow-y: auto;
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		gap: 1rem;
+		padding-bottom: 1rem;
+	}
+	
+	.capacity-test-section {
+		margin: 0 0.75rem;
+		padding: 1rem;
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 8px;
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	}
+	
+	.test-header {
+		margin-bottom: 1rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 2px solid #e5e7eb;
+	}
+	
+	.test-header h3 {
+		margin: 0 0 0.5rem 0;
+		font-size: 1.125rem;
+		font-weight: 700;
+		color: #1f2937;
+	}
+	
+	.test-header p {
+		margin: 0;
+		font-size: 0.875rem;
+		color: #6b7280;
+		font-style: italic;
 	}
 
 	/* Responsive layout for mobile */

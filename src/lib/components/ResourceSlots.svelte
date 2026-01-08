@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { NeedSlot, AvailabilitySlot, AvailabilityWindow, SlotAllocationRecord } from '$lib/protocol/schemas';
-	import { TimePatternEditor } from './slots';
+	import { TimePatternEditor, LocationEditor, DivisibilityEditor, type LocationData } from './slots';
 	import SlotPriorityDistributionEditor from './slots/form/SlotPriorityDistributionEditor.svelte';
 	import { types, type NeedType } from '$lib/protocol/needTypes-local';
 	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
 	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { holsterUserPub } from '$lib/network/holster.svelte';
 	import { getUserName } from '$lib/network/users.svelte';
+	import Chat from '$lib/components/Chat.svelte';
+	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
 	
 	/**
 	 * Generalized resource slots component with need type selection
@@ -45,17 +47,42 @@
 	let activeTab = $state<'needs' | 'capacity'>('needs');
 	
 	// Add form state
-	let newName = $state('');
-	let newQuantity = $state(100);
-	
-	// Expanded state for time pattern editors
-	let expandedSlots = $state<Set<string>>(new Set());
-	
-	// Expanded state for allocation details
-	let expandedAllocations = $state<Set<string>>(new Set());
+	// Draft Slot State (Rich object)
+	let draftSlot = $state({
+		name: '',
+		quantity: 100,
+		time_pattern: {
+			type: 'monthly' as const,
+			days: [],
+			start_time: '09:00',
+			end_time: '17:00',
+			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+		},
+		location: {
+			type: 'any' as const,
+			latitude: 0,
+			longitude: 0
+		}
+	});
 
-    // Expanded state for priority editor
-    let expandedPrioritySlots = $state<Set<string>>(new Set());
+	// Editor state for the Draft slot
+	let draftExpanded = $state<EditorType | null>(null);
+
+	function toggleDraftEditor(type: EditorType) {
+		if (draftExpanded === type) {
+			draftExpanded = null;
+		} else {
+			draftExpanded = type;
+		}
+	}
+	
+	// Single unified state for tab switching - elegant solution!
+	type EditorType = 'time' | 'priority' | 'allocations' | 'chat' | 'location' | 'divisibility';
+	let expandedEditor = $state<Map<string, EditorType>>(new Map());
+
+	
+	// Delete confirmation state
+	let deletePending = $state<string | null>(null);
 	
 	// Get current need type info
 	const currentNeedType = $derived(types.find(t => t.id === selectedNeedType) || types[0]);
@@ -135,52 +162,58 @@
 	});
 	
 	// Add slot handler
+	// Add slot handler
 	function handleAddSlot() {
-		if (!newName.trim()) return;
+		if (!draftSlot.name.trim()) return;
 		
+		// TODO: Pass full draftSlot object when API supports it
 		if (isNeedMode) {
-			onNeedAdd(newName, newQuantity, selectedNeedType);
+			onNeedAdd(draftSlot.name, draftSlot.quantity, selectedNeedType);
 		} else {
-			onCapacityAdd(newName, newQuantity, selectedNeedType);
+			onCapacityAdd(draftSlot.name, draftSlot.quantity, selectedNeedType);
 		}
 		
 		// Reset form
-		newName = '';
-		newQuantity = 100;
+		draftSlot.name = '';
+		draftSlot.quantity = 100;
+		// Reset other fields if desirable, or keep them as "defaults"
+		draftExpanded = null;
 	}
 	
-	// Toggle time pattern editor (DRY)
-	function toggleTimeEditor(id: string) {
-		const newSet = new Set(expandedSlots);
-		if (newSet.has(id)) {
-			newSet.delete(id);
-		} else {
-			newSet.add(id);
-		}
-		expandedSlots = newSet;
-	}
 	
-	// Toggle allocation details
-	function toggleAllocationDetails(id: string) {
-		const newSet = new Set(expandedAllocations);
-		if (newSet.has(id)) {
-			newSet.delete(id);
+	// Universal toggle function - elegant single solution!
+	function toggleEditor(id: string, editorType: EditorType) {
+		const current = expandedEditor.get(id);
+		const newMap = new Map(expandedEditor);
+		
+		if (current === editorType) {
+			// Close if same editor clicked
+			newMap.delete(id);
 		} else {
-			newSet.add(id);
+			// Open new editor (automatically closes any other)
+			newMap.set(id, editorType);
 		}
-		expandedAllocations = newSet;
+		
+		expandedEditor = newMap;
+		deletePending = null;
 	}
 
-    function togglePriorityEditor(id: string) {
-        const newSet = new Set(expandedPrioritySlots);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-            // Close others if desired, or keep open
-        }
-        expandedPrioritySlots = newSet;
-    }
+
+
+
+
+	
+	// Handle delete with confirmation
+	function handleDelete(id: string, isNeed: boolean) {
+		if (deletePending === id) {
+			// Confirm deletion
+			isNeed ? onNeedDelete(id) : onCapacityDelete(id);
+			deletePending = null;
+		} else {
+			// First click - show confirmation
+			deletePending = id;
+		}
+	}
 
     function handlePriorityUpdate(slot: SlotType, priority_distribution: Record<string, number>, isNeed: boolean) {
         const updatedSlot = { ...slot, priority_distribution };
@@ -211,10 +244,82 @@
 		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
 	}
 	
-	// Display formatter
+	// Location handler
+	function handleLocationUpdate(slot: SlotType, location: LocationData, isNeed: boolean) {
+		const updated = { ...slot, ...location };
+		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
+	}
+	
+	// Divisibility handler
+	function handleDivisibilityUpdate(slot: SlotType, maxNaturalDiv?: number, minAllocationPercentage?: number, isNeed: boolean = false) {
+		const updated = {
+			...slot,
+			max_natural_div: maxNaturalDiv,
+			min_allocation_percentage: minAllocationPercentage
+		};
+		isNeed ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
+	}
+	
+	// Display formatter for time patterns (matches Slot.svelte format)
 	function formatTimeDisplay(slot: SlotType): string {
-		if (!slot.recurrence) return 'monthly';
-		return slot.recurrence + (slot.start_date ? ` from ${new Date(slot.start_date).toLocaleDateString()}` : '');
+		if (!slot.recurrence && !slot.start_date) return 'Not specified';
+		
+		let parts: string[] = [];
+		
+		if (slot.recurrence) {
+			parts.push(slot.recurrence);
+		}
+		
+		if (slot.start_date) {
+			const date = new Date(slot.start_date);
+			parts.push(date.toLocaleDateString());
+		}
+		
+		// Check for time ranges in availability window
+		if (slot.availability_window?.time_ranges?.[0]) {
+			const range = slot.availability_window.time_ranges[0];
+			parts.push(`${range.start_time}-${range.end_time}`);
+		} else if (slot.recurrence) {
+			parts.push('All day');
+		}
+		
+		return parts.join(', ');
+	}
+	
+	// Display formatter for location
+	function formatLocationDisplay(slot: SlotType): string {
+		if (!slot.location_type || slot.location_type === 'Undefined') {
+			return 'Not specified';
+		}
+		
+		if (slot.location_type === 'Online') {
+			return slot.online_link ? 'Online' : 'Online (no link)';
+		}
+		
+		if (slot.location_type === 'Specific' && slot.city) {
+			return slot.city;
+		}
+		
+		if (slot.location_type === 'Coordinates' && slot.latitude && slot.longitude) {
+			return `${slot.latitude.toFixed(2)}, ${slot.longitude.toFixed(2)}`;
+		}
+		
+		return slot.location_type;
+	}
+	
+	// Display formatter for divisibility
+	function formatDivisibilityDisplay(slot: SlotType): string {
+		const parts: string[] = [];
+		
+		if (slot.max_natural_div) {
+			parts.push(`Max ${slot.max_natural_div}`);
+		}
+		
+		if (slot.min_allocation_percentage) {
+			parts.push(`Min ${Math.round(slot.min_allocation_percentage * 100)}%`);
+		}
+		
+		return parts.length > 0 ? parts.join(', ') : 'None';
 	}
 
 	// Status helpers
@@ -247,73 +352,124 @@
 	{@const totalAllocated = allocations.reduce((sum, a) => sum + a.quantity, 0)}
 	{@const percentFilled = slot.quantity > 0 ? Math.min((totalAllocated / slot.quantity) * 100, 100) : 0}
 	
-	<div class="slot-card {isNeedMode ? 'need-card' : 'capacity-card'} {expandedAllocations.has(slot.id) ? 'expanded' : ''}">
+	<div class="slot-card {isNeedMode ? 'need-card' : 'capacity-card'}">
 		<div class="slot-fill-indicator" style="width: {percentFilled}%"></div>
-		<div 
-			class="slot-main" 
-			role="button"
-			tabindex="0"
-			onclick={() => toggleAllocationDetails(slot.id)}
-			onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleAllocationDetails(slot.id)}
-		>
-			<div class="slot-info">
-				<div class="slot-name">
-					{slot.name}
-					{#if allocations.length > 0}
-						<span class="allocation-badge">{allocations.length}</span>
-					{/if}
-				</div>
-				<div class="slot-time">{formatTimeDisplay(slot)}</div>
-			</div>
+		<!-- Compact single-row layout -->
+		<div class="slot-main">
+			<!-- Name input -->
+			<input
+				type="text"
+				class="slot-name-input"
+				value={slot.name}
+				oninput={(e) => {
+					const updated = { ...slot, name: (e.target as HTMLInputElement).value };
+					isNeedMode ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
+				}}
+				onclick={(e) => e.stopPropagation()}
+				placeholder="Name"
+			/>
 			
-			<div class="slot-quantity">
-				{#if selectedNeedType === 'money'}
-					<span class="currency">$</span>
-				{:else}
-					<span class="quantity-emoji">{currentNeedType.emoji}</span>
-				{/if}
-				<input
-					type="number"
-					value={slot.quantity}
-					min="0"
-					step="1"
-					oninput={(e) => handleQuantityChange(slot, parseFloat((e.target as HTMLInputElement).value), isNeedMode)}
-					onclick={(e) => e.stopPropagation()}
-				/>
-			</div>
-		</div>
-		
-		<div class="slot-actions">
+			<!-- Quantity with currency/emoji -->
+			{#if selectedNeedType === 'money'}
+				<span class="currency-symbol">$</span>
+			{:else}
+				<span class="type-emoji">{currentNeedType.emoji}</span>
+			{/if}
+			<input
+				type="number"
+				class="slot-qty-input"
+				value={slot.quantity}
+				min="0"
+				step="1"
+				oninput={(e) => handleQuantityChange(slot, parseFloat((e.target as HTMLInputElement).value), isNeedMode)}
+				onclick={(e) => e.stopPropagation()}
+			/>
+			
+			<!-- Unit input -->
+			<input
+				type="text"
+				class="slot-unit-input"
+				value={slot.unit || ''}
+				oninput={(e) => {
+					const updated = { ...slot, unit: (e.target as HTMLInputElement).value };
+					isNeedMode ? onNeedUpdate(updated as NeedSlot) : onCapacityUpdate(updated as AvailabilitySlot);
+				}}
+				onclick={(e) => e.stopPropagation()}
+				placeholder="unit"
+			/>
+			
+			<!-- Compact buttons -->
 			<button
 				type="button"
-				class="btn-time"
-				onclick={(e) => { e.stopPropagation(); toggleTimeEditor(slot.id); }}
+				class="slot-btn"
+				onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'time'); }}
+				title="Edit time pattern"
 			>
-				🕐 {expandedSlots.has(slot.id) ? 'Close' : 'Time'}
+				🕐 {formatTimeDisplay(slot)}
 			</button>
+
+			<button
+				type="button"
+				class="slot-btn"
+				onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'location'); }}
+				title="Edit location"
+			>
+				📍 {formatLocationDisplay(slot)}
+			</button>
+
+			<button
+				type="button"
+				class="slot-btn"
+				onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'chat'); }}
+				title="Chat about this slot"
+			>
+				💬
+			</button>
+
+			<button
+				type="button"
+				class="slot-btn"
+				onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'divisibility'); }}
+				title="Edit divisibility"
+			>
+				⚙️ {formatDivisibilityDisplay(slot)}
+			</button>
+			
 
             {#if !isNeedMode}
             <button
 				type="button"
-				class="btn-time"
-				onclick={(e) => { e.stopPropagation(); togglePriorityEditor(slot.id); }}
+				class="slot-btn"
+				onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'priority'); }}
                 title="Edit Priority Distribution"
 			>
-				⭐ {expandedPrioritySlots.has(slot.id) ? 'Close' : 'Priorities'}
+				⭐
 			</button>
             {/if}
 			
 			<button
 				type="button"
-				class="btn-delete"
-				onclick={(e) => { e.stopPropagation(); isNeedMode ? onNeedDelete(slot.id) : onCapacityDelete(slot.id); }}
-				title="Delete"
+				class="slot-btn-delete"
+				onclick={(e) => { e.stopPropagation(); handleDelete(slot.id, isNeedMode); }}
+				title={deletePending === slot.id ? "Click again to confirm" : "Delete"}
 			>
-				🗑️
+				{deletePending === slot.id ? 'Confirm?' : '🗑️'}
 			</button>
+			
+			<!-- Allocation indicator (clickable) -->
+			{#if allocations.length > 0}
+				<button
+					type="button"
+					class="slot-btn-alloc"
+					onclick={(e) => { e.stopPropagation(); toggleEditor(slot.id, 'allocations'); }}
+					title="View allocations"
+				>
+					{allocations.length}
+				</button>
+			{/if}
 		</div>
 		
-		{#if expandedSlots.has(slot.id)}
+		{#if expandedEditor.get(slot.id) === 'time'}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div 
@@ -331,7 +487,7 @@
 			</div>
 		{/if}
 		
-        {#if expandedPrioritySlots.has(slot.id) && !isNeedMode}
+        {#if expandedEditor.get(slot.id) === 'priority' && !isNeedMode}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div 
@@ -350,7 +506,70 @@
 			</div>
 		{/if}
 
-		{#if expandedAllocations.has(slot.id)}
+		{#if expandedEditor.get(slot.id) === 'chat'}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div 
+				class="chat-section" 
+				role="region"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div class="chat-header">
+					<h4>💬 Chat about {slot.name}</h4>
+					<p class="help-text">Discuss this {isNeedMode ? 'need' : 'capacity'} slot with others</p>
+				</div>
+				<Chat 
+					chatId={slot.id} 
+					placeholder={`Discuss ${slot.name}...`} 
+					maxLength={200} 
+				/>
+			</div>
+		{/if}
+
+		{#if expandedEditor.get(slot.id) === 'location'}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div 
+				class="editor-section" 
+				role="region"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<LocationEditor
+					locationType={slot.location_type}
+					streetAddress={slot.street_address}
+					city={slot.city}
+					stateProvince={slot.state_province}
+					postalCode={slot.postal_code}
+					country={slot.country}
+					latitude={slot.latitude}
+					longitude={slot.longitude}
+					onlineLink={slot.online_link}
+					onUpdate={(location) => handleLocationUpdate(slot, location, isNeedMode)}
+				/>
+			</div>
+		{/if}
+
+		{#if expandedEditor.get(slot.id) === 'divisibility'}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div 
+				class="editor-section" 
+				role="region"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<div class="editor-header">
+					<h4>⚙️ Divisibility</h4>
+					<p class="help-text">Control how this slot can be divided among allocations</p>
+				</div>
+				<DivisibilityEditor
+					maxNaturalDiv={slot.max_natural_div}
+					minAllocationPercentage={slot.min_allocation_percentage}
+					onUpdate={(maxDiv, minPct) => handleDivisibilityUpdate(slot, maxDiv, minPct, isNeedMode)}
+				/>
+			</div>
+		{/if}
+
+		{#if expandedEditor.get(slot.id) === 'allocations'}
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div 
@@ -431,67 +650,106 @@
 {/snippet}
 
 <div class="slots-container">
-	<!-- Need Type Selector -->
-	<div class="need-type-selector">
-		<label for="need-type-select">Resource Type:</label>
-		<select 
-			id="need-type-select"
-			bind:value={selectedNeedType}
-			class="type-select"
-		>
-			{#each types as needType}
-				<option value={needType.id}>
-					{needType.emoji} {needType.label}
-				</option>
-			{/each}
-		</select>
-		<div class="type-description">
-			{currentNeedType.description}
-		</div>
-	</div>
-	
 	<!-- Tab Navigation -->
-	<div class="tabs">
-		<button
-			class="tab {activeTab === 'needs' ? 'active' : ''}"
-			onclick={() => activeTab = 'needs'}
-		>
-		🎯 Needs ({needSlots.filter(s => s.type_id === selectedNeedType).length})
-		</button>
-		<button
-			class="tab {activeTab === 'capacity' ? 'active' : ''}"
-			onclick={() => activeTab = 'capacity'}
-		>
-			🎁 Capacity ({capacitySlots.filter(s => s.type_id === selectedNeedType).length})
-		</button>
-	</div>
-	
-	<!-- Add Form -->
-	<div class="add-form">
-		<input
-			type="text"
-			bind:value={newName}
-			placeholder="Name or description..."
-			onkeydown={(e) => e.key === 'Enter' && handleAddSlot()}
-			class="input-name"
-		/>
-		<div class="quantity-input">
-			{#if selectedNeedType === 'money'}
-				<span class="currency-symbol">$</span>
-			{:else}
-				<span class="quantity-label">{currentNeedType.emoji}</span>
-			{/if}
-			<input
-				type="number"
-				bind:value={newQuantity}
-				min="0"
-				step="1"
-				placeholder="per month"
-			/>
+	<!-- Draft Slot (Add New) -->
+	<!-- Draft Slot (Add New) -->
+	<div class="slot-card draft-card {isNeedMode ? 'need-draft' : 'capacity-draft'}">
+		<div class="draft-tabs">
+			<button 
+				class="draft-tab {isNeedMode ? 'active' : ''}"
+				onclick={() => activeTab = 'needs'}
+			>
+				🎯 Needs ({needSlots.filter(s => s.type_id === selectedNeedType).length})
+			</button>
+			<button 
+				class="draft-tab {!isNeedMode ? 'active' : ''}"
+				onclick={() => activeTab = 'capacity'}
+			>
+				🎁 Capacity ({capacitySlots.filter(s => s.type_id === selectedNeedType).length})
+			</button>
 		</div>
-		<button onclick={handleAddSlot} class="btn-add {isNeedMode ? 'need-btn' : 'capacity-btn'}">
-			➕ Add
-		</button>
+
+		<div class="slot-main">
+			<!-- Compact Type Selector -->
+			<select bind:value={selectedNeedType} class="compact-select">
+				{#each types as needType}
+					<option value={needType.id}>
+						{needType.emoji} {needType.label}
+					</option>
+				{/each}
+			</select>
+
+			<!-- Quick Inputs -->
+			<input
+				type="text"
+				bind:value={draftSlot.name}
+				placeholder="Add new {isNeedMode ? 'need' : 'capacity'}..."
+				onkeydown={(e) => e.key === 'Enter' && handleAddSlot()}
+				class="draft-input"
+			/>
+			
+			<div class="draft-amount">
+				<span class="currency-symbol">
+					{selectedNeedType === 'money' ? '$' : currentNeedType.emoji}
+				</span>
+				<input
+					type="number"
+					bind:value={draftSlot.quantity}
+					min="0"
+					step="1"
+					class="slot-qty-input"
+				/>
+			</div>
+
+			<!-- Functional Draft Controls -->
+			<button 
+				class="slot-btn {draftExpanded === 'time' ? 'active' : ''}" 
+				onclick={() => toggleDraftEditor('time')}
+				title="Edit time pattern"
+			>
+				🕐 {draftSlot.time_pattern.type === 'monthly' ? 'Monthly' : 'Custom'}
+			</button>
+			<button 
+				class="slot-btn {draftExpanded === 'location' ? 'active' : ''}" 
+				onclick={() => toggleDraftEditor('location')}
+				title="Set location"
+			>
+				📍 {draftSlot.location.type === 'any' ? 'Any' : draftSlot.location.type}
+			</button>
+
+			<button onclick={handleAddSlot} class="btn-add {isNeedMode ? 'need-btn' : 'capacity-btn'}">
+				➕ Add
+			</button>
+		</div>
+
+		<!-- Expanded Editors for Draft Slot -->
+		{#if draftExpanded === 'time'}
+			<div class="editor-section">
+				<TimePatternEditor 
+					pattern={draftSlot.time_pattern} 
+					onUpdate={(p) => { 
+						draftSlot.time_pattern = p;
+						// Auto-close if needed or keep open
+					}} 
+				/>
+			</div>
+		{/if}
+		
+		{#if draftExpanded === 'location'}
+			<div class="editor-section">
+				<LocationEditor 
+					locationType={draftSlot.location.type}
+					latitude={draftSlot.location.latitude}
+					longitude={draftSlot.location.longitude}
+					onUpdate={(l) => {
+						// Map location editor update back to draftSlot format
+						draftSlot.location.type = l.type;
+						if (l.latitude) draftSlot.location.latitude = l.latitude;
+						if (l.longitude) draftSlot.location.longitude = l.longitude;
+					}}
+				/>
+			</div>
+		{/if}
 	</div>
 	
 	<!-- Slots List -->
@@ -698,15 +956,205 @@
 	/* Slots List */
 	.slots-list {
 		display: flex;
-		flex-direction: column;
+		flex-wrap: wrap;
 		gap: 0.5rem;
 		overflow-y: auto;
 		padding-right: 0.25rem;
 		flex: 1;
 		min-height: 0;
+		align-content: flex-start; /* Fix vertical stretching and packing */
+	}
+
+	/* Draft Card Styles */
+	.draft-card {
+		width: 100%;
+		max-width: 100%; /* Full width for the draft/search bar */
+		border: 2px dashed #e5e7eb;
+		background: #f9fafb;
+		padding: 0; /* Let children handle padding */
+		display: flex;
+		flex-direction: column;
+	}
+
+	.need-draft {
+		border-color: #f5576c;
+		background: rgba(245, 87, 108, 0.02);
+	}
+
+	.capacity-draft {
+		border-color: #00f2fe;
+		background: rgba(0, 242, 254, 0.02);
+	}
+
+	.draft-tabs {
+		display: flex;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.draft-tab {
+		flex: 1;
+		padding: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #6b7280;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.draft-tab:hover {
+		background: rgba(0,0,0,0.02);
+		color: #374151;
+	}
+
+	.draft-tab.active {
+		color: #1f2937;
+		background: white;
+		box-shadow: 0 1px 0 white; /* Cover border */
 	}
 	
+	.need-draft .draft-tab.active {
+		color: #f5576c;
+		border-bottom: 2px solid #f5576c;
+	}
+
+	.capacity-draft .draft-tab.active {
+		color: #00a8b0;
+		border-bottom: 2px solid #00f2fe;
+	}
+
+	.compact-select {
+		appearance: none;
+		background: white;
+		border: 1px solid #e5e7eb;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.9rem;
+		font-weight: 500;
+		cursor: pointer;
+		min-width: 120px;
+	}
+
+	/* Common input styles for mobile compactness */
+	@media (max-width: 480px) {
+		.slot-info {
+			flex: 0 1 auto !important; /* Allow sharing the line! */
+			min-width: 60px;
+			margin-right: 0.25rem;
+		}
+
+		.slot-name {
+			max-width: 140px; /* Force ellipsis on mobile to save space */
+		}
+
+		.slot-qty-input, .slot-unit-input {
+			flex: 1 1 auto;
+			min-width: 60px; /* Allow small inputs */
+			width: auto;
+		}
+		
+		.slot-unit-input {
+			max-width: 60px; /* Keep unit small */
+		}
+	}
+	
+	.draft-input {
+		flex: 1 1 auto;
+		min-width: 80px;
+		width: auto;
+		padding: 0.5rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		font-size: 0.875rem;
+	}
+
+	/* Responsive adjustment for very small screens */
+	@media (max-width: 480px) {
+		.slot-main {
+			/* Force standard row wrapping behavior */
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			gap: 0.25rem;
+			justify-content: flex-start;
+			align-items: center;
+		}
+		
+		/* 1. Name/Text Inputs: allowable elasticity */
+		.slot-info, .draft-input {
+			flex: 1 1 auto;      /* Grow to fill, shrink if needed */
+			min-width: 80px;     /* Minimum legible width */
+			max-width: 100%;     /* Prevent overflow */
+			width: auto;         /* Reset any fixed widths */
+			margin-right: 0.25rem;
+		}
+		
+		.slot-name {
+			max-width: 120px;
+		}
+
+		/* 2. Selectors & Fixed Controls: keep tight */
+		.compact-select {
+			flex: 0 1 auto;
+			min-width: auto;     /* Reset desktop min-width */
+			width: auto;
+			max-width: 90px;
+		}
+
+		/* 3. Number Inputs: fixed small width */
+		.slot-qty-input, .slot-unit-input, .draft-amount input {
+			width: 3rem !important; /* Force small */
+			flex: 0 0 auto;
+			min-width: 0;
+		}
+		
+		.draft-amount {
+			flex: 0 1 auto;
+			width: auto;
+		}
+
+		/* 4. Buttons: compact, side-by-side */
+		.slot-btn, .btn-add {
+			flex: 0 0 auto;      /* Never grow, take content width */
+			width: auto;         /* Reset fixed widths */
+			min-width: 0;
+			white-space: nowrap;
+		}
+	}
+
+	.draft-amount {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		padding-left: 0.5rem;
+	}
+
+	.draft-amount input {
+		border: none;
+		width: 4rem;
+	}
+	
+	.draft-amount input:focus {
+		outline: none;
+	}
+
+	.slot-btn.disabled {
+		opacity: 0.6;
+		cursor: default;
+		background: #f3f4f6;
+		border-style: dashed;
+	}
+
+	
 	.slot-card {
+		flex: 0 1 auto;
+		min-width: 300px;
+		max-width: 500px;
+		height: fit-content;
 		background: white;
 		border-radius: 6px;
 		padding: 0.75rem;
@@ -764,12 +1212,13 @@
 	
 	.slot-main {
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		gap: 0.75rem;
-		margin-bottom: 0.5rem;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		flex-wrap: wrap;
 		position: relative;
 		z-index: 1;
+		padding: 0.5rem;
 	}
 	
 	.slot-info {
@@ -827,20 +1276,142 @@
 		color: #10b981;
 	}
 	
-	.slot-quantity input {
-		width: 70px;
-		padding: 0.25rem 0.375rem;
-		border: none;
-		background: transparent;
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-align: right;
+	
+	/* Compact inline inputs */
+	.slot-name-input {
+		flex: 1;
+		min-width: 120px;
+		padding: 0.25rem 0.5rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #1f2937;
 	}
 	
-	.slot-quantity input:focus {
+	.slot-name-input:focus {
 		outline: none;
+		border-color: #3b82f6;
 	}
 	
+	.currency-symbol,
+	.type-emoji {
+		font-size: 1rem;
+		font-weight: 600;
+	}
+	
+	.slot-qty-input {
+		width: 4rem;
+		padding: 0.25rem 0.375rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		text-align: right;
+		color: #1f2937;
+	}
+	
+	.slot-qty-input:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+	
+	.slot-unit-input {
+		width: 3rem;
+		padding: 0.25rem 0.375rem;
+		border: 1px solid #e5e7eb;
+		border-radius: 4px;
+		font-size: 0.875rem;
+		color: #6b7280;
+	}
+	
+	.slot-unit-input:focus {
+		outline: none;
+		border-color: #3b82f6;
+	}
+	
+	/* Compact emoji-only buttons */
+	.slot-btn {
+		padding: 0.25rem 0.5rem;
+		background: white;
+		border: 1px solid #d1d5db;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		line-height: 1.2;
+	}
+	
+	.slot-btn:hover {
+		background: #f3f4f6;
+		border-color: #9ca3af;
+	}
+	
+	.slot-btn-delete {
+		padding: 0.25rem 0.5rem;
+		background: white;
+		border: 1px solid #fecaca;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		line-height: 1.2;
+	}
+	
+	.slot-btn-delete:hover {
+		background: #fee2e2;
+		border-color: #ef4444;
+	}
+	
+	.slot-btn-alloc {
+		padding: 0.25rem 0.5rem;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+	
+	.slot-btn-alloc:hover {
+		transform: scale(1.05);
+		box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+	}
+	
+	/* Editor sections */
+	.editor-section {
+		margin-top: 0.5rem;
+		padding: 0.75rem;
+		background: #f9fafb;
+		border-radius: 4px;
+		border: 1px solid #e5e7eb;
+		position: relative;
+		z-index: 1;
+	}
+	
+	.editor-header {
+		margin-bottom: 0.75rem;
+	}
+	
+	.editor-header h4 {
+		margin: 0 0 0.25rem 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #374151;
+	}
+	
+	.editor-header .help-text {
+		margin: 0;
+		font-size: 0.75rem;
+		color: #6b7280;
+		font-style: italic;
+	}
+	
+	/* Remove old unused styles */
 	.slot-actions {
 		display: flex;
 		gap: 0.375rem;
@@ -880,6 +1451,64 @@
 	.btn-delete:hover {
 		background: #fee2e2;
 		border-color: #ef4444;
+	}
+	
+	.btn-chat {
+		padding: 0.375rem 0.5rem;
+		background: white;
+		border: 1px solid #cbd5e1;
+		border-radius: 4px;
+		font-size: 0.9rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+	
+	.btn-chat:hover {
+		background: #eff6ff;
+		border-color: #3b82f6;
+	}
+	
+	.unread-badge {
+		position: absolute;
+		top: -4px;
+		right: -4px;
+		background: #ef4444;
+		color: white;
+		font-size: 0.625rem;
+		font-weight: 700;
+		padding: 0.125rem 0.375rem;
+		border-radius: 10px;
+		min-width: 18px;
+		text-align: center;
+		line-height: 1;
+	}
+	
+	.chat-section {
+		margin-top: 0.75rem;
+		padding: 0.75rem;
+		background: #f0f9ff;
+		border-radius: 6px;
+		border: 1px solid #bae6fd;
+		position: relative;
+		z-index: 1;
+	}
+	
+	.chat-header {
+		margin-bottom: 0.75rem;
+	}
+	
+	.chat-header h4 {
+		margin: 0 0 0.25rem 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #075985;
+	}
+	
+	.chat-header .help-text {
+		margin: 0;
+		font-size: 0.75rem;
+		color: #0369a1;
+		font-style: italic;
 	}
 	
 	.time-editor-section {
