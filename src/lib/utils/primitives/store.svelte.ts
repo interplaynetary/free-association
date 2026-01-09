@@ -37,7 +37,7 @@
 
 import { writable, get } from 'svelte/store';
 import type { Writable, Readable } from 'svelte/store';
-import { holsterUser } from '$lib/network/holster.svelte';
+import { holsterUser, holsterUserPub } from '$lib/network/holster.svelte';
 import * as z from 'zod';
 import { shouldPersist } from '$lib/utils/data/holsterTimestamp';
 import { fastExtractTimestamp, fastParse } from '$lib/utils/data/fastJsonParser';
@@ -101,6 +101,9 @@ export interface HolsterStore<T> extends Readable<T | null> {
 
 	/** Force persistence (even if debounced) */
 	persist: () => Promise<void>;
+
+	/** Loading state (true during initialization/network sync) */
+	loading: Readable<boolean>;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -126,6 +129,9 @@ export function createStore<T extends z.ZodTypeAny>(
 	let queuedNetworkUpdate: any = null;
 	let isInitialized = false;
 	let persistDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Timeout to detect "empty" state (if network gives no data)
+	let loadingTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// ────────────────────────────────────────────────────────────────
 	// Equality Check
@@ -207,7 +213,17 @@ export function createStore<T extends z.ZodTypeAny>(
 			if (networkTimestamp) {
 				lastNetworkTimestamp = networkTimestamp;
 			}
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Updated from network`);
+		}
+		console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Updated from network`);
+
+
+		// We have data, so we are definitely loaded
+		if (get(isLoading)) {
+			isLoading.set(false);
+			if (loadingTimeout) {
+				clearTimeout(loadingTimeout);
+				loadingTimeout = null;
+			}
 		}
 	}
 
@@ -263,7 +279,19 @@ export function createStore<T extends z.ZodTypeAny>(
 		}
 
 		networkCallback = (data: any) => {
-			if (!data) return;
+			// Handle empty data (confirmed empty from network)
+			if (data === null || data === undefined) {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] ∅ Received empty/null from network - store is empty`);
+				if (get(isLoading)) {
+					isLoading.set(false);
+					if (loadingTimeout) {
+						clearTimeout(loadingTimeout);
+						loadingTimeout = null;
+					}
+				}
+				return;
+			}
+
 
 			// Queue updates during persistence
 			if (isPersisting) {
@@ -461,12 +489,12 @@ export function createStore<T extends z.ZodTypeAny>(
 	// Initialization & Cleanup
 	// ────────────────────────────────────────────────────────────────
 
-	function initialize() {
-		if (!holsterUser.is && !config.localStorageKey) {
-			console.log(`[HOLSTER-STORE:${config.holsterPath}] Cannot initialize: not authenticated`);
-			return;
-		}
+	// Track auth subscription
+	let authUnsub: (() => void) | null = null;
 
+	function initialize() {
+		// If already initialized, do nothing? 
+		// Actually with auth subscription we might want to just ensure we are subscribed to auth
 		if (isInitialized) {
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] Already initialized`);
 			return;
@@ -476,8 +504,44 @@ export function createStore<T extends z.ZodTypeAny>(
 		isInitialized = true;
 		isLoading.set(true);
 
-		// Subscribe to network
-		subscribeToNetwork();
+		// Subscribe to auth changes to handle Login/Logout transitions
+		// This callback runs immediately with the current value!
+		authUnsub = holsterUserPub.subscribe((pub) => {
+			const isAuthenticated = !!pub;
+
+			// 1. Cleanup previous network subscriptions to avoid duplicates
+			if (networkCallback && holsterUser.is) {
+				holsterUser.get(config.holsterPath).off(networkCallback);
+				networkCallback = null;
+			}
+
+			// 2. Reset internal state to avoid leaking data or showing stale state
+			store.set(null);
+			lastNetworkTimestamp = null;
+			hasPendingLocalChanges = false;
+			queuedNetworkUpdate = null;
+
+			// Reset loading state for new user
+			isLoading.set(true);
+			if (loadingTimeout) clearTimeout(loadingTimeout);
+			// Fallback: If no data comes in 3s, assume loaded (empty)
+			loadingTimeout = setTimeout(() => {
+				if (get(isLoading)) {
+					console.log(`[HOLSTER-STORE:${config.holsterPath}] ⏱️  Loading timeout (3000ms) - assuming empty`);
+					isLoading.set(false);
+					loadingTimeout = null;
+				}
+			}, 3000);
+
+			// 3. Re-run subscription logic
+			if (isAuthenticated) {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔐 Authenticated (${pub.substring(0, 8)}...) - connecting to Holster`);
+			} else {
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🔓 Unauthenticated - checking LocalStorage`);
+			}
+
+			subscribeToNetwork();
+		});
 	}
 
 	async function cleanup(): Promise<void> {
@@ -492,10 +556,16 @@ export function createStore<T extends z.ZodTypeAny>(
 			}
 		}
 
-		// Unsubscribe
+		// Unsubscribe from network
 		if (networkCallback && holsterUser.is) {
 			holsterUser.get(config.holsterPath).off(networkCallback);
 			networkCallback = null;
+		}
+
+		// Unsubscribe from auth changes
+		if (authUnsub) {
+			authUnsub();
+			authUnsub = null;
 		}
 
 		// Clear state
@@ -509,6 +579,11 @@ export function createStore<T extends z.ZodTypeAny>(
 		if (persistDebounceTimeout) {
 			clearTimeout(persistDebounceTimeout);
 			persistDebounceTimeout = null;
+		}
+
+		if (loadingTimeout) {
+			clearTimeout(loadingTimeout);
+			loadingTimeout = null;
 		}
 
 		console.log(`[HOLSTER-STORE:${config.holsterPath}] Cleaned up`);
@@ -569,6 +644,7 @@ export function createStore<T extends z.ZodTypeAny>(
 	return {
 		// Readable interface
 		subscribe: store.subscribe,
+		loading: { subscribe: isLoading.subscribe },
 
 		// Writable interface
 		set: (value: DataType) => {

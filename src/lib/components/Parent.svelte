@@ -6,8 +6,11 @@
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
 	import { writable } from 'svelte/store';
-	// V5: isLoadingTree - create a placeholder (Holster loading state not yet implemented)
-	const isLoadingTree = writable(false);
+	// V5: Import from v5 contact stores
+	import { currentUserTreeLoading } from '$lib/protocol/stores/context.svelte';
+
+	// V5: Use the context-aware loading state - aliases to `isLoadingTree` for compatibility
+	const isLoadingTree = currentUserTreeLoading;
 	// Demo tree for unauthenticated users (local storage only)
 	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
@@ -426,11 +429,12 @@
 		}
 		
 		// Initialize path for demo tree if needed (for both homepage and org routes)
-		if (!isAuthenticated && demoTreeStore.current) {
-			const needsPathInit = $currentPath.length === 0 || !$currentPath.includes(demoTreeStore.current.id);
+		const currentTree = demoTreeStore.current || get(userTree);
+		if (!isAuthenticated && currentTree) {
+			const needsPathInit = $currentPath.length === 0 || !$currentPath.includes(currentTree.id);
 			if (needsPathInit) {
-				console.log('[DEMO TREE] Initializing path with demo tree root:', demoTreeStore.current.id);
-				currentPath.set([demoTreeStore.current.id]);
+				console.log('[DEMO TREE] Initializing path with tree root:', currentTree.id);
+				currentPath.set([currentTree.id]);
 			}
 		}
 		
@@ -1585,10 +1589,16 @@
 	}
 
 	function handleGlobalTouchEnd(event: Event) {
-		const target = event.target as HTMLElement;
+		let target = event.target as HTMLElement;
+
+		// Handle text nodes (e.g. clicking on text inside a button)
+		if (target && target.nodeType === 3) {
+			target = target.parentElement as HTMLElement;
+		}
 
 		// Only handle if the touch event is within our treemap container
-		const isInTreemap = target?.closest('.treemap-container') !== null;
+		// Check safely if target is an element with closest() method
+		const isInTreemap = target && typeof target.closest === 'function' && target.closest('.treemap-container') !== null;
 
 		if (isTouching && isInTreemap) {
 			stopResizing();

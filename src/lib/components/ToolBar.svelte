@@ -555,7 +555,7 @@
 		processNode(resolvedNode);
 
 		return resolvedNode;
-		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: resolveContactIdsForForestSubtree'); // Note: Unreachable, fix manual return
+
 	}
 
 	// Handle adding a subtree to the current location

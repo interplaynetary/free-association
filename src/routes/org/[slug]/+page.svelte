@@ -74,8 +74,14 @@
 		return mutual;
 		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: computeMutualRecognition'); // Unreachable, need to fix manual return placement if I could, but wait, function returns on line 73.
 	}
-	import { setViewContext, resetViewContext } from '$lib/protocol/stores/context.svelte';
-	import { currentUserMutualRecognition } from '$lib/protocol/stores/context-stores.svelte';
+	import { 
+		setViewContext, 
+		resetViewContext, 
+		currentUserTree, 
+		currentUserCapacityTypes,
+		currentUserCapacitySlots,
+		currentUserMutualRecognition
+	} from '$lib/protocol/stores/context.svelte';
 
 	// Get page data (tree configuration)
 	const { data }: { data: PageData } = $props();

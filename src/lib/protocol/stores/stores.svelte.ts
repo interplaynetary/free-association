@@ -25,6 +25,7 @@
  * - Conflict resolution (timestamp-based)
  */
 
+import { browser } from '$app/environment';
 import { get, derived, readable, writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { createStore } from '$lib/utils/primitives/store.svelte';
@@ -44,7 +45,9 @@ import {
 	type SlotAllocationRecord
 } from '../schemas';
 import type { DistributedIPFState } from '../allocation-ipf-distributed';
-import { holsterUserPub, holsterUser } from '$lib/network/holster.svelte';
+import { holsterUserPub, holsterUser, holsterUserAlias } from '$lib/network/holster.svelte';
+import { applyTemplate } from '$lib/templates';
+import { createRootNode } from '@playnet/free-association/tree';
 import { getTimeBucketKey, getLocationBucketKey } from '@playnet/free-association/utils/match';
 import { sharesOfGeneralFulfillmentMap, getAllContributorsFromTree } from '@playnet/free-association/tree';
 // Pure attribute-based membership
@@ -124,8 +127,6 @@ export const myRecognitionTreeStore = createStore({
 	holsterPath: 'trees/recognition_tree',
 	schema: RootNodeSchema,
 	persistDebounce: 200, // Debounce tree edits
-	// SAFETY: Automatically purge demo data if it somehow got persisted
-	validate: (tree) => tree.id !== 'demo_user',
 	// DUAL MODE: Use LocalStorage for 'Demo Mode' when not authenticated!
 	localStorageKey: 'free-association-demo-tree'
 });
@@ -186,8 +187,9 @@ export const myRecognitionWeights: Readable<GlobalRecognitionWeights> = derived(
 export const myCommitmentStore = createStore({
 	holsterPath: 'allocation/commitment',
 	schema: CommitmentSchema,
-	persistDebounce: 100 // Debounce rapid updates
-	// NOTE: No converters needed! JSON handles everything perfectly.
+	persistDebounce: 100, // Debounce rapid updates
+	// DUAL MODE: Use LocalStorage for 'Guest Mode' when not authenticated!
+	localStorageKey: 'free-association-demo-commitment'
 });
 
 /**
@@ -2645,4 +2647,92 @@ if (typeof window !== 'undefined') {
 	console.log('  • window.migrateNetworkCommitments() - Validate and clean network commitments');
 	console.log('  • window.validateAllStores() - Check store health');
 	console.log('  • window.debugStoresV5() - Show diagnostics');
+
+	// ═══════════════════════════════════════════════════════════════════
+	// AUTO-INITIALIZATION (V5)
+	// ═══════════════════════════════════════════════════════════════════
+
+	console.log('[STORES] 🚀 Auto-initializing V5 stores...');
+
+	// Initialize my stores (loads from LocalStorage if unauthenticated + fallback configured)
+	myRecognitionTreeStore.initialize();
+	myCommitmentStore.initialize();
+
+	// AUTO-SEED: Ensure authenticated users always have a tree
+	// If store is null (new user or purged invalid data), create a default root node
+
+
+	if (browser) {
+		// Use derived store to react to changes in tree, loading state, and auth
+		derived(
+			[myRecognitionTreeStore, myRecognitionTreeStore.loading, holsterUserPub, holsterUserAlias],
+			([$tree, $loading, $pub, $alias]) => ({
+				tree: $tree,
+				loading: $loading,
+				pub: $pub,
+				alias: $alias
+			})
+		).subscribe(({ tree, loading, pub, alias }) => {
+			// Only auto-seed if:
+			// 1. Authenticated
+			// 2. Tree is missing (null)
+			// 3. Not currently loading (wait for network sync or timeout)
+			// 2. Unauthenticated Auto-Seed (Demo Mode)
+			if (!pub && !tree && !loading) {
+				console.log('[STORES] 🌱 Auto-seeding SDG Demo Tree for guest...');
+				const demoRoot = createRootNode('demo_user', 'Demo Tree');
+				const populated = applyTemplate(demoRoot, 'sdg');
+				if (populated) {
+					myRecognitionTreeStore.set(populated as RootNode);
+					console.log('[STORES] ✅ Seeding complete');
+				}
+				return;
+			}
+
+			// 3. Authenticated Auto-Seed
+			if (pub && !tree && !loading) {
+				console.log('[STORES] 🌱 Auto-seeding check...');
+
+				// 1. Check for PREVIOUS DEMO DATA
+				const demoKey = 'free-association-demo-tree';
+				const rawDemo = localStorage.getItem(demoKey);
+
+				if (rawDemo) {
+					try {
+						const demoTree = JSON.parse(rawDemo);
+						// Valid demo tree?
+						if (demoTree && demoTree.id === 'demo_user') {
+							console.log('[STORES] ♻️  Migrating Demo Tree to User Account...');
+
+							// MIGRATE: Update Root ID to User Pub Key & Set Name
+							const migratedTree = {
+								...demoTree,
+								id: pub, // ROOT ID MUST BE PUBKEY
+								name: alias || 'My Tree', // ✅ FIX: Rename from 'Log In' to User Alias
+								owner_id: pub, // Ensure owner is set
+								_updatedAt: Date.now() // Fresh timestamp
+							};
+
+							// Set it (triggers persistence to Holster)
+							myRecognitionTreeStore.set(migratedTree);
+
+							// Clear local demo data so we don't re-import
+							localStorage.removeItem(demoKey);
+							console.log('[STORES] ✅ Demo Tree migrated successfully!');
+							return;
+						}
+					} catch (e) {
+						console.error('[STORES] ⚠️ Failed to migrate demo tree:', e);
+					}
+				}
+
+				// 2. Default Auto-Seed (New User) - DISABLED
+				// We intentionally do NOT create a tree here.
+				// This leaves the tree as null, so the UI can show the "Select Template" screen.
+				console.log('[STORES] 🌱 New user detected. Waiting for template selection...');
+			}
+		});
+	}
+
+	console.log('[STORES] ✅ V5 stores initialized');
 }

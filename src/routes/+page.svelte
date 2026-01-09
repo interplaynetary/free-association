@@ -116,7 +116,7 @@
 			if (cleanupComposition) cleanupComposition();
 			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
-		console.log('[TRACE] [EXIT] src/routes/+page.svelte: onMount');
+
 	});
 
 	// CRUD Operations - Generalized for any need type

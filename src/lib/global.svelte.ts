@@ -68,12 +68,12 @@ if (browser) {
 
 			// Small delay to ensure demo tree is initialized
 			setTimeout(() => {
-				const demoTree = demoTreeStore.current;
-				if (demoTree) {
-					console.log('[GLOBAL] Setting path to demo tree root:', demoTree.id);
-					currentPath.set([demoTree.id]);
+				const tree = get(userTree);
+				if (tree) {
+					console.log('[GLOBAL] Setting path to user/demo tree root:', tree.id);
+					currentPath.set([tree.id]);
 				} else {
-					console.log('[GLOBAL] No demo tree available - clearing path');
+					console.log('[GLOBAL] No tree available yet - clearing path');
 					currentPath.set([]);
 				}
 			}, 100);
@@ -99,17 +99,17 @@ function getCurrentTree() {
 		}
 	}
 
-	// Not on an org page - use authenticated user's tree if available
-	const pub = get(userPub);
-	if (pub) {
-		// User is authenticated - use userTree
-		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (user tree)');
-		return get(userTree);
-	} else {
-		// User is not authenticated - use demoTree
-		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (demo tree)');
-		return demoTreeStore.current;
-	}
+	// For homepage (both authenticated and unauthenticated), use userTree
+	// userTree (myRecognitionTreeStore) now handles both modes:
+	// - Authenticated: Syncs with Holster
+	// - Unauthenticated: Syncs with LocalStorage (Demo Mode)
+	const tree = get(userTree);
+	console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: getCurrentTree (userTree)', {
+		exists: !!tree,
+		id: tree?.id,
+		isAuthenticated: !!get(userPub)
+	});
+	return tree;
 }
 
 // Helper function to clone tree safely (handles demo tree proxy issues)
@@ -163,22 +163,14 @@ function updateTreeStore(updatedTree: any) {
 		}
 	}
 
-	const pub = get(userPub);
-	if (pub) {
-		// Authenticated users: update userTree
-		userTree.set(updatedTree);
-		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (userTree)');
-	} else {
-		// Demo users: update demoTree with JSON serialization
-		try {
-			const serialized = JSON.parse(JSON.stringify(updatedTree));
-			demoTreeStore.set(serialized);
-		} catch (err) {
-			console.error('[GLOBAL] Failed to serialize demo tree:', err);
-			demoTreeStore.set(updatedTree);
-		}
-		console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (demoTree)');
-	}
+	// For homepage (both authenticated and unauthenticated), update userTree
+	// userTree (myRecognitionTreeStore) now handles both modes:
+	// - Authenticated: Syncs with Holster
+	// - Unauthenticated: Syncs with LocalStorage (Demo Mode)
+	userTree.set(updatedTree);
+	console.log('[TRACE] [EXIT] src/lib/global.svelte.ts: updateTreeStore (userTree)', {
+		isAuthenticated: !!get(userPub)
+	});
 }
 
 export const globalState = $state({
