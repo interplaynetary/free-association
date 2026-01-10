@@ -2742,7 +2742,7 @@ if (typeof window !== 'undefined') {
 			// 2. Unauthenticated Auto-Seed (Demo Mode)
 			if (!pub && !tree && !loading) {
 				console.log('[STORES] 🌱 Auto-seeding SDG Demo Tree for guest...');
-				const demoRoot = createRootNode('demo_user', 'Demo Tree');
+				const demoRoot = createRootNode('demo_user', 'Demo');
 				const populated = applyTemplate(demoRoot, 'sdg');
 				if (populated) {
 					myRecognitionTreeStore.set(populated as RootNode);
