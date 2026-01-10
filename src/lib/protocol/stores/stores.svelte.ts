@@ -332,23 +332,8 @@ export const myDistributedIPFState = writable<DistributedIPFState>({
  * 
  * This effectively BROADCASTS my y_r values to the network!
  */
-myDistributedIPFState.subscribe(state => {
-	console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: myDistributedIPFState subscription');
-	const currentCommitment = get(myCommitmentStore);
-	if (!currentCommitment) return;
-
-	// Only update if changed prevents infinite loops and churn
-	const currentFactors = currentCommitment.constraint_scaling_factors || {};
-	if (JSON.stringify(currentFactors) !== JSON.stringify(state.colScalings)) {
-		console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', state.colScalings);
-
-		myCommitmentStore.update(c => ({
-			...c,
-			constraint_scaling_factors: { ...state.colScalings },
-			timestamp: Date.now()
-		}));
-	}
-});
+// NOTE: Subscription moved to initializeStoreSync() below!
+// myDistributedIPFState.subscribe(...) used to be here.
 
 // NOTE: Helper functions (setMyNeedSlots, setMyCapacitySlots) moved down below
 // because they reference myMutualRecognition which is defined later
@@ -714,45 +699,8 @@ export const myMutualRecognition: Readable<GlobalRecognitionWeights> = derived(
  * This ensures MR calculations remain stable and local-first, updating
  * reactively only when new information arrives from the network.
  */
-networkCommitments.subscribe(($networkCommitsVersioned) => {
-	console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: networkCommitments subscription (rec cache updater)');
-	const myPub = get(holsterUserPub);
-	const myCommitment = get(myCommitmentStore);
-
-	if (!myPub || !myCommitment) return;
-
-	const cache = myCommitment.others_recognition_of_me || {};
-	const updates: Record<string, GlobalRecognitionWeights> = {};
-
-	// Check each network commitment for changes
-	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
-		// Skip own commitment (prevents infinite loop when our data syncs back)
-		if (theirPub === myPub) continue;
-
-		const theirWeights = versionedEntity.data.global_recognition_weights;
-		if (!theirWeights) continue;
-
-		// Normalize and extract their recognition of me
-		const normalized = normalizeGlobalRecognitionWeights(theirWeights);
-		const networkRecOfMe = normalized[myPub] || 0;
-		const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
-
-		// Network proved otherwise? Update cache!
-		if (networkRecOfMe !== cachedRecOfMe) {
-			updates[theirPub] = normalized;
-			console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
-		}
-	}
-
-	// Apply updates if any changes detected
-	if (Object.keys(updates).length > 0) {
-		console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
-		myCommitmentStore.set({
-			...myCommitment,
-			others_recognition_of_me: { ...cache, ...updates }
-		});
-	}
-});
+// NOTE: Subscription moved to initializeStoreSync() below!
+// networkCommitments.subscribe(rec cache updater) used to be here.
 
 // ═══════════════════════════════════════════════════════════════════
 // SLOTS CACHE UPDATER (OFFLINE-FIRST ALLOCATION)
@@ -770,52 +718,166 @@ networkCommitments.subscribe(($networkCommitsVersioned) => {
  * - Network resilience (graceful degradation during outages)
  * - Local-first operation (trust cache until network proves otherwise)
  */
-networkCommitments.subscribe(($networkCommitsVersioned) => {
-	const myPub = get(holsterUserPub);
-	const myCommitment = get(myCommitmentStore);
+// NOTE: Subscription moved to initializeStoreSync() below!
+// networkCommitments.subscribe(slots cache updater) used to be here.
 
-	if (!myPub || !myCommitment) return;
+// ═══════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════
 
-	const slotsCache = (myCommitment as any).others_slots_cache || {};
-	const slotsUpdates: Record<string, SlotsCacheEntry> = {};
+/**
+ * Start Store Service (V6)
+ * 
+ * Initializes all persistent stores and starts synchronization loops.
+ * This is the unified entry point for the "Data Layer".
+ * 
+ * Responsibilities:
+ * 1. Initialize persistent stores (myRecognitionTreeStore, myCommitmentStore)
+ * 2. Start reactive sync loops (Constraint Factors, Cache Updates)
+ */
+export function startStoreService(): () => void {
+	if (typeof window === 'undefined') return () => { };
 
-	// Check each network commitment for slot changes
-	for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
-		// Skip own commitment
-		if (theirPub === myPub) continue;
+	console.log('[STORES] 🚀 Starting Store Service...');
 
-		const theirCommitment = versionedEntity.data;
-		const cached = slotsCache[theirPub];
+	// 1. Initialize Persistent Stores
+	// Triggers loading from Holster/LocalStorage
+	myRecognitionTreeStore.initialize();
+	myCommitmentStore.initialize();
 
-		// Update cache if:
-		// 1. No cache exists, OR
-		// 2. Network data is newer (ITC comparison)
-		const shouldUpdate = !cached ||
-			(theirCommitment.itcStamp && cached.itcStamp &&
-				!itcLeq(theirCommitment.itcStamp, cached.itcStamp));
+	console.log('[STORES] 🔄 Initializing global store synchronization...');
 
-		if (shouldUpdate) {
-			slotsUpdates[theirPub] = {
-				need_slots: theirCommitment.need_slots,
-				capacity_slots: theirCommitment.capacity_slots,
-				itcStamp: theirCommitment.itcStamp,
-				timestamp: theirCommitment.timestamp || Date.now(),
-				cached_at: Date.now()
-			};
+	// 1. BROADCAST CONSTRAINT FACTORS
+	const unsubConstraints = myDistributedIPFState.subscribe(state => {
+		// console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: myDistributedIPFState subscription');
+		const currentCommitment = get(myCommitmentStore);
+		if (!currentCommitment) return;
 
-			console.log(`[SLOTS-CACHE] Updating ${theirPub.slice(0, 20)}... (${theirCommitment.need_slots?.length || 0} needs, ${theirCommitment.capacity_slots?.length || 0} capacity)`);
+		// Only update if changed prevents infinite loops and churn
+		const currentFactors = currentCommitment.constraint_scaling_factors || {};
+		if (JSON.stringify(currentFactors) !== JSON.stringify(state.colScalings)) {
+			console.log('[IPF-Sync] Broadcasting new constraint factors (y_r)', state.colScalings);
+
+			myCommitmentStore.update(c => ({
+				...c,
+				constraint_scaling_factors: { ...state.colScalings },
+				timestamp: Date.now()
+			}));
 		}
-	}
+	});
 
-	// Apply updates if any changes detected
-	if (Object.keys(slotsUpdates).length > 0) {
-		console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users for offline allocation`);
-		myCommitmentStore.set({
-			...myCommitment,
-			others_slots_cache: { ...slotsCache, ...slotsUpdates }
-		} as any);
-	}
-});
+	// 2. CACHE RECOGNITION (Others -> Me)
+	const unsubRecCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
+		// console.log('[TRACE] [CALLBACK] src/lib/protocol/stores/stores.svelte.ts: networkCommitments subscription (rec cache updater)');
+		const myPub = get(holsterUserPub);
+		const myCommitment = get(myCommitmentStore);
+
+		if (!myPub || !myCommitment) return;
+
+		const cache = myCommitment.others_recognition_of_me || {};
+		const updates: Record<string, GlobalRecognitionWeights> = {};
+
+		// Check each network commitment for changes
+		for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
+			// Skip own commitment (prevents infinite loop when our data syncs back)
+			if (theirPub === myPub) continue;
+
+			const theirWeights = versionedEntity.data.global_recognition_weights;
+			if (!theirWeights) continue;
+
+			// Normalize and extract their recognition of me
+			const normalized = normalizeGlobalRecognitionWeights(theirWeights);
+			const networkRecOfMe = normalized[myPub] || 0;
+			const cachedRecOfMe = cache[theirPub]?.[myPub] || 0;
+
+			// Network proved otherwise? Update cache!
+			if (networkRecOfMe !== cachedRecOfMe) {
+				updates[theirPub] = normalized;
+				console.log(`[CACHE-UPDATE] ${theirPub.slice(0, 20)}...: ${cachedRecOfMe} → ${networkRecOfMe}`);
+			}
+		}
+
+		// Apply updates if any changes detected
+		if (Object.keys(updates).length > 0) {
+			console.log('[CACHE-UPDATE] Network proved changes - updating commitment cache');
+			myCommitmentStore.set({
+				...myCommitment,
+				others_recognition_of_me: { ...cache, ...updates }
+			});
+		}
+	});
+
+	// 3. CACHE SLOTS (Others -> Me)
+	const unsubSlotsCache = networkCommitments.subscribe(($networkCommitsVersioned) => {
+		const myPub = get(holsterUserPub);
+		const myCommitment = get(myCommitmentStore);
+
+		if (!myPub || !myCommitment) return;
+
+		const slotsCache = (myCommitment as any).others_slots_cache || {};
+		const slotsUpdates: Record<string, SlotsCacheEntry> = {};
+
+		// Check each network commitment for slot changes
+		for (const [theirPub, versionedEntity] of $networkCommitsVersioned.entries()) {
+			// Skip own commitment
+			if (theirPub === myPub) continue;
+
+			const theirCommitment = versionedEntity.data;
+			const cached = slotsCache[theirPub];
+
+			// Update cache if:
+			// 1. No cache exists, OR
+			// 2. Network data is newer (ITC comparison)
+			const shouldUpdate = !cached ||
+				(theirCommitment.itcStamp && cached.itcStamp &&
+					!itcLeq(theirCommitment.itcStamp, cached.itcStamp));
+
+			if (shouldUpdate) {
+				slotsUpdates[theirPub] = {
+					need_slots: theirCommitment.need_slots,
+					capacity_slots: theirCommitment.capacity_slots,
+					itcStamp: theirCommitment.itcStamp,
+					timestamp: theirCommitment.timestamp || Date.now(),
+					cached_at: Date.now()
+				};
+
+				console.log(`[SLOTS-CACHE] Updating ${theirPub.slice(0, 20)}... (${theirCommitment.need_slots?.length || 0} needs, ${theirCommitment.capacity_slots?.length || 0} capacity)`);
+			}
+		}
+
+		// Apply updates if any changes detected
+		if (Object.keys(slotsUpdates).length > 0) {
+			console.log(`[SLOTS-CACHE] Caching slots from ${Object.keys(slotsUpdates).length} users for offline allocation`);
+			myCommitmentStore.set({
+				...myCommitment,
+				others_slots_cache: { ...slotsCache, ...slotsUpdates }
+			} as any);
+		}
+	});
+
+	return () => {
+		console.log('[STORES] 🛑 Stopping Store Service');
+		unsubConstraints();
+		unsubRecCache();
+		unsubSlotsCache();
+
+		// Clean up persistent stores
+		myRecognitionTreeStore.cleanup();
+		myCommitmentStore.cleanup();
+	};
+}
+
+/**
+ * Stop Store Service (Helper)
+ */
+export async function stopStoreService() {
+	// Re-uses the cleanup function pattern if needed, but since startStoreService returns cleanup,
+	// usage in startup.ts is cleaner via the returned callback. 
+	// However, providing a named export for explicit manual cleanup can be useful.
+	await myRecognitionTreeStore.cleanup();
+	await myCommitmentStore.cleanup();
+}
+
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS (Slot Updates) ✅

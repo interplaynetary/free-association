@@ -14,7 +14,7 @@
 		myNeedTypesStore,
 		myCapacityTypesStore,
 		myCommitmentStore,
-		enableAutoCommitmentComposition,
+		// enableAutoCommitmentComposition, setMyNeedSlots etc removed
 		setMyNeedSlots,
 		setMyCapacitySlots,
 		subscribeToRecognitionTree,
@@ -22,10 +22,7 @@
 		networkRecognitionTrees,
 		networkCommitments
 	} from '$lib/protocol/stores/stores.svelte';
-	import { 
-		enableAutoAllocationPublishing,
-		initializeAllocationStores 
-	} from '$lib/protocol/stores/allocation.svelte';
+
 	import { globalState } from '$lib/global.svelte';
 	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
 	import { currentPath } from '$lib/global.svelte';
@@ -105,8 +102,6 @@
 	let showRawData = $state(false);
 
 	// Cleanup functions
-	let cleanupComposition: (() => void) | null = null;
-	let cleanupAllocationPublishing: (() => void) | null = null;
 	let cleanupUserTreeSubscription: (() => void) | null = null;
 	
 	// Loading state for user trees
@@ -248,10 +243,6 @@ if (data.isUserTree) {
 		console.log('[ORG-PAGE] Set path to org tree root:', data.tree.id);
 	}
 
-		// Initialize stores for inventory view
-		console.log('[ORG-PAGE] Initializing stores for inventory view...');
-		initializeAllocationStores();
-
 		// Subscribe to stores (reactive)
 		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
 			needSlots = slots || [];
@@ -261,19 +252,9 @@ if (data.isUserTree) {
 			capacitySlots = slots || [];
 		});
 
-		// Enable auto-composition
-		cleanupComposition = enableAutoCommitmentComposition();
-
-		// Enable auto-allocation publishing
-		cleanupAllocationPublishing = enableAutoAllocationPublishing();
-
-		console.log('[ORG-PAGE] ✅ Initialized and subscribed');
-
 		return () => {
 			unsubNeeds();
 			unsubCapacity();
-			if (cleanupComposition) cleanupComposition();
-			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
 		console.log('[TRACE] [EXIT] src/routes/org/[slug]/+page.svelte: onMount');
 	});

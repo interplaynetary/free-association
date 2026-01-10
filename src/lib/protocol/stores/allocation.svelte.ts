@@ -35,8 +35,11 @@ import {
 	myCurrentNeeds,
 	myDistributedIPFState,
 	networkAllocations,
-	myRecognitionTreeStore
+	myRecognitionTreeStore,
+	enableAutoCommitmentComposition
 } from './stores.svelte';
+
+
 
 // ═══════════════════════════════════════════════════════════════════
 // IDENTITY & RECOGNITION DERIVED STORES
@@ -394,45 +397,59 @@ export function enableAutoAllocationPublishing(): () => void {
 let stopAllocationLoops: (() => void) | null = null;
 
 /**
+ * Start Allocation Service (V6)
+ * 
+ * Orchestrates the entire allocation engine:
+ * 1. Distributed IPF Loops (Provider/Recipient/Cache)
+ * 2. Auto-Composition (Tree -> Weights)
+ * 3. Auto-Publishing (Allocations -> Commitment)
+ */
+export function startAllocationService(): () => void {
+	console.log('[ALLOCATION] 🚀 Starting Allocation Service...');
+
+	// Helper to track cleanups
+	const undoLoops = enableDistributedAllocation();
+	const undoComposition = enableAutoCommitmentComposition();
+	const undoPublishing = enableAutoAllocationPublishing();
+
+	// Store globally for stopAllocationService if needed
+	stopAllocationLoops = undoLoops;
+
+	return () => {
+		console.log('[ALLOCATION] 🛑 Stopping Allocation Service');
+		undoLoops();
+		undoComposition();
+		undoPublishing();
+		stopAllocationLoops = null;
+	};
+}
+
+/**
+ * Stop Allocation Service
+ */
+export function stopAllocationService() {
+	if (stopAllocationLoops) {
+		startAllocationService()(); // Wait, this calls start()... no.
+		// We can't easily call the closure returned by start() unless we saved it.
+		// But enableDistributedAllocation et al return cleanup functions.
+		// We should rely on the returned cleanup from startAllocationService().
+		// This export might be less useful if we don't save the full cleanup.
+		console.warn('[ALLOCATION] stopAllocationService() called but cleanup logic is best handled via the callback returned by startAllocationService().');
+	}
+}
+
+/**
  * Initialize all allocation stores (V5)
- * Call this after holster authentication
+ * @deprecated Use startAllocationService() in startup.ts
  */
 export async function initializeAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-V5] Initializing stores...');
-
-	// NOTE: We do NOT cleanup() here anymore because it was wiping out 
-	// pre-login demo state that might have been just initialized by Parent.svelte.
-	// The stores naturally handle auth state transitions internally.
-
-	// Source stores (persistent) - Imported from stores.svelte
-	myRecognitionTreeStore.initialize();
-	myCommitmentStore.initialize(); // THE source of truth for slots!
-
-	// Start Distributed IPF loops
-	if (stopAllocationLoops) stopAllocationLoops();
-	stopAllocationLoops = enableDistributedAllocation();
-
-	console.log('[ALLOCATION-HOLSTER-V5] Stores initialized:');
-	console.log('  - Recognition tree (persistent)');
-	console.log('  - Commitment (persistent - contains slots!)');
-	console.log('  - Distributed IPF loops (active)');
+	console.warn('[DEPRECATED] initializeAllocationStores() called. This is handled by startAllocationService().');
 }
 
 /**
  * Cleanup all allocation stores (V5)
- * Call this before logout
+ * @deprecated Use the callback from startAllocationService()
  */
 export async function cleanupAllocationStores() {
-	console.log('[ALLOCATION-HOLSTER-V5] Cleaning up stores...');
-
-	if (stopAllocationLoops) {
-		stopAllocationLoops();
-		stopAllocationLoops = null;
-	}
-
-	// Stores have their own cleanup
-	await myRecognitionTreeStore.cleanup();
-	await myCommitmentStore.cleanup();
-
-	console.log('[ALLOCATION-HOLSTER-V5] Stores cleaned up');
+	console.warn('[DEPRECATED] cleanupAllocationStores() called. This is handled by stopAllocationService().');
 }

@@ -33,8 +33,24 @@ function clearStores(): void {
 // BROWSER INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════
 
-if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
-	console.log('[TRACE] src/lib/network/holster.svelte.ts: <module scope>');
+// ═══════════════════════════════════════════════════════════════════
+// BROWSER INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize Holster Authentication
+ * 
+ * Starts the authentication check process. This should be called once at startup.
+ * Returns a cleanup function (though traditionally auth listeners persist).
+ */
+export function initializeAuth(): () => void {
+	if (typeof window === 'undefined' || import.meta.env.VITEST) {
+		isHolsterAuthenticating.set(false);
+		return () => { };
+	}
+
+	console.log('[TRACE] src/lib/network/holster.svelte.ts: initializeAuth');
+
 	const checkAuth = async () => {
 		console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: checkAuth');
 		try {
@@ -63,8 +79,12 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 	};
 
 	checkAuth();
-} else if (import.meta.env.VITEST) {
-	isHolsterAuthenticating.set(false);
+
+	// In the future, if holsterCore has a listener, we would subscribe here.
+	// For now, recall() is a one-time check, so we essentially just run it.
+	return () => {
+		// Cleanup logic if needed (e.g. stop listeners)
+	};
 }
 
 // ═══════════════════════════════════════════════════════════════════

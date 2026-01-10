@@ -13,14 +13,10 @@
 		myNeedSlotsStore,
 		myCapacitySlotsStore,
 		myCommitmentStore,
-		enableAutoCommitmentComposition,
 		setMyNeedSlots,
 		setMyCapacitySlots
 	} from '$lib/protocol/stores/stores.svelte';
-	import { 
-		enableAutoAllocationPublishing, 
-		initializeAllocationStores 
-	} from '$lib/protocol/stores/allocation.svelte';
+
 	import { globalState } from '$lib/global.svelte';
 	import { derived } from 'svelte/store';
 	import { t, loading } from '$lib/translations';
@@ -32,64 +28,9 @@
 	// Reactive state for inventory view (Svelte 5 runes) - USD only!
 	let needSlots = $state<NeedSlot[]>([]);
 	let capacitySlots = $state<AvailabilitySlot[]>([]);
-	
-	// Demo capacity for testing Capacity component display
-	let demoCapacity = $state({
-		id: 'demo-capacity-1',
-		timestamp: Date.now(),
-		capacity_slots: [
-			{
-				id: 'demo-slot-1',
-				name: 'Demo Tutoring Session',
-				emoji: '📚',
-				quantity: 5,
-				type_id: 'general',
-				location_type: 'Online' as const,
-				online_link: 'https://meet.example.com',
-				start_date: new Date().toISOString().split('T')[0],
-				end_date: undefined,
-				start_time: '14:00',
-				end_time: '16:00',
-				all_day: false,
-				time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				recurrence: 'weekly' as const,
-				max_natural_div: 1,
-				min_allocation_percentage: 0.01
-			},
-			{
-				id: 'demo-slot-2',
-				name: 'Demo Workshop',
-				emoji: '🛠️',
-				quantity: 10,
-				type_id: 'general',
-				location_type: 'Specific' as const,
-				street_address: '123 Main St, City',
-				latitude: 40.7128,
-				longitude: -74.0060,
-				start_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-				end_date: undefined,
-				start_time: '10:00',
-				end_time: '12:00',
-				all_day: false,
-				time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-				recurrence: 'monthly' as const,
-				max_natural_div: 1,
-				min_allocation_percentage: 0.01
-			}
-		]
-	} as any);
-
-
-	// Cleanup functions
-	let cleanupComposition: (() => void) | null = null;
-	let cleanupAllocationPublishing: (() => void) | null = null;
 
 	onMount(() => {
 		console.log('[TRACE] [ENTER] src/routes/+page.svelte: onMount');
-		console.log('[HOME] Initializing stores for inventory view...');
-		
-		// Initialize stores
-		initializeAllocationStores();
 		
 		// Subscribe to stores (reactive)
 		const unsubNeeds = myNeedSlotsStore.subscribe((slots) => {
@@ -100,23 +41,10 @@
 			capacitySlots = slots || [];
 		});
 		
-		// Enable auto-composition
-		cleanupComposition = enableAutoCommitmentComposition();
-		
-		// Enable auto-allocation publishing
-		cleanupAllocationPublishing = enableAutoAllocationPublishing();
-		
-
-		
-		console.log('[HOME] ✅ Initialized and subscribed');
-		
 		return () => {
 			unsubNeeds();
 			unsubCapacity();
-			if (cleanupComposition) cleanupComposition();
-			if (cleanupAllocationPublishing) cleanupAllocationPublishing();
 		};
-
 	});
 
 	// CRUD Operations - Generalized for any need type

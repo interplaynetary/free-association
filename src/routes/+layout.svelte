@@ -6,9 +6,9 @@
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState, initializeGlobalState } from '$lib/global.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { loading } from '$lib/translations';
+	import { initializeProtocol, cleanupProtocol } from '$lib/protocol/startup';
 	import { pwaInfo } from 'virtual:pwa-info';
 	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
 
@@ -28,6 +28,9 @@
 		if (browser) {
 			await import('$lib/services');
 			
+			// Initialize protocol layer (Auth, Stores, Capacity)
+			initializeProtocol();
+
 			// Initialize global state subscriptions after SvelteKit routing context is ready
 			// This prevents TDZ errors on iOS Safari when accessing the page store
 			initializeGlobalState();
@@ -55,6 +58,12 @@
 		}
 		console.log('[TRACE] [EXIT] src/routes/+layout.svelte: onMount');
 	});
+
+	onDestroy(() => {
+		if (browser) {
+			cleanupProtocol();
+		}
+	});
 </script>
 
 <svelte:head>
@@ -62,21 +71,15 @@
 </svelte:head>
 
 <main>
-	{#if $loading}
-		<div class="loading-translations">
-			<p>Loading translations...</p>
-		</div>
-	{:else}
-		<div class="app-header">
-			<Header />
-		</div>
-		<div class="app-content">
-			{@render children()}
-		</div>
-		<div class="app-footer">
-			<ToolBar />
-		</div>
-	{/if}
+	<div class="app-header">
+		<Header />
+	</div>
+	<div class="app-content">
+		{@render children()}
+	</div>
+	<div class="app-footer">
+		<ToolBar />
+	</div>
 </main>
 
 <!-- Toast notification component - positioned at top center -->
@@ -157,14 +160,5 @@
 		flex-shrink: 0;
 	}
 
-	.loading-translations {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-		height: 100%;
-		color: #666;
-	}
 
-	/* Fullscreen styling is now handled by FullScreenControl */
 </style>
