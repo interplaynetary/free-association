@@ -5,7 +5,7 @@
 	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { globalState } from '$lib/global.svelte';
+	import { globalState, initializeGlobalState } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { loading } from '$lib/translations';
@@ -27,6 +27,10 @@
 		// This ensures all dependencies (like globalState) are fully initialized
 		if (browser) {
 			await import('$lib/services');
+			
+			// Initialize global state subscriptions after SvelteKit routing context is ready
+			// This prevents TDZ errors on iOS Safari when accessing the page store
+			initializeGlobalState();
 		}
 
 		// Register PWA service worker with auto-update
