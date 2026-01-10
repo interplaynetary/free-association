@@ -80,8 +80,8 @@
 	// Check if we're on an org page - if so, always use demo tree (which contains org tree)
 	const isOrgPage = $derived($page?.route?.id?.startsWith('/org/') || false);
 	const isAuthenticated = $derived(!!$userPub);
-	// Use demo tree on org pages, otherwise use user tree if authenticated, or demo tree if not
-	const tree = $derived(isOrgPage ? demoTreeStore.current : (isAuthenticated ? $userTree : demoTreeStore.current));
+	// Use demo tree on org pages, otherwise use user tree (unified store for both Auth & Demo)
+	const tree = $derived(isOrgPage ? demoTreeStore.current : $userTree);
 	const path = $derived($currentPath);
 	const pub = $derived($userPub);
 	const user = $derived($userAlias);
@@ -96,15 +96,15 @@
 
 		// Map each path ID to a name, finding the name in the tree
 		return path.map((id, index) => {
-			const node = findNodeById(tree, id);
+			const node = findNodeById(tree as Node, id);
 			// For the root node (index 0), fall back to userAlias if node not found
 			const name = node
 				? node.name
-				: (index === 0 && user)
+				: ((index === 0 && user)
 					? user
-					: (index === 0 && !isAuthenticated)
+					: ((index === 0 && !isAuthenticated)
 						? 'Log in!'
-						: 'Unknown';
+						: 'Unknown'));
 			return {
 				id,
 				name
@@ -201,7 +201,7 @@
 	let searchQuery = $state('');
 	// Derived search results
 	const searchResults = $derived(
-		searchQuery.trim() && tree ? searchTreeForNavigation(tree, searchQuery) : []
+		searchQuery.trim() && tree ? searchTreeForNavigation(tree as Node, searchQuery) : []
 	);
 
 	// Mutable state for selected index
