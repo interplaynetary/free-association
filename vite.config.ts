@@ -89,7 +89,8 @@ export default defineConfig({
 				type: 'module'
 			},
 			kit: {
-				includeVersionFile: true
+				includeVersionFile: true,
+				adapterFallback: 'index.html'
 			}
 		})
 	],
