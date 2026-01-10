@@ -24,7 +24,17 @@ export const load = async ({ url }) => {
 
     // Load translations without pathname to avoid TDZ error on iOS Safari
     // The route will be set automatically by sveltekit-i18n after routing context is ready
-    await loadTranslations(storedLocale);
+    console.log('[LAYOUT] Loading translations for:', storedLocale);
+    try {
+      await loadTranslations(storedLocale);
+      console.log('[LAYOUT] Translations loaded successfully');
+    } catch (err) {
+      console.error('[LAYOUT] Error loading translations:', err);
+      // Log the error stack to help pinpoint the issue
+      if (err instanceof Error) {
+        console.error('[LAYOUT] Error stack:', err.stack);
+      }
+    }
   }
 
   return {

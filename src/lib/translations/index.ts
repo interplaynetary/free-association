@@ -143,7 +143,11 @@ export const config = {
   ],
 };
 
+console.log('[TRANSLATIONS] Initializing i18n instance...');
 export const { t, loading, locales, locale, translations, loadTranslations, addTranslations, setLocale, setRoute } = new i18n(config);
+console.log('[TRANSLATIONS] i18n instance created');
 
-loading.subscribe(($loading) => $loading && console.log('Loading translations...'));
+loading.subscribe(($loading) => {
+    if ($loading) console.log('[TRANSLATIONS] Loading translations... (subscription)');
+});
 
