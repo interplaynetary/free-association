@@ -29,9 +29,24 @@ type ToastType = 'info' | 'success' | 'warning' | 'error';
  */
 export const currentPath: Writable<string[]> = writable([]);
 
-// Initialize currentPath when user logs in or demo tree loads
-if (browser) {
-	console.log('[TRACE] src/lib/global.svelte.ts: <module scope>');
+// Global state initialization flag
+let isGlobalStateInitialized = false;
+
+/**
+ * Initialize global state subscriptions
+ * MUST be called after SvelteKit's routing context is ready
+ * to avoid Temporal Dead Zone errors on iOS Safari
+ */
+export function initializeGlobalState() {
+	// Prevent double initialization
+	if (isGlobalStateInitialized || !browser) {
+		console.log('[GLOBAL] Skipping initialization - already initialized or not in browser');
+		return;
+	}
+
+	console.log('[GLOBAL] Initializing global state subscriptions');
+	isGlobalStateInitialized = true;
+
 	// Watch for user authentication state changes
 	let lastPub = '';
 	userPub.subscribe((pub) => {
@@ -79,6 +94,8 @@ if (browser) {
 			}, 100);
 		}
 	});
+
+	console.log('[GLOBAL] Global state initialization complete');
 }
 
 // We will use the persist/manifest functions from state.ts for sync

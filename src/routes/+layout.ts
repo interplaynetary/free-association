@@ -8,8 +8,6 @@ export const csr = true;
 
 /** @type {import('./$types').LayoutLoad} */
 export const load = async ({ url }) => {
-  const { pathname } = url;
-
   if (browser) {
     // Try to get the locale from localStorage
     let storedLocale = localStorage.getItem('lang') || '';
@@ -24,11 +22,12 @@ export const load = async ({ url }) => {
       localStorage.setItem('lang', storedLocale);
     }
 
-    await loadTranslations(storedLocale, pathname);
+    // Load translations without pathname to avoid TDZ error on iOS Safari
+    // The route will be set automatically by sveltekit-i18n after routing context is ready
+    await loadTranslations(storedLocale);
   }
 
   return {
     locale: browser ? locale : defaultLocale,
-    route: pathname
   };
 };
