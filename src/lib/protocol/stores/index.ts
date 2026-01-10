@@ -19,7 +19,6 @@ export {
 	// Core data stores
 	myRecognitionTreeStore,
 	myCommitmentStore,
-	myAllocationStateStore,
 
 	// Network data stores
 	networkCommitments,
@@ -41,18 +40,6 @@ export {
 
 // Allocation stores
 export {
-	myActiveNeedsByType,
-	myOverAllocationHistory,
-	myDampingFactors,
-	systemState,
-	allocationsStore,
-	myDampedNeeds,
-	allocationDebugInfo,
-	// Derived stores moved from stores.svelte.ts to break circular dependency
-	myRecognitionOfOthers,
-	othersRecognitionOfMe,
-	myCurrentNeeds,
-	myAvailableCapacity,
 	initializeAllocationStores // Moved from stores.svelte
 } from './allocation.svelte';
 
@@ -63,14 +50,6 @@ export {
 	createAttributeStore
 	// Note: subscribeToAttribute is already exported from core/attributes, don't duplicate
 } from './attributes.svelte';
-
-// Collective stores (re-export only stores, not pure functions from core)
-export {
-	collectiveTrees,
-	collectiveTreeStore,
-	createCollectiveTreeStore,
-	deleteCollectiveTreeStore
-} from './collective-tree.svelte';
 
 // Filter stores
 export * from './filters/objectFiltering.svelte';

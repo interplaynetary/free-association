@@ -7,7 +7,7 @@
  * - This module is server-only and should be initialized in hooks.server.ts
  */
 
-import { MRDMembershipModule } from '$lib/protocol/stores/collective-membership.svelte';
+import { MRDMembershipModule } from '@playnet/free-association/collective/collective-membership';
 import { calculateIPFAllocation, type SlotAllocationRecord } from '$lib/protocol/allocation-ipf';
 import type {
 	AvailabilitySlot,

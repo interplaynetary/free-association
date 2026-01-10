@@ -356,6 +356,17 @@ export function createStore<T extends z.ZodTypeAny>(
 			return;
 		}
 
+		// RACE CONDITION GUARD:
+		// Check if Svelte auth store is consistent with Gun auth state.
+		// If holsterUser.is is true (Gun level) but holsterUserPub (Svelte level) is not yet updated,
+		// we are in the "Login Transition Window".
+		// In this window, we MUST NOT persist, because the store still holds Unauthenticated (Demo) data!
+		const currentPub = get(holsterUserPub);
+		if (!currentPub) {
+			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️ Race condition detected: Gun authenticated but stores not synced. Aborting persist to prevent overwriting remote data with local demo data.`);
+			return;
+		}
+
 		// Check if already persisting
 		if (isPersisting) {
 			if (config.holsterPath.includes('tree')) {
