@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { VersionedStore } from './v-store.svelte';
+import { VersionedStore } from '../lib/utils/primitives/v-store.svelte';
 
 // Test data types
 interface TestCommitment {

@@ -6,7 +6,6 @@ export const prerender = false;
 export const ssr = false;
 export const csr = true;
 
-/** @type {import('./$types').LayoutLoad} */
 export const load = async ({ url }) => {
   if (browser) {
     // Try to get the locale from localStorage
@@ -16,8 +15,8 @@ export const load = async ({ url }) => {
     if (!storedLocale) {
       const browserLang = navigator.language.toLowerCase();
       storedLocale = browserLang.startsWith('pt') ? 'pt' :
-                     browserLang.startsWith('tr') ? 'tr' : 
-                     defaultLocale;
+        browserLang.startsWith('tr') ? 'tr' :
+          defaultLocale;
       // Save the detected language to localStorage
       localStorage.setItem('lang', storedLocale);
     }

@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from "bun:test";
-import { computeAllocations } from "./scheduler";
+import { computeAllocations } from "../server/collective/scheduler";
 import type { AvailabilitySlot, NeedSlot } from "$lib/protocol/schemas";
 
 describe("Scheduler Adapter Logic", () => {
