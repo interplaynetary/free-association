@@ -125,7 +125,7 @@ if (data.isUserTree) {
 		
 		if (myTree) {
 			const treeWithCorrectId = { ...myTree, id: userPubkey, manual_fulfillment: myTree.manual_fulfillment ?? undefined };
-			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
+			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true);
 			userTreeLoading = false;
 			userTreeLoaded = true;
 			console.log('[ORG-PAGE] ✅ Own tree loaded');
@@ -148,7 +148,7 @@ if (data.isUserTree) {
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		};
-		demoTreeStore.initializeWithCustomTree(placeholderTree as any, true, false);
+		demoTreeStore.initializeWithCustomTree(placeholderTree as any, true);
 		
 		// Subscribe to network data
 		subscribeToRecognitionTree(userPubkey);
@@ -161,7 +161,7 @@ if (data.isUserTree) {
 			// Fast path: data already cached
 			console.log('[ORG-PAGE] 💡 Found cached data');
 			const treeWithCorrectId = { ...existingTree.data, id: userPubkey, manual_fulfillment: existingTree.data.manual_fulfillment ?? undefined };
-			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
+			demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true);
 			userTreeLoading = false;
 			userTreeLoaded = true;
 		} else {
@@ -178,7 +178,7 @@ if (data.isUserTree) {
 				if (tree?.data) {
 					clearTimeout(loadTimeout);
 					const treeWithCorrectId = { ...tree.data, id: userPubkey, manual_fulfillment: tree.data.manual_fulfillment ?? undefined };
-					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true, false);
+					demoTreeStore.initializeWithCustomTree(treeWithCorrectId, true);
 					userTreeLoading = false;
 					userTreeLoaded = true;
 					console.log('[ORG-PAGE] ✅ Loaded from network');
@@ -218,7 +218,7 @@ if (data.isUserTree) {
 	console.log(
 		'[ORG-PAGE] Initializing demo tree store with org tree NOW (before component renders)'
 	);
-	demoTreeStore.initializeWithCustomTree(orgTreeWithContributors, true, false);
+	demoTreeStore.initializeWithCustomTree(orgTreeWithContributors, true);
 }
 
 
