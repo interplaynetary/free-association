@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import toast from 'svelte-french-toast';
 	import {
 		processSharedData,
@@ -21,7 +21,7 @@
 		initializeDefaultHandlers();
 
 		// Get shared data from URL params (POST data gets converted to GET params)
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		sharedTitle = params.get('title') || '';
 		sharedText = params.get('text') || '';
 		sharedUrl = params.get('url') || '';

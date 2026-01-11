@@ -400,39 +400,33 @@
 		// ✅ ROUTE-AWARE INITIALIZATION:
 		// Only initialize with SDG template if we're on homepage, not authenticated, and no tree exists
 		// On org routes, the tree is already initialized by the +page.svelte loader
-		
-		// Use an effect to watch for this condition reactively (handles logout transition!)
-		$effect(() => {
-			// Check logic inside effect to track dependencies
-			const currentIsOrg = isOrgPage;
-			const currentIsAuth = isAuthenticated;
-			const currentUserTree = $userTree;
-			
-			// Only run on browser
-			if (!browser) return;
-			
-			// If on homepage, unauthenticated, and no tree loaded yet
-			if (!currentIsOrg && !currentIsAuth && !currentUserTree) {
-				const hasExistingTree = demoTreeStore.hasTree(); // Check if demo store has something? No, we check userTree.
-				
-				// Double check directly against store to avoid race conditions with $derived
-				const treeInStore = get(userTree);
-				
-				if (!treeInStore) {
-					console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
-					// Inline SDG initialization logic
-					const demoRootNode = createRootNode('demo_user', 'Log In');
-					const populated = applyTemplate(demoRootNode, 'sdg');
-					userTree.set(populated as RootNode);
-					triggerUpdate();
-					
-					// Also ensure path is set correctly
-					if ($currentPath.length === 0) {
-						currentPath.set([populated!.id]);
-					}
-				}
-			}
+		const hasExistingTree = demoTreeStore.hasTree();
+		console.log('[DEMO TREE] Mount check:', {
+			pathname: $page.url.pathname,
+			isOrgRoute,
+			isAuthenticated,
+			hasExistingTree,
+			currentTree: demoTreeStore.current,
+			children: demoTreeStore.current?.children?.length || 0,
+			currentPath: $currentPath
 		});
+		
+		// Only initialize SDG on homepage (not on org routes)
+		// Only initialize SDG on homepage (not on org routes)
+		if (!isOrgRoute && !isAuthenticated && !hasExistingTree) {
+			// Check if userTree is already loaded (it might be loading from LocalStorage)
+			// Wait, userTree is a store. We access $userTree via get(userTree).
+			// If it's null, we initialize.
+			const currentUserTree = get(userTree);
+			if (!currentUserTree) {
+				console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
+				// Inline SDG initialization logic
+				const demoRootNode = createRootNode('demo_user', 'Log In');
+				const populated = applyTemplate(demoRootNode, 'sdg');
+				userTree.set(populated);
+				triggerUpdate();
+			}
+		}
 		
 		// Initialize path for demo tree if needed (for both homepage and org routes)
 		const currentTree = demoTreeStore.current || get(userTree);
