@@ -84,7 +84,7 @@ export const load = async ({ params }): Promise<PageData> => {
 
 	if (!tree) {
 		console.error('[ORG-ROUTE] Organization not found:', slug);
-		throw error(404, {
+		error(404, {
 			message: `Organization "${slug}" not found. Available organizations can be found at the root page.`
 		});
 	}
