@@ -78,6 +78,8 @@
 		"vite": "^6.3.6",
 		"vite-plugin-devtools-json": "^1.0.0",
 		"vite-plugin-pwa": "^1.1.0",
+		"vite-plugin-top-level-await": "^1.6.0",
+		"vite-plugin-wasm": "^3.5.0",
 		"vitest": "^3.0.0",
 		"workbox-background-sync": "^7.3.0",
 		"workbox-cacheable-response": "^7.3.0",
