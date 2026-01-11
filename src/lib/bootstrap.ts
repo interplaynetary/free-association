@@ -1,4 +1,3 @@
-import { browser } from '$app/environment';
 import { initializeProtocol, cleanupProtocol } from '$lib/protocol/startup';
 import { initializeGlobalState } from '$lib/global.svelte';
 
@@ -8,8 +7,6 @@ import { initializeGlobalState } from '$lib/global.svelte';
  * all dependencies are ready before starting the protocol and UI state.
  */
 export async function bootstrapApplication() {
-    if (!browser) return;
-
     console.log('[BOOTSTRAP] Starting application...');
 
     // 1. Load services dynamically (avoids circular dependency/order issues)
@@ -33,6 +30,5 @@ export async function bootstrapApplication() {
 }
 
 export function teardownApplication() {
-    if (!browser) return;
     cleanupProtocol();
 }

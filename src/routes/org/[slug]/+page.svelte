@@ -14,7 +14,6 @@
 		myNeedTypesStore,
 		myCapacityTypesStore,
 		myCommitmentStore,
-		// enableAutoCommitmentComposition, setMyNeedSlots etc removed
 		setMyNeedSlots,
 		setMyCapacitySlots,
 		subscribeToRecognitionTree,
