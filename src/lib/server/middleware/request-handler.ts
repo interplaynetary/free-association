@@ -26,14 +26,14 @@ export interface HandlerContext<TData = any> {
 export interface HandlerOptions<TSchema extends z.ZodTypeAny = any> {
   // Schema validation
   schema?: TSchema;
-  
+
   // Authentication
   requireAuth?: boolean;
   authOptions?: AuthOptions;
-  
+
   // Response options
   emptyResponse?: boolean;  // Return text("") instead of JSON
-  
+
   // Error handling
   onError?: (err: any) => Response;
 }
@@ -59,46 +59,46 @@ export function createPOSTHandler<TSchema extends z.ZodTypeAny>(
       } else if (options.authOptions) {
         auth = authenticateEvent(event, options.authOptions);
       }
-      
+
       // Parse and validate body
       const body = await event.request.json();
       const result = schema.safeParse(body);
-      
+
       if (!result.success) {
         const firstError = result.error.errors[0];
-        throw error(400, firstError.message);
+        error(400, firstError.message);
       }
-      
+
       // Call handler
       const response = await handler({
         event,
         data: result.data,
         auth
       });
-      
+
       // Handle response
       if (response instanceof Response) {
         return response;
       }
-      
+
       if (options.emptyResponse) {
         return text('');
       }
-      
+
       return json(response);
-      
+
     } catch (err: any) {
       if (options.onError) {
         return options.onError(err);
       }
-      
+
       // Re-throw SvelteKit errors
       if (err.status) {
         throw err;
       }
-      
+
       console.error('[Request Handler Error]', err);
-      throw error(500, err.message || 'Internal server error');
+      error(500, err.message || 'Internal server error');
     }
   };
 }
@@ -119,36 +119,36 @@ export function createGETHandler(
       } else if (options.authOptions) {
         auth = authenticateEvent(event, options.authOptions);
       }
-      
+
       // Call handler
       const response = await handler({
         event,
         auth
       });
-      
+
       // Handle response
       if (response instanceof Response) {
         return response;
       }
-      
+
       if (options.emptyResponse) {
         return text('');
       }
-      
+
       return json(response);
-      
+
     } catch (err: any) {
       if (options.onError) {
         return options.onError(err);
       }
-      
+
       // Re-throw SvelteKit errors
       if (err.status) {
         throw err;
       }
-      
+
       console.error('[Request Handler Error]', err);
-      throw error(500, err.message || 'Internal server error');
+      error(500, err.message || 'Internal server error');
     }
   };
 }
@@ -182,14 +182,14 @@ export function createHandler<TSchema extends z.ZodTypeAny = any>(
       }
       return createPOSTHandler(options.schema, handler, options);
     },
-    
+
     /**
      * GET handler
      */
     GET: (handler: (ctx: Omit<HandlerContext, 'data'>) => Promise<Response | any>) => {
       return createGETHandler(handler, options);
     },
-    
+
     /**
      * DELETE handler
      */
@@ -214,12 +214,12 @@ export function validateBody<TSchema extends z.ZodTypeAny>(
   schema: TSchema
 ): z.infer<TSchema> {
   const result = schema.safeParse(body);
-  
+
   if (!result.success) {
     const firstError = result.error.errors[0];
-    throw error(400, firstError.message);
+    error(400, firstError.message);
   }
-  
+
   return result.data;
 }
 

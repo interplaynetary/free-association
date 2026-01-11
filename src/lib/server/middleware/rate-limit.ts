@@ -42,14 +42,14 @@ export function checkRateLimit(
 ): void {
   const key = config.keyGenerator(request, userId);
   const now = Date.now();
-  
+
   // Get or create store for this limiter
   let limiterStore = rateLimitStore.get(config.message);
   if (!limiterStore) {
     limiterStore = new Map();
     rateLimitStore.set(config.message, limiterStore);
   }
-  
+
   // Get or create entry for this key
   let entry = limiterStore.get(key);
   if (!entry || now > entry.resetTime) {
@@ -59,13 +59,13 @@ export function checkRateLimit(
     };
     limiterStore.set(key, entry);
   }
-  
+
   // Check limit
   if (entry.count >= config.max) {
     const retryAfterSec = Math.ceil((entry.resetTime - now) / 1000);
-    throw error(429, `${config.message} (Retry after ${retryAfterSec} seconds)`);
+    error(429, `${config.message} (Retry after ${retryAfterSec} seconds)`);
   }
-  
+
   // Increment count
   entry.count++;
 }
@@ -123,21 +123,21 @@ export function checkTokenRateLimit(
 ): void {
   const TOKEN_LIMIT = 10000;
   const TOKEN_WINDOW_MS = 15 * 60 * 1000;
-  
+
   const source = userId || getClientIp(request);
   const now = Date.now();
-  
+
   let bucket = tokenBuckets.get(source);
   if (!bucket || now - bucket.windowStart >= TOKEN_WINDOW_MS) {
     bucket = { used: 0, windowStart: now };
     tokenBuckets.set(source, bucket);
   }
-  
+
   if (bucket.used + requestedTokens > TOKEN_LIMIT) {
     const retryAfterSec = Math.ceil((bucket.windowStart + TOKEN_WINDOW_MS - now) / 1000);
-    throw error(429, `Token rate limit exceeded. Limit: ${TOKEN_LIMIT} tokens per 15 minutes. Retry after ${retryAfterSec} seconds. (Used: ${bucket.used}, Requested: ${requestedTokens})`);
+    error(429, `Token rate limit exceeded. Limit: ${TOKEN_LIMIT} tokens per 15 minutes. Retry after ${retryAfterSec} seconds. (Used: ${bucket.used}, Requested: ${requestedTokens})`);
   }
-  
+
   bucket.used += requestedTokens;
 }
 
@@ -146,7 +146,7 @@ export function checkTokenRateLimit(
  */
 export function cleanupRateLimits(): void {
   const now = Date.now();
-  
+
   for (const [limiterName, limiterStore] of rateLimitStore.entries()) {
     for (const [key, entry] of limiterStore.entries()) {
       if (now > entry.resetTime) {
@@ -154,7 +154,7 @@ export function cleanupRateLimits(): void {
       }
     }
   }
-  
+
   for (const [source, bucket] of tokenBuckets.entries()) {
     if (now - bucket.windowStart >= 15 * 60 * 1000) {
       tokenBuckets.delete(source);

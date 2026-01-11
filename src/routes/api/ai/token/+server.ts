@@ -13,24 +13,24 @@ export const POST = createPOSTHandler(
   async ({ data, event }) => {
     // Rate limiting for auth attempts
     checkAuthRateLimit(event.request);
-    
+
     const { apiKey, userId } = data;
     const masterKey = config.masterApiKey || 'dev-key-12345-change-me';
-    
+
     if (apiKey !== masterKey) {
-      throw error(401, 'Invalid API key');
+      error(401, 'Invalid API key');
     }
-    
+
     const expiresIn = config.jwtExpiry;
     const token = generateToken(
       { userId: userId || 'anonymous', role: 'user', issued: Date.now() },
       expiresIn
     );
-    
-    return { 
-      token, 
-      expiresIn, 
-      type: 'Bearer' 
+
+    return {
+      token,
+      expiresIn,
+      type: 'Bearer'
     };
   }
 );

@@ -9,18 +9,18 @@ export const POST: RequestHandler = async ({ request }) => {
   try {
     const body = await request.json();
     const routing = await routeRequest(body);
-    
+
     console.log('Routing decision:', {
       flow: routing.flow?.name,
       model: routing.model,
       provider: routing.provider
     });
-    
+
     return json(routing);
-    
+
   } catch (err: any) {
     console.error('Routing error:', err);
-    throw error(err.message.includes('No providers') ? 503 : 400, 'Routing failed: ' + err.message);
+    error(err.message.includes('No providers') ? 503 : 400, 'Routing failed: ' + err.message);
   }
 };
 

@@ -25,47 +25,47 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		// Rate limiting to prevent abuse
 		checkGeneralRateLimit(request);
-		
+
 		// Parse and validate donation
 		const body = await request.json();
 		const parsed = DonationSchema.safeParse(body);
-		
+
 		if (!parsed.success) {
-			throw error(400, 'Invalid donation: ' + JSON.stringify(parsed.error.format()));
+			error(400, 'Invalid donation: ' + JSON.stringify(parsed.error.format()));
 		}
-		
+
 		const { apiKey, donorName, isAnonymous, donorPub } = parsed.data;
-		
+
 		// Validate the key format (basic check)
 		if (!apiKey.startsWith('sk-or-')) {
-			throw error(400, 'Invalid OpenRouter API key format. Keys should start with "sk-or-"');
+			error(400, 'Invalid OpenRouter API key format. Keys should start with "sk-or-"');
 		}
-		
+
 		// Test the key by making a minimal API call
 		const testResponse = await fetch('https://openrouter.ai/api/v1/models', {
 			headers: {
 				'Authorization': `Bearer ${apiKey}`
 			}
 		});
-		
+
 		if (!testResponse.ok) {
 			const errorData = await testResponse.json().catch(() => ({}));
-			throw error(400, 'Invalid or expired API key: ' + (errorData.error?.message || 'Failed validation'));
+			error(400, 'Invalid or expired API key: ' + (errorData.error?.message || 'Failed validation'));
 		}
-		
+
 		// Add to pool with donor info
 		const displayName = isAnonymous ? undefined : donorName;
 		const success = addKey(apiKey, donorPub, displayName);
-		
+
 		if (!success) {
-			throw error(400, 'This key is already in the pool');
+			error(400, 'This key is already in the pool');
 		}
-		
+
 		// Get updated pool status
 		const poolStatus = getPoolStatus();
-		
+
 		console.log(`🎁 New key donated${displayName ? ` by ${displayName}` : ' (anonymous)'}`);
-		
+
 		return json({
 			success: true,
 			message: 'Thank you for your contribution! Your key has been added to the pool.',
@@ -74,15 +74,15 @@ export const POST: RequestHandler = async ({ request }) => {
 				healthyKeys: poolStatus.health.healthy
 			}
 		});
-		
+
 	} catch (err: any) {
 		console.error('[KEY-DONATE] Error:', err);
-		
+
 		if (err.status) {
 			throw err;
 		}
-		
-		throw error(500, 'Failed to process donation: ' + err.message);
+
+		error(500, 'Failed to process donation: ' + err.message);
 	}
 };
 
@@ -92,7 +92,7 @@ export const POST: RequestHandler = async ({ request }) => {
 export const GET: RequestHandler = async () => {
 	try {
 		const poolStatus = getPoolStatus();
-		
+
 		// Return public stats without exposing actual keys
 		return json({
 			totalKeys: poolStatus.totalKeys,
@@ -101,10 +101,10 @@ export const GET: RequestHandler = async () => {
 			failedKeys: poolStatus.health.failed,
 			stats: poolStatus.stats
 		});
-		
+
 	} catch (err: any) {
 		console.error('[KEY-DONATE] Error fetching stats:', err);
-		throw error(500, 'Failed to fetch donation stats');
+		error(500, 'Failed to fetch donation stats');
 	}
 };
 

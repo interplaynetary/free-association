@@ -15,12 +15,12 @@ import type { AccountData, InviteCode } from '$lib/server/schemas/holster';
 export async function holsterGet<T = any>(path: string[]): Promise<T | null> {
   return new Promise((resolve) => {
     let chain: any = user;
-    
+
     for (const segment of path) {
       if (segment === 'get' || segment === 'next') continue;
       chain = chain.get ? chain.get(segment) : chain.next(segment);
     }
-    
+
     chain.once((data: T | null) => {
       resolve(data);
     });
@@ -42,18 +42,18 @@ export async function holsterNext<T = any>(collection: string, key: string): Pro
  * Put operation for Gun/Holster with error handling
  */
 export async function holsterPut(
-  path: string[], 
+  path: string[],
   data: any,
   throwOnError: boolean = true
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let chain: any = user;
-    
+
     for (const segment of path) {
       if (segment === 'get' || segment === 'next' || segment === 'put') continue;
       chain = chain.get ? chain.get(segment) : chain.next(segment);
     }
-    
+
     chain.put(data, (err: any) => {
       if (err) {
         console.error('[Holster Put Error]', path.join('/'), err);
@@ -99,9 +99,9 @@ export async function holsterNextPut(
  */
 export async function getAccountByCode(code: string): Promise<AccountData | null> {
   if (!user.is) {
-    throw error(500, 'Host error: User not authenticated');
+    error(500, 'Host error: User not authenticated');
   }
-  
+
   const account = await holsterNext<AccountData>('accounts', code);
   return account;
 }
@@ -111,11 +111,11 @@ export async function getAccountByCode(code: string): Promise<AccountData | null
  */
 export async function getAccountByCodeOrFail(code: string): Promise<AccountData> {
   const account = await getAccountByCode(code);
-  
+
   if (!account || !(account as any).epub) {
-    throw error(404, 'Account not found');
+    error(404, 'Account not found');
   }
-  
+
   return account;
 }
 
@@ -123,18 +123,18 @@ export async function getAccountByCodeOrFail(code: string): Promise<AccountData>
  * Update account data
  */
 export async function updateAccount(
-  code: string, 
+  code: string,
   data: Partial<AccountData>
 ): Promise<void> {
   if (!user.is) {
-    throw error(500, 'Host error: User not authenticated');
+    error(500, 'Host error: User not authenticated');
   }
-  
+
   try {
     await holsterNextPut('accounts', code, data);
   } catch (err) {
     console.error('Failed to update account:', err);
-    throw error(500, 'Failed to update account');
+    error(500, 'Failed to update account');
   }
 }
 
@@ -151,7 +151,7 @@ export async function holsterGetArray<T = any>(
         resolve([]);
         return;
       }
-      
+
       const items: T[] = [];
       for (const [key, value] of Object.entries(data)) {
         if (key !== '_' && value && typeof value === 'object') {
@@ -161,7 +161,7 @@ export async function holsterGetArray<T = any>(
           }
         }
       }
-      
+
       resolve(items);
     });
   });
@@ -194,7 +194,7 @@ export async function holsterEncrypt(
     return await holster.SEA.encrypt(data, secret);
   } catch (err) {
     console.error('[Holster Encrypt Error]', err);
-    throw error(500, 'Encryption failed');
+    error(500, 'Encryption failed');
   }
 }
 
@@ -219,7 +219,7 @@ export async function holsterVerify<T = any>(
  */
 export function ensureAuthenticated(): void {
   if (!user.is) {
-    throw error(500, 'Host error: User not authenticated');
+    error(500, 'Host error: User not authenticated');
   }
 }
 
@@ -242,7 +242,7 @@ export function holsterSubscribe<T = any>(
 ): () => void {
   const handler = (data: T) => callback(data);
   user.get(collection).on(handler);
-  
+
   // Return unsubscribe function
   return () => {
     user.get(collection).off(handler);

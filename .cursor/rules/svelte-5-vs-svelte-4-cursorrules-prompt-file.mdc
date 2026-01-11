@@ -790,7 +790,7 @@ In SvelteKit 2, it is no longer necessary to throw the results of `error(...)` a
 import { error } from '@sveltejs/kit';
 
 function load() {
-	throw error(500, 'something went wrong');
+	error(500, 'something went wrong');
 }
 ```
 

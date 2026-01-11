@@ -61,14 +61,14 @@ export function authenticateApiKey(apiKey: string | null): AuthResult {
   if (!apiKey) {
     return { authenticated: false };
   }
-  
+
   if (validApiKeys.has(apiKey)) {
     return {
       authenticated: true,
       method: 'api-key'
     };
   }
-  
+
   return { authenticated: false };
 }
 
@@ -79,12 +79,12 @@ export function authenticateJWT(token: string | null): AuthResult {
   if (!token) {
     return { authenticated: false };
   }
-  
+
   try {
     if (!config.jwtSecret) {
       throw new Error('JWT_SECRET not configured');
     }
-    
+
     const decoded = jwt.verify(token, config.jwtSecret) as any;
     return {
       authenticated: true,
@@ -103,17 +103,17 @@ export function authenticateBasic(authHeader: string | null): AuthResult {
   if (!authHeader) {
     return { authenticated: false };
   }
-  
+
   const [scheme, credentials] = authHeader.split(' ');
   if (scheme !== 'Basic' || !credentials) {
     return { authenticated: false };
   }
-  
+
   try {
     const [username, password] = Buffer.from(credentials, 'base64')
       .toString()
       .split(':');
-    
+
     // Check against configured Holster credentials
     if (username === config.holsterUsername && password === config.holsterPassword) {
       return {
@@ -128,7 +128,7 @@ export function authenticateBasic(authHeader: string | null): AuthResult {
   } catch (err) {
     console.error('[Basic Auth] Parse error:', err);
   }
-  
+
   return { authenticated: false };
 }
 
@@ -149,7 +149,7 @@ export function authenticate(
     allowBasic: true,
     ...options
   };
-  
+
   // Try API key first (X-API-Key header)
   if (opts.allowApiKey) {
     const apiKey = request.headers.get('X-API-Key');
@@ -160,7 +160,7 @@ export function authenticate(
       }
     }
   }
-  
+
   // Try JWT token (Authorization: Bearer header)
   if (opts.allowJwt) {
     const authHeader = request.headers.get('Authorization');
@@ -172,7 +172,7 @@ export function authenticate(
       }
     }
   }
-  
+
   // Try Basic Auth (Authorization: Basic header)
   if (opts.allowBasic) {
     const authHeader = request.headers.get('Authorization');
@@ -183,7 +183,7 @@ export function authenticate(
       }
     }
   }
-  
+
   return { authenticated: false };
 }
 
@@ -195,16 +195,16 @@ export function requireAuth(
   options: AuthOptions = {}
 ): AuthResult {
   const result = authenticate(request, options);
-  
+
   if (!result.authenticated) {
     const methods: string[] = [];
     if (options.allowJwt !== false) methods.push('JWT (Authorization: Bearer)');
     if (options.allowApiKey !== false) methods.push('API Key (X-API-Key)');
     if (options.allowBasic !== false) methods.push('Basic Auth (Authorization: Basic)');
-    
-    throw error(401, `Authentication required. Supported methods: ${methods.join(', ')}`);
+
+    error(401, `Authentication required. Supported methods: ${methods.join(', ')}`);
   }
-  
+
   return result;
 }
 
@@ -236,11 +236,11 @@ export function checkAuth(
   options: AuthOptions = { allowBasic: true, allowJwt: false, allowApiKey: false }
 ): Response | null {
   const result = authenticate(event.request, options);
-  
+
   if (!result.authenticated) {
     return new Response('Unauthorized', { status: 401 });
   }
-  
+
   return null;
 }
 
@@ -255,7 +255,7 @@ export function generateToken(payload: any, expiresIn?: string): string {
   if (!config.jwtSecret) {
     throw new Error('JWT_SECRET not configured - cannot generate tokens');
   }
-  
+
   const expiry = expiresIn || config.jwtExpiry || '24h';
   return jwt.sign(payload, config.jwtSecret, { expiresIn: expiry } as any);
 }
@@ -267,7 +267,7 @@ export function verifyToken(token: string): any {
   if (!config.jwtSecret) {
     throw new Error('JWT_SECRET not configured');
   }
-  
+
   return jwt.verify(token, config.jwtSecret);
 }
 
