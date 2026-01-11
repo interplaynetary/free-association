@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import { get, writable, type Writable } from 'svelte/store';
 import toast from 'svelte-french-toast';
-import { page } from '$app/stores';
+import { page } from '$app/state';
 // V5: Import from v5 protocol and stores
 import {
 	findNodeById,

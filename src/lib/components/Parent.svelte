@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
 	// V5: Import from v5 stores
 	import { myRecognitionTreeStore as userTree } from '$lib/protocol/stores/stores.svelte';
@@ -133,7 +133,7 @@
 
 	// Reactive store subscriptions
 	const isAuthenticated = $derived(!!$userPub);
-	const pathname = $derived($page.url.pathname);
+	const pathname = $derived(page.url.pathname);
 	const isOrgRoute = $derived(pathname.startsWith('/org/'));
 	
 	// ✅ ROUTE-AWARE TREE SELECTION:
@@ -369,8 +369,8 @@
 	onMount(() => {
 		// ✅ PATH CORRECTION: Watch for route changes and reset path when switching trees
 		// Using explicit subscription instead of $effect to avoid side-effect issues
-		const unsubscribePage = page.subscribe(($page) => {
-			const currentPathname = $page.url.pathname;
+		const unsubscribePage = page.subscribe((page) => {
+			const currentPathname = page.url.pathname;
 			const currentIsOrgRoute = currentPathname.startsWith('/org/');
 			const currentIsAuthenticated = !!get(userPub);
 			const currentPub = get(userPub);
@@ -402,7 +402,7 @@
 		// On org routes, the tree is already initialized by the +page.svelte loader
 		const hasExistingTree = demoTreeStore.hasTree();
 		console.log('[DEMO TREE] Mount check:', {
-			pathname: $page.url.pathname,
+			pathname: page.url.pathname,
 			isOrgRoute,
 			isAuthenticated,
 			hasExistingTree,

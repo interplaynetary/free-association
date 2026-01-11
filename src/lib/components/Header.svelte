@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { globalState, currentPath } from '$lib/global.svelte';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
@@ -78,7 +78,7 @@
 
 	// Reactive store subscriptions
 	// Check if we're on an org page - if so, always use demo tree (which contains org tree)
-	const isOrgPage = $derived($page?.route?.id?.startsWith('/org/') || false);
+	const isOrgPage = $derived(page?.route?.id?.startsWith('/org/') || false);
 	const isAuthenticated = $derived(!!$userPub);
 	// Use demo tree on org pages, otherwise use user tree (unified store for both Auth & Demo)
 	const tree = $derived(isOrgPage ? demoTreeStore.current : $userTree);
@@ -157,8 +157,8 @@
 		};
 	});
 
-	// Get current route from $page store
-	let currentRoute = $derived($page.url.pathname);
+	// Get current route from page
+	let currentRoute = $derived(page.url.pathname);
 	// Remove base path to get the actual route
 	let routeWithoutBase = $derived(
 		currentRoute.startsWith(base) ? currentRoute.slice(base.length) : currentRoute
@@ -224,7 +224,7 @@
 
 	// Initialize error state with URL error message if present
 	$effect(() => {
-		const urlError = $page.url.searchParams.get('error');
+		const urlError = page.url.searchParams.get('error');
 		if (urlError) {
 			errorMessage = 'Login failed. Please check your credentials.';
 			showLoginPanel = true;

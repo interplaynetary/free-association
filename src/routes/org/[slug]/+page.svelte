@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import Parent from '$lib/components/Parent.svelte';
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';

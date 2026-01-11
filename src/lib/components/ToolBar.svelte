@@ -9,7 +9,7 @@
 		setMyCapacitySlots
 	} from '$lib/protocol/stores/stores.svelte';
 	import { findNodeById, addChild, calculateNodePoints, getAllContributorsFromTree } from '@playnet/free-association/tree';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { get } from 'svelte/store';
 	import { base } from '$app/paths';
 	import { searchTreeForNavigation } from '@playnet/free-association/filters/treeSearch';
@@ -88,7 +88,7 @@
 
 	// Route detection - properly reactive to page store changes
 	const currentRoute = $derived.by(() => {
-		const pathname = $page.url.pathname;
+		const pathname = page.url.pathname;
 		let routeWithoutBase = pathname.startsWith(base) ? pathname.slice(base.length) : pathname;
 
 		// Ensure we have a leading slash
