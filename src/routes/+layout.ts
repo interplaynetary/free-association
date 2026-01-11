@@ -7,29 +7,16 @@ export const ssr = false;
 export const csr = true;
 
 export const load = async ({ url }) => {
+  const { pathname } = url;
+  const initLocale = getInitialLocale();
+
   if (browser) {
-    // Try to get the locale from localStorage
-    let storedLocale = localStorage.getItem('lang') || '';
-
-    // If no stored locale, try to get from browser language
-    if (!storedLocale) {
-      const browserLang = navigator.language.toLowerCase();
-      storedLocale = browserLang.startsWith('pt') ? 'pt' :
-        browserLang.startsWith('tr') ? 'tr' :
-          defaultLocale;
-      // Save the detected language to localStorage
-      localStorage.setItem('lang', storedLocale);
-    }
-
-    // Load translations without pathname to avoid TDZ error on iOS Safari
-    // The route will be set automatically by sveltekit-i18n after routing context is ready
-    console.log('[LAYOUT] Loading translations for:', storedLocale);
+    console.log('[LAYOUT] Loading translations for:', initLocale, 'route:', pathname);
     try {
-      await loadTranslations(storedLocale);
+      await loadTranslations(initLocale, pathname);
       console.log('[LAYOUT] Translations loaded successfully');
     } catch (err) {
       console.error('[LAYOUT] Error loading translations:', err);
-      // Log the error stack to help pinpoint the issue
       if (err instanceof Error) {
         console.error('[LAYOUT] Error stack:', err.stack);
       }
@@ -37,6 +24,27 @@ export const load = async ({ url }) => {
   }
 
   return {
-    locale: browser ? locale : defaultLocale,
+    locale: initLocale,
+    route: pathname
   };
 };
+
+function getInitialLocale(): string {
+  if (browser) {
+    // Try to get the locale from localStorage
+    const storedLocale = localStorage.getItem('lang');
+    if (storedLocale) return storedLocale;
+
+    // If no stored locale, try to get from browser language
+    const browserLang = navigator.language.toLowerCase();
+    const detected = browserLang.startsWith('pt') ? 'pt' :
+      browserLang.startsWith('tr') ? 'tr' :
+        defaultLocale;
+
+    // Save the detected language to localStorage
+    localStorage.setItem('lang', detected);
+    return detected;
+  }
+
+  return defaultLocale;
+}

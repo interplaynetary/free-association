@@ -2,7 +2,8 @@
   import { browser } from '$app/environment';
   import { locale } from '$lib/translations';
 
-  let isOpen = false;
+  let isOpen = $state(false);
+  let containerRef: HTMLElement | undefined = $state();
 
   const languages = [
     { code: 'en', abbr: 'EN', name: 'English' },
@@ -15,27 +16,25 @@
 
   function selectLanguage(langCode: string) {
     if (!browser) return;
-    console.log('Changing language to:', langCode);
     localStorage.setItem('lang', langCode);
     isOpen = false;
     window.location.reload();
   }
 
   function handleClickOutside(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.lang-switcher')) {
+    if (isOpen && containerRef && !containerRef.contains(event.target as Node)) {
       isOpen = false;
     }
   }
 
-  $: currentLang = $locale || 'en';
-  $: currentLangObj = languages.find(l => l.code === currentLang) || languages[0];
+  const currentLang = $derived($locale || 'en');
+  const currentLangObj = $derived(languages.find(l => l.code === currentLang) || languages[0]);
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
-<div class="lang-switcher">
-  <button class="lang-button" on:click|stopPropagation={toggleDropdown} type="button">
+<div class="lang-switcher" bind:this={containerRef}>
+  <button class="lang-button" onclick={toggleDropdown} type="button">
     {currentLangObj.abbr}
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -48,7 +47,7 @@
         <button
           class="lang-option"
           class:active={lang.code === currentLang}
-          on:click={() => selectLanguage(lang.code)}
+          onclick={(e) => { e.stopPropagation(); selectLanguage(lang.code); }}
           type="button"
         >
           <span class="lang-abbr">{lang.abbr}</span>
@@ -99,9 +98,9 @@
     background: white;
     border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    z-index: 1000;
+    z-index: 9999;
   }
 
   .lang-option {

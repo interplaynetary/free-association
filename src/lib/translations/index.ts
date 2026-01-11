@@ -51,31 +51,37 @@ export const config = {
     {
       locale: 'en',
       key: 'home',
+      routes: ['/', /\/org.*/],
       loader: async () => (await import('./en/home.json')).default,
     },
     {
       locale: 'en',
       key: 'collective',
+      routes: [/\/collective.*/],
       loader: async () => (await import('./en/collective.json')).default,
     },
     {
       locale: 'en',
       key: 'inventory',
+      routes: [/\/inventory.*/],
       loader: async () => (await import('./en/inventory.json')).default,
     },
     {
       locale: 'en',
       key: 'map',
+      routes: [/\/map.*/],
       loader: async () => (await import('./en/map.json')).default,
     },
     {
       locale: 'en',
       key: 'tree',
+      routes: [/\/tree.*/, /\/org.*/],
       loader: async () => (await import('./en/tree.json')).default,
     },
     {
       locale: 'en',
       key: 'contacts',
+      routes: [/\/contacts.*/],
       loader: async () => (await import('./en/contacts.json')).default,
     },
     // Portuguese - Global (loaded for all routes)
@@ -113,41 +119,47 @@ export const config = {
     {
       locale: 'pt',
       key: 'home',
+      routes: ['/', /\/org.*/],
       loader: async () => (await import('./pt/home.json')).default,
     },
     {
       locale: 'pt',
       key: 'collective',
+      routes: [/\/collective.*/],
       loader: async () => (await import('./pt/collective.json')).default,
     },
     {
       locale: 'pt',
       key: 'inventory',
+      routes: [/\/inventory.*/],
       loader: async () => (await import('./pt/inventory.json')).default,
     },
     {
       locale: 'pt',
       key: 'map',
+      routes: [/\/map.*/],
       loader: async () => (await import('./pt/map.json')).default,
     },
     {
       locale: 'pt',
       key: 'tree',
+      routes: [/\/tree.*/, /\/org.*/],
       loader: async () => (await import('./pt/tree.json')).default,
     },
     {
       locale: 'pt',
       key: 'contacts',
+      routes: [/\/contacts.*/],
       loader: async () => (await import('./pt/contacts.json')).default,
     },
   ],
 };
 
 console.log('[TRANSLATIONS] Initializing i18n instance...');
-export const { t, loading, locales, locale, translations, loadTranslations, addTranslations, setLocale, setRoute } = new i18n(config);
+export const { t, loading, locales, locale, initialized, translations, loadTranslations, addTranslations, setLocale, setRoute } = new i18n(config);
 console.log('[TRANSLATIONS] i18n instance created');
 
 loading.subscribe(($loading) => {
-    if ($loading) console.log('[TRANSLATIONS] Loading translations... (subscription)');
+  if ($loading) console.log('[TRANSLATIONS] Loading translations... (subscription)');
 });
 
