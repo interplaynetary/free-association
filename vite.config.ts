@@ -2,8 +2,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, configDefaults } from 'vitest/config';
 import process from 'node:process';
 import devtoolsJson from 'vite-plugin-devtools-json';
-import topLevelAwait from 'vite-plugin-top-level-await';
-import wasm from 'vite-plugin-wasm';
+
 
 
 // https://vite.dev/config/
