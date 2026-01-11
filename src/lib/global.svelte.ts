@@ -57,10 +57,9 @@ export function initializeGlobalState() {
 
 			// Check if we're on an org page - if so, don't reset the path
 			try {
-				const currentPage = get(page);
-				const isOrgPage = currentPage?.route?.id?.startsWith('/org/') || false;
+				const isOrgPage = page?.route?.id?.startsWith('/org/') || false;
 
-				console.log('[GLOBAL] User logged in - isOrgPage:', isOrgPage, 'route:', currentPage?.route?.id);
+				console.log('[GLOBAL] User logged in - isOrgPage:', isOrgPage, 'route:', page?.route?.id);
 
 				if (isOrgPage) {
 					console.log('[GLOBAL] User logged in while on org page - preserving org tree path');
@@ -106,8 +105,9 @@ function getCurrentTree() {
 	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: getCurrentTree');
 	// Check if we're on an org page - if so, always use demo tree (which contains the org tree)
 	if (browser) {
-		const currentPage = get(page);
-		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+
+		// console.log('[DEBUG] getCurrentTree page object:', page);
+		const isOrgPage = page?.route?.id?.startsWith('/org/');
 
 		if (isOrgPage) {
 			console.log('[GLOBAL] On org page - using demo tree (org tree)');
@@ -135,8 +135,7 @@ function cloneTreeGlobal(treeToClone: any) {
 	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: cloneTreeGlobal');
 	// Check if we're on an org page - if so, use JSON serialization
 	if (browser) {
-		const currentPage = get(page);
-		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+		const isOrgPage = page?.route?.id?.startsWith('/org/');
 
 		if (isOrgPage) {
 			// Org pages use demo tree - use JSON serialization
@@ -163,8 +162,7 @@ function updateTreeStore(updatedTree: any) {
 	console.log('[TRACE] [ENTER] src/lib/global.svelte.ts: updateTreeStore');
 	// Check if we're on an org page - if so, update demo tree
 	if (browser) {
-		const currentPage = get(page);
-		const isOrgPage = currentPage?.route?.id?.startsWith('/org/');
+		const isOrgPage = page?.route?.id?.startsWith('/org/');
 
 		if (isOrgPage) {
 			// Org pages: update demoTree with JSON serialization
