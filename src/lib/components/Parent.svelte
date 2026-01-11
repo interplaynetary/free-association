@@ -369,34 +369,7 @@
 	onMount(() => {
 		// ✅ PATH CORRECTION: Watch for route changes and reset path when switching trees
 		// Using explicit subscription instead of $effect to avoid side-effect issues
-		const unsubscribePage = page.subscribe((page) => {
-			const currentPathname = page.url.pathname;
-			const currentIsOrgRoute = currentPathname.startsWith('/org/');
-			const currentIsAuthenticated = !!get(userPub);
-			const currentPub = get(userPub);
-			
-			// Determine which tree root should be active
-			let expectedRootId: string | null = null;
-			if (currentIsOrgRoute && demoTreeStore.current) {
-				expectedRootId = demoTreeStore.current.id;
-			} else if (currentIsAuthenticated && currentPub) {
-				expectedRootId = currentPub;
-			} else if (demoTreeStore.current) {
-				expectedRootId = demoTreeStore.current.id;
-			}
-			
-			// Check if path needs correction
-			const currentPathRootId = get(currentPath)[0];
-			const pathIsWrong = currentPathRootId && currentPathRootId !== expectedRootId;
-			
-			if (pathIsWrong && expectedRootId) {
-				console.log('[PATH-CORRECTION] Route changed - path points to wrong tree root!');
-				console.log('[PATH-CORRECTION]   Current path root:', currentPathRootId);
-				console.log('[PATH-CORRECTION]   Expected root:', expectedRootId);
-				console.log('[PATH-CORRECTION]   Resetting path to correct tree root');
-				currentPath.set([expectedRootId]);
-			}
-		});
+
 		// ✅ ROUTE-AWARE INITIALIZATION:
 		// Only initialize with SDG template if we're on homepage, not authenticated, and no tree exists
 		// On org routes, the tree is already initialized by the +page.svelte loader
@@ -480,7 +453,6 @@
 			document.removeEventListener('pointermove', handleRecomposeMovement, { capture: true });
 			// Clean up subscriptions
 			unsubscribe();
-			unsubscribePage();
 		};
 	});
 
