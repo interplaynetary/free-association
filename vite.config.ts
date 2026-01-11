@@ -11,13 +11,6 @@ export default defineConfig({
 	plugins: [
 		devtoolsJson() as any,
 		sveltekit(),
-		wasm(),
-		topLevelAwait({
-			// The export name of top-level await promise for each chunk module
-			promiseExportName: "__tla",
-			// The function to generate import names of top-level await promise in each chunk module
-			promiseImportName: i => `__tla_${i}`
-		})
 	],
 	define: {
 		'process.env.NODE_ENV': process.env.NODE_ENV === 'production' ? '"production"' : '"development"'
@@ -79,4 +72,4 @@ export default defineConfig({
 			exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts']
 		}
 	}
-});
+})
