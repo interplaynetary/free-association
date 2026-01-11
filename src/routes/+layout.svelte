@@ -5,77 +5,21 @@
 	import { Toaster } from 'svelte-french-toast';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { globalState, initializeGlobalState } from '$lib/global.svelte';
+	import { globalState } from '$lib/global.svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { initializeProtocol, cleanupProtocol } from '$lib/protocol/startup';
-	import { pwaInfo } from 'virtual:pwa-info';
-	// V5: Store initialization and auto-composition happen in holster.svelte.ts after authentication
+	import { teardownApplication } from '$lib/bootstrap';
 
 	// Layout props
 	let { children }: LayoutProps = $props();
-
-	// PWA web manifest link
-	let webManifestLink = $derived(pwaInfo ? pwaInfo.webManifest.linkTag : '');
-
-    console.log('[TRACE] src/routes/+layout.svelte: <module scope>');
-
-	// Initialize services dynamically on mount to avoid initialization order issues
-	onMount(async () => {
-        console.log('[TRACE] src/routes/+layout.svelte: onMount');
-		// Dynamically import and initialize services after component mounts
-		// This ensures all dependencies (like globalState) are fully initialized
-		if (browser) {
-			await import('$lib/services');
-			
-			// Initialize protocol layer (Auth, Stores, Capacity)
-			initializeProtocol();
-
-			// Initialize global state subscriptions after SvelteKit routing context is ready
-			// This prevents TDZ errors on iOS Safari when accessing the page store
-			initializeGlobalState();
-		}
-
-		// Register PWA service worker with auto-update
-		if (browser && pwaInfo) {
-			const { registerSW } = await import('virtual:pwa-register');
-			registerSW({
-				immediate: true,
-				onRegistered(r: ServiceWorkerRegistration | undefined) {
-					console.log('SW Registered:', r);
-				},
-				onRegisterError(error: Error) {
-					console.log('SW registration error', error);
-				}
-			});
-		}
-
-		// Request notification permission
-		if (browser && 'Notification' in window && Notification.permission === 'default') {
-			Notification.requestPermission().then((permission) => {
-				console.log('Notification permission:', permission);
-			});
-		}
-		console.log('[TRACE] [EXIT] src/routes/+layout.svelte: onMount');
-	});
-
-	onDestroy(() => {
-		if (browser) {
-			cleanupProtocol();
-		}
-	});
 </script>
-
-<svelte:head>
-	{@html webManifestLink}
-</svelte:head>
 
 <main>
 	<div class="app-header">
 		<Header />
 	</div>
 	<div class="app-content">
-		{@render children()}
+		{@render children?.()}
 	</div>
 	<div class="app-footer">
 		<ToolBar />

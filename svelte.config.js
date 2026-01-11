@@ -12,18 +12,17 @@ const config = {
 	kit: {
 		adapter: isServerBuild
 			? adapterNode({
-					out: 'build-server',
-					precompress: true,
-					envPrefix: ''
-			  })
+				out: 'build-server',
+				precompress: true,
+				envPrefix: ''
+			})
 			: adapterStatic({
-					fallback: 'index.html'
-			  }),
+				fallback: 'index.html'
+			}),
 		paths: {
 			base: process.argv.includes('dev') ? '' : process.env.BASE_PATH || ''
 		},
 		// Disable service worker registration for server builds
-		// vite-pwa handles service worker generation
 		serviceWorker: {
 			register: false
 		}

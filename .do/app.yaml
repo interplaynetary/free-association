@@ -5,7 +5,7 @@ services:
     # DigitalOcean App Platform configuration
     environment_slug: node-js
     github:
-      repo: your-username/free-association
+      repo: interplaynetary/free-association
       branch: main
       deploy_on_push: true
     

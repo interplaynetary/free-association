@@ -172,8 +172,3 @@ The selected language is stored in `localStorage` and persists across sessions.
 - The `loading` store indicates when translations are being loaded
 - Missing translation keys will be displayed as-is in development mode
 - Use the browser's language setting as the default if no preference is stored
-
-## Reference
-
-Based on the guide: [Creating a Multi-Language Website with SvelteKit](https://raktive.com/blog/creating-a-multi-language-website-with-sveltekit)
-
