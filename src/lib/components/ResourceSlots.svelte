@@ -9,6 +9,8 @@
 	import { getUserName } from '$lib/network/users.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
+	import { outsideClick } from '$lib/actions/outsideClick';
+	import { emojiPicker } from '$lib/actions/emojiPicker';
 	
 	/**
 	 * Generalized resource slots component with need type selection
@@ -25,8 +27,8 @@
 		onNeedDelete: (id: string) => void;
 		onCapacityUpdate: (slot: AvailabilitySlot) => void;
 		onCapacityDelete: (id: string) => void;
-		onNeedAdd: (name: string, quantity: number, needTypeId: string) => void;
-		onCapacityAdd: (name: string, quantity: number, needTypeId: string) => void;
+		onNeedAdd: (name: string, quantity: number, needTypeId: string, emoji: string) => void;
+		onCapacityAdd: (name: string, quantity: number, needTypeId: string, emoji: string) => void;
 	}
 	
 	let {
@@ -40,8 +42,19 @@
 		onCapacityAdd
 	}: Props = $props();
 	
+	$effect(() => {
+		console.log('[ResourceSlots] Updated props:', { 
+			needSlotsCount: needSlots.length, 
+			capacitySlotsCount: capacitySlots.length,
+			activeTab,
+			selectedNeedType,
+			currentSlotsCount: (activeTab === 'needs' ? needSlots : capacitySlots)
+				.filter(slot => slot.type_id === selectedNeedType).length
+		});
+	});
+	
 	// Selected need type
-	let selectedNeedType = $state<string>('money'); // Default to money (USD)
+	let selectedNeedType = $state<string>('general'); // Default to general (matching demo data)
 	
 	// Tab state: 'needs' or 'capacity'
 	let activeTab = $state<'needs' | 'capacity'>('needs');
@@ -51,6 +64,7 @@
 	let draftSlot = $state({
 		name: '',
 		quantity: 100,
+		emoji: '📦',
 		time_pattern: {
 			type: 'monthly' as const,
 			days: [],
@@ -64,6 +78,8 @@
 			longitude: 0
 		}
 	});
+
+	let showEmojiPicker = $state(false);
 
 	// Editor state for the Draft slot
 	let draftExpanded = $state<EditorType | null>(null);
@@ -168,14 +184,15 @@
 		
 		// TODO: Pass full draftSlot object when API supports it
 		if (isNeedMode) {
-			onNeedAdd(draftSlot.name, draftSlot.quantity, selectedNeedType);
+			onNeedAdd(draftSlot.name, draftSlot.quantity, selectedNeedType, draftSlot.emoji);
 		} else {
-			onCapacityAdd(draftSlot.name, draftSlot.quantity, selectedNeedType);
+			onCapacityAdd(draftSlot.name, draftSlot.quantity, selectedNeedType, draftSlot.emoji);
 		}
 		
 		// Reset form
 		draftSlot.name = '';
 		draftSlot.quantity = 100;
+		draftSlot.emoji = '📦';
 		// Reset other fields if desirable, or keep them as "defaults"
 		draftExpanded = null;
 	}
@@ -357,6 +374,11 @@
 		<!-- Compact single-row layout -->
 		<div class="slot-main">
 			<!-- Name input -->
+			{#if selectedNeedType === 'money'}
+				<span class="currency-symbol">$</span>
+			{:else}
+				<span class="type-emoji">{slot.emoji || currentNeedType.emoji}</span>
+			{/if}
 			<input
 				type="text"
 				class="slot-name-input"
@@ -370,11 +392,6 @@
 			/>
 			
 			<!-- Quantity with currency/emoji -->
-			{#if selectedNeedType === 'money'}
-				<span class="currency-symbol">$</span>
-			{:else}
-				<span class="type-emoji">{currentNeedType.emoji}</span>
-			{/if}
 			<input
 				type="number"
 				class="slot-qty-input"
@@ -689,9 +706,23 @@
 			/>
 			
 			<div class="draft-amount">
-				<span class="currency-symbol">
-					{selectedNeedType === 'money' ? '$' : currentNeedType.emoji}
-				</span>
+				<div class="relative inline-block">
+					<button 
+						type="button"
+						class="text-xl leading-none px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+						onclick={(e) => { e.preventDefault(); e.stopPropagation(); showEmojiPicker = !showEmojiPicker; }}
+					>
+						{draftSlot.emoji}
+					</button>
+					{#if showEmojiPicker}
+						<div 
+							class="absolute bottom-full left-0 mb-2 z-[9999]"
+							use:outsideClick={() => showEmojiPicker = false}
+							use:emojiPicker={{ onClick: (e) => { draftSlot.emoji = e; showEmojiPicker = false; } }}
+							style="min-width: 320px;"
+						></div>
+					{/if}
+				</div>
 				<input
 					type="number"
 					bind:value={draftSlot.quantity}

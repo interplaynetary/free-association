@@ -1,32 +1,57 @@
-
 // V5: Import from v5 stores and schemas
-import type { RootNode, AvailabilitySlot } from '@playnet/free-association/schemas';
-import { myRecognitionTreeStore, myCommitmentStore, myCapacitySlotsStore } from '$lib/protocol/stores/stores.svelte';
+import type { RootNode, AvailabilitySlot, NeedSlot } from '../protocol/schemas';
+import {
+	myRecognitionTreeStore,
+	myCapacitySlotsStore,
+	myNeedSlotsStore,
+	setMyCapacitySlots,
+	setMyNeedSlots
+} from '$lib/protocol/stores/stores.svelte';
 import { get } from 'svelte/store';
-import { populateWithExampleData, createExampleCapacitySlots } from './example';
+import { populateWithExampleData, createExampleCapacitySlots, createExampleNeedSlots } from './example';
 
 /**
- * V5: Populate both tree and capacity slots with example data
+ * V5: Populate recognition tree
  */
-export function populateWithFullExampleData(): void {
-	console.log('[EXAMPLE] Populating with full SDG example data (v5)...');
-
-	// V5: Populate recognition tree
+export function populateRecognitionTree(): void {
 	const currentTree = get(myRecognitionTreeStore);
 	if (currentTree) {
 		const populatedTree = populateWithExampleData(currentTree);
 		myRecognitionTreeStore.set(populatedTree);
 	}
+}
 
-	// V5: Populate capacity slots
-	const exampleSlots = createExampleCapacitySlots();
-	const currentSlots = get(myCapacitySlotsStore) || [];
-	const newSlots: AvailabilitySlot[] = [...currentSlots, ...exampleSlots];
+/**
+ * V5: Populate capacity slots
+ */
+export function populateCapacitySlots(): void {
+	const exampleCapacitySlots = createExampleCapacitySlots();
+	const currentCapacitySlots = get(myCapacitySlotsStore) || [];
+	const newCapacitySlots: AvailabilitySlot[] = [...currentCapacitySlots, ...exampleCapacitySlots];
+	setMyCapacitySlots(newCapacitySlots);
+}
 
-	myCapacitySlotsStore.set(newSlots);
+/**
+ * V5: Populate need slots
+ */
+export function populateNeedSlots(): void {
+	const exampleNeedSlots = createExampleNeedSlots();
+	const currentNeedSlots = get(myNeedSlotsStore) || [];
+	const newNeedSlots: NeedSlot[] = [...currentNeedSlots, ...exampleNeedSlots];
+	setMyNeedSlots(newNeedSlots);
+}
+
+/**
+ * V5: Populate both tree and capacity/need slots with example data
+ */
+export function populateWithFullExampleData(): void {
+	console.log('[EXAMPLE] Populating with full SDG example data (v5)...');
+	populateRecognitionTree();
+	populateCapacitySlots();
+	populateNeedSlots();
 
 	console.log(
-		`[EXAMPLE] Full example data populated (v5): tree + ${exampleSlots.length} capacity slots`
+		`[EXAMPLE] Full example data populated (v5)`
 	);
 }
 

@@ -1,10 +1,20 @@
 <script lang="ts">
 	import type { GroupedSlotMarkerData, ClusterMarkerData } from '$lib/components/Map.svelte';
+	import type { NeedSlot, AvailabilitySlot, SlotAllocationRecord, Commitment } from '$lib/protocol/schemas';
 	import { handleAddressClick } from '$lib/location/mapUtils';
 	import { globalState } from '$lib/global.svelte';
-	// V5: Import mutual recognition from v5 stores
-	import { myMutualRecognition } from '$lib/protocol/stores/stores.svelte';
+	// V5: Import user pubkey to look up recognition shares
+	import { holsterUserPub } from '$lib/network/holster.svelte';
+	import { myAllocationsAsProvider } from '$lib/protocol/stores/allocation.svelte';
+	import { networkAllocations } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
+	import { 
+		formatTimeDisplay, 
+		formatLocationDisplay, 
+		parseSlotDateTime, 
+		isSlotInPast,
+		hasAddressComponents
+	} from '$lib/utils/formatting';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -46,6 +56,14 @@
 
 	// Track fullscreen state for responsive panel sizing
 	let isFullscreen = $state(false);
+
+	// Allocation data integration (matching ResourceSlots pattern)
+	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
+	const allNetworkAllocations = $derived($networkAllocations);
+	const myPubKey = $derived($holsterUserPub);
+
+	// PERFORMANCE FIX: On-demand allocation lookup instead of building expensive map
+	// Only search when needed for visible slots (much faster than rebuilding 1,484-item map)
 
 	// Handle fullscreen changes
 	const handleFullscreenChange = () => {
@@ -198,29 +216,32 @@
 		}
 	});
 
-	// Get allocated quantity for a specific slot (your share from efficient algorithm)
-	function getSlotAllocatedQuantity(capacity: any, slotId: string): number {
-		// Use the new efficient allocation data structure
-		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
-		return slot?.allocated_quantity || 0;
+	// Get allocated quantity for a specific slot (on-demand search)
+	// PERFORMANCE: Direct search is faster than maintaining a map when we only need a few slots
+	function getSlotAllocatedQuantity(capacity: Commitment, slotId: string): number {
+		return myAllocations
+			.filter(alloc => alloc.availability_slot_id === slotId)
+			.reduce((sum, alloc) => sum + alloc.quantity, 0);
 	}
 
-	// Calculate mutual recognition share for a slot: provider total quantity * user mutual-rec share
-	function getSlotMutualRecognitionShare(capacity: any, slotId: string): number {
-		const slot = capacity.capacity_slots?.find((s: any) => s.id === slotId);
+	// Calculate recognition share for a slot from slot's priority_distribution
+	function getSlotRecognitionShare(capacity: Commitment, slotId: string): number {
+		const slot = capacity.capacity_slots?.find((s: AvailabilitySlot) => s.id === slotId);
 		if (!slot) return 0;
 
-		const providerId = capacity.provider_id;
-		if (!providerId) return 0;
+		// Get user's pubkey to look up their share in this slot's priority_distribution
+		const userPubkey = get(holsterUserPub);
+		if (!userPubkey) return 0;
 
-		// Get the user's mutual recognition share with this provider (v5)
-		const userMutualRecShare = $myMutualRecognition[providerId] || 0;
+		// Get the user's recognition share from the slot's priority_distribution
+		// This is the slot-specific recognition weight (0-1)
+		const recognitionWeight = slot.priority_distribution?.[userPubkey] || 0;
 
-		// Calculate: slot total quantity * mutual recognition share
+		// Calculate: slot total quantity * recognition weight
 		const totalQuantity = slot.quantity || 0;
-		const mutualRecShare = totalQuantity * userMutualRecShare;
+		const recognitionShare = totalQuantity * recognitionWeight;
 
-		return mutualRecShare;
+		return recognitionShare;
 	}
 
 	// Reactive visibility derived from markerData
@@ -233,228 +254,23 @@
 		return marker !== null && 'markers' in marker && 'totalCapacities' in marker;
 	}
 
-	// Debug logging (better pattern than $effect)
+	// Debug logging
 	$inspect('MapSidePanel markerData:', markerData?.id);
 
-	// Helper function to safely extract time from potentially malformed time strings
-	function safeExtractTime(timeValue: string | null | undefined): string | undefined {
-		if (!timeValue) return undefined;
-		if (/^\d{2}:\d{2}$/.test(timeValue)) {
-			return timeValue;
-		}
-		if (timeValue.includes('T')) {
-			try {
-				const date = new Date(timeValue);
-				return date.toTimeString().substring(0, 5);
-			} catch (e) {
-				console.warn('Failed to parse time:', timeValue);
-				return undefined;
-			}
-		}
-		console.warn('Unknown time format:', timeValue);
-		return undefined;
-	}
-
-	// Helper function to format time without leading zeros (08:30 → 8:30)
-	function formatTimeClean(timeStr: string): string {
-		if (!timeStr) return timeStr;
-		const [hours, minutes] = timeStr.split(':');
-		const cleanHours = parseInt(hours).toString();
-		return `${cleanHours}:${minutes}`;
-	}
-
-	// Helper function to format date for display with smart labels
-	function formatDateForDisplay(date: Date): string {
-		const today = new Date();
-		const tomorrow = new Date(today);
-		tomorrow.setDate(tomorrow.getDate() + 1);
-		if (date.toDateString() === today.toDateString()) {
-			return 'Today';
-		} else if (date.toDateString() === tomorrow.toDateString()) {
-			return 'Tomorrow';
-		} else {
-			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-		}
-	}
-
-	// Format slot time display - clean and comprehensive (matches Share.svelte)
-	function formatSlotTimeDisplay(slot: any): string {
-		const rawStartTime = safeExtractTime(slot.start_time);
-		const rawEndTime = safeExtractTime(slot.end_time);
-		const cleanStartTime = rawStartTime ? formatTimeClean(rawStartTime) : '';
-		const cleanEndTime = rawEndTime ? formatTimeClean(rawEndTime) : '';
-
-		// Get recurrence display
-		const recurrenceDisplay =
-			slot.recurrence && slot.recurrence !== 'Does not repeat' ? slot.recurrence : '';
-
-		let timeStr = '';
-		if (slot.all_day) {
-			const startDate = slot.start_date ? new Date(slot.start_date) : null;
-			const endDate = slot.end_date ? new Date(slot.end_date) : null;
-			if (startDate && endDate && startDate.getTime() !== endDate.getTime()) {
-				const startStr = formatDateForDisplay(startDate);
-				const endStr = formatDateForDisplay(endDate);
-				timeStr = `${startStr} - ${endStr}, All day`;
-			} else if (startDate) {
-				const dateStr = formatDateForDisplay(startDate);
-				timeStr = `${dateStr}, All day`;
-			} else {
-				timeStr = 'All day';
-			}
-		} else {
-			const startDate = slot.start_date ? new Date(slot.start_date) : null;
-			const endDate = slot.end_date ? new Date(slot.end_date) : null;
-
-			if (startDate) {
-				const startDateStr = formatDateForDisplay(startDate);
-				if (endDate && startDate.getTime() !== endDate.getTime()) {
-					const endDateStr = formatDateForDisplay(endDate);
-					const startTimeStr = cleanStartTime || '';
-					const endTimeStr = cleanEndTime || '';
-					if (startTimeStr && endTimeStr) {
-						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-					} else if (startTimeStr) {
-						timeStr = `${startDateStr}, ${startTimeStr} - ${endDateStr}`;
-					} else {
-						timeStr = `${startDateStr} - ${endDateStr}`;
-					}
-				} else {
-					if (cleanStartTime) {
-						const timeRange = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-						timeStr = `${startDateStr}, ${timeRange}`;
-					} else {
-						timeStr = startDateStr;
-					}
-				}
-			} else if (cleanStartTime) {
-				timeStr = cleanEndTime ? `${cleanStartTime}-${cleanEndTime}` : cleanStartTime;
-			} else {
-				timeStr = 'No time set';
-			}
-		}
-
-		// Add recurrence if present
-		return recurrenceDisplay ? `${timeStr} (${recurrenceDisplay})` : timeStr;
-	}
-
-	// Helper function to format slot location display
-	function formatSlotLocationDisplay(slot: any): string {
-		if (slot.location_type === 'Specific') {
-			const addressParts = [];
-
-			if (slot.street_address) addressParts.push(slot.street_address);
-			if (slot.city) addressParts.push(slot.city);
-			if (slot.state_province) addressParts.push(slot.state_province);
-			if (slot.postal_code) addressParts.push(slot.postal_code);
-			if (slot.country) addressParts.push(slot.country);
-
-			if (addressParts.length > 0) {
-				return addressParts.join(', ');
-			}
-
-			if (slot.latitude && slot.longitude) {
-				return `${slot.latitude.toFixed(4)}, ${slot.longitude.toFixed(4)}`;
-			}
-		}
-
-		return slot.location_type || 'No location';
-	}
-
-	// Helper function to check if slot has actual address components (not just coordinates)
-	function hasAddressComponents(slot: any): boolean {
-		return !!(
-			slot.street_address ||
-			slot.city ||
-			slot.state_province ||
-			slot.postal_code ||
-			slot.country
-		);
-	}
-
 	// Helper function to check if a slot is recurring (matches Share.svelte)
-	function isSlotRecurring(slot: any): boolean {
-		return slot.recurrence && slot.recurrence !== 'Does not repeat';
-	}
-
-	// Helper function to parse slot dates and times consistently
-	function parseSlotDateTime(slot: any): {
-		slotStart: Date | null;
-		slotEnd: Date | null;
-	} {
-		const slotStart = slot.start_date ? new Date(slot.start_date) : null;
-		let slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart ? new Date(slotStart) : null;
-
-		// For all-day events, don't add time components - work with dates only
-		if (slot.all_day) {
-			// For all-day events, set start to beginning of day and end to end of day
-			if (slotStart) {
-				slotStart.setHours(0, 0, 0, 0);
-			}
-			if (slotEnd) {
-				slotEnd.setHours(23, 59, 59, 999);
-			} else if (slotStart) {
-				// If no end date, all-day event ends at end of start day
-				slotEnd = new Date(slotStart);
-				slotEnd.setHours(23, 59, 59, 999);
-			}
-		} else {
-			// For timed events, add time components using safe extraction
-			if (slotStart && slot.start_time) {
-				const safeStartTime = safeExtractTime(slot.start_time);
-				if (safeStartTime) {
-					const [hours, minutes] = safeStartTime.split(':');
-					slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-				}
-			}
-
-			if (slotEnd && slot.end_time) {
-				const safeEndTime = safeExtractTime(slot.end_time);
-				if (safeEndTime) {
-					const [hours, minutes] = safeEndTime.split(':');
-					slotEnd.setHours(parseInt(hours), parseInt(minutes), 59, 999);
-				}
-			}
-
-			// Handle missing end times for timed events (only when no end_date was specified)
-			if (slotStart && !slot.end_date) {
-				if (!slot.start_time && !slot.end_time) {
-					// No specific times - treat as all-day
-					slotEnd = new Date(slotStart);
-					slotEnd.setHours(23, 59, 59, 999);
-				} else if (slot.start_time && !slot.end_time) {
-					// Has start time but no end time - assume 1 hour duration
-					slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
-				}
-			}
-		}
-
-		return { slotStart, slotEnd };
-	}
-
-	// Helper function to check if a slot is in the past (matches Share.svelte)
-	function isSlotInPast(slot: any): boolean {
-		if (isSlotRecurring(slot)) return false;
-
-		const now = new Date();
-		const { slotStart, slotEnd } = parseSlotDateTime(slot);
-
-		if (!slotStart) return false;
-
-		// Use the effective end time (parseSlotDateTime handles all-day vs timed logic)
-		const effectiveEndTime = slotEnd || slotStart;
-		return effectiveEndTime < now;
+	function isSlotRecurring(slot: AvailabilitySlot | NeedSlot): boolean {
+		return !!(slot.recurrence && slot.recurrence !== null);
 	}
 
 	// Categorize slots like in Share.svelte
-	function categorizeSlots(slots: any[]): {
-		recurring: any[];
-		currentFuture: any[];
-		past: any[];
+	function categorizeSlots(slots: (AvailabilitySlot | NeedSlot)[]): {
+		recurring: (AvailabilitySlot | NeedSlot)[];
+		currentFuture: (AvailabilitySlot | NeedSlot)[];
+		past: (AvailabilitySlot | NeedSlot)[];
 	} {
-		const recurring: any[] = [];
-		const currentFuture: any[] = [];
-		const past: any[] = [];
+		const recurring: (AvailabilitySlot | NeedSlot)[] = [];
+		const currentFuture: (AvailabilitySlot | NeedSlot)[] = [];
+		const past: (AvailabilitySlot | NeedSlot)[] = [];
 
 		slots.forEach((slot) => {
 			if (isSlotRecurring(slot)) {
@@ -468,6 +284,8 @@
 
 		return { recurring, currentFuture, past };
 	}
+
+
 
 	// Calculate distance between two coordinates (Haversine formula)
 	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -749,7 +567,7 @@
 			{@const { capacity, slots, lnglat, source, providerName } = markerData}
 			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
 			{@const isGeocoded = source === 'geocoded'}
-			{@const locationDisplay = formatSlotLocationDisplay(slots[0])}
+			{@const locationDisplay = formatLocationDisplay(slots[0])}
 			{@const categorizedSlots = categorizeSlots(slots)}
 			{@const totalSlots = slots.length}
 
@@ -837,9 +655,14 @@
 							<div class="slot-list">
 								{#each categorizedSlots.recurring as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
+									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
 									<div class="slot-item">
-										<div class="slot-main">
+										<div class="header-main">
+											<h3>{slot.name}</h3>
+											<span class="slot-time">{formatTimeDisplay(slot)}</span>
+										</div>
+										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
+										<div class="slot-details">
 											{#if allocatedQuantity > 0}
 												<span class="slot-quantity allocated">
 													{Number.isInteger(allocatedQuantity)
@@ -855,15 +678,14 @@
 												</span>
 												<span class="slot-total">(express desire to get some!)</span>
 											{/if}
-											{#if mutualRecShare > 0}
+											{#if recognitionShare > 0}
 												<span class="slot-share">
-													Share: {Number.isInteger(mutualRecShare)
-														? mutualRecShare
-														: mutualRecShare.toFixed(2)}
+													Share: {Number.isInteger(recognitionShare)
+														? recognitionShare
+														: recognitionShare.toFixed(2)}
 													{capacity.unit || ''}
 												</span>
 											{/if}
-											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 										{#if slot.advance_notice_hours}
 											<div class="slot-meta">
@@ -884,9 +706,14 @@
 							<div class="slot-list">
 								{#each categorizedSlots.currentFuture as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
+									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
 									<div class="slot-item">
-										<div class="slot-main">
+										<div class="header-main">
+											<h3>{slot.name}</h3>
+											<span class="slot-time">{formatTimeDisplay(slot)}</span>
+										</div>
+										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
+										<div class="slot-details">
 											{#if allocatedQuantity > 0}
 												<span class="slot-quantity allocated">
 													{Number.isInteger(allocatedQuantity)
@@ -902,15 +729,14 @@
 												</span>
 												<span class="slot-total">(express desire to get some!)</span>
 											{/if}
-											{#if mutualRecShare > 0}
+											{#if recognitionShare > 0}
 												<span class="slot-share">
-													Share: {Number.isInteger(mutualRecShare)
-														? mutualRecShare
-														: mutualRecShare.toFixed(2)}
+													Share: {Number.isInteger(recognitionShare)
+														? recognitionShare
+														: recognitionShare.toFixed(2)}
 													{capacity.unit || ''}
 												</span>
 											{/if}
-											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 										{#if slot.advance_notice_hours}
 											<div class="slot-meta">
@@ -929,9 +755,14 @@
 							<div class="slot-list">
 								{#each categorizedSlots.past as slot}
 									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const mutualRecShare = getSlotMutualRecognitionShare(capacity, slot.id)}
+									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
 									<div class="slot-item past-slot">
-										<div class="slot-main">
+										<div class="header-main">
+											<h3>{slot.name}</h3>
+											<span class="slot-time">{formatTimeDisplay(slot)}</span>
+										</div>
+										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
+										<div class="slot-details">
 											{#if allocatedQuantity > 0}
 												<span class="slot-quantity allocated">
 													{Number.isInteger(allocatedQuantity)
@@ -947,15 +778,14 @@
 												</span>
 												<span class="slot-total">(past slot)</span>
 											{/if}
-											{#if mutualRecShare > 0}
+											{#if recognitionShare > 0}
 												<span class="slot-share">
-													Share: {Number.isInteger(mutualRecShare)
-														? mutualRecShare
-														: mutualRecShare.toFixed(2)}
+													Share: {Number.isInteger(recognitionShare)
+														? recognitionShare
+														: recognitionShare.toFixed(2)}
 													{capacity.unit || ''}
 												</span>
 											{/if}
-											<span class="slot-time">⏰ {formatSlotTimeDisplay(slot)}</span>
 										</div>
 									</div>
 								{/each}
@@ -1009,8 +839,8 @@
 							>
 								<div class="result-header">
 									<div class="result-title">
-										<span class="result-emoji">{result.capacity.emoji || '🎁'}</span>
-										<span class="result-name">{result.capacity.name}</span>
+										<span class="result-emoji">{result.slots[0]?.emoji || (result.slots.length > 1 ? '📦' : '🎁')}</span>
+										<span class="result-name">{result.slots.length === 1 ? result.slots[0].name : `${result.slots.length} slots`}</span>
 									</div>
 									{#if distance !== null}
 										<span class="result-distance">{formatDistance(distance)}</span>
@@ -1019,8 +849,8 @@
 
 								<div class="result-details">
 									<div class="result-provider">👤 {result.providerName}</div>
-									{#if result.capacity.unit}
-										<div class="result-unit">{result.capacity.unit}</div>
+									{#if result.slots[0]?.unit}
+										<div class="result-unit">{result.slots[0].unit}</div>
 									{/if}
 									<div class="result-slots">{result.slots.length} slots</div>
 								</div>
@@ -1631,12 +1461,7 @@
 		background: #f5f5f5;
 	}
 
-	.slot-main {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 2px;
-	}
+
 
 	.slot-quantity {
 		font-weight: 600;

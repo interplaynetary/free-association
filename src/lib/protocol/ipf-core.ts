@@ -13,7 +13,7 @@ import type {
 
 import {
     slotsCompatible
-} from '@playnet/free-association/utils/match';
+} from '$lib/utils/match';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES

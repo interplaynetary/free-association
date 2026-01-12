@@ -44,7 +44,7 @@ export type ShareMap = z.infer<typeof ShareMapSchema>;
  * We use the actual ITC types and a passthrough schema for validation.
  * This avoids type mismatches between Zod's inferred types and the real ITC types.
  */
-import type { Id as ITCId, Event as ITCEvent, Stamp as ITCStamp } from './itc.js';
+import type { Id as ITCId, Event as ITCEvent, Stamp as ITCStamp } from '$lib/utils/primitives/itc';
 
 // Use passthrough schemas that accept the ITC types directly
 export const ITCIdSchema = z.any() as z.ZodType<ITCId>;
@@ -607,7 +607,11 @@ export const CommitmentSchema = z.object({
 	// Map: need_slot_id -> total_seed (sum of all K_pr from proposals)
 	// Allows providers to calculate fair share: (my_K_pr / total_seed) × need
 	// Enables priority-aware allocation without provider-to-provider subscriptions
-	total_seed_by_need: z.record(z.string(), z.number().nonnegative()).optional()
+	total_seed_by_need: z.record(z.string(), z.number().nonnegative()).optional(),
+
+	// Per-type damping state for multi-dimensional stability
+	// Maps type_id -> Damping State (structure opaque for now, handled by damping logic)
+	multi_dimensional_damping: z.record(z.string(), z.any()).optional()
 });
 
 export type Commitment = z.infer<typeof CommitmentSchema>;

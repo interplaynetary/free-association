@@ -321,7 +321,8 @@ export const myCapacityTypesStore: Readable<string[]> = derived(
 export const myDistributedIPFState = writable<DistributedIPFState>({
 	rowScalings: {},
 	colScalings: {},
-	cachedRemoteScalings: {}
+	cachedRemoteScalings: {},
+	totalSeedsByNeed: {}
 });
 
 /**
@@ -1163,13 +1164,14 @@ export function getAllCommitmentsRecord(): Record<string, Commitment> {
 	console.log('[GET-ALL-COMMITMENTS] My commitment:', myCommitment ? 'yes' : 'no');
 	console.log('[GET-ALL-COMMITMENTS] My pub:', myPub ? myPub.slice(0, 20) + '...' : 'none');
 
-	if (myCommitment && myPub) {
+	if (myCommitment) {
+		const key = myPub || 'local-user';
 		console.log('[GET-ALL-COMMITMENTS] ✅ Including my commitment with',
 			myCommitment.need_slots?.length || 0, 'needs,',
 			myCommitment.capacity_slots?.length || 0, 'capacity');
-		record[myPub] = myCommitment;
+		record[key] = myCommitment;
 	} else {
-		console.log('[GET-ALL-COMMITMENTS] ⚠️ NOT including my commitment');
+		console.log('[GET-ALL-COMMITMENTS] ⚠️ NOT including my commitment (no commitment data)');
 	}
 
 	console.log('[GET-ALL-COMMITMENTS] Returning', Object.keys(record).length, 'total commitments');

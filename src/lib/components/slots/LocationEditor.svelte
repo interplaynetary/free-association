@@ -95,20 +95,20 @@
 <div class="location-editor">
 	<h4 class="editor-title">📍 Location</h4>
 	
-	<div class="form-field">
-		<label for="location-type">Type:</label>
-		<select
-			id="location-type"
-			bind:value={localLocationType}
-			onchange={handleLocationTypeChange}
-			class="location-type-select"
-		>
-			<option value="Undefined">Not specified</option>
-			<option value="Specific">Specific address</option>
-			<option value="Coordinates">GPS coordinates</option>
-			<option value="Online">Online/Virtual</option>
-		</select>
-	</div>
+		<div class="location-tabs">
+			{#each ['Undefined', 'Specific', 'Coordinates', 'Online'] as type}
+				<button
+					class="tab-button {localLocationType === type ? 'active' : ''}"
+					onclick={() => {
+						localLocationType = type;
+						emitUpdate();
+					}}
+				>
+					{type === 'Undefined' ? 'None' : type}
+				</button>
+			{/each}
+		</div>
+
 	
 	{#if localLocationType === 'Specific'}
 		<div class="address-fields">
@@ -233,6 +233,11 @@
 		background: #f8fafc;
 		border: 1px solid #e5e7eb;
 		border-radius: 8px;
+		container-type: inline-size;
+	}
+
+	.location-editor * {
+		box-sizing: border-box;
 	}
 	
 	.editor-title {
@@ -247,6 +252,7 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		margin-bottom: 0.75rem;
+		min-width: 0; /* meaningful for flex items */
 	}
 	
 	.form-field label {
@@ -256,13 +262,17 @@
 	}
 	
 	.form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
+		display: flex;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 	}
+
+	.form-row > .form-field {
+		flex: 1 1 140px;
+	}
 	
-	.location-type-select,
 	.text-input {
+		width: 100%;
 		padding: 0.5rem 0.75rem;
 		border: 1px solid #cbd5e1;
 		border-radius: 6px;
@@ -272,11 +282,48 @@
 		transition: all 0.2s ease;
 	}
 	
-	.location-type-select:focus,
 	.text-input:focus {
 		outline: none;
 		border-color: #3b82f6;
 		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	}
+	
+	/* Tab Styles */
+	.location-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		padding: 0.25rem;
+		background: #e2e8f0;
+		border-radius: 8px;
+		margin-bottom: 1rem;
+	}
+	
+	.tab-button {
+		flex: 1 1 auto;
+		min-width: 60px;
+		padding: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #64748b;
+		background: transparent;
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		text-align: center;
+	}
+	
+	.tab-button:hover {
+		color: #1f2937;
+		background: rgba(255, 255, 255, 0.5);
+	}
+	
+	.tab-button.active {
+		color: #0f172a;
+		background: white;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+		font-weight: 600;
 	}
 	
 	.address-fields,

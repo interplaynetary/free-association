@@ -1,5 +1,5 @@
 import { addChild, findNodeById } from '@playnet/free-association/tree';
-import type { RootNode } from '@playnet/free-association/schemas';
+import type { RootNode } from '../protocol/schemas';
 
 /**
  * Official UN Sustainable Development Goals colors
@@ -121,166 +121,176 @@ export function isSDGNode(nodeId: string): boolean {
 export function populateSDGTree(rootNode: RootNode): RootNode {
 	console.log('[SDG] Populating tree with all 17 SDGs at root level...');
 
+	// Helper to safely add SDG nodes only if they don't exist
+	const safeAddChild = (parent: any, id: string, name: string, fulfillment?: number) => {
+		const existing = findNodeById(rootNode, id);
+		if (existing) {
+			console.log(`[SDG] Node ${id} already exists, skipping.`);
+			return existing;
+		}
+		return addChild(parent, id, name, fulfillment ?? 0) as any;
+	};
+
 	// Add all 17 SDGs directly to root with appropriate emojis
-	addChild(rootNode, 'sdg-1', '🚫💰 No Poverty', 6);
-	addChild(rootNode, 'sdg-2', '🌾 Zero Hunger', 6);
-	addChild(rootNode, 'sdg-3', '❤️‍🩹 Good Health', 6);
-	addChild(rootNode, 'sdg-4', '📚 Quality Education', 6);
-	addChild(rootNode, 'sdg-5', '⚖️ Gender Equality', 6);
-	addChild(rootNode, 'sdg-6', '💧 Clean Water', 6);
-	addChild(rootNode, 'sdg-7', '⚡ Clean Energy', 6);
-	addChild(rootNode, 'sdg-8', '💼 Decent Work', 6);
-	addChild(rootNode, 'sdg-9', '🏭 Innovation', 6);
-	addChild(rootNode, 'sdg-10', '📊 Reduced Inequality', 6);
-	addChild(rootNode, 'sdg-11', '🏙️ Sustainable Cities', 6);
-	addChild(rootNode, 'sdg-12', '♻️ Responsible Consumption', 6);
-	addChild(rootNode, 'sdg-13', '🌍 Climate Action', 6);
-	addChild(rootNode, 'sdg-14', '🌊 Life Below Water', 6);
-	addChild(rootNode, 'sdg-15', '🌳 Life on Land', 5);
-	addChild(rootNode, 'sdg-16', '🕊️ Peace & Justice', 5);
-	addChild(rootNode, 'sdg-17', '🤝 Partnerships', 6);
+	safeAddChild(rootNode, 'sdg-1', '🚫💰 No Poverty', 6);
+	safeAddChild(rootNode, 'sdg-2', '🌾 Zero Hunger', 6);
+	safeAddChild(rootNode, 'sdg-3', '❤️‍🩹 Good Health', 6);
+	safeAddChild(rootNode, 'sdg-4', '📚 Quality Education', 6);
+	safeAddChild(rootNode, 'sdg-5', '⚖️ Gender Equality', 6);
+	safeAddChild(rootNode, 'sdg-6', '💧 Clean Water', 6);
+	safeAddChild(rootNode, 'sdg-7', '⚡ Clean Energy', 6);
+	safeAddChild(rootNode, 'sdg-8', '💼 Decent Work', 6);
+	safeAddChild(rootNode, 'sdg-9', '🏭 Innovation', 6);
+	safeAddChild(rootNode, 'sdg-10', '📊 Reduced Inequality', 6);
+	safeAddChild(rootNode, 'sdg-11', '🏙️ Sustainable Cities', 6);
+	safeAddChild(rootNode, 'sdg-12', '♻️ Responsible Consumption', 6);
+	safeAddChild(rootNode, 'sdg-13', '🌍 Climate Action', 6);
+	safeAddChild(rootNode, 'sdg-14', '🌊 Life Below Water', 6);
+	safeAddChild(rootNode, 'sdg-15', '🌳 Life on Land', 5);
+	safeAddChild(rootNode, 'sdg-16', '🕊️ Peace & Justice', 5);
+	safeAddChild(rootNode, 'sdg-17', '🤝 Partnerships', 6);
 
 	// SDG 1: No Poverty
 	const sdg1 = findNodeById(rootNode, 'sdg-1');
 	if (sdg1) {
-		addChild(sdg1, 'poverty-finance', 'Financial Inclusion', 30);
-		addChild(sdg1, 'poverty-housing', 'Affordable Housing', 30);
-		addChild(sdg1, 'poverty-employment', 'Employment Programs', 40);
+		safeAddChild(sdg1, 'poverty-finance', 'Financial Inclusion', 30);
+		safeAddChild(sdg1, 'poverty-housing', 'Affordable Housing', 30);
+		safeAddChild(sdg1, 'poverty-employment', 'Employment Programs', 40);
 	}
 
 	// SDG 2: Zero Hunger
 	const sdg2 = findNodeById(rootNode, 'sdg-2');
 	if (sdg2) {
-		addChild(sdg2, 'hunger-food', 'Food Distribution', 35);
-		addChild(sdg2, 'hunger-farming', 'Sustainable Farming', 35);
-		addChild(sdg2, 'hunger-nutrition', 'Nutrition Education', 30);
+		safeAddChild(sdg2, 'hunger-food', 'Food Distribution', 35);
+		safeAddChild(sdg2, 'hunger-farming', 'Sustainable Farming', 35);
+		safeAddChild(sdg2, 'hunger-nutrition', 'Nutrition Education', 30);
 	}
 
 	// SDG 3: Good Health
 	const sdg3 = findNodeById(rootNode, 'sdg-3');
 	if (sdg3) {
-		addChild(sdg3, 'health-medical', 'Medical Services', 30);
-		addChild(sdg3, 'health-mental', 'Mental Health', 25);
-		addChild(sdg3, 'health-prevention', 'Disease Prevention', 25);
-		addChild(sdg3, 'health-wellness', 'Community Wellness', 20);
+		safeAddChild(sdg3, 'health-medical', 'Medical Services', 30);
+		safeAddChild(sdg3, 'health-mental', 'Mental Health', 25);
+		safeAddChild(sdg3, 'health-prevention', 'Disease Prevention', 25);
+		safeAddChild(sdg3, 'health-wellness', 'Community Wellness', 20);
 	}
 
 	// SDG 4: Quality Education
 	const sdg4 = findNodeById(rootNode, 'sdg-4');
 	if (sdg4) {
-		addChild(sdg4, 'edu-primary', 'Primary Education', 25);
-		addChild(sdg4, 'edu-vocational', 'Vocational Training', 25);
-		addChild(sdg4, 'edu-digital', 'Digital Literacy', 25);
-		addChild(sdg4, 'edu-lifelong', 'Lifelong Learning', 25);
+		safeAddChild(sdg4, 'edu-primary', 'Primary Education', 25);
+		safeAddChild(sdg4, 'edu-vocational', 'Vocational Training', 25);
+		safeAddChild(sdg4, 'edu-digital', 'Digital Literacy', 25);
+		safeAddChild(sdg4, 'edu-lifelong', 'Lifelong Learning', 25);
 	}
 
 	// SDG 5: Gender Equality
 	const sdg5 = findNodeById(rootNode, 'sdg-5');
 	if (sdg5) {
-		addChild(sdg5, 'gender-empowerment', 'Women Empowerment', 40);
-		addChild(sdg5, 'gender-rights', 'Equal Rights', 30);
-		addChild(sdg5, 'gender-violence', 'Violence Prevention', 30);
+		safeAddChild(sdg5, 'gender-empowerment', 'Women Empowerment', 40);
+		safeAddChild(sdg5, 'gender-rights', 'Equal Rights', 30);
+		safeAddChild(sdg5, 'gender-violence', 'Violence Prevention', 30);
 	}
 
 	// SDG 6: Clean Water
 	const sdg6 = findNodeById(rootNode, 'sdg-6');
 	if (sdg6) {
-		addChild(sdg6, 'water-access', 'Water Access', 40);
-		addChild(sdg6, 'water-sanitation', 'Sanitation', 35);
-		addChild(sdg6, 'water-treatment', 'Water Treatment', 25);
+		safeAddChild(sdg6, 'water-access', 'Water Access', 40);
+		safeAddChild(sdg6, 'water-sanitation', 'Sanitation', 35);
+		safeAddChild(sdg6, 'water-treatment', 'Water Treatment', 25);
 	}
 
 	// SDG 7: Clean Energy
 	const sdg7 = findNodeById(rootNode, 'sdg-7');
 	if (sdg7) {
-		addChild(sdg7, 'energy-solar', 'Solar Power', 30);
-		addChild(sdg7, 'energy-wind', 'Wind Power', 25);
-		addChild(sdg7, 'energy-efficiency', 'Energy Efficiency', 25);
-		addChild(sdg7, 'energy-access', 'Energy Access', 20);
+		safeAddChild(sdg7, 'energy-solar', 'Solar Power', 30);
+		safeAddChild(sdg7, 'energy-wind', 'Wind Power', 25);
+		safeAddChild(sdg7, 'energy-efficiency', 'Energy Efficiency', 25);
+		safeAddChild(sdg7, 'energy-access', 'Energy Access', 20);
 	}
 
 	// SDG 8: Decent Work
 	const sdg8 = findNodeById(rootNode, 'sdg-8');
 	if (sdg8) {
-		addChild(sdg8, 'work-jobs', 'Job Creation', 30);
-		addChild(sdg8, 'work-entrepreneurship', 'Entrepreneurship', 30);
-		addChild(sdg8, 'work-rights', 'Labor Rights', 20);
-		addChild(sdg8, 'work-economy', 'Local Economy', 20);
+		safeAddChild(sdg8, 'work-jobs', 'Job Creation', 30);
+		safeAddChild(sdg8, 'work-entrepreneurship', 'Entrepreneurship', 30);
+		safeAddChild(sdg8, 'work-rights', 'Labor Rights', 20);
+		safeAddChild(sdg8, 'work-economy', 'Local Economy', 20);
 	}
 
 	// SDG 9: Innovation
 	const sdg9 = findNodeById(rootNode, 'sdg-9');
 	if (sdg9) {
-		addChild(sdg9, 'innovation-tech', 'Technology Development', 35);
-		addChild(sdg9, 'innovation-infrastructure', 'Infrastructure', 35);
-		addChild(sdg9, 'innovation-research', 'Research & Development', 30);
+		safeAddChild(sdg9, 'innovation-tech', 'Technology Development', 35);
+		safeAddChild(sdg9, 'innovation-infrastructure', 'Infrastructure', 35);
+		safeAddChild(sdg9, 'innovation-research', 'Research & Development', 30);
 	}
 
 	// SDG 10: Reduced Inequality
 	const sdg10 = findNodeById(rootNode, 'sdg-10');
 	if (sdg10) {
-		addChild(sdg10, 'inequality-income', 'Income Equality', 35);
-		addChild(sdg10, 'inequality-social', 'Social Inclusion', 35);
-		addChild(sdg10, 'inequality-access', 'Equal Access', 30);
+		safeAddChild(sdg10, 'inequality-income', 'Income Equality', 35);
+		safeAddChild(sdg10, 'inequality-social', 'Social Inclusion', 35);
+		safeAddChild(sdg10, 'inequality-access', 'Equal Access', 30);
 	}
 
 	// SDG 11: Sustainable Cities
 	const sdg11 = findNodeById(rootNode, 'sdg-11');
 	if (sdg11) {
-		addChild(sdg11, 'cities-transport', 'Public Transport', 30);
-		addChild(sdg11, 'cities-housing', 'Sustainable Housing', 25);
-		addChild(sdg11, 'cities-spaces', 'Green Spaces', 25);
-		addChild(sdg11, 'cities-waste', 'Waste Management', 20);
+		safeAddChild(sdg11, 'cities-transport', 'Public Transport', 30);
+		safeAddChild(sdg11, 'cities-housing', 'Sustainable Housing', 25);
+		safeAddChild(sdg11, 'cities-spaces', 'Green Spaces', 25);
+		safeAddChild(sdg11, 'cities-waste', 'Waste Management', 20);
 	}
 
 	// SDG 12: Responsible Consumption
 	const sdg12 = findNodeById(rootNode, 'sdg-12');
 	if (sdg12) {
-		addChild(sdg12, 'consumption-circular', 'Circular Economy', 30);
-		addChild(sdg12, 'consumption-waste', 'Waste Reduction', 30);
-		addChild(sdg12, 'consumption-sustainable', 'Sustainable Products', 40);
+		safeAddChild(sdg12, 'consumption-circular', 'Circular Economy', 30);
+		safeAddChild(sdg12, 'consumption-waste', 'Waste Reduction', 30);
+		safeAddChild(sdg12, 'consumption-sustainable', 'Sustainable Products', 40);
 	}
 
 	// SDG 13: Climate Action
 	const sdg13 = findNodeById(rootNode, 'sdg-13');
 	if (sdg13) {
-		addChild(sdg13, 'climate-mitigation', 'Emissions Reduction', 35);
-		addChild(sdg13, 'climate-adaptation', 'Climate Adaptation', 35);
-		addChild(sdg13, 'climate-education', 'Climate Education', 30);
+		safeAddChild(sdg13, 'climate-mitigation', 'Emissions Reduction', 35);
+		safeAddChild(sdg13, 'climate-adaptation', 'Climate Adaptation', 35);
+		safeAddChild(sdg13, 'climate-education', 'Climate Education', 30);
 	}
 
 	// SDG 14: Life Below Water
 	const sdg14 = findNodeById(rootNode, 'sdg-14');
 	if (sdg14) {
-		addChild(sdg14, 'ocean-conservation', 'Marine Conservation', 35);
-		addChild(sdg14, 'ocean-fishing', 'Sustainable Fishing', 35);
-		addChild(sdg14, 'ocean-pollution', 'Ocean Cleanup', 30);
+		safeAddChild(sdg14, 'ocean-conservation', 'Marine Conservation', 35);
+		safeAddChild(sdg14, 'ocean-fishing', 'Sustainable Fishing', 35);
+		safeAddChild(sdg14, 'ocean-pollution', 'Ocean Cleanup', 30);
 	}
 
 	// SDG 15: Life on Land
 	const sdg15 = findNodeById(rootNode, 'sdg-15');
 	if (sdg15) {
-		addChild(sdg15, 'land-forests', 'Forest Conservation', 35);
-		addChild(sdg15, 'land-biodiversity', 'Biodiversity Protection', 35);
-		addChild(sdg15, 'land-restoration', 'Land Restoration', 30);
+		safeAddChild(sdg15, 'land-forests', 'Forest Conservation', 35);
+		safeAddChild(sdg15, 'land-biodiversity', 'Biodiversity Protection', 35);
+		safeAddChild(sdg15, 'land-restoration', 'Land Restoration', 30);
 	}
 
 	// SDG 16: Peace & Justice
 	const sdg16 = findNodeById(rootNode, 'sdg-16');
 	if (sdg16) {
-		addChild(sdg16, 'peace-institutions', 'Strong Institutions', 30);
-		addChild(sdg16, 'peace-justice', 'Access to Justice', 30);
-		addChild(sdg16, 'peace-conflict', 'Conflict Resolution', 20);
-		addChild(sdg16, 'peace-transparency', 'Transparency', 20);
+		safeAddChild(sdg16, 'peace-institutions', 'Strong Institutions', 30);
+		safeAddChild(sdg16, 'peace-justice', 'Access to Justice', 30);
+		safeAddChild(sdg16, 'peace-conflict', 'Conflict Resolution', 20);
+		safeAddChild(sdg16, 'peace-transparency', 'Transparency', 20);
 	}
 
 	// SDG 17: Partnerships
 	const sdg17 = findNodeById(rootNode, 'sdg-17');
 	if (sdg17) {
-		addChild(sdg17, 'partnership-local', 'Local Partnerships', 30);
-		addChild(sdg17, 'partnership-global', 'Global Cooperation', 30);
-		addChild(sdg17, 'partnership-tech', 'Technology Sharing', 20);
-		addChild(sdg17, 'partnership-finance', 'Resource Mobilization', 20);
+		safeAddChild(sdg17, 'partnership-local', 'Local Partnerships', 30);
+		safeAddChild(sdg17, 'partnership-global', 'Global Cooperation', 30);
+		safeAddChild(sdg17, 'partnership-tech', 'Technology Sharing', 20);
+		safeAddChild(sdg17, 'partnership-finance', 'Resource Mobilization', 20);
 	}
 
 	console.log('[SDG] Tree populated with all 17 SDGs at root level');

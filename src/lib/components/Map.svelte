@@ -58,6 +58,16 @@
 	// Fullscreen is now handled by FullScreenControl component
 	let isControlsExpanded = $state(false);
 
+	$effect(() => {
+		const commitments = get(getAllCommitmentsRecord);
+		const commitmentCount = Object.keys(commitments).length;
+		console.log('[Map] Commitments updated:', {
+			count: commitmentCount,
+			keys: Object.keys(commitments),
+			markers: shareSlotMarkers.length
+		});
+	});
+
 	// Clustering controls
 	let enableClustering = $state(true);
 	let clusterMaxZoom = $state(16); // Increased to enable clustering at closer zoom levels
@@ -180,13 +190,13 @@
 				const capacity = marker.capacity;
 				const searchTerm = query.toLowerCase();
 
-				// Search in capacity name, description, unit, and provider name
-				const matchesName = capacity.name?.toLowerCase().includes(searchTerm);
-				const matchesDescription = capacity.description?.toLowerCase().includes(searchTerm);
-				const matchesUnit = capacity.unit?.toLowerCase().includes(searchTerm);
+				// Search through slot names (capacity fields don't exist in schema)
+				const matchesSlotName = marker.slots?.some(slot => 
+					slot.name?.toLowerCase().includes(searchTerm)
+				) || false;
 				const matchesProvider = marker.providerName?.toLowerCase().includes(searchTerm);
 
-				matchesText = matchesName || matchesDescription || matchesUnit || matchesProvider;
+				matchesText = matchesSlotName || matchesProvider;
 			}
 
 			// Time filter is already applied at the filteredMarkers level
@@ -208,16 +218,13 @@
 					let score = 0;
 					const capacity = marker.capacity;
 
-					// Exact name match gets highest score
-					if (capacity.name?.toLowerCase() === queryLower) score += 100;
-					else if (capacity.name?.toLowerCase().startsWith(queryLower)) score += 50;
-					else if (capacity.name?.toLowerCase().includes(queryLower)) score += 25;
-
-					// Description matches
-					if (capacity.description?.toLowerCase().includes(queryLower)) score += 10;
-
-					// Unit matches
-					if (capacity.unit?.toLowerCase().includes(queryLower)) score += 5;
+					// Slot name matches (capacity.name doesn't exist in schema)
+					marker.slots?.forEach(slot => {
+						const slotNameLower = slot.name?.toLowerCase() || '';
+						if (slotNameLower === queryLower) score += 100;
+						else if (slotNameLower.startsWith(queryLower)) score += 50;
+						else if (slotNameLower.includes(queryLower)) score += 25;
+					});
 
 					// Provider name matches
 					if (marker.providerName?.toLowerCase().includes(queryLower)) score += 15;
@@ -478,8 +485,8 @@
 		return date.toISOString().split('T')[0];
 	}
 
-	// Debug selected marker changes (better pattern)
-	// $inspect('Selected marker:', selectedMarker?.id);
+	// Debug: Log selected marker changes
+	// (Removed performance timing - was for debugging only)
 
 	// Helper function to normalize coordinates for grouping
 	// This ensures coordinates from different sources (geocoded vs direct) are grouped together
@@ -558,10 +565,22 @@
 	function getUniqueEmojis(clusterMarkers: GroupedSlotMarkerData[]): string[] {
 		const emojiSet = new Set<string>();
 		clusterMarkers.forEach((marker) => {
-			const emoji = marker.capacity.emoji || '🎁'; // Default emoji if none
-			emojiSet.add(emoji);
+			// Check slots first for specific emojis
+			if (marker.slots && marker.slots.length > 0) {
+				marker.slots.forEach(slot => {
+					if (slot.emoji) emojiSet.add(slot.emoji);
+				});
+				// Also check capacity emoji as fallback if no slots were added
+				if (marker.capacity?.emoji && !marker.slots.some(s => s.emoji)) {
+					emojiSet.add(marker.capacity.emoji);
+				}
+			} else if (marker.capacity?.emoji) {
+				emojiSet.add(marker.capacity.emoji);
+			} else {
+				emojiSet.add('🎁'); // Default fallback
+			}
 		});
-		return Array.from(emojiSet);
+		return Array.from(emojiSet).sort().slice(0, 9);
 	}
 
 	// Track zoom level separately to avoid circular dependencies
@@ -724,6 +743,8 @@
 			console.log(`[Map Stream] Immediate completed ${capacityId}: ${newMarkers.length} markers`);
 			return newMarkers;
 		} catch (error) {
+			console.log('[Map] ⏱️ Stack trace at click handler:');
+			console.trace('stack trace');
 			console.error(`[Map Stream] Immediate error ${capacityId}:`, error);
 			return [];
 		}
@@ -902,8 +923,8 @@
 			}
 
 			const capacity = allCommitments[capacityId];
-			const providerId = (capacity as any).provider_id;
-			let providerName = 'Unknown Provider';
+			const providerId = capacityId;  // Use the map key as provider ID
+			let providerName = 'Demo User';
 
 			// Try to get provider name (quick cache lookup)
 			if (providerId) {
@@ -960,12 +981,13 @@
 			}
 
 			const capacity = allCommitments[capacityId];
-			const providerId = (capacity as any).provider_id;
+			let providerId: string | undefined = undefined;
 			let providerName = 'Unknown Provider';
 
-			// Try to get provider name
-			if (providerId) {
-				try {
+			// Try to get provider ID and name
+			if (capacity) {
+				providerId = capacityId;  // Use the map key as provider ID
+				if (providerId) {
 					const cachedName = $userNamesOrAliasesCache[providerId];
 					if (cachedName) {
 						providerName = cachedName;
@@ -976,8 +998,6 @@
 								fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
 						}
 					}
-				} catch (error) {
-					console.warn(`[Map Geocode] Could not get provider name for ${providerId}:`, error);
 				}
 			}
 
@@ -1283,6 +1303,15 @@
 		const slotStart = slot.start_date ? new Date(slot.start_date) : null;
 		let slotEnd = slot.end_date ? new Date(slot.end_date) : slotStart ? new Date(slotStart) : null;
 
+		// Extract time info from availability_window if present (v5 schema)
+		let startTimeStr = slot.start_time;
+		let endTimeStr = slot.availability_window?.time_ranges?.[0]?.end_time || slot.end_time;
+
+		if (slot.availability_window?.time_ranges?.length > 0) {
+			startTimeStr = slot.availability_window.time_ranges[0].start_time;
+			endTimeStr = slot.availability_window.time_ranges[0].end_time;
+		}
+
 		// For all-day events, don't add time components - work with dates only
 		if (slot.all_day) {
 			// For all-day events, set start to beginning of day and end to end of day
@@ -1298,16 +1327,16 @@
 			}
 		} else {
 			// For timed events, add time components using safe extraction
-			if (slotStart && slot.start_time) {
-				const safeStartTime = safeExtractTime(slot.start_time);
+			if (slotStart && startTimeStr) {
+				const safeStartTime = safeExtractTime(startTimeStr);
 				if (safeStartTime) {
 					const [hours, minutes] = safeStartTime.split(':');
 					slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 				}
 			}
 
-			if (slotEnd && slot.end_time) {
-				const safeEndTime = safeExtractTime(slot.end_time);
+			if (slotEnd && endTimeStr) {
+				const safeEndTime = safeExtractTime(endTimeStr);
 				if (safeEndTime) {
 					const [hours, minutes] = safeEndTime.split(':');
 					slotEnd.setHours(parseInt(hours), parseInt(minutes), 59, 999);
@@ -1316,11 +1345,11 @@
 
 			// Handle missing end times for timed events (only when no end_date was specified)
 			if (slotStart && !slot.end_date) {
-				if (!slot.start_time && !slot.end_time) {
+				if (!startTimeStr && !endTimeStr) {
 					// No specific times - treat as all-day
 					slotEnd = new Date(slotStart);
 					slotEnd.setHours(23, 59, 59, 999);
-				} else if (slot.start_time && !slot.end_time) {
+				} else if (startTimeStr && !endTimeStr) {
 					// Has start time but no end time - assume 1 hour duration
 					slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
 				}
@@ -1420,7 +1449,8 @@
 	// Debug info
 	$inspect('[Map] shareSlotMarkers count:', shareSlotMarkers.length);
 	$inspect('[Map] processedCapacityIds:', processedCapacityIds.size);
-	$inspect('[Map] selectedMarker:', selectedMarker);
+	// PERFORMANCE: $inspect serializes the entire object for dev tools (4 seconds for 106 slots!)
+	// $inspect('[Map] selectedMarker:', selectedMarker);
 	$inspect('[Map] Environment check:', {
 		hostname: typeof window !== 'undefined' ? window.location.hostname : 'SSR',
 		protocol: typeof window !== 'undefined' ? window.location.protocol : 'SSR',
@@ -1674,8 +1704,8 @@
 									}
 								}}
 							>
-								<div class="marker-icon">{capacity.emoji || '🏠'}</div>
-								<div class="marker-label">{capacity.name}</div>
+								<div class="marker-icon">{slots[0]?.emoji || (slots.length > 1 ? '📦' : '🎁')}</div>
+							<div class="marker-label">{slots.length === 1 ? slots[0].name : `${slots.length} slots`}</div>
 								{#if isSelected}
 									<div class="selection-ring"></div>
 								{/if}

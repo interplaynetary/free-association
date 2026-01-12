@@ -26,6 +26,45 @@ export async function bootstrapApplication() {
         });
     }
 
+    // 5. Initialize Demo Data (if empty) - Uses explicit logic, no $effects!
+    // We import dynamically to avoid circular dependencies if any
+    const stores = await import('$lib/protocol/stores/stores.svelte');
+    const example = await import('$lib/utils/example-stores');
+    const { get } = await import('svelte/store');
+
+    // Watch loading state
+    const unsub = stores.myCommitmentStore.loading.subscribe(isLoading => {
+        if (!isLoading) {
+            // Once loaded, check if empty
+            // We check local-derived stores which are now populated from commitment
+            const caps = get(stores.myCapacitySlotsStore);
+            const needs = get(stores.myNeedSlotsStore);
+
+            const hasCaps = caps && caps.length > 0;
+            const hasNeeds = needs && needs.length > 0;
+
+            if (!hasCaps) {
+                console.log('[BOOTSTRAP] 🆕 No capacities - Initializing demo capacities...');
+                example.populateCapacitySlots();
+            }
+
+            if (!hasNeeds) {
+                console.log('[BOOTSTRAP] 🆕 No needs - Initializing demo needs...');
+                example.populateNeedSlots();
+            }
+
+            if (!hasCaps && !hasNeeds) {
+                // Only populate tree if everything was empty (fresh start)
+                // or check tree specifically? For now, we assume tree follows generic init
+                example.populateRecognitionTree();
+            }
+            console.log(`[BOOTSTRAP] ✅ Existing user verified (${caps?.length || 0} caps, ${needs?.length || 0} needs)`);
+
+            // Run once then unsubscribe
+            unsub();
+        }
+    });
+
     console.log('[BOOTSTRAP] Application ready.');
 }
 
