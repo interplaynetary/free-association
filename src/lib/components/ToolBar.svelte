@@ -936,8 +936,8 @@
 						</div>
 					{/if}
 
-					<!-- Inventory View Controls -->
-					{#if globalState.currentView === 'inventory'}
+					<!-- Inventory View Controls (Also shown in Map View) -->
+					{#if globalState.currentView === 'inventory' || globalState.currentView === 'map'}
 						<div class="action-controls inventory-controls">
 							<!-- Needs/Capacity Toggle (Vertical Tabs) -->
 							<div class="inventory-type-toggle">

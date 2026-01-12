@@ -19,7 +19,7 @@
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
 	// V5: Import commitments (contains capacity slots) from v5 stores
-	import { getAllCommitmentsRecord } from '$lib/protocol/stores/stores.svelte';
+	import { getAllCommitmentsRecord, myCommitmentStore, networkCommitments } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
@@ -58,15 +58,7 @@
 	// Fullscreen is now handled by FullScreenControl component
 	let isControlsExpanded = $state(false);
 
-	$effect(() => {
-		const commitments = get(getAllCommitmentsRecord);
-		const commitmentCount = Object.keys(commitments).length;
-		console.log('[Map] Commitments updated:', {
-			count: commitmentCount,
-			keys: Object.keys(commitments),
-			markers: shareSlotMarkers.length
-		});
-	});
+
 
 	// Clustering controls
 	let enableClustering = $state(true);
@@ -99,7 +91,9 @@
 	// Grouped slot markers state (from shared capacities only)
 	let shareSlotMarkers = $state<GroupedSlotMarkerData[]>([]);
 	// Ultra-efficient streaming state
-	let processedCapacityIds = $state<Set<string>>(new Set());
+	// Track processed commitment versions to detect content changes
+	// key: commitmentId, value: commitment object (reference equality check)
+	let processedCommitmentVersions = new Map<string, any>();
 	let geocodingQueue = $state<string[]>([]);
 	let isProcessingGeocode = $state(false);
 
@@ -642,8 +636,8 @@
 		}
 	});
 
-	// Ultra-fast immediate processing for capacities with direct coordinates
-	function processCapacityImmediate(
+	// Ultra-fast immediate processing for commitments (capacities & needs) with direct coordinates
+	function processCommitmentImmediate(
 		capacityId: string,
 		capacity: any,
 		providerId?: string,
@@ -652,10 +646,10 @@
 		console.log(`[Map Stream] Immediate processing ${capacityId}...`);
 
 		try {
-			// Show ALL capacities for discovery and desire expression (like capacityMarkers.ts)
-			// No need to filter by allocation status - users should see all available capacities
+			// Show ALL commitments for discovery and desire expression
+			// No need to filter by allocation status - users should see all available resources
 
-			// Group slots by location for this capacity (immediate processing - coordinates only)
+			// Group slots by location for this commitment (immediate processing - coordinates only)
 			const slotGroups = new Map<
 				string,
 				{
@@ -670,8 +664,14 @@
 				}
 			>();
 
-			// Process slots in this capacity - IMMEDIATE ONLY (no geocoding)
-			for (const slot of capacity.capacity_slots || []) {
+			// Prepare all slots (capacities and needs) with type tagging
+			const allSlots = [
+				...(capacity.capacity_slots || []).map((s: any) => ({ ...s, is_need: false })),
+				...(capacity.need_slots || []).map((s: any) => ({ ...s, is_need: true }))
+			];
+
+			// Process slots - IMMEDIATE ONLY (no geocoding)
+			for (const slot of allSlots) {
 				// Show ALL slots for discovery and desire expression (no allocation filtering)
 
 				// Check location type
@@ -692,7 +692,7 @@
 				if (slot.latitude !== undefined && slot.longitude !== undefined) {
 					slotLnglat = { lat: slot.latitude, lng: slot.longitude };
 				}
-				// Fallback to capacity coordinates
+				// Fallback to commitment coordinates (if applicable to this slot)
 				else if (
 					(capacity as any).location_type === 'Specific' &&
 					(capacity as any).latitude !== undefined &&
@@ -711,6 +711,8 @@
 						slotGroups.get(groupKey)!.slots.push(slot);
 					} else {
 						slotGroups.set(groupKey, {
+							// We keep 'capacityId' and 'capacity' naming for compatibility with map logic
+							// but they now represent the Commitment provider and object
 							capacityId: capacityId,
 							capacity: capacity,
 							slots: [slot],
@@ -743,15 +745,14 @@
 			console.log(`[Map Stream] Immediate completed ${capacityId}: ${newMarkers.length} markers`);
 			return newMarkers;
 		} catch (error) {
-			console.log('[Map] ⏱️ Stack trace at click handler:');
-			console.trace('stack trace');
+			console.log('[Map] ⏱️ Stack trace at immediate handler:');
 			console.error(`[Map Stream] Immediate error ${capacityId}:`, error);
 			return [];
 		}
 	}
 
 	// Separate geocoding processing for addresses that need API calls
-	async function processCapacityGeocode(
+	async function processCommitmentGeocode(
 		capacityId: string,
 		capacity: any,
 		providerId?: string,
@@ -760,10 +761,9 @@
 		console.log(`[Map Geocode] Processing ${capacityId}...`);
 
 		try {
-			// Show ALL capacities for discovery and desire expression (like capacityMarkers.ts)
-			// No need to filter by allocation status - users should see all available capacities
+			// Show ALL slots for discovery (no allocation filtering needed)
 
-			// Group slots by location for this capacity (geocoding processing)
+			// Group slots by location for this commitment (geocoding processing)
 			const slotGroups = new Map<
 				string,
 				{
@@ -778,9 +778,15 @@
 				}
 			>();
 
-			// Process slots that need geocoding
-			for (const slot of capacity.capacity_slots || []) {
-				// Show ALL slots for discovery and desire expression (no allocation filtering)
+			// Prepare all slots (capacities and needs) with type tagging
+			const allSlots = [
+				...(capacity.capacity_slots || []).map((s: any) => ({ ...s, is_need: false })),
+				...(capacity.need_slots || []).map((s: any) => ({ ...s, is_need: true }))
+			];
+
+			// Process slots individually
+			for (const slot of allSlots) {
+				// Show ALL slots
 
 				// Check location type
 				const locationTypeOk =
@@ -830,7 +836,7 @@
 					}
 				}
 
-				// Fall back to capacity geocoding
+				// Fall back to commitment-level geocoding (if applicable)
 				if (
 					!slotLnglat &&
 					(capacity as any).location_type === 'Specific' &&
@@ -854,7 +860,7 @@
 							slotLnglat = { lat: result.latitude, lng: result.longitude };
 						}
 					} catch (geocodeError) {
-						console.warn(`[Map Geocode] Capacity ${capacityId} failed:`, geocodeError);
+						console.warn(`[Map Geocode] Commitment ${capacityId} failed:`, geocodeError);
 					}
 				}
 
@@ -944,7 +950,7 @@
 				}
 			}
 
-			return processCapacityImmediate(capacityId, capacity, providerId, providerName);
+			return processCommitmentImmediate(capacityId, capacity, providerId, providerName);
 		});
 
 		// Wait for all immediate processing to complete
@@ -1001,8 +1007,8 @@
 				}
 			}
 
-			// Process this capacity with geocoding and immediately add its markers
-			const newMarkers = await processCapacityGeocode(
+			// Process this commitment with geocoding and immediately add its markers
+			const newMarkers = await processCommitmentGeocode(
 				capacityId,
 				capacity,
 				providerId,
@@ -1021,25 +1027,72 @@
 		console.log(`[Map Geocode] Queue processing completed`);
 	}
 
-	// Smart capacity classification and queuing
-	function classifyAndQueueCapacities(capacityIds: string[]) {
-		// V5: Get all commitments (includes capacity_slots)
+	// Helper to process a batch of immediate commitments synchronously (or waiting for async name resolution mostly)
+	async function processImmediateCommitmentsBatch(capacityIds: string[]): Promise<GroupedSlotMarkerData[]> {
+		if (capacityIds.length === 0) return [];
+		
+		console.log(`[Map Stream] Processing batch of ${capacityIds.length} immediate commitments`);
+
+		// Process all immediate capacities in parallel (they don't need API calls)
+		const promises = capacityIds.map(async (capacityId) => {
+			// V5: Get all commitments (includes capacity_slots)
+			const allCommitments = getAllCommitmentsRecord();
+			if (!allCommitments || !allCommitments[capacityId]) {
+				return [];
+			}
+
+			const capacity = allCommitments[capacityId];
+			const providerId = capacityId;  // Use the map key as provider ID
+			let providerName = 'Demo User';
+
+			// Try to get provider name (quick cache lookup)
+			if (providerId) {
+				const cachedName = $userNamesOrAliasesCache[providerId];
+				if (cachedName) {
+					providerName = cachedName;
+				} else {
+					// Don't await - just use fallback for immediate processing
+					getUserName(providerId)
+						.then((fetchedName) => {
+							if (fetchedName) {
+								providerName =
+									fetchedName.length > 30 ? fetchedName.substring(0, 30) + '...' : fetchedName;
+							}
+						})
+						.catch(() => {});
+				}
+			}
+
+			return processCommitmentImmediate(capacityId, capacity, providerId, providerName);
+		});
+
+		// Wait for all immediate processing to complete
+		const results = await Promise.all(promises);
+		return results.flat();
+	}
+
+	// Smart commitment classification that returns classification results instead of queuing implicitly
+	function classifyCommitments(capacityIds: string[]): { immediateIds: string[], geocodingIds: string[] } {
+		// V5: Get all commitments (includes capacity_slots AND need_slots)
 		const allCommitments = getAllCommitmentsRecord();
-		if (!allCommitments) return;
+		if (!allCommitments) return { immediateIds: [], geocodingIds: [] };
 
-		const immediateCapacities: string[] = [];
-		const geocodingCapacities: string[] = [];
+		const immediateIds: string[] = [];
+		const geocodingIds: string[] = [];
 
-		// Classify capacities based on whether they need geocoding
+		// Classify commitments based on whether they need geocoding
 		capacityIds.forEach((capacityId) => {
 			const capacity = allCommitments[capacityId];
-			if (!capacity || !capacity.capacity_slots) return;
+			if (!capacity) return; // (Previously checked capacity_slots, now we accept needs too)
 
 			let hasDirectCoordinates = false;
 			let hasAddresses = false;
 
+			// Combine all slots for classification
+			const allSlots = [...(capacity.capacity_slots || []), ...(capacity.need_slots || [])];
+
 			// Check if any slots have direct coordinates or addresses
-			for (const slot of capacity.capacity_slots) {
+			for (const slot of allSlots) {
 				if (slot.latitude !== undefined && slot.longitude !== undefined) {
 					hasDirectCoordinates = true;
 				}
@@ -1054,7 +1107,7 @@
 				}
 			}
 
-			// Also check capacity-level coordinates/addresses
+			// Also check commitment-level coordinates/addresses
 			if ((capacity as any).latitude !== undefined && (capacity as any).longitude !== undefined) {
 				hasDirectCoordinates = true;
 			}
@@ -1068,81 +1121,108 @@
 				hasAddresses = true;
 			}
 
-			// Prioritize immediate processing for capacities with direct coordinates
+			// Prioritize immediate processing for commitments with direct coordinates
 			if (hasDirectCoordinates) {
-				immediateCapacities.push(capacityId);
+				immediateIds.push(capacityId);
 			}
 
 			// Queue for geocoding if it has addresses (even if it also has coordinates)
 			if (hasAddresses) {
-				geocodingCapacities.push(capacityId);
+				geocodingIds.push(capacityId);
 			}
 		});
 
 		console.log(
-			`[Map Stream] Classified ${immediateCapacities.length} immediate, ${geocodingCapacities.length} geocoding`
+			`[Map Stream] Classified ${immediateIds.length} immediate, ${geocodingIds.length} geocoding`
 		);
 
-		// Add to queues
-		if (immediateCapacities.length > 0) {
-			immediateQueue = [...immediateQueue, ...immediateCapacities];
-			// Start immediate processing (no delays)
-			processImmediateQueue();
-		}
-
-		if (geocodingCapacities.length > 0) {
-			geocodingQueue = [...geocodingQueue, ...geocodingCapacities];
-			// Start geocoding processing (with rate limiting)
-			if (!isProcessingGeocode) {
-				processGeocodingQueue();
-			}
-		}
+		return { immediateIds, geocodingIds };
 	}
 
 	// Reactive Svelte 5 approach using $derived.by for side effects
-	// V5: Use getAllCommitmentsRecord() to get all commitments (user + network)
-	let currentCapacities = $derived(getAllCommitmentsRecord());
+	// V5: Use getAllCommitmentsRecord() but ensure reactivity by tracking stores
+	let currentCapacities = $derived.by(() => {
+		// Explicitly track dependencies so this re-runs when stores change
+		$myCommitmentStore;
+		$networkCommitments;
+		return getAllCommitmentsRecord();
+	});
 	let capacitiesCount = $derived(Object.keys(currentCapacities || {}).length);
 
+	// Ultra-efficient streaming: Handle capacity additions with smart classification
 	// Ultra-efficient streaming: Handle capacity additions with smart classification
 	$effect(() => {
 		if (!currentCapacities) {
 			shareSlotMarkers = [];
-			processedCapacityIds = new Set();
+			processedCommitmentVersions = new Map();
 			return;
 		}
 
-		const newCapacityIds = Object.keys(currentCapacities);
-		const newCapacities = newCapacityIds.filter((id) => !processedCapacityIds.has(id));
+		const currentIds = Object.keys(currentCapacities);
+		const changedIds: string[] = [];
 
-		if (newCapacities.length > 0) {
-			console.log(`[Map Stream] Found ${newCapacities.length} new capacities to process`);
+		// Check for new or changed commitments
+		for (const id of currentIds) {
+			const commitment = currentCapacities[id];
+			const lastProcessed = processedCommitmentVersions.get(id);
 
-			// Mark as processed immediately to avoid duplicate processing
-			processedCapacityIds = new Set([...processedCapacityIds, ...newCapacities]);
-
-			// Smart classification and immediate processing
-			classifyAndQueueCapacities(newCapacities);
+			// New ID or changed content (reference equality)
+			if (!processedCommitmentVersions.has(id) || lastProcessed !== commitment) {
+				changedIds.push(id);
+				processedCommitmentVersions.set(id, commitment);
+			}
 		}
 
-		// Handle capacity removals
-		const removedCapacityIds = Array.from(processedCapacityIds).filter(
-			(id) => !newCapacityIds.includes(id)
-		);
-		if (removedCapacityIds.length > 0) {
-			console.log(`[Map Stream] Removing ${removedCapacityIds.length} capacities`);
+		if (changedIds.length > 0) {
+			console.log(`[Map Stream] Found ${changedIds.length} changed commitments to process`);
 
-			// Remove markers for deleted capacities
+			// ATOMIC UPDATE: Calculate updates FIRST, then apply to state
+			
+			// 1. Identify which types of processing are needed
+			const { immediateIds, geocodingIds } = classifyCommitments(changedIds);
+			
+			// 2. Process immediate markers (synchronous-ish batch)
+			// Using an async IIFE to handle the map update once promised results resolve
+			(async () => {
+				const newImmediateMarkers = await processImmediateCommitmentsBatch(immediateIds);
+				
+				// 3. ATOMIC UPDATE: Filter OLD + Add NEW in one step
+				shareSlotMarkers = [
+					// Remove old markers for changed IDs
+					...shareSlotMarkers.filter((m) => !changedIds.includes(m.capacityId)),
+					// Add newly generated markers
+					...newImmediateMarkers
+				];
+				
+				console.log(`[Map Stream] Atomic update complete: ${shareSlotMarkers.length} markers`);
+			})();
+
+			// 4. Handle geocoding queue (these will update progressively as they resolve)
+			if (geocodingIds.length > 0) {
+				geocodingQueue = [...geocodingQueue, ...geocodingIds];
+				if (!isProcessingGeocode) {
+					processGeocodingQueue();
+				}
+			}
+		}
+
+		// Handle removals (IDs that no longer exist in currentCapacities)
+		const knownIds = Array.from(processedCommitmentVersions.keys());
+		const removedIds = knownIds.filter((id) => !currentCapacities[id]);
+
+		if (removedIds.length > 0) {
+			console.log(`[Map Stream] Removing ${removedIds.length} commitments`);
+
+			// Remove markers for deleted commitments
 			shareSlotMarkers = shareSlotMarkers.filter(
-				(marker) => !removedCapacityIds.includes(marker.capacityId)
+				(marker) => !removedIds.includes(marker.capacityId)
 			);
 
-			// Remove from queues
-			immediateQueue = immediateQueue.filter((id) => !removedCapacityIds.includes(id));
-			geocodingQueue = geocodingQueue.filter((id) => !removedCapacityIds.includes(id));
+			// Remove from version tracking
+			removedIds.forEach((id) => processedCommitmentVersions.delete(id));
 
-			// Update processed set
-			processedCapacityIds = new Set(newCapacityIds);
+			// Remove from queues
+			geocodingQueue = geocodingQueue.filter((id) => !removedIds.includes(id));
 		}
 	});
 
@@ -1158,7 +1238,7 @@
 		capacitiesCount,
 		markersLoader,
 		totalMarkers: shareSlotMarkers.length,
-		processedCapacities: processedCapacityIds.size,
+		processedCommitments: processedCommitmentVersions.size,
 		immediateQueueLength: immediateQueue.length,
 		geocodingQueueLength: geocodingQueue.length,
 		isProcessingImmediate,
@@ -1448,7 +1528,7 @@
 
 	// Debug info
 	$inspect('[Map] shareSlotMarkers count:', shareSlotMarkers.length);
-	$inspect('[Map] processedCapacityIds:', processedCapacityIds.size);
+	$inspect('[Map] processedCommitments:', processedCommitmentVersions.size);
 	// PERFORMANCE: $inspect serializes the entire object for dev tools (4 seconds for 106 slots!)
 	// $inspect('[Map] selectedMarker:', selectedMarker);
 	$inspect('[Map] Environment check:', {
@@ -1501,25 +1581,6 @@
 
 			<!-- Fullscreen Control -->
 			<FullScreenControl position="top-right" />
-
-			<!-- Full MapSidePanel as CustomControl (works in both normal and fullscreen) -->
-			<CustomControl position="top-left">
-				<MapSidePanel
-					markerData={selectedMarker}
-					onClose={handleSidePanelClose}
-					onBackToSearch={handleBackToSearch}
-					isSearchMode={globalState.isSearchMode}
-					searchQuery={globalState.searchQuery}
-					searchResults={globalState.searchResults}
-					searchSortBy={globalState.searchSortBy}
-					onSearchResultClick={handleSearchResultClick}
-					onSortChange={handleSortChange}
-					currentLocation={$currentLocation}
-					{isClusterViewMode}
-					{clusterViewResults}
-					onClusterResultClick={handleClusterResultClick}
-				/>
-			</CustomControl>
 
 			<!-- Collapsible Controls Group -->
 			<CustomControl position="bottom-right">
@@ -1752,6 +1813,22 @@
 				/>
 			{/if}
 		</MapLibre>
+
+		<MapSidePanel
+			markerData={selectedMarker}
+			onClose={handleSidePanelClose}
+			onBackToSearch={handleBackToSearch}
+			isSearchMode={globalState.isSearchMode}
+			searchQuery={globalState.searchQuery}
+			searchResults={globalState.searchResults}
+			searchSortBy={globalState.searchSortBy}
+			onSearchResultClick={handleSearchResultClick}
+			onSortChange={handleSortChange}
+			currentLocation={$currentLocation}
+			{isClusterViewMode}
+			{clusterViewResults}
+			onClusterResultClick={handleClusterResultClick}
+		/>
 	</div>
 </div>
 

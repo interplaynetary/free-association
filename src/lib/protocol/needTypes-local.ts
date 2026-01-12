@@ -15,55 +15,55 @@ export const types: NeedType[] = [
 	{
 		id: 'general',
 		label: 'General',
-		emoji: '',
+		emoji: '🚩',
 		description: 'General resources and services'
 	},
 	{
 		id: 'food',
 		label: 'Food',
-		emoji: '',
+		emoji: '🍎',
 		description: 'Food, groceries, meals'
 	},
 	{
 		id: 'housing',
 		label: 'Housing',
-		emoji: '',
+		emoji: '🏠',
 		description: 'Shelter, accommodation, housing'
 	},
 	{
 		id: 'healthcare',
 		label: 'Healthcare',
-		emoji: '',
+		emoji: '🚑',
 		description: 'Medical care, health services'
 	},
 	{
 		id: 'education',
 		label: 'Education',
-		emoji: '',
+		emoji: '🎓',
 		description: 'Learning, training, education'
 	},
 	{
 		id: 'transportation',
 		label: 'Transportation',
-		emoji: '',
+		emoji: '🚌',
 		description: 'Travel, commute, transportation'
 	},
 	{
 		id: 'childcare',
 		label: 'Childcare',
-		emoji: '',
+		emoji: '👶',
 		description: 'Childcare, babysitting'
 	},
 	{
 		id: 'money',
 		label: 'Money',
-		emoji: '',
+		emoji: '💰',
 		description: 'Financial resources, currency, funds'
 	},
 	{
 		id: 'other',
 		label: 'Other',
-		emoji: '',
+		emoji: '📦',
 		description: 'Other resources and services'
 	}
 ];

@@ -15,6 +15,7 @@
 		isSlotInPast,
 		hasAddressComponents
 	} from '$lib/utils/formatting';
+	import { getNeedTypeLabel, getNeedTypeEmoji } from '$lib/protocol/needTypes-local';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -263,14 +264,14 @@
 	}
 
 	// Categorize slots like in Share.svelte
-	function categorizeSlots(slots: (AvailabilitySlot | NeedSlot)[]): {
-		recurring: (AvailabilitySlot | NeedSlot)[];
-		currentFuture: (AvailabilitySlot | NeedSlot)[];
-		past: (AvailabilitySlot | NeedSlot)[];
+	function categorizeSlots(slots: (AvailabilitySlot | NeedSlot)[] & { is_need?: boolean }[]): {
+		recurring: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[];
+		currentFuture: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[];
+		past: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[];
 	} {
-		const recurring: (AvailabilitySlot | NeedSlot)[] = [];
-		const currentFuture: (AvailabilitySlot | NeedSlot)[] = [];
-		const past: (AvailabilitySlot | NeedSlot)[] = [];
+		const recurring: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[] = [];
+		const currentFuture: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[] = [];
+		const past: ((AvailabilitySlot | NeedSlot) & { is_need?: boolean })[] = [];
 
 		slots.forEach((slot) => {
 			if (isSlotRecurring(slot)) {
@@ -284,8 +285,6 @@
 
 		return { recurring, currentFuture, past };
 	}
-
-
 
 	// Calculate distance between two coordinates (Haversine formula)
 	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -327,6 +326,46 @@
 			default:
 				return '';
 		}
+	}
+
+	// Helper to get display info for a commitment (Need or Capacity)
+	function getCommitmentDisplayInfo(slots: any[]) {
+		if (!slots || slots.length === 0) {
+			return { name: 'Unknown', emoji: '🎁', unit: undefined, description: undefined };
+		}
+		
+		const firstSlot = slots[0];
+		
+		if (firstSlot.is_need) {
+			// NeedSlot handling
+			return {
+				name: firstSlot.name, // Use the need slot's name (e.g., "Housing")
+				emoji: getNeedTypeEmoji(firstSlot.type_id) || '🚩', // Use type emoji or default flag
+				unit: firstSlot.unit,
+				description: firstSlot.description
+			};
+		} else {
+			// AvailabilitySlot handling
+			return {
+				name: firstSlot.name || 'Available Capacity', // Use slot name or fallback
+				emoji: firstSlot.emoji || '🎁',
+				unit: firstSlot.unit,
+				description: firstSlot.description
+			};
+		}
+	}
+	
+	// Format allocated quantity to max 2 decimals, avoiding long floats
+	function formatAllocatedQuantity(quantity: number): string {
+		if (quantity === 0) return '0';
+		
+		// If it's effectively an integer (within small epsilon), show as integer
+		if (Math.abs(Math.round(quantity) - quantity) < 0.0000001) {
+			return Math.round(quantity).toString();
+		}
+		
+		// Otherwise show up to 2 decimal places, stripping trailing zeros
+		return parseFloat(quantity.toFixed(2)).toString();
 	}
 </script>
 
@@ -427,7 +466,7 @@
 				<div class="cluster-view-header">
 					<h3 class="cluster-view-title">
 						<span class="cluster-view-emoji">🎁</span>
-						{clusterViewResults.length} Capacities at this Location
+						{clusterViewResults.length} Items at this Location
 					</h3>
 				</div>
 				<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
@@ -448,11 +487,12 @@
 										result.lnglat.lng
 									)
 								: null}
+							{@const displayInfo = getCommitmentDisplayInfo(result.slots)}
 
 							<div
 								class="cluster-result-item"
 								onclick={() => {
-									console.log('[Cluster View] Capacity clicked:', result.capacity.name);
+									console.log('[Cluster View] Item clicked:', displayInfo.name);
 									onClusterResultClick?.(result);
 								}}
 								role="button"
@@ -466,8 +506,8 @@
 							>
 								<div class="result-header">
 									<div class="result-title">
-										<span class="result-emoji">{result.capacity.emoji || '🎁'}</span>
-										<span class="result-name">{result.capacity.name}</span>
+										<span class="result-emoji">{displayInfo.emoji}</span>
+										<span class="result-name">{displayInfo.name}</span>
 									</div>
 									{#if distance !== null}
 										<span class="result-distance">{formatDistance(distance)}</span>
@@ -476,24 +516,24 @@
 
 								<div class="result-details">
 									<div class="result-provider">👤 {result.providerName}</div>
-									{#if result.capacity.unit}
-										<div class="result-unit">{result.capacity.unit}</div>
+									{#if displayInfo.unit}
+										<div class="result-unit">{displayInfo.unit}</div>
 									{/if}
 									<div class="result-slots">{result.slots.length} slots</div>
 								</div>
 
-								{#if result.capacity.description}
+								{#if displayInfo.description}
 									<div class="result-description">
-										{result.capacity.description.length > 100
-											? result.capacity.description.substring(0, 100) + '...'
-											: result.capacity.description}
+										{displayInfo.description.length > 100
+											? displayInfo.description.substring(0, 100) + '...'
+											: displayInfo.description}
 									</div>
 								{/if}
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<p class="no-results">No capacities found in this cluster.</p>
+					<p class="no-results">No items found in this cluster.</p>
 				{/if}
 			</div>
 		</div>
@@ -509,7 +549,7 @@
 					<div class="capacity-info">
 						<h2 class="capacity-title">
 							<span class="capacity-emoji">📍</span>
-							{totalCapacities} Capacities
+							{totalCapacities} Items
 						</h2>
 						<div class="provider-info">
 							<span class="provider-label">Clustered at this location</span>
@@ -529,32 +569,33 @@
 							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
 						</div>
 						<p style="font-size: 10px; color: #6b7280; margin-top: 6px;">
-							Click to zoom in and see individual capacities
+							Click to zoom in and see individual items
 						</p>
 					</div>
 				</div>
 
 				<!-- Cluster Contents -->
 				<div class="content-section slots-section">
-					<h3 class="section-title">🎁 {totalCapacities} Capacities</h3>
+					<h3 class="section-title">🎁 {totalCapacities} Items</h3>
 					<div class="cluster-contents">
 						{#each markers as marker}
-							{@const { capacity, slots, providerName } = marker}
+							{@const { slots, providerName } = marker}
+							{@const displayInfo = getCommitmentDisplayInfo(slots)}
 							<div class="cluster-item">
 								<div class="cluster-item-header">
-									<span class="cluster-item-emoji">{capacity.emoji || '🎁'}</span>
-									<span class="cluster-item-name">{capacity.name}</span>
-									{#if capacity.unit}
-										<span class="cluster-item-unit">{capacity.unit}</span>
+									<span class="cluster-item-emoji">{displayInfo.emoji}</span>
+									<span class="cluster-item-name">{displayInfo.name}</span>
+									{#if displayInfo.unit}
+										<span class="cluster-item-unit">{displayInfo.unit}</span>
 									{/if}
 									<span class="cluster-item-slots">{slots.length} slots</span>
 								</div>
 								<div class="cluster-item-provider">👤 {providerName}</div>
-								{#if capacity.description}
+								{#if displayInfo.description}
 									<div class="cluster-item-description">
-										{capacity.description.length > 60
-											? capacity.description.substring(0, 60) + '...'
-											: capacity.description}
+										{displayInfo.description.length > 60
+											? displayInfo.description.substring(0, 60) + '...'
+											: displayInfo.description}
 									</div>
 								{/if}
 							</div>
@@ -564,7 +605,9 @@
 			</div>
 		{:else}
 			<!-- Show individual marker details -->
-			{@const { capacity, slots, lnglat, source, providerName } = markerData}
+			{@const { slots, lnglat, source, providerName } = markerData}
+			{@const displayInfo = getCommitmentDisplayInfo(slots)}
+			
 			{@const lngLatText = `${lnglat.lat.toFixed(6)}, ${lnglat.lng.toFixed(6)}`}
 			{@const isGeocoded = source === 'geocoded'}
 			{@const locationDisplay = formatLocationDisplay(slots[0])}
@@ -587,312 +630,329 @@
 					{/if}
 					<div class="capacity-info">
 						<h2 class="capacity-title">
-							<span class="capacity-emoji">{capacity.emoji || '🏠'}</span>
-							{capacity.name}
+							<span class="capacity-emoji">{displayInfo.emoji}</span>
+							{displayInfo.name}
 						</h2>
 						<div class="provider-info">
 							<span class="provider-label">👤 {providerName}</span>
-							{#if capacity.unit}
-								<span class="capacity-unit-badge">{capacity.unit}</span>
+							{#if displayInfo.unit}
+								<span class="capacity-unit-badge">{displayInfo.unit}</span>
 							{/if}
 							{#if totalSlots > 1}
 								<span class="slot-count-badge">{totalSlots} slots</span>
 							{/if}
 						</div>
 					</div>
-					<!-- Always show close button -->
 					<button class="close-btn" onclick={onClose} title="Close panel" aria-label="Close panel">
 						✕
 					</button>
 				</div>
 
-				<!-- Location Info -->
+				<!-- Location & Provider Section -->
 				<div class="content-section location-section">
 					<h3 class="section-title"><span style="font-size:8px;">📍</span> Location</h3>
 					<div class="location-details">
+						<div class="location-coords single-location" style="font-size: 8px; line-height: 1;">
+							<span style="font-size:8px;">📐</span>
+							<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
+						</div>
+
 						{#if hasAddressComponents(slots[0])}
-							<!-- Show separate address and coordinates when we have actual address data -->
-							<button
-								class="location-address clickable-address"
-								onclick={() => handleAddressClick(slots[0])}
-								title="Click to open in maps or copy address"
-								style="font-size: 8px; line-height: 1;"
-							>
-								<span style="font-size:8px;">📍</span>
-								<span style="font-size: px;">{locationDisplay}</span>
-							</button>
-							<button
-								class="location-coords clickable-coords"
-								onclick={() => handleAddressClick(slots[0])}
-								title="Click to open in maps or copy coordinates"
-								style="font-size: px; line-height: 1;"
-							>
-								<span style="font-size:8px;">📐</span>
-								<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
-							</button>
-						{:else}
-							<!-- Show single coordinates button when we only have coordinates -->
-							<button
-								class="location-coords clickable-coords single-location"
-								onclick={() => handleAddressClick(slots[0])}
-								title="Click to open in maps or copy coordinates"
-								style="font-size: 8px; line-height: 1;"
-							>
-								<span style="font-size:8px;">📐</span>
-								<span style="font-size: 8px; font-family: monospace;">{lngLatText}</span>
-							</button>
+							<div class="location-address" style="margin-top: 8px;">
+								<span style="font-size:12px;">🏠</span>
+								<a
+									href="#"
+									onclick={(e) => {
+										e.preventDefault();
+										handleAddressClick(slots[0]);
+									}}
+									class="address-link"
+								>
+									{formatLocationDisplay(slots[0])}
+								</a>
+							</div>
 						{/if}
+
+						<div class="location-meta">
+							<span class="source-badge" class:geocoded={isGeocoded}>
+								{isGeocoded ? '📍 Geocoded' : '🎯 Exact'}
+							</span>
+						</div>
 					</div>
 				</div>
 
-				<!-- Slots Section -->
+				<!-- Slots Sections -->
 				<div class="content-section slots-section">
-					<h3 class="section-title">🕒 Available Slots</h3>
-
+					<h3 class="section-title">
+						{slots[0]?.is_need ? '🚩 Needs' : '📅 Availability'} 
+						({totalSlots})
+					</h3>
+					
+					<!-- Recurring Slots -->
 					{#if categorizedSlots.recurring.length > 0}
-						<div class="slot-category">
-							<h4 class="category-title">🔄 Recurring ({categorizedSlots.recurring.length})</h4>
-							<div class="slot-list">
-								{#each categorizedSlots.recurring as slot}
-									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
-									<div class="slot-item">
-										<div class="header-main">
-											<h3>{slot.name}</h3>
-											<span class="slot-time">{formatTimeDisplay(slot)}</span>
+						<div class="slots-list recurring">
+							{#each categorizedSlots.recurring as slot}
+								{@const allocated = getSlotAllocatedQuantity(markerData.capacity as Commitment, slot.id)}
+								{@const dateTimeInfo = parseSlotDateTime(slot)}
+								{@const isAllDay = (slot as any).all_day}
+
+								<div class="slot-item">
+									<!-- Slot Details Header: Recurrence -->
+									<div class="slot-header-info">
+										<div class="recurrence-badge">
+											<span class="icon">🔄</span>
+											<span class="text">{slot.recurrence}</span>
 										</div>
-										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
-										<div class="slot-details">
-											{#if allocatedQuantity > 0}
-												<span class="slot-quantity allocated">
-													{Number.isInteger(allocatedQuantity)
-														? allocatedQuantity
-														: allocatedQuantity.toFixed(2)}
-													{capacity.unit || ''} allocated
+										<!-- Time Range Display for Recurring -->
+										{#if slot.availability_window?.time_ranges?.length}
+											<div class="time-windows">
+												{#each slot.availability_window.time_ranges as range}
+													<span class="time-pill">
+														{range.start_time.slice(0, 5)} - {range.end_time.slice(0, 5)}
+													</span>
+												{/each}
+											</div>
+										{:else if dateTimeInfo.slotStart && !isAllDay}
+											<div class="time-windows">
+												<span class="time-pill">
+													{dateTimeInfo.slotStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+													{#if dateTimeInfo.slotEnd} - {dateTimeInfo.slotEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}{/if}
 												</span>
-												<span class="slot-total">of {slot.quantity} total</span>
-											{:else}
-												<span class="slot-quantity available">
-													{slot.quantity}
-													{capacity.unit || ''} available
-												</span>
-												<span class="slot-total">(express desire to get some!)</span>
-											{/if}
-											{#if recognitionShare > 0}
-												<span class="slot-share">
-													Share: {Number.isInteger(recognitionShare)
-														? recognitionShare
-														: recognitionShare.toFixed(2)}
-													{capacity.unit || ''}
-												</span>
-											{/if}
-										</div>
-										{#if slot.advance_notice_hours}
-											<div class="slot-meta">
-												<small class="notice-info">{slot.advance_notice_hours}h notice</small>
+											</div>
+										{:else}
+											<div class="time-windows">
+												<span class="time-pill">All Day</span>
 											</div>
 										{/if}
 									</div>
-								{/each}
-							</div>
+
+									<div class="slot-info">
+										{#if slot.is_need}
+											<div class="slot-need-details">
+												<div class="need-header">
+													<span class="need-icon">🚩</span>
+													<span class="need-label">Required:</span>
+												</div>
+												<span class="need-quantity">{slot.quantity} {slot.unit || ''}</span>
+											</div>
+										{:else}
+											<div class="slot-quantity-row">
+												<div class="qty-available-group">
+													<span class="qty-number">{slot.quantity}</span>
+													<span class="qty-label">{slot.unit || 'available'}</span>
+												</div>
+												{#if allocated > 0}
+													<div class="qty-allocated-badge">
+														{formatAllocatedQuantity(allocated)} allocated
+													</div>
+												{/if}
+											</div>
+										{/if}
+										
+										{#if slot.description}
+											<div class="slot-desc">{slot.description}</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
 						</div>
 					{/if}
 
+					<!-- Current/Future Slots -->
 					{#if categorizedSlots.currentFuture.length > 0}
-						<div class="slot-category">
-							<h4 class="category-title">
-								📅 Current & Upcoming ({categorizedSlots.currentFuture.length})
-							</h4>
-							<div class="slot-list">
-								{#each categorizedSlots.currentFuture as slot}
-									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
-									<div class="slot-item">
-										<div class="header-main">
-											<h3>{slot.name}</h3>
-											<span class="slot-time">{formatTimeDisplay(slot)}</span>
-										</div>
-										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
-										<div class="slot-details">
-											{#if allocatedQuantity > 0}
-												<span class="slot-quantity allocated">
-													{Number.isInteger(allocatedQuantity)
-														? allocatedQuantity
-														: allocatedQuantity.toFixed(2)}
-													{capacity.unit || ''} allocated
+						<div class="slots-list current">
+							{#each categorizedSlots.currentFuture as slot}
+								{@const allocated = getSlotAllocatedQuantity(markerData.capacity as Commitment, slot.id)}
+								{@const dateTimeInfo = parseSlotDateTime(slot)}
+								{@const isAllDay = (slot as any).all_day}
+								
+								<div class="slot-item">
+									<!-- Slot Details Header: Recurrence & Date -->
+									<div class="slot-header-info">
+										{#if slot.recurrence}
+											<div class="recurrence-badge">
+												<span class="icon">🔄</span>
+												<span class="text">{slot.recurrence}</span>
+											</div>
+										{:else if slot.start_date}
+											<div class="date-badge">
+												<span class="icon">📅</span>
+												<span class="text">{new Date(slot.start_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+											</div>
+										{:else}
+											<div class="availability-badge">
+												<span class="icon">✅</span>
+												<span class="text">Flexible</span>
+											</div>
+										{/if}
+
+										<!-- Time Range Display -->
+										{#if slot.availability_window?.time_ranges?.length}
+											<div class="time-windows">
+												{#each slot.availability_window.time_ranges as range}
+													<span class="time-pill">
+														{range.start_time.slice(0, 5)} - {range.end_time.slice(0, 5)}
+													</span>
+												{/each}
+											</div>
+										{:else if dateTimeInfo.slotStart && !isAllDay}
+											<div class="time-windows">
+												<span class="time-pill">
+													{dateTimeInfo.slotStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+													{#if dateTimeInfo.slotEnd} - {dateTimeInfo.slotEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}{/if}
 												</span>
-												<span class="slot-total">of {slot.quantity} total</span>
-											{:else}
-												<span class="slot-quantity available">
-													{slot.quantity}
-													{capacity.unit || ''} available
-												</span>
-												<span class="slot-total">(express desire to get some!)</span>
-											{/if}
-											{#if recognitionShare > 0}
-												<span class="slot-share">
-													Share: {Number.isInteger(recognitionShare)
-														? recognitionShare
-														: recognitionShare.toFixed(2)}
-													{capacity.unit || ''}
-												</span>
-											{/if}
-										</div>
-										{#if slot.advance_notice_hours}
-											<div class="slot-meta">
-												<small class="notice-info">{slot.advance_notice_hours}h notice</small>
 											</div>
 										{/if}
 									</div>
-								{/each}
-							</div>
+
+									<div class="slot-info">
+										{#if slot.is_need}
+											<div class="slot-need-details">
+												<div class="need-header">
+													<span class="need-icon">🚩</span>
+													<span class="need-label">Required:</span>
+												</div>
+												<span class="need-quantity">{slot.quantity} {slot.unit || ''}</span>
+											</div>
+										{:else}
+											<div class="slot-quantity-row">
+												<div class="qty-available-group">
+													<span class="qty-number">{slot.quantity}</span>
+													<span class="qty-label">{slot.unit || 'available'}</span>
+												</div>
+												{#if allocated > 0}
+													<div class="qty-allocated-badge">
+														{formatAllocatedQuantity(allocated)} allocated
+													</div>
+												{/if}
+											</div>
+										{/if}
+										
+										{#if slot.description}
+											<div class="slot-desc">{slot.description}</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
 						</div>
 					{/if}
 
+					<!-- Past Slots -->
 					{#if categorizedSlots.past.length > 0}
-						<div class="slot-category">
-							<h4 class="category-title">📜 Past ({categorizedSlots.past.length})</h4>
-							<div class="slot-list">
-								{#each categorizedSlots.past as slot}
-									{@const allocatedQuantity = getSlotAllocatedQuantity(capacity, slot.id)}
-									{@const recognitionShare = getSlotRecognitionShare(capacity, slot.id)}
-									<div class="slot-item past-slot">
-										<div class="header-main">
-											<h3>{slot.name}</h3>
-											<span class="slot-time">{formatTimeDisplay(slot)}</span>
-										</div>
-										<div class="slot-location">📍 {formatLocationDisplay(slot)}</div>
-										<div class="slot-details">
-											{#if allocatedQuantity > 0}
-												<span class="slot-quantity allocated">
-													{Number.isInteger(allocatedQuantity)
-														? allocatedQuantity
-														: allocatedQuantity.toFixed(2)}
-													{capacity.unit || ''} allocated
-												</span>
-												<span class="slot-total">of {slot.quantity} total</span>
-											{:else}
-												<span class="slot-quantity available">
-													{slot.quantity}
-													{capacity.unit || ''} was available
-												</span>
-												<span class="slot-total">(past slot)</span>
-											{/if}
-											{#if recognitionShare > 0}
-												<span class="slot-share">
-													Share: {Number.isInteger(recognitionShare)
-														? recognitionShare
-														: recognitionShare.toFixed(2)}
-													{capacity.unit || ''}
-												</span>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
+						<div class="past-slots-summary">
+							<span class="past-icon">⏳</span>
+							<span>{categorizedSlots.past.length} past items</span>
 						</div>
 					{/if}
 				</div>
 			</div>
 		{/if}
 	{:else if globalState.isSearchMode}
-		<!-- Search results content -->
-		<div class="panel-content" onscroll={handlePanelScroll} onwheel={handlePanelWheel}>
-			<!-- Search Controls -->
-			<div class="content-section">
-				<div class="sort-controls">
-					<span class="sort-label">Sort by:</span>
-					<select class="sort-select" bind:value={searchSortBy} onchange={onSortChange}>
-						<option value="relevance">Relevance</option>
-						{#if currentLocation}
-							<option value="distance">Distance</option>
-						{/if}
-					</select>
-				</div>
-			</div>
+		<!-- Search Results -->
+		<div
+			class="search-results-container"
+			class:visible={true}
+			onscroll={handlePanelScroll}
+			onwheel={handlePanelWheel}
+		>
+			<div class="search-header">
+				<h3 class="results-count">
+					{#if searchResults.length === 0 && globalState.searchQuery}
+						No results found
+					{:else if searchResults.length > 0}
+						{searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+					{:else}
+						Start typing to search
+					{/if}
+				</h3>
 
-			<!-- Search Results -->
-			<div class="content-section">
 				{#if searchResults.length > 0}
-					<div class="search-results">
-						{#each searchResults as result (result.id)}
-							{@const distance = currentLocation
-								? calculateDistance(
-										currentLocation.latitude,
-										currentLocation.longitude,
-										result.lnglat.lat,
-										result.lnglat.lng
-									)
-								: null}
-
-							<div
-								class="search-result-item"
-								onclick={() => handleSearchResultClick(result)}
-								role="button"
-								tabindex="0"
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										handleSearchResultClick(result);
-									}
-								}}
-							>
-								<div class="result-header">
-									<div class="result-title">
-										<span class="result-emoji">{result.slots[0]?.emoji || (result.slots.length > 1 ? '📦' : '🎁')}</span>
-										<span class="result-name">{result.slots.length === 1 ? result.slots[0].name : `${result.slots.length} slots`}</span>
-									</div>
-									{#if distance !== null}
-										<span class="result-distance">{formatDistance(distance)}</span>
-									{/if}
-								</div>
-
-								<div class="result-details">
-									<div class="result-provider">👤 {result.providerName}</div>
-									{#if result.slots[0]?.unit}
-										<div class="result-unit">{result.slots[0].unit}</div>
-									{/if}
-									<div class="result-slots">{result.slots.length} slots</div>
-								</div>
-
-								{#if result.capacity.description}
-									<div class="result-description">
-										{result.capacity.description.length > 100
-											? result.capacity.description.substring(0, 100) + '...'
-											: result.capacity.description}
-									</div>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				{:else}
-					<div class="no-results">
-						<div class="no-results-icon">🔍</div>
-						<h3>No results found</h3>
-						<p>Try different search terms or check your spelling.</p>
+					<div class="sort-controls">
+						<select
+							class="sort-select"
+							value={searchSortBy}
+							onchange={(e) => {
+								// Update parent prop by calling the change handler which will likely update a bind or trigger a refetch
+								// For now we just call the onSortChange event
+								onSortChange?.();
+							}}
+						>
+							<option value="relevance">By Relevance</option>
+							<option value="distance">By Distance</option>
+						</select>
 					</div>
 				{/if}
 			</div>
+
+			<div class="results-list">
+				{#each searchResults as result (result.id)}
+					{@const distance = currentLocation
+						? calculateDistance(
+								currentLocation.latitude,
+								currentLocation.longitude,
+								result.lnglat.lat,
+								result.lnglat.lng
+							)
+						: null}
+					{@const displayInfo = getCommitmentDisplayInfo(result.slots)}
+
+					<div
+						class="search-result-item"
+						onclick={() => handleSearchResultClick(result)}
+						role="button"
+						tabindex="0"
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								handleSearchResultClick(result);
+							}
+						}}
+					>
+						<div class="result-header">
+							<div class="result-title">
+								<span class="result-emoji">{displayInfo.emoji}</span>
+								<span class="highlight-match">{displayInfo.name}</span>
+							</div>
+							{#if distance !== null}
+								<span class="result-distance">{formatDistance(distance)}</span>
+							{/if}
+						</div>
+
+						<div class="result-details">
+							<div class="result-provider">👤 {result.providerName}</div>
+							{#if displayInfo.unit}
+								<div class="result-unit">{displayInfo.unit}</div>
+							{/if}
+							<div class="result-slots">{result.slots.length} slots</div>
+						</div>
+					</div>
+				{/each}
+			</div>
 		</div>
+	{:else}
+		<!-- Default state when no marker selected: Just show search bar -->
+		<!-- No empty state message needed, keeps it clean and floating -->
 	{/if}
 </div>
 
 <style>
-	/* Panel as CustomControl - responsive to fullscreen */
+	/* ... existing styles ... */
+	
 	.search-panel {
+		position: absolute;
+		top: 10px; /* Floating offset from top */
+		left: 10px; /* Floating offset from left */
 		width: 320px;
-		max-width: calc(100vw - 32px);
-		/* Direct constraint matching map dimensions */
-		max-height: min(380px, calc(50vh - 20px)); /* Match map: min(400px, 50vh) minus margin */
+		height: auto;
+		max-height: calc(100% - 20px); /* Constrain height minus margins */
+		background: white;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Stronger shadow/lift */
+		z-index: 20;
 		display: flex;
 		flex-direction: column;
-		background: rgba(255, 255, 255, 0.95);
-		border-radius: 8px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.2);
-		overscroll-behavior: contain;
-		touch-action: auto;
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		pointer-events: auto; /* Ensure panel captures events */
+		border-radius: 24px; /* Even softer floating look */
 	}
 
 	/* Fullscreen mode - use full viewport height */
@@ -916,761 +976,567 @@
 		position: relative;
 		display: flex;
 		align-items: center;
+		background: #f3f4f6;
 		min-height: 36px; /* Changed to min-height */
-		gap: 8px; /* Add gap between search input and time filter */
+		border-radius: 24px; /* Pill/round shape for search bar */
+		padding: 4px 4px; /* Slightly more padding for the round look */
+		border: 1px solid transparent;
+		transition: all 0.2s;
+	}
+
+	.search-input-wrapper:focus-within {
+		background: white;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 	}
 
 	.search-input {
+		flex: 1;
 		border: none;
-		font-size: 10px;
 		background: transparent;
+		padding: 10px 12px;
+		font-size: 14px;
 		outline: none;
-		color: #374151;
-		flex: 1; /* Take remaining space */
-		padding: 8px 12px;
-		padding-right: 40px;
-		border-radius: 8px;
-		min-width: 120px; /* Reduced to leave space for time filter */
-	}
-
-	.search-input::placeholder {
-		color: #9ca3af;
-	}
-
-	.search-input:focus {
-		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+		min-width: 0;
 	}
 
 	.clear-btn {
-		position: absolute;
-		right: 8px;
-		top: 50%;
-		transform: translateY(-50%);
 		background: none;
 		border: none;
-		cursor: pointer;
 		color: #9ca3af;
-		font-size: 10px;
-		padding: 4px;
-		border-radius: 4px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		transition: all 0.2s ease;
+		cursor: pointer;
+		padding: 4px 8px;
+		font-size: 14px;
+		line-height: 1;
+		border-radius: 50%;
 	}
 
 	.clear-btn:hover {
-		background: #f3f4f6;
-		color: #374151;
+		color: #4b5563;
+		background: #e5e7eb;
 	}
 
-	/* Inline time filter - improved styling */
 	.time-filter-inline {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		flex-shrink: 0;
-		background: rgba(255, 255, 255, 0.8);
-		border: 1px solid rgba(0, 0, 0, 0.1);
-		border-radius: 6px;
-		padding: 4px 8px;
-		margin-left: 8px; /* Add margin from search input */
-		transition: all 0.2s ease;
-		backdrop-filter: blur(4px);
-	}
-
-	.time-filter-inline:hover {
-		background: rgba(255, 255, 255, 0.95);
-		border-color: rgba(59, 130, 246, 0.3);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		border-left: 1px solid #e5e7eb;
+		padding-left: 8px;
+		margin-left: 4px;
+		margin-right: 4px;
 	}
 
 	.time-filter-icon {
-		font-size: 13px;
-		color: #6b7280;
+		font-size: 14px;
+		margin-right: 4px;
+		opacity: 0.6;
 	}
 
 	.time-filter-select {
 		border: none;
 		background: transparent;
-		font-size: 11px;
-		color: #374151;
-		outline: none;
+		font-size: 12px;
+		color: #4b5563;
 		cursor: pointer;
-		min-width: 70px;
-		padding: 2px 4px;
-		font-weight: 500;
-		border-radius: 4px;
-		transition: background-color 0.2s ease;
+		outline: none;
+		padding-right: 4px;
+		max-width: 80px;
 	}
 
-	.time-filter-select:hover {
-		background: rgba(59, 130, 246, 0.1);
-	}
-
-	.time-filter-select:focus {
-		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-		background: rgba(59, 130, 246, 0.05);
-	}
-
-	/* Time filter details (shown below search bar) - improved styling */
 	.time-filter-details {
-		margin-top: 8px;
-		padding: 12px;
-		background: rgba(255, 255, 255, 0.9);
-		border: 1px solid rgba(0, 0, 0, 0.1);
-		border-radius: 8px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-		backdrop-filter: blur(8px);
+		margin-top: 12px;
+		padding-top: 12px;
+		border-top: 1px dashed #e5e7eb;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		animation: slideDown 0.2s ease-out;
+	}
+
+	@keyframes slideDown {
+		from { opacity: 0; transform: translateY(-10px); }
+		to { opacity: 1; transform: translateY(0); }
 	}
 
 	.time-row {
 		display: flex;
 		gap: 8px;
-		margin-bottom: 4px;
-	}
-
-	.time-row:last-child {
-		margin-bottom: 0;
 	}
 
 	.time-input {
 		flex: 1;
-		border: 1px solid rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e7eb;
 		border-radius: 6px;
-		padding: 6px 8px;
-		font-size: 11px;
-		background: rgba(255, 255, 255, 0.95);
-		outline: none;
-		transition: all 0.2s ease;
-	}
-
-	.time-input:hover {
-		border-color: rgba(59, 130, 246, 0.4);
-		background: white;
-	}
-
-	.time-input:focus {
-		border-color: rgba(59, 130, 246, 0.6);
-		box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-		background: white;
-	}
-
-	/* Unified panel content - IDENTICAL sizing for ALL states */
-	.panel-content {
-		background: white;
-		border-radius: 8px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		border: 1px solid #e5e7eb;
-		margin-top: 4px;
-		padding: 10px;
-		flex: 1; /* Take remaining space in flex container */
-		min-height: 0; /* Allow flexbox to shrink */
-		overflow-y: auto; /* Scroll when content exceeds container */
-		animation: slideDown 0.3s ease-out;
-		/* Ensure scrollable content is interactive inside CustomControl */
-		pointer-events: auto;
-		/* Prevent scroll events from bubbling to parent page */
-		overscroll-behavior: contain;
-		/* Improve mobile scrolling */
-		-webkit-overflow-scrolling: touch;
-	}
-
-	/* Content sections - uniform spacing and borders */
-	.content-section {
-		border-bottom: 1px solid #f3f4f6;
-		padding-bottom: 8px;
-		margin-bottom: 6px;
-	}
-
-	.content-section:last-child {
-		border-bottom: none;
-		margin-bottom: 0;
-		padding-bottom: 0;
-	}
-
-	@keyframes slideDown {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	/* Search results styling - now uses panel-section-header */
-
-	/* Search controls styling - now uses panel-section-header */
-
-	.sort-controls {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-	}
-
-	.sort-label {
-		font-size: 10px;
-		color: #6b7280;
-		font-weight: 500;
-	}
-
-	.sort-select {
-		padding: 4px 8px;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 10px;
-		background: white;
-		color: #374151;
-		cursor: pointer;
-	}
-
-	/* Results container - now uses panel-scrollable-content */
-
-	.search-results {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.search-result-item {
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 8px;
-		padding: 10px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-	}
-
-	.search-result-item:hover {
-		background: #f9fafb;
-		border-color: #3b82f6;
-		transform: translateY(-1px);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	}
-
-	.result-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 6px;
-	}
-
-	.result-title {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.result-emoji {
-		font-size: 14px;
-		flex-shrink: 0;
-	}
-
-	.result-name {
-		font-weight: 600;
-		color: #111827;
-		font-size: 10px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.result-distance {
-		color: #6b7280;
-		font-size: 10px;
-		font-weight: 500;
-		background: #f3f4f6;
-		padding: 2px 6px;
-		border-radius: 4px;
-		flex-shrink: 0;
-	}
-
-	.result-details {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		margin-bottom: 6px;
-		font-size: 10px;
-		color: #6b7280;
-		flex-wrap: wrap;
-	}
-
-	.result-provider {
-		font-style: italic;
-	}
-
-	.result-slots {
-		background: #dbeafe;
-		color: #1d4ed8;
-		padding: 2px 6px;
-		border-radius: 4px;
-		font-weight: 500;
-	}
-
-	.result-unit {
-		background: #f3e8ff;
-		color: #7c3aed;
-		padding: 2px 6px;
-		border-radius: 4px;
-		font-weight: 500;
-	}
-
-	.result-description {
+		padding: 6px;
+		font-size: 12px;
 		color: #4b5563;
-		font-size: 10px;
-		line-height: 1.2;
-		margin-top: 4px;
 	}
 
-	.no-results {
-		text-align: center;
-		padding: 48px 24px;
-		color: #6b7280;
+	.panel-content {
+		flex: 1;
+		overflow-y: auto;
+		padding: 0;
+		/* Custom scrollbar */
+		scrollbar-width: thin;
+		scrollbar-color: #d1d5db transparent;
 	}
 
-	.no-results-icon {
-		font-size: 48px;
-		margin-bottom: 6px;
-		opacity: 0.5;
+	.panel-content::-webkit-scrollbar {
+		width: 6px;
 	}
 
-	.no-results h3 {
-		margin: 0 0 8px 0;
-		font-size: 14px;
-		font-weight: 600;
-		color: #374151;
+	.panel-content::-webkit-scrollbar-thumb {
+		background-color: #d1d5db;
+		border-radius: 3px;
 	}
 
-	.no-results p {
-		margin: 0;
-		font-size: 10px;
+	.content-section {
+		padding: 16px;
+		border-bottom: 1px solid #f3f4f6;
 	}
 
-	/* Close section styles removed since close button was removed */
-
-	/* Marker header styling */
 	.marker-header {
 		display: flex;
-		justify-content: space-between;
 		align-items: flex-start;
+		gap: 12px;
+		background: #f9fafb;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.cluster-view-header {
+		flex: 1;
+	}
+
+	.cluster-view-title {
+		margin: 0;
+		font-size: 16px;
+		font-weight: 600;
+		color: #111827;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.back-btn {
+		background: white;
+		border: 1px solid #e5e7eb;
+		color: #4b5563;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		flex-shrink: 0;
+		box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+		transition: all 0.2s;
+	}
+
+	.back-btn:hover {
+		background: #f3f4f6;
+		color: #111827;
+		transform: translateX(-2px);
 	}
 
 	.capacity-info {
 		flex: 1;
+		min-width: 0;
 	}
 
 	.capacity-title {
-		font-size: 15px;
+		margin: 0 0 4px 0;
+		font-size: 18px;
 		font-weight: 600;
 		color: #111827;
-		margin: 0 0 4px 0;
 		display: flex;
 		align-items: center;
-		gap: 4px;
+		gap: 8px;
+		line-height: 1.3;
 	}
 
-	.capacity-emoji {
-		font-size: 18px;
+	.capacity-emoji, .cluster-view-emoji {
+		font-size: 20px;
 	}
 
 	.provider-info {
 		display: flex;
 		align-items: center;
-		gap: 6px;
 		flex-wrap: wrap;
+		gap: 8px;
+		font-size: 13px;
+		color: #6b7280;
 	}
 
-	.provider-label {
-		color: #6b7280;
-		font-size: 10px;
-		font-style: italic;
+	.capacity-unit-badge, .slot-count-badge {
+		background: #e5e7eb;
+		color: #374151;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-size: 11px;
+		font-weight: 500;
 	}
 
 	.slot-count-badge {
-		background: #ef4444;
-		color: white;
-		padding: 2px 8px;
-		border-radius: 12px;
-		font-size: 10px;
-		font-weight: 500;
-	}
-
-	.capacity-unit-badge {
-		background: #f3e8ff;
-		color: #7c3aed;
-		padding: 2px 8px;
-		border-radius: 12px;
-		font-size: 10px;
-		font-weight: 500;
+		background: #dbeafe;
+		color: #1e40af;
 	}
 
 	.close-btn {
-		background: none;
+		background: transparent;
 		border: none;
+		color: #9ca3af;
+		font-size: 18px;
 		cursor: pointer;
-		color: #6b7280;
 		padding: 4px;
+		line-height: 1;
 		border-radius: 4px;
-		transition: all 0.2s ease;
-		font-size: 15px;
+		align-self: flex-start;
+		margin-top: -4px;
+		margin-right: -4px;
 	}
 
 	.close-btn:hover {
-		background: #f3f4f6;
-		color: #374151;
+		color: #4b5563;
+		background: #e5e7eb;
 	}
-
-	.back-btn {
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: #6b7280;
-		padding: 6px 8px;
-		border-radius: 4px;
-		transition: all 0.2s ease;
-		font-size: 10px;
-		font-weight: 500;
-		margin-bottom: 6px;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		text-align: left;
-	}
-
-	.back-btn:hover {
-		background: #f3f4f6;
-		color: #374151;
-	}
-
-	/* Location and slot styling - now uses content-section */
 
 	.section-title {
-		font-size: 14px;
-		font-weight: 600;
-		color: #374151;
-		margin: 0 0 6px 0;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
-	.location-details {
-		background: #f9fafb;
-		padding: 3px;
-		border-radius: 3px;
-		border: 1px solid #e5e7eb;
-	}
-
-	.location-address,
-	.location-coords {
-		font-size: 6px;
-		color: #111827;
-		margin-bottom: 1px;
-		line-height: 1;
-	}
-
-	.location-coords {
-		font-size: 5px;
-		color: #6b7280;
-		font-family: monospace;
-	}
-
-	/* Clickable address and coordinates styling */
-	.clickable-address,
-	.clickable-coords {
-		background: none;
-		border: 1px solid transparent;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-		padding: 1px 3px;
-		border-radius: 2px;
-		transition: all 0.2s ease;
-		text-align: left;
-		width: 100%;
-		margin-bottom: 1px;
-		display: block;
-	}
-
-	.clickable-address:hover,
-	.clickable-coords:hover {
-		background: #f0f9ff;
-		border-color: #3b82f6;
-		color: #3b82f6;
-		transform: translateY(-1px);
-		box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
-	}
-
-	.clickable-address:active,
-	.clickable-coords:active {
-		transform: translateY(0);
-		background: #e0f2fe;
-		box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
-	}
-
-	.clickable-coords {
-		margin-bottom: 0;
-	}
-
-	.single-location {
-		margin-bottom: 0 !important;
-		text-align: center;
-		font-weight: 500;
-	}
-
-	.slot-category {
-		margin-bottom: 10px;
-	}
-
-	.category-title {
-		font-size: 10px;
-		font-weight: 600;
-		color: #374151;
-		margin: 0 0 4px 0;
-		padding: 4px 0;
-		border-bottom: 1px solid #f3f4f6;
-	}
-
-	.slot-list {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-
-	.slot-item {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 6px;
-		transition: all 0.2s ease;
-	}
-
-	.slot-item:hover {
-		background: #f3f4f6;
-		border-color: #d1d5db;
-	}
-
-	.slot-item.past-slot {
-		opacity: 0.7;
-		background: #f5f5f5;
-	}
-
-
-
-	.slot-quantity {
-		font-weight: 600;
-		color: #111827;
-		font-size: 10px;
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-	}
-
-	.slot-quantity.allocated {
-		color: #10b981;
-		background: #d1fae5;
-		padding: 2px 4px;
-		border-radius: 3px;
-		border: 1px solid #a7f3d0;
-	}
-
-	.slot-quantity.available {
-		color: #3b82f6;
-		background: #dbeafe;
-		padding: 2px 4px;
-		border-radius: 3px;
-		border: 1px solid #93c5fd;
-	}
-
-	.slot-total {
-		color: #6b7280;
-		font-size: 10px;
-		font-weight: 500;
-		margin-left: 8px;
-	}
-
-	.slot-share {
-		color: #7c3aed;
-		background: #f3e8ff;
-		padding: 2px 4px;
-		border-radius: 3px;
-		border: 1px solid #c4b5fd;
-		font-size: 10px;
-		font-weight: 600;
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-		margin-left: 8px;
-	}
-
-	.slot-time {
-		color: #6b7280;
-		font-size: 10px;
-	}
-
-	.slot-meta {
-		margin-top: 4px;
-	}
-
-	.notice-info {
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 		color: #9ca3af;
-		font-size: 10px;
-	}
-
-	/* Cluster display styles */
-	.cluster-contents {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.cluster-item {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 6px;
-		padding: 8px;
-		transition: all 0.2s ease;
-	}
-
-	.cluster-item:hover {
-		background: #f3f4f6;
-		border-color: #d1d5db;
-	}
-
-	.cluster-item-header {
+		margin: 0 0 12px 0;
+		font-weight: 600;
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		margin-bottom: 4px;
 	}
 
-	.cluster-item-emoji {
-		font-size: 14px;
-		flex-shrink: 0;
-	}
-
-	.cluster-item-name {
-		font-weight: 600;
-		color: #111827;
-		font-size: 10px;
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.cluster-item-slots {
-		background: #dbeafe;
-		color: #1d4ed8;
-		padding: 2px 6px;
-		border-radius: 4px;
-		font-size: 8px;
-		font-weight: 500;
-		flex-shrink: 0;
-	}
-
-	.cluster-item-unit {
-		background: #f3e8ff;
-		color: #7c3aed;
-		padding: 2px 6px;
-		border-radius: 4px;
-		font-size: 8px;
-		font-weight: 500;
-		flex-shrink: 0;
-	}
-
-	.cluster-item-provider {
-		color: #6b7280;
-		font-size: 8px;
-		font-style: italic;
-		margin-bottom: 4px;
-	}
-
-	.cluster-item-description {
-		color: #4b5563;
-		font-size: 8px;
-		line-height: 1.2;
-	}
-
-	/* Cluster view header styles */
-	.cluster-view-header {
-		text-align: center;
-		padding: 8px 0;
-	}
-
-	.cluster-view-title {
-		font-size: 14px;
-		font-weight: 600;
-		color: #111827;
-		margin: 0 0 6px 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-	}
-
-	.cluster-view-emoji {
-		font-size: 16px;
-	}
-
-	/* Cluster results styling */
-	.cluster-results {
+	/* Cluster Results List */
+	.cluster-results, .cluster-contents {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 12px;
 	}
 
-	.cluster-result-item {
+	.cluster-result-item, .search-result-item, .cluster-item {
 		background: white;
 		border: 1px solid #e5e7eb;
 		border-radius: 8px;
-		padding: 10px;
+		padding: 12px;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all 0.2s;
 	}
 
-	.cluster-result-item:hover {
-		background: #f9fafb;
+	.cluster-result-item:hover, .search-result-item:hover, .cluster-item:hover {
 		border-color: #3b82f6;
+		box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
 		transform: translateY(-1px);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	}
 
-	/* Responsive design - maintain map height constraints */
-	@media (max-width: 768px) {
-		.search-panel {
-			width: 280px;
-			max-width: calc(100vw - 32px);
-			/* Keep the same height constraint */
-			max-height: min(380px, calc(50vh - 20px));
-		}
-
-		.search-panel.fullscreen {
-			max-height: calc(100vh - 40px);
-		}
-
-		.search-input {
-			min-width: 120px;
-		}
+	.result-header, .cluster-item-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		margin-bottom: 6px;
 	}
 
-	@media (max-width: 480px) {
-		.search-panel {
-			width: 260px;
-			max-width: calc(100vw - 16px);
-			/* Keep the same height constraint */
-			max-height: min(380px, calc(50vh - 20px));
-		}
+	.result-title, .cluster-item-header {
+		font-weight: 500;
+		color: #111827;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex: 1;
+		min-width: 0; /* truncate text properly */
+	}
 
-		.search-panel.fullscreen {
-			max-height: calc(100vh - 40px);
-		}
+	.result-emoji, .cluster-item-emoji {
+		font-size: 16px;
+	}
 
-		.search-input {
-			min-width: 100px;
-		}
+	.result-name, .cluster-item-name {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.highlight-match {
+		color: #2563eb;
+		font-weight: 600;
+	}
+
+	.result-distance {
+		font-size: 11px;
+		color: #6b7280;
+		background: #f3f4f6;
+		padding: 2px 6px;
+		border-radius: 12px;
+		white-space: nowrap;
+		margin-left: 8px;
+	}
+
+	.result-details, .cluster-item-provider {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 12px;
+		color: #6b7280;
+	}
+	
+	.result-slots, .cluster-item-slots {
+		margin-left: auto;
+		background: #f3f4f6;
+		padding: 2px 6px;
+		border-radius: 4px;
+		font-size: 10px;
+	}
+
+	.result-description, .cluster-item-description {
+		margin-top: 8px;
+		font-size: 11px;
+		color: #6b7280;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		line-height: 1.4;
+	}
+
+	.no-results {
+		text-align: center;
+		color: #9ca3af;
+		padding: 24px 0;
+		font-style: italic;
+	}
+
+
+
+	/* Slot Items - Soft Aesthetic */
+	.slots-list {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.slot-item {
+		background: white;
+		border: 1px solid #f3f4f6; /* Lighter border */
+		border-radius: 12px; /* Softer rounded corners */
+		padding: 14px;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.02); /* Very subtle shadow */
+		transition: transform 0.1s ease, box-shadow 0.1s ease;
+	}
+
+	.slot-item:hover {
+		box-shadow: 0 4px 8px rgba(0,0,0,0.05); /* Hover lift */
+	}
+	
+	.slot-header-info {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+		margin-bottom: 10px;
+		padding-bottom: 10px;
+		border-bottom: 1px solid #f9fafb;
+	}
+
+	.recurrence-badge, .date-badge, .availability-badge {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		background: #f0fdf4; /* Light green bg */
+		color: #166534; /* Green text */
+		font-size: 11px;
+		padding: 4px 8px;
+		border-radius: 20px; /* Pill shape */
+		font-weight: 500;
+	}
+	
+	.recurrence-badge {
+		background: #eff6ff;
+		color: #1e40af;
+	}
+
+	.availability-badge {
+		background: #fdf4ff; 
+		color: #86198f;
+	}
+
+	.time-windows {
+		display: flex;
+		gap: 4px;
+		flex-wrap: wrap;
+	}
+
+	.time-pill {
+		font-family: 'Roboto Mono', monospace;
+		font-size: 11px;
+		background: #f3f4f6;
+		color: #374151;
+		padding: 2px 6px;
+		border-radius: 4px;
+	}
+
+	.slot-info {
+		font-size: 13px;
+	}
+
+	.slot-quantity-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 4px;
+	}
+
+	.qty-available-group {
+		display: flex;
+		align-items: baseline;
+		gap: 4px;
+	}
+
+	.qty-number {
+		font-size: 16px;
+		font-weight: 700;
+		color: #111827;
+	}
+
+	.qty-label {
+		font-size: 12px;
+		color: #6b7280;
+	}
+
+	/* Search Results Container - Fixed scrolling */
+	.search-results-container {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		/* Custom scrollbar */
+		scrollbar-width: thin;
+		scrollbar-color: #d1d5db transparent;
+	}
+
+	.search-results-container::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.search-results-container::-webkit-scrollbar-thumb {
+		background-color: #d1d5db;
+		border-radius: 3px;
+	}
+
+	.search-header {
+		padding: 12px 16px;
+		background: #f9fafb;
+		border-bottom: 1px solid #f3f4f6;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.results-count {
+		font-size: 13px;
+		font-weight: 600;
+		color: #4b5563;
+		margin: 0;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.sort-select {
+		font-size: 12px;
+		border: none;
+		background: transparent;
+		color: #6b7280;
+		cursor: pointer;
+		outline: none;
+		font-weight: 500;
+	}
+
+	.sort-select:hover {
+		color: #111827;
+	}
+
+	.results-list {
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+	
+	.slot-need-details {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		background: #fffbeb;
+		padding: 8px;
+		border-radius: 8px;
+		border: 1px solid #fef3c7;
+	}
+	
+	.need-header {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.need-label {
+		font-weight: 600;
+		font-size: 11px;
+		text-transform: uppercase;
+		color: #d97706; /* Amber-600 */
+		letter-spacing: 0.5px;
+	}
+	
+	.need-quantity {
+		font-weight: 700;
+		color: #b45309;
+		font-size: 14px;
+		padding-left: 20px; /* Indent under icon */
+	}
+
+	.slot-desc {
+		margin-top: 8px;
+		font-size: 12px;
+		color: #4b5563;
+		line-height: 1.5;
+		font-style: italic;
+	}
+
+	.past-slots-summary {
+		margin-top: 8px;
+		padding: 12px;
+		background: #f9fafb;
+		border-radius: 8px;
+		color: #9ca3af;
+		font-size: 12px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+	}
+	
+	.source-badge {
+		font-size: 10px;
+		padding: 2px 8px;
+		border-radius: 12px;
+		background: #eef2ff;
+		color: #4f46e5;
+		font-weight: 600;
+		border: 1px solid #e0e7ff;
+	}
+	
+	.source-badge.geocoded {
+		background: #f3f4f6;
+		color: #6b7280;
+		border: 1px solid #e5e7eb;
 	}
 </style>
