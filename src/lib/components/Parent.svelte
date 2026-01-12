@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import * as d3 from 'd3';
 	import { page } from '$app/state';
 	import { holsterUserAlias as userAlias, holsterUserPub as userPub } from '$lib/network/holster.svelte';
@@ -365,11 +366,44 @@
 		triggerUpdate();
 	}
 
+	// ✅ PATH CORRECTION: using afterNavigate ensures this runs after every client-side navigation
+	afterNavigate(() => {
+		// Re-run the checks to see if we need to correct the path
+		// Note: page is imported from $app/state, so we access properties directly
+		const currentPathname = page.url.pathname;
+		const currentIsOrgRoute = currentPathname.startsWith('/org/');
+		const currentIsAuthenticated = !!get(userPub);
+		const currentPub = get(userPub);
+		const demoTree = demoTreeStore.current;
+
+		// Determine expected root
+		let expectedRootId: string | null = null;
+		
+		if (currentIsOrgRoute && demoTree) {
+			expectedRootId = demoTree.id;
+		} else if (currentIsAuthenticated && currentPub) {
+			expectedRootId = currentPub;
+		} else if (demoTree) {
+			expectedRootId = demoTree.id;
+		}
+		
+		// Validate Current Path
+		const currentPathArr = get(currentPath);
+		const currentPathRootId = currentPathArr[0]; // The root of the breadcrumb
+		
+		// Logic: If we have an expected root, and the current path is either empty OR starts with a different root
+		// we should reset.
+		const isMismatch = expectedRootId && (!currentPathRootId || currentPathRootId !== expectedRootId);
+		
+		if (isMismatch && expectedRootId) {
+			console.log('[PATH-CORRECTION] Route mismatch detected via afterNavigate');
+			console.log(`[PATH-CORRECTION] Switching from ${currentPathRootId} to ${expectedRootId}`);
+			currentPath.set([expectedRootId]);
+		}
+	});
+
 	// Initialize demo tree on mount if needed
 	onMount(() => {
-		// ✅ PATH CORRECTION: Watch for route changes and reset path when switching trees
-		// Using explicit subscription instead of $effect to avoid side-effect issues
-
 		// ✅ ROUTE-AWARE INITIALIZATION:
 		// Only initialize with SDG template if we're on homepage, not authenticated, and no tree exists
 		// On org routes, the tree is already initialized by the +page.svelte loader

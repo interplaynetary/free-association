@@ -77,10 +77,10 @@
 		return allCommitments;
 	});
 
-	// Reactive store subscriptions
-	// Use demo tree for unauthenticated users, user tree for authenticated users
+	// Use user tree for both authenticated and unauthenticated (demo) users
+	// userTree handles LocalStorage persistence for demo mode
 	const isAuthenticated = $derived(!!$userPub);
-	const tree = $derived(isAuthenticated ? $userTree : demoTreeStore.current);
+	const tree = $derived($userTree);
 	const path = $derived($currentPath);
 	const isDeleteMode = $derived(globalState.deleteMode);
 	const isRecomposeMode = $derived(globalState.recomposeMode);
@@ -120,22 +120,10 @@
 		}
 	}
 
-	// Helper function to update the appropriate tree store based on authentication
+	// Helper function to update the appropriate tree store
 	function updateTreeStore(updatedTree: Node) {
-		if (isAuthenticated) {
-			userTree.set(updatedTree);
-		} else {
-			// For demo tree, ensure it's serializable by using JSON round-trip
-			// This avoids structuredClone errors with proxy objects
-			try {
-				const serialized = JSON.parse(JSON.stringify(updatedTree));
-				demoTreeStore.set(serialized);
-			} catch (err) {
-				console.error('[DEMO TREE] Failed to serialize tree:', err);
-				// Fallback: try to set anyway
-				demoTreeStore.set(updatedTree);
-			}
-		}
+		// Always update userTree (handles both Holster and LocalStorage)
+		userTree.set(updatedTree);
 	}
 
 	// Search state (for main route and inventory)
@@ -337,10 +325,10 @@
 	// Add new node handler
 	function handleAddNode() {
 		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleAddNode');
-		if (!tree || path.length === 0) return;
+		if (!tree) return;
 
-		// Get current node ID (last in path)
-		const currentNodeId = path[path.length - 1];
+		// Get current node ID (last in path or root)
+		const currentNodeId = path.length > 0 ? path[path.length - 1] : tree.id;
 
 		// Create a deep clone of the tree to ensure reactivity
 		const updatedTree = cloneTree(tree);
@@ -561,10 +549,10 @@
 	// Handle adding a subtree to the current location
 	function handleAddSubtree(subtreeToAdd: Node) {
 		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleAddSubtree', { subtreeId: subtreeToAdd.id });
-		if (!tree || path.length === 0) return;
+		if (!tree) return;
 
-		// Get current node ID (last in path)
-		const currentNodeId = path[path.length - 1];
+		// Get current node ID (last in path or root)
+		const currentNodeId = path.length > 0 ? path[path.length - 1] : tree.id;
 
 		// Create a deep clone of the tree to ensure reactivity
 		const updatedTree = cloneTree(tree);
