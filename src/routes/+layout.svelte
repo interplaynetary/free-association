@@ -6,10 +6,7 @@
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
-	import { onMount, onDestroy } from 'svelte';
-	import { browser } from '$app/environment';
-	import { teardownApplication } from '$lib/bootstrap';
-
+	
 	// Layout props
 	let { children }: LayoutProps = $props();
 </script>

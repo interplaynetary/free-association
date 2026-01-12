@@ -1,5 +1,5 @@
-import { browser } from '$app/environment';
-import { loadTranslations, defaultLocale, locale } from '$lib/translations';
+//import { browser } from '$app/environment';
+//import { loadTranslations, defaultLocale, locale } from '$lib/translations';
 
 // Disable SSR - this is a client-only app (Holster/Gun requires browser environment)
 export const prerender = false;
@@ -7,6 +7,7 @@ export const trailingSlash = 'always';
 export const ssr = false;
 export const csr = true;
 
+/*
 export const load = async ({ url }) => {
   const { pathname } = url;
   const initLocale = getInitialLocale();
@@ -49,3 +50,4 @@ function getInitialLocale(): string {
 
   return defaultLocale;
 }
+*/
