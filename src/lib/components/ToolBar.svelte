@@ -17,8 +17,15 @@
 	import { getLocalTimeZone, today } from '@internationalized/date';
 	// Demo tree for unauthenticated users
 	import { demoTreeStore } from '$lib/protocol/stores/demoTree.svelte';
-	import type { Commitment, Node, NonRootNode, AvailabilitySlot } from '@playnet/free-association/schemas';
+	import type { Commitment, Node, NonRootNode, AvailabilitySlot, NeedSlot } from '@playnet/free-association/schemas';
 	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
+    import { types } from '$lib/protocol/needTypes-local';
+    import { myNeedSlotsStore, setMyNeedSlots } from '$lib/protocol/stores/stores.svelte';
+    import { outsideClick } from '$lib/actions/outsideClick';
+	import { emojiPicker } from '$lib/actions/emojiPicker';
+	import TimePatternEditor from '$lib/components/slots/TimePatternEditor.svelte';
+	import LocationEditor, { type LocationData } from '$lib/components/slots/LocationEditor.svelte';
+    import { slide } from 'svelte/transition';
 	
 	// V5: Wrap Commitment with id for collection storage
 	type CommitmentWithId = Commitment & { id: string };
@@ -53,7 +60,7 @@
 			$slots.forEach(slot => {
 				const commitment: CommitmentWithId = {
 					id: slot.id,
-					capacity_slots: [slot],
+					capacity_slots: [slot as AvailabilitySlot],
 					need_slots: [],
 					timestamp: Date.now(),
 					itcStamp: { id: 0, event: 0 }  // Placeholder ITC stamp
@@ -607,50 +614,7 @@
 	}
 
 	// Create a default capacity with proper structure
-	function createDefaultCapacity(): ProviderCapacity {
-		const alias = $userAlias;
-		const pub = $userPub;
-		if (!alias || !pub) throw new Error('No user logged in');
 
-		const todayString = today(getLocalTimeZone()).toString();
-		const slotId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		
-		// V5: Create a proper Commitment structure
-		return {
-			id: crypto.randomUUID(),
-			timestamp: Date.now(),
-			itcStamp: { id: 0, event: 0 },  // Placeholder ITC stamp
-			capacity_slots: [  // V5: Metadata lives on the slot, not the commitment
-				{
-					id: slotId,
-					name: '',  // V5: Required field (user will fill this in)
-					type_id: 'default',  // V5: Required field
-					quantity: 1,
-					emoji: '',
-					unit: '',
-					description: '',
-					max_natural_div: 1,
-					min_allocation_percentage: 1.0,
-					hidden_until_request_accepted: false,
-					filter_rule: null,
-					location_type: 'Undefined',
-					start_date: todayString,
-					end_date: null,
-					time_zone: getLocalTimeZone(),
-					recurrence: 'daily',  // V5: lowercase enum value
-					// Optional fields
-					latitude: undefined,
-					longitude: undefined,
-					street_address: undefined,
-					city: undefined,
-					state_province: undefined,
-					postal_code: undefined,
-					country: undefined
-				}
-			],
-			need_slots: []
-		};
-	}
 
 	// Add capacity to the store - V5: Add slot to myCapacitySlotsStore
 	function addCapacity(capacity: ProviderCapacity) {
@@ -687,39 +651,153 @@
 	}
 
 	// Create new capacity handler
-	async function handleCreateCapacity() {
-		console.log('[TRACE] [ENTER] src/lib/components/ToolBar.svelte: handleCreateCapacity');
-		const alias = $userAlias;
-		const pub = $userPub;
-		if (!alias || !pub) {
-			globalState.showToast('Please log in to create capacities', 'error');
-			return;
-		}
 
-		try {
-			const newCapacity = createDefaultCapacity();
 
-			const success = addCapacity(newCapacity);
-
-			if (success) {
-				globalState.showToast('New capacity created successfully', 'success');
-			} else {
-				globalState.showToast('Failed to create capacity', 'error');
-			}
-		} catch (error) {
-			console.error('[TOOLBAR] Error creating capacity:', error);
-			globalState.showToast('Error creating capacity', 'error');
-		}
-		console.log('[TRACE] [EXIT] src/lib/components/ToolBar.svelte: handleCreateCapacity');
-	}
-
-	// Handle search result selection
 	function handleSearchResultSelect(result: any) {
 		// Navigate to the selected node using the path
 		globalState.navigateToPath(result.navigationPath);
 		toggleSearchPanel();
 		globalState.showToast(`Navigated to "${result.node.name}"`, 'success');
 	}
+
+    // Inventory Draft State
+    let draftSlot = $state({
+		name: '',
+		quantity: 1,
+		emoji: '📦',
+        type_id: 'general',
+        // Expanded Draft Fields
+        recurrence: undefined as string | undefined,
+        availability_window: undefined as any | undefined,
+        location_type: undefined as string | undefined,
+        longitude: undefined as number | undefined,
+        latitude: undefined as number | undefined,
+        street_address: undefined as string | undefined,
+        city: undefined as string | undefined,
+        state_province: undefined as string | undefined,
+        postal_code: undefined as string | undefined,
+        country: undefined as string | undefined,
+        online_link: undefined as string | undefined
+	});
+    let showEmojiPicker = $state(false);
+
+    function handleInventoryAdd() {
+        if (!draftSlot.name.trim()) return;
+
+        if (globalState.inventoryTab === 'needs') {
+             const current = get(myNeedSlotsStore) || [];
+             const newSlot: NeedSlot = {
+                id: `need_${Date.now()}_${Math.random()}`,
+                name: draftSlot.name,
+                type_id: draftSlot.type_id,
+                quantity: draftSlot.quantity,
+                emoji: draftSlot.emoji,
+                unit: draftSlot.type_id === 'money' ? 'USD' : 'units',
+                max_natural_div: 1,
+                min_allocation_percentage: 0.01,
+                recurrence: draftSlot.recurrence as any || 'monthly',
+                // Expanded fields
+                availability_window: draftSlot.availability_window,
+                location_type: draftSlot.location_type,
+                longitude: draftSlot.longitude,
+                latitude: draftSlot.latitude,
+                street_address: draftSlot.street_address,
+                city: draftSlot.city,
+                state_province: draftSlot.state_province,
+                postal_code: draftSlot.postal_code,
+                country: draftSlot.country,
+                online_link: draftSlot.online_link
+             } as NeedSlot;
+             setMyNeedSlots([...current, newSlot]);
+             globalState.showToast(`Added need: ${draftSlot.name}`, 'success');
+        } else {
+             const current = get(myCapacitySlotsStore) || [];
+             const newSlot: AvailabilitySlot = {
+                id: `capacity_${Date.now()}_${Math.random()}`,
+                name: draftSlot.name,
+                type_id: draftSlot.type_id,
+                quantity: draftSlot.quantity,
+                emoji: draftSlot.emoji,
+                unit: draftSlot.type_id === 'money' ? 'USD' : 'units',
+                max_natural_div: 1,
+                min_allocation_percentage: 0.01,
+                recurrence: draftSlot.recurrence as any || 'monthly',
+                // Expanded fields
+                availability_window: draftSlot.availability_window,
+                location_type: draftSlot.location_type,
+                longitude: draftSlot.longitude,
+                latitude: draftSlot.latitude,
+                street_address: draftSlot.street_address,
+                city: draftSlot.city,
+                state_province: draftSlot.state_province,
+                postal_code: draftSlot.postal_code,
+                country: draftSlot.country,
+                online_link: draftSlot.online_link
+             } as AvailabilitySlot;
+             setMyCapacitySlots([...current, newSlot]);
+             globalState.showToast(`Added capacity: ${draftSlot.name}`, 'success');
+        }
+
+        // Reset
+        draftSlot = {
+            name: '',
+            quantity: 1,
+            emoji: '📦',
+            type_id: 'general',
+            // Reset expanded fields
+            recurrence: undefined,
+            availability_window: undefined,
+            location_type: undefined,
+            longitude: undefined,
+            latitude: undefined,
+            street_address: undefined,
+            city: undefined,
+            state_province: undefined,
+            postal_code: undefined,
+            country: undefined,
+            online_link: undefined
+        };
+        // Clear search query when adding
+        globalState.inventorySearchQuery = '';
+        
+        showExpandedDraft = false;
+        expandedDraftTab = 'time';
+    }
+
+    // Expanded Draft Panel State
+    let showExpandedDraft = $state(false);
+    let expandedDraftTab = $state<'time' | 'location'>('time');
+
+    function toggleExpandedDraft(tab: 'time' | 'location') {
+        if (showExpandedDraft && expandedDraftTab === tab) {
+            showExpandedDraft = false;
+        } else {
+            showExpandedDraft = true;
+            expandedDraftTab = tab;
+        }
+    }
+
+    function handleTimeUpdate(recurrence: string | null, window?: any) {
+        draftSlot.recurrence = recurrence || undefined;
+        // Check if window is empty/undefined before assigning
+        if (window && (window.time_ranges || window.day_schedules || window.week_schedules || window.month_schedules)) {
+            draftSlot.availability_window = window;
+        } else {
+            draftSlot.availability_window = undefined;
+        }
+    }
+
+    function handleLocationUpdate(location: LocationData) {
+        draftSlot.location_type = location.location_type;
+        draftSlot.street_address = location.street_address;
+        draftSlot.city = location.city;
+        draftSlot.state_province = location.state_province;
+        draftSlot.postal_code = location.postal_code;
+        draftSlot.country = location.country;
+        draftSlot.latitude = location.latitude;
+        draftSlot.longitude = location.longitude;
+        draftSlot.online_link = location.online_link;
+    }
 </script>
 
 <svelte:document onmousedown={handleClickOutside} ontouchstart={handleClickOutside} />
@@ -860,48 +938,142 @@
 
 					<!-- Inventory View Controls -->
 					{#if globalState.currentView === 'inventory'}
-						<div class="action-controls">
-							<div class="view-controls inventory-controls">
-							<div class="toolbar-item">
-								<button
-									class="toolbar-button create-capacity-button"
-									title={$t('toolbar.add_capacity')}
-									onclick={handleCreateCapacity}
+						<div class="action-controls inventory-controls">
+							<!-- Needs/Capacity Toggle (Vertical Tabs) -->
+							<div class="inventory-type-toggle">
+								<button 
+									class="type-tab {globalState.inventoryTab === 'needs' ? 'active' : ''}"
+									onclick={() => globalState.inventoryTab = 'needs'}
+									title="Needs"
 								>
+									🎯
+								</button>
+								<button 
+									class="type-tab {globalState.inventoryTab === 'capacity' ? 'active' : ''}"
+									onclick={() => globalState.inventoryTab = 'capacity'}
+									title="Capacity"
+								>
+									🎁
+								</button>
+							</div>
+
+							<!-- Draft Controls -->
+							<div class="inventory-draft-controls">
+								<!-- Type Selector -->
+								<select bind:value={draftSlot.type_id} class="draft-select">
+									{#each types as t}
+										<option value={t.id}>{t.emoji} {t.label}</option>
+									{/each}
+								</select>
+
+								<!-- Name Input (Also acts as search) -->
+								<input 
+									type="text" 
+									bind:value={draftSlot.name} 
+                                    oninput={(e) => globalState.inventorySearchQuery = (e.target as HTMLInputElement).value}
+									placeholder={globalState.inventoryTab === 'needs' ? "Advocate need..." : "Share capacity..."}
+									class="draft-input-name"
+									onkeydown={(e) => e.key === 'Enter' && handleInventoryAdd()}
+								/>
+
+								<!-- Quantity & Emoji -->
+								<div class="draft-qty-group">
+									<div class="relative">
+										<button 
+											class="emoji-btn"
+											onclick={(e) => { e.preventDefault(); e.stopPropagation(); showEmojiPicker = !showEmojiPicker; }}
+										>
+											{draftSlot.emoji}
+										</button>
+										{#if showEmojiPicker}
+											<div 
+												class="emoji-picker-container"
+												use:outsideClick={() => showEmojiPicker = false}
+												use:emojiPicker={{ onClick: (e) => { draftSlot.emoji = e; showEmojiPicker = false; } }}
+											></div>
+										{/if}
+									</div>
+									<input 
+										type="number" 
+										bind:value={draftSlot.quantity} 
+										min="0" 
+										class="draft-input-qty"
+									/>
+								</div>
+
+								<!-- Expanded Draft Toggles -->
+								<div class="draft-expander-group">
+									<button 
+										class="toolbar-button expand-btn"
+										class:active={showExpandedDraft && expandedDraftTab === 'time'}
+										title="Add Time Details"
+										onclick={() => toggleExpandedDraft('time')}
+									>
+										🕐
+									</button>
+									<button 
+										class="toolbar-button expand-btn"
+										class:active={showExpandedDraft && expandedDraftTab === 'location'}
+										title="Add Location"
+										onclick={() => toggleExpandedDraft('location')}
+									>
+										📍
+									</button>
+								</div>
+								
+								<!-- Add Button -->
+								<button class="toolbar-button add-inventory-btn" onclick={handleInventoryAdd}>
 									➕
 								</button>
-								<span class="button-caption">{$t('toolbar.add_capacity')}</span>
 							</div>
-							<div class="toolbar-item">
-								<button
-									class="toolbar-button search-button"
-									class:search-active={showInventorySearchPanel}
-									title={$t('toolbar.search_placeholder')}
-									onclick={toggleInventorySearchPanel}
-								>
+
+							<!-- Inventory Search (Removed in favor of unified input) -->
+							<!-- <div class="search-container">
+								<button class="toolbar-button search-button" title="Search Inventory" onclick={toggleInventorySearchPanel}>
 									🔍
 								</button>
-								<span class="button-caption">{$t('common.search')}</span>
-							</div>
-							</div>
+							</div> -->
 						</div>
+
+						<!-- Expanded Draft Panel -->
+						{#if showExpandedDraft}
+							<div class="expanded-draft-panel" transition:slide={{ axis: 'y', duration: 200 }}>
+								<div class="expanded-header">
+									<h4>{expandedDraftTab === 'time' ? 'Time Details' : 'Location Details'}</h4>
+									<button class="close-expanded-btn" onclick={() => showExpandedDraft = false}>✕</button>
+								</div>
+								
+								<div class="expanded-content">
+									{#if expandedDraftTab === 'time'}
+										<TimePatternEditor 
+											recurrence={draftSlot.recurrence as any}
+											startDate={null}
+											endDate={null}
+											availabilityWindow={draftSlot.availability_window}
+											onUpdate={handleTimeUpdate}
+										/>
+									{:else if expandedDraftTab === 'location'}
+										<LocationEditor 
+											locationType={draftSlot.location_type}
+											streetAddress={draftSlot.street_address}
+											city={draftSlot.city}
+											stateProvince={draftSlot.state_province}
+											postalCode={draftSlot.postal_code}
+											country={draftSlot.country}
+											latitude={draftSlot.latitude}
+											longitude={draftSlot.longitude}
+											onlineLink={draftSlot.online_link}
+											onUpdate={handleLocationUpdate}
+										/>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					{/if}
 				</div>
-			{:else if isInventoryRoute}
-				<!-- Inventory route buttons -->
-				<div class="toolbar-actions">
-					<div class="toolbar-item">
-						<button
-							class="toolbar-button big-button create-capacity-button"
-							title="Create new capacity"
-							onclick={handleCreateCapacity}
-						>
-							➕
-						</button>
-						<span class="button-caption">New Capacity</span>
-					</div>
-				</div>
 			{/if}
+
+
 
 		<!-- Footer links and copyright (right side) -->
 		<div class="toolbar-footer">
@@ -1108,7 +1280,7 @@
 		position: relative;
 		z-index: 50;
 		width: 100%;
-		overflow: hidden;
+		/* overflow: hidden; Removed to allow expanded panel to show */
 	}
 
 	.toolbar {
@@ -1848,6 +2020,209 @@
 		.copyright {
 			font-size: 7px;
 		}
+	}
+	/* Inventory Controls */
+	.inventory-controls {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		height: 100%;
+        flex: 1;
+        justify-content: center;
+	}
+
+	.inventory-type-toggle {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+        margin-right: 8px;
+	}
+
+	.type-tab {
+		background: none;
+		border: 1px solid transparent;
+		font-size: 14px;
+		padding: 0 4px;
+		cursor: pointer;
+		opacity: 0.5;
+		transition: all 0.2s;
+        line-height: 1;
+        border-radius: 4px;
+	}
+
+	.type-tab:hover {
+		opacity: 0.8;
+        background: rgba(0,0,0,0.05);
+	}
+
+	.type-tab.active {
+		opacity: 1;
+		font-size: 16px;
+        background: rgba(33, 150, 243, 0.1);
+	}
+
+	.inventory-draft-controls {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		background: #f5f5f5;
+		padding: 4px 8px;
+		border-radius: 20px;
+        height: 36px;
+	}
+
+	.draft-select {
+		background: transparent;
+		border: none;
+		font-size: 12px;
+		max-width: 80px;
+        cursor: pointer;
+        outline: none;
+	}
+
+	.draft-input-name {
+		border: none;
+		background: transparent;
+		font-size: 13px;
+		width: 140px;
+		outline: none;
+        padding: 0 4px;
+	}
+
+	.draft-qty-group {
+		display: flex;
+		align-items: center;
+		background: white;
+		border-radius: 12px;
+		padding: 0 4px;
+		border: 1px solid #ddd;
+        height: 28px;
+	}
+
+	.emoji-btn {
+		background: none;
+		border: none;
+		font-size: 14px;
+		padding: 0 4px;
+		cursor: pointer;
+        line-height: 1;
+	}
+
+    .emoji-picker-container {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        margin-bottom: 8px;
+        z-index: 9999;
+        min-width: 320px;
+    }
+
+	.draft-input-qty {
+		width: 40px;
+		border: none;
+		text-align: center;
+        outline: none;
+        font-size: 12px;
+        /* Hide spin buttons */
+        -moz-appearance: textfield;
+	}
+    
+    .draft-input-qty::-webkit-outer-spin-button,
+    .draft-input-qty::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+	.add-inventory-btn {
+		font-size: 14px !important;
+		width: 24px !important;
+		height: 24px !important;
+		background: #4caf50 !important;
+		color: white !important;
+		border-radius: 50% !important;
+	}
+    
+    .relative {
+        position: relative;
+    }
+	/* Expanded Draft Panel */
+	.expanded-draft-panel {
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		right: 0;
+		background: white;
+		border-top: 1px solid #e2e8f0;
+		box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+		z-index: 50; /* Above toolbar */
+		max-height: 80vh;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+        margin-bottom: 1px; /* Separation line */
+	}
+
+	.expanded-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+	}
+
+	.expanded-header h4 {
+		margin: 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #334155;
+	}
+
+	.close-expanded-btn {
+		background: transparent;
+		border: none;
+		color: #94a3b8;
+		font-size: 1.25rem;
+		cursor: pointer;
+		padding: 0 0.5rem;
+	}
+
+	.close-expanded-btn:hover {
+		color: #64748b;
+	}
+
+	.expanded-content {
+		padding: 1rem;
+	}
+
+	.draft-expander-group {
+		display: flex;
+		gap: 0.25rem;
+		margin-right: 0.5rem;
+        border-left: 1px solid #e2e8f0;
+        padding-left: 0.5rem;
+	}
+
+	.expand-btn {
+		font-size: 1rem;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 6px;
+		background: transparent;
+        opacity: 0.6;
+	}
+
+	.expand-btn:hover {
+		background: #f1f5f9;
+        opacity: 1;
+	}
+
+	.expand-btn.active {
+		background: #e0f2fe;
+		opacity: 1;
 	}
 </style>
 

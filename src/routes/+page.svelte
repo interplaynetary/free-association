@@ -48,24 +48,7 @@
 	});
 
 	// CRUD Operations - Generalized for any need type
-	function addNeedSlot(name: string, quantity: number, needTypeId: string, emoji?: string) {
-		console.log('[TRACE] [ENTER] src/routes/+page.svelte: addNeedSlot', { name, quantity, needTypeId, emoji });
-		const newSlot: NeedSlot = {
-			id: `need_${Date.now()}_${Math.random()}`,
-			name: name,
-			type_id: needTypeId,
-			quantity: quantity,
-			emoji: emoji || '🎁',
-			unit: needTypeId === 'money' ? 'USD' : 'units',
-			max_natural_div: 1,
-			min_allocation_percentage: 0.01,
-			recurrence: 'monthly' // Default to per month
-		};
-		
-		
-		setMyNeedSlots([...needSlots, newSlot]);
-		console.log('[TRACE] [EXIT] src/routes/+page.svelte: addNeedSlot');
-	}
+
 	
 	function removeNeedSlot(id: string) {
 		console.log('[TRACE] [ENTER] src/routes/+page.svelte: removeNeedSlot', { id });
@@ -83,23 +66,7 @@
 	}
 
 	// CRUD Operations - Generalized capacity for any need type
-	function addCapacitySlot(name: string, quantity: number, needTypeId: string, emoji?: string) {
-		console.log('[TRACE] [ENTER] src/routes/+page.svelte: addCapacitySlot', { name, quantity, needTypeId, emoji });
-		const newSlot: AvailabilitySlot = {
-			id: `capacity_${Date.now()}_${Math.random()}`,
-			name: name,
-			type_id: needTypeId,
-			quantity: quantity,
-			emoji: emoji || '🎁',
-			unit: needTypeId === 'money' ? 'USD' : 'units',
-			max_natural_div: 1,
-			min_allocation_percentage: 0.01,
-			recurrence: 'monthly' // Default to per month
-		};
-		
-		setMyCapacitySlots([...capacitySlots, newSlot]);
-		console.log('[TRACE] [EXIT] src/routes/+page.svelte: addCapacitySlot');
-	}
+
 	
 	function removeCapacitySlot(id: string) {
 		console.log('[TRACE] [ENTER] src/routes/+page.svelte: removeCapacitySlot', { id });
@@ -203,8 +170,6 @@
 					onNeedDelete={removeNeedSlot}
 					onCapacityUpdate={updateCapacitySlot}
 					onCapacityDelete={removeCapacitySlot}
-					onNeedAdd={addNeedSlot}
-					onCapacityAdd={addCapacitySlot}
 				/>
 			</div>
 		{/if}

@@ -209,6 +209,7 @@ export const globalState = $state({
 	inventorySelectedProvider: 'all',
 	inventorySortBy: 'name' as 'name' | 'allocated_slots' | 'total_slots' | 'provider',
 	inventorySortDirection: 'asc' as 'asc' | 'desc',
+	inventoryTab: 'needs' as 'needs' | 'capacity',
 
 	// Unified highlighting state for newly created items
 	// V5: capacityId = pubKey (for Commitment), slotId = AvailabilitySlot.id

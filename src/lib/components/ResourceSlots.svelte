@@ -9,6 +9,7 @@
 	import { getUserName } from '$lib/network/users.svelte';
 	import Chat from '$lib/components/Chat.svelte';
 	import { getReactiveUnreadCount } from '$lib/chat/chat.svelte';
+    import { globalState } from '$lib/global.svelte';
 	import { outsideClick } from '$lib/actions/outsideClick';
 	import { emojiPicker } from '$lib/actions/emojiPicker';
 	
@@ -27,8 +28,6 @@
 		onNeedDelete: (id: string) => void;
 		onCapacityUpdate: (slot: AvailabilitySlot) => void;
 		onCapacityDelete: (id: string) => void;
-		onNeedAdd: (name: string, quantity: number, needTypeId: string, emoji: string) => void;
-		onCapacityAdd: (name: string, quantity: number, needTypeId: string, emoji: string) => void;
 	}
 	
 	let {
@@ -37,18 +36,16 @@
 		onNeedUpdate,
 		onNeedDelete,
 		onCapacityUpdate,
-		onCapacityDelete,
-		onNeedAdd,
-		onCapacityAdd
+		onCapacityDelete
 	}: Props = $props();
 	
 	$effect(() => {
 		console.log('[ResourceSlots] Updated props:', { 
 			needSlotsCount: needSlots.length, 
 			capacitySlotsCount: capacitySlots.length,
-			activeTab,
+			activeTab: globalState.inventoryTab,
 			selectedNeedType,
-			currentSlotsCount: (activeTab === 'needs' ? needSlots : capacitySlots)
+			currentSlotsCount: (globalState.inventoryTab === 'needs' ? needSlots : capacitySlots)
 				.filter(slot => slot.type_id === selectedNeedType).length
 		});
 	});
@@ -56,59 +53,27 @@
 	// Selected need type
 	let selectedNeedType = $state<string>('general'); // Default to general (matching demo data)
 	
-	// Tab state: 'needs' or 'capacity'
-	let activeTab = $state<'needs' | 'capacity'>('needs');
-	
-	// Add form state
-	// Draft Slot State (Rich object)
-	let draftSlot = $state({
-		name: '',
-		quantity: 100,
-		emoji: '📦',
-		time_pattern: {
-			type: 'monthly' as const,
-			days: [],
-			start_time: '09:00',
-			end_time: '17:00',
-			timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-		},
-		location: {
-			type: 'any' as const,
-			latitude: 0,
-			longitude: 0
-		}
-	});
-
-	let showEmojiPicker = $state(false);
-
-	// Editor state for the Draft slot
-	let draftExpanded = $state<EditorType | null>(null);
-
-	function toggleDraftEditor(type: EditorType) {
-		if (draftExpanded === type) {
-			draftExpanded = null;
-		} else {
-			draftExpanded = type;
-		}
-	}
-	
 	// Single unified state for tab switching - elegant solution!
 	type EditorType = 'time' | 'priority' | 'allocations' | 'chat' | 'location' | 'divisibility';
 	let expandedEditor = $state<Map<string, EditorType>>(new Map());
 
-	
 	// Delete confirmation state
 	let deletePending = $state<string | null>(null);
 	
 	// Get current need type info
 	const currentNeedType = $derived(types.find(t => t.id === selectedNeedType) || types[0]);
 	
-	// Get current slots based on active tab AND selected need type
+	// Get current slots based on active tab AND selected need type AND search query
 	const currentSlots = $derived(
-		(activeTab === 'needs' ? needSlots : capacitySlots)
+		(globalState.inventoryTab === 'needs' ? needSlots : capacitySlots)
 			.filter(slot => slot.type_id === selectedNeedType)
+            .filter(slot => {
+                const query = globalState.inventorySearchQuery.trim().toLowerCase();
+                if (!query) return true;
+                return slot.name.toLowerCase().includes(query);
+            })
 	);
-	const isNeedMode = $derived(activeTab === 'needs');
+	const isNeedMode = $derived(globalState.inventoryTab === 'needs');
 	
 	// Reactive allocation data - derived from stores
 	const myAllocations = $derived($myAllocationsAsProvider.allocations || []);
@@ -179,23 +144,7 @@
 	
 	// Add slot handler
 	// Add slot handler
-	function handleAddSlot() {
-		if (!draftSlot.name.trim()) return;
-		
-		// TODO: Pass full draftSlot object when API supports it
-		if (isNeedMode) {
-			onNeedAdd(draftSlot.name, draftSlot.quantity, selectedNeedType, draftSlot.emoji);
-		} else {
-			onCapacityAdd(draftSlot.name, draftSlot.quantity, selectedNeedType, draftSlot.emoji);
-		}
-		
-		// Reset form
-		draftSlot.name = '';
-		draftSlot.quantity = 100;
-		draftSlot.emoji = '📦';
-		// Reset other fields if desirable, or keep them as "defaults"
-		draftExpanded = null;
-	}
+
 	
 	
 	// Universal toggle function - elegant single solution!
@@ -668,126 +617,13 @@
 
 <div class="slots-container">
 	<!-- Tab Navigation -->
-	<!-- Draft Slot (Add New) -->
-	<!-- Draft Slot (Add New) -->
-	<div class="slot-card draft-card {isNeedMode ? 'need-draft' : 'capacity-draft'}">
-		<div class="draft-tabs">
-			<button 
-				class="draft-tab {isNeedMode ? 'active' : ''}"
-				onclick={() => activeTab = 'needs'}
-			>
-				🎯 Needs ({needSlots.filter(s => s.type_id === selectedNeedType).length})
-			</button>
-			<button 
-				class="draft-tab {!isNeedMode ? 'active' : ''}"
-				onclick={() => activeTab = 'capacity'}
-			>
-				🎁 Capacity ({capacitySlots.filter(s => s.type_id === selectedNeedType).length})
-			</button>
-		</div>
 
-		<div class="slot-main">
-			<!-- Compact Type Selector -->
-			<select bind:value={selectedNeedType} class="compact-select">
-				{#each types as needType}
-					<option value={needType.id}>
-						{needType.emoji} {needType.label}
-					</option>
-				{/each}
-			</select>
-
-			<!-- Quick Inputs -->
-			<input
-				type="text"
-				bind:value={draftSlot.name}
-				placeholder="Add new {isNeedMode ? 'need' : 'capacity'}..."
-				onkeydown={(e) => e.key === 'Enter' && handleAddSlot()}
-				class="draft-input"
-			/>
-			
-			<div class="draft-amount">
-				<div class="relative inline-block">
-					<button 
-						type="button"
-						class="text-xl leading-none px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-						onclick={(e) => { e.preventDefault(); e.stopPropagation(); showEmojiPicker = !showEmojiPicker; }}
-					>
-						{draftSlot.emoji}
-					</button>
-					{#if showEmojiPicker}
-						<div 
-							class="absolute bottom-full left-0 mb-2 z-[9999]"
-							use:outsideClick={() => showEmojiPicker = false}
-							use:emojiPicker={{ onClick: (e) => { draftSlot.emoji = e; showEmojiPicker = false; } }}
-							style="min-width: 320px;"
-						></div>
-					{/if}
-				</div>
-				<input
-					type="number"
-					bind:value={draftSlot.quantity}
-					min="0"
-					step="1"
-					class="slot-qty-input"
-				/>
-			</div>
-
-			<!-- Functional Draft Controls -->
-			<button 
-				class="slot-btn {draftExpanded === 'time' ? 'active' : ''}" 
-				onclick={() => toggleDraftEditor('time')}
-				title="Edit time pattern"
-			>
-				🕐 {draftSlot.time_pattern.type === 'monthly' ? 'Monthly' : 'Custom'}
-			</button>
-			<button 
-				class="slot-btn {draftExpanded === 'location' ? 'active' : ''}" 
-				onclick={() => toggleDraftEditor('location')}
-				title="Set location"
-			>
-				📍 {draftSlot.location.type === 'any' ? 'Any' : draftSlot.location.type}
-			</button>
-
-			<button onclick={handleAddSlot} class="btn-add {isNeedMode ? 'need-btn' : 'capacity-btn'}">
-				➕ Add
-			</button>
-		</div>
-
-		<!-- Expanded Editors for Draft Slot -->
-		{#if draftExpanded === 'time'}
-			<div class="editor-section">
-				<TimePatternEditor 
-					pattern={draftSlot.time_pattern} 
-					onUpdate={(p) => { 
-						draftSlot.time_pattern = p;
-						// Auto-close if needed or keep open
-					}} 
-				/>
-			</div>
-		{/if}
-		
-		{#if draftExpanded === 'location'}
-			<div class="editor-section">
-				<LocationEditor 
-					locationType={draftSlot.location.type}
-					latitude={draftSlot.location.latitude}
-					longitude={draftSlot.location.longitude}
-					onUpdate={(l) => {
-						// Map location editor update back to draftSlot format
-						draftSlot.location.type = l.type;
-						if (l.latitude) draftSlot.location.latitude = l.latitude;
-						if (l.longitude) draftSlot.location.longitude = l.longitude;
-					}}
-				/>
-			</div>
-		{/if}
-	</div>
 	
 	<!-- Slots List -->
 	<div class="slots-list">
 		{#if currentSlots.length === 0}
 			<div class="empty-state">
-				No {activeTab === 'needs' ? 'need' : 'capacity'} slots yet
+				No {globalState.inventoryTab === 'needs' ? 'need' : 'capacity'} slots yet
 			</div>
 		{:else}
 			{#each currentSlots as slot (slot.id)}
@@ -805,7 +641,7 @@
 		height: 100%;
 		overflow: hidden;
 		gap: 0.75rem;
-	}
+    }
 	
 	/* Need Type Selector */
 	.need-type-selector {
