@@ -33,7 +33,10 @@ export async function bootstrapApplication() {
     const { get } = await import('svelte/store');
 
     // Watch loading state
-    const unsub = stores.myCommitmentStore.loading.subscribe(isLoading => {
+    // Watch loading state
+    let unsub: () => void;
+
+    const checkLoading = (isLoading: boolean) => {
         if (!isLoading) {
             // Once loaded, check if empty
             // We check local-derived stores which are now populated from commitment
@@ -60,10 +63,18 @@ export async function bootstrapApplication() {
             }
             console.log(`[BOOTSTRAP] ✅ Existing user verified (${caps?.length || 0} caps, ${needs?.length || 0} needs)`);
 
-            // Run once then unsubscribe
-            unsub();
+            // If async, unsubscribe here. If sync, unsub is undefined so we skip and handle below.
+            if (unsub) unsub();
         }
-    });
+    };
+
+    unsub = stores.myCommitmentStore.loading.subscribe(checkLoading);
+
+    // Guard: If subscription ran synchronously and completed, unsub was undefined inside the callback.
+    // We must ensure we unsubscribe now that unsub is defined.
+    if (!get(stores.myCommitmentStore.loading) && unsub) {
+        unsub();
+    }
 
     console.log('[BOOTSTRAP] Application ready.');
 }

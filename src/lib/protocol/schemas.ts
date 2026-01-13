@@ -520,7 +520,7 @@ export const SlotAllocationRecordSchema = z.object({
 	quantity: z.number().nonnegative(),
 
 	// MULTI-DIMENSIONAL: Type information
-	type_id: z.string().min(1),
+	type_id: z.string().optional(),
 
 	// Compatibility
 	time_compatible: z.boolean(),
