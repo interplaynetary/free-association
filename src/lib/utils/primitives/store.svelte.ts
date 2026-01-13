@@ -249,7 +249,7 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 
 	function subscribeToNetwork() {
-		if (!holsterUser.is) {
+		if (!get(holsterUserPub)) {
 			// fallback to localStorage if configured
 			if (config.localStorageKey && typeof window !== 'undefined') {
 				console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated - using LocalStorage: ${config.localStorageKey}`);
@@ -267,6 +267,11 @@ export function createStore<T extends z.ZodTypeAny>(
 							console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Loaded from LocalStorage`);
 						} else {
 							console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ LocalStorage validation failed`, validation.error);
+							// Self-healing: Clear invalid data so we don't keep seeing this error
+							if (typeof window !== 'undefined') {
+								localStorage.removeItem(config.localStorageKey);
+								console.log(`[HOLSTER-STORE:${config.holsterPath}] 🧹 Cleared invalid LocalStorage data`);
+							}
 						}
 					}
 				} catch (e) {
@@ -332,7 +337,7 @@ export function createStore<T extends z.ZodTypeAny>(
 
 		// 1. Unauthenticated / Local Mode
 		// If not authenticated but we have a LocalStorage key, persist there instead!
-		if (!holsterUser.is && config.localStorageKey) {
+		if (!get(holsterUserPub) && config.localStorageKey) {
 			const dataToSave = get(store);
 			if (dataToSave) {
 				try {
@@ -351,7 +356,7 @@ export function createStore<T extends z.ZodTypeAny>(
 		}
 
 		// 2. Authenticated Mode - Guard Clause
-		if (!holsterUser.is) {
+		if (!get(holsterUserPub)) {
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] ❌ Not authenticated, skipping persistence`);
 			return;
 		}
@@ -396,7 +401,7 @@ export function createStore<T extends z.ZodTypeAny>(
 		hasPendingLocalChanges = false;
 
 		// LocalStorage Mode
-		if (!holsterUser.is && config.localStorageKey) {
+		if (!get(holsterUserPub) && config.localStorageKey) {
 			try {
 				if (dataToSave) {
 					// We just save raw object to local storage, no timestamp wrapping needed for simple usage?
@@ -419,7 +424,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			}
 		}
 
-		if (!holsterUser.is) {
+		if (!get(holsterUserPub)) {
 			console.warn(`[HOLSTER-STORE:${config.holsterPath}] ⚠️  Cannot persist: not authenticated`);
 			isPersisting = false;
 			return;
@@ -521,7 +526,8 @@ export function createStore<T extends z.ZodTypeAny>(
 			const isAuthenticated = !!pub;
 
 			// 1. Cleanup previous network subscriptions to avoid duplicates
-			if (networkCallback && holsterUser.is) {
+			// Use store checks instead of proxy access to avoid errors
+			if (networkCallback && get(holsterUserPub)) {
 				holsterUser.get(config.holsterPath).off(networkCallback);
 				networkCallback = null;
 			}
@@ -568,7 +574,7 @@ export function createStore<T extends z.ZodTypeAny>(
 		}
 
 		// Unsubscribe from network
-		if (networkCallback && holsterUser.is) {
+		if (networkCallback && get(holsterUserPub)) {
 			holsterUser.get(config.holsterPath).off(networkCallback);
 			networkCallback = null;
 		}
@@ -605,7 +611,7 @@ export function createStore<T extends z.ZodTypeAny>(
 	// ────────────────────────────────────────────────────────────────
 
 	function subscribeToUser(pubKey: string, callback: (data: DataType | null) => void) {
-		if (!holsterUser.is) {
+		if (!get(holsterUserPub)) {
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated, cannot subscribe to ${pubKey.slice(0, 20)}...`);
 			return;
 		}

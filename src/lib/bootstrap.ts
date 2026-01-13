@@ -13,7 +13,7 @@ export async function bootstrapApplication() {
     await import('$lib/services');
 
     // 2. Initialize protocol layer (Auth, Stores, Capacity)
-    initializeProtocol();
+    await initializeProtocol();
 
     // 3. Initialize global state (UI Subscriptions)
     // This prevents TDZ errors on iOS Safari when accessing the page store

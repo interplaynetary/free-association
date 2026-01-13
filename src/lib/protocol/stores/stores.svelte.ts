@@ -2176,7 +2176,8 @@ export function composeCommitmentFromSources(totalReceivedMap?: Record<string, R
 
 	// Need at least tree or existing commitment
 	if (!tree && !existingCommitment) {
-		console.warn('[📝 COMPOSE] ❌ No source data available');
+		// This is normal during initial load, so using debug log instead of warning
+		// console.debug('[📝 COMPOSE] ⏳ Waiting for source data (Tree or Commitment)...');
 		return null;
 	}
 
@@ -2719,8 +2720,8 @@ if (typeof window !== 'undefined') {
 	console.log('[STORES] 🚀 Auto-initializing V5 stores...');
 
 	// Initialize my stores (loads from LocalStorage if unauthenticated + fallback configured)
-	myRecognitionTreeStore.initialize();
-	myCommitmentStore.initialize();
+	// myRecognitionTreeStore.initialize();
+	// myCommitmentStore.initialize();
 
 	// AUTO-SEED: Ensure authenticated users always have a tree
 	// If store is null (new user or purged invalid data), create a default root node

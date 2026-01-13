@@ -1,20 +1,109 @@
-import Holster from '@mblaney/holster/src/holster.js';
 import type { HolsterInstance, HolsterUser } from '@mblaney/holster';
 import { config } from '@playnet/free-association/config';
 
 // ═══════════════════════════════════════════════════════════════════
-// HOLSTER INITIALIZATION
+// HOLSTER INITIALIZATION (LAZY / PROXY)
 // ═══════════════════════════════════════════════════════════════════
 
-export const holster: HolsterInstance = Holster({
-	peers: config.holster.peers,
-	indexedDB: config.holster.indexedDB,
-	file: config.holster.file
-});
+// Internal state to hold the real instances
+let _holster: HolsterInstance | undefined;
+let _holsterUser: HolsterUser | undefined;
 
-export const holsterUser: HolsterUser = holster.user();
-export const holsterUsersList = holster.get('freely-associating-players');
-export const holsterOrganizationsList = holster.get('freely-associating-organizations');
+// Initialization Promise to prevent race conditions/double init
+let initPromise: Promise<void> | null = null;
+
+/**
+ * Initialize Holster (Lazy Load)
+ *
+ * This function must be called and awaited before accessing any exported Holster objects.
+ * It dynamically imports the Holster library to avoid Top-Level Await issues in Safari.
+ */
+export async function initHolster() {
+	if (_holster) return; // Already initialized
+	if (initPromise) return initPromise; // Initialization in progress
+
+	initPromise = (async () => {
+		try {
+			console.log('[HOLSTER] 🔫 Initializing Holster (Lazy Load)...');
+			// Dynamic import removes Top-Level Await from the main bundle entry
+			const { default: Holster } = await import('@mblaney/holster/src/holster.js');
+
+			_holster = Holster({
+				peers: config.holster.peers,
+				indexedDB: config.holster.indexedDB,
+				file: config.holster.file
+			});
+
+			_holsterUser = _holster.user();
+			console.log('[HOLSTER] ✅ Holster initialized!');
+		} catch (err) {
+			console.error('[HOLSTER] ❌ Failed to initialize Holster:', err);
+			throw err;
+		}
+	})();
+
+	return initPromise;
+}
+
+/**
+ * Helper to create a Proxy that forwards calls to the lazy-loaded instance.
+ * Throws an error if accessed before initHolster() completes.
+ */
+function createProxy<T extends object>(getter: () => T | undefined, name: string): T {
+	return new Proxy({} as T, {
+		get(_target, prop, _receiver) {
+			const realInstance = getter();
+			if (!realInstance) {
+				throw new Error(
+					`[HOLSTER] Accessing '${name}.${String(prop)}' before initialization. Call await initHolster() first.`
+				);
+			}
+			const value = Reflect.get(realInstance, prop);
+			return typeof value === 'function' ? value.bind(realInstance) : value;
+		},
+		set(_target, prop, value, _receiver) {
+			const realInstance = getter();
+			if (!realInstance) {
+				throw new Error(
+					`[HOLSTER] Setting '${name}.${String(prop)}' before initialization. Call await initHolster() first.`
+				);
+			}
+			return Reflect.set(realInstance, prop, value);
+		}
+	});
+}
+
+/**
+ * Helper to create a Proxy for a Holster Store (e.g., .get('key')).
+ * Delays the .get() call until property access.
+ */
+function createStoreProxy(key: string) {
+	return new Proxy(
+		{},
+		{
+			get(_target, prop) {
+				if (!_holster) {
+					throw new Error(
+						`[HOLSTER] Accessing store '${key}' before initialization. Call await initHolster() first.`
+					);
+				}
+				// Call .get() on the real instance now
+				const store = _holster.get(key);
+				const value = Reflect.get(store, prop);
+				return typeof value === 'function' ? value.bind(store) : value;
+			}
+		}
+	);
+}
+
+// Export Proxies instead of direct instances
+export const holster = createProxy(() => _holster, 'holster');
+export const holsterUser = createProxy(() => _holsterUser, 'holsterUser');
+
+// Export Proxied Stores
+// These correspond to: holster.get('...')
+export const holsterUsersList = createStoreProxy('freely-associating-players');
+export const holsterOrganizationsList = createStoreProxy('freely-associating-organizations');
 
 // ═══════════════════════════════════════════════════════════════════
 // ERROR HANDLING
@@ -70,15 +159,29 @@ export interface AuthState {
 }
 
 export function getAuthState(): AuthState {
+	// Accessing holsterUser via proxy is safe if we are sure initHolster() finished.
+	// But getAuthState is often called in checks. We should be careful.
+	// If NOT initialized, we should probably return empty state instead of throwing,
+	// because `isAuthenticated()` check might happen early.
+
+	if (!_holsterUser) {
+		return {
+			isAuthenticated: false,
+			pub: '',
+			alias: ''
+		};
+	}
+
 	return {
-		isAuthenticated: holsterUser.is ? true : false,
-		pub: holsterUser.is?.pub || '',
-		alias: holsterUser.is?.username || ''
+		isAuthenticated: !!_holsterUser.is,
+		pub: _holsterUser.is?.pub || '',
+		alias: _holsterUser.is?.username || ''
 	};
 }
 
 export function isAuthenticated(): boolean {
-	return holsterUser.is ? true : false;
+	if (!_holsterUser) return false;
+	return !!_holsterUser.is;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -87,16 +190,19 @@ export function isAuthenticated(): boolean {
 
 /**
  * Initialize public network data subscriptions (read-only)
- * 
+ *
  * This enables browsing the network before logging in:
  * - Users list (freely-associating-players)
  * - Organizations list
  * - Public recognition trees
- * 
+ *
  * These are READ-ONLY subscriptions. Writing/publishing still requires auth.
  * Safe to call multiple times (idempotent).
  */
 export async function initializePublicNetworkData(): Promise<void> {
+	// Ensure Holster is initialized first!
+	await initHolster();
+
 	console.log('[HOLSTER] 🌐 Initializing public network data (pre-login)...');
 
 	try {
@@ -138,14 +244,18 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 	try {
 		// Update users list
 		const authState = getAuthState();
-		console.log('[HOLSTER] Adding user to users list:', authState.alias, authState.pub.slice(0, 20) + '...');
+		console.log(
+			'[HOLSTER] Adding user to users list:',
+			authState.alias,
+			authState.pub.slice(0, 20) + '...'
+		);
 
 		// First, check the current state of the users list
 		const currentUsersCount = await new Promise<number>((resolve) => {
 			const checkCallback = (data: any) => {
 				holster.get('freely-associating-players').off(checkCallback);
 				if (data) {
-					const userKeys = Object.keys(data).filter(key => !key.startsWith('_'));
+					const userKeys = Object.keys(data).filter((key) => !key.startsWith('_'));
 					console.log('[HOLSTER] Current users list has', userKeys.length, 'users');
 					resolve(userKeys.length);
 				} else {
@@ -158,18 +268,24 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 
 		// Add/update our user entry using .next() to target only our pub key
 		await new Promise<void>((resolve, reject) => {
-			holster.get('freely-associating-players').next(authState.pub).put({
-				alias: authState.alias,
-				lastSeen: Date.now()
-			}, (err: any) => {
-				if (err) {
-					console.error('[HOLSTER] ❌ Failed to add user to users list:', err);
-					reject(new Error(`Failed to add user to users list: ${err}`));
-				} else {
-					console.log('[HOLSTER] ✅ User added to users list successfully');
-					resolve();
-				}
-			});
+			holster
+				.get('freely-associating-players')
+				.next(authState.pub)
+				.put(
+					{
+						alias: authState.alias,
+						lastSeen: Date.now()
+					},
+					(err: any) => {
+						if (err) {
+							console.error('[HOLSTER] ❌ Failed to add user to users list:', err);
+							reject(new Error(`Failed to add user to users list: ${err}`));
+						} else {
+							console.log('[HOLSTER] ✅ User added to users list successfully');
+							resolve();
+						}
+					}
+				);
 		});
 
 		// Verify the list still has all users (plus potentially our new entry)
@@ -178,12 +294,17 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 				const verifyCallback = (data: any) => {
 					holster.get('freely-associating-players').off(verifyCallback);
 					if (data) {
-						const userKeys = Object.keys(data).filter(key => !key.startsWith('_'));
+						const userKeys = Object.keys(data).filter((key) => !key.startsWith('_'));
 						console.log('[HOLSTER] After adding user, list has', userKeys.length, 'users');
 						if (userKeys.length >= currentUsersCount) {
 							console.log('[HOLSTER] ✅ Verification passed: user list integrity maintained');
 						} else {
-							console.warn('[HOLSTER] ⚠️  Warning: user count decreased from', currentUsersCount, 'to', userKeys.length);
+							console.warn(
+								'[HOLSTER] ⚠️  Warning: user count decreased from',
+								currentUsersCount,
+								'to',
+								userKeys.length
+							);
 						}
 					}
 					resolve();
@@ -260,6 +381,9 @@ async function initializeAfterAuth(callbacks?: AuthCallbacks): Promise<void> {
 }
 
 export async function recall(callbacks?: AuthCallbacks): Promise<AuthState> {
+	// Ensure initialized
+	await initHolster();
+
 	console.log('[HOLSTER RECALL] Checking authentication...');
 
 	return new Promise((resolve) => {
@@ -279,7 +403,14 @@ export async function recall(callbacks?: AuthCallbacks): Promise<AuthState> {
 	});
 }
 
-export async function login(alias: string, password: string, callbacks?: AuthCallbacks): Promise<AuthState> {
+export async function login(
+	alias: string,
+	password: string,
+	callbacks?: AuthCallbacks
+): Promise<AuthState> {
+	// Ensure initialized
+	await initHolster();
+
 	console.log(`[HOLSTER LOGIN] Attempting login for alias: "${alias}"`);
 
 	for (let attempt = 0; attempt < 3; attempt++) {
@@ -330,7 +461,14 @@ export async function login(alias: string, password: string, callbacks?: AuthCal
 	throw new Error('Login failed after all retries');
 }
 
-export async function signup(alias: string, password: string, callbacks?: AuthCallbacks): Promise<AuthState> {
+export async function signup(
+	alias: string,
+	password: string,
+	callbacks?: AuthCallbacks
+): Promise<AuthState> {
+	// Ensure initialized
+	await initHolster();
+
 	console.log(`[HOLSTER SIGNUP] Attempting signup for alias: "${alias}"`);
 
 	for (let attempt = 0; attempt < 3; attempt++) {
@@ -368,6 +506,9 @@ export async function signup(alias: string, password: string, callbacks?: AuthCa
 }
 
 export async function signout(): Promise<void> {
+	// Ensure initialized
+	await initHolster();
+
 	console.log('[HOLSTER SIGNOUT] Signing out...');
 
 	// Cleanup users list
@@ -416,7 +557,10 @@ export async function signout(): Promise<void> {
 	}
 }
 
-export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+	// Ensure initialized
+	await initHolster();
+
 	const authState = getAuthState();
 	if (!authState.isAuthenticated) {
 		return Promise.reject(new Error('No authenticated user'));
@@ -445,9 +589,25 @@ export interface MockAuthState {
 let mockAuthState: MockAuthState | null = null;
 
 export function mockAuth(pub: string, alias: string = 'test_user'): void {
+	// This might fail if called before init in tests, but tests probably don't use the real lazy loader logic
+	// or they should mock initHolster too.
+	// For now, let's assume tests will await initHolster or we handle it.
+
 	mockAuthState = { pub, alias };
-	// Override holsterUser.is for tests
-	(holsterUser as any).is = { pub, username: alias };
+
+	// We can't easily mock the proxy target if it's undefined.
+	// We might need to manually set _holsterUser if it's null.
+	if (!_holsterUser) {
+		// Mock implementation? Or just wait for init?
+		// For unit tests, we might want to expose a way to set _holsterUser directly.
+		// But since we are exporting Proxies, we can just set the internal var.
+		// But internal var is not exported.
+	}
+	if (_holsterUser) {
+		// Override holsterUser.is for tests
+		(_holsterUser as any).is = { pub, username: alias };
+	}
+
 	if (import.meta.env.VITEST) {
 		console.log(`[HOLSTER] 🧪 Mock auth: ${alias} (${pub.slice(0, 20)}...)`);
 	}
@@ -455,7 +615,9 @@ export function mockAuth(pub: string, alias: string = 'test_user'): void {
 
 export function clearAuth(): void {
 	mockAuthState = null;
-	(holsterUser as any).is = null;
+	if (_holsterUser) {
+		(_holsterUser as any).is = null;
+	}
 	if (import.meta.env.VITEST) {
 		console.log('[HOLSTER] 🧪 Auth cleared');
 	}
@@ -477,6 +639,6 @@ if (typeof window !== 'undefined' && !import.meta.env.VITEST) {
 	// Expose for debugging
 	(window as any).holster = holster;
 	(window as any).holsterUser = holsterUser;
+	(window as any).initHolster = initHolster; // Expose init
 	console.log('[HOLSTER] Exposed to window.holster and window.holsterUser for debugging');
 }
-

@@ -51,7 +51,7 @@ export function setLocationTracking(isTracking: boolean) {
 export function setLocationError(error: string | null) {
 	locationError.set(error);
 	if (error) {
-		console.error('[LIVE-LOCATION] Error:', error);
+		console.log('[LIVE-LOCATION] Error:', error);
 	}
 }
 
@@ -83,7 +83,7 @@ export const liveLocationAccessList = derived(
 		// 1. Who received allocations from my capacity slots
 		// 2. Filter to only those with active/valid allocations
 		// 3. Return their public keys
-		
+
 		console.log('[LIVE-LOCATION-ACCESS] V5 allocation integration pending - access list empty');
 		return [];
 	}

@@ -33,17 +33,19 @@ function clearStores(): void {
 // BROWSER INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════════════════
-// BROWSER INITIALIZATION
-// ═══════════════════════════════════════════════════════════════════
-
 /**
  * Initialize Holster Authentication
  * 
  * Starts the authentication check process. This should be called once at startup.
  * Returns a cleanup function (though traditionally auth listeners persist).
  */
-export function initializeAuth(): () => void {
+/**
+ * Initialize Holster Authentication
+ * 
+ * Starts the authentication check process. This should be called once at startup.
+ * Returns a cleanup function (though traditionally auth listeners persist).
+ */
+export async function initializeAuth(): Promise<() => void> {
 	if (typeof window === 'undefined' || import.meta.env.VITEST) {
 		isHolsterAuthenticating.set(false);
 		return () => { };
@@ -55,6 +57,9 @@ export function initializeAuth(): () => void {
 		console.log('[TRACE] [ENTER] src/lib/network/holster.svelte.ts: checkAuth');
 		try {
 			isHolsterAuthenticating.set(true);
+
+			// Ensure Holster is initialized before using it
+			await holsterCore.initHolster();
 
 			const authState = await holsterCore.recall({
 				onSuccess: (state) => {
@@ -78,7 +83,7 @@ export function initializeAuth(): () => void {
 		console.log('[TRACE] [EXIT] src/lib/network/holster.svelte.ts: checkAuth');
 	};
 
-	checkAuth();
+	await checkAuth();
 
 	// In the future, if holsterCore has a listener, we would subscribe here.
 	// For now, recall() is a one-time check, so we essentially just run it.

@@ -21,7 +21,7 @@ const SERVICES = {
 
 let isInitialized = false;
 
-export function initializeProtocol() {
+export async function initializeProtocol() {
     if (!browser) return;
     if (isInitialized) {
         console.warn('[STARTUP] Protocol already initialized, skipping.');
@@ -32,7 +32,9 @@ export function initializeProtocol() {
     isInitialized = true;
 
     // 1. Auth Service
-    SERVICES.auth = initializeAuth();
+    // We MUST await this because it initializes the Holster proxy target.
+    // Without this wait, subsequent services (stores) will crash when accessing Holster.
+    SERVICES.auth = await initializeAuth();
 
     // 2. Data Service (Persistent Stores + Sync)
     SERVICES.stores = startStoreService();

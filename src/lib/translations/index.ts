@@ -69,13 +69,13 @@ export const config = {
     {
       locale: 'en',
       key: 'map',
-      routes: [/\/map.*/],
+      routes: [/\/map.*/, '/'],
       loader: async () => (await import('./en/map.json')).default,
     },
     {
       locale: 'en',
       key: 'tree',
-      routes: [/\/tree.*/, /\/org.*/],
+      routes: [/\/tree.*/, /\/org.*/, '/'],
       loader: async () => (await import('./en/tree.json')).default,
     },
     {
@@ -137,13 +137,13 @@ export const config = {
     {
       locale: 'pt',
       key: 'map',
-      routes: [/\/map.*/],
+      routes: [/\/map.*/, '/'],
       loader: async () => (await import('./pt/map.json')).default,
     },
     {
       locale: 'pt',
       key: 'tree',
-      routes: [/\/tree.*/, /\/org.*/],
+      routes: [/\/tree.*/, /\/org.*/, '/'],
       loader: async () => (await import('./pt/tree.json')).default,
     },
     {
