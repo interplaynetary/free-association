@@ -18,6 +18,7 @@
 		FullScreenControl
 	} from 'svelte-maplibre-gl';
 	import maplibregl from 'maplibre-gl';
+    import * as h3 from 'h3-js';
 	// V5: Import commitments (contains capacity slots) from v5 stores
 	import { getAllCommitmentsRecord, myCommitmentStore, networkCommitments } from '$lib/protocol/stores/stores.svelte';
 	import { get } from 'svelte/store';
@@ -40,6 +41,8 @@
 		isLocationTracking
 	} from '$lib/location/location.svelte';
 	import MapSidePanel from './MapSidePanel.svelte';
+	import H3Layer from './maps/H3Layer.svelte';
+    import HexNode from './ui/HexNode.svelte';
 
 	interface Props {
 		// Map now shows read-only share slots, no update functionality needed
@@ -57,6 +60,32 @@
 	let isGlobeMode = $state(true);
 	// Fullscreen is now handled by FullScreenControl component
 	let isControlsExpanded = $state(false);
+	let showH3Layer = $state(false);
+    let selectedH3Cells: string[] = $state([]);
+    // Derived state for selection tree
+    let selectedH3Set = $derived(new Set(selectedH3Cells));
+    let selectedH3RootNodes = $derived(
+        selectedH3Cells.filter(cell => {
+            try {
+                const res = h3.getResolution(cell);
+                if (res === 0) return true; // Res 0 is always a root
+
+                // Check all possible ancestors
+                for (let r = res - 1; r >= 0; r--) {
+                    const ancestor = h3.cellToParent(cell, r);
+                    if (selectedH3Set.has(ancestor)) {
+                        return false; // Found an ancestor in the selection, so I am NOT a root
+                    }
+                }
+            } catch(e) { return true; }
+            return true;
+        }).sort((a, b) => {
+             // Sort by resolution (low/coarse first) then index
+            const resA = h3.getResolution(a);
+            const resB = h3.getResolution(b);
+            return resA - resB || a.localeCompare(b);
+        })
+    );
 
 
 
@@ -190,7 +219,7 @@
 				) || false;
 				const matchesProvider = marker.providerName?.toLowerCase().includes(searchTerm);
 
-				matchesText = matchesSlotName || matchesProvider;
+				matchesText = matchesSlotName || (matchesProvider ?? false);
 			}
 
 			// Time filter is already applied at the filteredMarkers level
@@ -1490,6 +1519,28 @@
 		return { recurring, currentFuture, past };
 	}
 
+	// H3 Interaction
+    function handleH3CellClick(cell: string) {
+        if (!map) return;
+        const [lat, lng] = h3.cellToLatLng(cell);
+        const res = h3.getResolution(cell);
+        
+        // Dynamic zoom level based on resolution
+        // Res 0 -> Zoom 2
+        // Res 5 -> Zoom ~8-9
+        // Res 10 -> Zoom ~14-15
+        // Res 13 -> Zoom ~18
+        // Heuristic: Zoom = Res + 4 (clamped)
+        const targetZoom = Math.min(20, Math.max(3, res + 4.5));
+        
+        map.flyTo({
+            center: [lng, lat],
+            zoom: targetZoom, 
+            pitch: 0, 
+            essential: true
+        });
+    }
+
 	// Geolocation event handlers
 	function handleGeolocate(event: GeolocationPosition) {
 		updateLocation(event.coords, event.timestamp);
@@ -1563,16 +1614,16 @@
 				horizon-color="#0090c0"
 				fog-color="#ffffff"
 				sky-horizon-blend={0.9}
-				horizon-fog-blend={0.8}
-				fog-ground-blend={0.7}
-				atmosphere-blend={['interpolate', ['linear'], ['zoom'], 2, 0.8, 4, 0.3, 7, 0]}
+				horizon-fog-blend={0.5}
+				fog-ground-blend={0}
+				atmosphere-blend={0}
 			/>
 			<GeolocateControl
 				position="bottom-right"
 				positionOptions={{ enableHighAccuracy: true }}
 				trackUserLocation={true}
 				showAccuracyCircle={true}
-				autoTrigger={true}
+				autoTrigger={false}
 				ontrackuserlocationstart={handleTrackUserLocationStart}
 				ontrackuserlocationend={handleTrackUserLocationEnd}
 				ongeolocate={handleGeolocate}
@@ -1637,6 +1688,16 @@
 							title={$t('map.toggle_terrain')}
 						>
 							<span>🏔️</span>
+						</button>
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								showH3Layer = !showH3Layer;
+							}}
+							title="Toggle H3 Layer"
+							class:active={showH3Layer}
+						>
+							<span>⬡</span>
 						</button>
 					</div>
 				{/if}
@@ -1812,6 +1873,11 @@
 					}}
 				/>
 			{/if}
+			{#if showH3Layer}
+				<H3Layer {map} visible={showH3Layer} onselect={(cells) => { selectedH3Cells = cells; }} />
+			{/if}
+
+            <!-- H3 Selection UI is now handled inside MapSidePanel -->
 		</MapLibre>
 
 		<MapSidePanel
@@ -1824,6 +1890,12 @@
 			searchSortBy={globalState.searchSortBy}
 			onSearchResultClick={handleSearchResultClick}
 			onSortChange={handleSortChange}
+            
+            enableH3Selection={showH3Layer}
+            selectedH3RootNodes={selectedH3RootNodes}
+            selectedH3Set={selectedH3Set}
+            onH3Click={handleH3CellClick}
+            onH3Clear={() => selectedH3Cells = []}
 			currentLocation={$currentLocation}
 			{isClusterViewMode}
 			{clusterViewResults}

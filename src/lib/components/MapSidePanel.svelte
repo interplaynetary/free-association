@@ -16,6 +16,7 @@
 		hasAddressComponents
 	} from '$lib/utils/formatting';
 	import { getNeedTypeLabel, getNeedTypeEmoji } from '$lib/protocol/needTypes-local';
+    import HexNode from './ui/HexNode.svelte';
 
 	interface Props {
 		markerData: GroupedSlotMarkerData | ClusterMarkerData | null;
@@ -32,6 +33,13 @@
 		isClusterViewMode?: boolean;
 		clusterViewResults?: GroupedSlotMarkerData[];
 		onClusterResultClick?: (marker: GroupedSlotMarkerData) => void;
+        
+        // H3 Selection Props
+        enableH3Selection?: boolean;
+        selectedH3RootNodes?: string[];
+        selectedH3Set?: Set<string>;
+        onH3Click?: (cell: string) => void;
+        onH3Clear?: () => void;
 	}
 
 	let {
@@ -47,7 +55,13 @@
 		currentLocation,
 		isClusterViewMode = false,
 		clusterViewResults = [],
-		onClusterResultClick
+		onClusterResultClick,
+        
+        enableH3Selection = false,
+        selectedH3RootNodes = [],
+        selectedH3Set = new Set(),
+        onH3Click,
+        onH3Clear
 	}: Props = $props();
 
 	let searchInputElement: HTMLInputElement | undefined = $state();
@@ -933,6 +947,30 @@
 		<!-- Default state when no marker selected: Just show search bar -->
 		<!-- No empty state message needed, keeps it clean and floating -->
 	{/if}
+    <!-- H3 Selection Panel (Fixed at Bottom with auto-included HexNode) -->
+    {#if enableH3Selection && selectedH3RootNodes && selectedH3RootNodes.length > 0}
+        <div class="h3-selection-footer sticky bottom-0 bg-surface-100-800-token border-t border-surface-200-700-token p-4 z-50 rounded-t-lg shadow-lg">
+            <header class="flex justify-between items-center mb-4">
+                 <div class="text-sm font-bold flex items-center gap-2">
+                    <span class="text-xl">⬡</span> 
+                    <span>Selection ({selectedH3Set.size})</span>
+                 </div>
+                 {#if onH3Clear}
+                    <button class="btn btn-sm variant-soft-surface" onclick={onH3Clear}>Clear</button>
+                 {/if}
+            </header>
+            
+            <div class="flex flex-wrap gap-4 justify-center max-h-[300px] overflow-y-auto p-2 bg-surface-50-900-token rounded-container-token inner-shadow">
+                {#each selectedH3RootNodes as root}
+                    <HexNode 
+                        cell={root} 
+                        allSelected={selectedH3Set} 
+                        onClick={onH3Click} 
+                    />
+                {/each}
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
