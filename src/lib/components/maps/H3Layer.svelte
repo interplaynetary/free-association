@@ -2,6 +2,7 @@
 	import * as h3 from 'h3-js';
 	import type { Map as MapLibreMap } from 'maplibre-gl';
     import { onMount } from 'svelte';
+    import { h3ToColorWithAlpha } from '$lib/utils/h3Colors';
 
 	interface Props {
 		map?: MapLibreMap;
@@ -198,10 +199,17 @@
         if (selectedCells.size > 0) {
              ctx.strokeStyle = '#ffffff'; // White stroke
              ctx.lineWidth = 3;
-             ctx.fillStyle = 'rgba(79, 70, 229, 0.5)'; // Brighter fill
              
-             ctx.beginPath();
-             for (const cell of selectedCells) {
+             // Sort by resolution ascending (Low Res = Large Cells = Draw First)
+             const sortedSelection = Array.from(selectedCells).sort((a, b) => {
+                 return h3.getResolution(a) - h3.getResolution(b);
+             });
+             
+             for (const cell of sortedSelection) {
+                // Use hash-based color for each cell
+                ctx.fillStyle = h3ToColorWithAlpha(cell, 0.5);
+                ctx.beginPath();
+                
                 const [lat, lng] = h3.cellToLatLng(cell);
                 
                 // For selected cells, we might want to draw them even if they are technically 'Back facing' if they are close to edge?
@@ -219,10 +227,10 @@
                         }
                     }
                     ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
                 }
              }
-             ctx.stroke();
-             ctx.fill();
         }
     }
 

@@ -43,6 +43,7 @@
 	import MapSidePanel from './MapSidePanel.svelte';
 	import H3Layer from './maps/H3Layer.svelte';
     import HexNode from './ui/HexNode.svelte';
+    import H3HierarchyGraph from './ui/H3HierarchyGraph.svelte';
 
 	interface Props {
 		// Map now shows read-only share slots, no update functionality needed
@@ -1880,6 +1881,17 @@
             <!-- H3 Selection UI is now handled inside MapSidePanel -->
 		</MapLibre>
 
+		<!-- H3 Hierarchy Graph - Bottom Left Control -->
+		{#if showH3Layer && selectedH3Cells.length > 0}
+			<div class="h3-graph-control">
+				<H3HierarchyGraph 
+					selectedCells={selectedH3Set}
+					onClick={handleH3CellClick}
+					onHover={(cell) => { /* Optional hover effect */ }}
+				/>
+			</div>
+		{/if}
+
 		<MapSidePanel
 			markerData={selectedMarker}
 			onClose={handleSidePanelClose}
@@ -2344,5 +2356,16 @@
 	/* Ensure map container establishes proper sizing context */
 	:global(.maplibregl-map) {
 		position: relative;
+	}
+
+	/* H3 Graph Control - Bottom Left */
+	.h3-graph-control {
+		position: absolute;
+		bottom: 10px;
+		left: 10px;
+		z-index: 10;
+		pointer-events: auto;
+		max-width: 400px;
+		max-height: 50vh;
 	}
 </style>
