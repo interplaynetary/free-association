@@ -19,32 +19,25 @@ class NavigationService {
 
 	constructor() {
 		console.log('[TRACE] src/lib/services/navigation.svelte.ts: constructor');
-		if (browser && !this.isInitialized) {
-			// Wait for SvelteKit router to be ready before initializing
-			// Use a longer delay to ensure router is mounted
-			setTimeout(() => {
-				this.initialize();
-			}, 1000);
-		}
 	}
 
-	private initialize() {
+	public initialize() {
 		console.log('[TRACE] src/lib/services/navigation.svelte.ts: initialize');
 		if (this.isInitialized) return;
 
 		console.log('[NAVIGATION-SERVICE] Initializing navigation service');
 		this.isInitialized = true;
-
 		// Set up event listeners
 		this.setupKeyboardListeners();
 		this.setupHistoryListeners();
 
-		// Delay initial history push further to ensure router is ready
+		// Defer initial history setup to ensure SvelteKit router is fully hydrated
+		// onMount is sometimes slightly too early for pushState
 		setTimeout(() => {
 			this.routerReady = true;
-			this.routerReady = true;
 			this.setupInitialHistory();
-		}, 1500);
+		}, 100);
+
 		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: initialize');
 	}
 
@@ -100,7 +93,7 @@ class NavigationService {
 
 			// Push a new state to maintain the current position
 			// This prevents the browser from actually going back
-			this.safePushState(window.location.href, {});
+			this.safePushState('', {});
 		}
 		// If we can't handle the back action, let the browser handle it normally
 		console.log('[TRACE] [EXIT] src/lib/services/navigation.svelte.ts: handlePopState');
@@ -152,7 +145,7 @@ class NavigationService {
 		console.log('[TRACE] src/lib/services/navigation.svelte.ts: setupInitialHistory');
 		if (!this.initialHistoryPushed) {
 			// Push initial state to ensure back button can be intercepted
-			this.safePushState(window.location.href, {});
+			this.safePushState('', {});
 			this.initialHistoryPushed = true;
 			console.log('[NAVIGATION-SERVICE] Initial history state pushed');
 		}

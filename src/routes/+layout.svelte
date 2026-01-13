@@ -7,8 +7,16 @@
 	import type { LayoutProps } from './$types';
 	import { globalState } from '$lib/global.svelte';
 	
+	import { onMount } from 'svelte';
+	import { navigationService } from '$lib/services/navigation.svelte';
+
 	// Layout props
 	let { children }: LayoutProps = $props();
+
+	onMount(() => {
+		// Initialize navigation service when router is ready
+		navigationService.initialize();
+	});
 </script>
 
 <main>
