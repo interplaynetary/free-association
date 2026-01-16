@@ -153,6 +153,7 @@
 		"pako": "^2.1.0",
 		"pmtiles": "^4.3.0",
 		"push.js": "^1.0.12",
+		"random-emoji-picker": "^1.0.1",
 		"react": "^19.2.0",
 		"resend": "^6.6.0",
 		"shadcn-svelte": "^1.1.0",

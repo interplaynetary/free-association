@@ -21,10 +21,9 @@
 	import { collectiveForest } from '$lib/protocol/stores/collective-tree.svelte';
     import { types } from '$lib/protocol/needTypes-local';
     import { myNeedSlotsStore, setMyNeedSlots } from '$lib/protocol/stores/stores.svelte';
-    import { outsideClick } from '$lib/actions/outsideClick';
-	import { emojiPicker } from '$lib/actions/emojiPicker';
 	import TimePatternEditor from '$lib/components/slots/TimePatternEditor.svelte';
 	import LocationEditor, { type LocationData } from '$lib/components/slots/LocationEditor.svelte';
+	import EmojiPicker from '$lib/components/EmojiPicker.svelte';
     import { slide } from 'svelte/transition';
 	
 	// V5: Wrap Commitment with id for collection storage
@@ -48,7 +47,8 @@
 	} from '$lib/utils/ui/colorUtils';
 	import { t } from '$lib/translations';
 
-    console.log('[TRACE] src/lib/components/ToolBar.svelte: <module scope>');
+
+	console.log('[TRACE] src/lib/components/ToolBar.svelte: <module scope>');
 
 
 	// V5: Create derived stores for backward compatibility
@@ -766,9 +766,9 @@
 
     // Expanded Draft Panel State
     let showExpandedDraft = $state(false);
-    let expandedDraftTab = $state<'time' | 'location'>('time');
+    let expandedDraftTab = $state<'time' | 'location' | 'emoji'>('time');
 
-    function toggleExpandedDraft(tab: 'time' | 'location') {
+    function toggleExpandedDraft(tab: 'time' | 'location' | 'emoji') {
         if (showExpandedDraft && expandedDraftTab === tab) {
             showExpandedDraft = false;
         } else {
@@ -978,21 +978,7 @@
 
 								<!-- Quantity & Emoji -->
 								<div class="draft-qty-group">
-									<div class="relative">
-										<button 
-											class="emoji-btn"
-											onclick={(e) => { e.preventDefault(); e.stopPropagation(); showEmojiPicker = !showEmojiPicker; }}
-										>
-											{draftSlot.emoji}
-										</button>
-										{#if showEmojiPicker}
-											<div 
-												class="emoji-picker-container"
-												use:outsideClick={() => showEmojiPicker = false}
-												use:emojiPicker={{ onClick: (e) => { draftSlot.emoji = e; showEmojiPicker = false; } }}
-											></div>
-										{/if}
-									</div>
+									<span class="emoji-display">{draftSlot.emoji}</span>
 									<input 
 										type="number" 
 										bind:value={draftSlot.quantity} 
@@ -1003,6 +989,14 @@
 
 								<!-- Expanded Draft Toggles -->
 								<div class="draft-expander-group">
+									<button 
+										class="toolbar-button expand-btn"
+										class:active={showExpandedDraft && expandedDraftTab === 'emoji'}
+										title="Choose Emoji"
+										onclick={() => toggleExpandedDraft('emoji')}
+									>
+										{draftSlot.emoji}
+									</button>
 									<button 
 										class="toolbar-button expand-btn"
 										class:active={showExpandedDraft && expandedDraftTab === 'time'}
@@ -1039,12 +1033,14 @@
 						{#if showExpandedDraft}
 							<div class="expanded-draft-panel" transition:slide={{ axis: 'y', duration: 200 }}>
 								<div class="expanded-header">
-									<h4>{expandedDraftTab === 'time' ? 'Time Details' : 'Location Details'}</h4>
+									<h4>{expandedDraftTab === 'time' ? 'Time Details' : expandedDraftTab === 'location' ? 'Location Details' : 'Choose Emoji'}</h4>
 									<button class="close-expanded-btn" onclick={() => showExpandedDraft = false}>✕</button>
 								</div>
 								
 								<div class="expanded-content">
-									{#if expandedDraftTab === 'time'}
+									{#if expandedDraftTab === 'emoji'}
+										<EmojiPicker onSelect={(emoji) => { draftSlot.emoji = emoji; showExpandedDraft = false; }} />
+									{:else if expandedDraftTab === 'time'}
 										<TimePatternEditor 
 											recurrence={draftSlot.recurrence as any}
 											startDate={null}
@@ -2106,6 +2102,13 @@
 		padding: 0 4px;
 		cursor: pointer;
         line-height: 1;
+	}
+
+	.emoji-display {
+		font-size: 14px;
+		padding: 0 4px;
+		line-height: 1;
+		display: inline-block;
 	}
 
     .emoji-picker-container {

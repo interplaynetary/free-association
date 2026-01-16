@@ -38,12 +38,24 @@
 		setLocationError,
 		currentLocation,
 		currentLocationText,
-		isLocationTracking
+		isLocationTracking,
+		networkLocationsArray,
+		startLocationSimulator,
+		stopLocationSimulator,
+		isSimulatorActive,
+		simulatedTrips,
+		LOOP_DURATION,
+		TRAIL_LENGTH,
+		type TripData
 	} from '$lib/location/location.svelte';
+	import { MapboxOverlay } from '@deck.gl/mapbox';
+	import { TripsLayer } from '@deck.gl/geo-layers';
+	import { PathLayer } from '@deck.gl/layers';
 	import MapSidePanel from './MapSidePanel.svelte';
 	import H3Layer from './maps/H3Layer.svelte';
-    import HexNode from './ui/HexNode.svelte';
-    import H3HierarchyGraph from './ui/H3HierarchyGraph.svelte';
+	import HexNode from './ui/HexNode.svelte';
+	import H3HierarchyGraph from './ui/H3HierarchyGraph.svelte';
+	import NetworkLocationMarker from './maps/NetworkLocationMarker.svelte';
 
 	interface Props {
 		// Map now shows read-only share slots, no update functionality needed
@@ -56,6 +68,7 @@
 	let mode: 'source' = $state('source');
 	let show3DBuildings = $state(false);
 	let map: maplibregl.Map | undefined = $state.raw();
+	let deckOverlay: MapboxOverlay | undefined = $state.raw();
 	let pitch = $state(0);
 	let isTerrainVisible = $state(false);
 	let isGlobeMode = $state(true);
@@ -663,6 +676,85 @@
 			return () => {
 				mapInstance.off('zoomend', handleZoomEnd);
 			};
+		}
+	});
+
+	// DeckGL Overlay & Animation
+	let deckTime = $state(0);
+	
+	// Animation loop for smooth trails
+	$effect(() => {
+		if (!$simulatedTrips.length) return;
+
+		let frameId: number;
+		const animate = () => {
+			deckTime = (Date.now() / 1000) % LOOP_DURATION;
+			frameId = requestAnimationFrame(animate);
+		};
+		frameId = requestAnimationFrame(animate);
+		
+		return () => cancelAnimationFrame(frameId);
+	});
+
+	// Initialize and update DeckGL Overlay
+	$effect(() => {
+		if (!map) return;
+
+		// Initialize overlay once
+		if (!deckOverlay) {
+			console.log('[Map] Initializing DeckGL Overlay');
+			deckOverlay = new MapboxOverlay({
+				interleaved: false, // Force separate canvas to ensure "Always On Top" visibility
+				layers: []
+			});
+			map.addControl(deckOverlay as any);
+		}
+
+		const trips = $simulatedTrips;
+		
+		if (trips.length > 0) {
+			// Create PathLayer for full static trajectory
+			const pathLayer = new PathLayer<TripData>({
+				id: 'path-layer',
+				data: trips,
+				getPath: (d: TripData) => d.waypoints.map(p => p.coords),
+				getColor: (d: TripData) => [...d.color, 80], // Same color but with 30% opacity (80/255)
+				widthMinPixels: 2,
+				widthScale: 1,
+				rounded: true,
+				parameters: {
+					depthTest: false // Always draw on top
+				}
+			});
+
+			// Create TripsLayer
+			// We duplicate data for seamless wrapping if needed, but for now simple loop is fine
+			const tripsLayer = new TripsLayer<TripData>({
+				id: 'trips-layer',
+				data: trips,
+				getPath: (d: TripData) => d.waypoints.map(p => p.coords),
+				getTimestamps: (d: TripData) => d.waypoints.map(p => p.timestamp),
+				getColor: (d: TripData) => d.color,
+				opacity: 0.8,
+				widthMinPixels: 4,
+				rounded: true,
+				fadeTrail: true,
+				trailLength: TRAIL_LENGTH, // Use shared constant
+				currentTime: deckTime - 0.4, // Sync with marker tween lag (~400ms)
+				shadowEnabled: false,
+				parameters: {
+					depthTest: false // Always draw on top to avoid clipping/z-fighting
+				}
+			});
+
+			deckOverlay.setProps({
+				layers: [pathLayer, tripsLayer] // PathLayer first (bottom), then TripsLayer (top)
+			});
+		} else {
+			// Clear layers if no trips
+			deckOverlay.setProps({
+				layers: []
+			});
 		}
 	});
 
@@ -1698,7 +1790,25 @@
 							title="Toggle H3 Layer"
 							class:active={showH3Layer}
 						>
-							<span>⬡</span>
+							<span>🔷</span>
+						</button>
+						<button
+							class="map-control-btn"
+							onclick={() => {
+								if ($isSimulatorActive) {
+									stopLocationSimulator();
+								} else {
+									// Get current map center
+									const center = map?.getCenter();
+									startLocationSimulator({
+										center: center ? [center.lat, center.lng] : undefined
+									});
+								}
+							}}
+							title={$isSimulatorActive ? 'Stop Location Simulator' : 'Start Location Simulator'}
+							class:active={$isSimulatorActive}
+						>
+							<span>{$isSimulatorActive ? '⏹' : '▶️'}</span>
 						</button>
 					</div>
 				{/if}
@@ -1836,6 +1946,15 @@
 						{/snippet}
 					</Marker>
 				{/if}
+			{/each}
+
+			<!-- Network location markers (from simulator or live data) -->
+			{#each $networkLocationsArray as networkLoc (networkLoc.pubkey)}
+				<NetworkLocationMarker 
+					location={networkLoc} 
+					pubkey={networkLoc.pubkey}
+					draggable={false}
+				/>
 			{/each}
 
 			{#if show3DBuildings}

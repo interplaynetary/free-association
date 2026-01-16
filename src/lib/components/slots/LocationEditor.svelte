@@ -2,10 +2,11 @@
 	/**
 	 * LocationEditor - Flexible location input
 	 * 
-	 * Supports three location types:
+	 * Supports four location types:
 	 * - Specific address (street address, city, state, postal code, country)
 	 * - Coordinates (latitude, longitude)
 	 * - Online (link)
+	 * - Live (shared during availability window)
 	 * - Undefined
 	 * 
 	 * Can use presets (Home, Work) or custom locations
@@ -96,7 +97,7 @@
 	<h4 class="editor-title">📍 Location</h4>
 	
 		<div class="location-tabs">
-			{#each ['Undefined', 'Specific', 'Coordinates', 'Online'] as type}
+			{#each ['Undefined', 'Specific', 'Coordinates', 'Online', 'Live'] as type}
 				<button
 					class="tab-button {localLocationType === type ? 'active' : ''}"
 					onclick={() => {
@@ -224,6 +225,17 @@
 				/>
 			</div>
 		</div>
+	{:else if localLocationType === 'Live'}
+		<div class="live-location-info">
+			<div class="info-box">
+				<div class="info-icon">📍</div>
+				<div class="info-content">
+					<h5>Live Location Sharing</h5>
+					<p>Your current location will be shared during your 🕐 availability window</p>
+					<p class="privacy-note">Privacy: Location shared only during active availability times</p>
+				</div>
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -328,8 +340,44 @@
 	
 	.address-fields,
 	.coordinates-fields,
-	.online-fields {
+	.online-fields,
+	.live-location-info {
 		margin-top: 0.75rem;
+	}
+
+	.live-location-info .info-box {
+		display: flex;
+		gap: 1rem;
+		padding: 1rem;
+		background: #eff6ff;
+		border: 1px solid #93c5fd;
+		border-radius: 8px;
+	}
+
+	.live-location-info .info-icon {
+		font-size: 2rem;
+		line-height: 1;
+	}
+
+	.live-location-info .info-content h5 {
+		margin: 0 0 0.5rem 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #1e40af;
+	}
+
+	.live-location-info .info-content p {
+		margin: 0 0 0.25rem 0;
+		font-size: 0.8125rem;
+		color: #475569;
+		line-height: 1.4;
+	}
+
+	.live-location-info .privacy-note {
+		font-size: 0.75rem;
+		color: #64748b;
+		font-style: italic;
+		margin-top: 0.5rem;
 	}
 </style>
 

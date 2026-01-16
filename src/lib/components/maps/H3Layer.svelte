@@ -79,6 +79,20 @@
         return distanceRad < 1.45;
     }
 
+    // Check if a hexagon crosses the antimeridian (date line)
+    function crossesAntimeridian(boundary: number[][]): boolean {
+        let maxLng = -Infinity;
+        let minLng = Infinity;
+        
+        for (const [lng, lat] of boundary) {
+            if (lng > maxLng) maxLng = lng;
+            if (lng < minLng) minLng = lng;
+        }
+        
+        // If span is greater than 180 degrees, it crosses the antimeridian
+        return (maxLng - minLng) > 180;
+    }
+
     function handleClick(e: maplibregl.MapMouseEvent) {
         if (!map || !visible) return;
         const zoom = map.getZoom();
@@ -109,6 +123,10 @@
         const zoom = map.getZoom();
         const res = getResolution(zoom);
         const center = map.getCenter();
+        
+        // Check if we're in globe mode
+        const projection = map.getProjection();
+        const isGlobe = projection?.type === 'globe';
         
         // Style settings
         ctx.lineJoin = 'round';
@@ -172,15 +190,20 @@
         ctx.strokeStyle = 'rgba(79, 70, 229, 0.4)';
         ctx.fillStyle = 'rgba(79, 70, 229, 0.15)'; 
     
-        ctx.beginPath();
         for (const cell of cells) {
             // Skip selected cells in this pass
             if (selectedCells.has(cell)) continue;
 
             const [lat, lng] = h3.cellToLatLng(cell);
-            if (!isVisibleOnGlobe(lat, lng, center.lat, center.lng)) continue;
+            // Only check globe visibility if in globe mode
+            if (isGlobe && !isVisibleOnGlobe(lat, lng, center.lat, center.lng)) continue;
 
-            const boundary = h3.cellToBoundary(cell, true); 
+            const boundary = h3.cellToBoundary(cell, true);
+            
+            // Skip hexagons that cross the antimeridian (causes horizontal lines)
+            if (!isGlobe && crossesAntimeridian(boundary)) continue;
+            
+            ctx.beginPath();
             let first = true;
             for (const [lng, lat] of boundary) {
                 const p = map.project([lng, lat]);
@@ -191,9 +214,10 @@
                     ctx.lineTo(p.x, p.y);
                 }
             }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
         }
-        ctx.stroke();
-        ctx.fill();
 
         // Draw Selected Cells (On Top)
         if (selectedCells.size > 0) {
@@ -212,10 +236,15 @@
                 
                 const [lat, lng] = h3.cellToLatLng(cell);
                 
-                // For selected cells, we might want to draw them even if they are technically 'Back facing' if they are close to edge?
-                // But generally sticking to visibility rule is safer for globe.
-                if (isVisibleOnGlobe(lat, lng, center.lat, center.lng)) {
+                // Only check globe visibility if in globe mode
+                const shouldDraw = !isGlobe || isVisibleOnGlobe(lat, lng, center.lat, center.lng);
+                
+                if (shouldDraw) {
                     const boundary = h3.cellToBoundary(cell, true);
+                    
+                    // Skip hexagons that cross the antimeridian
+                    if (!isGlobe && crossesAntimeridian(boundary)) continue;
+                    
                     let first = true;
                     for (const [lng, lat] of boundary) {
                         const p = map.project([lng, lat]);

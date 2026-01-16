@@ -10,6 +10,7 @@
 	import { onMount } from 'svelte';
 	import { navigationService } from '$lib/services/navigation.svelte';
 
+
 	// Layout props
 	let { children }: LayoutProps = $props();
 

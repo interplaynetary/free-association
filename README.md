@@ -7,7 +7,7 @@
 **The Solution:** A fourth type of economic relationship based on **priority aligned capacity distribution**. This creates a self-organizing coordination system that is:
  - **Fast**: Allocations converge in seconds, not months
  - **Fair**: Mathematically guaranteed proportional distribution based on priorities
- - **Efficient**: Resources flow directly based on declared needs and priority alignment
+ - **Efficient**: Resources flow directly based on declared needs and priority contribution
 - **Decentralized**: No central authority controls outcomes or data
 
 **Try It:** [free.playnet.lol](https://free.playnet.lol) (browser-based, peer-to-peer, no installation required)
@@ -19,7 +19,7 @@ The infrastructure operates on three simple data points published by each partic
 **1. Priority Weights** - How do you prioritize the distribution of your capacity?
     - Each participant allocates 100% of weight among recipients or categories
     - Non-transferable and dynamically adjustable as priorities evolve
-    - Weights reflect strategic alignment, mission contribution, or operational necessity
+    - Weights reflect contribution, or operational necessity
     - Organized as a Prioritization tree tracking different types of support
  
  **2. Available Capacity** - What can you offer?
@@ -31,21 +31,14 @@ The infrastructure operates on three simple data points published by each partic
     - State specific requirements: Type, Quantity, Time, Location
     - Update in real-time as needs evolve
     - System caps allocations at actual declared needs (preventing accumulation)
- 
-// Reciprocity is not essential
 
- **4. Priority Reciprocity** - How reciprocity drive stability
-    - Allocations are often guided by reciprocal prioritization
-    - Example: If A prioritizes B at 50% and B prioritizes A at 10%, their reciprocal alignment is 10%
-    - This ensures resources flow to partners with shared commitment
- 
- **5. Prioritization trees** - Structured tracking of alignment/contribution
+ **4. Prioritization trees** - Structured tracking of contribution
     - Each branch represents a category (program areas, operational support, etc.)
     - Weights distributed among recipients within each branch
     - Global priority calculated from weighted contributions to priority-realization across all branches
     - Enables granular tracking while maintaining overall coherence
 
-**System handles both intangible/tangible alignment:**
+**System handles both intangible/tangible contribution:**
    - **Priorities**: Contributions toward one's goals/priorities/values do not require us to call them the same thing for allignment to occur as %'s of total-prioritization.
    - **Resources**: Concrete resources require common terminology (funding, expertise, time) to facilitate capacity-need matching
 
@@ -60,13 +53,11 @@ The infrastructure operates on three simple data points published by each partic
     - **Recipient Weights**: "I prefer X% of my support to come from you" -> Guides refined source adjustment.
  
  **2. Hard Constraints**:
-    - **Need Limits**: Allocations never exceed declared needs (no accumulation).
     - **Capacity Limits**: Allocations never exceed available capacity.
     - **Physical Units**: Respects minimum divisible units (e.g. "people" must be integers).
  
  **3. Allocation Phase 1 (Provider Constraints)**:
     - Calculates ideal weighted targets based on provider priorities.
-    - Applies need constraints (capping at declared need).
     - Distributes capacity proportionally to weights, respecting all limits.
 
  **4. Allocation Phase 2 (Recipient Refinement & Overshoot)**:
@@ -112,11 +103,8 @@ Remaining_Need(t+1) = max(0, Declared_Need(t) - Total_Received(t))
 ```
 
 **Key Properties:**
-- **Need-capped allocation**: Allocations never exceed declared needs (prevents accumulation)
 - **Proportional fairness**: Allocations strictly proportional to priority
 - **Dynamic equilibrium**: System maintains instantaneous optimality as network state evolves
-- **Contraction guarantee**: Receiving resources always reduces remaining need (holds unconditionally)
-- **Deterministic algorithm**: Same inputs always produce same allocations
 
 **Note on performance:** Reference implementation recomputes allocations in 100-200ms per state change. When network state stabilizes, needs converge to zero in O(log(1/ε)) rounds. In dynamic environments, the system continuously adapts rather than converging to a fixed point.
 
@@ -125,26 +113,10 @@ Remaining_Need(t+1) = max(0, Declared_Need(t) - Total_Received(t))
 
 ### Strategic Properties
 
-**Need Declaration Incentives:**
-
-The allocation capping mechanism creates incentives for honest need reporting:
-
-```
-Allocation(R, P) = min(Raw_Allocation(R, P), Declared_Need)
-```
-
-**Key observations:**
-- **Over-reporting** beyond actual need: Receives allocation but cannot utilize excess (Property 4: Non-Accumulative automatically reduces remaining need)
-- **Under-reporting** below actual need: Guaranteed to receive less than actual requirements
-- **Honest reporting**: Maximizes utility given current recognition network
-
 **Recognition Gaming:**
 The 100% recognition budget constraint creates self-correcting dynamics. False recognition automatically reduces recognition of beneficial partners, decreasing access to beneficial resources. For ongoing participants, the mathematics prevents gaming. See Recognition Gaming Analysis below for details.
 
-**Provider Gaming:**
-Provider non-delivery is resolved in Protocol v6 (draft) through satisfaction-based learning. See Provider Gaming Analysis below.
-
-### Property 2: Proportional Fairness
+### Proportional Fairness
 
 **Theorem:** Allocations are strictly proportional to provider priorities.
  
@@ -154,8 +126,6 @@ Provider non-delivery is resolved in Protocol v6 (draft) through satisfaction-ba
  If Priority(P, A) = Priority(P, B)
  Then Raw_Allocation(A) = Raw_Allocation(B)
  ```
-
-**Proof:**
 
 **Proof:**
  
@@ -177,303 +147,63 @@ Provider non-delivery is resolved in Protocol v6 (draft) through satisfaction-ba
  For any two recipients A and B:
  `A_A / A_B = (w_A * C) / (w_B * C) = w_A / w_B`
  
- Thus, allocations are strictly proportional to provider weights (which reflect priority alignment). Constraints (needs) simply cap this allocation, but do not distort the proportionality of the *target* distribution. □
+ Thus, allocations are strictly proportional to provider weights (which reflect priority contribution). Constraints (needs) simply cap this allocation, but do not distort the proportionality of the *target* distribution. □
 
-### Property 3: Dynamic Equilibrium and Contraction
+### Allocation: The Core Mechanism
 
-**Theorem:** The system maintains instantaneous optimality as network state evolves.
+*Constrained Weighted Capacity Distribution*
 
-**Framework:** The system computes optimal allocation r*(S) for current state S (priorities, needs, capacities), then continuously recomputes as S changes. This is **dynamic equilibrium**, not convergence to a fixed point.
+Entities have **needs** (goals whose realization depends on capacity) and **availabilities** (capacities they can provide). The challenge is multi-provider, multi-recipient need satisfaction under constraints:
 
-**Formal Proof of Contraction:**
+$$
+\text{Find } X \text{ s.t. } \forall i, \sum_j X_{ij} \leq C_i \land \forall j, \sum_i X_{ij} \leq N_j
+$$
 
-**Step 1: Allocation capping ensures needs always decrease from receiving**
+Where $C_i$ = Capacity of provider $i$, $N_j$ = Need of recipient $j$.
 
-For any recipient i in any round t:
-```
-φ_i(r) ≤ r_i  (allocation never exceeds need)
-```
+#### Provider Constraints
 
-Therefore, receiving resources always reduces remaining need:
-```
-Remaining_Need(t+1) = Need(t) - φ(r(t))
-                    ≤ Need(t) - 0
-                    = Need(t)
-```
+Each provider has finite capacities (each summing to 100%) to distribute among compatible recipients. They prefer to allocate to needs whose contributions they value most highly.
 
-**This holds regardless of whether needs change between rounds.**
+#### Recipient Constraints
 
-**Step 2: Per-round contraction with positive allocation**
+Each recipient has specific needs with finite capacity requirements. They prefer to receive from providers they trust/value most highly.
 
-Define fill fraction: f = Σ φ_i(r) / Σ r_i (fraction of needs satisfied per round)
+#### Two-Sided Optimization
 
-When f > 0 (some allocation occurs):
-```
-||r(t+1)|| = ||r(t) - φ(r(t))||
-           ≤ (1 - f)·||r(t)||
-```
+The system must simultaneously satisfy provider preferences (allocate to valued needs) and recipient preferences (receive from valued providers) while respecting capacity/need limits.
 
-Contraction constant: k = (1 - f) < 1
+This is a **constrained weighted allocation problem**: finding the allocation matrix that minimizes deviation from both providers' priorities and recipients' source preferences, subject to capacity and need constraints.
 
-**Step 3: Convergence to zero (static case only)**
+$$
+\min_X \sum_{i,j} \left(\Phi(X_{ij}, P_{ij}) + \Psi(X_{ij}, R_{ji})\right)
+$$
 
-If network state becomes static (no new needs, stable priortization/capacity):
-```
-||r(t)|| ≤ k^t · ||r(0)|| → 0 as t → ∞
-```
+Where $P_{ij}$ = Provider $i$'s priority for recipient $j$, $R_{ji}$ = Recipient $j$'s priority for provider $i$, $\Phi, \Psi$ = Cost functions.
 
-Rate: T_ε = O(log(||r(0)||/ε) / log(1/k))
+**Key Mechanism:** The protocol finds the allocation matrix that satisfies all capacity and need constraints while remaining as close as possible to the expressed preferences of both providers and recipients. This is the *least biased* solution - it doesn't impose any preference beyond what entities themselves express. The system converges to this solution through iterative constraint satisfaction, where capacity and need limits are enforced while preserving the proportional relationships in the expressed preferences.
 
-**Dynamic case:** When needs evolve, the system doesn't converge to zero but instead maintains **instantaneous optimality** - always computing the best allocation for current state.
+$$
+\frac{X_{ij}}{X_{ik}} \approx \frac{P_{ij}}{P_{ik}} \text{ (Proportional Preservation)}
+$$
 
-**Key insight:**
-- **Contraction property holds always**: Receiving reduces need
-- **Convergence to zero**: Only relevant when state stabilizes
-- **Real-world operation**: System continuously adapts to changing needs/capacities
+The allocation mechanism has several important mathematical properties that emerge from constraint satisfaction:
 
-**Damping:** Oscillation detection (α = 0.5) prevents over-allocation cycles, improving stability without compromising responsiveness.
+#### Proportional Preservation
 
-**Implementation note:** Reference implementation recomputes allocations in 100-200ms per state change, achieving near-instantaneous adaptation to network evolution. □
+If you express that Need A is twice as aligned as Need B, the system allocates approximately twice as much capacity to A (when feasible given constraints). The proportional relationships you express are preserved in the final allocation.
 
-### Property 4: Non-Accumulative
+#### Least Biased Solution
 
-**Theorem:** No entity receives beyond declared needs.
+Among all possible allocations that satisfy the constraints, the system selects the one that introduces the least additional bias beyond what entities express. This is the entropy-maximizing (information-theoretically optimal) solution.
 
-**Formal Statement:**
-```
-∀ Recipient R, ∀ Time t:
-Total_Received(R, t) ≤ Declared_Need(R, t)
-```
+#### Constraint Propagation
 
-**Proof:**
+When constraints bind (e.g., a recipient reaches capacity), the effects propagate through the network. Capacity that cannot flow to a full recipient automatically redistributes to other compatible needs according to expressed preferences.
 
-By the allocation formula definition:
-```
-Final_Allocation(R, P) = min(Raw_Allocation(R, P), Declared_Need(R))
-```
+#### Equilibrium Convergence
 
-For any single provider P:
-```
-Final_Allocation(R, P) ≤ Declared_Need(R)
-```
-
-Total received from all providers:
-```
-Total_Received(R) = Σ Final_Allocation(R, All_Providers)
-```
-
-The system tracks cumulative allocations and updates remaining need:
-```
-Remaining_Need(R) = max(0, Declared_Need(R) - Total_Received(R))
-```
-
-Once Total_Received(R) ≥ Declared_Need(R):
-```
-Remaining_Need(R) = max(0, Declared_Need(R) - Total_Received(R))
-                  = 0
-```
-
-When Remaining_Need = 0:
-```
-No further allocations occur to R
-Total_Received cannot exceed Declared_Need
-```
-
-**System Guarantee:**
- ```
- The optimization constraint (Constraint 1) explicitly forbids exceeding declared need:
- 0 <= Allocations <= Declared_Need
- 
- No accumulation beyond stated requirements is mathematically possible because the solver enforces this hard bound.
- ```
- 
- **Conclusion:** The allocation constraints structurally prevent accumulation. □
-
-### Property 5: Contraction (Always Holds)
-
-**Theorem:** Receiving resources always reduces remaining need.
-
-**Formal Statement:**
-```
-For any recipient R receiving allocation A(R) in round t:
-Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
-                         ≤ Need(R, before)
-```
-
-**Proof:**
-
-By allocation capping (Property 1):
-```
-A(R) ≤ Need(R, before)
-```
-
-Therefore:
-```
-Remaining_Need(R, after) = max(0, Need(R, before) - A(R))
-                         ≤ Need(R, before) - 0
-                         = Need(R, before)
-```
-
-Since A(R) ≥ 0 (allocations are non-negative) and max(0, ...) prevents negative needs:
-```
-Receiving resources strictly reduces need (when A(R) > 0)
-Receiving zero resources leaves need unchanged
-∴ Remaining_Need ≤ Need (contraction property)
-```
-
-**This holds in every allocation round, regardless of how needs change between rounds.**
-
-**Implication for dynamic systems:**
-
-Even when needs evolve over time:
-- Each allocation reduces the specific need it addresses
-- System continuously recomputes as new needs emerge
-- No accumulation beyond stated requirements possible
-- The system never "makes things worse" through allocation
-
-**Static equilibrium case:**
-
-When network state stabilizes (no new needs, constant prioritization/capacity):
-```
-If Remaining_Need(R) > 0 and
-   Available_Capacity > 0 and
-   MR(R, Providers) > 0
-Then Received(R) > 0
-   ∴ Remaining_Need decreases
-
-The only stable equilibrium is Remaining_Need = 0 for all R
-(assuming sufficient network capacity)
-```
-
-**Conclusion:** The contraction property is unconditional - allocation always moves each specific need toward satisfaction, enabling the system to track evolving requirements while preventing accumulation. □
-
-### Property 6: Determinism (Algorithm-Level)
-
-**Theorem:** The allocation algorithm produces identical results for identical inputs.
-
-**Formal Statement:**
-```
-∀ Inputs I₁, I₂:
-If Prioritization(I₁) = Prioritization(I₂) AND
-   Capacity(I₁) = Capacity(I₂) AND
-   Needs(I₁) = Needs(I₂)
-Then allocate(I₁) = allocate(I₂)
-```
-
-**Proof:**
-
-The allocation function is defined as a pure mathematical operation:
-```
-φ(Prioritization, Capacity, Needs) → Allocations
-```
-
-**Proof:**
- 
- The allocation is the solution to minimizing a strictly convex quadratic function (`Σ (A_i - w_i * C)^2`) over a convex set (defined by linear constraints `0 <= A_i <= N_i` and `Σ A_i <= C`).
- 
- By standard convex optimization theory:
- 1. The feasible set is convex (intersection of half-spaces).
- 2. The objective function is strictly convex (sum of squares).
- 3. Therefore, there exists a **unique global minimum**.
- 
- Since the minimum is unique, the algorithm (which finds this minimum) must produce the exact same result for the same inputs every time.
-
-**Scope:** This property guarantees that the allocation algorithm itself is deterministic. It does NOT address:
-- Network-level consistency (different nodes may observe different states at different times)
-- Byzantine fault tolerance (malicious nodes may compute incorrectly)
-- Causal consistency guarantees (handled separately by ITC/vector clocks)
-
-**Implication:** Given complete and identical input data, any correct implementation of the algorithm will produce identical allocation results.
-
-**Conclusion:** The allocation algorithm is deterministic by construction. □
-
----
-
-### Provider Gaming Analysis
-
-**Capacity Under-Declaration:**
-
-A provider might under-declare capacity to reserve resources or maintain optionality. However:
-- Under-declared capacity simply reduces provider's contribution
-- Provider loses influence proportional to withheld capacity
-- No benefit to provider from under-declaring
-
-**Non-Delivery (Current Protocol - v5):**
-
-In the current protocol, a provider could declare capacity but fail to deliver. Prioritization updates are social/manual, requiring active community response.
-
-**Resolution (Protocol v6 - Draft):**
-
-Protocol v6 introduces **satisfaction-based learning** that automatically resolves non-delivery:
-- Recipients rate actual delivery quality/usefulness
-- Non-delivery receives 0.0 satisfaction rating
-- Future allocations automatically weighted: `share × satisfaction`
-- Non-delivering providers automatically removed from future allocations
-
-See `protocolv6.mmd` for complete specification. This transforms provider non-delivery from an algorithmic vulnerability to a self-correcting property.
-
-**Conditional Capacity:**
-
-The protocol supports `SlotFilter` specifications for time/location/type constraints. This is intentional design allowing legitimate targeting, though it cannot algorithmically distinguish between legitimate filtering and strategic preference.
-
----
-
-### Strategic Priority Analysis
- 
- **Question:** Can entities manipulate outcomes through priority weight gaming?
- 
- **The Self-Correcting Mechanism:**
- 
- The system has a fundamental mathematical property that prevents most priority gaming:
- 
- ```
- Total Weight = 100% (zero-sum constraint)
- Total Weight = Effective Priority + Ineffective Priority
- 
- Therefore:
- ↑ Ineffective Priority → ↓ Effective Priority
-    → ↓ Reciprocal Alignment with Beneficial Partners
-       → ↓ Access to Beneficial Resources
-          → ↓ Goal Achievement
- ```
- 
- **Why this resolves most "gaming" attempts:**
- 
- 1. **Misaligned Priorities:** Prioritizing non-contributors automatically reduces priority for actual contributors. The entity starves itself of beneficial resources through its own choices.
- 
- 2. **Priority "Cartels":**
-    - If cartel members genuinely meet each other's needs → this is a legitimate cooperative
-    - If cartel members don't actually help each other → needs remain unmet, forcing priority reallocation to external helpers or actual cooperation
-    - 100% budget forces tradeoff: high internal priority = low external priority = reduced access to external resources
- 
- 3. **Time-Shifting:** Reducing priority after receiving decreases future reciprocal alignment, reducing future allocations. The bidirectional nature makes this self-defeating over multiple periods.
- 
- **The One Remaining Algorithmic Vulnerability: Single-Period Exit**
- 
- An entity could:
- 1. Build genuine alignment through contribution
- 2. In final period before exit: declare maximal needs
- 3. Receive allocation based on accumulated alignment
- 4. Exit before any correction mechanisms operate
- 
- **Why this works once:**
- - Non-accumulation property limits extraction to declared need per period
- - But entity can take one period's allocation and leave
- - No future period exists for correction mechanism
- 
- **Mitigation:**
- - Non-accumulation caps extraction (can't stockpile)
- - Requires building genuine alignment first
- - Network can observe patterns
- - Social reputation effects
- 
- **Conclusion:**
- 
- The protocol is **self-correcting for ongoing participants** through:
- - 100% priority budget constraint + outcome feedback
- - Satisfaction-based learning in v6 (provider gaming)
- 
- The only remaining algorithmic vulnerability is **one-time exit after building trust**, which is fundamentally a trust/reputation problem that exists in any system requiring multi-period interaction.
+The system converges to a stable equilibrium where no entity can improve their allocation quality (measured by preference satisfaction) without degrading someone else's. This is a Pareto-efficient outcome.
 
 ---
 
@@ -531,13 +261,13 @@ Traditional coordination requires lengthy political negotiations before resource
 
 ### Organizational Resource Coordination
 
-**Foundation Grant Allocation**: Instead of lengthy application processes, foundations recognize mission-aligned organizations. When capacity is available, it flows automatically to recognized partners based on their declared needs and **reciprocal alignment (based on recognition)**.
+**Foundation Grant Allocation**: Instead of lengthy application processes, foundations recognize mission-aligned organizations. When capacity is available, it flows automatically to recognized partners based on their declared needs and **contribution (based on recognition)**.
 
-**Humanitarian Response**: Aid organizations mutually recognize each other's contributions to shared goals. When a crisis emerges, resources flow automatically to organizations with strongest **reciprocal alignment (based on recognition)** and greatest need—no coordination meetings required.
+**Humanitarian Response**: Aid organizations mutually recognize each other's contributions to shared goals. When a crisis emerges, resources flow automatically to organizations with strongest **contribution (based on recognition)** and greatest need—no coordination meetings required.
 
-**Impact Investment Networks**: Investors recognize organizations working on aligned goals. Capital flows based on **reciprocal alignment (based on recognition)** and declared capital needs, creating efficient deployment without traditional fundraising overhead.
+**Impact Investment Networks**: Investors recognize organizations working on aligned goals. Capital flows based on **contribution (based on recognition)** and declared capital needs, creating efficient deployment without traditional fundraising overhead.
 
-**Community Resource Sharing**: Communities allocate shared resources (facilities, equipment, expertise) based on members' **reciprocal alignment (based on recognition)** and declared needs. The system handles allocation automatically, reducing administrative burden.
+**Community Resource Sharing**: Communities allocate shared resources (facilities, equipment, expertise) based on members' **contribution (based on recognition)** and declared needs. The system handles allocation automatically, reducing administrative burden.
 
 ### Key Outcomes
 
@@ -549,9 +279,8 @@ Traditional coordination requires lengthy political negotiations before resource
 - Target: >95% of resources deployed to mission
 - vs. typical ~70% after administrative costs
 
-**Alignment**: Resources automatically flow to mission-aligned partners
- - Priority alignment ensures values alignment
- - No need for lengthy due diligence on shared values
+**Contribution**: Resources automatically flow to mission-aligned partners
+ - No need for lengthy due diligence on abstract shared values, contribution is concrete
 
 **Adaptability**: System responds in real-time as circumstances evolve
 - Priorities change → allocations recalculate automatically
@@ -597,13 +326,13 @@ Organizations define their goals and priorities subjectively, but achieving them
  
  Therefore:
  ↑ Ineffective Priority → ↓ Effective Priority
-    → ↓ Reciprocal Alignment with Actually Beneficial Partners
+    → ↓ Reciprocal Contribution with Actually Beneficial Partners
        → ↓ Access to Actually Beneficial Resources
           → ↓ Organizational Goal Achievement
              → Natural incentive to correct priority distribution
  ```
 
-**Key Implication**: The system creates natural incentives for accurate prioritization. **Since priorities are derived from recognition of contribution, misaligning priorities effectively means misidentifying beneficial contributors.** Inflation or misattribution of priorities and only decreases connection to actually beneficial partners. Organizations that maintain accurate recognition of contribution (and thus accurate priority alignments) receive better-aligned resources and achieve better outcomes.
+**Key Implication**: The system creates natural incentives for accurate prioritization. **Since priorities are derived from recognition of contribution, misaligning priorities effectively means misidentifying beneficial contributors.** Inflation or misattribution of priorities and only decreases connection to actually beneficial partners. Organizations that maintain accurate recognition of contribution (and thus accurate priority contributions) receive better-aligned resources and achieve better outcomes.
 
 ## Collective Resource Coordination
 
@@ -621,13 +350,13 @@ Free Association can coordinate shared resource pools (organizational budgets, c
    - Organization B: $500K/month program funding
    - Organization C: $200K/month emergency reserve
 
-**3. Members Establish Priority Alignment**
+**3. Members Establish Priority Contribution**
     - Each member prioritizes contribution sources aligned with the shared mission
-    - Reciprocal priority percentages determine allocation weights
+    - Priority contribution percentages determine allocation weights
  
  **4. Calculate Collective Priority Distribution**
-    - Sum all alignment values across collective members
-    - Each member's share = their reciprocal alignment / total collective alignment
+    - Sum all contribution values across collective members
+    - Each member's share = their  contribution / total collective contribution
 
 **5. Allocate Resources**
    - Distribute collective resources according to calculated shares
@@ -636,7 +365,7 @@ Free Association can coordinate shared resource pools (organizational budgets, c
 ### Key Properties
 
 - **Needs-based**: No entity receives beyond declared needs
- - **Priority-weighted**: Stronger reciprocal alignment yields proportionally larger shares
+ - **Priority-weighted**: Stronger contribution yields proportionally larger shares
  - **Continuously optimal**: System recalculates as network state evolves
  - **Non-accumulative**: Cannot accumulate resources beyond stated requirements
 
@@ -661,8 +390,6 @@ Free Association can coordinate shared resource pools (organizational budgets, c
 - **Active Members**: Implementing pilots with resource commitments
 - **Supporting Members**: Observing and learning from active pilots
 - **Aligned Allies**: Staying connected to developments and findings
-
-See [DPI.md](DPI.md) for detailed information about organizational pilots and coalition membership.
 
 ### For Developers and Contributors
 
@@ -704,7 +431,7 @@ Free Association differs fundamentally from charitable resource distribution:
 - Resources flow to entities contributing to your goals
 - Peer-to-peer network structure
 
-Priority-alligned allocation transcends charity by creating organic resource flows based on actual contributions to shared goals. Resources become part of a coordination network that strengthens mission alignment while enabling mutual achievement.
+Priority-alligned allocation transcends charity by creating organic resource flows based on actual contributions to shared goals. Resources become part of a coordination network that strengthens mission contribution while enabling mutual achievement.
 
 ### Distinction from Investment/Equity Models
 
@@ -735,7 +462,7 @@ For any participant:
 Total Priority = 100%
 Total Priority = Effective Priority + Ineffective Priority
    ∴ ↑ Ineffective Priority → ↓ Effective Priority
-      → ↓ Reciprocal Alignment with Beneficial Partners
+      → ↓ Allocation to actually Beneficial Partners
          → ↓ Access to Beneficial Resources
             → ↓ Goal Achievement
                → Natural correction toward accurate prioritization
@@ -743,7 +470,7 @@ Total Priority = Effective Priority + Ineffective Priority
 
 **Key Distinction**: Priority (and the resulting access to resources) cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
 
-This represents a resolution of traditional ownership/control tensions: reciprocal alignment without domination, coordination without centralized authority, reciprocity without permanent obligation.
+This represents a resolution of traditional ownership/control tensions: mutual contribution without domination, coordination without centralized authority, reciprocity without permanent obligation.
 
  ### Additional Resources
 
