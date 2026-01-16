@@ -305,34 +305,35 @@ Traditional coordination requires lengthy political negotiations before resource
 - Resources flow based on contribution to declared organizational goals
 - Enables support for broader ecosystem of mission-aligned work
 
-### Self-Correcting Priority Properties
+### Anti-Gaming & Alignment
 
-The system naturally promotes accurate prioritization through mathematical necessity:
- 
- **Priority Accuracy and Network Integrity:**
+*Why Free-Riding and Gaming Self-Destruct*
 
-Organizations define their goals and priorities subjectively, but achieving them depends on objective access to resources and partnerships. Priority accuracy is validated through outcomes:
- 
- - **Effective Priority**: Priorities that, when acted upon, connect you with resources and partnerships that genuinely advance your organizational goals (validated by positive outcomes)
- 
- - **Ineffective Priority**: Priorities that fail to connect you with beneficial resources or create misaligned dependencies (invalidated by negative outcomes)
+**True Recognition:** Recognition of contribution to the realization of priorities that *enables the continued realization of priorities* (self-sustaining).
 
-**Mathematical Consequence:**
+**False Recognition:** Recognition of contribution to the realization of priorities that *impairs the continued realization of priorities* (self-terminating).
 
-```
- For any participant:
- Total Priority Budget = 100%
- Total Priority = Effective Priority + Ineffective Priority
- 
- Therefore:
- ↑ Ineffective Priority → ↓ Effective Priority
-    → ↓ Reciprocal Contribution with Actually Beneficial Partners
-       → ↓ Access to Actually Beneficial Resources
-          → ↓ Organizational Goal Achievement
-             → Natural incentive to correct priority distribution
- ```
+Participants define their goals subjectively, but achieving them depends on objective access to resources and contributions. Proportional recognition accuracy is validated through outcomes.
 
-**Key Implication**: The system creates natural incentives for accurate prioritization. **Since priorities are derived from recognition of contribution, misaligning priorities effectively means misidentifying beneficial contributors.** Inflation or misattribution of priorities and only decreases connection to actually beneficial partners. Organizations that maintain accurate recognition of contribution (and thus accurate priority contributions) receive better-aligned resources and achieve better outcomes.
+**The Causality Chain:**
+
+$$
+\text{Given: } \text{Total Recognition} = 100\%, \text{True} \cap \text{False} = \emptyset, \text{Capacity Directed} \propto \text{Recognition-Share}
+$$
+
+$$
+\text{Total Recognition} = \text{True Recognition} + \text{False Recognition} \\
+\uparrow \text{False Recognition} \implies \downarrow \text{True Recognition} \implies \downarrow \text{Alignment } (\alpha) \\
+\implies \uparrow \text{Capacity Directed to non-beneficial} \\
+\implies \downarrow \text{Capacity Directed to beneficial} \\
+\implies \downarrow \text{Goal Achievement} \\
+\implies \text{Immediate incentive to revoke recognition} \\
+\implies \text{Free-rider loses allocation}
+$$
+
+**The causality chain:** False recognition → Displaced capacity → Worse outcomes → Immediate incentive to correct → Free-rider loses allocation.
+
+**Key Implication:** The system creates natural incentives for true recognition. Inflation or misattribution of contribution to priority realization only decreases connection to actually beneficial partners. Participants that maintain **True Recognition** better-align their capacity allocation and achieve better outcomes.
 
 ## Collective Resource Coordination
 
@@ -459,13 +460,13 @@ Free Association also differs from traditional investment structures:
 
 ```
 For any participant:
-Total Priority = 100%
-Total Priority = Effective Priority + Ineffective Priority
-   ∴ ↑ Ineffective Priority → ↓ Effective Priority
+Total Recognition = 100%
+Total Recognition = True Recognition + False Recognition
+   ∴ ↑ False Recognition → ↓ True Recognition
       → ↓ Allocation to actually Beneficial Partners
          → ↓ Access to Beneficial Resources
             → ↓ Goal Achievement
-               → Natural correction toward accurate prioritization
+               → Natural correction toward accurate recognition
 ```
 
 **Key Distinction**: Priority (and the resulting access to resources) cannot be owned or accumulated. It reflects ongoing contribution relationships and adjusts continuously to reflect current coordination reality. This prevents power accumulation through ownership while maintaining incentives for genuine contribution.
