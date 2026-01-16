@@ -190,16 +190,6 @@
 					>Climate Organizations</span
 				>
 			</h1>
-			<p class="mb-2 text-xl text-gray-600 dark:text-gray-300">
-				COP30 Demo Ecosystem - {data.organizations.length} Organizations
-			</p>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
-				Explore recognition trees and mutual recognition networks
-			</p>
-		</div>
-
-		<!-- View Toggle -->
-		<div class="mb-8 flex justify-center gap-2">
 			<button
 				onclick={() => (currentView = 'organizations')}
 				class="rounded-lg px-6 py-3 font-semibold transition-all {currentView === 'organizations'
@@ -208,6 +198,7 @@
 			>
 				🏢 Organizations ({data.organizations.length})
 			</button>
+{#if $publicTreesArray.length > 0}
 			<button
 				onclick={() => (currentView = 'individuals')}
 				class="rounded-lg px-6 py-3 font-semibold transition-all {currentView === 'individuals'
@@ -216,6 +207,7 @@
 			>
 				👤 Individuals ({$publicTreesArray.length})
 			</button>
+			{/if}
 		</div>
 
 		<!-- Search and Filter Controls -->
