@@ -122,29 +122,11 @@ const homeTourSteps: DriveStep[] = [
 		}
 	},
 	{
-		popover: {
-			title: 'Mutual Recognition',
-			description:
-				'When you recognize someone AND they recognize you, that creates mutual recognition. It takes both sides.',
-			side: 'bottom' as Side,
-			align: 'center'
-		}
-	},
-	{
-		popover: {
-			title: 'The Balance',
-			description:
-				'If you value them highly but they barely value you, your mutual recognition stays small. Both sides matter.',
-			side: 'bottom' as Side,
-			align: 'center'
-		}
-	},
-	{
 		element: '.bars',
 		popover: {
-			title: 'Recognition Visualization',
+			title: 'Contribution Recognition',
 			description:
-				'These bars show how recognition flows in your network. The left shows your recognition distribution, the right shows mutual recognition that determines capacity sharing.',
+				'This bar shows how much recognition of contribution you attribute to each entity in your tree. Contributions towards goals that are more important to will receive a larger share! Allocation of capacities is proportional to your recognition of contribution!',
 			side: 'left' as Side,
 			align: 'center'
 		}
@@ -173,7 +155,7 @@ const homeTourSteps: DriveStep[] = [
 		popover: {
 			title: 'How Sharing Works',
 			description:
-				'People share their capacities with those they mutually recognize. The stronger the mutual recognition, the larger the share.',
+				'People share their capacities with those they mutually recognize. The stronger the recognition, the larger the share.',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
@@ -244,13 +226,13 @@ const mapTourSteps: DriveStep[] = [
 		popover: {
 			title: 'Welcome to the Map View! 🌍',
 			description:
-				'This interactive map shows the geographical distribution of your mutual recognition network.',
+				'This interactive map shows the geographical distribution of your recognition network.',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.view-button',
+		element: '.view-switcher-container',
 		popover: {
 			title: 'View Switchers',
 			description:
@@ -263,7 +245,7 @@ const mapTourSteps: DriveStep[] = [
 		popover: {
 			title: 'Network Visualization',
 			description:
-				'The map displays markers for network members and their shared capacities. You can see where your mutual recognition connections are located geographically.',
+				'The map displays markers for network members and their shared capacities. You can see where your recognition connections are located geographically.',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
@@ -272,7 +254,7 @@ const mapTourSteps: DriveStep[] = [
 		popover: {
 			title: 'Ready to Explore!',
 			description:
-				'Zoom and pan the map to explore your network. As your mutual recognition grows, so does your geographical reach!',
+				'Zoom and pan the map to explore your network. As your contribution grows, so does your geographical reach!',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
@@ -285,106 +267,66 @@ const inventoryTourSteps: DriveStep[] = [
 		popover: {
 			title: 'Welcome to Your Inventory! 📊',
 			description:
-				'This is where you manage your capacities and view what others share with you. Let me show you around!',
+				'This is where you manage your capacities (what you offer) and view what others share with you (needs).',
 			side: 'bottom' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.view-button',
+		element: '.view-switcher-container',
 		popover: {
 			title: 'View Switchers',
 			description:
-				'Use these buttons to switch between Tree, Map, and Inventory views. You can access your inventory anytime by clicking the 📊 button.',
+				'Use this button to switch between Tree, Map, and Inventory views. Tap to cycle or hold to see the menu.',
+			side: 'top' as Side,
+			align: 'start'
+		}
+	},
+	{
+		element: '.inventory-type-toggle',
+		popover: {
+			title: 'Needs vs Capacities',
+			description:
+				'Switch between "Needs" (what you lack) and "Capacities" (what you offer). Your inventory shows slots for each type.',
+			side: 'left' as Side,
+			align: 'center'
+		}
+	},
+	{
+		element: '.inventory-draft-controls',
+		popover: {
+			title: 'Create & Draft',
+			description:
+				'This is your drafting area. Select a type, enter a name, and set quantities to create new slots.',
 			side: 'top' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.create-capacity-button',
+		element: '.draft-input-name',
 		popover: {
-			title: 'Create New Capacity',
+			title: 'Search & Create',
 			description:
-				'Click this button to create a new capacity. Define what you can offer, set your availability schedule, and specify locations.',
+				'Type here to name a new slot OR to search your existing inventory. It serves both purposes!',
 			side: 'top' as Side,
 			align: 'center'
 		}
 	},
 	{
-		element: '.search-button',
+		element: '.slots-list',
 		popover: {
-			title: 'Search & Filter',
+			title: 'Your Slots',
 			description:
-				'Click here to search and filter your capacities and shares. You can search by keywords, filter by provider, and sort by various criteria.',
-			side: 'top' as Side,
-			align: 'center'
-		}
-	},
-	{
-		element: '.inventory-view',
-		popover: {
-			title: 'Your Inventory',
-			description:
-				'This area shows your capacities (what you offer) and shares (what others offer you based on mutual recognition).',
-			side: 'top' as Side,
-			align: 'center'
-		}
-	},
-	{
-		element: '.capacities-list',
-		popover: {
-			title: 'Your Capacities',
-			description:
-				"Here you can see all your current capacities. Each capacity card shows what you offer, when you're available, and where.",
-			side: 'top' as Side,
-			align: 'center'
-		}
-	},
-	{
-		popover: {
-			title: 'Shares Section',
-			description:
-				'Below your capacities, you\'ll find "Shares" - what others are sharing with you based on your mutual recognition.',
-			side: 'top' as Side,
-			align: 'center',
-			onNextClick: () => {
-				// Scroll to shares section
-				const sharesHeader = Array.from(document.querySelectorAll('h2')).find((h) =>
-					h.textContent?.includes('Shares')
-				);
-				if (sharesHeader) {
-					sharesHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				}
-				setTimeout(() => {
-					driverObj.moveNext();
-				}, 500);
-			}
-		}
-	},
-	{
-		element: '.shares-list',
-		popover: {
-			title: 'Available Shares',
-			description:
-				'Here you can see all the capacities that others are sharing with you. Click on any share to view details, availability, and location information.',
+				'Here are your slots. Each card shows details and allocations. Click a card to edit it or view who is receiving/providing.',
 			side: 'top' as Side,
 			align: 'center'
 		}
 	},
 	{
 		popover: {
-			title: 'The Network Effect',
+			title: 'Ready to Manage!',
 			description:
-				"As you build stronger mutual recognition relationships, you'll see more capacities shared with you and your own capacities will reach more people.",
-			side: 'bottom' as Side,
-			align: 'center'
-		}
-	},
-	{
-		popover: {
-			title: 'Ready to Explore!',
-			description:
-				'Your inventory grows as your network grows. Start by creating your first capacity or exploring what others are sharing with you!',
+				"Keep your inventory up to date to ensure the network knows what you need and what you can give. Honesty powers the flow!",
 			side: 'bottom' as Side,
 			align: 'center'
 		}
@@ -734,22 +676,22 @@ export function verifyTourElements() {
 			'.delete-button',
 			'.recompose-button',
 			'.forest-button',
-			'.view-button'
+			'.view-switcher-container'
 		],
 		map: [
 			'.breadcrumbs',
-			'.view-button',
+			'.view-switcher-container',
 			'.toolbar',
 			'.view-content'
 		],
+		// Inventory view tour steps
 		inventory: [
 			'.breadcrumbs',
-			'.view-button',
-			'.create-capacity-button',
-			'.search-button',
-			'.inventory-view',
-			'.capacities-list',
-			'.shares-list'
+			'.view-switcher-container',
+			'.inventory-type-toggle',
+			'.inventory-draft-controls',
+			'.draft-input-name',
+			'.slots-list'
 		]
 	};
 
