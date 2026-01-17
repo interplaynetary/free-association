@@ -138,6 +138,139 @@ const GLOBAL_CITIES = [
 ];
 
 /**
+ * Expanded list of global cities (Africa, Asia, NA, Europe, Middle East, Oceania)
+ * to ensure map is densely populated.
+ */
+const MORE_GLOBAL_CITIES = [
+	// === AFRICA ===
+	// West Africa
+	{ name: 'Abuja', country: 'Nigeria', lat: 9.0765, lng: 7.3986 },
+	{ name: 'Kumasi', country: 'Ghana', lat: 6.6885, lng: -1.6244 }, // Accra is in GLOBAL
+	{ name: 'Dakar', country: 'Senegal', lat: 14.7167, lng: -17.4677 },
+	{ name: 'Abidjan', country: 'Ivory Coast', lat: 5.3600, lng: -4.0083 },
+	// East Africa
+	{ name: 'Mombasa', country: 'Kenya', lat: -4.0435, lng: 39.6682 }, // Nairobi is in GLOBAL
+	{ name: 'Zanzibar City', country: 'Tanzania', lat: -6.1659, lng: 39.2026 },
+	{ name: 'Kampala', country: 'Uganda', lat: 0.3476, lng: 32.5825 },
+	{ name: 'Kigali', country: 'Rwanda', lat: -1.9441, lng: 30.0619 },
+	// North Africa
+	{ name: 'Alexandria', country: 'Egypt', lat: 31.2001, lng: 29.9187 }, // Cairo is in GLOBAL
+	{ name: 'Marrakech', country: 'Morocco', lat: 31.6295, lng: -7.9811 },
+	{ name: 'Tangier', country: 'Morocco', lat: 35.7595, lng: -5.8340 },
+	{ name: 'Tunis', country: 'Tunisia', lat: 36.8065, lng: 10.1815 },
+	// South Africa
+	{ name: 'Cape Town', country: 'South Africa', lat: -33.9249, lng: 18.4241 }, // JHB is in GLOBAL
+	{ name: 'Durban', country: 'South Africa', lat: -29.8587, lng: 31.0218 },
+	{ name: 'Harare', country: 'Zimbabwe', lat: -17.8216, lng: 31.0492 },
+
+	// === ASIA ===
+	// East Asia (China)
+	{ name: 'Beijing', country: 'China', lat: 39.9042, lng: 116.4074 },
+	{ name: 'Shanghai', country: 'China', lat: 31.2304, lng: 121.4737 },
+	{ name: 'Shenzhen', country: 'China', lat: 22.5431, lng: 114.0579 },
+	{ name: 'Chengdu', country: 'China', lat: 30.5728, lng: 104.0668 },
+	{ name: 'Xi\'an', country: 'China', lat: 34.3416, lng: 108.9398 },
+	// East Asia (Japan/Korea/Taiwan)
+	{ name: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503 },
+	{ name: 'Osaka', country: 'Japan', lat: 34.6937, lng: 135.5023 },
+	{ name: 'Sapporo', country: 'Japan', lat: 43.0618, lng: 141.3545 },
+	{ name: 'Fukuoka', country: 'Japan', lat: 33.5902, lng: 130.4017 },
+	{ name: 'Seoul', country: 'South Korea', lat: 37.5665, lng: 126.9780 },
+	{ name: 'Busan', country: 'South Korea', lat: 35.1796, lng: 129.0756 },
+	{ name: 'Taipei', country: 'Taiwan', lat: 25.0330, lng: 121.5654 },
+	// South Asia
+	{ name: 'Bangalore', country: 'India', lat: 12.9716, lng: 77.5946 }, // Mumbai/Delhi in GLOBAL
+	{ name: 'Chennai', country: 'India', lat: 13.0827, lng: 80.2707 },
+	{ name: 'Kolkata', country: 'India', lat: 22.5726, lng: 88.3639 },
+	{ name: 'Hyderabad', country: 'India', lat: 17.3850, lng: 78.4867 },
+	{ name: 'Jaipur', country: 'India', lat: 26.9124, lng: 75.7873 },
+	{ name: 'Karachi', country: 'Pakistan', lat: 24.8607, lng: 67.0011 },
+	{ name: 'Lahore', country: 'Pakistan', lat: 31.5204, lng: 74.3587 },
+	{ name: 'Chittagong', country: 'Bangladesh', lat: 22.3569, lng: 91.7832 },
+	{ name: 'Colombo', country: 'Sri Lanka', lat: 6.9271, lng: 79.8612 },
+	// Southeast Asia
+	{ name: 'Denpasar', country: 'Indonesia', lat: -8.6705, lng: 115.2126 }, // Bali
+	{ name: 'Surabaya', country: 'Indonesia', lat: -7.2575, lng: 112.7521 },
+	{ name: 'Hanoi', country: 'Vietnam', lat: 21.0285, lng: 105.8542 },
+	{ name: 'Da Nang', country: 'Vietnam', lat: 16.0544, lng: 108.2022 },
+	{ name: 'Chiang Mai', country: 'Thailand', lat: 18.7061, lng: 98.9817 },
+	{ name: 'Cebu City', country: 'Philippines', lat: 10.3157, lng: 123.8854 },
+	{ name: 'Davao City', country: 'Philippines', lat: 7.1907, lng: 125.4553 },
+	{ name: 'Kuala Lumpur', country: 'Malaysia', lat: 3.1390, lng: 101.6869 },
+	{ name: 'Penang', country: 'Malaysia', lat: 5.4141, lng: 100.3119 },
+	{ name: 'Singapore', country: 'Singapore', lat: 1.3521, lng: 103.8198 },
+	// Central Asia
+	{ name: 'Almaty', country: 'Kazakhstan', lat: 43.2220, lng: 76.8512 },
+	{ name: 'Tashkent', country: 'Uzbekistan', lat: 41.2995, lng: 69.2401 },
+
+	// === MIDDLE EAST ===
+	{ name: 'Dubai', country: 'UAE', lat: 25.2048, lng: 55.2708 },
+	{ name: 'Abu Dhabi', country: 'UAE', lat: 24.4539, lng: 54.3773 },
+	{ name: 'Riyadh', country: 'Saudi Arabia', lat: 24.7136, lng: 46.6753 },
+	{ name: 'Jeddah', country: 'Saudi Arabia', lat: 21.5433, lng: 39.1979 },
+	{ name: 'Tel Aviv', country: 'Israel', lat: 32.0853, lng: 34.7818 },
+	{ name: 'Tehran', country: 'Iran', lat: 35.6892, lng: 51.3890 },
+	{ name: 'Doha', country: 'Qatar', lat: 25.2854, lng: 51.5310 },
+
+	// === NORTH AMERICA ===
+	// USA
+	{ name: 'New York City', country: 'USA', lat: 40.7128, lng: -74.0060 },
+	{ name: 'Los Angeles', country: 'USA', lat: 34.0522, lng: -118.2437 },
+	{ name: 'Chicago', country: 'USA', lat: 41.8781, lng: -87.6298 },
+	{ name: 'Houston', country: 'USA', lat: 29.7604, lng: -95.3698 },
+	{ name: 'Phoenix', country: 'USA', lat: 33.4484, lng: -112.0740 },
+	{ name: 'Philadelphia', country: 'USA', lat: 39.9526, lng: -75.1652 },
+	{ name: 'San Antonio', country: 'USA', lat: 29.4241, lng: -98.4936 },
+	{ name: 'San Diego', country: 'USA', lat: 32.7157, lng: -117.1611 },
+	{ name: 'Dallas', country: 'USA', lat: 32.7767, lng: -96.7970 },
+	{ name: 'San Jose', country: 'USA', lat: 37.3382, lng: -121.8863 },
+	{ name: 'Austin', country: 'USA', lat: 30.2672, lng: -97.7431 },
+	{ name: 'Seattle', country: 'USA', lat: 47.6062, lng: -122.3321 },
+	{ name: 'Denver', country: 'USA', lat: 39.7392, lng: -104.9903 },
+	{ name: 'Boston', country: 'USA', lat: 42.3601, lng: -71.0589 },
+	{ name: 'Miami', country: 'USA', lat: 25.7617, lng: -80.1918 },
+	// Canada
+	{ name: 'Toronto', country: 'Canada', lat: 43.6532, lng: -79.3832 },
+	{ name: 'Montreal', country: 'Canada', lat: 45.5017, lng: -73.5673 },
+	{ name: 'Vancouver', country: 'Canada', lat: 49.2827, lng: -123.1207 },
+	{ name: 'Calgary', country: 'Canada', lat: 51.0447, lng: -114.0719 },
+	{ name: 'Ottawa', country: 'Canada', lat: 45.4215, lng: -75.6972 },
+
+	// === EUROPE & RUSSIA ===
+	{ name: 'Moscow', country: 'Russia', lat: 55.7558, lng: 37.6173 },
+	{ name: 'Saint Petersburg', country: 'Russia', lat: 59.9343, lng: 30.3351 },
+	{ name: 'Warsaw', country: 'Poland', lat: 52.2297, lng: 21.0122 },
+	{ name: 'Krakow', country: 'Poland', lat: 50.0647, lng: 19.9450 },
+	{ name: 'Prague', country: 'Czechia', lat: 50.0755, lng: 14.4378 },
+	{ name: 'Budapest', country: 'Hungary', lat: 47.4979, lng: 19.0402 },
+	{ name: 'Bucharest', country: 'Romania', lat: 44.4268, lng: 26.1025 },
+	{ name: 'Stockholm', country: 'Sweden', lat: 59.3293, lng: 18.0686 },
+	{ name: 'Oslo', country: 'Norway', lat: 59.9139, lng: 10.7522 },
+	{ name: 'Helsinki', country: 'Finland', lat: 60.1699, lng: 24.9384 },
+	{ name: 'Athens', country: 'Greece', lat: 37.9838, lng: 23.7275 },
+	{ name: 'Lisbon', country: 'Portugal', lat: 38.7223, lng: -9.1393 },
+	{ name: 'Porto', country: 'Portugal', lat: 41.1579, lng: -8.6291 },
+
+	// === OCEANIA ===
+	{ name: 'Wellington', country: 'New Zealand', lat: -41.2865, lng: 174.7762 },
+	{ name: 'Christchurch', country: 'New Zealand', lat: -43.5321, lng: 172.6362 },
+	{ name: 'Suva', country: 'Fiji', lat: -18.1416, lng: 178.4419 }
+];
+
+/**
+ * Shared helper to add random jitter to coordinates (±0.15 degrees ≈ 15-20km)
+ * Prevents map markers from stacking perfectly.
+ */
+const jitterLocation = (city: { lat: number; lng: number, name: string, country: string }) => {
+	const JITTER_RANGE = 0.3; 
+	return {
+		...city,
+		lat: city.lat + (Math.random() - 0.5) * JITTER_RANGE,
+		lng: city.lng + (Math.random() - 0.5) * JITTER_RANGE
+	};
+};
+
+/**
  * V5: 100 SDG-focused capacity slots with realistic locations and time patterns
  * Returns AvailabilitySlot[] (v5 schema)
  */
@@ -729,14 +862,79 @@ export function createExampleCapacitySlots(): AvailabilitySlot[] {
 
 	// Middle East (3 capacities)
 	slots.push(
-		createCapacitySlot('Water Desalination', '💧', 'liters', 8000, GLOBAL_CITIES[31], 'Specific')
-	);
-	slots.push(
-		createCapacitySlot('Conflict Mediation', '☮️', 'sessions', 15, GLOBAL_CITIES[32], 'Specific')
-	);
-	slots.push(
 		createCapacitySlot('Historic Preservation', '🏛️', 'sites', 5, GLOBAL_CITIES[33], 'Specific')
 	);
+
+	// ============ EXPANDED GLOBAL CAPACITIES (Generated) ============
+	// Automatically generate 2-3 slots for each new city to densely populate the map
+	const CAPACITY_TEMPLATES = [
+		// Technology & Digital
+		{ name: 'Tech Mentorship', emoji: '💻', unit: 'hours', q: 40 },
+		{ name: 'PCB Design', emoji: '🔌', unit: 'boards', q: 10 },
+		{ name: 'Drone Repair', emoji: '🚁', unit: 'repairs', q: 5 },
+		{ name: '3D Printing Lab', emoji: '🖨️', unit: 'hours', q: 100 },
+		{ name: 'Cyber Security', emoji: '🔐', unit: 'audits', q: 3 },
+		{ name: 'Data Science', emoji: '📊', unit: 'reports', q: 8 },
+		{ name: 'App Testing', emoji: '📱', unit: 'devices', q: 50 },
+		{ name: 'Game Design', emoji: '🎮', unit: 'workshops', q: 12 },
+		{ name: 'Cloud Config', emoji: '☁️', unit: 'setups', q: 20 },
+		{ name: 'AI Model Training', emoji: '🤖', unit: 'models', q: 5 },
+
+		// Arts & Culture
+		{ name: 'Creative Writing', emoji: '✍️', unit: 'workshops', q: 8 },
+		{ name: 'Music Production', emoji: '🎵', unit: 'tracks', q: 5 },
+		{ name: 'Mural Painting', emoji: '🎨', unit: 'walls', q: 2 },
+		{ name: 'Pottery Classes', emoji: '🏺', unit: 'seats', q: 10 },
+		{ name: 'Jazz Violin', emoji: '🎻', unit: 'lessons', q: 15 },
+		{ name: 'Hip Hop Dance', emoji: '💃', unit: 'classes', q: 20 },
+		{ name: 'Film Editing', emoji: '🎬', unit: 'hours', q: 30 },
+		{ name: 'Poetry Slam', emoji: '🎤', unit: 'events', q: 4 },
+		{ name: 'Calligraphy', emoji: '✒️', unit: 'scrolls', q: 100 },
+		{ name: 'Weaving', emoji: '🧵', unit: 'textiles', q: 15 },
+
+		// Sustainability & Environment
+		{ name: 'Urban Farming', emoji: '🥬', unit: 'consultations', q: 15 },
+		{ name: 'Solar Installation', emoji: '☀️', unit: 'panels', q: 50 },
+		{ name: 'Permaculture', emoji: '🌿', unit: 'designs', q: 3 },
+		{ name: 'Water Purification', emoji: '💧', unit: 'liters', q: 1000 },
+		{ name: 'Beekeeping', emoji: '🐝', unit: 'hives', q: 10 },
+		{ name: 'Composting', emoji: '🍂', unit: 'bins', q: 25 },
+		{ name: 'Bike Repair', emoji: '🚲', unit: 'bikes', q: 20 },
+		{ name: 'Upcycling Clothes', emoji: '👕', unit: 'garments', q: 40 },
+		{ name: 'Seed Banking', emoji: '🌱', unit: 'packets', q: 200 },
+		{ name: 'Mycology', emoji: '🍄', unit: 'kits', q: 30 },
+
+		// Services & Community
+		{ name: 'Start-up Legal Aid', emoji: '⚖️', unit: 'consultations', q: 12 },
+		{ name: 'Mental Health Chat', emoji: '🧠', unit: 'sessions', q: 30 },
+		{ name: 'Eco-Tourism Guide', emoji: '🗺️', unit: 'tours', q: 10 },
+		{ name: 'Translation', emoji: '🗣️', unit: 'pages', q: 50 },
+		{ name: 'Conflict Mediation', emoji: '🤝', unit: 'sessions', q: 5 },
+		{ name: 'Event Planning', emoji: '📅', unit: 'events', q: 2 },
+		{ name: 'Elderly Companion', emoji: '👵', unit: 'visits', q: 15 },
+		{ name: 'Dog Walking', emoji: '🐕', unit: 'walks', q: 25 },
+		{ name: 'Carpentry', emoji: '🔨', unit: 'projects', q: 4 },
+		{ name: 'Plumbing', emoji: '🔧', unit: 'repairs', q: 8 },
+
+		// Education
+		{ name: 'Local Language', emoji: '🗣️', unit: 'lessons', q: 20 },
+		{ name: 'Math Tutoring', emoji: '➗', unit: 'hours', q: 10 },
+		{ name: 'Physics Labs', emoji: '⚛️', unit: 'experiments', q: 5 },
+		{ name: 'History Lectures', emoji: '📜', unit: 'talks', q: 3 },
+		{ name: 'Literacy Program', emoji: '📖', unit: 'students', q: 12 },
+		{ name: 'Cooking Class', emoji: '🍳', unit: 'meals', q: 8 }
+	];
+
+	MORE_GLOBAL_CITIES.forEach((city, i) => {
+		// Add 2 random capacities for each city with JITTER
+		// Use a large prime stride to avoid repeating patterns if list length shares factors with cities length
+		const stride = 17; 
+		const template1 = CAPACITY_TEMPLATES[(i * stride) % CAPACITY_TEMPLATES.length];
+		const template2 = CAPACITY_TEMPLATES[((i * stride) + 11) % CAPACITY_TEMPLATES.length];
+
+		slots.push(createCapacitySlot(template1.name, template1.emoji, template1.unit, template1.q, jitterLocation(city), 'Specific'));
+		slots.push(createCapacitySlot(template2.name, template2.emoji, template2.unit, template2.q, jitterLocation(city), 'Specific'));
+	});
 
 	console.log(
 		`[EXAMPLE] Created ${slots.length} example capacity slots (${slots.filter((c, i) => i < 56).length} in South America)`
@@ -836,6 +1034,68 @@ export function createExampleNeedSlots(): NeedSlot[] {
 	slots.push(createNeedSlot('Vaccines', '💉', 'doses', 1000, shiftCity(GLOBAL_CITIES[0]), 'Specific')); // Nairobi
 	slots.push(createNeedSlot('Legal Defense', '⚖️', 'hours', 100, shiftCity(GLOBAL_CITIES[16]), 'Online')); // Berlin
 	slots.push(createNeedSlot('Community Internet', '📡', 'routers', 15, shiftCity(GLOBAL_CITIES[22]), 'Specific')); // Mexico City
+
+	// ============ EXPANDED GLOBAL NEEDS (Generated) ============
+	const NEED_TEMPLATES = [
+		// Infrastructure & Basic Needs
+		{ name: 'Clean Water', emoji: '🚰', unit: 'liters', q: 5000 },
+		{ name: 'Affordable Housing', emoji: '🏠', unit: 'units', q: 10 },
+		{ name: 'Stable Electricity', emoji: '💡', unit: 'connex', q: 50 },
+		{ name: 'Internet Access', emoji: '📡', unit: 'nodes', q: 25 },
+		{ name: 'Sanitation', emoji: '🚽', unit: 'toilets', q: 100 },
+		{ name: 'Road Repair', emoji: '🚧', unit: 'km', q: 5 },
+		{ name: 'Waste Management', emoji: '♻️', unit: 'tons', q: 50 },
+		{ name: 'Heating Fuel', emoji: '🔥', unit: 'liters', q: 500 },
+		{ name: 'Public Transport', emoji: '🚌', unit: 'rides', q: 500 },
+		{ name: 'Street Lighting', emoji: '🔦', unit: 'lights', q: 30 },
+
+		// Medical & Health
+		{ name: 'Vaccines', emoji: '💉', unit: 'doses', q: 200 },
+		{ name: 'Insulin', emoji: '⚕️', unit: 'vials', q: 50 },
+		{ name: 'Maternity Care', emoji: '🤰', unit: 'kits', q: 20 },
+		{ name: 'Mosquito Nets', emoji: '🕸️', unit: 'nets', q: 500 },
+		{ name: 'Dental Hygiene', emoji: '🦷', unit: 'brushes', q: 1000 },
+		{ name: 'Mental Health', emoji: '🧠', unit: 'therapists', q: 5 },
+		{ name: 'First Aid Kits', emoji: '⛑️', unit: 'kits', q: 100 },
+		{ name: 'Prescription Glasses', emoji: '👓', unit: 'pairs', q: 50 },
+
+		// Education & Knowledge
+		{ name: 'Coding Education', emoji: '💻', unit: 'students', q: 25 },
+		{ name: 'Textbooks', emoji: '📚', unit: 'books', q: 300 },
+		{ name: 'School Supplies', emoji: '✏️', unit: 'sets', q: 150 },
+		{ name: 'Laptops', emoji: '💻', unit: 'units', q: 10 },
+		{ name: 'Science Equipment', emoji: '🔬', unit: 'pieces', q: 5 },
+		{ name: 'Teacher Training', emoji: '🎓', unit: 'workshops', q: 2 },
+		{ name: 'Library Access', emoji: '📖', unit: 'hours', q: 500 },
+
+		// Economic & Social
+		{ name: 'Micro-loans', emoji: '💰', unit: 'loans', q: 15 },
+		{ name: 'Job Training', emoji: '🛠️', unit: 'courses', q: 8 },
+		{ name: 'Legal Rep', emoji: '⚖️', unit: 'cases', q: 3 },
+		{ name: 'Refugee Support', emoji: '⛺', unit: 'tents', q: 20 },
+		{ name: 'Childcare', emoji: '👶', unit: 'slots', q: 10 },
+		{ name: 'Senior Care', emoji: '👴', unit: 'hours', q: 100 },
+		{ name: 'Translation', emoji: '🗣️', unit: 'hours', q: 20 },
+		{ name: 'Artist Space', emoji: '🎨', unit: 'studios', q: 5 },
+
+		// Environmental
+		{ name: 'Reforestation', emoji: '🌲', unit: 'trees', q: 1000 },
+		{ name: 'Plastic Recycling', emoji: '🥤', unit: 'bins', q: 50 },
+		{ name: 'Soil Restoration', emoji: '🌱', unit: 'hectares', q: 2 },
+		{ name: 'Renewable Energy', emoji: '⚡', unit: 'kWh', q: 1000 },
+		{ name: 'Clean Air', emoji: '💨', unit: 'masks', q: 500 }
+	];
+
+	MORE_GLOBAL_CITIES.forEach((city, i) => {
+		// Add 2 random needs for each city with JITTER
+		// Use different stride than capacities to mix it up
+		const stride = 13;
+		const template1 = NEED_TEMPLATES[(i * stride) % NEED_TEMPLATES.length]; 
+		const template2 = NEED_TEMPLATES[((i * stride) + 7) % NEED_TEMPLATES.length];
+
+		slots.push(createNeedSlot(template1.name, template1.emoji, template1.unit, template1.q, jitterLocation(city), 'Specific'));
+		slots.push(createNeedSlot(template2.name, template2.emoji, template2.unit, template2.q, jitterLocation(city), 'Specific'));
+	});
 
 	console.log(`[EXAMPLE] Created ${slots.length} example need slots`);
 	return slots;

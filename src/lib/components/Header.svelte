@@ -103,7 +103,7 @@
 				: ((index === 0 && user)
 					? user
 					: ((index === 0 && !isAuthenticated)
-						? 'Log in!'
+						? 'Demo'
 						: 'Unknown'));
 			return {
 				id,
@@ -957,7 +957,7 @@
 						tabindex="0"
 						aria-label="Show login panel"
 					>
-						{$t('auth.login')}
+						Demo
 					</button>
 				{:else}
 					{#each currentPathInfo as segment, index}
