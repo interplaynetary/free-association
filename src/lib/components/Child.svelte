@@ -1019,13 +1019,15 @@
 				"
 			>
 				<!-- Anti-Contributor Button: Always show on leaf nodes (left side) -->
-				{#if hasAntiContributors}
+				<!-- DISABLED: Negative contribution button (wrapped in {#if false}) -->
+				{#if false}
+					{#if hasAntiContributors}
 					<!-- Pie Chart for Anti-Contributors -->
 					<svg
 						class="add-anti-contributor-button pie-chart"
 						style="
 							width: 47.5%;
-							height: 100%;
+			https://gmail.com/				height: 100%;
 							cursor: pointer;
 							flex-shrink: 0;
 							pointer-events: auto;
@@ -1090,7 +1092,7 @@
 							−
 						</text>
 					</svg>
-				{:else}
+					{:else}
 					<!-- Simple button when no anti-contributors -->
 					<button
 						class="add-anti-contributor-button"
@@ -1117,6 +1119,7 @@
 					>
 						−
 					</button>
+					{/if}
 				{/if}
 
 				<!-- Contributor Button: Always show on leaf nodes (right side) -->
@@ -1201,6 +1204,7 @@
 							font-size: {Math.max(12, buttonSizePercent * 0.8)}px;
 							flex-shrink: 0;
 							pointer-events: auto;
+							border-radius: 4px;
 						"
 						onclick={handleAddContributorClick}
 						ontouchstart={handleAddContributorClick}

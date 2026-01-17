@@ -1,4 +1,4 @@
-import { addChild, findNodeById, addContributors } from '@playnet/free-association/tree';
+import { addChild, findNodeById, addContributors, updateManualFulfillment } from '@playnet/free-association/tree';
 import type { RootNode } from '../protocol/schemas';
 import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 
@@ -123,13 +123,15 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	console.log('[SDG] Populating tree with all 17 SDGs at root level...');
 
 	// Helper to safely add SDG nodes only if they don't exist
-	const safeAddChild = (parent: any, id: string, name: string, fulfillment?: number) => {
-		const existing = findNodeById(rootNode, id);
+	const safeAddChild = (parent: any, id: string, name: string, points: number, manual?: number) => {
+		const existing = findNodeById(rootNode as any, id) as any;
 		if (existing) {
 			console.log(`[SDG] Node ${id} already exists, skipping.`);
 			return existing;
 		}
-		return addChild(parent, id, name, fulfillment ?? 0) as any;
+		// addChild signature: (parent, id, name, points, contributors, antiContributors, manual)
+		addChild(parent, id, name, points, [], [], manual);
+		return findNodeById(rootNode as any, id) as any; // Return the newly added node
 	};
 
 	// Add all 17 SDGs directly to root with appropriate emojis
@@ -152,7 +154,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	safeAddChild(rootNode, 'sdg-17', '🤝 Partnerships', 6);
 
 	// SDG 1: No Poverty
-	const sdg1 = findNodeById(rootNode, 'sdg-1');
+	const sdg1 = findNodeById(rootNode as any, 'sdg-1') as any;
 	if (sdg1) {
 		safeAddChild(sdg1, 'poverty-finance', 'Financial Inclusion', 30);
 		safeAddChild(sdg1, 'poverty-housing', 'Affordable Housing', 30);
@@ -160,7 +162,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 2: Zero Hunger
-	const sdg2 = findNodeById(rootNode, 'sdg-2');
+	const sdg2 = findNodeById(rootNode as any, 'sdg-2') as any;
 	if (sdg2) {
 		safeAddChild(sdg2, 'hunger-food', 'Food Distribution', 35);
 		safeAddChild(sdg2, 'hunger-farming', 'Sustainable Farming', 35);
@@ -168,7 +170,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 3: Good Health
-	const sdg3 = findNodeById(rootNode, 'sdg-3');
+	const sdg3 = findNodeById(rootNode as any, 'sdg-3') as any;
 	if (sdg3) {
 		safeAddChild(sdg3, 'health-medical', 'Medical Services', 30);
 		safeAddChild(sdg3, 'health-mental', 'Mental Health', 25);
@@ -177,7 +179,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 4: Quality Education
-	const sdg4 = findNodeById(rootNode, 'sdg-4');
+	const sdg4 = findNodeById(rootNode as any, 'sdg-4') as any;
 	if (sdg4) {
 		safeAddChild(sdg4, 'edu-primary', 'Primary Education', 25);
 		safeAddChild(sdg4, 'edu-vocational', 'Vocational Training', 25);
@@ -186,7 +188,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 5: Gender Equality
-	const sdg5 = findNodeById(rootNode, 'sdg-5');
+	const sdg5 = findNodeById(rootNode as any, 'sdg-5') as any;
 	if (sdg5) {
 		safeAddChild(sdg5, 'gender-empowerment', 'Women Empowerment', 40);
 		safeAddChild(sdg5, 'gender-rights', 'Equal Rights', 30);
@@ -194,7 +196,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 6: Clean Water
-	const sdg6 = findNodeById(rootNode, 'sdg-6');
+	const sdg6 = findNodeById(rootNode as any, 'sdg-6') as any;
 	if (sdg6) {
 		safeAddChild(sdg6, 'water-access', 'Water Access', 40);
 		safeAddChild(sdg6, 'water-sanitation', 'Sanitation', 35);
@@ -202,7 +204,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 7: Clean Energy
-	const sdg7 = findNodeById(rootNode, 'sdg-7');
+	const sdg7 = findNodeById(rootNode as any, 'sdg-7') as any;
 	if (sdg7) {
 		safeAddChild(sdg7, 'energy-solar', 'Solar Power', 30);
 		safeAddChild(sdg7, 'energy-wind', 'Wind Power', 25);
@@ -211,7 +213,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 8: Decent Work
-	const sdg8 = findNodeById(rootNode, 'sdg-8');
+	const sdg8 = findNodeById(rootNode as any, 'sdg-8') as any;
 	if (sdg8) {
 		safeAddChild(sdg8, 'work-jobs', 'Job Creation', 30);
 		safeAddChild(sdg8, 'work-entrepreneurship', 'Entrepreneurship', 30);
@@ -220,7 +222,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 9: Innovation
-	const sdg9 = findNodeById(rootNode, 'sdg-9');
+	const sdg9 = findNodeById(rootNode as any, 'sdg-9') as any;
 	if (sdg9) {
 		safeAddChild(sdg9, 'innovation-tech', 'Technology Development', 35);
 		safeAddChild(sdg9, 'innovation-infrastructure', 'Infrastructure', 35);
@@ -228,7 +230,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 10: Reduced Inequality
-	const sdg10 = findNodeById(rootNode, 'sdg-10');
+	const sdg10 = findNodeById(rootNode as any, 'sdg-10') as any;
 	if (sdg10) {
 		safeAddChild(sdg10, 'inequality-income', 'Income Equality', 35);
 		safeAddChild(sdg10, 'inequality-social', 'Social Inclusion', 35);
@@ -236,7 +238,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 11: Sustainable Cities
-	const sdg11 = findNodeById(rootNode, 'sdg-11');
+	const sdg11 = findNodeById(rootNode as any, 'sdg-11') as any;
 	if (sdg11) {
 		safeAddChild(sdg11, 'cities-transport', 'Public Transport', 30);
 		safeAddChild(sdg11, 'cities-housing', 'Sustainable Housing', 25);
@@ -245,7 +247,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 12: Responsible Consumption
-	const sdg12 = findNodeById(rootNode, 'sdg-12');
+	const sdg12 = findNodeById(rootNode as any, 'sdg-12') as any;
 	if (sdg12) {
 		safeAddChild(sdg12, 'consumption-circular', 'Circular Economy', 30);
 		safeAddChild(sdg12, 'consumption-waste', 'Waste Reduction', 30);
@@ -253,7 +255,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 13: Climate Action
-	const sdg13 = findNodeById(rootNode, 'sdg-13');
+	const sdg13 = findNodeById(rootNode as any, 'sdg-13') as any;
 	if (sdg13) {
 		safeAddChild(sdg13, 'climate-mitigation', 'Emissions Reduction', 35);
 		safeAddChild(sdg13, 'climate-adaptation', 'Climate Adaptation', 35);
@@ -261,7 +263,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 14: Life Below Water
-	const sdg14 = findNodeById(rootNode, 'sdg-14');
+	const sdg14 = findNodeById(rootNode as any, 'sdg-14') as any;
 	if (sdg14) {
 		safeAddChild(sdg14, 'ocean-conservation', 'Marine Conservation', 35);
 		safeAddChild(sdg14, 'ocean-fishing', 'Sustainable Fishing', 35);
@@ -269,7 +271,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 15: Life on Land
-	const sdg15 = findNodeById(rootNode, 'sdg-15');
+	const sdg15 = findNodeById(rootNode as any, 'sdg-15') as any;
 	if (sdg15) {
 		safeAddChild(sdg15, 'land-forests', 'Forest Conservation', 35);
 		safeAddChild(sdg15, 'land-biodiversity', 'Biodiversity Protection', 35);
@@ -277,7 +279,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 16: Peace & Justice
-	const sdg16 = findNodeById(rootNode, 'sdg-16');
+	const sdg16 = findNodeById(rootNode as any, 'sdg-16') as any;
 	if (sdg16) {
 		safeAddChild(sdg16, 'peace-institutions', 'Strong Institutions', 30);
 		safeAddChild(sdg16, 'peace-justice', 'Access to Justice', 30);
@@ -286,7 +288,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	// SDG 17: Partnerships
-	const sdg17 = findNodeById(rootNode, 'sdg-17');
+	const sdg17 = findNodeById(rootNode as any, 'sdg-17') as any;
 	if (sdg17) {
 		safeAddChild(sdg17, 'partnership-local', 'Local Partnerships', 30);
 		safeAddChild(sdg17, 'partnership-global', 'Global Cooperation', 30);
@@ -351,7 +353,7 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 
 	// Inject contributors
 	for (const [nodeId, orgIds] of Object.entries(recognitionMap)) {
-		const node = findNodeById(rootNode, nodeId);
+		const node = findNodeById(rootNode as any, nodeId) as any;
 		if (node) {
 			const validOrgIds: string[] = [];
 			for (const orgId of orgIds) {
@@ -379,7 +381,15 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 
 					if (currentContributors.length > startLength) {
 						addContributors(n, currentContributors, currentAntiContributors);
-						// console.log(`[SDG] Added ${validOrgIds.join(', ')} to ${nodeId}`);
+
+						// Set varied manual fulfillment (0-100) to make the demo more interesting
+						// Use a hash of the node ID to get consistent but varied values
+						const hash = nodeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+						const fulfillmentPercent = 30 + (hash % 60); // Range: 30-89
+						const fulfillmentValue = fulfillmentPercent / 100; // Convert to 0.0-1.0
+						updateManualFulfillment(n, fulfillmentValue);
+
+						console.log(`[SDG] Added ${validOrgIds.join(', ')} to ${nodeId} with ${fulfillmentPercent}% fulfillment`);
 					}
 				} catch (e) {
 					console.warn(`[SDG] Failed to add contributors to ${nodeId}`, e);
