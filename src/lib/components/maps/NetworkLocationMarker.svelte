@@ -54,10 +54,6 @@
 	{#snippet content()}
 		<div class="network-marker" style="z-index: {zIndex}">
 			<div class="marker-icon">{markerEmoji}</div>
-			<div class="marker-label">
-				<div class="marker-pubkey">{shortPubkey}</div>
-				<div class="marker-coords">{coordsText}</div>
-			</div>
 		</div>
 	{/snippet}
 </Marker>
