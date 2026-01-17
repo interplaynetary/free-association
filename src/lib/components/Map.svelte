@@ -21,7 +21,6 @@
     import * as h3 from 'h3-js';
 	// V5: Import commitments (contains capacity slots) from v5 stores
 	import { getAllCommitmentsRecord, myCommitmentStore, networkCommitments } from '$lib/protocol/stores/stores.svelte';
-	import { get } from 'svelte/store';
 
 	import { globalState } from '$lib/global.svelte';
 	import { t } from '$lib/translations';

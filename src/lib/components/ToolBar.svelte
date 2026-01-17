@@ -978,7 +978,13 @@
 
 								<!-- Quantity & Emoji -->
 								<div class="draft-qty-group">
-									<span class="emoji-display">{draftSlot.emoji}</span>
+									<button 
+										class="emoji-display-btn" 
+										onclick={() => toggleExpandedDraft('emoji')}
+										title="Choose Emoji"
+									>
+										{draftSlot.emoji}
+									</button>
 									<input 
 										type="number" 
 										bind:value={draftSlot.quantity} 
@@ -989,14 +995,7 @@
 
 								<!-- Expanded Draft Toggles -->
 								<div class="draft-expander-group">
-									<button 
-										class="toolbar-button expand-btn"
-										class:active={showExpandedDraft && expandedDraftTab === 'emoji'}
-										title="Choose Emoji"
-										onclick={() => toggleExpandedDraft('emoji')}
-									>
-										{draftSlot.emoji}
-									</button>
+									<!-- Emoji button removed (moved to input group) -->
 									<button 
 										class="toolbar-button expand-btn"
 										class:active={showExpandedDraft && expandedDraftTab === 'time'}
@@ -1072,14 +1071,14 @@
 
 
 		<!-- Footer links and copyright (right side) -->
-		<div class="toolbar-footer">
-			<span class="demo-version">Demo v 0.5.2</span>
+		<!--<div class="toolbar-footer"> -->
+			<!-- <span class="demo-version">Demo v 0.5.2</span>
 			<a href="{base}/terms" class="footer-link">Terms</a>
 			<span class="footer-separator">•</span>
 			<a href="{base}/privacy" class="footer-link">Privacy</a>
-			<span class="footer-separator">•</span>
-			<span class="copyright">© Playnet</span>
-		</div>
+			<span class="footer-separator">•</span> 
+			<span class="copyright">© Playnet</span>--> 
+		<!--</div> -->
 		</div>
 
 		<!-- Forest subtrees panel for main route -->
@@ -2032,6 +2031,7 @@
 		flex-direction: column;
 		gap: 2px;
         margin-right: 8px;
+        margin-left: 12px;
 	}
 
 	.type-tab {
@@ -2060,27 +2060,28 @@
 	.inventory-draft-controls {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 2px;
 		background: #f5f5f5;
-		padding: 4px 8px;
+		padding: 0 4px;
 		border-radius: 20px;
-        height: 36px;
+        height: 28px;
 	}
 
 	.draft-select {
 		background: transparent;
 		border: none;
-		font-size: 12px;
-		max-width: 80px;
+		font-size: 10px;
+		max-width: 65px;
         cursor: pointer;
+        padding: 0;
         outline: none;
 	}
 
 	.draft-input-name {
 		border: none;
 		background: transparent;
-		font-size: 13px;
-		width: 140px;
+		font-size: 11px;
+		width: 100px;
 		outline: none;
         padding: 0 4px;
 	}
@@ -2089,26 +2090,29 @@
 		display: flex;
 		align-items: center;
 		background: white;
-		border-radius: 12px;
-		padding: 0 4px;
+		border-radius: 10px;
+		padding: 0 2px;
 		border: 1px solid #ddd;
-        height: 28px;
+        height: 22px;
 	}
 
 	.emoji-btn {
 		background: none;
 		border: none;
-		font-size: 14px;
-		padding: 0 4px;
+		font-size: 12px;
+		padding: 0 2px;
 		cursor: pointer;
         line-height: 1;
 	}
 
-	.emoji-display {
-		font-size: 14px;
-		padding: 0 4px;
+	.emoji-display-btn {
+		background: none;
+		border: none;
+		font-size: 12px;
+		padding: 0 2px;
 		line-height: 1;
 		display: inline-block;
+        cursor: pointer;
 	}
 
     .emoji-picker-container {
@@ -2121,13 +2125,14 @@
     }
 
 	.draft-input-qty {
-		width: 40px;
+		width: 32px;
 		border: none;
 		text-align: center;
         outline: none;
-        font-size: 12px;
+        font-size: 10px;
         /* Hide spin buttons */
         -moz-appearance: textfield;
+        padding: 0;
 	}
     
     .draft-input-qty::-webkit-outer-spin-button,
@@ -2137,12 +2142,16 @@
     }
 
 	.add-inventory-btn {
-		font-size: 14px !important;
-		width: 24px !important;
-		height: 24px !important;
+		font-size: 12px !important;
+		width: 20px !important;
+		height: 20px !important;
 		background: #4caf50 !important;
 		color: white !important;
 		border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
 	}
     
     .relative {
@@ -2200,22 +2209,23 @@
 
 	.draft-expander-group {
 		display: flex;
-		gap: 0.25rem;
-		margin-right: 0.5rem;
+		gap: 1px;
+		margin-right: 4px;
         border-left: 1px solid #e2e8f0;
-        padding-left: 0.5rem;
+        padding-left: 4px;
 	}
 
 	.expand-btn {
-		font-size: 1rem;
-		width: 32px;
-		height: 32px;
+		font-size: 12px;
+		width: 22px;
+		height: 22px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 6px;
 		background: transparent;
         opacity: 0.6;
+        padding: 0;
 	}
 
 	.expand-btn:hover {
