@@ -11,6 +11,7 @@ import type { AvailabilitySlot, NeedSlot } from '$lib/protocol/schemas';
 
 // Live location data interface
 export interface LiveLocationData {
+	pubkey?: string; // Injected by store helper
 	latitude: number;
 	longitude: number;
 	accuracy?: number;
@@ -32,6 +33,12 @@ export const liveLocationBlockList: Writable<string[]> = writable([]);
 
 // Network participants' locations (from network or simulator)
 export const networkLocations: Writable<Record<string, LiveLocationData>> = writable({});
+export const networkLocationsArray = derived(networkLocations, ($locs) => {
+	return Object.entries($locs).map(([id, data]) => ({
+		...data,
+		pubkey: id // Inject pubkey for Svelte keyed each blocks matching Map.svelte expectation
+	}));
+});
 
 // Trips for visualization
 export interface TripWaypoint {
@@ -177,7 +184,7 @@ export const liveLocationAccessList: Readable<string[]> = derived(
 			for (const [providerPub, theirAllocs] of Object.entries($networkAllocs)) {
 				if (!theirAllocs) continue;
 
-				const hasAllocation = theirAllocs.some(a =>
+				const hasAllocation = theirAllocs.some((a: any) =>
 					a.recipient_need_slot_id === slot.id
 				);
 
@@ -212,7 +219,7 @@ export const filteredLiveLocationAccessList: Readable<string[]> = derived(
 // ═══════════════════════════════════════════════════════════════════
 
 // Transport Types & Speeds
-type TransportMode = 'walking' | 'cycling' | 'driving' | 'bussing' | 'training' | 'flying' | 'helicoptering' | 'rocketing' | 'sailing';
+type TransportMode = 'walking' | 'cycling' | 'driving' | 'bussing' | 'training' | 'flying' | 'helicoptering' | 'rocketing' | 'satelliting' | 'sailing';
 
 interface TransportConfig {
 	mode: TransportMode;
@@ -230,6 +237,7 @@ const TRANSPORT_MODES: TransportConfig[] = [
 	{ mode: 'flying', emoji: '✈️', speedIds: 150, maxSpeedMps: 250 },
 	{ mode: 'helicoptering', emoji: '🚁', speedIds: 60, maxSpeedMps: 60 },
 	{ mode: 'rocketing', emoji: '🚀', speedIds: 500, maxSpeedMps: 8000 },
+	{ mode: 'satelliting', emoji: '🛰️', speedIds: 1000, maxSpeedMps: 20000 },
 	{ mode: 'sailing', emoji: '🚢', speedIds: 8, maxSpeedMps: 10 }
 ];
 
@@ -238,6 +246,7 @@ const TRANSPORT_MODES: TransportConfig[] = [
  */
 function getAltitudeForMode(mode: TransportMode): number {
 	switch (mode) {
+		case 'satelliting': return 600000; // 600km
 		case 'rocketing': return 200000; // 200km
 		case 'flying': return 10000; // 10km
 		case 'helicoptering': return 1000; // 1km
@@ -328,21 +337,107 @@ function moveAlongPath(
 	};
 }
 
-// Major Hubs for global travel
-const HUBS = {
-	SF: [37.7749, -122.4194],
-	NY: [40.7128, -74.0060],
-	London: [51.5074, -0.1278],
-	Tokyo: [35.6762, 139.6503],
-	Sydney: [-33.8688, 151.2093],
-	CapeTown: [-33.9249, 18.4241],
-	Dubai: [25.2048, 55.2708],
-	Singapore: [1.3521, 103.8198],
-	Rio: [-22.9068, -43.1729],
-	Paris: [48.8566, 2.3522]
+// Geographic Data for realistic routing
+type Continent = 'NorthAmerica' | 'SouthAmerica' | 'Europe' | 'Asia' | 'Africa' | 'Australia' | 'Antarctica';
+type Ocean = 'Pacific' | 'Atlantic' | 'Indian' | 'Southern' | 'Arctic';
+
+interface HubDefinition {
+	id: string;
+	coords: [number, number];
+	continent: Continent;
+	oceans?: Ocean[]; // If coastal, which oceans it connects to
+}
+
+const HUBS: Record<string, HubDefinition> = {
+	SF: { id: 'SF', coords: [37.7749, -122.4194], continent: 'NorthAmerica', oceans: ['Pacific'] },
+	NY: { id: 'NY', coords: [40.7128, -74.0060], continent: 'NorthAmerica', oceans: ['Atlantic'] },
+	London: { id: 'London', coords: [51.5074, -0.1278], continent: 'Europe', oceans: ['Atlantic'] },
+	Tokyo: { id: 'Tokyo', coords: [35.6762, 139.6503], continent: 'Asia', oceans: ['Pacific'] },
+	Sydney: { id: 'Sydney', coords: [-33.8688, 151.2093], continent: 'Australia', oceans: ['Pacific', 'Indian'] },
+	CapeTown: { id: 'CapeTown', coords: [-33.9249, 18.4241], continent: 'Africa', oceans: ['Atlantic', 'Indian'] },
+	Dubai: { id: 'Dubai', coords: [25.2048, 55.2708], continent: 'Asia', oceans: ['Indian'] },
+	Singapore: { id: 'Singapore', coords: [1.3521, 103.8198], continent: 'Asia', oceans: ['Pacific', 'Indian'] },
+	Rio: { id: 'Rio', coords: [-22.9068, -43.1729], continent: 'SouthAmerica', oceans: ['Atlantic'] },
+	Paris: { id: 'Paris', coords: [48.8566, 2.3522], continent: 'Europe' }, // Inland
+	Berlin: { id: 'Berlin', coords: [52.5200, 13.4050], continent: 'Europe' }, // Inland
+	Cairo: { id: 'Cairo', coords: [30.0444, 31.2357], continent: 'Africa' }, // Inland but near sea
+	Moscow: { id: 'Moscow', coords: [55.7558, 37.6173], continent: 'Europe' }, // Inland
+	Beijing: { id: 'Beijing', coords: [39.9042, 116.4074], continent: 'Asia' }, // Inland-ish
+	SaoPaulo: { id: 'SaoPaulo', coords: [-23.5505, -46.6333], continent: 'SouthAmerica' }, // Inland-ish
+	Mumbai: { id: 'Mumbai', coords: [19.0760, 72.8777], continent: 'Asia', oceans: ['Indian'] },
+	Vancouver: { id: 'Vancouver', coords: [49.2827, -123.1207], continent: 'NorthAmerica', oceans: ['Pacific'] },
+	Lima: { id: 'Lima', coords: [-12.0464, -77.0428], continent: 'SouthAmerica', oceans: ['Pacific'] }
 };
 
-const HUB_KEYS = Object.keys(HUBS) as (keyof typeof HUBS)[];
+const HUB_KEYS = Object.keys(HUBS);
+
+// Explicit Safe Route Graph (Adjacency List) to prevent geography errors
+const GROUND_CONNECTIONS: Record<string, string[]> = {
+	SF: ['NY', 'Vancouver'],
+	NY: ['SF', 'Vancouver'],
+	Vancouver: ['SF', 'NY'],
+
+	London: ['Paris', 'Berlin', 'Moscow'], // Chunnel allows London-Paris
+	Paris: ['London', 'Berlin', 'Moscow', 'Beijing'], // Afro-Eurasia (mostly connected)
+	Berlin: ['London', 'Paris', 'Moscow', 'Beijing'],
+	Moscow: ['London', 'Paris', 'Berlin', 'Beijing', 'Mumbai'],
+	Beijing: ['Paris', 'Berlin', 'Moscow', 'Mumbai', 'Singapore', 'Dubai'],
+
+	Singapore: ['Beijing', 'Mumbai'], // Peninsula connected
+	Mumbai: ['Beijing', 'Moscow', 'Dubai'],
+	Dubai: ['Mumbai', 'Cairo'],
+	Cairo: ['Dubai', 'CapeTown'], // Trans-Africa
+	CapeTown: ['Cairo'],
+
+	Rio: ['SaoPaulo', 'Lima'],
+	SaoPaulo: ['Rio', 'Lima'],
+	Lima: ['Rio', 'SaoPaulo'],
+
+	Tokyo: [], // Island (no ground out)
+	Sydney: [] // Island/Continent (no ground out to others)
+};
+
+const SEA_CONNECTIONS: Record<string, string[]> = {
+	// Pacific
+	SF: ['Tokyo', 'Sydney', 'Singapore', 'Lima', 'Vancouver'],
+	Vancouver: ['Tokyo', 'Sydney', 'SF'],
+	Tokyo: ['SF', 'Sydney', 'Singapore', 'Vancouver'],
+	Sydney: ['SF', 'Tokyo', 'Singapore', 'CapeTown', 'Lima'],
+	Lima: ['SF', 'Sydney', 'Tokyo'],
+	Singapore: ['Tokyo', 'Sydney', 'Mumbai', 'Dubai'], // Malacca strait
+
+	// Atlantic
+	NY: ['London', 'CapeTown', 'Rio'],
+	London: ['NY', 'CapeTown', 'Rio'],
+	Rio: ['NY', 'London', 'CapeTown'],
+	CapeTown: ['NY', 'London', 'Rio', 'Sydney', 'Mumbai'],
+
+	// Indian
+	Mumbai: ['CapeTown', 'Dubai', 'Singapore'],
+	Dubai: ['Mumbai', 'Singapore']
+};
+
+/**
+ * Get valid destinations for a given start hub and transport mode
+ */
+function getValidDestinations(startHubId: string, transport: TransportConfig): string[] {
+	// Air/Space: Go anywhere (except self)
+	if (['flying', 'rocketing', 'satelliting', 'helicoptering'].includes(transport.mode)) {
+		return HUB_KEYS.filter(id => id !== startHubId);
+	}
+
+	// Sea: Use Explicit Sea Graph
+	if (transport.mode === 'sailing') {
+		return SEA_CONNECTIONS[startHubId] || [];
+	}
+
+	// Ground: Use Explicit Ground Graph
+	if (['driving', 'training', 'bussing', 'walking'].includes(transport.mode)) {
+		return GROUND_CONNECTIONS[startHubId] || [];
+	}
+
+	return [];
+}
 
 /**
  * Calculate point on Great Circle path
@@ -383,24 +478,27 @@ function getGreatCircleWaypoint(p1: [number, number], p2: [number, number], f: n
  * Generate a Global Round Trip (A -> B -> A)
  */
 function generateGlobalTrip(
-	startHub: keyof typeof HUBS,
-	endHub: keyof typeof HUBS,
+	startHub: string,
+	endHub: string,
 	transport: TransportConfig
 ): TripWaypoint[] {
-	const p1 = HUBS[startHub] as [number, number];
-	const p2 = HUBS[endHub] as [number, number];
+	const p1 = HUBS[startHub].coords;
+	const p2 = HUBS[endHub].coords;
 
 	const waypoints: TripWaypoint[] = [];
 	const LEG_SEGMENTS = 40;
 
 	// Determine altitude based on mode
 	let maxAlt = 0; // meters
-	if (transport.mode === 'rocketing') maxAlt = 400000; // 400km
+	if (transport.mode === 'satelliting') maxAlt = 800000; // 800km (higher arc)
+	else if (transport.mode === 'rocketing') maxAlt = 400000; // 400km
 	else if (transport.mode === 'flying') maxAlt = 20000; // 20km (higher for visibility)
 	else if (transport.mode === 'helicoptering') maxAlt = 2000; // 2km
 
 	// For surface global travel (ships), lift slightly to avoid z-fighting
+	// Land travel (trains/busses) stays near surface but lifted over terrain
 	if (transport.mode === 'sailing') maxAlt = 500; // 500m "hover"
+	if (['driving', 'bussing', 'training'].includes(transport.mode)) maxAlt = 100; // 100m lift
 
 	// Leg 1: A -> B (0 to 50% of time)
 	for (let i = 0; i <= LEG_SEGMENTS; i++) {
@@ -558,6 +656,17 @@ const DEFAULT_SIMULATOR_CONFIG: SimulatorConfig = {
 };
 
 /**
+ * Stop the location simulator
+ */
+export function stopLocationSimulator() {
+	if (simulatorIntervalId) {
+		clearInterval(simulatorIntervalId);
+		simulatorIntervalId = null;
+	}
+	isSimulatorActive.set(false);
+}
+
+/**
  * Start the location simulator
  */
 export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
@@ -596,25 +705,42 @@ export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
 		let waypoints: TripWaypoint[];
 
 		// High speed transport = Global Trip
-		const isLongDistance = ['flying', 'rocketing', 'sailing', 'helicoptering', 'training', 'bussing'].includes(transport.mode);
+		const isLongDistance = ['flying', 'rocketing', 'satelliting', 'sailing', 'helicoptering', 'training', 'bussing'].includes(transport.mode);
 
 		if (isLongDistance) {
-			// Pick two random distinct hubs
+			// PICK VALID PAIR
+			// 1. Pick random start
 			const startIdx = Math.floor(Math.random() * HUB_KEYS.length);
-			let endIdx = Math.floor(Math.random() * HUB_KEYS.length);
-			while (endIdx === startIdx) {
-				endIdx = Math.floor(Math.random() * HUB_KEYS.length);
+			const startId = HUB_KEYS[startIdx];
+
+			// 2. Find valid ends
+			const validDestinations = getValidDestinations(startId, transport);
+
+			if (validDestinations.length > 0) {
+				// Pick valid destination
+				const endId = validDestinations[Math.floor(Math.random() * validDestinations.length)];
+				waypoints = generateGlobalTrip(startId, endId, transport);
+			} else {
+				// Fallback if no valid routes (shouldn't happen with our hubs): Local loop at start
+				waypoints = generateLocalLoop(HUBS[startId].coords, cfg.radius, transport);
+			}
+		} else {
+			// Low speed = Local Loop
+			// If we are in GLOBAL mode (radius > 100), pick a random CITY CENTER instead of random ocean point
+			let userCenter: [number, number];
+			if (cfg.radius > 100) {
+				const randomHubId = HUB_KEYS[Math.floor(Math.random() * HUB_KEYS.length)];
+				userCenter = HUBS[randomHubId].coords;
+			} else {
+				userCenter = randomLocationNear(cfg.center, cfg.radius);
 			}
 
-			waypoints = generateGlobalTrip(HUB_KEYS[startIdx], HUB_KEYS[endIdx], transport);
-		} else {
-			// Low speed = Local Loop around user center
-			const userCenter = randomLocationNear(cfg.center, cfg.radius);
 			waypoints = generateLocalLoop(userCenter, cfg.radius, transport);
 		}
 
 		// Define color based on transport
 		let color: [number, number, number] = [255, 165, 0]; // Orange default
+		if (transport.mode === 'satelliting') color = [200, 200, 255];
 		if (transport.mode === 'rocketing') color = [255, 0, 0];
 		if (transport.mode === 'flying') color = [0, 191, 255];
 		if (transport.mode === 'helicoptering') color = [0, 255, 127];
@@ -672,61 +798,15 @@ export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
 		networkLocations.set(updates);
 	}
 
-	// Initial update
+	// Start loop
 	updateSimulatedLocations();
-
-	// Start interval
-	stopLocationSimulator(); // Clear any existing
-	// Fast updates for smoothness (100ms) - let the UI interpolate if needed, 
-	// but frequent updates look better than interpolation over long gaps for fast objects
-	simulatorIntervalId = window.setInterval(updateSimulatedLocations, 200);
+	simulatorIntervalId = window.setInterval(updateSimulatedLocations, cfg.updateIntervalMs);
 	isSimulatorActive.set(true);
 
-	console.log('[LOCATION-SIMULATOR] ✅ Started');
+	return {
+		stop: () => {
+			if (simulatorIntervalId) clearInterval(simulatorIntervalId);
+			isSimulatorActive.set(false);
+		}
+	};
 }
-
-/**
- * Stop the location simulator
- */
-export function stopLocationSimulator() {
-	if (simulatorIntervalId !== null) {
-		window.clearInterval(simulatorIntervalId);
-		simulatorIntervalId = null;
-		isSimulatorActive.set(false);
-		console.log('[LOCATION-SIMULATOR] ⏹ Stopped');
-	}
-}
-
-/**
- * Get locations for specific users (reactive)
- */
-export const getNetworkLocation = derived(
-	networkLocations,
-	($locations) => (pubkey: string) => $locations[pubkey] || null
-);
-
-/**
- * All network locations as array (for map rendering)
- */
-export const networkLocationsArray: Readable<Array<LiveLocationData & { pubkey: string }>> = derived(
-	networkLocations,
-	($locations) => {
-		return Object.entries($locations).map(([pubkey, location]) => ({
-			...location,
-			pubkey
-		}));
-	}
-);
-
-/**
- * Network locations in MapLibre format [[lng, lat], ...]
- */
-export const networkLocationsLngLat: Readable<Array<{ pubkey: string; coords: [number, number] }>> = derived(
-	networkLocations,
-	($locations) => {
-		return Object.entries($locations).map(([pubkey, location]) => ({
-			pubkey,
-			coords: [location.longitude, location.latitude] as [number, number]
-		}));
-	}
-);

@@ -49,10 +49,9 @@
 	} from '$lib/location/location.svelte';
 	import { MapboxOverlay } from '@deck.gl/mapbox';
 	import { TripsLayer } from '@deck.gl/geo-layers';
-	import { PathLayer } from '@deck.gl/layers';
+	import { PathLayer, IconLayer } from '@deck.gl/layers';
 	import MapSidePanel from './MapSidePanel.svelte';
 	import H3Layer from './maps/H3Layer.svelte';
-	import HexNode from './ui/HexNode.svelte';
 	import H3HierarchyGraph from './ui/H3HierarchyGraph.svelte';
 	import NetworkLocationMarker from './maps/NetworkLocationMarker.svelte';
 
@@ -597,6 +596,12 @@
 		return 'markers' in marker && 'totalCapacities' in marker;
 	}
 
+	// Helper to get Twemoji URL for an emoji
+	function getEmojiUrl(emoji: string): string {
+		const codePoint = emoji.codePointAt(0)?.toString(16);
+		return `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/${codePoint}.png`;
+	}
+
 	// Get unique emojis from cluster markers
 	function getUniqueEmojis(clusterMarkers: GroupedSlotMarkerData[]): string[] {
 		const emojiSet = new Set<string>();
@@ -659,6 +664,9 @@
 			// Initial zoom setup
 			currentZoom = mapInstance.getZoom();
 
+			// Auto-start simulator in Flight Mode (Global)
+			startLocationSimulator({ radius: 200 });
+
 			const handleZoomEnd = () => {
 				const newZoom = mapInstance.getZoom();
 				currentZoom = newZoom;
@@ -720,7 +728,8 @@
 				getColor: (d: TripData) => [...d.color, 80], // Same color but with 30% opacity (80/255)
 				widthMinPixels: 2,
 				widthScale: 1,
-				rounded: true,
+				jointRounded: true,
+				capRounded: true,
 				parameters: {
 					depthTest: false // Always draw on top
 				}
@@ -736,7 +745,8 @@
 				getColor: (d: TripData) => d.color,
 				opacity: 0.8,
 				widthMinPixels: 4,
-				rounded: true,
+				jointRounded: true,
+				capRounded: true,
 				fadeTrail: true,
 				trailLength: TRAIL_LENGTH, // Use shared constant
 				currentTime: deckTime - 0.4, // Sync with marker tween lag (~400ms)
@@ -747,7 +757,7 @@
 			});
 
 			deckOverlay.setProps({
-				layers: [pathLayer, tripsLayer] // PathLayer first (bottom), then TripsLayer (top)
+				layers: [pathLayer, tripsLayer]
 			});
 		} else {
 			// Clear layers if no trips
@@ -1955,6 +1965,7 @@
 					draggable={false}
 				/>
 			{/each}
+
 
 			{#if show3DBuildings}
 				<FillExtrusionLayer

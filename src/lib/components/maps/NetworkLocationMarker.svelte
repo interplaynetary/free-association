@@ -40,10 +40,21 @@
 	// Display emoji or default
 	let markerEmoji = $derived(location.emoji || '👤');
 	
-	// Dynamic z-index based on latitude (lower lat = higher z-index to fake depth) 
-	// or specific transport types (planes on top)
+	// Visual altitude offset (fake 3D)
+	// Map meters to pixels loosely (e.g. 50km -> 1px? No, maybe simpler log scale or clamped)
+	// For visibility: Satellites (800km) should be clearly above ground, but not off screen.
+	let altitudeOffset = $derived.by(() => {
+		const alt = location.altitude || 0;
+		if (alt > 500000) return -60; // Satellites high up
+		if (alt > 10000) return -20; // Planes
+		if (alt > 100) return -5; // Ships/visual lift
+		return 0;
+	});
+
+	// Dynamic z-index based on latitude + altitude
 	let zIndex = $derived.by(() => {
 		if (markerEmoji === '🚀') return 2000;
+		if (markerEmoji === '🛰️') return 2100; // Satellites on top
 		if (markerEmoji === '✈️') return 1000;
 		if (markerEmoji === '🚁') return 900;
 		return 100 + Math.round((90 - location.latitude) * 10);
@@ -52,7 +63,13 @@
 
 <Marker lnglat={$coords} {draggable}>
 	{#snippet content()}
-		<div class="network-marker" style="z-index: {zIndex}">
+		<div 
+			class="network-marker" 
+			style="
+				z-index: {zIndex};
+				transform: translateY({altitudeOffset}px);
+			"
+		>
 			<div class="marker-icon">{markerEmoji}</div>
 		</div>
 	{/snippet}
@@ -65,7 +82,8 @@
 		align-items: center;
 		text-align: center;
 		cursor: pointer;
-		transition: transform 0.2s ease;
+		/* Transition transform for smooth movement + altitude changes */
+		transition: transform 0.2s linear; 
 		pointer-events: auto;
 	}
 
@@ -75,7 +93,7 @@
 	}
 
 	.marker-icon {
-		font-size: 32px;
+		font-size: 20px;
 		line-height: 1;
 		filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
 		transform-origin: center bottom;
@@ -86,35 +104,5 @@
 		transform: scale(1.2) translateY(-5px);
 	}
 
-	.marker-label {
-		margin-top: 4px;
-		background: rgba(255, 255, 255, 0.9);
-		backdrop-filter: blur(4px);
-		padding: 4px 8px;
-		border-radius: 6px;
-		font-size: 11px;
-		font-weight: 600;
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-		opacity: 0.8;
-		transition: opacity 0.2s;
-		max-width: 120px;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-	
-	.network-marker:hover .marker-label {
-		opacity: 1;
-		background: white;
-	}
 
-	.marker-pubkey {
-		color: #1e40af;
-		font-family: monospace;
-	}
-
-	.marker-coords {
-		color: #64748b;
-		font-size: 9px;
-	}
 </style>
