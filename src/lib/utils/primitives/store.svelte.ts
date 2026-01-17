@@ -40,7 +40,9 @@ import type { Writable, Readable } from 'svelte/store';
 import { holsterUser, holsterUserPub } from '$lib/network/holster.svelte';
 import * as z from 'zod';
 import { shouldPersist } from '$lib/utils/data/holsterTimestamp';
+
 import { fastExtractTimestamp, fastParse } from '$lib/utils/data/fastJsonParser';
+import * as idb from '$lib/utils/primitives/idb-keyval';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -250,33 +252,53 @@ export function createStore<T extends z.ZodTypeAny>(
 
 	function subscribeToNetwork() {
 		if (!get(holsterUserPub)) {
-			// fallback to localStorage if configured
+			// fallback to localStorage (now IndexedDB) if configured
 			if (config.localStorageKey && typeof window !== 'undefined') {
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated - using LocalStorage: ${config.localStorageKey}`);
-				try {
-					const raw = localStorage.getItem(config.localStorageKey);
+				console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated - using IndexedDB: ${config.localStorageKey}`);
+				
+				// Async load from IndexedDB
+				idb.get<string>(config.localStorageKey).then((raw) => {
 					if (raw) {
-						// LocalStorage is standard JSON, not holster packed string with timestamp usually? 
-						// Actually holster packed string format is just JSON with _updatedAt.
-						// We can treat it simply as object parse.
-						const parsed = JSON.parse(raw);
-						// Validate
-						const validation = config.schema.safeParse(parsed);
-						if (validation.success) {
-							store.set(validation.data);
-							console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Loaded from LocalStorage`);
-						} else {
-							console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ LocalStorage validation failed`, validation.error);
-							// Self-healing: Clear invalid data so we don't keep seeing this error
-							if (typeof window !== 'undefined') {
-								localStorage.removeItem(config.localStorageKey);
-								console.log(`[HOLSTER-STORE:${config.holsterPath}] 🧹 Cleared invalid LocalStorage data`);
+						try {
+							// If it's a string, try to parse it. If it was stored as an object (via IDB), it might already be an object.
+							// Our idb keyval stores whatever we give it. We will assume we store JSON strings for consistency with fallback logic,
+							// OR we can store objects directly. The localStorage logic parsed JSON.
+							// Let's store objects directly in IDB for performance, but careful with existing logic.
+							// Wait, the previous logic did: localStorage.setItem(key, JSON.stringify(data)).
+							// So we should expect a string if we migrate blindly, or object if we switch convention.
+							// Let's stick to storing the DATA OBJECT directly in IDB to save parsing costs.
+							
+							// BUT, for compatibility with the exact logic below, let's see. 
+							// Logic: const parsed = JSON.parse(raw).
+							// So let's try to handle both (legacy string string or new object).
+							
+							let parsed = raw;
+							if (typeof raw === 'string') {
+								try {
+									parsed = JSON.parse(raw);
+								} catch (e) {
+									// maybe it wasn't json string, but the object itself? No, raw is T.
+									console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to parse IDB data`, e);
+								}
 							}
+							
+							const validation = config.schema.safeParse(parsed);
+							if (validation.success) {
+								store.set(validation.data);
+								console.log(`[HOLSTER-STORE:${config.holsterPath}] ✅ Loaded from IndexedDB`);
+							} else {
+								console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ IndexedDB validation failed`, validation.error);
+								// Self-healing
+								idb.del(config.localStorageKey);
+							}
+						} catch (e) {
+							console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to load IndexedDB`, e);
 						}
 					}
-				} catch (e) {
-					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to load LocalStorage`, e);
-				}
+				}).catch(e => {
+					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to read IndexedDB`, e);
+				});
+				
 				return;
 			}
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] Cannot subscribe: not authenticated (and no localStorageKey)`);
@@ -400,24 +422,23 @@ export function createStore<T extends z.ZodTypeAny>(
 		isPersisting = true;
 		hasPendingLocalChanges = false;
 
-		// LocalStorage Mode
+		// LocalStorage -> IndexedDB Mode
 		if (!get(holsterUserPub) && config.localStorageKey) {
 			try {
 				if (dataToSave) {
-					// We just save raw object to local storage, no timestamp wrapping needed for simple usage?
-					// Or stick to wrapping for consistency? Let's assume simple JSON for demo mode simplicity.
-					// DemoTreeStore used simple JSON. Let's match that.
-					localStorage.setItem(config.localStorageKey, JSON.stringify(dataToSave));
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVED to LocalStorage`);
+					// Save directly to IndexedDB (as object, no need to stringify for IDB usually, but ensures consistency)
+					// Let's store the object directly to be efficient.
+					await idb.set(config.localStorageKey, dataToSave);
+					console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 SAVED to IndexedDB`);
 				} else {
-					localStorage.removeItem(config.localStorageKey);
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] 🗑️ REMOVED from LocalStorage`);
+					await idb.del(config.localStorageKey);
+					console.log(`[HOLSTER-STORE:${config.holsterPath}] 🗑️ REMOVED from IndexedDB`);
 				}
 				isPersisting = false;
 				processQueuedUpdate();
 				return;
 			} catch (e) {
-				console.error(`[HOLSTER-STORE:${config.holsterPath}] Error saving to LocalStorage`, e);
+				console.error(`[HOLSTER-STORE:${config.holsterPath}] Error saving to IndexedDB`, e);
 				isPersisting = false;
 				processQueuedUpdate();
 				return;
