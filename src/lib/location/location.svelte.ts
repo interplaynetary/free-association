@@ -695,7 +695,7 @@ export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
 		const rand = Math.random();
 		let transport: TransportConfig;
 
-		if (rand > 0.95) transport = TRANSPORT_MODES[7]; // 5% Rocket
+		if (rand > 0.95) transport = TRANSPORT_MODES[5]; // 5% More planes (instead of helicopters)
 		else if (rand > 0.90) transport = TRANSPORT_MODES[6]; // 5% Helicopter
 		else if (rand > 0.85) transport = TRANSPORT_MODES[5]; // 5% Plane
 		else if (rand > 0.80) transport = TRANSPORT_MODES[8]; // 5% Satellites
