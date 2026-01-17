@@ -1,5 +1,6 @@
-import { addChild, findNodeById } from '@playnet/free-association/tree';
+import { addChild, findNodeById, addContributors } from '@playnet/free-association/tree';
 import type { RootNode } from '../protocol/schemas';
+import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 
 /**
  * Official UN Sustainable Development Goals colors
@@ -294,6 +295,99 @@ export function populateSDGTree(rootNode: RootNode): RootNode {
 	}
 
 	console.log('[SDG] Tree populated with all 17 SDGs at root level');
+
+	console.log('[SDG] Injecting recognized organizations...');
+
+	// Map of specific sub-goal IDs to relevant Demo Org IDs for deepest-level recognition
+	const recognitionMap: Record<string, string[]> = {
+		// SDG 1: No Poverty
+		'poverty-employment': ['org_demo_undp'],
+		'poverty-finance': ['org_demo_oxfam'],
+
+		// SDG 2: Zero Hunger
+		'hunger-food': ['org_demo_wfp'],
+		'hunger-farming': ['org_demo_fao'],
+
+		// SDG 3: Good Health
+		'health-medical': ['org_demo_who', 'org_demo_redcross'],
+		'health-prevention': ['org_demo_unicef'],
+
+		// SDG 4: Quality Education
+		'edu-primary': ['org_demo_unicef'],
+		'edu-vocational': ['org_demo_tsinghua'],
+
+		// SDG 5: Gender Equality
+		'gender-rights': ['org_demo_un_women'],
+
+		// SDG 6: Clean Water
+		'water-access': ['org_demo_siwi'],
+		'water-sanitation': ['org_demo_unicef'],
+
+		// SDG 7: Clean Energy
+		'energy-access': ['org_demo_irena', 'org_demo_isa'],
+
+		// SDG 10: Reduced Inequalities
+		'inequality-social': ['org_demo_unhcr', 'org_demo_oxfam'],
+
+		// SDG 13: Climate Action
+		'climate-mitigation': ['org_demo_unep', 'org_demo_unfccc'],
+		'climate-adaptation': ['org_demo_ipcc'],
+		'climate-education': ['org_demo_greenpeace'],
+
+		// SDG 14: Life Below Water
+		'ocean-conservation': ['org_demo_wwf', 'org_demo_oceandori'],
+
+		// SDG 15: Life on Land
+		'land-biodiversity': ['org_demo_wwf', 'org_demo_conservationinternational'],
+		'land-forests': ['org_demo_natureconservancy'],
+
+		// SDG 16: Peace & Justice
+		'peace-conflict': ['org_demo_unhcr'],
+		'peace-justice': ['org_demo_amnesty'],
+
+		// SDG 17: Partnerships
+		'partnership-global': ['org_demo_un', 'org_demo_worldbank']
+	};
+
+	// Inject contributors
+	for (const [nodeId, orgIds] of Object.entries(recognitionMap)) {
+		const node = findNodeById(rootNode, nodeId);
+		if (node) {
+			const validOrgIds: string[] = [];
+			for (const orgId of orgIds) {
+				// Only add if we have this demo org config (prevents errors for missing keys)
+				if (orgId in DEMO_ORGANIZATIONS) {
+					validOrgIds.push(orgId);
+				}
+			}
+
+			if (validOrgIds.length > 0) {
+				try {
+					// Use protocol function to add contributors
+					// Checks for existing contributors are handled inside or by passing current list
+					const n = node as any;
+					const currentContributors = (n.contributors || []).map((c: any) => c.id);
+					const currentAntiContributors = (n.anti_contributors || []).map((c: any) => c.id);
+
+					// Merge and deduplicate
+					const startLength = currentContributors.length;
+					for (const id of validOrgIds) {
+						if (!currentContributors.includes(id)) {
+							currentContributors.push(id);
+						}
+					}
+
+					if (currentContributors.length > startLength) {
+						addContributors(n, currentContributors, currentAntiContributors);
+						// console.log(`[SDG] Added ${validOrgIds.join(', ')} to ${nodeId}`);
+					}
+				} catch (e) {
+					console.warn(`[SDG] Failed to add contributors to ${nodeId}`, e);
+				}
+			}
+		}
+	}
+
 	return rootNode;
 }
 

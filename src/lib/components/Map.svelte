@@ -1963,6 +1963,7 @@
 					location={networkLoc} 
 					pubkey={networkLoc.pubkey}
 					draggable={false}
+					zoom={currentZoom}
 				/>
 			{/each}
 

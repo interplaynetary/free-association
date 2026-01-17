@@ -8,9 +8,10 @@
 		location: LiveLocationData;
 		pubkey: string;
 		draggable?: boolean;
+		zoom?: number; // Added zoom prop for dynamic scaling
 	}
 
-	let { location, pubkey, draggable = false }: Props = $props();
+	let { location, pubkey, draggable = false, zoom = 10 }: Props = $props();
 
 	// Smooth coordinates store
 	// Duration matches simulator update rate (200ms) plus a bit for smoothness
@@ -41,14 +42,35 @@
 	let markerEmoji = $derived(location.emoji || '👤');
 	
 	// Visual altitude offset (fake 3D)
-	// Map meters to pixels loosely (e.g. 50km -> 1px? No, maybe simpler log scale or clamped)
-	// For visibility: Satellites (800km) should be clearly above ground, but not off screen.
+	// Apply zoom scaling: At low zoom (globe), shift more pixels. at high zoom, shift fewer? 
+	// Actually, projected height differences are larger at high zoom (close up) if we consider meters -> pixels.
+	// But at low zoom (globe), huge altitude (800km) is visible.
+	// 800km at zoom 0 is ~10px? 
+	// Let's use a log scale or simple heuristic.
 	let altitudeOffset = $derived.by(() => {
 		const alt = location.altitude || 0;
-		if (alt > 500000) return -60; // Satellites high up
-		if (alt > 10000) return -20; // Planes
-		if (alt > 100) return -5; // Ships/visual lift
-		return 0;
+		if (alt < 100) return 0;
+		
+		// Scale factor based on zoom? 
+		// Zoom 0 = World is 512px. 800km is ~1/50 of earth radius. 
+		// Earth radius ~6371km. 800km is significant.
+		// Let's make it proportional to zoom somewhat?
+		
+		let baseOffset = 0;
+		if (alt > 500000) baseOffset = -60; // Satellites
+		else if (alt > 10000) baseOffset = -20; // Planes
+		else if (alt > 100) baseOffset = -5; // Ships
+		
+		// Adjust by zoom? 
+		// If zoomed in (zoom 10), we are close to ground. Satellite is WAY up.
+		// If we keep -60px, it looks "low". It should be off screen (too high).
+		// But we want to see it! 
+		// So keep it clamped for visibility, maybe slight scaling.
+		// Let's keep it simple for now as the user liked the "fake" look but said it was "far off" 
+		// maybe laterally? 
+		// If I add zoom factor it might help parallax.
+		
+		return baseOffset * (1 + (zoom - 1) * 0.1); // Slight increase with zoom
 	});
 
 	// Dynamic z-index based on latitude + altitude

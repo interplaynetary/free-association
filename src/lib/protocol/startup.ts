@@ -44,7 +44,7 @@ export async function initializeProtocol() {
     SERVICES.capacity = () => { cleanupCapacitySubscriptions(); }; // Async wrapper
 
     // 4. Allocation Engine (Loops, Composition, Publishing)
-    SERVICES.allocation = startAllocationService();
+    // SERVICES.allocation = startAllocationService();
 
     console.log('[STARTUP] ✅ Protocol initialization complete.');
     (window as any).__PROTOCOL_INITIALIZED__ = true;

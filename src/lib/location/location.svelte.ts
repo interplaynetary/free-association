@@ -443,7 +443,7 @@ function getValidDestinations(startHubId: string, transport: TransportConfig): s
  * Calculate point on Great Circle path
  * f: fraction 0..1
  */
-function getGreatCircleWaypoint(p1: [number, number], p2: [number, number], f: number, maxAlt: number = 0): [number, number, number] {
+function getGreatCircleWaypoint(p1: [number, number], p2: [number, number], f: number, maxAlt: number = 0, constantAlt: boolean = false): [number, number, number] {
 	// Simple linear interpolation is visually acceptable for this scale if we don't want strict Haversine math overhead
 	// But for "curved" lines on Mercator (Great Circles), we need a bit of math.
 	// Let's use a simpler approximation: Interpolate linearly but add a "arc" to latitude to simulate the curve?
@@ -469,7 +469,7 @@ function getGreatCircleWaypoint(p1: [number, number], p2: [number, number], f: n
 
 	// Add altitude arc (parabola)
 	// Peak altitude at f=0.5
-	const alt = maxAlt * (1 - Math.pow(2 * f - 1, 2));
+	const alt = constantAlt ? maxAlt : maxAlt * (1 - Math.pow(2 * f - 1, 2));
 
 	return [lat * 180 / Math.PI, lon * 180 / Math.PI, alt];
 }
@@ -500,13 +500,15 @@ function generateGlobalTrip(
 	if (transport.mode === 'sailing') maxAlt = 500; // 500m "hover"
 	if (['driving', 'bussing', 'training'].includes(transport.mode)) maxAlt = 100; // 100m lift
 
+	const isConstantAlt = transport.mode === 'satelliting';
+
 	// Leg 1: A -> B (0 to 50% of time)
 	for (let i = 0; i <= LEG_SEGMENTS; i++) {
 		const f = i / LEG_SEGMENTS;
 		// Use fixed altitude for visual clarity on globe, or arc?
 		// Arc looks better for rockets/planes. Flat for ships?
 		// Let's use arc for all long distance for now to ensure visibility
-		const coords = getGreatCircleWaypoint(p1, p2, f, maxAlt);
+		const coords = getGreatCircleWaypoint(p1, p2, f, maxAlt, isConstantAlt);
 		// Map to 0..LOOP_DURATION/2
 		const t = (f * LOOP_DURATION) / 2;
 
@@ -517,7 +519,7 @@ function generateGlobalTrip(
 	// Leg 2: B -> A (50% to 100% of time)
 	for (let i = 0; i <= LEG_SEGMENTS; i++) {
 		const f = i / LEG_SEGMENTS;
-		const coords = getGreatCircleWaypoint(p2, p1, f, maxAlt);
+		const coords = getGreatCircleWaypoint(p2, p1, f, maxAlt, isConstantAlt);
 		// Map to LOOP_DURATION/2 .. LOOP_DURATION
 		const t = (LOOP_DURATION / 2) + (f * LOOP_DURATION) / 2;
 
@@ -692,13 +694,14 @@ export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
 
 		if (rand > 0.95) transport = TRANSPORT_MODES[7]; // 5% Rocket
 		else if (rand > 0.90) transport = TRANSPORT_MODES[6]; // 5% Helicopter
-		else if (rand > 0.80) transport = TRANSPORT_MODES[5]; // 10% Plane
-		else if (rand > 0.75) transport = TRANSPORT_MODES[8]; // 5% Ship
-		else if (rand > 0.65) transport = TRANSPORT_MODES[4]; // 10% Train
-		else if (rand > 0.50) transport = TRANSPORT_MODES[3]; // 15% Bus
-		else if (rand > 0.40) transport = TRANSPORT_MODES[2]; // 10% Car
-		else if (rand > 0.25) transport = TRANSPORT_MODES[1]; // 15% Bike
-		else transport = TRANSPORT_MODES[0]; // 25% Walking
+		else if (rand > 0.85) transport = TRANSPORT_MODES[5]; // 5% Plane
+		else if (rand > 0.80) transport = TRANSPORT_MODES[8]; // 5% Satellites
+		else if (rand > 0.70) transport = TRANSPORT_MODES[9]; // 10% Ships (Corrected Index)
+		else if (rand > 0.60) transport = TRANSPORT_MODES[4]; // 10% Train
+		else if (rand > 0.45) transport = TRANSPORT_MODES[3]; // 15% Bus
+		else if (rand > 0.30) transport = TRANSPORT_MODES[2]; // 15% Car
+		else if (rand > 0.15) transport = TRANSPORT_MODES[1]; // 15% Bike
+		else transport = TRANSPORT_MODES[0]; // Rest Walking
 
 
 		// Determine which trip type to generate based on transport

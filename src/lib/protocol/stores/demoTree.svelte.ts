@@ -8,8 +8,9 @@
  */
 
 import type { RootNode } from '@playnet/free-association/schemas';
-import { createRootNode } from '@playnet/free-association/tree';
+import { createRootNode, findNodeById } from '@playnet/free-association/tree';
 import { applyTemplate } from '$lib/templates';
+import { DEMO_ORGANIZATIONS } from '$lib/config/org-trees';
 import { writable, type Readable } from 'svelte/store';
 
 // const DEMO_TREE_KEY = 'free-association-demo-tree'; // DEPRECATED - Managed by myRecognitionTreeStore
@@ -60,6 +61,7 @@ class DemoTreeStore {
 			// Create a demo root node without authentication
 			const demoRootNode = createRootNode('demo_user', 'Viewing Demo');
 			const populated = applyTemplate(demoRootNode, 'sdg');
+
 			if (populated) {
 				this.set(populated);
 			}

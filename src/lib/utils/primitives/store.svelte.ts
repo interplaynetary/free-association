@@ -255,7 +255,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			// fallback to localStorage (now IndexedDB) if configured
 			if (config.localStorageKey && typeof window !== 'undefined') {
 				console.log(`[HOLSTER-STORE:${config.holsterPath}] Not authenticated - using IndexedDB: ${config.localStorageKey}`);
-				
+
 				// Async load from IndexedDB
 				idb.get<string>(config.localStorageKey).then((raw) => {
 					if (raw) {
@@ -267,11 +267,11 @@ export function createStore<T extends z.ZodTypeAny>(
 							// Wait, the previous logic did: localStorage.setItem(key, JSON.stringify(data)).
 							// So we should expect a string if we migrate blindly, or object if we switch convention.
 							// Let's stick to storing the DATA OBJECT directly in IDB to save parsing costs.
-							
+
 							// BUT, for compatibility with the exact logic below, let's see. 
 							// Logic: const parsed = JSON.parse(raw).
 							// So let's try to handle both (legacy string string or new object).
-							
+
 							let parsed = raw;
 							if (typeof raw === 'string') {
 								try {
@@ -281,7 +281,7 @@ export function createStore<T extends z.ZodTypeAny>(
 									console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to parse IDB data`, e);
 								}
 							}
-							
+
 							const validation = config.schema.safeParse(parsed);
 							if (validation.success) {
 								store.set(validation.data);
@@ -289,7 +289,7 @@ export function createStore<T extends z.ZodTypeAny>(
 							} else {
 								console.warn(`[HOLSTER-STORE:${config.holsterPath}] ❌ IndexedDB validation failed`, validation.error);
 								// Self-healing
-								idb.del(config.localStorageKey);
+								if (config.localStorageKey) idb.del(config.localStorageKey);
 							}
 						} catch (e) {
 							console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to load IndexedDB`, e);
@@ -298,7 +298,7 @@ export function createStore<T extends z.ZodTypeAny>(
 				}).catch(e => {
 					console.warn(`[HOLSTER-STORE:${config.holsterPath}] Failed to read IndexedDB`, e);
 				});
-				
+
 				return;
 			}
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] Cannot subscribe: not authenticated (and no localStorageKey)`);
@@ -357,25 +357,7 @@ export function createStore<T extends z.ZodTypeAny>(
 			console.log(`[HOLSTER-STORE:${config.holsterPath}] 🚀 persistNow called`);
 		}
 
-		// 1. Unauthenticated / Local Mode
-		// If not authenticated but we have a LocalStorage key, persist there instead!
-		if (!get(holsterUserPub) && config.localStorageKey) {
-			const dataToSave = get(store);
-			if (dataToSave) {
-				try {
-					localStorage.setItem(config.localStorageKey, JSON.stringify(dataToSave));
-					console.log(`[HOLSTER-STORE:${config.holsterPath}] 💾 Persisted to LocalStorage (${config.localStorageKey})`);
-				} catch (err) {
-					console.error(`[HOLSTER-STORE:${config.holsterPath}] ❌ LocalStorage persist failed:`, err);
-				}
-			} else {
-				// If data is null, remove from LocalStorage
-				localStorage.removeItem(config.localStorageKey);
-				console.log(`[HOLSTER-STORE:${config.holsterPath}] 🗑️  Removed from LocalStorage (${config.localStorageKey})`);
-			}
-			isPersisting = false;
-			return;
-		}
+
 
 		// 2. Authenticated Mode - Guard Clause
 		if (!get(holsterUserPub)) {
