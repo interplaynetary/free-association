@@ -682,6 +682,7 @@
 			mapInstance.on('zoomend', handleZoomEnd);
 			return () => {
 				mapInstance.off('zoomend', handleZoomEnd);
+				stopLocationSimulator();
 			};
 		}
 	});

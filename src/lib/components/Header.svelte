@@ -1220,6 +1220,11 @@
 			{:else}
 				<!-- Login/Register form -->
 				<div class="login-form">
+					<h3>Demo Mode</h3>
+					<div class="auth-message">
+						This is a demo, for networked pilot deployment contact <a href="mailto:info@openassociation.org?subject=Pilot%20Deployment%20Inquiry&body=Hello%20Free%20Association%20Team%2C%0A%0AI%20am%20interested%20in%20learning%20more%20about%20the%20networked%20pilot%20deployment.%0A%0ABest%2C">info@openassociation.org</a>
+					</div>
+					<!--
 					<h3>{isRegisterMode ? $t('auth.create_account') : $t('auth.sign_in')}</h3>
 					{#if errorMessage}
 						<div class="error-message">{errorMessage}</div>
@@ -1368,6 +1373,7 @@
 							{/if}
 						</div>
 					</form>
+					-->
 				</div>
 			{/if}
 		</div>

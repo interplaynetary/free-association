@@ -680,6 +680,9 @@ export function startLocationSimulator(config: Partial<SimulatorConfig> = {}) {
 		cfg.maxMovement = 0.0001; // Slightly faster global base for visibility
 	}
 
+	// Stop any existing simulator to prevent duplicate loops
+	stopLocationSimulator();
+
 	console.log('[LOCATION-SIMULATOR] Starting with config:', cfg);
 
 	// Initialize participant locations with random transport modes
