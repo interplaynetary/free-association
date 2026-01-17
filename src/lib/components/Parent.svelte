@@ -428,7 +428,7 @@
 			if (!currentUserTree) {
 				console.log('[DEMO TREE] Homepage + not authenticated + no tree - initializing with SDG template');
 				// Inline SDG initialization logic
-				const demoRootNode = createRootNode('demo_user', 'Log In');
+				const demoRootNode = createRootNode('demo_user', 'Demo');
 				const populated = applyTemplate(demoRootNode, 'sdg');
 				userTree.set(populated);
 				triggerUpdate();
