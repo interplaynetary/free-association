@@ -679,7 +679,37 @@
         country: undefined as string | undefined,
         online_link: undefined as string | undefined
 	});
-    let showEmojiPicker = $state(false);
+	let showEmojiPicker = $state(false);
+
+	// Type auto-complete state (merged into expanded panel logic)
+	let filteredTypes = $derived.by(() => {
+		if (!draftSlot.name.trim()) return types; 
+		const lowerName = draftSlot.name.toLowerCase();
+		return types.filter(t => 
+			t.label.toLowerCase().includes(lowerName) || 
+			t.id.toLowerCase().includes(lowerName)
+		);
+	});
+
+	function handleTypeSelect(type: any) {
+		draftSlot.type_id = type.id;
+		draftSlot.name = type.label; // Auto-fill name with type label
+		draftSlot.emoji = type.emoji;
+		
+		// Close panel on select
+		showExpandedDraft = false;
+	}
+
+	function handleInputFocus() {
+		// Auto-open expanded panel to 'type' tab
+		showExpandedDraft = true;
+		expandedDraftTab = 'type';
+	}
+	
+	function handleInputBlur() {
+		// No-op: let user close panel manually or by selecting
+		// If we close on blur, clicking items in the panel might fail due to race conditions
+	}
 
     function handleInventoryAdd() {
         if (!draftSlot.name.trim()) return;
@@ -766,9 +796,9 @@
 
     // Expanded Draft Panel State
     let showExpandedDraft = $state(false);
-    let expandedDraftTab = $state<'time' | 'location' | 'emoji'>('time');
+    let expandedDraftTab = $state<'type' | 'time' | 'location' | 'emoji'>('type');
 
-    function toggleExpandedDraft(tab: 'time' | 'location' | 'emoji') {
+    function toggleExpandedDraft(tab: 'type' | 'time' | 'location' | 'emoji') {
         if (showExpandedDraft && expandedDraftTab === tab) {
             showExpandedDraft = false;
         } else {
@@ -959,22 +989,27 @@
 
 							<!-- Draft Controls -->
 							<div class="inventory-draft-controls">
-								<!-- Type Selector -->
-								<select bind:value={draftSlot.type_id} class="draft-select">
+								<!-- Type Selector (Hidden, merged into input) -->
+								<!-- <select bind:value={draftSlot.type_id} class="draft-select">
 									{#each types as t}
 										<option value={t.id}>{t.emoji} {t.label}</option>
 									{/each}
-								</select>
+								</select> -->
 
 								<!-- Name Input (Also acts as search) -->
-								<input 
-									type="text" 
-									bind:value={draftSlot.name} 
-                                    oninput={(e) => globalState.inventorySearchQuery = (e.target as HTMLInputElement).value}
-									placeholder={globalState.inventoryTab === 'needs' ? "Advocate need..." : "Share capacity..."}
-									class="draft-input-name"
-									onkeydown={(e) => e.key === 'Enter' && handleInventoryAdd()}
-								/>
+								<!-- Name Input (Also acts as search) -->
+								<div class="draft-input-wrapper relative">
+									<!-- Popover removed in favor of Expanded Panel 'type' tab -->
+									<input 
+										type="text" 
+										bind:value={draftSlot.name} 
+                                        oninput={(e) => globalState.inventorySearchQuery = (e.target as HTMLInputElement).value}
+										onfocus={handleInputFocus}
+										placeholder={globalState.inventoryTab === 'needs' ? "Advocate need..." : "Share capacity..."}
+										class="draft-input-name"
+										onkeydown={(e) => e.key === 'Enter' && handleInventoryAdd()}
+									/>
+								</div>
 
 								<!-- Quantity & Emoji -->
 								<div class="draft-qty-group">
@@ -995,6 +1030,16 @@
 
 								<!-- Expanded Draft Toggles -->
 								<div class="draft-expander-group">
+									<!-- Type Toggle -->
+									<button 
+										class="toolbar-button expand-btn"
+										class:active={showExpandedDraft && expandedDraftTab === 'type'}
+										title="Choose Type"
+										onclick={() => toggleExpandedDraft('type')}
+									>
+										🏷️
+									</button>
+									
 									<!-- Emoji button removed (moved to input group) -->
 									<button 
 										class="toolbar-button expand-btn"
@@ -1032,12 +1077,37 @@
 						{#if showExpandedDraft}
 							<div class="expanded-draft-panel" transition:slide={{ axis: 'y', duration: 200 }}>
 								<div class="expanded-header">
-									<h4>{expandedDraftTab === 'time' ? 'Time Details' : expandedDraftTab === 'location' ? 'Location Details' : 'Choose Emoji'}</h4>
+									<h4>
+										{#if expandedDraftTab === 'type'}
+											Choose Type
+										{:else if expandedDraftTab === 'time'}
+											Time Details
+										{:else if expandedDraftTab === 'location'}
+											Location Details
+										{:else}
+											Choose Emoji
+										{/if}
+									</h4>
 									<button class="close-expanded-btn" onclick={() => showExpandedDraft = false}>✕</button>
 								</div>
 								
 								<div class="expanded-content">
-									{#if expandedDraftTab === 'emoji'}
+									{#if expandedDraftTab === 'type'}
+										<div class="type-grid">
+											{#each filteredTypes as type}
+												<button 
+													class="type-grid-item" 
+													onclick={() => handleTypeSelect(type)}
+												>
+													<span class="type-emoji">{type.emoji}</span>
+													<span class="type-label">{type.label}</span>
+												</button>
+											{/each}
+											{#if filteredTypes.length === 0}
+												<div class="no-results">No types found matching "{draftSlot.name}"</div>
+											{/if}
+										</div>
+									{:else if expandedDraftTab === 'emoji'}
 										<EmojiPicker onSelect={(emoji) => { draftSlot.emoji = emoji; showExpandedDraft = false; }} />
 									{:else if expandedDraftTab === 'time'}
 										<TimePatternEditor 
@@ -2236,6 +2306,48 @@
 	.expand-btn.active {
 		background: #e0f2fe;
 		opacity: 1;
+	}
+	.expand-btn.active {
+		background: #e0f2fe;
+		opacity: 1;
+	}
+
+	.type-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 8px;
+		max-height: 200px;
+		overflow-y: auto;
+	}
+
+	.type-grid-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 8px;
+		background: #f8fafc;
+		border: 1px solid #e2e8f0;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.type-grid-item:hover {
+		background: #e0f2fe;
+		border-color: #7dd3fc;
+		transform: translateY(-1px);
+	}
+
+	.type-emoji {
+		font-size: 20px;
+		margin-bottom: 4px;
+	}
+
+	.type-label {
+		font-size: 11px;
+		font-weight: 500;
+		color: #334155;
+		text-align: center;
 	}
 </style>
 

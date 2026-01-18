@@ -4,7 +4,6 @@
 	import Bar from '$lib/components/Bar.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import ResourceSlots from '$lib/components/ResourceSlots.svelte';
-	import Capacity from '$lib/components/Capacity.svelte';
 	// V5: Import from v5 stores - fully reactive, no manual recalculation needed!
 	import { 
 		myRecognitionTreeStore, 
