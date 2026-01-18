@@ -70,6 +70,7 @@ research/**/private/
 scripts/private/
 **/private/
 !**/private/README.md
+problems
 
 # Private research backups
 backups/private/
