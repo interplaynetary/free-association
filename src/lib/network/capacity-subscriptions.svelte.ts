@@ -26,12 +26,12 @@ import type {
 	SlotFilter,
 	AvailabilitySlot,
 	NeedSlot
-} from '@playnet/free-association/schemas';
+} from '$lib/protocol/schemas';
 import {
 	SlotSubscriptionsSchema,
 	SlotFiltersCollectionSchema,
 	SlotFilterSchema
-} from '@playnet/free-association/schemas';
+} from '$lib/protocol/schemas';
 
 console.log('[TRACE] src/lib/network/capacity-subscriptions.svelte.ts: <module scope>');
 

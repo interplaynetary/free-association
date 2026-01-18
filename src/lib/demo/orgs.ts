@@ -37,7 +37,7 @@ export function getAvailableOrgs(): string[] {
  * Get the full organization trees map
  */
 export function getOrgTreesMap(): OrgTreesMap {
-	return orgTreesConfig as OrgTreesMap;
+	return orgTreesConfig as unknown as OrgTreesMap;
 }
 
 /**
@@ -48,12 +48,12 @@ export function getOrgTreesMap(): OrgTreesMap {
  */
 export function getOrgTree(slug: string): RootNode | null {
 	const config = orgTreesConfig[slug as keyof typeof orgTreesConfig];
-	
+
 	if (!config) {
 		console.warn(`[ORG-TREES] No configuration found for slug: ${slug}`);
 		return null;
 	}
-	
+
 	try {
 		// Validate the tree structure
 		const validated = RootNodeSchema.parse(config.tree);
@@ -70,11 +70,11 @@ export function getOrgTree(slug: string): RootNode | null {
  */
 export function getOrgMetadata(slug: string): { name: string; description: string; monthly_budget?: number; recognizes?: Contributor[] } | null {
 	const config = orgTreesConfig[slug as keyof typeof orgTreesConfig];
-	
+
 	if (!config) {
 		return null;
 	}
-	
+
 	return {
 		name: config.name,
 		description: config.description,

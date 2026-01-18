@@ -7,7 +7,7 @@
  * NO LONGER PERSISTED to LocalStorage (UserStore handles that now).
  */
 
-import type { RootNode } from '@playnet/free-association/schemas';
+import type { RootNode } from '$lib/protocol/schemas';
 import { createRootNode, findNodeById } from '@playnet/free-association/tree';
 import { applyTemplate } from '$lib/templates';
 import { DEMO_ORGANIZATIONS } from './orgs';
@@ -59,7 +59,7 @@ class DemoTreeStore {
 		if (!this.tree) {
 			console.log('[DEMO TREE] Initializing with SDG template (In-Memory)');
 			// Create a demo root node without authentication
-			const demoRootNode = createRootNode('demo_user', 'Viewing Demo');
+			const demoRootNode = createRootNode('demo_user', 'Viewing Demo') as unknown as RootNode;
 			const populated = applyTemplate(demoRootNode, 'sdg');
 
 			if (populated) {

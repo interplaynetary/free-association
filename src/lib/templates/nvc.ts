@@ -1,5 +1,5 @@
 import { addChild, findNodeById } from '@playnet/free-association/tree';
-import type { RootNode } from '@playnet/free-association/schemas';
+import type { RootNode } from '$lib/protocol/schemas';
 
 /**
  * Populate tree with Universal Basic Needs (NVC-style) categories

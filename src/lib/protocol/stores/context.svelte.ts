@@ -74,7 +74,7 @@ import type {
     NeedSlot,
     AvailabilitySlot,
     RootNode
-} from '@playnet/free-association/schemas';
+} from '$lib/protocol/schemas';
 
 /**
  * Current User Commitment - Context-Aware

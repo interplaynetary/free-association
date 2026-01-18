@@ -20,7 +20,7 @@ import type {
 	CapacitiesCollection,
 	AvailabilitySlot,
 	Commitment
-} from '@playnet/free-association/schemas';
+} from '$lib/protocol/schemas';
 import { mutualFulfillment as originalMutualFulfillment } from '@playnet/free-association/tree';
 import { writable, derived, get } from 'svelte/store';
 import type { Writable } from 'svelte/store';
@@ -56,21 +56,24 @@ export interface NodeMergeData {
 	path: string[];
 }
 
-export type ProportionalNode = Node & {
-	proportionalWeight?: number;
-	contributor_id?: string;
-	percentage_of_node?: number;
-	individual_node_percentage?: number;
-	path_weight_contribution?: number;
-	contributor_collective_weight?: number;
-	derivation_steps?: any[];
-};
+export interface ProportionalAnalysis {
+	contributor_id: string;
+	percentage_of_node: number;
+	individual_node_percentage: number;
+	path_weight_contribution: number;
+	contributor_collective_weight: number;
+	derivation_steps: any[];
+}
+
+export type ProportionalNode = Node & ProportionalAnalysis;
 
 export interface CollectiveCapacityAllocation {
 	collective_id: string;
 	collective_tree_id?: string;
 	allocations: any[];
-	node_capacity_allocations?: any[];
+	node_capacity_allocations?: Record<string, Record<string, number>>;
+	total_collective_capacity?: Record<string, number>;
+	contributor_capacity_shares?: Record<string, number>;
 	total_capacity: number;
 }
 
@@ -1058,7 +1061,7 @@ function calculateContributorPercentageOfNode(
 	collectiveTree: CollectiveTree,
 	nodeId: string,
 	contributorId: string
-): ProportionalNode {
+): ProportionalAnalysis {
 	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateContributorPercentageOfNode');
 	// Step 1: Find the target node in collective tree
 	const targetNode = findCollectiveNodeById(collectiveTree.root, nodeId);
@@ -1158,9 +1161,9 @@ function calculateContributorPercentageOfNode(
 function calculateAllContributorPercentagesOfNode(
 	collectiveTree: CollectiveTree,
 	nodeId: string
-): Array<ProportionalNode> {
+): Array<ProportionalAnalysis> {
 	console.log('[TRACE] [ENTER] src/lib/protocol/stores/collective-tree.svelte.ts: calculateAllContributorPercentagesOfNode');
-	const analyses: Array<ProportionalNode> = [];
+	const analyses: Array<ProportionalAnalysis> = [];
 
 	for (const contributorId of collectiveTree.contributors) {
 		const analysis = calculateContributorPercentageOfNode(collectiveTree, nodeId, contributorId);
@@ -1743,6 +1746,7 @@ function filterTreeByMinimumPercentage(
 		filter_stats: {
 			original_node_count: originalNodeCount,
 			filtered_node_count: filteredNodeCount,
+			total_node_count: filteredNodeCount,
 			nodes_removed: removedNodes.length,
 			total_weight_removed: totalWeightRemoved,
 			contributors_affected: Array.from(contributorsAffected)
@@ -1858,6 +1862,7 @@ function filterTreeByMinimumQuorum(
 		filter_stats: {
 			original_node_count: originalNodeCount,
 			filtered_node_count: filteredNodeCount,
+			total_node_count: filteredNodeCount,
 			nodes_removed: removedNodes.length,
 			total_weight_removed: totalWeightRemoved,
 			contributors_affected: Array.from(contributorsAffected)
@@ -2023,6 +2028,7 @@ function filterTreeByMultipleCriteria(
 		filter_stats: {
 			original_node_count: originalNodeCount,
 			filtered_node_count: filteredNodeCount,
+			total_node_count: filteredNodeCount,
 			nodes_removed: removedNodes.length,
 			total_weight_removed: totalWeightRemoved,
 			contributors_affected: Array.from(contributorsAffected)
@@ -2059,7 +2065,7 @@ function filterTreeByCapacityAllocation(
 	const contributorsAffected = new Set<string>();
 
 	function shouldKeepNode(node: CollectiveNode): boolean {
-		const nodeAllocations = capacityAllocation.node_capacity_allocations[node.id] || {};
+		const nodeAllocations = capacityAllocation.node_capacity_allocations?.[node.id] || {};
 
 		if (capacityType) {
 			// Check specific capacity type
@@ -2067,7 +2073,7 @@ function filterTreeByCapacityAllocation(
 			return allocation >= minimumCapacityValue;
 		} else {
 			// Check total capacity across all types
-			const totalAllocation = Object.values(nodeAllocations).reduce((sum, val) => sum + val, 0);
+			const totalAllocation = Object.values(nodeAllocations).reduce((sum: number, val: number) => sum + val, 0);
 			return totalAllocation >= minimumCapacityValue;
 		}
 	}
@@ -2092,8 +2098,8 @@ function filterTreeByCapacityAllocation(
 
 		if (!keepNode && !hasValidChildren) {
 			// Node and all children fail criteria - remove entirely
-			const nodeAllocations = capacityAllocation.node_capacity_allocations[node.id] || {};
-			const totalAllocation = Object.values(nodeAllocations).reduce((sum, val) => sum + val, 0);
+			const nodeAllocations = capacityAllocation.node_capacity_allocations?.[node.id] || {};
+			const totalAllocation = Object.values(nodeAllocations).reduce((sum: number, val: number) => sum + val, 0);
 
 			removedNodes.push({
 				node_id: node.id,
@@ -2158,6 +2164,7 @@ function filterTreeByCapacityAllocation(
 		filter_stats: {
 			original_node_count: originalNodeCount,
 			filtered_node_count: filteredNodeCount,
+			total_node_count: filteredNodeCount,
 			nodes_removed: removedNodes.length,
 			total_weight_removed: totalWeightRemoved,
 			contributors_affected: Array.from(contributorsAffected)
@@ -2210,7 +2217,7 @@ function analyzeFilteredContributors(
 
 	return {
 		remaining_contributors: remaining,
-		removed_contributors: removed,
+		removed_contributors: removed as string[],
 		contributor_node_counts: contributorNodeCounts
 	};
 }
@@ -2344,6 +2351,7 @@ export interface AllocationResult {
 }
 
 export interface ComplianceFilter {
+	(nodeId: string, share: number, context: any): boolean;
 	[key: string]: any;
 }
 
@@ -2850,6 +2858,7 @@ function applyUnifiedFilter(
 		filter_stats: {
 			original_node_count: originalNodeCount,
 			filtered_node_count: filteredNodeCount,
+			total_node_count: filteredNodeCount,
 			nodes_removed: removedNodes.length,
 			total_weight_removed: totalWeightRemoved,
 			contributors_affected: Array.from(contributorsAffected)
@@ -2915,7 +2924,7 @@ function allocateFromCollectiveTree(
 		options?.complianceFilters
 	);
 
-	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Allocation complete: ${allocationResult.allocations.length} allocations`);
+	console.log(`[ALLOCATE-FROM-COLLECTIVE-TREE] Allocation complete: ${allocationResult.allocations?.length || 0} allocations`);
 
 	console.log('[TRACE] [EXIT] src/lib/protocol/stores/collective-tree.svelte.ts: allocateFromCollectiveTree');
 	return allocationResult;
@@ -3037,7 +3046,7 @@ function governAndAllocate(config: {
 			}
 		);
 
-		console.log(`[GOVERN-AND-ALLOCATE] Allocation complete: ${allocation.allocations.length} allocations`);
+		console.log(`[GOVERN-AND-ALLOCATE] Allocation complete: ${allocation.allocations?.length || 0} allocations`);
 	}
 
 	console.log('[GOVERN-AND-ALLOCATE] Pipeline complete');
@@ -3241,7 +3250,7 @@ export function exampleGovernancePipeline() {
 		aggregationMode: 'tree-wide'
 	});
 	console.log('Filtered distribution shares:', distribution2.shares);
-	console.log('Nodes removed:', filterResult.removed_nodes.length);
+	console.log('Nodes removed:', filterResult.removed_nodes?.length || 0);
 
 	// USAGE EXAMPLE 3: Complete pipeline with allocation
 	console.log('\n=== Example 3: Complete Pipeline ===');
@@ -3322,7 +3331,7 @@ export function exampleSingleNodeAllocation(
 		}
 	);
 
-	console.log('Allocations:', allocation.allocations.length);
+	console.log('Allocations:', allocation.allocations?.length || 0);
 
 	return { distribution, allocation };
 }
@@ -3349,5 +3358,3 @@ export function exampleWeightedPathDistribution(
 
 	return distribution;
 }
-
-export { type CollectiveTree }

@@ -1,4 +1,4 @@
-import type { RootNode } from '@playnet/free-association/schemas';
+import type { RootNode } from '$lib/protocol/schemas';
 import { populateSDGTree } from './sdg';
 import { populateNVCTree } from './nvc';
 import { populateUrbanTree } from './urban';

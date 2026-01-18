@@ -16,7 +16,7 @@
 	import { demoTreeStore } from '$lib/demo/tree.svelte';
 	import { createChildContributorsDataProvider } from '$lib/utils/ui/ui-providers.svelte';
 	import { currentPath, globalState } from '$lib/global.svelte';
-	import { type Node, type NonRootNode, type RootNode } from '@playnet/free-association/schemas';
+	import { type Node, type NonRootNode, type RootNode } from '$lib/protocol/schemas';
 	import {
 		findNodeById,
 		getParentNode,

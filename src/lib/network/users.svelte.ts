@@ -1,8 +1,8 @@
 import { get, writable, derived } from 'svelte/store';
 import type { Writable } from 'svelte/store';
 // V5: Import from v5 schemas
-import type { Contact, ContactsCollectionData } from '@playnet/free-association/schemas';
-import { ContactSchema } from '@playnet/free-association/schemas';
+import type { Contact, ContactsCollectionData } from '$lib/protocol/schemas';
+import { ContactSchema } from '$lib/protocol/schemas';
 
 // V5: Import Holster contacts module (from v5 commons)
 import {
@@ -567,8 +567,8 @@ export async function getUserName(identifier: string): Promise<string> {
  * while preserving contact IDs that don't have public keys
  */
 export function resolveContactIdsInTree(
-	node: import('$lib/protocol/core/schemas').Node
-): import('$lib/protocol/core/schemas').Node {
+	node: import('$lib/protocol/schemas').Node
+): import('$lib/protocol/schemas').Node {
 	console.log('[TRACE] [ENTER] src/lib/network/users.svelte.ts: resolveContactIdsInTree');
 	// Create a deep clone to avoid modifying the original
 	const resolvedNode = structuredClone(node);
@@ -590,10 +590,10 @@ export function resolveContactIdsInTree(
 	}
 
 	// V5: Recursive function to process the tree with Contributor[] arrays
-	function processNode(currentNode: import('$lib/protocol/core/schemas').Node): void {
+	function processNode(currentNode: import('$lib/protocol/schemas').Node): void {
 		// Only NonRootNodes have contributor arrays
 		if (currentNode.type === 'NonRootNode') {
-			const nonRootNode = currentNode as import('$lib/protocol/core/schemas').NonRootNode;
+			const nonRootNode = currentNode as import('$lib/protocol/schemas').NonRootNode;
 
 			// V5: Resolve contributor IDs (extract from Contributor[] objects, resolve, reconstruct)
 			if (nonRootNode.contributors && nonRootNode.contributors.length > 0) {

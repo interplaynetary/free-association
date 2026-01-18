@@ -1,5 +1,5 @@
 import { addChild, findNodeById } from '@playnet/free-association/tree';
-import type { RootNode } from '@playnet/free-association/schemas';
+import type { RootNode } from '$lib/protocol/schemas';
 
 /**
  * Urban Contexts color palette
