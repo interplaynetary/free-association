@@ -155,10 +155,10 @@
 
 <div class="layout root-page" class:full-width={currentView !== 'tree'}>
 	<div class="view-content">
-		{#if currentView === 'tree'}
-			<Parent />
-		{:else if currentView === 'map'}
+		{#if currentView === 'map'}
 			<Map fullHeight={true} />
+		{:else if currentView === 'tree'}
+			<Parent />
 		{:else if currentView === 'inventory'}
 			<div class="inventory-view">
 				<!-- Resource Slots Component with type selector and tabs -->

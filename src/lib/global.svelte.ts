@@ -201,7 +201,7 @@ export const globalState = $state({
 	initializationStarted: false,
 
 	// Main view state
-	currentView: 'tree' as 'tree' | 'map' | 'inventory',
+	currentView: 'map' as 'tree' | 'map' | 'inventory',
 
 	// Inventory search and filter state (shared between toolbar and components)
 	// V5: Works with Commitments (which contain capacity_slots arrays)
@@ -347,7 +347,7 @@ export const globalState = $state({
 		globalState.newlyCreatedNodeId = '';
 		globalState.deleteMode = false;
 		globalState.textEditMode = false;
-		globalState.currentView = 'tree';
+		globalState.currentView = 'map';
 		globalState.inventorySearchQuery = '';
 		globalState.inventorySelectedProvider = 'all';
 		globalState.inventorySortBy = 'name';
@@ -867,7 +867,7 @@ export const globalState = $state({
 	/**
 	 * View Management
 	 */
-	setView: (view: 'tree' | 'map' | 'inventory') => {
+	setView: (view: 'map' | 'tree' | 'inventory') => {
 		globalState.currentView = view;
 	}
 });

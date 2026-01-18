@@ -411,9 +411,9 @@
 
 	// View switcher helpers
 	const viewConfig = $derived({
-		tree: { emoji: '🌈', name: $t('toolbar.tree_view'), next: 'map' as const },
-		map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'inventory' as const },
-		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'tree' as const }
+		map: { emoji: '🌍', name: $t('toolbar.map_view'), next: 'tree' as const },
+		tree: { emoji: '🌈', name: $t('toolbar.tree_view'), next: 'inventory' as const },
+		inventory: { emoji: '📊', name: $t('toolbar.inventory_view'), next: 'map' as const }
 	});
 
 	const currentViewConfig = $derived(viewConfig[globalState.currentView]);
