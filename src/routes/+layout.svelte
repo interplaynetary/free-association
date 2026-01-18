@@ -17,6 +17,15 @@
 	onMount(() => {
 		// Initialize navigation service when router is ready
 		navigationService.initialize();
+
+		// Reload page when a new service worker takes control (e.g. after update)
+		// This ensures the user doesn't stay on a stale page after the SW updates.
+		let refreshing = false;
+		navigator.serviceWorker?.addEventListener('controllerchange', () => {
+			if (refreshing) return;
+			refreshing = true;
+			window.location.reload();
+		});
 	});
 </script>
 
