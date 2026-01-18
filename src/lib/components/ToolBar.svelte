@@ -1030,15 +1030,7 @@
 
 								<!-- Expanded Draft Toggles -->
 								<div class="draft-expander-group">
-									<!-- Type Toggle -->
-									<button 
-										class="toolbar-button expand-btn"
-										class:active={showExpandedDraft && expandedDraftTab === 'type'}
-										title="Choose Type"
-										onclick={() => toggleExpandedDraft('type')}
-									>
-										🏷️
-									</button>
+
 									
 									<!-- Emoji button removed (moved to input group) -->
 									<button 
